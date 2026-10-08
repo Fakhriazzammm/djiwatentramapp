@@ -175,7 +175,7 @@ function AttendanceReminder({ userId, userName, username: routeUsername }: { use
               Data absensi ini memengaruhi penggajian. Silakan hubungi atasan jika ada kendala.
             </p>
             <button
-              onClick={() => navigate({ to: "/$username/absensi" as any, params: { username: routeUsername! } })}
+              onClick={() => navigate({ to: "/$username/absensi", params: { username: routeUsername! } })}
               className="karyawan-control mt-2 bg-rose-600 px-4 text-xs font-semibold text-white transition-colors hover:bg-rose-700 active:scale-[.97]"
             >
               Buka Riwayat Absensi
@@ -241,7 +241,7 @@ function StaffProfileLayout() {
 		// Sudah login tapi membuka profil orang lain → arahkan ke profilnya sendiri.
 		const ownHandle = authUser?.slug || authUser?._id;
 		if (ownHandle && ownHandle !== username) {
-			navigate({ to: "/$username", params: { username: ownHandle }, replace: true } as any);
+			navigate({ to: "/$username", params: { username: ownHandle }, replace: true });
 		}
 	}, [isAuthLoading, isUnlocked, isAuthenticated, authUser, username, navigate]);
 
@@ -283,7 +283,7 @@ function StaffProfileLayout() {
 				</div>
 				<h2 className="mb-2 text-2xl font-bold">Profil Tidak Ditemukan</h2>
 				<p className="mb-8 text-muted-foreground">Staff dengan username "{username}" tidak terdaftar atau nonaktif.</p>
-				<Button onClick={() => navigate({ to: "/$username/beranda" as any, params: { username } })}>Kembali ke Portal</Button>
+				<Button onClick={() => navigate({ to: "/$username/beranda", params: { username } })}>Kembali ke Portal</Button>
 			</div>
 		);
 	}

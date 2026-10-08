@@ -1,8 +1,7 @@
-import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useStaffProfile } from "../$username.lazy";
 import { useState, useEffect, useCallback, useMemo, useRef, forwardRef, useImperativeHandle } from "react";
 import { createClient } from "@yumipos/web-shared/lib/client";
-import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ClipboardList, Check, ChevronDown, ChevronUp, Camera, Upload,
@@ -32,10 +31,6 @@ type KebersihanArea = {
 
 // ─── Search Schema ───
 
-const searchSchema = z.object({
-  shift: z.string().optional(),
-  ts: z.string().optional(),
-});
 
 // ─── Constants ───
 
@@ -75,7 +70,6 @@ const KEBERSIHAN_ICONS = { cooking: CookingPot, seating: Armchair, toilet: Toile
 
 export const Route = createLazyFileRoute("/$username/absen-keluar")({
   component: ClosingPage,
-  validateSearch: searchSchema,
 });
 
 // ═══════════════════════════════════════════
@@ -84,11 +78,11 @@ export const Route = createLazyFileRoute("/$username/absen-keluar")({
 
 function ClosingPage() {
   const { staff, username } = useStaffProfile();
-  const search = useSearch({ from: Route.id as any });
+  const search = Route.useSearch();
   const navigate = useNavigate();
 
   // Determine shift name: from URL param, or from latest check-in, or fallback
-  const [shiftName, setShiftName] = useState<string>((search as any)?.shift || "");
+  const [shiftName, setShiftName] = useState<string>(search.shift || "");
   useEffect(() => {
     if (shiftName) return; // already have it from URL
     const fetchShift = async () => {
@@ -358,6 +352,7 @@ const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: 
               unit: (i.unit || "").trim(),
               qtyBefore: parseFloat(i.quantity || "0"),
               qtyAfter: parseFloat(i.quantity || "0"),
+              isChanged: false,
             }))
             .sort((a: OpnameItem, b: OpnameItem) => a.name.localeCompare(b.name));
 

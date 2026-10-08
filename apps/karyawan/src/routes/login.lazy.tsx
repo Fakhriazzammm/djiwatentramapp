@@ -195,7 +195,7 @@ function KaryawanLoginPage() {
         to: "/$username",
         params: { username: handle },
         replace: true,
-      } as any);
+      });
     } catch (err: any) {
       toast.error(err?.message || "Gagal masuk");
       setPin(["", "", "", "", "", ""]);

@@ -128,7 +128,7 @@ function BerandaPage() {
 							? "bg-amber-500 hover:bg-amber-600 shadow-amber-500/20"
 							: "bg-primary hover:bg-primary/90 shadow-primary/20"
 					}`}
-					onClick={() => navigate({ to: "/$username/absensi" as any, params: { username } })}
+					onClick={() => navigate({ to: "/$username/absensi", params: { username } })}
 				>
 					{isCurrentlyIn ? (
 						<>

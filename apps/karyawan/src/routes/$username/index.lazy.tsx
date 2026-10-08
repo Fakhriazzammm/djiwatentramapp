@@ -10,7 +10,7 @@ function IndexRedirect() {
   const { username } = useParams({ from: "/$username/" as any }) as { username: string };
 
   useEffect(() => {
-    navigate({ to: "/$username/beranda" as any, params: { username }, replace: true });
+    navigate({ to: "/$username/beranda", params: { username }, replace: true });
   }, [navigate, username]);
 
   return null;

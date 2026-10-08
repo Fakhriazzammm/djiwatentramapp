@@ -52,7 +52,7 @@ function IzinCutiSakitPage() {
       });
       if (error) throw error;
       toast.success("Pengajuan berhasil dikirim!");
-      navigate({ to: "/$username/beranda" as any, params: { username } });
+      navigate({ to: "/$username/beranda", params: { username } });
     } catch (err: any) {
       toast.error(err.message || "Gagal mengirim pengajuan");
     } finally {
@@ -64,7 +64,7 @@ function IzinCutiSakitPage() {
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={spring} className="min-w-0 bg-background">
       <header className="sticky top-0 z-10 border-b bg-background/80 px-0 py-3 backdrop-blur-md">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
-          <Button aria-label="Kembali ke beranda" variant="ghost" size="icon" onClick={() => navigate({ to: "/$username/beranda" as any, params: { username } })} className="h-11 w-11 rounded-[14px]">
+          <Button aria-label="Kembali ke beranda" variant="ghost" size="icon" onClick={() => navigate({ to: "/$username/beranda", params: { username } })} className="h-11 w-11 rounded-[14px]">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-sm font-black tracking-tight">Izin / Cuti / Sakit</h1>

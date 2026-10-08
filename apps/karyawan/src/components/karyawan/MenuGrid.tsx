@@ -1,6 +1,7 @@
 import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 import { motion } from "framer-motion";
 import { useNavigate } from "@tanstack/react-router";
+import type { FileRoutesByTo } from "../../routeTree.gen";
 import {
   CalendarDays,
   CalendarOff,
@@ -17,7 +18,7 @@ interface MenuItem {
   label: string;
   icon: LucideIcon;
   menuId: string;
-  route?: string;
+  route?: Extract<keyof FileRoutesByTo, `/$username/${string}`>;
   action?: "navigate" | "tab" | "external";
   illustration?: Djiwa3DIconName;
 }
@@ -44,7 +45,7 @@ export function MenuGrid({ baseRoute }: MenuGridProps) {
 
   const handleClick = (item: MenuItem) => {
     if (item.action === "navigate" && item.route) {
-      navigate({ to: item.route as any, params: { username: baseRoute.replace("/", "") } });
+      navigate({ to: item.route, params: { username: baseRoute.replace("/", "") } });
     } else if (item.action === "external") {
       window.open("https://t.me/addlist/076D_FFRNFw5ZWI1", "_blank");
     }

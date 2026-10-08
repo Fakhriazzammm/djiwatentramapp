@@ -1,3 +1,4 @@
+import { parseMemberBonusRows } from "../../lib/member-bonuses";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
@@ -112,13 +113,7 @@ function isInMonth(ts: number, monthKey: string): boolean {
 
 function parseMemberBonuses(raw: any): BonusEntry[] {
   if (!raw) return [];
-  let memberBonuses: any[] = [];
-  if (typeof raw.memberBonuses === "string") {
-    try { memberBonuses = JSON.parse(raw.memberBonuses); } catch { /* */ }
-  } else if (Array.isArray(raw.memberBonuses)) {
-    memberBonuses = raw.memberBonuses;
-  }
-  return memberBonuses.map((mb: any) => ({
+  return parseMemberBonusRows(raw.memberBonuses).map((mb) => ({
     name: mb.name ?? "—",
     roleName: mb.roleName ?? "—",
     totalBonus: mb.bonus ?? 0,
@@ -498,7 +493,7 @@ function LeaderboardPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
-          onClick={() => navigate({ to: "/$username/beranda" as any, params: { username } })}
+          onClick={() => navigate({ to: "/$username/beranda", params: { username } })}
           aria-label="Kembali ke beranda"
           className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-border bg-card shadow-sm hover:bg-muted transition-colors"
         >

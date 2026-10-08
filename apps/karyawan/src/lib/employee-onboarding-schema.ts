@@ -601,7 +601,7 @@ export function numberToWords(n: number): string {
 	return words[n] || String(n);
 }
 
-export function formatDateId(isoDate: string): string {
+export function formatDateId(isoDate: string | undefined): string {
 	if (!isoDate || isoDate === "-") return "-";
 	const d = new Date(isoDate + "T00:00:00");
 	if (!d.getTime()) return isoDate;

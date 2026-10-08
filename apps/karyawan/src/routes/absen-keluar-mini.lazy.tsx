@@ -6,7 +6,6 @@ import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 import { PersonalSchedule } from "@yumipos/web-shared/components/attendance/PersonalSchedule";
 import { SmartBanner } from "@/components/karyawan/SmartBanner";
 import { SaldoCard } from "@/components/karyawan/SaldoCard";
-import { z } from "zod";
 import { motion } from "framer-motion";
 import {
   ClipboardList, Check, Camera, Upload,
@@ -22,12 +21,6 @@ import {
 
 // ─── Search Schema ────────────────────────────
 
-const searchSchema = z.object({
-  uid: z.string().optional(),
-  t: z.union([z.string(), z.number()]).optional(),
-  sig: z.string().optional(),
-  mode: z.enum(["home", "checkin", "checkout", "schedule", "recap", "leave", "profile", "closing"]).optional(),
-});
 
 // ─── Telegram WebApp Type ─────────────────
 
@@ -143,7 +136,6 @@ const KEBERSIHAN_ICONS = { cooking: CookingPot, seating: Armchair, toilet: Toile
 
 export const Route = createLazyFileRoute("/absen-keluar-mini")({
   component: MiniClosingPage,
-  validateSearch: searchSchema,
 });
 
 // ═══════════════════════════════════════════
@@ -755,6 +747,7 @@ const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: 
               unit: (i.unit || "").trim(),
               qtyBefore: parseFloat(i.quantity || "0"),
               qtyAfter: parseFloat(i.quantity || "0"),
+              isChanged: false,
             }))
             .sort((a: OpnameItem, b: OpnameItem) => a.name.localeCompare(b.name));
 

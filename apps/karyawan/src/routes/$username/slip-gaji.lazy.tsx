@@ -1,3 +1,4 @@
+import { parseMemberBonusRows } from "../../lib/member-bonuses";
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useStaffProfile } from "../$username.lazy";
@@ -10,7 +11,7 @@ import {
 	createClient,
 	generatePayslipPDF,
 } from "@yumipos/web-shared";
-import type { StaffRoleBonusConfig, PayslipBreakdown } from "@yumipos/web-shared";
+import type { StaffRoleBonusConfig, PayslipBreakdown, ShiftReportRecord } from "@yumipos/web-shared";
 import { Button } from "@yumipos/web-shared/components/ui/button";
 import { cn } from "@yumipos/web-shared/lib/utils";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
@@ -18,6 +19,8 @@ import {
 	FileText, Download, ChevronDown, Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
+
+type ShiftReportWithMemberBonuses = ShiftReportRecord & { memberBonuses?: unknown };
 
 const formatCurrency = (amount: number) => {
 	return new Intl.NumberFormat("id-ID", {
@@ -256,15 +259,14 @@ function SlipGajiPage() {
 					totalTargetBonus = Number(bonusCfg.tiers[0]?.bonusAmount ?? 0);
 				} else {
 					try {
-						const allShiftsData = await fetchShiftReports();
+						const allShiftsData = await fetchShiftReports() as ShiftReportWithMemberBonuses[] | undefined;
 						const staffNameUpper = (staff.name ?? "").toUpperCase().trim();
 						if (Array.isArray(allShiftsData) && staffNameUpper) {
 							for (const shift of allShiftsData) {
 								const sd = new Date(shift.startTime);
 								if (sd.getFullYear() !== selectedYear || sd.getMonth() + 1 !== selectedMonth) continue;
-								const mb = shift.memberBonuses;
-								if (!Array.isArray(mb)) continue;
-								const myBonus = mb.find((b: any) => {
+								const mb = parseMemberBonusRows(shift.memberBonuses);
+								const myBonus = mb.find((b) => {
 									const bn = (b.name ?? "").toUpperCase().trim();
 									return bn === staffNameUpper || staffNameUpper.includes(bn) || bn.includes(staffNameUpper);
 								})?.bonus ?? 0;

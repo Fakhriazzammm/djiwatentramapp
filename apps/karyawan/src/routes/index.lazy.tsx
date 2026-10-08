@@ -30,7 +30,7 @@ function IndexRoute() {
       to: "/$username",
       params: { username: handle },
       replace: true,
-    } as any);
+    });
   }, [isAuthenticated, isLoading, user, navigate]);
 
   return null;

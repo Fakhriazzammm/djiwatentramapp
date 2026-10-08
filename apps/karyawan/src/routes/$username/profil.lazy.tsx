@@ -178,7 +178,7 @@ function ProfilPage() {
 	}, []);
 
 	const handleAvatarClick = useCallback(() => {
-		navigate({ to: "/$username/absensi" as any, params: { username } });
+		navigate({ to: "/$username/absensi", params: { username } });
 	}, [navigate, username]);
 
 	return (
