@@ -39,6 +39,9 @@ deploy_app() {
 	# Ponytail: clear ALL turbo caches so .env vars are picked up fresh
 	rm -rf ".turbo" "apps/$name/.turbo" "apps/$name/dist"
 
+	# Fail before Vite can emit a blank-screen bundle with a stub Supabase client.
+	node scripts/verify-public-env.mjs "$name"
+
 	# Public VAPID key is safe for the browser but must be injected at build time.
 	# Keep the private key server-side; only expose VAPID_PUBLIC_KEY to Vite.
 	if [ "$name" = "admin" ] && [ -f "/opt/supabase-selfhost/.env" ]; then
