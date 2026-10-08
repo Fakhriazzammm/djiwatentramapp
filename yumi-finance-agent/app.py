@@ -4116,7 +4116,7 @@ async def _handle_reprocess_receipt(request):
         model = os.getenv("NINEROUTER_VISION_MODEL") or os.getenv("NINEROUTER_TEXT_MODEL", "ag/gemini-3-flash")
         fingerprint = __import__("hashlib").sha256((receipt_id + model + "receipt-header-items-v1" + ",".join(fields) + image_url).encode()).hexdigest()
         run_id = stable_id("ai_run", receipt_id, fingerprint)
-        cached = await inventory._fetch("pos_expense_receipt_ai_runs", f"select=_id,status,result,errorMessage&_id=eq.{run_id}")
+        cached = await inventory._fetch("pos_expense_receipt_ai_runs", f"select=_id,status&_id=eq.{run_id}")
         if cached and cached[0].get("status") == "completed":
             return web.json_response({"ok": True, "cached": True, "result": cached[0].get("result") or {}})
         image_bytes = await _download_from_storage(image_url)
