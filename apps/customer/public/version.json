@@ -1,7 +1,7 @@
 {
-  "version": "0.2.419",
-  "commitHash": "ed11c97",
-  "message": "fix(customer): hide object payment errors",
+  "version": "0.2.420",
+  "commitHash": "e0c097a",
+  "message": "fix(customer): pass member contact to QRIS invoice",
   "buildDate": "2026-10-08",
-  "generatedAt": "2026-10-08T06:38:46.290Z"
+  "generatedAt": "2026-10-08T06:41:30.210Z"
 }
