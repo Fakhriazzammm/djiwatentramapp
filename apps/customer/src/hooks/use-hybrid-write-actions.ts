@@ -5941,6 +5941,8 @@ export function useHybridMayarCreateInvoice() {
 					redirectUrl: args.redirectUrl,
 					paymentMethod: args.paymentMethod,
 					mobile: args.mobile,
+					customerSourceId: args.customerSourceId,
+					customerEmail: args.customerEmail,
 				});
 				return {
 					statusCode: 200,

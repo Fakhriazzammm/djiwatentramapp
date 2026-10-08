@@ -1,9 +1,12 @@
+import { trustedServer, verifiedStaff } from "../_shared/payment-auth.ts";
+import { verifyQuote } from "../_shared/delivery-quote.ts";
+import { appendOrderAdjustments } from "../_shared/invoice-adjustments.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const corsHeaders = {
 	"Access-Control-Allow-Origin": "*",
 	"Access-Control-Allow-Headers":
-		"authorization, x-client-info, apikey, content-type",
+		"authorization, x-client-info, apikey, content-type, x-yumi-session",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
@@ -152,24 +155,39 @@ async function supabaseRpc(name: string, payload: Record<string, unknown>) {
   return body;
 }
 
-async function createInvoiceFromOrder(payload: Record<string, unknown>) {
+async function createInvoiceFromOrder(payload: Record<string, unknown>, staff = false) {
   const orderId = typeof payload.orderId === "string" ? payload.orderId.trim() : "";
   if (!orderId) throw new Error("orderId wajib diisi");
 
   const orders = await supabaseGet(
-    `orders?select=source_id,order_number,total_amount,subtotal_amount,discount_amount,tax_amount,service_charge_amount,status,source,brand_slug,payment_method,customer_name,customer_email,delivery_contact_name,delivery_contact_phone,payment_gateway,idempotency_key&source_id=eq.${encodeURIComponent(orderId)}&limit=1`,
+    `orders?select=source_id,customer_source_id,customer_email,order_number,order_type,total_amount,shipping_fee_amount,shipping_rate_snapshot,delivery_provider,subtotal_amount,discount_amount,tax_amount,service_charge_amount,rounding_adjustment,status,source,brand_slug,payment_method,payment_receipt_kind,customer_name,customer_email,delivery_contact_name,delivery_contact_phone,payment_gateway,idempotency_key&source_id=eq.${encodeURIComponent(orderId)}&limit=1`,
   ) as Array<Record<string, unknown>>;
   const order = orders[0];
   if (!order) throw new Error("Order tidak ditemukan");
-  const checkoutKey = typeof payload.idempotencyKey === "string" ? payload.idempotencyKey.trim() : "";
-  if (!checkoutKey || checkoutKey !== String(order.idempotency_key || "")) {
-    throw new Error("Checkout authorization tidak valid");
-  }
-  if (!["customer_self_service", "ordermieyamin_b2b"].includes(String(order.source || ""))) {
+  if (!staff && !["customer_self_service", "ordermieyamin_b2b"].includes(String(order.source || ""))) {
     throw new Error("Order bukan order online yang dapat dibayar Mayar");
+  }
+  if (!staff) {
+    const callerSourceId = typeof payload.customerSourceId === "string" ? payload.customerSourceId.trim() : "";
+    const callerEmail = typeof payload.customerEmail === "string" ? payload.customerEmail.trim().toLowerCase() : "";
+    if (!callerSourceId || !callerEmail || callerSourceId !== String(order.customer_source_id || "") || callerEmail !== String(order.customer_email || "").trim().toLowerCase()) {
+      throw new Error("Customer tidak memiliki akses ke order ini");
+    }
   }
   if (!["pending", "created"].includes(String(order.status || ""))) {
     throw new Error("Order tidak berada pada status pending");
+  }
+  if (staff && order.order_type === "delivery") throw new Error("Delivery payments require the member API");
+  if (order.order_type === "delivery" && (order.payment_method !== "qris" || order.payment_receipt_kind !== "gateway_pending")) {
+    throw new Error("Invoice delivery hanya tersedia untuk pesanan QRIS Mayar pending");
+  }
+  if (order.order_type === "delivery") {
+    const quote = await verifyQuote(order.shipping_rate_snapshot);
+    if (quote.feeSource !== "biteship" || quote.provider !== "biteship"
+      || !["gojek", "grab"].includes(quote.courierCode) || !quote.courierType
+      || quote.courierCode !== order.delivery_provider || quote.fee !== Number(order.shipping_fee_amount)) {
+      throw new Error("Tarif delivery tidak tersedia");
+    }
   }
   const isMerchandiseOrder = String(order.brand_slug || "").trim().toLowerCase() === "merchandise";
   const existingGateway = order.payment_gateway && typeof order.payment_gateway === "object"
@@ -219,21 +237,7 @@ async function createInvoiceFromOrder(payload: Record<string, unknown>) {
       rate: Number(item.price || 0),
     }));
   if (!items.length) throw new Error("Order tidak memiliki item pembayaran");
-  const itemTotal = items.reduce((sum, item) => sum + item.quantity * item.rate, 0);
-  const orderTotal = Number(order.total_amount || 0);
-  const recordedDiscount = Math.max(0, Number(order.discount_amount || 0));
-  if (!Number.isFinite(orderTotal) || orderTotal <= 0 || itemTotal - orderTotal > recordedDiscount + 0.01) {
-    throw new Error("Total order tidak cocok dengan item database");
-  }
-  const adjustment = Math.round((orderTotal - itemTotal) * 100) / 100;
-  if (adjustment < 0) {
-    if (recordedDiscount + 0.01 < Math.abs(adjustment)) {
-      throw new Error("Total order tidak cocok dengan item database");
-    }
-    items.push({ description: "Diskon promo", quantity: 1, rate: adjustment });
-  } else if (adjustment > 0) {
-    items.push({ description: "Pajak, biaya layanan, atau ongkir", quantity: 1, rate: adjustment });
-  }
+  appendOrderAdjustments(items, order);
 
   const requestedPaymentMethod = typeof payload.paymentMethod === "string"
     ? payload.paymentMethod.trim().toLowerCase()
@@ -260,9 +264,9 @@ async function createInvoiceFromOrder(payload: Record<string, unknown>) {
   }
 
   const result = await createInvoice({
-    name: order.customer_name || payload.name,
-    email: order.customer_email || payload.email,
-    mobile: order.delivery_contact_phone || payload.mobile,
+    name: order.customer_name,
+    email: order.customer_email,
+    mobile: order.delivery_contact_phone || payload.mobile || MAYAR_DEFAULT_MOBILE,
     redirectUrl: payload.redirectUrl,
     description: `Pembayaran order ${order.order_number || orderId}`,
     expiredAt: invoiceExpiresAt,
@@ -405,6 +409,14 @@ Deno.serve(async (req) => {
 	try {
 		const body = await req.json();
 		const action = body.action as string | undefined;
+        const server = trustedServer(req);
+        let staff: string | null = null;
+        if (["create-invoice", "create-invoice-from-order", "get-invoice-detail"].includes(action || "")) {
+          // Generic invoices remain server-only; order invoices verify ownership below.
+          if (!server && action === "create-invoice") return fail("UNAUTHORIZED", "Authenticated payment server required", 401);
+          if (!server && action === "get-invoice-detail") staff = await verifiedStaff(req.headers.get("x-yumi-session"));
+          if (!server && action === "get-invoice-detail" && !staff) return fail("UNAUTHORIZED", "Sesi pembayaran tidak valid", 401);
+        }
 
 		switch (action) {
 			case "get-payment-channels": {
@@ -412,7 +424,7 @@ Deno.serve(async (req) => {
 				return json({ success: true, statusCode: 200, messages: "success", data: { config: channels?.config || [] } });
 			}
 		case "create-invoice-from-order": {
-				const result = await createInvoiceFromOrder(body);
+				const result = await createInvoiceFromOrder(body, !!staff);
 				return json({
 					success: true,
 					statusCode: 200,
@@ -434,7 +446,14 @@ Deno.serve(async (req) => {
 				});
 			}
 			case "get-invoice-detail": {
-				const invoiceId = body.invoiceId as string;
+				let invoiceId = body.invoiceId as string;
+                if (staff) {
+                  const orderId = typeof body.orderId === "string" ? body.orderId.trim() : "";
+                  if (!orderId) return fail("MISSING_ORDER_ID", "orderId wajib diisi");
+                  const orders = await supabaseGet(`orders?select=payment_gateway,order_type&source_id=eq.${encodeURIComponent(orderId)}&limit=1`) as Array<Record<string, any>>;
+                  if (!orders[0] || orders[0].order_type === "delivery") return fail("ORDER_UNAVAILABLE", "Order tidak tersedia", 403);
+                  invoiceId = orders[0].payment_gateway?.invoiceId;
+                }
 				if (!invoiceId) return fail("MISSING_INVOICE_ID", "invoiceId wajib diisi");
 				const result = await getInvoiceDetail(invoiceId);
 				return json({

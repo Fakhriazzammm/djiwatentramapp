@@ -64,6 +64,14 @@ export const Route = createLazyFileRoute("/$username/order")({
 	component: OrderPage,
 });
 
+function customerPaymentMessage(error: unknown, fallback: string) {
+	const message = error instanceof Error ? error.message : String(error || "");
+	if (!message || /non-2xx|FUNCTION_ERROR|WALLET_ERROR|INTERNAL_ERROR|UNAUTHORIZED|Mayar API|Edge Function/i.test(message)) {
+		return "Pembayaran belum berhasil diproses. Silakan coba lagi atau pilih metode pembayaran lain.";
+	}
+	return message;
+}
+
 function OrderPage() {
 	const shouldReduceMotion = useReducedMotion();
 	const popupTransition = { type: "spring" as const, stiffness: 320, damping: 30, mass: 0.8 };
@@ -1103,6 +1111,8 @@ function OrderPage() {
 						name: normalizedCustomerName,
 						email: checkoutEmail || undefined,
 						mobile: checkoutPhone || "",
+						customerSourceId: customer?.sourceId || guestCustomerSourceId,
+						customerEmail: checkoutEmail || undefined,
 						redirectUrl,
 						description: `Self-service order ${storeName}`,
 						expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -1170,7 +1180,7 @@ function OrderPage() {
 			checkoutRequestKeyRef.current = null;
 			setStep("receipt");
 		} catch (error) {
-			const message = (error as Error).message || "Checkout gagal";
+			const message = customerPaymentMessage(error, "Checkout gagal");
 			setCheckoutError(message);
 			toast.error(message);
 		} finally {
@@ -1205,14 +1215,14 @@ function OrderPage() {
 				toast.success("Pembayaran Djiwa Pay berhasil diproses");
 			} else {
 				const redirectUrl = `${window.location.origin}/${encodeURIComponent(username)}/order?step=receipt&session=${encodeURIComponent(sessionRef.current)}&orderId=${encodeURIComponent(orderId)}`;
-				const invoice = await createMayarInvoice({ orderId, idempotencyKey: `retry-mayar-${orderId}-${Date.now()}`, redirectUrl, paymentMethod: "qris", mobile: checkoutPhone || "", forceNew: true });
+				const invoice = await createMayarInvoice({ orderId, idempotencyKey: `retry-mayar-${orderId}-${Date.now()}`, redirectUrl, paymentMethod: "qris", mobile: checkoutPhone || "", customerSourceId: customer?.sourceId, customerEmail: customer?.email || checkoutEmail || undefined, forceNew: true });
 				if (!invoice?.data?.id || !invoice.data.link) throw new Error(invoice?.messages || "Link pembayaran baru tidak tersedia");
 				setReceipt((value) => value ? { ...value, mode: "mayar_pending", paymentChoice: "mayar", invoiceId: invoice.data?.id, invoiceUrl: invoice.data?.link } : value);
 				window.location.assign(invoice.data.link);
 				return;
 			}
 		} catch (error) {
-			const message = error instanceof Error ? error.message : "Retry pembayaran gagal";
+			const message = customerPaymentMessage(error, "Retry pembayaran gagal");
 			setCheckoutError(message);
 			toast.error(message);
 		} finally {

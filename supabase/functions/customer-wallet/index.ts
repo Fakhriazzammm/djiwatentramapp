@@ -1,3 +1,4 @@
+import { trustedServer, verifiedStaff } from "../_shared/payment-auth.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
@@ -15,7 +16,11 @@ function fail(code: string, message: string, status = 400) {
   return response({ success: false, error: { code, message } }, status);
 }
 function text(value: unknown) { return typeof value === "string" ? value.trim() : ""; }
-function idempotency(value: unknown) { return text(value) || crypto.randomUUID(); }
+function idempotency(value: unknown) {
+  const key = text(value);
+  if (!key || key.length > 200 || /[\x00-\x1f\x7f]/.test(key)) throw new Error("Stable idempotencyKey required (1-200 characters)");
+  return key;
+}
 
 async function ownedCustomer(sourceId: string, email: string) {
   if (!sourceId || !email) throw new Error("sourceId dan email wajib diisi");
@@ -59,9 +64,10 @@ async function createHold(payload: Json) {
   await ownedCustomer(sourceId, email);
   const orderId = text(payload.orderId); const key = idempotency(payload.idempotencyKey);
   if (!orderId) throw new Error("orderId wajib diisi");
-  const { data: order, error: orderError } = await admin.schema("pos").from("orders").select("source_id,customer_source_id,total_amount,payment_method,status,brand_slug,source").eq("source_id", orderId).maybeSingle();
+  const { data: order, error: orderError } = await admin.schema("pos").from("orders").select("source_id,customer_source_id,total_amount,payment_method,status,brand_slug,source,order_type").eq("source_id", orderId).maybeSingle();
   if (orderError) throw orderError;
   if (!order || order.customer_source_id !== sourceId) throw new Error("Order bukan milik customer");
+  if (String(order.order_type || "").trim().toLowerCase() === "delivery") throw new Error("Djiwa Pay belum tersedia untuk delivery");
   if (String(order.payment_method || "").toLowerCase() !== "wallet") throw new Error("Order bukan pembayaran Djiwa Pay");
   if (["paid", "completed", "cancelled"].includes(String(order.status || "").toLowerCase())) throw new Error("Status order tidak dapat ditahan");
   if (String(order.brand_slug || "").trim().toLowerCase() === "merchandise") {
@@ -82,9 +88,10 @@ async function mutateHold(payload: Json, action: "capture" | "release") {
   const sourceId = text(payload.sourceId); const email = text(payload.email); const holdId = text(payload.holdId);
   await ownedCustomer(sourceId, email);
   if (!holdId) throw new Error("holdId wajib diisi");
-  const { data: hold, error: holdError } = await admin.schema("pos").from("customer_wallet_holds").select("customer_id").eq("hold_id", holdId).maybeSingle();
+  const { data: hold, error: holdError } = await admin.schema("pos").from("customer_wallet_holds").select("customer_id,order_id").eq("hold_id", holdId).maybeSingle();
   if (holdError) throw holdError;
   if (!hold || hold.customer_id !== sourceId) throw new Error("Wallet hold tidak ditemukan");
+  if (action === "capture") await rejectDeliveryWalletOrder(String(hold.order_id || ""));
   const key = idempotency(payload.idempotencyKey);
   const { data, error } = action === "capture"
     ? await admin.schema("pos").rpc("wallet_capture_hold", { p_hold_id: holdId, p_idempotency_key: key })
@@ -95,36 +102,22 @@ async function mutateHold(payload: Json, action: "capture" | "release") {
 
 
 async function verifyStaff(payload: Json) {
-  const token = text(payload.staffToken);
-  let staffId = text(payload.staffSourceId);
-  if (!token) throw new Error("Sesi staff wajib diisi");
-  if (token.startsWith("local_yumi_session:")) {
-    try {
-      const raw = token.slice("local_yumi_session:".length);
-      const decoded = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(raw), (c) => c.charCodeAt(0))));
-      if (Date.now() > Number(decoded?.expiresAt ?? 0)) throw new Error("Sesi staff kedaluwarsa");
-      staffId = text(decoded?.user?._id) || staffId;
-    } catch { throw new Error("Sesi staff tidak valid"); }
-  } else {
-    const { data: session, error } = await admin.from("yumi_sessions").select("user_source_id").eq("token", token).gt("expires_at", new Date().toISOString()).maybeSingle();
-    if (error) throw error;
-    staffId = text(session?.user_source_id) || staffId;
-  }
-  if (!staffId) throw new Error("Identitas staff tidak ditemukan");
-  const { data: user, error: userError } = await admin.from("yumi_users").select("source_id,role_source_id,is_active").eq("source_id", staffId).maybeSingle();
-  if (userError) throw userError;
-  if (!user?.is_active) throw new Error("Staff tidak aktif");
-  const { data: role, error: roleError } = await admin.from("yumi_roles").select("name").eq("source_id", user.role_source_id).maybeSingle();
-  if (roleError) throw roleError;
-  const roleName = text(role?.name).toLowerCase();
-  if (!/(admin|manager|owner|supervisor)/.test(roleName)) throw new Error("Role tidak memiliki akses wallet adjustment");
+  const staffId = await verifiedStaff(payload.staffToken);
+  if (!staffId) throw new Error("Sesi staff tidak valid");
   return staffId;
+}
+
+async function rejectDeliveryWalletOrder(orderId: string) {
+  const { data: order, error } = await admin.schema("pos").from("orders").select("order_type").eq("source_id", orderId).maybeSingle();
+  if (error || !order) throw new Error("Order wallet tidak dapat diverifikasi");
+  if (String(order.order_type || "").trim().toLowerCase() === "delivery") throw new Error("Djiwa Pay belum tersedia untuk delivery");
 }
 
 async function settleOrder(payload: Json) {
   const sourceId = text(payload.sourceId); const email = text(payload.email); const orderId = text(payload.orderId); const holdId = text(payload.holdId); const key = idempotency(payload.idempotencyKey);
   await ownedCustomer(sourceId, email);
   if (!orderId || !holdId) throw new Error("orderId dan holdId wajib diisi");
+  await rejectDeliveryWalletOrder(orderId);
   const { data, error } = await admin.schema("pos").rpc("wallet_settle_order", { p_customer_id: sourceId, p_order_id: orderId, p_hold_id: holdId, p_idempotency_key: key });
   if (error) throw error;
   return data;
@@ -165,6 +158,18 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json() as Json;
     const action = text(body.action);
+    if (!["get", "admin-get"].includes(action)) {
+      try { idempotency(body.idempotencyKey); } catch { return fail("IDEMPOTENCY_REQUIRED", "Stable idempotencyKey required", 400); }
+    }
+    if (["get", "topup", "hold", "capture", "release", "settle-order"].includes(action)) {
+      // Customer browser calls use Better Auth; bind every operation to the
+      // verified customer email/source pair and server-side order ownership.
+      if (!text(body.sourceId) || !text(body.email)) return fail("UNAUTHORIZED", "Verified customer identity required", 401);
+    }
+    if (action === "admin-get") {
+      await verifyStaff(body);
+      return response({ success: true, ...(await getWallet(body)) });
+    }
     if (action === "get") return response({ success: true, ...(await getWallet(body)) });
     if (action === "topup") return response({ success: true, result: await createTopup(body) });
     if (action === "hold") return response({ success: true, result: await createHold(body) });
