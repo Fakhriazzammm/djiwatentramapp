@@ -40,6 +40,7 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 	const [showReceipt, setShowReceipt] = useState(false);
 	const [projection, setProjection] = useState<{ document: any | null; links: any[] }>({ document: null, links: [] });
 	const [approvingId, setApprovingId] = useState<string | null>(null);
+	const [inventoryOptions, setInventoryOptions] = useState<any[]>([]);
 	const receiptUrl = (tx as any).metadata?.receipt_image_url as string | undefined;
 	const transactionId = String((tx as any)._id || (tx as any).id || "");
 
@@ -50,14 +51,24 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 		Promise.all([
 			supabase.from("pos_expense_receipt_documents").select("_id,ocrStatus,merchantName,receiptTotal,receiptImageUrl").eq("transactionId", transactionId).maybeSingle(),
 			supabase.from("pos_expense_inventory_links").select("_id,rawName,quantity,unit,confidence,status,inventoryId,matchMethod").eq("transactionId", transactionId).order("rawName"),
-		]).then(([documentResult, linksResult]) => {
+			supabase.from("pos_inventory").select("_id,ingredientName,unit").order("ingredientName").limit(500),
+		]).then(([documentResult, linksResult, inventoryResult]) => {
 			if (cancelled) return;
 			setProjection({ document: documentResult.data ?? null, links: linksResult.data ?? [] });
+			setInventoryOptions(inventoryResult.data ?? []);
 		}).catch(() => {
 			if (!cancelled) setProjection({ document: null, links: [] });
 		});
 		return () => { cancelled = true; };
 	}, [transactionId]);
+
+	const selectInventory = (linkId: string, inventoryId: string) => {
+		const option = inventoryOptions.find((item) => item._id === inventoryId);
+		setProjection((current) => ({
+			...current,
+			links: current.links.map((item) => item._id === linkId ? { ...item, inventoryId, matchMethod: "manual", confidence: 100, selectedInventoryName: option?.ingredientName } : item),
+		}));
+	};
 
 	const approveLink = async (link: any) => {
 		if (!link?.inventoryId || approvingId) return;
@@ -185,6 +196,12 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 										<div key={link._id} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-xs">
 											<div className="min-w-0"><p className="truncate font-medium text-slate-800">{link.rawName}</p><p className="text-slate-500">{link.quantity ?? "-"} {link.unit || ""}</p></div>
 											<div className="flex shrink-0 items-center gap-2">
+												{link.status === "pending" && !link.inventoryId && (
+													<select className="max-w-[150px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700" value="" onChange={(event) => selectInventory(link._id, event.target.value)}>
+														<option value="">Pilih bahan</option>
+														{inventoryOptions.map((option) => <option key={option._id} value={option._id}>{option.ingredientName} ({option.unit})</option>)}
+													</select>
+												)}
 												<span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">{link.status}</span>
 												{link.status === "pending" && link.inventoryId && (
 													<button type="button" className="rounded-lg bg-blue-600 px-2 py-1 font-medium text-white disabled:opacity-50" disabled={approvingId === link._id} onClick={() => approveLink(link)}>
