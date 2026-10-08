@@ -258,7 +258,7 @@ class SumoPodClient:
         model: str = VISION_MODEL,
         timeout: int = 90,
         prompt_override: str | None = None,
-        max_tokens: int = 4096,
+        max_tokens: int | None = None,
     ) -> dict:
         """Vision/OCR via SumoPod — return structured JSON data from receipt.
 
@@ -307,7 +307,7 @@ PENTING:
                     }
                 ],
                 "temperature": 0.1,
-                "max_tokens": max_tokens,
+                "max_tokens": max_tokens or 16384,
                 "stream": False,
             }
 
