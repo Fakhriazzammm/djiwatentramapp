@@ -23,7 +23,7 @@ describe("customer authentication", () => {
     expect(customerAuthCallback("https://djiwatentram.yumme.id", "?error=google&returnTo=https://evil.example")).toBe("https://djiwatentram.yumme.id/masuk");
     expect(new URL(customerAuthCallback("https://djiwatentram.yumme.id", search("https://booking.yumme.id/"))).searchParams.get("returnTo")).toBe("https://booking.yumme.id/");
   });
-  it("sends auth requests to the verified nginx path without appending another auth prefix", async () => {
+  it("sends auth requests to the canonical host without appending another auth prefix", async () => {
     const { createAuthClient } = await import("better-auth/client");
     let requested = "";
     let credentials: unknown;
@@ -39,12 +39,18 @@ describe("customer authentication", () => {
       },
     });
     const result = await client.signIn.email({ email: "a@example.invalid", password: "invalid" });
-    expect(requested).toBe("https://djiwatentram.yumme.id/api/auth/sign-in/email");
+    expect(requested).toBe("https://auth.zantara.id/api/auth/sign-in/email");
     expect(credentials).toBe("include");
     expect(result.error?.code).toBe("INVALID_EMAIL_OR_PASSWORD");
     await client.signUp.email({ email: "a@example.invalid", password: "x", name: "Smoke" });
-    expect(requested).toBe("https://djiwatentram.yumme.id/api/auth/sign-up/email");
+    expect(requested).toBe("https://auth.zantara.id/api/auth/sign-up/email");
     await client.getSession({ query: { disableCookieCache: true } });
-    expect(requested).toBe("https://djiwatentram.yumme.id/api/auth/get-session?disableCookieCache=true");
+    expect(requested).toBe("https://auth.zantara.id/api/auth/get-session?disableCookieCache=true");
+    await client.signIn.social({ provider: "google", callbackURL: "https://djiwatentram.yumme.id/masuk" });
+    expect(requested).toBe("https://auth.zantara.id/api/auth/sign-in/social");
+    await client.requestPasswordReset({ email: "a@example.invalid" });
+    expect(requested).toBe("https://auth.zantara.id/api/auth/request-password-reset");
+    await client.signOut();
+    expect(requested).toBe("https://auth.zantara.id/api/auth/sign-out");
   });
 });

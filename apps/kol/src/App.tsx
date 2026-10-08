@@ -11,7 +11,7 @@ const categories=["Food & Beverage","Coffee","Lifestyle","Travel","Fashion","Bea
 const contentOptions=["Review makanan","Review kopi","Short video","Instagram Story","Reels","Foto & carousel","Live review"];
 const collaborationOptions=["Review kunjungan","Konten TikTok","Instagram Reels","Instagram Story","Foto & carousel","Terbuka untuk diskusi"];
 const fmt=(value:string)=>{const n=Number(value)||0;return n>=1e6?`${(n/1e6).toFixed(1)}M`:n>=1e3?`${(n/1e3).toFixed(1)}K`:value||"—"};
-const AUTH_BASE="https://api.yumme.id/v1/auth";
+const AUTH_BASE="https://auth.zantara.id/api/auth";
 const KOL_API="https://api.yumme.id/v1/kol";
 const authClient=createAuthClient({baseURL:AUTH_BASE,fetchOptions:{credentials:"include"}});
 type BetterSession={user:{id:string;name?:string|null;email?:string|null;image?:string|null}};

@@ -1,4 +1,4 @@
-export const CUSTOMER_AUTH_BASE_URL = "https://djiwatentram.yumme.id/api/auth";
+export const CUSTOMER_AUTH_BASE_URL = "https://auth.zantara.id/api/auth";
 export const CUSTOMER_PROFILE_BASE_URL = "https://djiwatentram.yumme.id/api/customer";
 
 export const REGISTRATION_CONSENT_TEXT = "Saya menyetujui Ketentuan Djiwa dan berbagi aktivitas pembelian di Komunitas. Saya dapat mengubah pilihan ini di Profil.";
