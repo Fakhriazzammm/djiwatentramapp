@@ -162,6 +162,7 @@ function OrderPage() {
 	const [shippingQuoteError, setShippingQuoteError] = useState<string | null>(null);
 	const [, setShippingClock] = useState(() => Date.now());
 	const [checkoutError, setCheckoutError] = useState<string | null>(null);
+	const [qrisRedirectProcessing, setQrisRedirectProcessing] = useState(false);
 	const [guestEmail, setGuestEmail] = useState("");
 	const [guestPhone, setGuestPhone] = useState("");
 	const [retryingPayment, setRetryingPayment] = useState(false);
@@ -1034,6 +1035,7 @@ function OrderPage() {
 		setCheckoutError(null);
 		checkoutRequestKeyRef.current = checkoutRequestKeyRef.current ?? (globalThis.crypto?.randomUUID?.() || `customer-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		try {
+			if (paymentChoice === "mayar") setQrisRedirectProcessing(true);
 			const normalizedCustomerName = customerName.trim();
 			let guestCustomerSourceId: string | null = null;
 			// Guest QRIS perlu disinkronkan agar identity dan contact dapat dipakai Mayar.
@@ -1274,6 +1276,7 @@ function OrderPage() {
 			checkoutRequestKeyRef.current = null;
 			setStep("receipt");
 		} catch (error) {
+			setQrisRedirectProcessing(false);
 			const message = (error as Error).message || "Checkout gagal";
 			setCheckoutError(message);
 			toast.error(message);
@@ -1283,7 +1286,7 @@ function OrderPage() {
 	};
 
 	const checkout = async () => {
-		if (isSubmitting || checkoutInFlightRef.current) return;
+		if (isSubmitting || qrisRedirectProcessing || checkoutInFlightRef.current) return;
 		checkoutInFlightRef.current = true;
 		setIsSubmitting(true);
 		try { await performCheckout(); } finally {
@@ -1510,7 +1513,7 @@ function OrderPage() {
 					) : null}
 
 					{/* ── Review and payment sections ───────────────── */}
-					{(step === "review" || step === "payment") ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, shippingFee, shippingQuotePending: orderMode === "delivery" && shippingQuoteLoading, shippingQuoteError: orderMode === "delivery" && shippingPaymentBlocked ? shippingBlockerMessage : null, canPay: orderMode !== "delivery" && !shippingPaymentBlocked ? true : !shippingPaymentBlocked, hasDessertInCart, isSubmitting, notes, mode: step === "review" ? "review" : "payment", updateCartQuantity, onRemoveItem: (productId, variant) => setCart((current) => current.filter((entry) => entry.productId !== productId || entry.variant !== variant)), onEditMenu: () => setStep("menu"), onContinueToPayment: () => setStep("payment"), onBackToMenu: () => setStep(step === "payment" ? "review" : "menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
+					{(step === "review" || step === "payment") ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, shippingFee, shippingQuotePending: orderMode === "delivery" && shippingQuoteLoading, shippingQuoteError: orderMode === "delivery" && shippingPaymentBlocked ? shippingBlockerMessage : null, canPay: orderMode !== "delivery" && !shippingPaymentBlocked ? true : !shippingPaymentBlocked, hasDessertInCart, isSubmitting: isSubmitting || qrisRedirectProcessing, notes, mode: step === "review" ? "review" : "payment", updateCartQuantity, onRemoveItem: (productId, variant) => setCart((current) => current.filter((entry) => entry.productId !== productId || entry.variant !== variant)), onEditMenu: () => setStep("menu"), onContinueToPayment: () => setStep("payment"), onBackToMenu: () => setStep(step === "payment" ? "review" : "menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
 					{step === "receipt" && showPaymentProcessing ? (
@@ -1641,6 +1644,24 @@ function OrderPage() {
 					</Suspense>
 				</SheetContent>
 			</Sheet>
+			<AnimatePresence>
+				{qrisRedirectProcessing ? (
+					<motion.div
+						initial={shouldReduceMotion ? false : { opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						transition={{ duration: shouldReduceMotion ? 0 : 0.2 }}
+						className="fixed inset-0 z-[3000] flex items-center justify-center bg-background/80 px-6 backdrop-blur-sm"
+					>
+						<div role="status" aria-live="polite" aria-atomic="true" className="w-full max-w-sm rounded-3xl border border-border bg-card px-6 py-8 text-center shadow-xl">
+							<Loader2 aria-hidden="true" className={cn("mx-auto h-10 w-10 text-primary", !shouldReduceMotion && "animate-spin")} />
+							<h2 className="mt-5 text-lg font-black">Tunggu sebentar</h2>
+							<p className="mt-2 text-sm text-muted-foreground">Anda akan diarahkan ke pembayaran QRIS</p>
+							<p className="mt-3 text-xs text-muted-foreground">Sedang menyiapkan link pembayaran…</p>
+						</div>
+					</motion.div>
+				) : null}
+			</AnimatePresence>
 		</div>
 	);
 }
