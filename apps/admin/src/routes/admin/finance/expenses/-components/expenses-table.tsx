@@ -104,6 +104,7 @@ export function ExpensesTable() {
 	const [page, setPage] = useState(1);
 	const [selectedTx, setSelectedTx] = useState<TransactionRow | null>(null);
 	const [reconciliationRows, setReconciliationRows] = useState<any[]>([]);
+	const [aiScanState, setAiScanState] = useState<Record<string, "loading" | "done" | "error">>({});
 
 	useEffect(() => {
 		setTheme("light");
@@ -182,6 +183,25 @@ export function ExpensesTable() {
 	const handlePeriodChange = (p: PeriodOption) => {
 		setPeriod(p);
 		setDateRange(getRangeFromPeriod(p));
+	};
+
+	const scanReceiptWithAi = async (tx: TransactionRow) => {
+		const transactionId = String((tx as any)._id || (tx as any).id || "");
+		if (!transactionId || aiScanState[transactionId] === "loading") return;
+		setAiScanState((current) => ({ ...current, [transactionId]: "loading" }));
+		try {
+			const supabase = createClient();
+			const { data } = await supabase.auth.getSession();
+			const token = data.session?.access_token;
+			if (!token) throw new Error("Sesi login tidak tersedia");
+			const response = await fetch("/api/finance-ai/reprocess-receipt", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ transaction_id: transactionId }) });
+			const payload = await response.json();
+			if (!response.ok || !payload.ok) throw new Error(payload.error || "Scan ulang gagal");
+			setAiScanState((current) => ({ ...current, [transactionId]: "done" }));
+		} catch (error) {
+			console.error("Receipt AI rescan failed", error);
+			setAiScanState((current) => ({ ...current, [transactionId]: "error" }));
+		}
 	};
 
 	const handleSort = (col: "date" | "amount" | "category") => {
@@ -456,6 +476,9 @@ export function ExpensesTable() {
 													) : (
 														<span className="text-xs text-slate-300">—</span>
 													)}
+												</td>
+												<td className="px-4 py-3 text-center">
+													{hasReceipt ? <button type="button" className="rounded-lg bg-violet-600 px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-50" disabled={aiScanState[String(tx._id)] === "loading"} onClick={(e) => { e.stopPropagation(); void scanReceiptWithAi(tx); }}>{aiScanState[String(tx._id)] === "loading" ? "Scan..." : aiScanState[String(tx._id)] === "done" ? "Selesai" : aiScanState[String(tx._id)] === "error" ? "Coba lagi" : "Scan AI"}</button> : <span className="text-xs text-slate-300">—</span>}
 												</td>
 											</tr>
 										);

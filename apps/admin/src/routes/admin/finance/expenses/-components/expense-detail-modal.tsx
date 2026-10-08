@@ -233,11 +233,8 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 								<span className="text-sm font-semibold text-slate-800">Inventory & OCR</span>
 								<div className="flex items-center gap-2">
 									<span className="rounded-full bg-white px-2 py-1 text-[11px] font-medium text-slate-600">{projection.document?.ocrStatus || "Belum diproses"}</span>
-									{receiptUrl && <button type="button" className="rounded-lg bg-violet-600 px-2.5 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50" disabled={aiRescan.loading} onClick={rescanWithAi}>{aiRescan.loading ? "Memindai..." : "Scan ulang AI"}</button>}
 								</div>
 							</div>
-							{aiRescan.error && <p className="mt-2 text-xs text-red-600">{aiRescan.error}</p>}
-							{aiRescan.result && <div className="mt-2 rounded-lg bg-violet-50 p-2 text-xs text-violet-900"><p className="font-semibold">Hasil AI tersimpan</p><p>Merchant: {aiRescan.result.name || aiRescan.result.merchant || "-"} · Tanggal: {aiRescan.result.date || "-"} · Total: {aiRescan.result.total ?? "-"}</p><p>Item terbaca: {Array.isArray(aiRescan.result.items) ? aiRescan.result.items.length : 0}</p></div>}
 							{projection.links.length > 0 && (
 								<div className="space-y-2">
 									{projection.links.map((link) => (
