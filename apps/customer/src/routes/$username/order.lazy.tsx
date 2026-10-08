@@ -14,6 +14,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { invokeEdgeFunction } from "@/lib/api-helper";
+import { deliveryApi, DeliveryApiError, type DeliveryConfig } from "@yumipos/web-shared/lib/customer-delivery";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -145,6 +146,8 @@ function OrderPage() {
 	const selectMenuCategory = (value: Id<"categories"> | null) => { setActiveCategoryId(value); };
 	const [orderMode, setOrderMode] = useState<CustomerOrderMode>("dine_in");
 	const [orderModeConfirmed, setOrderModeConfirmed] = useState(false);
+	const [deliveryConfig, setDeliveryConfig] = useState<DeliveryConfig | null>(null);
+	const [deliveryConfigError, setDeliveryConfigError] = useState<string | null>(null);
 	const [deliveryProvider, setDeliveryProvider] = useState<"gojek" | "grab">("grab");
 	const [deliveryAddressOverride, setDeliveryAddressOverride] = useState<string | null>(null);
 	const [deliveryAddressEditorOpen, setDeliveryAddressEditorOpen] = useState(false);
@@ -226,20 +229,36 @@ function OrderPage() {
 		}
 	}, [customer?.city, customer?.postalCode, customer?.province, deliveryAddressEditorOpen, deliveryAddressFields, profileDeliveryAddress]);
 	useEffect(() => {
+		if (orderMode !== "delivery") return;
+		let cancelled = false;
+		setDeliveryConfig(null); setDeliveryConfigError(null);
+		void deliveryApi<{ config: DeliveryConfig }>("biteship-rates", { action: "delivery_config" }).then(({ config }) => {
+			if (!cancelled) { setDeliveryConfig(config); setDeliveryProvider(config.defaultCourier); }
+		}).catch(() => { if (!cancelled) setDeliveryConfigError("Konfigurasi delivery tidak dapat dimuat. Coba pilih ulang delivery."); });
+		return () => { cancelled = true; };
+	}, [orderMode]);
+	useEffect(() => {
 		if (orderMode !== "delivery" || !deliveryAddress || !cart.length) {
 			setShippingQuote(null);
 			setShippingQuoteError(null);
+			setShippingQuoteLoading(false);
+			return;
+		}
+		if (!deliveryConfig || !deliveryConfig.active || !deliveryConfig.couriers.includes(deliveryProvider)) {
+			setShippingQuote(null); setShippingQuoteLoading(false);
+			setShippingQuoteError(deliveryConfigError || (!deliveryConfig ? "Memuat konfigurasi delivery…" : !deliveryConfig.active ? "Delivery sedang dinonaktifkan." : "Kurir tidak tersedia."));
 			return;
 		}
 		if (products === undefined) {
 			setShippingQuote(null);
 			setShippingQuoteError(null);
+			setShippingQuoteLoading(false);
 			return;
 		}
 		const postalCode = (deliveryLocation?.postalCode ?? deliveryAddressFields.postalCode ?? customer?.postalCode ?? "").replace(/\D/g, "");
 		if (!/^\d{5}$/.test(postalCode)) {
-			setShippingQuote({ fee: 12000, courierCode: deliveryProvider, expiresAt: Date.now() + 30 * 60 * 1000 });
-			setShippingQuoteError(null);
+			setShippingQuote(null);
+			setShippingQuoteError("Lengkapi kode pos pengantaran yang valid.");
 			setShippingQuoteLoading(false);
 			return;
 		}
@@ -251,29 +270,37 @@ function OrderPage() {
 		if (items.some((item) => !item.deliveryEnabled)) {
 			setShippingQuote(null);
 			setShippingQuoteError("Ada produk di keranjang yang hanya tersedia untuk pembelian langsung, bukan delivery.");
+			setShippingQuoteLoading(false);
 			return;
 		}
-		const flatDeliveryFee = 12000;
+		if (!deliveryLocation || !Number.isFinite(deliveryLocation.latitude) || !Number.isFinite(deliveryLocation.longitude) || items.some((item) => !Number.isInteger(item.weight) || item.weight <= 0)) {
+			setShippingQuote(null); setShippingQuoteLoading(false); setShippingQuoteError("Lengkapi lokasi pengantaran dan berat produk sebelum meminta tarif."); return;
+		}
+		const flatDeliveryFee = deliveryConfig.fallbackFee;
 		let cancelled = false;
 		setShippingQuote(null);
 		setShippingQuoteError(null);
 		setShippingQuoteLoading(true);
-		void invokeEdgeFunction<{ rates?: Array<{ courierCode?: string; shippingFee?: number; price?: number }> }>("biteship-rates", {
+		void deliveryApi<{ rates?: Array<{ courierCode?: string; shippingFee?: number; price?: number }> }>("biteship-rates", {
 			destination_postal_code: postalCode,
 			destination_latitude: deliveryLocation?.latitude,
 			destination_longitude: deliveryLocation?.longitude,
 			couriers: deliveryProvider,
-			items,
+			items: items.map(({ deliveryEnabled: _, ...item }) => item),
 		}).then((response) => {
 			if (cancelled) return;
 			const rate = (response.rates ?? []).find((entry) => String(entry.courierCode ?? "").toLowerCase() === deliveryProvider);
 			const fee = Number(rate?.shippingFee ?? rate?.price);
-			setShippingQuote({ fee: rate && Number.isFinite(fee) && fee >= 0 ? Math.round(fee) : flatDeliveryFee, courierCode: deliveryProvider, expiresAt: Date.now() + 5 * 60 * 1000 });
-		}).catch(() => {
-			if (!cancelled) setShippingQuote({ fee: flatDeliveryFee, courierCode: deliveryProvider, expiresAt: Date.now() + 30 * 60 * 1000 });
-		}).finally(() => { if (!cancelled) { setShippingQuoteError(null); setShippingQuoteLoading(false); } });
+			if (!rate || (rate.shippingFee == null && rate.price == null) || !Number.isFinite(fee) || fee < 0) { setShippingQuote(null); setShippingQuoteError("Kurir tidak menyediakan tarif untuk lokasi ini."); return; }
+			setShippingQuote({ fee: Math.round(fee), courierCode: deliveryProvider, expiresAt: Date.now() + 5 * 60 * 1000 });
+		}).catch((error: unknown) => {
+			if (cancelled) return;
+			const transient = error instanceof TypeError || (error instanceof DeliveryApiError && ["QUOTE_UNAVAILABLE", "BITESHIP_RATE_REQUEST_FAILED", "INVALID_BITESHIP_RESPONSE"].includes(error.code) && error.status >= 500);
+			if (transient) setShippingQuote({ fee: flatDeliveryFee, courierCode: deliveryProvider, expiresAt: Date.now() + 5 * 60 * 1000 });
+			else { setShippingQuote(null); setShippingQuoteError(error instanceof DeliveryApiError ? error.message : "Tarif delivery tidak dapat dimuat."); }
+		}).finally(() => { if (!cancelled) setShippingQuoteLoading(false); });
 		return () => { cancelled = true; };
-	}, [cart, customer?.postalCode, deliveryAddress, deliveryAddressFields.postalCode, deliveryLocation?.latitude, deliveryLocation?.longitude, deliveryLocation?.postalCode, deliveryProvider, orderMode, products]);
+	}, [deliveryConfig, deliveryConfigError, cart, customer?.postalCode, deliveryAddress, deliveryAddressFields.postalCode, deliveryLocation?.latitude, deliveryLocation?.longitude, deliveryLocation?.postalCode, deliveryProvider, orderMode, products]);
 
 	const resolveManualDeliveryLocation = async () => {
 		const query = [deliveryAddressFields.street, deliveryAddressFields.district, deliveryAddressFields.city, deliveryAddressFields.province, deliveryAddressFields.postalCode, "Indonesia"].filter(Boolean).join(", ");
@@ -547,7 +574,7 @@ function OrderPage() {
 		return () => window.clearInterval(timer);
 	}, [shippingQuote]);
 	const shippingFee = orderMode === "delivery" && shippingQuote && !shippingQuoteExpired ? shippingQuote.fee : 0;
-	const shippingPaymentBlocked = orderMode === "delivery" && (!shippingQuote || shippingQuoteExpired || shippingQuoteLoading || Boolean(shippingQuoteError));
+	const shippingPaymentBlocked = orderMode === "delivery" && (!deliveryConfig?.active || !deliveryConfig.couriers.includes(deliveryProvider) || shippingQuote?.courierCode !== deliveryProvider || !shippingQuote || shippingQuoteExpired || shippingQuoteLoading || Boolean(shippingQuoteError));
 	const shippingBlockerMessage = shippingQuoteLoading ? "Menunggu tarif pengantaran sebelum pembayaran." : shippingQuoteError || (shippingQuoteExpired ? "Tarif pengantaran kedaluwarsa. Kembali ke pengantaran untuk memuat ulang." : "Tarif pengantaran belum tersedia. Lengkapi lokasi dengan kode pos lalu pilih kurir.");
 	const total = taxCalculation.finalTotal + shippingFee;
 	const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -862,8 +889,11 @@ function OrderPage() {
 		if (fieldLabel) focusCheckoutField(fieldLabel);
 	};
 
-	const checkout = async () => {
-		if (isSubmitting) return;
+	const checkoutInFlightRef = useRef(false);
+	const deliveryCheckoutState = JSON.stringify({ orderMode, cart, deliveryAddress, deliveryLocation, deliveryProvider, shippingQuote, paymentChoice, total });
+	const deliveryCheckoutStateRef = useRef(deliveryCheckoutState);
+	deliveryCheckoutStateRef.current = deliveryCheckoutState;
+	const performCheckout = async () => {
 		if (!cart.length) {
 			toast.error("Pilih minimal satu produk");
 			return;
@@ -877,7 +907,16 @@ function OrderPage() {
 			setStep("address");
 			return;
 		}
-		if (orderMode === "delivery" && (!shippingQuote || shippingQuote.expiresAt <= Date.now() || shippingQuoteLoading || Boolean(shippingQuoteError))) {
+		if (orderMode === "delivery") {
+			try {
+				const { config: latest } = await deliveryApi<{ config: DeliveryConfig }>("biteship-rates", { action: "delivery_config" });
+				if (deliveryCheckoutStateRef.current !== deliveryCheckoutState) { rejectCheckout("Pesanan berubah. Periksa kembali pengantaran."); return; }
+				if (!latest.active || !latest.couriers.includes(deliveryProvider) || latest.fallbackFee !== deliveryConfig?.fallbackFee) {
+					setDeliveryConfig(latest); rejectCheckout("Pengaturan delivery berubah. Periksa kembali pengantaran."); return;
+				}
+			} catch { rejectCheckout("Konfigurasi delivery tidak dapat diverifikasi. Coba lagi."); return; }
+		}
+		if (shippingPaymentBlocked || (orderMode === "delivery" && (!shippingQuote || shippingQuote.expiresAt <= Date.now()))) {
 			rejectCheckout(shippingBlockerMessage);
 			return;
 		}
@@ -1178,6 +1217,16 @@ function OrderPage() {
 		}
 	};
 
+	const checkout = async () => {
+		if (isSubmitting || checkoutInFlightRef.current) return;
+		checkoutInFlightRef.current = true;
+		setIsSubmitting(true);
+		try { await performCheckout(); } finally {
+			checkoutInFlightRef.current = false;
+			setIsSubmitting(false);
+		}
+	};
+
 	const retryPayment = async () => {
 		if (retryingPayment || !receipt?.orderId || !currentOrder) return;
 		const orderId = String(receipt.orderId);
@@ -1392,7 +1441,7 @@ function OrderPage() {
 					{step === "menu" ? <div className="grid grid-cols-2 gap-2 px-2 pb-4"><button type="button" onClick={() => setStep(orderMode === "delivery" ? "address" : "party")} className="min-h-11 rounded-[14px] border border-border bg-card px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button><button type="button" disabled={!cart.length} onClick={() => setStep(orderMode === "delivery" ? "shipping" : "review")} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke {orderMode === "delivery" ? "pengantaran" : "review"} →</button></div> : null}
 
 					{step === "shipping" && orderMode === "delivery" ? (
-						<section className="space-y-2 px-2 py-2"><div className="rounded-xl border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 3</p><h2 className="text-base font-black">Pilih kurir pengantaran</h2></div></div><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Pilih layanan yang tersedia untuk mengantar pesananmu.</p><div className="mt-3 grid grid-cols-2 gap-2">{([{ key: "gojek", label: "Gojek", detail: "Delivery tersedia" }, { key: "grab", label: "Grab", detail: "Delivery tersedia" }] as const).map((option) => <button key={option.key} type="button" onClick={() => setDeliveryProvider(option.key)} aria-pressed={deliveryProvider === option.key} className={cn("min-h-24 rounded-xl border p-3 text-left transition-all", deliveryProvider === option.key ? "border-primary bg-primary/10 shadow-sm" : "border-border bg-background")}><span className="flex items-center justify-between gap-2"><span className="text-sm font-black">{option.label}</span><span className={cn("h-4 w-4 rounded-full border-2", deliveryProvider === option.key ? "border-primary bg-primary ring-2 ring-primary/20" : "border-muted-foreground/40")} /></span><span className="mt-1 block text-[11px] text-muted-foreground">{option.detail}</span></button>)}</div><p className="mt-3 rounded-xl bg-primary/5 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">{shippingQuoteLoading ? <span className="inline-flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" />Memuat tarif pengantaran…</span> : shippingQuote ? `Biaya pengantaran ${currency(shippingQuote.fee)} · berlaku 5 menit.` : shippingQuoteError || "Lengkapi lokasi dengan kode pos agar tarif pengantaran dapat dihitung."}</p><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => setStep("menu")} className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black">← Kembali</button><button type="button" onClick={() => setStep("review")} className="min-h-11 rounded-xl bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground">Lanjut ke review →</button></div></div></section>
+						<section className="space-y-2 px-2 py-2"><div className="rounded-xl border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 3</p><h2 className="text-base font-black">Pilih kurir pengantaran</h2></div></div><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Pilih layanan yang tersedia untuk mengantar pesananmu.</p><div className="mt-3 grid grid-cols-2 gap-2">{([{ key: "gojek", label: "Gojek", detail: "Delivery tersedia" }, { key: "grab", label: "Grab", detail: "Delivery tersedia" }] as const).filter((option) => deliveryConfig?.active && deliveryConfig.couriers.includes(option.key)).map((option) => <button key={option.key} type="button" onClick={() => setDeliveryProvider(option.key)} aria-pressed={deliveryProvider === option.key} className={cn("min-h-24 rounded-xl border p-3 text-left transition-all", deliveryProvider === option.key ? "border-primary bg-primary/10 shadow-sm" : "border-border bg-background")}><span className="flex items-center justify-between gap-2"><span className="text-sm font-black">{option.label}</span><span className={cn("h-4 w-4 rounded-full border-2", deliveryProvider === option.key ? "border-primary bg-primary ring-2 ring-primary/20" : "border-muted-foreground/40")} /></span><span className="mt-1 block text-[11px] text-muted-foreground">{option.detail}</span></button>)}</div><p className="mt-3 rounded-xl bg-primary/5 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">{shippingQuoteLoading ? <span className="inline-flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" />Memuat tarif pengantaran…</span> : shippingQuote ? `Biaya pengantaran ${currency(shippingQuote.fee)} · berlaku 5 menit.` : shippingQuoteError || "Lengkapi lokasi dengan kode pos agar tarif pengantaran dapat dihitung."}</p><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => setStep("menu")} className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black">← Kembali</button><button type="button" onClick={() => setStep("review")} className="min-h-11 rounded-xl bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground">Lanjut ke review →</button></div></div></section>
 					) : null}
 
 					{/* ── Review and payment sections ───────────────── */}

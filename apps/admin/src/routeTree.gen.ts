@@ -91,6 +91,7 @@ import { Route as AdminKaryawanKehadiranRouteImport } from './routes/admin/karya
 import { Route as AdminKaryawanDataRouteImport } from './routes/admin/karyawan/data'
 import { Route as AdminKaryawanCutiIzinRouteImport } from './routes/admin/karyawan/cuti-izin'
 import { Route as AdminFinanceShiftReportsRouteImport } from './routes/admin/finance/shift-reports'
+import { Route as AdminDeliverySettingsRouteImport } from './routes/admin/delivery_.settings'
 import { Route as AdminBookingSettingsRouteImport } from './routes/admin/booking/settings'
 import { Route as AdminBookingOrdersRouteImport } from './routes/admin/booking/orders'
 import { Route as AdminBookingCapacityRouteImport } from './routes/admin/booking/capacity'
@@ -671,6 +672,13 @@ const AdminFinanceShiftReportsRoute =
     path: '/shift-reports',
     getParentRoute: () => AdminFinanceRouteRoute,
   } as any)
+const AdminDeliverySettingsRoute = AdminDeliverySettingsRouteImport.update({
+  id: '/delivery_/settings',
+  path: '/delivery/settings',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/delivery_.settings.lazy').then((d) => d.Route),
+)
 const AdminBookingSettingsRoute = AdminBookingSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -1006,6 +1014,7 @@ export interface FileRoutesByFullPath {
   '/admin/booking/capacity': typeof AdminBookingCapacityRoute
   '/admin/booking/orders': typeof AdminBookingOrdersRoute
   '/admin/booking/settings': typeof AdminBookingSettingsRouteWithChildren
+  '/admin/delivery/settings': typeof AdminDeliverySettingsRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
   '/admin/karyawan/cuti-izin': typeof AdminKaryawanCutiIzinRoute
   '/admin/karyawan/data': typeof AdminKaryawanDataRoute
@@ -1112,6 +1121,7 @@ export interface FileRoutesByTo {
   '/admin/booking/capacity': typeof AdminBookingCapacityRoute
   '/admin/booking/orders': typeof AdminBookingOrdersRoute
   '/admin/booking/settings': typeof AdminBookingSettingsRouteWithChildren
+  '/admin/delivery/settings': typeof AdminDeliverySettingsRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
   '/admin/karyawan/cuti-izin': typeof AdminKaryawanCutiIzinRoute
   '/admin/karyawan/data': typeof AdminKaryawanDataRoute
@@ -1222,6 +1232,7 @@ export interface FileRoutesById {
   '/admin/booking/capacity': typeof AdminBookingCapacityRoute
   '/admin/booking/orders': typeof AdminBookingOrdersRoute
   '/admin/booking/settings': typeof AdminBookingSettingsRouteWithChildren
+  '/admin/delivery_/settings': typeof AdminDeliverySettingsRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
   '/admin/karyawan/cuti-izin': typeof AdminKaryawanCutiIzinRoute
   '/admin/karyawan/data': typeof AdminKaryawanDataRoute
@@ -1339,6 +1350,7 @@ export interface FileRouteTypes {
     | '/admin/booking/capacity'
     | '/admin/booking/orders'
     | '/admin/booking/settings'
+    | '/admin/delivery/settings'
     | '/admin/finance/shift-reports'
     | '/admin/karyawan/cuti-izin'
     | '/admin/karyawan/data'
@@ -1445,6 +1457,7 @@ export interface FileRouteTypes {
     | '/admin/booking/capacity'
     | '/admin/booking/orders'
     | '/admin/booking/settings'
+    | '/admin/delivery/settings'
     | '/admin/finance/shift-reports'
     | '/admin/karyawan/cuti-izin'
     | '/admin/karyawan/data'
@@ -1554,6 +1567,7 @@ export interface FileRouteTypes {
     | '/admin/booking/capacity'
     | '/admin/booking/orders'
     | '/admin/booking/settings'
+    | '/admin/delivery_/settings'
     | '/admin/finance/shift-reports'
     | '/admin/karyawan/cuti-izin'
     | '/admin/karyawan/data'
@@ -2196,6 +2210,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFinanceShiftReportsRouteImport
       parentRoute: typeof AdminFinanceRouteRoute
     }
+    '/admin/delivery_/settings': {
+      id: '/admin/delivery_/settings'
+      path: '/delivery/settings'
+      fullPath: '/admin/delivery/settings'
+      preLoaderRoute: typeof AdminDeliverySettingsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/booking/settings': {
       id: '/admin/booking/settings'
       path: '/settings'
@@ -2793,6 +2814,7 @@ interface AdminRouteRouteChildren {
   AdminShiftClosingRoute: typeof AdminShiftClosingRoute
   AdminStockOverviewRoute: typeof AdminStockOverviewRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminDeliverySettingsRoute: typeof AdminDeliverySettingsRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
@@ -2830,6 +2852,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminShiftClosingRoute: AdminShiftClosingRoute,
   AdminStockOverviewRoute: AdminStockOverviewRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminDeliverySettingsRoute: AdminDeliverySettingsRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(

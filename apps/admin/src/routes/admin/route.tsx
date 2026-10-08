@@ -69,6 +69,9 @@ export const Route = createFileRoute("/admin")({
 });
 
 // Page title map for mobile header
+// Match server admin equivalence only for Customer Delivery navigation.
+const canAdminDelivery = (path: string, roleName?: string) => path.startsWith("/admin/delivery") && ["admin", "administrator", "owner", "superadmin", "super admin"].includes(roleName?.trim().toLowerCase() ?? "");
+
 const PAGE_TITLES: Record<string, string> = {
 	"/admin": "Dashboard",
 	"/admin/products": "Produk",
@@ -85,6 +88,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/finance/expenses": "Pengeluaran",
 	"/admin/orders": "Pesanan",
 	"/admin/delivery": "Delivery Customer",
+	"/admin/delivery/settings": "Pengaturan Delivery Customer",
 	"/admin/notifications": "Notifikasi",
 	"/admin/order-mie-yamin": "Order Mie Yamin",
 	"/admin/order-mie-yamin/orders": "Pesanan Mie Yamin",
@@ -251,6 +255,7 @@ const QUICK_MENU_SECTIONS = [
 		label: "DELIVERY",
 		items: [
 			{ to: "/admin/delivery", icon: Truck, label: "Delivery Customer", permission: "orders:view" },
+			{ to: "/admin/delivery/settings", icon: Truck, label: "Pengaturan Delivery", permission: "orders:view" },
 		],
 	},
 	{
@@ -438,7 +443,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 				.filter((item) => item.to && currentPath.startsWith(item.to))
 				.sort((a, b) => b.to.length - a.to.length)[0];
 			
-			if (matchedItem?.permission && !hasPermission(matchedItem.permission)) {
+			if (matchedItem?.permission && !hasPermission(matchedItem.permission) && !canAdminDelivery(currentPath, role?.name)) {
 				setIsAccessDenied(true);
 			} else {
 				setIsAccessDenied(false);
@@ -787,6 +792,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 					{/* DELIVERY - Standalone */}
 					<SidebarSection isCollapsed={isCollapsed} label="DELIVERY" />
 					<DesktopNavLink icon={<Truck />} isCollapsed={isCollapsed} label="Delivery Customer" to="/admin/delivery" permission="orders:view" />
+					<DesktopNavLink icon={<Truck />} isCollapsed={isCollapsed} label="Pengaturan Delivery" to="/admin/delivery/settings" permission="orders:view" />
 
 					{/* KARYAWAN - Section */}
 					<SidebarSection isCollapsed={isCollapsed} label="Karyawan" />
@@ -1356,7 +1362,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 										</p>
 										<div className="grid grid-cols-3 gap-1.5">
 											{section.items.map((item) => {
-												const hasPermission = !item.permission || isAdmin || role?.permissions?.includes(item.permission);
+												const hasPermission = !item.permission || isAdmin || role?.permissions?.includes(item.permission) || canAdminDelivery(item.to ?? "", role?.name);
 												if (!hasPermission) return null;
 
 												return (
@@ -1431,7 +1437,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 				<nav aria-label="Navigasi utama admin" className="safe-area-bottom fixed inset-x-0 bottom-0 z-40 border-[#e5e5ea] border-t bg-white/95 shadow-[0_-8px_28px_rgba(0,0,0,.06)] backdrop-blur-xl md:hidden">
 					<div className="mx-auto grid w-full max-w-md grid-cols-5 items-end gap-1 px-1 pb-1 pt-2">
 						{BOTTOM_NAV_ITEMS.map((item, index) => {
-							const hasPermission = !item.permission || isAdmin || role?.permissions?.includes(item.permission);
+							const hasPermission = !item.permission || isAdmin || role?.permissions?.includes(item.permission) || canAdminDelivery(item.to ?? "", role?.name);
 							if (!hasPermission) return null;
 
 							const isMore = "isMore" in item && item.isMore;
@@ -1648,7 +1654,7 @@ function DesktopNavLink({
 	permission?: string;
 }) {
 	const { isAdmin, role } = useYumiAuth();
-	const hasPermission = !permission || isAdmin || role?.permissions?.includes(permission);
+	const hasPermission = !permission || isAdmin || role?.permissions?.includes(permission) || canAdminDelivery(to, role?.name);
 
 	if (!hasPermission) return null;
 
@@ -1698,7 +1704,7 @@ function DesktopSubNavLink({
 	permission?: string;
 }) {
 	const { isAdmin, role } = useYumiAuth();
-	const hasPermission = !permission || isAdmin || role?.permissions?.includes(permission);
+	const hasPermission = !permission || isAdmin || role?.permissions?.includes(permission) || canAdminDelivery(to, role?.name);
 
 	if (!hasPermission) return null;
 

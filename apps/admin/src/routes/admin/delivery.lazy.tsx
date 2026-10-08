@@ -1,11 +1,12 @@
-import { createLazyFileRoute, Link } from "@tanstack/react-router";
-import { AlertCircle, ArrowRight, Check, CheckCircle2, Circle, CreditCard, Package, RefreshCw, Search, Settings2, Truck, XCircle } from "lucide-react";
+import { createLazyFileRoute } from "@tanstack/react-router";
+import { AlertCircle, ArrowRight, Check, CheckCircle2, ChevronDown, Circle, CreditCard, Package, RefreshCw, Search, Settings2, Truck, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { deliveryApi } from "@yumipos/web-shared/lib/customer-delivery";
+import { DeliverySettingsPanel } from "./-components/delivery-settings-panel";
 export const Route = createLazyFileRoute("/admin/delivery")({ component: AdminCustomerDelivery });
 const DELIVERY_STATUSES = [
   { value: "pending_payment", label: "Menunggu pembayaran" },
@@ -131,6 +132,8 @@ function DeliveryTimeline({ status }: { status: string }) {
 function AdminCustomerDelivery() {
   const { token } = useYumiAuth();
   const requestVersion = useRef(0);
+  const settingsSection = useRef<HTMLElement>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [orders, setOrders] = useState<CustomerDeliveryOrder[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -175,10 +178,20 @@ function AdminCustomerDelivery() {
         <p className="mt-1 text-sm text-slate-500">100 order terbaru · status diperbarui oleh webhook.</p>
       </div>
       <div className="flex items-center gap-2">
-        <Link to="/admin/delivery/settings" className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"><Settings2 className="h-4 w-4" aria-hidden="true" /> Pengaturan</Link>
+        <Button variant="ghost" className="min-h-11 gap-2 rounded-lg text-slate-600" aria-expanded={settingsOpen} aria-controls="delivery-settings-content" onClick={() => { setSettingsOpen(true); settingsSection.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }}><Settings2 className="h-4 w-4" aria-hidden="true" /> Pengaturan</Button>
         <Button variant="outline" className="min-h-11 gap-2 rounded-lg bg-white shadow-sm" disabled={loading} onClick={() => void refresh()}><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} aria-hidden="true" />{loading ? "Memuat…" : "Segarkan"}</Button>
       </div>
     </header>
+
+    <section ref={settingsSection} className="scroll-mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" aria-label="Pengaturan delivery">
+      <button type="button" className="flex min-h-14 w-full items-center justify-between gap-3 p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500" aria-expanded={settingsOpen} aria-controls="delivery-settings-content" onClick={() => setSettingsOpen((open) => !open)}>
+        <span className="flex items-center gap-2 text-sm font-semibold"><Settings2 className="h-4 w-4 text-slate-500" aria-hidden="true" />Pengaturan Delivery Customer</span>
+        <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${settingsOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+      </button>
+      <div id="delivery-settings-content" hidden={!settingsOpen} className="border-t border-slate-200">
+        <DeliverySettingsPanel />
+      </div>
+    </section>
 
     <section className="grid grid-cols-3 gap-2 sm:gap-4" aria-label="Ringkasan 100 order terbaru">
       {summary.map(({ label, count, context, icon: Icon, accent }) => <div key={label} className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm sm:p-4">

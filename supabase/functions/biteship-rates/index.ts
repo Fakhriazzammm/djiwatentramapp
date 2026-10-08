@@ -1,5 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
+import { getDeliveryConfig } from "../_shared/customer-delivery.ts";
+
 const BITESHIP_RATES_URL = "https://api.biteship.com/v1/rates/couriers";
 const BITESHIP_COURIERS_URL = "https://api.biteship.com/v1/couriers";
 const apiKey = Deno.env.get("BITESHIP_API_KEY")?.trim() ?? "";
@@ -7,7 +9,7 @@ const originPostalCode = Deno.env.get("BITESHIP_ORIGIN_POSTAL_CODE")?.trim() ?? 
 const originLatitude = Number(Deno.env.get("BITESHIP_ORIGIN_LATITUDE"));
 const originLongitude = Number(Deno.env.get("BITESHIP_ORIGIN_LONGITUDE"));
 const validOriginPostalCode = /^\d{5}$/.test(originPostalCode);
-const validOriginCoordinates = Number.isFinite(originLatitude) && Number.isFinite(originLongitude);
+const validOriginCoordinates = Boolean(Deno.env.get("BITESHIP_ORIGIN_LATITUDE")?.trim() && Deno.env.get("BITESHIP_ORIGIN_LONGITUDE")?.trim()) && Number.isFinite(originLatitude) && Math.abs(originLatitude) <= 90 && Number.isFinite(originLongitude) && Math.abs(originLongitude) <= 180;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -67,7 +69,7 @@ function nonNegativeInteger(value: unknown, field: string, max: number): number 
 }
 
 function coordinate(value: unknown, field: string): number {
-  if (typeof value !== "number" || !Number.isFinite(value) || value < -180 || value > 180) {
+  if (typeof value !== "number" || !Number.isFinite(value) || Math.abs(value) > (field.endsWith("latitude") ? 90 : 180)) {
     throw new Error(`${field} must be a valid coordinate`);
   }
   return value;
@@ -128,7 +130,6 @@ function normalizeRate(value: unknown): JsonObject | null {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return response({ ok: true });
   if (req.method !== "POST") return fail("METHOD_NOT_ALLOWED", "POST required", 405);
-  if (!apiKey || !validOriginPostalCode) return fail("NOT_CONFIGURED", "Shipping rates are not configured", 503);
 
   let body: unknown;
   try {
@@ -137,12 +138,20 @@ Deno.serve(async (req) => {
     return fail("INVALID_JSON", "Request body must be valid JSON");
   }
   if (!isObject(body)) return fail("INVALID_BODY", "Request body must be an object");
+  let config;
+  try { config = await getDeliveryConfig(); } catch { return fail("CONFIG_UNAVAILABLE", "Delivery configuration unavailable", 503); }
+  if (body.action === "delivery_config") return response({ success: true, config });
+  if (!config.active) return fail("DELIVERY_DISABLED", "Delivery sedang dinonaktifkan", 403);
+  if (typeof body.couriers === "string" && body.couriers.toLowerCase().split(",").some((courier) => !config.couriers.includes(courier))) return fail("COURIER_DISABLED", "Kurir tidak tersedia", 403);
+  if (!apiKey || !validOriginPostalCode) return fail("NOT_CONFIGURED", "Shipping rates are not configured", 503);
   if (body.action === "list_couriers") {
+    try {
     const upstream = await fetch(BITESHIP_COURIERS_URL, { headers: { authorization: apiKey } });
     const payload = await upstream.json().catch(() => null);
-    if (!upstream.ok || !isObject(payload) || !Array.isArray(payload.couriers)) return fail("BITESHIP_COURIERS_REQUEST_FAILED", "Biteship courier catalog unavailable", upstream.ok ? 502 : 400);
-    const couriers = payload.couriers.filter((entry) => isObject(entry) && ["gojek", "grab"].includes(String(entry.courier_code).toLowerCase()));
+    if (!upstream.ok || !isObject(payload) || !Array.isArray(payload.couriers)) return fail("BITESHIP_COURIERS_REQUEST_FAILED", "Biteship courier catalog unavailable", upstream.ok || upstream.status >= 500 ? 502 : 400);
+    const couriers = payload.couriers.filter((entry) => isObject(entry) && config.couriers.includes(String(entry.courier_code).toLowerCase()));
     return response({ success: true, couriers });
+    } catch { return fail("QUOTE_UNAVAILABLE", "Biteship courier catalog temporarily unavailable", 503); }
   }
 
   try {
@@ -185,11 +194,11 @@ Deno.serve(async (req) => {
 
     return response({
       success: true,
-      originPostalCode: Number(originPostalCode),
       destinationPostalCode,
       rates: upstreamPayload.pricing.map(normalizeRate).filter((rate): rate is JsonObject => rate !== null),
     });
   } catch (error) {
-    return fail("INVALID_REQUEST", error instanceof Error ? error.message : "Invalid request");
+    if (error instanceof TypeError) return fail("QUOTE_UNAVAILABLE", "Shipping rates temporarily unavailable", 503);
+    return fail("INVALID_REQUEST", "Invalid shipping request");
   }
 });
