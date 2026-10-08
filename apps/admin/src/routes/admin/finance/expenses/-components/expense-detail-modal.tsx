@@ -39,6 +39,7 @@ interface Props {
 export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 	const [showReceipt, setShowReceipt] = useState(false);
 	const [projection, setProjection] = useState<{ document: any | null; links: any[] }>({ document: null, links: [] });
+	const [approvingId, setApprovingId] = useState<string | null>(null);
 	const receiptUrl = (tx as any).metadata?.receipt_image_url as string | undefined;
 	const transactionId = String((tx as any)._id || (tx as any).id || "");
 
@@ -57,6 +58,31 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 		});
 		return () => { cancelled = true; };
 	}, [transactionId]);
+
+	const approveLink = async (link: any) => {
+		if (!link?.inventoryId || approvingId) return;
+		setApprovingId(link._id);
+		try {
+			const supabase = createClient();
+			const { error } = await supabase.schema("pos").rpc("approve_expense_inventory_link", {
+				p_link_id: link._id,
+				p_inventory_source_id: link.inventoryId,
+				p_base_quantity: link.quantity == null ? null : Number(link.quantity),
+				p_base_unit: link.unit || null,
+				p_match_method: link.matchMethod || "manual",
+				p_confidence: link.confidence == null ? null : Number(link.confidence),
+			});
+			if (error) throw error;
+			setProjection((current) => ({
+				...current,
+				links: current.links.map((item) => item._id === link._id ? { ...item, status: "approved" } : item),
+			}));
+		} catch (error) {
+			console.error("Failed to approve expense inventory link", error);
+		} finally {
+			setApprovingId(null);
+		}
+	};
 
 	const status = STATUS_LABELS[tx.status] || {
 		label: tx.status,
@@ -158,7 +184,14 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 									{projection.links.map((link) => (
 										<div key={link._id} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-xs">
 											<div className="min-w-0"><p className="truncate font-medium text-slate-800">{link.rawName}</p><p className="text-slate-500">{link.quantity ?? "-"} {link.unit || ""}</p></div>
-											<span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-slate-600">{link.status}</span>
+											<div className="flex shrink-0 items-center gap-2">
+												<span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">{link.status}</span>
+												{link.status === "pending" && link.inventoryId && (
+													<button type="button" className="rounded-lg bg-blue-600 px-2 py-1 font-medium text-white disabled:opacity-50" disabled={approvingId === link._id} onClick={() => approveLink(link)}>
+														{approvingId === link._id ? "..." : "Setujui"}
+													</button>
+												)}
+											</div>
 										</div>
 									))}
 								</div>
