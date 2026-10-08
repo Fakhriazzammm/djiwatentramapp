@@ -165,8 +165,15 @@ function OrderPage() {
 	const [guestEmail, setGuestEmail] = useState("");
 	const [guestPhone, setGuestPhone] = useState("");
 	const [retryingPayment, setRetryingPayment] = useState(false);
+	// Only a receipt URL with an order ID starts the return-flow gate.
+	const [processingOrderId, setProcessingOrderId] = useState<string | null>(() =>
+		search.step === "receipt" && search.orderId ? String(search.orderId) : null
+	);
+	const [processingTimedOut, setProcessingTimedOut] = useState(false);
+	const [providerPaidOrderId, setProviderPaidOrderId] = useState<string | null>(null);
 
 	const startNewOrder = () => {
+		setProcessingOrderId(null);
 		checkoutRequestKeyRef.current = null;
 		setReceipt(null);
 		clearCart();
@@ -437,6 +444,47 @@ function OrderPage() {
 
 	const [refreshTrigger, setRefreshTrigger] = useState(0);
 	const currentOrder = useHybridOrderById(receipt?.orderId, refreshTrigger);
+	const backendPayment = currentOrder as {
+		_id?: string;
+		id?: string;
+		source_id?: string;
+		status?: string;
+		paymentMethod?: string;
+		payment_method?: string;
+		paymentReceiptKind?: string;
+		payment_receipt_kind?: string;
+		paymentGateway?: { status?: string };
+		payment_gateway?: { status?: string };
+	} | null | undefined;
+	const backendSettled = ["paid", "completed"].includes(String(backendPayment?.status).toLowerCase())
+		&& (String(backendPayment?.paymentReceiptKind ?? backendPayment?.payment_receipt_kind).toLowerCase() === "gateway_paid"
+			|| String(backendPayment?.paymentGateway?.status ?? backendPayment?.payment_gateway?.status).toLowerCase() === "paid");
+	const backendReceiptKind = String(backendPayment?.paymentReceiptKind ?? backendPayment?.payment_receipt_kind ?? "").toLowerCase();
+	const backendPaymentMethod = String(backendPayment?.paymentMethod ?? backendPayment?.payment_method ?? "").toLowerCase();
+	const isExistingNonMayarReceipt = backendReceiptKind.startsWith("cashier_") || backendReceiptKind.startsWith("wallet_")
+		|| ["cash", "cashier", "tunai", "wallet", "djiwa_pay"].includes(backendPaymentMethod);
+	const processingCurrentOrder = Boolean(processingOrderId && String(receipt?.orderId) === processingOrderId
+		&& backendPayment && String(backendPayment._id ?? backendPayment.id ?? backendPayment.source_id ?? receipt?.orderId) === processingOrderId);
+	const showPaymentProcessing = Boolean(processingOrderId && (!processingCurrentOrder || (!backendSettled && !isExistingNonMayarReceipt)));
+	const paymentReceived = processingCurrentOrder && (providerPaidOrderId === processingOrderId
+		|| String(backendPayment?.paymentGateway?.status ?? backendPayment?.payment_gateway?.status).toLowerCase() === "paid");
+
+	useEffect(() => {
+		if (search.step === "receipt" && search.orderId && String(receipt?.orderId) !== String(search.orderId)) {
+			setProcessingOrderId(String(search.orderId));
+		}
+	}, [search.step, search.orderId]);
+
+	useEffect(() => {
+		if (processingCurrentOrder && (backendSettled || isExistingNonMayarReceipt)) setProcessingOrderId(null);
+	}, [processingCurrentOrder, backendSettled, isExistingNonMayarReceipt]);
+
+	useEffect(() => {
+		setProcessingTimedOut(false);
+		if (step !== "receipt" || !showPaymentProcessing) return;
+		const timer = window.setTimeout(() => setProcessingTimedOut(true), 60000);
+		return () => window.clearTimeout(timer);
+	}, [step, processingOrderId, showPaymentProcessing]);
 
 	useEffect(() => {
 		if (step !== "receipt" || !receipt?.orderId) return;
@@ -791,6 +839,7 @@ function OrderPage() {
 				if (!active || !isPaid) return;
 				// Browser hanya membaca status provider. Settlement order dilakukan
 				// oleh webhook terverifikasi agar tidak ada client-side fulfillment.
+				setProviderPaidOrderId(String(receipt.orderId));
 				setRefreshTrigger((value) => value + 1);
 			} catch {
 				// Retry quietly.
@@ -1464,7 +1513,24 @@ function OrderPage() {
 					{(step === "review" || step === "payment") ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, shippingFee, shippingQuotePending: orderMode === "delivery" && shippingQuoteLoading, shippingQuoteError: orderMode === "delivery" && shippingPaymentBlocked ? shippingBlockerMessage : null, canPay: orderMode !== "delivery" && !shippingPaymentBlocked ? true : !shippingPaymentBlocked, hasDessertInCart, isSubmitting, notes, mode: step === "review" ? "review" : "payment", updateCartQuantity, onRemoveItem: (productId, variant) => setCart((current) => current.filter((entry) => entry.productId !== productId || entry.variant !== variant)), onEditMenu: () => setStep("menu"), onContinueToPayment: () => setStep("payment"), onBackToMenu: () => setStep(step === "payment" ? "review" : "menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
-					{step === "receipt" && receipt ? renderReceiptSection({ actionsHidden: cartOpen, cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: startNewOrder, onRetryPayment: retryPayment, retryPaymentLabel: String((currentOrder as any)?.paymentMethod ?? (currentOrder as any)?.payment_method ?? receipt.paymentChoice).toLowerCase().includes("wallet") ? "Coba bayar ulang dengan Djiwa Pay" : "Buat link pembayaran baru", retryingPayment, onHome: goHome, onCashierPaymentExpired: () => {
+					{step === "receipt" && showPaymentProcessing ? (
+						<motion.section
+							initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+							animate={{ opacity: 1, y: 0 }}
+							className="mx-2 my-6 rounded-3xl border border-border bg-card px-6 py-10 text-center shadow-sm"
+						>
+							<motion.div aria-hidden="true" animate={shouldReduceMotion ? undefined : { scale: [1, 1.08, 1] }} transition={{ duration: 1.8, repeat: Infinity }} className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+								<Loader2 className={cn("h-8 w-8", !shouldReduceMotion && "animate-spin")} />
+							</motion.div>
+							<div role="status" aria-live="polite">
+								<h2 className="mt-5 text-lg font-black">{paymentReceived ? "Pembayaran diterima" : "Menunggu konfirmasi pembayaran"}</h2>
+								<p className="mt-2 text-sm text-muted-foreground">{paymentReceived ? "Sedang menyelesaikan pembayaran dan menyiapkan struk." : "Sedang memeriksa status pembayaran dan menyiapkan struk. Mohon tunggu konfirmasi."}</p>
+								{processingTimedOut ? <p className="mt-3 text-xs text-muted-foreground">Konfirmasi masih diproses. Kamu bisa cek status kembali tanpa melakukan pembayaran ulang.</p> : null}
+							</div>
+							<button type="button" onClick={() => setRefreshTrigger((value) => value + 1)} className="mt-6 min-h-11 rounded-xl bg-primary px-5 py-3 text-sm font-black text-primary-foreground">Cek status pembayaran</button>
+						</motion.section>
+					) : null}
+					{step === "receipt" && receipt && !showPaymentProcessing ? renderReceiptSection({ actionsHidden: cartOpen, cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: startNewOrder, onRetryPayment: retryPayment, retryPaymentLabel: String((currentOrder as any)?.paymentMethod ?? (currentOrder as any)?.payment_method ?? receipt.paymentChoice).toLowerCase().includes("wallet") ? "Coba bayar ulang dengan Djiwa Pay" : "Buat link pembayaran baru", retryingPayment, onHome: goHome, onCashierPaymentExpired: () => {
 						if (!receipt?.orderId) return;
 						void updateOrderStatus({ id: receipt.orderId, status: "cancelled" }).catch(() => undefined);
 						setReceipt((previous) => previous ? { ...previous, mode: "cashier_expired" } : previous);
