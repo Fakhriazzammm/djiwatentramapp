@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import { readGuestOrderReferences } from "@/components/customer/types";
@@ -21,11 +21,12 @@ function resolveMayarConfig() {
 	};
 }
 
-async function fetchOrderById(id: string) {
+async function fetchOrderById(id: string, signal: AbortSignal) {
 	const accessToken = readGuestOrderReferences().find((reference) => reference.orderId === id)?.accessToken;
 	if (accessToken) {
 		const response = await fetch(`${CUSTOMER_ORDER_API}/guest-orders`, {
 			method: "POST",
+			signal,
 			credentials: "include",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ orders: [{ orderId: id, accessToken }] }),
@@ -39,6 +40,7 @@ async function fetchOrderById(id: string) {
 	// is the source of truth. The previous implementation sent an empty guest
 	// request for members, which produced an empty receipt after live tracking.
 	const response = await fetch(`${CUSTOMER_ORDER_API}/orders`, {
+		signal,
 		credentials: "include",
 		headers: { Accept: "application/json" },
 	});
@@ -139,13 +141,52 @@ export function useHybridMayarConfig() {
 	return localConfig as any;
 }
 
-export function useHybridOrderById(id?: string | null) {
-	const supabaseData = useSupabaseValue(
-		`order-by-id:${id ?? "skip"}`,
-		() => (id ? fetchOrderById(id) : Promise.resolve(null)),
-		[id]
-	);
-	return supabaseData as any;
+export function useHybridOrderById(id?: string | null, refreshTrigger = 0) {
+	const [order, setOrder] = useState<Awaited<ReturnType<typeof fetchOrderById>> | undefined>();
+	const reloadRef = useRef<(() => void) | null>(null);
+	const previousTriggerRef = useRef(refreshTrigger);
+
+	useEffect(() => {
+		setOrder(id ? undefined : null);
+		if (!id) return;
+		const controller = new AbortController();
+		let active = true;
+		let inFlight = false;
+		let pending = false;
+		const reload = async () => {
+			if (!active) return;
+			if (inFlight) {
+				pending = true;
+				return;
+			}
+			inFlight = true;
+			do {
+				pending = false;
+				try {
+					const next = await fetchOrderById(id, controller.signal);
+					if (active) setOrder(next);
+				} catch (error) {
+					if (active) console.warn("[customer-order-refresh]", error);
+				}
+			} while (active && pending);
+			inFlight = false;
+		};
+		reloadRef.current = () => { void reload(); };
+		void reload();
+		return () => {
+			active = false;
+			pending = false;
+			reloadRef.current = null;
+			controller.abort();
+		};
+	}, [id]);
+
+	useEffect(() => {
+		if (previousTriggerRef.current === refreshTrigger) return;
+		previousTriggerRef.current = refreshTrigger;
+		reloadRef.current?.();
+	}, [refreshTrigger]);
+	return order as any;
 }
 
 export function useHybridVariationPresets() {
