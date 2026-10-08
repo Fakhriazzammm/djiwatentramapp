@@ -625,6 +625,16 @@ export function useHybridUpdateProduct() {
 				if (error) throw error;
 				return Array.isArray(data) ? data[0] : data;
 			}
+			const quantityOnly = args?.quantity !== undefined &&
+				Object.keys(args ?? {}).every((key) => ["id", "quantity"].includes(key));
+			if (quantityOnly) {
+				const { error } = await createClient().schema("pos").rpc("update_product_quantity", {
+					p_product_source_id: id,
+					p_quantity: Number(args.quantity),
+				});
+				if (error) throw error;
+				return;
+			}
 			const updates: Record<string, unknown> = {};
 			if (args?.categoryId !== undefined) updates.category_source_id = args.categoryId ?? null;
 			if (args?.name !== undefined) updates.name = String(args.name ?? "").trim() || "Produk";
@@ -6024,73 +6034,10 @@ export function useHybridApplyInventoryStockAction() {
 				}
 				if (quantity <= 0) throw new Error("Quantity harus lebih dari 0");
 
-				const supabase = createClient();
-				const pos = supabase.schema("pos");
-				const { data: inventory, error: inventoryError } = await pos
-					.from("inventory")
-					.select("*")
-					.eq("source_id", inventoryId)
-					.maybeSingle();
-				if (inventoryError) throw inventoryError;
-				if (!inventory) throw new Error("Inventory item tidak ditemukan");
-
-				const currentQty = Number(inventory.quantity ?? 0);
-				const nextQty =
-					action === "add"
-						? currentQty + quantity
-						: action === "usage"
-							? Math.max(0, currentQty - quantity)
-							: quantity;
-				const now = Number(args?.timestamp ?? Date.now());
-
-				const { error: updateError } = await pos
-					.from("inventory")
-					.update({
-						quantity: nextQty,
-						last_purchase_price:
-							args?.costPerUnit === undefined
-								? inventory.last_purchase_price ?? null
-								: Number(args.costPerUnit ?? 0),
-						last_purchase_at:
-							action === "add" ? now : inventory.last_purchase_at ?? null,
-						last_purchase_store_source_id:
-							args?.storeId ?? inventory.last_purchase_store_source_id ?? null,
-					})
-					.eq("source_id", inventoryId);
-				if (updateError) throw updateError;
-
-				const txQuantity = action === "usage" ? -quantity : action === "add" ? quantity : nextQty - currentQty;
-				const { error: txError } = await pos
-					.from("inventory_transactions")
-					.insert({
-						source_id: makeSourceId("invtx"),
-						inventory_source_id: inventoryId,
-						quantity: txQuantity,
-						tx_type: action,
-						cost_per_unit:
-							args?.costPerUnit === undefined ? null : Number(args.costPerUnit ?? 0),
-						remaining_quantity: action === "add" ? quantity : null,
-						tx_timestamp: now,
-						notes: args?.notes ?? null,
-						expiry_date:
-							args?.expiryDate === undefined
-								? null
-								: Number(args.expiryDate ?? 0),
-						brand_name: args?.brandName ?? null,
-						store_source_id: args?.storeId ?? null,
-						purchase_unit: args?.purchaseUnit ?? null,
-						purchase_quantity:
-							args?.purchaseQuantity === undefined
-								? null
-								: Number(args.purchaseQuantity ?? 0),
-						line_total:
-							args?.lineTotal === undefined
-								? null
-								: Number(args.lineTotal ?? 0),
-						creation_time: Date.now(),
-						raw: args ?? {},
-					});
-				if (txError) throw txError;
+				const { error } = await createClient().schema("pos").rpc("apply_inventory_stock_action", {
+					p_args: args ?? {},
+				});
+				if (error) throw error;
 				return;
 			} catch (error) {
 				console.warn(
