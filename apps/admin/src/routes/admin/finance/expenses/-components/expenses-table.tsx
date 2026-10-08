@@ -200,6 +200,7 @@ export function ExpensesTable() {
 		return counts;
 	}, {});
 	const reconciliationProblems = reconciliationRows.filter((row) => ["missing_movement", "unexpected_movement"].includes(row.reconciliationStatus));
+	const pendingReviewRows = reconciliationRows.filter((row) => row.reconciliationStatus === "pending").slice(0, 8);
 
 	// ── Loading state ──
 	if (!txData) {
@@ -258,6 +259,17 @@ export function ExpensesTable() {
 							</div>
 						</div>
 						{reconciliationProblems.length > 0 && <div className="mt-2 space-y-1 text-xs text-red-700">{reconciliationProblems.slice(0, 3).map((row) => <p key={row._id}>• {row.rawName || "Item expense"}: {row.reconciliationStatus}</p>)}</div>}
+						{pendingReviewRows.length > 0 && (
+							<div className="mt-3 border-t border-slate-200/80 pt-3">
+								<div className="mb-2 flex items-center justify-between"><p className="text-xs font-semibold text-slate-700">Antrian review pending</p><span className="text-[11px] text-slate-500">Menampilkan {pendingReviewRows.length} item pertama</span></div>
+								<div className="grid gap-1.5 sm:grid-cols-2">
+									{pendingReviewRows.map((row) => {
+										const transaction = allTransactions.find((item) => item._id === row.transactionId);
+										return <button key={row._id} type="button" className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-left text-xs hover:bg-blue-50" onClick={() => transaction && setSelectedTx(transaction)}><span className="min-w-0 truncate text-slate-700">{row.rawName || "Item expense"}</span><span className="shrink-0 text-blue-600">{transaction ? "Buka" : "-"}</span></button>;
+									})}
+								</div>
+							</div>
+						)}
 					</div>
 				)}
 
