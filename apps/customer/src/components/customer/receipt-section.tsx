@@ -179,12 +179,12 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	return (
 		<div className="space-y-2 px-2 py-2 pb-[calc(11rem+env(safe-area-inset-bottom))]">
 			{currentStepLabel ? (
-				<div className="rounded-3xl border border-border bg-card p-3.5 shadow-sm">
+				<div className="mx-auto w-full max-w-sm px-3 py-3">
 					<div className="flex items-center justify-between gap-2">
 						<p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{isDeliveryOrder ? "Progress pengantaran" : "Status pesanan"}</p>
 						<p className={cn("text-right text-xs font-black", unifiedStatusColor)}>{currentStepLabel}</p>
 					</div>
-					{isDeliveryOrder ? <div className="mt-2 flex items-center gap-2 rounded-xl border border-primary/15 bg-primary/5 px-2.5 py-2"><Truck className="h-4 w-4 shrink-0 text-primary" /><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Kurir</p><p className="truncate text-xs font-black text-foreground">{courierLabel}</p></div></div> : null}
+					{isDeliveryOrder ? <div className="mt-2 flex items-center gap-2 border-t border-border pt-2"><Truck className="h-4 w-4 shrink-0 text-primary" /><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Kurir</p><p className="truncate text-xs font-black text-foreground">{courierLabel}</p></div></div> : null}
 					<div className="mt-3 flex items-center">
 						{(isDeliveryOrder ? DELIVERY_STEPS : STATUS_STEPS).map((step, index) => {
 							const reached = index <= currentStepIndex;
@@ -215,15 +215,15 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 				paymentLabel={paymentLabel}
 				statusLabel={printerStatusLabel}
 			>
-				<div className="rounded-3xl border border-border bg-card p-4 text-center shadow-sm">
+				<div className="text-center">
 				<div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">{mode === "paid" ? <CheckCircle2 className="h-5 w-5" /> : <Wallet className="h-5 w-5" />}</div>
 				<p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">{isExpired ? "Order dibatalkan" : "Step 5 · Selesai / Struk"}</p>
 				<h2 className="mt-1 font-display text-lg font-black tracking-tight">{receiptTitle}</h2>
 				<p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{receiptDescription}</p>
-				<div className="mt-3 rounded-xl border border-border bg-background px-2.5 py-2.5">{props.logoUrl ? <img alt={props.storeName} className="mx-auto h-10 object-contain" src={props.logoUrl} /> : null}<div className="mt-2.5 space-y-0.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nomor order</p><p className="text-xl font-black tracking-[0.12em] text-foreground">{orderReference}</p></div><div className="mt-2.5 rounded-lg bg-muted/35 px-2.5 py-2.5"><div className="flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Metode</span><span className="font-bold">{paymentLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Status</span><span className={cn("font-bold", unifiedStatusColor)}>{unifiedStatusLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Total</span><span className="font-black">{currency(props.currentOrder?.totalAmount ?? props.total)}</span></div></div>
-					{isDeliveryOrder && persistedShippingFee > 0 ? <div className="mt-2 flex items-center justify-between rounded-lg border border-primary/15 bg-primary/5 px-2.5 py-2 text-[11px]"><span className="text-muted-foreground">Ongkir {courierLabel}</span><span className="font-black text-primary">{currency(persistedShippingFee)}</span></div> : null}
+				<div className="mt-3 border-t border-border pt-3">{props.logoUrl ? <img alt={props.storeName} className="mx-auto h-10 object-contain" src={props.logoUrl} /> : null}<div className="mt-2.5 space-y-0.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nomor order</p><p className="text-xl font-black tracking-[0.12em] text-foreground">{orderReference}</p></div><div className="mt-3 border-t border-border pt-3"><div className="flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Metode</span><span className="font-bold">{paymentLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Status</span><span className={cn("font-bold", unifiedStatusColor)}>{unifiedStatusLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Total</span><span className="font-black">{currency(props.currentOrder?.totalAmount ?? props.total)}</span></div></div>
+					{isDeliveryOrder && persistedShippingFee > 0 ? <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-[11px]"><span className="text-muted-foreground">Ongkir {courierLabel}</span><span className="font-black text-primary">{currency(persistedShippingFee)}</span></div> : null}
 					{hasPersistedTotals ? <ReceiptTotalsBreakdown rawTotal={persistedRawTotal} taxBase={persistedTaxBase} taxAmount={Number(props.currentOrder?.taxAmount ?? 0)} taxRate={Number((props.currentOrder?.receiptMeta as any)?.taxRateSnapshot ?? 0)} taxEnabled={Number(props.currentOrder?.taxAmount ?? 0) > 0 || Number((props.currentOrder?.receiptMeta as any)?.taxRateSnapshot ?? 0) > 0} serviceChargeAmount={Number(props.currentOrder?.serviceChargeAmount ?? 0)} roundingAdjustment={persistedRounding} total={persistedTotal} /> : null}
-					<div className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left">
+					<div className="mt-3 border-t border-border pt-3 text-left">
 						<p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Data customer</p>
 						<div className="mt-1.5 space-y-1">
 							<div className="flex items-center justify-between gap-2 text-[11px]">
@@ -246,7 +246,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 							</div>
 						</div>
 					</div>
-					{orderItems.length > 0 ? <div data-receipt-section="items" className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Detail item</p><div className="mt-1.5 space-y-1">{orderItems.map((item: any, index: number) => <div className="flex items-start justify-between gap-2 text-[11px]" key={`${item.productId}-${item.variant || "default"}-${index}`}><span className="min-w-0 break-words text-foreground">{item.quantity}x {item.productName}{item.variant ? ` (${item.variant})` : ""}</span><span className="shrink-0 font-semibold">{currency((item.price || 0) * (item.quantity || 0))}</span></div>)}</div></div> : null}
+					{orderItems.length > 0 ? <div data-receipt-section="items" className="mt-3 border-t border-border pt-3 text-left"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Detail item</p><div className="mt-1.5 space-y-1">{orderItems.map((item: any, index: number) => <div className="flex items-start justify-between gap-2 text-[11px]" key={`${item.productId}-${item.variant || "default"}-${index}`}><span className="min-w-0 break-words text-foreground">{item.quantity}x {item.productName}{item.variant ? ` (${item.variant})` : ""}</span><span className="shrink-0 font-semibold">{currency((item.price || 0) * (item.quantity || 0))}</span></div>)}</div></div> : null}
 					<BarcodeLines value={orderReference} />
 					</div>
 					</div>

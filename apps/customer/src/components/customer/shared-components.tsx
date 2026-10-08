@@ -221,7 +221,7 @@ export function ReceiptTotalsBreakdown({
 	total: number;
 }) {
 	return (
-		<div className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left">
+		<div className="mt-3 border-t border-border pt-3 text-left">
 			<p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Rincian pembulatan</p>
 			<div className="mt-1.5 space-y-1">
 				{taxEnabled ? <Line label="Dasar pajak" value={currency(taxBase)} /> : null}
