@@ -1,7 +1,7 @@
 {
-  "version": "0.2.413",
-  "commitHash": "11f6f57",
-  "message": "fix(order-tracking): use guest token for receipt reads",
-  "buildDate": "2026-10-04",
-  "generatedAt": "2026-10-04T07:19:47.142Z"
+  "version": "0.2.416",
+  "commitHash": "4b897ca",
+  "message": "fix(customer): enable payment methods with friendly errors",
+  "buildDate": "2026-10-08",
+  "generatedAt": "2026-10-08T06:26:06.692Z"
 }
