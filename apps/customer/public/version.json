@@ -1,7 +1,7 @@
 {
-  "version": "0.2.417",
-  "commitHash": "6ab43fb",
-  "message": "fix(customer): keep unpaid orders retryable",
+  "version": "0.2.418",
+  "commitHash": "32af0d6",
+  "message": "fix(mayar): use reliable self-hosted database client",
   "buildDate": "2026-10-08",
-  "generatedAt": "2026-10-08T06:28:38.156Z"
+  "generatedAt": "2026-10-08T06:34:37.306Z"
 }
