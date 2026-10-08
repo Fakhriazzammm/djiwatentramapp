@@ -555,7 +555,7 @@ function OrderPage() {
 		return () => window.clearInterval(timer);
 	}, [shippingQuote]);
 	const shippingFee = orderMode === "delivery" && shippingQuote && !shippingQuoteExpired ? shippingQuote.fee : 0;
-	const shippingPaymentBlocked = orderMode === "delivery" && (!shippingQuote || shippingQuoteExpired || shippingQuoteLoading || Boolean(shippingQuoteError));
+	const shippingPaymentBlocked = orderMode === "delivery" && (!shippingQuote || !shippingQuote.signedQuote || shippingQuoteExpired || shippingQuoteLoading || Boolean(shippingQuoteError));
 	const shippingBlockerMessage = shippingQuoteLoading ? "Menunggu tarif pengantaran sebelum pembayaran." : shippingQuoteError || (shippingQuoteExpired ? "Tarif pengantaran kedaluwarsa. Kembali ke pengantaran untuk memuat ulang." : "Tarif pengantaran belum tersedia. Lengkapi lokasi dengan kode pos lalu pilih kurir.");
 	const total = taxCalculation.finalTotal + shippingFee;
 	const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
