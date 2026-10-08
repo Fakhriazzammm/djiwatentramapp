@@ -22,6 +22,7 @@ import { useTheme } from "next-themes";
 import { format } from "date-fns";
 import { id as localeID } from "date-fns/locale";
 import Papa from "papaparse";
+import { createClient } from "@/lib/client";
 
 // ─── Constants ────────────────────────────────────
 const PAGE_SIZE = 20;
@@ -102,10 +103,22 @@ export function ExpensesTable() {
 	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 	const [page, setPage] = useState(1);
 	const [selectedTx, setSelectedTx] = useState<TransactionRow | null>(null);
+	const [reconciliationRows, setReconciliationRows] = useState<any[]>([]);
 
 	useEffect(() => {
 		setTheme("light");
 	}, [setTheme]);
+
+	useEffect(() => {
+		let cancelled = false;
+		const supabase = createClient();
+		supabase.from("pos_expense_inventory_reconciliation").select("_id,rawName,reconciliationStatus,transactionId").limit(1000).then(({ data }) => {
+			if (!cancelled) setReconciliationRows(data ?? []);
+		}).catch(() => {
+			if (!cancelled) setReconciliationRows([]);
+		});
+		return () => { cancelled = true; };
+	}, []);
 
 	const txData = useHybridTransactionDetailReport({
 		startDate: dateRange.startDate,
@@ -181,6 +194,12 @@ export function ExpensesTable() {
 	};
 
 	const totalAmount = filtered.reduce((sum, t) => sum + t.amount, 0);
+	const reconciliationCounts = reconciliationRows.reduce<Record<string, number>>((counts, row) => {
+		const key = String(row.reconciliationStatus || "unknown");
+		counts[key] = (counts[key] || 0) + 1;
+		return counts;
+	}, {});
+	const reconciliationProblems = reconciliationRows.filter((row) => ["missing_movement", "unexpected_movement"].includes(row.reconciliationStatus));
 
 	// ── Loading state ──
 	if (!txData) {
@@ -226,6 +245,21 @@ export function ExpensesTable() {
 						Export CSV
 					</button>
 				</div>
+
+				{/* ── Inventory reconciliation ── */}
+				{reconciliationRows.length > 0 && (
+					<div className="mb-5 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3">
+						<div className="flex flex-wrap items-center justify-between gap-2">
+							<div><p className="text-sm font-semibold text-slate-800">Rekonsiliasi inventory</p><p className="text-[11px] text-slate-500">Link expense dibandingkan dengan movement stok.</p></div>
+							<div className="flex flex-wrap gap-1.5 text-[11px]">
+								<span className="rounded-full bg-emerald-100 px-2 py-1 font-medium text-emerald-700">Reconciled {reconciliationCounts.reconciled || 0}</span>
+								<span className="rounded-full bg-blue-100 px-2 py-1 font-medium text-blue-700">Pending {reconciliationCounts.pending || 0}</span>
+								{reconciliationProblems.length > 0 && <span className="rounded-full bg-red-100 px-2 py-1 font-medium text-red-700">Perlu cek {reconciliationProblems.length}</span>}
+							</div>
+						</div>
+						{reconciliationProblems.length > 0 && <div className="mt-2 space-y-1 text-xs text-red-700">{reconciliationProblems.slice(0, 3).map((row) => <p key={row._id}>• {row.rawName || "Item expense"}: {row.reconciliationStatus}</p>)}</div>}
+					</div>
+				)}
 
 				{/* ── Filters bar ── */}
 				<div className="flex flex-col sm:flex-row gap-3 mb-5">
