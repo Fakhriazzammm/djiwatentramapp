@@ -171,7 +171,7 @@ async function createInvoiceFromOrder(payload: Record<string, unknown>, staff = 
   }
   if (order.order_type === "delivery") {
     const quote = await verifyQuote(order.shipping_rate_snapshot);
-    if (quote.feeSource !== "biteship" || quote.provider !== "biteship"
+    if (!["biteship", "fallback"].includes(String(quote.feeSource)) || quote.provider !== "biteship"
       || !["gojek", "grab"].includes(quote.courierCode) || !quote.courierType
       || quote.courierCode !== order.delivery_provider || quote.fee !== Number(order.shipping_fee_amount)) {
       throw new Error("Tarif delivery tidak tersedia");

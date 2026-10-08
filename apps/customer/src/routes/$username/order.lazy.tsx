@@ -162,7 +162,7 @@ function OrderPage() {
 	const [deliveryLocation, setDeliveryLocation] = useState<{ latitude: number; longitude: number; postalCode?: string } | null>(null);
 	const [deliveryLocationLoading, setDeliveryLocationLoading] = useState(false);
 	const [deliveryLocationError, setDeliveryLocationError] = useState<string | null>(null);
-	const [shippingQuote, setShippingQuote] = useState<{ fee: number; courierCode: string; expiresAt: number } | null>(null);
+	const [shippingQuote, setShippingQuote] = useState<{ fee: number; courierCode: string; expiresAt: number; signedQuote?: Record<string, unknown> } | null>(null);
 	const [shippingQuoteLoading, setShippingQuoteLoading] = useState(false);
 	const [shippingQuoteError, setShippingQuoteError] = useState<string | null>(null);
 	const [, setShippingClock] = useState(() => Date.now());
@@ -266,7 +266,7 @@ function OrderPage() {
 		setShippingQuote(null);
 		setShippingQuoteError(null);
 		setShippingQuoteLoading(true);
-		void invokeEdgeFunction<{ rates?: Array<{ courierCode?: string; shippingFee?: number; price?: number }> }>("biteship-rates", {
+		void invokeEdgeFunction<{ rates?: Array<{ courierCode?: string; shippingFee?: number; price?: number }>; quote?: Record<string, unknown> }>("biteship-rates", {
 			destination_postal_code: postalCode,
 			destination_latitude: deliveryLocation?.latitude,
 			destination_longitude: deliveryLocation?.longitude,
@@ -276,10 +276,10 @@ function OrderPage() {
 			if (cancelled) return;
 			const rate = (response.rates ?? []).find((entry) => String(entry.courierCode ?? "").toLowerCase() === deliveryProvider);
 			const fee = Number(rate?.shippingFee ?? rate?.price);
-			setShippingQuote({ fee: rate && Number.isFinite(fee) && fee >= 0 ? Math.round(fee) : flatDeliveryFee, courierCode: deliveryProvider, expiresAt: Date.now() + 5 * 60 * 1000 });
+			setShippingQuote({ fee: rate && Number.isFinite(fee) && fee >= 0 ? Math.round(fee) : flatDeliveryFee, courierCode: deliveryProvider, expiresAt: Date.now() + 5 * 60 * 1000, signedQuote: response.quote });
 		}).catch(() => {
-			if (!cancelled) setShippingQuote({ fee: flatDeliveryFee, courierCode: deliveryProvider, expiresAt: Date.now() + 30 * 60 * 1000 });
-		}).finally(() => { if (!cancelled) { setShippingQuoteError(null); setShippingQuoteLoading(false); } });
+			if (!cancelled) { setShippingQuote(null); setShippingQuoteError("Tarif pengantaran belum dapat diverifikasi. Silakan coba lagi."); }
+		}).finally(() => { if (!cancelled) setShippingQuoteLoading(false); });
 		return () => { cancelled = true; };
 	}, [cart, customer?.postalCode, deliveryAddress, deliveryAddressFields.postalCode, deliveryLocation?.latitude, deliveryLocation?.longitude, deliveryLocation?.postalCode, deliveryProvider, orderMode, products]);
 
@@ -983,7 +983,7 @@ function OrderPage() {
 				}),
 				totalAmount: total,
 				shippingFee,
-				shippingRateSnapshot: shippingQuote ? { provider: "biteship", courierCode: shippingQuote.courierCode, fee: shippingQuote.fee, currency: "IDR", quotedAt: new Date().toISOString(), expiresAt: new Date(shippingQuote.expiresAt).toISOString() } : null,
+				shippingRateSnapshot: shippingQuote?.signedQuote ?? null,
 				shippingProvider: orderMode === "delivery" ? deliveryProvider : undefined,
 				taxAmount,
 				serviceChargeAmount,
