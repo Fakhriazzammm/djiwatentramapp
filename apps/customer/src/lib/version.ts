@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.416",
+	semantic: "0.2.417",
 	// Git/deploy commit hash (short)
-	commitHash: "4b897ca",
-	message: "fix(customer): enable payment methods with friendly errors",
+	commitHash: "6ab43fb",
+	message: "fix(customer): keep unpaid orders retryable",
 	// Commit subject for the update prompt
-	commitMessage: "fix(customer): enable payment methods with friendly errors",
+	commitMessage: "fix(customer): keep unpaid orders retryable",
 	// Build timestamp
 	buildDate: "2026-10-08",
 	// Full version string for display

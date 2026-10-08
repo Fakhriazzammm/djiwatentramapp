@@ -1,7 +1,7 @@
 {
-  "version": "0.2.416",
-  "commitHash": "4b897ca",
-  "message": "fix(customer): enable payment methods with friendly errors",
+  "version": "0.2.417",
+  "commitHash": "6ab43fb",
+  "message": "fix(customer): keep unpaid orders retryable",
   "buildDate": "2026-10-08",
-  "generatedAt": "2026-10-08T06:26:06.692Z"
+  "generatedAt": "2026-10-08T06:28:38.156Z"
 }
