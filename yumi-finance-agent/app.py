@@ -81,6 +81,8 @@ from local_ocr import local_vision_json
 from receipt_inventory_adapter import ReceiptInventoryAdapter, ReceiptItemCandidate, ReceiptPersistenceInput
 from receipt_inventory_adapter import stable_id
 from rescan_receipts_with_ai import compact_prompt, image_uri, missing_fields
+from receipt_inventory_adapter import stable_id
+from rescan_receipts_with_ai import compact_prompt, image_uri, missing_fields
 # (no supplier import needed — moved to Yumi Purchasing)
 
 finance = FinanceManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY, f"{SUPABASE_EDGE_URL}/functions/v1/yumi-ai")
@@ -4153,6 +4155,110 @@ async def _handle_reprocess_receipt(request):
         return web.json_response({"ok": False, "error": str(exc)}, status=500)
 
 
+# ── Authenticated receipt AI rescan endpoint ────────────────────────
+async def _verify_http_user(request) -> dict | None:
+    """Verify a Supabase access token without exposing service credentials."""
+    authorization = request.headers.get("Authorization", "")
+    if not authorization.startswith("Bearer "):
+        return None
+    token = authorization[7:].strip()
+    if not token:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                f"{SUPABASE_URL}/auth/v1/user",
+                headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {token}"},
+            )
+            if response.status_code >= 400:
+                return None
+            return response.json()
+    except Exception:
+        return None
+
+
+async def _post_pos_table(table: str, payload: dict) -> None:
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY or SUPABASE_KEY}",
+        "Accept-Profile": "pos",
+        "Content-Profile": "pos",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=minimal",
+    }
+    async with httpx.AsyncClient(timeout=20) as client:
+        response = await client.post(
+            f"{SUPABASE_URL}/rest/v1/{table}?on_conflict=source_id",
+            headers=headers,
+            json=payload,
+        )
+        response.raise_for_status()
+
+
+async def _handle_reprocess_receipt(request):
+    """Authenticated, one-receipt, token-bounded 9Router rescan."""
+    from aiohttp import web
+    user = await _verify_http_user(request)
+    if not user:
+        return web.json_response({"ok": False, "error": "unauthorized"}, status=401)
+    try:
+        body = json.loads(await request.read())
+        transaction_id = str(body.get("transaction_id") or "").strip()
+        if not transaction_id:
+            return web.json_response({"ok": False, "error": "transaction_id required"}, status=400)
+        safe_id = transaction_id.replace("'", "''")
+        rows = await finance._fetch("financial_transactions", f"select=source_id,tx_date,metadata&source_id=eq.{safe_id}")
+        if not rows:
+            return web.json_response({"ok": False, "error": "transaction not found"}, status=404)
+        row = rows[0]
+        metadata = row.get("metadata") or {}
+        if isinstance(metadata, str):
+            metadata = json.loads(metadata)
+        image_url = metadata.get("receipt_image_url") if isinstance(metadata, dict) else None
+        if not image_url:
+            return web.json_response({"ok": False, "error": "receipt image not found"}, status=400)
+        fields = missing_fields(metadata)
+        receipt_id = stable_id("receipt", transaction_id)
+        model = os.getenv("NINEROUTER_VISION_MODEL") or os.getenv("NINEROUTER_TEXT_MODEL", "ag/gemini-3-flash")
+        fingerprint = __import__("hashlib").sha256((receipt_id + model + "receipt-header-items-v1" + ",".join(fields) + image_url).encode()).hexdigest()
+        run_id = stable_id("ai_run", receipt_id, fingerprint)
+        cached = await inventory._fetch("pos_expense_receipt_ai_runs", f"select=_id,status,result,errorMessage&_id=eq.{run_id}")
+        if cached and cached[0].get("status") == "completed":
+            return web.json_response({"ok": True, "cached": True, "result": cached[0].get("result") or {}})
+        image_bytes = await _download_from_storage(image_url)
+        if not image_bytes:
+            return web.json_response({"ok": False, "error": "failed to download receipt"}, status=502)
+        _, compressed_uri = _compress_image(image_bytes)
+        client = SumoPodClient(SUMOPOD_API_KEY, base_url=AI_BASE_URL)
+        result = await client.vision_json(
+            image_base64_uri=compressed_uri,
+            model=model,
+            prompt_override=compact_prompt(fields),
+            max_tokens=2048,
+            timeout=90,
+        )
+        success = bool(result.get("success"))
+        result_data = result.get("data", result)
+        await _post_pos_table("expense_receipt_ai_runs", {
+            "source_id": run_id,
+            "receipt_source_id": receipt_id,
+            "input_fingerprint": fingerprint,
+            "requested_fields": fields,
+            "provider": "9router",
+            "model": model,
+            "prompt_version": "receipt-header-items-v1",
+            "status": "completed" if success else "failed",
+            "result": result_data if isinstance(result_data, dict) else {"raw": result_data},
+            "error_message": None if success else str(result.get("error", "unknown")),
+        })
+        if not success:
+            return web.json_response({"ok": False, "error": result.get("error", "AI rescan failed")}, status=502)
+        return web.json_response({"ok": True, "cached": False, "requested_fields": fields, "result": result_data})
+    except Exception as exc:
+        logger.exception("receipt AI rescan failed")
+        return web.json_response({"ok": False, "error": str(exc)}, status=500)
+
+
 # ── HTTP Endpoints ──────────────────────────────────────────────────
 
 ANALYZER_PORT = int(os.getenv("ANALYZER_PORT", "8002"))
@@ -4493,6 +4599,7 @@ async def _start_http_server(bot_app, port=ANALYZER_PORT):
     app["bot"] = bot_app.bot
     app.router.add_post("/analyze-transaction", _handle_analyze_transaction)
     app.router.add_post("/batch-analyze", _handle_batch_analyze)
+    app.router.add_post("/reprocess-receipt", _handle_reprocess_receipt)
     app.router.add_post("/reprocess-receipt", _handle_reprocess_receipt)
     app.router.add_post("/ai-parse-text", _handle_ai_parse)
     app.router.add_get("/health", _handle_health)
