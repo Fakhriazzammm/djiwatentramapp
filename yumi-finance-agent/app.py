@@ -1669,7 +1669,7 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
                 ocr_status="parsed" if is_ocr else "manual",
                 ocr_provider="9router" if is_ocr and AI_BASE_URL == os.getenv("NINEROUTER_BASE_URL") else "manual",
                 ocr_raw={"traceId": receipt.get("scan_id", "")},
-                items=receipt_items,
+                items=receipt_items if tx_type == "expense" else (),
             ))
         except Exception as exc:
             logger.warning("Receipt inventory projection failed for %s: %s", source_id, exc)
