@@ -1,4 +1,4 @@
-﻿import { createClient } from "@/lib/client";
+import { createClient } from "@/lib/client";
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useCallback } from "react";
@@ -2483,28 +2483,18 @@ export function useHybridCreateOrder() {
 					if (existingError && existingError.code !== "42501") throw existingError;
 					if (existingOrder?.source_id) return existingOrder.source_id;
 				}
-
-			// Daily receipt numbering
 			const kind = args?.source === "pos"
-				? (args?.orderType === "takeaway" ? "takeaway" : "dine_in")
-				: args?.source === "customer_self_service"
-					? "dine_in"
-					: "online";
-			let dailyReceiptNo = null;
-			try {
-				const { data: rpcData, error: rpcErr } = await supabase.rpc(
-					"next_daily_receipt_no",
-					{ p_order_kind: kind }
-				);
-				if (!rpcErr && rpcData != null) dailyReceiptNo = rpcData;
-			} catch (_) {} // best-effort
+							? (args?.orderType === "takeaway" ? "takeaway" : "dine_in")
+							: args?.source === "customer_self_service"
+								? "dine_in"
+								: "online";
+						let dailyReceiptNo = null;
 
 			const orderNumber = generateOrderNumber({
 				source: args?.source,
 				orderType: args?.orderType,
 				createdAt: orderCreatedAt,
 				customerName: args?.customerName || undefined,
-				receiptNo: dailyReceiptNo ?? undefined,
 			});
 				const orderId = makeSourceId("order");
 
