@@ -24,3 +24,33 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-djiwa-notification-bell { animation: none; }
 }
+
+/* Customer iOS foundation: grouped canvas, quiet surfaces, shared section tokens. */
+.app-page {
+  --app-canvas: #f2f2f7;
+  --app-surface: #ffffff;
+  --app-section-gap: 1.5rem;
+  --app-section-inset: 1rem;
+  --app-row-gap: 0.75rem;
+  --app-separator: rgb(60 60 67 / 12%);
+  --app-surface-shadow: 0 1px 3px rgb(0 0 0 / 3%);
+  background: var(--app-canvas);
+}
+
+.app-page .app-shell {
+  background: transparent;
+  /* Retain the existing border width so the shell's dimensions stay unchanged. */
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.app-page .bg-card {
+  --card: var(--app-surface);
+  /* Tailwind keeps its separate focus-ring shadow when only this token changes. */
+  --tw-shadow: var(--app-surface-shadow);
+}
+
+.app-page .bg-card.border-border {
+  /* Only the neutral border token changes; semantic border utilities retain their colors. */
+  --border: var(--app-separator);
+}
