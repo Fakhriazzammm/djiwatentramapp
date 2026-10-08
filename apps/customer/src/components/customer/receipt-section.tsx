@@ -147,9 +147,10 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	const deliveryTrackingId = (props.currentOrder as any)?.deliveryTrackingId ?? (props.currentOrder as any)?.delivery_tracking_id;
 	const deliveryWaybillId = (props.currentOrder as any)?.deliveryWaybillId ?? (props.currentOrder as any)?.delivery_waybill_id;
 
+	const paymentNotSettled = mode !== "paid" && (isWalletPayment || isQrisPayment);
 	const unifiedStatusLabel = mode === "cashier_expired" ? "DIBATALKAN" : orderStatus === "paid" ? "LUNAS"
 		: orderStatus === "completed" ? "SELESAI"
-		: "OPEN BILL";
+		: paymentNotSettled ? "BELUM DIBAYAR" : "OPEN BILL";
 	const unifiedStatusColor = mode === "cashier_expired" ? "text-red-600" : orderStatus === "paid" ? "text-blue-600"
 		: orderStatus === "completed" ? "text-emerald-600"
 		: "text-amber-600";
@@ -161,12 +162,12 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	const courierLabel = getCourierLabel((props.currentOrder as any)?.deliveryProvider ?? (props.currentOrder as any)?.delivery_provider);
 	const deliveryStepIndex = getDeliveryStepIndex(deliveryStatus);
 	const deliveryCancelled = String(deliveryStatus ?? "").toLowerCase() === "cancelled" || String(deliveryStatus ?? "").toLowerCase() === "canceled";
-	const currentStepIndex = isExpired || (isDeliveryOrder && deliveryCancelled) ? -1 : isDeliveryOrder ? deliveryStepIndex : getStatusStepIndex(orderStatus);
+	const currentStepIndex = isExpired || paymentNotSettled || (isDeliveryOrder && deliveryCancelled) ? -1 : isDeliveryOrder ? deliveryStepIndex : getStatusStepIndex(orderStatus);
 	const currentStepLabel = currentStepIndex >= 0 ? (isDeliveryOrder ? DELIVERY_STEPS[currentStepIndex].label : STATUS_STEPS[currentStepIndex].label) : null;
 	const paymentLabel = isWalletPayment ? "Djiwa Pay" : isQrisPayment ? "QRIS" : "Bayar di Kasir";
 	const printerStatusLabel = isCashierTicket ? "Menunggu pembayaran" : mode === "paid" ? "Pembayaran berhasil" : mode === "cashier_expired" ? "Tiket kedaluwarsa" : isQrisPayment ? "Invoice siap dibayar" : "Menyiapkan pembayaran";
-	const receiptTitle = mode === "paid" ? "Struk lunas" : mode === "cashier_expired" ? "Tiket kedaluwarsa" : isCashierTicket ? "Tunjukkan ke kasir" : isQrisPayment ? "Lanjutkan pembayaran QRIS" : "Pembayaran Djiwa Pay";
-	const receiptDescription = mode === "cashier_pending" ? "Silakan tunjukkan layar ini ke kasir untuk menyelesaikan pembayaran sebelum waktu habis." : mode === "cashier_expired" ? "Batas 5 menit pembayaran telah lewat. Pesanan dibatalkan dan tidak diproses Bar & Kitchen. Silakan pesan ulang." : mode === "mayar_pending" ? "Invoice QRIS sudah dibuat. Status struk akan berubah otomatis setelah dibayar." : mode === "paid" ? "Pembayaran sudah diterima. Pesanan akan diproses restoran." : isWalletPayment ? "Pembayaran Djiwa Pay sedang diproses. Kamu tidak perlu menunjukkan layar ini ke kasir." : "Menyiapkan pembayaran.";
+	const receiptTitle = mode === "paid" ? "Struk lunas" : mode === "payment_failed" ? "Pembayaran belum selesai" : mode === "cashier_expired" ? "Tiket kedaluwarsa" : isCashierTicket ? "Tunjukkan ke kasir" : isQrisPayment ? "Lanjutkan pembayaran QRIS" : "Pembayaran Djiwa Pay";
+	const receiptDescription = mode === "cashier_pending" ? "Silakan tunjukkan layar ini ke kasir untuk menyelesaikan pembayaran sebelum waktu habis." : mode === "payment_failed" ? "Pembayaran sebelumnya belum berhasil. Buat link pembayaran baru untuk mencoba lagi." : mode === "cashier_expired" ? "Batas 5 menit pembayaran telah lewat. Pesanan dibatalkan dan tidak diproses Bar & Kitchen. Silakan pesan ulang." : mode === "mayar_pending" ? "Invoice QRIS sudah dibuat. Status struk akan berubah otomatis setelah dibayar." : mode === "paid" ? "Pembayaran sudah diterima. Pesanan akan diproses restoran." : isWalletPayment ? "Pembayaran Djiwa Pay sedang diproses. Kamu tidak perlu menunjukkan layar ini ke kasir." : "Menyiapkan pembayaran.";
 	// Do not reconstruct historical totals from item prices. Show this breakdown
 	// only when the backend stored the authoritative tax calculation.
 	const persistedTaxBase = Number(props.currentOrder?.taxBaseAmount ?? props.currentOrder?.tax_base_amount);

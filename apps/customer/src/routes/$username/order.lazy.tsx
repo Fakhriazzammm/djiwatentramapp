@@ -681,6 +681,8 @@ function OrderPage() {
 		const isExpiredOrder = ["cancelled", "expired"].includes(String(currentOrder.status).toLowerCase());
 		const resolvedMode = currentOrder.status === "paid" || currentOrder.status === "completed"
 			? "paid"
+			: receipt.mode === "payment_failed"
+				? "payment_failed"
 			: receipt.mode === "cashier_expired" || isExpiredOrder
 				? "cashier_expired"
 				: isCashierPayment
@@ -1222,6 +1224,7 @@ function OrderPage() {
 				return;
 			}
 		} catch (error) {
+			setReceipt((value) => value ? { ...value, mode: "payment_failed" } : value);
 			const message = customerPaymentMessage(error, "Retry pembayaran gagal");
 			setCheckoutError(message);
 			toast.error(message);
