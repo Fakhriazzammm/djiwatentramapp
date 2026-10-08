@@ -9,6 +9,7 @@ import {
 } from "react";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { authClient } from "@/lib/auth-client";
+import { CUSTOMER_PROFILE_BASE_URL, customerAuthCallback, validateCredentials } from "@/lib/customer-auth-flow";
 import { toast } from "sonner";
 
 // ── Types ──────────────────────────────────────────────────────
@@ -114,7 +115,7 @@ function mapCustomerRow(row: Record<string, unknown>): CustomerUser {
   };
 }
 
-const CUSTOMER_API_BASE = "https://api.yumme.id/v1/customer";
+const CUSTOMER_API_BASE = CUSTOMER_PROFILE_BASE_URL;
 
 async function fetchCustomer(
   sourceId: string,
@@ -174,6 +175,13 @@ function buildFallbackCustomer(
   };
 }
 
+async function verifyCustomerSession(userId: string) {
+  const { data, error } = await authClient.getSession({ query: { disableCookieCache: true } });
+  if (error || data?.user?.id !== userId) {
+    throw new Error("Sesi belum tersimpan di browser. Izinkan cookies lalu coba masuk kembali.");
+  }
+}
+
 // ── Context ────────────────────────────────────────────────────
 
 const CustomerAuthContext = createContext<CustomerAuthContextType | undefined>(
@@ -189,6 +197,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const [registrationNeedsEmailConfirm, setRegistrationNeedsEmailConfirm] =
     useState(false);
   const visitRecordedRef = useRef(false);
+  const registrationInProgressRef = useRef(false);
 
   // ── Sync Better Auth session → customer data ─────────────────
   useEffect(() => {
@@ -198,28 +207,32 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
       return;
     }
+    let active = true;
+    setIsLoading(true);
     const user = betterSession.user;
     fetchCustomer(user.id, user.email)
       .then(async (cust) => {
         let resolvedCustomer = cust;
-        if (cust && !cust.email && user.email) {
+        if ((!cust || !cust.email) && user.email && !registrationInProgressRef.current) {
           try {
-            await invokeEdgeFunction("customer-sync", { action: "sync", userId: user.id, email: user.email, name: user.name ?? cust.name ?? "" });
+            await invokeEdgeFunction("customer-sync", { action: "sync", userId: user.id, email: user.email, name: user.name ?? cust?.name ?? "" });
             resolvedCustomer = await fetchCustomer(user.id, user.email);
           } catch (syncError) {
             console.warn("[customer-auth] email sync skipped:", syncError);
           }
         }
+        if (!active) return;
         setCustomer(resolvedCustomer ?? buildFallbackCustomer(user.id, user.email, user.name));
       })
       .catch((err) => {
         // jangan biarkan fetch gagal → customer undefined → gak redirect
         console.error("[customer-auth] fetchCustomer failed, using fallback:", err);
-        setCustomer(buildFallbackCustomer(user.id, user.email, user.name));
+        if (active) setCustomer(buildFallbackCustomer(user.id, user.email, user.name));
       })
       .finally(() => {
-        setIsLoading(false);
+        if (active) setIsLoading(false);
       });
+    return () => { active = false; };
   }, [betterSession, isPending]);
 
   useEffect(() => {
@@ -247,13 +260,15 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   }, [betterSession?.user?.id, betterSession?.user?.email, customer?.email, customer?.sourceId]);
 
   const session: CustomerSession | null =
-    betterSession?.user && customer
+    betterSession?.user && customer?.sourceId === betterSession.user.id
       ? { user: customer }
       : null;
   const isAuthenticated = !!session;
 
   // ── login ────────────────────────────────────────────────────
   const login = useCallback(async (email: string, password: string) => {
+    const validationError = validateCredentials(email, password);
+    if (validationError) throw new Error(validationError);
     setIsLoading(true);
     setRegistrationNeedsEmailConfirm(false);
     try {
@@ -263,10 +278,11 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         throw new Error(error.message || "Gagal masuk.");
       }
       if (!data?.user) throw new Error("Sesi login tidak diterima server.");
+      await verifyCustomerSession(data.user.id);
       toast.success("Berhasil masuk!");
       // Better Auth has set the session cookie; reload lets useSession recover
       // it deterministically instead of depending on an in-memory hook update.
-      window.location.assign("/masuk" + window.location.search);
+      window.location.assign(customerAuthCallback(window.location.origin, window.location.search));
     } catch (error) {
       console.error("[customer-auth] Login error:", error);
       setIsLoading(false);
@@ -279,6 +295,10 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   // ── register ─────────────────────────────────────────────────
   const register = useCallback(
     async (email: string, password: string, name: string, sharePurchaseActivity = false) => {
+      const validationError = validateCredentials(email, password, name, sharePurchaseActivity);
+      if (validationError) throw new Error(validationError);
+      setRegistrationNeedsEmailConfirm(false);
+      registrationInProgressRef.current = true;
       setIsLoading(true);
       try {
         const { data, error } = await authClient.signUp.email({
@@ -290,15 +310,25 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
           toast.error(error.message || "Gagal mendaftar.");
           throw new Error(error.message || "Gagal mendaftar.");
         }
-        if (data?.user?.id) {
-          await invokeEdgeFunction("customer-sync", {
-            action: "sync",
-            userId: data.user.id,
-            email,
-            name,
-            sharePurchaseActivity,
-            purchaseActivityNameMode: "first_name",
-          });
+        if (!data?.user?.id) throw new Error("Data akun tidak diterima server.");
+        if (data?.token) {
+          try {
+            await verifyCustomerSession(data.user.id);
+          } catch {
+            throw new Error("Akun berhasil dibuat, tetapi sesi belum tersimpan. Izinkan cookies lalu masuk dengan email dan password yang sama.");
+          }
+          try {
+            await invokeEdgeFunction("customer-sync", {
+              action: "sync",
+              userId: data.user.id,
+              email,
+              name,
+              sharePurchaseActivity,
+              purchaseActivityNameMode: "first_name",
+            });
+          } catch {
+            toast.warning("Akun berhasil dibuat, tetapi pilihan Komunitas belum tersimpan. Atur kembali di Profil.");
+          }
         }
         const requiresEmailConfirm = !data?.token;
         setRegistrationNeedsEmailConfirm(requiresEmailConfirm);
@@ -306,12 +336,13 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         if (!requiresEmailConfirm) {
           // Auto-confirm registration has a session cookie; recover it from a
           // clean app boot just like password login.
-          window.location.assign("/masuk" + window.location.search);
+          window.location.assign(customerAuthCallback(window.location.origin, window.location.search));
         }
       } catch (error) {
         console.error("[customer-auth] Register error:", error);
         throw error;
       } finally {
+        registrationInProgressRef.current = false;
         setIsLoading(false);
       }
     },
@@ -332,17 +363,25 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
   // ── signInWithGoogle ────────────────────────────────────────
   const signInWithGoogle = useCallback(async () => {
-    const { data, error } = await authClient.signIn.social({
-      provider: "google",
-      callbackURL: window.location.origin + "/masuk" + window.location.search,
-    });
-    if (error) {
-      throw new Error(error.message || "Gagal masuk dengan Google");
-    }
-    if (!data?.url) {
-      throw new Error("URL login Google tidak diterima server.");
-    }
-    window.location.assign(data.url);
+    setIsLoading(true);
+    try {
+      const callbackURL = customerAuthCallback(window.location.origin, window.location.search);
+      const errorCallback = new URL(callbackURL);
+      errorCallback.searchParams.set("error", "google");
+      const { data, error } = await authClient.signIn.social({
+        provider: "google",
+        callbackURL,
+        errorCallbackURL: errorCallback.toString(),
+        disableRedirect: true,
+      });
+      if (error) {
+        throw new Error(error.message || "Gagal masuk dengan Google");
+      }
+      if (!data?.url) {
+        throw new Error("URL login Google tidak diterima server.");
+      }
+      window.location.assign(data.url);
+    } finally { setIsLoading(false); }
   }, []);
 
   // ── refreshCustomer ─────────────────────────────────────────
@@ -360,12 +399,9 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
   // ── resetPassword ────────────────────────────────────────────
   const resetPassword = useCallback(async (email: string) => {
-    const { error } = await (authClient as any).forgetPassword({ email });
-    if (error) {
-      toast.error(error.message || "Gagal mengirim link reset.");
-      throw new Error(error.message || "Gagal mengirim link reset.");
-    }
-    toast.success("Link reset password sudah dikirim ke email.");
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) throw new Error("Masukkan email yang valid.");
+    // The auth server has no sendResetPassword transport configured.
+    throw new Error("Reset password belum tersedia. Hubungi layanan pelanggan atau gunakan Google dengan email yang sama.");
   }, []);
 
   // ── Render ───────────────────────────────────────────────────

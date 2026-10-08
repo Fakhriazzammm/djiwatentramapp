@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowRight, CheckCircle2, Eye, EyeOff, Loader2, Mail } from "lucide-react";
+import { getSafeCustomerReturnUrl, validateCredentials, REGISTRATION_CONSENT_TEXT } from "@/lib/customer-auth-flow";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 
 export const Route = createLazyFileRoute("/masuk")({
@@ -21,33 +22,6 @@ function GoogleMark() {
   );
 }
 
-function getSafeCustomerReturnUrl() {
-  const search = new URLSearchParams(window.location.search);
-  if (search.get("sso") !== "1") return null;
-  const raw = search.get("returnTo");
-  if (!raw) return null;
-  try {
-    const url = new URL(raw);
-    const allowedOrigins = new Set([
-      "https://merchandise.yumme.id",
-      "https://ordermieyamin.yumme.id",
-      "https://booking.yumme.id",
-      "http://localhost:3010",
-      "http://localhost:5174",
-    ]);
-    const isAllowedPath = /^\/[^/]+\/order$/.test(url.pathname) || url.pathname === "/";
-    const step = url.searchParams.get("step");
-    const stage = url.searchParams.get("stage");
-    const isAllowedStep = step === null || step === "checkout" || step === "shipping" || step === "payment";
-    const isAllowedStage = stage === null || stage === "order";
-    const hasOnlySafeParams = [...url.searchParams.keys()].every((key) => key === "step" || key === "stage");
-    if (!allowedOrigins.has(url.origin) || !isAllowedPath || !isAllowedStep || !isAllowedStage || !hasOnlySafeParams || url.hash) return null;
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
-
 function CustomerAuthPage() {
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
@@ -60,12 +34,12 @@ function CustomerAuthPage() {
   const [sharePurchaseActivity, setSharePurchaseActivity] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(new URLSearchParams(window.location.search).has("error") ? "Gagal masuk dengan Google. Silakan coba kembali." : "");
   const [info, setInfo] = useState("");
 
   useEffect(() => {
     if (isAuthenticated && customer) {
-      const returnTo = getSafeCustomerReturnUrl();
+      const returnTo = getSafeCustomerReturnUrl(window.location.search);
       if (returnTo) {
         window.location.assign(returnTo);
         return;
@@ -86,6 +60,7 @@ function CustomerAuthPage() {
 
   const handleFallbackSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isLoading) return;
     setError("");
     setInfo("");
     if (forgotMode) {
@@ -101,14 +76,8 @@ function CustomerAuthPage() {
       }
       return;
     }
-    if (!email.trim() || !password.trim() || (mode === "register" && !name.trim())) {
-      setError(mode === "register" ? "Nama, email, dan password wajib diisi." : "Email dan password wajib diisi.");
-      return;
-    }
-    if (mode === "register" && !sharePurchaseActivity) {
-      setError("Persetujuan layanan dan penggunaan data wajib dipilih saat membuat akun.");
-      return;
-    }
+    const validationError = validateCredentials(email, password, mode === "register" ? name : undefined, sharePurchaseActivity);
+    if (validationError) { setError(validationError); return; }
     try {
       if (mode === "login") await login(email.trim(), password);
       else await register(email.trim(), password, name.trim(), sharePurchaseActivity);
@@ -136,8 +105,9 @@ function CustomerAuthPage() {
             <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">Gunakan akun Google untuk masuk atau membuat akun member tanpa mengisi banyak data.</p>
           </motion.div>
 
+          {error && !showFallback ? <p role="alert" className="mt-4 text-xs text-destructive">{error}</p> : null}
           <AnimatePresence mode="wait" initial={false}>
-            {registrationNeedsEmailConfirm ? (
+            {registrationNeedsEmailConfirm && mode !== "login" ? (
               <motion.div key="confirmation" className="mt-8 rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-left text-emerald-950" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={spring}>
                 <CheckCircle2 className="h-6 w-6 text-emerald-600" aria-hidden="true" />
                 <h2 className="mt-3 text-base font-black">Akun berhasil dibuat</h2>
@@ -163,7 +133,7 @@ function CustomerAuthPage() {
                     {mode === "register" && !forgotMode ? <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Nama lengkap" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 text-xs outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20" /> : null}
                     <div className="relative"><Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email" className="min-h-11 w-full rounded-[14px] border border-border bg-background pl-10 pr-3 text-xs outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20" /></div>
                     {!forgotMode ? <div className="relative"><input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 pr-11 text-xs outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20" /><button type="button" aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"} onClick={() => setShowPassword((value) => !value)} className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-muted-foreground">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div> : null}
-                    {mode === "register" && !forgotMode ? <label className="flex items-start gap-2 rounded-xl border border-cyan-200 bg-cyan-50/70 p-2 text-[10px] leading-relaxed text-cyan-950"><input type="checkbox" checked={sharePurchaseActivity} onChange={(event) => setSharePurchaseActivity(event.target.checked)} className="mt-0.5" />Saya menyetujui Ketentuan Djiwa dan penggunaan data untuk layanan, marketing, cookies non-esensial, serta aktivitas pembelian di Komunitas. Saya dapat mengubah pilihan yang tersedia di Profil.</label> : null}
+                    {mode === "register" && !forgotMode ? <label className="flex items-start gap-2 rounded-xl border border-cyan-200 bg-cyan-50/70 p-2 text-[10px] leading-relaxed text-cyan-950"><input type="checkbox" checked={sharePurchaseActivity} onChange={(event) => setSharePurchaseActivity(event.target.checked)} className="mt-0.5" />{REGISTRATION_CONSENT_TEXT}</label> : null}
                     {error ? <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-[11px] font-semibold text-destructive">{error}</p> : null}
                     {info ? <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-700">{info}</p> : null}
                     <button type="submit" disabled={isLoading} className="min-h-11 w-full rounded-[14px] bg-primary px-4 py-2.5 text-xs font-black text-white disabled:opacity-60">{isLoading ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : forgotMode ? "Kirim link reset" : mode === "login" ? "Masuk" : "Daftar"}</button>

@@ -210,8 +210,8 @@ function MemberHomePage() {
 		<AuthModal
 			open={authModalOpen}
 			onOpenChange={(val) => { setAuthModalOpen(val); if (!val) setAuthError(undefined); }}
-			onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
-			onRegister={async (email, password, name, consentAll) => { try { setAuthError(undefined); await register(email, password, name, consentAll); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
+			onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); return true; } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); return false; } }}
+			onRegister={async (email, password, name, consentAll) => { try { setAuthError(undefined); await register(email, password, name, consentAll); return true; } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); return false; } }}
 			onSkip={() => setAuthModalOpen(false)}
 			onGoogleSignIn={async () => {
 				try {
@@ -221,7 +221,7 @@ function MemberHomePage() {
 					setAuthError(e?.message || "Gagal masuk dengan Google");
 				}
 			}}
-			onResetPassword={async (email) => { try { await resetPassword(email); } catch {} }}
+			onResetPassword={async (email) => { try { await resetPassword(email); return true; } catch (e: any) { setAuthError(e?.message || "Gagal mengirim link reset"); return false; } }}
 			isLoading={isLoading}
 			needsEmailConfirm={registrationNeedsEmailConfirm}
 			error={authError}

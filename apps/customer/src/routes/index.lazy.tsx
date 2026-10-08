@@ -286,16 +286,20 @@ function BrandCustomerIndex() {
 						try {
 							setAuthError(undefined);
 							await login(email, password);
+							return true;
 						} catch (e: any) {
 							setAuthError(e?.message || "Gagal masuk");
+							return false;
 						}
 					}}
-					onRegister={async (email, password, name) => {
+					onRegister={async (email, password, name, consent) => {
 						try {
 							setAuthError(undefined);
-							await register(email, password, name);
+							await register(email, password, name, consent);
+							return true;
 						} catch (e: any) {
 							setAuthError(e?.message || "Gagal mendaftar");
+							return false;
 						}
 					}}
 					onSkip={() => setAuthModalOpen(false)}
@@ -310,7 +314,11 @@ function BrandCustomerIndex() {
 					onResetPassword={async (email) => {
 						try {
 							await resetPassword(email);
-						} catch {}
+							return true;
+						} catch (e: any) {
+							setAuthError(e?.message || "Gagal mengirim link reset");
+							return false;
+						}
 					}}
 					isLoading={isLoading}
 					needsEmailConfirm={registrationNeedsEmailConfirm}

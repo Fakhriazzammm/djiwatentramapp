@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { validateCredentials, REGISTRATION_CONSENT_TEXT } from "@/lib/customer-auth-flow";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,9 +17,9 @@ type Tab = "login" | "register";
 type AuthModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onLogin: (email: string, password: string) => void;
-  onRegister: (email: string, password: string, name: string, consentAll: boolean) => void;
-  onResetPassword: (email: string) => void;
+  onLogin: (email: string, password: string) => Promise<boolean>;
+  onRegister: (email: string, password: string, name: string, consentAll: boolean) => Promise<boolean>;
+  onResetPassword: (email: string) => Promise<boolean>;
   onSkip: () => void;
   onGoogleSignIn?: () => void;
   isLoading?: boolean;
@@ -38,6 +39,7 @@ export function AuthModal({
   error,
   needsEmailConfirm = false,
 }: AuthModalProps) {
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("login");
 
   const [email, setEmail] = useState("");
@@ -53,47 +55,23 @@ export function AuthModal({
   // ── Success feedback ──────────────────────────────────────
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
-  const prevLoadingRef = useRef(false);
-  const submitAttemptedRef = useRef(false);
-
-  // Detect auth transition: was loading → finished → no error → show success
-  useEffect(() => {
-    if (!submitAttemptedRef.current) {
-      prevLoadingRef.current = isLoading;
-      return;
-    }
-    const wasLoading = prevLoadingRef.current;
-    prevLoadingRef.current = isLoading;
-
-    if (wasLoading && !isLoading && !error) {
-      // For login or auto-confirm: close modal immediately (goToMenuFlow runs in parent)
-      if (tab === "login" || !needsEmailConfirm) {
-        submitAttemptedRef.current = false;
-        onOpenChange(false);
-      } else {
-        // Email-confirm registration: show instructions
-        const msg = "Akun berhasil dibuat!";
-        setSuccessMessage(msg);
-        setShowSuccess(true);
-      }
-    }
-  }, [isLoading, error, tab, onOpenChange, needsEmailConfirm]);
-
-  const handleSubmit = () => {
-    if (!email.trim() || !password.trim()) return;
-    submitAttemptedRef.current = true;
-    if (tab === "login") {
-      onLogin(email.trim(), password);
-    } else {
-      if (!consentAll) return;
-      onRegister(email.trim(), password, name.trim(), consentAll);
-    }
+  const handleSubmit = async () => {
+    if (isLoading) return;
+    const invalid = validateCredentials(email, password, tab === "register" ? name : undefined, consentAll);
+    setValidationError(invalid);
+    if (invalid) return;
+    const success = tab === "login"
+      ? await onLogin(email.trim(), password)
+      : await onRegister(email.trim(), password, name.trim(), consentAll);
+    if (!success) return;
+    if (tab === "register") {
+      setSuccessMessage("Akun berhasil dibuat!");
+      setShowSuccess(true);
+    } else onOpenChange(false);
   };
 
   const isFormValid =
-    email.trim().length > 0 &&
-    password.trim().length > 0 &&
-    (tab === "login" || (name.trim().length > 0 && consentAll));
+    !isLoading;
 
   return (
     <Dialog open={open} onOpenChange={(value) => { if (!showSuccess) onOpenChange(value); }}>
@@ -120,7 +98,6 @@ export function AuthModal({
                   setShowSuccess(false);
                   setSuccessMessage("");
                   setTab("login");
-                  submitAttemptedRef.current = false;
                   setPassword("");
                 }}
               >
@@ -169,7 +146,7 @@ export function AuthModal({
                         ? "bg-background text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
                     )}
-                    onClick={() => setTab(t)}
+                    onClick={() => { setTab(t); setValidationError(null); }}
                   >
                     {t === "login" ? "Masuk" : "Daftar"}
                   </button>
@@ -177,9 +154,9 @@ export function AuthModal({
               </div>
 
               {/* Error */}
-              {error ? (
-                <div className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-[11px] font-medium text-destructive">
-                  {error}
+              {error || validationError ? (
+                <div role="alert" className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-[11px] font-medium text-destructive">
+                  {validationError || error}
                 </div>
               ) : null}
 
@@ -209,9 +186,8 @@ export function AuthModal({
                       size="lg"
                       disabled={!email.trim() || isLoading}
                       loading={isLoading}
-                      onClick={() => {
-                        onResetPassword(email.trim());
-                        setForgotSent(true);
+                      onClick={async () => {
+                        setForgotSent(await onResetPassword(email.trim()));
                       }}
                     >
                       Kirim Link Reset
@@ -280,7 +256,7 @@ export function AuthModal({
                     {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   </button>
                 </div>
-                {tab === "register" ? <label className="flex items-start gap-2 rounded-xl border border-cyan-200 bg-cyan-50/70 p-2 text-[10px] leading-relaxed text-cyan-950"><input type="checkbox" checked={consentAll} onChange={(event) => setConsentAll(event.target.checked)} className="mt-0.5" />Saya menyetujui Ketentuan Djiwa dan penggunaan data untuk layanan, marketing, cookies non-esensial, serta aktivitas pembelian di Komunitas. Saya dapat mengubah pilihan yang tersedia di Profil.</label> : null}
+                {tab === "register" ? <label className="flex items-start gap-2 rounded-xl border border-cyan-200 bg-cyan-50/70 p-2 text-[10px] leading-relaxed text-cyan-950"><input type="checkbox" checked={consentAll} onChange={(event) => setConsentAll(event.target.checked)} className="mt-0.5" />{REGISTRATION_CONSENT_TEXT}</label> : null}
               </div>
 
               {/* Forgot password */}
