@@ -2,6 +2,7 @@ import { trustedServer, verifiedStaff } from "../_shared/payment-auth.ts";
 import { verifyQuote } from "../_shared/delivery-quote.ts";
 import { appendOrderAdjustments } from "../_shared/invoice-adjustments.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
 	"Access-Control-Allow-Origin": "*",
@@ -15,6 +16,7 @@ const MAYAR_API_BASE = Deno.env.get("MAYAR_API_BASE") || "https://api.mayar.id/h
 const MAYAR_API_KEY = Deno.env.get("MAYAR_API_KEY");
 const MAYAR_DEFAULT_MOBILE = Deno.env.get("MAYAR_DEFAULT_MOBILE") || "";
 const MAYAR_REQUEST_TIMEOUT_MS = 12_000;
+const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
 async function fetchMayar(input: string, init: RequestInit = {}) {
 	const controller = new AbortController();
@@ -106,50 +108,39 @@ async function readJsonResponse(response: Response) {
 }
 
 async function supabaseGet(path: string) {
-  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) throw new Error("Supabase storage is not configured");
-  const response = await fetchMayar(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: {
-      apikey: SERVICE_ROLE_KEY,
-      "Accept-Profile": "pos",
-    },
-  });
-  const body = await response.json().catch(() => []);
-  if (!response.ok) throw new Error(`Order lookup failed (${response.status})`);
-  return body;
+  const [table, queryString = ""] = path.split("?", 2);
+  const params = new URLSearchParams(queryString);
+  let query = db.schema("pos").from(table).select(params.get("select") || "*");
+  for (const [key, raw] of params.entries()) {
+    if (key === "select" || key === "limit" || key === "order") continue;
+    if (raw.startsWith("eq.")) query = query.eq(key, decodeURIComponent(raw.slice(3)));
+  }
+  if (params.has("order")) {
+    const [column, direction] = String(params.get("order")).split(".");
+    query = query.order(column, { ascending: direction !== "desc" });
+  }
+  if (params.has("limit")) query = query.limit(Number(params.get("limit")) || 1);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
 }
 
 async function supabasePatch(path: string, body: Record<string, unknown>) {
-  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) throw new Error("Supabase storage is not configured");
-  const response = await fetchMayar(`${SUPABASE_URL}/rest/v1/${path}`, {
-    method: "PATCH",
-    headers: {
-      apikey: SERVICE_ROLE_KEY,
-      "Content-Type": "application/json",
-      "Content-Profile": "pos",
-      Prefer: "return=representation",
-    },
-    body: JSON.stringify(body),
-  });
-  const result = await response.json().catch(() => []);
-  if (!response.ok) throw new Error(`Order payment metadata update failed (${response.status})`);
-  return result;
+  const [table, queryString = ""] = path.split("?", 2);
+  const params = new URLSearchParams(queryString);
+  let query = db.schema("pos").from(table).update(body);
+  for (const [key, raw] of params.entries()) {
+    if (raw.startsWith("eq.")) query = query.eq(key, decodeURIComponent(raw.slice(3)));
+  }
+  const { data, error } = await query.select("*");
+  if (error) throw error;
+  return data ?? [];
 }
 
 async function supabaseRpc(name: string, payload: Record<string, unknown>) {
-  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) throw new Error("Supabase storage is not configured");
-  const response = await fetchMayar(`${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(name)}`, {
-    method: "POST",
-    headers: {
-      apikey: SERVICE_ROLE_KEY,
-      "Content-Type": "application/json",
-      "Content-Profile": "pos",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-  const body = await readJsonResponse(response);
-  if (!response.ok) throw new Error(`Preorder reservation failed (${response.status})`);
-  return body;
+  const { data, error } = await db.schema("pos").rpc(name, payload);
+  if (error) throw error;
+  return data;
 }
 
 async function createInvoiceFromOrder(payload: Record<string, unknown>, staff = false) {
