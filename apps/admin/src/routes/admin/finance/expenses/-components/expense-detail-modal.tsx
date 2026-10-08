@@ -41,6 +41,7 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 	const [projection, setProjection] = useState<{ document: any | null; links: any[] }>({ document: null, links: [] });
 	const [approvingId, setApprovingId] = useState<string | null>(null);
 	const [inventoryOptions, setInventoryOptions] = useState<any[]>([]);
+	const [postingId, setPostingId] = useState<string | null>(null);
 	const receiptUrl = (tx as any).metadata?.receipt_image_url as string | undefined;
 	const transactionId = String((tx as any)._id || (tx as any).id || "");
 
@@ -92,6 +93,28 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 			console.error("Failed to approve expense inventory link", error);
 		} finally {
 			setApprovingId(null);
+		}
+	};
+
+	const postLink = async (link: any) => {
+		if (link?.status !== "approved" || postingId) return;
+		if (!window.confirm(`Posting ${link.rawName} ke stok bahan baku?`)) return;
+		setPostingId(link._id);
+		try {
+			const supabase = createClient();
+			const { error } = await supabase.schema("pos").rpc("apply_expense_inventory_link", {
+				p_link_id: link._id,
+				p_idempotency_key: `${link._id}:apply`,
+			});
+			if (error) throw error;
+			setProjection((current) => ({
+				...current,
+				links: current.links.map((item) => item._id === link._id ? { ...item, status: "applied" } : item),
+			}));
+		} catch (error) {
+			console.error("Failed to post expense inventory link", error);
+		} finally {
+			setPostingId(null);
 		}
 	};
 
@@ -206,6 +229,11 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 												{link.status === "pending" && link.inventoryId && (
 													<button type="button" className="rounded-lg bg-blue-600 px-2 py-1 font-medium text-white disabled:opacity-50" disabled={approvingId === link._id} onClick={() => approveLink(link)}>
 														{approvingId === link._id ? "..." : "Setujui"}
+													</button>
+												)}
+												{link.status === "approved" && (
+													<button type="button" className="rounded-lg bg-emerald-600 px-2 py-1 font-medium text-white disabled:opacity-50" disabled={postingId === link._id} onClick={() => postLink(link)}>
+														{postingId === link._id ? "..." : "Post stok"}
 													</button>
 												)}
 											</div>
