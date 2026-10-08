@@ -45,9 +45,9 @@ function periodRangeLabel(key: PeriodRangeKey, referenceTime = Date.now()): stri
   const weekStart = todayStart - ((shifted.getUTCDay() + 6) % 7) * 24 * 60 * 60 * 1000;
   let start = todayStart; let end = todayStart + 24 * 60 * 60 * 1000 - 1;
   if (key === "yesterday") { start -= 24 * 60 * 60 * 1000; end -= 24 * 60 * 60 * 1000; }
-  if (key === "thisWeek") { start = weekStart; end = weekStart + 7 * 24 * 60 * 60 * 1000 - 1; }
+  if (key === "thisWeek") { start = weekStart; end = todayStart + 24 * 60 * 60 * 1000 - 1; }
   if (key === "lastWeek") { start = weekStart - 7 * 24 * 60 * 60 * 1000; end = weekStart - 1; }
-  if (key === "thisMonth") { start = monthStart; end = nextMonthStart - 1; }
+  if (key === "thisMonth") { start = monthStart; end = todayStart + 24 * 60 * 60 * 1000 - 1; }
   if (key === "lastMonth") { start = Date.UTC(year, month - 1, 1) - 7 * 60 * 60 * 1000; end = monthStart - 1; }
   const startLabel = shortDateWIB.format(new Date(start)); const endLabel = shortDateWIB.format(new Date(end));
   return startLabel === endLabel ? startLabel : `${startLabel.replace(/\s+\d{4}$/, "")}–${endLabel}`;
