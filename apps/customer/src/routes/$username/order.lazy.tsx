@@ -66,7 +66,7 @@ export const Route = createLazyFileRoute("/$username/order")({
 
 function customerPaymentMessage(error: unknown, fallback: string) {
 	const message = error instanceof Error ? error.message : String(error || "");
-	if (!message || /non-2xx|FUNCTION_ERROR|WALLET_ERROR|INTERNAL_ERROR|UNAUTHORIZED|Mayar API|Edge Function/i.test(message)) {
+	if (!message || message === "[object Object]" || /non-2xx|FUNCTION_ERROR|WALLET_ERROR|INTERNAL_ERROR|UNAUTHORIZED|Mayar API|Edge Function/i.test(message)) {
 		return "Pembayaran belum berhasil diproses. Silakan coba lagi atau pilih metode pembayaran lain.";
 	}
 	return message;

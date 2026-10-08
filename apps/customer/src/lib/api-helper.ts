@@ -83,9 +83,14 @@ export function parseEdgeFunctionResponse<T>(
 
 	if (obj.success === false && obj.error && typeof obj.error === "object") {
 		const err = obj.error as ApiErrorBody;
+		const message = typeof err.message === "string"
+			? err.message
+			: err.message && typeof err.message === "object"
+				? "Permintaan pembayaran belum dapat diproses"
+				: "Unknown error";
 		throw new ApiError(
 			err.code || "UNKNOWN_ERROR",
-			err.message || "Unknown error",
+			message,
 			defaultStatus
 		);
 	}
