@@ -1,7 +1,7 @@
 {
-  "version": "0.2.421",
-  "commitHash": "7afb4f4",
-  "message": "fix(customer): clear payment error when method changes",
+  "version": "0.2.422",
+  "commitHash": "4e0435a",
+  "message": "fix(delivery): block payment without verified quote",
   "buildDate": "2026-10-08",
-  "generatedAt": "2026-10-08T06:46:08.946Z"
+  "generatedAt": "2026-10-08T06:52:49.014Z"
 }
