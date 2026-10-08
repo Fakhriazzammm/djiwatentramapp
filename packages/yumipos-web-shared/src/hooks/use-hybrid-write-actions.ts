@@ -1,4 +1,4 @@
-﻿import { createClient } from "../lib/client";
+import { createClient } from "../lib/client";
 import { useAction, useMutation } from "../lib/backend-bridge";
 import { useYumiAuth } from "./useYumiAuth";
 import { useCallback } from "react";
@@ -2498,20 +2498,12 @@ export function useHybridCreateOrder() {
 					? "dine_in"
 					: "online";
 			let dailyReceiptNo = null;
-			try {
-				const { data: rpcData, error: rpcErr } = await supabase.rpc(
-					"next_daily_receipt_no",
-					{ p_order_kind: kind }
-				);
-				if (!rpcErr && rpcData != null) dailyReceiptNo = rpcData;
-			} catch (_) {} // best-effort
 
 			const orderNumber = generateOrderNumber({
 				source: args?.source,
 				orderType: args?.orderType,
 				platform: args?.platform,
 				createdAt: orderCreatedAt,
-				receiptNo: dailyReceiptNo ?? undefined,
 				businessUnit: args?.businessUnit,
 				brandSlug: args?.brandSlug,
 				});

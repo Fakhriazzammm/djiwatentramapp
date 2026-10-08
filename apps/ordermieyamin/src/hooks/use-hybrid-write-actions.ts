@@ -1,4 +1,4 @@
-﻿import { createClient } from "@/lib/client";
+import { createClient } from "@/lib/client";
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useCallback } from "react";
@@ -2532,13 +2532,6 @@ export function useHybridCreateOrder() {
 				}
 				mieYaminOrderNo = Number(mieYaminNo);
 			}
-			try {
-				const { data: rpcData, error: rpcErr } = await supabase.rpc(
-					"next_daily_receipt_no",
-					{ p_order_kind: kind }
-				);
-				if (!rpcErr && rpcData != null) dailyReceiptNo = rpcData;
-			} catch (_) {} // best-effort
 
 			const orderNumber = isMieYaminOrder && mieYaminOrderNo != null
 				? generateMieYaminOrderNumber(orderCreatedAt, mieYaminOrderNo)
@@ -2547,7 +2540,6 @@ export function useHybridCreateOrder() {
 				orderType: args?.orderType,
 				createdAt: orderCreatedAt,
 				customerName: args?.customerName || undefined,
-				receiptNo: dailyReceiptNo ?? undefined,
 				});
 				const orderId = makeSourceId("order");
 
