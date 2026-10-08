@@ -107,7 +107,11 @@ def build_item_payloads(data: ReceiptPersistenceInput) -> list[dict[str, Any]]:
                 "line_total": item.line_total,
                 "match_method": "candidate" if item.inventory_source_id else "pending",
                 "confidence": item.confidence,
-                "status": "approved" if item.inventory_source_id and (item.confidence or 0) >= 90 else "pending",
+                "status": (
+                    "legacy_applied"
+                    if item.review_status == "legacy_applied"
+                    else "approved" if item.inventory_source_id and (item.confidence or 0) >= 90 else "pending"
+                ),
                 "idempotency_key": link_id,
                 "raw": item.raw,
             },

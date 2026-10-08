@@ -78,6 +78,7 @@ from item_normalization import expand_item_alias, normalize_unit, load_aliases_f
 from db_categories import build_resolver
 from analyzer import TransactionAnalyzer
 from local_ocr import local_vision_json
+from receipt_inventory_adapter import ReceiptInventoryAdapter, ReceiptItemCandidate, ReceiptPersistenceInput
 # (no supplier import needed — moved to Yumi Purchasing)
 
 finance = FinanceManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY, f"{SUPABASE_EDGE_URL}/functions/v1/yumi-ai")
@@ -86,6 +87,7 @@ orchestrator = FinanceOrchestrator(SUMOPOD_API_KEY, SUPABASE_URL, SUPABASE_KEY)
 memory = MemoryManager(SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY)
 AI_BASE_URL = os.getenv("NINEROUTER_BASE_URL") or os.getenv("SUMOPOD_BASE_URL", "http://127.0.0.1:20128/v1")
 analyzer = TransactionAnalyzer(SUMOPOD_API_KEY, AI_BASE_URL, SUPABASE_URL, SUPABASE_ACCESS_TOKEN)
+receipt_inventory = ReceiptInventoryAdapter(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY or SUPABASE_KEY)
 # supplier moved to Yumi Purchasing
 
 # ── In-memory state: pending confirmations ─────────────────────────
@@ -1643,6 +1645,35 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
 
     # ── Accounting dual-write ────────────────────────────────────
     source_id = tx_result.get("sourceId", "")
+    if tx_result.get("success") and source_id:
+        # Additive evidence projection; legacy stock mutation remains unchanged.
+        try:
+            receipt_items = tuple(
+                ReceiptItemCandidate(
+                    item_key=str(item.get("ocr_item_id") or index),
+                    raw_name=str(item.get("raw_name") or item.get("name") or ""),
+                    normalized_name=item.get("name") or None,
+                    quantity=float(item.get("qty") or 0),
+                    unit=item.get("unit") or None,
+                    unit_price=float(item.get("price") or 0),
+                    line_total=float(item.get("subtotal") or ((item.get("qty") or 1) * (item.get("price") or 0))),
+                    raw=item,
+                )
+                for index, item in enumerate(items)
+            )
+            await receipt_inventory.persist(ReceiptPersistenceInput(
+                financial_transaction_source_id=source_id,
+                receipt_image_url=receipt.get("receipt_image_url") or None,
+                merchant_name=merchant or None,
+                receipt_total=float(total or 0),
+                ocr_status="parsed" if is_ocr else "manual",
+                ocr_provider="9router" if is_ocr and AI_BASE_URL == os.getenv("NINEROUTER_BASE_URL") else "manual",
+                ocr_raw={"traceId": receipt.get("scan_id", "")},
+                items=receipt_items,
+            ))
+        except Exception as exc:
+            logger.warning("Receipt inventory projection failed for %s: %s", source_id, exc)
+
     if tx_result.get("success") and items and tx_type in ("income", "expense"):
         source_id = tx_result.get("sourceId", "")
         asyncio.ensure_future(_write_accounting_entries(
