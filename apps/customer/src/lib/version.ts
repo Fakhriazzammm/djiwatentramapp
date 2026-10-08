@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.420",
+	semantic: "0.2.421",
 	// Git/deploy commit hash (short)
-	commitHash: "e0c097a",
-	message: "fix(customer): pass member contact to QRIS invoice",
+	commitHash: "7afb4f4",
+	message: "fix(customer): clear payment error when method changes",
 	// Commit subject for the update prompt
-	commitMessage: "fix(customer): pass member contact to QRIS invoice",
+	commitMessage: "fix(customer): clear payment error when method changes",
 	// Build timestamp
 	buildDate: "2026-10-08",
 	// Full version string for display

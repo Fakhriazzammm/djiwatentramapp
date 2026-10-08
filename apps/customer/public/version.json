@@ -1,7 +1,7 @@
 {
-  "version": "0.2.420",
-  "commitHash": "e0c097a",
-  "message": "fix(customer): pass member contact to QRIS invoice",
+  "version": "0.2.421",
+  "commitHash": "7afb4f4",
+  "message": "fix(customer): clear payment error when method changes",
   "buildDate": "2026-10-08",
-  "generatedAt": "2026-10-08T06:41:30.210Z"
+  "generatedAt": "2026-10-08T06:46:08.946Z"
 }
