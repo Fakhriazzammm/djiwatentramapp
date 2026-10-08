@@ -1413,7 +1413,7 @@ function OrderPage() {
 						error={authError}
 					/>
 
-					{!orderModeConfirmed ? <>
+					{!orderModeConfirmed && step !== "receipt" ? <>
 						<div className="px-2 pt-2">
 							<img src="/order-greeting-cafe.jpg" alt="Suasana hangat Djiwa Tentram Cafe & Resto" className="h-auto max-h-40 w-full rounded-2xl object-cover shadow-sm" loading="eager" />
 						</div>
