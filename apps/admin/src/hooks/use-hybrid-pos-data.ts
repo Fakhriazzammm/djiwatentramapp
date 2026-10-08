@@ -754,24 +754,32 @@ async function fetchAllDiscounts() {
 
 async function fetchOrders(options?: { status?: string; limit?: number }) {
 	const supabase = createClient();
-	let query = supabase
-		.from("pos_orders")
-		.select("*")
-		.order("createdAt", { ascending: false });
+	const pageSize = 1000;
+	const rows: any[] = [];
+	let offset = 0;
 
-	if (options?.status) {
-		query = query.eq("status", options.status);
+	// Supabase REST caps a response at 1,000 rows. Dashboard periods must not
+	// silently lose older orders when the newest page fills that cap.
+	while (true) {
+		const remaining = options?.limit ? options.limit - rows.length : pageSize;
+		if (remaining <= 0) break;
+		const pageLimit = Math.min(pageSize, remaining);
+		let query = supabase
+			.from("pos_orders")
+			.select("*")
+			.order("createdAt", { ascending: false })
+			.range(offset, offset + pageLimit - 1);
+
+		if (options?.status) query = query.eq("status", options.status);
+		const { data, error } = await query;
+		if (error) throw error;
+		const page = data ?? [];
+		rows.push(...page);
+		if (page.length < pageLimit) break;
+		offset += page.length;
 	}
 
-	if (options?.limit) {
-		query = query.limit(options.limit);
-	}
-
-	const { data, error } = await query;
-
-	if (error) throw error;
-
-	return (data ?? []).map((row: any) => ({
+	return rows.map((row: any) => ({
 			_id: String(row._id ?? ""),
 		_creationTime: Number(row._creationTime ?? row.createdAt ?? 0),
 		orderNumber: row.orderNumber ?? "",
