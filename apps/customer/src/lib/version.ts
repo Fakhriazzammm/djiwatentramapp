@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.418",
+	semantic: "0.2.419",
 	// Git/deploy commit hash (short)
-	commitHash: "32af0d6",
-	message: "fix(mayar): use reliable self-hosted database client",
+	commitHash: "ed11c97",
+	message: "fix(customer): hide object payment errors",
 	// Commit subject for the update prompt
-	commitMessage: "fix(mayar): use reliable self-hosted database client",
+	commitMessage: "fix(customer): hide object payment errors",
 	// Build timestamp
 	buildDate: "2026-10-08",
 	// Full version string for display
