@@ -1,3 +1,4 @@
+﻿import { normalizeMayarInvoice } from "../lib/mayar-payment";
 import { createClient } from "../lib/client";
 import { useAction, useMutation } from "../lib/backend-bridge";
 import { useYumiAuth } from "./useYumiAuth";
@@ -2497,13 +2498,29 @@ export function useHybridCreateOrder() {
 				: args?.source === "customer_self_service"
 					? "dine_in"
 					: "online";
-			let dailyReceiptNo = null;
+			let dailyReceiptNo: number;
+			try {
+				const { data: rpcData, error: rpcErr } = await supabase.rpc(
+					"next_daily_receipt_no",
+					{ p_order_kind: kind }
+				);
+				const receiptNo = typeof rpcData === "number" || typeof rpcData === "string"
+					? Number(rpcData)
+					: NaN;
+				if (rpcErr || !Number.isFinite(receiptNo) || !Number.isInteger(receiptNo) || receiptNo <= 0) {
+					throw new Error("Nomor struk tidak valid");
+				}
+				dailyReceiptNo = receiptNo;
+			} catch {
+				throw new Error("Gagal mendapatkan nomor struk. Silakan coba lagi.");
+			}
 
 			const orderNumber = generateOrderNumber({
 				source: args?.source,
 				orderType: args?.orderType,
 				platform: args?.platform,
 				createdAt: orderCreatedAt,
+				receiptNo: dailyReceiptNo,
 				businessUnit: args?.businessUnit,
 				brandSlug: args?.brandSlug,
 				});
@@ -2531,7 +2548,8 @@ export function useHybridCreateOrder() {
 					source_id: orderId,
 					order_number: orderNumber,
 					order_channel: getOrderChannel({ source: args?.source, platform: args?.platform, orderType: args?.orderType, brandSlug: args?.brandSlug }),
-					total_amount: Number(authoritativeTax?.totalAmount ?? args?.totalAmount ?? 0),
+					total_amount: Number(authoritativeTax?.totalAmount ?? args?.totalAmount ?? 0) +
+					(authoritativeTax && args?.orderType === "delivery" ? Number(args?.shippingFee ?? 0) : 0),
 					status: nextStatus,
 					payment_method: args?.paymentMethod ?? null,
 					customer_name: args?.customerName ?? null,
@@ -5939,13 +5957,13 @@ export function useHybridMayarCreateInvoice() {
 	const fallback = useAction(api.mayar.createInvoice);
 	return useCallback(
 		async (args: any) => {
-			if (!hasSupabaseConfig) return fallback(args);
-			return invokeEdgeFunction("mayar-proxy", {
+			if (!hasSupabaseConfig) return normalizeMayarInvoice(await fallback(args));
+			return normalizeMayarInvoice(await invokeEdgeFunction("mayar-proxy", {
 				action: args?.orderId && args?.idempotencyKey
 					? "create-invoice-from-order"
 					: "create-invoice",
 				...args,
-			});
+			}));
 		},
 		[fallback]
 	);
