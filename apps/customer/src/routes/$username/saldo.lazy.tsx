@@ -61,6 +61,7 @@ function SaldoPage() {
   const [topupAmount, setTopupAmount] = useState("0");
   const [topupPopupOpen, setTopupPopupOpen] = useState(false);
   const [topupBusy, setTopupBusy] = useState(false);
+  const [topupRedirectProcessing, setTopupRedirectProcessing] = useState(false);
   const [topupPending, setTopupPending] = useState<{ amount: number; startedAt: number; creditedBefore: number } | null>(null);
   const [topupVerified, setTopupVerified] = useState(false);
   const [topupVerifiedAmount, setTopupVerifiedAmount] = useState(0);
@@ -131,12 +132,13 @@ function SaldoPage() {
     if (!Number.isSafeInteger(amount) || amount < 1000) { window.alert("Nominal top up minimal Rp1.000"); return; }
     setTopupBusy(true);
     try {
+      setTopupRedirectProcessing(true);
       const result = await invokeEdgeFunction<{ result?: { invoice_url?: string } }>("customer-wallet", { action: "topup", sourceId: customer.sourceId, email: customer.email, amount, origin: `${window.location.origin}/${encodeURIComponent(username)}`, idempotencyKey: `topup-${customer.sourceId}-${Date.now()}` });
       if (!result.result?.invoice_url) throw new Error("Invoice top up tidak tersedia");
       const startedAt = Date.now();
       window.sessionStorage.setItem(topupPendingKey, JSON.stringify({ amount, startedAt, creditedBefore: Number(walletData?.total_credited ?? 0) }));
       window.location.assign(result.result.invoice_url);
-    } catch (err) { window.alert(err instanceof Error ? err.message : "Gagal membuat invoice top up"); setTopupBusy(false); }
+    } catch (err) { setTopupRedirectProcessing(false); window.alert(err instanceof Error ? err.message : "Gagal membuat invoice top up"); setTopupBusy(false); }
   };
   const goHome = () => navigate({ to: "/$username", params: { username } });
 
@@ -217,5 +219,14 @@ function SaldoPage() {
     </main>
     {topupPopupOpen ? <div className="fixed inset-0 z-[2000] flex items-end justify-center bg-slate-950/35" role="presentation" onClick={() => !topupBusy && setTopupPopupOpen(false)}><section role="dialog" aria-modal="true" aria-labelledby="topup-popup-title" onClick={(event) => event.stopPropagation()} className="flex max-h-[94dvh] w-full max-w-md flex-col rounded-t-[28px] bg-[#f7f8fa] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-18px_60px_rgba(15,23,42,0.2)]"><div className="mx-auto h-1.5 w-11 rounded-full bg-slate-300" /><div className="mt-3 flex items-center justify-between"><button type="button" onClick={() => setTopupPopupOpen(false)} disabled={topupBusy} aria-label="Tutup isi saldo" className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-foreground shadow-sm disabled:opacity-50"><ArrowLeft className="h-4 w-4" /></button><h2 id="topup-popup-title" className="font-display text-base font-black">Isi Saldo</h2><span className="w-11" /></div><div className="mt-3 divide-y divide-border rounded-2xl bg-white px-3"><div className="flex min-h-14 items-center justify-between"><div><p className="text-[10px] font-semibold text-muted-foreground">Dari</p><p className="text-sm font-bold">Customer{customer?.name ? ` · ${customer.name}` : ""}</p></div><Wallet className="h-5 w-5 text-primary" /></div><div className="flex min-h-14 items-center justify-between"><div><p className="text-[10px] font-semibold text-muted-foreground">Ke</p><p className="text-sm font-bold">Saldo Djiwa Pay</p></div><Wallet className="h-5 w-5 text-primary" /></div></div><div className="mt-3"><p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nominal cepat</p><div className="grid grid-cols-4 gap-1.5">{[50000, 100000, 500000, 1000000].map((amount) => <button key={amount} type="button" onClick={() => setTopupAmount(String(amount))} className={`min-h-11 rounded-xl border px-1 text-[10px] font-black transition-colors active:scale-[.97] ${Number(topupAmount) === amount ? "border-primary bg-primary/10 text-primary" : "border-border bg-white text-foreground hover:border-primary/40"}`}>{currency(amount)}</button>)}</div></div><div className="mt-4 text-center"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Nominal isi saldo</p><p className="mt-1 min-h-[48px] font-display text-[34px] font-black tracking-[-0.05em] text-foreground">{currency(Number(topupAmount) || 0)}</p><p className="mt-1 text-[11px] text-muted-foreground">Minimum isi saldo Rp1.000</p></div><div className="mx-auto mt-3 grid w-full max-w-[300px] grid-cols-3 gap-1.5">{["1","2","3","4","5","6","7","8","9","","0","delete"].map((key, index) => key ? <button key={key} type="button" onClick={() => handleTopupKey(key)} aria-label={key === "delete" ? "Hapus satu angka" : `Angka ${key}`} className="flex h-12 items-center justify-center rounded-2xl text-[22px] font-semibold text-foreground transition-colors hover:bg-white active:bg-primary/10">{key === "delete" ? <Delete className="h-5 w-5" /> : key}</button> : <span key={`empty-${index}`} aria-hidden="true" />)}</div><button type="button" disabled={topupBusy || !Number.isSafeInteger(Number(topupAmount)) || Number(topupAmount) < 1000} onClick={() => void topup()} className="mt-3 min-h-12 w-full rounded-2xl bg-primary px-4 py-3 text-sm font-black text-white shadow-[0_8px_18px_rgba(26,93,198,0.2)] transition-transform active:scale-[.98] disabled:bg-slate-300 disabled:shadow-none">{topupBusy ? "Menyiapkan pembayaran..." : "Lanjutkan"}</button></section></div> : null}
     {comingSoonFeature ? <div className="fixed inset-0 z-[2000] flex items-end justify-center bg-slate-950/35 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]" role="presentation" onClick={() => setComingSoonFeature(null)}><section role="dialog" aria-modal="true" aria-labelledby="wallet-feature-title" onClick={(event) => event.stopPropagation()} className="w-full max-w-md rounded-[28px] bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,0.22)]"><div className="mx-auto h-1.5 w-12 rounded-full bg-slate-200" /><div className="mt-5 flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#eef4ff] text-primary"><Wallet className="h-5 w-5" /></div><div><h2 id="wallet-feature-title" className="font-display text-lg font-black">Segera Hadir</h2><p className="mt-1 text-sm leading-relaxed text-muted-foreground">{comingSoonFeature}</p></div></div><button type="button" onClick={() => setComingSoonFeature(null)} className="mt-5 min-h-11 w-full rounded-[14px] bg-primary px-4 py-2.5 text-sm font-black text-white transition-transform active:scale-[.98]">Mengerti</button></section></div> : null}
-  </div></div>;
+  </div>
+    {topupRedirectProcessing ? <div className="fixed inset-0 z-[2100] flex items-center justify-center bg-slate-950/60 px-5 backdrop-blur-sm">
+      <section role="status" aria-live="polite" aria-atomic="true" aria-labelledby="topup-redirect-title" className="w-full max-w-sm rounded-[28px] bg-white p-6 text-center shadow-[0_24px_80px_rgba(15,23,42,0.25)]">
+        <RefreshCw aria-hidden="true" className="mx-auto h-9 w-9 animate-spin text-primary motion-reduce:animate-none" />
+        <h2 id="topup-redirect-title" className="mt-4 font-display text-xl font-black">Tunggu sebentar</h2>
+        <p className="mt-2 text-sm leading-relaxed text-foreground">Anda akan diarahkan ke pembayaran Djiwa Pay</p>
+        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Menyiapkan halaman pembayaran Mayar...</p>
+      </section>
+    </div> : null}
+  </div>;
 }
