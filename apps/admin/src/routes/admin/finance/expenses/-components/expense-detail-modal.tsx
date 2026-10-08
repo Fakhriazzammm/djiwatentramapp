@@ -42,6 +42,7 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 	const [approvingId, setApprovingId] = useState<string | null>(null);
 	const [inventoryOptions, setInventoryOptions] = useState<any[]>([]);
 	const [postingId, setPostingId] = useState<string | null>(null);
+	const [aiRescan, setAiRescan] = useState<{ loading: boolean; error?: string; result?: any }>({ loading: false });
 	const receiptUrl = (tx as any).metadata?.receipt_image_url as string | undefined;
 	const transactionId = String((tx as any)._id || (tx as any).id || "");
 
@@ -93,6 +94,27 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 			console.error("Failed to approve expense inventory link", error);
 		} finally {
 			setApprovingId(null);
+		}
+	};
+
+	const rescanWithAi = async () => {
+		if (!transactionId || aiRescan.loading) return;
+		setAiRescan({ loading: true });
+		try {
+			const supabase = createClient();
+			const { data: sessionData } = await supabase.auth.getSession();
+			const accessToken = sessionData.session?.access_token;
+			if (!accessToken) throw new Error("Sesi login tidak tersedia");
+			const response = await fetch("/api/finance-ai/reprocess-receipt", {
+				method: "POST",
+				headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+				body: JSON.stringify({ transaction_id: transactionId }),
+			});
+			const payload = await response.json();
+			if (!response.ok || !payload.ok) throw new Error(payload.error || "Scan ulang gagal");
+			setAiRescan({ loading: false, result: payload.result || {} });
+		} catch (error) {
+			setAiRescan({ loading: false, error: error instanceof Error ? error.message : "Scan ulang gagal" });
 		}
 	};
 
@@ -207,12 +229,15 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 					{/* Receipt processing projection */}
 					{(projection.document || projection.links.length > 0) && (
 						<div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 space-y-3">
-							<div className="flex items-center justify-between">
+							<div className="flex flex-wrap items-center justify-between gap-2">
 								<span className="text-sm font-semibold text-slate-800">Inventory & OCR</span>
-								<span className="rounded-full bg-white px-2 py-1 text-[11px] font-medium text-slate-600">
-									{projection.document?.ocrStatus || "Belum diproses"}
-								</span>
+								<div className="flex items-center gap-2">
+									<span className="rounded-full bg-white px-2 py-1 text-[11px] font-medium text-slate-600">{projection.document?.ocrStatus || "Belum diproses"}</span>
+									{receiptUrl && <button type="button" className="rounded-lg bg-violet-600 px-2.5 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50" disabled={aiRescan.loading} onClick={rescanWithAi}>{aiRescan.loading ? "Memindai..." : "Scan ulang AI"}</button>}
+								</div>
 							</div>
+							{aiRescan.error && <p className="mt-2 text-xs text-red-600">{aiRescan.error}</p>}
+							{aiRescan.result && <div className="mt-2 rounded-lg bg-violet-50 p-2 text-xs text-violet-900"><p className="font-semibold">Hasil AI tersimpan</p><p>Merchant: {aiRescan.result.name || aiRescan.result.merchant || "-"} · Tanggal: {aiRescan.result.date || "-"} · Total: {aiRescan.result.total ?? "-"}</p><p>Item terbaca: {Array.isArray(aiRescan.result.items) ? aiRescan.result.items.length : 0}</p></div>}
 							{projection.links.length > 0 && (
 								<div className="space-y-2">
 									{projection.links.map((link) => (
