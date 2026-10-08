@@ -32,20 +32,32 @@ function lateText(deadline?: string | null) {
 
 export function CustomerLiveOrderCard({ order, onOpen }: Props) {
   const [dismissed, setDismissed] = useState(false);
-  const [, refreshClock] = useState(0);
+  const [now, setNow] = useState(Date.now);
   useEffect(() => {
-    const timer = window.setInterval(() => refreshClock((value) => value + 1), 60000);
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
   const status = order.trackingStatus || (order.status === "pending" ? "pending_payment" : order.status);
-  const label = LABELS[status] || "Pesanan sedang diproses";
+  const pendingPayment = status === "pending_payment";
+  const paymentDeadline = order.paymentDeadlineAt ? new Date(order.paymentDeadlineAt).getTime() : NaN;
+  const hasPaymentDeadline = Number.isFinite(paymentDeadline);
+  const paymentExpired = pendingPayment && hasPaymentDeadline && now >= paymentDeadline;
+  const remainingSeconds = hasPaymentDeadline ? Math.max(0, Math.ceil((paymentDeadline - now) / 1000)) : 0;
+  const paymentText = paymentExpired ? "Waktu pembayaran habis" : hasPaymentDeadline
+    ? `Selesaikan pembayaran dalam ${Math.floor(remainingSeconds / 60)}:${String(remainingSeconds % 60).padStart(2, "0")}`
+    : "Menunggu pembayaran";
+  const label = paymentExpired ? "Pembayaran kedaluwarsa" : LABELS[status] || "Pesanan sedang diproses";
   const total = Math.max(0, order.trackingGroupCount || 0);
   const finished = Math.min(total, Math.max(0, order.trackingFinishedGroupCount || 0));
-  const progress = total > 0 ? Math.max(8, Math.round((finished / total) * 100)) : status === "completed" ? 100 : 18;
+  const paymentProgress = hasPaymentDeadline
+    ? Math.min(100, Math.max(0, ((now - (paymentDeadline - 30 * 60 * 1000)) / (30 * 60 * 1000)) * 100))
+    : 0;
+  const progress = pendingPayment ? Math.round(paymentProgress) : total > 0 ? Math.max(8, Math.round((finished / total) * 100)) : status === "completed" ? 100 : 18;
   const terminal = status === "completed" || status === "cancelled";
-  const deadlinePassed = Boolean(order.slaDeadlineAt && new Date(order.slaDeadlineAt).getTime() <= Date.now());
-  const late = !terminal && deadlinePassed && (total === 0 || finished < total);
-  const trackingExpired = Boolean(order.slaDeadlineAt && Date.now() >= new Date(order.slaDeadlineAt).getTime() + 10 * 60 * 1000);
+  const deadlinePassed = Boolean(order.slaDeadlineAt && new Date(order.slaDeadlineAt).getTime() <= now);
+  const late = !pendingPayment && !terminal && deadlinePassed && (total === 0 || finished < total);
+  const hideDeadline = pendingPayment ? paymentDeadline : order.slaDeadlineAt ? new Date(order.slaDeadlineAt).getTime() : NaN;
+  const trackingExpired = Number.isFinite(hideDeadline) && now >= hideDeadline + 10 * 60 * 1000;
   if (dismissed || trackingExpired) return null;
 
   return (
@@ -56,7 +68,7 @@ export function CustomerLiveOrderCard({ order, onOpen }: Props) {
       role="button"
       tabIndex={0}
       onClick={onOpen}
-      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(); } }}
+      onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(); } }}
       className="fixed inset-x-3 bottom-[calc(4.125rem+max(1.25rem,var(--safe-area-bottom)))] z-30 mx-auto w-[calc(100%-1.5rem)] max-w-md rounded-2xl border border-primary/20 bg-card p-2.5 text-left shadow-[0_10px_24px_rgba(15,23,42,0.16)]"
       aria-label={`Lihat status pesanan ${order.orderNumber}`}
     >
@@ -65,7 +77,7 @@ export function CustomerLiveOrderCard({ order, onOpen }: Props) {
       </button>
       <div className="flex items-start gap-2 pr-4">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          {terminal ? <CheckCircle2 className="h-3.5 w-3.5" /> : <PackageCheck className="h-3.5 w-3.5" />}
+          {pendingPayment ? <Clock3 className="h-3.5 w-3.5" /> : terminal ? <CheckCircle2 className="h-3.5 w-3.5" /> : <PackageCheck className="h-3.5 w-3.5" />}
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center justify-between gap-2">
@@ -73,14 +85,14 @@ export function CustomerLiveOrderCard({ order, onOpen }: Props) {
             <ArrowRight className="h-3.5 w-3.5 shrink-0 text-primary" />
           </span>
           <span className="mt-0.5 block truncate text-[11px] font-black text-foreground">{label}</span>
-          <span className={`mt-0.5 flex items-center gap-1 text-[9px] font-bold ${late ? "text-destructive" : "text-muted-foreground"}`}><Clock3 className="h-3 w-3" />{terminal ? "Status final" : late ? lateText(order.slaDeadlineAt) : etaText(order.estimatedReadyAt || order.slaDeadlineAt)}</span>
+          <span className={`mt-0.5 flex items-center gap-1 text-[9px] font-bold ${late || paymentExpired ? "text-destructive" : "text-muted-foreground"}`}><Clock3 className="h-3 w-3" />{pendingPayment ? paymentText : terminal ? "Status final" : late ? lateText(order.slaDeadlineAt) : etaText(order.estimatedReadyAt || order.slaDeadlineAt)}</span>
         </span>
       </div>
-      <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-muted" aria-label={`Progress ${progress}%`}>
+      <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} aria-label={pendingPayment ? "Waktu menunggu pembayaran" : "Progress pesanan"} aria-valuetext={pendingPayment ? paymentText : `${progress}%`}>
         <motion.span className="block h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 0.45 }} />
       </span>
       <span className="mt-1.5 flex items-center justify-between text-[9px] font-bold text-muted-foreground">
-        <span>{total > 0 ? `${finished}/${total} bagian siap` : "Pembaruan otomatis"}</span>
+        <span>{pendingPayment ? "Menunggu konfirmasi pembayaran" : total > 0 ? `${finished}/${total} bagian siap` : "Pembaruan otomatis"}</span>
         <span className="rounded-full bg-primary px-2 py-1 text-[9px] font-black text-primary-foreground">Detail</span>
       </span>
     </motion.div>

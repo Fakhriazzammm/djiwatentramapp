@@ -22,6 +22,7 @@ export type CustomerOrder = {
 	items: CustomerOrderItem[];
 	createdAt: number;
 	trackingStatus?: string | null;
+	paymentDeadlineAt?: string | null;
 	estimatedReadyAt?: string | null;
 	slaStartedAt?: string | null;
 	slaDeadlineAt?: string | null;
@@ -82,6 +83,7 @@ function mapOrder(row: Record<string, unknown>): CustomerOrder {
 			: [],
 		createdAt: Number(row.createdAt ?? row.created_at ?? row._creationTime ?? 0),
 		trackingStatus: (row.trackingStatus ?? row.tracking_status) as string | null | undefined,
+		paymentDeadlineAt: (row.paymentDeadlineAt ?? row.payment_deadline_at) as string | null | undefined,
 		estimatedReadyAt: (row.estimatedReadyAt ?? row.estimated_ready_at) as string | null | undefined,
 		slaStartedAt: (row.slaStartedAt ?? row.sla_started_at) as string | null | undefined,
 		slaDeadlineAt: (row.slaDeadlineAt ?? row.sla_deadline_at) as string | null | undefined,
