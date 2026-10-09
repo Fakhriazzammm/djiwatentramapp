@@ -754,24 +754,30 @@ async function fetchAllDiscounts() {
 
 async function fetchOrders(options?: { status?: string; limit?: number }) {
 	const supabase = createClient();
-	let query = supabase
-		.from("pos_orders")
-		.select("*")
-		.order("createdAt", { ascending: false });
+	const pageSize = 1000;
+	const rows: any[] = [];
 
-	if (options?.status) {
-		query = query.eq("status", options.status);
+	for (let pageStart = 0; ; pageStart += pageSize) {
+		const pageEnd = options?.limit
+			? Math.min(pageStart + pageSize, options.limit) - 1
+			: pageStart + pageSize - 1;
+		if (pageEnd < pageStart) break;
+
+		let query = supabase
+			.from("pos_orders")
+			.select("*")
+			.order("createdAt", { ascending: false })
+			.order("_id", { ascending: false })
+			.range(pageStart, pageEnd);
+		if (options?.status) query = query.eq("status", options.status);
+
+		const { data, error } = await query;
+		if (error) throw error;
+		rows.push(...(data ?? []));
+		if (!data || data.length < pageEnd - pageStart + 1 || (options?.limit && rows.length >= options.limit)) break;
 	}
 
-	if (options?.limit) {
-		query = query.limit(options.limit);
-	}
-
-	const { data, error } = await query;
-
-	if (error) throw error;
-
-	return (data ?? []).map((row: any) => ({
+	return rows.slice(0, options?.limit ?? rows.length).map((row: any) => ({
 			_id: String(row._id ?? ""),
 		_creationTime: Number(row._creationTime ?? row.createdAt ?? 0),
 		orderNumber: row.orderNumber ?? "",
@@ -941,14 +947,23 @@ async function fetchInventory() {
 
 async function fetchBookingOrders() {
 	const supabase = createClient();
-	const { data, error } = await supabase
-		.from("pos_booking_orders")
-		.select("*")
-		.order("createdAt", { ascending: false });
+	const pageSize = 1000;
+	const rows: any[] = [];
 
-	if (error) throw error;
+	for (let pageStart = 0; ; pageStart += pageSize) {
+		const pageEnd = pageStart + pageSize - 1;
+		const { data, error } = await supabase
+			.from("pos_booking_orders")
+			.select("*")
+			.order("createdAt", { ascending: false })
+			.order("_id", { ascending: false })
+			.range(pageStart, pageEnd);
+		if (error) throw error;
+		rows.push(...(data ?? []));
+		if (!data || data.length < pageSize) break;
+	}
 
-	return (data ?? []).map((row: any) => ({
+	return rows.map((row: any) => ({
 		_id: row._id,
 		_creationTime: Number(row._creationTime ?? row.createdAt ?? 0),
 		slug: row.slug ?? "booking",
