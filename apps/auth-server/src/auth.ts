@@ -10,9 +10,18 @@ export const pool = new Pool({
   database: "postgres",
 });
 
+// Shared by the isolated staff auth configuration.
+export const authBaseURL = process.env.BETTER_AUTH_URL || "https://auth.zantara.id";
+
 export const auth = betterAuth({
   database: pool,
-  baseURL: "https://djiwatentram.yumme.id",
+  // The reverse proxy must overwrite forwarded headers with the public host.
+  // Keep OAuth callbacks on the host that issued the state cookie.
+  baseURL: {
+    allowedHosts: ["auth.zantara.id", "api.yumme.id", "djiwatentram.yumme.id"],
+    fallback: process.env.BETTER_AUTH_URL || "https://auth.zantara.id",
+    protocol: "https",
+  },
   // Customer sessions are shared by the Djiwa App storefronts.
   trustedOrigins: [
     "https://djiwatentram.yumme.id",
@@ -29,6 +38,7 @@ export const auth = betterAuth({
   ],
   // Share the central customer session across Djiwa App subdomains.
   advanced: {
+    trustedProxyHeaders: true,
     crossSubDomainCookies: {
       enabled: true,
       domain: ".yumme.id",
