@@ -7,6 +7,8 @@ import {
 	ArrowUpDown,
 	Receipt,
 	X,
+	Pencil,
+	Save,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrencyIDR } from "@/lib/export-utils";
@@ -17,6 +19,7 @@ import {
 	type DateRange,
 } from "../../reports/-components/period-selector";
 import { useHybridTransactionDetailReport } from "@/hooks/use-hybrid-finance-analytics-data";
+import { useHybridUpdateTransaction } from "@/hooks/use-hybrid-write-actions";
 import { ExpenseDetailModal } from "./expense-detail-modal";
 import { useTheme } from "next-themes";
 import { format } from "date-fns";
@@ -104,6 +107,11 @@ export function ExpensesTable() {
 	const [page, setPage] = useState(1);
 	const [selectedTx, setSelectedTx] = useState<TransactionRow | null>(null);
 	const [reconciliationRows, setReconciliationRows] = useState<any[]>([]);
+	const [editingId, setEditingId] = useState<string | null>(null);
+	const [editDraft, setEditDraft] = useState<any>({});
+	const [rowOverrides, setRowOverrides] = useState<Record<string, any>>({});
+	const [savingId, setSavingId] = useState<string | null>(null);
+	const updateTransaction = useHybridUpdateTransaction();
 	const [aiScanState, setAiScanState] = useState<Record<string, "loading" | "done" | "error">>({});
 
 	useEffect(() => {
@@ -202,6 +210,25 @@ export function ExpensesTable() {
 			console.error("Receipt AI rescan failed", error);
 			setAiScanState((current) => ({ ...current, [transactionId]: "error" }));
 		}
+	};
+
+	const startEditing = (tx: TransactionRow) => {
+		const id = String(tx._id);
+		setEditingId(id);
+		setEditDraft({ date: new Date(tx.date).toISOString().slice(0, 10), category: tx.category || "", description: tx.description || "", merchant: tx.merchant || "", amount: String(tx.amount ?? ""), paymentMethod: tx.paymentMethod || "cash" });
+	};
+
+	const saveEditing = async (tx: TransactionRow) => {
+		const id = String(tx._id);
+		if (savingId) return;
+		setSavingId(id);
+		try {
+			const updates = { id, ...editDraft, amount: Number(editDraft.amount), date: new Date(`${editDraft.date}T00:00:00`).getTime() };
+			await updateTransaction(updates);
+			setRowOverrides((current) => ({ ...current, [id]: updates }));
+			setEditingId(null);
+		} catch (error) { console.error("Failed to update expense", error); }
+		finally { setSavingId(null); }
 	};
 
 	const handleSort = (col: "date" | "amount" | "category") => {
@@ -411,58 +438,59 @@ export function ExpensesTable() {
 										</th>
 										<th className="px-4 py-3">Metode</th>
 										<th className="px-4 py-3">Status</th>
-										<th className="px-4 py-3 text-center">Struk</th>
+										<th className="px-4 py-3 text-center">Struk</th><th className="px-4 py-3 text-center">AI</th><th className="px-4 py-3 text-center">Edit</th>
 									</tr>
 								</thead>
 								<tbody className="divide-y divide-slate-100">
 									{paged.map((tx, idx) => {
-										const hasReceipt = (tx as any).metadata?.receipt_image_url;
+												const row = rowOverrides[tx._id] ? { ...tx, ...rowOverrides[tx._id] } : tx;
+										const hasReceipt = (row as any).metadata?.receipt_image_url;
 										return (
 											<tr
-												key={tx._id}
+												key={row._id}
 												className="hover:bg-slate-50/70 cursor-pointer transition-colors"
-												onClick={() => setSelectedTx(tx)}
+												onClick={() => setSelectedTx(row)}
 											>
 												<td className="px-4 py-3 text-xs text-slate-400">
 													{(safePage - 1) * PAGE_SIZE + idx + 1}
 												</td>
 												<td className="px-4 py-3 whitespace-nowrap font-medium text-slate-800">
-													{format(new Date(tx.date), "dd MMM yyyy", { locale: localeID })}
+													{format(new Date(row.date), "dd MMM yyyy", { locale: localeID })}
 												</td>
 												<td className="px-4 py-3">
 													<span
-														className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${categoryColor(tx.category)}`}
+														className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${categoryColor(row.category)}`}
 													>
-														{categoryLabel(tx.category)}
+														{categoryLabel(row.category)}
 													</span>
 												</td>
 												<td className="px-4 py-3 max-w-[200px] truncate text-slate-600">
-													{tx.description || "-"}
+													{row.description || "-"}
 												</td>
 												<td className="px-4 py-3 text-slate-600">
-													{tx.merchant || "-"}
+													{row.merchant || "-"}
 												</td>
 												<td className="px-4 py-3 text-right font-medium text-red-600">
-													Rp {formatCurrencyIDR(tx.amount)}
+													Rp {formatCurrencyIDR(row.amount)}
 												</td>
 												<td className="px-4 py-3 text-slate-500 text-xs capitalize">
-													{tx.paymentMethod || "-"}
+													{row.paymentMethod || "-"}
 												</td>
 												<td className="px-4 py-3">
 													<span
 														className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-															tx.status === "completed"
+															row.status === "completed"
 																? "bg-green-100 text-green-700"
-																: tx.status === "pending"
+																: row.status === "pending"
 																	? "bg-yellow-100 text-yellow-700"
 																	: "bg-red-100 text-red-700"
 														}`}
 													>
-														{tx.status === "completed"
+														{row.status === "completed"
 															? "✅"
-															: tx.status === "pending"
+															: row.status === "pending"
 																? "⏳"
-																: tx.status}
+																: row.status}
 													</span>
 												</td>
 												<td className="px-4 py-3 text-center">
@@ -470,19 +498,19 @@ export function ExpensesTable() {
 														<img
 															alt="Struk"
 															className="h-9 w-9 rounded object-cover border border-slate-200/80 cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all"
-															onClick={(e) => { e.stopPropagation(); setSelectedTx(tx); }}
-															src={(tx as any).metadata.receipt_image_url}
+															onClick={(e) => { e.stopPropagation(); setSelectedTx(row); }}
+															src={(row as any).metadata.receipt_image_url}
 														/>
 													) : (
 														<span className="text-xs text-slate-300">—</span>
 													)}
 												</td>
 												<td className="px-4 py-3 text-center">
-													{hasReceipt ? <button type="button" className="rounded-lg bg-violet-600 px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-50" disabled={aiScanState[String(tx._id)] === "loading"} onClick={(e) => { e.stopPropagation(); void scanReceiptWithAi(tx); }}>{aiScanState[String(tx._id)] === "loading" ? "Scan..." : aiScanState[String(tx._id)] === "done" ? "Selesai" : aiScanState[String(tx._id)] === "error" ? "Coba lagi" : "Scan AI"}</button> : <span className="text-xs text-slate-300">—</span>}
+													{hasReceipt ? <button type="button" className="rounded-lg bg-violet-600 px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-50" disabled={aiScanState[String(row._id)] === "loading"} onClick={(e) => { e.stopPropagation(); void scanReceiptWithAi(row); }}>{aiScanState[String(row._id)] === "loading" ? "Scan..." : aiScanState[String(row._id)] === "done" ? "Selesai" : aiScanState[String(row._id)] === "error" ? "Coba lagi" : "Scan AI"}</button> : <span className="text-xs text-slate-300">—</span>}
 												</td>
-											</tr>
+											<td className="px-4 py-3 text-center"><button type="button" className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50" onClick={(e) => { e.stopPropagation(); startEditing(row); }}><Pencil className="mr-1 inline h-3 w-3" />Edit</button></td></tr>
 										);
-									})}
+									{editingId === String(row._id) && <tr className="bg-violet-50/50"><td colSpan={11} className="px-4 py-3" onClick={(e) => e.stopPropagation()}><div className="grid gap-2 md:grid-cols-6"><input className="rounded border px-2 py-1 text-xs" type="date" value={editDraft.date || ""} onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })} /><input className="rounded border px-2 py-1 text-xs" placeholder="Kategori" value={editDraft.category || ""} onChange={(e) => setEditDraft({ ...editDraft, category: e.target.value })} /><input className="rounded border px-2 py-1 text-xs" placeholder="Deskripsi" value={editDraft.description || ""} onChange={(e) => setEditDraft({ ...editDraft, description: e.target.value })} /><input className="rounded border px-2 py-1 text-xs" placeholder="Merchant" value={editDraft.merchant || ""} onChange={(e) => setEditDraft({ ...editDraft, merchant: e.target.value })} /><input className="rounded border px-2 py-1 text-xs" type="number" min="0" placeholder="Jumlah" value={editDraft.amount || ""} onChange={(e) => setEditDraft({ ...editDraft, amount: e.target.value })} /><select className="rounded border px-2 py-1 text-xs" value={editDraft.paymentMethod || "cash"} onChange={(e) => setEditDraft({ ...editDraft, paymentMethod: e.target.value })}><option value="cash">Cash</option><option value="qris">Qris</option><option value="transfer">Transfer</option></select></div><div className="mt-2 flex justify-end gap-2"><button type="button" className="rounded border px-3 py-1 text-xs" onClick={() => setEditingId(null)}>Batal</button><button type="button" disabled={savingId === String(row._id)} className="rounded bg-violet-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50" onClick={() => void saveEditing(row)}><Save className="mr-1 inline h-3 w-3" />{savingId === String(row._id) ? "Menyimpan..." : "Simpan"}</button></div></td></tr>}})}
 								</tbody>
 							</table>
 						</div>
