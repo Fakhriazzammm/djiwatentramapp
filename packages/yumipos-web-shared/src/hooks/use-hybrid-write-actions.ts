@@ -1,4 +1,5 @@
 ﻿import { normalizeMayarInvoice } from "../lib/mayar-payment";
+import { allocateDailyReceiptNo } from "../lib/daily-receipt";
 import { createClient } from "../lib/client";
 import { useAction, useMutation } from "../lib/backend-bridge";
 import { useYumiAuth } from "./useYumiAuth";
@@ -43,7 +44,7 @@ function generateOrderNumber(args: {
 	orderType?: string;
 	platform?: string;
 	createdAt: number;
-	receiptNo?: number;
+	receiptNo: number;
 	businessUnit?: string;
 	brandSlug?: string;
 	}) {
@@ -2498,22 +2499,7 @@ export function useHybridCreateOrder() {
 				: args?.source === "customer_self_service"
 					? "dine_in"
 					: "online";
-			let dailyReceiptNo: number;
-			try {
-				const { data: rpcData, error: rpcErr } = await supabase.rpc(
-					"next_daily_receipt_no",
-					{ p_order_kind: kind }
-				);
-				const receiptNo = typeof rpcData === "number" || typeof rpcData === "string"
-					? Number(rpcData)
-					: NaN;
-				if (rpcErr || !Number.isFinite(receiptNo) || !Number.isInteger(receiptNo) || receiptNo <= 0) {
-					throw new Error("Nomor struk tidak valid");
-				}
-				dailyReceiptNo = receiptNo;
-			} catch {
-				throw new Error("Gagal mendapatkan nomor struk. Silakan coba lagi.");
-			}
+			const dailyReceiptNo = await allocateDailyReceiptNo(supabase);
 
 			const orderNumber = generateOrderNumber({
 				source: args?.source,
@@ -2604,7 +2590,7 @@ export function useHybridCreateOrder() {
 					gateway_invoice_id: args?.paymentGateway?.invoiceId ?? null,
 					creation_time: orderCreatedAt,
 					idempotency_key: idempotencyKey,
-					raw: { ...(args ?? {}), authUserId: currentUser?._id ?? null },
+					raw: { ...(args ?? {}), dailyReceiptNo, receiptKind: kind, orderNumber, authUserId: currentUser?._id ?? null },
 				};
 
 				const { error: orderError } = await pos.from("orders").insert(orderRow);
@@ -2659,7 +2645,7 @@ export function useHybridCreateOrder() {
 						order_source_id: orderId,
 						creation_time: Date.now(),
 						metadata: {
-							dailyReceiptNo: dailyReceiptNo ?? undefined,
+							dailyReceiptNo,
 							orderNumber,
 							source: "pos",
 						},

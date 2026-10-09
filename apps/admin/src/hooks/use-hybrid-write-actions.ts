@@ -1,3 +1,4 @@
+import { allocateDailyReceiptNo } from "@yumipos/web-shared/lib/daily-receipt";
 import { createClient } from "@/lib/client";
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
@@ -42,7 +43,7 @@ function generateOrderNumber(args: {
 	orderType?: string;
 	platform?: string;
 	createdAt: number;
-	receiptNo?: number;
+	receiptNo: number;
 }) {
 	return formatOrderNumber({
 		sequence: args.receiptNo,
@@ -2496,13 +2497,14 @@ export function useHybridCreateOrder() {
 							: args?.source === "customer_self_service"
 								? "dine_in"
 								: "online";
-						let dailyReceiptNo = null;
+			const dailyReceiptNo = await allocateDailyReceiptNo(supabase);
 
 			const orderNumber = generateOrderNumber({
 				source: args?.source,
 				orderType: args?.orderType,
 				platform: args?.platform,
 				createdAt: orderCreatedAt,
+				receiptNo: dailyReceiptNo,
 			});
 				const orderId = makeSourceId("order");
 
@@ -2571,7 +2573,7 @@ const orderRow = {
 					gateway_invoice_id: args?.paymentGateway?.invoiceId ?? null,
 					creation_time: orderCreatedAt,
 					idempotency_key: idempotencyKey,
-					raw: { ...(args ?? {}), authUserId: currentUser?._id ?? null },
+					raw: { ...(args ?? {}), dailyReceiptNo, receiptKind: kind, orderNumber, authUserId: currentUser?._id ?? null },
 				};
 
 				const { error: orderError } = await pos.from("orders").insert(orderRow);
@@ -2626,7 +2628,7 @@ const orderRow = {
 						order_source_id: orderId,
 						creation_time: Date.now(),
 						metadata: {
-							dailyReceiptNo: dailyReceiptNo ?? undefined,
+							dailyReceiptNo,
 							orderNumber,
 							source: "pos",
 						},

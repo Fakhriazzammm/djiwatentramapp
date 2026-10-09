@@ -1,3 +1,5 @@
+import { formatOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { allocateDailyReceiptNo } from "@yumipos/web-shared/lib/daily-receipt";
 import { createClient } from "@/lib/client";
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
@@ -37,45 +39,19 @@ function makeSourceId(prefix: string) {
 	return `${prefix}_${random.slice(0, 24)}`;
 }
 
-function getOrderSourcePrefix(source?: "pos" | "customer_self_service" | "booking") {
-	if (source === "customer_self_service") return "SO";
-	if (source === "booking") return "BKO";
-	return "ORD";
-}
-
-function getOrderTypeCode(orderType?: string, platform?: string) {
-	if (orderType === "dine_in") return "D";
-	if (orderType === "takeaway") return "T";
-	if (orderType === "online") {
-		if (platform === "grab") return "OG";
-		if (platform === "gofood") return "OF";
-		if (platform === "maxim") return "OM";
-		if (platform === "shopeefood") return "OS";
-		return "O";
-	}
-	return "X";
-}
-
 function generateOrderNumber(args: {
 	source?: "pos" | "customer_self_service" | "booking";
 	orderType?: string;
 	platform?: string;
 	createdAt: number;
 	customerName?: string;
-	receiptNo?: number;
+	receiptNo: number;
 }) {
-	const d = new Date(args.createdAt);
-	const dd = String(d.getDate()).padStart(2, "0");
-	const mm = String(d.getMonth() + 1).padStart(2, "0");
-	const yy = String(d.getFullYear()).slice(-2);
-	const dateCode = `${dd}${mm}${yy}`;
-	const typeCode = getOrderTypeCode(args.orderType, args.platform);
-	const custCode = (args.customerName || "UMUM")
-		.replace(/[^a-zA-Z0-9]/g, "")
-		.toUpperCase()
-		.slice(0, 5) || "UMUM";
-	const noCode = args.receiptNo != null ? String(args.receiptNo).padStart(3, "0") : "000";
-	return `ORD${noCode}-${typeCode}-${custCode}${dateCode}`;
+	return formatOrderNumber({
+		sequence: args.receiptNo,
+		createdAt: args.createdAt,
+		context: { source: args.source, orderType: args.orderType, platform: args.platform },
+	});
 }
 
 function generateBookingCode(timestamp: number) {
@@ -2562,13 +2538,14 @@ export function useHybridCreateOrder() {
 							: args?.source === "customer_self_service"
 								? "dine_in"
 								: "online";
-						let dailyReceiptNo = null;
+			const dailyReceiptNo = await allocateDailyReceiptNo(supabase);
 
 			const orderNumber = generateOrderNumber({
 				source: args?.source,
 				orderType: args?.orderType,
 				platform: args?.platform,
 				createdAt: orderCreatedAt,
+				receiptNo: dailyReceiptNo,
 				customerName: args?.customerName || undefined,
 			});
 				const orderId = makeSourceId("order");
@@ -2638,7 +2615,7 @@ const orderRow = {
 					gateway_invoice_id: args?.paymentGateway?.invoiceId ?? null,
 					creation_time: orderCreatedAt,
 					idempotency_key: idempotencyKey,
-					raw: { ...(args ?? {}), authUserId: currentUser?._id ?? null },
+					raw: { ...(args ?? {}), dailyReceiptNo, receiptKind: kind, orderNumber, authUserId: currentUser?._id ?? null },
 				};
 
 				const { error: orderError } = await pos.from("orders").insert(orderRow);
@@ -2693,7 +2670,7 @@ const orderRow = {
 						order_source_id: orderId,
 						creation_time: Date.now(),
 						metadata: {
-							dailyReceiptNo: dailyReceiptNo ?? undefined,
+							dailyReceiptNo,
 							orderNumber,
 							source: "pos",
 						},
