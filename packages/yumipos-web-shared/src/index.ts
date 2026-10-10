@@ -37,6 +37,7 @@ export * from "./components/ui/card-v2";
 export * from "./components/ui/states";
 export * from "./components/admin";
 export * from "./components/ui/djiwa-3d-icon";
+export * from "./components/ui/animated-metric";
 export * from "./components/layout/OwnerFooter";
 export * from "./context/cart-context";
 export * from "./context/app-data-context";
