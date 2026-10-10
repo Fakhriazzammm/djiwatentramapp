@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useHybridCustomerServiceRequests } from "@/hooks/use-hybrid-finance-analytics-data";
 import { useHybridUpdateCustomerServiceStatus } from "@/hooks/use-hybrid-write-actions";
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
+import { AnimatedCount } from "@yumipos/web-shared/components/ui/animated-metric";
 
 export const Route = createLazyFileRoute("/admin/customer-service")({
 	component: CustomerServiceRequestsPage,
@@ -244,7 +245,7 @@ function SummaryCard({
 				{icon}
 				<span className="text-xs font-semibold uppercase tracking-wider">{label}</span>
 			</div>
-			<p className="mt-2 text-2xl font-black">{value}</p>
+			<p className="mt-2 text-2xl font-black"><AnimatedCount value={value} /></p>
 		</div>
 	);
 }

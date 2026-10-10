@@ -514,6 +514,7 @@
       "name": "@yumipos/web-shared",
       "version": "0.0.0",
       "dependencies": {
+        "@sfinterface/numbers": "0.3.4",
         "@supabase/ssr": "^0.10.2",
         "@supabase/supabase-js": "^2.103.3",
         "class-variance-authority": "^0.7.1",
@@ -1010,6 +1011,8 @@
     "@rollup/rollup-win32-x64-gnu": ["@rollup/rollup-win32-x64-gnu@4.60.4", "", { "os": "win32", "cpu": "x64" }, "sha512-DRS4G7mi9lJxqEDezIkKCaUIKCrLUUDCUaCsTPCi/rtqaC6D/jjwslMQyiDU50Ka0JKpeXeRBFBAXwArY52vBw=="],
 
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.60.4", "", { "os": "win32", "cpu": "x64" }, "sha512-QVTUovf40zgTqlFVrKA1uXMVvU2QWEFWfAH8Wdc48IxLvrJMQVMBRjuQyUpzZCDkakImib9eVazbWlC6ksWtJw=="],
+
+    "@sfinterface/numbers": ["@sfinterface/numbers@0.3.4", "", { "peerDependencies": { "react": ">=18", "react-dom": ">=18" } }, "sha512-ygLERcykGMQTaRoFcy7oE1LfW65wLlPpB3WVgK71rbUQUYOX0sjm5/o15r2zP0q36jFxrGSHwjhRLOvIlXm5kQ=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
