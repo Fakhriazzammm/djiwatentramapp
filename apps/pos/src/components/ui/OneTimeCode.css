@@ -1,0 +1,182 @@
+/* ── the goo's defs hold nothing you can see ────────────────
+   useGoo renders an <svg> carrying a <defs> and nothing
+   else, and an <svg> with no dimensions is a replaced element:
+   the browser gives it the default 300x150 and puts it in the
+   flow. Every block that mounts one has been carrying an
+   invisible 300x150 box ever since — harmless in the fixed-size
+   relative stages that host most of them, and not harmless in
+   a flex column, where it over-subscribed the container and
+   shrank the palette's swatch row from 132 to 64.
+
+   Nothing inside a <defs> is rendered, so taking the element
+   out of flow entirely costs nothing and is what it always
+   wanted. */
+.liq-defs {
+	position: absolute;
+	width: 0;
+	height: 0;
+	overflow: hidden;
+}
+
+/* ══ One-time code ═════════════════════════════════════════
+   lab/Otp.tsx. Everything that moves is written inline; what
+   is here is the material. Positioned at the root so the
+   canvas's grab halo does not paint over the field — see the
+   note on .gen.
+
+   ── the tokens this file reads are not defined here ───────
+   The CSS above asks for five of Bencho's design tokens, and
+   they are mapped once, on this component's own root, onto
+   what this project already uses for the same job:
+
+     --card      this project already has one; the surface a
+                 filled thing sits on, so it is used as it is
+     --fill-slab → --muted       the colour an empty cell is
+     --fill-on   → --foreground  the colour a filled one takes
+     --ink       → --foreground  this project's ink
+     --font-ui   → --font-body   this project's UI font
+
+   They are declared on .otp rather than in :root so nothing
+   new leaks into the global theme, and the fallback after each
+   comma keeps the row legible if it is ever mounted outside the
+   themed shell. None of them is an -rgb pair, so nothing here
+   needs bare numbers. */
+.otp {
+	--fill-on: var(--foreground, #1a2332);
+	--fill-slab: var(--muted, #f0f1f4);
+	--font-ui: var(--font-body, ui-sans-serif, system-ui, sans-serif);
+	--ink: var(--foreground, #1a2332);
+
+	position: relative;
+	font-family: var(--font-ui);
+	display: grid;
+	place-items: center;
+}
+
+.otp-row {
+	position: relative;
+}
+
+.otp-goo {
+	position: absolute;
+	inset: 0;
+}
+
+/* one colour under the filter, or the threshold smears two */
+.otp-cell {
+	position: absolute;
+	left: 0;
+	top: 0;
+	height: 100%;
+	background: var(--fill-slab, var(--card));
+}
+
+.otp-slot {
+	position: absolute;
+	left: 0;
+	top: 0;
+	height: 100%;
+	display: grid;
+	place-items: center;
+	pointer-events: none;
+}
+
+.otp-digit {
+	font-size: 19px;
+	font-weight: 500;
+	line-height: 1;
+	letter-spacing: -0.01em;
+	font-variant-numeric: tabular-nums;
+	color: var(--fill-on, var(--ink));
+	animation: otp-in 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+	transition: color 160ms ease;
+}
+
+.otp[data-phase="no"] .otp-digit {
+	color: #e5484d;
+}
+
+.otp-caret {
+	position: absolute;
+	left: 0;
+	top: 50%;
+	width: 2px;
+	height: 18px;
+	margin-top: -9px;
+	border-radius: 2px;
+	background: var(--fill-on, var(--ink));
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 160ms ease;
+}
+
+.otp-caret[data-on="true"] {
+	opacity: 1;
+	animation: otp-breathe 1.1s ease-in-out infinite alternate;
+}
+
+.otp-ok {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--fill-on, var(--ink));
+	pointer-events: none;
+}
+
+/* the field: over the whole row, there and invisible. 16px so
+   iOS does not zoom the page when it takes focus. */
+.otp-field {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+	border: 0;
+	padding: 0;
+	font-size: 16px;
+	caret-color: transparent;
+	cursor: text;
+}
+
+.otp[data-phase="ok"] .otp-field {
+	cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.otp-digit {
+		animation: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.otp-caret[data-on="true"] {
+		animation: none;
+	}
+}
+
+@keyframes otp-in {
+	from {
+		transform: translateY(45%) scale(0.86);
+		opacity: 0;
+		filter: blur(3px);
+	}
+	to {
+		transform: none;
+		opacity: 1;
+		filter: none;
+	}
+}
+
+@keyframes otp-breathe {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0.25;
+	}
+}
