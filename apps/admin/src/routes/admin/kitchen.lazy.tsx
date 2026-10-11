@@ -1,4 +1,5 @@
-﻿import { createLazyFileRoute, Link } from "@tanstack/react-router";
+import { createLazyFileRoute, Link } from "@tanstack/react-router";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { AnimatePresence, motion, LayoutGroup } from "framer-motion";
 import {
 	Check,
@@ -329,7 +330,7 @@ function KanbanCard({
 						<div className="mt-1 flex items-center gap-1 font-bold text-[11px] text-slate-400 uppercase tracking-wider md:gap-1.5 md:text-[10px]">
 							<span>Meja {item.tableNumber || "Takeaway"}</span>
 							<span>•</span>
-							<span>#{item.orderNumber.split("-").pop()}</span>
+							<span>#{getDisplayOrderNumber(item.orderNumber, { sequence: (item as any).dailyReceiptNo, createdAt: (item as any).createdAt, orderType: (item as any).orderType })}</span>
 							{botBadge && BotBadgeIcon && (
 								<span className={`ml-1 inline-flex items-center gap-0.5 rounded px-1 py-px text-[10px] ${botBadge.class}`}><BotBadgeIcon className="h-2.5 w-2.5" aria-hidden="true" />{botBadge.label}</span>
 							)}

@@ -1,4 +1,5 @@
 import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { formatPaymentLabel } from "@yumipos/web-shared/lib/payment-label";
 import type { Doc, Id } from "@/types/backend-compat";
 import {
@@ -156,6 +157,10 @@ interface TabItem {
 	illustration?: Djiwa3DIconName;
 }
 
+
+function displayOrderNumber(order: any) {
+	return getDisplayOrderNumber(order?.orderNumber, { sequence: order?.dailyReceiptNo ?? order?.daily_receipt_no, createdAt: order?.createdAt ?? order?._creationTime, source: order?.source, sourceApp: order?.sourceApp, businessUnit: order?.businessUnit, orderType: order?.orderType, platform: order?.platform, brandSlug: order?.brandSlug ?? order?.brand_slug });
+}
 type OnlineFoodStatus = "pending" | "active" | "problem" | "not_used";
 type OnlineFoodPlatform = "gofood" | "grabfood" | "shopeefood";
 type OnlineFoodChecklist = Record<OnlineFoodPlatform, {
@@ -898,7 +903,7 @@ function OrderSimpleDetail({
 			<div className="flex items-start justify-between gap-3">
 				<div className="min-w-0">
 					<div className="flex items-center gap-2 flex-wrap">
-						<p className="font-mono text-base font-bold truncate">#{order.orderNumber}</p>
+						<p className="font-mono text-base font-bold truncate">#{displayOrderNumber(order)}</p>
 						<span className={`rounded-lg border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider ${statusBg}`}>
 							{statusLabels[order.status] || order.status}
 						</span>
@@ -1469,12 +1474,12 @@ function ParkirTab({
 						return (
 							<article key={order._id} className={`rounded-2xl border bg-card p-3 shadow-sm transition ${selected ? "border-primary bg-primary/[0.03] ring-1 ring-primary/20" : "border-border/70 hover:border-primary/30"}`}>
 								<div className="flex items-start gap-3">
-									<Checkbox checked={selected} onCheckedChange={() => toggleSelected(String(order._id))} onClick={(event) => event.stopPropagation()} aria-label={`Pilih ${order.orderNumber}`} className="mt-1 h-5 w-5 shrink-0" />
+									<Checkbox checked={selected} onCheckedChange={() => toggleSelected(String(order._id))} onClick={(event) => event.stopPropagation()} aria-label={`Pilih ${displayOrderNumber(order)}`} className="mt-1 h-5 w-5 shrink-0" />
 									<button type="button" onClick={() => onSelectOrder?.(order)} className="min-w-0 flex-1 text-left">
 										<div className="flex items-start justify-between gap-3">
 											<div className="min-w-0">
 												<div className="flex items-center gap-1.5">
-													<p className="truncate text-sm font-black text-primary">#{order.orderNumber}</p>
+													<p className="truncate text-sm font-black text-primary">#{displayOrderNumber(order)}</p>
 													{order.source === "customer_self_service" ? <span className="shrink-0 rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-blue-700">DjiwaApp</span> : null}
 												</div>
 												{order.source === "customer_self_service" && ["cash", "cashier", "tunai"].includes(String(order.paymentMethod ?? "").toLowerCase()) ? <span className="mt-1 inline-flex rounded-full bg-amber-50 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-700">Bayar di kasir</span> : null}
@@ -1567,7 +1572,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 			window.setTimeout(() => triggerHybridRefresh(), 350);
 			window.setTimeout(() => triggerHybridRefresh(), 1_200);
 			setCashierPaidIds((current) => new Set(current).add(String(order._id)));
-			toast.success(`Pesanan #${order.orderNumber} ditandai sudah dibayar`);
+			toast.success(`Pesanan #${displayOrderNumber(order)} ditandai sudah dibayar`);
 		} catch (error) {
 			console.error("[history-cashier-paid] failed", error);
 			const message = error instanceof Error ? error.message : "Gagal menandai pesanan sudah dibayar";
@@ -1848,7 +1853,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 												</span>
 											) : (
 												<span className="font-extrabold text-sm text-foreground tracking-tight">
-													#{order.orderNumber}
+													#{displayOrderNumber(order)}
 												</span>
 											)}
 											<span className={`text-[11px] font-bold uppercase tracking-wider ${statusBadge}`}>
@@ -1867,7 +1872,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 										</div>
 										{/* Line 1: Order ID */}
 										<div className="text-[10px] text-muted-foreground">
-											{order.orderNumber}
+											{displayOrderNumber(order)}
 										</div>
 										{/* Line 2: shift + type */}
 										<div className="flex items-center gap-1 flex-wrap text-[11px] text-muted-foreground">

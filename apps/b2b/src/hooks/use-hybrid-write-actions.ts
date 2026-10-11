@@ -1,4 +1,5 @@
-﻿import { createClient } from "@/lib/client";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { createClient } from "@/lib/client";
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { B2B_BRAND_SLUG } from "@/lib/marketplace-config";
@@ -2741,7 +2742,7 @@ export function useHybridUpdateOrder() {
 								tx_type: "income",
 								amount: Number(order.total_amount ?? 0),
 								category: "Penjualan",
-								description: `Penjualan Pesanan #${order.order_number ?? "-"}`,
+								description: `Penjualan Pesanan #${getDisplayOrderNumber(order.order_number, { sequence: (order as any).daily_receipt_no, createdAt: (order as any).created_at, source: "pos", orderType: "dine_in" })}`,
 								tx_date: txDate,
 								payment_method: order.payment_method ?? null,
 								status: "completed",
@@ -2909,7 +2910,7 @@ export function useHybridUpdateOrderStatus() {
 							tx_type: "income",
 							amount: Number(order.total_amount ?? 0),
 							category: "Penjualan",
-							description: `Penjualan Pesanan #${order.order_number ?? "-"}`,
+							description: `Penjualan Pesanan #${getDisplayOrderNumber(order.order_number, { sequence: (order as any).daily_receipt_no, createdAt: (order as any).created_at, source: "pos", orderType: "dine_in" })}`,
 							tx_date: transactionDate,
 							payment_method: order.payment_method ?? null,
 							status: "completed",
@@ -3017,7 +3018,7 @@ export function useHybridUpdateOrderPaymentGateway() {
 							tx_type: "income",
 							amount: Number(order.total_amount ?? 0),
 							category: "Penjualan",
-							description: `Penjualan Pesanan #${order.order_number ?? "-"}`,
+							description: `Penjualan Pesanan #${getDisplayOrderNumber(order.order_number, { sequence: (order as any).daily_receipt_no, createdAt: (order as any).created_at, source: "pos", orderType: "dine_in" })}`,
 							tx_date: settledAt,
 							payment_method: order.payment_method ?? null,
 							status: "completed",

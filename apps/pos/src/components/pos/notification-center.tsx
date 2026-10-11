@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Bell, Check, ChevronRight, Info, Megaphone, WalletCards, X } from "lucide-react";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import type { PosNotification } from "@/hooks/use-pos-notifications";
 
 function formatAge(value: string) {
@@ -132,7 +133,7 @@ export function NotificationCenter({
                     <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/70"><Icon className="h-4 w-4" /></div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-wide opacity-70">{meta.label}</p><h3 className="text-sm font-black leading-tight">{item.title}</h3></div>{!item.isRead ? <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-rose-500" /> : null}</div>
-                      {item.order_number ? <p className="mt-1 text-xs font-bold">#{item.order_number} · {item.source === "pos" ? "POS Kasir" : item.source === "customer_self_service" || item.source === "djiwaapp" ? "DjiwaApp" : item.source || "Operasional"}</p> : null}
+                      {item.order_number ? <p className="mt-1 text-xs font-bold">#{getDisplayOrderNumber(item.order_number, { sequence: (item as any).daily_receipt_no, createdAt: (item as any).created_at, source: (item as any).source, orderType: (item as any).order_type })} · {item.source === "pos" ? "POS Kasir" : item.source === "customer_self_service" || item.source === "djiwaapp" ? "DjiwaApp" : item.source || "Operasional"}</p> : null}
                       <p className="mt-1 text-xs leading-relaxed opacity-80">{item.message}</p>
                       <p className="mt-2 text-[10px] font-semibold opacity-60">{formatAge(item.created_at)}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
