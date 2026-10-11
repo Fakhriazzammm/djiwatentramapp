@@ -1,4 +1,5 @@
-﻿import type { Doc, Id } from "@/types/backend-compat";
+import type { Doc, Id } from "@/types/backend-compat";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import {
 	ChevronLeft,
 	ClipboardList,
@@ -40,6 +41,10 @@ import {
 import { bluetoothPrinter, type OrderItem, type ReceiptPrintMode } from "@/lib/bluetooth-printer";
 import { buildReceiptMetaFromOrder } from "@/lib/receipt-data";
 
+
+function displayOrderNumber(order: any) {
+	return getDisplayOrderNumber(order?.orderNumber, { sequence: order?.dailyReceiptNo ?? order?.daily_receipt_no, createdAt: order?.createdAt ?? order?._creationTime, source: order?.source, sourceApp: order?.sourceApp, businessUnit: order?.businessUnit, orderType: order?.orderType, platform: order?.platform, brandSlug: order?.brandSlug ?? order?.brand_slug });
+}
 type FilterType =
 	| "today"
 	| "yesterday"
@@ -539,7 +544,7 @@ function OrderCard({
 		>
 			<div className="mb-2 flex items-start justify-between">
 				<div>
-					<p className="font-medium text-sm">#{order.orderNumber}</p>
+					<p className="font-medium text-sm">#{displayOrderNumber(order)}</p>
 					<p className="text-muted-foreground text-xs">
 						{formatDate(order.createdAt)} - {formatTime(order.createdAt)}
 					</p>
@@ -684,7 +689,7 @@ function OrderDetailView({
 					<div className="flex items-start justify-between">
 						<div>
 							<h3 className="font-bold font-mono text-xl">
-								#{order.orderNumber}
+								#{displayOrderNumber(order)}
 							</h3>
 							<p className="text-muted-foreground text-sm">
 								{formatDate(order.createdAt)} • {formatTime(order.createdAt)}

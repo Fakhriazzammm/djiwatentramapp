@@ -88,6 +88,19 @@ function dateCode(timestamp: number) {
   return `${values.day}${values.month}${values.year}`;
 }
 
+function timestampFromLegacyDateCode(value: string, order: "ddmmyy" | "yymmdd") {
+  const digits = value.match(/^\d{6}$/)?.[0];
+  if (!digits) return undefined;
+  const day = order === "ddmmyy" ? digits.slice(0, 2) : digits.slice(4, 6);
+  const month = order === "ddmmyy" ? digits.slice(2, 4) : digits.slice(2, 4);
+  const year = order === "ddmmyy" ? digits.slice(4, 6) : digits.slice(0, 2);
+  return Date.UTC(2000 + Number(year), Number(month) - 1, Number(day), 5);
+}
+
+function isTechnicalReference(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(value) || /^(?:order|so|bko)_[a-z0-9_-]{12,}$/i.test(value);
+}
+
 export function formatOrderNumber(args: {
   sequence?: number | null;
   createdAt?: number | null;
@@ -107,6 +120,10 @@ export function formatOrderNumber(args: {
 export function getDisplayOrderNumber(orderNumber: string | null | undefined, context: OrderNumberContext & { createdAt?: number | null; sequence?: number | null }) {
   const raw = String(orderNumber ?? "").trim();
   if (!raw) return "-";
+  if (context.booking || getOrderChannel(context) === "booking") {
+    if (/^(?:BK|BKO)-[A-Z0-9_-]+$/i.test(raw)) return raw.toUpperCase();
+  }
+  if (isTechnicalReference(raw)) return "-";
   if (/^ORD-[A-Z]+-[A-Z]+-\d{4}-\d{6}$/i.test(raw)) {
     const channel = getOrderChannel(context);
     if (channel === "b2b" && !/^ORD-B2B-/i.test(raw)) {
@@ -116,7 +133,23 @@ export function getDisplayOrderNumber(orderNumber: string | null | undefined, co
     return raw.toUpperCase();
   }
 
+  // MY-YYMMDD-NNN was an Order Mie Yamin provider/business reference. New
+  // orders use the canonical APP family; this keeps old MY values display-safe.
+  const mieYamin = raw.match(/^MY-(\d{6})-(\d{1,6})$/i);
+  if (mieYamin) {
+    return formatOrderNumber({
+      sequence: Number(mieYamin[2]),
+      createdAt: context.createdAt ?? timestampFromLegacyDateCode(mieYamin[1] ?? "", "yymmdd"),
+      context: { ...context, businessUnit: context.businessUnit ?? "ordermieyamin", source: context.source ?? "customer_self_service" },
+    });
+  }
+
   const legacySequence = context.sequence ?? Number(raw.match(/^ORD(\d{1,6})-/i)?.[1] ?? 0);
-  if (!legacySequence) return raw;
-  return formatOrderNumber({ sequence: legacySequence, createdAt: context.createdAt, context });
+  if (!legacySequence) return "-";
+  const legacyDate = raw.match(/(\d{6})$/)?.[1];
+  return formatOrderNumber({
+    sequence: legacySequence,
+    createdAt: context.createdAt ?? (legacyDate ? timestampFromLegacyDateCode(legacyDate, "ddmmyy") : undefined),
+    context,
+  });
 }

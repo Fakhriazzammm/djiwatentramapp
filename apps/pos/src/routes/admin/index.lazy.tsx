@@ -1,4 +1,5 @@
 import { createLazyFileRoute, Link } from "@tanstack/react-router";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import {
 	AlertTriangle,
 	ArrowDownRight,
@@ -453,7 +454,7 @@ function DashboardAdmin() {
 									className="flex items-center justify-between rounded-lg bg-muted/30 p-1.5 hover:bg-muted/50 transition-colors"
 								>
 									<div className="flex-1 min-w-0">
-										<p className="text-[10px] font-bold text-foreground">#{order.orderNumber}</p>
+										<p className="text-[10px] font-bold text-foreground">#{getDisplayOrderNumber(order.orderNumber, { sequence: order.dailyReceiptNo ?? order.daily_receipt_no, createdAt: order.createdAt ?? order._creationTime, source: order.source, sourceApp: order.sourceApp, businessUnit: order.businessUnit, orderType: order.orderType, platform: order.platform, brandSlug: order.brandSlug ?? order.brand_slug })}</p>
 										<p className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
 											<Clock className="w-2 h-2" />
 											{new Date(order.createdAt).toLocaleTimeString("id-ID", {

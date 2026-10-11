@@ -9,7 +9,22 @@ describe("order number channel contract", () => {
   });
 
   it("renders legacy IDs consistently while keeping raw IDs unchanged", () => {
-    expect(getDisplayOrderNumber("ORD035-D-ADEKA310826", { source: "pos", orderType: "dine_in", createdAt: new Date("2026-08-31T10:00:00+07:00").getTime() })).toBe("ORD-POS-D-0035-310826");
+    expect(getDisplayOrderNumber("ORD035-D-ADEKA310826", { source: "pos", orderType: "dine_in" })).toBe("ORD-POS-D-0035-310826");
+    expect(getDisplayOrderNumber("ORD-POS-D-0035-310826", {})).toBe("ORD-POS-D-0035-310826");
+  });
+
+  it("does not expose technical IDs as order numbers", () => {
+    expect(getDisplayOrderNumber("order_1234567890abcdef", {})).toBe("-");
+    expect(getDisplayOrderNumber(undefined, {})).toBe("-");
+  });
+
+  it("normalizes the legacy Mie Yamin family to canonical APP display", () => {
+    expect(getDisplayOrderNumber("MY-260902-7", {})).toBe("ORD-APP-X-0007-020926");
+  });
+
+  it("keeps legacy booking codes visible in booking context", () => {
+    expect(getDisplayOrderNumber("BKO-ABC123", { booking: true })).toBe("BKO-ABC123");
+    expect(getDisplayOrderNumber("BK-ABC123", { source: "booking" })).toBe("BK-ABC123");
   });
 
   it("keeps channel separate from payment method", () => {

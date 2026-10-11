@@ -1,5 +1,6 @@
 import EscPosEncoder from "esc-pos-encoder";
 import { formatDateTimeWIB } from "@/lib/wib-utils";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 
 const RECEIPT_LINE_WIDTH = 32;
 const RECEIPT_HEADER_WIDTH = 24;
@@ -137,6 +138,11 @@ export interface ReceiptOrderPayload {
 	customerName?: string;
 	notes?: string;
 	orderType?: string;
+	source?: string;
+	sourceApp?: string;
+	businessUnit?: string;
+	brandSlug?: string;
+	platform?: string;
 	tableNumber?: string;
 	subtotal?: number;
 	// Optional authoritative tax snapshot; legacy receipts use the fields above.
@@ -658,7 +664,7 @@ export class BluetoothPrinterService {
 		printSeparator("=");
 
 		if (settings.receiptShowOrderNumber !== false) {
-			printKeyValue("ORDER", order.orderNumber.toUpperCase());
+			printKeyValue("ORDER", getDisplayOrderNumber(order.orderNumber, { sequence: order.dailyReceiptNo, createdAt: order.createdAt, source: order.source, sourceApp: order.sourceApp, businessUnit: order.businessUnit, brandSlug: order.brandSlug, platform: order.platform, orderType: order.orderType }));
 		}
 
 		if (order.dailyReceiptNo) {

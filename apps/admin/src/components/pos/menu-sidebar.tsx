@@ -1,4 +1,5 @@
 import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import type { Doc, Id } from "@/types/backend-compat";
 import {
 	AlertCircle,
@@ -147,6 +148,10 @@ interface TabItem {
 	illustration?: Djiwa3DIconName;
 }
 
+
+function displayOrderNumber(order: any) {
+	return getDisplayOrderNumber(order?.orderNumber, { sequence: order?.dailyReceiptNo ?? order?.daily_receipt_no, createdAt: order?.createdAt ?? order?._creationTime, source: order?.source, sourceApp: order?.sourceApp, businessUnit: order?.businessUnit, orderType: order?.orderType, platform: order?.platform, brandSlug: order?.brandSlug ?? order?.brand_slug });
+}
 export function MenuSidebar({ 
 	triggerOpen, 
 	onOpenChange,
@@ -834,7 +839,7 @@ function OrderSimpleDetail({
 			<div className="flex items-start justify-between gap-3">
 				<div className="min-w-0">
 					<div className="flex items-center gap-2 flex-wrap">
-						<p className="font-mono text-base font-bold truncate">#{order.orderNumber}</p>
+						<p className="font-mono text-base font-bold truncate">#{displayOrderNumber(order)}</p>
 						<span className={`rounded-lg border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider ${statusBg}`}>
 							{statusLabels[order.status] || order.status}
 						</span>
@@ -1354,7 +1359,7 @@ function ParkirTab({
 							<div className="min-w-0 flex-1">
 								<div className="flex items-center gap-1.5">
 									<span className="font-mono text-[13px] font-bold text-primary leading-none">
-										#{order.orderNumber}
+										#{displayOrderNumber(order)}
 									</span>
 									{order.tableNumber && (
 										<span className="text-[10px] text-muted-foreground leading-none">
@@ -1698,7 +1703,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 												</span>
 											) : (
 												<span className="font-extrabold text-sm text-foreground tracking-tight">
-													#{order.orderNumber}
+													#{displayOrderNumber(order)}
 												</span>
 											)}
 											<span className={`text-[11px] font-bold uppercase tracking-wider ${statusBadge}`}>
@@ -1707,7 +1712,7 @@ function HistoryTab({ onSelectOrder, onPrint }: { onSelectOrder: (order: Doc<"or
 										</div>
 										{/* Line 1: Order ID */}
 										<div className="text-[10px] text-muted-foreground">
-											{order.orderNumber}
+											{displayOrderNumber(order)}
 										</div>
 										{/* Line 2: shift + type */}
 										<div className="flex items-center gap-1 flex-wrap text-[11px] text-muted-foreground">

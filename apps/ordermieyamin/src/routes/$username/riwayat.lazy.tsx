@@ -7,6 +7,7 @@ import { useCustomerOrders } from "@/hooks/use-customer-data";
 import { useOrderContext } from "@/hooks/use-order-context";
 import { useHybridProducts } from "@/hooks/use-hybrid-pos-data";
 import { currency } from "@/components/customer/types";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import type { CartItem } from "@/components/customer/types";
 import { CustomerErrorState, CustomerSectionSkeleton } from "@/components/customer/customer-states";
 
@@ -156,7 +157,7 @@ function RiwayatPage() {
 									<div key={order.id} className="rounded-3xl border border-border bg-card p-4 shadow-sm">
 										<div className="flex items-center justify-between gap-2">
 											<div className="min-w-0">
-												<p className="truncate text-xs font-black">#{order.orderNumber || order.id.slice(0, 8)}</p>
+												<p className="truncate text-xs font-black">#{getDisplayOrderNumber(order.orderNumber, { sequence: (order as any).dailyReceiptNo ?? (order as any).daily_receipt_no, createdAt: order.createdAt, source: (order as any).source, businessUnit: "ordermieyamin", orderType: order.orderType })}</p>
 												<p className="text-[10px] text-muted-foreground">{fmtDate(order.createdAt)}</p>
 											</div>
 											<span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_STYLE[statusKey] ?? "bg-muted text-muted-foreground"}`}>

@@ -24,6 +24,7 @@ import { formatCurrencyIDR } from "@/lib/export-utils";
 import { NewTransactionDialog } from "../../-components/new-transaction-dialog";
 import { toast } from "sonner";
 import type { Id } from "@/types/backend-compat";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { format, startOfDay, endOfDay } from "date-fns";
 import { id as localeID } from "date-fns/locale";
 import { useHybridShiftReportRows } from "@/hooks/use-hybrid-pos-data";
@@ -1213,7 +1214,18 @@ export function TransactionDetailReport({
 								const hasScanItems = t.metadata?.scanItems && t.metadata.scanItems.length > 0;
 								const hasReceiptMeta = t.metadata?.receiptDetails || t.metadata?.ocr;
 
-								const orderDisplay = t.metadata?.orderNumber || t.orderId || t.metadata?.sourceRef || t._id;
+								const orderDisplay = t.metadata?.orderNumber
+									? getDisplayOrderNumber(t.metadata.orderNumber, {
+										sequence: t.metadata?.dailyReceiptNo,
+										createdAt: t.date,
+										source: t.metadata?.source,
+										sourceApp: t.metadata?.sourceApp,
+										businessUnit: t.metadata?.businessUnit,
+										orderType: t.metadata?.orderType,
+										platform: t.metadata?.platform,
+										brandSlug: t.metadata?.brandSlug,
+									})
+									: t.orderId || t.metadata?.sourceRef || t._id;
 								const receiptNo = t.metadata?.dailyReceiptNo || t.metadata?.receiptNumber || t.metadata?.receiptDetails?.receiptNumber || t.metadata?.orderNumber || t.metadata?.sourceRef;
 								const entityName = isIncome
 									? (t.merchant || t.metadata?.customerName || "")

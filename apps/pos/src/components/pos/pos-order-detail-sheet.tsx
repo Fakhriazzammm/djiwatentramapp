@@ -1,5 +1,6 @@
 import { Banknote, CheckCircle2, Clock3, MapPin, ReceiptText, X } from "lucide-react";
 import type { PosNotification } from "@/hooks/use-pos-notifications";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 type PosOrderDetailSheetProps = {
@@ -59,7 +60,7 @@ function getStatusLabel(order: Record<string, any> | null, notification: PosNoti
 export function PosOrderDetailSheet({ open, order, notification, loading = false, onClose, onMarkCashierPaid }: PosOrderDetailSheetProps) {
   const payload = getPayload(notification);
   const items = getItems(order, payload);
-  const orderNumber = order?.orderNumber ?? notification?.order_number ?? payload.orderNumber ?? "-";
+  const orderNumber = getDisplayOrderNumber(order?.orderNumber ?? notification?.order_number ?? payload.orderNumber, { sequence: order?.dailyReceiptNo ?? (notification as any)?.daily_receipt_no, createdAt: order?.createdAt ?? (notification as any)?.created_at, source: order?.source ?? (notification as any)?.source, orderType: order?.orderType ?? (notification as any)?.order_type });
   const customerName = order?.customerName ?? payload.customerName ?? "Pelanggan DjiwaApp";
   const customerDescription = order?.customerDescription ?? order?.customer_description ?? payload.customerDescription ?? payload.customer_description ?? "";
   const total = order?.totalAmount ?? payload.totalAmount ?? 0;

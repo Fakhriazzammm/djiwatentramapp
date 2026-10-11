@@ -1,9 +1,11 @@
-﻿import { createClient } from "@/lib/client";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { createClient } from "@/lib/client";
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useCallback, useState } from "react";
 import { invokeBookingAdmin, invokeEdgeFunction } from "@/lib/api-helper";
 import { calculateShiftPaymentBreakdown, EMPTY_SHIFT_PAYMENT_BREAKDOWN } from "@/lib/shift-payment-breakdown";
+import { formatOrderNumber } from "@yumipos/web-shared/lib/order-number";
 
 type FunctionReference<_Kind extends "mutation" | "action"> = unknown;
 const api = new Proxy(
@@ -43,39 +45,18 @@ function getOrderSourcePrefix(source?: "pos" | "customer_self_service" | "bookin
 	return "ORD";
 }
 
-function getOrderTypeCode(orderType?: string, platform?: string) {
-	if (orderType === "dine_in") return "D";
-	if (orderType === "takeaway") return "T";
-	if (orderType === "online") {
-		if (platform === "grab") return "OG";
-		if (platform === "gofood") return "OF";
-		if (platform === "maxim") return "OM";
-		if (platform === "shopeefood") return "OS";
-		return "O";
-	}
-	return "X";
-}
-
 function generateOrderNumber(args: {
 	source?: "pos" | "customer_self_service" | "booking";
 	orderType?: string;
 	platform?: string;
 	createdAt: number;
-	customerName?: string;
 	receiptNo?: number;
 }) {
-	const d = new Date(args.createdAt);
-	const dd = String(d.getDate()).padStart(2, "0");
-	const mm = String(d.getMonth() + 1).padStart(2, "0");
-	const yy = String(d.getFullYear()).slice(-2);
-	const dateCode = `${dd}${mm}${yy}`;
-	const typeCode = getOrderTypeCode(args.orderType, args.platform);
-	const custCode = (args.customerName || "UMUM")
-		.replace(/[^a-zA-Z0-9]/g, "")
-		.toUpperCase()
-		.slice(0, 5) || "UMUM";
-	const noCode = args.receiptNo != null ? String(args.receiptNo).padStart(3, "0") : "000";
-	return `ORD${noCode}-${typeCode}-${custCode}${dateCode}`;
+	return formatOrderNumber({
+		sequence: args.receiptNo,
+		createdAt: args.createdAt,
+		context: { source: args.source, orderType: args.orderType, platform: args.platform },
+	});
 }
 
 function generateBookingCode(timestamp: number) {
@@ -2578,7 +2559,6 @@ export function useHybridCreateOrder() {
 				orderType: args?.orderType,
 				platform: args?.platform,
 				createdAt: orderCreatedAt,
-				customerName: args?.customerName || undefined,
 				receiptNo: dailyReceiptNo ?? undefined,
 			});
 				const orderId = makeSourceId("order");
@@ -2830,7 +2810,7 @@ export function useHybridUpdateOrder() {
 					const { data: order, error: getError } = await supabase
 						.schema("pos")
 						.from("orders")
-						.select("source_id, status, order_number, total_amount, payment_method, created_at, daily_receipt_no")
+						.select("source_id, status, order_number, total_amount, payment_method, created_at, daily_receipt_no, source, source_app, business_unit, brand_slug, order_type, platform")
 						.eq("source_id", id)
 						.maybeSingle();
 					if (getError) throw getError;
@@ -2857,7 +2837,7 @@ export function useHybridUpdateOrder() {
 								tx_type: "income",
 								amount: Number(order.total_amount ?? 0),
 								category: "Penjualan",
-								description: `Penjualan Pesanan #${order.order_number ?? "-"}`,
+								description: `Penjualan Pesanan #${getDisplayOrderNumber(order.order_number, { sequence: (order as any).daily_receipt_no, createdAt: (order as any).created_at, source: (order as any).source, sourceApp: (order as any).source_app, businessUnit: (order as any).business_unit, brandSlug: (order as any).brand_slug, orderType: (order as any).order_type, platform: (order as any).platform })}`,
 								tx_date: txDate,
 								payment_method: args?.paymentMethod ?? order.payment_method ?? null,
 								status: "completed",
@@ -3024,7 +3004,7 @@ export function useHybridUpdateOrderStatus() {
 							tx_type: "income",
 							amount: Number(order.total_amount ?? 0),
 							category: "Penjualan",
-							description: `Penjualan Pesanan #${order.order_number ?? "-"}`,
+							description: `Penjualan Pesanan #${getDisplayOrderNumber(order.order_number, { sequence: (order as any).daily_receipt_no, createdAt: (order as any).created_at, source: (order as any).source, sourceApp: (order as any).source_app, businessUnit: (order as any).business_unit, brandSlug: (order as any).brand_slug, orderType: (order as any).order_type, platform: (order as any).platform })}`,
 							tx_date: transactionDate,
 							payment_method: order.payment_method ?? null,
 							status: "completed",
@@ -3033,7 +3013,12 @@ export function useHybridUpdateOrderStatus() {
 							metadata: {
 								dailyReceiptNo: (order as any).daily_receipt_no ?? undefined,
 								orderNumber: order.order_number ?? undefined,
-								source: "pos",
+								source: (order as any).source,
+								sourceApp: (order as any).source_app,
+								businessUnit: (order as any).business_unit,
+								brandSlug: (order as any).brand_slug,
+								orderType: (order as any).order_type,
+								platform: (order as any).platform,
 							},
 							raw: {
 								kind: "order_settlement_status_update",
@@ -3105,7 +3090,7 @@ export function useHybridUpdateOrderPaymentGateway() {
 				const { data: order, error: getError } = await pos
 					.from("orders")
 					.select(
-						"source_id, status, order_number, total_amount, payment_method, payment_receipt_kind, daily_receipt_no"
+						"source_id, status, order_number, total_amount, payment_method, payment_receipt_kind, created_at, daily_receipt_no, source, source_app, business_unit, brand_slug, order_type, platform"
 					)
 					.eq("source_id", id)
 					.maybeSingle();
@@ -3129,7 +3114,7 @@ export function useHybridUpdateOrderPaymentGateway() {
 							tx_type: "income",
 							amount: Number(order.total_amount ?? 0),
 							category: "Penjualan",
-							description: `Penjualan Pesanan #${order.order_number ?? "-"}`,
+							description: `Penjualan Pesanan #${getDisplayOrderNumber(order.order_number, { sequence: (order as any).daily_receipt_no, createdAt: (order as any).created_at, source: (order as any).source, sourceApp: (order as any).source_app, businessUnit: (order as any).business_unit, brandSlug: (order as any).brand_slug, orderType: (order as any).order_type, platform: (order as any).platform })}`,
 							tx_date: settledAt,
 							payment_method: order.payment_method ?? null,
 							status: "completed",
@@ -3138,7 +3123,12 @@ export function useHybridUpdateOrderPaymentGateway() {
 							metadata: {
 								dailyReceiptNo: (order as any).daily_receipt_no ?? undefined,
 								orderNumber: order.order_number ?? undefined,
-								source: "pos",
+								source: (order as any).source,
+								sourceApp: (order as any).source_app,
+								businessUnit: (order as any).business_unit,
+								brandSlug: (order as any).brand_slug,
+								orderType: (order as any).order_type,
+								platform: (order as any).platform,
 							},
 							raw: {
 								kind: "order_gateway_paid",

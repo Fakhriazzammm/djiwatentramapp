@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { useHybridOrderStatus, useHybridShiftStatus } from "@/hooks/use-hybrid-pos-data";
 import type { OrderStatusRecord } from "@/hooks/use-hybrid-pos-data";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { useHybridWriteOrderStatus, useHybridUpdateOrderStaff } from "@/hooks/use-hybrid-write-actions";
 
 export function formatTimeAgo(isoStr?: string | null): string {
@@ -281,7 +282,7 @@ export function CompletedDetailModal({
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2 text-base">
 						{order.group_type === "barista" ? <Coffee className="h-4 w-4 text-amber-600" /> : <ChefHat className="h-4 w-4 text-orange-600" />}
-						<span className="font-mono">{order.order_no}</span>
+						<span className="font-mono">{getDisplayOrderNumber(order.order_no, { createdAt: order.created_at ? Date.parse(order.created_at) : undefined })}</span>
 						<span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase rounded-full border border-emerald-200 bg-emerald-100 text-emerald-700 px-2 py-0.5"><Flag aria-hidden="true" className="h-3 w-3" /> Selesai</span>
 					</DialogTitle>
 				</DialogHeader>
@@ -485,7 +486,7 @@ canEdit?: boolean;
 		>
 			<div className="flex items-start justify-between mb-2">
 				<div className="flex items-center gap-1.5 min-w-0">
-					<span className="font-mono font-bold text-xs truncate">{order.order_no}</span>
+					<span className="font-mono font-bold text-xs truncate">{getDisplayOrderNumber(order.order_no, { createdAt: order.created_at ? Date.parse(order.created_at) : undefined })}</span>
 					<div className={cn("h-1.5 w-1.5 rounded-full shrink-0", badge.dot)} />
 				</div>
 				<div className="flex items-center gap-1 shrink-0">
@@ -704,7 +705,7 @@ export function AntrianTab({ onClose }: { onClose?: () => void }) {
 				if (itemName) {
 					toast.success(`${itemName} selesai oleh ${by}`);
 				} else {
-					toast.success(`#${orderNo} — ${status === "dibuat" ? "Diproses" : "Selesai"} oleh ${by}`);
+					toast.success(`#${getDisplayOrderNumber(detailOrder?.order_no ?? orderNo, { createdAt: detailOrder?.created_at ? Date.parse(detailOrder.created_at) : undefined })} — ${status === "dibuat" ? "Diproses" : "Selesai"} oleh ${by}`);
 				}
 			} else {
 				toast.error(result.error || "Gagal update status");
@@ -727,7 +728,7 @@ export function AntrianTab({ onClose }: { onClose?: () => void }) {
 			selesai_by: selesaiBy,
 		});
 		if (result.success) {
-			toast.success(`#${detailOrder.order_no} — Staff berhasil diupdate`);
+			toast.success(`#${getDisplayOrderNumber(detailOrder.order_no, { createdAt: detailOrder.created_at ? Date.parse(detailOrder.created_at) : undefined })} — Staff berhasil diupdate`);
 			setDetailOrder(null);
 		} else {
 			toast.error(result.error || "Gagal update staff");
@@ -845,7 +846,7 @@ export function AntrianTab({ onClose }: { onClose?: () => void }) {
 										) : (
 											<ChefHat className="h-3 w-3 shrink-0 text-orange-500/60" />
 										)}
-										<span className="font-mono text-[10px] font-medium truncate">{o.order_no}</span>
+										<span className="font-mono text-[10px] font-medium truncate">{getDisplayOrderNumber(o.order_no, { createdAt: Date.parse(o.created_at) })}</span>
 										<span className="text-[11px] text-muted-foreground/60">• {o.selesai_by || "?"}</span>
 									</div>
 									<div className="flex items-center gap-1.5">
