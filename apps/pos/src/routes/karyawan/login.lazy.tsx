@@ -17,7 +17,7 @@ export const Route = createLazyFileRoute("/karyawan/login")({
 
 function KaryawanLoginPage() {
 	const navigate = useNavigate();
-	const { login, isAuthenticated } = useYumiAuth();
+	const { login, isAuthenticated, user } = useYumiAuth();
 	const [users, setUsers] = useState<YumiPublicUser[]>([]);
 	const [isUsersLoading, setIsUsersLoading] = useState(true);
 	const [usersError, setUsersError] = useState<string | null>(null);
@@ -47,10 +47,12 @@ function KaryawanLoginPage() {
 	}, [loadUsers]);
 
 	useEffect(() => {
-		if (isAuthenticated) {
-			navigate({ to: "/" as any, replace: true });
-		}
-	}, [isAuthenticated, navigate]);
+		if (!isAuthenticated) return;
+		// "/" is no longer a landing page, so a signed-in employee goes to
+		// their own page instead of bouncing through the router root
+		const slug = user?.slug || user?.username || user?._id;
+		navigate({ to: (slug ? `/karyawan/${slug}` : "/menu") as any, replace: true });
+	}, [isAuthenticated, user, navigate]);
 
 	const handleSelectUser = (user: YumiPublicUser) => {
 		setSelectedUser(user);
