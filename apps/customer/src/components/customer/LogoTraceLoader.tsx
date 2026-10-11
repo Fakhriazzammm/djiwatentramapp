@@ -102,15 +102,30 @@ export function LogoTraceLoader({
       className={className}
       style={{ width: size, height: size }}
     >
-      <g opacity="0.18">
+      {FILL_PATHS.map((path) => (
         <path
-          d={TRACE_PATH}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={Math.max(1, strokeWidth / 2)}
-          strokeLinejoin="round"
+          key={path}
+          d={path}
+          fill="currentColor"
+          fillRule="evenodd"
+          fillOpacity={phase === "fadingFill" || phase === "done" ? 1 : 0.55}
+          style={{
+            transition: `fill-opacity ${fillFadeSeconds}s ease-out`,
+          }}
         />
-      </g>
+      ))}
+
+      {phase === "loop" || phase === "closingOutline" ? (
+        <g opacity="0.18">
+          <path
+            d={TRACE_PATH}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={Math.max(1, strokeWidth / 2)}
+            strokeLinejoin="round"
+          />
+        </g>
+      ) : null}
 
       {phase === "loop" ? (
         <path
@@ -127,21 +142,6 @@ export function LogoTraceLoader({
           }}
         />
       ) : null}
-
-      {phase === "fadingFill" || phase === "done"
-        ? FILL_PATHS.map((path) => (
-            <path
-              key={path}
-              d={path}
-              fill="currentColor"
-              fillRule="evenodd"
-              fillOpacity={phase === "done" ? 1 : 0.18}
-              style={{
-                transition: `fill-opacity ${fillFadeSeconds}s ease-out`,
-              }}
-            />
-          ))
-        : null}
     </svg>
   );
 }
