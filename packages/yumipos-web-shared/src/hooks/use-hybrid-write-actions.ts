@@ -2498,29 +2498,13 @@ export function useHybridCreateOrder() {
 				: args?.source === "customer_self_service"
 					? "dine_in"
 					: "online";
-			let dailyReceiptNo: number;
-			try {
-				const { data: rpcData, error: rpcErr } = await supabase.rpc(
-					"next_daily_receipt_no",
-					{ p_order_kind: kind }
-				);
-				const receiptNo = typeof rpcData === "number" || typeof rpcData === "string"
-					? Number(rpcData)
-					: NaN;
-				if (rpcErr || !Number.isFinite(receiptNo) || !Number.isInteger(receiptNo) || receiptNo <= 0) {
-					throw new Error("Nomor struk tidak valid");
-				}
-				dailyReceiptNo = receiptNo;
-			} catch {
-				throw new Error("Gagal mendapatkan nomor struk. Silakan coba lagi.");
-			}
+			let dailyReceiptNo = null;
 
 			const orderNumber = generateOrderNumber({
 				source: args?.source,
 				orderType: args?.orderType,
 				platform: args?.platform,
 				createdAt: orderCreatedAt,
-				receiptNo: dailyReceiptNo,
 				businessUnit: args?.businessUnit,
 				brandSlug: args?.brandSlug,
 				});
