@@ -453,7 +453,7 @@ function BotOrdersView({ orders, track }: { orders: any[]; track: string }) {
 						>
 							<div className="flex items-start justify-between">
 								<div>
-									<h4 className="font-black text-sm text-slate-800">#{order.order_no}</h4>
+									<h4 className="font-black text-sm text-slate-800">#{getDisplayOrderNumber(order.order_no, { createdAt: order.created_at ? Date.parse(order.created_at) : undefined })}</h4>
 									<span className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black ${badge.class}`}>
 										<StatusIcon className="h-3 w-3" aria-hidden="true" />{badge.label}
 									</span>

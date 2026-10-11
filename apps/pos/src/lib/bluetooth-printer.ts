@@ -133,6 +133,11 @@ export interface ReceiptOrderPayload {
 	customerDescription?: string;
 	notes?: string;
 	orderType?: string;
+	source?: string;
+	sourceApp?: string;
+	businessUnit?: string;
+	brandSlug?: string;
+	platform?: string;
 	tableNumber?: string;
 	subtotal?: number;
 	discountAmount?: number;
@@ -705,7 +710,7 @@ export class BluetoothPrinterService {
 		printSeparator("=");
 
 		if (settings.receiptShowOrderNumber !== false) {
-			printKeyValue("ORDER", getDisplayOrderNumber(order.orderNumber, { sequence: order.dailyReceiptNo, createdAt: order.createdAt, orderType: order.orderType }));
+			printKeyValue("ORDER", getDisplayOrderNumber(order.orderNumber, { sequence: order.dailyReceiptNo, createdAt: order.createdAt, source: order.source, sourceApp: order.sourceApp, businessUnit: order.businessUnit, brandSlug: order.brandSlug, platform: order.platform, orderType: order.orderType }));
 		}
 
 		if (order.dailyReceiptNo) {

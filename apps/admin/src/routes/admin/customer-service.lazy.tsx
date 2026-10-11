@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useHybridCustomerServiceRequests } from "@/hooks/use-hybrid-finance-analytics-data";
 import { useHybridUpdateCustomerServiceStatus } from "@/hooks/use-hybrid-write-actions";
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 
 export const Route = createLazyFileRoute("/admin/customer-service")({
 	component: CustomerServiceRequestsPage,
@@ -170,7 +171,7 @@ function CustomerServiceRequestsPage() {
 									</div>
 									<div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
 										<span>Brand: {request.brandSlug}</span>
-										{request.orderNumber ? <span>Order: {request.orderNumber}</span> : null}
+										{request.orderNumber ? <span>Order: {getDisplayOrderNumber(request.orderNumber, { source: request.source, brandSlug: request.brandSlug })}</span> : null}
 									</div>
 									{request.notes ? (
 										<div className="rounded-2xl bg-muted/40 px-3 py-2 text-sm text-foreground">

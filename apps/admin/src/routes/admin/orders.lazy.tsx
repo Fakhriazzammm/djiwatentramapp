@@ -791,7 +791,7 @@ function AdminOrders() {
 									<div className="grid grid-cols-2 gap-2 rounded-2xl border border-border/70 bg-muted/20 p-3">
 										<div><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Sumber transaksi</p><p className="mt-1 text-sm font-semibold">{resolveOrderChannel(selectedOrder).label}</p></div>
 										<div className="text-right"><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pembayaran</p><p className="mt-1 text-sm font-semibold">{formatPaymentLabel({ source: selectedOrder.source, paymentMethod: selectedOrder.paymentMethod, paymentReceiptKind: selectedOrder.paymentReceiptKind, paymentGateway: selectedOrder.paymentGateway })}</p></div>
-										{selectedOrder.orderNumber && <div><p className="text-[10px] text-muted-foreground">Nomor transaksi</p><p className="font-mono text-xs">{selectedOrder.orderNumber}</p></div>}
+										{selectedOrder.orderNumber && <div><p className="text-[10px] text-muted-foreground">Nomor transaksi</p><p className="font-mono text-xs">{getDisplayOrderNumber(selectedOrder.orderNumber, { sequence: selectedOrder.dailyReceiptNo ?? selectedOrder.daily_receipt_no, createdAt: selectedOrder.createdAt, source: selectedOrder.source, sourceApp: selectedOrder.sourceApp, businessUnit: selectedOrder.businessUnit, orderType: selectedOrder.orderType, platform: selectedOrder.platform, brandSlug: selectedOrder.brandSlug ?? selectedOrder.brand_slug })}</p></div>}
 										{(selectedOrder as any).bookingCode && <div className="text-right"><p className="text-[10px] text-muted-foreground">Kode booking</p><p className="font-mono text-xs">{(selectedOrder as any).bookingCode}</p></div>}
 									</div>
 

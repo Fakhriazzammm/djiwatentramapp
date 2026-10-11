@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useHybridOrderStatus, useHybridShiftStatus, useHybridStaffUsers } from "@/hooks/use-hybrid-pos-data";
 import type { OrderStatusRecord } from "@/hooks/use-hybrid-pos-data";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { useHybridWriteOrderStatus, useHybridUpdateOrderStaff } from "@/hooks/use-hybrid-write-actions";
 import {
 	formatTimeAgo,
@@ -74,7 +75,7 @@ function CompactActionCard({
 		>
 			{/* Top row: order no + group icon + time */}
 			<div className="flex items-center justify-between mb-1.5">
-				<span className="font-mono font-bold text-[11px] truncate">{order.order_no}</span>
+				<span className="font-mono font-bold text-[11px] truncate">{getDisplayOrderNumber(order.order_no, { createdAt: order.created_at ? Date.parse(order.created_at) : undefined })}</span>
 				<div className="flex items-center gap-1 shrink-0">
 					<GroupIcon group_type={order.group_type} />
 					<span className="text-[11px] text-muted-foreground font-medium tabular-nums">
@@ -155,7 +156,7 @@ function CompactDoneCard({
 		>
 			{/* Top row: order no + group icon + time */}
 			<div className="flex items-center justify-between mb-1.5">
-				<span className="font-mono font-bold text-[11px] truncate">{order.order_no}</span>
+				<span className="font-mono font-bold text-[11px] truncate">{getDisplayOrderNumber(order.order_no, { createdAt: order.created_at ? Date.parse(order.created_at) : undefined })}</span>
 				<div className="flex items-center gap-1 shrink-0">
 					<GroupIcon group_type={order.group_type} />
 					<span className="text-[11px] text-muted-foreground font-medium tabular-nums">
@@ -333,7 +334,7 @@ export function QueueHorizontalBar() {
 			try {
 				const result = await updateStatus({ order_no: orderNo, group_type: groupType, status, by });
 				if (result.success) {
-					toast.success(`#${orderNo} — ${status === "dibuat" ? "Diproses" : "Selesai"} oleh ${by}`);
+					toast.success(`#${getDisplayOrderNumber(detailOrder?.order_no ?? orderNo, { createdAt: detailOrder?.created_at ? Date.parse(detailOrder.created_at) : undefined })} — ${status === "dibuat" ? "Diproses" : "Selesai"} oleh ${by}`);
 				} else {
 					toast.error(result.error || "Gagal update status");
 				}
@@ -359,7 +360,7 @@ export function QueueHorizontalBar() {
 				selesai_by: selesaiBy,
 			});
 			if (result.success) {
-				toast.success(`#${detailOrder.order_no} — Staff berhasil diupdate`);
+				toast.success(`#${getDisplayOrderNumber(detailOrder.order_no, { createdAt: detailOrder.created_at ? Date.parse(detailOrder.created_at) : undefined })} — Staff berhasil diupdate`);
 				setDetailOrder(null);
 			} else {
 				toast.error(result.error || "Gagal update staff");

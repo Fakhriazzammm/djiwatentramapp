@@ -119,7 +119,11 @@ export function formatOrderNumber(args: {
  */
 export function getDisplayOrderNumber(orderNumber: string | null | undefined, context: OrderNumberContext & { createdAt?: number | null; sequence?: number | null }) {
   const raw = String(orderNumber ?? "").trim();
-  if (!raw || isTechnicalReference(raw)) return "-";
+  if (!raw) return "-";
+  if (context.booking || getOrderChannel(context) === "booking") {
+    if (/^(?:BK|BKO)-[A-Z0-9_-]+$/i.test(raw)) return raw.toUpperCase();
+  }
+  if (isTechnicalReference(raw)) return "-";
   if (/^ORD-[A-Z]+-[A-Z]+-\d{4}-\d{6}$/i.test(raw)) {
     const channel = getOrderChannel(context);
     if (channel === "b2b" && !/^ORD-B2B-/i.test(raw)) {

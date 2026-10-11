@@ -22,6 +22,11 @@ describe("order number channel contract", () => {
     expect(getDisplayOrderNumber("MY-260902-7", {})).toBe("ORD-APP-X-0007-020926");
   });
 
+  it("keeps legacy booking codes visible in booking context", () => {
+    expect(getDisplayOrderNumber("BKO-ABC123", { booking: true })).toBe("BKO-ABC123");
+    expect(getDisplayOrderNumber("BK-ABC123", { source: "booking" })).toBe("BK-ABC123");
+  });
+
   it("keeps channel separate from payment method", () => {
     expect(getOrderChannel({ source: "customer_self_service", orderType: "dine_in" })).toBe("app");
     expect(getOrderChannel({ source: "pos", orderType: "takeaway" })).toBe("pos");

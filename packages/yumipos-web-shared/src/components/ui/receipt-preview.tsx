@@ -59,7 +59,7 @@ export function ReceiptPreview({
 		{ qty: 1, name: "CROISSANT BUTTER", variant: "Hangat" },
 	];
 	const infoRows = [
-		settings.receiptShowOrderNumber ? ["ORDER", "ORD-D-6034"] : null,
+		settings.receiptShowOrderNumber ? ["ORDER", "ORD-POS-D-0035-310826"] : null,
 		[null, "#001 / DINE IN"],
 		settings.receiptShowCashierName ? ["KASIR", "AYU"] : null,
 		settings.receiptShowCashierName ? ["SHIFT", "SORE"] : null,

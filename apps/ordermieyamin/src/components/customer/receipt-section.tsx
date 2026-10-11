@@ -1,6 +1,7 @@
 import { CheckCircle2, QrCode, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Doc } from "@/types/backend-compat";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import type { CartItem, ReceiptState } from "./types";
 import { currency } from "./types";
 import { BarcodeLines } from "./shared-components";
@@ -35,7 +36,13 @@ export interface ReceiptSectionProps {
 }
 
 export function renderReceiptSection(props: ReceiptSectionProps) {
-	const orderReference = props.currentOrder?.orderNumber || props.receipt.fallbackReference;
+	const orderReference = getDisplayOrderNumber(props.currentOrder?.orderNumber, {
+		sequence: props.currentOrder?.dailyReceiptNo ?? (props.currentOrder as any)?.daily_receipt_no,
+		createdAt: props.currentOrder?.createdAt,
+		source: props.currentOrder?.source,
+		businessUnit: "ordermieyamin",
+		orderType: props.currentOrder?.orderType,
+	}) || props.receipt.fallbackReference;
 	const orderStatus = props.currentOrder?.status;
 	const mode = orderStatus === "paid" || orderStatus === "completed" ? "paid" : props.receipt.mode;
 	const cartSnapshotItems = (props.cartSnapshot ?? []).map((item: CartItem) => ({
