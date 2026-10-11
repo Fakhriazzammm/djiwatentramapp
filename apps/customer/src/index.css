@@ -7,6 +7,10 @@
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
+@keyframes logo-trace-loader-loop {
+  to { stroke-dashoffset: -1; }
+}
+
 @keyframes djiwa-notification-bell {
   0%, 72%, 100% { transform: rotate(0deg); }
   76% { transform: rotate(10deg); }

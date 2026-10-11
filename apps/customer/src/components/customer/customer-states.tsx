@@ -3,57 +3,21 @@ import type { ReactNode } from "react";
 import { AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { CustomerSplash } from "@/components/customer/customer-entry";
 
 export function CustomerPageSkeleton({ label = "Memuat halaman" }: { label?: string }) {
-	return (
-		<div className="app-page min-h-app" aria-busy="true" aria-label={label} role="status">
-			<div className="app-shell mx-auto min-h-app max-w-md bg-background px-3 py-4">
-				<span className="sr-only">{label}</span>
-				<div className="app-card space-y-4 p-4">
-					<div className="flex items-center gap-3">
-						<Skeleton className="h-12 w-12 rounded-[14px]" />
-						<div className="flex-1 space-y-2">
-							<Skeleton className="h-3 w-24" />
-							<Skeleton className="h-5 w-2/3" />
-						</div>
-					</div>
-					<Skeleton className="h-28 w-full rounded-[20px]" />
-					<div className="grid grid-cols-2 gap-3">
-						<Skeleton className="h-24 rounded-[20px]" />
-						<Skeleton className="h-24 rounded-[20px]" />
-					</div>
-				</div>
-			</div>
-		</div>
-	);
+	void label;
+	return <CustomerSplash />;
 }
 
 export function CustomerDiscoverySkeleton({ label = "Memuat katalog" }: { label?: string }) {
-	return (
-		<div className="space-y-4" aria-busy="true" aria-label={label} role="status">
-			<span className="sr-only">{label}</span>
-			<Skeleton className="h-40 w-full rounded-3xl" />
-			<section className="app-card-strong space-y-3 px-4 py-4">
-				<div className="space-y-2"><Skeleton className="h-3 w-28" /><Skeleton className="h-5 w-40" /></div>
-				<div className="grid grid-cols-2 gap-3">
-					{[1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-40 rounded-[20px]" />)}
-				</div>
-			</section>
-			<section className="app-card-strong space-y-3 px-4 py-4"><Skeleton className="h-5 w-32" /><Skeleton className="h-16 w-full rounded-2xl" /><Skeleton className="h-16 w-full rounded-2xl" /></section>
-		</div>
-	);
+	void label;
+	return <CustomerSplash />;
 }
 
 export function CustomerSectionSkeleton({ label = "Memuat data" }: { label?: string }) {
-	return (
-		<div className="space-y-3 py-3" aria-busy="true" aria-label={label} role="status">
-			<span className="sr-only">{label}</span>
-			{[1, 2, 3].map((item) => (
-				<Skeleton key={item} className="h-20 w-full rounded-[20px]" />
-			))}
-		</div>
-	);
+	void label;
+	return <CustomerSplash />;
 }
 
 export function CustomerEmptyState({
