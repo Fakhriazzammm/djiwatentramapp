@@ -1,10 +1,8 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
 	ChevronLeft, 
-	Delete, 
-	Fingerprint, 
 	ShieldCheck,
 	Search,
 	ShoppingCart
@@ -12,6 +10,7 @@ import {
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { Footer } from "@/components/layout/Footer";
 import { toast } from "sonner";
+import { OneTimeCode } from "@/components/ui/OneTimeCode";
 import { Input } from "@/components/ui/input";
 import { listPublicYumiUsers, loginWithYumiPin, type YumiPublicUser } from "@/lib/yumi-auth-client";
 
@@ -28,6 +27,9 @@ function KasirLoginPage() {
 	const [selectedUser, setSelectedUser] = useState<YumiPublicUser | null>(null);
 	const [pin, setPin] = useState("");
 	const [isVerifying, setIsVerifying] = useState(false);
+	const submissionPending = useRef(false);
+	// the caller's verdict on the code; OneTimeCode only draws it
+	const [otpStatus, setOtpStatus] = useState<"idle" | "checking" | "ok" | "error">("idle");
 	const [searchQuery, setSearchQuery] = useState("");
 
 	useEffect(() => {
@@ -70,23 +72,17 @@ function KasirLoginPage() {
 		});
 	}, [users, searchQuery]);
 
-	const handlePinInput = (num: string) => {
-		if (pin.length < 6) {
-			setPin(prev => prev + num);
-		}
-	};
-
-	const handleDelete = () => {
-		setPin(prev => prev.slice(0, -1));
-	};
-
 	const handleSubmitPin = async () => {
-		if (pin.length !== 6 || !selectedUser) return;
+		if (!/^[0-9]{6}$/.test(pin) || !selectedUser || submissionPending.current) return;
+		submissionPending.current = true;
 		
 		setIsVerifying(true);
+		setOtpStatus("checking");
 		try {
 			const result = await loginWithYumiPin(selectedUser._id, pin);
-			
+
+			// only a real success may draw the "Verified" capsule
+			setOtpStatus("ok");
 			login(result.token);
 			
 			toast.success(`Selamat datang, ${result.user.name}`);
@@ -95,7 +91,11 @@ function KasirLoginPage() {
 		} catch (err: any) {
 			toast.error(err.message || "PIN salah");
 			setPin("");
+			// let the row shiver and drain, then hand it back empty
+			setOtpStatus("error");
+			window.setTimeout(() => setOtpStatus("idle"), 1300);
 		} finally {
+			submissionPending.current = false;
 			setIsVerifying(false);
 		}
 	};
@@ -202,6 +202,7 @@ function KasirLoginPage() {
 						>
 							<div className="flex flex-col items-center space-y-2 md:space-y-3">
 								<button 
+									disabled={isVerifying}
 									onClick={() => {
 										setSelectedUser(null);
 										setPin("");
@@ -226,50 +227,20 @@ function KasirLoginPage() {
 								</div>
 							</div>
 
-							{/* User PIN Display */}
-							<div className="flex gap-3">
-								{[...Array(6)].map((_, i) => (
-									<div 
-										key={i}
-										className={`h-3 w-3 rounded-full transition-all duration-300 ${
-											pin.length > i 
-												? "scale-125 bg-amber-500 shadow-sm" 
-												: "bg-muted-foreground/20"
-										}`}
-									/>
-								))}
-							</div>
-
-							{/* Keypad */}
-							<div className="grid w-full grid-cols-3 gap-3 md:gap-4 mt-2 px-8 lg:px-0">
-								{["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
-									<button
-										key={num}
-										onClick={() => handlePinInput(num)}
-										className="flex h-12 w-12 md:h-14 md:w-14 items-center justify-center mx-auto rounded-xl md:rounded-2xl border border-border bg-card text-xl md:text-2xl font-black text-foreground shadow-sm transition-all hover:bg-muted hover:shadow-md hover:-translate-y-0.5 active:scale-95 active:shadow-sm"
-									>
-										{num}
-									</button>
-								))}
-								<div />
-								<button
-									onClick={() => handlePinInput("0")}
-									className="flex h-12 w-12 md:h-14 md:w-14 items-center justify-center mx-auto rounded-xl md:rounded-2xl border border-border bg-card text-xl md:text-2xl font-black text-foreground shadow-sm transition-all hover:bg-muted hover:shadow-md hover:-translate-y-0.5 active:scale-95 active:shadow-sm"
-								>
-									0
-								</button>
-								<button
-									onClick={handleDelete}
-									className="flex h-12 w-12 md:h-14 md:w-14 items-center justify-center mx-auto rounded-xl md:rounded-2xl text-muted-foreground/60 transition-all hover:text-foreground active:scale-90"
-								>
-									<Delete className="h-6 w-6 md:h-7 md:w-7" />
-								</button>
-							</div>
+							<OneTimeCode
+								value={pin}
+								onChange={setPin}
+								status={otpStatus}
+								disabled={isVerifying}
+								autoFocus
+								label="Masukkan 6 digit PIN"
+							/>
 
 							{isVerifying && (
 								<motion.div 
 									initial={{ opacity: 0 }}
 									animate={{ opacity: 1 }}
+									role="status"
 									className="flex items-center gap-3 rounded-full bg-card px-6 py-2.5 shadow-sm border border-border"
 								>
 									<div className="h-2 w-2 animate-bounce rounded-full bg-amber-500" />
