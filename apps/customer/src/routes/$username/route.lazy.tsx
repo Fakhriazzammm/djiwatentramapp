@@ -3,14 +3,16 @@ import { useEffect, useState } from "react";
 import { LogIn, ShieldCheck } from "lucide-react";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
+import { useCustomerSplashGate } from "@/hooks/use-customer-splash-gate";
 import { useCustomerOrders } from "@/hooks/use-customer-data";
+import { useCustomerStories } from "@/features/stories/use-customer-stories";
 import { useOrderContext } from "@/hooks/use-order-context";
-import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
+import { useHybridAllProducts, useHybridBestSellers, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { MemberOnboarding, ProfileCompletionOnboarding } from "@/components/customer/member-onboarding";
 import { CustomerBottomNav, CustomerLiveShiftIndicator } from "@/components/customer/customer-shell";
 import { invokeEdgeFunction } from "@/lib/api-helper";
-import { CustomerPageSkeleton } from "@/components/customer/customer-states";
+import { CustomerSplash } from "@/components/customer/customer-entry";
 import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
 import { CustomerHomeHeader, CustomerHomeServiceGrid, CustomerWalletSummary, DjiwaPayOfferCard } from "@/components/customer/customer-home-sections";
 import { CustomerStoryRail } from "@/features/stories/customer-story-rail";
@@ -56,7 +58,10 @@ function MemberHomePage() {
 	const location = useLocation();
 	const { isAuthenticated, isLoading, customer, login, logout, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm, refreshCustomer } = useCustomerAuth();
 	const { setCart } = useOrderContext();
-	const { orders: customerOrders } = useCustomerOrders();
+	const { orders: customerOrders, isLoading: ordersLoading } = useCustomerOrders();
+	const storyBootstrap = useCustomerStories(Boolean(customer));
+	const homeProducts = useHybridAllProducts();
+	const homeBestSellers = useHybridBestSellers();
 	const siteSettings = useHybridSiteSettings();
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 	const [authError, setAuthError] = useState<string | undefined>(undefined);
@@ -95,6 +100,7 @@ function MemberHomePage() {
 	const isChildRoute = matches.some(m => m.routeId.startsWith("/$username/") && m.routeId !== "/$username");
 	const isOrderChild = matches.some(m => m.routeId.startsWith("/$username/order"));
 	const isCommunityChild = matches.some(m => m.routeId.startsWith("/$username/komunitas"));
+	const homeDataReady = !customer || (!ordersLoading && homeProducts !== undefined && homeBestSellers !== undefined && siteSettings !== undefined && storyBootstrap.state !== "loading");
 	const goCustomerPath = (path: string) => {
 		if (typeof window !== "undefined") window.location.assign(path);
 	};
@@ -231,8 +237,20 @@ function MemberHomePage() {
 	// ── Loading ────────────────────────────────────
 	// Guest match → skip loading (resolved=true sejak awal, tanpa network)
 	// Non-guest → nunggu auth baru resolve
-	if (!resolved || (!guestData && isLoading)) {
-		return <CustomerPageSkeleton label="Menyiapkan halaman member" />;
+	const authResolved = resolved && (guestData ? true : !isLoading);
+	const memberDataReady = isChildRoute || !customer || homeDataReady;
+	const splashGate = useCustomerSplashGate({
+		ready: authResolved && memberDataReady,
+		// Resolve mengikuti kesiapan data saja; kalau auth menyusul belakangan,
+		// animasi logo sudah selesai sehingga tidak menahan splash.
+		resolveWhen: memberDataReady,
+		// Degradasi hanya aman setelah identitas pengguna diketahui; kalau auth
+		// sendiri belum resolve, satu-satunya jalan keluar adalah tombol coba lagi.
+		allowDegrade: authResolved,
+	});
+
+	if (splashGate.visible) {
+		return <CustomerSplash storeName={storeName} {...splashGate.splashProps} />;
 	}
 
 	// ── Child route aktif ──────────────────────────

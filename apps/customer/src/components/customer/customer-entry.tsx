@@ -10,15 +10,35 @@ type CustomerSplashProps = {
   loading?: boolean;
   isComplete?: boolean;
   onDone?: () => void;
+  /** Progressive status line shown under the brand; falls back to the default tagline. */
+  statusMessage?: string;
+  offline?: boolean;
+  stalled?: boolean;
+  onRetry?: () => void;
+  secondaryLabel?: string;
+  onSecondary?: () => void;
 };
 
-export function CustomerSplash({ storeName = "Djiwa Tentram", loading = true, isComplete = false, onDone }: CustomerSplashProps) {
+export function CustomerSplash({
+  storeName = "Djiwa Tentram",
+  loading = true,
+  isComplete = false,
+  onDone,
+  statusMessage,
+  offline = false,
+  stalled = false,
+  onRetry,
+  secondaryLabel,
+  onSecondary,
+}: CustomerSplashProps) {
   const reduceMotion = useReducedMotion();
+  const statusText = statusMessage ?? "Menyiapkan pengalaman pesan yang lebih mudah";
 
   return (
     <div className="app-page flex min-h-app items-center justify-center px-4 py-8">
       <motion.section
         aria-label="Membuka Djiwa Tentram"
+        aria-busy={loading}
         className="app-shell flex min-h-[min(720px,calc(100dvh-4rem))] w-full max-w-md flex-col items-center justify-center bg-background px-8 text-center"
         initial={reduceMotion ? { opacity: 1 } : { opacity: 0, scale: 0.96 }}
         animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
@@ -27,7 +47,21 @@ export function CustomerSplash({ storeName = "Djiwa Tentram", loading = true, is
       >
         <LogoTraceLoader loading={loading} isComplete={isComplete} size={96} ariaLabel={`Membuka ${storeName}`} className="h-24 w-24 text-primary" onDone={onDone} />
         <p className="mt-5 text-[11px] font-black uppercase tracking-[0.24em] text-primary">Djiwa Tentram</p>
-        <p className="mt-2 text-xs text-muted-foreground">Menyiapkan pengalaman pesan yang lebih mudah</p>
+        <p aria-live="polite" className={`mt-2 text-[13px] leading-relaxed ${offline ? "text-foreground" : "text-foreground/80"}`}>
+          {statusText}
+        </p>
+        {stalled ? (
+          <div className="mt-5 w-full max-w-[260px] space-y-2">
+            <button type="button" onClick={onRetry} className="min-h-11 w-full rounded-[14px] bg-primary px-5 py-3 text-sm font-black text-primary-foreground shadow-sm">
+              Coba lagi
+            </button>
+            {secondaryLabel ? (
+              <button type="button" onClick={onSecondary} className="min-h-11 w-full rounded-[14px] border border-border bg-background px-5 py-3 text-sm font-bold text-muted-foreground">
+                {secondaryLabel}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </motion.section>
     </div>
   );

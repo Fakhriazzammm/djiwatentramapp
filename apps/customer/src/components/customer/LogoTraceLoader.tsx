@@ -41,6 +41,10 @@ export function LogoTraceLoader({
 }: LogoTraceLoaderProps) {
   const [phase, setPhase] = useState<LoaderPhase>("loop");
   const doneCalledRef = useRef(false);
+  // phase dibaca lewat ref supaya efek ini tidak restart saat phase berubah —
+  // restart akan membatalkan timer resolve sehingga logo tidak pernah selesai terisi.
+  const phaseRef = useRef<LoaderPhase>("loop");
+  phaseRef.current = phase;
 
   useEffect(() => {
     if (loading && !isComplete) {
@@ -49,7 +53,7 @@ export function LogoTraceLoader({
       return;
     }
 
-    if (phase !== "loop") return;
+    if (phaseRef.current !== "loop") return;
 
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
@@ -89,7 +93,6 @@ export function LogoTraceLoader({
     loading,
     loopDurationSeconds,
     onDone,
-    phase,
   ]);
 
   return (
@@ -116,7 +119,7 @@ export function LogoTraceLoader({
       ))}
 
       {phase === "loop" || phase === "closingOutline" ? (
-        <g opacity="0.18">
+        <g opacity="0.28">
           <path
             d={TRACE_PATH}
             fill="none"

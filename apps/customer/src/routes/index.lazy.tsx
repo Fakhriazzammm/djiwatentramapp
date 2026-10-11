@@ -1,5 +1,6 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { useCustomerSplashGate } from "@/hooks/use-customer-splash-gate";
 import { CalendarDays, Clock, MapPin, Phone, ShoppingCart, UtensilsCrossed } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useHybridAllProducts, useHybridBestSellers, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
@@ -31,7 +32,15 @@ function BrandCustomerIndex() {
 
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 	const [authError, setAuthError] = useState<string | undefined>(undefined);
-	const [entryPhase, setEntryPhase] = useState<"splash" | "onboarding" | "home">("splash");
+	// Brand moment splash hanya sekali per sesi; kunjungan ulang langsung masuk agar
+	// navigasi tidak tertahan animasi pembuka.
+	const [entryPhase, setEntryPhase] = useState<"splash" | "onboarding" | "home">(() => {
+		try {
+			return sessionStorage.getItem("customer:splash-brand-seen") ? "onboarding" : "splash";
+		} catch {
+			return "splash";
+		}
+	});
 
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
 
@@ -40,6 +49,15 @@ function BrandCustomerIndex() {
 	const bestSellers = useHybridBestSellers();
 	const siteSettings = useHybridSiteSettings();
 	const logoUrl = siteSettings?.logoUrl || import.meta.env.VITE_BRAND_LOGO_URL || CUSTOMER_LOGO_FALLBACK;
+	const landingDataReady = !isLoading && products !== undefined && bestSellers !== undefined && siteSettings !== undefined;
+	// Data menu biasanya siap jauh sebelum sesi auth selesai; animasi resolve
+	// dijalankan sejak data siap supaya tidak menambah waktu tunggu splash.
+	const posDataReady = products !== undefined && bestSellers !== undefined && siteSettings !== undefined;
+	const splashGate = useCustomerSplashGate({
+		ready: landingDataReady,
+		resolveWhen: posDataReady,
+		minVisibleMs: entryPhase === "splash" ? 1800 : 400,
+	});
 
 	const productMap = new Map<string, Record<string, any>>();
 	for (const p of products ?? []) productMap.set(String((p as Record<string, any>)._id), p as Record<string, any>);
@@ -70,6 +88,11 @@ function BrandCustomerIndex() {
 
 	useEffect(() => {
 		if (entryPhase !== "splash") return;
+		try {
+			sessionStorage.setItem("customer:splash-brand-seen", "1");
+		} catch {
+			// Storage bisa dibatasi; brand moment tetap berjalan tanpa penanda sesi.
+		}
 		const timeoutId = window.setTimeout(() => setEntryPhase("onboarding"), 1800);
 		return () => window.clearTimeout(timeoutId);
 	}, [entryPhase]);
@@ -99,13 +122,14 @@ function BrandCustomerIndex() {
 
 	// ponytail: sudah login → langsung ke /{username}, bukan /order
 	useEffect(() => {
+		if (!landingDataReady) return;
 		if (isAuthenticated && customer) {
 			navigate({ to: `/${customer.username}` });
 		}
-	}, [isAuthenticated, customer, navigate]);
+	}, [landingDataReady, isAuthenticated, customer, navigate]);
 
-	if (entryPhase === "splash") {
-		return <CustomerSplash logoUrl={logoUrl} storeName={storeName} />;
+	if (splashGate.visible) {
+		return <CustomerSplash storeName={storeName} {...splashGate.splashProps} />;
 	}
 
 	if (entryPhase === "onboarding") {
