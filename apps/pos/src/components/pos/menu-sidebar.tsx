@@ -2527,8 +2527,14 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	}, [staffUsers]);
 
 	// ── Helper: Kirim notifikasi Telegram ──
-	const sendTelegramNotif = useCallback(async (title: string, details: Record<string, string>, timeExtras?: { startTime?: number; endTime?: number }) => {
+	const sendTelegramNotif = useCallback(async (title: string, details: Record<string, string>, timeExtras?: { startTime?: number; endTime?: number }, evidencePhoto?: File, shiftId?: string) => {
 		const supabase = createClient();
+		const photoBase64 = evidencePhoto ? evidencePhoto.arrayBuffer().then((buffer) => {
+			const data = new Uint8Array(buffer);
+			let binary = "";
+			for (let index = 0; index < data.length; index += 0x8000) binary += String.fromCharCode(...data.subarray(index, index + 0x8000));
+			return btoa(binary);
+		}) : Promise.resolve<string | undefined>(undefined);
 		const fmtTime3 = (ms?: number) => {
 			if (!ms) return "";
 			const d = new Date(ms);
@@ -2550,9 +2556,10 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			timeLine,
 		];
 		try {
+			const encodedPhoto = await photoBase64;
 			const targetChatIds = [-1003991897388, -1003927364523];
 			const results = await Promise.allSettled(targetChatIds.map((chat_id) => supabase.functions.invoke("send-telegram-report", {
-				body: { text: lines.join("\n"), chat_id, sender: chat_id === -1003927364523 ? "supervisor" : "report" }
+				body: { text: lines.join("\n"), chat_id, sender: chat_id === -1003927364523 ? "supervisor" : "report", photo_base64: encodedPhoto, photo_filename: evidencePhoto?.name || "shift-closing-evidence.jpg", photo_mime: evidencePhoto?.type || "image/jpeg", shift_id: shiftId }
 			})));
 			const delivered = results.every((result) => result.status === "fulfilled" && !result.value.error);
 			results.forEach((result, index) => {
@@ -2651,6 +2658,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			
 			const shiftInfo = result?.shift;
 			const summary = result?.summary;
+			setSubmitNotice("Shift tersimpan. Mengirim foto bukti dan laporan Telegram…");
 			if (siteSettings?.shiftSettings?.autoSendShiftReportEmail) {
 				try {
 					await sendShiftReportEmail({
@@ -2731,7 +2739,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				const diffTunai = cashInRegisterVal - s.cashRevenue;
 				const fmtSelisih = (v: number) => v === 0 ? "✅ Rp 0" : v > 0 ? `⬆️ Rp ${v.toLocaleString("id-ID")}` : `⬇️ Rp ${Math.abs(v).toLocaleString("id-ID")}`;
 				
-				sendTelegramNotif("📊 LAPORAN SHIFT", {
+				const reportDelivered = await sendTelegramNotif("📊 LAPORAN SHIFT", {
 					"🏪": "Djiwa Tentram",
 					"🔄 Shift": si.shiftName || shiftName || "-",
 					"👥 Tim": `\n${teamIndented}`,
@@ -2752,8 +2760,9 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					"💵 Uang (Fisik)": `Rp ${cashInRegisterVal.toLocaleString("id-ID")}`,
 					"📊 Selisih:": fmtSelisih(diffTunai),
 					"📝 Catatan:": notes || "-",
-				}, { startTime: si.startTime || undefined, endTime: Date.now() });
+				}, { startTime: si.startTime || undefined, endTime: Date.now() }, closingPhoto, String(shiftStatus.shiftInfo.shiftId));
 				console.log("[shift-notif] End shift notification sent successfully");
+				setSubmitNotice(reportDelivered ? "Shift tersimpan, foto dan laporan Telegram terkirim." : "Shift tersimpan, tetapi foto/laporan Telegram gagal terkirim. Coba kirim ulang dari laporan shift.");
 				
 				// Generate HTML laporan & upload ke Supabase Storage (best-effort)
 				import("@/lib/shift-report-pdf").then(async ({ buildReportHTML, loadLogoBase64 }) => {
@@ -2812,6 +2821,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			setPaymentActual({ ...EMPTY_SHIFT_PAYMENT_ACTUAL });
 			setNotes("");
 			setEndShiftExpenses([]);
+			setClosingPhoto(null);
 			setCashierName("");
 			setTeamMembers([]);
 			onClose();

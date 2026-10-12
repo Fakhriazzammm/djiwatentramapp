@@ -28,7 +28,7 @@ serve(async (req) => {
     }
 
     const body = await req.json()
-    const { text, chat_id, sender = 'report' } = body
+    const { text, chat_id, sender = 'report', photo_base64, photo_filename = 'shift-closing-evidence.jpg', photo_mime = 'image/jpeg', shift_id } = body
 
     if (!text || typeof text !== 'string') {
       return new Response(JSON.stringify({ success: false, error: { code: "VALIDATION_ERROR", message: "text is required" } }), {
@@ -49,14 +49,23 @@ serve(async (req) => {
     console.log('[Edge Function] Text length:', text.length)
     console.log('[Edge Function] Chat ID:', chat_id || 'default')
 
+    const requestBody = supervisorToken && photo_base64
+      ? (() => {
+          const form = new FormData()
+          const binary = Uint8Array.from(atob(String(photo_base64)), (char) => char.charCodeAt(0))
+          form.append('chat_id', String(chat_id ?? ''))
+          form.append('caption', text)
+          form.append('photo', new Blob([binary], { type: photo_mime }), photo_filename)
+          return { body: form }
+        })()
+      : {
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, chat_id, photo_base64, photo_filename, photo_mime, shift_id }),
+        }
+
     const botResponse = await fetch(botUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: supervisorToken
-        ? JSON.stringify({ chat_id, text })
-        : JSON.stringify({ text, chat_id }),
+      ...requestBody,
     })
 
     const data = await botResponse.json()
