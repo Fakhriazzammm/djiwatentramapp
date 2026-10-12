@@ -46,7 +46,13 @@ def _display_order_no(row: dict) -> str:
     business = str(row.get("businessUnit") or row.get("business_unit") or "").strip().lower()
     brand = str(row.get("brandSlug") or row.get("brand_slug") or "").strip().lower()
     is_b2b = business == "b2b" or brand == "b2b"
-    if re.match(r"^ORD-[A-Z]+-[A-Z]+-\d{4}-\d{6}$", raw, re.I) and not (is_b2b and not raw.upper().startswith("ORD-B2B-")):
+    # `ORD-...-0000-...` adalah placeholder saat nomor struk belum ada. Jangan
+    # dikembalikan apa adanya: susun kode kanonik dari daily_receipt_no supaya
+    # order yang sudah punya struk tidak terus tampil sebagai 0000.
+    is_placeholder = bool(re.match(r"^ORD-[A-Z]+-[A-Z]+-0{4}-\d{6}$", raw, re.I))
+    if (not is_placeholder
+            and re.match(r"^ORD-[A-Z]+-[A-Z]+-\d{4}-\d{6}$", raw, re.I)
+            and not (is_b2b and not raw.upper().startswith("ORD-B2B-"))):
         return raw.upper()
     match = re.match(r"^ORD(?:-[A-Z]+-[A-Z]+-)?(\d{1,6})-", raw, re.I)
     sequence = row.get("daily_receipt_no") or (match.group(1) if match else None)
