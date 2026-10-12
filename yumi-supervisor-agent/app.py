@@ -2698,6 +2698,7 @@ async def _check_closed_shifts(bot: Bot):
     try:
         url = f"{SUPABASE_URL}/rest/v1/shifts"
         q = (f"select=source_id,shift_name,cashier_name,team_members,start_time,end_time,cash_breakdown"
+             f",starting_cash,ending_cash_expected,ending_cash_physical,payment_breakdown_actual,raw"
              f"&end_time=gt.{cursor}"
              f"&end_time=lte.{now_ms}"
              f"&order=end_time.asc")
@@ -2795,6 +2796,24 @@ async def _check_closed_shifts(bot: Bot):
             int(str(key).replace("bill", "")) * int(value or 0)
             for key, value in cash_breakdown.items()
         )
+        # Reconciliation persisted at close. Surfaced explicitly so the
+        # transaction group can audit the drawer without opening the POS.
+        starting_cash = float(shift.get("starting_cash") or 0)
+        expected_raw = shift.get("ending_cash_expected")
+        physical_raw = shift.get("ending_cash_physical")
+        expected_cash = float(expected_raw) if expected_raw is not None else None
+        physical_cash = float(physical_raw) if physical_raw is not None else None
+        cash_variance = (
+            physical_cash - expected_cash
+            if physical_cash is not None and expected_cash is not None
+            else None
+        )
+        payment_actual = shift.get("payment_breakdown_actual") or {}
+        djiwa_app_cashier = float(payment_actual.get("djiwaapp_bayar_kasir") or 0)
+        evidence_url = ""
+        shift_raw = shift.get("raw")
+        if isinstance(shift_raw, dict):
+            evidence_url = str(shift_raw.get("closingEvidenceUrl") or "")
         # Payment summary is read from settled POS orders for the same shift
         # window. Keep this separate from order-status rows: one order can have
         # both Kitchen and Barista status records.
@@ -2857,6 +2876,24 @@ async def _check_closed_shifts(bot: Bot):
             ])
         else:
             transaction_lines.extend(["", "💵 <b>Rincian Tunai</b>", "Tidak ada pecahan tunai."])
+        if expected_cash is not None or physical_cash is not None:
+            transaction_lines.extend([
+                "",
+                "🧮 <b>Rekonsiliasi Kas</b>",
+                f"   Modal awal: Rp{starting_cash:,.0f}",
+                f"   DjiwaApp Bayar Kasir: Rp{djiwa_app_cashier:,.0f}",
+                f"   Uang seharusnya: Rp{(expected_cash or 0):,.0f}",
+                f"   Uang fisik: Rp{(physical_cash or 0):,.0f}",
+            ])
+            if cash_variance is None:
+                transaction_lines.append("   Selisih: —")
+            elif abs(cash_variance) < 0.5:
+                transaction_lines.append("   Selisih: ✅ Pas (Rp0)")
+            else:
+                arah = "⬆️ Lebih" if cash_variance > 0 else "⬇️ Kurang"
+                transaction_lines.append(f"   Selisih: {arah} Rp{abs(cash_variance):,.0f}")
+        if evidence_url:
+            transaction_lines.extend(["", "📸 Foto bukti tutup kasir terlampir"])
         try:
             await bot.send_message(
                 chat_id=TRANSACTION_GROUP_ID,
@@ -2866,6 +2903,19 @@ async def _check_closed_shifts(bot: Bot):
             logger.info("shift_recap: sent cashier recap to transaction for shift %s", s_id)
         except Exception as e:
             logger.warning("shift_recap send transaction for %s: %s", s_id, e)
+
+        # Evidence photo is uploaded server-side at close and referenced by the
+        # shift row, so the recap can attach the same audited image.
+        if evidence_url:
+            try:
+                await bot.send_photo(
+                    chat_id=TRANSACTION_GROUP_ID,
+                    photo=evidence_url,
+                    caption=f"📸 Foto bukti tutup kasir — {s_name}",
+                )
+                logger.info("shift_recap: evidence photo sent for shift %s", s_id)
+            except Exception as e:
+                logger.warning("shift_recap evidence photo %s: %s", s_id, e)
 
         if s_end > last_ts:
             last_ts = s_end

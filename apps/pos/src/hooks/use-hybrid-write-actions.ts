@@ -4751,7 +4751,7 @@ export function useHybridEndShift() {
 					const { data: shiftOrders } = await supabase
 						.schema("pos")
 						.from("orders")
-						.select("total_amount, discount_amount, order_type, payment_method, payment_receipt_kind, source, raw")
+						.select("status, total_amount, discount_amount, order_type, payment_method, payment_receipt_kind, source, raw")
 						.gte("creation_time", Number(shift.startTime))
 						.lt("creation_time", endTime)
 						.in("status", ["completed", "paid"])

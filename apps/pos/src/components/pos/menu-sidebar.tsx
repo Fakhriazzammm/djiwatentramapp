@@ -2561,14 +2561,16 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			const results = await Promise.allSettled(targetChatIds.map((chat_id) => supabase.functions.invoke("send-telegram-report", {
 				body: { text: lines.join("\n"), chat_id, sender: chat_id === -1003927364523 ? "supervisor" : "report", photo_base64: encodedPhoto, photo_filename: evidencePhoto?.name || "shift-closing-evidence.jpg", photo_mime: evidencePhoto?.type || "image/jpeg", shift_id: shiftId }
 			})));
-			const delivered = results.every((result) => result.status === "fulfilled" && !result.value.error);
+			const delivered = results.every((result) => result.status === "fulfilled" && !result.value.error && result.value.data?.success !== false);
+			const photoExpected = Boolean(evidencePhoto);
+			const photosDelivered = !photoExpected || results.every((result) => result.status === "fulfilled" && !result.value.error && result.value.data?.photo_sent === true);
 			results.forEach((result, index) => {
 				if (result.status === "rejected" || result.value.error) console.error(`[shift-notif] Gagal kirim ke chat ${targetChatIds[index]}:`, result.status === "rejected" ? result.reason : result.value.error);
 			});
-			return delivered;
+			return { delivered, photosDelivered };
 		} catch (e) {
 			console.error("[shift-notif] Gagal kirim notifikasi:", e);
-			return false;
+			return { delivered: false, photosDelivered: !evidencePhoto };
 		}
 	}, []);
 
@@ -2739,7 +2741,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				const diffTunai = cashInRegisterVal - s.cashRevenue;
 				const fmtSelisih = (v: number) => v === 0 ? "✅ Rp 0" : v > 0 ? `⬆️ Rp ${v.toLocaleString("id-ID")}` : `⬇️ Rp ${Math.abs(v).toLocaleString("id-ID")}`;
 				
-				const reportDelivered = await sendTelegramNotif("📊 LAPORAN SHIFT", {
+				const reportDelivery = await sendTelegramNotif("📊 LAPORAN SHIFT", {
 					"🏪": "Djiwa Tentram",
 					"🔄 Shift": si.shiftName || shiftName || "-",
 					"👥 Tim": `\n${teamIndented}`,
@@ -2762,7 +2764,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					"📝 Catatan:": notes || "-",
 				}, { startTime: si.startTime || undefined, endTime: Date.now() }, closingPhoto, String(shiftStatus.shiftInfo.shiftId));
 				console.log("[shift-notif] End shift notification sent successfully");
-				setSubmitNotice(reportDelivered ? "Shift tersimpan, foto dan laporan Telegram terkirim." : "Shift tersimpan, tetapi foto/laporan Telegram gagal terkirim. Coba kirim ulang dari laporan shift.");
+				setSubmitNotice(!reportDelivery.delivered ? "Shift & kas tersimpan, tetapi laporan Telegram gagal dikirim. Coba kirim ulang dari menu laporan shift." : !reportDelivery.photosDelivered ? "Shift & kas tersimpan, laporan terkirim, tetapi foto bukti gagal dikirim." : "Shift & kas tersimpan. Laporan dan foto bukti terkirim ke Telegram.");
 				
 				// Generate HTML laporan & upload ke Supabase Storage (best-effort)
 				import("@/lib/shift-report-pdf").then(async ({ buildReportHTML, loadLogoBase64 }) => {
@@ -2880,7 +2882,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			setShowStartChecklist(false);
 			toast.success("Shift berhasil dimulai");
 			const teamFormatted = formatTeamByRole(teamMembers, staffUsers);
-			const notificationDelivered = await sendTelegramNotif("✅ SHIFT DIBUKA", {
+			const notificationResult = await sendTelegramNotif("✅ SHIFT DIBUKA", {
 				"🏪": "Djiwa Tentram",
 				"🔄 Shift": shiftName.trim(),
 				"👤 Kasir": cashierName.trim(),
@@ -2888,7 +2890,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 				"💰 Modal Kasir": `Rp ${startingCash.toLocaleString("id-ID")}`,
 				"📱 Online Food": `\n${checklistLines}`,
 			});
-			if (!notificationDelivered) {
+			if (!notificationResult.delivered) {
 				toast.warning("Shift sudah dibuka, tetapi notifikasi belum terkirim ke semua grup.");
 			} else {
 				toast.success("Notifikasi pembukaan shift terkirim");
