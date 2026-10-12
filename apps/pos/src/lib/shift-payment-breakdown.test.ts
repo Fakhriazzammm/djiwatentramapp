@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateBreakdownTotal,
+  calculateExpectedPhysicalCash,
   calculateShiftPaymentBreakdown,
   classifyShiftPaymentChannel,
 } from "./shift-payment-breakdown";
@@ -26,5 +27,14 @@ describe("shift payment breakdown", () => {
 
   it("computes cash denominations including zero", () => {
     expect(calculateBreakdownTotal({ bill100000: 1, bill5000: 1, bill100: 2 })).toBe(105200);
+  });
+
+  it("computes expected drawer cash including DjiwaApp cashier payments", () => {
+    expect(calculateExpectedPhysicalCash({
+      startingCash: 100000,
+      posCash: 250000,
+      djiwaAppBayarKasir: 50000,
+      cashExpenses: 25000,
+    })).toBe(375000);
   });
 });

@@ -128,6 +128,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   calculateBreakdownTotal as calculateCashBreakdownTotal,
+  calculateExpectedPhysicalCash,
   calculateShiftPaymentBreakdown,
   EMPTY_SHIFT_PAYMENT_ACTUAL,
   EMPTY_SHIFT_PAYMENT_BREAKDOWN,
@@ -2265,6 +2266,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [breakdown, setBreakdown] = useState<Record<string, number>>({
 		bill100000: 0, bill50000: 0, bill20000: 0, bill10000: 0, bill5000: 0, bill2000: 0, bill1000: 0, bill500: 0, bill200: 0, bill100: 0
 	});
+	const [closingPhoto, setClosingPhoto] = useState<File | null>(null);
 
 	const [shiftRefreshTrigger, setShiftRefreshTrigger] = useState(0);
 	const shiftStatus = useHybridShiftStatus(shiftRefreshTrigger);
@@ -2419,6 +2421,18 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const expectedPaymentBreakdown = useMemo(() => calculateShiftPaymentBreakdown(
 		(todayOrders ?? []).filter((order: any) => Number(order.createdAt ?? order._creationTime ?? 0) >= Number(shiftStatus?.latestMulai ?? 0))
 	), [todayOrders, shiftStatus?.latestMulai]);
+	const closingExpectedPaymentBreakdown = useMemo(() => ({
+		...expectedPaymentBreakdown,
+		tunai_kasir: calculateExpectedPhysicalCash({
+			startingCash: Number(shiftStatus?.ongoingShift?.startingCash ?? 0),
+			posCash: expectedPaymentBreakdown.tunai_kasir,
+			djiwaAppBayarKasir: expectedPaymentBreakdown.djiwaapp_bayar_kasir,
+			cashExpenses: shiftExpense + endShiftExpenses.reduce((sum, expense) => sum + Math.max(0, Number(expense.amount) || 0), 0),
+		}),
+	}), [endShiftExpenses, expectedPaymentBreakdown, shiftExpense, shiftStatus?.ongoingShift?.startingCash]);
+	useEffect(() => {
+		setPaymentActual((previous) => Object.fromEntries(Object.entries(expectedPaymentBreakdown).map(([key, value]) => [key, key === "tunai_kasir" ? previous[key] : value])) as Partial<Record<keyof ShiftPaymentBreakdown, number | null>>);
+	}, [expectedPaymentBreakdown]);
 	const handlePaymentActualChange = (key: keyof ShiftPaymentBreakdown, value: string) => {
 		setPaymentActual((previous) => ({ ...previous, [key]: value === "" ? null : Math.max(0, Number(value) || 0) }));
 	};
@@ -2441,7 +2455,12 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	}, [shiftQris]);
 
 	const handleAutofill = () => {
-		const expectedTotal = (shiftStatus?.ongoingShift?.startingCash || 0) + shiftCash - shiftExpense;
+		const expectedTotal = calculateExpectedPhysicalCash({
+			startingCash: Number(shiftStatus?.ongoingShift?.startingCash || 0),
+			posCash: expectedPaymentBreakdown.tunai_kasir,
+			djiwaAppBayarKasir: expectedPaymentBreakdown.djiwaapp_bayar_kasir,
+			cashExpenses: shiftExpense,
+		});
 		if (expectedTotal <= 0) return;
 
 		const denominations = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100];
@@ -2570,9 +2589,15 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			setShowEndConfirm(false);
 			return;
 		}
-		const paymentChannelsComplete = Object.keys(expectedPaymentBreakdown).every((key) => paymentActual[key as keyof ShiftPaymentBreakdown] !== null && paymentActual[key as keyof ShiftPaymentBreakdown] !== undefined);
+		if (!closingPhoto) {
+			const message = "Foto bukti penutupan wajib diambil langsung dari kamera sebelum tutup kasir.";
+			setSubmitNotice(message);
+			toast.info(message);
+			return;
+		}
+		const paymentChannelsComplete = Object.keys(closingExpectedPaymentBreakdown).every((key) => paymentActual[key as keyof ShiftPaymentBreakdown] !== null && paymentActual[key as keyof ShiftPaymentBreakdown] !== undefined);
 		if (!paymentChannelsComplete) {
-			const missingChannels = Object.keys(expectedPaymentBreakdown).filter((key) => paymentActual[key as keyof ShiftPaymentBreakdown] === null || paymentActual[key as keyof ShiftPaymentBreakdown] === undefined);
+			const missingChannels = Object.keys(closingExpectedPaymentBreakdown).filter((key) => paymentActual[key as keyof ShiftPaymentBreakdown] === null || paymentActual[key as keyof ShiftPaymentBreakdown] === undefined);
 			const message = `Lengkapi nominal aktual: ${missingChannels.join(", ")}.`;
 			setSubmitNotice(message);
 			toast.info(message);
@@ -3129,12 +3154,14 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 							</CardContent>
 						</Card>
 						<ShiftPaymentReconciliation
-							expected={expectedPaymentBreakdown}
+							expected={closingExpectedPaymentBreakdown}
 							actual={paymentActual}
 							onActualChange={handlePaymentActualChange}
 							cashBreakdown={breakdown}
 							onCashChange={handleCashBreakdownChange}
 							onAutoFillCash={handleAutofill}
+							onPhotoChange={setClosingPhoto}
+							photo={closingPhoto}
 						/>
 
 						{/* Detail Pengeluaran */}
@@ -3271,7 +3298,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 				{shiftType === "akhiri" && <div className="sticky bottom-0 z-20 -mx-1 bg-background/95 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
 					<Button
 						className={`w-full h-11 font-black uppercase tracking-widest text-[11px] shadow-lg transition-all active:scale-95 ${shiftType === 'mulai' ? 'bg-primary hover:bg-primary/90' : shiftTimeGate.blocked ? 'bg-amber-500 hover:bg-amber-500 cursor-not-allowed' : 'bg-destructive hover:bg-destructive/90'}`}
-						disabled={shiftType === "akhiri" ? isSubmitting || closingAttendanceLoading || Boolean(closingAttendanceError) || shiftTimeGate.blocked || Object.keys(expectedPaymentBreakdown).some((key) => paymentActual[key as keyof ShiftPaymentBreakdown] === null || paymentActual[key as keyof ShiftPaymentBreakdown] === undefined) : isSubmitting}
+						disabled={shiftType === "akhiri" ? isSubmitting || closingAttendanceLoading || Boolean(closingAttendanceError) || shiftTimeGate.blocked || Object.keys(closingExpectedPaymentBreakdown).some((key) => paymentActual[key as keyof ShiftPaymentBreakdown] === null || paymentActual[key as keyof ShiftPaymentBreakdown] === undefined) : isSubmitting}
 						type="button"
 						onClick={() => setShowEndConfirm(true)}
 					>

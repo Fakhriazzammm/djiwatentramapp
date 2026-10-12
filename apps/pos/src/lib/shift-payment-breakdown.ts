@@ -99,6 +99,21 @@ export function calculateBreakdownTotal(breakdown: Record<string, number>): numb
   );
 }
 
+/** Cash physically expected in the drawer at close. */
+export function calculateExpectedPhysicalCash({
+  startingCash,
+  posCash,
+  djiwaAppBayarKasir,
+  cashExpenses,
+}: {
+  startingCash: number;
+  posCash: number;
+  djiwaAppBayarKasir: number;
+  cashExpenses: number;
+}): number {
+  return Math.max(0, Number(startingCash || 0) + Number(posCash || 0) + Number(djiwaAppBayarKasir || 0) - Number(cashExpenses || 0));
+}
+
 export function formatShiftPaymentChannelLabel(key: string): string {
   return SHIFT_PAYMENT_CHANNELS.find((channel) => channel.key === key)?.label ?? key;
 }
