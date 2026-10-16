@@ -1,7 +1,7 @@
 {
-  "version": "0.2.302",
-  "commitHash": "e543286",
-  "message": "style(pos): tidy notification field layout",
-  "buildDate": "2026-10-02",
-  "generatedAt": "2026-10-02T09:41:40.514Z"
+  "version": "0.2.532",
+  "commitHash": "9ab91ca",
+  "message": "fix(admin): proxy protected order finance booking reads",
+  "buildDate": "2026-10-16",
+  "generatedAt": "2026-10-16T13:49:13.710Z"
 }
