@@ -78,3 +78,6 @@ verify_jwt = false
 [functions.biteship-rates]
 enabled = true
 verify_jwt = false
+
+[functions.admin-protected-read]
+verify_jwt = false

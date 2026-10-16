@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import { createClient } from "@/lib/client";
+import { adminProtectedRead } from "@/lib/admin-protected-read";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 
 type InventoryStoreType = "store" | "supplier" | "market" | "other";
@@ -577,13 +578,7 @@ async function fetchInventoryTransactionsByInventoryId(inventoryId: string) {
 
 async function fetchExpenseTransactions() {
 	const supabase = createClient();
-	const { data, error } = await supabase
-		.from("pos_financial_transactions")
-		.select("*")
-		.eq("type", "expense")
-		.order("date", { ascending: false })
-		.limit(800);
-	if (error) throw error;
+	const data = await adminProtectedRead("finance", { select: "*", eq: { type: "expense" }, order: [{ column: "date", ascending: false }], limit: 800 });
 	return (data ?? []).map((row: any) => ({
 		_id: row._id,
 		type: row.type ?? "",

@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
+import { adminProtectedRead } from "@/lib/admin-protected-read";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 
 function safeNum(value: unknown) {
@@ -74,17 +75,7 @@ async function fetchOrderRowsInBatches(
 
 	for (let index = 0; index < uniqueValues.length; index += REST_IN_FILTER_BATCH_SIZE) {
 		const batch = uniqueValues.slice(index, index + REST_IN_FILTER_BATCH_SIZE);
-		const { data, error } = await supabase
-			.from("pos_orders")
-			.select(select)
-			.in(column, batch);
-
-		if (error) {
-			console.warn(`[finance] Gagal memuat enrichment order berdasarkan ${column}`, error);
-			return [];
-		}
-
-		rows.push(...(data ?? []));
+		try { rows.push(...await adminProtectedRead("orders", { select, in: { [column]: batch as Array<string | number> } })); } catch (error) { console.warn(`[finance] Gagal memuat enrichment order berdasarkan ${column}`, error); return []; }
 	}
 
 	return rows;
@@ -97,15 +88,7 @@ async function fetchFinancialTransactions(args?: {
 }): Promise<any[]> {
 	const supabase = createClient();
 	const { startDate, endDate } = getRange(args);
-	let query = supabase
-		.from("pos_financial_transactions")
-		.select("*")
-		.gte("date", startDate)
-		.lte("date", endDate)
-		.order("date", { ascending: false });
-	if (args?.type) query = query.eq("type", args.type);
-	const { data, error } = await query;
-	if (error) throw error;
+	const data = await adminProtectedRead("finance", { select: "*", gte: { date: startDate }, lte: { date: endDate }, order: [{ column: "date", ascending: false }], ...(args?.type ? { eq: { type: args.type } } : {}) });
 	const mapped = (data ?? []).map((row: any) => ({
 		_id: row._id,
 		type: row.type ?? "expense",
@@ -283,14 +266,7 @@ async function fetchFinancialTransactions(args?: {
 async function fetchOrders(args?: { startDate?: number; endDate?: number }) {
 	const supabase = createClient();
 	const { startDate, endDate } = getRange(args);
-	const { data, error } = await supabase
-		.from("pos_orders")
-		.select("*")
-		.gte("createdAt", startDate)
-		.lte("createdAt", endDate)
-		.order("createdAt", { ascending: false });
-	if (error) throw error;
-	return (data ?? []) as any[];
+	return await adminProtectedRead("orders", { select: "*", gte: { createdAt: startDate }, lte: { createdAt: endDate }, order: [{ column: "createdAt", ascending: false }] }) as any[];
 }
 
 function summarizeTransactions(transactions: any[]) {
@@ -1245,12 +1221,7 @@ async function fetchAccountingEntries(args?: {
 }): Promise<any[]> {
 	const supabase = createClient();
 	const { startDate, endDate } = getRange(args);
-	const { data: txDates, error: txError } = await supabase
-		.from("pos_financial_transactions")
-		.select("_id, description, metadata, type, orderId, bookingOrderId")
-		.gte("date", startDate)
-		.lte("date", endDate);
-	if (txError) throw txError;
+	const txDates = await adminProtectedRead("finance", { select: "_id, description, metadata, type, orderId, bookingOrderId", gte: { date: startDate }, lte: { date: endDate } });
 	const ids = (txDates ?? []).map((r: any) => r._id);
 	if (ids.length === 0) return [];
 
@@ -1289,11 +1260,8 @@ async function fetchAccountingEntries(args?: {
 	const itemsByOrder = new Map<string, any[]>();
 	if (incomeTxIds.length > 0) {
 		// items ada di view public.pos_orders (kolom JSONB `items`)
-		const { data: orders, error: oError } = await supabase
-			.from("pos_orders")
-			.select("_id, items")
-			.in("_id", incomeTxIds);
-		if (!oError && orders) {
+		const orders = await adminProtectedRead("orders", { select: "_id, items", in: { _id: incomeTxIds } });
+		if (orders) {
 			for (const order of orders) {
 				const orderItems = Array.isArray(order.items) ? order.items : [];
 				const mapped = orderItems.map((item: any, idx: number) => ({

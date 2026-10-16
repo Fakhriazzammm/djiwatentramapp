@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import { createClient } from "@/lib/client";
+import { adminProtectedRead } from "@/lib/admin-protected-read";
 import { useGlobalRefreshTrigger } from "@/hooks/use-hybrid-pos-data";
 import { useSupabaseLiveValue, useSupabaseLiveValueState } from "@/hooks/use-supabase-live-value";
 
@@ -78,21 +79,7 @@ async function fetchBookingOrders(args: {
 	endDate?: string;
 }) {
 	const supabase = createClient();
-	let query = supabase
-		.from("pos_booking_orders")
-		.select("*")
-		.eq("slug", args.slug)
-		.order("createdAt", { ascending: false });
-
-	if (args.date) {
-		query = query.eq("bookingDate", args.date);
-	} else {
-		if (args.startDate) query = query.gte("bookingDate", args.startDate);
-		if (args.endDate) query = query.lte("bookingDate", args.endDate);
-	}
-
-	const { data, error } = await query;
-	if (error) throw error;
+	const data = await adminProtectedRead("booking", { select: "*", eq: { slug: args.slug, ...(args.date ? { bookingDate: args.date } : {}) }, ...(args.date ? {} : { ...(args.startDate ? { gte: { bookingDate: args.startDate } } : {}), ...(args.endDate ? { lte: { bookingDate: args.endDate } } : {}) }), order: [{ column: "createdAt", ascending: false }] });
 
 	return (data ?? []).map((row: any) => ({
 		_id: row._id,

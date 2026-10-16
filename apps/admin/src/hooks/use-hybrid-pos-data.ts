@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
+import { adminProtectedRead } from "@/lib/admin-protected-read";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import {
 	aggregateHourlySales,
@@ -763,17 +764,8 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 			: pageStart + pageSize - 1;
 		if (pageEnd < pageStart) break;
 
-		let query = supabase
-			.from("pos_orders")
-			.select("*")
-			.order("createdAt", { ascending: false })
-			.order("_id", { ascending: false })
-			.range(pageStart, pageEnd);
-		if (options?.status) query = query.eq("status", options.status);
-
-		const { data, error } = await query;
-		if (error) throw error;
-		rows.push(...(data ?? []));
+		const data = await adminProtectedRead("orders", { select: "*", order: [{ column: "createdAt", ascending: false }, { column: "_id", ascending: false }], range: [pageStart, pageEnd], ...(options?.status ? { eq: { status: options.status } } : {}) });
+		rows.push(...data);
 		if (!data || data.length < pageEnd - pageStart + 1 || (options?.limit && rows.length >= options.limit)) break;
 	}
 
@@ -875,14 +867,7 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 
 async function fetchHourlyTransactions(range: { start: number; end: number }) {
 	const supabase = createClient();
-	const { data, error } = await supabase
-		.from("pos_orders")
-		.select("_id,createdAt,status,totalAmount")
-		.gte("createdAt", range.start)
-		.lte("createdAt", range.end)
-		.order("createdAt", { ascending: true });
-
-	if (error) throw error;
+	const data = await adminProtectedRead("orders", { select: "_id,createdAt,status,totalAmount", gte: { createdAt: range.start }, lte: { createdAt: range.end }, order: [{ column: "createdAt", ascending: true }] });
 	return (data ?? []).map((row: any) => ({
 		createdAt: Number(row.createdAt ?? 0),
 		status: row.status ?? null,
@@ -952,14 +937,8 @@ async function fetchBookingOrders() {
 
 	for (let pageStart = 0; ; pageStart += pageSize) {
 		const pageEnd = pageStart + pageSize - 1;
-		const { data, error } = await supabase
-			.from("pos_booking_orders")
-			.select("*")
-			.order("createdAt", { ascending: false })
-			.order("_id", { ascending: false })
-			.range(pageStart, pageEnd);
-		if (error) throw error;
-		rows.push(...(data ?? []));
+		const data = await adminProtectedRead("booking", { select: "*", order: [{ column: "createdAt", ascending: false }, { column: "_id", ascending: false }], range: [pageStart, pageEnd] });
+		rows.push(...data);
 		if (!data || data.length < pageSize) break;
 	}
 
@@ -1008,14 +987,9 @@ async function fetchBookingOrders() {
 
 async function fetchFinancialTransactions() {
 	const supabase = createClient();
-	const { data, error } = await supabase
-		.from("pos_financial_transactions")
-		.select("*")
-		.order("date", { ascending: false });
+	const data = await adminProtectedRead("finance", { select: "*", order: [{ column: "date", ascending: false }] });
 
-	if (error) throw error;
-
-	return (data ?? []).map((row: any) => ({
+	return data.map((row: any) => ({
 		_id: row._id,
 		type: row.type ?? "",
 		amount: Number(row.amount ?? 0),
@@ -1383,9 +1357,9 @@ async function fetchShiftDetails(args: { startTime: number; endTime?: number }) 
 	const [
 		{ data: reportRow, error: reportError },
 		{ data: shiftRow, error: shiftError },
-		{ data: orders, error: ordersError },
-		{ data: bookings, error: bookingsError },
-		{ data: transactions, error: transactionsError },
+		orders,
+		bookings,
+		transactions,
 		{ data: products, error: productsError },
 		{ data: categories, error: categoriesError },
 	] = await Promise.all([
@@ -1395,31 +1369,15 @@ async function fetchShiftDetails(args: { startTime: number; endTime?: number }) 
 			.eq("start_time", rangeStart)
 			.maybeSingle(),
 		supabase.from("pos_shifts").select("*").eq("startTime", rangeStart).maybeSingle(),
-		supabase
-			.from("pos_orders")
-			.select("*")
-			.gte("createdAt", rangeStart)
-			.lte("createdAt", rangeEnd),
-		supabase
-			.from("pos_booking_orders")
-			.select("*")
-			.gte("createdAt", rangeStart)
-			.lte("createdAt", rangeEnd),
-		supabase
-			.from("pos_financial_transactions")
-			.select("*")
-			.gte("date", rangeStart)
-			.lte("date", rangeEnd)
-			.order("date", { ascending: false }),
+		adminProtectedRead("orders", { select: "*", gte: { createdAt: rangeStart }, lte: { createdAt: rangeEnd } }),
+		adminProtectedRead("booking", { select: "*", gte: { createdAt: rangeStart }, lte: { createdAt: rangeEnd } }),
+		adminProtectedRead("finance", { select: "*", gte: { date: rangeStart }, lte: { date: rangeEnd }, order: [{ column: "date", ascending: false }] }),
 		supabase.from("pos_products_all").select("*"),
 		supabase.from("pos_categories").select("*"),
 	]);
 
 	if (reportError) throw reportError;
 	if (shiftError) throw shiftError;
-	if (ordersError) throw ordersError;
-	if (bookingsError) throw bookingsError;
-	if (transactionsError) throw transactionsError;
 	if (productsError) throw productsError;
 	if (categoriesError) throw categoriesError;
 
@@ -2391,14 +2349,9 @@ export function useHybridTransactionCosts(inventoryIds: string[]) {
 
 		(async () => {
 			const supabase = createClient();
-			const { data, error } = await supabase
-				.from("pos_financial_transactions")
-				.select("inventoryId, amount, createdAt")
-				.in("inventoryId", validIds)
-				.eq("type", "expense")
-				.order("createdAt", { ascending: false });
+			const data = await adminProtectedRead("finance", { select: "inventoryId, amount, createdAt", in: { inventoryId: validIds }, eq: { type: "expense" }, order: [{ column: "createdAt", ascending: false }] });
 
-			if (error || cancelled) return;
+			if (cancelled) return;
 
 			const map: Record<string, number> = {};
 			for (const row of data ?? []) {

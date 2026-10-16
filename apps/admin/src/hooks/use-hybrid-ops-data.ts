@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
+import { adminProtectedRead } from "@/lib/admin-protected-read";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 
 function useSupabaseValue<T>(
@@ -22,14 +23,8 @@ function resolveMayarConfig() {
 
 async function fetchOrderById(id: string) {
 	const supabase = createClient();
-	const { data, error } = await supabase
-		.from("pos_orders")
-		.select("*")
-		.eq("_id", id)
-		.maybeSingle();
-
-	if (error) throw error;
-	return data as any;
+	const rows = await adminProtectedRead("orders", { select: "*", eq: { _id: id }, limit: 1 });
+	return (rows[0] ?? null) as any;
 }
 
 async function fetchVariationPresets() {
@@ -53,21 +48,15 @@ async function fetchTrackOrders(track: "kitchen" | "bar") {
 	const [categoryResult, productResult, orderResult] = await Promise.all([
 		supabase.from("pos_categories").select("*"),
 		supabase.from("pos_products_all").select("*"),
-		supabase
-			.from("pos_orders")
-			.select("*")
-			.neq("status", "completed")
-			.neq("status", "cancelled")
-			.order("createdAt", { ascending: true }),
+		adminProtectedRead("orders", { select: "*", order: [{ column: "createdAt", ascending: true }] }).then((rows) => rows.filter((row: any) => row.status !== "completed" && row.status !== "cancelled")),
 	]);
 
 	if (categoryResult.error) throw categoryResult.error;
 	if (productResult.error) throw productResult.error;
-	if (orderResult.error) throw orderResult.error;
 
 	const categories = categoryResult.data ?? [];
 	const products = productResult.data ?? [];
-	const orders = orderResult.data ?? [];
+	const orders = orderResult ?? [];
 
 	const trackCategoryIds = new Set(
 		categories

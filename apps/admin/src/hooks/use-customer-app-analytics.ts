@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
+import { adminProtectedRead } from "@/lib/admin-protected-read";
 import { useSupabaseLiveValue } from "./use-supabase-live-value";
 
 export type CustomerAnalyticsPeriod =
@@ -246,23 +247,13 @@ export function useCustomerAppAnalytics(period: CustomerAnalyticsPeriod) {
 		const endMs = endExclusive.getTime();
 		const customerColumns = "source_id,name,email,phone,last_active_at,created_at,djiwaapp_visit_count,wallet_balance";
 		const orderColumns = "_id,orderNumber,status,source,orderChannel,createdAt,totalAmount,customerSourceId,items";
-		const orderRequests = Array.from({ length: 3 }, (_, page) =>
-			supabase
-				.from("pos_orders")
-				.select(orderColumns)
-				.gte("createdAt", startMs)
-				.lt("createdAt", endMs)
-				.order("createdAt", { ascending: false })
-				.range(page * 1000, page * 1000 + 999),
-		);
+		const orderRequests = Array.from({ length: 3 }, (_, page) => adminProtectedRead("orders", { select: orderColumns, gte: { createdAt: startMs }, lt: { createdAt: endMs }, order: [{ column: "createdAt", ascending: false }], range: [page * 1000, page * 1000 + 999] }));
 		const [{ data: customers, error: customersError }, ...orderPages] = await Promise.all([
 			supabase.from("pos_customers_view").select(customerColumns).order("total_spent", { ascending: false }),
 			...orderRequests,
 		]);
-		const ordersError = orderPages.find((page) => page.error)?.error;
-		const orders = orderPages.flatMap((page) => page.data ?? []);
+		const orders = orderPages.flat();
 		if (customersError) throw customersError;
-		if (ordersError) throw ordersError;
 		return buildAnalytics(period, (customers ?? []) as CustomerRow[], (orders ?? []) as OrderRow[]);
 	}, [period]);
 	const data = useSupabaseLiveValue<CustomerAnalytics>("customer-app-analytics", load, [period, refreshTrigger], {
