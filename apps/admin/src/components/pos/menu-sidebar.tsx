@@ -124,6 +124,7 @@ import {
 	useHybridSyncMenuStockFromInventory,
 } from "@/hooks/use-hybrid-write-actions";
 import { cn } from "@/lib/utils";
+import { getLatestAttendanceState } from "@/lib/attendance-utils";
 import { createClient } from "@/lib/client";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import {
@@ -2089,6 +2090,79 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [shiftRefreshTrigger, setShiftRefreshTrigger] = useState(0);
 	const shiftStatus = useHybridShiftStatus(shiftRefreshTrigger);
 	const siteSettings = useHybridSiteSettings();
+	const [closingAttendance, setClosingAttendance] = useState<Array<{ name: string; userId: string; status: "active" | "checked_out" | "no_show" | "unresolved" }>>([]);
+	const [closingAttendanceLoading, setClosingAttendanceLoading] = useState(false);
+	const [closingAttendanceError, setClosingAttendanceError] = useState<string | null>(null);
+	const activeClosingStaff = closingAttendance.filter((member) => member.status === "active");
+	useEffect(() => {
+		const teamText = shiftStatus?.ongoingShift?.teamMembers;
+		const shiftStart = Number(shiftStatus?.ongoingShift?.startTime ?? 0);
+		if (!shiftStatus?.isOpen || !teamText || !shiftStart) {
+			setClosingAttendance([]);
+			setClosingAttendanceError(null);
+			setClosingAttendanceLoading(false);
+			return;
+		}
+		if (!allUsers) {
+			setClosingAttendanceLoading(true);
+			return;
+		}
+		if (!allUsers.length) {
+			setClosingAttendance(teamText.split(",").map((name: string) => ({
+				name: name.trim(),
+				userId: "",
+				status: "unresolved" as const,
+			})).filter((member) => member.name));
+			setClosingAttendanceLoading(false);
+			return;
+		}
+		let cancelled = false;
+		const fetchClosingAttendance = async () => {
+			setClosingAttendanceLoading(true);
+			setClosingAttendanceError(null);
+			try {
+				const members = teamText.split(",").map((name: string) => name.trim()).filter(Boolean).map((name: string) => {
+					const user = allUsers.find((candidate: any) => candidate.name?.trim()?.toLowerCase() === name.toLowerCase());
+					return { name, userId: String(user?._id ?? "") };
+				});
+				const userIds = members.map((member) => member.userId).filter(Boolean);
+				if (!userIds.length) {
+					if (!cancelled) {
+						setClosingAttendance(members.map((member) => ({ ...member, status: "unresolved" as const })));
+						setClosingAttendanceLoading(false);
+					}
+					return;
+				}
+				const { data, error } = await createClient()
+					.from("pos_attendance_logs")
+					.select("userId,type,timestamp")
+					.in("userId", userIds)
+					.gte("timestamp", shiftStart)
+					.lte("timestamp", Date.now())
+					.order("timestamp", { ascending: false });
+				if (error) throw error;
+				const latestByUser = new Map<string, any>();
+				for (const log of data ?? []) {
+					const userId = String(log.userId ?? "");
+					if (userId && !latestByUser.has(userId)) latestByUser.set(userId, log);
+				}
+				const result = members.map((member) => {
+					if (!member.userId) return { ...member, status: "unresolved" as const };
+					const latest = getLatestAttendanceState([latestByUser.get(member.userId)]);
+					const status = !latest ? "no_show" : latest.type === "check_in" ? "active" : "checked_out";
+					return { ...member, status } as { name: string; userId: string; status: "active" | "checked_out" | "no_show" | "unresolved" };
+				});
+				if (!cancelled) setClosingAttendance(result);
+			} catch (error) {
+				console.error("[shift-close-attendance]", error);
+				if (!cancelled) setClosingAttendanceError("Status absensi belum bisa dimuat. Refresh sebelum menutup kasir.");
+			} finally {
+				if (!cancelled) setClosingAttendanceLoading(false);
+			}
+		};
+		void fetchClosingAttendance();
+		return () => { cancelled = true; };
+	}, [shiftStatus?.isOpen, shiftStatus?.ongoingShift?.teamMembers, shiftStatus?.ongoingShift?.startTime, allUsers]);
 	const todayOrders = useHybridOrders();
 	const selectedShiftSchedule = useMemo(() => {
 		return siteSettings?.shiftSettings?.shiftSchedules?.find(
@@ -2284,7 +2358,37 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		}
 	}, []);
 
+	const unresolvedClosingStaff = closingAttendance.filter((member) => member.status === "unresolved");
+
+	const validateClosingAttendance = () => {
+		if (closingAttendanceLoading) {
+			toast.warning("Status absensi tim masih dimuat. Tunggu sebentar sebelum menutup shift.");
+			return false;
+		}
+		if (closingAttendanceError) {
+			toast.error(closingAttendanceError);
+			return false;
+		}
+		if (unresolvedClosingStaff.length > 0) {
+			toast.error(`Tidak dapat menutup shift: ID staf tidak ditemukan untuk ${unresolvedClosingStaff.map((member) => member.name).join(", ")}.`);
+			return false;
+		}
+		if (activeClosingStaff.length > 0) {
+			toast.error(`Belum absen keluar: ${activeClosingStaff.map((member) => member.name).join(", ")}. Minta mereka checkout melalui bot HRD.`);
+			return false;
+		}
+		return true;
+	};
+
+	const requestCloseShift = () => {
+		if (validateClosingAttendance()) setShowEndConfirm(true);
+	};
+
 	const handleEndShift = async () => {
+		if (!validateClosingAttendance()) {
+			setIsSubmitting(false);
+			return;
+		}
 		if (!shiftStatus?.shiftInfo?.shiftId) {
 			// Fallback if it's a legacy shift without ID
 			toast.error("Shift ini dimulai dari versi lama. Mohon gunakan tombol legacy.");
@@ -3012,6 +3116,15 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					/>
 				</div>
 
+				{shiftType === "akhiri" && (closingAttendanceLoading || closingAttendanceError || unresolvedClosingStaff.length > 0 || activeClosingStaff.length > 0) && (
+					<div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-[11px] font-medium text-amber-900">
+						{closingAttendanceLoading && <p>Memuat status absensi tim…</p>}
+						{closingAttendanceError && <p>{closingAttendanceError}</p>}
+						{unresolvedClosingStaff.length > 0 && <p>ID staf belum ditemukan: {unresolvedClosingStaff.map((member) => member.name).join(", ")}. Penutupan shift diblokir.</p>}
+						{activeClosingStaff.length > 0 && <p>Belum absen keluar: {activeClosingStaff.map((member) => member.name).join(", ")}. Checkout melalui bot HRD.</p>}
+					</div>
+				)}
+
 				{submitError && (
 					<div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-[11px] font-medium text-destructive">
 						{submitError}
@@ -3022,7 +3135,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					className={`w-full h-9 font-black uppercase tracking-widest text-[11px] shadow-lg transition-all active:scale-95 ${shiftType === 'mulai' ? 'bg-primary hover:bg-primary/90' : 'bg-destructive hover:bg-destructive/90'}`}
 					disabled={isSubmitting}
 					type={shiftType === 'mulai' ? 'submit' : 'button'}
-					onClick={shiftType === 'akhiri' ? () => setShowEndConfirm(true) : undefined}
+					onClick={shiftType === "akhiri" ? requestCloseShift : undefined}
 				>
 					{isSubmitting ? (
 						<Loader2 className="mr-2 h-3 w-3 animate-spin text-white" />
