@@ -103,6 +103,7 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return fail("METHOD_NOT_ALLOWED", "POST required", 405);
   try {
     const token = (req.headers.get("x-yumi-session-token") ?? req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "").trim();
+    if (!token) return fail("FORBIDDEN", "Unauthorized", 401);
     const body = await req.json() as Json;
     const action = body.action as keyof typeof ACTIONS;
     const config = ACTIONS[action];
