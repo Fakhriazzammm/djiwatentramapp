@@ -14,8 +14,12 @@ import {
 let _refreshCounter = 0;
 const _refreshListeners = new Set<() => void>();
 
+// Shared only for requests currently in flight; never retain rows after resolve.
+const ordersInFlight = new Map<string, Promise<OrderRecord[]>>();
+
 export function triggerHybridRefresh() {
 	_refreshCounter++;
+	ordersInFlight.clear();
 	_refreshListeners.forEach((fn) => fn());
 }
 
@@ -752,7 +756,7 @@ async function fetchAllDiscounts() {
 	})) as DiscountRecord[];
 }
 
-async function fetchOrders(options?: { status?: string; limit?: number }) {
+async function fetchOrdersUncached(options?: { status?: string; limit?: number }) {
 	const supabase = createClient();
 	const pageSize = 1000;
 	const rows: any[] = [];
@@ -871,6 +875,31 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 			  }))
 			: [],
 	})) as OrderRecord[];
+}
+
+
+type OrdersFetchOptions = { status?: string; limit?: number };
+
+// Dashboard and its payment/status summaries used to download the full order
+// history twice during the same mount. Share only in-flight reads so consumers
+// use one network request without retaining data across auth/session changes.
+function ordersCacheKey(options?: OrdersFetchOptions) {
+	return `${options?.status ?? "all"}:${options?.limit ?? "default"}`;
+}
+
+async function fetchOrders(options?: OrdersFetchOptions) {
+	const key = ordersCacheKey(options);
+	const inFlight = ordersInFlight.get(key);
+	if (inFlight) return inFlight;
+
+	let request: Promise<OrderRecord[]>;
+	request = fetchOrdersUncached(options).finally(() => {
+		if (ordersInFlight.get(key) === request) {
+			ordersInFlight.delete(key);
+		}
+	});
+	ordersInFlight.set(key, request);
+	return request;
 }
 
 async function fetchHourlyTransactions(range: { start: number; end: number }) {
