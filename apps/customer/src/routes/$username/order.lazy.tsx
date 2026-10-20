@@ -26,7 +26,8 @@ import {
 	useHybridSiteSettings,
 } from "@/hooks/use-hybrid-pos-data";
 import { useHybridBookingSettings } from "@/hooks/use-hybrid-booking-data";
-import { useHybridMayarConfig, useHybridOrderById } from "@/hooks/use-hybrid-ops-data";
+import { useHybridMayarConfig } from "@/hooks/use-hybrid-ops-data";
+import { useHybridOrderById } from "@yumipos/web-shared/hooks/use-hybrid-ops-data";
 import { useProductUpsellRecommendations } from "@/hooks/use-product-upsells";
 import {
 	useHybridCreateOrder,
@@ -45,7 +46,7 @@ import type { Doc, Id } from "@/types/backend-compat";
 import { useOrderContext } from "@/hooks/use-order-context";
 import type { OrderStep } from "@/hooks/use-order-context";
 import type { CartItem, ServiceRequestType, PaymentChoice } from "@/components/customer/types";
-import { CUSTOMER_ORDERING_DEFAULTS, currency, normalizeMenuCode, rememberGuestOrder } from "@/components/customer/types";
+import { CUSTOMER_ORDERING_DEFAULTS, currency, normalizeMenuCode, readGuestOrderReferences, rememberGuestOrder } from "@/components/customer/types";
 import { BottomButton, CartRow, CustomerOrderModeSelection, CustomerOrderProgress, SummaryCardLines, type CustomerOrderMode } from "@/components/customer/shared-components";
 const BarcodeScanner = lazy(() => import("@/components/customer/barcode-scanner").then((module) => ({ default: module.BarcodeScanner })));
 const ProductSheet = lazy(() => import("@/components/customer/product-sheet").then((module) => ({ default: module.ProductSheet })));
@@ -64,6 +65,22 @@ import { reserveDjiwaRunCheckoutReward, releaseDjiwaRunCheckoutReward, finalizeD
 export const Route = createLazyFileRoute("/$username/order")({
 	component: OrderPage,
 });
+
+// Preserve guest/member authorization while reading the authoritative DB order.
+async function loadReceiptOrder(id: string) {
+	const accessToken = readGuestOrderReferences().find((reference) => reference.orderId === id)?.accessToken;
+	const baseUrl = "https://api.yumme.id/v1/customer";
+	const response = await fetch(`${baseUrl}/${accessToken ? "guest-orders" : "orders"}`, accessToken ? {
+		method: "POST",
+		credentials: "include",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ orders: [{ orderId: id, accessToken }] }),
+	} : { credentials: "include", headers: { Accept: "application/json" } });
+	if (!response.ok) throw new Error(`Order fetch HTTP ${response.status}`);
+	const payload = await response.json() as { success?: boolean; orders?: Array<Record<string, unknown>> };
+	const orders = payload.success ? payload.orders ?? [] : [];
+	return accessToken ? orders[0] ?? null : orders.find((row) => String(row._id ?? row.id ?? row.source_id) === id) ?? null;
+}
 
 function OrderPage() {
 	const shouldReduceMotion = useReducedMotion();
@@ -1406,11 +1423,11 @@ function OrderPage() {
 									<AuthModal
 						open={authModalOpen}
 						onOpenChange={(val) => { setAuthModalOpen(val); if (!val) setAuthError(undefined); }}
-						onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
-						onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
+						onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); return true; } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); return false; } }}
+						onRegister={async (email, password, name, consentAll) => { try { setAuthError(undefined); await register(email, password, name, consentAll); return true; } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); return false; } }}
 						onSkip={() => setAuthModalOpen(false)}
-						onGoogleSignIn={signInWithGoogle}
-						onResetPassword={async (email) => { try { await resetPassword(email); } catch { } }}
+						onGoogleSignIn={async () => { try { setAuthError(undefined); await signInWithGoogle(); } catch (e: any) { setAuthError(e?.message || "Gagal masuk dengan Google"); } }}
+						onResetPassword={async (email) => { try { await resetPassword(email); return true; } catch (e: any) { setAuthError(e?.message || "Gagal mengirim link reset"); return false; } }}
 						isLoading={authLoading}
 						needsEmailConfirm={registrationNeedsEmailConfirm}
 						error={authError}
@@ -1504,12 +1521,12 @@ function OrderPage() {
 
 					{/* ── Menu section ────────────────────────────── */}
 					{step === "menu"
-						? renderMenuSection({ onProductIntent: (_product, origin) => setPendingProductOrigin(origin), onProductAdded: (_product, origin) => { setRecommendationFlight({ image: _product.image, name: _product.name, left: origin.left + origin.width / 2 - 22, top: origin.top + origin.height / 2 - 22 }); window.setTimeout(() => setRecommendationFlight(null), 700); }, activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, bestSellers, recentProductIds, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId: selectMenuCategory, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
+						? renderMenuSection({ onProductIntent: (_product, origin) => setPendingProductOrigin(origin), onProductAdded: (_product, origin) => { setRecommendationFlight({ image: _product.image, name: _product.name, left: origin.left + origin.width / 2 - 22, top: origin.top + origin.height / 2 - 22 }); window.setTimeout(() => setRecommendationFlight(null), 700); }, activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, showDineInSummary: orderMode === "dine_in", discounts: memberDiscounts, filteredProducts, freeRefillCharge, bestSellers, recentProductIds, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId: selectMenuCategory, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
 						: null}
 					{step === "menu" ? <div className="grid grid-cols-2 gap-2 px-2 pb-4"><button type="button" onClick={() => setStep(orderMode === "delivery" ? "address" : "party")} className="min-h-11 rounded-[14px] border border-border bg-card px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button><button type="button" disabled={!cart.length} onClick={() => setStep(orderMode === "delivery" ? "shipping" : "review")} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke {orderMode === "delivery" ? "pengantaran" : "review"} →</button></div> : null}
 
 					{step === "shipping" && orderMode === "delivery" ? (
-						<section className="space-y-2 px-2 py-2"><div className="rounded-xl border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 3</p><h2 className="text-base font-black">Pilih kurir pengantaran</h2></div></div><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Pilih layanan yang tersedia untuk mengantar pesananmu.</p><div className="mt-3 grid grid-cols-2 gap-2">{([{ key: "gojek", label: "Gojek", detail: "Delivery tersedia" }, { key: "grab", label: "Grab", detail: "Delivery tersedia" }] as const).filter((option) => deliveryConfig?.active && deliveryConfig.couriers.includes(option.key)).map((option) => <button key={option.key} type="button" onClick={() => setDeliveryProvider(option.key)} aria-pressed={deliveryProvider === option.key} className={cn("min-h-24 rounded-xl border p-3 text-left transition-all", deliveryProvider === option.key ? "border-primary bg-primary/10 shadow-sm" : "border-border bg-background")}><span className="flex items-center justify-between gap-2"><span className="text-sm font-black">{option.label}</span><span className={cn("h-4 w-4 rounded-full border-2", deliveryProvider === option.key ? "border-primary bg-primary ring-2 ring-primary/20" : "border-muted-foreground/40")} /></span><span className="mt-1 block text-[11px] text-muted-foreground">{option.detail}</span></button>)}</div><p className="mt-3 rounded-xl bg-primary/5 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">{shippingQuoteLoading ? <span className="inline-flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" />Memuat tarif pengantaran…</span> : shippingQuote ? `Biaya pengantaran ${currency(shippingQuote.fee)} · berlaku 5 menit.` : shippingQuoteError || "Lengkapi lokasi dengan kode pos agar tarif pengantaran dapat dihitung."}</p><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => setStep("menu")} className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black">← Kembali</button><button type="button" onClick={() => setStep("review")} className="min-h-11 rounded-xl bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground">Lanjut ke review →</button></div></div></section>
+						<section className="space-y-2 px-2 py-2"><div className="rounded-xl border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 3</p><h2 className="text-base font-black">Pilih kurir pengantaran</h2></div></div><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Pilih layanan yang tersedia untuk mengantar pesananmu.</p><div className="mt-3 grid grid-cols-2 gap-2">{([{ key: "gojek", label: "Gojek", detail: "Delivery tersedia" }, { key: "grab", label: "Grab", detail: "Delivery tersedia" }] as const).filter((option) => deliveryConfig?.active && deliveryConfig.couriers.includes(option.key)).map((option) => <button key={option.key} type="button" onClick={() => setDeliveryProvider(option.key)} aria-pressed={deliveryProvider === option.key} className={cn("min-h-24 rounded-xl border p-3 text-left transition-all", deliveryProvider === option.key ? "border-primary bg-primary/10 shadow-sm" : "border-border bg-background")}><span className="flex items-center justify-between gap-2"><span className="text-sm font-black">{option.label}</span><span className={cn("h-4 w-4 rounded-full border-2", deliveryProvider === option.key ? "border-primary bg-primary ring-2 ring-primary/20" : "border-muted-foreground/40")} /></span><span className="mt-1 block text-[11px] text-muted-foreground">{option.detail}</span></button>)}</div><p className="mt-3 rounded-xl bg-primary/5 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">{shippingQuoteLoading ? <span className="inline-flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" />Memuat tarif pengantaran…</span> : shippingQuote ? `Biaya pengantaran ${currency(shippingQuote.fee)} · berlaku 5 menit.` : shippingQuoteError || "Lengkapi lokasi dengan kode pos agar tarif pengantaran dapat dihitung."}</p><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => setStep("menu")} className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black">← Kembali</button><button type="button" disabled={shippingPaymentBlocked} onClick={() => { if (!shippingPaymentBlocked) setStep("review"); }} className="min-h-11 rounded-xl bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke review →</button></div></div></section>
 					) : null}
 
 					{/* ── Review and payment sections ───────────────── */}

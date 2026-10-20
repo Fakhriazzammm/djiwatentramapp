@@ -1,7 +1,7 @@
 {
-  "version": "0.2.143",
-  "commitHash": "2787835",
-  "message": "feat(b2b): add Djiwa App button to order bottom bar",
-  "buildDate": "2026-09-04",
-  "generatedAt": "2026-09-04T11:45:06.021Z"
+  "version": "0.2.500",
+  "commitHash": "f5d274f",
+  "message": "fix(pos): persist availability RPC execute grants",
+  "buildDate": "2026-10-09",
+  "generatedAt": "2026-10-09T06:20:38.765Z"
 }

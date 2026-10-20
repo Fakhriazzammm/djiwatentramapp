@@ -11,6 +11,7 @@ import type { Doc } from "@/types/backend-compat";
 import {
 	useHybridOrders,
 	useHybridShiftStatus,
+	useHybridShiftReportRows,
 	useHybridProducts,
 	useHybridCategories,
 	useHybridCurrentMonthProgress,
@@ -40,6 +41,7 @@ function LaporanPage() {
 
 	const siteSettings = useHybridSiteSettings(refreshTick);
 	const shiftStatus = useHybridShiftStatus(refreshTick);
+	const shiftReportRows = useHybridShiftReportRows(refreshTick);
 	const allStaffUsers = useHybridStaffUsers();
 	const monthProgress = useHybridCurrentMonthProgress(refreshTick);
 	const categoriesList = useHybridCategories(refreshTick);
@@ -357,6 +359,16 @@ function LaporanPage() {
 						)}\n- Realisasi: Rp. ${sRevenue.toLocaleString(
 							"id-ID"
 						)}\n- ${statusIcon} ${isMet ? "Tercapai" : "Belum Tercapai"} (${pct}%)`;
+					})()}\n\n${(() => {
+						const report = (shiftReportRows ?? []).find((row: any) => Number(row.startTime) === Number(sStart));
+						const bonuses = report?.memberBonuses ?? [];
+						if (!bonuses.length) return "";
+						const lines = bonuses.map((member: any) => {
+							const tiers = (member.allTiers ?? []).map((tier: any) => `${tier.thresholdPct}%: Rp. ${Number(tier.bonusAmount ?? 0).toLocaleString("id-ID")}`).join(" | ");
+							const achieved = member.achievedTiers?.length ? `Tercapai ${member.achievedTiers.join("%, ")}%` : "Belum mencapai tier";
+							return `- ${member.name} (${member.roleName}) — Basis ${member.basis === "daily" ? "Harian" : member.basis === "monthly" ? "Bulanan" : "Shift"}\n  Tier: ${tiers || "-"}\n  ${achieved} | Bonus: Rp. ${Number(member.bonus ?? 0).toLocaleString("id-ID")}`;
+						}).join("\\n");
+						return `🎁 BONUS BERTINGKAT:\\n${lines}`;
 					})()}\n\nKasir: ${shiftObj.cashierName || "Kasir"}${teamLabel}\n---\n`;
 				}
 			);
@@ -403,6 +415,7 @@ function LaporanPage() {
 		todayOrders,
 		todayTransactions,
 		shiftStatus,
+		shiftReportRows,
 		products,
 		categoriesList,
 		monthProgress,

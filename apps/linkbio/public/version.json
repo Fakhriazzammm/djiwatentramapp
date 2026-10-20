@@ -1,0 +1,7 @@
+{
+  "version": "0.2.500",
+  "commitHash": "f5d274f",
+  "message": "fix(pos): persist availability RPC execute grants",
+  "buildDate": "2026-10-09",
+  "generatedAt": "2026-10-09T06:20:38.765Z"
+}

@@ -1,7 +1,7 @@
 {
-  "version": "0.2.414",
-  "commitHash": "11f6f57",
-  "message": "fix(order-tracking): use guest token for receipt reads",
-  "buildDate": "2026-10-04",
-  "generatedAt": "2026-10-04T07:20:12.373Z"
+  "version": "0.2.515",
+  "commitHash": "8d43640",
+  "message": "fix(admin): paginate dashboard order analytics",
+  "buildDate": "2026-10-11",
+  "generatedAt": "2026-10-11T13:33:44.010Z"
 }

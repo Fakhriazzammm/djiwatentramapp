@@ -179,7 +179,16 @@ async function adminReservations(payload: Json) {
   if (status) { if (!["held", "confirmed", "released", "expired"].includes(status)) throw new Error("status tidak valid"); query.eq("status", status); }
   const { data, error } = await query.limit(500);
   if (error) throw error;
-  return { reservations: data ?? [] };
+  const orderIds = [...new Set((data ?? []).map((row: Json) => text(row.order_source_id)).filter(Boolean))];
+  const ordersById = new Map<string, Json>();
+  if (orderIds.length) {
+    const { data: orders, error: ordersError } = await admin.schema("pos").from("orders")
+      .select("source_id,order_number,customer_name,customer_email,delivery_contact_name,delivery_contact_phone,delivery_address,total_amount,status,payment_method,payment_gateway,created_at")
+      .in("source_id", orderIds);
+    if (ordersError) throw ordersError;
+    for (const order of orders ?? []) ordersById.set(text(order.source_id), order as Json);
+  }
+  return { reservations: (data ?? []).map((row) => ({ ...row, order: ordersById.get(text(row.order_source_id)) ?? null })) };
 }
 
 async function reviewRefund(payload: Json, staffId: string) {
@@ -255,7 +264,29 @@ async function adminRefunds(payload: Json) {
   if (status) { if (!new Set(["pending", "approved", "denied", "processed"]).has(status)) throw new Error("status tidak valid"); query.eq("status", status); }
   const { data, error } = await query.limit(500);
   if (error) throw error;
-  return { refunds: data ?? [] };
+  const reservationIds = [...new Set((data ?? []).map((row) => text(row.reservation_id)).filter(Boolean))];
+  const reservationsById = new Map<string, Json>();
+  if (reservationIds.length) {
+    const { data: reservations, error: reservationError } = await admin.schema("pos").from("merchandise_reservations")
+      .select("id,product_source_id,quantity,fulfillment_status")
+      .in("id", reservationIds);
+    if (reservationError) throw reservationError;
+    for (const reservation of reservations ?? []) reservationsById.set(text(reservation.id), reservation as Json);
+  }
+  const orderIds = [...new Set((data ?? []).map((row: Json) => text(row.order_source_id)).filter(Boolean))];
+  const ordersById = new Map<string, Json>();
+  if (orderIds.length) {
+    const { data: orders, error: ordersError } = await admin.schema("pos").from("orders")
+      .select("source_id,order_number,customer_name,customer_email,total_amount,status,payment_method,payment_gateway,created_at")
+      .in("source_id", orderIds);
+    if (ordersError) throw ordersError;
+    for (const order of orders ?? []) ordersById.set(text(order.source_id), order as Json);
+  }
+  return { refunds: (data ?? []).map((row: Json) => ({
+    ...row,
+    reservation: reservationsById.get(text(row.reservation_id)) ?? null,
+    order: ordersById.get(text(row.order_source_id)) ?? null,
+  })) };
 }
 
 Deno.serve(async (req) => {

@@ -33,11 +33,21 @@ type ReportRow = {
   created_at: string;
   reviewed_at: string | null;
 };
+type ProductRow = {
+  source_id: string;
+  name: string;
+  price: number;
+  promo_price: number | null;
+  image: string | null;
+  is_available: boolean;
+  quantity: number | null;
+};
 type ActivityRow = {
   id: string;
   activity_type: "order_completed";
   display_name_snapshot: string;
   display_mode: "first_name" | "full_name";
+  avatar_url_snapshot: string | null;
   product_source_id: string;
   product_name_snapshot: string;
   product_image_snapshot: string | null;
@@ -195,6 +205,7 @@ function serializeActivity(row: ActivityRow) {
   return {
     id: row.id,
     displayName: row.display_name_snapshot,
+    avatarUrl: row.avatar_url_snapshot,
     productSourceId: row.product_source_id,
     productName: row.product_name_snapshot,
     productImageUrl: row.product_image_snapshot,
@@ -227,14 +238,16 @@ async function isModerator(env: Env, userId: string) {
 }
 
 async function engagementMap(env: Env, postIds: string[], userId: string) {
-  if (!postIds.length) return new Map<string, { likeCount: number; commentCount: number; likedByMe: boolean }>();
+  if (!postIds.length) return new Map<string, { likeCount: number; commentCount: number; likedByMe: boolean; savedByMe: boolean }>();
   const inFilter = postIds.map(encodeURIComponent).join(",");
-  const [likes, comments] = await Promise.all([
+  const [likes, comments, saves, follows] = await Promise.all([
     db<Array<{ post_id: string; customer_source_id: string }>>(env, "customer_community_post_likes", {}, `select=post_id,customer_source_id&post_id=in.(${inFilter})`),
     db<Array<{ post_id: string }>>(env, "customer_community_comments", {}, `select=post_id&post_id=in.(${inFilter})&moderation_status=eq.published&deleted_at=is.null`),
+    db<Array<{ post_id: string; customer_source_id: string }>>(env, "customer_community_post_saves", {}, `select=post_id,customer_source_id&post_id=in.(${inFilter})&customer_source_id=eq.${encodeURIComponent(userId)}`),
+    db<Array<{ followed_source_id: string }>>(env, "customer_community_follows", {}, `select=followed_source_id&follower_source_id=eq.${encodeURIComponent(userId)}&followed_source_id=in.(${inFilter})&deleted_at=is.null`),
   ]);
-  const map = new Map<string, { likeCount: number; commentCount: number; likedByMe: boolean }>();
-  for (const postId of postIds) map.set(postId, { likeCount: 0, commentCount: 0, likedByMe: false });
+  const map = new Map<string, { likeCount: number; commentCount: number; likedByMe: boolean; savedByMe: boolean; followingByMe: boolean }>();
+  for (const postId of postIds) map.set(postId, { likeCount: 0, commentCount: 0, likedByMe: false, savedByMe: false, followingByMe: false });
   for (const like of likes) {
     const entry = map.get(like.post_id);
     if (!entry) continue;
@@ -245,12 +258,29 @@ async function engagementMap(env: Env, postIds: string[], userId: string) {
     const entry = map.get(comment.post_id);
     if (entry) entry.commentCount += 1;
   }
+  for (const save of saves) {
+    const entry = map.get(save.post_id);
+    if (entry) entry.savedByMe = true;
+  }
   return map;
 }
 
 async function serializePosts(env: Env, rows: PostRow[], request: Request, userId: string) {
-  const authors = await authorMap(env, [...new Set(rows.map((row) => row.author_source_id))]);
-  const engagement = await engagementMap(env, rows.map((row) => row.id), userId);
+  const authorIds = [...new Set(rows.map((row) => row.author_source_id))];
+  const postIds = rows.map((row) => row.id);
+  const authors = await authorMap(env, authorIds);
+  const engagement = await engagementMap(env, postIds, userId);
+  const follows = authorIds.length ? await db<Array<{ followed_source_id: string }>>(env, "customer_community_follows", {}, `select=followed_source_id&follower_source_id=eq.${encodeURIComponent(userId)}&followed_source_id=in.(${authorIds.map(encodeURIComponent).join(",")})&deleted_at=is.null`) : [];
+  const followedIds = new Set(follows.map((row) => row.followed_source_id));
+  const links = postIds.length ? await db<Array<{ post_id: string; product_source_id: string }>>(env, "customer_community_post_products", {}, `select=post_id,product_source_id&post_id=in.(${postIds.map(encodeURIComponent).join(",")})`) : [];
+  const productIds = [...new Set(links.map((row) => row.product_source_id))];
+  const productRows = productIds.length ? await db<ProductRow[]>(env, "pos.products", {}, `select=source_id,name,price,promo_price,image,is_available,quantity&source_id=in.(${productIds.map(encodeURIComponent).join(",")})`) : [];
+  const productMap = new Map(productRows.map((row) => [row.source_id, { sourceId: row.source_id, name: row.name, price: Number(row.price || 0), promoPrice: row.promo_price == null ? null : Number(row.promo_price), image: row.image, isAvailable: row.is_available, quantity: row.quantity == null ? null : Number(row.quantity) }]));
+  const productsByPost = new Map<string, unknown[]>();
+  for (const link of links) {
+    const product = productMap.get(link.product_source_id);
+    if (product) productsByPost.set(link.post_id, [...(productsByPost.get(link.post_id) || []), product]);
+  }
   const origin = new URL(request.url).origin;
   return rows.map((row) => ({
     id: row.id,
@@ -261,8 +291,10 @@ async function serializePosts(env: Env, rows: PostRow[], request: Request, userI
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     reportCount: row.report_count,
-    ...(engagement.get(row.id) || { likeCount: 0, commentCount: 0, likedByMe: false }),
+    ...(engagement.get(row.id) || { likeCount: 0, commentCount: 0, likedByMe: false, savedByMe: false, followingByMe: false }),
+    followingByMe: followedIds.has(row.author_source_id),
     author: authors.get(row.author_source_id) || { sourceId: row.author_source_id, name: "Member", username: null },
+    products: productsByPost.get(row.id) || [],
     mediaUrl: row.media_object_key ? `${origin}/posts/${row.id}/media` : null,
   }));
 }
@@ -288,7 +320,7 @@ export default {
       const requestUrl = new URL(request.url);
       const delegatedPath = requestUrl.searchParams.get("route");
       const parts = routeParts(delegatedPath ? new URL(delegatedPath, requestUrl.origin) : requestUrl);
-      if (parts[0] !== "posts" && parts[0] !== "admin" && parts[0] !== "activity" && parts[0] !== "profile") return json({ error: "Endpoint tidak ditemukan." }, 404, origin);
+      if (parts[0] !== "posts" && parts[0] !== "admin" && parts[0] !== "activity" && parts[0] !== "profile" && parts[0] !== "products" && parts[0] !== "saved") return json({ error: "Endpoint tidak ditemukan." }, 404, origin);
 
       if (request.method === "PUT" && parts[0] === "posts" && parts[1] === "upload" && parts[2]) {
         const token = new URL(request.url).searchParams.get("token") || "";
@@ -307,6 +339,20 @@ export default {
       const user = await authenticate(request, env);
       if (!user?.id) return json({ error: "Sesi customer tidak valid." }, 401, origin);
 
+      if (request.method === "GET" && parts[0] === "products" && parts.length === 1) {
+        const rows = await db<ProductRow[]>(env, "pos.products", {}, "select=source_id,name,price,promo_price,image,is_available,quantity&is_available=eq.true&order=menu_number.asc.nullslast,name.asc&limit=100");
+        const products = rows.filter((row) => row.quantity == null || Number(row.quantity) > 0).map((row) => ({ sourceId: row.source_id, name: row.name, price: Number(row.price || 0), promoPrice: row.promo_price == null ? null : Number(row.promo_price), image: row.image, isAvailable: row.is_available, quantity: row.quantity == null ? null : Number(row.quantity) }));
+        return json({ data: products }, 200, origin);
+      }
+
+      if (request.method === "GET" && parts[0] === "saved" && parts.length === 1) {
+        const savedRows = await db<Array<{ post_id: string }>>(env, "customer_community_post_saves", {}, `select=post_id&customer_source_id=eq.${encodeURIComponent(user.id)}&order=created_at.desc&limit=${MAX_PAGE_SIZE}`);
+        const savedIds = savedRows.map((row) => row.post_id);
+        if (!savedIds.length) return json({ data: [], nextCursor: null }, 200, origin);
+        const rows = await db<PostRow[]>(env, "customer_community_posts", {}, `select=id,author_source_id,body,media_type,media_object_key,media_content_type,media_size_bytes,moderation_status,report_count,created_at,updated_at,deleted_at&id=in.(${savedIds.map(encodeURIComponent).join(",")})&moderation_status=eq.published&deleted_at=is.null&order=created_at.desc,id.desc&limit=${MAX_PAGE_SIZE}`);
+        return json({ data: await serializePosts(env, rows, request, user.id), nextCursor: null }, 200, origin);
+      }
+
       if (request.method === "GET" && parts[0] === "activity" && parts.length === 1) {
         const url = new URL(request.url);
         const rawLimit = url.searchParams.get("limit");
@@ -324,7 +370,7 @@ export default {
           `expires_at=gt.${encodeURIComponent(now)}`,
           "order=visible_at.desc,id.desc",
           `limit=${parsedLimit + 1}`,
-          "select=id,activity_type,display_name_snapshot,display_mode,product_source_id,product_name_snapshot,product_image_snapshot,price_snapshot,nutrition_snapshot,order_settled_at,visible_at,expires_at",
+          "select=id,activity_type,display_name_snapshot,display_mode,avatar_url_snapshot,product_source_id,product_name_snapshot,product_image_snapshot,price_snapshot,nutrition_snapshot,order_settled_at,visible_at,expires_at",
         ];
         if (cursor) {
           filters.push(`or=(visible_at.lt.${encodeURIComponent(cursor.visibleAt)},and(visible_at.eq.${encodeURIComponent(cursor.visibleAt)},id.lt.${encodeURIComponent(cursor.id)}))`);
@@ -408,7 +454,14 @@ export default {
         const objectKey = typeof input?.mediaObjectKey === "string" ? input.mediaObjectKey : null;
         const mediaContentType = typeof input?.mediaContentType === "string" ? input.mediaContentType : null;
         const mediaSizeBytes = input?.mediaSizeBytes == null ? null : Number(input.mediaSizeBytes);
+        const rawProductSourceIds = input && Array.isArray(input.productSourceIds) ? input.productSourceIds : [];
+        const productSourceIds = [...new Set(rawProductSourceIds.filter((value): value is string => typeof value === "string" && value.trim().length > 0).slice(0, 3))];
         if (!body && !objectKey) return json({ error: "Tulis status atau pilih media terlebih dahulu." }, 400, origin);
+        if (productSourceIds.length) {
+          const productRows = await db<Array<{ source_id: string; is_available: boolean; quantity: number | null }>>(env, "pos.products", {}, `select=source_id,is_available,quantity&source_id=in.(${productSourceIds.map(encodeURIComponent).join(",")})`);
+          const validProductIds = new Set(productRows.filter((row) => row.is_available && (row.quantity == null || Number(row.quantity) > 0)).map((row) => row.source_id));
+          if (productSourceIds.some((id) => !validProductIds.has(id))) return json({ error: "Salah satu menu yang ditandai sudah tidak tersedia." }, 400, origin);
+        }
         if (body.length > MAX_BODY_LENGTH) return json({ error: `Status maksimal ${MAX_BODY_LENGTH} karakter.` }, 400, origin);
         if (objectKey && (!mediaType || !mediaContentType || !ALLOWED_TYPES.has(mediaContentType) || !objectKey.startsWith(`community/`))) return json({ error: "Data media tidak valid." }, 400, origin);
         if (objectKey) {
@@ -417,6 +470,7 @@ export default {
           if (!object || metadata.ownerSourceId !== user.id || metadata.postId !== String(input?.postId || "")) return json({ error: "Media tidak cocok dengan sesi postingan." }, 403, origin);
         }
         const rows = await db<PostRow[]>(env, "customer_community_posts", { method: "POST", body: JSON.stringify({ id: input?.postId || crypto.randomUUID(), author_source_id: user.id, body: body || null, media_type: mediaType, media_object_key: objectKey, media_content_type: mediaContentType, media_size_bytes: Number.isInteger(mediaSizeBytes) ? mediaSizeBytes : null }) }, "select=id,author_source_id,body,media_type,media_object_key,media_content_type,media_size_bytes,moderation_status,report_count,created_at,updated_at,deleted_at");
+        if (productSourceIds.length && rows[0]) await db(env, "customer_community_post_products", { method: "POST", headers: { Prefer: "resolution=ignore-duplicates,return=minimal" }, body: JSON.stringify(productSourceIds.map((product_source_id) => ({ post_id: rows[0].id, product_source_id }))) });
         return json({ data: (await serializePosts(env, rows, request, user.id))[0] }, 201, origin);
       }
 
@@ -427,6 +481,29 @@ export default {
         const object = await env.COMMUNITY_BUCKET.get(row.media_object_key);
         if (!object) return json({ error: "Media tidak ditemukan." }, 404, origin);
         return new Response(object.body, { headers: { "Content-Type": row.media_content_type || "application/octet-stream", "Cache-Control": "private, max-age=60", "X-Content-Type-Options": "nosniff" } });
+      }
+
+      if (parts[0] === "posts" && parts[1] && parts[2] === "save" && (request.method === "POST" || request.method === "DELETE")) {
+        const post = await db<Array<{ id: string }>>(env, "customer_community_posts", {}, `select=id&id=eq.${encodeURIComponent(parts[1])}&moderation_status=eq.published&deleted_at=is.null&limit=1`);
+        if (!post[0]) return json({ error: "Postingan tidak tersedia." }, 404, origin);
+        if (request.method === "POST") {
+          await db(env, "customer_community_post_saves", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify({ post_id: parts[1], customer_source_id: user.id }) }, "on_conflict=post_id,customer_source_id");
+          return json({ data: { saved: true } }, 200, origin);
+        }
+        await db(env, "customer_community_post_saves", { method: "DELETE" }, `post_id=eq.${encodeURIComponent(parts[1])}&customer_source_id=eq.${encodeURIComponent(user.id)}`);
+        return json({ data: { saved: false } }, 200, origin);
+      }
+
+      if (parts[0] === "profile" && parts[1] && parts[2] === "follow" && (request.method === "POST" || request.method === "DELETE")) {
+        if (parts[1] === user.id) return json({ error: "Tidak dapat mengikuti profil sendiri." }, 400, origin);
+        const target = await db<Array<{ source_id: string }>>(env, "pos_customers_view", {}, `select=source_id&source_id=eq.${encodeURIComponent(parts[1])}&limit=1`);
+        if (!target[0]) return json({ error: "Profil customer tidak ditemukan." }, 404, origin);
+        if (request.method === "POST") {
+          await db(env, "customer_community_follows", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify({ follower_source_id: user.id, followed_source_id: parts[1], deleted_at: null }) }, "on_conflict=follower_source_id,followed_source_id");
+          return json({ data: { following: true } }, 200, origin);
+        }
+        await db(env, "customer_community_follows", { method: "PATCH", body: JSON.stringify({ deleted_at: new Date().toISOString() }) }, `follower_source_id=eq.${encodeURIComponent(user.id)}&followed_source_id=eq.${encodeURIComponent(parts[1])}`);
+        return json({ data: { following: false } }, 200, origin);
       }
 
       if (parts[0] === "posts" && parts[1] && parts[2] === "like" && request.method === "POST") {
@@ -498,7 +575,12 @@ export default {
       if (parts[0] === "admin" && parts[1] === "reports" && request.method === "GET") {
         if (!(await isModerator(env, user.id))) return json({ error: "Akses moderator diperlukan." }, 403, origin);
         const reports = await db<ReportRow[]>(env, "customer_community_reports", {}, "select=id,post_id,reporter_source_id,reason,status,moderator_source_id,moderator_note,created_at,reviewed_at&status=eq.open&order=created_at.desc&limit=100");
-        return json({ data: reports }, 200, origin);
+        const postIds = [...new Set(reports.map((report) => report.post_id))];
+        const posts = postIds.length
+          ? await db<Array<{ id: string; body: string | null; media_type: "image" | "video" | null; media_object_key: string | null; author_source_id: string; created_at: string }>>(env, "customer_community_posts", {}, `select=id,body,media_type,media_object_key,author_source_id,created_at&id=in.(${postIds.map(encodeURIComponent).join(",")})`)
+          : [];
+        const postMap = new Map(posts.map((post) => [post.id, post]));
+        return json({ data: reports.map((report) => ({ ...report, post: postMap.get(report.post_id) || null })) }, 200, origin);
       }
 
       if (parts[0] === "admin" && parts[1] === "posts" && parts[2] && parts[3] === "moderate" && request.method === "POST") {

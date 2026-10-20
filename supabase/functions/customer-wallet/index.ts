@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { validateWalletSourceApp } from "./provenance.ts";
 
 type Json = Record<string, unknown>;
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -28,6 +29,7 @@ async function ownedCustomer(sourceId: string, email: string) {
 async function getWallet(payload: Json) {
   const sourceId = text(payload.sourceId);
   const email = text(payload.email);
+  const sourceApp = validateWalletSourceApp(payload.sourceApp);
   await ownedCustomer(sourceId, email);
   const { data, error } = await admin.schema("pos").from("customer_wallets").select("*").eq("customer_id", sourceId).maybeSingle();
   if (error) throw error;
@@ -36,22 +38,62 @@ async function getWallet(payload: Json) {
     if (ensureError) throw ensureError;
     return { wallet: ensured, ledger: [] };
   }
-  const { data: ledger, error: ledgerError } = await admin.schema("pos").from("customer_wallet_ledger").select("*").eq("customer_id", sourceId).order("created_at", { ascending: false }).limit(100);
+  let ledgerQuery = admin.schema("pos").from("customer_wallet_ledger").select("*").eq("customer_id", sourceId);
+  if (sourceApp) ledgerQuery = ledgerQuery.eq("source_app", sourceApp);
+  const { data: ledger, error: ledgerError } = await ledgerQuery.order("created_at", { ascending: false }).limit(100);
   if (ledgerError) throw ledgerError;
   return { wallet: data, ledger: ledger ?? [] };
 }
 
 async function createTopup(payload: Json) {
-  const sourceId=text(payload.sourceId); const email=text(payload.email); const customer=await ownedCustomer(sourceId,email);
-  const amount=Number(payload.amount); if (!Number.isSafeInteger(amount) || amount<1000) throw new Error("Nominal top up minimal Rp1.000");
-  const key=idempotency(payload.idempotencyKey); const topupId=`wt_${crypto.randomUUID()}`;
-  const { error: insertError }=await admin.schema("pos").from("customer_wallet_topups").insert({topup_id:topupId,customer_id:sourceId,amount,idempotency_key:key});
-  if(insertError) throw insertError;
-  const origin=String(payload.origin||""); const redirectUrl=origin?`${origin.replace(/\/$/,"")}/saldo`:undefined;
-  const invoiceResponse=await fetch(`${supabaseUrl}/functions/v1/mayar-proxy`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${serviceRoleKey}`,apikey:serviceRoleKey},body:JSON.stringify({action:"create-invoice",name:String((await ownedCustomer(sourceId,email)).name||"Customer"),email,mobile:customer.phone||"",redirectUrl,description:`Top up saldo customer`,expiredAt:new Date(Date.now()+24*60*60*1000).toISOString(),extraData:{walletTopupId:topupId,customerId:sourceId},items:[{quantity:1,rate:amount,description:`Top up saldo Rp${amount.toLocaleString("id-ID")}`} ]})});
-  const invoice: any=await invoiceResponse.json().catch(()=>({})); if(!invoiceResponse.ok||!invoice?.data?.id) { const detail=(invoice?.error && typeof invoice.error === "object" ? invoice.error.message : invoice?.messages || invoice?.message); throw new Error(typeof detail === "string" && detail.trim() ? detail : "Gagal membuat invoice top up"); }
-  await admin.schema("pos").from("customer_wallet_topups").update({invoice_id:invoice.data.id,transaction_id:invoice.data.transactionId||null}).eq("topup_id",topupId);
-  return {topup_id:topupId,invoice_id:invoice.data.id,invoice_url:invoice.data.link,status:"pending"};
+  const sourceId = text(payload.sourceId);
+  const email = text(payload.email);
+  const customer = await ownedCustomer(sourceId, email);
+  const sourceApp = validateWalletSourceApp(payload.sourceApp);
+  const amount = Number(payload.amount);
+  if (!Number.isSafeInteger(amount) || amount < 1000) throw new Error("Nominal top up minimal Rp1.000");
+  const key = idempotency(payload.idempotencyKey);
+  const topupId = `wt_${crypto.randomUUID()}`;
+  const { error: insertError } = await admin.schema("pos").from("customer_wallet_topups").insert({
+    topup_id: topupId,
+    customer_id: sourceId,
+    amount,
+    idempotency_key: key,
+    source_app: sourceApp,
+  });
+  if (insertError) throw insertError;
+  const origin = text(payload.origin);
+  const redirectUrl = origin ? `${origin.replace(/\/$/, "")}/saldo` : undefined;
+  const invoiceResponse = await fetch(`${supabaseUrl}/functions/v1/mayar-proxy`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${serviceRoleKey}`,
+      apikey: serviceRoleKey,
+    },
+    body: JSON.stringify({
+      action: "create-invoice",
+      name: text(customer.name) || "Customer",
+      email,
+      mobile: text(customer.phone),
+      redirectUrl,
+      description: "Top up saldo customer",
+      expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      extraData: { walletTopupId: topupId, customerId: sourceId },
+      items: [{ quantity: 1, rate: amount, description: `Top up saldo Rp${amount.toLocaleString("id-ID")}` }],
+    }),
+  });
+  const invoice: any = await invoiceResponse.json().catch(() => ({}));
+  if (!invoiceResponse.ok || !invoice?.data?.id) {
+    const detail = invoice?.error && typeof invoice.error === "object" ? invoice.error.message : invoice?.messages || invoice?.message;
+    throw new Error(typeof detail === "string" && detail.trim() ? detail : "Gagal membuat invoice top up");
+  }
+  const { error: updateError } = await admin.schema("pos").from("customer_wallet_topups").update({
+    invoice_id: invoice.data.id,
+    transaction_id: invoice.data.transactionId || null,
+  }).eq("topup_id", topupId);
+  if (updateError) throw updateError;
+  return { topup_id: topupId, invoice_id: invoice.data.id, invoice_url: invoice.data.link, status: "pending" };
 }
 
 async function createHold(payload: Json) {

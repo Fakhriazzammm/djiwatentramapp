@@ -151,8 +151,17 @@ function psql(sql) {
 async function validateRecruitmentAdmin(req, res, next) {
   const hrdSession = verifyHrdBridgeSession(req.get("x-rekrutmen-hrd-session"));
   if (hrdSession) {
-    res.locals.recruitmentAdmin = { role: "HRD", userId: hrdSession.sub };
-    res.locals.readOnly = true;
+    const candidateStatusPatch = req.method === "PATCH"
+      && /^\/api\/table\/Candidates\/[0-9a-f-]+$/i.test(req.path)
+      && Object.keys(req.body || {}).every((key) => key === "Status");
+    const candidateBulkStatus = req.method === "POST"
+      && req.path === "/api/rekrutmen/candidates/bulk"
+      && req.body?.action === "status";
+    if (req.method !== "GET" && !candidateStatusPatch && !candidateBulkStatus) {
+      return res.status(403).json({ error: "Sesi HRD hanya dapat membaca data atau mengubah status kandidat" });
+    }
+    res.locals.recruitmentAdmin = { role: "HRD", id: hrdSession.sub, userId: hrdSession.sub };
+    res.locals.readOnly = !(candidateStatusPatch || candidateBulkStatus);
     return next();
   }
   if (!req.get("x-yumi-session") && !req.get("authorization")) return res.status(401).json({ error: "HRD Google authentication diperlukan" });
@@ -655,6 +664,7 @@ app.get("/api/rekrutmen/candidates.csv", validateRecruitmentAdmin, (req, res) =>
 app.post("/api/rekrutmen/candidates/bulk", validateRecruitmentAdmin, (req, res) => {
   try {
     const action = String(req.body?.action || "").trim();
+    if (res.locals.readOnly && action !== "status") return adminError(res, 403, "READ_ONLY_SESSION", "Sesi ini hanya boleh mengubah status kandidat");
     const ids = Array.from(new Set(Array.isArray(req.body?.ids) ? req.body.ids.map((value) => String(value)) : []));
     if (!ids.length || ids.length > 200) return adminError(res, 400, "INVALID_IDS", "Pilih 1 sampai 200 kandidat");
     if (ids.some((id) => !UUID_RE.test(id))) return adminError(res, 400, "INVALID_ID", "ID kandidat tidak valid");
@@ -664,11 +674,11 @@ app.post("/api/rekrutmen/candidates/bulk", validateRecruitmentAdmin, (req, res) 
       const allowed = ["Application Received", "Screening", "Interview Scheduled", "Interview Completed", "Offer", "Hired", "Onboarding", "Selesai", "Rejected", "Withdrawn"];
       if (!allowed.includes(status)) return adminError(res, 400, "INVALID_STATUS", "Status bulk tidak valid");
       if (status === "Interview Scheduled") return adminError(res, 400, "INTERVIEW_SCHEDULE_REQUIRED", "Bulk Interview Scheduled memerlukan jadwal interview per kandidat");
-      const row = runAdminMutation(`WITH selected AS (SELECT id,status FROM pos.${TABLE} WHERE id IN (${idList})), updated AS (UPDATE pos.${TABLE} c SET status=${sqlLiteral(status)},updated_at=NOW() FROM selected WHERE c.id=selected.id RETURNING c.id,selected.status AS from_status,c.status AS to_status), history AS (INSERT INTO pos.recruitment_candidate_status_history (candidate_id,from_status,to_status,note,changed_by,metadata) SELECT id,from_status,to_status,'Bulk status update',${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id))},jsonb_build_object('bulk',true) FROM updated RETURNING candidate_id) SELECT json_build_object('updated',(SELECT COUNT(*) FROM history),'ids',COALESCE((SELECT json_agg(candidate_id) FROM history),'[]'::json))::text`)[0] || { updated: 0, ids: [] };
+      const row = runAdminMutation(`WITH selected AS (SELECT id,status FROM pos.${TABLE} WHERE id IN (${idList})), updated AS (UPDATE pos.${TABLE} c SET status=${sqlLiteral(status)},updated_at=NOW() FROM selected WHERE c.id=selected.id RETURNING c.id,selected.status AS from_status,c.status AS to_status), history AS (INSERT INTO pos.recruitment_candidate_status_history (candidate_id,from_status,to_status,note,changed_by,metadata) SELECT id,from_status,to_status,'Bulk status update',${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id || res.locals.recruitmentAdmin?.userId))},jsonb_build_object('bulk',true) FROM updated RETURNING candidate_id) SELECT json_build_object('updated',(SELECT COUNT(*) FROM history),'ids',COALESCE((SELECT json_agg(candidate_id) FROM history),'[]'::json))::text`)[0] || { updated: 0, ids: [] };
       return adminEnvelope(res, row, { resource: "candidate-bulk-status" });
     }
     if (action === "delete") {
-      const row = runAdminMutation(`WITH selected AS (SELECT id FROM pos.${TABLE} WHERE id IN (${idList})), audit AS (INSERT INTO pos.recruitment_audit_logs (entity_type,entity_id,action,actor_user_id,metadata) SELECT 'candidate',id,'bulk_delete',${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id))},jsonb_build_object('bulk',true) FROM selected), deleted_tasks AS (DELETE FROM pos.recruitment_onboarding_tasks t USING selected WHERE t.candidate_id=selected.id), deleted_interviews AS (DELETE FROM pos.recruitment_interviews i USING selected WHERE i.candidate_id=selected.id), deleted_history AS (DELETE FROM pos.recruitment_candidate_status_history h USING selected WHERE h.candidate_id=selected.id), deleted AS (DELETE FROM pos.${TABLE} c USING selected WHERE c.id=selected.id RETURNING c.id) SELECT json_build_object('deleted',(SELECT COUNT(*) FROM deleted),'ids',COALESCE((SELECT json_agg(id) FROM deleted),'[]'::json))::text`)[0] || { deleted: 0, ids: [] };
+      const row = runAdminMutation(`WITH selected AS (SELECT id FROM pos.${TABLE} WHERE id IN (${idList})), audit AS (INSERT INTO pos.recruitment_audit_logs (entity_type,entity_id,action,actor_user_id,metadata) SELECT 'candidate',id,'bulk_delete',${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id || res.locals.recruitmentAdmin?.userId))},jsonb_build_object('bulk',true) FROM selected), deleted_tasks AS (DELETE FROM pos.recruitment_onboarding_tasks t USING selected WHERE t.candidate_id=selected.id), deleted_interviews AS (DELETE FROM pos.recruitment_interviews i USING selected WHERE i.candidate_id=selected.id), deleted_history AS (DELETE FROM pos.recruitment_candidate_status_history h USING selected WHERE h.candidate_id=selected.id), deleted AS (DELETE FROM pos.${TABLE} c USING selected WHERE c.id=selected.id RETURNING c.id) SELECT json_build_object('deleted',(SELECT COUNT(*) FROM deleted),'ids',COALESCE((SELECT json_agg(id) FROM deleted),'[]'::json))::text`)[0] || { deleted: 0, ids: [] };
       return adminEnvelope(res, row, { resource: "candidate-bulk-delete" });
     }
     return adminError(res, 400, "INVALID_ACTION", "Aksi bulk tidak valid");
@@ -777,7 +787,7 @@ app.post("/api/rekrutmen/candidates/:id/status-transition", validateRecruitmentA
       if (scheduled !== true && scheduled !== "true") return adminError(res, 400, "INTERVIEW_SCHEDULE_REQUIRED", "Jadwal interview wajib dibuat sebelum kandidat masuk tahap Interview Scheduled");
     }
     const expectedCondition = expectedStatus === "Application Received" ? `(status=${sqlLiteral(expectedStatus)} OR status='Applied')` : `status=${sqlLiteral(expectedStatus || current.status)}`;
-    const sql = `WITH current_row AS (SELECT id,status FROM pos.${TABLE} WHERE id=${sqlLiteral(id)} AND ${expectedCondition} FOR UPDATE), updated AS (UPDATE pos.${TABLE} c SET status=${sqlLiteral(toStatus)},updated_at=NOW() FROM current_row WHERE c.id=current_row.id RETURNING c.id,current_row.status AS from_status,c.status AS to_status), history AS (INSERT INTO pos.recruitment_candidate_status_history (candidate_id,from_status,to_status,note,changed_by,metadata) SELECT id,from_status,to_status,${sqlLiteral(note)},${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id))},'{}'::jsonb FROM updated RETURNING candidate_id) SELECT json_build_object('id',updated.id,'fromStatus',updated.from_status,'toStatus',updated.to_status)::text FROM updated JOIN history ON history.candidate_id=updated.id`;
+    const sql = `WITH current_row AS (SELECT id,status FROM pos.${TABLE} WHERE id=${sqlLiteral(id)} AND ${expectedCondition} FOR UPDATE), updated AS (UPDATE pos.${TABLE} c SET status=${sqlLiteral(toStatus)},updated_at=NOW() FROM current_row WHERE c.id=current_row.id RETURNING c.id,current_row.status AS from_status,c.status AS to_status), history AS (INSERT INTO pos.recruitment_candidate_status_history (candidate_id,from_status,to_status,note,changed_by,metadata) SELECT id,from_status,to_status,${sqlLiteral(note)},${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id || res.locals.recruitmentAdmin?.userId))},'{}'::jsonb FROM updated RETURNING candidate_id) SELECT json_build_object('id',updated.id,'fromStatus',updated.from_status,'toStatus',updated.to_status)::text FROM updated JOIN history ON history.candidate_id=updated.id`;
     const row = runAdminMutation(sql)[0];
     if (!row) return adminError(res, 409, "STATUS_CONFLICT", "Status kandidat sudah berubah atau tidak sesuai dengan kondisi terakhir");
     adminEnvelope(res, row, { resource: "candidate-status-transition" });
@@ -841,7 +851,7 @@ app.post("/api/rekrutmen/interviews", validateRecruitmentAdmin, (req, res) => {
     const status = String(b.status || "Scheduled");
     const allowed = ["Scheduled", "Rescheduled", "Completed", "Passed", "Failed", "Cancelled"];
     if (!allowed.includes(status)) return adminError(res, 400, "INVALID_STATUS", "Status interview tidak valid");
-    const row = runAdminMutation(`INSERT INTO pos.recruitment_interviews (candidate_id,scheduled_at,timezone,interviewer_user_id,location,meeting_url,status,notes,feedback,result,created_by,metadata) VALUES (${sqlLiteral(candidateId)},${sqlLiteral(b.scheduledAt || b.scheduled_at)},${sqlLiteral(b.timezone || "Asia/Jakarta")},${sqlLiteral(uuidOrNull(b.interviewerUserId || b.interviewer_user_id))},${sqlLiteral(b.location || "")},${sqlLiteral(b.meetingUrl || b.meeting_url || "")},${sqlLiteral(status)},${sqlLiteral(b.notes || "")},${sqlLiteral(b.feedback || "")},${sqlLiteral(b.result || "")},${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id))},${sqlLiteral(JSON.stringify(b.metadata || {}))}::jsonb) RETURNING row_to_json(recruitment_interviews)::text`)[0];
+    const row = runAdminMutation(`INSERT INTO pos.recruitment_interviews (candidate_id,scheduled_at,timezone,interviewer_user_id,location,meeting_url,status,notes,feedback,result,created_by,metadata) VALUES (${sqlLiteral(candidateId)},${sqlLiteral(b.scheduledAt || b.scheduled_at)},${sqlLiteral(b.timezone || "Asia/Jakarta")},${sqlLiteral(uuidOrNull(b.interviewerUserId || b.interviewer_user_id))},${sqlLiteral(b.location || "")},${sqlLiteral(b.meetingUrl || b.meeting_url || "")},${sqlLiteral(status)},${sqlLiteral(b.notes || "")},${sqlLiteral(b.feedback || "")},${sqlLiteral(b.result || "")},${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id || res.locals.recruitmentAdmin?.userId))},${sqlLiteral(JSON.stringify(b.metadata || {}))}::jsonb) RETURNING row_to_json(recruitment_interviews)::text`)[0];
     adminEnvelope(res, row, { resource: "interview" });
   } catch (e) { adminError(res, 503, "TABLE_UNAVAILABLE", "Interview belum tersedia di schema recruitment"); }
 });

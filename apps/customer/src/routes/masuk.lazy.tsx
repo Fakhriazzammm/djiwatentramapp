@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowLeft, ArrowRight, CheckCircle2, Eye, EyeOff, Loader2, Mail } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 
 export const Route = createLazyFileRoute("/masuk")({
   component: CustomerAuthPage,
 });
-
-type AuthMode = "login" | "register";
 
 function GoogleMark() {
   return (
@@ -51,17 +49,8 @@ function getSafeCustomerReturnUrl() {
 function CustomerAuthPage() {
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
-  const { isAuthenticated, isLoading, customer, login, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm } = useCustomerAuth();
-  const [showFallback, setShowFallback] = useState(false);
-  const [mode, setMode] = useState<AuthMode>("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [sharePurchaseActivity, setSharePurchaseActivity] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [forgotMode, setForgotMode] = useState(false);
+  const { isAuthenticated, isLoading, customer, signInWithGoogle } = useCustomerAuth();
   const [error, setError] = useState("");
-  const [info, setInfo] = useState("");
 
   useEffect(() => {
     if (isAuthenticated && customer) {
@@ -76,44 +65,10 @@ function CustomerAuthPage() {
 
   const handleGoogle = async () => {
     setError("");
-    setInfo("");
     try {
       await signInWithGoogle();
     } catch (authError) {
       setError(authError instanceof Error ? authError.message : "Gagal masuk dengan Google");
-    }
-  };
-
-  const handleFallbackSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError("");
-    setInfo("");
-    if (forgotMode) {
-      if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
-        setError("Masukkan email yang valid terlebih dahulu.");
-        return;
-      }
-      try {
-        await resetPassword(email.trim());
-        setInfo("Link reset password sudah dikirim. Cek inbox atau folder spam.");
-      } catch (authError) {
-        setError(authError instanceof Error ? authError.message : "Gagal mengirim link reset password");
-      }
-      return;
-    }
-    if (!email.trim() || !password.trim() || (mode === "register" && !name.trim())) {
-      setError(mode === "register" ? "Nama, email, dan password wajib diisi." : "Email dan password wajib diisi.");
-      return;
-    }
-    if (mode === "register" && !sharePurchaseActivity) {
-      setError("Persetujuan layanan dan penggunaan data wajib dipilih saat membuat akun.");
-      return;
-    }
-    try {
-      if (mode === "login") await login(email.trim(), password);
-      else await register(email.trim(), password, name.trim(), sharePurchaseActivity);
-    } catch (authError) {
-      setError(authError instanceof Error ? authError.message : mode === "login" ? "Gagal masuk" : "Gagal mendaftar");
     }
   };
 
@@ -136,44 +91,14 @@ function CustomerAuthPage() {
             <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">Gunakan akun Google untuk masuk atau membuat akun member tanpa mengisi banyak data.</p>
           </motion.div>
 
-          <AnimatePresence mode="wait" initial={false}>
-            {registrationNeedsEmailConfirm ? (
-              <motion.div key="confirmation" className="mt-8 rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-left text-emerald-950" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={spring}>
-                <CheckCircle2 className="h-6 w-6 text-emerald-600" aria-hidden="true" />
-                <h2 className="mt-3 text-base font-black">Akun berhasil dibuat</h2>
-                <p className="mt-1 text-xs leading-relaxed">Cek email untuk konfirmasi, lalu kembali ke halaman ini dan masuk menggunakan email/password.</p>
-                <button type="button" className="mt-4 min-h-11 w-full rounded-[14px] bg-emerald-600 px-4 py-2.5 text-xs font-black text-white" onClick={() => { setShowFallback(true); setMode("login"); }}>Masuk dengan email</button>
-              </motion.div>
-            ) : (
-              <motion.div key="auth-options" className="mt-8" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ ...spring, delay: 0.1 }}>
-                <motion.button type="button" disabled={isLoading} onClick={handleGoogle} className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border border-border bg-background px-5 py-3 text-sm font-black shadow-sm transition-shadow hover:shadow-md disabled:opacity-60" whileHover={reduceMotion ? undefined : { y: -1 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} transition={spring}>
-                  <GoogleMark />
-                  Lanjut dengan Google
-                </motion.button>
-                <p className="mt-3 text-[11px] text-muted-foreground">Satu akun untuk login dan daftar member.</p>
-
-                <button type="button" onClick={() => { setShowFallback((value) => !value); setError(""); setInfo(""); }} className="mt-6 inline-flex min-h-11 items-center gap-1 text-xs font-bold text-primary hover:underline">
-                  {showFallback ? "Sembunyikan opsi email" : "Gunakan email/password"}
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-
-                {showFallback ? (
-                  <form className="mt-4 space-y-3 rounded-3xl border border-border bg-card p-4 text-left" onSubmit={handleFallbackSubmit}>
-                    <div className="flex items-center justify-between"><p className="text-sm font-black">{forgotMode ? "Reset password" : mode === "login" ? "Masuk dengan email" : "Daftar dengan email"}</p>{!forgotMode ? <div className="flex rounded-xl bg-muted/50 p-0.5"><button type="button" className={`min-h-9 rounded-lg px-2.5 text-[11px] font-bold ${mode === "login" ? "bg-background shadow-sm" : "text-muted-foreground"}`} onClick={() => setMode("login")}>Masuk</button><button type="button" className={`min-h-9 rounded-lg px-2.5 text-[11px] font-bold ${mode === "register" ? "bg-background shadow-sm" : "text-muted-foreground"}`} onClick={() => setMode("register")}>Daftar</button></div> : null}</div>
-                    {mode === "register" && !forgotMode ? <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Nama lengkap" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 text-xs outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20" /> : null}
-                    <div className="relative"><Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email" className="min-h-11 w-full rounded-[14px] border border-border bg-background pl-10 pr-3 text-xs outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20" /></div>
-                    {!forgotMode ? <div className="relative"><input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 pr-11 text-xs outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20" /><button type="button" aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"} onClick={() => setShowPassword((value) => !value)} className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-muted-foreground">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div> : null}
-                    {mode === "register" && !forgotMode ? <label className="flex items-start gap-2 rounded-xl border border-cyan-200 bg-cyan-50/70 p-2 text-[10px] leading-relaxed text-cyan-950"><input type="checkbox" checked={sharePurchaseActivity} onChange={(event) => setSharePurchaseActivity(event.target.checked)} className="mt-0.5" />Saya menyetujui Ketentuan Djiwa dan penggunaan data untuk layanan, marketing, cookies non-esensial, serta aktivitas pembelian di Komunitas. Saya dapat mengubah pilihan yang tersedia di Profil.</label> : null}
-                    {error ? <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-[11px] font-semibold text-destructive">{error}</p> : null}
-                    {info ? <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-700">{info}</p> : null}
-                    <button type="submit" disabled={isLoading} className="min-h-11 w-full rounded-[14px] bg-primary px-4 py-2.5 text-xs font-black text-white disabled:opacity-60">{isLoading ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : forgotMode ? "Kirim link reset" : mode === "login" ? "Masuk" : "Daftar"}</button>
-                    {!forgotMode && mode === "login" ? <button type="button" onClick={() => setForgotMode(true)} className="min-h-11 w-full text-[11px] font-semibold text-muted-foreground hover:underline">Lupa password?</button> : null}
-                    {forgotMode ? <button type="button" onClick={() => setForgotMode(false)} className="min-h-11 w-full text-[11px] font-semibold text-muted-foreground hover:underline">Kembali ke masuk</button> : null}
-                  </form>
-                ) : null}
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <motion.div className="mt-8" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.1 }}>
+            <motion.button type="button" disabled={isLoading} onClick={handleGoogle} className="flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border border-border bg-background px-5 py-3 text-sm font-black shadow-sm transition-shadow hover:shadow-md disabled:opacity-60" whileHover={reduceMotion ? undefined : { y: -1 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} transition={spring}>
+              <GoogleMark />
+              Lanjut dengan Google
+            </motion.button>
+            <p className="mt-3 text-[11px] text-muted-foreground">Satu akun untuk login dan daftar member.</p>
+            {error ? <p role="alert" className="mt-4 rounded-xl bg-destructive/10 px-3 py-2 text-[11px] font-semibold text-destructive">{error}</p> : null}
+          </motion.div>
         </section>
 
         <div className="space-y-2">

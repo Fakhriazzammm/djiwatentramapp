@@ -11,7 +11,6 @@ import { CUSTOMER_ORDERING_DEFAULTS, currency } from "./types";
 import { chipClassName } from "./shared-components";
 import { deterministicRecommendationScore, trendLiftScore } from "@/lib/recommendation-engine";
 import { markRecommendationNotInterested, recommendationFatiguePenalty, recommendationFeedbackPenalty, recordRecommendationEvent } from "@/lib/recommendation-events";
-import { useProductReviewSummary } from "@/hooks/use-product-reviews";
 
 
 function ProductImage({ src, alt }: { src?: string | null; alt: string }) {
@@ -26,22 +25,6 @@ function ProductImage({ src, alt }: { src?: string | null; alt: string }) {
 			fallback={<PackageSearch className="h-7 w-7" strokeWidth={1.8} />}
 		/>
 	);
-}
-
-function ProductReviewSignal({ productSourceId }: { productSourceId: string }) {
-	const anchorRef = useRef<HTMLDivElement | null>(null);
-	const [enabled, setEnabled] = useState(false);
-	useEffect(() => {
-		const node = anchorRef.current;
-		if (!node || typeof IntersectionObserver === "undefined") { setEnabled(true); return; }
-		const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setEnabled(true); observer.disconnect(); } }, { rootMargin: "160px" });
-		observer.observe(node);
-		return () => observer.disconnect();
-	}, []);
-	const { summary, isLoading } = useProductReviewSummary(productSourceId, enabled);
-	const hasRating = Boolean(summary && summary.publishedCount > 0 && summary.ratingAverage != null);
-	const ratingLabel = hasRating ? `Rating ${summary!.ratingAverage!.toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} dari 5, ${summary!.publishedCount} ulasan` : "Belum ada rating publik";
-	return <span ref={anchorRef} className="flex min-h-4 min-w-0 items-center gap-1 text-[11px] font-semibold text-muted-foreground" aria-label={ratingLabel}>{hasRating ? <><Star className="h-3 w-3 shrink-0 text-amber-500" fill="currentColor" />{summary!.ratingAverage!.toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}<span aria-hidden="true">·</span><span className="truncate">{summary!.publishedCount} ulasan</span></> : <><Star className="h-3 w-3 shrink-0 text-muted-foreground/60" />{isLoading ? "Memuat rating…" : "Belum ada rating"}</>}</span>;
 }
 
 function ProductImageButton({ src, alt, isSold }: { src?: string | null; alt: string; isSold: boolean }) {
@@ -82,6 +65,7 @@ export interface MenuSectionProps {
 	cart: CartItem[];
 	codeFeedback: string;
 	config: typeof CUSTOMER_ORDERING_DEFAULTS;
+	showDineInSummary: boolean;
 	discounts: Doc<"discounts">[] | undefined;
 	filteredProducts: Doc<"products">[];
 	freeRefillCharge: number;
@@ -243,7 +227,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 				</details>
 			) : null}
 			<div className="flex items-center justify-between gap-3 px-1 text-[11px] font-bold text-muted-foreground" aria-label="Ringkasan pesanan">
-				<p className="min-w-0 truncate">Meja {props.tableNumber.trim() || "—"} · {props.partySize} orang</p>
+				{props.showDineInSummary ? <p className="min-w-0 truncate">Meja {props.tableNumber.trim() || "—"} · {props.partySize} orang</p> : <span />}
 				<p className="shrink-0">{props.totalItems} item · {currency(props.total)}</p>
 			</div>
 			{props.freeRefillCharge > 0 ? <p className="px-1 text-[11px] font-bold text-emerald-700">Free refill · {currency(props.freeRefillCharge)}</p> : null}
@@ -351,7 +335,6 @@ export function renderMenuSection(props: MenuSectionProps) {
 												</div>
 												<p className="break-words text-[13px] font-black leading-tight">{product.name}</p>
 												{product.description ? <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">{product.description}</p> : <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">Siap dipesan di meja Anda.</p>}
-												<ProductReviewSignal productSourceId={String(product._id)} />
 												{hasNutritionValues ? <div className="mt-1 flex items-center gap-3 border-y border-primary/10 py-1"><p className="shrink-0 text-[10px] font-black text-primary">Gizi</p><div className="grid min-w-0 flex-1 grid-cols-5 gap-1">{[["Kalori", `${nutrition.caloriesKcal} kkal`], ["Protein", `${nutrition.proteinG} g`], ["Karbo", `${nutrition.carbohydratesG} g`], ["Lemak", `${nutrition.fatG} g`], ["Gula", `${nutrition.sugarG ?? "-"} g`]].map(([label, value]) => <div key={label} className="min-w-0"><p className="truncate text-[9px] leading-tight text-muted-foreground">{label}</p><p className="truncate text-[10px] font-black leading-tight text-foreground">{value}</p></div>)}</div></div> : null}
 											</div>
 											<div className="flex items-center justify-between gap-2">

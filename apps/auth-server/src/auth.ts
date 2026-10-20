@@ -22,6 +22,8 @@ export const auth = betterAuth({
     "https://b2b.yumme.id",
     "https://ordermieyamin.yumme.id",
     "https://500kopitasik.yumme.id",
+    "https://djiwatravel.com",
+    "https://www.djiwatravel.com",
     "https://kolmarketing.yumme.id",
     "https://rekrutmen.yumme.id",
     "http://localhost:5173",
@@ -29,6 +31,10 @@ export const auth = betterAuth({
   ],
   // Share the central customer session across Djiwa App subdomains.
   advanced: {
+    cookies: {
+      // Match the database OAuth verification entry's ten-minute TTL.
+      state: { attributes: { maxAge: 600 } },
+    },
     crossSubDomainCookies: {
       enabled: true,
       domain: ".yumme.id",

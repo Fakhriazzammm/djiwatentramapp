@@ -1,7 +1,7 @@
 {
-  "version": "0.2.240",
-  "commitHash": "70dce97",
-  "message": "fix(pos): keep notification details in cashier",
-  "buildDate": "2026-10-01",
-  "generatedAt": "2026-10-01T07:43:37.843Z"
+  "version": "0.2.514",
+  "commitHash": "8d43640",
+  "message": "fix(admin): paginate dashboard order analytics",
+  "buildDate": "2026-10-11",
+  "generatedAt": "2026-10-11T13:08:30.134Z"
 }

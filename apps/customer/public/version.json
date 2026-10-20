@@ -1,7 +1,7 @@
 {
-  "version": "0.2.413",
-  "commitHash": "11f6f57",
-  "message": "fix(order-tracking): use guest token for receipt reads",
-  "buildDate": "2026-10-04",
-  "generatedAt": "2026-10-04T07:19:47.142Z"
+  "version": "0.2.528",
+  "commitHash": "594972f",
+  "message": "Merge fix/pos-otp-pin-ui: POS login redesign and root route",
+  "buildDate": "2026-10-11",
+  "generatedAt": "2026-10-11T16:04:39.489Z"
 }

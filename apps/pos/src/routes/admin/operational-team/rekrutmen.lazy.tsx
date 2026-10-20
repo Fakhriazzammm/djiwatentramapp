@@ -331,6 +331,7 @@ function AdminRekrutmen() {
               <div className="rk-sheet-section-title">Kontak & review</div>
               <div className="rk-sheet-field"><span className="rk-sheet-field-label">Email</span><span className="rk-sheet-field-value">{esc(f.Email || "-")}</span></div>
               <div className="rk-sheet-field"><span className="rk-sheet-field-label">No HP</span><span className="rk-sheet-field-value">{esc(f["Nomor Telepon/HP"] || "-")}</span></div>
+              <div className="rk-sheet-field"><span className="rk-sheet-field-label">Sosial media</span><span className="rk-sheet-field-value">{esc(f["Sosial Media Instagram/Tiktok"] || f["Sosial Media"] || "Belum diisi")}</span></div>
               <div className="rk-sheet-field"><span className="rk-sheet-field-label">Catatan</span><span className="rk-sheet-field-value">{esc(f.Notes || "Belum ada catatan")}</span></div>
             </div>
             <div className="rk-sheet-section"><div className="text-sm text-[var(--rk-muted)]">Data ini hanya-baca dan bersumber dari workflow onboarding karyawan.</div></div>
@@ -755,7 +756,13 @@ function AdminRekrutmen() {
                 <tr>
                   <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground sticky left-0 bg-muted/30 z-10">Kandidat</th>
                   <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Posisi</th>
+                  <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Sosmed</th>
+                  <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Gender</th>
+                  <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Lahir</th>
+                  <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Kontak</th>
                   <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Tipe</th>
+                  <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Catatan</th>
+                  <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">CV</th>
                   <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Tanggal</th>
                   <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Status</th>
                   <th className="text-left font-bold text-[10px] uppercase tracking-wider text-muted-foreground">Aksi</th>
@@ -771,7 +778,13 @@ function AdminRekrutmen() {
                         <div className="row-sub">{esc(f.Email || "tanpa email")}</div>
                       </td>
                       <td>{esc(f["Posisi Dilamar"] || "-")}</td>
+                      <td className="max-w-[180px] truncate text-muted-foreground" title={f["Sosial Media Instagram/Tiktok"] || f["Sosial Media"] || "Belum diisi"}>{esc(f["Sosial Media Instagram/Tiktok"] || f["Sosial Media"] || "-")}</td>
+                      <td>{esc(f["Jenis Kelamin"] || "-")}</td>
+                      <td>{esc(f["Tanggal Lahir"] || "-")}</td>
+                      <td>{esc(f["Nomor Telepon/HP"] || "-")}</td>
                       <td>{esc(f["Full time/Part time"] || "-")}</td>
+                      <td className="max-w-[220px] truncate text-muted-foreground" title={f.Notes || "Belum ada catatan"}>{esc(f.Notes || "-")}</td>
+                      <td>{f["CV URL"] ? <a className="text-blue-600 hover:underline" href={String(f["CV URL"])} target="_blank" rel="noreferrer">Buka CV</a> : <span className="text-muted-foreground">-</span>}</td>
                       <td>{esc(f["Application Date"] || "-")}</td>
                       <td>
                         <span className={`rk-card-badge rk-status-${(f.Status || "new").toLowerCase().replace(/\\s+/g, "")}`}>

@@ -786,9 +786,33 @@ app.post("/api/customer/product-reviews/report", async (c) => {
   return privateJson({ success: true, reviewId, reported: true });
 });
 
+function trustedProfileImage(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  try {
+    const url = new URL(value.trim());
+    const hostname = url.hostname.toLowerCase();
+    if (url.protocol !== "https:" || !(hostname === "googleusercontent.com" || hostname.endsWith(".googleusercontent.com"))) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 app.get("/api/customer/profile", async (c) => {
   const session = await requireCustomerSession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+
+  // Project the identity-bound Google image server-side only. Preserve a manually uploaded portrait.
+  const identityImage = trustedProfileImage((session.user as { image?: unknown }).image);
+  if (identityImage) {
+    await pool.query(
+      `UPDATE pos.customers
+          SET photo_url = $1, updated_at = now()
+        WHERE source_id = $2
+          AND NULLIF(BTRIM(photo_url), '') IS NULL`,
+      [identityImage, session.user.id],
+    );
+  }
 
   const result = await pool.query(
     "SELECT * FROM public.pos_customers_view WHERE source_id = $1 LIMIT 1",

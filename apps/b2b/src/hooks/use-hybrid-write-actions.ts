@@ -1,3 +1,4 @@
+import { allocateDailyReceiptNo } from "@yumipos/web-shared/lib/daily-receipt";
 import { createClient } from "@/lib/client";
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
@@ -43,7 +44,7 @@ function generateOrderNumber(args: {
 	orderType?: string;
 	createdAt: number;
 	customerName?: string;
-	receiptNo?: number;
+	receiptNo: number;
 	platform?: string;
 	brandSlug?: string;
 }) {
@@ -2488,12 +2489,13 @@ export function useHybridCreateOrder() {
 							: args?.source === "customer_self_service"
 								? (args?.brandSlug === B2B_BRAND_SLUG ? "b2b" : "dine_in")
 								: "online";
-						let dailyReceiptNo = null;
+			const dailyReceiptNo = await allocateDailyReceiptNo(supabase);
 
 			const orderNumber = generateOrderNumber({
 				source: args?.source,
 				orderType: args?.orderType,
 				createdAt: orderCreatedAt,
+				receiptNo: dailyReceiptNo,
 				brandSlug: B2B_BRAND_SLUG,
 				customerName: args?.customerName || undefined,
 			});
@@ -2565,7 +2567,7 @@ const orderRow = {
 					creation_time: orderCreatedAt,
 					idempotency_key: idempotencyKey,
 					customer_source_id: args?.customerSourceId ?? null,
-					raw: { ...(args ?? {}), authUserId: currentUser?._id ?? null },
+					raw: { ...(args ?? {}), dailyReceiptNo, receiptKind: kind, orderNumber, authUserId: currentUser?._id ?? null },
 				};
 
 				const { error: orderError } = await pos.from("orders").insert(orderRow);
@@ -2620,7 +2622,7 @@ const orderRow = {
 						order_source_id: orderId,
 						creation_time: Date.now(),
 						metadata: {
-							dailyReceiptNo: dailyReceiptNo ?? undefined,
+							dailyReceiptNo,
 							orderNumber,
 							source: "pos",
 						},

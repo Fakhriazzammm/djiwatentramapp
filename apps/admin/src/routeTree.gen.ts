@@ -123,6 +123,9 @@ import { Route as AdminOperationalTeamRegisterApplicationRegistrationNumberRoute
 import { Route as AdminOperationalTeamRegisterContractTemplateIdPreviewRouteImport } from './routes/admin/operational-team/register/contract/$templateId/preview'
 
 const LaporanLazyRouteImport = createFileRoute('/laporan')()
+const AdminDeliverySettingsLazyRouteImport = createFileRoute(
+  '/admin/delivery_/settings',
+)()
 const AdminOperationalTeamRegisterContractIndexLazyRouteImport =
   createFileRoute('/admin/operational-team/register/contract/')()
 const AdminOperationalTeamRegisterContractEditTemplateIdLazyRouteImport =
@@ -475,6 +478,14 @@ const AdminBookingIndexRoute = AdminBookingIndexRouteImport.update({
 } as any).lazy(() =>
   import('./routes/admin/booking/index.lazy').then((d) => d.Route),
 )
+const AdminDeliverySettingsLazyRoute =
+  AdminDeliverySettingsLazyRouteImport.update({
+    id: '/delivery_/settings',
+    path: '/delivery/settings',
+    getParentRoute: () => AdminRouteRoute,
+  } as any).lazy(() =>
+    import('./routes/admin/delivery_.settings.lazy').then((d) => d.Route),
+  )
 const RegisterSelesaiRegistrationNumberRoute =
   RegisterSelesaiRegistrationNumberRouteImport.update({
     id: '/selesai/$registrationNumber',
@@ -1031,6 +1042,7 @@ export interface FileRoutesByFullPath {
   '/admin/rekrutmen/positions': typeof AdminRekrutmenPositionsRoute
   '/admin/rekrutmen/reports': typeof AdminRekrutmenReportsRoute
   '/register/selesai/$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
+  '/admin/delivery/settings': typeof AdminDeliverySettingsLazyRoute
   '/admin/booking/': typeof AdminBookingIndexRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/karyawan/': typeof AdminKaryawanIndexRoute
@@ -1132,6 +1144,7 @@ export interface FileRoutesByTo {
   '/admin/rekrutmen/positions': typeof AdminRekrutmenPositionsRoute
   '/admin/rekrutmen/reports': typeof AdminRekrutmenReportsRoute
   '/register/selesai/$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
+  '/admin/delivery/settings': typeof AdminDeliverySettingsLazyRoute
   '/admin/booking': typeof AdminBookingIndexRoute
   '/admin/finance': typeof AdminFinanceIndexRoute
   '/admin/karyawan': typeof AdminKaryawanIndexRoute
@@ -1247,6 +1260,7 @@ export interface FileRoutesById {
   '/admin/rekrutmen/positions': typeof AdminRekrutmenPositionsRoute
   '/admin/rekrutmen/reports': typeof AdminRekrutmenReportsRoute
   '/register/selesai/$registrationNumber': typeof RegisterSelesaiRegistrationNumberRoute
+  '/admin/delivery_/settings': typeof AdminDeliverySettingsLazyRoute
   '/admin/booking/': typeof AdminBookingIndexRoute
   '/admin/finance/': typeof AdminFinanceIndexRoute
   '/admin/karyawan/': typeof AdminKaryawanIndexRoute
@@ -1364,6 +1378,7 @@ export interface FileRouteTypes {
     | '/admin/rekrutmen/positions'
     | '/admin/rekrutmen/reports'
     | '/register/selesai/$registrationNumber'
+    | '/admin/delivery/settings'
     | '/admin/booking/'
     | '/admin/finance/'
     | '/admin/karyawan/'
@@ -1465,6 +1480,7 @@ export interface FileRouteTypes {
     | '/admin/rekrutmen/positions'
     | '/admin/rekrutmen/reports'
     | '/register/selesai/$registrationNumber'
+    | '/admin/delivery/settings'
     | '/admin/booking'
     | '/admin/finance'
     | '/admin/karyawan'
@@ -1579,6 +1595,7 @@ export interface FileRouteTypes {
     | '/admin/rekrutmen/positions'
     | '/admin/rekrutmen/reports'
     | '/register/selesai/$registrationNumber'
+    | '/admin/delivery_/settings'
     | '/admin/booking/'
     | '/admin/finance/'
     | '/admin/karyawan/'
@@ -2020,6 +2037,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/booking/'
       preLoaderRoute: typeof AdminBookingIndexRouteImport
       parentRoute: typeof AdminBookingRoute
+    }
+    '/admin/delivery_/settings': {
+      id: '/admin/delivery_/settings'
+      path: '/delivery/settings'
+      fullPath: '/admin/delivery/settings'
+      preLoaderRoute: typeof AdminDeliverySettingsLazyRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/register/selesai/$registrationNumber': {
       id: '/register/selesai/$registrationNumber'
@@ -2793,6 +2817,7 @@ interface AdminRouteRouteChildren {
   AdminShiftClosingRoute: typeof AdminShiftClosingRoute
   AdminStockOverviewRoute: typeof AdminStockOverviewRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminDeliverySettingsLazyRoute: typeof AdminDeliverySettingsLazyRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
@@ -2830,6 +2855,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminShiftClosingRoute: AdminShiftClosingRoute,
   AdminStockOverviewRoute: AdminStockOverviewRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminDeliverySettingsLazyRoute: AdminDeliverySettingsLazyRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
