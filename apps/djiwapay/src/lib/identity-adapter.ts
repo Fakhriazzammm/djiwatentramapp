@@ -1,8 +1,8 @@
 import { createAuthClient } from "better-auth/react";
 
-export const authClient = createAuthClient({ baseURL: "https://api.yumme.id/v1/auth", fetchOptions: { credentials: "include" } });
+export const authClient = createAuthClient({ baseURL: "https://api.djiwatentram.web.id/api/auth", fetchOptions: { credentials: "include" } });
 export type CustomerProfile = { source_id: string; name: string | null; email: string | null; wallet_status?: "active" | "blocked" };
-const BRIDGE_START = "https://api.yumme.id/v1/customer/pay-bridge/start";
+const BRIDGE_START = "https://api.djiwatentram.web.id/v1/customer/pay-bridge/start";
 
 async function exchangeBridgeToken(): Promise<CustomerProfile | null> {
   const token = new URLSearchParams(window.location.search).get("bridgeToken");
