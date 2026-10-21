@@ -2,7 +2,8 @@ import { createAuthClient } from "better-auth/react";
 
 export const authClient = createAuthClient({ baseURL: "https://api.djiwatentram.web.id/api/auth", fetchOptions: { credentials: "include" } });
 export type CustomerProfile = { source_id: string; name: string | null; email: string | null; wallet_status?: "active" | "blocked" };
-const BRIDGE_START = "https://api.djiwatentram.web.id/v1/customer/pay-bridge/start";
+const BRIDGE_START = "https://api.djiwatentram.web.id/api/customer/pay-bridge/start";
+const CUSTOMER_AUTH_ORIGIN = "https://djiwatentram.web.id/masuk";
 
 async function exchangeBridgeToken(): Promise<CustomerProfile | null> {
   const token = new URLSearchParams(window.location.search).get("bridgeToken");
@@ -15,15 +16,26 @@ async function exchangeBridgeToken(): Promise<CustomerProfile | null> {
 }
 
 export function buildPayBridgeStartUrl() {
-  return `${BRIDGE_START}?returnTo=${encodeURIComponent(window.location.href)}`;
+  return `${BRIDGE_START}?returnTo=${encodeURIComponent(window.location.origin + "/wallet")}`;
+}
+
+export function buildCustomerAuthUrl() {
+  const returnTo = `${window.location.origin}/wallet`;
+  return `${CUSTOMER_AUTH_ORIGIN}?sso=1&returnTo=${encodeURIComponent(returnTo)}`;
 }
 
 export async function resolveIdentity(): Promise<CustomerProfile | null> {
   const bridged = await exchangeBridgeToken();
   if (bridged) return bridged;
   const response = await fetch("/api/pay-bridge/profile", { credentials: "include", headers: { Accept: "application/json" } });
-  if (response.status === 401) return null;
-  if (!response.ok) throw new Error(`Sesi Djiwa Pay HTTP ${response.status}`);
-  const payload = await response.json() as { success?: boolean; customer?: CustomerProfile | null };
-  return payload.success ? payload.customer ?? null : null;
+  if (response.ok) {
+    const payload = await response.json() as { success?: boolean; customer?: CustomerProfile | null };
+    return payload.success ? payload.customer ?? null : null;
+  }
+  if (response.status !== 401) throw new Error(`Sesi Djiwa Pay HTTP ${response.status}`);
+  const session = await authClient.getSession();
+  if (session.data?.user) {
+    window.location.assign(buildPayBridgeStartUrl());
+  }
+  return null;
 }
