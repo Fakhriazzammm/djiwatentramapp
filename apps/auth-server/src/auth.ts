@@ -16,6 +16,7 @@ export const auth = betterAuth({
   // Customer sessions are shared by the Djiwa App storefronts.
   trustedOrigins: [
     "https://djiwatentram.yumme.id",
+    "https://pay.djiwatentram.yumme.id",
     "https://investor.yumme.id",
     "https://merchandise.yumme.id",
     "https://booking.yumme.id",

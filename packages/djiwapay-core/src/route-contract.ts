@@ -1,6 +1,6 @@
 import type { DjiwaPayContext, ReturnTarget } from "./types";
 
-export const PAY_ORIGIN = "https://pay.djiwatentram.web.id";
+export const PAY_ORIGIN = "https://pay.djiwatentram.yumme.id";
 export const ALLOWED_RETURN_ORIGINS = new Set([
   "https://djiwatentram.yumme.id",
   "https://b2b.djiwatentram.web.id",
