@@ -7,6 +7,7 @@ import { registerKolPortalRoutes } from "./kol-portal.js";
 import { investorAuth, registerInvestorPortalRoutes } from "./investor-portal.js";
 import { buildCoffeePassportStickerPrompt, generateCoffeePassportPng, stickerModel, stickerPromptVersion } from "./coffee-passport-sticker.js";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { createCipheriv, createHash, randomBytes } from "node:crypto";
 import { join } from "node:path";
 
 const app = new Hono();
@@ -649,6 +650,113 @@ function privateJson(body: Record<string, unknown>, status = 200) {
     },
   });
 }
+
+const GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events";
+const GOOGLE_CALENDAR_RETURN_ORIGINS = new Set(customerOrigins);
+const GOOGLE_CALENDAR_REDIRECT_URI = process.env.GOOGLE_CALENDAR_REDIRECT_URI || `${process.env.BETTER_AUTH_URL || "https://auth.zantara.id"}/api/customer/google-calendar/callback`;
+
+function calendarKey(): Buffer {
+  const raw = process.env.GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY || "";
+  if (!raw) throw new Error("GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY is not configured");
+  const decoded = Buffer.from(raw, "base64");
+  return decoded.length === 32 ? decoded : createHash("sha256").update(raw).digest();
+}
+
+function encryptCalendarToken(value: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", calendarKey(), iv);
+  const ciphertext = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
+  return [iv.toString("base64url"), cipher.getAuthTag().toString("base64url"), ciphertext.toString("base64url")].join(".");
+}
+
+
+function calendarReturnTo(value: string | undefined): string {
+  const candidate = value || "https://djiwatentram.web.id/";
+  try {
+    const url = new URL(candidate);
+    if (!GOOGLE_CALENDAR_RETURN_ORIGINS.has(url.origin)) throw new Error("origin not allowed");
+    return url.toString();
+  } catch {
+    return "https://djiwatentram.web.id/";
+  }
+}
+
+app.get("/api/customer/google-calendar/status", async (c) => {
+  const session = await requireCustomerSession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const result = await pool.query(
+    `SELECT google_account_email, calendar_id, connected_at, updated_at
+       FROM public.customer_google_calendar_connections WHERE customer_id = $1 LIMIT 1`,
+    [session.user.id],
+  );
+  const connection = result.rows[0];
+  return privateJson({ success: true, connected: Boolean(connection), connection: connection ? {
+    email: connection.google_account_email,
+    calendarId: connection.calendar_id,
+    connectedAt: connection.connected_at,
+    updatedAt: connection.updated_at,
+  } : null });
+});
+
+app.get("/api/customer/google-calendar/connect", async (c) => {
+  const session = await requireCustomerSession(c.req.raw.headers);
+  if (!session) return c.redirect("https://djiwatentram.web.id/login?error=UNAUTHORIZED");
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  if (!clientId || !clientSecret || !process.env.GOOGLE_CALENDAR_TOKEN_ENCRYPTION_KEY) {
+    return c.redirect(`${calendarReturnTo(c.req.query("returnTo"))}?calendar=not_configured`);
+  }
+  const state = randomBytes(32).toString("base64url");
+  await pool.query(
+    `DELETE FROM public.customer_google_calendar_oauth_states WHERE expires_at < now();
+     INSERT INTO public.customer_google_calendar_oauth_states (state_hash, customer_id, return_to, expires_at)
+     VALUES ($1, $2, $3, now() + interval '10 minutes')`,
+    [createHash("sha256").update(state).digest("hex"), session.user.id, calendarReturnTo(c.req.query("returnTo"))],
+  );
+  const params = new URLSearchParams({ client_id: clientId, redirect_uri: GOOGLE_CALENDAR_REDIRECT_URI, response_type: "code", access_type: "offline", prompt: "consent", scope: `openid email ${GOOGLE_CALENDAR_SCOPE}`, state });
+  return c.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+});
+
+app.get("/api/customer/google-calendar/callback", async (c) => {
+  const state = c.req.query("state") || "";
+  const code = c.req.query("code") || "";
+  const stateHash = createHash("sha256").update(state).digest("hex");
+  const stored = await pool.query(
+    `DELETE FROM public.customer_google_calendar_oauth_states
+      WHERE state_hash = $1 AND expires_at > now()
+      RETURNING customer_id, return_to`, [stateHash],
+  );
+  const row = stored.rows[0];
+  if (!row || !code) return c.redirect(`${row?.return_to || "https://djiwatentram.web.id/"}?calendar=state_mismatch`);
+  try {
+    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ code, client_id: process.env.GOOGLE_CLIENT_ID || "", client_secret: process.env.GOOGLE_CLIENT_SECRET || "", redirect_uri: GOOGLE_CALENDAR_REDIRECT_URI, grant_type: "authorization_code" }) });
+    const tokens = await tokenResponse.json() as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string; error?: string };
+    if (!tokenResponse.ok || !tokens.access_token) throw new Error(tokens.error || "GOOGLE_TOKEN_EXCHANGE_FAILED");
+    const profileResponse = await fetch("https://openidconnect.googleapis.com/v1/userinfo", { headers: { Authorization: `Bearer ${tokens.access_token}` } });
+    const profile = await profileResponse.json() as { email?: string };
+    const existing = await pool.query(`SELECT encrypted_refresh_token FROM public.customer_google_calendar_connections WHERE customer_id = $1 LIMIT 1`, [row.customer_id]);
+    const refreshToken = tokens.refresh_token ? encryptCalendarToken(tokens.refresh_token) : existing.rows[0]?.encrypted_refresh_token;
+    if (!refreshToken) throw new Error("GOOGLE_REFRESH_TOKEN_MISSING");
+    await pool.query(
+      `INSERT INTO public.customer_google_calendar_connections (customer_id, google_account_email, encrypted_access_token, encrypted_refresh_token, token_expires_at, scope)
+       VALUES ($1, $2, $3, $4, now() + ($5 * interval '1 second'), $6)
+       ON CONFLICT (customer_id) DO UPDATE SET google_account_email = EXCLUDED.google_account_email, encrypted_access_token = EXCLUDED.encrypted_access_token, encrypted_refresh_token = EXCLUDED.encrypted_refresh_token, token_expires_at = EXCLUDED.token_expires_at, scope = EXCLUDED.scope, updated_at = now()`,
+      [row.customer_id, profile.email || null, encryptCalendarToken(tokens.access_token), refreshToken, tokens.expires_in || 3600, tokens.scope || GOOGLE_CALENDAR_SCOPE],
+    );
+    return c.redirect(`${row.return_to}?calendar=connected`);
+  } catch (error) {
+    console.error("[google-calendar] callback failed", error instanceof Error ? error.message : error);
+    return c.redirect(`${row.return_to}?calendar=error`);
+  }
+});
+
+app.delete("/api/customer/google-calendar/connection", async (c) => {
+  const session = await requireCustomerSession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  await pool.query("DELETE FROM public.customer_google_calendar_connections WHERE customer_id = $1", [session.user.id]);
+  return privateJson({ success: true, connected: false });
+});
+
 
 app.get("/api/customer/profile", async (c) => {
   const session = await requireCustomerSession(c.req.raw.headers);
