@@ -10,6 +10,7 @@ import { currency } from "@/components/customer/types";
 import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
 import { CustomerErrorState, CustomerSectionSkeleton } from "@/components/customer/customer-states";
 import { CustomerHeader } from "@/components/customer/customer-shell";
+import { buildDjiwaPayUrl } from "@yumipos/djiwapay-core";
 
 export const Route = createLazyFileRoute("/$username/saldo")({ component: SaldoPage });
 
@@ -54,6 +55,10 @@ function monthLabel(key: string) { const [year, month] = key.split("-").map(Numb
 
 function SaldoPage() {
   const { username } = Route.useParams();
+  useEffect(() => {
+    const returnTo = `${window.location.origin}/${encodeURIComponent(username)}/saldo`;
+    window.location.replace(buildDjiwaPayUrl({ context: "customer", returnTo }));
+  }, [username]);
   const navigate = useNavigate();
   const { isAuthenticated, customer, isLoading: authLoading } = useCustomerAuth();
   const reduceMotion = useReducedMotion();
