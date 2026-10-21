@@ -3,7 +3,7 @@ import { ImageWithPlaceholder } from "@/components/customer/image-with-placehold
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, Check, Eye, EyeOff, LogIn, LogOut, Mail, MapPin, Phone, ShieldCheck, Star, User, Wallet } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { invokeEdgeFunction } from "@/lib/api-helper";
@@ -43,6 +43,49 @@ function ProfilePage() {
 	const [editPurchaseActivityNameMode, setEditPurchaseActivityNameMode] = useState<"first_name" | "full_name">("first_name");
 	const [saving, setSaving] = useState(false);
 	const [saved, setSaved] = useState(false);
+	const [calendarConnected, setCalendarConnected] = useState(false);
+	const [calendarEmail, setCalendarEmail] = useState<string | null>(null);
+	const [calendarLoading, setCalendarLoading] = useState(true);
+	const [calendarDisconnecting, setCalendarDisconnecting] = useState(false);
+
+	useEffect(() => {
+		let cancelled = false;
+		void fetch("https://api.yumme.id/v1/customer/google-calendar/status", { credentials: "include" })
+			.then(async (response) => {
+				if (!response.ok) throw new Error("calendar status failed");
+				return response.json() as Promise<{ connected?: boolean; connection?: { email?: string | null } | null }>;
+			})
+			.then((result) => {
+				if (!cancelled) {
+					setCalendarConnected(Boolean(result.connected));
+					setCalendarEmail(result.connection?.email || null);
+				}
+			})
+			.catch(() => undefined)
+			.finally(() => { if (!cancelled) setCalendarLoading(false); });
+		return () => { cancelled = true; };
+	}, []);
+
+	const connectCalendar = () => {
+		const returnTo = `${window.location.origin}${window.location.pathname}`;
+		window.location.assign(`https://api.yumme.id/v1/customer/google-calendar/connect?returnTo=${encodeURIComponent(returnTo)}`);
+	};
+
+	const disconnectCalendar = async () => {
+		setCalendarDisconnecting(true);
+		try {
+			const response = await fetch("https://api.yumme.id/v1/customer/google-calendar/connection", { method: "DELETE", credentials: "include" });
+			if (!response.ok) throw new Error("disconnect failed");
+			setCalendarConnected(false);
+			setCalendarEmail(null);
+			toast.success("Google Calendar diputuskan");
+		} catch {
+			toast.error("Google Calendar belum dapat diputuskan");
+		} finally {
+			setCalendarDisconnecting(false);
+		}
+	};
+
 
 	if (authLoading) {
 		return <CustomerPageSkeleton label="Memuat profil" />;
@@ -270,6 +313,16 @@ function ProfilePage() {
 						) : null}
 					</div>
 				</div>
+				<section aria-labelledby="google-calendar-heading" className="overflow-hidden rounded-2xl bg-card">
+					<div className="flex items-center gap-3 px-4 py-4 sm:px-5">
+						<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#4285F4]/10 text-[#4285F4]"><CalendarDays className="h-5 w-5" /></div>
+						<div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Google Calendar</p><h2 id="google-calendar-heading" className="mt-1 text-sm font-black">Jadwal My Trip</h2><p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Simpan itinerary Djiwa ke kalender Google kamu.</p></div>
+					</div>
+					<div className="border-t border-border/60 px-4 py-3 sm:px-5">
+						{calendarLoading ? <p className="text-xs text-muted-foreground">Memeriksa koneksi kalender...</p> : calendarConnected ? <div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="flex items-center gap-1.5 text-xs font-bold text-emerald-700"><Check className="h-3.5 w-3.5" /> Terhubung</p><p className="mt-1 truncate text-[10px] text-muted-foreground">{calendarEmail || "Akun Google terhubung"}</p></div><button type="button" onClick={() => void disconnectCalendar()} disabled={calendarDisconnecting} className="min-h-11 shrink-0 rounded-[13px] border border-border px-3 text-[10px] font-bold text-muted-foreground disabled:opacity-50">{calendarDisconnecting ? "Memutuskan..." : "Putuskan"}</button></div> : <button type="button" onClick={connectCalendar} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-[#4285F4] px-3 py-2.5 text-xs font-black text-white transition-transform active:scale-[.98]"><CalendarDays className="h-3.5 w-3.5" /> Hubungkan Google Calendar</button>}
+					</div>
+				</section>
+
 				{/* Stats */}
 				<div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
 					<ProfileStat
