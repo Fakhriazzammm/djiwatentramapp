@@ -1,0 +1,3 @@
+import { createClient } from "@yumipos/web-shared/lib/client"; import type { WalletLedgerEntry, WalletSummary } from "@yumipos/djiwapay-core"; import type { CustomerProfile } from "./identity-adapter";
+export type WalletResponse={wallet:WalletSummary;ledger:WalletLedgerEntry[]};
+export async function readWallet(profile:CustomerProfile):Promise<WalletResponse>{ if(!profile.source_id) throw new Error("Identitas customer tidak tersedia"); const supabase=createClient(); const {data,error}=await supabase.functions.invoke("customer-wallet",{body:{action:"get",sourceId:profile.source_id,email:profile.email}}); if(error) throw error; if(!data?.wallet) throw new Error("Wallet customer tidak ditemukan"); return data as WalletResponse; }

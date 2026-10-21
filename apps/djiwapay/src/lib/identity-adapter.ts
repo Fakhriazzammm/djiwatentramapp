@@ -1,0 +1,4 @@
+import { createAuthClient } from "better-auth/react";
+export const authClient = createAuthClient({ baseURL:"https://api.yumme.id/v1/auth", fetchOptions:{credentials:"include"} });
+export type CustomerProfile={source_id:string; name:string|null; email:string|null; wallet_status?:"active"|"blocked"};
+export async function resolveIdentity(): Promise<CustomerProfile|null> { const session=await authClient.getSession(); if(!session.data?.user) return null; const response=await fetch("https://api.yumme.id/v1/customer/profile",{credentials:"include",headers:{Accept:"application/json"}}); if(response.status===401) return null; if(!response.ok) throw new Error(`Profil customer HTTP ${response.status}`); const payload=await response.json() as {success?:boolean;customer?:CustomerProfile|null}; return payload.success ? payload.customer ?? null : null; }

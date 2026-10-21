@@ -207,6 +207,28 @@
         "vite": "^6.2.2",
       },
     },
+    "apps/djiwapay": {
+      "name": "@yumipos/djiwapay",
+      "version": "0.0.0",
+      "dependencies": {
+        "@better-auth/infra": "^0.3.6",
+        "@supabase/supabase-js": "^2.103.3",
+        "@yumipos/djiwapay-core": "workspace:*",
+        "@yumipos/djiwapay-ui": "workspace:*",
+        "@yumipos/web-shared": "workspace:*",
+        "better-auth": "^1.6.23",
+        "lucide-react": "^0.473.0",
+        "react": "19.2.3",
+        "react-dom": "19.2.3",
+      },
+      "devDependencies": {
+        "@types/react": "19.2.7",
+        "@types/react-dom": "19.2.3",
+        "@vitejs/plugin-react": "^4.3.4",
+        "typescript": "catalog:",
+        "vite": "^6.2.2",
+      },
+    },
     "apps/investor": {
       "name": "@yumipos/investor",
       "version": "0.0.0",
@@ -495,6 +517,27 @@
     "packages/config": {
       "name": "@yumipos/config",
       "version": "0.0.0",
+    },
+    "packages/djiwapay-core": {
+      "name": "@yumipos/djiwapay-core",
+      "version": "0.0.0",
+      "devDependencies": {
+        "typescript": "catalog:",
+      },
+    },
+    "packages/djiwapay-ui": {
+      "name": "@yumipos/djiwapay-ui",
+      "version": "0.0.0",
+      "dependencies": {
+        "@yumipos/djiwapay-core": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/react": "19.2.7",
+        "typescript": "catalog:",
+      },
+      "peerDependencies": {
+        "react": "^19.0.0",
+      },
     },
     "packages/env": {
       "name": "@yumipos/env",
@@ -1208,6 +1251,12 @@
     "@yumipos/config": ["@yumipos/config@workspace:packages/config"],
 
     "@yumipos/customer": ["@yumipos/customer@workspace:apps/customer"],
+
+    "@yumipos/djiwapay": ["@yumipos/djiwapay@workspace:apps/djiwapay"],
+
+    "@yumipos/djiwapay-core": ["@yumipos/djiwapay-core@workspace:packages/djiwapay-core"],
+
+    "@yumipos/djiwapay-ui": ["@yumipos/djiwapay-ui@workspace:packages/djiwapay-ui"],
 
     "@yumipos/env": ["@yumipos/env@workspace:packages/env"],
 
