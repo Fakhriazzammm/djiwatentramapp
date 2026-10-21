@@ -1,2 +1,8 @@
-import { createClient } from "@yumipos/web-shared/lib/client"; import type { CustomerProfile } from "./identity-adapter";
-export async function createTopup(profile:CustomerProfile, amount:number){ if(!profile.source_id || !profile.email) throw new Error("Profil pembayaran belum lengkap"); if(!Number.isSafeInteger(amount)||amount<1000) throw new Error("Nominal minimal Rp1.000"); const supabase=createClient(); const {data,error}=await supabase.functions.invoke("customer-wallet",{body:{action:"topup",sourceId:profile.source_id,email:profile.email,amount,idempotencyKey:`djiwapay-${profile.source_id}-${Date.now()}`}}); if(error) throw error; const url=data?.result?.invoice_url; if(typeof url!=="string") throw new Error("Invoice top up tidak tersedia"); return url; }
+import type { CustomerProfile } from "./identity-adapter";
+export async function createTopup(_profile: CustomerProfile, amount: number) {
+  if (!Number.isSafeInteger(amount) || amount < 1000) throw new Error("Nominal minimal Rp1.000");
+  const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "topup", amount }) });
+  const payload = await response.json().catch(() => ({})) as { result?: { invoice_url?: string }; error?: string };
+  if (!response.ok || typeof payload.result?.invoice_url !== "string") throw new Error(payload.error || "Invoice top up tidak tersedia");
+  return payload.result.invoice_url;
+}

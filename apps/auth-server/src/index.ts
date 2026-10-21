@@ -704,6 +704,101 @@ function privateJson(body: Record<string, unknown>, status = 200) {
   });
 }
 
+
+const payBridgeTickets = new Map<string, { userId: string; expiresAt: number }>();
+const payBridgeSessions = new Map<string, { userId: string; expiresAt: number }>();
+const PAY_BRIDGE_ORIGIN = "https://pay.djiwatentram.web.id";
+const PAY_BRIDGE_TTL_MS = 90_000;
+const PAY_SESSION_TTL_SECONDS = 900;
+
+function prunePayBridgeState() {
+  const now = Date.now();
+  for (const [key, value] of payBridgeTickets) if (value.expiresAt <= now) payBridgeTickets.delete(key);
+  for (const [key, value] of payBridgeSessions) if (value.expiresAt <= now) payBridgeSessions.delete(key);
+}
+
+async function customerForUser(userId: string) {
+  const result = await pool.query(
+    "SELECT source_id, name, email, phone, photo_url FROM public.pos_customers_view WHERE source_id = $1 LIMIT 1",
+    [userId],
+  );
+  return result.rows[0] ?? null;
+}
+
+function paySessionId(headers: Headers) {
+  const match = headers.get("cookie")?.match(/(?:^|;\s*)djiwa_pay_session=([^;]+)/);
+  return match?.[1] || "";
+}
+
+async function requirePaySession(headers: Headers) {
+  prunePayBridgeState();
+  const current = payBridgeSessions.get(paySessionId(headers));
+  if (!current || current.expiresAt <= Date.now()) return null;
+  const customer = await customerForUser(current.userId);
+  return customer ? { userId: current.userId, customer } : null;
+}
+
+app.get("/api/customer/pay-bridge/start", async (c) => {
+  const session = await requireCustomerSession(c.req.raw.headers);
+  if (!session?.user?.id) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const returnTo = c.req.query("returnTo") || `${PAY_BRIDGE_ORIGIN}/wallet`;
+  let target: URL;
+  try {
+    target = new URL(returnTo);
+    if (target.origin !== PAY_BRIDGE_ORIGIN || target.protocol !== "https:") throw new Error("invalid target");
+  } catch {
+    target = new URL("/wallet", PAY_BRIDGE_ORIGIN);
+  }
+  prunePayBridgeState();
+  const ticket = crypto.randomUUID().replace(/-/g, "");
+  payBridgeTickets.set(ticket, { userId: session.user.id, expiresAt: Date.now() + PAY_BRIDGE_TTL_MS });
+  target.searchParams.set("bridgeToken", ticket);
+  return c.redirect(target.toString(), 302);
+});
+
+app.post("/api/pay-bridge/exchange", async (c) => {
+  const body = await c.req.json().catch(() => ({})) as { token?: unknown };
+  const ticket = typeof body.token === "string" ? body.token.trim() : "";
+  prunePayBridgeState();
+  const record = payBridgeTickets.get(ticket);
+  payBridgeTickets.delete(ticket);
+  if (!record || record.expiresAt <= Date.now()) return privateJson({ success: false, error: "BRIDGE_EXPIRED" }, 401);
+  const customer = await customerForUser(record.userId);
+  if (!customer) return privateJson({ success: false, error: "CUSTOMER_NOT_FOUND" }, 403);
+  const sessionId = crypto.randomUUID().replace(/-/g, "");
+  payBridgeSessions.set(sessionId, { userId: record.userId, expiresAt: Date.now() + PAY_SESSION_TTL_SECONDS * 1000 });
+  return new Response(JSON.stringify({ success: true, customer }), { status: 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "Set-Cookie": `djiwa_pay_session=${sessionId}; Max-Age=${PAY_SESSION_TTL_SECONDS}; Path=/; HttpOnly; Secure; SameSite=Lax` } });
+});
+
+app.get("/api/pay-bridge/profile", async (c) => {
+  const session = await requirePaySession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  return privateJson({ success: true, customer: session.customer });
+});
+
+app.post("/api/pay-bridge/wallet", async (c) => {
+  const session = await requirePaySession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const body = await c.req.json().catch(() => ({})) as { action?: unknown; amount?: unknown };
+  const action = typeof body.action === "string" ? body.action : "get";
+  const sourceId = String(session.customer.source_id || "");
+  const email = String(session.customer.email || "");
+  if (!sourceId || !email) return privateJson({ success: false, error: "PROFILE_INCOMPLETE" }, 422);
+  if (action === "get") {
+    const wallet = await pool.query("SELECT * FROM pos.customer_wallets WHERE customer_id = $1 LIMIT 1", [sourceId]);
+    const ledger = await pool.query("SELECT * FROM pos.customer_wallet_ledger WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 100", [sourceId]);
+    return privateJson({ success: true, wallet: wallet.rows[0] ?? null, ledger: ledger.rows });
+  }
+  if (action !== "topup") return privateJson({ success: false, error: "UNKNOWN_ACTION" }, 400);
+  const amount = Number(body.amount);
+  if (!Number.isSafeInteger(amount) || amount < 1000) return privateJson({ success: false, error: "INVALID_AMOUNT" }, 400);
+  const supabaseUrl = MAYAR_PROXY_URL.replace(/\/functions\/v1\/mayar-proxy\/?$/, "");
+  const response = await fetch(`${supabaseUrl}/functions/v1/customer-wallet`, { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }, body: JSON.stringify({ action: "topup", sourceId, email, amount, sourceApp: "djiwapay", origin: PAY_BRIDGE_ORIGIN, idempotencyKey: `djiwapay-${sourceId}-${crypto.randomUUID()}` }) });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.result?.invoice_url) return privateJson({ success: false, error: "TOPUP_FAILED" }, 502);
+  return privateJson({ success: true, result: payload.result });
+});
+
 const CUSTOMER_REVIEW_ORDER_STATUSES = new Set(["paid", "completed", "settled"]);
 
 app.post("/api/customer/product-reviews", async (c) => {
