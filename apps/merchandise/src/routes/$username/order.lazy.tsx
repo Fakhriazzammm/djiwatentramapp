@@ -1,4 +1,5 @@
 import { MARKETPLACE_BRAND_SLUG } from "@/lib/marketplace-config";
+import { openDjiwaPay } from "@/lib/djiwapay";
 import {
 	Bell,
 	ChevronRight,
@@ -1032,7 +1033,7 @@ function OrderPage() {
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}
-					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, shippingReceiverName, shippingAddress, shippingPhone, guestEmail, isAuthenticated, djiwaPayDiscount, isSubmitting, notes, onBackToMenu: () => setStep("menu"), onContinueToShipping: continueToShipping, paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setShippingReceiverName, setShippingAddress, setShippingPhone, setGuestEmail, setNotes, setPaymentChoice, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => window.location.assign(`https://djiwatentram.yumme.id/${username}/saldo`), checkoutError }) : null}
+					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, shippingReceiverName, shippingAddress, shippingPhone, guestEmail, isAuthenticated, djiwaPayDiscount, isSubmitting, notes, onBackToMenu: () => setStep("menu"), onContinueToShipping: continueToShipping, paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setShippingReceiverName, setShippingAddress, setShippingPhone, setGuestEmail, setNotes, setPaymentChoice, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => openDjiwaPay(username), checkoutError }) : null}
 					{step === "shipping" ? <ShippingSection cart={cart} shippingProvider={shippingProvider} setShippingProvider={setShippingProvider} onBackToCheckout={() => setStep("checkout")} onContinueToPayment={checkout} isSubmitting={isSubmitting} productSubtotal={productSubtotal} total={total} checkoutError={checkoutError} /> : null}
 
 					{/* ── Receipt section ─────────────────────────── */}

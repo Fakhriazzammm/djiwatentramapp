@@ -5,4 +5,5 @@ describe("Djiwa Pay route contract", () => {
   test("rejects an external return target", () => expect(normalizeReturnTarget("https://evil.example/steal")).toBeNull());
   test("rejects non-HTTPS targets", () => expect(normalizeReturnTarget("javascript:alert(1)")).toBeNull());
   test("uses wallet as the default route", () => expect(buildDjiwaPayUrl({ context: "customer" })).toBe("https://pay.djiwatentram.web.id/customer/wallet"));
+  test("accepts the customer consumer origin", () => expect(buildDjiwaPayUrl({ context: "customer", returnTo: "https://djiwatentram.web.id/azzam/saldo" })).toBe("https://pay.djiwatentram.web.id/customer/wallet?returnTo=https%3A%2F%2Fdjiwatentram.web.id%2Fazzam%2Fsaldo"));
 });
