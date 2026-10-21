@@ -3,7 +3,7 @@
 ## Ownership
 
 - Canonical full Djiwa Pay runtime: `apps/djiwapay`.
-- Canonical public URL: `https://pay.djiwatentram.yumme.id`.
+- Canonical public URL: `https://pay.djiwatentram.web.id`.
 - Wallet reads and payment settlement continue to use the existing customer-wallet and Mayar contracts.
 - Existing app origins and navigation remain active; their Djiwa Pay action is a launcher only.
 - `packages/djiwapay-core` owns types, safe route construction, and payment vocabulary.
