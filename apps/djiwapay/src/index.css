@@ -162,3 +162,21 @@
 /* No visual shell around the summary content; only the summary card owns the surface. */
 .ppob-detail-active .ppob-order-summary .ppob-review-list,
 .ppob-detail-active .ppob-order-summary .ppob-review-list span{background:transparent!important;box-shadow:none!important}
+
+/* One surface for the payment heading and QRIS explanation; never card the title alone. */
+.ppob-detail-active .ppob-payment-heading > div,
+.ppob-detail-active .ppob-payment-heading > strong,
+.ppob-detail-active .ppob-payment-heading > small,
+.ppob-detail-active .ppob-qris-note > strong,
+.ppob-detail-active .ppob-qris-note > small{
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  background-image:none!important;
+}
+.ppob-detail-active .ppob-payment-heading,
+.ppob-detail-active .ppob-qris-note{
+  background-clip:padding-box!important;
+}
+.ppob-detail-active .ppob-qris-note{box-shadow:none!important}
