@@ -4,7 +4,7 @@ import { ArrowDownLeft, ArrowUpRight, Bell, Car, CreditCard, Droplets, Eye, EyeO
 import { createPpobInvoice, purchasePpob, readPpobCatalog, type PpobProduct, type WalletResponse } from "../../lib/wallet-adapter";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import type { CustomerProfile, PayNavigationContext } from "../../lib/identity-adapter";
-import { CheckoutActionBar, CheckoutSection, OrderSummary, PaymentMethodCard, PaymentNotice } from "@yumipos/djiwa-checkout-ui";
+import { CheckoutActionBar, CheckoutSection, OrderSummary, PaymentMethodCard } from "@yumipos/djiwa-checkout-ui";
 
 const money = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 const date = (value: string) => { const parsed = new Date(value); return Number.isNaN(parsed.getTime()) ? "" : parsed.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }); };
@@ -151,7 +151,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
                 <PaymentMethodCard>
                   <div className={ppobPaymentMethod === "mayar" ? "ppob-customer-payment-option is-selected" : "ppob-customer-payment-option"}>
                     <button type="button" role="radio" aria-checked={ppobPaymentMethod === "mayar"} onClick={() => setPpobPaymentMethod("mayar")}>
-                      <span><strong>QRIS</strong><small>Bayar langsung melalui halaman pembayaran QRIS</small></span>
+                      <span><strong>QRIS</strong><small>Bayar cepat dan cashierless dengan QRIS</small></span>
                       <i aria-hidden="true">{ppobPaymentMethod === "mayar" ? "●" : "○"}</i>
                     </button>
                   </div>
@@ -166,12 +166,11 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
                 <div><span>Nomor tujuan</span><strong>{ppobCustomerNumber}</strong></div>
                 <div className="is-total"><span>Total pembayaran</span><strong>{money(selectedPpobProduct.product_price)}</strong></div>
               </div>
+              <div className="ppob-reward-note ppob-customer-reward-note">Reward +Rp1.000 saldo Djiwa Pay diberikan setelah transaksi berhasil.</div>
+              <CheckoutActionBar className="ppob-customer-action-bar">
+                <button type="button" className="primary-action ppob-pay-button" onClick={payPpob} disabled={ppobPaymentBusy || (ppobPaymentMethod === "wallet" && (wallet?.wallet.available_balance ?? 0) < selectedPpobProduct.product_price)}>{ppobPaymentBusy ? (ppobPaymentMethod === "mayar" ? "Menyiapkan QRIS..." : "Memproses...") : ppobPaymentMethod === "mayar" ? `Bayar dengan QRIS · ${money(selectedPpobProduct.product_price)}` : `Bayar ${money(selectedPpobProduct.product_price)}`}</button>
+              </CheckoutActionBar>
             </OrderSummary>
-            {ppobPaymentMethod === "wallet" ? <div className="ppob-wallet-balance ppob-customer-wallet-balance"><span>Saldo Djiwa Pay</span><b>{money(wallet?.wallet.available_balance ?? 0)}</b></div> : <PaymentNotice title="Bayar langsung dengan QRIS" tone="info">Anda akan diarahkan ke halaman pembayaran QRIS. Tidak ada saldo Djiwa Pay yang digunakan.</PaymentNotice>}
-            <div className="ppob-reward-note ppob-customer-reward-note">Reward saldo Djiwa Pay diberikan setelah transaksi berhasil.</div>
-            <CheckoutActionBar className="ppob-customer-action-bar">
-              <button type="button" className="primary-action ppob-pay-button" onClick={payPpob} disabled={ppobPaymentBusy || (ppobPaymentMethod === "wallet" && (wallet?.wallet.available_balance ?? 0) < selectedPpobProduct.product_price)}>{ppobPaymentBusy ? (ppobPaymentMethod === "mayar" ? "Menyiapkan QRIS..." : "Memproses...") : ppobPaymentMethod === "mayar" ? `Bayar dengan QRIS · ${money(selectedPpobProduct.product_price)}` : `Bayar ${money(selectedPpobProduct.product_price)}`}</button>
-            </CheckoutActionBar>
             {ppobPaymentMessage ? <div className="ppob-payment-message" role="alert">{ppobPaymentMessage}</div> : null}
           </div>
           <button className="ppob-text-button" onClick={() => { setPpobReviewOpen(false); goPpobRoute(ppobProductRoute("detail")); }}>Kembali</button>

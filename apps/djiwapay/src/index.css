@@ -105,7 +105,7 @@
 .ppob-customer-insufficient-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-top:1px solid #f1d9a3}
 .ppob-customer-insufficient-row p{margin:0;color:#8a5a00;font-size:10px;font-weight:600;line-height:1.35}
 .ppob-customer-insufficient-row button{flex:0 0 auto;padding:6px 10px;border:0;border-radius:8px;background:#b7791f;color:#fff;font-size:10px;font-weight:800;cursor:pointer}
-.ppob-detail-active .ppob-customer-order-summary{margin:0!important;padding:16px!important;border:1px solid #edf0f5!important;border-radius:24px!important;background:#fff!important;box-shadow:0 5px 18px rgba(19,38,75,.045)!important}
+.ppob-detail-active .ppob-customer-order-summary{display:grid!important;gap:8px!important;margin:0!important;padding:16px!important;border:1px solid #edf0f5!important;border-radius:24px!important;background:#fff!important;box-shadow:0 5px 18px rgba(19,38,75,.045)!important}
 .ppob-customer-order-summary h3{margin:0 0 6px;font-size:14px;color:#172033}
 .ppob-customer-summary-rows{display:grid}
 .ppob-customer-summary-rows>div{display:flex;justify-content:space-between;gap:12px;min-height:30px;padding:7px 0;border-bottom:1px solid #eef1f5;font-size:11px}
@@ -117,7 +117,7 @@
 .ppob-detail-active .ppob-customer-wallet-balance{display:flex;align-items:center;justify-content:space-between;min-height:44px;margin:0!important;padding:10px 12px!important;border:1px solid #edf0f5;border-radius:16px;background:#fff;box-shadow:0 5px 18px rgba(19,38,75,.045);color:#7d8798;font-size:11px}
 .ppob-detail-active .ppob-customer-wallet-balance b{color:#172033;font-size:12px}
 .ppob-detail-active .djiwa-payment-notice{margin:0!important;border-radius:16px!important;box-shadow:0 5px 18px rgba(19,38,75,.045)!important}
-.ppob-detail-active .ppob-customer-reward-note{margin:0!important;padding:9px 12px;border:1px solid #edf0f5;border-radius:14px;background:#fff;box-shadow:0 5px 18px rgba(19,38,75,.045);color:#68758a;font-size:10px;font-weight:600;line-height:1.4}
+.ppob-detail-active .ppob-customer-reward-note{margin:0!important;padding:8px 12px;border:0;border-radius:12px;background:#f5f6f8;box-shadow:none;color:#68758a;font-size:10px;font-weight:600;line-height:1.4}
 .ppob-detail-active .ppob-customer-action-bar{display:block!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important}
 .ppob-detail-active .ppob-customer-action-bar .ppob-pay-button{width:100%!important;min-height:46px!important;margin:0!important;border:0!important;border-radius:14px!important;background:#1a5dc6!important;color:#fff!important;font-size:12px!important;font-weight:800!important;box-shadow:0 5px 12px rgba(26,93,198,.2)!important}
 .ppob-detail-active .ppob-customer-action-bar .ppob-pay-button:disabled{opacity:.6}
