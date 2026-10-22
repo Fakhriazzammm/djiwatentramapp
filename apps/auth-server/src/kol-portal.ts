@@ -683,7 +683,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     }
     if (isInquiryHoneypotFilled(body)) return json(c, { success: true, data: { received: true } }, 201);
     const validated = validatePublicInquiry(body);
-    if (!validated.ok) return json(c, { success: false, error: validated.error }, 400);
+    if ("error" in validated) return json(c, { success: false, error: validated.error }, 400);
     const username = publicUsername(c.req.param("username")).toLowerCase();
     const profile = await pool.query(`select id from public.pos_kol_public_profiles where lower(username)=lower($1) limit 1`, [username]);
     if (!profile.rows[0]) return json(c, { success: false, error: "PROFILE_NOT_FOUND" }, 404);

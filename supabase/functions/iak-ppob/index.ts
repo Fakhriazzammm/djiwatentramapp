@@ -14,16 +14,23 @@ const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession
 type Json = Record<string, unknown>;
 const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
 function reply(body: Json, status = 200) { return new Response(JSON.stringify(body), { status, headers: jsonHeaders }); }
-function text(v: unknown) { return typeof v === "string" ? v.trim() : ""; }
-function sign(input: string) { return md5(input); }
+function text(value: unknown) { return typeof value === "string" ? value.trim() : ""; }
+function sign(value: string) { return md5(value); }
 function configured() { return Boolean(username && apiKey); }
 function authError() { return reply({ success: false, error: { code: "IAK_NOT_CONFIGURED", message: "IAK username/API key belum dikonfigurasi sebagai secret server" } }, 503); }
+
 async function iak(path: string, body: Json) {
-  const response = await fetch(`${baseUrl}/${path.replace(/^\//, "")}`, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(30_000) });
+  const response = await fetch(`${baseUrl}/${path.replace(/^\//, "")}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(30_000),
+  });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(`IAK HTTP ${response.status}`);
   return payload;
 }
+
 async function callback(request: Request) {
   if (!configured()) return authError();
   const incoming = await request.json().catch(() => null) as Json | null;
@@ -32,15 +39,46 @@ async function callback(request: Request) {
   const refId = text(data.ref_id);
   const receivedSign = text(data.sign).toLowerCase();
   if (!refId || !receivedSign) return reply({ success: false, error: { code: "INVALID_CALLBACK", message: "ref_id dan sign wajib diisi" } }, 400);
-  const expectedSign = sign(`${username}${apiKey}${refId}`);
-  if (receivedSign !== expectedSign) return reply({ success: false, error: { code: "INVALID_SIGNATURE", message: "Signature callback tidak valid" } }, 401);
+  if (receivedSign !== sign(`${username}${apiKey}${refId}`)) return reply({ success: false, error: { code: "INVALID_SIGNATURE", message: "Signature callback tidak valid" } }, 401);
   const status = text(data.status);
   if (!["0", "1", "2"].includes(status)) return reply({ success: false, error: { code: "INVALID_STATUS", message: "Status callback tidak dikenal" } }, 400);
-  const row = { ref_id: refId, status, product_code: text(data.code || data.product_code) || null, customer_id: text(data.hp || data.customer_id) || null, price: Number(data.price) || null, message: text(data.message) || null, serial_number: text(data.sn) || null, iak_balance: Number(data.balance) || null, iak_transaction_id: text(data.tr_id) || null, response_code: text(data.rc) || null, payload: data, updated_at: new Date().toISOString() };
+  const existing = await admin.schema("pos").from("ppob_transactions").select("payload").eq("ref_id", refId).maybeSingle();
+  if (existing.error) {
+    console.error("iak callback lookup failed", { code: existing.error.code });
+    return reply({ success: false, error: { code: "CALLBACK_LOOKUP_FAILED", message: "Callback belum dapat diproses" } }, 500);
+  }
+  const existingPayload = existing.data?.payload && typeof existing.data.payload === "object" ? existing.data.payload as Json : {};
+  const mergedPayload = { ...existingPayload, ...data };
+  const holdId = text(existingPayload.wallet_hold_id);
+  if (holdId && status === "0") {
+    const captured = await admin.schema("pos").rpc("wallet_capture_hold", { p_hold_id: holdId, p_idempotency_key: `callback_capture_${refId}` });
+    if (captured.error) return reply({ success: false, error: { code: "CALLBACK_SETTLEMENT_FAILED", message: "Saldo belum dapat diselesaikan" } }, 500);
+  } else if (holdId && status === "2") {
+    const released = await admin.schema("pos").rpc("wallet_release_hold", { p_hold_id: holdId, p_idempotency_key: `callback_release_${refId}`, p_reason: text(data.message) || "Transaksi PPOB gagal" });
+    if (released.error) return reply({ success: false, error: { code: "CALLBACK_SETTLEMENT_FAILED", message: "Saldo belum dapat dikembalikan" } }, 500);
+  }
+  const row = {
+    ref_id: refId,
+    status,
+    product_code: text(data.code || data.product_code) || null,
+    customer_id: text(data.hp || data.customer_id) || null,
+    price: Number(data.price) || null,
+    message: text(data.message) || null,
+    serial_number: text(data.sn) || null,
+    iak_balance: Number(data.balance) || null,
+    iak_transaction_id: text(data.tr_id) || null,
+    response_code: text(data.rc) || null,
+    payload: mergedPayload,
+    updated_at: new Date().toISOString(),
+  };
   const { error } = await admin.schema("pos").from("ppob_transactions").upsert(row, { onConflict: "ref_id", ignoreDuplicates: false });
-  if (error) { console.error("iak callback persistence failed", { code: error.code }); return reply({ success: false, error: { code: "CALLBACK_PERSIST_FAILED", message: "Callback belum dapat disimpan" } }, 500); }
+  if (error) {
+    console.error("iak callback persistence failed", { code: error.code });
+    return reply({ success: false, error: { code: "CALLBACK_PERSIST_FAILED", message: "Callback belum dapat disimpan" } }, 500);
+  }
   return reply({ success: true });
 }
+
 async function handleAction(body: Json) {
   if (!configured()) return authError();
   const action = text(body.action);
@@ -53,6 +91,7 @@ async function handleAction(body: Json) {
   }
   return reply({ success: false, error: { code: "UNKNOWN_ACTION", message: "Gunakan check-balance, price-list, atau top-up" } }, 400);
 }
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: jsonHeaders });
   try {

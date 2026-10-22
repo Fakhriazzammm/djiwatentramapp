@@ -6,6 +6,7 @@ import {
 Deno.test("accepts only the canonical wallet source-app allow-list", () => {
   if (validateWalletSourceApp(" djiwa-travel ") !== "djiwa-travel") throw new Error("valid app was rejected");
   if (validateWalletSourceApp("b2b") !== "b2b") throw new Error("valid app was rejected");
+  if (validateWalletSourceApp("djiwapay") !== "djiwapay") throw new Error("Djiwa Pay app was rejected");
   for (const value of ["https://djiwatravel.com", "customer", "", null]) {
     if (value === "") {
       if (validateWalletSourceApp(value) !== null) throw new Error("empty app was not treated as absent");

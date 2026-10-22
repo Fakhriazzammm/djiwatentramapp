@@ -7,6 +7,7 @@ export type CheckoutDraft = {
   customerNumber: string;
   amount: number;
   topupAmount?: number;
+  invoiceId?: string;
   pending?: boolean;
   paymentMethod: PayPaymentMethod;
   returnTo: string;
@@ -27,6 +28,7 @@ export function parseCheckoutDraft(value: string | null): CheckoutDraft | null {
       typeof parsed.customerNumber !== "string" ||
       typeof parsed.amount !== "number" ||
       (parsed.topupAmount !== undefined && typeof parsed.topupAmount !== "number") ||
+      (parsed.invoiceId !== undefined && typeof parsed.invoiceId !== "string") ||
       (parsed.pending !== undefined && typeof parsed.pending !== "boolean") ||
       (parsed.paymentMethod !== "wallet" && parsed.paymentMethod !== "mayar") ||
       typeof parsed.returnTo !== "string"
