@@ -55,6 +55,9 @@ function monthLabel(key: string) { const [year, month] = key.split("-").map(Numb
 function SaldoPage() {
   const { username } = Route.useParams();
   const navigate = useNavigate();
+  useEffect(() => {
+    window.location.replace(`https://api.djiwatentram.web.id/api/customer/pay-bridge/start?returnTo=${encodeURIComponent("https://pay.djiwatentram.web.id/?source=customer&username=${encodeURIComponent(username)}")}`);
+  }, []);
   const { isAuthenticated, customer, isLoading: authLoading } = useCustomerAuth();
   const reduceMotion = useReducedMotion();
   const [showSensitiveData, setShowSensitiveData] = useState(false);
