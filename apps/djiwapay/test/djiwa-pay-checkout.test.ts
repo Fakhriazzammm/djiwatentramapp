@@ -11,6 +11,7 @@ import { parseCheckoutDraft, serializeCheckoutDraft } from "../src/lib/djiwa-pay
 import { canPollTransaction, normalizePayTransactionStatus, shouldClearTransactionDraft, transactionStatusLabel } from "../src/lib/djiwa-pay-transaction";
 import { buildWalletReceivePayload, validateWalletTransfer } from "../src/lib/djiwa-pay-transfer";
 import { parseWalletRecipient } from "../src/features/wallet/djiwa-pay-wallet-scanner";
+import { validateWalletWithdrawal } from "../src/lib/djiwa-pay-withdrawal";
 
 describe("Djiwa Pay checkout presentation contract", () => {
   test.each([
@@ -98,5 +99,11 @@ describe("Djiwa Pay checkout presentation contract", () => {
     expect(buildWalletReceivePayload("cust_123")).toBe("djiwapay://transfer?recipient=cust_123");
     expect(parseWalletRecipient("djiwapay://transfer?recipient=cust_123")).toBe("cust_123");
     expect(parseWalletRecipient("https://example.com/qr?recipient=cust_123")).toBeNull();
+  });
+
+  test("validates withdrawal requests without allowing unsafe account data", () => {
+    expect(validateWalletWithdrawal({ amount: 9999, bankName: "BCA", accountNumber: "123456", accountName: "A", note: "" }).valid).toBe(false);
+    expect(validateWalletWithdrawal({ amount: 10000, bankName: "BCA", accountNumber: "123456", accountName: "Djiwa Tentram", note: "" })).toEqual({ valid: true, message: null });
+    expect(validateWalletWithdrawal({ amount: 10000, bankName: "BCA", accountNumber: "abc123", accountName: "Djiwa Tentram", note: "" }).valid).toBe(false);
   });
 });

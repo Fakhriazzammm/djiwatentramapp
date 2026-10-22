@@ -909,7 +909,7 @@ app.post("/api/pay-bridge/ppob/purchase", async (c) => {
 app.post("/api/pay-bridge/wallet", async (c) => {
   const session = await requirePaySession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
-  const body = await c.req.json().catch(() => ({})) as { action?: unknown; amount?: unknown; invoiceId?: unknown; recipient?: unknown; note?: unknown; idempotencyKey?: unknown };
+  const body = await c.req.json().catch(() => ({})) as { action?: unknown; amount?: unknown; invoiceId?: unknown; recipient?: unknown; note?: unknown; idempotencyKey?: unknown; bankName?: unknown; accountNumber?: unknown; accountName?: unknown };
   const action = typeof body.action === "string" ? body.action : "get";
   const sourceId = String(session.customer.source_id || "");
   const email = String(session.customer.email || "");
@@ -948,6 +948,34 @@ app.post("/api/pay-bridge/wallet", async (c) => {
     const result = transfer.rows[0]?.result ?? {};
     if (result.error === "INSUFFICIENT_BALANCE") return privateJson({ success: false, error: "INSUFFICIENT_BALANCE", availableBalance: result.available_balance, required: result.required }, 422);
     return privateJson({ success: true, transfer: result, recipient: { sourceId: target.source_id, name: target.name || "Customer Djiwa" } });
+  }
+  if (action === "withdrawal-request") {
+    const amount = Number(body.amount);
+    const bankName = typeof body.bankName === "string" ? body.bankName.trim().slice(0, 80) : "";
+    const accountNumber = typeof body.accountNumber === "string" ? body.accountNumber.trim() : "";
+    const accountName = typeof body.accountName === "string" ? body.accountName.trim().slice(0, 120) : "";
+    const note = typeof body.note === "string" ? body.note.trim().slice(0, 120) : "";
+    if (!Number.isSafeInteger(amount) || amount < 10000 || amount > 10000000 || bankName.length < 2 || accountName.length < 2 || !/^\d{6,30}$/.test(accountNumber)) {
+      return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+    }
+    const idempotencyKey = typeof body.idempotencyKey === "string" && body.idempotencyKey.trim()
+      ? body.idempotencyKey.trim().slice(0, 180)
+      : `djiwapay-withdrawal-${sourceId}-${crypto.randomUUID()}`;
+    try {
+      const withdrawal = await pool.query<{ result: Record<string, unknown> }>(
+        "SELECT pos.wallet_create_withdrawal_request($1,$2,$3,$4,$5,$6,$7) AS result",
+        [sourceId, amount, bankName, accountNumber, accountName, note || null, idempotencyKey],
+      );
+      const result = withdrawal.rows[0]?.result ?? {};
+      if (result.error === "INSUFFICIENT_BALANCE") return privateJson({ success: false, error: "INSUFFICIENT_BALANCE", availableBalance: result.available_balance, required: result.required }, 422);
+      return privateJson({ success: true, request: result, message: "Permintaan penarikan masuk review. Saldo belum dipotong." });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (/Wallet customer sedang diblokir/i.test(message)) return privateJson({ success: false, error: "WALLET_BLOCKED" }, 403);
+      if (/Nominal withdrawal|Data rekening|idempotency/i.test(message)) return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+      console.error("Wallet withdrawal request failed", message);
+      return privateJson({ success: false, error: "REQUEST_FAILED" }, 500);
+    }
   }
   if (action === "topup-status") {
     const invoiceId = typeof body.invoiceId === "string" ? body.invoiceId.trim() : "";
