@@ -59,6 +59,7 @@ type MemberBonusInfo = {
 	name: string;
 	roleName: string;
 	bonus: number;
+	basis: "shift" | "daily" | "monthly";
 	achievedTiers: number[];
 	allTiers: BonusTier[];
 };
@@ -212,6 +213,15 @@ function buildShiftSummaryText(shift: ShiftRow, details: any, allStaffUsers?: an
 		lines.push(
 			`- Revenue Harian: ${formatCurrencyIDR(shift.dailyCollected ?? 0)}`,
 		);
+		if (shift.memberBonuses?.length) {
+			lines.push("BONUS BERTINGKAT:");
+			for (const member of shift.memberBonuses) {
+				const tierText = member.allTiers.map((tier) => `${tier.thresholdPct}%: ${formatCurrencyIDR(tier.bonusAmount)}`).join(" | ");
+				const achieved = member.achievedTiers.length ? `${member.achievedTiers.join("%, ")}%` : "Belum mencapai tier";
+				lines.push(`- ${member.name} (${member.roleName}) · Basis ${member.basis}: ${achieved} · Bonus ${formatCurrencyIDR(member.bonus)}`);
+				if (tierText) lines.push(`  Tier: ${tierText}`);
+			}
+		}
 		lines.push("");
 	}
 
@@ -598,7 +608,7 @@ export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
 				</div>
 
 				<div className="min-w-0 rounded-2xl border border-border bg-card"><div className="flex items-start justify-between border-b border-border px-3 py-2"><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-wider text-primary">Detail terpilih</p><h3 className="truncate text-sm font-bold">{selectedShift?.shiftName || "Pilih shift"}</h3><p className="truncate text-[11px] text-muted-foreground">{selectedShift?.cashierName || "Kasir belum diisi"} · {selectedShift ? formatDateTime(selectedShift.startTime) : "—"}</p></div><button type="button" onClick={async () => { if (summaryText) { await navigator.clipboard.writeText(summaryText); toast.success("Ringkasan shift disalin"); } }} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-border px-2 text-[11px] font-semibold text-muted-foreground hover:bg-muted"><Copy className="h-3 w-3" /> Salin</button></div>
-					{selectedShift && <div className="space-y-2 p-3"><div className="grid grid-cols-2 gap-1.5"><MiniStat icon={Wallet} label="Net" value={formatCurrencyIDR(selectedShift.totalRevenue, true)} /><MiniStat icon={ReceiptText} label="Bruto" value={formatCurrencyIDR(selectedShift.totalGrossSales, true)} /><MiniStat icon={Clock3} label="Durasi" value={`${formatTime(selectedShift.startTime)}–${formatTime(selectedShift.endTime)}`} /><MiniStat icon={CheckCircle2} label="Status" value={selectedShift.status} /></div><div className="rounded-lg border border-border bg-muted/20 p-2.5"><div className="mb-1.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground"><TrendingUp className="h-3.5 w-3.5" /> Target</div>{selectedShift.hasTarget ? <div className="space-y-2"><TargetLine label="Shift" met={!!selectedShift.isShiftTargetMet} current={selectedShift.shiftCollected ?? selectedShift.totalRevenue} target={selectedShift.shiftTarget ?? 0} /><TargetLine label="Harian" met={!!selectedShift.isDailyTargetMet} current={selectedShift.dailyCollected ?? 0} target={selectedShift.dailyTarget ?? 0} /></div> : <p className="text-xs text-muted-foreground">Belum ada target untuk periode ini.</p>}</div><div className="grid grid-cols-2 gap-1.5"><DetailBlock title="Pembayaran" items={[["Modal", formatCurrencyIDR(selectedShift.startingCash, true)], ["Tunai", formatCurrencyIDR(selectedShift.cashRevenue, true)], ["QRIS", formatCurrencyIDR(selectedShift.qrisRevenue, true)]]} /><DetailBlock title="Aktivitas" items={[["Produk", `${selectedShift.totalItemsSold} item`], ["Transaksi", `${selectedShift.orderCount}`], ["Pengeluaran", formatCurrencyIDR(selectedShift.totalExpenses, true)]]} /></div>{details?.topProducts?.length ? <div className="rounded-xl border border-border p-3"><p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Produk teratas</p>{details.topProducts.slice(0, 3).map((item: any, index: number) => <div key={`${item.productName}-${index}`} className="flex items-center justify-between border-t border-border py-1.5 text-xs first:border-0"><span className="truncate">{index + 1}. {item.productName}</span><strong>{item.quantity}</strong></div>)}</div> : null}</div>}
+					{selectedShift && <div className="space-y-2 p-3"><div className="grid grid-cols-2 gap-1.5"><MiniStat icon={Wallet} label="Net" value={formatCurrencyIDR(selectedShift.totalRevenue, true)} /><MiniStat icon={ReceiptText} label="Bruto" value={formatCurrencyIDR(selectedShift.totalGrossSales, true)} /><MiniStat icon={Clock3} label="Durasi" value={`${formatTime(selectedShift.startTime)}–${formatTime(selectedShift.endTime)}`} /><MiniStat icon={CheckCircle2} label="Status" value={selectedShift.status} /></div><div className="rounded-lg border border-border bg-muted/20 p-2.5"><div className="mb-1.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground"><TrendingUp className="h-3.5 w-3.5" /> Target</div>{selectedShift.hasTarget ? <div className="space-y-2"><TargetLine label="Shift" met={!!selectedShift.isShiftTargetMet} current={selectedShift.shiftCollected ?? selectedShift.totalRevenue} target={selectedShift.shiftTarget ?? 0} /><TargetLine label="Harian" met={!!selectedShift.isDailyTargetMet} current={selectedShift.dailyCollected ?? 0} target={selectedShift.dailyTarget ?? 0} />{selectedShift.memberBonuses?.length ? <BonusTierPanel bonuses={selectedShift.memberBonuses} /> : null}</div> : <p className="text-xs text-muted-foreground">Belum ada target untuk periode ini.</p>}</div><div className="grid grid-cols-2 gap-1.5"><DetailBlock title="Pembayaran" items={[["Modal", formatCurrencyIDR(selectedShift.startingCash, true)], ["Tunai", formatCurrencyIDR(selectedShift.cashRevenue, true)], ["QRIS", formatCurrencyIDR(selectedShift.qrisRevenue, true)]]} /><DetailBlock title="Aktivitas" items={[["Produk", `${selectedShift.totalItemsSold} item`], ["Transaksi", `${selectedShift.orderCount}`], ["Pengeluaran", formatCurrencyIDR(selectedShift.totalExpenses, true)]]} /></div>{details?.topProducts?.length ? <div className="rounded-xl border border-border p-3"><p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Produk teratas</p>{details.topProducts.slice(0, 3).map((item: any, index: number) => <div key={`${item.productName}-${index}`} className="flex items-center justify-between border-t border-border py-1.5 text-xs first:border-0"><span className="truncate">{index + 1}. {item.productName}</span><strong>{item.quantity}</strong></div>)}</div> : null}</div>}
 				</div>
 			</div>
 
@@ -876,6 +886,24 @@ function MiniStat({
 				{label}
 			</div>
 			<p className="mt-1 text-sm font-bold leading-none text-foreground">{value}</p>
+		</div>
+	);
+}
+
+function BonusTierPanel({ bonuses }: { bonuses: MemberBonusInfo[] }) {
+	const basisLabels = { shift: "Shift", daily: "Harian", monthly: "Bulanan" } as const;
+	return (
+		<div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/70 p-2">
+			<p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-800">Bonus Bertingkat</p>
+			<div className="space-y-1.5">
+				{bonuses.map((member) => (
+					<div key={`${member.name}-${member.roleName}`} className="rounded-md border border-amber-200/70 bg-white/70 p-1.5 text-[10px]">
+						<div className="flex items-center justify-between gap-2 font-semibold text-foreground"><span className="truncate">{member.name} · {member.roleName}</span><span className="shrink-0 text-amber-800">{formatCurrencyIDR(member.bonus, true)}</span></div>
+						<div className="mt-0.5 text-muted-foreground">Basis {basisLabels[member.basis]} · {member.achievedTiers.length ? `Tier tercapai: ${member.achievedTiers.join("%, ")}%` : "Belum mencapai tier"}</div>
+						{member.allTiers.length > 0 && <div className="mt-0.5 text-muted-foreground">{member.allTiers.map((tier) => `${tier.thresholdPct}% ${formatCurrencyIDR(tier.bonusAmount, true)}`).join(" · ")}</div>}
+					</div>
+				))}
+			</div>
 		</div>
 	);
 }

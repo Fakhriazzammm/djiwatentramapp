@@ -1,4 +1,4 @@
-import { CheckCircle2, Wallet } from "lucide-react";
+import { CheckCircle2, MapPin, Truck, Wallet } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { Doc } from "@/types/backend-compat";
@@ -18,12 +18,34 @@ const STATUS_STEPS = [
 	{ key: "completed", label: "Selesai" },
 ] as const;
 
+const DELIVERY_STEPS = [
+	{ key: "confirmed", label: "Diterima" },
+	{ key: "allocated", label: "Kurir ditemukan" },
+	{ key: "picking_up", label: "Kurir menuju cafe" },
+	{ key: "picked", label: "Pesanan diambil" },
+	{ key: "dropping_off", label: "Menuju kamu" },
+	{ key: "delivered", label: "Terkirim" },
+] as const;
+
 function getStatusStepIndex(status?: string) {
 	const s = String(status ?? "").toLowerCase();
 	const idx = STATUS_STEPS.findIndex((step) => step.key === s);
-	// "processing" → step "Diproses"
 	if (idx === -1 && (s === "processing" || s === "paid")) return 1;
 	return idx;
+}
+
+function getDeliveryStepIndex(status?: string) {
+	const normalized = String(status ?? "").toLowerCase();
+	if (normalized === "cancelled" || normalized === "canceled") return -1;
+	const idx = DELIVERY_STEPS.findIndex((step) => step.key === normalized);
+	return idx >= 0 ? idx : 0;
+}
+
+function getCourierLabel(provider?: string) {
+	const normalized = String(provider ?? "").toLowerCase();
+	if (normalized === "grab") return "Grab Instant";
+	if (normalized === "gojek") return "Gojek Instant";
+	return provider || "Kurir dipilih";
 }
 
 function getCreatedAtMs(value: unknown) {
@@ -118,8 +140,12 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	const customerName = props.currentOrder?.customerName || "-";
 	const customerDescription = props.currentOrder?.customerDescription || "-";
 	const tableNumber = props.currentOrder?.tableNumber || "-";
-	const orderType = props.currentOrder?.orderType === "takeaway" ? "Takeaway" : "Dine In";
+	const orderTypeValue = String(props.currentOrder?.orderType ?? (props.currentOrder as any)?.order_type ?? "").toLowerCase();
+	const orderType = orderTypeValue === "delivery" ? "Delivery" : props.currentOrder?.orderType === "takeaway" ? "Takeaway" : "Dine In";
 	const customerNotes = props.currentOrder?.notes || "-";
+	const deliveryAddress = (props.currentOrder as any)?.deliveryAddress ?? (props.currentOrder as any)?.delivery_address;
+	const deliveryTrackingId = (props.currentOrder as any)?.deliveryTrackingId ?? (props.currentOrder as any)?.delivery_tracking_id;
+	const deliveryWaybillId = (props.currentOrder as any)?.deliveryWaybillId ?? (props.currentOrder as any)?.delivery_waybill_id;
 
 	const unifiedStatusLabel = mode === "cashier_expired" ? "DIBATALKAN" : orderStatus === "paid" ? "LUNAS"
 		: orderStatus === "completed" ? "SELESAI"
@@ -130,8 +156,13 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	const isQrisPayment = normalizedPaymentMethod.includes("qris") || normalizedPaymentMethod.includes("mayar");
 	const canRetryPayment = mode !== "paid" && (isWalletPayment || isQrisPayment || isCashierPayment);
 
-	const currentStepIndex = isExpired ? -1 : getStatusStepIndex(orderStatus);
-	const currentStepLabel = currentStepIndex >= 0 ? STATUS_STEPS[currentStepIndex].label : null;
+	const isDeliveryOrder = orderTypeValue === "delivery";
+	const deliveryStatus = (props.currentOrder as any)?.deliveryStatus ?? (props.currentOrder as any)?.delivery_status;
+	const courierLabel = getCourierLabel((props.currentOrder as any)?.deliveryProvider ?? (props.currentOrder as any)?.delivery_provider);
+	const deliveryStepIndex = getDeliveryStepIndex(deliveryStatus);
+	const deliveryCancelled = String(deliveryStatus ?? "").toLowerCase() === "cancelled" || String(deliveryStatus ?? "").toLowerCase() === "canceled";
+	const currentStepIndex = isExpired || (isDeliveryOrder && deliveryCancelled) ? -1 : isDeliveryOrder ? deliveryStepIndex : getStatusStepIndex(orderStatus);
+	const currentStepLabel = currentStepIndex >= 0 ? (isDeliveryOrder ? DELIVERY_STEPS[currentStepIndex].label : STATUS_STEPS[currentStepIndex].label) : null;
 	const paymentLabel = isWalletPayment ? "Djiwa Pay" : isQrisPayment ? "QRIS" : "Bayar di Kasir";
 	const printerStatusLabel = isCashierTicket ? "Menunggu pembayaran" : mode === "paid" ? "Pembayaran berhasil" : mode === "cashier_expired" ? "Tiket kedaluwarsa" : isQrisPayment ? "Invoice siap dibayar" : "Menyiapkan pembayaran";
 	const receiptTitle = mode === "paid" ? "Struk lunas" : mode === "cashier_expired" ? "Tiket kedaluwarsa" : isCashierTicket ? "Tunjukkan ke kasir" : isQrisPayment ? "Lanjutkan pembayaran QRIS" : "Pembayaran Djiwa Pay";
@@ -142,35 +173,38 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	const persistedRawTotal = Number(props.currentOrder?.rawTotalAmount ?? props.currentOrder?.raw_total_amount);
 	const persistedRounding = Number(props.currentOrder?.roundingAdjustment ?? props.currentOrder?.rounding_adjustment);
 	const persistedTotal = Number(props.currentOrder?.totalAmount ?? props.currentOrder?.total_amount);
+	const persistedShippingFee = Number(props.currentOrder?.shippingFeeAmount ?? (props.currentOrder as any)?.shipping_fee_amount ?? 0);
 	const hasPersistedTotals = [persistedTaxBase, persistedRawTotal, persistedRounding, persistedTotal].every(Number.isFinite);
 
 	return (
 		<div className="space-y-2 px-2 py-2 pb-[calc(11rem+env(safe-area-inset-bottom))]">
 			{currentStepLabel ? (
-				<div className="rounded-3xl border border-border bg-card p-3.5 shadow-sm">
-					<div className="flex items-center justify-between">
-						<p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Status pesanan</p>
-						<p className={cn("text-xs font-black", unifiedStatusColor)}>{currentStepLabel}</p>
+				<div className="mx-auto w-full max-w-sm px-3 py-3">
+					<div className="flex items-center justify-between gap-2">
+						<p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{isDeliveryOrder ? "Progress pengantaran" : "Status pesanan"}</p>
+						<p className={cn("text-right text-xs font-black", unifiedStatusColor)}>{currentStepLabel}</p>
 					</div>
+					{isDeliveryOrder ? <div className="mt-2 flex items-center gap-2 border-t border-border pt-2"><Truck className="h-4 w-4 shrink-0 text-primary" /><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Kurir</p><p className="truncate text-xs font-black text-foreground">{courierLabel}</p></div></div> : null}
 					<div className="mt-3 flex items-center">
-						{STATUS_STEPS.map((step, index) => {
+						{(isDeliveryOrder ? DELIVERY_STEPS : STATUS_STEPS).map((step, index) => {
 							const reached = index <= currentStepIndex;
-							const isLast = index === STATUS_STEPS.length - 1;
+							const active = index === currentStepIndex;
+							const steps = isDeliveryOrder ? DELIVERY_STEPS : STATUS_STEPS;
+							const isLast = index === steps.length - 1;
 							return (
 								<div key={step.key} className="flex flex-1 flex-col items-center">
 									<div className="flex w-full items-center">
-										<div className={cn("h-0.5 flex-1", index === 0 ? "opacity-0" : reached ? "bg-primary" : "bg-muted")} />
-										<div className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-black transition-colors", reached ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground/60")}>
+										<div className={cn("h-0.5 flex-1 transition-colors duration-700", index === 0 ? "opacity-0" : reached ? "bg-primary" : "bg-muted")} />
+										<div className={cn("relative flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-black transition-all duration-700", active && "animate-pulse ring-4 ring-primary/15", reached ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground/60")}>
 											{reached ? <CheckCircle2 className="h-3 w-3" /> : index + 1}
 										</div>
-										<div className={cn("h-0.5 flex-1", isLast ? "opacity-0" : reached ? "bg-primary" : "bg-muted")} />
+										<div className={cn("h-0.5 flex-1 transition-colors duration-700", isLast ? "opacity-0" : reached ? "bg-primary" : "bg-muted")} />
 									</div>
-									<p className={cn("mt-1.5 text-[9px] font-bold leading-tight", reached ? "text-foreground" : "text-muted-foreground/60")}>{step.label}</p>
+									<p className={cn("mt-1.5 text-center text-[9px] font-bold leading-tight", active && "animate-pulse", reached ? "text-foreground" : "text-muted-foreground/60")}>{step.label}</p>
 								</div>
 							);
 						})}
 					</div>
-					<p className="mt-2.5 text-center text-[10px] text-muted-foreground/70">Pembaruan otomatis — pesananmu sedang {currentStepLabel.toLowerCase()}.</p>
 				</div>
 			) : null}
 			{isCashierTicket ? <CashierPaymentTimer createdAt={props.currentOrder?.createdAt} onExpire={() => props.onCashierPaymentExpired?.()} /> : props.receipt.mode === "cashier_expired" ? <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-center text-red-950"><p className="text-[10px] font-black uppercase tracking-[0.14em]">Pembayaran kedaluwarsa</p><p className="mt-0.5 text-[10px] leading-tight">Order dibatalkan karena tidak dibayar dalam 5 menit. Silakan gunakan Pesan lagi.</p></div> : null}
@@ -181,14 +215,15 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 				paymentLabel={paymentLabel}
 				statusLabel={printerStatusLabel}
 			>
-				<div className="rounded-3xl border border-border bg-card p-4 text-center shadow-sm">
+				<div className="text-center">
 				<div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">{mode === "paid" ? <CheckCircle2 className="h-5 w-5" /> : <Wallet className="h-5 w-5" />}</div>
-				<p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">{isExpired ? "Order dibatalkan" : "Step 5 · Selesai / Struk"}</p>
+				<p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">{isExpired ? "Order dibatalkan" : "Langkah 6 dari 6 · Selesai / Struk"}</p>
 				<h2 className="mt-1 font-display text-lg font-black tracking-tight">{receiptTitle}</h2>
 				<p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{receiptDescription}</p>
-				<div className="mt-3 rounded-xl border border-border bg-background px-2.5 py-2.5">{props.logoUrl ? <img alt={props.storeName} className="mx-auto h-10 object-contain" src={props.logoUrl} /> : null}<div className="mt-2.5 space-y-0.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nomor order</p><p className="text-xl font-black tracking-[0.12em] text-foreground">{orderReference}</p></div><div className="mt-2.5 rounded-lg bg-muted/35 px-2.5 py-2.5"><div className="flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Metode</span><span className="font-bold">{paymentLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Status</span><span className={cn("font-bold", unifiedStatusColor)}>{unifiedStatusLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Total</span><span className="font-black">{currency(props.currentOrder?.totalAmount ?? props.total)}</span></div></div>
+				<div className="mt-3 border-t border-border pt-3">{props.logoUrl ? <img alt={props.storeName} className="mx-auto h-10 object-contain" src={props.logoUrl} /> : null}<div className="mt-2.5 space-y-0.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nomor order</p><p className="text-xl font-black tracking-[0.12em] text-foreground">{orderReference}</p></div><div className="mt-3 border-t border-border pt-3"><div className="flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Metode</span><span className="font-bold">{paymentLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Status</span><span className={cn("font-bold", unifiedStatusColor)}>{unifiedStatusLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Total</span><span className="font-black">{currency(props.currentOrder?.totalAmount ?? props.total)}</span></div></div>
+					{isDeliveryOrder && persistedShippingFee > 0 ? <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-[11px]"><span className="text-muted-foreground">Ongkir {courierLabel}</span><span className="font-black text-primary">{currency(persistedShippingFee)}</span></div> : null}
 					{hasPersistedTotals ? <ReceiptTotalsBreakdown rawTotal={persistedRawTotal} taxBase={persistedTaxBase} taxAmount={Number(props.currentOrder?.taxAmount ?? 0)} taxRate={Number((props.currentOrder?.receiptMeta as any)?.taxRateSnapshot ?? 0)} taxEnabled={Number(props.currentOrder?.taxAmount ?? 0) > 0 || Number((props.currentOrder?.receiptMeta as any)?.taxRateSnapshot ?? 0) > 0} serviceChargeAmount={Number(props.currentOrder?.serviceChargeAmount ?? 0)} roundingAdjustment={persistedRounding} total={persistedTotal} /> : null}
-					<div className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left">
+					<div className="mt-3 border-t border-border pt-3 text-left">
 						<p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Data customer</p>
 						<div className="mt-1.5 space-y-1">
 							<div className="flex items-center justify-between gap-2 text-[11px]">
@@ -199,21 +234,19 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 								<span className="text-muted-foreground">Ciri</span>
 								<span className="max-w-[70%] text-right font-semibold text-foreground">{customerDescription}</span>
 							</div>
-							<div className="flex items-center justify-between gap-2 text-[11px]">
-								<span className="text-muted-foreground">Meja</span>
-								<span className="font-semibold text-foreground">{tableNumber}</span>
-							</div>
-							<div className="flex items-center justify-between gap-2 text-[11px]">
-								<span className="text-muted-foreground">Tipe</span>
-								<span className="font-semibold text-foreground">{orderType}</span>
-							</div>
+							{isDeliveryOrder ? <>
+								<div className="flex items-start justify-between gap-2 text-[11px]"><span className="text-muted-foreground">Kurir</span><span className="text-right font-semibold text-foreground">{courierLabel}</span></div>
+								<div className="flex items-start justify-between gap-2 text-[11px]"><span className="flex items-center gap-1 text-muted-foreground"><MapPin className="h-3 w-3" />Alamat</span><span className="max-w-[70%] text-right font-semibold text-foreground">{deliveryAddress || "-"}</span></div>
+								{deliveryTrackingId || deliveryWaybillId ? <div className="flex items-start justify-between gap-2 text-[11px]"><span className="text-muted-foreground">Tracking</span><span className="max-w-[70%] text-right font-semibold text-foreground">{deliveryTrackingId || deliveryWaybillId}</span></div> : null}
+							</> : <div className="flex items-center justify-between gap-2 text-[11px]"><span className="text-muted-foreground">Meja</span><span className="font-semibold text-foreground">{tableNumber}</span></div>}
+							<div className="flex items-center justify-between gap-2 text-[11px]"><span className="text-muted-foreground">Tipe</span><span className="font-semibold text-foreground">{orderType}</span></div>
 							<div className="flex items-start justify-between gap-2 text-[11px]">
 								<span className="text-muted-foreground">Catatan</span>
 								<span className="max-w-[70%] text-right font-semibold text-foreground">{customerNotes}</span>
 							</div>
 						</div>
 					</div>
-					{orderItems.length > 0 ? <div data-receipt-section="items" className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Detail item</p><div className="mt-1.5 space-y-1">{orderItems.map((item: any, index: number) => <div className="flex items-start justify-between gap-2 text-[11px]" key={`${item.productId}-${item.variant || "default"}-${index}`}><span className="min-w-0 break-words text-foreground">{item.quantity}x {item.productName}{item.variant ? ` (${item.variant})` : ""}</span><span className="shrink-0 font-semibold">{currency((item.price || 0) * (item.quantity || 0))}</span></div>)}</div></div> : null}
+					{orderItems.length > 0 ? <div data-receipt-section="items" className="mt-3 border-t border-border pt-3 text-left"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Detail item</p><div className="mt-1.5 space-y-1">{orderItems.map((item: any, index: number) => <div className="flex items-start justify-between gap-2 text-[11px]" key={`${item.productId}-${item.variant || "default"}-${index}`}><span className="min-w-0 break-words text-foreground">{item.quantity}x {item.productName}{item.variant ? ` (${item.variant})` : ""}</span><span className="shrink-0 font-semibold">{currency((item.price || 0) * (item.quantity || 0))}</span></div>)}</div></div> : null}
 					<BarcodeLines value={orderReference} />
 					</div>
 					</div>

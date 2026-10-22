@@ -8,6 +8,7 @@ import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { startAppUpdatePolling, checkForAppUpdate } from "@/lib/app-update";
 import { registerSW } from "virtual:pwa-register";
 import "./index.css";
+import "@yumipos/djiwa-checkout-ui/styles.css";
 import { installNumberInputBehavior } from "@yumipos/web-shared";
 
 

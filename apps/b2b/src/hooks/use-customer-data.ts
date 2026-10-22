@@ -108,7 +108,7 @@ function mapPointEntry(row: Record<string, unknown>): CustomerPointEntry {
 	};
 }
 
-const CUSTOMER_API_BASE = "https://djiwatentram.yumme.id/api/customer";
+const CUSTOMER_API_BASE = "https://api.yumme.id/v1/customer";
 
 // ── useCustomerOrders ──────────────────────────────────────────
 // Query pos_orders WHERE customer_source_id = user.id.

@@ -1,6 +1,7 @@
 {
-  "version": "0.2.83",
-  "commitHash": "2b72d7f",
-  "buildDate": "2026-08-31",
-  "generatedAt": "2026-08-31T03:17:24.659Z"
+  "version": "0.2.502",
+  "commitHash": "f5d274f",
+  "message": "fix(pos): persist availability RPC execute grants",
+  "buildDate": "2026-10-09",
+  "generatedAt": "2026-10-09T06:21:14.770Z"
 }

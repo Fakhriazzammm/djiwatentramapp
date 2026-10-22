@@ -1,4 +1,6 @@
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { formatOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { allocateDailyReceiptNo } from "@yumipos/web-shared/lib/daily-receipt";
 import { createClient } from "@/lib/client";
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
@@ -47,6 +49,7 @@ function getOrderSourcePrefix(source?: "pos" | "customer_self_service" | "bookin
 function generateOrderNumber(args: {
 	source?: "pos" | "customer_self_service" | "booking";
 	orderType?: string;
+	platform?: string;
 	createdAt: number;
 	receiptNo?: number;
 	platform?: string;
@@ -2573,7 +2576,7 @@ export function useHybridCreateOrder() {
 					creation_time: orderCreatedAt,
 					idempotency_key: idempotencyKey,
 					customer_source_id: args?.customerSourceId ?? null,
-					raw: { ...(args ?? {}), authUserId: currentUser?._id ?? null },
+					raw: { ...(args ?? {}), dailyReceiptNo, receiptKind: kind, orderNumber, authUserId: currentUser?._id ?? null },
 				};
 
 				const { error: orderError } = await pos.from("orders").insert(orderRow);
@@ -2630,7 +2633,7 @@ export function useHybridCreateOrder() {
 						source_app: args?.sourceApp ?? null,
 						creation_time: Date.now(),
 						metadata: {
-							dailyReceiptNo: dailyReceiptNo ?? undefined,
+							dailyReceiptNo,
 							orderNumber,
 							source: "pos",
 						},

@@ -1,7 +1,7 @@
 {
-  "version": "0.2.134",
-  "commitHash": "f61c643",
-  "message": "feat(customer): match merch profile member card in apps/customer",
-  "buildDate": "2026-09-04",
-  "generatedAt": "2026-09-04T05:56:05.302Z"
+  "version": "0.2.515",
+  "commitHash": "8d43640",
+  "message": "fix(admin): paginate dashboard order analytics",
+  "buildDate": "2026-10-11",
+  "generatedAt": "2026-10-11T13:33:44.010Z"
 }

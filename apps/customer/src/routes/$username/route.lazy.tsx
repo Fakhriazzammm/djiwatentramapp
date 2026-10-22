@@ -3,20 +3,23 @@ import { useEffect, useState } from "react";
 import { LogIn, ShieldCheck } from "lucide-react";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
+import { useCustomerSplashGate } from "@/hooks/use-customer-splash-gate";
 import { useCustomerOrders } from "@/hooks/use-customer-data";
+import { useCustomerStories } from "@/features/stories/use-customer-stories";
 import { useOrderContext } from "@/hooks/use-order-context";
-import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
+import { useHybridAllProducts, useHybridBestSellers, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { MemberOnboarding, ProfileCompletionOnboarding } from "@/components/customer/member-onboarding";
 import { CustomerBottomNav, CustomerLiveShiftIndicator } from "@/components/customer/customer-shell";
 import { invokeEdgeFunction } from "@/lib/api-helper";
-import { CustomerPageSkeleton } from "@/components/customer/customer-states";
+import { CustomerSplash } from "@/components/customer/customer-entry";
 import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
 import { CustomerHomeHeader, CustomerHomeServiceGrid, CustomerWalletSummary, DjiwaPayOfferCard } from "@/components/customer/customer-home-sections";
 import { CustomerStoryRail } from "@/features/stories/customer-story-rail";
 import { RecentOrdersCarousel } from "@/components/customer/recent-orders-carousel";
 import { CustomerHomeDiscovery } from "@/components/customer/customer-home-discovery";
 import { B2BPromoBanner } from "@/components/customer/b2b-promo-banner";
+import { CustomerLiveOrderCard } from "@/components/customer/customer-live-order-card";
 
 type GuestData = {
 	name: string;
@@ -55,7 +58,10 @@ function MemberHomePage() {
 	const location = useLocation();
 	const { isAuthenticated, isLoading, customer, login, logout, register, resetPassword, signInWithGoogle, registrationNeedsEmailConfirm, refreshCustomer } = useCustomerAuth();
 	const { setCart } = useOrderContext();
-	const { orders: customerOrders } = useCustomerOrders();
+	const { orders: customerOrders, isLoading: ordersLoading } = useCustomerOrders();
+	const storyBootstrap = useCustomerStories(Boolean(customer));
+	const homeProducts = useHybridAllProducts();
+	const homeBestSellers = useHybridBestSellers();
 	const siteSettings = useHybridSiteSettings();
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 	const [authError, setAuthError] = useState<string | undefined>(undefined);
@@ -94,6 +100,7 @@ function MemberHomePage() {
 	const isChildRoute = matches.some(m => m.routeId.startsWith("/$username/") && m.routeId !== "/$username");
 	const isOrderChild = matches.some(m => m.routeId.startsWith("/$username/order"));
 	const isCommunityChild = matches.some(m => m.routeId.startsWith("/$username/komunitas"));
+	const homeDataReady = !customer || (!ordersLoading && homeProducts !== undefined && homeBestSellers !== undefined && siteSettings !== undefined && storyBootstrap.state !== "loading");
 	const goCustomerPath = (path: string) => {
 		if (typeof window !== "undefined") window.location.assign(path);
 	};
@@ -230,8 +237,20 @@ function MemberHomePage() {
 	// ── Loading ────────────────────────────────────
 	// Guest match → skip loading (resolved=true sejak awal, tanpa network)
 	// Non-guest → nunggu auth baru resolve
-	if (!resolved || (!guestData && isLoading)) {
-		return <CustomerPageSkeleton label="Menyiapkan halaman member" />;
+	const authResolved = resolved && (guestData ? true : !isLoading);
+	const memberDataReady = isChildRoute || !customer || homeDataReady;
+	const splashGate = useCustomerSplashGate({
+		ready: authResolved && memberDataReady,
+		// Resolve mengikuti kesiapan data saja; kalau auth menyusul belakangan,
+		// animasi logo sudah selesai sehingga tidak menahan splash.
+		resolveWhen: memberDataReady,
+		// Degradasi hanya aman setelah identitas pengguna diketahui; kalau auth
+		// sendiri belum resolve, satu-satunya jalan keluar adalah tombol coba lagi.
+		allowDegrade: authResolved,
+	});
+
+	if (splashGate.visible) {
+		return <CustomerSplash storeName={storeName} {...splashGate.splashProps} />;
 	}
 
 	// ── Child route aktif ──────────────────────────
@@ -264,6 +283,7 @@ function MemberHomePage() {
 					<main className="flex-1 space-y-3 px-3 py-3 pb-32">
 						<B2BPromoBanner href={b2bChannelHref} />
 						<section className="rounded-3xl border border-border bg-card p-4 shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Mulai dari sini</p><p className="mt-1 text-sm font-black">Pesan menu favoritmu dengan mudah.</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Masuk sebagai member untuk memakai Djiwa Pay dan mendapatkan benefit.</p></section>
+						{customerOrders.filter((order) => !["completed", "cancelled"].includes(order.trackingStatus || order.status)).slice(0, 1).map((order) => <CustomerLiveOrderCard key={order.id} order={order} onOpen={() => navigate({ to: "/$username/order", params: { username }, search: { step: "receipt", orderId: order.id } })} />)}
 						<RecentOrdersCarousel username={username} />
 						<DjiwaPayOfferCard isMember={false} onAction={() => navigate({ to: "/masuk" })} />
 						<CustomerHomeServiceGrid
@@ -332,6 +352,7 @@ function MemberHomePage() {
 					<main className="flex-1 space-y-3 px-3 py-3 pb-32">
 						<CustomerStoryRail />
 						<CustomerWalletSummary customer={customer} onTopup={() => navigate({ to: "/$username/saldo", params: { username } })} />
+						{customerOrders.filter((order) => !["completed", "cancelled"].includes(order.trackingStatus || order.status)).slice(0, 1).map((order) => <CustomerLiveOrderCard key={order.id} order={order} onOpen={() => navigate({ to: "/$username/order", params: { username }, search: { step: "receipt", orderId: order.id } })} />)}
 						<CustomerHomeServiceGrid
 							onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })}
 							onPromo={() => navigate({ to: "/$username/promo", params: { username } })}

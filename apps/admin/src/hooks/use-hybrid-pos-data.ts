@@ -754,24 +754,30 @@ async function fetchAllDiscounts() {
 
 async function fetchOrders(options?: { status?: string; limit?: number }) {
 	const supabase = createClient();
-	let query = supabase
-		.from("pos_orders")
-		.select("*")
-		.order("createdAt", { ascending: false });
+	const pageSize = 1000;
+	const rows: any[] = [];
 
-	if (options?.status) {
-		query = query.eq("status", options.status);
+	for (let pageStart = 0; ; pageStart += pageSize) {
+		const pageEnd = options?.limit
+			? Math.min(pageStart + pageSize, options.limit) - 1
+			: pageStart + pageSize - 1;
+		if (pageEnd < pageStart) break;
+
+		let query = supabase
+			.from("pos_orders")
+			.select("*")
+			.order("createdAt", { ascending: false })
+			.order("_id", { ascending: false })
+			.range(pageStart, pageEnd);
+		if (options?.status) query = query.eq("status", options.status);
+
+		const { data, error } = await query;
+		if (error) throw error;
+		rows.push(...(data ?? []));
+		if (!data || data.length < pageEnd - pageStart + 1 || (options?.limit && rows.length >= options.limit)) break;
 	}
 
-	if (options?.limit) {
-		query = query.limit(options.limit);
-	}
-
-	const { data, error } = await query;
-
-	if (error) throw error;
-
-	return (data ?? []).map((row: any) => ({
+	return rows.slice(0, options?.limit ?? rows.length).map((row: any) => ({
 			_id: String(row._id ?? ""),
 		_creationTime: Number(row._creationTime ?? row.createdAt ?? 0),
 		orderNumber: row.orderNumber ?? "",
@@ -791,6 +797,13 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 		deliveryStatus: row.deliveryStatus ?? row.delivery_status ?? null,
 		deliveryDate: row.deliveryDate ?? row.delivery_date ?? null,
 		deliveryProvider: row.deliveryProvider ?? row.delivery_provider ?? null,
+		deliveryContactName: row.deliveryContactName ?? row.delivery_contact_name ?? null,
+		deliveryNotes: row.deliveryNotes ?? row.delivery_notes ?? null,
+		deliveryProviderOrderId: row.deliveryProviderOrderId ?? row.delivery_provider_order_id ?? null,
+		deliveryTrackingId: row.deliveryTrackingId ?? row.delivery_tracking_id ?? null,
+		deliveryWaybillId: row.deliveryWaybillId ?? row.delivery_waybill_id ?? null,
+		shippingFeeAmount: row.shippingFeeAmount ?? row.shipping_fee_amount ?? null,
+		shippingRateSnapshot: row.shippingRateSnapshot ?? row.shipping_rate_snapshot ?? null,
 		brandSlug: row.brandSlug ?? row.brand_slug ?? null,
 		guestCount:
 			row.guestCount === null || row.guestCount === undefined
@@ -934,14 +947,23 @@ async function fetchInventory() {
 
 async function fetchBookingOrders() {
 	const supabase = createClient();
-	const { data, error } = await supabase
-		.from("pos_booking_orders")
-		.select("*")
-		.order("createdAt", { ascending: false });
+	const pageSize = 1000;
+	const rows: any[] = [];
 
-	if (error) throw error;
+	for (let pageStart = 0; ; pageStart += pageSize) {
+		const pageEnd = pageStart + pageSize - 1;
+		const { data, error } = await supabase
+			.from("pos_booking_orders")
+			.select("*")
+			.order("createdAt", { ascending: false })
+			.order("_id", { ascending: false })
+			.range(pageStart, pageEnd);
+		if (error) throw error;
+		rows.push(...(data ?? []));
+		if (!data || data.length < pageSize) break;
+	}
 
-	return (data ?? []).map((row: any) => ({
+	return rows.map((row: any) => ({
 		_id: row._id,
 		_creationTime: Number(row._creationTime ?? row.createdAt ?? 0),
 		slug: row.slug ?? "booking",
@@ -1066,6 +1088,7 @@ export function computeMemberBonuses(
 	name: string;
 	roleName: string;
 	bonus: number;
+	basis: "shift" | "daily" | "monthly";
 	achievedTiers: number[];
 	allTiers: Array<{ thresholdPct: number; bonusAmount: number }>;
 }> {
@@ -1091,7 +1114,7 @@ export function computeMemberBonuses(
 		const roleName = matched?.roleName ?? "-";
 
 		if (!config?.tiers || config.tiers.length === 0) {
-			return { name: memberName, roleName, bonus: 0, achievedTiers: [], allTiers: [] };
+			return { name: memberName, roleName, bonus: 0, basis: config?.basis ?? "shift", achievedTiers: [], allTiers: [] };
 		}
 
 		const allTiers = config.tiers;
@@ -1115,6 +1138,7 @@ export function computeMemberBonuses(
 			name: memberName,
 			roleName,
 			bonus,
+			basis,
 			achievedTiers,
 			allTiers: allTiers.map((t) => ({ thresholdPct: t.thresholdPct, bonusAmount: t.bonusAmount })),
 		};

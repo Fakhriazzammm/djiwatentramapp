@@ -7,6 +7,8 @@ import {
 	ArrowUpDown,
 	Receipt,
 	X,
+	Pencil,
+	Save,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrencyIDR } from "@/lib/export-utils";
@@ -17,11 +19,13 @@ import {
 	type DateRange,
 } from "../../reports/-components/period-selector";
 import { useHybridTransactionDetailReport } from "@/hooks/use-hybrid-finance-analytics-data";
+import { useHybridUpdateTransaction } from "@/hooks/use-hybrid-write-actions";
 import { ExpenseDetailModal } from "./expense-detail-modal";
 import { useTheme } from "next-themes";
 import { format } from "date-fns";
 import { id as localeID } from "date-fns/locale";
 import Papa from "papaparse";
+import { createClient } from "@/lib/client";
 
 // ─── Constants ────────────────────────────────────
 const PAGE_SIZE = 20;
@@ -102,10 +106,28 @@ export function ExpensesTable() {
 	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 	const [page, setPage] = useState(1);
 	const [selectedTx, setSelectedTx] = useState<TransactionRow | null>(null);
+	const [reconciliationRows, setReconciliationRows] = useState<any[]>([]);
+	const [editingId, setEditingId] = useState<string | null>(null);
+	const [editDraft, setEditDraft] = useState<any>({});
+	const [rowOverrides, setRowOverrides] = useState<Record<string, any>>({});
+	const [savingId, setSavingId] = useState<string | null>(null);
+	const updateTransaction = useHybridUpdateTransaction();
+	const [aiScanState, setAiScanState] = useState<Record<string, "loading" | "done" | "error">>({});
 
 	useEffect(() => {
 		setTheme("light");
 	}, [setTheme]);
+
+	useEffect(() => {
+		let cancelled = false;
+		const supabase = createClient();
+		supabase.from("pos_expense_inventory_reconciliation").select("_id,rawName,reconciliationStatus,transactionId").limit(1000).then(({ data }) => {
+			if (!cancelled) setReconciliationRows(data ?? []);
+		}).catch(() => {
+			if (!cancelled) setReconciliationRows([]);
+		});
+		return () => { cancelled = true; };
+	}, []);
 
 	const txData = useHybridTransactionDetailReport({
 		startDate: dateRange.startDate,
@@ -171,6 +193,44 @@ export function ExpensesTable() {
 		setDateRange(getRangeFromPeriod(p));
 	};
 
+	const scanReceiptWithAi = async (tx: TransactionRow) => {
+		const transactionId = String((tx as any)._id || (tx as any).id || "");
+		if (!transactionId || aiScanState[transactionId] === "loading") return;
+		setAiScanState((current) => ({ ...current, [transactionId]: "loading" }));
+		try {
+			const supabase = createClient();
+			const { data } = await supabase.auth.getSession();
+			const token = data.session?.access_token;
+			if (!token) throw new Error("Sesi login tidak tersedia");
+			const response = await fetch("/api/finance-ai/reprocess-receipt", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ transaction_id: transactionId }) });
+			const payload = await response.json();
+			if (!response.ok || !payload.ok) throw new Error(payload.error || "Scan ulang gagal");
+			setAiScanState((current) => ({ ...current, [transactionId]: "done" }));
+		} catch (error) {
+			console.error("Receipt AI rescan failed", error);
+			setAiScanState((current) => ({ ...current, [transactionId]: "error" }));
+		}
+	};
+
+	const startEditing = (tx: TransactionRow) => {
+		const id = String(tx._id);
+		setEditingId(id);
+		setEditDraft({ date: new Date(tx.date).toISOString().slice(0, 10), category: tx.category || "", description: tx.description || "", merchant: tx.merchant || "", amount: String(tx.amount ?? ""), paymentMethod: tx.paymentMethod || "cash" });
+	};
+
+	const saveEditing = async (tx: TransactionRow) => {
+		const id = String(tx._id);
+		if (savingId) return;
+		setSavingId(id);
+		try {
+			const updates = { id, ...editDraft, amount: Number(editDraft.amount), date: new Date(`${editDraft.date}T00:00:00`).getTime() };
+			await updateTransaction(updates);
+			setRowOverrides((current) => ({ ...current, [id]: updates }));
+			setEditingId(null);
+		} catch (error) { console.error("Failed to update expense", error); }
+		finally { setSavingId(null); }
+	};
+
 	const handleSort = (col: "date" | "amount" | "category") => {
 		if (sortBy === col) {
 			setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
@@ -181,6 +241,13 @@ export function ExpensesTable() {
 	};
 
 	const totalAmount = filtered.reduce((sum, t) => sum + t.amount, 0);
+	const reconciliationCounts = reconciliationRows.reduce<Record<string, number>>((counts, row) => {
+		const key = String(row.reconciliationStatus || "unknown");
+		counts[key] = (counts[key] || 0) + 1;
+		return counts;
+	}, {});
+	const reconciliationProblems = reconciliationRows.filter((row) => ["missing_movement", "unexpected_movement"].includes(row.reconciliationStatus));
+	const pendingReviewRows = reconciliationRows.filter((row) => row.reconciliationStatus === "pending").slice(0, 8);
 
 	// ── Loading state ──
 	if (!txData) {
@@ -226,6 +293,32 @@ export function ExpensesTable() {
 						Export CSV
 					</button>
 				</div>
+
+				{/* ── Inventory reconciliation ── */}
+				{reconciliationRows.length > 0 && (
+					<div className="mb-5 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3">
+						<div className="flex flex-wrap items-center justify-between gap-2">
+							<div><p className="text-sm font-semibold text-slate-800">Rekonsiliasi inventory</p><p className="text-[11px] text-slate-500">Link expense dibandingkan dengan movement stok.</p></div>
+							<div className="flex flex-wrap gap-1.5 text-[11px]">
+								<span className="rounded-full bg-emerald-100 px-2 py-1 font-medium text-emerald-700">Reconciled {reconciliationCounts.reconciled || 0}</span>
+								<span className="rounded-full bg-blue-100 px-2 py-1 font-medium text-blue-700">Pending {reconciliationCounts.pending || 0}</span>
+								{reconciliationProblems.length > 0 && <span className="rounded-full bg-red-100 px-2 py-1 font-medium text-red-700">Perlu cek {reconciliationProblems.length}</span>}
+							</div>
+						</div>
+						{reconciliationProblems.length > 0 && <div className="mt-2 space-y-1 text-xs text-red-700">{reconciliationProblems.slice(0, 3).map((row) => <p key={row._id}>• {row.rawName || "Item expense"}: {row.reconciliationStatus}</p>)}</div>}
+						{pendingReviewRows.length > 0 && (
+							<div className="mt-3 border-t border-slate-200/80 pt-3">
+								<div className="mb-2 flex items-center justify-between"><p className="text-xs font-semibold text-slate-700">Antrian review pending</p><span className="text-[11px] text-slate-500">Menampilkan {pendingReviewRows.length} item pertama</span></div>
+								<div className="grid gap-1.5 sm:grid-cols-2">
+									{pendingReviewRows.map((row) => {
+										const transaction = allTransactions.find((item) => item._id === row.transactionId);
+										return <button key={row._id} type="button" className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2 text-left text-xs hover:bg-blue-50" onClick={() => transaction && setSelectedTx(transaction)}><span className="min-w-0 truncate text-slate-700">{row.rawName || "Item expense"}</span><span className="shrink-0 text-blue-600">{transaction ? "Buka" : "-"}</span></button>;
+									})}
+								</div>
+							</div>
+						)}
+					</div>
+				)}
 
 				{/* ── Filters bar ── */}
 				<div className="flex flex-col sm:flex-row gap-3 mb-5">
@@ -345,58 +438,59 @@ export function ExpensesTable() {
 										</th>
 										<th className="px-4 py-3">Metode</th>
 										<th className="px-4 py-3">Status</th>
-										<th className="px-4 py-3 text-center">Struk</th>
+										<th className="px-4 py-3 text-center">Struk</th><th className="px-4 py-3 text-center">AI</th><th className="px-4 py-3 text-center">Edit</th>
 									</tr>
 								</thead>
 								<tbody className="divide-y divide-slate-100">
 									{paged.map((tx, idx) => {
-										const hasReceipt = (tx as any).metadata?.receipt_image_url;
+												const row = rowOverrides[tx._id] ? { ...tx, ...rowOverrides[tx._id] } : tx;
+										const hasReceipt = (row as any).metadata?.receipt_image_url;
 										return (
 											<tr
-												key={tx._id}
+												key={row._id}
 												className="hover:bg-slate-50/70 cursor-pointer transition-colors"
-												onClick={() => setSelectedTx(tx)}
+												onClick={() => setSelectedTx(row)}
 											>
 												<td className="px-4 py-3 text-xs text-slate-400">
 													{(safePage - 1) * PAGE_SIZE + idx + 1}
 												</td>
 												<td className="px-4 py-3 whitespace-nowrap font-medium text-slate-800">
-													{format(new Date(tx.date), "dd MMM yyyy", { locale: localeID })}
+													{format(new Date(row.date), "dd MMM yyyy", { locale: localeID })}
 												</td>
 												<td className="px-4 py-3">
 													<span
-														className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${categoryColor(tx.category)}`}
+														className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${categoryColor(row.category)}`}
 													>
-														{categoryLabel(tx.category)}
+														{categoryLabel(row.category)}
 													</span>
 												</td>
 												<td className="px-4 py-3 max-w-[200px] truncate text-slate-600">
-													{tx.description || "-"}
+													{row.description || "-"}
 												</td>
 												<td className="px-4 py-3 text-slate-600">
-													{tx.merchant || "-"}
+													{row.merchant || "-"}
 												</td>
 												<td className="px-4 py-3 text-right font-medium text-red-600">
-													Rp {formatCurrencyIDR(tx.amount)}
+													Rp {formatCurrencyIDR(row.amount)}
 												</td>
 												<td className="px-4 py-3 text-slate-500 text-xs capitalize">
-													{tx.paymentMethod || "-"}
+													{row.paymentMethod || "-"}
 												</td>
 												<td className="px-4 py-3">
 													<span
 														className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-															tx.status === "completed"
+															row.status === "completed"
 																? "bg-green-100 text-green-700"
-																: tx.status === "pending"
+																: row.status === "pending"
 																	? "bg-yellow-100 text-yellow-700"
 																	: "bg-red-100 text-red-700"
 														}`}
 													>
-														{tx.status === "completed"
+														{row.status === "completed"
 															? "✅"
-															: tx.status === "pending"
+															: row.status === "pending"
 																? "⏳"
-																: tx.status}
+																: row.status}
 													</span>
 												</td>
 												<td className="px-4 py-3 text-center">
@@ -404,16 +498,19 @@ export function ExpensesTable() {
 														<img
 															alt="Struk"
 															className="h-9 w-9 rounded object-cover border border-slate-200/80 cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all"
-															onClick={(e) => { e.stopPropagation(); setSelectedTx(tx); }}
-															src={(tx as any).metadata.receipt_image_url}
+															onClick={(e) => { e.stopPropagation(); setSelectedTx(row); }}
+															src={(row as any).metadata.receipt_image_url}
 														/>
 													) : (
 														<span className="text-xs text-slate-300">—</span>
 													)}
 												</td>
-											</tr>
+												<td className="px-4 py-3 text-center">
+													{hasReceipt ? <button type="button" className="rounded-lg bg-violet-600 px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-50" disabled={aiScanState[String(row._id)] === "loading"} onClick={(e) => { e.stopPropagation(); void scanReceiptWithAi(row); }}>{aiScanState[String(row._id)] === "loading" ? "Scan..." : aiScanState[String(row._id)] === "done" ? "Selesai" : aiScanState[String(row._id)] === "error" ? "Coba lagi" : "Scan AI"}</button> : <span className="text-xs text-slate-300">—</span>}
+												</td>
+											<td className="px-4 py-3 text-center"><button type="button" className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50" onClick={(e) => { e.stopPropagation(); startEditing(row); }}><Pencil className="mr-1 inline h-3 w-3" />Edit</button></td></tr>
 										);
-									})}
+									{editingId === String(row._id) && <tr className="bg-violet-50/50"><td colSpan={11} className="px-4 py-3" onClick={(e) => e.stopPropagation()}><div className="grid gap-2 md:grid-cols-6"><input className="rounded border px-2 py-1 text-xs" type="date" value={editDraft.date || ""} onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })} /><input className="rounded border px-2 py-1 text-xs" placeholder="Kategori" value={editDraft.category || ""} onChange={(e) => setEditDraft({ ...editDraft, category: e.target.value })} /><input className="rounded border px-2 py-1 text-xs" placeholder="Deskripsi" value={editDraft.description || ""} onChange={(e) => setEditDraft({ ...editDraft, description: e.target.value })} /><input className="rounded border px-2 py-1 text-xs" placeholder="Merchant" value={editDraft.merchant || ""} onChange={(e) => setEditDraft({ ...editDraft, merchant: e.target.value })} /><input className="rounded border px-2 py-1 text-xs" type="number" min="0" placeholder="Jumlah" value={editDraft.amount || ""} onChange={(e) => setEditDraft({ ...editDraft, amount: e.target.value })} /><select className="rounded border px-2 py-1 text-xs" value={editDraft.paymentMethod || "cash"} onChange={(e) => setEditDraft({ ...editDraft, paymentMethod: e.target.value })}><option value="cash">Cash</option><option value="qris">Qris</option><option value="transfer">Transfer</option></select></div><div className="mt-2 flex justify-end gap-2"><button type="button" className="rounded border px-3 py-1 text-xs" onClick={() => setEditingId(null)}>Batal</button><button type="button" disabled={savingId === String(row._id)} className="rounded bg-violet-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50" onClick={() => void saveEditing(row)}><Save className="mr-1 inline h-3 w-3" />{savingId === String(row._id) ? "Menyimpan..." : "Simpan"}</button></div></td></tr>}})}
 								</tbody>
 							</table>
 						</div>

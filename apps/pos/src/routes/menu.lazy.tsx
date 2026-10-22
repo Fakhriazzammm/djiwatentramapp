@@ -8,7 +8,6 @@ import {
 	Coffee,
 	FileText,
 	Minus,
-	MoreHorizontal,
 	Package,
 	Plus,
 	Search,
@@ -85,6 +84,7 @@ import { resolveTransactionVoice } from "@/lib/transaction-voice-resolver";
 import { NotificationCenter } from "@/components/pos/notification-center";
 import { TransactionAlertStack } from "@/components/pos/transaction-alert-popup";
 import { PosOrderDetailSheet } from "@/components/pos/pos-order-detail-sheet";
+import { DeliveryCustomerQueue } from "@/components/pos/delivery-customer-queue";
 import { usePosNotifications } from "@/hooks/use-pos-notifications";
 import { createClient } from "@/lib/client";
 import { QueueHorizontalBar } from "@/components/pos/queue-horizontal-bar";
@@ -199,7 +199,6 @@ const SIDEBAR_MENU_ITEMS = [
 
 const BOTTOM_NAV_ITEMS = [
 	SIDEBAR_MENU_ITEMS[0],
-	{ id: "notifications", label: "Notifikasi", icon: Bell, illustration: "notifications-alerts" as Djiwa3DIconName },
 	{ id: "transaksi", label: "Transaksi", icon: Receipt, illustration: "order-receipt" as Djiwa3DIconName },
 	SIDEBAR_MENU_ITEMS.find((item) => item.id === "kas")!,
 	SIDEBAR_MENU_ITEMS.find((item) => item.id === "antrian")!,
@@ -208,7 +207,6 @@ const BOTTOM_NAV_ITEMS = [
 const BOTTOM_NAV_3D_ICONS: Record<string, Djiwa3DIconName> = {
 	dashboard: "dashboard-overview",
 	transaksi: "order-receipt",
-	notifications: "notifications-alerts",
 	kas: "payment-wallet",
 	antrian: "order-queue",
 };
@@ -941,7 +939,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 	// Filtered products based on search
 	const filteredProducts = useMemo(() => {
-		if (!searchQuery.trim()) return allProducts ?? products;
+		if (!searchQuery.trim()) return products ?? allProducts;
 		if (!allProducts) return [];
 		
 		const query = searchQuery.toLowerCase();
@@ -1142,6 +1140,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		(index: number) => {
 			setFocusedCategoryIndex(index);
 			scrollCategoryIntoView(index);
+			mainScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
 			if (index === 0) {
 				setActiveCategoryId(null);
 			} else {
@@ -1194,6 +1193,8 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					setIsLoadingMoreProducts(false);
 					isLoadingMoreRef.current = false;
 					timeoutId = undefined;
+					observer.unobserve(trigger);
+					requestAnimationFrame(() => { if (trigger.isConnected) observer.observe(trigger); });
 				}, LOAD_MORE_DELAY_MS);
 			},
 			{
@@ -1968,13 +1969,17 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								<button
 									type="button"
 									onClick={() => {
-										setActiveSidebarTab("yumi");
-										setIsSidebarOpen(true);
+										navigate({ to: "/notifications" });
 									}}
-									className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors hover:bg-muted/80 shrink-0"
-									aria-label="Buka menu lainnya"
+									className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors hover:bg-muted/80 shrink-0"
+									aria-label={unreadCount > 0 ? `${unreadCount} notifikasi belum dibaca` : "Buka notifikasi"}
 								>
-									<MoreHorizontal className="h-4 w-4" />
+									<Bell className="h-4 w-4" />
+									{unreadCount > 0 && (
+										<span className="absolute -right-1 -top-1 flex min-w-4 h-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black leading-none text-white ring-2 ring-background">
+											{unreadCount > 99 ? "99+" : unreadCount}
+										</span>
+									)}
 								</button>
 							</div>
 						</div>
@@ -2171,7 +2176,17 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					)}
 				</header>
 
-				<TransactionAlertStack
+			<DeliveryCustomerQueue
+				notifications={notifications}
+				onOpenOrder={(notification) => {
+					markNotificationRead(notification.id);
+					setTransactionAlertIds((current) => current.filter((id) => id !== notification.id));
+					setSelectedOrderNotification(notification);
+					setSelectedOrderId(String(notification.action_payload?.orderId ?? notification.order_source_id ?? ""));
+				}}
+			/>
+
+			<TransactionAlertStack
 				notifications={notifications.filter((item) => transactionAlertIds.includes(item.id))}
 				onDismiss={(notificationId) => { void removeNotification(notificationId); setTransactionAlertIds((current) => current.filter((id) => id !== notificationId)); }}
 				onMarkCashierPaid={handleMarkCashierPaid}
@@ -2338,7 +2353,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					)}
 				</div>
 
-				<div className="pb-28">
+				<div className="pb-[calc(14rem+env(safe-area-inset-bottom))] md:pb-28">
 					<div
 						ref={productGridRef}
 						className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-1.5 p-2"
@@ -2515,6 +2530,11 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 							Array.from({ length: 4 }).map((_, index) => (
 								<MenuProductCardSkeleton key={`load-more-${index}`} />
 							))
+						)}
+						{!isLoading && filteredProductsLength > 0 && !hasMoreProducts && (
+							<div className="col-span-full px-3 py-4 text-center text-[11px] font-semibold text-muted-foreground/70">
+								Semua menu di kategori ini sudah ditampilkan
+							</div>
 						)}
 					</div>
 				</div>

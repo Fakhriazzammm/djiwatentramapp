@@ -43,7 +43,7 @@ function generateOrderNumber(args: {
 	orderType?: string;
 	platform?: string;
 	createdAt: number;
-	receiptNo?: number;
+	receiptNo: number;
 	businessUnit?: string;
 	brandSlug?: string;
 	}) {
@@ -2498,21 +2498,14 @@ export function useHybridCreateOrder() {
 				: args?.source === "customer_self_service"
 					? "dine_in"
 					: "online";
-			let dailyReceiptNo = null;
-			try {
-				const { data: rpcData, error: rpcErr } = await supabase.rpc(
-					"next_daily_receipt_no",
-					{ p_order_kind: kind }
-				);
-				if (!rpcErr && rpcData != null) dailyReceiptNo = rpcData;
-			} catch (_) {} // best-effort
+			const dailyReceiptNo = await allocateDailyReceiptNo(supabase);
 
 			const orderNumber = generateOrderNumber({
 				source: args?.source,
 				orderType: args?.orderType,
 				platform: args?.platform,
 				createdAt: orderCreatedAt,
-				receiptNo: dailyReceiptNo ?? undefined,
+				receiptNo: dailyReceiptNo,
 				businessUnit: args?.businessUnit,
 				brandSlug: args?.brandSlug,
 				});
@@ -2540,7 +2533,8 @@ export function useHybridCreateOrder() {
 					source_id: orderId,
 					order_number: orderNumber,
 					order_channel: getOrderChannel({ source: args?.source, platform: args?.platform, orderType: args?.orderType, brandSlug: args?.brandSlug }),
-					total_amount: Number(authoritativeTax?.totalAmount ?? args?.totalAmount ?? 0),
+					total_amount: Number(authoritativeTax?.totalAmount ?? args?.totalAmount ?? 0) +
+					(authoritativeTax && args?.orderType === "delivery" ? Number(args?.shippingFee ?? 0) : 0),
 					status: nextStatus,
 					payment_method: args?.paymentMethod ?? null,
 					customer_name: args?.customerName ?? null,
@@ -2595,7 +2589,7 @@ export function useHybridCreateOrder() {
 					gateway_invoice_id: args?.paymentGateway?.invoiceId ?? null,
 					creation_time: orderCreatedAt,
 					idempotency_key: idempotencyKey,
-					raw: { ...(args ?? {}), authUserId: currentUser?._id ?? null },
+					raw: { ...(args ?? {}), dailyReceiptNo, receiptKind: kind, orderNumber, authUserId: currentUser?._id ?? null },
 				};
 
 				const { error: orderError } = await pos.from("orders").insert(orderRow);
@@ -2650,7 +2644,7 @@ export function useHybridCreateOrder() {
 						order_source_id: orderId,
 						creation_time: Date.now(),
 						metadata: {
-							dailyReceiptNo: dailyReceiptNo ?? undefined,
+							dailyReceiptNo,
 							orderNumber,
 							source: "pos",
 						},
@@ -5958,13 +5952,13 @@ export function useHybridMayarCreateInvoice() {
 	const fallback = useAction(api.mayar.createInvoice);
 	return useCallback(
 		async (args: any) => {
-			if (!hasSupabaseConfig) return fallback(args);
-			return invokeEdgeFunction("mayar-proxy", {
+			if (!hasSupabaseConfig) return normalizeMayarInvoice(await fallback(args));
+			return normalizeMayarInvoice(await invokeEdgeFunction("mayar-proxy", {
 				action: args?.orderId && args?.idempotencyKey
 					? "create-invoice-from-order"
 					: "create-invoice",
 				...args,
-			});
+			}));
 		},
 		[fallback]
 	);

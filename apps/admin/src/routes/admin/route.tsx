@@ -84,6 +84,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/finance/accounting": "Chart of Accounts",
 	"/admin/finance/expenses": "Pengeluaran",
 	"/admin/orders": "Pesanan",
+	"/admin/delivery": "Delivery Customer",
 	"/admin/notifications": "Notifikasi",
 	"/admin/order-mie-yamin": "Order Mie Yamin",
 	"/admin/order-mie-yamin/orders": "Pesanan Mie Yamin",
@@ -244,6 +245,12 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/kitchen", icon: ChefHat, label: "Dapur" },
 			{ to: "/admin/bar", icon: Beer, label: "Bar" },
 			{ to: "/admin/customer-service", icon: Bell, label: "Layanan", permission: "orders:view" },
+		],
+	},
+	{
+		label: "DELIVERY",
+		items: [
+			{ to: "/admin/delivery", icon: Truck, label: "Delivery Customer", permission: "orders:view" },
 		],
 	},
 	{
@@ -776,6 +783,10 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 							</AnimatePresence>
 						</>
 					)}
+
+					{/* DELIVERY - Standalone */}
+					<SidebarSection isCollapsed={isCollapsed} label="DELIVERY" />
+					<DesktopNavLink icon={<Truck />} isCollapsed={isCollapsed} label="Delivery Customer" to="/admin/delivery" permission="orders:view" />
 
 					{/* KARYAWAN - Section */}
 					<SidebarSection isCollapsed={isCollapsed} label="Karyawan" />

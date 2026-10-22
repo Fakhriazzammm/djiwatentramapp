@@ -23,6 +23,18 @@ function relativeTime(value: string) {
   return new Date(value).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
 }
 
+function CommunityAvatar({ name, avatarUrl, className = "h-8 w-8", textClassName = "text-[11px]" }: { name: string; avatarUrl: string | null; className?: string; textClassName?: string }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => setImageFailed(false), [avatarUrl]);
+  const generic = !name.trim() || ["teman djiwa", "member", "user"].includes(name.trim().toLowerCase());
+  const initial = generic ? "T" : name.trim().slice(0, 1).toUpperCase();
+  return (
+    <div className={`flex ${className} shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#e8eefb] font-black text-[#3156a3] ${textClassName}`} aria-hidden="true">
+      {avatarUrl && !imageFailed ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" onError={() => setImageFailed(true)} /> : initial}
+    </div>
+  );
+}
+
 function readVideoDuration(file: File): Promise<number> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -133,9 +145,9 @@ function PurchaseActivityCard({ activity, onOpenProduct }: { activity: GroupedPu
   return (
     <article className="border-b border-[#e5e5e5] bg-white px-3 py-2 sm:px-5" aria-label={`Aktivitas Teman Djiwa ${activity.productName}`}>
       <div className="flex items-start gap-2">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#e8eefb] text-[11px] font-black text-[#3156a3]">T</div>
+        <CommunityAvatar name={activity.displayName} avatarUrl={activity.avatarUrl} />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1 text-[12px] leading-4"><p className="font-bold text-[#111111]">Teman Djiwa</p><BadgeCheck className="h-3 w-3 text-cyan-600" aria-label="Pembelian terverifikasi" /><span className="text-[11px] text-[#969696]">· {relativeTime(activity.orderSettledAt)}</span></div>
+          <div className="flex items-center gap-1 text-[12px] leading-4"><p className="font-bold text-[#111111]">{activity.displayName}</p><BadgeCheck className="h-3 w-3 text-cyan-600" aria-label="Pembelian terverifikasi" /><span className="text-[11px] text-[#969696]">· {relativeTime(activity.orderSettledAt)}</span></div>
           <div className="mt-0.5 flex items-center gap-2"><p className="min-w-0 truncate text-[12px] leading-4 text-[#161616]">baru saja membeli <span className="font-bold">{activity.products.map((product) => product.productName).join(", ")}</span></p>{activity.productImageUrl ? <img src={activity.productImageUrl} alt="" className="h-8 w-8 shrink-0 rounded-md bg-slate-100 object-contain p-0.5" loading="lazy" /> : <div className="h-8 w-8 shrink-0 rounded-md bg-gradient-to-br from-violet-100 to-cyan-100" aria-hidden="true" />}<button type="button" className="min-h-7 shrink-0 rounded-md border border-[#3156a3]/20 px-2 text-[9px] font-bold text-[#3156a3] hover:bg-[#e8eefb]" onClick={() => onOpenProduct(activity)}>Lihat <ArrowRight className="ml-0.5 inline h-2.5 w-2.5" /></button>
           </div>
         </div>

@@ -26,6 +26,15 @@ export type CustomerOrder = {
 	tableNumber: string | null;
 	items: CustomerOrderItem[];
 	createdAt: number;
+	trackingStatus?: string | null;
+	estimatedReadyAt?: string | null;
+	slaStartedAt?: string | null;
+	slaDeadlineAt?: string | null;
+	isLate?: boolean;
+	lateMinutes?: number;
+	trackingGroupCount?: number;
+	trackingFinishedGroupCount?: number;
+	trackingGroups?: Array<{ groupType: string; status: string; completedAt?: string | null; updatedAt?: string | null }>;
 };
 
 export type CustomerOrderItem = {
@@ -36,6 +45,7 @@ export type CustomerOrderItem = {
 	originalPrice?: number;
 	image?: string | null;
 	variant?: string | null;
+	status?: string | null;
 };
 
 export type CustomerPointEntry = {
@@ -79,9 +89,14 @@ function mapOrder(row: Record<string, unknown>): CustomerOrder {
 					originalPrice: item.originalPrice == null ? undefined : Number(item.originalPrice),
 					image: (item.image ?? item.imageUrl ?? item.image_url ?? null) as string | null,
 					variant: (item.variant as string | null | undefined) ?? null,
+					status: (item.status as string | null | undefined) ?? null,
 				}))
 			: [],
 		createdAt: Number(row.createdAt ?? row._creationTime ?? 0),
+		slaStartedAt: (row.slaStartedAt ?? row.sla_started_at) as string | null | undefined,
+		slaDeadlineAt: (row.slaDeadlineAt ?? row.sla_deadline_at) as string | null | undefined,
+		isLate: Boolean(row.isLate ?? row.is_late ?? false),
+		lateMinutes: Number(row.lateMinutes ?? row.late_minutes ?? 0),
 	};
 }
 
@@ -98,7 +113,7 @@ function mapPointEntry(row: Record<string, unknown>): CustomerPointEntry {
 	};
 }
 
-const CUSTOMER_API_BASE = "https://djiwatentram.yumme.id/api/customer";
+const CUSTOMER_API_BASE = "https://api.yumme.id/v1/customer";
 
 // ── useCustomerOrders ──────────────────────────────────────────
 // Query pos_orders WHERE customer_source_id = user.id.
@@ -120,7 +135,7 @@ export function useCustomerOrders(options?: { onRealtimeUpdate?: () => void }) {
 					method: "POST",
 					credentials: "include",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ orderIds: references.map((item) => item.orderId) }),
+					body: JSON.stringify({ orders: references.map((item) => ({ orderId: item.orderId, accessToken: item.accessToken })) }),
 				});
 				if (!response.ok) throw new Error(`Guest orders HTTP ${response.status}`);
 				const payload = await response.json() as { success?: boolean; orders?: Record<string, unknown>[] };

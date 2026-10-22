@@ -27,6 +27,62 @@ const SUP = loadEnv(path.join(__dirname, "..", "..", "yumi-ai-bot", ".env"));
 const SUPABASE_URL = SUP.SUPABASE_URL || process.env.SUPABASE_URL;
 const SUPABASE_SKEY = SUP.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const CV_BUCKET = "recruitment-cv";
+const OUTSOURCING_AUTH_FILE = path.join(__dirname, ".outsourcing-auth.json");
+const OUTSOURCING_SESSION_SECRET_FILE = path.join(__dirname, ".outsourcing-session-secret");
+const HRD_BRIDGE_SECRET_FILE = process.env.REKRUTMEN_AUTH_BRIDGE_SECRET_FILE || "/etc/djiwatentramapp/recruitment-auth-bridge.secret";
+function loadHrdBridgeSecret() { try { return process.env.REKRUTMEN_AUTH_BRIDGE_SECRET || fs.readFileSync(HRD_BRIDGE_SECRET_FILE, "utf8").trim(); } catch { return ""; } }
+const HRD_BRIDGE_SECRET = loadHrdBridgeSecret();
+function loadOutsourcingSessionSecret() {
+  const configured = process.env.REKRUTMEN_OUTSOURCING_SESSION_SECRET;
+  if (configured) return configured;
+  try {
+    const existing = fs.readFileSync(OUTSOURCING_SESSION_SECRET_FILE, "utf8").trim();
+    if (existing) return existing;
+  } catch {}
+  const generated = crypto.randomBytes(32).toString("hex");
+  try { fs.writeFileSync(OUTSOURCING_SESSION_SECRET_FILE, generated + "\n", { mode: 0o600 }); } catch {}
+  return generated;
+}
+const OUTSOURCING_SESSION_SECRET = loadOutsourcingSessionSecret();
+
+function readOutsourcingAuth() {
+  try { return JSON.parse(fs.readFileSync(OUTSOURCING_AUTH_FILE, "utf8")); } catch { return null; }
+}
+
+function hashOutsourcingPin(pin, saltB64) {
+  return crypto.scryptSync(String(pin), Buffer.from(saltB64, "base64"), 64).toString("base64");
+}
+
+function safeEqualText(a, b) {
+  const left = Buffer.from(String(a));
+  const right = Buffer.from(String(b));
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+function signOutsourcingSession(mustChange = false) {
+  const payload = Buffer.from(JSON.stringify({ role: "outsourcing_readonly", mustChange, exp: Date.now() + 8 * 60 * 60 * 1000 })).toString("base64url");
+  const signature = crypto.createHmac("sha256", OUTSOURCING_SESSION_SECRET).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
+}
+
+function verifyHrdBridgeSession(token) {
+  try {
+    const [payload, signature] = String(token || "").split(".");
+    if (!HRD_BRIDGE_SECRET || !payload || !signature) return null;
+    const expected = crypto.createHmac("sha256", HRD_BRIDGE_SECRET).update(payload).digest("base64url");
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    return safeEqualText(signature, expected) && data.role === "HRD" && Number(data.exp) > Date.now() ? data : null;
+  } catch { return null; }
+}
+
+function verifyOutsourcingSession(token) {
+  try {
+    const [payload, signature] = String(token || "").split(".");
+    const expected = crypto.createHmac("sha256", OUTSOURCING_SESSION_SECRET).update(payload).digest("base64url");
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    return safeEqualText(signature, expected) && data.role === "outsourcing_readonly" && Number(data.exp) > Date.now() ? data : null;
+  } catch { return null; }
+}
 
 // pastikan folder uploads ada (fallback)
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -52,8 +108,28 @@ async function uploadToStorage(objectPath, buffer, contentType) {
 
 app.use(cors());
 app.use(express.json({ limit: "15mb" }));
+
+app.get("/admin", (_req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
+app.post("/api/recruitment-outsourcing/login", (req, res) => {
+  const auth = readOutsourcingAuth();
+  const pin = String(req.body?.pin ?? "");
+  if (!auth?.salt || !auth?.hash || !safeEqualText(hashOutsourcingPin(pin, auth.salt), auth.hash)) {
+    return res.status(401).json({ error: "PIN tidak valid" });
+  }
+  return res.json({ token: signOutsourcingSession(Boolean(auth.mustChange)), mustChange: Boolean(auth.mustChange), readOnly: true });
+});
+app.post("/api/recruitment-outsourcing/change-pin", (req, res) => {
+  const session = verifyOutsourcingSession(req.get("x-rekrutmen-outsourcing-session"));
+  const nextPin = String(req.body?.pin ?? "");
+  if (!session) return res.status(401).json({ error: "Sesi outsourcing tidak valid" });
+  if (!/^\d{6}$/.test(nextPin) || nextPin === "000000") return res.status(400).json({ error: "PIN baru harus 6 digit dan tidak boleh 000000" });
+  const salt = crypto.randomBytes(16).toString("base64");
+  fs.writeFileSync(OUTSOURCING_AUTH_FILE, JSON.stringify({ salt, hash: hashOutsourcingPin(nextPin, salt), mustChange: false, updatedAt: new Date().toISOString() }, null, 2), { mode: 0o600 });
+  return res.json({ token: signOutsourcingSession(false), mustChange: false, readOnly: true });
+});
+
 // Legacy standalone candidate viewer is intentionally disabled; Admin SPA is the only protected viewer.
-app.get("/admin.html", (_req, res) => res.status(404).send("Not Found"));
+app.get("/admin.html", (_req, res) => res.redirect(302, "/admin"));
 app.use(express.static(path.join(__dirname, "public"), {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith("index.html")) {
@@ -73,6 +149,30 @@ function psql(sql) {
 }
 
 async function validateRecruitmentAdmin(req, res, next) {
+  const hrdSession = verifyHrdBridgeSession(req.get("x-rekrutmen-hrd-session"));
+  if (hrdSession) {
+    const candidateStatusPatch = req.method === "PATCH"
+      && /^\/api\/table\/Candidates\/[0-9a-f-]+$/i.test(req.path)
+      && Object.keys(req.body || {}).every((key) => key === "Status");
+    const candidateBulkStatus = req.method === "POST"
+      && req.path === "/api/rekrutmen/candidates/bulk"
+      && req.body?.action === "status";
+    if (req.method !== "GET" && !candidateStatusPatch && !candidateBulkStatus) {
+      return res.status(403).json({ error: "Sesi HRD hanya dapat membaca data atau mengubah status kandidat" });
+    }
+    res.locals.recruitmentAdmin = { role: "HRD", id: hrdSession.sub, userId: hrdSession.sub };
+    res.locals.readOnly = !(candidateStatusPatch || candidateBulkStatus);
+    return next();
+  }
+  if (!req.get("x-yumi-session") && !req.get("authorization")) return res.status(401).json({ error: "HRD Google authentication diperlukan" });
+  const outsourcingSession = verifyOutsourcingSession(req.get("x-rekrutmen-outsourcing-session"));
+  if (outsourcingSession) {
+    const candidateStatusPatch = req.method === "PATCH" && /^\/api\/table\/Candidates\/[0-9a-f-]+$/i.test(req.path);
+    if (req.method !== "GET" && !candidateStatusPatch) return res.status(403).json({ error: "Akses outsourcing hanya dapat membaca atau mengubah status kandidat" });
+    res.locals.recruitmentAdmin = { role: "outsourcing_readonly" };
+    res.locals.readOnly = !candidateStatusPatch;
+    return next();
+  }
   const headerToken = req.get("x-yumi-session") || req.get("authorization")?.replace(/^Bearer\s+/i, "");
   const standardized = req.path.startsWith("/api/rekrutmen/");
   const authError = (status, code, message) => {
@@ -564,6 +664,7 @@ app.get("/api/rekrutmen/candidates.csv", validateRecruitmentAdmin, (req, res) =>
 app.post("/api/rekrutmen/candidates/bulk", validateRecruitmentAdmin, (req, res) => {
   try {
     const action = String(req.body?.action || "").trim();
+    if (res.locals.readOnly && action !== "status") return adminError(res, 403, "READ_ONLY_SESSION", "Sesi ini hanya boleh mengubah status kandidat");
     const ids = Array.from(new Set(Array.isArray(req.body?.ids) ? req.body.ids.map((value) => String(value)) : []));
     if (!ids.length || ids.length > 200) return adminError(res, 400, "INVALID_IDS", "Pilih 1 sampai 200 kandidat");
     if (ids.some((id) => !UUID_RE.test(id))) return adminError(res, 400, "INVALID_ID", "ID kandidat tidak valid");
@@ -573,11 +674,11 @@ app.post("/api/rekrutmen/candidates/bulk", validateRecruitmentAdmin, (req, res) 
       const allowed = ["Application Received", "Screening", "Interview Scheduled", "Interview Completed", "Offer", "Hired", "Onboarding", "Selesai", "Rejected", "Withdrawn"];
       if (!allowed.includes(status)) return adminError(res, 400, "INVALID_STATUS", "Status bulk tidak valid");
       if (status === "Interview Scheduled") return adminError(res, 400, "INTERVIEW_SCHEDULE_REQUIRED", "Bulk Interview Scheduled memerlukan jadwal interview per kandidat");
-      const row = runAdminMutation(`WITH selected AS (SELECT id,status FROM pos.${TABLE} WHERE id IN (${idList})), updated AS (UPDATE pos.${TABLE} c SET status=${sqlLiteral(status)},updated_at=NOW() FROM selected WHERE c.id=selected.id RETURNING c.id,selected.status AS from_status,c.status AS to_status), history AS (INSERT INTO pos.recruitment_candidate_status_history (candidate_id,from_status,to_status,note,changed_by,metadata) SELECT id,from_status,to_status,'Bulk status update',${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id))},jsonb_build_object('bulk',true) FROM updated RETURNING candidate_id) SELECT json_build_object('updated',(SELECT COUNT(*) FROM history),'ids',COALESCE((SELECT json_agg(candidate_id) FROM history),'[]'::json))::text`)[0] || { updated: 0, ids: [] };
+      const row = runAdminMutation(`WITH selected AS (SELECT id,status FROM pos.${TABLE} WHERE id IN (${idList})), updated AS (UPDATE pos.${TABLE} c SET status=${sqlLiteral(status)},updated_at=NOW() FROM selected WHERE c.id=selected.id RETURNING c.id,selected.status AS from_status,c.status AS to_status), history AS (INSERT INTO pos.recruitment_candidate_status_history (candidate_id,from_status,to_status,note,changed_by,metadata) SELECT id,from_status,to_status,'Bulk status update',${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id || res.locals.recruitmentAdmin?.userId))},jsonb_build_object('bulk',true) FROM updated RETURNING candidate_id) SELECT json_build_object('updated',(SELECT COUNT(*) FROM history),'ids',COALESCE((SELECT json_agg(candidate_id) FROM history),'[]'::json))::text`)[0] || { updated: 0, ids: [] };
       return adminEnvelope(res, row, { resource: "candidate-bulk-status" });
     }
     if (action === "delete") {
-      const row = runAdminMutation(`WITH selected AS (SELECT id FROM pos.${TABLE} WHERE id IN (${idList})), audit AS (INSERT INTO pos.recruitment_audit_logs (entity_type,entity_id,action,actor_user_id,metadata) SELECT 'candidate',id,'bulk_delete',${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id))},jsonb_build_object('bulk',true) FROM selected), deleted_tasks AS (DELETE FROM pos.recruitment_onboarding_tasks t USING selected WHERE t.candidate_id=selected.id), deleted_interviews AS (DELETE FROM pos.recruitment_interviews i USING selected WHERE i.candidate_id=selected.id), deleted_history AS (DELETE FROM pos.recruitment_candidate_status_history h USING selected WHERE h.candidate_id=selected.id), deleted AS (DELETE FROM pos.${TABLE} c USING selected WHERE c.id=selected.id RETURNING c.id) SELECT json_build_object('deleted',(SELECT COUNT(*) FROM deleted),'ids',COALESCE((SELECT json_agg(id) FROM deleted),'[]'::json))::text`)[0] || { deleted: 0, ids: [] };
+      const row = runAdminMutation(`WITH selected AS (SELECT id FROM pos.${TABLE} WHERE id IN (${idList})), audit AS (INSERT INTO pos.recruitment_audit_logs (entity_type,entity_id,action,actor_user_id,metadata) SELECT 'candidate',id,'bulk_delete',${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id || res.locals.recruitmentAdmin?.userId))},jsonb_build_object('bulk',true) FROM selected), deleted_tasks AS (DELETE FROM pos.recruitment_onboarding_tasks t USING selected WHERE t.candidate_id=selected.id), deleted_interviews AS (DELETE FROM pos.recruitment_interviews i USING selected WHERE i.candidate_id=selected.id), deleted_history AS (DELETE FROM pos.recruitment_candidate_status_history h USING selected WHERE h.candidate_id=selected.id), deleted AS (DELETE FROM pos.${TABLE} c USING selected WHERE c.id=selected.id RETURNING c.id) SELECT json_build_object('deleted',(SELECT COUNT(*) FROM deleted),'ids',COALESCE((SELECT json_agg(id) FROM deleted),'[]'::json))::text`)[0] || { deleted: 0, ids: [] };
       return adminEnvelope(res, row, { resource: "candidate-bulk-delete" });
     }
     return adminError(res, 400, "INVALID_ACTION", "Aksi bulk tidak valid");
@@ -686,7 +787,7 @@ app.post("/api/rekrutmen/candidates/:id/status-transition", validateRecruitmentA
       if (scheduled !== true && scheduled !== "true") return adminError(res, 400, "INTERVIEW_SCHEDULE_REQUIRED", "Jadwal interview wajib dibuat sebelum kandidat masuk tahap Interview Scheduled");
     }
     const expectedCondition = expectedStatus === "Application Received" ? `(status=${sqlLiteral(expectedStatus)} OR status='Applied')` : `status=${sqlLiteral(expectedStatus || current.status)}`;
-    const sql = `WITH current_row AS (SELECT id,status FROM pos.${TABLE} WHERE id=${sqlLiteral(id)} AND ${expectedCondition} FOR UPDATE), updated AS (UPDATE pos.${TABLE} c SET status=${sqlLiteral(toStatus)},updated_at=NOW() FROM current_row WHERE c.id=current_row.id RETURNING c.id,current_row.status AS from_status,c.status AS to_status), history AS (INSERT INTO pos.recruitment_candidate_status_history (candidate_id,from_status,to_status,note,changed_by,metadata) SELECT id,from_status,to_status,${sqlLiteral(note)},${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id))},'{}'::jsonb FROM updated RETURNING candidate_id) SELECT json_build_object('id',updated.id,'fromStatus',updated.from_status,'toStatus',updated.to_status)::text FROM updated JOIN history ON history.candidate_id=updated.id`;
+    const sql = `WITH current_row AS (SELECT id,status FROM pos.${TABLE} WHERE id=${sqlLiteral(id)} AND ${expectedCondition} FOR UPDATE), updated AS (UPDATE pos.${TABLE} c SET status=${sqlLiteral(toStatus)},updated_at=NOW() FROM current_row WHERE c.id=current_row.id RETURNING c.id,current_row.status AS from_status,c.status AS to_status), history AS (INSERT INTO pos.recruitment_candidate_status_history (candidate_id,from_status,to_status,note,changed_by,metadata) SELECT id,from_status,to_status,${sqlLiteral(note)},${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id || res.locals.recruitmentAdmin?.userId))},'{}'::jsonb FROM updated RETURNING candidate_id) SELECT json_build_object('id',updated.id,'fromStatus',updated.from_status,'toStatus',updated.to_status)::text FROM updated JOIN history ON history.candidate_id=updated.id`;
     const row = runAdminMutation(sql)[0];
     if (!row) return adminError(res, 409, "STATUS_CONFLICT", "Status kandidat sudah berubah atau tidak sesuai dengan kondisi terakhir");
     adminEnvelope(res, row, { resource: "candidate-status-transition" });
@@ -750,7 +851,7 @@ app.post("/api/rekrutmen/interviews", validateRecruitmentAdmin, (req, res) => {
     const status = String(b.status || "Scheduled");
     const allowed = ["Scheduled", "Rescheduled", "Completed", "Passed", "Failed", "Cancelled"];
     if (!allowed.includes(status)) return adminError(res, 400, "INVALID_STATUS", "Status interview tidak valid");
-    const row = runAdminMutation(`INSERT INTO pos.recruitment_interviews (candidate_id,scheduled_at,timezone,interviewer_user_id,location,meeting_url,status,notes,feedback,result,created_by,metadata) VALUES (${sqlLiteral(candidateId)},${sqlLiteral(b.scheduledAt || b.scheduled_at)},${sqlLiteral(b.timezone || "Asia/Jakarta")},${sqlLiteral(uuidOrNull(b.interviewerUserId || b.interviewer_user_id))},${sqlLiteral(b.location || "")},${sqlLiteral(b.meetingUrl || b.meeting_url || "")},${sqlLiteral(status)},${sqlLiteral(b.notes || "")},${sqlLiteral(b.feedback || "")},${sqlLiteral(b.result || "")},${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id))},${sqlLiteral(JSON.stringify(b.metadata || {}))}::jsonb) RETURNING row_to_json(recruitment_interviews)::text`)[0];
+    const row = runAdminMutation(`INSERT INTO pos.recruitment_interviews (candidate_id,scheduled_at,timezone,interviewer_user_id,location,meeting_url,status,notes,feedback,result,created_by,metadata) VALUES (${sqlLiteral(candidateId)},${sqlLiteral(b.scheduledAt || b.scheduled_at)},${sqlLiteral(b.timezone || "Asia/Jakarta")},${sqlLiteral(uuidOrNull(b.interviewerUserId || b.interviewer_user_id))},${sqlLiteral(b.location || "")},${sqlLiteral(b.meetingUrl || b.meeting_url || "")},${sqlLiteral(status)},${sqlLiteral(b.notes || "")},${sqlLiteral(b.feedback || "")},${sqlLiteral(b.result || "")},${sqlLiteral(uuidOrNull(res.locals.recruitmentAdmin?.id || res.locals.recruitmentAdmin?.userId))},${sqlLiteral(JSON.stringify(b.metadata || {}))}::jsonb) RETURNING row_to_json(recruitment_interviews)::text`)[0];
     adminEnvelope(res, row, { resource: "interview" });
   } catch (e) { adminError(res, 503, "TABLE_UNAVAILABLE", "Interview belum tersedia di schema recruitment"); }
 });

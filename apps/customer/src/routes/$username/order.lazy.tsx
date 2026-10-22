@@ -14,6 +14,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { invokeEdgeFunction } from "@/lib/api-helper";
+import { deliveryApi, DeliveryApiError, type DeliveryConfig } from "@yumipos/web-shared/lib/customer-delivery";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -25,7 +26,8 @@ import {
 	useHybridSiteSettings,
 } from "@/hooks/use-hybrid-pos-data";
 import { useHybridBookingSettings } from "@/hooks/use-hybrid-booking-data";
-import { useHybridMayarConfig, useHybridOrderById } from "@/hooks/use-hybrid-ops-data";
+import { useHybridMayarConfig } from "@/hooks/use-hybrid-ops-data";
+import { useHybridOrderById } from "@yumipos/web-shared/hooks/use-hybrid-ops-data";
 import { useProductUpsellRecommendations } from "@/hooks/use-product-upsells";
 import {
 	useHybridCreateOrder,
@@ -45,6 +47,7 @@ import { useOrderContext } from "@/hooks/use-order-context";
 import type { OrderStep } from "@/hooks/use-order-context";
 import type { CartItem, ServiceRequestType, PaymentChoice } from "@/components/customer/types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency, normalizeMenuCode, rememberGuestOrder } from "@/components/customer/types";
+import { CUSTOMER_ORDERING_DEFAULTS, currency, normalizeMenuCode, readGuestOrderReferences, rememberGuestOrder } from "@/components/customer/types";
 import { BottomButton, CartRow, CustomerOrderModeSelection, CustomerOrderProgress, SummaryCardLines, type CustomerOrderMode } from "@/components/customer/shared-components";
 const BarcodeScanner = lazy(() => import("@/components/customer/barcode-scanner").then((module) => ({ default: module.BarcodeScanner })));
 const ProductSheet = lazy(() => import("@/components/customer/product-sheet").then((module) => ({ default: module.ProductSheet })));
@@ -63,6 +66,22 @@ import { reserveDjiwaRunCheckoutReward, releaseDjiwaRunCheckoutReward, finalizeD
 export const Route = createLazyFileRoute("/$username/order")({
 	component: OrderPage,
 });
+
+// Preserve guest/member authorization while reading the authoritative DB order.
+async function loadReceiptOrder(id: string) {
+	const accessToken = readGuestOrderReferences().find((reference) => reference.orderId === id)?.accessToken;
+	const baseUrl = "https://api.yumme.id/v1/customer";
+	const response = await fetch(`${baseUrl}/${accessToken ? "guest-orders" : "orders"}`, accessToken ? {
+		method: "POST",
+		credentials: "include",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ orders: [{ orderId: id, accessToken }] }),
+	} : { credentials: "include", headers: { Accept: "application/json" } });
+	if (!response.ok) throw new Error(`Order fetch HTTP ${response.status}`);
+	const payload = await response.json() as { success?: boolean; orders?: Array<Record<string, unknown>> };
+	const orders = payload.success ? payload.orders ?? [] : [];
+	return accessToken ? orders[0] ?? null : orders.find((row) => String(row._id ?? row.id ?? row.source_id) === id) ?? null;
+}
 
 function OrderPage() {
 	const shouldReduceMotion = useReducedMotion();
@@ -143,10 +162,12 @@ function OrderPage() {
 		addToCart,
 		updateCartQuantity,
 	} = useOrderContext();
-	const selectMenuCategory = (value: Id<"categories"> | null) => { categorySelectionLockRef.current = Date.now() + 900; setActiveCategoryId(value); };
+	const selectMenuCategory = (value: Id<"categories"> | null) => { setActiveCategoryId(value); };
 	const [orderMode, setOrderMode] = useState<CustomerOrderMode>("dine_in");
 	const [orderModeConfirmed, setOrderModeConfirmed] = useState(false);
-	const [deliveryProvider, setDeliveryProvider] = useState<"gojek" | "grab">("gojek");
+	const [deliveryConfig, setDeliveryConfig] = useState<DeliveryConfig | null>(null);
+	const [deliveryConfigError, setDeliveryConfigError] = useState<string | null>(null);
+	const [deliveryProvider, setDeliveryProvider] = useState<"gojek" | "grab">("grab");
 	const [deliveryAddressOverride, setDeliveryAddressOverride] = useState<string | null>(null);
 	const [deliveryAddressEditorOpen, setDeliveryAddressEditorOpen] = useState(false);
 	const [deliveryAddressPickerOpen, setDeliveryAddressPickerOpen] = useState(false);
@@ -155,16 +176,24 @@ function OrderPage() {
 	const [deliveryLocation, setDeliveryLocation] = useState<{ latitude: number; longitude: number; postalCode?: string } | null>(null);
 	const [deliveryLocationLoading, setDeliveryLocationLoading] = useState(false);
 	const [deliveryLocationError, setDeliveryLocationError] = useState<string | null>(null);
-	const [shippingQuote, setShippingQuote] = useState<{ fee: number; courierCode: string; expiresAt: number } | null>(null);
+	const [shippingQuote, setShippingQuote] = useState<{ fee: number; courierCode: string; serviceType?: string; serviceCode?: string; serviceName?: string; feeSource: "biteship" | "fallback"; expiresAt: number } | null>(null);
 	const [shippingQuoteLoading, setShippingQuoteLoading] = useState(false);
 	const [shippingQuoteError, setShippingQuoteError] = useState<string | null>(null);
 	const [, setShippingClock] = useState(() => Date.now());
 	const [checkoutError, setCheckoutError] = useState<string | null>(null);
+	const [qrisRedirectProcessing, setQrisRedirectProcessing] = useState(false);
 	const [guestEmail, setGuestEmail] = useState("");
 	const [guestPhone, setGuestPhone] = useState("");
 	const [retryingPayment, setRetryingPayment] = useState(false);
+	// Only a receipt URL with an order ID starts the return-flow gate.
+	const [processingOrderId, setProcessingOrderId] = useState<string | null>(() =>
+		search.step === "receipt" && search.orderId ? String(search.orderId) : null
+	);
+	const [processingTimedOut, setProcessingTimedOut] = useState(false);
+	const [providerPaidOrderId, setProviderPaidOrderId] = useState<string | null>(null);
 
 	const startNewOrder = () => {
+		setProcessingOrderId(null);
 		checkoutRequestKeyRef.current = null;
 		setReceipt(null);
 		clearCart();
@@ -227,20 +256,37 @@ function OrderPage() {
 		}
 	}, [customer?.city, customer?.postalCode, customer?.province, deliveryAddressEditorOpen, deliveryAddressFields, profileDeliveryAddress]);
 	useEffect(() => {
-		if (orderMode !== "delivery" || !deliveryAddress || !(deliveryLocation?.postalCode ?? deliveryAddressFields.postalCode) || !cart.length) {
+		if (orderMode !== "delivery") return;
+		let cancelled = false;
+		setDeliveryConfig(null); setDeliveryConfigError(null);
+		void deliveryApi<{ config: DeliveryConfig }>("biteship-rates", { action: "delivery_config" }).then(({ config }) => {
+			if (!cancelled) { setDeliveryConfig(config); setDeliveryProvider(config.defaultCourier); }
+		}).catch(() => { if (!cancelled) setDeliveryConfigError("Konfigurasi delivery tidak dapat dimuat. Coba pilih ulang delivery."); });
+		return () => { cancelled = true; };
+	}, [orderMode]);
+	useEffect(() => {
+		if (orderMode !== "delivery" || !deliveryAddress || !cart.length) {
 			setShippingQuote(null);
 			setShippingQuoteError(null);
+			setShippingQuoteLoading(false);
+			return;
+		}
+		if (!deliveryConfig || !deliveryConfig.active || !deliveryConfig.couriers.includes(deliveryProvider)) {
+			setShippingQuote(null); setShippingQuoteLoading(false);
+			setShippingQuoteError(deliveryConfigError || (!deliveryConfig ? "Memuat konfigurasi delivery…" : !deliveryConfig.active ? "Delivery sedang dinonaktifkan." : "Kurir tidak tersedia."));
 			return;
 		}
 		if (products === undefined) {
 			setShippingQuote(null);
 			setShippingQuoteError(null);
+			setShippingQuoteLoading(false);
 			return;
 		}
-		const postalCode = (deliveryLocation?.postalCode ?? deliveryAddressFields.postalCode).replace(/\D/g, "");
+		const postalCode = (deliveryLocation?.postalCode ?? deliveryAddressFields.postalCode ?? customer?.postalCode ?? "").replace(/\D/g, "");
 		if (!/^\d{5}$/.test(postalCode)) {
 			setShippingQuote(null);
-			setShippingQuoteError("Kode pos alamat harus terdiri dari 5 digit agar tarif pengantaran dapat dihitung.");
+			setShippingQuoteError("Lengkapi kode pos pengantaran yang valid.");
+			setShippingQuoteLoading(false);
 			return;
 		}
 		const items = cart.map((item) => {
@@ -251,35 +297,55 @@ function OrderPage() {
 		if (items.some((item) => !item.deliveryEnabled)) {
 			setShippingQuote(null);
 			setShippingQuoteError("Ada produk di keranjang yang hanya tersedia untuk pembelian langsung, bukan delivery.");
+			setShippingQuoteLoading(false);
 			return;
 		}
-		if (items.some((item) => !Number.isFinite(item.weight) || item.weight <= 0)) {
-			setShippingQuote(null);
-			setShippingQuoteError("Tarif pengantaran belum tersedia karena berat produk belum diatur.");
-			return;
+		if (!deliveryLocation || !Number.isFinite(deliveryLocation.latitude) || !Number.isFinite(deliveryLocation.longitude) || items.some((item) => !Number.isInteger(item.weight) || item.weight <= 0)) {
+			setShippingQuote(null); setShippingQuoteLoading(false); setShippingQuoteError("Lengkapi lokasi pengantaran dan berat produk sebelum meminta tarif."); return;
 		}
+		const flatDeliveryFee = deliveryConfig.fallbackFee;
 		let cancelled = false;
 		setShippingQuote(null);
 		setShippingQuoteError(null);
 		setShippingQuoteLoading(true);
-		void invokeEdgeFunction<{ rates?: Array<{ courierCode?: string; shippingFee?: number; price?: number }> }>("biteship-rates", {
+		void deliveryApi<{ rates?: Array<{ courierCode?: string; courierName?: string; serviceName?: string; serviceCode?: string; serviceType?: string; shippingFee?: number; price?: number }> }>("biteship-rates", {
 			destination_postal_code: postalCode,
+			destination_latitude: deliveryLocation?.latitude,
+			destination_longitude: deliveryLocation?.longitude,
 			couriers: deliveryProvider,
-			items,
+			items: items.map(({ deliveryEnabled: _, ...item }) => item),
 		}).then((response) => {
 			if (cancelled) return;
 			const rate = (response.rates ?? []).find((entry) => String(entry.courierCode ?? "").toLowerCase() === deliveryProvider);
 			const fee = Number(rate?.shippingFee ?? rate?.price);
-			if (!rate || !Number.isFinite(fee) || fee < 0) throw new Error("Tarif kurir tidak tersedia untuk alamat ini.");
-			setShippingQuote({ fee: Math.round(fee), courierCode: deliveryProvider, expiresAt: Date.now() + 5 * 60 * 1000 });
-		}).catch((error) => {
-			if (!cancelled) {
-				setShippingQuote(null);
-				setShippingQuoteError(error instanceof Error ? error.message : "Tarif pengantaran belum tersedia. Coba lagi.");
-			}
+			if (!rate || (rate.shippingFee == null && rate.price == null) || !Number.isFinite(fee) || fee < 0) { setShippingQuote(null); setShippingQuoteError("Kurir tidak menyediakan tarif untuk lokasi ini."); return; }
+			setShippingQuote({ fee: Math.round(fee), courierCode: deliveryProvider, serviceType: rate.serviceType, serviceCode: rate.serviceCode, serviceName: rate.serviceName, feeSource: "biteship", expiresAt: Date.now() + 5 * 60 * 1000 });
+		}).catch((error: unknown) => {
+			if (cancelled) return;
+			const transient = error instanceof TypeError || (error instanceof DeliveryApiError && ["QUOTE_UNAVAILABLE", "BITESHIP_RATE_REQUEST_FAILED", "INVALID_BITESHIP_RESPONSE"].includes(error.code) && error.status >= 500);
+			if (transient) setShippingQuote({ fee: flatDeliveryFee, courierCode: deliveryProvider, feeSource: "fallback", expiresAt: Date.now() + 5 * 60 * 1000 });
+			else { setShippingQuote(null); setShippingQuoteError(error instanceof DeliveryApiError ? error.message : "Tarif delivery tidak dapat dimuat."); }
 		}).finally(() => { if (!cancelled) setShippingQuoteLoading(false); });
 		return () => { cancelled = true; };
-	}, [cart, deliveryAddress, deliveryAddressFields.postalCode, deliveryLocation?.postalCode, deliveryProvider, orderMode, products]);
+	}, [deliveryConfig, deliveryConfigError, cart, customer?.postalCode, deliveryAddress, deliveryAddressFields.postalCode, deliveryLocation?.latitude, deliveryLocation?.longitude, deliveryLocation?.postalCode, deliveryProvider, orderMode, products]);
+
+	const resolveManualDeliveryLocation = async () => {
+		const query = [deliveryAddressFields.street, deliveryAddressFields.district, deliveryAddressFields.city, deliveryAddressFields.province, deliveryAddressFields.postalCode, "Indonesia"].filter(Boolean).join(", ");
+		setDeliveryLocationLoading(true); setDeliveryLocationError(null);
+		try {
+			const queries = [query, [deliveryAddressFields.street, deliveryAddressFields.district, deliveryAddressFields.city, "Indonesia"].filter(Boolean).join(", "), [deliveryAddressFields.district, deliveryAddressFields.city, "Indonesia"].filter(Boolean).join(", ")].filter((value, index, all) => value && all.indexOf(value) === index);
+			let result: any = null;
+			for (const candidate of queries) {
+				const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=id&q=${encodeURIComponent(candidate)}`, { headers: { Accept: "application/json" } });
+				const results = await response.json().catch(() => []);
+				if (Array.isArray(results) && results[0]) { result = results[0]; break; }
+			}
+			const latitude = Number(result?.lat); const longitude = Number(result?.lon);
+			if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) throw new Error("Lokasi alamat belum ditemukan. Gunakan tombol lokasi realtime untuk memilih titik pengantaran.");
+			setDeliveryLocation({ latitude, longitude, postalCode: deliveryAddressFields.postalCode }); return true;
+		} catch (error) { setDeliveryLocation(null); setDeliveryLocationError(error instanceof Error ? error.message : "Lokasi alamat belum ditemukan."); return false; }
+		finally { setDeliveryLocationLoading(false); }
+	};
 
 	const useCurrentDeliveryLocation = () => {
 		if (!navigator.geolocation) {
@@ -396,7 +462,55 @@ function OrderPage() {
 		activityProductAppliedRef.current = sourceId;
 	}, [addToCart, cart, memberDiscounts, paymentChoice, products, search.productSourceId]);
 
-	const currentOrder = useHybridOrderById(receipt?.orderId);
+	const [refreshTrigger, setRefreshTrigger] = useState(0);
+	const currentOrder = useHybridOrderById(receipt?.orderId, refreshTrigger);
+	const backendPayment = currentOrder as {
+		_id?: string;
+		id?: string;
+		source_id?: string;
+		status?: string;
+		paymentMethod?: string;
+		payment_method?: string;
+		paymentReceiptKind?: string;
+		payment_receipt_kind?: string;
+		paymentGateway?: { status?: string };
+		payment_gateway?: { status?: string };
+	} | null | undefined;
+	const backendSettled = ["paid", "completed"].includes(String(backendPayment?.status).toLowerCase())
+		&& (String(backendPayment?.paymentReceiptKind ?? backendPayment?.payment_receipt_kind).toLowerCase() === "gateway_paid"
+			|| String(backendPayment?.paymentGateway?.status ?? backendPayment?.payment_gateway?.status).toLowerCase() === "paid");
+	const backendReceiptKind = String(backendPayment?.paymentReceiptKind ?? backendPayment?.payment_receipt_kind ?? "").toLowerCase();
+	const backendPaymentMethod = String(backendPayment?.paymentMethod ?? backendPayment?.payment_method ?? "").toLowerCase();
+	const isExistingNonMayarReceipt = backendReceiptKind.startsWith("cashier_") || backendReceiptKind.startsWith("wallet_")
+		|| ["cash", "cashier", "tunai", "wallet", "djiwa_pay"].includes(backendPaymentMethod);
+	const processingCurrentOrder = Boolean(processingOrderId && String(receipt?.orderId) === processingOrderId
+		&& backendPayment && String(backendPayment._id ?? backendPayment.id ?? backendPayment.source_id ?? receipt?.orderId) === processingOrderId);
+	const showPaymentProcessing = Boolean(processingOrderId && (!processingCurrentOrder || (!backendSettled && !isExistingNonMayarReceipt)));
+	const paymentReceived = processingCurrentOrder && (providerPaidOrderId === processingOrderId
+		|| String(backendPayment?.paymentGateway?.status ?? backendPayment?.payment_gateway?.status).toLowerCase() === "paid");
+
+	useEffect(() => {
+		if (search.step === "receipt" && search.orderId && String(receipt?.orderId) !== String(search.orderId)) {
+			setProcessingOrderId(String(search.orderId));
+		}
+	}, [search.step, search.orderId]);
+
+	useEffect(() => {
+		if (processingCurrentOrder && (backendSettled || isExistingNonMayarReceipt)) setProcessingOrderId(null);
+	}, [processingCurrentOrder, backendSettled, isExistingNonMayarReceipt]);
+
+	useEffect(() => {
+		setProcessingTimedOut(false);
+		if (step !== "receipt" || !showPaymentProcessing) return;
+		const timer = window.setTimeout(() => setProcessingTimedOut(true), 60000);
+		return () => window.clearTimeout(timer);
+	}, [step, processingOrderId, showPaymentProcessing]);
+
+	useEffect(() => {
+		if (step !== "receipt" || !receipt?.orderId) return;
+		const timer = window.setInterval(() => setRefreshTrigger((value) => value + 1), 5000);
+		return () => window.clearInterval(timer);
+	}, [step, receipt?.orderId]);
 	const config = {
 		...CUSTOMER_ORDERING_DEFAULTS,
 		...(siteSettings?.customerOrdering ?? {}),
@@ -442,7 +556,11 @@ function OrderPage() {
 			const productCategory = categoryById.get(String(product.categoryId));
 			return String(productCategory?._id ?? "") === String(selectedCategory._id) || String(productCategory?.parentId ?? "") === String(selectedCategory._id) || String(selectedCategory.parentId ?? "") === String(productCategory?._id ?? "");
 		};
-		return orderedProducts.filter((product) => matchesCategory(product) && (!query || product.name.toLowerCase().includes(query) || String(product.menuNumber ?? "").includes(query)));
+		// Customer catalog follows the reference anchor pattern: category chips
+		// scroll to sections while the full catalog remains one vertical flow.
+		// Category filtering remains scoped to POS; customer should not hit a
+		// dead-end after the selected section.
+		return orderedProducts.filter((product) => (!query || product.name.toLowerCase().includes(query) || String(product.menuNumber ?? "").includes(query)));
 	}, [activeCategoryId, catalogQuery, orderedCategories, orderedProducts]);
 	const menuNumberIndex = useMemo(() => {
 		const lookup = new Map<string, (typeof orderedProducts)[number]>();
@@ -531,7 +649,7 @@ function OrderPage() {
 		return () => window.clearInterval(timer);
 	}, [shippingQuote]);
 	const shippingFee = orderMode === "delivery" && shippingQuote && !shippingQuoteExpired ? shippingQuote.fee : 0;
-	const shippingPaymentBlocked = orderMode === "delivery" && (!shippingQuote || shippingQuoteExpired || shippingQuoteLoading || Boolean(shippingQuoteError));
+	const shippingPaymentBlocked = orderMode === "delivery" && (!deliveryConfig?.active || !deliveryConfig.couriers.includes(deliveryProvider) || shippingQuote?.courierCode !== deliveryProvider || !shippingQuote || shippingQuoteExpired || shippingQuoteLoading || Boolean(shippingQuoteError));
 	const shippingBlockerMessage = shippingQuoteLoading ? "Menunggu tarif pengantaran sebelum pembayaran." : shippingQuoteError || (shippingQuoteExpired ? "Tarif pengantaran kedaluwarsa. Kembali ke pengantaran untuk memuat ulang." : "Tarif pengantaran belum tersedia. Lengkapi lokasi dengan kode pos lalu pilih kurir.");
 	const total = taxCalculation.finalTotal + shippingFee;
 	const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -604,28 +722,8 @@ function OrderPage() {
 		}
 	}, [step, tableNumber, orderMode, deliveryAddress]);
 
-	useEffect(() => {
-		if (step !== "menu" || menuMode !== "catalog" || typeof document === "undefined") return;
-		const sections = Array.from(document.querySelectorAll<HTMLElement>("[data-category-section]"));
-		if (!sections.length) return;
-		const observer = new IntersectionObserver((entries) => {
-			if (Date.now() < categorySelectionLockRef.current) return;
-			const scrollRoot = menuScrollRef.current;
-			if (scrollRoot && scrollRoot.scrollTop <= 48) {
-				if (activeCategoryId !== null) setActiveCategoryId(null);
-				return;
-			}
-			const visible = entries
-				.filter((entry) => entry.isIntersecting)
-				.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-			if (!visible) return;
-			const categoryId = visible.target.getAttribute("data-category-section");
-			if (categoryId && categoryId !== String(activeCategoryId ?? "")) setActiveCategoryId(categoryId as Id<"categories">);
-		}, { root: menuScrollRef.current, rootMargin: "-96px 0px -55% 0px", threshold: 0.01 });
-		sections.forEach((section) => observer.observe(section));
-		return () => observer.disconnect();
-	}, [activeCategoryId, menuMode, setActiveCategoryId, step]);
-
+	// Category state changes only from an explicit horizontal-chip tap.
+	// Vertical scrolling must not rewrite or auto-scroll the horizontal subcategory bar.
 	useEffect(() => {
 		if (step !== "menu" || menuMode !== "catalog" || !activeCategoryId || typeof document === "undefined") return;
 		const chip = Array.from(document.querySelectorAll<HTMLElement>("[data-category-chip]"))
@@ -731,8 +829,12 @@ function OrderPage() {
 			receipt?.invoiceId ||
 			((currentOrder?.paymentGateway as { invoiceId?: string } | undefined)
 				?.invoiceId ?? undefined);
-		if (!receipt || receipt.mode !== "mayar_pending" || !invoiceId) return;
+		if (step !== "receipt" || receipt?.mode !== "mayar_pending" || !invoiceId) return;
+		let active = true;
+		let inFlight = false;
 		const timer = window.setInterval(async () => {
+			if (!active || inFlight) return;
+			inFlight = true;
 			try {
 				const result = await getMayarInvoiceDetail({ invoiceId });
 				const data = (result?.data as {
@@ -754,16 +856,22 @@ function OrderPage() {
 							.toLowerCase()
 							.match(/paid|success/)
 					);
-				if (!isPaid) return;
+				if (!active || !isPaid) return;
 				// Browser hanya membaca status provider. Settlement order dilakukan
 				// oleh webhook terverifikasi agar tidak ada client-side fulfillment.
-				return;
+				setProviderPaidOrderId(String(receipt.orderId));
+				setRefreshTrigger((value) => value + 1);
 			} catch {
 				// Retry quietly.
+			} finally {
+				inFlight = false;
 			}
 		}, 5000);
-		return () => window.clearInterval(timer);
-	}, [receipt, currentOrder, getMayarInvoiceDetail]);
+		return () => {
+			active = false;
+			window.clearInterval(timer);
+		};
+	}, [step, receipt?.mode, receipt?.invoiceId, currentOrder?.paymentGateway?.invoiceId, getMayarInvoiceDetail]);
 
 	// ── Handlers ────────────────────────────────────────────────
 
@@ -866,8 +974,11 @@ function OrderPage() {
 		if (fieldLabel) focusCheckoutField(fieldLabel);
 	};
 
-	const checkout = async () => {
-		if (isSubmitting) return;
+	const checkoutInFlightRef = useRef(false);
+	const deliveryCheckoutState = JSON.stringify({ orderMode, cart, deliveryAddress, deliveryLocation, deliveryProvider, shippingQuote, paymentChoice, total });
+	const deliveryCheckoutStateRef = useRef(deliveryCheckoutState);
+	deliveryCheckoutStateRef.current = deliveryCheckoutState;
+	const performCheckout = async () => {
 		if (!cart.length) {
 			toast.error("Pilih minimal satu produk");
 			return;
@@ -881,7 +992,16 @@ function OrderPage() {
 			setStep("address");
 			return;
 		}
-		if (orderMode === "delivery" && (!shippingQuote || shippingQuote.expiresAt <= Date.now() || shippingQuoteLoading || Boolean(shippingQuoteError))) {
+		if (orderMode === "delivery") {
+			try {
+				const { config: latest } = await deliveryApi<{ config: DeliveryConfig }>("biteship-rates", { action: "delivery_config" });
+				if (deliveryCheckoutStateRef.current !== deliveryCheckoutState) { rejectCheckout("Pesanan berubah. Periksa kembali pengantaran."); return; }
+				if (!latest.active || !latest.couriers.includes(deliveryProvider) || latest.fallbackFee !== deliveryConfig?.fallbackFee) {
+					setDeliveryConfig(latest); rejectCheckout("Pengaturan delivery berubah. Periksa kembali pengantaran."); return;
+				}
+			} catch { rejectCheckout("Konfigurasi delivery tidak dapat diverifikasi. Coba lagi."); return; }
+		}
+		if (shippingPaymentBlocked || (orderMode === "delivery" && (!shippingQuote || shippingQuote.expiresAt <= Date.now()))) {
 			rejectCheckout(shippingBlockerMessage);
 			return;
 		}
@@ -934,6 +1054,7 @@ function OrderPage() {
 		setCheckoutError(null);
 		checkoutRequestKeyRef.current = checkoutRequestKeyRef.current ?? (globalThis.crypto?.randomUUID?.() || `customer-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 		try {
+			if (paymentChoice === "mayar") setQrisRedirectProcessing(true);
 			const normalizedCustomerName = customerName.trim();
 			let guestCustomerSourceId: string | null = null;
 			// Guest QRIS perlu disinkronkan agar identity dan contact dapat dipakai Mayar.
@@ -960,6 +1081,7 @@ function OrderPage() {
 			const normalizedTableNumber = orderMode === "dine_in" ? (tableNumber.trim() || undefined) : undefined;
 			const normalizedDeliveryAddress = orderMode === "delivery" ? deliveryAddress : undefined;
 			const normalizedNotes = notes.trim() || undefined;
+			const guestAccessToken = !isAuthenticated && typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : null;
 			const payload = {
 				items: cart.map((item) => {
 					const masterProduct = products?.find((product) => product._id === item.productId);
@@ -976,7 +1098,7 @@ function OrderPage() {
 				}),
 				totalAmount: total,
 				shippingFee,
-				shippingRateSnapshot: shippingQuote ? { provider: "biteship", courierCode: shippingQuote.courierCode, fee: shippingQuote.fee, currency: "IDR", quotedAt: new Date().toISOString(), expiresAt: new Date(shippingQuote.expiresAt).toISOString() } : null,
+				shippingRateSnapshot: shippingQuote ? { provider: "biteship", courierCode: shippingQuote.courierCode, serviceType: shippingQuote.serviceType ?? null, courierType: shippingQuote.serviceType ?? shippingQuote.serviceCode ?? null, serviceCode: shippingQuote.serviceCode ?? null, serviceName: shippingQuote.serviceName ?? null, deliveryType: "now", fee: shippingQuote.fee, feeSource: shippingQuote.feeSource, currency: "IDR", destinationLatitude: deliveryLocation?.latitude ?? null, destinationLongitude: deliveryLocation?.longitude ?? null, destinationPostalCode: (deliveryLocation?.postalCode ?? deliveryAddressFields.postalCode ?? customer?.postalCode ?? "").replace(/\D/g, ""), quotedAt: new Date().toISOString(), expiresAt: new Date(shippingQuote.expiresAt).toISOString() } : null,
 				shippingProvider: orderMode === "delivery" ? deliveryProvider : undefined,
 				taxAmount,
 				serviceChargeAmount,
@@ -1012,11 +1134,12 @@ function OrderPage() {
 						djiwaPayDiscountPaymentMethod: "wallet",
 						...(activeDjiwaPayCampaign ? {
 							djiwaPayCampaignCode: "DJIWA-PAY-50-SEPTEMBER-2026",
-							djiwaPayCampaignLabel: "Djiwa Pay 50%",
+							djiwaPayCampaignLabel: `Djiwa Pay ${djiwaPayDiscountPercent}%`,
 						} : {}),
 					} : {}),
 				},
 				customerSourceId: customer?.sourceId || guestCustomerSourceId,
+				guestAccessToken,
 			};
 
 			if (paymentChoice === "wallet") {
@@ -1060,7 +1183,7 @@ function OrderPage() {
 					if (runReservation) {
 						await finalizeDjiwaRunCheckoutReward({ customerSourceId: customer.sourceId, customerEmail: customer.email, rewardId: runReservation.rewardId, orderId: String(orderId), reservationId: runReservation.reservationId, idempotencyKey: `${checkoutRequestKeyRef.current}:run-finalize` });
 					}
-					if (!isAuthenticated) rememberGuestOrder(String(orderId));
+					if (!isAuthenticated) rememberGuestOrder(String(orderId), guestAccessToken ?? undefined);
 					setReceipt({ orderId, fallbackReference: `SELF-${String(orderId).slice(-4).toUpperCase()}`, mode: "paid", paymentChoice, dessertLater, cartSnapshot: cart });
 				} catch (error) {
 					if (walletHoldId && !walletCaptured) {
@@ -1085,7 +1208,7 @@ function OrderPage() {
 					paymentReceiptKind: "gateway_pending",
 					isOpenBill: true,
 				});
-				if (!isAuthenticated) rememberGuestOrder(String(orderId));
+				if (!isAuthenticated) rememberGuestOrder(String(orderId), guestAccessToken ?? undefined);
 				const redirectUrl =
 					typeof window !== "undefined"
 						? `${window.location.origin}/${encodeURIComponent(username)}/order?step=receipt&session=${encodeURIComponent(sessionRef.current)}${normalizedTableNumber ? `&table=${encodeURIComponent(normalizedTableNumber)}` : ""}&orderId=${encodeURIComponent(String(orderId))}`
@@ -1127,7 +1250,7 @@ function OrderPage() {
 							...(shippingFee > 0 ? [{ quantity: 1, rate: shippingFee, description: `Biaya pengantaran ${deliveryProvider}` }] : []),
 						],
 					});
-					if (!invoice?.data?.id) {
+					if (!invoice?.data?.link) {
 						throw new Error(invoice?.messages || "Gagal membuat invoice pembayaran");
 					}
 				} catch (error) {
@@ -1158,7 +1281,7 @@ function OrderPage() {
 					paymentReceiptKind: "cashier_pending",
 					isOpenBill: true,
 				});
-				if (!isAuthenticated) rememberGuestOrder(String(orderId));
+				if (!isAuthenticated) rememberGuestOrder(String(orderId), guestAccessToken ?? undefined);
 				setReceipt({
 					orderId,
 					fallbackReference: `SELF-${String(orderId).slice(-4).toUpperCase()}`,
@@ -1172,10 +1295,21 @@ function OrderPage() {
 			checkoutRequestKeyRef.current = null;
 			setStep("receipt");
 		} catch (error) {
+			setQrisRedirectProcessing(false);
 			const message = (error as Error).message || "Checkout gagal";
 			setCheckoutError(message);
 			toast.error(message);
 		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
+	const checkout = async () => {
+		if (isSubmitting || qrisRedirectProcessing || checkoutInFlightRef.current) return;
+		checkoutInFlightRef.current = true;
+		setIsSubmitting(true);
+		try { await performCheckout(); } finally {
+			checkoutInFlightRef.current = false;
 			setIsSubmitting(false);
 		}
 	};
@@ -1291,17 +1425,17 @@ function OrderPage() {
 									<AuthModal
 						open={authModalOpen}
 						onOpenChange={(val) => { setAuthModalOpen(val); if (!val) setAuthError(undefined); }}
-						onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); } }}
-						onRegister={async (email, password, name) => { try { setAuthError(undefined); await register(email, password, name); } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); } }}
+						onLogin={async (email, password) => { try { setAuthError(undefined); await login(email, password); return true; } catch (e: any) { setAuthError(e?.message || "Gagal masuk"); return false; } }}
+						onRegister={async (email, password, name, consentAll) => { try { setAuthError(undefined); await register(email, password, name, consentAll); return true; } catch (e: any) { setAuthError(e?.message || "Gagal mendaftar"); return false; } }}
 						onSkip={() => setAuthModalOpen(false)}
-						onGoogleSignIn={signInWithGoogle}
-						onResetPassword={async (email) => { try { await resetPassword(email); } catch { } }}
+						onGoogleSignIn={async () => { try { setAuthError(undefined); await signInWithGoogle(); } catch (e: any) { setAuthError(e?.message || "Gagal masuk dengan Google"); } }}
+						onResetPassword={async (email) => { try { await resetPassword(email); return true; } catch (e: any) { setAuthError(e?.message || "Gagal mengirim link reset"); return false; } }}
 						isLoading={authLoading}
 						needsEmailConfirm={registrationNeedsEmailConfirm}
 						error={authError}
 					/>
 
-					{!orderModeConfirmed ? <>
+					{!orderModeConfirmed && step !== "receipt" ? <>
 						<div className="px-2 pt-2">
 							<img src="/order-greeting-cafe.jpg" alt="Suasana hangat Djiwa Tentram Cafe & Resto" className="h-auto max-h-40 w-full rounded-2xl object-cover shadow-sm" loading="eager" />
 						</div>
@@ -1315,7 +1449,7 @@ function OrderPage() {
 								{orderMode === "delivery" ? <>
 									<div className="flex items-start justify-between gap-3"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Delivery</p><h2 className="text-base font-black">{storeName}</h2></div></div><span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-black text-primary">Antar</span></div>
 									<div className={deliveryAddressEditorOpen ? "fixed inset-0 z-[2000] h-[100dvh] overflow-y-auto bg-background px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))]" : "mt-3 rounded-xl border border-border bg-background p-3"}><div className="flex items-start gap-2.5"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Alamat pengantaran</p>{deliveryAddress ? <p className="mt-1 text-sm font-bold leading-relaxed">{deliveryAddress}</p> : <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Belum ada alamat tujuan. Masukkan alamat penerima di sini.</p>}</div></div>{deliveryAddressEditorOpen ? <div className="mt-3 space-y-2"><div className="grid min-w-0 grid-cols-2 gap-2"><div className="col-span-2"><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-street">Jalan lengkap <span className="text-destructive">*</span></label><input id="delivery-street" autoFocus value={deliveryAddressFields.street} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, street: event.target.value }))} placeholder="Jalan Gunung Bentang V No. 89" className="mt-1 w-full rounded-xl border border-primary/30 bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div><div><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-rtrw">RT/RW</label><input id="delivery-rtrw" value={deliveryAddressFields.rtRw} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, rtRw: event.target.value }))} placeholder="03/05" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div><div><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-district">Kecamatan <span className="text-destructive">*</span></label><input id="delivery-district" value={deliveryAddressFields.district} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, district: event.target.value }))} placeholder="Cidadap" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div><div><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-city">Kota/Kabupaten <span className="text-destructive">*</span></label><input id="delivery-city" value={deliveryAddressFields.city} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, city: event.target.value }))} placeholder="Bandung" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div><div><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-province">Provinsi</label><input id="delivery-province" value={deliveryAddressFields.province} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, province: event.target.value }))} placeholder="Jawa Barat" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div><div><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-postal-code">Kode pos <span className="text-destructive">*</span></label><input id="delivery-postal-code" inputMode="numeric" maxLength={5} value={deliveryAddressFields.postalCode} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, postalCode: event.target.value.replace(/\D/g, "").slice(0, 5) }))} placeholder="40141" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div><div className="col-span-2"><label className="block text-[11px] font-bold text-foreground" htmlFor="delivery-landmark">Patokan (opsional)</label><input id="delivery-landmark" value={deliveryAddressFields.landmark} onChange={(event) => setDeliveryAddressFields((current) => ({ ...current, landmark: event.target.value }))} placeholder="Dekat minimarket / gerbang warna putih" className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary" /></div></div><button type="button" disabled={deliveryLocationLoading} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary disabled:opacity-60" onClick={useCurrentDeliveryLocation}><LocateFixed className="h-4 w-4" />{deliveryLocationLoading ? "Mencari lokasi realtime..." : "Isi dari lokasi saya"}</button>{deliveryLocation ? <a className="block text-[11px] font-bold text-primary underline" href={`https://www.google.com/maps/search/?api=1&query=${deliveryLocation.latitude},${deliveryLocation.longitude}`} target="_blank" rel="noreferrer">Buka titik lokasi di Google Maps</a> : null}{deliveryLocationError ? <p className="text-[11px] font-semibold text-destructive">{deliveryLocationError}</p> : null}<label className="flex items-start gap-2 rounded-xl border border-border bg-background px-3 py-2.5 text-[11px] leading-relaxed"><input type="checkbox" checked={saveAddressToProfile} onChange={(event) => setSaveAddressToProfile(event.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" /><span><span className="font-black">Simpan sebagai alamat utama profil</span><span className="block text-muted-foreground">Matikan untuk alamat teman atau tujuan lain yang hanya dipakai pada pesanan ini.</span></span></label><p className="text-[11px] leading-relaxed text-muted-foreground">Alamat tersimpan di profil kamu secara default. Saat memilih alamat lain, kamu bisa menggunakannya hanya untuk pesanan ini.</p><div className="grid grid-cols-2 gap-2"><button type="button" className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black" onClick={() => setDeliveryAddressEditorOpen(false)}>Batal</button><button type="button" disabled={!deliveryAddressFields.street.trim() || !deliveryAddressFields.district.trim() || !deliveryAddressFields.city.trim() || !/^\d{5}$/.test(deliveryAddressFields.postalCode)} className="min-h-11 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={async () => {
-								if (!saveAddressToProfile || !isAuthenticated || !customer) { setDeliveryAddressOverride(formatDeliveryAddress(deliveryAddressFields)); setDeliveryAddressEditorOpen(false); return; }
+								if (!(await resolveManualDeliveryLocation())) return; if (!saveAddressToProfile || !isAuthenticated || !customer) { setDeliveryAddressOverride(formatDeliveryAddress(deliveryAddressFields)); setDeliveryAddressEditorOpen(false); return; }
 								try {
 									await invokeEdgeFunction("customer-sync", { action: "updateProfile", sourceId: customer.sourceId, email: customer.email ?? undefined, address: formatDeliveryAddress(deliveryAddressFields), city: deliveryAddressFields.city.trim(), province: deliveryAddressFields.province.trim() || undefined, postalCode: deliveryAddressFields.postalCode.trim() || undefined });
 									await refreshCustomer();
@@ -1324,7 +1458,7 @@ function OrderPage() {
 								}}>Simpan alamat</button></div></div> : <button type="button" className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary" onClick={() => { setDeliveryAddressPickerOpen(true); }}><Pencil className="h-3.5 w-3.5" />{deliveryAddress ? "Ubah alamat tujuan" : "Tambah alamat tujuan"}</button>}</div>
 									<button type="button" disabled={!deliveryAddress} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={() => setStep("menu")}>Lanjut ke menu <ChevronRight className="h-4 w-4" /></button>
 								</> : <>
-									<div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Table2 className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 1</p><h2 className="text-base font-black">Pilih meja</h2></div></div>
+									<div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Table2 className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Langkah 1 dari 6</p><h2 className="text-base font-black">Pilih meja</h2></div></div>
 									<p className="mt-2 text-xs leading-relaxed text-muted-foreground">Masukkan nomor meja tempat kamu duduk. Data ini akan dicatat bersama pesanan.</p>
 									<label className="mt-3 block text-xs font-bold" htmlFor="customer-table-number">Nomor meja</label>
 									<input id="customer-table-number" inputMode="numeric" pattern="[0-9]*" minLength={1} maxLength={8} value={tableNumber} onChange={(event) => setTableNumber(event.target.value.replace(/[^0-9]/g, "").slice(0, 8))} placeholder="Contoh: 4" className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-3 text-center text-lg font-black outline-none focus:border-primary" />
@@ -1340,7 +1474,7 @@ function OrderPage() {
 							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 								<div className="flex items-center gap-2.5">
 									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Djiwa3DIcon name="party-size" size="micro" alt="" className="h-6 w-6 object-contain" /></div>
-									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 2</p><h2 className="text-base font-black">Berapa orang yang memesan?</h2></div>
+									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Langkah 2 dari 6</p><h2 className="text-base font-black">Berapa orang yang memesan?</h2></div>
 								</div>
 								<div className="mt-2.5 grid grid-cols-3 gap-1.5">
 									{[1,2,3,4,5,6,7,8].map((value) => (
@@ -1376,7 +1510,7 @@ function OrderPage() {
 							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 								<div className="flex items-center gap-2.5">
 									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Bell className="h-5 w-5" /></div>
-									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 2</p><h2 className="text-base font-black">Tambahkan free refill?</h2></div>
+									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Langkah 2 dari 6</p><h2 className="text-base font-black">Tambahkan free refill?</h2></div>
 								</div>
 								<div className="mt-2.5 rounded-xl border border-primary/15 bg-primary/5 p-2.5">
 									<p className="text-xs font-black">{activeFreeRefillPromo?.name || "Free refill minuman tersedia"}</p>
@@ -1389,19 +1523,36 @@ function OrderPage() {
 
 					{/* ── Menu section ────────────────────────────── */}
 					{step === "menu"
-						? renderMenuSection({ onProductIntent: (_product, origin) => setPendingProductOrigin(origin), onProductAdded: (_product, origin) => { setRecommendationFlight({ image: _product.image, name: _product.name, left: origin.left + origin.width / 2 - 22, top: origin.top + origin.height / 2 - 22 }); window.setTimeout(() => setRecommendationFlight(null), 700); }, activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, bestSellers, recentProductIds, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId: selectMenuCategory, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
+						? renderMenuSection({ onProductIntent: (_product, origin) => setPendingProductOrigin(origin), onProductAdded: (_product, origin) => { setRecommendationFlight({ image: _product.image, name: _product.name, left: origin.left + origin.width / 2 - 22, top: origin.top + origin.height / 2 - 22 }); window.setTimeout(() => setRecommendationFlight(null), 700); }, activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, showDineInSummary: orderMode === "dine_in", discounts: memberDiscounts, filteredProducts, freeRefillCharge, bestSellers, recentProductIds, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId: selectMenuCategory, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
 						: null}
 					{step === "menu" ? <div className="grid grid-cols-2 gap-2 px-2 pb-4"><button type="button" onClick={() => setStep(orderMode === "delivery" ? "address" : "party")} className="min-h-11 rounded-[14px] border border-border bg-card px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button><button type="button" disabled={!cart.length} onClick={() => setStep(orderMode === "delivery" ? "shipping" : "review")} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke {orderMode === "delivery" ? "pengantaran" : "review"} →</button></div> : null}
 
 					{step === "shipping" && orderMode === "delivery" ? (
-						<section className="space-y-2 px-2 py-2"><div className="rounded-xl border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 3</p><h2 className="text-base font-black">Pilih kurir pengantaran</h2></div></div><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Pilih layanan yang tersedia untuk mengantar pesananmu.</p><div className="mt-3 grid grid-cols-2 gap-2">{([{ key: "gojek", label: "Gojek", detail: "Instant delivery" }, { key: "grab", label: "Grab", detail: "Instant delivery" }] as const).map((option) => <button key={option.key} type="button" onClick={() => setDeliveryProvider(option.key)} aria-pressed={deliveryProvider === option.key} className={cn("min-h-24 rounded-xl border p-3 text-left transition-all", deliveryProvider === option.key ? "border-primary bg-primary/10 shadow-sm" : "border-border bg-background")}><span className="flex items-center justify-between gap-2"><span className="text-sm font-black">{option.label}</span><span className={cn("h-4 w-4 rounded-full border-2", deliveryProvider === option.key ? "border-primary bg-primary ring-2 ring-primary/20" : "border-muted-foreground/40")} /></span><span className="mt-1 block text-[11px] text-muted-foreground">{option.detail}</span></button>)}</div><p className="mt-3 rounded-xl bg-primary/5 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">{shippingQuoteLoading ? <span className="inline-flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" />Memuat tarif pengantaran…</span> : shippingQuote ? `Biaya pengantaran ${currency(shippingQuote.fee)} · berlaku 5 menit.` : shippingQuoteError || "Lengkapi lokasi dengan kode pos agar tarif pengantaran dapat dihitung."}</p><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => setStep("menu")} className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black">← Kembali</button><button type="button" onClick={() => setStep("review")} className="min-h-11 rounded-xl bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground">Lanjut ke review →</button></div></div></section>
+						<section className="space-y-2 px-2 py-2"><div className="rounded-xl border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Langkah 3 dari 6</p><h2 className="text-base font-black">Pilih kurir pengantaran</h2></div></div><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Pilih layanan yang tersedia untuk mengantar pesananmu.</p><div className="mt-3 grid grid-cols-2 gap-2">{([{ key: "gojek", label: "Gojek", detail: "Delivery tersedia" }, { key: "grab", label: "Grab", detail: "Delivery tersedia" }] as const).filter((option) => deliveryConfig?.active && deliveryConfig.couriers.includes(option.key)).map((option) => <button key={option.key} type="button" onClick={() => setDeliveryProvider(option.key)} aria-pressed={deliveryProvider === option.key} className={cn("min-h-24 rounded-xl border p-3 text-left transition-all", deliveryProvider === option.key ? "border-primary bg-primary/10 shadow-sm" : "border-border bg-background")}><span className="flex items-center justify-between gap-2"><span className="text-sm font-black">{option.label}</span><span className={cn("h-4 w-4 rounded-full border-2", deliveryProvider === option.key ? "border-primary bg-primary ring-2 ring-primary/20" : "border-muted-foreground/40")} /></span><span className="mt-1 block text-[11px] text-muted-foreground">{option.detail}</span></button>)}</div><p className="mt-3 rounded-xl bg-primary/5 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">{shippingQuoteLoading ? <span className="inline-flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" />Memuat tarif pengantaran…</span> : shippingQuote ? `Biaya pengantaran ${currency(shippingQuote.fee)} · berlaku 5 menit.` : shippingQuoteError || "Lengkapi lokasi dengan kode pos agar tarif pengantaran dapat dihitung."}</p><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => setStep("menu")} className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black">← Kembali</button><button type="button" disabled={shippingPaymentBlocked} onClick={() => { if (!shippingPaymentBlocked) setStep("review"); }} className="min-h-11 rounded-xl bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke review →</button></div></div></section>
 					) : null}
 
 					{/* ── Review and payment sections ───────────────── */}
-					{(step === "review" || step === "payment") ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, shippingFee, shippingQuotePending: orderMode === "delivery" && shippingQuoteLoading, shippingQuoteError: orderMode === "delivery" ? shippingBlockerMessage : null, canPay: orderMode !== "delivery" && !shippingPaymentBlocked ? true : !shippingPaymentBlocked, hasDessertInCart, isSubmitting, notes, mode: step === "review" ? "review" : "payment", updateCartQuantity, onRemoveItem: (productId, variant) => setCart((current) => current.filter((entry) => entry.productId !== productId || entry.variant !== variant)), onEditMenu: () => setStep("menu"), onContinueToPayment: () => setStep("payment"), onBackToMenu: () => setStep(step === "payment" ? "review" : "menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
+					{(step === "review" || step === "payment") ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, djiwaPayDiscountRate: djiwaPayDiscountPercent, freeRefillCharge, shippingFee, shippingQuotePending: orderMode === "delivery" && shippingQuoteLoading, shippingQuoteError: orderMode === "delivery" && shippingPaymentBlocked ? shippingBlockerMessage : null, canPay: orderMode !== "delivery" && !shippingPaymentBlocked ? true : !shippingPaymentBlocked, hasDessertInCart, isSubmitting: isSubmitting || qrisRedirectProcessing, notes, mode: step === "review" ? "review" : "payment", updateCartQuantity, onRemoveItem: (productId, variant) => setCart((current) => current.filter((entry) => entry.productId !== productId || entry.variant !== variant)), onEditMenu: () => setStep("menu"), onContinueToPayment: () => setStep("payment"), onBackToMenu: () => setStep(step === "payment" ? "review" : "menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
-					{step === "receipt" && receipt ? renderReceiptSection({ actionsHidden: cartOpen, cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: startNewOrder, onRetryPayment: retryPayment, retryPaymentLabel: String((currentOrder as any)?.paymentMethod ?? (currentOrder as any)?.payment_method ?? receipt.paymentChoice).toLowerCase().includes("wallet") ? "Coba bayar ulang dengan Djiwa Pay" : "Buat link pembayaran baru", retryingPayment, onHome: goHome, onCashierPaymentExpired: () => {
+					{step === "receipt" && showPaymentProcessing ? (
+						<motion.section
+							initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+							animate={{ opacity: 1, y: 0 }}
+							className="mx-2 my-6 rounded-3xl border border-border bg-card px-6 py-10 text-center shadow-sm"
+						>
+							<motion.div aria-hidden="true" animate={shouldReduceMotion ? undefined : { scale: [1, 1.08, 1] }} transition={{ duration: 1.8, repeat: Infinity }} className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+								<Loader2 className={cn("h-8 w-8", !shouldReduceMotion && "animate-spin")} />
+							</motion.div>
+							<div role="status" aria-live="polite">
+								<h2 className="mt-5 text-lg font-black">{paymentReceived ? "Pembayaran diterima" : "Menunggu konfirmasi pembayaran"}</h2>
+								<p className="mt-2 text-sm text-muted-foreground">{paymentReceived ? "Sedang menyelesaikan pembayaran dan menyiapkan struk." : "Sedang memeriksa status pembayaran dan menyiapkan struk. Mohon tunggu konfirmasi."}</p>
+								{processingTimedOut ? <p className="mt-3 text-xs text-muted-foreground">Konfirmasi masih diproses. Kamu bisa cek status kembali tanpa melakukan pembayaran ulang.</p> : null}
+							</div>
+							<button type="button" onClick={() => setRefreshTrigger((value) => value + 1)} className="mt-6 min-h-11 rounded-xl bg-primary px-5 py-3 text-sm font-black text-primary-foreground">Cek status pembayaran</button>
+						</motion.section>
+					) : null}
+					{step === "receipt" && receipt && !showPaymentProcessing ? renderReceiptSection({ actionsHidden: cartOpen, cartSnapshot: receipt.cartSnapshot, currentOrder, dessertLater: receipt.dessertLater, logoUrl, onOrderAgain: startNewOrder, onRetryPayment: retryPayment, retryPaymentLabel: String((currentOrder as any)?.paymentMethod ?? (currentOrder as any)?.payment_method ?? receipt.paymentChoice).toLowerCase().includes("wallet") ? "Coba bayar ulang dengan Djiwa Pay" : "Buat link pembayaran baru", retryingPayment, onHome: goHome, onCashierPaymentExpired: () => {
 						if (!receipt?.orderId) return;
 						void updateOrderStatus({ id: receipt.orderId, status: "cancelled" }).catch(() => undefined);
 						setReceipt((previous) => previous ? { ...previous, mode: "cashier_expired" } : previous);
@@ -1512,6 +1663,24 @@ function OrderPage() {
 					</Suspense>
 				</SheetContent>
 			</Sheet>
+			<AnimatePresence>
+				{qrisRedirectProcessing ? (
+					<motion.div
+						initial={shouldReduceMotion ? false : { opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						transition={{ duration: shouldReduceMotion ? 0 : 0.2 }}
+						className="fixed inset-0 z-[3000] flex items-center justify-center bg-background/80 px-6 backdrop-blur-sm"
+					>
+						<div role="status" aria-live="polite" aria-atomic="true" className="w-full max-w-sm rounded-3xl border border-border bg-card px-6 py-8 text-center shadow-xl">
+							<Loader2 aria-hidden="true" className={cn("mx-auto h-10 w-10 text-primary", !shouldReduceMotion && "animate-spin")} />
+							<h2 className="mt-5 text-lg font-black">Tunggu sebentar</h2>
+							<p className="mt-2 text-sm text-muted-foreground">Anda akan diarahkan ke pembayaran QRIS</p>
+							<p className="mt-3 text-xs text-muted-foreground">Sedang menyiapkan link pembayaran…</p>
+						</div>
+					</motion.div>
+				) : null}
+			</AnimatePresence>
 		</div>
 	);
 }

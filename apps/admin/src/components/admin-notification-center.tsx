@@ -10,6 +10,7 @@ import {
 	useAdminNotifications,
 } from "@/hooks/use-admin-notifications";
 import { useAdminPush } from "@/hooks/use-admin-push";
+import { playSuccessSound } from "@/lib/play-success-sound";
 
 const spring = { type: "spring" as const, stiffness: 360, damping: 28, mass: 0.7 };
 
@@ -21,7 +22,10 @@ function notificationTone(notification: AdminNotification) {
 
 function notificationRoute(notification: AdminNotification) {
 	const payload = notification.action_payload ?? {};
-	if (notification.action_type === "open_order") return "/admin/orders";
+	if (notification.action_type === "open_order") {
+		const orderReference = String(payload.orderNumber ?? payload.order_number ?? payload.orderSourceId ?? payload.order_source_id ?? "").trim();
+		return orderReference ? `/admin/orders/${encodeURIComponent(orderReference)}` : "/admin/orders";
+	}
 	if (notification.action_type === "open_inventory") return "/admin/inventory";
 	if (notification.action_type === "open_shift") return "/admin/finance/shift-reports";
 	if (notification.action_type === "open_finance") return "/admin/finance/transactions";
@@ -40,7 +44,7 @@ function NotificationRow({ notification, onOpen }: { notification: AdminNotifica
 			transition={spring}
 			whileTap={reduceMotion ? undefined : { scale: 0.985 }}
 			onClick={() => onOpen(notification)}
-			className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted/70 ${notification.isRead ? "opacity-65" : "bg-primary/[0.035]"}`}
+			className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted/70 ${notification.isRead ? "opacity-65" : ""}`}
 		>
 			<span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${notificationTone(notification)}`}>
 				{notification.isRead ? <Check className="h-3 w-3" /> : <Bell className="h-3 w-3" />}
@@ -74,6 +78,10 @@ export function AdminNotificationCenter({ onNavigate }: { onNavigate: (path: str
 	const [isOpen, setIsOpen] = useState(false);
 	const [isMobile, setIsMobile] = useState(false);
 	const [iconFailed, setIconFailed] = useState(false);
+	useEffect(() => {
+		if (popupNotification) playSuccessSound();
+	}, [popupNotification?.id]);
+
 
 	useEffect(() => {
 		const media = window.matchMedia("(max-width: 767px)");

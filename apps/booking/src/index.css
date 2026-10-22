@@ -24,7 +24,9 @@ body { margin: 0; min-width: 320px; background: var(--surface-muted); }
 button, input, textarea { font: inherit; }
 button { cursor: pointer; border: 0; -webkit-tap-highlight-color: transparent; }
 button:disabled { cursor: not-allowed; opacity: .48; }
-button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid color-mix(in srgb, var(--booking-accent) 28%, transparent); outline-offset: 3px; }
+button:focus-visible { outline: 2px solid color-mix(in srgb, var(--booking-accent) 24%, transparent); outline-offset: 2px; }
+input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 0; border-color: var(--booking-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--booking-accent) 13%, transparent); }
+.choice-card:focus-visible { outline: 0; border-color: #b9d0f5; box-shadow: none; }
 
 /* Borderless text controls across the standalone booking app. */
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select { border-width: 0 !important; border-color: transparent !important; }
@@ -82,6 +84,16 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .step-number { color: var(--booking-accent); font-size: 12px; font-weight: 800; padding-top: 8px; }
 .step-heading h2 { font-size: clamp(25px, 4vw, 34px); letter-spacing: -.045em; }
 .step-heading p { margin: 7px 0 0; font-size: 14px; }
+.step-guide { margin: -8px 0 18px; padding: 13px 14px; border: 1px solid #d7e5f7; border-radius: 17px; background: linear-gradient(135deg, #f7fbff, #eef6ff); color: var(--ink); }
+.step-guide-heading { display: flex; align-items: center; gap: 7px; color: var(--booking-accent); font-size: 12px; }
+.step-guide-heading span { margin-left: auto; color: var(--muted); font-size: 10px; font-weight: 600; }
+.step-guide-list { display: grid; gap: 8px; margin-top: 11px; }
+.step-guide-item { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; font-weight: 650; line-height: 1.3; }
+.step-guide-item.active { color: var(--ink); }
+.step-guide-marker { width: 21px; height: 21px; flex: 0 0 21px; display: grid; place-items: center; border: 1px solid #cbd7e7; border-radius: 50%; color: #8b9bb0; background: #fff; font-size: 10px; font-weight: 800; }
+.step-guide-item.active .step-guide-marker { border-color: var(--booking-accent); color: #fff; background: var(--booking-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--booking-accent) 13%, transparent); }
+.step-guide-item.done .step-guide-marker { border-color: #61ad88; color: #fff; background: #329960; }
+
 .calendar-card { padding: 18px; border: 1px solid var(--line); border-radius: 24px; background: var(--surface); box-shadow: var(--shadow-soft); }
 .calendar-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
 .calendar-toolbar > div { display: flex; align-items: center; gap: 10px; }
@@ -122,7 +134,7 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .arrival-time-field .field-label { display: flex; align-items: center; gap: 7px; }
 .arrival-time-field .field-label svg { color: var(--booking-accent); }
 .time-input-shell { min-height: 56px; margin-top: 8px; padding: 0 13px; display: flex; align-items: center; gap: 10px; border: 1px solid #cfd9e8; border-radius: 16px; color: var(--booking-accent); background: var(--surface); box-shadow: 0 4px 12px rgba(15,23,42,.04); transition: border-color 180ms var(--ease-ios), box-shadow 180ms var(--ease-ios), background 180ms var(--ease-ios); }
-.time-input-shell:focus-within { border-color: var(--booking-accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--booking-accent) 13%, transparent); }
+.time-input-shell:focus-within { border-color: var(--booking-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--booking-accent) 13%, transparent); }
 .time-input-icon { flex: 0 0 auto; }
 .arrival-time-field .time-input { min-width: 0; flex: 1; width: 100%; min-height: 52px; padding: 0; border: 0; color: var(--ink); background: transparent; outline: 0; font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 20px; font-weight: 800; letter-spacing: -.025em; text-align: left; }
 .arrival-time-field .time-input:disabled { color: #98a2b3; background: transparent; }
@@ -197,7 +209,7 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .choice-list.compact { gap: 9px; }
 .choice-card { width: 100%; min-height: 82px; padding: 16px; border: 1px solid var(--line); border-radius: 20px; color: var(--ink); background: var(--surface); display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 13px; text-align: left; box-shadow: var(--shadow-soft); transition: transform 180ms var(--ease-ios), border-color 180ms var(--ease-ios), background 180ms var(--ease-ios), box-shadow 180ms var(--ease-ios); }
 .choice-card:hover { border-color: #c6d8f5; transform: translateY(-1px); }
-.choice-card.selected { border-color: var(--booking-accent); background: var(--booking-accent-soft); box-shadow: 0 9px 20px rgba(26,93,198,.13); }
+.choice-card.selected { border-color: #9dbce8; background: var(--booking-accent-soft); box-shadow: none; }
 .choice-card > span:nth-child(2) { min-width: 0; }
 .choice-card strong, .choice-card small { display: block; }
 .choice-card strong { font-size: 15px; }
@@ -345,18 +357,36 @@ h1 em { color: var(--booking-accent); font-style: normal; }
   .quantity-control button { width: 38px; height: 38px; border-radius: 11px; }
   .quantity-control .add-button { width: 54px; min-width: 54px; padding: 0; color: #fff; background: var(--booking-accent); }
   .quantity-control b { min-width: 24px; }
-  .calendar-card { padding: 14px; }
-  .calendar-toolbar { margin-bottom: 16px; }
+  .flow { max-width: 520px; }
+  .step-heading { gap: 10px; margin-bottom: 14px; }
+  .step-heading h2 { font-size: clamp(23px, 7vw, 29px); }
+  .step-heading p { margin-top: 5px; font-size: 12px; line-height: 1.4; }
+  .step-guide { margin: -3px 0 12px; padding: 10px 11px; border-radius: 14px; }
+  .step-guide-list { gap: 6px; margin-top: 8px; }
+  .step-guide-item { gap: 7px; font-size: 10px; }
+  .step-guide-marker { width: 19px; height: 19px; flex-basis: 19px; }
+  .calendar-card { padding: 11px; border-radius: 18px; }
+  .calendar-toolbar { margin-bottom: 12px; }
+  .month-arrow { width: 36px; height: 36px; border-radius: 11px; }
   .calendar-toolbar strong { font-size: 15px; }
   .weekday-row, .calendar-grid { gap: 4px; }
-  .calendar-day, .calendar-empty { min-height: 54px; }
-  .calendar-day { border-radius: 13px; }
+  .calendar-day, .calendar-empty { min-height: 48px; }
+  .calendar-day { padding: 6px 3px 5px; border-radius: 11px; gap: 3px; }
+  .calendar-day span { font-size: 14px; }
   .calendar-day small { font-size: 8px; }
   .sticky-action { bottom: calc(8px + env(safe-area-inset-bottom)); padding: 24px 0 8px; }
   .sticky-action .button { width: 100%; }
-  .arrival-details { padding: 17px; border-radius: 20px; }
-  .arrival-fields { grid-template-columns: 1fr; gap: 18px; }
-  .arrival-time-field input { min-height: 50px; }
+  .arrival-details { margin-top: 12px; padding: 12px; border-radius: 16px; }
+  .arrival-summary { padding-bottom: 12px; }
+  .arrival-summary strong { font-size: 16px; }
+  .arrival-fields { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 10px; padding-top: 12px; }
+  .time-input-shell { min-height: 44px; margin-top: 6px; padding: 0 9px; gap: 6px; border-radius: 12px; }
+  .arrival-time-field .time-input { min-height: 42px; font-size: 17px; }
+  .arrival-time-field small { margin-top: 5px; font-size: 10px; }
+  .availability-legend { gap: 8px; margin-top: 12px; font-size: 10px; }
+  @media (max-width: 360px) {
+    .arrival-fields { grid-template-columns: 1fr; }
+  }
   .selection-panel { grid-template-columns: 1fr; }
   .selection-panel .stepper { grid-column: 1; grid-row: auto; justify-content: flex-start; max-width: none; }
   .selection-panel .helper { grid-column: 1; }
@@ -383,3 +413,7 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .app-update-spin { animation: spin .8s linear infinite; }
 @keyframes app-update-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes app-update-rise { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+/* Booking controls use a quiet focus state; the shared shell's global focus ring is intentionally overridden here. */
+.app-shell input:focus-visible, .app-shell textarea:focus-visible, .app-shell select:focus-visible { outline: 0 !important; outline-offset: 0 !important; border-color: var(--booking-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--booking-accent) 13%, transparent) !important; }
+.app-shell .choice-card:focus-visible { outline: 0 !important; outline-offset: 0 !important; box-shadow: none !important; }

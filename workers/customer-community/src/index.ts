@@ -47,6 +47,7 @@ type ActivityRow = {
   activity_type: "order_completed";
   display_name_snapshot: string;
   display_mode: "first_name" | "full_name";
+  avatar_url_snapshot: string | null;
   product_source_id: string;
   product_name_snapshot: string;
   product_image_snapshot: string | null;
@@ -204,6 +205,7 @@ function serializeActivity(row: ActivityRow) {
   return {
     id: row.id,
     displayName: row.display_name_snapshot,
+    avatarUrl: row.avatar_url_snapshot,
     productSourceId: row.product_source_id,
     productName: row.product_name_snapshot,
     productImageUrl: row.product_image_snapshot,
@@ -368,7 +370,7 @@ export default {
           `expires_at=gt.${encodeURIComponent(now)}`,
           "order=visible_at.desc,id.desc",
           `limit=${parsedLimit + 1}`,
-          "select=id,activity_type,display_name_snapshot,display_mode,product_source_id,product_name_snapshot,product_image_snapshot,price_snapshot,nutrition_snapshot,order_settled_at,visible_at,expires_at",
+          "select=id,activity_type,display_name_snapshot,display_mode,avatar_url_snapshot,product_source_id,product_name_snapshot,product_image_snapshot,price_snapshot,nutrition_snapshot,order_settled_at,visible_at,expires_at",
         ];
         if (cursor) {
           filters.push(`or=(visible_at.lt.${encodeURIComponent(cursor.visibleAt)},and(visible_at.eq.${encodeURIComponent(cursor.visibleAt)},id.lt.${encodeURIComponent(cursor.id)}))`);

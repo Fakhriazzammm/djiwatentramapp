@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import { resolvePosAssetUrl } from "@/lib/asset-url";
+import { invokeEdgeFunction } from "@/lib/api-helper";
 
 // Global refresh — call triggerHybridRefresh() after any write to
 // instantly refresh ALL hybrid data hooks across the entire app.
@@ -57,6 +58,14 @@ type ShiftReportRecord = {
 	dailyCollected?: number;
 	isShiftTargetMet?: boolean;
 	isDailyTargetMet?: boolean;
+	memberBonuses?: Array<{
+		name: string;
+		roleName: string;
+		bonus: number;
+		basis?: "shift" | "daily" | "monthly";
+		achievedTiers: number[];
+		allTiers: Array<{ thresholdPct: number; bonusAmount: number }>;
+	}>;
 };
 type CurrentMonthProgressRecord = {
 	month: string;
@@ -773,6 +782,13 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 		customerDescription: row.customerDescription ?? null,
 		tableNumber: row.tableNumber ?? null,
 		orderType: row.orderType ?? null,
+		deliveryProvider: row.deliveryProvider ?? row.delivery_provider ?? null,
+		deliveryStatus: row.deliveryStatus ?? row.delivery_status ?? null,
+		deliveryContactName: row.deliveryContactName ?? row.delivery_contact_name ?? null,
+		deliveryContactPhone: row.deliveryContactPhone ?? row.delivery_contact_phone ?? null,
+		deliveryAddress: row.deliveryAddress ?? row.delivery_address ?? null,
+		deliveryNotes: row.deliveryNotes ?? row.delivery_notes ?? null,
+		shippingFee: Number(row.shippingFee ?? row.shipping_fee ?? 0),
 		source: row.source ?? null,
 		bookingSourceId: row.bookingSourceId ?? null,
 		bookingCode: row.bookingCode ?? null,
@@ -1049,6 +1065,7 @@ export function computeMemberBonuses(
 	name: string;
 	roleName: string;
 	bonus: number;
+	basis?: "shift" | "daily" | "monthly";
 	achievedTiers: number[];
 	allTiers: Array<{ thresholdPct: number; bonusAmount: number }>;
 }> {
@@ -1074,7 +1091,7 @@ export function computeMemberBonuses(
 		const roleName = matched?.roleName ?? "-";
 
 		if (!config?.tiers || config.tiers.length === 0) {
-			return { name: memberName, roleName, bonus: 0, achievedTiers: [], allTiers: [] };
+			return { name: memberName, roleName, bonus: 0, basis: config?.basis ?? "shift", achievedTiers: [], allTiers: [] };
 		}
 
 		const allTiers = config.tiers;
@@ -1098,6 +1115,7 @@ export function computeMemberBonuses(
 			name: memberName,
 			roleName,
 			bonus,
+			basis,
 			achievedTiers,
 			allTiers: allTiers.map((t) => ({ thresholdPct: t.thresholdPct, bonusAmount: t.bonusAmount })),
 		};
@@ -1112,7 +1130,7 @@ export async function fetchShiftReports() {
 	const { data: shifts, error: shiftsError } = await supabase
 		.schema("pos")
 		.from("shifts")
-		.select("source_id,shift_name,cashier_name,team_members,start_time,end_time,starting_cash,summary,notes")
+		.select("source_id,shift_name,cashier_name,team_members,start_time,end_time,starting_cash,summary,notes,raw")
 		.not("start_time", "is", null)
 		.order("start_time", { ascending: false, nullsFirst: false })
 		.limit(200);
@@ -1142,6 +1160,17 @@ export async function fetchShiftReports() {
 	function daysInMonth(ts: number): number {
 		const d = new Date(ts);
 		return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+	}
+
+	function wibDateKey(ts: number): string {
+		const parts = new Intl.DateTimeFormat("en-CA", {
+			timeZone: "Asia/Jakarta",
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+		}).formatToParts(new Date(ts));
+		const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+		return `${values.year}-${values.month}-${values.day}`;
 	}
 
 	// Helper: shifts per day dari siteSettings (atau default 2)
@@ -1224,8 +1253,7 @@ export async function fetchShiftReports() {
 	const dailyCollectedMap = new Map<string, number>();
 	if (dailyTx) {
 		for (const tx of dailyTx as any[]) {
-			const d = new Date(Number(tx.tx_date ?? 0));
-			const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+			const key = wibDateKey(Number(tx.tx_date ?? 0));
 			dailyCollectedMap.set(key, (dailyCollectedMap.get(key) ?? 0) + Number(tx.amount ?? 0));
 		}
 	}
@@ -1279,10 +1307,7 @@ export async function fetchShiftReports() {
 		// shiftCollected = total revenue shift ini
 		const shiftCollected = isActive && rev ? rev.total : Number(summary.totalRevenue ?? 0);
 		// dailyCollected dari map
-		const dayKey = (() => {
-			const d = new Date(st);
-			return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-		})();
+		const dayKey = wibDateKey(st);
 		const dailyCollected = dailyCollectedMap.get(dayKey) ?? 0;
 
 		// Cash/qris dari summary atau active
@@ -1318,6 +1343,33 @@ export async function fetchShiftReports() {
 			isDailyTargetMet,
 		};
 
+		const memberBonuses = computeMemberBonuses(
+			s.team_members ?? "",
+			financial.isShiftTargetMet,
+			financial.isDailyTargetMet,
+			financial.shiftTarget && financial.shiftTarget > 0
+				? (financial.shiftCollected ?? 0) / financial.shiftTarget * 100
+				: 0,
+			financial.dailyTarget && financial.dailyTarget > 0
+				? (financial.dailyCollected ?? 0) / financial.dailyTarget * 100
+				: 0,
+			staffNameToRole,
+		);
+		const previousMemberBonuses = s.raw?.memberBonuses;
+		if (
+			sid &&
+			memberBonuses.some((member) => member.bonus > 0) &&
+			JSON.stringify(previousMemberBonuses ?? null) !== JSON.stringify(memberBonuses)
+		) {
+			void invokeEdgeFunction("generate-payroll", {
+				action: "save_shift_bonuses",
+				shiftId: sid,
+				memberBonuses,
+			}).catch((error) => {
+				console.warn("[hybrid] failed to persist shift member bonuses", error);
+			});
+		}
+
 		return {
 			shiftId: sid,
 			shiftName: s.shift_name ?? "Shift",
@@ -1329,18 +1381,7 @@ export async function fetchShiftReports() {
 			status: isActive ? "AKTIF" : "SELESAI",
 			startingCash: Number(s.starting_cash ?? 0),
 			...financial,
-			memberBonuses: computeMemberBonuses(
-				s.team_members ?? "",
-				financial.isShiftTargetMet,
-				financial.isDailyTargetMet,
-				financial.shiftTarget && financial.shiftTarget > 0
-					? (financial.shiftCollected ?? 0) / financial.shiftTarget * 100
-					: 0,
-				financial.dailyTarget && financial.dailyTarget > 0
-					? (financial.dailyCollected ?? 0) / financial.dailyTarget * 100
-					: 0,
-				staffNameToRole,
-			),
+			memberBonuses,
 		} as ShiftReportRecord;
 	});
 }

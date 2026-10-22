@@ -1,4 +1,5 @@
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { allocateDailyReceiptNo } from "@yumipos/web-shared/lib/daily-receipt";
 import { createClient } from "@/lib/client";
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
@@ -44,7 +45,7 @@ function generateOrderNumber(args: {
 	orderType?: string;
 	createdAt: number;
 	customerName?: string;
-	receiptNo?: number;
+	receiptNo: number;
 	platform?: string;
 	brandSlug?: string;
 }) {
@@ -2484,29 +2485,20 @@ export function useHybridCreateOrder() {
 					if (existingError) throw existingError;
 					if (existingOrder?.source_id) return existingOrder.source_id;
 				}
-
-			// Daily receipt numbering
 			const kind = args?.source === "pos"
-				? (args?.orderType === "takeaway" ? "takeaway" : "dine_in")
-				: args?.source === "customer_self_service"
-					? (args?.brandSlug === MARKETPLACE_BRAND_SLUG ? "merchandise" : "dine_in")
-					: "online";
-			let dailyReceiptNo = null;
-			try {
-				const { data: rpcData, error: rpcErr } = await supabase.rpc(
-					"next_daily_receipt_no",
-					{ p_order_kind: kind }
-				);
-				if (!rpcErr && rpcData != null) dailyReceiptNo = rpcData;
-			} catch (_) {} // best-effort
+							? (args?.orderType === "takeaway" ? "takeaway" : "dine_in")
+							: args?.source === "customer_self_service"
+								? (args?.brandSlug === MARKETPLACE_BRAND_SLUG ? "merchandise" : "dine_in")
+								: "online";
+			const dailyReceiptNo = await allocateDailyReceiptNo(supabase);
 
 			const orderNumber = generateOrderNumber({
 				source: args?.source,
 				orderType: args?.orderType,
 				createdAt: orderCreatedAt,
+				receiptNo: dailyReceiptNo,
 				brandSlug: MARKETPLACE_BRAND_SLUG,
 				customerName: args?.customerName || undefined,
-				receiptNo: dailyReceiptNo ?? undefined,
 			});
 				const orderId = makeSourceId("order");
 
@@ -2578,7 +2570,8 @@ const orderRow = {
 					creation_time: orderCreatedAt,
 					idempotency_key: idempotencyKey,
 					customer_source_id: args?.customerSourceId ?? null,
-					raw: { ...(args ?? {}), authUserId: currentUser?._id ?? null },
+					guest_access_token: args?.guestAccessToken ?? null,
+					raw: { ...(args ?? {}), dailyReceiptNo, receiptKind: kind, orderNumber, authUserId: currentUser?._id ?? null },
 				};
 
 				const { error: orderError } = await pos.from("orders").insert(orderRow);
@@ -2633,7 +2626,7 @@ const orderRow = {
 						order_source_id: orderId,
 						creation_time: Date.now(),
 						metadata: {
-							dailyReceiptNo: dailyReceiptNo ?? undefined,
+							dailyReceiptNo,
 							orderNumber,
 							source: "pos",
 						},

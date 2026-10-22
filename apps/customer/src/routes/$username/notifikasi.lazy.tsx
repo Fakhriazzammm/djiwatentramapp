@@ -1,6 +1,6 @@
 import { CustomerHeader } from "@/components/customer/customer-shell";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Bell, LogIn } from "lucide-react";
+import { ArrowLeft, Bell, CheckCheck, LogIn } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useCustomerOrders } from "@/hooks/use-customer-data";
@@ -44,7 +44,7 @@ function NotifikasiPage() {
 
 	// Timestamp terakhir kali halaman ini dibuka → penanda "belum dibaca"
 	// First visit: seed ke sekarang agar riwayat lama tidak tampil "baru semua".
-	const [lastSeen] = useState<number>(() => {
+	const [lastSeen, setLastSeen] = useState<number>(() => {
 		try {
 			const stored = localStorage.getItem(SEEN_KEY);
 			if (stored === null) {
@@ -57,11 +57,14 @@ function NotifikasiPage() {
 		}
 	});
 
-	useEffect(() => {
-		try {
-			localStorage.setItem(SEEN_KEY, String(Date.now()));
-		} catch {}
-	}, []);
+	const persistLastSeen = (timestamp: number) => {
+		const next = Math.max(lastSeen, timestamp);
+		setLastSeen(next);
+		try { localStorage.setItem(SEEN_KEY, String(next)); } catch {}
+	};
+
+	const markAllRead = () => persistLastSeen(Date.now());
+	const markNotificationRead = (createdAt: number) => persistLastSeen(createdAt);
 
 	const goHome = () => navigate({ to: "/$username", params: { username } });
 
@@ -74,10 +77,10 @@ function NotifikasiPage() {
 			title: `Selamat datang, ${customer.name || "Member"}!`,
 			message: "Akun member kamu sudah aktif. Mulai pesan, gunakan Djiwa Pay, dan cek promo spesial untukmu.",
 			createdAt,
-			unread: true,
+			 unread: createdAt > lastSeen,
 			isGreeting: true,
 		};
-	}, [customer?.createdAt, customer?.name, customer?.sourceId]);
+	}, [customer?.createdAt, customer?.name, customer?.sourceId, lastSeen]);
 
 	const notifications = useMemo(() => {
 		if (!orders) return undefined;
@@ -94,11 +97,12 @@ function NotifikasiPage() {
 		});
 		return memberGreeting ? [memberGreeting, ...orderNotifications] : orderNotifications;
 	}, [memberGreeting, orders, lastSeen]);
+	const unreadCount = notifications?.filter((notification) => notification.unread).length ?? 0;
 
 	return (
 		<div className="app-page min-h-app">
 			<div className="app-shell mx-auto min-h-app max-w-md bg-background">
-				<CustomerHeader title="Notifikasi" subtitle="Djiwa Tentram" onBack={goHome} leading={<ArrowLeft className="h-4 w-4" />} />
+				<CustomerHeader title="Notifikasi" subtitle="Djiwa Tentram" onBack={goHome} leading={<ArrowLeft className="h-4 w-4" />} action={isAuthenticated && unreadCount > 0 ? <button type="button" onClick={markAllRead} className="flex min-h-10 items-center gap-1 rounded-xl px-2 text-[10px] font-black text-primary transition-colors hover:bg-primary/10 active:scale-[.97]" aria-label="Tandai semua notifikasi sudah dibaca"><CheckCheck className="h-3.5 w-3.5" /> Tandai dibaca</button> : undefined} />
 
 				<main className="px-3 py-4">
 					<CustomerPushActivation />
@@ -140,7 +144,7 @@ function NotifikasiPage() {
 								<button
 									type="button"
 									key={notif.id}
-									onClick={() => notif.isGreeting ? goHome() : navigate({ to: "/$username/riwayat", params: { username } })}
+									onClick={() => { markNotificationRead(notif.createdAt); if (notif.isGreeting) goHome(); else navigate({ to: "/$username/riwayat", params: { username } }); }}
 									className={`flex w-full gap-3 rounded-[20px] border px-3 py-3 text-left shadow-sm transition-all duration-[180ms] active:scale-[.98] ${notif.unread ? "border-primary/30 bg-primary/5" : "border-border bg-card"}`}
 								>
 									<div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${notif.unread ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>

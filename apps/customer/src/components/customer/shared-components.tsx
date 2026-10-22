@@ -145,6 +145,7 @@ export function SummaryCardLines({
 	productGrossSubtotal,
 	promoDiscount,
 	djiwaPayDiscount = 0,
+	djiwaPayDiscountRate,
 	paymentChoice,
 	serviceChargeAmount,
 	serviceChargeRate,
@@ -158,6 +159,7 @@ export function SummaryCardLines({
 	productGrossSubtotal: number;
 	promoDiscount: number;
 	djiwaPayDiscount?: number;
+	djiwaPayDiscountRate?: number;
 	paymentChoice?: "cashier" | "wallet" | "mayar";
 	serviceChargeAmount: number;
 	serviceChargeRate: number;
@@ -172,6 +174,7 @@ export function SummaryCardLines({
 	const rawTotal = taxBase + shippingFee + serviceChargeAmount + taxAmount;
 	const roundingAdjustment = total - rawTotal;
 	const isCashierFree = paymentChoice === "cashier";
+	const payDiscount = djiwaPayDiscount > 0 ? "Djiwa Pay " + (djiwaPayDiscountRate ?? 20) + "%" : null;
 
 	return (
 		<div className="space-y-1.5 rounded-xl bg-muted/35 p-3">
@@ -181,7 +184,7 @@ export function SummaryCardLines({
 				<Line label="Promo / diskon" value={`-${currency(promoDiscount)}`} className="text-orange-600" />
 			) : null}
 			{djiwaPayDiscount > 0 ? (
-				<Line label="Djiwa Pay 50%" value={`-${currency(djiwaPayDiscount)}`} className="text-emerald-600" />
+				<Line label={payDiscount ?? "Diskon Djiwa Pay"} value={`-${currency(djiwaPayDiscount)}`} className="text-emerald-600" />
 			) : null}
 			{shippingFee > 0 ? <Line label="Biaya pengantaran" value={currency(shippingFee)} /> : null}
 			<Line label={`Service Charge (${serviceChargeRate}%)`} value={isCashierFree ? "Gratis / Rp0" : currency(serviceChargeAmount)} />
@@ -221,7 +224,7 @@ export function ReceiptTotalsBreakdown({
 	total: number;
 }) {
 	return (
-		<div className="mt-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left">
+		<div className="mt-3 border-t border-border pt-3 text-left">
 			<p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Rincian pembulatan</p>
 			<div className="mt-1.5 space-y-1">
 				{taxEnabled ? <Line label="Dasar pajak" value={currency(taxBase)} /> : null}

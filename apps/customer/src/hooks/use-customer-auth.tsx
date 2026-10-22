@@ -114,7 +114,7 @@ function mapCustomerRow(row: Record<string, unknown>): CustomerUser {
   };
 }
 
-const CUSTOMER_API_BASE = "https://djiwatentram.yumme.id/api/customer";
+const CUSTOMER_API_BASE = "https://api.yumme.id/v1/customer";
 
 async function fetchCustomer(
   sourceId: string,
