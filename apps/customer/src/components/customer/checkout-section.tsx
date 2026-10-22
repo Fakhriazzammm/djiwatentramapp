@@ -17,6 +17,7 @@ export interface CheckoutSectionProps {
 	isAuthenticated: boolean;
 	dessertLater: boolean;
 	djiwaPayDiscount?: number;
+	djiwaPayDiscountRate?: number;
 	freeRefillCharge: number;
 	shippingFee?: number;
 	shippingQuotePending?: boolean;
@@ -149,7 +150,7 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 			</div> : null}
 			{props.checkoutError ? <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold leading-relaxed text-red-800">{props.checkoutError}</div> : null}
 			<OrderSummary className="rounded-3xl border border-border bg-card p-4 shadow-sm">
-				<SummaryCardLines productGrossSubtotal={props.productGrossSubtotal} freeRefillCharge={props.freeRefillCharge} shippingFee={props.shippingFee} promoDiscount={props.promoDiscount} djiwaPayDiscount={props.djiwaPayDiscount} paymentChoice={props.paymentChoice} taxAmount={props.taxAmount} taxEnabled={props.taxEnabled} taxRate={props.taxRate} serviceChargeAmount={props.serviceChargeAmount} serviceChargeRate={props.serviceChargeRate} total={props.total} />
+				<SummaryCardLines productGrossSubtotal={props.productGrossSubtotal} freeRefillCharge={props.freeRefillCharge} shippingFee={props.shippingFee} promoDiscount={props.promoDiscount} djiwaPayDiscount={props.djiwaPayDiscount} djiwaPayDiscountRate={props.djiwaPayDiscountRate} paymentChoice={props.paymentChoice} taxAmount={props.taxAmount} taxEnabled={props.taxEnabled} taxRate={props.taxRate} serviceChargeAmount={props.serviceChargeAmount} serviceChargeRate={props.serviceChargeRate} total={props.total} />
 				{props.shippingQuotePending ? <p className="mt-2 rounded-xl bg-primary/5 px-3 py-2 text-[10px] font-semibold text-primary">Memuat tarif pengantaran…</p> : null}
 				{props.shippingQuoteError ? <p role="alert" className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-[10px] font-semibold leading-relaxed text-red-800">{props.shippingQuoteError}</p> : null}
 				{props.paymentChoice === "wallet" ? <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-[10px] font-bold leading-relaxed text-emerald-800">Bayar dengan Djiwa Pay dan dapatkan saldo Djiwa Pay +Rp1.000 setelah transaksi berhasil.</p> : <p className="mt-2 rounded-xl bg-muted/50 px-3 py-2 text-[10px] font-semibold leading-relaxed text-muted-foreground">Reward +Rp1.000 saldo Djiwa Pay diberikan setelah transaksi berhasil.</p>}

@@ -1,5 +1,5 @@
-import { CheckoutActionBar, CheckoutPage, OrderSummary, PaymentMethodCard } from "@yumipos/djiwa-checkout-ui";
-import { Loader2, QrCode, ShoppingCart, Wallet } from "lucide-react";
+import { CheckoutActionBar, CheckoutHeader, CheckoutPage, OrderSummary, PaymentMethodCard } from "@yumipos/djiwa-checkout-ui";
+import { Loader2, QrCode, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CartItem, PaymentChoice } from "./types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency } from "./types";
@@ -19,6 +19,7 @@ export interface CheckoutSectionProps {
 	isAuthenticated: boolean;
 	dessertLater: boolean;
 	djiwaPayDiscount?: number;
+	djiwaPayDiscountRate?: number;
 	freeRefillCharge: number;
 	hasDessertInCart: boolean;
 	isSubmitting: boolean;
@@ -65,15 +66,7 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 	return (
 		<CheckoutPage className="space-y-2 px-2 py-2">
 			<div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
-				<div className="flex items-center gap-2">
-					<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-						<Wallet className="h-4 w-4" />
-					</div>
-					<div>
-						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">Step 3 · Checkout / Pembayaran</p>
-						<h2 className="text-sm font-black">Checkout pesanan</h2>
-					</div>
-				</div>
+				<CheckoutHeader step={4} totalSteps={4} eyebrow="Checkout" title="Checkout pesanan" />
 				<div className="mt-3 rounded-2xl border border-border bg-muted/25 p-3" aria-label="Detail pesanan">
 					<div className="mb-2 flex items-center justify-between">
 						<p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Detail pesanan</p>
@@ -144,7 +137,7 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 			</div>
 			{props.checkoutError ? <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold leading-relaxed text-red-800">{props.checkoutError}</div> : null}
 			<OrderSummary className="rounded-3xl border border-border bg-card p-4 shadow-sm">
-				<SummaryCardLines productGrossSubtotal={props.productGrossSubtotal} freeRefillCharge={props.freeRefillCharge} promoDiscount={props.promoDiscount} djiwaPayDiscount={props.djiwaPayDiscount} paymentChoice={props.paymentChoice} taxAmount={props.taxAmount} taxEnabled={props.taxEnabled} taxRate={props.taxRate} serviceChargeAmount={props.serviceChargeAmount} serviceChargeRate={props.serviceChargeRate} total={props.total} />
+				<SummaryCardLines productGrossSubtotal={props.productGrossSubtotal} freeRefillCharge={props.freeRefillCharge} promoDiscount={props.promoDiscount} djiwaPayDiscount={props.djiwaPayDiscount} djiwaPayDiscountRate={props.djiwaPayDiscountRate} paymentChoice={props.paymentChoice} taxAmount={props.taxAmount} taxEnabled={props.taxEnabled} taxRate={props.taxRate} serviceChargeAmount={props.serviceChargeAmount} serviceChargeRate={props.serviceChargeRate} total={props.total} />
 				{props.paymentChoice === "wallet" ? <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-[10px] font-bold leading-relaxed text-emerald-800">Bayar dengan Djiwa Pay dan dapatkan saldo Djiwa Pay +Rp1.000 setelah transaksi berhasil.</p> : <p className="mt-2 rounded-xl bg-muted/50 px-3 py-2 text-[10px] font-semibold leading-relaxed text-muted-foreground">Reward +Rp1.000 saldo Djiwa Pay diberikan setelah transaksi berhasil.</p>}
 				<CheckoutActionBar primaryLabel={`Checkout ${props.currency(props.total)}`} onPrimary={() => { void props.checkout(); }} primaryDisabled={props.isSubmitting} busy={props.isSubmitting} />
 			</OrderSummary>
