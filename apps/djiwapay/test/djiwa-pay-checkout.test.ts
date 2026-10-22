@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { checkoutStep, isSettledPpob, paymentLabel, walletPaymentState } from "../src/lib/djiwa-pay-checkout";
+import {
+  checkoutStep,
+  isSettledPpob,
+  paymentLabel,
+  preferredPaymentMethod,
+  validateCustomerNumber,
+  walletPaymentState,
+} from "../src/lib/djiwa-pay-checkout";
+import { parseCheckoutDraft, serializeCheckoutDraft } from "../src/lib/djiwa-pay-draft";
 
 describe("Djiwa Pay checkout presentation contract", () => {
   test.each([
@@ -31,5 +39,32 @@ describe("Djiwa Pay checkout presentation contract", () => {
     expect(isSettledPpob({ success: true, status: "success" })).toBe(true);
     expect(isSettledPpob({ success: true, status: "pending" })).toBe(false);
     expect(isSettledPpob({ success: false, status: "failed" })).toBe(false);
+  });
+
+  test("validates customer numbers before advancing to payment", () => {
+    expect(validateCustomerNumber("")).toEqual({ valid: false, message: "Masukkan nomor tujuan." });
+    expect(validateCustomerNumber("08123")).toEqual({ valid: false, message: "Nomor tujuan harus 8–20 digit." });
+    expect(validateCustomerNumber("081234567890")).toEqual({ valid: true, message: null });
+  });
+
+  test("chooses QRIS when wallet balance cannot cover PPOB", () => {
+    expect(preferredPaymentMethod("ppob", "wallet", 10000, 20000)).toBe("mayar");
+    expect(preferredPaymentMethod("ppob", "wallet", 25000, 20000)).toBe("wallet");
+    expect(preferredPaymentMethod("topup", "wallet", 20000, 25000)).toBe("mayar");
+  });
+
+  test("serializes and parses a checkout draft without losing the return flow", () => {
+    const draft = {
+      kind: "ppob" as const,
+      productCode: "TSEL5",
+      category: "pulsa",
+      customerNumber: "081234567890",
+      amount: 20000,
+      pending: true,
+      paymentMethod: "mayar" as const,
+      returnTo: "/ppob/pulsa/produk/TSEL5/konfirmasi",
+    };
+    expect(parseCheckoutDraft(serializeCheckoutDraft(draft))).toEqual(draft);
+    expect(parseCheckoutDraft("not-json")).toBeNull();
   });
 });

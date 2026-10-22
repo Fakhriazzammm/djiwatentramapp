@@ -26,6 +26,19 @@ export function walletPaymentState(balance: number, total: number) {
   return { disabled: shortage > 0, shortage } as const;
 }
 
+export function validateCustomerNumber(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return { valid: false, message: "Masukkan nomor tujuan." } as const;
+  if (digits.length < 8 || digits.length > 20) return { valid: false, message: "Nomor tujuan harus 8–20 digit." } as const;
+  return { valid: true, message: null } as const;
+}
+
+export function preferredPaymentMethod(kind: PayCheckoutKind, current: PayPaymentMethod, balance: number, total: number): PayPaymentMethod {
+  if (kind === "topup") return "mayar";
+  if (current === "mayar") return "mayar";
+  return walletPaymentState(balance, total).disabled ? "mayar" : "wallet";
+}
+
 export function isSettledPpob(result: { success: boolean; status?: string }) {
   return result.success && result.status === "success";
 }

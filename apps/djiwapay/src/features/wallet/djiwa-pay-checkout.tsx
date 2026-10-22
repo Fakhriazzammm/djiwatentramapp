@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { QrCode, WalletCards } from "lucide-react";
 import {
   CheckoutField,
   CheckoutInput,
@@ -29,7 +30,9 @@ type PayCheckoutProps = {
   walletBalance: number;
   error?: string | null;
   notice?: ReactNode;
+  fieldError?: string | null;
   busy?: boolean;
+  pending?: boolean;
   onTopup?: () => void;
   onBack: () => void;
   onPrimary: () => void;
@@ -58,7 +61,9 @@ export function DjiwaPayCheckout({
   walletBalance,
   error,
   notice,
+  fieldError,
   busy = false,
+  pending = false,
   onTopup,
   onBack,
   onPrimary,
@@ -69,10 +74,10 @@ export function DjiwaPayCheckout({
   const cart: CheckoutCartItem[] = [{ productId, name: productName, variant: productDescription, price: amount, quantity: 1 }];
   const wallet = walletPaymentState(walletBalance, amount);
   const paymentOptions = kind === "topup"
-    ? [{ key: "mayar", label: "QRIS Mayar", description: "Bayar aman melalui halaman QRIS Mayar." }]
+    ? [{ key: "mayar", label: "QRIS Mayar", description: "Bayar aman melalui halaman QRIS Mayar.", icon: <QrCode size={16} /> }]
     : [
-        { key: "wallet", label: "Djiwa Pay", description: "Bayar langsung dari saldo Djiwa Pay." },
-        { key: "mayar", label: "QRIS", description: "Bayar cepat dan cashierless dengan QRIS." },
+        { key: "wallet", label: "Djiwa Pay", description: "Bayar langsung dari saldo Djiwa Pay.", icon: <WalletCards size={16} /> },
+        { key: "mayar", label: "QRIS", description: "Bayar cepat dan cashierless dengan QRIS.", icon: <QrCode size={16} /> },
       ];
 
   const fields = !isPayment ? (
@@ -86,6 +91,7 @@ export function DjiwaPayCheckout({
           onChange={(event) => onCustomerNumberChange?.(event.currentTarget.value.replace(/\D/g, "").slice(0, 20))}
           placeholder="08xxxxxxxxxx"
         />
+        {fieldError ? <small className="djiwa-checkout-field-error" role="alert">{fieldError}</small> : null}
       </CheckoutField>
     )
   ) : undefined;
@@ -93,9 +99,9 @@ export function DjiwaPayCheckout({
   const summary = (
     <div className="djiwa-summary-rows">
       {summaryRow("Layanan", productName)}
-      {productDescription ? summaryRow("Detail", productDescription) : null}
+      {productDescription ? summaryRow(kind === "ppob" ? "Operator" : "Metode", productDescription) : null}
       {kind === "ppob" && customerNumber ? summaryRow("Nomor tujuan", customerNumber) : null}
-      {summaryRow("Total pembayaran", money(amount), "is-total")}
+      {summaryRow(kind === "topup" ? "Nominal isi saldo" : "Total pembayaran", money(amount), "is-total")}
     </div>
   );
 
@@ -109,7 +115,7 @@ export function DjiwaPayCheckout({
       description={isPayment ? "Pilih satu metode untuk menyelesaikan pembayaran." : productDescription}
       cart={cart}
       currency={money}
-      showOrderDetail
+      showOrderDetail={!isPayment}
       fields={fields}
       notesLabel="Catatan transaksi"
       notesPlaceholder="Opsional"
@@ -132,11 +138,55 @@ export function DjiwaPayCheckout({
       error={error}
       onBack={onBack}
       backLabel={isPayment ? "Kembali ke detail" : "Kembali"}
-      primaryLabel={isPayment ? paymentLabel(kind, paymentMethod, amount) : "Lanjutkan"}
+      primaryLabel={pending ? "Menunggu status provider" : isPayment ? paymentLabel(kind, paymentMethod, amount) : "Lanjutkan ke pembayaran"}
       onPrimary={onPrimary}
-      primaryDisabled={busy || (!isPayment && kind === "topup" && !amountIsValid) || (isPayment && kind === "ppob" && paymentMethod === "wallet" && wallet.disabled)}
+      primaryDisabled={busy || pending || (!isPayment && kind === "topup" && !amountIsValid) || (!isPayment && kind === "ppob" && !customerNumber?.match(/^\d{8,20}$/)) || (isPayment && kind === "ppob" && paymentMethod === "wallet" && wallet.disabled)}
       busy={busy}
       busyLabel="Memproses…"
+    />
+  );
+}
+
+export function DjiwaPaySuccess({ productName, operator, customerNumber, amount, serialNumber, reference, onDone }: { productName: string; operator: string; customerNumber: string; amount: number; serialNumber?: string; reference?: string; onDone: () => void }) {
+  const currency = money;
+  const cart: CheckoutCartItem[] = [{ productId: "djiwa-pay-success", name: productName, variant: operator, price: amount, quantity: 1 }];
+  const summary = (
+    <div className="djiwa-summary-rows">
+      {summaryRow("Operator", operator)}
+      {summaryRow("Produk", productName)}
+      {summaryRow("Nomor tujuan", customerNumber)}
+      {serialNumber ? summaryRow("Serial number", serialNumber) : null}
+      {reference ? summaryRow("Referensi", reference) : null}
+      {summaryRow("Total pembayaran", currency(amount), "is-total")}
+    </div>
+  );
+  return (
+    <CustomerCheckout
+      mode="payment"
+      step={3}
+      totalSteps={3}
+      eyebrow="Transaksi selesai"
+      title="Pembayaran berhasil"
+      description="Struk digital transaksi PPOB tersimpan di halaman ini."
+      cart={cart}
+      currency={currency}
+      showOrderDetail={false}
+      fields={<div className="djiwa-payment-notice is-success" role="status"><strong>Transaksi selesai</strong><small>Saldo Djiwa Pay telah dipotong dan provider mengonfirmasi pembelian.</small></div>}
+      notesLabel="Catatan transaksi"
+      notesPlaceholder="Opsional"
+      notes=""
+      setNotes={() => undefined}
+      showNotes={false}
+      showPayment={false}
+      paymentHeading="Pembayaran"
+      paymentOptions={[]}
+      paymentChoice=""
+      setPaymentChoice={() => undefined}
+      walletBalance={0}
+      showReward={false}
+      summary={summary}
+      primaryLabel="Selesai"
+      onPrimary={onDone}
     />
   );
 }

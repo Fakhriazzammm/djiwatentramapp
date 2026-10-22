@@ -31,7 +31,7 @@ export type CheckoutCartItem = {
 	quantity: number;
 };
 
-export type CheckoutPaymentOption = { key: string; label: string; description: string };
+export type CheckoutPaymentOption = { key: string; label: string; description: string; icon?: ReactNode };
 
 export type CustomerCheckoutProps = {
 	/** `review` = edit order, `payment` = pay only, `checkout` = both. */
@@ -216,7 +216,7 @@ export function CustomerCheckout(props: CustomerCheckoutProps) {
 								return (
 									<div className="djiwa-payment-option-wrap" key={option.key}>
 										<PaymentMethodCard
-											icon={option.key === "wallet" ? <span aria-hidden="true">👛</span> : <span aria-hidden="true">🔳</span>}
+									icon={option.icon ?? (option.key === "wallet" ? <span aria-hidden="true">👛</span> : <span aria-hidden="true">🔳</span>)}
 											label={option.label}
 											description={option.description}
 											disabledDescription={disabled && props.walletShortage ? props.walletShortage : undefined}
