@@ -11,7 +11,7 @@ describe("Djiwa Pay route contract", () => {
     ["/ppob/pulsa/produk/TSEL5/konfirmasi", true],
     ["/ppob/pulsa/produk/TSEL5/struk", true],
     ["/settings", false],
-    ["/ppob/pdam", false],
+    ["/ppob/pdam", true],
     ["/ppob/pulsa/unknown/TSEL5/detail", false],
   ])("recognizes %s as %s", (pathname, expected) => {
     expect(isKnownPayPath(pathname)).toBe(expected);

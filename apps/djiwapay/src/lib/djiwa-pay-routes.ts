@@ -7,7 +7,7 @@ const categoryPattern = "[^/]+";
 const productPattern = "[^/]+";
 const stagePattern = "(?:detail|konfirmasi|struk)";
 const ppobPattern = new RegExp(`^/ppob(?:/(${categoryPattern})(?:/produk/(${productPattern})/(${stagePattern}))?)?/?$`);
-const supportedCategories = new Set(["pulsa", "data", "game", "pln"]);
+const supportedCategories = new Set(["pulsa", "data", "game", "pln", "pln-bill", "pdam"]);
 
 export function parsePpobPath(pathname: string): PpobRoute | null {
   const match = ppobPattern.exec(pathname);

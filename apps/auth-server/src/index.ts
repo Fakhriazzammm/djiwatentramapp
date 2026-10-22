@@ -807,6 +807,20 @@ async function callIakPpob(body: Record<string, unknown>) {
   return payload.data && typeof payload.data === "object" ? payload.data as Record<string, any> : {};
 }
 
+app.post("/api/pay-bridge/ppob/postpaid/catalog", async (c) => {
+  const session = await requirePaySession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+  const serviceType = typeof body.service_type === "string" ? body.service_type.trim().toLowerCase() : "";
+  if (!postpaidBridgeServices.has(serviceType)) return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+  try {
+    const data = await callIakPpob({ action: "price-list", kind: "postpaid", service_type: serviceType });
+    return privateJson({ success: true, data: { products: Array.isArray(data.products) ? data.products : [] } });
+  } catch {
+    return privateJson({ success: false, error: "PPOB_PROVIDER_UNAVAILABLE" }, 502);
+  }
+});
+
 app.post("/api/pay-bridge/ppob/postpaid/inquiry", async (c) => {
   const session = await requirePaySession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
