@@ -76,9 +76,14 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   const [recentCustomerNumbers, setRecentCustomerNumbers] = useState<string[]>(() => {
     try { const parsed = JSON.parse(window.localStorage.getItem(`djiwa-pay-recent-numbers:${profile.source_id}`) || "[]"); return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string").slice(0, 5) : []; } catch { return []; }
   });
+  const favoritesKey = `djiwa-pay-favorite-numbers:${profile.source_id}`;
+  const [favoriteCustomerNumbers, setFavoriteCustomerNumbers] = useState<string[]>(() => {
+    try { const parsed = JSON.parse(window.localStorage.getItem(`djiwa-pay-favorite-numbers:${profile.source_id}`) || "[]"); return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string").slice(0, 5) : []; } catch { return []; }
+  });
   const goPpobRoute = (path: string) => { window.history.pushState({ ppob: true }, "", path); setRoutePath(path); };
   const closePpob = () => { setPpobOpen(false); setPpobFilter("all"); setSelectedPpobProduct(null); setPpobQuery(""); setPpobOperator("all"); setPpobSort("default"); setPpobCustomerNumber(""); setPpobPaymentMessage(null); setPpobReviewOpen(false); setPpobPaymentMethod("wallet"); setPpobSuccess(null); goPpobRoute("/"); };
   const rememberCustomerNumber = (value: string) => { const next = [value, ...recentCustomerNumbers.filter((item) => item !== value)].slice(0, 5); setRecentCustomerNumbers(next); try { window.localStorage.setItem(recentNumbersKey, JSON.stringify(next)); } catch { /* best effort */ } };
+  const toggleFavoriteCustomerNumber = (value: string) => { const next = favoriteCustomerNumbers.includes(value) ? favoriteCustomerNumbers.filter((item) => item !== value) : [value, ...favoriteCustomerNumbers].slice(0, 5); setFavoriteCustomerNumbers(next); try { window.localStorage.setItem(favoritesKey, JSON.stringify(next)); } catch { /* best effort */ } };
   const ppobProductRoute = (stage: string, product = selectedPpobProduct) => product ? `/ppob/${encodeURIComponent(ppobFilter)}/produk/${encodeURIComponent(product.product_code)}/${stage}` : `/ppob/${encodeURIComponent(ppobFilter)}`;
   const draftKey = `djiwa-pay-checkout:${profile.source_id}`;
   const saveDraft = (draft: CheckoutDraft) => { try { window.sessionStorage.setItem(draftKey, serializeCheckoutDraft(draft)); } catch { /* storage is best effort */ } };
@@ -318,6 +323,8 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
         onCustomerNumberChange={setPpobCustomerNumber}
         recentCustomerNumbers={recentCustomerNumbers}
         onSelectCustomerNumber={setPpobCustomerNumber}
+        favoriteCustomerNumbers={favoriteCustomerNumbers}
+        onToggleFavoriteCustomerNumber={toggleFavoriteCustomerNumber}
         paymentMethod={ppobPaymentMethod}
         onPaymentMethodChange={setPpobPaymentMethod}
         walletBalance={ppobBalance}
