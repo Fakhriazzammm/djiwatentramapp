@@ -45,7 +45,7 @@ async function handleAction(body: Json) {
   if (!configured()) return authError();
   const action = text(body.action);
   if (action === "check-balance") return reply({ success: true, data: await iak("check-balance", { username, sign: sign(`${username}${apiKey}bl`) }) });
-  if (action === "price-list") return reply({ success: true, data: await iak("price-list", { username, sign: sign(`${username}${apiKey}pl`) }) });
+  if (action === "price-list") return reply({ success: true, data: await iak("pricelist", { username, sign: sign(`${username}${apiKey}pl`), status: "active" }) });
   if (action === "top-up") {
     const refId = text(body.ref_id); const customerId = text(body.customer_id); const productCode = text(body.product_code);
     if (!refId || !customerId || !productCode) return reply({ success: false, error: { code: "INVALID_TOPUP", message: "ref_id, customer_id, dan product_code wajib diisi" } }, 400);
