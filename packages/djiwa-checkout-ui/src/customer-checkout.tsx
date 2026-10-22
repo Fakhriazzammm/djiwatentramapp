@@ -240,7 +240,11 @@ export function CustomerCheckout(props: CustomerCheckoutProps) {
 				: null}
 
 			{props.showReward === false ? null : (
-				<PaymentNotice title={props.rewardTitle ?? "Djiwa Pay +Rp1.000"} tone="success">
+				<PaymentNotice
+					title={props.rewardTitle ?? "Djiwa Pay +Rp1.000"}
+					tone="success"
+					className="djiwa-checkout-reward"
+				>
 					{props.rewardDescription ?? "Dapatkan saldo Djiwa Pay senilai Rp1.000 setiap transaksi memakai Djiwa Pay hari ini."}
 				</PaymentNotice>
 			)}
