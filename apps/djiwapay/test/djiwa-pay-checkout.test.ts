@@ -8,6 +8,7 @@ import {
   walletPaymentState,
 } from "../src/lib/djiwa-pay-checkout";
 import { parseCheckoutDraft, serializeCheckoutDraft } from "../src/lib/djiwa-pay-draft";
+import { canPollTransaction, normalizePayTransactionStatus, shouldClearTransactionDraft, transactionStatusLabel } from "../src/lib/djiwa-pay-transaction";
 
 describe("Djiwa Pay checkout presentation contract", () => {
   test.each([
@@ -61,12 +62,26 @@ describe("Djiwa Pay checkout presentation contract", () => {
       customerNumber: "081234567890",
       amount: 20000,
       invoiceId: "inv_123",
+      invoiceUrl: "https://pay.example/inv_123",
       pending: true,
+      status: "pending" as const,
+      createdAt: 1_700_000_000_000,
       receipt: { serialNumber: "SN123", reference: "REF123" },
       paymentMethod: "mayar" as const,
       returnTo: "/ppob/pulsa/produk/TSEL5/konfirmasi",
     };
     expect(parseCheckoutDraft(serializeCheckoutDraft(draft))).toEqual(draft);
     expect(parseCheckoutDraft("not-json")).toBeNull();
+  });
+
+  test("normalizes provider states into the customer transaction state machine", () => {
+    expect(normalizePayTransactionStatus("paid")).toBe("success");
+    expect(normalizePayTransactionStatus("processing")).toBe("pending");
+    expect(normalizePayTransactionStatus("cancelled")).toBe("failed");
+    expect(transactionStatusLabel("pending")).toBe("Sedang diproses");
+    expect(canPollTransaction("pending", "inv_123")).toBe(true);
+    expect(canPollTransaction("pending", null)).toBe(false);
+    expect(shouldClearTransactionDraft("success")).toBe(true);
+    expect(shouldClearTransactionDraft("pending")).toBe(false);
   });
 });

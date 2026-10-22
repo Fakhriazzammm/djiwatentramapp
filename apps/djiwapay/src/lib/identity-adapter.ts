@@ -22,7 +22,7 @@ async function exchangeBridgeToken(): Promise<CustomerProfile | null> {
 }
 
 export function buildPayBridgeStartUrl() {
-  return `${BRIDGE_START}?returnTo=${encodeURIComponent(window.location.origin)}`;
+  return `${BRIDGE_START}?returnTo=${encodeURIComponent(window.location.href.split("?")[0])}`;
 }
 
 export function buildCustomerAuthUrl() {
