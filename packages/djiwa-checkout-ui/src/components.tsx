@@ -5,6 +5,7 @@ type SurfaceProps = { children: ReactNode; className?: string };
 export type CheckoutHeaderProps = {
   step: number;
   totalSteps: number;
+  eyebrow?: string;
   title: string;
   description?: string;
   className?: string;
@@ -58,10 +59,10 @@ export function CheckoutPage({ children, className = "" }: SurfaceProps) {
   return <div className={className}>{children}</div>;
 }
 
-export function CheckoutHeader({ step, totalSteps, title, description, className = "" }: CheckoutHeaderProps) {
+export function CheckoutHeader({ step, totalSteps, eyebrow, title, description, className = "" }: CheckoutHeaderProps) {
   return (
     <header className={`djiwa-checkout-header ${className}`.trim()}>
-      <span className="djiwa-checkout-step">Langkah {step} dari {totalSteps}</span>
+      <span className="djiwa-checkout-step">Langkah {step} dari {totalSteps}{eyebrow ? ` · ${eyebrow}` : ""}</span>
       <h1>{title}</h1>
       {description ? <p>{description}</p> : null}
     </header>
