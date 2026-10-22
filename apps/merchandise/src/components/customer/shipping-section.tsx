@@ -37,7 +37,7 @@ export function ShippingSection({
 				<div className="flex items-center gap-2">
 					<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><Truck className="h-4 w-4" aria-hidden="true" /></div>
 					<div>
-						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">Step 3 · Pengiriman</p>
+						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">Langkah 3 dari 5 · Pengiriman</p>
 						<h2 className="text-sm font-black">Pilih kurir pengiriman</h2>
 						<p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Kurir yang tampil mengikuti kurir aktif pada pengaturan Mayar.</p>
 					</div>

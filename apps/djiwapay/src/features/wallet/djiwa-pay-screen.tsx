@@ -131,7 +131,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
           <div className="ppob-customer-checkout-header">
             <div className="ppob-customer-checkout-icon"><Wallet size={16} /></div>
             <div>
-              <p>Step 5 · Pembayaran</p>
+              <p>Langkah 2 dari 3 · Pembayaran</p>
               <h2>Pilih metode pembayaran</h2>
             </div>
           </div>
