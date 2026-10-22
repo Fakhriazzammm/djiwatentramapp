@@ -791,10 +791,11 @@ app.post("/api/pay-bridge/ppob/purchase", async (c) => {
   const amount = Math.round(Number(product?.product_price));
   if (!Number.isSafeInteger(amount) || amount <= 0) return privateJson({ success: false, error: "PRODUCT_UNAVAILABLE" }, 422);
   const refId = `ppob_${sourceId.slice(0, 12)}_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
-  const key = `ppob_${sourceId}_${productCode}_${customerNumber}`;
+  const key = `ppob_${sourceId}_${crypto.randomUUID()}`;
   const hold = await pool.query("SELECT pos.wallet_create_hold($1,$2,$3,$4) AS result", [sourceId, refId, amount, key]);
   const holdResult = hold.rows[0]?.result;
   if (!holdResult?.ok) return privateJson({ success: false, error: holdResult?.error || "INSUFFICIENT_BALANCE", availableBalance: holdResult?.available_balance }, 422);
+  await pool.query("INSERT INTO pos.ppob_transactions(ref_id,status,product_code,customer_id,price,message,payload) VALUES($1,$2,$3,$4,$5,$6,$7)", [refId, "2", productCode, customerNumber, amount, "PPOB diproses", JSON.stringify({ source_id: sourceId, wallet_hold_id: holdResult.hold_id })]);
   try {
     const providerResponse = await fetch(iakUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "top-up", ref_id: refId, customer_id: customerNumber, product_code: productCode }) });
     const provider = await providerResponse.json().catch(() => ({})) as any;
@@ -802,13 +803,16 @@ app.post("/api/pay-bridge/ppob/purchase", async (c) => {
     const status = String(result.status ?? "2");
     if (status === "0") {
       await pool.query("SELECT pos.wallet_capture_hold($1,$2)", [holdResult.hold_id, `capture_${refId}`]);
+      await pool.query("UPDATE pos.ppob_transactions SET status=$1,message=$2,serial_number=$3,updated_at=now() WHERE ref_id=$4", ["0", result.message || "Transaksi PPOB berhasil", result.sn || null, refId]);
       return privateJson({ success: true, status: "success", refId, productCode, amount, message: result.message || "Transaksi PPOB berhasil", serialNumber: result.sn || null });
     }
-    if (status === "1") return privateJson({ success: true, status: "pending", refId, productCode, amount, message: result.message || "Transaksi sedang diproses" });
+    if (status === "1") { await pool.query("UPDATE pos.ppob_transactions SET status=$1,message=$2,updated_at=now() WHERE ref_id=$3", ["1", result.message || "Transaksi sedang diproses", refId]); return privateJson({ success: true, status: "pending", refId, productCode, amount, message: result.message || "Transaksi sedang diproses" }); }
     await pool.query("SELECT pos.wallet_release_hold($1,$2,$3)", [holdResult.hold_id, `release_${refId}`, result.message || "Transaksi PPOB gagal"]);
+    await pool.query("UPDATE pos.ppob_transactions SET status=$1,message=$2,response_code=$3,updated_at=now() WHERE ref_id=$4", ["2", result.message || "Transaksi PPOB gagal", result.rc || null, refId]);
     return privateJson({ success: false, status: "failed", refId, error: result.message || "Transaksi PPOB gagal" }, 502);
   } catch (error) {
     await pool.query("SELECT pos.wallet_release_hold($1,$2,$3)", [holdResult.hold_id, `release_${refId}`, "Provider PPOB tidak tersedia"]);
+    await pool.query("UPDATE pos.ppob_transactions SET status=$1,message=$2,updated_at=now() WHERE ref_id=$3", ["2", "Provider PPOB tidak tersedia", refId]);
     return privateJson({ success: false, error: "PPOB_PROVIDER_UNAVAILABLE" }, 502);
   }
 });
