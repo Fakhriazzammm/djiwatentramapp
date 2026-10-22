@@ -8,6 +8,7 @@ import { CheckoutActionBar, CheckoutSection, OrderSummary, PaymentMethodCard } f
 import { DjiwaPayCheckout, DjiwaPaySuccess } from "./djiwa-pay-checkout";
 import { isSettledPpob, preferredPaymentMethod, validateCustomerNumber } from "../../lib/djiwa-pay-checkout";
 import { parseCheckoutDraft, serializeCheckoutDraft, type CheckoutDraft } from "../../lib/djiwa-pay-draft";
+import { checkoutCustomerNumberHint, parsePpobPath } from "../../lib/djiwa-pay-routes";
 
 const money = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 const date = (value: string) => { const parsed = new Date(value); return Number.isNaN(parsed.getTime()) ? "" : parsed.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }); };
@@ -63,12 +64,19 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   const [ppobCatalogLoading, setPpobCatalogLoading] = useState(false);
   const [ppobCatalogError, setPpobCatalogError] = useState<string | null>(null);
   const [returnToPpob, setReturnToPpob] = useState<string | null>(null);
+  const [routePath, setRoutePath] = useState(() => window.location.pathname);
+  const [ppobReceiptDraft, setPpobReceiptDraft] = useState<CheckoutDraft["receipt"] | null>(null);
   const [draftRestored, setDraftRestored] = useState(false);
-  const goPpobRoute = (path: string) => window.history.pushState({ ppob: true }, "", path);
+  const goPpobRoute = (path: string) => { window.history.pushState({ ppob: true }, "", path); setRoutePath(path); };
   const ppobProductRoute = (stage: string, product = selectedPpobProduct) => product ? `/ppob/${encodeURIComponent(ppobFilter)}/produk/${encodeURIComponent(product.product_code)}/${stage}` : `/ppob/${encodeURIComponent(ppobFilter)}`;
   const draftKey = `djiwa-pay-checkout:${profile.source_id}`;
   const saveDraft = (draft: CheckoutDraft) => { try { window.sessionStorage.setItem(draftKey, serializeCheckoutDraft(draft)); } catch { /* storage is best effort */ } };
   const clearDraft = () => { try { window.sessionStorage.removeItem(draftKey); } catch { /* storage is best effort */ } };
+  useEffect(() => {
+    const onPopState = () => setRoutePath(window.location.pathname);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
   useEffect(() => {
     if (draftRestored) return;
     setDraftRestored(true);
@@ -81,6 +89,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
         setPpobCustomerNumber(draft.customerNumber);
         setPpobPaymentMethod(draft.paymentMethod);
         setPpobInvoiceId(draft.invoiceId ?? null);
+        setPpobReceiptDraft(draft.receipt ?? null);
         setReturnToPpob(draft.returnTo);
         setTopupStage("payment");
         setTopupPending(true);
@@ -90,6 +99,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
         setPpobCustomerNumber(draft.customerNumber);
         setPpobPaymentMethod(draft.paymentMethod);
         setPpobInvoiceId(draft.invoiceId ?? null);
+        setPpobReceiptDraft(draft.receipt ?? null);
         setPpobOpen(true);
         setPpobReviewOpen(draft.returnTo.endsWith("/konfirmasi"));
         setPpobPaymentStatus(draft.pending ? "pending" : "idle");
@@ -104,18 +114,22 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     } catch { /* malformed session state is ignored safely */ }
   }, [draftKey, draftRestored]);
   useEffect(() => {
-    const parts = window.location.pathname.split("/").filter(Boolean);
-    if (parts[0] !== "ppob") return;
+    const route = parsePpobPath(routePath);
+    if (!route) { setPpobOpen(false); return; }
     setPpobOpen(true);
-    const category = decodeURIComponent(parts[1] || "all");
-    setPpobFilter(category as typeof ppobFilter);
-    const code = parts[3] ? decodeURIComponent(parts[3]) : null;
-    if (code && ppobCatalog) {
-      const product = ppobCatalog.find((item) => item.product_code === code) ?? null;
+    setPpobFilter(route.category as typeof ppobFilter);
+    if (route.productCode && ppobCatalog) {
+      const product = ppobCatalog.find((item) => item.product_code === route.productCode) ?? null;
       setSelectedPpobProduct(product);
-      setPpobReviewOpen(parts[4] === "konfirmasi");
+      setPpobReviewOpen(route.stage === "konfirmasi");
+      if (route.stage === "struk" && product && ppobReceiptDraft) {
+        setPpobSuccess({ product, number: ppobCustomerNumber, serialNumber: ppobReceiptDraft.serialNumber, reference: ppobReceiptDraft.reference });
+      }
+    } else if (!route.productCode) {
+      setSelectedPpobProduct(null);
+      setPpobReviewOpen(false);
     }
-  }, [ppobCatalog]);
+  }, [ppobCatalog, ppobReceiptDraft, routePath]);
   const [reduceMotion] = useState(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
   const entries = wallet?.ledger ?? [];
   const incoming = wallet?.wallet.total_credited ?? entries.filter((entry) => entry.direction === "credit").reduce((total, entry) => total + entry.amount, 0);
@@ -189,7 +203,9 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     setPpobPaymentStatus(result.status === "pending" ? "pending" : result.status === "success" ? "idle" : "failed");
     setPpobPaymentMessage(result.status === "success" ? `Pembayaran berhasil.${result.serialNumber ? ` SN: ${result.serialNumber}` : ""}` : result.status === "pending" ? `Transaksi sedang diproses.${result.refId ? ` Ref: ${result.refId}` : ""}` : (result.error || "Pembayaran gagal."));
     if (selectedPpobProduct && isSettledPpob(result)) {
-      clearDraft(); setPpobInvoiceId(null); goPpobRoute(ppobProductRoute("struk")); setPpobSuccess({ product: selectedPpobProduct, number: ppobCustomerNumber, serialNumber: result.serialNumber ?? undefined, reference: result.refId ?? undefined }); setSelectedPpobProduct(null); setPpobCustomerNumber(""); onRefresh();
+      const receipt = { serialNumber: result.serialNumber ?? undefined, reference: result.refId ?? undefined };
+      saveDraft({ kind: "ppob", productCode: selectedPpobProduct.product_code, category: ppobFilter, customerNumber: ppobCustomerNumber, amount: selectedPpobProduct.product_price, receipt, paymentMethod: ppobPaymentMethod, returnTo: ppobProductRoute("struk") });
+      setPpobReceiptDraft(receipt); setPpobInvoiceId(null); goPpobRoute(ppobProductRoute("struk")); setPpobSuccess({ product: selectedPpobProduct, number: ppobCustomerNumber, ...receipt }); setSelectedPpobProduct(null); onRefresh();
     }
   };
   const refreshPpobPayment = async () => {
@@ -225,7 +241,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
         amount={ppobSuccess!.product.product_price}
         serialNumber={ppobSuccess!.serialNumber}
         reference={ppobSuccess!.reference}
-        onDone={() => { setPpobSuccess(null); setPpobOpen(false); clearDraft(); goPpobRoute("/"); }}
+        onDone={() => { setPpobSuccess(null); setPpobReceiptDraft(null); setPpobOpen(false); clearDraft(); goPpobRoute("/"); }}
       />
     </main>
   );
@@ -243,7 +259,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
         paymentMethod={ppobPaymentMethod}
         onPaymentMethodChange={setPpobPaymentMethod}
         walletBalance={ppobBalance}
-        fieldError={ppobCustomerNumber ? ppobValidation.message : null}
+        fieldError={checkoutCustomerNumberHint(ppobCustomerNumber)}
         error={ppobPaymentStatus === "failed" ? ppobPaymentMessage : null}
         notice={ppobPaymentNotice}
         busy={ppobPaymentBusy}

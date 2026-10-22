@@ -62,6 +62,7 @@ describe("Djiwa Pay checkout presentation contract", () => {
       amount: 20000,
       invoiceId: "inv_123",
       pending: true,
+      receipt: { serialNumber: "SN123", reference: "REF123" },
       paymentMethod: "mayar" as const,
       returnTo: "/ppob/pulsa/produk/TSEL5/konfirmasi",
     };

@@ -82,7 +82,7 @@ export function DjiwaPayCheckout({
 
   const fields = !isPayment ? (
     kind === "topup" ? amountEditor : (
-      <CheckoutField label="Nomor tujuan" required htmlFor="djiwa-ppob-customer-number" hint="Masukkan nomor pelanggan 8–20 digit.">
+      <CheckoutField label="Nomor tujuan" required htmlFor="djiwa-ppob-customer-number" hint="Wajib diisi · 8–20 digit sebelum lanjut.">
         <CheckoutInput
           id="djiwa-ppob-customer-number"
           inputMode="numeric"
@@ -138,7 +138,7 @@ export function DjiwaPayCheckout({
       error={error}
       onBack={onBack}
       backLabel={isPayment ? "Kembali ke detail" : "Kembali"}
-      primaryLabel={pending ? "Menunggu status provider" : isPayment ? paymentLabel(kind, paymentMethod, amount) : "Lanjutkan ke pembayaran"}
+      primaryLabel={pending ? "Menunggu status provider" : isPayment ? paymentLabel(kind, paymentMethod, amount) : kind === "ppob" && !customerNumber?.match(/^\d{8,20}$/) ? "Masukkan nomor tujuan" : "Lanjutkan ke pembayaran"}
       onPrimary={onPrimary}
       primaryDisabled={busy || pending || (!isPayment && kind === "topup" && !amountIsValid) || (!isPayment && kind === "ppob" && !customerNumber?.match(/^\d{8,20}$/)) || (isPayment && kind === "ppob" && paymentMethod === "wallet" && wallet.disabled)}
       busy={busy}
