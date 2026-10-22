@@ -10,6 +10,7 @@ import {
 import { parseCheckoutDraft, serializeCheckoutDraft } from "../src/lib/djiwa-pay-draft";
 import { canPollTransaction, normalizePayTransactionStatus, shouldClearTransactionDraft, transactionStatusLabel } from "../src/lib/djiwa-pay-transaction";
 import { buildWalletReceivePayload, validateWalletTransfer } from "../src/lib/djiwa-pay-transfer";
+import { parseWalletRecipient } from "../src/features/wallet/djiwa-pay-wallet-scanner";
 
 describe("Djiwa Pay checkout presentation contract", () => {
   test.each([
@@ -95,5 +96,7 @@ describe("Djiwa Pay checkout presentation contract", () => {
 
   test("creates a non-sensitive receive payload", () => {
     expect(buildWalletReceivePayload("cust_123")).toBe("djiwapay://transfer?recipient=cust_123");
+    expect(parseWalletRecipient("djiwapay://transfer?recipient=cust_123")).toBe("cust_123");
+    expect(parseWalletRecipient("https://example.com/qr?recipient=cust_123")).toBeNull();
   });
 });
