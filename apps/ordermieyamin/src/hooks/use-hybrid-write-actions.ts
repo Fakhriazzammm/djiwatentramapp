@@ -6,7 +6,6 @@ import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useCallback } from "react";
 import { invokeEdgeFunction } from "@/lib/api-helper";
-import { formatOrderNumber } from "@yumipos/web-shared/lib/order-number";
 
 type FunctionReference<_Kind extends "mutation" | "action"> = unknown;
 const api = new Proxy(
@@ -52,7 +51,6 @@ function generateOrderNumber(args: {
 	platform?: string;
 	createdAt: number;
 	receiptNo?: number;
-	platform?: string;
 	businessUnit?: string;
 }) {
 	return formatOrderNumber({
