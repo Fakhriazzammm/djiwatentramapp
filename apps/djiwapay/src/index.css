@@ -78,105 +78,49 @@
 .ppob-detail-active>.ppob-page-card>.ppob-selection{display:flex!important;position:relative!important;inset:auto!important;z-index:1;width:100%;max-width:430px;min-height:0;margin:0 auto;border:1px solid #dbe3ee;border-radius:20px;background:#fff;box-shadow:0 12px 30px rgba(15,23,42,.1);padding:20px!important;overflow:visible}
 .ppob-detail-active .ppob-step-back{border-bottom:1px solid #dbe3ee}
 .ppob-checkout-card{width:100%;border:1px solid #dbe3ee;border-radius:16px;background:#f8fafc;padding:12px;margin-top:8px}.ppob-payment-methods{display:grid;gap:8px}.ppob-payment-methods>span{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#687993}.ppob-payment-methods button{display:flex;align-items:center;gap:10px;width:100%;min-height:54px;padding:10px 12px;border:1px solid #dbe3ee;border-radius:12px;background:#fff;text-align:left;color:#24324a}.ppob-payment-methods button.selected{border-color:#175dcc;background:#eef5ff;box-shadow:0 0 0 2px #175dcc1c}.ppob-payment-methods button i{font-style:normal;color:#a0aec0;font-size:14px}.ppob-payment-methods button.selected i{color:#175dcc}.ppob-payment-methods button span{display:grid;gap:2px}.ppob-payment-methods button strong{font-size:13px}.ppob-payment-methods button small{font-size:11px;color:#687993}.ppob-review-list{display:grid;gap:0;margin-top:12px;border-top:1px solid #dbe3ee}.ppob-review-list span{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #dbe3ee;font-size:12px}.ppob-review-list em{font-style:normal;color:#687993}.ppob-review-list b{color:#24324a;text-align:right}.ppob-review-list .total b{font-size:16px;color:#175dcc}.ppob-wallet-balance{display:flex;justify-content:space-between;padding:11px 0;font-size:12px;color:#687993}.ppob-wallet-balance b{color:#24324a}.ppob-insufficient{margin-top:4px;border:1px solid #f1d28a;border-radius:12px;background:#fff8e6;padding:11px}.ppob-insufficient strong,.ppob-insufficient small{display:block}.ppob-insufficient strong{font-size:12px;color:#8a5a00}.ppob-insufficient small{margin-top:3px;font-size:11px;line-height:1.4;color:#8a6d31}.ppob-insufficient .primary-action{margin-top:9px;width:100%;min-height:44px}.ppob-checkout-card .ppob-pay-button{margin-top:4px;width:100%;min-height:48px}.ppob-step-page>.ppob-text-button{margin-top:10px}
-/* Customer checkout parity: distinct review/payment cards, compact mobile rhythm. */
-.ppob-detail-active>.ppob-page-card>.ppob-selection{gap:0;padding:16px!important;border-radius:24px;box-shadow:0 4px 14px rgba(15,23,42,.06)}
-.ppob-detail-active .ppob-checkout-card{margin-top:14px;border:1px solid #e2e8f0;border-radius:24px;background:#fff;padding:16px;box-shadow:0 2px 8px rgba(15,23,42,.04)}
-.ppob-detail-active .ppob-payment-methods button{min-height:58px;border-radius:14px;padding:11px 12px}
-.ppob-detail-active .ppob-payment-methods button.selected{box-shadow:0 0 0 1px #175dcc1c}
-.ppob-detail-active .ppob-review-list{margin-top:14px;padding-top:2px;border-top:1px solid #e2e8f0}
-.ppob-detail-active .ppob-review-list span{min-height:38px;align-items:center;border-bottom:1px solid #e2e8f0}
-.ppob-detail-active .ppob-wallet-balance{margin-top:4px;padding:12px;border-radius:14px;background:#f8fafc}
-.ppob-detail-active .ppob-text-button{min-height:44px;border-radius:14px;font-weight:800}
-/* CTA must remain visible above the transparent step-page reset. */
-.ppob-selection.ppob-step-page>.ppob-pay-button{background:#175dcc!important;color:#fff!important;border:0!important;min-height:50px!important;border-radius:12px!important;opacity:1!important;box-shadow:0 8px 18px rgba(23,93,204,.22)!important}
-.ppob-selection.ppob-step-page>.ppob-pay-button:disabled{background:#e8eef7!important;color:#5e718c!important;box-shadow:none!important;cursor:not-allowed}
-
-/* Customer checkout parity: PPOB payment step */
-.ppob-payment-heading{display:flex;align-items:center;gap:10px;margin-bottom:12px}.ppob-payment-heading>div{display:grid;gap:3px}.ppob-payment-heading strong{font-size:15px;color:#172b4d}.ppob-payment-heading small{font-size:10px;line-height:1.4;color:#687993}.ppob-payment-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:12px;background:#eaf3ff;color:#175dcc;font-size:15px}.ppob-method-copy{display:grid;gap:3px}.ppob-payment-methods button{justify-content:space-between}.ppob-payment-methods button i{margin-left:auto;font-size:17px;color:#a0aec0}.ppob-payment-methods button.selected i{color:#175dcc}.ppob-order-summary{margin-top:16px;border:1px solid #e2e8f0;border-radius:16px;background:#fff;padding:13px}.ppob-summary-title{font-size:11px;font-weight:900;color:#172b4d;margin-bottom:2px}.ppob-order-summary .ppob-review-list{margin-top:4px;border-top:0}.ppob-wallet-balance{margin-top:10px}.ppob-qris-note{margin-top:10px;border:1px solid #cfe0fb;border-radius:14px;background:#f3f8ff;padding:12px}.ppob-qris-note strong,.ppob-qris-note small{display:block}.ppob-qris-note strong{font-size:12px;color:#175dcc}.ppob-qris-note small{margin-top:3px;font-size:11px;line-height:1.4;color:#506887}.ppob-reward-note{margin-top:10px;border-radius:12px;background:#f5f8fc;padding:10px 12px;color:#60708a;font-size:10px;font-weight:700;line-height:1.4}.ppob-action-row{display:flex;gap:8px;margin-top:12px}.ppob-action-row .ppob-text-button,.ppob-action-row .primary-action{flex:1;width:auto;margin-top:0;min-height:48px}.ppob-action-row .ppob-text-button{border:1px solid #dbe3ee;border-radius:14px;background:#fff;color:#24324a;font-weight:800}.ppob-action-row .primary-action{border-radius:14px}.ppob-payment-message{margin-top:10px}
-
-/* Mobile checkout cards: keep each payment block independent, never nested */
-.ppob-detail-active>.ppob-page-card>.ppob-selection{border:0!important;background:transparent!important;box-shadow:none!important;padding:0 16px 24px!important;border-radius:0!important;gap:0!important}
-.ppob-detail-active .ppob-checkout-card{display:flex;flex-direction:column;gap:12px;margin:0!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important}
-.ppob-detail-active .ppob-payment-heading{margin:0!important;padding:14px 15px;border:1px solid #e2e8f0;border-radius:16px;background:#fff;box-shadow:0 2px 8px rgba(15,23,42,.035)}
-.ppob-detail-active .ppob-payment-methods{display:grid;gap:10px;padding:14px 15px;border:1px solid #e2e8f0;border-radius:16px;background:#fff;box-shadow:0 2px 8px rgba(15,23,42,.035)}
-.ppob-detail-active .ppob-payment-methods button{min-height:64px;border-radius:12px}
-.ppob-detail-active .ppob-order-summary{margin:0!important;padding:15px;border-radius:16px;box-shadow:0 2px 8px rgba(15,23,42,.035)}
-.ppob-detail-active .ppob-wallet-balance{margin:0!important;min-height:48px;box-sizing:border-box;padding:12px 15px;border:1px solid #e2e8f0;border-radius:16px;background:#fff;box-shadow:0 2px 8px rgba(15,23,42,.035)}
-.ppob-detail-active .ppob-qris-note{margin:0!important;border-radius:16px;background:#f3f8ff;box-shadow:0 2px 8px rgba(15,23,42,.035)}
-.ppob-detail-active .ppob-reward-note{margin:0!important;border:1px solid #e2e8f0;border-radius:16px;background:#fff;box-shadow:0 2px 8px rgba(15,23,42,.035)}
-.ppob-detail-active .ppob-insufficient{margin:0!important;border-radius:16px}
-.ppob-detail-active .ppob-action-row{margin:4px 0 0!important;padding:0!important;background:transparent!important}
-@media(max-width:420px){.ppob-detail-active>.ppob-page-card>.ppob-selection{padding-left:12px!important;padding-right:12px!important}.ppob-detail-active .ppob-payment-heading,.ppob-detail-active .ppob-payment-methods,.ppob-detail-active .ppob-order-summary,.ppob-detail-active .ppob-wallet-balance,.ppob-detail-active .ppob-qris-note,.ppob-detail-active .ppob-reward-note{border-radius:14px}}
-/* Compact mobile confirmation: one clear rhythm, no oversized nested panels */
-.ppob-detail-active>.ppob-page-card>.ppob-selection{padding:10px 16px calc(16px + env(safe-area-inset-bottom))!important}
-.ppob-detail-active .ppob-checkout-card{gap:8px!important}
-.ppob-detail-active .ppob-payment-heading{padding:10px 12px!important;border-radius:14px!important}
-.ppob-detail-active .ppob-payment-icon{width:30px;height:30px;border-radius:9px;font-size:13px}
-.ppob-detail-active .ppob-payment-heading strong{font-size:14px}
-.ppob-detail-active .ppob-payment-heading small{font-size:10px}
-.ppob-detail-active .ppob-payment-methods{gap:6px!important;padding:9px 10px!important;border-radius:14px!important}
-.ppob-detail-active .ppob-payment-methods button{min-height:52px!important;padding:8px 10px!important;border-radius:10px!important}
-.ppob-detail-active .ppob-payment-methods button strong{font-size:12px}
-.ppob-detail-active .ppob-payment-methods button small{font-size:10px}
-.ppob-detail-active .ppob-order-summary{padding:11px 12px!important;border-radius:14px!important}
-.ppob-detail-active .ppob-summary-title{font-size:10px}
-.ppob-detail-active .ppob-review-list{margin-top:2px!important}
-.ppob-detail-active .ppob-review-list span{min-height:30px!important;padding:6px 0!important;font-size:11px}
-.ppob-detail-active .ppob-review-list .total b{font-size:14px}
-.ppob-detail-active .ppob-wallet-balance{min-height:42px!important;padding:9px 12px!important;border-radius:14px!important;font-size:11px}
-.ppob-detail-active .ppob-qris-note{padding:10px!important;border-radius:14px!important}
-.ppob-detail-active .ppob-qris-note strong{font-size:11px}
-.ppob-detail-active .ppob-qris-note small{font-size:10px}
-.ppob-detail-active .ppob-insufficient{padding:10px!important;border-radius:14px!important}
-.ppob-detail-active .ppob-insufficient strong{font-size:11px}
-.ppob-detail-active .ppob-insufficient small{font-size:10px}
-.ppob-detail-active .ppob-insufficient .primary-action{min-height:42px!important;margin-top:7px!important}
-.ppob-detail-active .ppob-reward-note{padding:8px 10px!important;border-radius:12px!important;font-size:9px}
-.ppob-detail-active .ppob-action-row{position:sticky;bottom:0;z-index:4;margin:2px -4px 0!important;padding:8px 4px calc(8px + env(safe-area-inset-bottom))!important;background:#f6f8fc!important}
-.ppob-detail-active .ppob-action-row .ppob-text-button,.ppob-detail-active .ppob-action-row .primary-action{min-height:46px!important;border-radius:12px!important}
-/* Remove the misleading white halo behind the selected payment option. */
-.ppob-detail-active .ppob-payment-methods{padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
-.ppob-detail-active .ppob-payment-methods button{position:relative;z-index:1}
-
-/* Flat payment stack: remove all inner white layers from the method selector. */
-.ppob-detail-active>.ppob-page-card>.ppob-selection{background:transparent!important;border:0!important;box-shadow:none!important}
-.ppob-detail-active .ppob-checkout-card{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
-.ppob-detail-active .ppob-payment-heading{background:transparent!important;border:0!important;box-shadow:none!important;padding:4px 2px!important}
-.ppob-detail-active .ppob-payment-methods{display:grid!important;gap:8px!important;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
-.ppob-detail-active .ppob-payment-methods button,.ppob-detail-active .ppob-payment-methods button.selected{background:#fff!important;border:1px solid #dbe3ee!important;box-shadow:0 1px 4px rgba(15,23,42,.04)!important}
-.ppob-detail-active .ppob-payment-methods button.selected{background:#eef5ff!important;border-color:#175dcc!important;box-shadow:0 0 0 1px rgba(23,93,204,.12)!important}
-.ppob-detail-active .ppob-payment-methods button::before,.ppob-detail-active .ppob-payment-methods button::after,.ppob-detail-active .ppob-payment-methods button span::before,.ppob-detail-active .ppob-payment-methods button span::after{content:none!important;display:none!important}
-.ppob-detail-active .ppob-payment-methods button span{background:transparent!important}
-
-/* Apply the flat-surface rule to every payment method, including QRIS. */
-.ppob-detail-active .ppob-payment-methods button > *,
-.ppob-detail-active .ppob-payment-methods button > * > *{
-  background:transparent!important;
-  border:0!important;
-  border-radius:0!important;
-  box-shadow:none!important;
-  background-image:none!important;
-}
-.ppob-detail-active .ppob-payment-methods button > .ppob-method-copy{display:grid!important;padding:0!important}
-.ppob-detail-active .ppob-payment-methods button > i{background:transparent!important;padding:0!important;border-radius:0!important}
-/* No visual shell around the summary content; only the summary card owns the surface. */
-.ppob-detail-active .ppob-order-summary .ppob-review-list,
-.ppob-detail-active .ppob-order-summary .ppob-review-list span{background:transparent!important;box-shadow:none!important}
-
-/* One surface for the payment heading and QRIS explanation; never card the title alone. */
-.ppob-detail-active .ppob-payment-heading > div,
-.ppob-detail-active .ppob-payment-heading > strong,
-.ppob-detail-active .ppob-payment-heading > small,
-.ppob-detail-active .ppob-qris-note > strong,
-.ppob-detail-active .ppob-qris-note > small{
-  background:transparent!important;
-  border:0!important;
-  border-radius:0!important;
-  box-shadow:none!important;
-  background-image:none!important;
-}
-.ppob-detail-active .ppob-payment-heading,
-.ppob-detail-active .ppob-qris-note{
-  background-clip:padding-box!important;
-}
-.ppob-detail-active .ppob-qris-note{box-shadow:none!important}
+/* Canonical customer checkout parity: the payment step mirrors apps/customer exactly. */
+.ppob-detail-active{padding:10px 14px calc(112px + env(safe-area-inset-bottom))!important;background:#f7f8fa!important;color:#172033}
+.ppob-detail-active>.ppob-page-card{max-width:620px!important;margin:0 auto!important;padding:0!important;background:transparent!important}
+.ppob-detail-active>.ppob-page-card>.ppob-selection{display:flex!important;flex-direction:column!important;align-items:stretch!important;width:100%!important;max-width:none!important;margin:0!important;padding:8px 2px!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;gap:8px!important}
+.ppob-detail-active .ppob-step-back{order:0!important;width:auto!important;min-height:36px!important;margin:0 2px!important;padding:4px 0!important;border:0!important;background:transparent!important;color:#56627a!important;text-align:left!important;font-size:12px!important;font-weight:700!important}
+.ppob-customer-checkout-header{order:1;display:flex;align-items:center;gap:10px;padding:16px;border:1px solid #edf0f5;border-radius:24px;background:#fff;box-shadow:0 5px 18px rgba(19,38,75,.045)}
+.ppob-customer-checkout-icon{display:grid;place-items:center;width:32px;height:32px;flex:0 0 32px;border-radius:10px;background:#1a5dc614;color:#1a5dc6}
+.ppob-customer-checkout-header p{margin:0;color:#1a5dc6b3;font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+.ppob-customer-checkout-header h2{margin:3px 0 0;font-size:15px;line-height:1.25;color:#172033}
+.ppob-detail-active .ppob-checkout-card{order:2;display:grid!important;gap:8px!important;width:100%!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+.ppob-detail-active .ppob-customer-payment-card{margin:0!important;padding:16px!important;border:1px solid #edf0f5!important;border-radius:24px!important;background:#fff!important;box-shadow:0 5px 18px rgba(19,38,75,.045)!important}
+.ppob-customer-section-heading{display:flex;align-items:center;gap:6px;margin:0 0 10px;color:#172033}
+.ppob-customer-section-heading svg{color:#1a5dc6}
+.ppob-customer-section-heading h3{margin:0;font-size:14px;font-weight:800}
+.ppob-customer-payment-methods{display:grid;gap:6px;margin:0!important}
+.ppob-customer-payment-option{border:1px solid #edf0f5;border-radius:10px;background:#fff;transition:border-color .16s ease,background .16s ease,box-shadow .16s ease}
+.ppob-customer-payment-option.is-selected{border-color:#1a5dc6;background:#1a5dc60d;box-shadow:0 1px 4px rgba(15,23,42,.04)}
+.ppob-customer-payment-option.is-insufficient{border-color:#f1d9a3;background:#fff9eb}
+.ppob-customer-payment-option>button{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;width:100%;min-height:44px;padding:10px;border:0;background:transparent;color:#172033;text-align:left;cursor:pointer}
+.ppob-customer-payment-option>button:disabled{cursor:not-allowed;opacity:.8}
+.ppob-customer-payment-option>button span{display:grid;gap:2px;min-width:0}
+.ppob-customer-payment-option>button strong{font-size:12px;line-height:1.2}
+.ppob-customer-payment-option>button small{color:#68758a;font-size:10px;line-height:1.35}
+.ppob-customer-payment-option>button i{flex:0 0 auto;margin-top:1px;color:#1a5dc6;font-size:15px;font-style:normal;line-height:1}
+.ppob-customer-insufficient-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-top:1px solid #f1d9a3}
+.ppob-customer-insufficient-row p{margin:0;color:#8a5a00;font-size:10px;font-weight:600;line-height:1.35}
+.ppob-customer-insufficient-row button{flex:0 0 auto;padding:6px 10px;border:0;border-radius:8px;background:#b7791f;color:#fff;font-size:10px;font-weight:800;cursor:pointer}
+.ppob-detail-active .ppob-customer-order-summary{margin:0!important;padding:16px!important;border:1px solid #edf0f5!important;border-radius:24px!important;background:#fff!important;box-shadow:0 5px 18px rgba(19,38,75,.045)!important}
+.ppob-customer-order-summary h3{margin:0 0 6px;font-size:14px;color:#172033}
+.ppob-customer-summary-rows{display:grid}
+.ppob-customer-summary-rows>div{display:flex;justify-content:space-between;gap:12px;min-height:30px;padding:7px 0;border-bottom:1px solid #eef1f5;font-size:11px}
+.ppob-customer-summary-rows>div:last-child{border-bottom:0}
+.ppob-customer-summary-rows span{color:#7d8798}
+.ppob-customer-summary-rows strong{max-width:64%;overflow-wrap:anywhere;color:#172033;text-align:right;font-size:11px}
+.ppob-customer-summary-rows .is-total{padding-top:9px;font-size:12px}
+.ppob-customer-summary-rows .is-total strong{color:#1a5dc6;font-size:15px}
+.ppob-detail-active .ppob-customer-wallet-balance{display:flex;align-items:center;justify-content:space-between;min-height:44px;margin:0!important;padding:10px 12px!important;border:1px solid #edf0f5;border-radius:16px;background:#fff;box-shadow:0 5px 18px rgba(19,38,75,.045);color:#7d8798;font-size:11px}
+.ppob-detail-active .ppob-customer-wallet-balance b{color:#172033;font-size:12px}
+.ppob-detail-active .djiwa-payment-notice{margin:0!important;border-radius:16px!important;box-shadow:0 5px 18px rgba(19,38,75,.045)!important}
+.ppob-detail-active .ppob-customer-reward-note{margin:0!important;padding:9px 12px;border:1px solid #edf0f5;border-radius:14px;background:#fff;box-shadow:0 5px 18px rgba(19,38,75,.045);color:#68758a;font-size:10px;font-weight:600;line-height:1.4}
+.ppob-detail-active .ppob-customer-action-bar{display:block!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important}
+.ppob-detail-active .ppob-customer-action-bar .ppob-pay-button{width:100%!important;min-height:46px!important;margin:0!important;border:0!important;border-radius:14px!important;background:#1a5dc6!important;color:#fff!important;font-size:12px!important;font-weight:800!important;box-shadow:0 5px 12px rgba(26,93,198,.2)!important}
+.ppob-detail-active .ppob-customer-action-bar .ppob-pay-button:disabled{opacity:.6}
+.ppob-detail-active>.ppob-page-card>.ppob-selection>.ppob-text-button{order:3;width:100%!important;min-height:44px!important;margin:0!important;border:1px solid #edf0f5!important;border-radius:14px!important;background:#fff!important;color:#172033!important;font-size:12px!important;font-weight:800!important}
+.ppob-detail-active .ppob-payment-message{margin:0!important;padding:10px 12px;border-radius:14px;background:#fff4f4;color:#8b2c2c;font-size:11px;line-height:1.4}
+@media(max-width:420px){.ppob-detail-active{padding-left:12px!important;padding-right:12px!important}.ppob-customer-checkout-header,.ppob-detail-active .ppob-customer-payment-card,.ppob-detail-active .ppob-customer-order-summary{border-radius:20px!important;padding:14px!important}.ppob-customer-checkout-header h2{font-size:14px}}
