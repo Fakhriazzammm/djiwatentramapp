@@ -26,3 +26,11 @@ export async function purchasePpob(productCode: string, customerNumber: string):
   if (!response.ok && !payload.error) throw new Error("Pembayaran PPOB gagal diproses");
   return payload;
 }
+
+export type PpobInvoiceResult = { success: boolean; invoiceUrl?: string; invoiceId?: string; error?: string };
+export async function createPpobInvoice(productCode: string, customerNumber: string): Promise<PpobInvoiceResult> {
+  const response = await fetch("/api/pay-bridge/ppob/invoice", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productCode, customerNumber }) });
+  const payload = await response.json().catch(() => ({})) as PpobInvoiceResult;
+  if (!response.ok || !payload.success || !payload.invoiceUrl) throw new Error(payload.error || "Invoice QRIS belum dapat dibuat");
+  return payload;
+}
