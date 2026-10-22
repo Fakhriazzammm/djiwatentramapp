@@ -75,7 +75,7 @@ export function CheckoutSection({ children, className = "", as = "section", labe
 }
 
 export function PaymentMethodCard({ label = "", description = "", selected = false, onSelect = () => undefined, icon, disabled = false, disabledDescription, className = "", children }: PaymentMethodCardProps) {
-  if (children) return <>{children}</>;
+  if (children) return className ? <div className={className}>{children}</div> : <>{children}</>;
   return (
     <button
       type="button"
@@ -113,7 +113,8 @@ export function PaymentNotice({ title, children, tone = "info", className = "" }
 }
 
 export function CheckoutActionBar({ backLabel = "Kembali", primaryLabel, busyLabel = "Memproses...", onBack, onPrimary, primaryDisabled = false, busy = false, className = "", children }: CheckoutActionBarProps) {
-  if (children) return <>{children}</>;
+  // Callers that pass a className own the row layout; keep the wrapper only then.
+  if (children) return className ? <div className={className}>{children}</div> : <>{children}</>;
   return (
     <div className={`djiwa-checkout-actions ${className}`.trim()}>
       {onBack ? <button type="button" className="djiwa-checkout-back" onClick={onBack}>{backLabel}</button> : null}

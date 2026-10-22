@@ -143,7 +143,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
                   <div className={ppobPaymentMethod === "wallet" && (wallet?.wallet.available_balance ?? 0) >= selectedPpobProduct.product_price ? "ppob-customer-payment-option is-selected" : (wallet?.wallet.available_balance ?? 0) < selectedPpobProduct.product_price ? "ppob-customer-payment-option is-insufficient" : "ppob-customer-payment-option"}>
                     <button type="button" role="radio" aria-checked={ppobPaymentMethod === "wallet" && (wallet?.wallet.available_balance ?? 0) >= selectedPpobProduct.product_price} aria-disabled={(wallet?.wallet.available_balance ?? 0) < selectedPpobProduct.product_price} disabled={(wallet?.wallet.available_balance ?? 0) < selectedPpobProduct.product_price} onClick={() => setPpobPaymentMethod("wallet")}>
                       <span><strong>Djiwa Pay</strong><small>{(wallet?.wallet.available_balance ?? 0) < selectedPpobProduct.product_price ? `Saldo tersedia ${money(wallet?.wallet.available_balance ?? 0)}, masih kurang ${money(selectedPpobProduct.product_price - (wallet?.wallet.available_balance ?? 0))}.` : "Bayar langsung dari saldo Djiwa Pay"}</small></span>
-                      <i aria-hidden="true">{ppobPaymentMethod === "wallet" && (wallet?.wallet.available_balance ?? 0) >= selectedPpobProduct.product_price ? "●" : "○"}</i>
+                      <span aria-hidden="true" className={`ppob-customer-radio${ppobPaymentMethod === "wallet" && (wallet?.wallet.available_balance ?? 0) >= selectedPpobProduct.product_price ? " is-checked" : ""}`}>{ppobPaymentMethod === "wallet" && (wallet?.wallet.available_balance ?? 0) >= selectedPpobProduct.product_price ? <span className="ppob-customer-radio-dot" /> : null}</span>
                     </button>
                     {(wallet?.wallet.available_balance ?? 0) < selectedPpobProduct.product_price ? <div className="ppob-customer-insufficient-row"><p>Isi saldo Djiwa Pay dulu sebelum menggunakan metode ini.</p><button type="button" onClick={() => { setPpobOpen(false); setTopupOpen(true); }}>Top up</button></div> : null}
                   </div>
@@ -152,7 +152,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
                   <div className={ppobPaymentMethod === "mayar" ? "ppob-customer-payment-option is-selected" : "ppob-customer-payment-option"}>
                     <button type="button" role="radio" aria-checked={ppobPaymentMethod === "mayar"} onClick={() => setPpobPaymentMethod("mayar")}>
                       <span><strong>QRIS</strong><small>Bayar cepat dan cashierless dengan QRIS</small></span>
-                      <i aria-hidden="true">{ppobPaymentMethod === "mayar" ? "●" : "○"}</i>
+                      <span aria-hidden="true" className={`ppob-customer-radio${ppobPaymentMethod === "mayar" ? " is-checked" : ""}`}>{ppobPaymentMethod === "mayar" ? <span className="ppob-customer-radio-dot" /> : null}</span>
                     </button>
                   </div>
                 </PaymentMethodCard>
@@ -169,7 +169,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
               <div className={`ppob-reward-note ppob-customer-reward-note ${ppobPaymentMethod === "wallet" ? "is-wallet" : ""}`}>{ppobPaymentMethod === "wallet" ? "Bayar dengan Djiwa Pay dan dapatkan saldo Djiwa Pay +Rp1.000 setelah transaksi berhasil." : "Reward +Rp1.000 saldo Djiwa Pay diberikan setelah transaksi berhasil."}</div>
               <CheckoutActionBar className="ppob-customer-action-bar">
                 <button type="button" className="ppob-checkout-back" onClick={() => { setPpobReviewOpen(false); goPpobRoute(ppobProductRoute("detail")); }}>← Kembali</button>
-                <button type="button" className="primary-action ppob-pay-button" onClick={payPpob} disabled={ppobPaymentBusy || (ppobPaymentMethod === "wallet" && (wallet?.wallet.available_balance ?? 0) < selectedPpobProduct.product_price)}>{ppobPaymentBusy ? (ppobPaymentMethod === "mayar" ? "Menyiapkan QRIS..." : "Memproses...") : ppobPaymentMethod === "mayar" ? `Bayar dengan QRIS · ${money(selectedPpobProduct.product_price)}` : `Bayar ${money(selectedPpobProduct.product_price)}`}</button>
+                <button type="button" className="primary-action ppob-pay-button" onClick={payPpob} disabled={ppobPaymentBusy || (ppobPaymentMethod === "wallet" && (wallet?.wallet.available_balance ?? 0) < selectedPpobProduct.product_price)}>{ppobPaymentBusy ? "Memproses..." : `Bayar ${money(selectedPpobProduct.product_price)}`}</button>
               </CheckoutActionBar>
             </OrderSummary>
           </div>
