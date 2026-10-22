@@ -284,9 +284,10 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     return () => window.clearInterval(timer);
   }, [ppobInvoiceId, ppobPaymentStatus, ppobPaymentBusy]);
   const openPpob = (key: string, label: string) => {
-    const providerType = key === "game" ? "game" : key === "pln-token" ? "pln" : key;
-    if (["pulsa", "data", "game", "pln-token"].includes(key)) { setPpobFilter(providerType); setPpobOpen(true); goPpobRoute(`/ppob/${encodeURIComponent(providerType)}`); return; }
-    setSoon(`${label} membutuhkan flow tagihan/inquiry IAK dan sedang disiapkan.`);
+    const providerType = key === "game" ? "game" : ["pln-token", "pln-bill"].includes(key) ? "pln" : key;
+    setPpobFilter(providerType);
+    setPpobOpen(true);
+    goPpobRoute(`/ppob/${encodeURIComponent(providerType)}`);
   };
   const operatorName = (product: PpobProduct) => { const source = `${product.product_description} ${product.product_code} ${product.icon_url}`.toLowerCase(); if (source.includes("axis")) return "AXIS"; if (source.includes("indosat") || source.includes("isat")) return "Indosat"; if (source.includes("byu") || source.includes("by.u")) return "by.U"; if (source.includes("telkomsel") || source.includes("tsel")) return "Telkomsel"; if (source.includes("tri") || source.includes("three")) return "Tri"; if (source.includes("smartfren")) return "Smartfren"; return "Lainnya"; };
   const ppobOperatorProducts = (ppobCatalog ?? []).filter((product) => product.product_type.toLowerCase() === ppobFilter);
