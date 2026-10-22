@@ -4,6 +4,12 @@ export const authClient = createAuthClient({ baseURL: "https://api.djiwatentram.
 export type CustomerProfile = { source_id: string; name: string | null; email: string | null; wallet_status?: "active" | "blocked" };
 const BRIDGE_START = "https://api.djiwatentram.web.id/api/customer/pay-bridge/start";
 const CUSTOMER_AUTH_ORIGIN = "https://djiwatentram.web.id/masuk";
+export type PayNavigationContext = { source: "customer"; username: string } | null;
+export function getPayNavigationContext(): PayNavigationContext {
+  const params = new URLSearchParams(window.location.search);
+  const username = params.get("username");
+  return params.get("source") === "customer" && username ? { source: "customer", username } : null;
+}
 
 async function exchangeBridgeToken(): Promise<CustomerProfile | null> {
   const token = new URLSearchParams(window.location.search).get("bridgeToken");
