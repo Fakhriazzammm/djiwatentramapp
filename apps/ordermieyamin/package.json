@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prebuild": "node ../../scripts/verify-checkout-standard.mjs",
     "dev": "vite dev",
     "build": "node ../../scripts/update-version.mjs && node ../../scripts/write-version-manifest.mjs && vite build",
     "serve": "vite preview",
@@ -17,6 +18,7 @@
     "@tanstack/react-router": "^1.141.1",
     "@yumipos/env": "workspace:*",
     "@yumipos/web-shared": "workspace:*",
+    "@yumipos/djiwa-checkout-ui": "workspace:*",
     "better-auth": "^1.6.23",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

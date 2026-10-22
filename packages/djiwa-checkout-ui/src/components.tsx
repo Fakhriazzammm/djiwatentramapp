@@ -29,10 +29,11 @@ export type PaymentMethodCardProps = {
 export type SummaryRow = { label: string; value: ReactNode };
 
 export type OrderSummaryProps = {
-  rows: readonly SummaryRow[];
+  rows?: readonly SummaryRow[];
   total?: SummaryRow;
   title?: string;
   className?: string;
+  children?: ReactNode;
 };
 
 export type PaymentNoticeProps = SurfaceProps & {
@@ -92,7 +93,7 @@ export function PaymentMethodCard({ label, description, selected, onSelect, icon
   );
 }
 
-export function OrderSummary({ rows, total, title = "Ringkasan pembayaran", className = "" }: OrderSummaryProps) {
+export function OrderSummary({ rows = [], total, title = "Ringkasan pembayaran", className = "", children }: OrderSummaryProps) {
   return (
     <section className={`djiwa-order-summary ${className}`.trim()} aria-label={title}>
       <h2>{title}</h2>
@@ -100,6 +101,7 @@ export function OrderSummary({ rows, total, title = "Ringkasan pembayaran", clas
         {rows.map((row) => <div className="djiwa-order-summary-row" key={row.label}><span>{row.label}</span><strong>{row.value}</strong></div>)}
         {total ? <div className="djiwa-order-summary-row is-total" key={total.label}><span>{total.label}</span><strong>{total.value}</strong></div> : null}
       </div>
+      {children}
     </section>
   );
 }

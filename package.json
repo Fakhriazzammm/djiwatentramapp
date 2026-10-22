@@ -31,6 +31,7 @@
     "dev:customer": "turbo dev --filter=@yumipos/customer",
     "dev:karyawan": "turbo dev --filter=@yumipos/karyawan",
     "check-types": "turbo check-types",
+    "check:checkout-standard": "node scripts/verify-checkout-standard.mjs",
     "dev:native": "turbo -F native dev",
     "dev:web": "turbo -F web dev",
     "dev:server": "turbo -F @yumipos/backend dev",
