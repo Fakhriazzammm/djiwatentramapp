@@ -12,10 +12,11 @@ type Props = {
   balance: number;
   onClose: () => void;
   onSuccess: () => void;
+  initialRecipient?: string;
 };
 
-export function DjiwaPayWalletAction({ mode, profile, balance, onClose, onSuccess }: Props) {
-  const [recipient, setRecipient] = useState("");
+export function DjiwaPayWalletAction({ mode, profile, balance, onClose, onSuccess, initialRecipient = "" }: Props) {
+  const [recipient, setRecipient] = useState(initialRecipient);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
