@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowDownLeft, ArrowUpRight, Bell, Car, CreditCard, Droplets, Eye, EyeOff, Gamepad2, HeartPulse, HelpCircle, House, ReceiptText, RefreshCw, ScanLine, Smartphone, Tv, UserRound, Wallet, Wifi, X, Zap } from "lucide-react";
-import { createPpobInvoice, purchasePpob, readPpobCatalog, type PpobProduct, type WalletResponse } from "../../lib/wallet-adapter";
+import { checkPpobStatus, createPpobInvoice, purchasePpob, readPpobCatalog, type PpobProduct, type PpobPurchaseResult, type WalletResponse } from "../../lib/wallet-adapter";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import type { CustomerProfile, PayNavigationContext } from "../../lib/identity-adapter";
 import { CheckoutActionBar, CheckoutSection, OrderSummary, PaymentMethodCard } from "@yumipos/djiwa-checkout-ui";
@@ -57,6 +57,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   const [ppobPaymentStatus, setPpobPaymentStatus] = useState<"idle" | "pending" | "failed">("idle");
   const [ppobReviewOpen, setPpobReviewOpen] = useState(false);
   const [ppobPaymentMethod, setPpobPaymentMethod] = useState<"wallet" | "mayar">("wallet");
+  const [ppobInvoiceId, setPpobInvoiceId] = useState<string | null>(null);
   const [ppobSuccess, setPpobSuccess] = useState<{ product: PpobProduct; number: string; serialNumber?: string; reference?: string } | null>(null);
   const [ppobCatalog, setPpobCatalog] = useState<PpobProduct[] | null>(null);
   const [ppobCatalogLoading, setPpobCatalogLoading] = useState(false);
@@ -79,6 +80,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
         setPpobFilter(draft.category);
         setPpobCustomerNumber(draft.customerNumber);
         setPpobPaymentMethod(draft.paymentMethod);
+        setPpobInvoiceId(draft.invoiceId ?? null);
         setReturnToPpob(draft.returnTo);
         setTopupStage("payment");
         setTopupPending(true);
@@ -87,6 +89,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
         setPpobFilter(draft.category);
         setPpobCustomerNumber(draft.customerNumber);
         setPpobPaymentMethod(draft.paymentMethod);
+        setPpobInvoiceId(draft.invoiceId ?? null);
         setPpobOpen(true);
         setPpobReviewOpen(draft.returnTo.endsWith("/konfirmasi"));
         setPpobPaymentStatus(draft.pending ? "pending" : "idle");
@@ -165,21 +168,35 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   }, [ppobReviewOpen, selectedPpobProduct?.product_code, selectedPpobProduct?.product_price, wallet?.wallet.available_balance]);
   const payPpob = async () => {
     if (!selectedPpobProduct || !validateCustomerNumber(ppobCustomerNumber).valid) { setPpobPaymentStatus("failed"); setPpobPaymentMessage(validateCustomerNumber(ppobCustomerNumber).message); return; }
-    saveDraft({ kind: "ppob", productCode: selectedPpobProduct.product_code, category: ppobFilter, customerNumber: ppobCustomerNumber, amount: selectedPpobProduct.product_price, pending: ppobPaymentMethod === "mayar", paymentMethod: ppobPaymentMethod, returnTo: ppobProductRoute("konfirmasi") });
+    saveDraft({ kind: "ppob", productCode: selectedPpobProduct.product_code, category: ppobFilter, customerNumber: ppobCustomerNumber, amount: selectedPpobProduct.product_price, pending: ppobPaymentMethod === "mayar", invoiceId: ppobPaymentMethod === "mayar" ? ppobInvoiceId ?? undefined : undefined, paymentMethod: ppobPaymentMethod, returnTo: ppobProductRoute("konfirmasi") });
     setPpobPaymentBusy(true); setPpobPaymentStatus("idle"); setPpobPaymentMessage(null);
     try {
       if (ppobPaymentMethod === "mayar") {
         setPpobPaymentStatus("pending");
         setPpobPaymentMessage("Invoice QRIS dibuat. Selesaikan pembayaran di halaman provider.");
         const invoice = await createPpobInvoice(selectedPpobProduct.product_code, ppobCustomerNumber);
+        setPpobInvoiceId(invoice.invoiceId ?? null);
+        saveDraft({ kind: "ppob", productCode: selectedPpobProduct.product_code, category: ppobFilter, customerNumber: ppobCustomerNumber, amount: selectedPpobProduct.product_price, pending: true, invoiceId: invoice.invoiceId, paymentMethod: ppobPaymentMethod, returnTo: ppobProductRoute("konfirmasi") });
         window.location.assign(invoice.invoiceUrl!);
         return;
       }
       const result = await purchasePpob(selectedPpobProduct.product_code, ppobCustomerNumber);
-      setPpobPaymentStatus(result.status === "pending" ? "pending" : result.status === "success" ? "idle" : "failed");
-      setPpobPaymentMessage(result.status === "success" ? `Pembayaran berhasil. ${result.serialNumber ? `SN: ${result.serialNumber}` : ""}` : result.status === "pending" ? `Transaksi sedang diproses. Ref: ${result.refId}` : (result.error || "Pembayaran gagal."));
-      if (isSettledPpob(result)) { clearDraft(); goPpobRoute(ppobProductRoute("struk")); setPpobSuccess({ product: selectedPpobProduct, number: ppobCustomerNumber, serialNumber: result.serialNumber ?? undefined, reference: result.refId ?? undefined }); setSelectedPpobProduct(null); setPpobCustomerNumber(""); onRefresh(); }
+      applyPpobResult(result);
     } catch (cause) { if (ppobPaymentMethod === "mayar") clearDraft(); setPpobPaymentStatus("failed"); setPpobPaymentMessage(cause instanceof Error ? cause.message : "Pembayaran gagal diproses."); }
+    finally { setPpobPaymentBusy(false); }
+  };
+  const applyPpobResult = (result: PpobPurchaseResult) => {
+    setPpobPaymentStatus(result.status === "pending" ? "pending" : result.status === "success" ? "idle" : "failed");
+    setPpobPaymentMessage(result.status === "success" ? `Pembayaran berhasil.${result.serialNumber ? ` SN: ${result.serialNumber}` : ""}` : result.status === "pending" ? `Transaksi sedang diproses.${result.refId ? ` Ref: ${result.refId}` : ""}` : (result.error || "Pembayaran gagal."));
+    if (selectedPpobProduct && isSettledPpob(result)) {
+      clearDraft(); setPpobInvoiceId(null); goPpobRoute(ppobProductRoute("struk")); setPpobSuccess({ product: selectedPpobProduct, number: ppobCustomerNumber, serialNumber: result.serialNumber ?? undefined, reference: result.refId ?? undefined }); setSelectedPpobProduct(null); setPpobCustomerNumber(""); onRefresh();
+    }
+  };
+  const refreshPpobPayment = async () => {
+    if (!ppobInvoiceId || ppobPaymentBusy) { onRefresh(); return; }
+    setPpobPaymentBusy(true); setPpobPaymentMessage(null);
+    try { applyPpobResult(await checkPpobStatus(ppobInvoiceId)); }
+    catch (cause) { setPpobPaymentStatus("failed"); setPpobPaymentMessage(cause instanceof Error ? cause.message : "Status pembayaran belum dapat diperiksa."); }
     finally { setPpobPaymentBusy(false); }
   };
   const openPpob = (key: string, label: string) => {
@@ -195,7 +212,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   const ppobValidation = validateCustomerNumber(ppobCustomerNumber);
   const ppobBalance = wallet?.wallet.available_balance ?? 0;
   const ppobPaymentNotice = ppobPaymentStatus === "pending" && ppobPaymentMessage
-    ? <div className="djiwa-payment-notice is-warning" role="status"><strong>Transaksi masih diproses</strong><small>{ppobPaymentMessage} Jangan kirim ulang sampai status provider berubah.</small><button type="button" className="djiwa-payment-notice-action" onClick={onRefresh}>Perbarui saldo</button></div>
+    ? <div className="djiwa-payment-notice is-warning" role="status"><strong>Transaksi masih diproses</strong><small>{ppobPaymentMessage} Jangan kirim ulang sampai status provider berubah.</small><button type="button" className="djiwa-payment-notice-action" onClick={() => void refreshPpobPayment()} disabled={ppobPaymentBusy}>{ppobPaymentBusy ? "Memeriksa..." : ppobInvoiceId ? "Periksa status" : "Perbarui saldo"}</button></div>
     : ppobReviewOpen && selectedPpobProduct && ppobPaymentMethod === "mayar" && ppobBalance < selectedPpobProduct.product_price
       ? <div className="djiwa-payment-notice is-info" role="status"><strong>QRIS dipilih otomatis</strong><small>Saldo Djiwa Pay belum mencukupi, jadi pembayaran dialihkan ke QRIS.</small></div>
       : null;

@@ -60,6 +60,7 @@ describe("Djiwa Pay checkout presentation contract", () => {
       category: "pulsa",
       customerNumber: "081234567890",
       amount: 20000,
+      invoiceId: "inv_123",
       pending: true,
       paymentMethod: "mayar" as const,
       returnTo: "/ppob/pulsa/produk/TSEL5/konfirmasi",

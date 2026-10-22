@@ -791,13 +791,80 @@ app.post("/api/pay-bridge/ppob/invoice", async (c) => {
   const product = Array.isArray(products) ? products.find((item: any) => item?.product_code === productCode && item?.status === "active") : null;
   const amount = Math.round(Number(product?.product_price));
   if (!Number.isSafeInteger(amount) || amount <= 0) return privateJson({ success: false, error: "PRODUCT_UNAVAILABLE" }, 422);
-  const invoice = await fetch(MAYAR_PROXY_URL, { method: "POST", headers: { "Content-Type": "application/json", ...(SUPABASE_ANON_KEY ? { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } : {}) }, body: JSON.stringify({ action: "create-invoice", name: session.customer.name || "Customer Djiwa", email, mobile: session.customer.phone || MAYAR_DEFAULT_MOBILE, redirectUrl: `${PAY_BRIDGE_ORIGIN}/wallet?ppob=success`, description: `Pembelian PPOB ${productCode}`, items: [{ quantity: 1, rate: amount, description: `PPOB ${productCode} · ${customerNumber}` }], extraData: { ppob: true, productCode, customerNumber, sourceId } }) });
-  const payload = await invoice.json().catch(() => ({})) as any;
-  const data = payload?.data || {};
-  const link = data.link || data.paymentUrl || data.url;
-  if (!invoice.ok || !payload.success || !data.id || !link) return privateJson({ success: false, error: "INVOICE_FAILED" }, 502);
-  return privateJson({ success: true, invoiceId: String(data.id), invoiceUrl: String(link), amount, productCode, customerNumber });
+  const refId = `ppob_qris_${sourceId.slice(0, 12)}_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+  await pool.query(
+    "INSERT INTO pos.ppob_transactions(ref_id,status,product_code,customer_id,price,message,payload) VALUES($1,$2,$3,$4,$5,$6,$7)",
+    [refId, "1", productCode, customerNumber, amount, "Menunggu pembayaran QRIS", JSON.stringify({ source_id: sourceId, payment_status: "pending" })],
+  );
+  try {
+    const invoice = await fetch(MAYAR_PROXY_URL, { method: "POST", headers: { "Content-Type": "application/json", ...(SUPABASE_ANON_KEY ? { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } : {}) }, body: JSON.stringify({ action: "create-invoice", name: session.customer.name || "Customer Djiwa", email, mobile: session.customer.phone || MAYAR_DEFAULT_MOBILE, redirectUrl: `${PAY_BRIDGE_ORIGIN}/wallet?ppob=success`, description: `Pembelian PPOB ${productCode}`, items: [{ quantity: 1, rate: amount, description: `PPOB ${productCode} · ${customerNumber}` }], extraData: { ppob: true, ppobRefId: refId, productCode, customerNumber, sourceId } }) });
+    const payload = await invoice.json().catch(() => ({})) as any;
+    const data = payload?.data || {};
+    const link = data.link || data.paymentUrl || data.url;
+    if (!invoice.ok || !payload.success || !data.id || !link) throw new Error("INVOICE_FAILED");
+    const invoiceId = String(data.id);
+    await pool.query("UPDATE pos.ppob_transactions SET payload = payload || $1::jsonb, message=$2, updated_at=now() WHERE ref_id=$3", [JSON.stringify({ invoice_id: invoiceId, invoice_url: String(link) }), "Menunggu pembayaran QRIS", refId]);
+    return privateJson({ success: true, invoiceId, invoiceUrl: String(link), refId, amount, productCode, customerNumber });
+  } catch {
+    await pool.query("UPDATE pos.ppob_transactions SET status=$1,message=$2,updated_at=now() WHERE ref_id=$3", ["2", "Invoice QRIS tidak dapat dibuat", refId]).catch(() => undefined);
+    return privateJson({ success: false, error: "INVOICE_FAILED" }, 502);
+  }
 });
+
+app.post("/api/pay-bridge/ppob/status", async (c) => {
+  const session = await requirePaySession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const body = await c.req.json().catch(() => ({})) as { invoiceId?: unknown };
+  const invoiceId = typeof body.invoiceId === "string" ? body.invoiceId.trim() : "";
+  const sourceId = String(session.customer.source_id || "");
+  if (!sourceId || !invoiceId) return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+  const transaction = await pool.query<{ ref_id: string; status: string; product_code: string; customer_id: string; price: number; message: string | null; serial_number: string | null; payload: Record<string, unknown> }>(
+    "SELECT ref_id,status,product_code,customer_id,price,message,serial_number,payload FROM pos.ppob_transactions WHERE payload->>'source_id' = $1 AND payload->>'invoice_id' = $2 ORDER BY created_at DESC LIMIT 1",
+    [sourceId, invoiceId],
+  );
+  const record = transaction.rows[0];
+  if (!record) return privateJson({ success: false, error: "PPOB_TRANSACTION_NOT_FOUND" }, 404);
+  if (record.status === "0") return privateJson({ success: true, status: "success", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), message: record.message, serialNumber: record.serial_number });
+  if (record.status === "2") return privateJson({ success: false, status: "failed", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), error: record.message || "Transaksi PPOB gagal" }, 200);
+  const invoiceResponse = await fetch(MAYAR_PROXY_URL, { method: "POST", headers: { "Content-Type": "application/json", ...(SUPABASE_ANON_KEY ? { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } : {}) }, body: JSON.stringify({ action: "get-invoice-detail", invoiceId }) });
+  const invoicePayload = await invoiceResponse.json().catch(() => ({})) as any;
+  const invoiceData = invoicePayload?.data || {};
+  const paymentStatus = String(invoiceData.status || "").toLowerCase();
+  if (!invoiceResponse.ok || !invoicePayload.success) return privateJson({ success: true, status: "pending", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), message: "Status pembayaran belum dapat diperbarui." });
+  if (!["paid", "success", "completed"].includes(paymentStatus)) {
+    if (["expired", "closed", "cancelled", "canceled", "void"].includes(paymentStatus)) {
+      await pool.query("UPDATE pos.ppob_transactions SET status=$1,message=$2,updated_at=now() WHERE ref_id=$3", ["2", `Invoice QRIS ${paymentStatus}`, record.ref_id]);
+      return privateJson({ success: false, status: "failed", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), error: `Invoice QRIS ${paymentStatus}` }, 200);
+    }
+    return privateJson({ success: true, status: "pending", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), message: "Pembayaran QRIS belum terkonfirmasi." });
+  }
+  const claim = await pool.query(
+    "UPDATE pos.ppob_transactions SET payload = payload || $1::jsonb, updated_at=now() WHERE ref_id=$2 AND status='1' AND COALESCE(payload->>'iak_requested','false') <> 'true' RETURNING ref_id",
+    [JSON.stringify({ payment_status: "paid", iak_requested: true }), record.ref_id],
+  );
+  if (claim.rowCount === 0) return privateJson({ success: true, status: "pending", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), message: "Pembayaran sudah diteruskan ke provider." });
+  let iakResponse: Response;
+  try {
+    iakResponse = await fetch("https://api.djiwatentram.web.id/api/ppob/iak/", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "top-up", ref_id: record.ref_id, customer_id: record.customer_id, product_code: record.product_code }) });
+  } catch {
+    await pool.query("UPDATE pos.ppob_transactions SET payload = payload || $1::jsonb, message=$2,updated_at=now() WHERE ref_id=$3", [JSON.stringify({ iak_requested: false }), "Provider PPOB belum dapat dihubungi", record.ref_id]);
+    return privateJson({ success: true, status: "pending", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), message: "Provider PPOB belum dapat dihubungi. Coba periksa status lagi." });
+  }
+  const iakPayload = await iakResponse.json().catch(() => ({})) as any;
+  const result = iakPayload?.data?.data ?? iakPayload?.data ?? {};
+  const providerStatus = String(result.status ?? "2");
+  if (providerStatus === "0") {
+    await pool.query("UPDATE pos.ppob_transactions SET status=$1,message=$2,serial_number=$3,response_code=$4,payload = payload || $5::jsonb,updated_at=now() WHERE ref_id=$6", ["0", result.message || "Transaksi PPOB berhasil", result.sn || null, result.rc || null, JSON.stringify({ payment_status: "paid" }), record.ref_id]);
+    return privateJson({ success: true, status: "success", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), message: result.message || "Transaksi PPOB berhasil", serialNumber: result.sn || null });
+  }
+  if (providerStatus === "1") {
+    await pool.query("UPDATE pos.ppob_transactions SET message=$1,payload = payload || $2::jsonb,updated_at=now() WHERE ref_id=$3", [result.message || "Transaksi sedang diproses", JSON.stringify({ payment_status: "paid" }), record.ref_id]);
+    return privateJson({ success: true, status: "pending", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), message: result.message || "Transaksi sedang diproses" });
+  }
+  await pool.query("UPDATE pos.ppob_transactions SET status=$1,message=$2,response_code=$3,payload = payload || $4::jsonb,updated_at=now() WHERE ref_id=$5", ["2", result.message || "Transaksi PPOB gagal", result.rc || null, JSON.stringify({ payment_status: "paid" }), record.ref_id]);
+  return privateJson({ success: false, status: "failed", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), error: result.message || "Transaksi PPOB gagal" }, 200);
+});
+
 app.post("/api/pay-bridge/ppob/purchase", async (c) => {
   const session = await requirePaySession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
