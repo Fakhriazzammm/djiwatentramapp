@@ -9,6 +9,7 @@ export type CheckoutDraft = {
   topupAmount?: number;
   invoiceId?: string;
   pending?: boolean;
+  receipt?: { serialNumber?: string; reference?: string };
   paymentMethod: PayPaymentMethod;
   returnTo: string;
 };
@@ -30,6 +31,7 @@ export function parseCheckoutDraft(value: string | null): CheckoutDraft | null {
       (parsed.topupAmount !== undefined && typeof parsed.topupAmount !== "number") ||
       (parsed.invoiceId !== undefined && typeof parsed.invoiceId !== "string") ||
       (parsed.pending !== undefined && typeof parsed.pending !== "boolean") ||
+      (parsed.receipt !== undefined && (!parsed.receipt || typeof parsed.receipt !== "object" || (parsed.receipt.serialNumber !== undefined && typeof parsed.receipt.serialNumber !== "string") || (parsed.receipt.reference !== undefined && typeof parsed.receipt.reference !== "string"))) ||
       (parsed.paymentMethod !== "wallet" && parsed.paymentMethod !== "mayar") ||
       typeof parsed.returnTo !== "string"
     ) return null;

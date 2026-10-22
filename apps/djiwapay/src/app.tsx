@@ -5,8 +5,14 @@ import { resolveIdentity, getPayNavigationContext, type CustomerProfile } from "
 import { readWallet } from "./lib/wallet-adapter";
 import { DjiwaPayAuth } from "./features/auth/djiwa-pay-auth";
 import { DjiwaPayScreen } from "./features/wallet/djiwa-pay-screen";
+import { isKnownPayPath } from "./lib/djiwa-pay-routes";
+
+function DjiwaPayNotFound() {
+  return <main className="pay-page"><section className="surface loading-state" role="alert"><span className="eyebrow">404 · DJIWA PAY</span><h1>Halaman tidak ditemukan</h1><p>Route yang Anda buka tidak tersedia.</p><a className="primary-action" href="/">Kembali ke Djiwa Pay</a></section></main>;
+}
 
 export function DjiwaPayApp() {
+  if (!isKnownPayPath(window.location.pathname)) return <DjiwaPayNotFound />;
   const navigationContext = getPayNavigationContext(); const [profile, setProfile] = useState<CustomerProfile | null>(null); const [wallet, setWallet] = useState<WalletResponse | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [busy, setBusy] = useState(false);
   const load = async () => { setLoading(true); setError(null); try { const next = await resolveIdentity(); setProfile(next); if (next) setWallet(await readWallet(next)); } catch (cause) { setError(cause instanceof Error ? cause.message : "Gagal memuat Djiwa Pay"); } finally { setLoading(false); } };
   useEffect(() => { void load(); }, []);
