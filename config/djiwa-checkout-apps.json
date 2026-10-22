@@ -1,0 +1,11 @@
+{
+  "standard": "djiwa-checkout-v1",
+  "customerCheckoutApps": [
+    "customer",
+    "b2b",
+    "merchandise",
+    "ordermieyamin",
+    "djiwapay"
+  ],
+  "operationalPaymentApps": ["admin", "pos"]
+}

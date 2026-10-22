@@ -1,0 +1,36 @@
+{
+  "name": "@yumipos/djiwapay",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prebuild": "node ../../scripts/verify-checkout-standard.mjs",
+    "dev": "vite dev",
+    "build": "vite build",
+    "serve": "vite preview",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@better-auth/infra": "^0.3.6",
+    "@supabase/supabase-js": "^2.103.3",
+    "@tailwindcss/vite": "^4.0.15",
+    "@yumipos/djiwa-checkout-ui": "workspace:*",
+    "@yumipos/djiwapay-core": "workspace:*",
+    "@yumipos/djiwapay-ui": "workspace:*",
+    "@yumipos/web-shared": "workspace:*",
+    "better-auth": "^1.6.23",
+    "framer-motion": "^12.23.24",
+    "lucide-react": "^0.473.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "tailwind-merge": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.0.15",
+    "typescript": "catalog:",
+    "vite": "^6.2.2"
+  }
+}
