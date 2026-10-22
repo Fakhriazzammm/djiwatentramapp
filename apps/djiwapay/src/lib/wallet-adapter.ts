@@ -14,6 +14,7 @@ export async function readPpobCatalog(): Promise<PpobProduct[]> {
   const response = await fetch("https://api.djiwatentram.web.id/api/ppob/iak/", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "price-list" }) });
   if (!response.ok) throw new Error("Katalog PPOB tidak dapat dimuat");
   const payload = await response.json() as { success?: boolean; data?: { data?: { pricelist?: PpobProduct[] } } };
-  if (!payload.success || !Array.isArray(payload.data?.data?.pricelist)) throw new Error("Format katalog PPOB tidak valid");
-  return payload.data.data.pricelist.filter((product) => product.status === "active");
+  const products = payload.data?.data?.pricelist;
+  if (!payload.success || !Array.isArray(products)) throw new Error("Format katalog PPOB tidak valid");
+  return products.filter((product) => product.status === "active");
 }
