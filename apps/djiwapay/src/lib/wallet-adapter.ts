@@ -1,4 +1,5 @@
 import type { WalletLedgerEntry, WalletSummary } from "@yumipos/djiwapay-core";
+import type { WalletWithdrawalDraft } from "./djiwa-pay-withdrawal";
 export type WalletResponse = { wallet: WalletSummary; ledger: WalletLedgerEntry[] };
 export type TopupStatusResponse = { status: "pending" | "success" | "expired"; message?: string; wallet?: WalletSummary; ledger?: WalletLedgerEntry[] };
 export type WalletTransferResult = { success: boolean; error?: string; transfer?: { transfer_id?: string; amount?: number; sender_balance?: number }; recipient?: { sourceId: string; name: string } };
@@ -56,5 +57,13 @@ export async function transferWallet(recipient: string, amount: number, note = "
   const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "transfer", recipient, amount, note, idempotencyKey: `djiwapay-transfer-${crypto.randomUUID()}` }) });
   const payload = await response.json().catch(() => ({})) as WalletTransferResult;
   if (!response.ok || !payload.success) throw new Error(payload.error || "Transfer saldo gagal diproses");
+  return payload;
+}
+
+export type WalletWithdrawalResult = { success: boolean; error?: string; message?: string; request?: { request_id?: string; status?: string; amount?: number; requested_balance?: number } };
+export async function requestWalletWithdrawal(draft: WalletWithdrawalDraft): Promise<WalletWithdrawalResult> {
+  const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "withdrawal-request", ...draft, idempotencyKey: `djiwapay-withdrawal-${crypto.randomUUID()}` }) });
+  const payload = await response.json().catch(() => ({})) as WalletWithdrawalResult;
+  if (!response.ok || !payload.success) throw new Error(payload.error || "WITHDRAWAL_REQUEST_FAILED");
   return payload;
 }
