@@ -1,6 +1,7 @@
 import type { WalletLedgerEntry, WalletSummary } from "@yumipos/djiwapay-core";
 export type WalletResponse = { wallet: WalletSummary; ledger: WalletLedgerEntry[] };
 export type TopupStatusResponse = { status: "pending" | "success" | "expired"; message?: string; wallet?: WalletSummary; ledger?: WalletLedgerEntry[] };
+export type WalletTransferResult = { success: boolean; error?: string; transfer?: { transfer_id?: string; amount?: number; sender_balance?: number }; recipient?: { sourceId: string; name: string } };
 export async function readWallet(_profile: { source_id: string }): Promise<WalletResponse> {
   const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "get" }) });
   if (response.status === 401) throw new Error("Sesi Djiwa Pay kedaluwarsa");
@@ -48,5 +49,12 @@ export async function checkTopupStatus(invoiceId: string): Promise<TopupStatusRe
   const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "topup-status", invoiceId }) });
   const payload = await response.json().catch(() => ({})) as TopupStatusResponse & { error?: string };
   if (!response.ok) throw new Error(payload.error || "Status top up belum dapat diperiksa");
+  return payload;
+}
+
+export async function transferWallet(recipient: string, amount: number, note = ""): Promise<WalletTransferResult> {
+  const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "transfer", recipient, amount, note, idempotencyKey: `djiwapay-transfer-${crypto.randomUUID()}` }) });
+  const payload = await response.json().catch(() => ({})) as WalletTransferResult;
+  if (!response.ok || !payload.success) throw new Error(payload.error || "Transfer saldo gagal diproses");
   return payload;
 }

@@ -909,7 +909,7 @@ app.post("/api/pay-bridge/ppob/purchase", async (c) => {
 app.post("/api/pay-bridge/wallet", async (c) => {
   const session = await requirePaySession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
-  const body = await c.req.json().catch(() => ({})) as { action?: unknown; amount?: unknown; invoiceId?: unknown };
+  const body = await c.req.json().catch(() => ({})) as { action?: unknown; amount?: unknown; invoiceId?: unknown; recipient?: unknown; note?: unknown; idempotencyKey?: unknown };
   const action = typeof body.action === "string" ? body.action : "get";
   const sourceId = String(session.customer.source_id || "");
   const email = String(session.customer.email || "");
@@ -918,6 +918,36 @@ app.post("/api/pay-bridge/wallet", async (c) => {
     const wallet = await pool.query("SELECT * FROM pos.customer_wallets WHERE customer_id = $1 LIMIT 1", [sourceId]);
     const ledger = await pool.query("SELECT * FROM pos.customer_wallet_ledger WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 100", [sourceId]);
     return privateJson({ success: true, wallet: wallet.rows[0] ?? null, ledger: ledger.rows });
+  }
+  if (action === "transfer") {
+    const recipient = typeof body.recipient === "string" ? body.recipient.trim() : "";
+    const amount = Number(body.amount);
+    const note = typeof body.note === "string" ? body.note.trim().slice(0, 120) : "";
+    if (!recipient || recipient.length > 160 || !Number.isSafeInteger(amount) || amount < 1000 || amount > 10_000_000) {
+      return privateJson({ success: false, error: "INVALID_TRANSFER" }, 400);
+    }
+    const recipientResult = await pool.query<{ source_id: string; name: string | null }>(
+      `SELECT source_id, name FROM pos.customers
+       WHERE is_active = true
+         AND (source_id = $1 OR lower(coalesce(email, '')) = lower($1)
+           OR regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') = regexp_replace($1, '[^0-9]', '', 'g')
+           OR lower(coalesce(username, '')) = lower($1))
+       LIMIT 1`,
+      [recipient],
+    );
+    const target = recipientResult.rows[0];
+    if (!target) return privateJson({ success: false, error: "RECIPIENT_NOT_FOUND" }, 404);
+    if (target.source_id === sourceId) return privateJson({ success: false, error: "SELF_TRANSFER" }, 400);
+    const idempotencyKey = typeof body.idempotencyKey === "string" && body.idempotencyKey.trim()
+      ? body.idempotencyKey.trim().slice(0, 180)
+      : `djiwapay-transfer-${sourceId}-${crypto.randomUUID()}`;
+    const transfer = await pool.query<{ result: Record<string, unknown> }>(
+      "SELECT pos.wallet_transfer($1,$2,$3,$4,$5) AS result",
+      [sourceId, target.source_id, amount, idempotencyKey, note || null],
+    );
+    const result = transfer.rows[0]?.result ?? {};
+    if (result.error === "INSUFFICIENT_BALANCE") return privateJson({ success: false, error: "INSUFFICIENT_BALANCE", availableBalance: result.available_balance, required: result.required }, 422);
+    return privateJson({ success: true, transfer: result, recipient: { sourceId: target.source_id, name: target.name || "Customer Djiwa" } });
   }
   if (action === "topup-status") {
     const invoiceId = typeof body.invoiceId === "string" ? body.invoiceId.trim() : "";
