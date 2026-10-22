@@ -8,6 +8,30 @@ const appsRoot = path.join(root, "apps");
 const packageName = "@yumipos/djiwa-checkout-ui";
 const failures = [];
 
+// Canonical FORMAT contract. These labels must never come back: the step header is rendered by the
+// shared CheckoutHeader (Langkah X dari N) and the Djiwa Pay rate is data, never a constant.
+const BANNED_PATTERNS = [
+  {
+    scope: "all",
+    re: /(?:>|["'`])\s*Step\s+\d+/,
+    why: 'English step label; render the shared CheckoutHeader instead ("Langkah X dari N")',
+  },
+  {
+    scope: "flow",
+    re: /Voucher Djiwa Pay \(/,
+    why: "hardcoded Djiwa Pay rate label; pass djiwaPayDiscountRate through",
+  },
+  {
+    scope: "flow",
+    re: /Djiwa Pay 50%/,
+    why: "hardcoded Djiwa Pay rate label; use the live djiwaPayDiscountPercent",
+  },
+];
+
+// where the canonical checkout format actually lives (marketing banners are out of scope)
+const FLOW_FILE = /(checkout-section|shared-components|receipt-section|shipping-section|delivery-step)\.tsx$|order\.lazy\.tsx$/;
+
+
 function walk(dir) {
   if (!fs.existsSync(dir)) return [];
   const files = [];
@@ -59,6 +83,18 @@ for (const app of config.customerCheckoutApps) {
     if (!checkoutFiles.length) failures.push(`${app}: missing checkout-section.tsx standard surface`);
     if (!importsShared(sourceText, "CheckoutPage")) failures.push(`${app}: checkout-section.tsx must use shared CheckoutPage`);
     if (!importsShared(sourceText, "PaymentMethodCard")) failures.push(`${app}: checkout-section.tsx must use shared PaymentMethodCard`);
+    if (!importsShared(sourceText, "CheckoutHeader")) failures.push(`${app}: checkout-section.tsx must use shared CheckoutHeader`);
+  }
+
+  // canonical format contract — checkout/order flow files must not regress
+  for (const file of state.sources) {
+    const inFlow = FLOW_FILE.test(file);
+    const text = fs.readFileSync(file, "utf8");
+    for (const { re, why, scope } of BANNED_PATTERNS) {
+      if (scope === "flow" && !inFlow) continue;
+      const found = text.match(re);
+      if (found) failures.push(`${app}: ${path.relative(root, file)} contains ${JSON.stringify(found[0].trim())} — ${why}`);
+    }
   }
 }
 
@@ -71,6 +107,19 @@ for (const entry of fs.readdirSync(appsRoot, { withFileTypes: true })) {
     return /Pilih pembayaran|renderCheckoutSection|djiwa-checkout|checkout-section\.tsx/.test(text);
   });
   if (hasCheckoutSignal) failures.push(`${entry.name}: checkout-like surface detected; register it in config/djiwa-checkout-apps.json and adopt ${packageName}`);
+}
+
+// the shared package must keep exporting the canonical surface every app is told to reuse
+const packageIndexPath = path.join(root, "packages", "djiwa-checkout-ui", "src", "index.ts");
+if (!fs.existsSync(packageIndexPath)) {
+  failures.push("packages/djiwa-checkout-ui: src/index.ts is missing");
+} else {
+  const packageIndex = fs.readFileSync(packageIndexPath, "utf8");
+  for (const symbol of ["CheckoutHeader", "CheckoutSummaryLines", "CustomerCheckout", "CheckoutSection"]) {
+    if (!new RegExp(`\\b${symbol}\\b`).test(packageIndex)) {
+      failures.push(`packages/djiwa-checkout-ui: index.ts must export ${symbol}`);
+    }
+  }
 }
 
 if (failures.length) {
