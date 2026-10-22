@@ -24,6 +24,8 @@ type PayCheckoutProps = {
   productId: string;
   customerNumber?: string;
   onCustomerNumberChange?: (value: string) => void;
+  recentCustomerNumbers?: string[];
+  onSelectCustomerNumber?: (value: string) => void;
   amountEditor?: ReactNode;
   paymentMethod: PayPaymentMethod;
   onPaymentMethodChange: (method: PayPaymentMethod) => void;
@@ -55,6 +57,8 @@ export function DjiwaPayCheckout({
   productId,
   customerNumber,
   onCustomerNumberChange,
+  recentCustomerNumbers = [],
+  onSelectCustomerNumber,
   amountEditor,
   paymentMethod,
   onPaymentMethodChange,
@@ -92,6 +96,7 @@ export function DjiwaPayCheckout({
           placeholder="08xxxxxxxxxx"
         />
         {fieldError ? <small className="djiwa-checkout-field-error" role="alert">{fieldError}</small> : null}
+        {recentCustomerNumbers.length ? <div className="djiwa-recent-numbers" aria-label="Nomor tujuan terakhir">{recentCustomerNumbers.map((number) => <button key={number} type="button" onClick={() => onSelectCustomerNumber?.(number)}>{number}</button>)}</div> : null}
       </CheckoutField>
     )
   ) : undefined;
