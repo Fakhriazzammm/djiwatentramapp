@@ -8,7 +8,7 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const username = Deno.env.get("IAK_USERNAME")?.trim() ?? "";
 const apiKey = Deno.env.get("IAK_API_KEY")?.trim() ?? "";
-const baseUrl = (Deno.env.get("IAK_BASE_URL")?.trim() || "https://prepaid.iak.id/api").replace(/\/$/, "");
+const baseUrl = (Deno.env.get("IAK_BASE_URL")?.trim() || "https://api.iak.id/api").replace(/\/$/, "");
 if (!supabaseUrl || !serviceRoleKey) throw new Error("Missing Supabase function secrets");
 const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
