@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { createHmac } from "node:crypto";
 
 const app = new Hono();
-const MAYAR_PROXY_URL = process.env.MAYAR_PROXY_URL || "https://supabase.yumme.id/functions/v1/mayar-proxy";
+const MAYAR_PROXY_URL = process.env.MAYAR_PROXY_URL || "https://supabase.djiwatentram.web.id/functions/v1/mayar-proxy";
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
 const MAYAR_DEFAULT_MOBILE = process.env.MAYAR_DEFAULT_MOBILE || "";
 const customerOrigins = [
@@ -68,7 +68,7 @@ app.use(
 app.use(
   "/api/coffee-passport/*",
   cors({
-    origin: ["https://500kopitasik.yumme.id", "http://localhost:3010"],
+    origin: ["https://kopitasik.djiwatentram.web.id", "http://localhost:3010"],
     allowHeaders: ["Accept", "Content-Type", "X-Request-Id"],
     allowMethods: ["GET", "POST", "OPTIONS"],
     credentials: true,
@@ -105,7 +105,7 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => {
 app.use(
   "/api/investor-auth/*",
   cors({
-    origin: ["https://investor.yumme.id", "http://localhost:5173", "http://localhost:5174", "http://localhost:3011"],
+    origin: ["https://investor.djiwatentram.web.id", "http://localhost:5173", "http://localhost:5174", "http://localhost:3011"],
     allowHeaders: ["Content-Type", "Authorization"],
     allowMethods: ["POST", "GET", "OPTIONS"],
     credentials: true,
@@ -114,7 +114,7 @@ app.use(
 app.use(
   "/api/investor/*",
   cors({
-    origin: ["https://investor.yumme.id", "http://localhost:5173", "http://localhost:5174", "http://localhost:3011"],
+    origin: ["https://investor.djiwatentram.web.id", "http://localhost:5173", "http://localhost:5174", "http://localhost:3011"],
     allowHeaders: ["Content-Type", "Authorization"],
     allowMethods: ["POST", "GET", "OPTIONS"],
     credentials: true,
@@ -126,7 +126,7 @@ registerInvestorPortalRoutes(app, investorAuth, pool);
 app.use(
   "/api/kol/*",
   cors({
-    origin: ["https://kolmarketing.yumme.id", "http://localhost:3010"],
+    origin: ["https://kol.djiwatentram.web.id", "http://localhost:3010"],
     allowHeaders: ["Accept", "Content-Type", "Authorization"],
     allowMethods: ["POST", "GET", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
@@ -189,8 +189,8 @@ registerKolPortalRoutes(app, auth, pool);
 // ── Better Auth KARYAWAN (staff) ──────────────────────────────────
 const RECRUITMENT_BRIDGE_SECRET = process.env.REKRUTMEN_AUTH_BRIDGE_SECRET || "";
 const staffOrigins = [
-  "https://karyawan.yumme.id",
-  "https://rekrutmen.yumme.id",
+  "https://karyawan.djiwatentram.web.id",
+  "https://rekrutmen.djiwatentram.web.id",
   "http://localhost:5173",
   "http://localhost:5174",
 ];
@@ -647,7 +647,7 @@ async function createListingInvoice(listingPaymentId: string, shopName: string, 
       action: "create-invoice",
       name: customer.name || "Pemilik coffee shop",
       email: customer.email,
-      redirectUrl: `https://500kopitasik.yumme.id/?listing_payment=${encodeURIComponent(listingPaymentId)}`,
+      redirectUrl: `https://kopitasik.djiwatentram.web.id/?listing_payment=${encodeURIComponent(listingPaymentId)}`,
       description: `Listing Coffee Shop 500 Kopi Tasik - ${shopName}`,
       mobile: customer.phone || MAYAR_DEFAULT_MOBILE,
       items: [{ quantity: 1, rate: 1000, description: `Listing Coffee Shop - ${shopName}` }],
@@ -673,7 +673,7 @@ async function createBidInvoice(entryId: string, shopName: string, amount: numbe
       name: customer.name || "Pemilik kedai",
       email: customer.email,
       mobile: MAYAR_DEFAULT_MOBILE,
-      redirectUrl: "https://500kopitasik.yumme.id",
+      redirectUrl: "https://kopitasik.djiwatentram.web.id",
       description: `Bid Rank ${shopName}`,
       items: [{ quantity: 1, rate: amount, description: `Bid Rank ${shopName}` }],
       extraData: { coffeePassportBidEntryId: entryId, shopName },
@@ -703,7 +703,6 @@ function privateJson(body: Record<string, unknown>, status = 200) {
     },
   });
 }
-
 
 const payBridgeTickets = new Map<string, { userId: string; expiresAt: number }>();
 const payBridgeSessions = new Map<string, { userId: string; expiresAt: number }>();
@@ -776,6 +775,43 @@ app.get("/api/pay-bridge/profile", async (c) => {
   return privateJson({ success: true, customer: session.customer });
 });
 
+app.post("/api/pay-bridge/ppob/purchase", async (c) => {
+  const session = await requirePaySession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const body = await c.req.json().catch(() => ({})) as { productCode?: unknown; customerNumber?: unknown };
+  const productCode = typeof body.productCode === "string" ? body.productCode.trim() : "";
+  const customerNumber = typeof body.customerNumber === "string" ? body.customerNumber.trim() : "";
+  const sourceId = String(session.customer.source_id || ""); const email = String(session.customer.email || "");
+  if (!sourceId || !email || !productCode || !/^[0-9]{8,20}$/.test(customerNumber)) return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+  const iakUrl = "https://api.djiwatentram.web.id/api/ppob/iak/";
+  const catalogResponse = await fetch(iakUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "price-list" }) });
+  const catalogPayload = await catalogResponse.json().catch(() => ({})) as any;
+  const products = catalogPayload?.data?.data?.pricelist;
+  const product = Array.isArray(products) ? products.find((item: any) => item?.product_code === productCode && item?.status === "active") : null;
+  const amount = Math.round(Number(product?.product_price));
+  if (!Number.isSafeInteger(amount) || amount <= 0) return privateJson({ success: false, error: "PRODUCT_UNAVAILABLE" }, 422);
+  const refId = `ppob_${sourceId.slice(0, 12)}_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+  const key = `ppob_${sourceId}_${productCode}_${customerNumber}`;
+  const hold = await pool.query("SELECT pos.wallet_create_hold($1,$2,$3,$4) AS result", [sourceId, refId, amount, key]);
+  const holdResult = hold.rows[0]?.result;
+  if (!holdResult?.ok) return privateJson({ success: false, error: holdResult?.error || "INSUFFICIENT_BALANCE", availableBalance: holdResult?.available_balance }, 422);
+  try {
+    const providerResponse = await fetch(iakUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "top-up", ref_id: refId, customer_id: customerNumber, product_code: productCode }) });
+    const provider = await providerResponse.json().catch(() => ({})) as any;
+    const result = provider?.data?.data ?? provider?.data ?? {};
+    const status = String(result.status ?? "2");
+    if (status === "0") {
+      await pool.query("SELECT pos.wallet_capture_hold($1,$2)", [holdResult.hold_id, `capture_${refId}`]);
+      return privateJson({ success: true, status: "success", refId, productCode, amount, message: result.message || "Transaksi PPOB berhasil", serialNumber: result.sn || null });
+    }
+    if (status === "1") return privateJson({ success: true, status: "pending", refId, productCode, amount, message: result.message || "Transaksi sedang diproses" });
+    await pool.query("SELECT pos.wallet_release_hold($1,$2,$3)", [holdResult.hold_id, `release_${refId}`, result.message || "Transaksi PPOB gagal"]);
+    return privateJson({ success: false, status: "failed", refId, error: result.message || "Transaksi PPOB gagal" }, 502);
+  } catch (error) {
+    await pool.query("SELECT pos.wallet_release_hold($1,$2,$3)", [holdResult.hold_id, `release_${refId}`, "Provider PPOB tidak tersedia"]);
+    return privateJson({ success: false, error: "PPOB_PROVIDER_UNAVAILABLE" }, 502);
+  }
+});
 app.post("/api/pay-bridge/wallet", async (c) => {
   const session = await requirePaySession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
