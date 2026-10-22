@@ -4,14 +4,14 @@ Dokumen ini adalah konteks operasional untuk agent dan developer yang mengubah a
 
 ## Topologi runtime
 
-Untuk deployment saat ini, database, backend, dan auth berjalan pada VPS aplikasi utama yang sama. Frontend Djiwa Pay juga disajikan dari VPS tersebut melalui Nginx.
+Untuk deployment saat ini, frontend Djiwa Pay disajikan dari VPS frontend/Helipod. Auth, backend, dan database berada pada runtime/VPS terpisah. Browser tetap memakai pay bridge same-origin yang diproxy Nginx.
 
 | Komponen | Runtime | Lokasi / endpoint |
 | --- | --- | --- |
 | Repository | Monorepo | `/opt/djiwatentramapp` |
 | Djiwa Pay frontend | Static Vite build | `/opt/djiwatentramapp/apps/djiwapay/dist` |
-| Auth dan backend API | Bun + Better Auth | `better-auth.service`, port lokal `3001` |
-| Database | PostgreSQL yang digunakan backend | Connection string hanya melalui environment service |
+| Auth dan backend API | Bun + Better Auth | VPS backend, `better-auth.service`, port lokal `3001` |
+| Database | PostgreSQL terpisah | Connection string hanya melalui environment service backend |
 | Public frontend | Nginx + TLS | `https://pay.djiwatentram.web.id/` |
 | Pay bridge API | Nginx proxy ke auth-server | `/api/pay-bridge/*` |
 
@@ -23,10 +23,11 @@ Jangan menaruh IP private/public, password, API key, connection string, atau tok
 - Auth/backend: `apps/auth-server/`
 - Database migrations dan SQL: migration directory yang digunakan repository, saat ini `supabase/migrations/`
 - Edge/integration functions: `supabase/functions/`
-- Nginx production: `/etc/nginx/sites-enabled/djiwapay.conf`
-- Auth systemd unit: `apps/auth-server/better-auth.service`
+- Nginx production frontend: `/etc/nginx/sites-enabled/djiwapay.conf`
+- Auth systemd unit backend: `apps/auth-server/better-auth.service` pada VPS backend
+- IAK secrets: Supabase Edge Function secrets `IAK_USERNAME`, `IAK_API_KEY`, optional `IAK_BASE_URL`
 
-`AGENTS.md` tetap menjadi instruksi utama untuk perubahan backend. Sebelum menjalankan migration, pastikan targetnya adalah PostgreSQL production pada VPS, bukan project Supabase cloud yang berbeda.
+`AGENTS.md` tetap menjadi instruksi utama untuk perubahan backend. Sebelum menjalankan migration, pastikan targetnya adalah PostgreSQL production pada VPS database/backend yang benar, bukan project Supabase cloud yang berbeda.
 
 ## Aturan keamanan repository
 
@@ -91,7 +92,7 @@ curl -sS -o /tmp/pay-bridge.json -w '%{http_code}\n' \
 
 Request tanpa session harus ditolak dengan `401`; jangan memakai credential customer untuk smoke test.
 
-### 3. Deploy auth/backend
+### 3. Deploy auth/backend (VPS backend terpisah)
 
 Auth berjalan sebagai service systemd:
 
@@ -105,7 +106,7 @@ Sebelum restart, compile source dari checkout yang akan dijalankan. Pastikan `Wo
 
 ### 4. Database migration
 
-Database berada pada runtime VPS yang sama dengan backend. Migration harus dijalankan terhadap database production yang dipakai `better-auth.service`.
+Database berada pada runtime/VPS terpisah dari frontend dan dapat terpisah dari proses backend. Migration harus dijalankan terhadap database production yang dipakai `better-auth.service`, melalui jalur akses internal yang disetujui operator.
 
 Prosedur aman:
 
@@ -129,6 +130,9 @@ Jangan menjalankan `supabase db push` ke cloud secara otomatis. Gunakan Supabase
 - Transfer internal bukan withdraw/cash-out; fitur payout eksternal tetap memerlukan provider payout dan verifikasi rekening.
 - Status `pending` tidak boleh dianggap berhasil dan tombol bayar harus terkunci sampai provider memberi hasil final.
 - Catalog PPOB berasal dari provider IAK; jangan hardcode harga produk pada frontend.
+- Flow postpaid menggunakan inquiry-first: PLN/PDAM wajib mengirim nomor pelanggan, menampilkan identitas/tagihan/biaya admin, lalu baru mengizinkan payment.
+- IAK credentials tidak pernah masuk browser atau auth-server environment; auth-server hanya memanggil `IAK_PPOB_URL` menuju Edge Function proxy.
+- Aktivasi produksi IAK memerlukan callback URL dan IP allowlist provider. Tanpa secret/callback/allowlist valid, endpoint tetap safe unavailable/pending.
 
 ## Rollback frontend
 
