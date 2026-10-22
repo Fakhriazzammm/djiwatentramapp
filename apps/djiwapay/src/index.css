@@ -147,3 +147,18 @@
 .ppob-detail-active .ppob-payment-methods button.selected{background:#eef5ff!important;border-color:#175dcc!important;box-shadow:0 0 0 1px rgba(23,93,204,.12)!important}
 .ppob-detail-active .ppob-payment-methods button::before,.ppob-detail-active .ppob-payment-methods button::after,.ppob-detail-active .ppob-payment-methods button span::before,.ppob-detail-active .ppob-payment-methods button span::after{content:none!important;display:none!important}
 .ppob-detail-active .ppob-payment-methods button span{background:transparent!important}
+
+/* Apply the flat-surface rule to every payment method, including QRIS. */
+.ppob-detail-active .ppob-payment-methods button > *,
+.ppob-detail-active .ppob-payment-methods button > * > *{
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  background-image:none!important;
+}
+.ppob-detail-active .ppob-payment-methods button > .ppob-method-copy{display:grid!important;padding:0!important}
+.ppob-detail-active .ppob-payment-methods button > i{background:transparent!important;padding:0!important;border-radius:0!important}
+/* No visual shell around the summary content; only the summary card owns the surface. */
+.ppob-detail-active .ppob-order-summary .ppob-review-list,
+.ppob-detail-active .ppob-order-summary .ppob-review-list span{background:transparent!important;box-shadow:none!important}
