@@ -16,11 +16,11 @@ async function exchangeBridgeToken(): Promise<CustomerProfile | null> {
 }
 
 export function buildPayBridgeStartUrl() {
-  return `${BRIDGE_START}?returnTo=${encodeURIComponent(window.location.origin + "/wallet")}`;
+  return `${BRIDGE_START}?returnTo=${encodeURIComponent(window.location.origin)}`;
 }
 
 export function buildCustomerAuthUrl() {
-  const returnTo = `${window.location.origin}/wallet`;
+  const returnTo = `${window.location.origin}`;
   return `${CUSTOMER_AUTH_ORIGIN}?sso=1&returnTo=${encodeURIComponent(returnTo)}`;
 }
 
