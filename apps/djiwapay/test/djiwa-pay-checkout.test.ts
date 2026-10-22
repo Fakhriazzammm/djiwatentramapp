@@ -12,6 +12,7 @@ import { canPollTransaction, normalizePayTransactionStatus, shouldClearTransacti
 import { buildWalletReceivePayload, validateWalletTransfer } from "../src/lib/djiwa-pay-transfer";
 import { parseWalletRecipient } from "../src/features/wallet/djiwa-pay-wallet-scanner";
 import { validateWalletWithdrawal } from "../src/lib/djiwa-pay-withdrawal";
+import { walletQuickActionState } from "../src/lib/djiwa-pay-availability";
 
 describe("Djiwa Pay checkout presentation contract", () => {
   test.each([
@@ -105,5 +106,11 @@ describe("Djiwa Pay checkout presentation contract", () => {
     expect(validateWalletWithdrawal({ amount: 9999, bankName: "BCA", accountNumber: "123456", accountName: "A", note: "" }).valid).toBe(false);
     expect(validateWalletWithdrawal({ amount: 10000, bankName: "BCA", accountNumber: "123456", accountName: "Djiwa Tentram", note: "" })).toEqual({ valid: true, message: null });
     expect(validateWalletWithdrawal({ amount: 10000, bankName: "BCA", accountNumber: "abc123", accountName: "Djiwa Tentram", note: "" }).valid).toBe(false);
+  });
+
+  test("marks scanner and withdrawal actions as coming soon", () => {
+    expect(walletQuickActionState("scan")).toEqual({ supported: false, badge: "Soon" });
+    expect(walletQuickActionState("withdraw")).toEqual({ supported: false, badge: "Soon" });
+    expect(walletQuickActionState("send")).toEqual({ supported: true, badge: "" });
   });
 });
