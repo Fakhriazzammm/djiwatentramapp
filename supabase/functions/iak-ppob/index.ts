@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import md5 from "npm:blueimp-md5@2.19.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { buildSignature } from "./adapter.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -15,7 +15,7 @@ type Json = Record<string, unknown>;
 const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
 function reply(body: Json, status = 200) { return new Response(JSON.stringify(body), { status, headers: jsonHeaders }); }
 function text(value: unknown) { return typeof value === "string" ? value.trim() : ""; }
-function sign(value: string) { return md5(value); }
+function sign(value: string) { return buildSignature("", "", value); }
 function configured() { return Boolean(username && apiKey); }
 function authError() { return reply({ success: false, error: { code: "IAK_NOT_CONFIGURED", message: "IAK username/API key belum dikonfigurasi sebagai secret server" } }, 503); }
 
