@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  checkoutStep,
-  paymentLabel,
-  walletPaymentState,
-} from "./djiwa-pay-checkout";
+import { checkoutStep, isSettledPpob, paymentLabel, walletPaymentState } from "../src/lib/djiwa-pay-checkout";
 
 describe("Djiwa Pay checkout presentation contract", () => {
   test.each([
@@ -29,5 +25,11 @@ describe("Djiwa Pay checkout presentation contract", () => {
     [49999, 50000, { disabled: true, shortage: 1 }],
   ])("describes wallet balance state", (balance, total, expected) => {
     expect(walletPaymentState(balance, total)).toEqual(expected);
+  });
+
+  test("only treats a provider success as settled", () => {
+    expect(isSettledPpob({ success: true, status: "success" })).toBe(true);
+    expect(isSettledPpob({ success: true, status: "pending" })).toBe(false);
+    expect(isSettledPpob({ success: false, status: "failed" })).toBe(false);
   });
 });

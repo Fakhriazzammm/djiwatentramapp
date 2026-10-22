@@ -25,3 +25,7 @@ export function walletPaymentState(balance: number, total: number) {
   const shortage = Math.max(0, total - balance);
   return { disabled: shortage > 0, shortage } as const;
 }
+
+export function isSettledPpob(result: { success: boolean; status?: string }) {
+  return result.success && result.status === "success";
+}
