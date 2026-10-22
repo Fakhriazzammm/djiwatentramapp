@@ -61,7 +61,7 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 	return (
 		<CheckoutPage className="space-y-2 px-2 py-2">
 			<div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
-				<CheckoutHeader step={3} totalSteps={4} eyebrow="Checkout" title="Checkout pesanan"
+				<CheckoutHeader step={2} totalSteps={5} eyebrow="Checkout" title="Checkout pesanan"
 					description="Bayar penuh saat checkout. Produk akan disiapkan dan dikirim setelah pembayaran terkonfirmasi." />
 				<div className="mt-3 rounded-2xl border border-border bg-muted/25 p-3" aria-label="Detail pesanan">
 					<div className="mb-2 flex items-center justify-between">
