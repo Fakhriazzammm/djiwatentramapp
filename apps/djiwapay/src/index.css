@@ -33,3 +33,10 @@
 .ppob-selection>.ppob-pay-button{min-height:50px;border:0;background:#175dcc;color:#fff;font-weight:800;opacity:1}
 .ppob-selection>.ppob-pay-button:disabled{background:#d8e1ee;color:#718096;opacity:1;cursor:not-allowed}
 .ppob-selection>.ppob-pay-button:not(:disabled){box-shadow:0 8px 18px rgba(23,93,204,.22)}
+
+/* Bottom sheet surface: keep the scrim outside, never wash the form gray. */
+.ppob-selection{inset:auto 12px 12px;max-width:430px;width:calc(100% - 24px);margin:0 auto;max-height:calc(100dvh - 24px);border-radius:24px;background:#fff;box-shadow:0 18px 50px rgba(15,23,42,.22),0 0 0 100vmax rgba(15,23,42,.48);overflow:auto;padding:18px 0 calc(18px + env(safe-area-inset-bottom));color:#24324a}
+.ppob-selection>*{max-width:none}
+.ppob-selection>strong{border-radius:0;padding-top:10px}
+.ppob-selection>.ppob-pay-button:disabled{background:#e8eef7;color:#5e718c;border:1px solid #d8e1ee}
+@media(min-width:700px){.ppob-selection{inset:auto auto 24px;}}
