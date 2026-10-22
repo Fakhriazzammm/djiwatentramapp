@@ -145,22 +145,7 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 			</div>
 			{!isReview ? <div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
 				<div className="flex items-center gap-1.5"><QrCode className="h-3.5 w-3.5 text-primary" /><h3 className="text-sm font-black">Pilih pembayaran</h3></div>
-				<div className="mt-2.5 space-y-1.5" role="radiogroup" aria-label="Metode pembayaran">
-					{props.paymentOptions.map((option) => {
-						const walletInsufficient = option.key === "wallet" && props.walletBalance < props.total;
-						return <div key={option.key}>
-							<PaymentMethodCard
-								label={option.label}
-								description={option.description}
-								disabledDescription={walletInsufficient ? `Saldo tersedia ${currency(props.walletBalance)}, masih kurang ${currency(props.total - props.walletBalance)}.` : undefined}
-								selected={props.paymentChoice === option.key && !walletInsufficient}
-								disabled={walletInsufficient}
-								onSelect={() => props.setPaymentChoice(option.key)}
-							/>
-							{walletInsufficient ? <div className="flex items-center justify-between gap-2 border-t border-amber-200/80 px-2.5 py-2"><p className="text-[10px] font-semibold leading-relaxed text-amber-800">Isi saldo Djiwa Pay dulu sebelum menggunakan metode ini.</p><button type="button" onClick={props.onTopup} className="shrink-0 rounded-lg bg-amber-600 px-2.5 py-1.5 text-[10px] font-black text-white">Top up</button></div> : null}
-						</div>;
-					})}
-				</div>
+				<div className="mt-2.5 space-y-1.5" role="radiogroup" aria-label="Metode pembayaran">{props.paymentOptions.map((option) => { const walletInsufficient = option.key === "wallet" && props.walletBalance < props.total; return <PaymentMethodCard key={option.key}><div className={cn("rounded-lg border transition-all", props.paymentChoice === option.key && !walletInsufficient ? "border-primary bg-primary/5 shadow-sm" : walletInsufficient ? "border-amber-200 bg-amber-50/60" : "border-border bg-background")}><button type="button" role="radio" aria-checked={props.paymentChoice === option.key && !walletInsufficient} aria-disabled={walletInsufficient} disabled={walletInsufficient} className={cn("flex min-h-11 w-full items-start justify-between px-2.5 py-2.5 text-left transition-all", walletInsufficient ? "cursor-not-allowed opacity-80" : "cursor-pointer")} onClick={() => props.setPaymentChoice(option.key)}><div><p className="font-black text-xs">{option.label}</p><p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">{walletInsufficient ? `Saldo tersedia ${currency(props.walletBalance)}, masih kurang ${currency(props.total - props.walletBalance)}.` : option.description}</p></div><div aria-hidden="true" className={cn("mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2", props.paymentChoice === option.key && !walletInsufficient ? "border-primary bg-primary" : "border-muted-foreground/30")}>{props.paymentChoice === option.key && !walletInsufficient ? <div className="h-1.5 w-1.5 rounded-full bg-white" /> : null}</div></button>{walletInsufficient ? <div className="flex items-center justify-between gap-2 border-t border-amber-200/80 px-2.5 py-2"><p className="text-[10px] font-semibold leading-relaxed text-amber-800">Isi saldo Djiwa Pay dulu sebelum menggunakan metode ini.</p><button type="button" onClick={props.onTopup} className="shrink-0 rounded-lg bg-amber-600 px-2.5 py-1.5 text-[10px] font-black text-white">Top up</button></div> : null}</div></PaymentMethodCard>; })}</div>
 			</div> : null}
 			{props.checkoutError ? <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold leading-relaxed text-red-800">{props.checkoutError}</div> : null}
 			<OrderSummary className="rounded-3xl border border-border bg-card p-4 shadow-sm">
@@ -170,13 +155,9 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 				{props.paymentChoice === "wallet" ? <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-[10px] font-bold leading-relaxed text-emerald-800">Bayar dengan Djiwa Pay dan dapatkan saldo Djiwa Pay +Rp1.000 setelah transaksi berhasil.</p> : <p className="mt-2 rounded-xl bg-muted/50 px-3 py-2 text-[10px] font-semibold leading-relaxed text-muted-foreground">Reward +Rp1.000 saldo Djiwa Pay diberikan setelah transaksi berhasil.</p>}
 				<div className="flex gap-2">
 					{(isReview || isPaymentOnly) ? <button type="button" onClick={props.onBackToMenu} className="mt-2.5 min-h-11 flex-1 rounded-[14px] border border-border bg-background px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button> : null}
-				<CheckoutActionBar
-					onBack={(isReview || isPaymentOnly) ? props.onBackToMenu : undefined}
-					onPrimary={() => { void (isReview ? props.onContinueToPayment?.() : props.checkout()); }}
-					primaryDisabled={isReview ? !props.onContinueToPayment || props.canPay === false : props.canPay === false}
-					busy={props.isSubmitting}
-					primaryLabel={isReview ? "Lanjut ke pembayaran" : `Bayar ${props.currency(props.total)}`}
-				/>
+					<CheckoutActionBar>
+						<button type="button" className="mt-2.5 flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground shadow-sm transition-all disabled:opacity-60" onClick={isReview ? props.onContinueToPayment : props.checkout} disabled={isReview ? !props.onContinueToPayment || props.canPay === false : props.isSubmitting || props.canPay === false}>{props.isSubmitting ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Memproses...</> : isReview ? <>Lanjut ke pembayaran <QrCode className="h-3.5 w-3.5" /></> : <>Bayar {props.currency(props.total)}</>}</button>
+					</CheckoutActionBar>
 				</div>
 			</OrderSummary>
 		</CheckoutPage>

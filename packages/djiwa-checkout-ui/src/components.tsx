@@ -16,14 +16,15 @@ export type CheckoutSectionProps = SurfaceProps & {
 };
 
 export type PaymentMethodCardProps = {
-  label: string;
-  description: string;
-  selected: boolean;
-  onSelect: () => void;
+  label?: string;
+  description?: string;
+  selected?: boolean;
+  onSelect?: () => void;
   icon?: ReactNode;
   disabled?: boolean;
   disabledDescription?: string;
   className?: string;
+  children?: ReactNode;
 };
 
 export type SummaryRow = { label: string; value: ReactNode };
@@ -43,17 +44,18 @@ export type PaymentNoticeProps = SurfaceProps & {
 
 export type CheckoutActionBarProps = {
   backLabel?: string;
-  primaryLabel: string;
+  primaryLabel?: string;
   busyLabel?: string;
   onBack?: () => void;
-  onPrimary: () => void;
+  onPrimary?: () => void;
   primaryDisabled?: boolean;
   busy?: boolean;
   className?: string;
+  children?: ReactNode;
 };
 
 export function CheckoutPage({ children, className = "" }: SurfaceProps) {
-  return <main className={`djiwa-checkout-page ${className}`.trim()}>{children}</main>;
+  return <div className={className}>{children}</div>;
 }
 
 export function CheckoutHeader({ step, totalSteps, title, description, className = "" }: CheckoutHeaderProps) {
@@ -72,7 +74,8 @@ export function CheckoutSection({ children, className = "", as = "section", labe
   return <section className={`djiwa-checkout-section ${className}`.trim()} {...props}>{children}</section>;
 }
 
-export function PaymentMethodCard({ label, description, selected, onSelect, icon, disabled = false, disabledDescription, className = "" }: PaymentMethodCardProps) {
+export function PaymentMethodCard({ label = "", description = "", selected = false, onSelect = () => undefined, icon, disabled = false, disabledDescription, className = "", children }: PaymentMethodCardProps) {
+  if (children) return <>{children}</>;
   return (
     <button
       type="button"
@@ -94,6 +97,7 @@ export function PaymentMethodCard({ label, description, selected, onSelect, icon
 }
 
 export function OrderSummary({ rows = [], total, title = "Ringkasan pembayaran", className = "", children }: OrderSummaryProps) {
+  if (children) return <div className={className}>{children}</div>;
   return (
     <section className={`djiwa-order-summary ${className}`.trim()} aria-label={title}>
       <h2>{title}</h2>
@@ -101,16 +105,15 @@ export function OrderSummary({ rows = [], total, title = "Ringkasan pembayaran",
         {rows.map((row) => <div className="djiwa-order-summary-row" key={row.label}><span>{row.label}</span><strong>{row.value}</strong></div>)}
         {total ? <div className="djiwa-order-summary-row is-total" key={total.label}><span>{total.label}</span><strong>{total.value}</strong></div> : null}
       </div>
-      {children}
     </section>
   );
 }
-
 export function PaymentNotice({ title, children, tone = "info", className = "" }: PaymentNoticeProps) {
   return <aside className={`djiwa-payment-notice is-${tone} ${className}`.trim()}><strong>{title}</strong><small>{children}</small></aside>;
 }
 
-export function CheckoutActionBar({ backLabel = "Kembali", primaryLabel, busyLabel = "Memproses...", onBack, onPrimary, primaryDisabled = false, busy = false, className = "" }: CheckoutActionBarProps) {
+export function CheckoutActionBar({ backLabel = "Kembali", primaryLabel, busyLabel = "Memproses...", onBack, onPrimary, primaryDisabled = false, busy = false, className = "", children }: CheckoutActionBarProps) {
+  if (children) return <>{children}</>;
   return (
     <div className={`djiwa-checkout-actions ${className}`.trim()}>
       {onBack ? <button type="button" className="djiwa-checkout-back" onClick={onBack}>{backLabel}</button> : null}
