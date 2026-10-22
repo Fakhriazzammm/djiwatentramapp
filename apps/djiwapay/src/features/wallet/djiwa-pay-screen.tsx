@@ -158,22 +158,21 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
                 </PaymentMethodCard>
               </div>
             </CheckoutSection>
+            {ppobPaymentMessage ? <div className="ppob-payment-message" role="alert">{ppobPaymentMessage}</div> : null}
             <OrderSummary className="ppob-customer-order-summary">
-              <h3>Ringkasan pembayaran</h3>
               <div className="ppob-customer-summary-rows">
                 <div><span>Operator</span><strong>{operatorName(selectedPpobProduct)}</strong></div>
                 <div><span>Produk</span><strong>Paket {Number(selectedPpobProduct.product_nominal).toLocaleString("id-ID")}</strong></div>
                 <div><span>Nomor tujuan</span><strong>{ppobCustomerNumber}</strong></div>
                 <div className="is-total"><span>Total pembayaran</span><strong>{money(selectedPpobProduct.product_price)}</strong></div>
               </div>
-              <div className="ppob-reward-note ppob-customer-reward-note">Reward +Rp1.000 saldo Djiwa Pay diberikan setelah transaksi berhasil.</div>
+              <div className={`ppob-reward-note ppob-customer-reward-note ${ppobPaymentMethod === "wallet" ? "is-wallet" : ""}`}>{ppobPaymentMethod === "wallet" ? "Bayar dengan Djiwa Pay dan dapatkan saldo Djiwa Pay +Rp1.000 setelah transaksi berhasil." : "Reward +Rp1.000 saldo Djiwa Pay diberikan setelah transaksi berhasil."}</div>
               <CheckoutActionBar className="ppob-customer-action-bar">
+                <button type="button" className="ppob-checkout-back" onClick={() => { setPpobReviewOpen(false); goPpobRoute(ppobProductRoute("detail")); }}>← Kembali</button>
                 <button type="button" className="primary-action ppob-pay-button" onClick={payPpob} disabled={ppobPaymentBusy || (ppobPaymentMethod === "wallet" && (wallet?.wallet.available_balance ?? 0) < selectedPpobProduct.product_price)}>{ppobPaymentBusy ? (ppobPaymentMethod === "mayar" ? "Menyiapkan QRIS..." : "Memproses...") : ppobPaymentMethod === "mayar" ? `Bayar dengan QRIS · ${money(selectedPpobProduct.product_price)}` : `Bayar ${money(selectedPpobProduct.product_price)}`}</button>
               </CheckoutActionBar>
             </OrderSummary>
-            {ppobPaymentMessage ? <div className="ppob-payment-message" role="alert">{ppobPaymentMessage}</div> : null}
           </div>
-          <button className="ppob-text-button" onClick={() => { setPpobReviewOpen(false); goPpobRoute(ppobProductRoute("detail")); }}>Kembali</button>
         </>}
       </div> : null}</section>}</main>);
   return <main className="pay-page">
