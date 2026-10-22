@@ -17,7 +17,7 @@ const date = (value: string) => { const parsed = new Date(value); return Number.
 const labels: Record<string, string> = { topup_completed: "Top up", manual_credit: "Credit saldo", order_debit: "Pembayaran pesanan", wallet_hold: "Saldo ditahan", wallet_release: "Saldo dikembalikan", wallet_transfer_sent: "Transfer terkirim", wallet_transfer_received: "Transfer diterima", refund: "Refund pesanan", adjustment: "Penyesuaian saldo" };
 const actions = [
   ["topup", "Isi Saldo", "topup.webp", true, "", ""], ["send", "Kirim", "send.webp", true, "", ""], ["receive", "Terima", "receive.webp", true, "", ""], ["scan", "Scan QR", "scan-qr.webp", false, "Soon", "cyan"],
-  ["history", "Riwayat", "history.webp", true, "", ""], ["card", "Kartu", "card.webp", false, "Soon", "indigo"], ["withdraw", "Tarik Dana", "withdraw.webp", false, "Soon", "orange"], ["help", "Bantuan", "help.webp", true, "", ""],
+  ["history", "Riwayat", "history.webp", true, "", ""], ["card", "Kartu", "card.webp", true, "", ""], ["withdraw", "Tarik Dana", "withdraw.webp", false, "Soon", "orange"], ["help", "Bantuan", "help.webp", true, "", ""],
 ] as const;
 
 const ppobServices = [
@@ -176,6 +176,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     if (key === "topup") { setTopupStage("detail"); setTopupOpen(true); }
     else if (key === "send" || key === "receive") setWalletAction(key);
     else if (key === "history") document.getElementById("activity")?.scrollIntoView({ behavior: "smooth" });
+    else if (key === "card") document.querySelector(".wallet-card")?.scrollIntoView({ behavior: "smooth", block: "center" });
     else if (key === "help") setSoon("Bantuan Djiwa Pay tersedia melalui customer service.");
     else setSoon(`Fitur ${label} sedang kami siapkan untuk Djiwa Pay.`);
   };
