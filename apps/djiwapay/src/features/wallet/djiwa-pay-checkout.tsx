@@ -26,6 +26,8 @@ type PayCheckoutProps = {
   onCustomerNumberChange?: (value: string) => void;
   recentCustomerNumbers?: string[];
   onSelectCustomerNumber?: (value: string) => void;
+  favoriteCustomerNumbers?: string[];
+  onToggleFavoriteCustomerNumber?: (value: string) => void;
   amountEditor?: ReactNode;
   paymentMethod: PayPaymentMethod;
   onPaymentMethodChange: (method: PayPaymentMethod) => void;
@@ -59,6 +61,8 @@ export function DjiwaPayCheckout({
   onCustomerNumberChange,
   recentCustomerNumbers = [],
   onSelectCustomerNumber,
+  favoriteCustomerNumbers = [],
+  onToggleFavoriteCustomerNumber,
   amountEditor,
   paymentMethod,
   onPaymentMethodChange,
@@ -96,7 +100,7 @@ export function DjiwaPayCheckout({
           placeholder="08xxxxxxxxxx"
         />
         {fieldError ? <small className="djiwa-checkout-field-error" role="alert">{fieldError}</small> : null}
-        {recentCustomerNumbers.length ? <div className="djiwa-recent-numbers" aria-label="Nomor tujuan terakhir">{recentCustomerNumbers.map((number) => <button key={number} type="button" onClick={() => onSelectCustomerNumber?.(number)}>{number}</button>)}</div> : null}
+        {recentCustomerNumbers.length ? <div className="djiwa-recent-numbers" aria-label="Nomor tujuan terakhir">{recentCustomerNumbers.map((number) => <span key={number} className="djiwa-recent-number"><button type="button" onClick={() => onSelectCustomerNumber?.(number)}>{number}</button><button type="button" className={favoriteCustomerNumbers.includes(number) ? "is-favorite" : ""} onClick={() => onToggleFavoriteCustomerNumber?.(number)} aria-label={`${favoriteCustomerNumbers.includes(number) ? "Hapus dari" : "Tambahkan ke"} nomor favorit`}>★</button></span>)}</div> : null}
       </CheckoutField>
     )
   ) : undefined;
