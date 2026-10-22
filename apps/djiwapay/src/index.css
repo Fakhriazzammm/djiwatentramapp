@@ -107,3 +107,30 @@
 .ppob-detail-active .ppob-insufficient{margin:0!important;border-radius:16px}
 .ppob-detail-active .ppob-action-row{margin:4px 0 0!important;padding:0!important;background:transparent!important}
 @media(max-width:420px){.ppob-detail-active>.ppob-page-card>.ppob-selection{padding-left:12px!important;padding-right:12px!important}.ppob-detail-active .ppob-payment-heading,.ppob-detail-active .ppob-payment-methods,.ppob-detail-active .ppob-order-summary,.ppob-detail-active .ppob-wallet-balance,.ppob-detail-active .ppob-qris-note,.ppob-detail-active .ppob-reward-note{border-radius:14px}}
+/* Compact mobile confirmation: one clear rhythm, no oversized nested panels */
+.ppob-detail-active>.ppob-page-card>.ppob-selection{padding:10px 16px calc(16px + env(safe-area-inset-bottom))!important}
+.ppob-detail-active .ppob-checkout-card{gap:8px!important}
+.ppob-detail-active .ppob-payment-heading{padding:10px 12px!important;border-radius:14px!important}
+.ppob-detail-active .ppob-payment-icon{width:30px;height:30px;border-radius:9px;font-size:13px}
+.ppob-detail-active .ppob-payment-heading strong{font-size:14px}
+.ppob-detail-active .ppob-payment-heading small{font-size:10px}
+.ppob-detail-active .ppob-payment-methods{gap:6px!important;padding:9px 10px!important;border-radius:14px!important}
+.ppob-detail-active .ppob-payment-methods button{min-height:52px!important;padding:8px 10px!important;border-radius:10px!important}
+.ppob-detail-active .ppob-payment-methods button strong{font-size:12px}
+.ppob-detail-active .ppob-payment-methods button small{font-size:10px}
+.ppob-detail-active .ppob-order-summary{padding:11px 12px!important;border-radius:14px!important}
+.ppob-detail-active .ppob-summary-title{font-size:10px}
+.ppob-detail-active .ppob-review-list{margin-top:2px!important}
+.ppob-detail-active .ppob-review-list span{min-height:30px!important;padding:6px 0!important;font-size:11px}
+.ppob-detail-active .ppob-review-list .total b{font-size:14px}
+.ppob-detail-active .ppob-wallet-balance{min-height:42px!important;padding:9px 12px!important;border-radius:14px!important;font-size:11px}
+.ppob-detail-active .ppob-qris-note{padding:10px!important;border-radius:14px!important}
+.ppob-detail-active .ppob-qris-note strong{font-size:11px}
+.ppob-detail-active .ppob-qris-note small{font-size:10px}
+.ppob-detail-active .ppob-insufficient{padding:10px!important;border-radius:14px!important}
+.ppob-detail-active .ppob-insufficient strong{font-size:11px}
+.ppob-detail-active .ppob-insufficient small{font-size:10px}
+.ppob-detail-active .ppob-insufficient .primary-action{min-height:42px!important;margin-top:7px!important}
+.ppob-detail-active .ppob-reward-note{padding:8px 10px!important;border-radius:12px!important;font-size:9px}
+.ppob-detail-active .ppob-action-row{position:sticky;bottom:0;z-index:4;margin:2px -4px 0!important;padding:8px 4px calc(8px + env(safe-area-inset-bottom))!important;background:#f6f8fc!important}
+.ppob-detail-active .ppob-action-row .ppob-text-button,.ppob-detail-active .ppob-action-row .primary-action{min-height:46px!important;border-radius:12px!important}
