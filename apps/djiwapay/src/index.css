@@ -55,3 +55,17 @@
 .ppob-buy-button{display:inline-flex;align-items:center;justify-content:center;min-width:58px;min-height:34px;padding:0 12px;border-radius:10px;background:#175dcc;color:#fff;font-size:12px;font-weight:800;white-space:nowrap;box-shadow:0 4px 10px rgba(23,93,204,.18)}
 .ppob-product-table-row{grid-template-columns:minmax(0,1fr) auto auto;gap:10px}.ppob-product-table-row>b{text-align:right}.ppob-product{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px}.ppob-product>.ppob-buy-button{justify-self:end}
 .ppob-buy-button:active{transform:scale(.97)}
+
+/* Detail step: one aligned card with explicit dividers, no stacked white strips. */
+.ppob-selection.ppob-step-page{box-sizing:border-box;align-items:stretch;gap:0;justify-content:flex-start;background:#f6f8fc;border:0;box-shadow:none;padding:calc(16px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));color:#24324a}
+.ppob-selection.ppob-step-page>*{box-sizing:border-box;width:100%;max-width:430px;background:transparent!important;padding-left:0!important;padding-right:0!important;margin-left:auto;margin-right:auto}
+.ppob-selection.ppob-step-page>.ppob-step-back{flex:0 0 auto;min-height:42px;padding-top:4px!important;padding-bottom:14px!important;border-bottom:1px solid #dbe3ee;text-align:left}
+.ppob-selection.ppob-step-page>.ppob-step-label{padding-top:22px!important;padding-bottom:8px!important;font-size:11px;letter-spacing:.1em}
+.ppob-selection.ppob-step-page>strong{padding-top:0!important;padding-bottom:16px!important;border-bottom:1px solid #dbe3ee;border-radius:0;font-size:23px;line-height:1.2}
+.ppob-selection.ppob-step-page>span:not(.ppob-step-label){padding-top:16px!important;padding-bottom:12px!important;font-size:15px}
+.ppob-selection.ppob-step-page>b{padding-top:0!important;padding-bottom:16px!important;border-bottom:1px solid #dbe3ee;font-size:24px}
+.ppob-selection.ppob-step-page>small{padding-top:16px!important;padding-bottom:9px!important;font-size:13px;line-height:1.45;color:#60708a}
+.ppob-selection.ppob-step-page>.ppob-customer-input{width:100%;min-height:54px;margin:0!important;border:1px solid #b8c6d8;border-radius:12px;background:#fff!important;padding:0 15px!important}
+.ppob-selection.ppob-step-page>.ppob-pay-button{width:100%;min-height:52px;margin-top:16px!important;border-radius:12px;background:#175dcc;color:#fff;padding:0 18px!important}
+.ppob-selection.ppob-step-page>.ppob-pay-button:disabled{background:#e5eaf2;color:#7b899d}
+@media(min-width:700px){.ppob-selection.ppob-step-page{align-items:center}.ppob-selection.ppob-step-page>*{width:100%}}
