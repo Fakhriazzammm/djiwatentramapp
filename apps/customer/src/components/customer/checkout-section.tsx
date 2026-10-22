@@ -1,5 +1,5 @@
-import { CheckoutActionBar, CheckoutPage, OrderSummary, PaymentMethodCard } from "@yumipos/djiwa-checkout-ui";
-import { Loader2, QrCode, ShoppingCart, Wallet } from "lucide-react";
+import { CheckoutActionBar, CheckoutHeader, CheckoutPage, OrderSummary, PaymentMethodCard } from "@yumipos/djiwa-checkout-ui";
+import { Loader2, QrCode, ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CartItem, PaymentChoice } from "./types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency } from "./types";
@@ -75,15 +75,12 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 	return (
 		<CheckoutPage className="space-y-2 px-2 py-2">
 			<div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
-				<div className="flex items-center gap-2">
-					<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-						<Wallet className="h-4 w-4" />
-					</div>
-					<div>
-						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">{isReview ? "Step 4 · Review pesanan" : "Step 5 · Pembayaran"}</p>
-						<h2 className="text-sm font-black">{isReview ? "Periksa dan edit pesanan" : "Pilih metode pembayaran"}</h2>
-					</div>
-				</div>
+				<CheckoutHeader
+					step={isReview ? 4 : 5}
+					totalSteps={5}
+					eyebrow={isReview ? "Review pesanan" : "Pembayaran"}
+					title={isReview ? "Periksa dan edit pesanan" : "Pilih metode pembayaran"}
+				/>
 				{isReview ? <button type="button" onClick={props.onEditMenu} className="mt-3 flex min-h-11 w-full items-center justify-center rounded-[14px] border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-black text-primary">Ubah menu / tambah produk</button> : null}
 				{!isPaymentOnly ? <>
 				<div className="mt-3 rounded-2xl border border-border bg-muted/25 p-3" aria-label="Detail pesanan">
