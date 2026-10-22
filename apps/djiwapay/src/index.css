@@ -137,3 +137,13 @@
 /* Remove the misleading white halo behind the selected payment option. */
 .ppob-detail-active .ppob-payment-methods{padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
 .ppob-detail-active .ppob-payment-methods button{position:relative;z-index:1}
+
+/* Flat payment stack: remove all inner white layers from the method selector. */
+.ppob-detail-active>.ppob-page-card>.ppob-selection{background:transparent!important;border:0!important;box-shadow:none!important}
+.ppob-detail-active .ppob-checkout-card{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
+.ppob-detail-active .ppob-payment-heading{background:transparent!important;border:0!important;box-shadow:none!important;padding:4px 2px!important}
+.ppob-detail-active .ppob-payment-methods{display:grid!important;gap:8px!important;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
+.ppob-detail-active .ppob-payment-methods button,.ppob-detail-active .ppob-payment-methods button.selected{background:#fff!important;border:1px solid #dbe3ee!important;box-shadow:0 1px 4px rgba(15,23,42,.04)!important}
+.ppob-detail-active .ppob-payment-methods button.selected{background:#eef5ff!important;border-color:#175dcc!important;box-shadow:0 0 0 1px rgba(23,93,204,.12)!important}
+.ppob-detail-active .ppob-payment-methods button::before,.ppob-detail-active .ppob-payment-methods button::after,.ppob-detail-active .ppob-payment-methods button span::before,.ppob-detail-active .ppob-payment-methods button span::after{content:none!important;display:none!important}
+.ppob-detail-active .ppob-payment-methods button span{background:transparent!important}
