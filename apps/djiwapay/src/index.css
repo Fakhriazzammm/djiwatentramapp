@@ -87,3 +87,6 @@
 .ppob-detail-active .ppob-review-list span{min-height:38px;align-items:center;border-bottom:1px solid #e2e8f0}
 .ppob-detail-active .ppob-wallet-balance{margin-top:4px;padding:12px;border-radius:14px;background:#f8fafc}
 .ppob-detail-active .ppob-text-button{min-height:44px;border-radius:14px;font-weight:800}
+/* CTA must remain visible above the transparent step-page reset. */
+.ppob-selection.ppob-step-page>.ppob-pay-button{background:#175dcc!important;color:#fff!important;border:0!important;min-height:50px!important;border-radius:12px!important;opacity:1!important;box-shadow:0 8px 18px rgba(23,93,204,.22)!important}
+.ppob-selection.ppob-step-page>.ppob-pay-button:disabled{background:#e8eef7!important;color:#5e718c!important;box-shadow:none!important;cursor:not-allowed}
