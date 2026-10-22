@@ -3,6 +3,7 @@ export const WALLET_SOURCE_APPS = [
   "djiwa-tentram",
   "b2b",
   "ordermieyamin",
+  "djiwapay",
 ] as const;
 
 export type WalletSourceApp = (typeof WALLET_SOURCE_APPS)[number];

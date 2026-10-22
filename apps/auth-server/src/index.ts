@@ -775,6 +775,29 @@ app.get("/api/pay-bridge/profile", async (c) => {
   return privateJson({ success: true, customer: session.customer });
 });
 
+app.post("/api/pay-bridge/ppob/invoice", async (c) => {
+  const session = await requirePaySession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const body = await c.req.json().catch(() => ({})) as { productCode?: unknown; customerNumber?: unknown };
+  const productCode = typeof body.productCode === "string" ? body.productCode.trim() : "";
+  const customerNumber = typeof body.customerNumber === "string" ? body.customerNumber.trim() : "";
+  const sourceId = String(session.customer.source_id || "");
+  const email = String(session.customer.email || "");
+  if (!sourceId || !email || !productCode || !/^[0-9]{8,20}$/.test(customerNumber)) return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+  const iakUrl = "https://api.djiwatentram.web.id/api/ppob/iak/";
+  const catalogResponse = await fetch(iakUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "price-list" }) });
+  const catalogPayload = await catalogResponse.json().catch(() => ({})) as any;
+  const products = catalogPayload?.data?.data?.pricelist;
+  const product = Array.isArray(products) ? products.find((item: any) => item?.product_code === productCode && item?.status === "active") : null;
+  const amount = Math.round(Number(product?.product_price));
+  if (!Number.isSafeInteger(amount) || amount <= 0) return privateJson({ success: false, error: "PRODUCT_UNAVAILABLE" }, 422);
+  const invoice = await fetch(MAYAR_PROXY_URL, { method: "POST", headers: { "Content-Type": "application/json", ...(SUPABASE_ANON_KEY ? { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } : {}) }, body: JSON.stringify({ action: "create-invoice", name: session.customer.name || "Customer Djiwa", email, mobile: session.customer.phone || MAYAR_DEFAULT_MOBILE, redirectUrl: `${PAY_BRIDGE_ORIGIN}/wallet?ppob=success`, description: `Pembelian PPOB ${productCode}`, items: [{ quantity: 1, rate: amount, description: `PPOB ${productCode} · ${customerNumber}` }], extraData: { ppob: true, productCode, customerNumber, sourceId } }) });
+  const payload = await invoice.json().catch(() => ({})) as any;
+  const data = payload?.data || {};
+  const link = data.link || data.paymentUrl || data.url;
+  if (!invoice.ok || !payload.success || !data.id || !link) return privateJson({ success: false, error: "INVOICE_FAILED" }, 502);
+  return privateJson({ success: true, invoiceId: String(data.id), invoiceUrl: String(link), amount, productCode, customerNumber });
+});
 app.post("/api/pay-bridge/ppob/purchase", async (c) => {
   const session = await requirePaySession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
@@ -834,8 +857,18 @@ app.post("/api/pay-bridge/wallet", async (c) => {
   if (!Number.isSafeInteger(amount) || amount < 1000) return privateJson({ success: false, error: "INVALID_AMOUNT" }, 400);
   const supabaseUrl = MAYAR_PROXY_URL.replace(/\/functions\/v1\/mayar-proxy\/?$/, "");
   const response = await fetch(`${supabaseUrl}/functions/v1/customer-wallet`, { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }, body: JSON.stringify({ action: "topup", sourceId, email, amount, sourceApp: "djiwapay", origin: PAY_BRIDGE_ORIGIN, idempotencyKey: `djiwapay-${sourceId}-${crypto.randomUUID()}` }) });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || !payload?.result?.invoice_url) return privateJson({ success: false, error: "TOPUP_FAILED" }, 502);
+  const payload = await response.json().catch(() => ({})) as { result?: { invoice_url?: unknown }; error?: unknown; message?: unknown };
+  if (!response.ok || typeof payload?.result?.invoice_url !== "string") {
+    const upstreamMessage = payload?.error && typeof payload.error === "object" && "message" in payload.error
+      ? String((payload.error as { message?: unknown }).message || "")
+      : typeof payload?.message === "string" ? payload.message : "";
+    const safeMessage = /nomor whatsapp|kontak|profil/i.test(upstreamMessage)
+      ? "Nomor WhatsApp belum lengkap atau tidak valid. Lengkapi profil lalu coba lagi."
+      : /mayar|invoice|pembayaran|top up/i.test(upstreamMessage)
+        ? upstreamMessage.slice(0, 240)
+        : "Top up gagal disiapkan. Silakan coba lagi.";
+    return privateJson({ success: false, error: safeMessage }, 502);
+  }
   return privateJson({ success: true, result: payload.result });
 });
 
