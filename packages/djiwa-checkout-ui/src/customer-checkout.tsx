@@ -61,6 +61,8 @@ export type CustomerCheckoutProps = {
 	notesPlaceholder: string;
 	notes: string;
 	setNotes: (value: string) => void;
+  /** `false` removes the notes field for non-order services such as wallet top-up. */
+  showNotes?: boolean;
 	notesExtra?: ReactNode;
 
 	/** `false` hides the payment block (review-only step). */
@@ -183,16 +185,18 @@ export function CustomerCheckout(props: CustomerCheckoutProps) {
 
 				{props.fields}
 
-				<div className="djiwa-checkout-field">
-					<label className="djiwa-checkout-label" htmlFor="djiwa-checkout-notes">{props.notesLabel}</label>
-					<textarea
-						id="djiwa-checkout-notes"
-						className="djiwa-checkout-textarea"
-						placeholder={props.notesPlaceholder}
-						value={props.notes}
-						onChange={(event) => props.setNotes(event.currentTarget.value)}
-					/>
-				</div>
+				{props.showNotes === false ? null : (
+					<div className="djiwa-checkout-field">
+						<label className="djiwa-checkout-label" htmlFor="djiwa-checkout-notes">{props.notesLabel}</label>
+						<textarea
+							id="djiwa-checkout-notes"
+							className="djiwa-checkout-textarea"
+							placeholder={props.notesPlaceholder}
+							value={props.notes}
+							onChange={(event) => props.setNotes(event.currentTarget.value)}
+						/>
+					</div>
+				)}
 				{props.notesExtra}
 			</CheckoutSection>
 
