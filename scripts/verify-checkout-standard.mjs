@@ -72,6 +72,24 @@ for (const app of config.customerCheckoutApps) {
   if (!state) continue;
   const deps = { ...(state.manifest.dependencies ?? {}), ...(state.manifest.devDependencies ?? {}) };
   if (!deps[packageName]) failures.push(`${app}: package.json must depend on ${packageName}`);
+
+  // Styling pipeline parity: every registered customer checkout app runs the same Tailwind v4
+  // wiring (djiwa-checkout-v1). Without it a new app silently loses the shared utility layer.
+  for (const dep of ["tailwindcss", "@tailwindcss/vite"]) {
+    if (!deps[dep]) failures.push(`${app}: package.json must depend on ${dep} (djiwa-checkout-v1 styling)`);
+  }
+  const viteConfigPath = path.join(appsRoot, app, "vite.config.ts");
+  if (!fs.existsSync(viteConfigPath)) {
+    failures.push(`${app}: missing vite.config.ts`);
+  } else if (!fs.readFileSync(viteConfigPath, "utf8").includes("tailwindcss")) {
+    failures.push(`${app}: vite.config.ts must register the @tailwindcss/vite plugin`);
+  }
+  const indexCssPath = path.join(appsRoot, app, "src", "index.css");
+  if (!fs.existsSync(indexCssPath)) {
+    failures.push(`${app}: missing src/index.css`);
+  } else if (!fs.readFileSync(indexCssPath, "utf8").includes('@import "tailwindcss"')) {
+    failures.push(`${app}: src/index.css must @import "tailwindcss"`);
+  }
   if (!state.main.includes(`${packageName}/styles.css`)) failures.push(`${app}: src/main.tsx must import ${packageName}/styles.css`);
   const checkoutFiles = state.sources.filter((file) => /checkout-section\.tsx$/.test(file));
   const sourceText = checkoutFiles.map((file) => fs.readFileSync(file, "utf8")).join("\n");
