@@ -7,6 +7,7 @@ import { MobilePortraitGuard, PwaInstallPrompt } from "@/components/pwa-install-
 import { startAppUpdatePolling, checkForAppUpdate } from "@/lib/app-update";
 import { registerSW } from "virtual:pwa-register";
 import "./index.css";
+import "@yumipos/djiwa-checkout-ui/styles.css";
 import { installNumberInputBehavior } from "@yumipos/web-shared";
 
 

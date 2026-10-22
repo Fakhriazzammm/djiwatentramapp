@@ -57,6 +57,10 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 STOCK_GROUP_ID = int(os.getenv("STOCK_GROUP_ID", "-1003954959225"))
+# Pastry supplier receives only Brownies/Banana Bread menu availability reports.
+PASTRY_STOCK_GROUP_ID = int(os.getenv("PASTRY_STOCK_GROUP_ID", "-5341562028"))
+PASTRY_CATEGORY_NAMES = {"fudgy brownies", "banana bread"}
+PASTRY_PRODUCT_NAMES = {"fudgy brownies", "banana bread"}
 SUMOPOD_API_KEY = os.getenv("SUMOPOD_API_KEY", "")
 
 if not all([TELEGRAM_BOT_TOKEN, SUPABASE_URL, SUPABASE_KEY]):
@@ -931,12 +935,12 @@ async def _stock_rpc(name: str, payload: dict):
         return response.json()
 
 
-async def _claim_stock_delivery(dedupe_key: str, notification_type: str, source_event_id: str) -> bool:
+async def _claim_stock_delivery(dedupe_key: str, notification_type: str, source_event_id: str, chat_id: int) -> bool:
     result = await _stock_rpc("claim_stock_notification", {
         "p_dedupe_key": dedupe_key,
         "p_notification_type": notification_type,
         "p_source_event_id": source_event_id,
-        "p_chat_id": str(STOCK_GROUP_ID),
+        "p_chat_id": str(chat_id),
     })
     return bool(result is True or (isinstance(result, list) and result and result[0] is True))
 
@@ -949,14 +953,20 @@ async def _mark_stock_delivery(dedupe_key: str, status: str, message_id: str | N
     })
 
 
-async def _send_stock_message(text: str, dedupe_key: str, notification_type: str, source_event_id: str):
-    if not await _claim_stock_delivery(dedupe_key, notification_type, source_event_id):
+def _is_pastry_category(category_name: str | None, product_name: str | None = None) -> bool:
+    category = str(category_name or "").strip().casefold()
+    product = str(product_name or "").strip().casefold()
+    return category in PASTRY_CATEGORY_NAMES or product in PASTRY_PRODUCT_NAMES
+
+
+async def _send_stock_message(text: str, dedupe_key: str, notification_type: str, source_event_id: str, chat_id: int = STOCK_GROUP_ID):
+    if not await _claim_stock_delivery(dedupe_key, notification_type, source_event_id, chat_id):
         return False
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             response = await client.post(
                 f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                json={"chat_id": STOCK_GROUP_ID, "text": text},
+                json={"chat_id": chat_id, "text": text},
             )
             body = response.json()
             if response.status_code >= 400 or not body.get("ok"):
@@ -965,7 +975,7 @@ async def _send_stock_message(text: str, dedupe_key: str, notification_type: str
         await _mark_stock_delivery(dedupe_key, "sent", message_id)
         return True
     except Exception as error:
-        logger.warning("POS stock notification failed (%s): %s", dedupe_key, error)
+        logger.warning("POS stock notification failed (%s -> %s): %s", dedupe_key, chat_id, error)
         try:
             await _mark_stock_delivery(dedupe_key, "failed", str(error)[:500])
         except Exception as mark_error:
@@ -1012,17 +1022,22 @@ async def _process_pos_stock_events():
             state = "ON / SIAP DIJUAL" if event.get("new_is_available") else "OFF / SOLD"
             previous = "ON" if event.get("previous_is_available") else "OFF"
             quantity = event.get("quantity_snapshot")
+            is_pastry = _is_pastry_category(event.get("category_name_snapshot"), event.get("product_name_snapshot"))
+            notification_prefix = "🥐 MENU PASTRY" if is_pastry else "MENU"
             text = "\n".join([
-                "🟢 MENU DIAKTIFKAN" if event.get("new_is_available") else "🔴 MENU DINONAKTIFKAN",
+                f"{'🟢' if event.get('new_is_available') else '🔴'} {notification_prefix} {'DIAKTIFKAN' if event.get('new_is_available') else 'DINONAKTIFKAN'}",
                 "",
                 f"Produk: {event.get('product_name_snapshot') or '-'}",
-                f"Kode: #{event.get('menu_number_snapshot')}" if event.get("menu_number_snapshot") is not None else "Kode: -",
+                f"Kode: #{event.get('menu_number_snapshot')}" if event.get('menu_number_snapshot') is not None else "Kode: -",
+                f"Kategori: {event.get('category_name_snapshot') or '-'}",
                 f"Status: {previous} → {state}",
                 f"Stok: {quantity if quantity is not None else '-'}",
                 f"Kasir: {event.get('changed_by_name_snapshot') or '-'}",
                 "Sumber: POS",
             ])
-            await _send_stock_message(text, f"availability:{event_id}", "availability_change", str(event_id))
+            target_chat = PASTRY_STOCK_GROUP_ID if is_pastry else STOCK_GROUP_ID
+            target_scope = "pastry" if is_pastry else "general"
+            await _send_stock_message(text, f"availability:{event_id}:{target_scope}", "availability_change", str(event_id), target_chat)
             _STOCK_EVENT_CURSOR = event_id
 
         response = await client.get(
@@ -1042,26 +1057,33 @@ async def _process_pos_stock_events():
     for snapshot in snapshots:
         groups.setdefault((str(snapshot["shift_source_id"]), str(snapshot["phase"])), []).append(snapshot)
     for (shift_id, phase), rows in groups.items():
-        on_rows = [row for row in rows if row.get("is_available")]
-        off_rows = [row for row in rows if not row.get("is_available")]
-        lines = [
-            f"📦 REPORT MENU SHIFT {'BUKA' if phase == 'opening' else 'TUTUP'}",
-            "",
-            f"Shift ID: {shift_id}",
-            f"Total menu: {len(rows)}",
-            f"🟢 ON / SIAP DIJUAL: {len(on_rows)}",
-            f"🔴 OFF / SOLD: {len(off_rows)}",
-            "",
-            "🔴 DAFTAR OFF",
-        ]
-        lines.extend(
-            f"• {row.get('product_name_snapshot') or '-'}" +
-            (f" (#{row.get('menu_number_snapshot')})" if row.get("menu_number_snapshot") is not None else "")
-            for row in off_rows[:20]
-        )
-        if len(off_rows) > 20:
-            lines.append(f"• ...dan {len(off_rows) - 20} menu lainnya")
-        await _send_stock_message("\n".join(lines), f"shift-stock:{shift_id}:{phase}", "shift_stock_report", f"{shift_id}:{phase}")
+        for is_pastry, routed_rows in ((False, [row for row in rows if not _is_pastry_category(row.get("category_name_snapshot"), row.get("product_name_snapshot"))]),
+                                       (True, [row for row in rows if _is_pastry_category(row.get("category_name_snapshot"), row.get("product_name_snapshot"))])):
+            if not routed_rows:
+                continue
+            on_rows = [row for row in routed_rows if row.get("is_available")]
+            off_rows = [row for row in routed_rows if not row.get("is_available")]
+            title = "🥐 REPORT MENU PASTRY" if is_pastry else "📦 REPORT MENU SHIFT"
+            lines = [
+                f"{title} {'BUKA' if phase == 'opening' else 'TUTUP'}",
+                "",
+                f"Shift ID: {shift_id}",
+                f"Total menu: {len(routed_rows)}",
+                f"🟢 ON / SIAP DIJUAL: {len(on_rows)}",
+                f"🔴 OFF / SOLD: {len(off_rows)}",
+                "",
+                "🔴 DAFTAR OFF",
+            ]
+            lines.extend(
+                f"• {row.get('product_name_snapshot') or '-'}" +
+                (f" (#{row.get('menu_number_snapshot')})" if row.get("menu_number_snapshot") is not None else "")
+                for row in off_rows[:20]
+            )
+            if len(off_rows) > 20:
+                lines.append(f"• ...dan {len(off_rows) - 20} menu lainnya")
+            scope = "pastry" if is_pastry else "general"
+            target_chat = PASTRY_STOCK_GROUP_ID if is_pastry else STOCK_GROUP_ID
+            await _send_stock_message("\n".join(lines), f"shift-stock:{shift_id}:{phase}:{scope}", "shift_stock_report", f"{shift_id}:{phase}:{scope}", target_chat)
         _STOCK_SNAPSHOT_CURSOR = max(int(row["snapshot_id"]) for row in rows)
 
 

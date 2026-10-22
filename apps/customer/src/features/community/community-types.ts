@@ -67,6 +67,7 @@ export type PurchaseActivityNameMode = "first_name" | "full_name";
 export type CommunityPurchaseActivity = {
   id: string;
   displayName: string;
+  avatarUrl: string | null;
   productSourceId: string;
   productName: string;
   productImageUrl: string | null;

@@ -3188,6 +3188,9 @@ async def _handle_send_report(request):
         return web.json_response({"ok": False, "error": "text is required"}, status=400, headers=cors_headers)
 
     chat_id = body.get("chat_id")
+    photo_b64 = str(body.get("photo_base64", "") or "")
+    photo_filename = str(body.get("photo_filename", "shift-closing-evidence.jpg") or "shift-closing-evidence.jpg")
+    shift_id = str(body.get("shift_id", "") or "")
     if not chat_id:
         if TELEGRAM_REPORT_CHAT_ID:
             chat_id = int(TELEGRAM_REPORT_CHAT_ID)
@@ -3201,15 +3204,30 @@ async def _handle_send_report(request):
         return web.json_response({"ok": False, "error": "text too long"}, status=400)
 
     sent = []
-    for chunk in chunks:
-        try:
+    try:
+        if photo_b64:
+            photo_bytes = base64.b64decode(photo_b64, validate=True)
+            if len(photo_bytes) > 10 * 1024 * 1024:
+                return web.json_response({"ok": False, "error": "photo too large"}, status=413, headers=cors_headers)
+            caption = chunks[0]
+            if shift_id:
+                caption = f"{caption}\nShift ID: {shift_id}"
+            msg = await request.app["bot"].send_photo(
+                chat_id=chat_id,
+                photo=io.BytesIO(photo_bytes),
+                filename=photo_filename,
+                caption=caption[:1024],
+            )
+            sent.append(msg.message_id)
+            chunks = chunks[1:]
+        for chunk in chunks:
             msg = await request.app["bot"].send_message(chat_id=chat_id, text=chunk)
             sent.append(msg.message_id)
-        except Exception as exc:
-            logger.error("Failed to send telegram message: %s", exc)
-            return web.json_response({"ok": False, "error": str(exc)}, status=502, headers=cors_headers)
+    except Exception as exc:
+        logger.error("Failed to send telegram report/photo: %s", exc)
+        return web.json_response({"ok": False, "error": str(exc)}, status=502, headers=cors_headers)
 
-    return web.json_response({"ok": True, "message_ids": sent}, headers=cors_headers)
+    return web.json_response({"ok": True, "message_ids": sent, "photo_sent": bool(photo_b64)}, headers=cors_headers)
 
 
 async def _handle_send_document(request):

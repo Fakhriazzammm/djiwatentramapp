@@ -1,0 +1,13 @@
+{
+  "name": "@yumipos/djiwa-checkout-ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css"
+  },
+  "peerDependencies": { "react": "^19.0.0" },
+  "devDependencies": { "@types/react": "19.2.7", "typescript": "catalog:" },
+  "scripts": { "check-types": "tsc --noEmit" }
+}

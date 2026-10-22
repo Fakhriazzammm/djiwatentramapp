@@ -176,19 +176,18 @@ function ProfilePage() {
 				</section>
 
 				{/* Profile details */}
-				<div className="overflow-hidden rounded-[26px] bg-card shadow-[0_8px_28px_rgba(15,23,42,0.05)]">
+				<div className="overflow-hidden rounded-2xl bg-card">
 					<div className="flex items-center justify-between border-b border-border/60 px-4 py-4 sm:px-5">
 						<div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Akun & profil</p><h2 className="mt-1 text-base font-black tracking-[-0.02em]">Informasi kamu</h2></div>
-						{!isEditing ? <button type="button" onClick={startEditing} className="inline-flex min-h-10 items-center gap-1.5 rounded-[13px] bg-primary/10 px-3 text-xs font-black text-primary transition-colors hover:bg-primary/15 active:scale-[.97]"><User className="h-3.5 w-3.5" /> Edit</button> : null}
+						{!isEditing ? <button type="button" onClick={startEditing} className="inline-flex min-h-11 items-center gap-1.5 rounded-[13px] bg-primary/10 px-3 text-xs font-black text-primary transition-colors hover:bg-primary/15 active:scale-[.97]"><User className="h-3.5 w-3.5" /> Edit</button> : null}
 					</div>
 					<div className="p-4 sm:p-5">
 						{!isEditing ? (
-							<div className="space-y-1">
+							<div className="divide-y divide-border/60">
 								<InfoRow icon={<Mail className="h-4 w-4 text-primary" />} label="Email" value={customer.email || "Belum diisi"} />
 								<InfoRow icon={<Phone className="h-4 w-4 text-primary" />} label="Nomor WhatsApp" value={customer.phone || "Belum diisi"} />
 								<InfoRow icon={<User className="h-4 w-4 text-primary" />} label="Username" value={`@${customer.username}`} />
-								<div className="my-3 border-t border-border/60" />
-								<div className="grid grid-cols-2 gap-2">
+								<div className="divide-y divide-border/60">
 									<InfoRow icon={<User className="h-4 w-4 text-muted-foreground" />} label="Nama panggilan" value={customer.nickname || "Belum diisi"} />
 									<InfoRow icon={<CalendarDays className="h-4 w-4 text-muted-foreground" />} label="Tanggal lahir" value={customer.birthDate || "Belum diisi"} />
 									<InfoRow icon={<User className="h-4 w-4 text-muted-foreground" />} label="Jenis kelamin" value={customer.gender === "female" ? "Perempuan" : customer.gender === "male" ? "Laki-laki" : customer.gender === "other" ? "Lainnya" : "Belum diisi"} />
@@ -241,23 +240,23 @@ function ProfilePage() {
 								<div><p className="mb-1 text-[10px] font-semibold text-muted-foreground">Alamat (opsional)</p><textarea value={editAddress} onChange={(e) => setEditAddress(e.target.value)} placeholder="Untuk kebutuhan delivery" className="min-h-20 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs outline-none" /></div>
 								<div className="grid grid-cols-2 gap-2"><input type="text" value={editCity} onChange={(e) => setEditCity(e.target.value)} placeholder="Kota/Kabupaten" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs outline-none" /><input type="text" value={editProvince} onChange={(e) => setEditProvince(e.target.value)} placeholder="Provinsi" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs outline-none" /></div>
 								<div><input type="text" value={editPostalCode} onChange={(e) => setEditPostalCode(e.target.value.replace(/\D/g, "").slice(0, 5))} placeholder="Kode pos" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs outline-none" /></div>
-								<label className="flex items-start gap-2 rounded-xl bg-muted/40 p-2 text-[10px] leading-relaxed"><input type="checkbox" checked={editMarketingConsent} onChange={(e) => setEditMarketingConsent(e.target.checked)} className="mt-0.5" />Saya bersedia menerima informasi promo dan layanan Djiwa Tentram.</label>
-								<div className="rounded-2xl border border-cyan-200/70 bg-cyan-50/60 p-3">
-									<label className="flex items-start gap-2 text-[10px] leading-relaxed text-cyan-950"><input type="checkbox" checked={editSharePurchaseActivity} onChange={(e) => setEditSharePurchaseActivity(e.target.checked)} className="mt-0.5" />Tampilkan aktivitas pembelian saya di Komunitas.</label>
+								<label className="flex min-h-11 items-center gap-2 border-b border-border/60 py-2 text-[10px] leading-relaxed"><input type="checkbox" checked={editMarketingConsent} onChange={(e) => setEditMarketingConsent(e.target.checked)} className="mt-0.5" />Saya bersedia menerima informasi promo dan layanan Djiwa Tentram.</label>
+								<div className="border-b border-border/60 py-3">
+									<label className="flex min-h-11 items-center gap-2 text-[10px] leading-relaxed text-foreground"><input type="checkbox" checked={editSharePurchaseActivity} onChange={(e) => setEditSharePurchaseActivity(e.target.checked)} className="mt-0.5" />Tampilkan aktivitas pembelian saya di Komunitas.</label>
 									<p className="mt-1 pl-5 text-[10px] leading-relaxed text-cyan-800">Ini terpisah dari persetujuan informasi promo. Hanya pesanan yang sudah dibayar yang dapat muncul.</p>
-									{editSharePurchaseActivity ? <div className="mt-2 flex flex-wrap gap-3 pl-5"><label className="flex items-center gap-1.5 text-[10px] font-bold text-cyan-900"><input type="radio" name="purchase-activity-name-mode" checked={editPurchaseActivityNameMode === "first_name"} onChange={() => setEditPurchaseActivityNameMode("first_name")} />Nama depan</label><label className="flex items-center gap-1.5 text-[10px] font-bold text-cyan-900"><input type="radio" name="purchase-activity-name-mode" checked={editPurchaseActivityNameMode === "full_name"} onChange={() => setEditPurchaseActivityNameMode("full_name")} />Nama lengkap</label></div> : null}
+									{editSharePurchaseActivity ? <div className="mt-2 flex flex-wrap gap-3 pl-5"><label className="flex min-h-11 items-center gap-1.5 text-[10px] font-bold text-foreground"><input type="radio" name="purchase-activity-name-mode" checked={editPurchaseActivityNameMode === "first_name"} onChange={() => setEditPurchaseActivityNameMode("first_name")} />Nama depan</label><label className="flex min-h-11 items-center gap-1.5 text-[10px] font-bold text-foreground"><input type="radio" name="purchase-activity-name-mode" checked={editPurchaseActivityNameMode === "full_name"} onChange={() => setEditPurchaseActivityNameMode("full_name")} />Nama lengkap</label></div> : null}
 									</div>
 								<div className="flex gap-2 pt-1">
 									<Button
 										variant="outline"
 										size="default"
-										className="flex-1 text-xs"
+										className="min-h-11 flex-1 text-xs"
 										onClick={() => setIsEditing(false)}
 									>
 										Batal
 									</Button>
 									<Button
-										className="flex-1 text-xs"
+										className="min-h-11 flex-1 text-xs"
 										size="default"
 										disabled={!editName.trim() || saving}
 										loading={saving}
@@ -271,7 +270,7 @@ function ProfilePage() {
 					</div>
 				</div>
 				{/* Stats */}
-				<div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+				<div className="divide-y divide-border/60 overflow-hidden rounded-2xl bg-card" aria-label="Ringkasan akun">
 					<ProfileStat
 						icon={<Wallet className="h-4 w-4 text-emerald-500" />}
 						label="Djiwa Pay"
@@ -289,22 +288,25 @@ function ProfilePage() {
 					/>
 				</div>
 
-				<div className="mt-3 grid grid-cols-2 gap-2">
-					<div className="rounded-[20px] bg-emerald-50 p-3.5 shadow-sm">
-						<p className="text-[10px] font-semibold text-emerald-700">Total saldo masuk / top up</p>
-						<p className="mt-1 text-sm font-black text-emerald-900">{currency(customer.walletTotalCredited ?? 0)}</p>
+				<section aria-labelledby="profile-balance-heading">
+					<h2 id="profile-balance-heading" className="mb-2 px-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Saldo</h2>
+					<div className="divide-y divide-border/60 overflow-hidden rounded-2xl bg-card">
+						<div className="flex min-h-11 items-center justify-between gap-3 px-4 py-3">
+							<p className="text-xs text-muted-foreground">Total saldo masuk / top up</p>
+							<p className="shrink-0 text-xs font-bold text-emerald-700">{currency(customer.walletTotalCredited ?? 0)}</p>
+						</div>
+						<div className="flex min-h-11 items-center justify-between gap-3 px-4 py-3">
+							<p className="text-xs text-muted-foreground">Saldo tertahan</p>
+							<p className="shrink-0 text-xs font-bold text-amber-700">{currency(customer.walletHeldBalance ?? 0)}</p>
+						</div>
 					</div>
-					<div className="rounded-[20px] bg-amber-50 p-3.5 shadow-sm">
-						<p className="text-[10px] font-semibold text-amber-700">Saldo tertahan</p>
-						<p className="mt-1 text-sm font-black text-amber-900">{currency(customer.walletHeldBalance ?? 0)}</p>
-					</div>
-				</div>
+				</section>
 
 				{/* Logout */}
 				<div className="pt-1">
 					<button
 						type="button"
-						className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[15px] border border-destructive/15 bg-transparent px-3 py-2.5 text-xs font-bold text-destructive transition-all hover:bg-destructive/5 active:scale-[.98]"
+						className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-card px-3 py-2.5 text-xs font-bold text-destructive transition-colors hover:bg-destructive/5"
 						onClick={() => {
 							setCart([]);
 							logout();
@@ -331,8 +333,8 @@ function InfoRow({
 	value: string;
 }) {
 	return (
-		<div className="flex items-center gap-2.5">
-			<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+		<div className="flex min-h-11 items-center gap-2.5 py-3">
+			<div className="flex h-8 w-8 items-center justify-center text-muted-foreground">
 				{icon}
 			</div>
 			<div className="min-w-0 flex-1">
@@ -353,12 +355,10 @@ function ProfileStat({
 	value: string;
 }) {
 	return (
-		<div className="flex min-h-[68px] items-center gap-2.5 rounded-[18px] bg-card p-3 shadow-[0_6px_20px_rgba(15,23,42,0.04)] transition-transform duration-200 active:scale-[.98]">
+		<div className="flex min-h-11 items-center gap-2.5 px-4 py-3">
 			{icon}
-			<div>
-				<p className="text-[10px] font-semibold text-muted-foreground">{label}</p>
-				<p className="text-xs font-black text-foreground">{value}</p>
-			</div>
+			<p className="min-w-0 flex-1 text-xs text-muted-foreground">{label}</p>
+			<p className="shrink-0 text-xs font-bold text-foreground">{value}</p>
 		</div>
 	);
 }

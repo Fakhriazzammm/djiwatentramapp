@@ -3,7 +3,8 @@ import { formatCurrencyIDR } from "@/lib/export-utils";
 import type { TransactionRow } from "@/lib/export-utils";
 import { format } from "date-fns";
 import { id as localeID } from "date-fns/locale";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/client";
 
 const CATEGORY_LABELS: Record<string, string> = {
 	bahan_baku: "Bahan Baku",
@@ -37,7 +38,107 @@ interface Props {
 
 export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 	const [showReceipt, setShowReceipt] = useState(false);
+	const [projection, setProjection] = useState<{ document: any | null; links: any[] }>({ document: null, links: [] });
+	const [approvingId, setApprovingId] = useState<string | null>(null);
+	const [inventoryOptions, setInventoryOptions] = useState<any[]>([]);
+	const [postingId, setPostingId] = useState<string | null>(null);
+	const [aiRescan, setAiRescan] = useState<{ loading: boolean; error?: string; result?: any }>({ loading: false });
 	const receiptUrl = (tx as any).metadata?.receipt_image_url as string | undefined;
+	const transactionId = String((tx as any)._id || (tx as any).id || "");
+
+	useEffect(() => {
+		let cancelled = false;
+		if (!transactionId) return;
+		const supabase = createClient();
+		Promise.all([
+			supabase.from("pos_expense_receipt_documents").select("_id,ocrStatus,merchantName,receiptTotal,receiptImageUrl").eq("transactionId", transactionId).maybeSingle(),
+			supabase.from("pos_expense_inventory_links").select("_id,rawName,quantity,unit,confidence,status,inventoryId,matchMethod").eq("transactionId", transactionId).order("rawName"),
+			supabase.from("pos_inventory").select("_id,ingredientName,unit").order("ingredientName").limit(500),
+		]).then(([documentResult, linksResult, inventoryResult]) => {
+			if (cancelled) return;
+			setProjection({ document: documentResult.data ?? null, links: linksResult.data ?? [] });
+			setInventoryOptions(inventoryResult.data ?? []);
+		}).catch(() => {
+			if (!cancelled) setProjection({ document: null, links: [] });
+		});
+		return () => { cancelled = true; };
+	}, [transactionId]);
+
+	const selectInventory = (linkId: string, inventoryId: string) => {
+		const option = inventoryOptions.find((item) => item._id === inventoryId);
+		setProjection((current) => ({
+			...current,
+			links: current.links.map((item) => item._id === linkId ? { ...item, inventoryId, matchMethod: "manual", confidence: 100, selectedInventoryName: option?.ingredientName } : item),
+		}));
+	};
+
+	const approveLink = async (link: any) => {
+		if (!link?.inventoryId || approvingId) return;
+		setApprovingId(link._id);
+		try {
+			const supabase = createClient();
+			const { error } = await supabase.schema("pos").rpc("approve_expense_inventory_link", {
+				p_link_id: link._id,
+				p_inventory_source_id: link.inventoryId,
+				p_base_quantity: link.quantity == null ? null : Number(link.quantity),
+				p_base_unit: link.unit || null,
+				p_match_method: link.matchMethod || "manual",
+				p_confidence: link.confidence == null ? null : Number(link.confidence),
+			});
+			if (error) throw error;
+			setProjection((current) => ({
+				...current,
+				links: current.links.map((item) => item._id === link._id ? { ...item, status: "approved" } : item),
+			}));
+		} catch (error) {
+			console.error("Failed to approve expense inventory link", error);
+		} finally {
+			setApprovingId(null);
+		}
+	};
+
+	const rescanWithAi = async () => {
+		if (!transactionId || aiRescan.loading) return;
+		setAiRescan({ loading: true });
+		try {
+			const supabase = createClient();
+			const { data: sessionData } = await supabase.auth.getSession();
+			const accessToken = sessionData.session?.access_token;
+			if (!accessToken) throw new Error("Sesi login tidak tersedia");
+			const response = await fetch("/api/finance-ai/reprocess-receipt", {
+				method: "POST",
+				headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+				body: JSON.stringify({ transaction_id: transactionId }),
+			});
+			const payload = await response.json();
+			if (!response.ok || !payload.ok) throw new Error(payload.error || "Scan ulang gagal");
+			setAiRescan({ loading: false, result: payload.result || {} });
+		} catch (error) {
+			setAiRescan({ loading: false, error: error instanceof Error ? error.message : "Scan ulang gagal" });
+		}
+	};
+
+	const postLink = async (link: any) => {
+		if (link?.status !== "approved" || postingId) return;
+		if (!window.confirm(`Posting ${link.rawName} ke stok bahan baku?`)) return;
+		setPostingId(link._id);
+		try {
+			const supabase = createClient();
+			const { error } = await supabase.schema("pos").rpc("apply_expense_inventory_link", {
+				p_link_id: link._id,
+				p_idempotency_key: `${link._id}:apply`,
+			});
+			if (error) throw error;
+			setProjection((current) => ({
+				...current,
+				links: current.links.map((item) => item._id === link._id ? { ...item, status: "applied" } : item),
+			}));
+		} catch (error) {
+			console.error("Failed to post expense inventory link", error);
+		} finally {
+			setPostingId(null);
+		}
+	};
 
 	const status = STATUS_LABELS[tx.status] || {
 		label: tx.status,
@@ -124,6 +225,47 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 							</span>
 						</div>
 					</div>
+
+					{/* Receipt processing projection */}
+					{(projection.document || projection.links.length > 0) && (
+						<div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 space-y-3">
+							<div className="flex flex-wrap items-center justify-between gap-2">
+								<span className="text-sm font-semibold text-slate-800">Inventory & OCR</span>
+								<div className="flex items-center gap-2">
+									<span className="rounded-full bg-white px-2 py-1 text-[11px] font-medium text-slate-600">{projection.document?.ocrStatus || "Belum diproses"}</span>
+								</div>
+							</div>
+							{projection.links.length > 0 && (
+								<div className="space-y-2">
+									{projection.links.map((link) => (
+										<div key={link._id} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-xs">
+											<div className="min-w-0"><p className="truncate font-medium text-slate-800">{link.rawName}</p><p className="text-slate-500">{link.quantity ?? "-"} {link.unit || ""}</p></div>
+											<div className="flex shrink-0 items-center gap-2">
+												{link.status === "pending" && !link.inventoryId && (
+													<select className="max-w-[150px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700" value="" onChange={(event) => selectInventory(link._id, event.target.value)}>
+														<option value="">Pilih bahan</option>
+														{inventoryOptions.map((option) => <option key={option._id} value={option._id}>{option.ingredientName} ({option.unit})</option>)}
+													</select>
+												)}
+												<span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">{link.status}</span>
+												{link.status === "pending" && link.inventoryId && (
+													<button type="button" className="rounded-lg bg-blue-600 px-2 py-1 font-medium text-white disabled:opacity-50" disabled={approvingId === link._id} onClick={() => approveLink(link)}>
+														{approvingId === link._id ? "..." : "Setujui"}
+													</button>
+												)}
+												{link.status === "approved" && (
+													<button type="button" className="rounded-lg bg-emerald-600 px-2 py-1 font-medium text-white disabled:opacity-50" disabled={postingId === link._id} onClick={() => postLink(link)}>
+														{postingId === link._id ? "..." : "Post stok"}
+													</button>
+												)}
+											</div>
+										</div>
+									))}
+								</div>
+							)}
+							<p className="text-[11px] text-slate-500">Data ini bersifat reviewable; stok belum diubah oleh AI.</p>
+						</div>
+					)}
 
 					{/* Receipt Image */}
 					{receiptUrl && (

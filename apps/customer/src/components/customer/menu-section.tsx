@@ -82,6 +82,7 @@ export interface MenuSectionProps {
 	cart: CartItem[];
 	codeFeedback: string;
 	config: typeof CUSTOMER_ORDERING_DEFAULTS;
+	showDineInSummary: boolean;
 	discounts: Doc<"discounts">[] | undefined;
 	filteredProducts: Doc<"products">[];
 	freeRefillCharge: number;
@@ -123,12 +124,8 @@ export function renderMenuSection(props: MenuSectionProps) {
 	const activeDjiwaPayPromo = props.discounts?.find((discount) => isDjiwaPayCampaignActive(discount));
 	const djiwaPayCampaignActive = Boolean(activeDjiwaPayPromo);
 	const isCodeFeedbackError = /belum unik|tidak|gagal|error/i.test(props.codeFeedback);
-	const categoryDisplayPriority = (category: Doc<"categories"> | null) => {
-		const name = String(category?.name ?? "").trim().toLowerCase();
-		if (name.includes("makanan")) return 0;
-		if (name.includes("minuman")) return 1;
-		return 2;
-	};
+	const categoryDisplayPriority = (category: Doc<"categories"> | null) =>
+		Number.isFinite(Number(category?.displayOrder)) ? Number(category?.displayOrder) : 9999;
 	const rootCategories = props.orderedCategories
 		.filter((category) => !category.parentId && category.track !== "hidden")
 		.sort((a, b) => categoryDisplayPriority(a) - categoryDisplayPriority(b));
@@ -138,10 +135,31 @@ export function renderMenuSection(props: MenuSectionProps) {
 		if (!category) return null;
 		return category.parentId ? categoryById.get(String(category.parentId)) ?? category : category;
 	};
+	const selectedCategory = props.activeCategoryId
+		? categoryById.get(String(props.activeCategoryId)) ?? null
+		: null;
+	const subcategoryDisplayPriority = (category: Doc<"categories"> | null) =>
+		Number.isFinite(Number(category?.displayOrder)) ? Number(category?.displayOrder) : 9999;
+	const productCategoryRank = (product: Doc<"products">) => {
+		if (!selectedCategory) return 1;
+		const category = categoryById.get(String(product.categoryId));
+		if (!category) return 2;
+		// When Bubur is selected, Bubur must be the first vertical section;
+		// the remaining sections stay available below it in the same scroll.
+		if (String(category._id) === String(selectedCategory._id)) return 0;
+		if (String(category.parentId ?? "") === String(selectedCategory._id)) return 0;
+		if (String(selectedCategory.parentId ?? "") === String(category.parentId ?? "")) return 1;
+		return 2;
+	};
 	const catalogProducts = [...props.filteredProducts].sort((a, b) => {
 		const aRoot = rootCategoryForProduct(a);
 		const bRoot = rootCategoryForProduct(b);
-		return categoryDisplayPriority(aRoot) - categoryDisplayPriority(bRoot);
+		const rankDelta = productCategoryRank(a) - productCategoryRank(b);
+		const aCategory = categoryById.get(String(a.categoryId));
+		const bCategory = categoryById.get(String(b.categoryId));
+		const rootDelta = categoryDisplayPriority(aRoot) - categoryDisplayPriority(bRoot);
+		const subcategoryDelta = subcategoryDisplayPriority(aCategory) - subcategoryDisplayPriority(bCategory);
+		return rootDelta || rankDelta || subcategoryDelta;
 	});
 	const bestSellerRank = new Map((props.bestSellers ?? []).map((item) => [String(item.productId), Number(item.totalSold)]));
 	const recentRank = new Map((props.recentProductIds ?? []).map((id, index) => [String(id), Math.max(1, 8 - index)]));
@@ -226,7 +244,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 				</details>
 			) : null}
 			<div className="flex items-center justify-between gap-3 px-1 text-[11px] font-bold text-muted-foreground" aria-label="Ringkasan pesanan">
-				<p className="min-w-0 truncate">Meja {props.tableNumber.trim() || "—"} · {props.partySize} orang</p>
+				{props.showDineInSummary ? <p className="min-w-0 truncate">Meja {props.tableNumber.trim() || "—"} · {props.partySize} orang</p> : <span />}
 				<p className="shrink-0">{props.totalItems} item · {currency(props.total)}</p>
 			</div>
 			{props.freeRefillCharge > 0 ? <p className="px-1 text-[11px] font-bold text-emerald-700">Free refill · {currency(props.freeRefillCharge)}</p> : null}
@@ -250,7 +268,8 @@ export function renderMenuSection(props: MenuSectionProps) {
 					</div>
 					<div data-category-catalog className="sticky top-0 z-40 isolate self-start -mx-1 w-full rounded-lg border border-border bg-card p-1 shadow-[0_6px_16px_rgba(15,23,42,0.08)] backdrop-blur supports-[backdrop-filter]:bg-card/95" style={{ position: "sticky", top: 0, zIndex: 40 }}>
 						<div className="relative">
-							<div aria-label="Kategori menu" className="flex gap-1 overflow-x-auto pb-0.5 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+							<p className="mb-1 px-1 text-[9px] font-black uppercase tracking-[0.14em] text-muted-foreground">Kategori utama</p>
+							<div aria-label="Kategori utama menu" className="flex gap-1 overflow-x-auto pb-0.5 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 								<button type="button" data-category-chip="all" className={chipClassName(props.activeCategoryId === null, true)} onClick={() => scrollToCategory(null)}>Semua</button>
 								{rootCategories.map((category) => {
 									const hasActiveChild = props.orderedCategories.some((child) => child.parentId === category._id && child._id === props.activeCategoryId);
@@ -265,11 +284,14 @@ export function renderMenuSection(props: MenuSectionProps) {
 								props.orderedCategories.some((child) => child.parentId === category._id && child._id === props.activeCategoryId)
 							);
 							const subcategories = activeRoot
-								? props.orderedCategories.filter((category) => category.parentId === activeRoot._id && category.track !== "hidden")
+								? props.orderedCategories
+									.filter((category) => category.parentId === activeRoot._id && category.track !== "hidden")
+									.sort((a, b) => subcategoryDisplayPriority(a) - subcategoryDisplayPriority(b))
 								: [];
 							if (!subcategories.length) return null;
 							return (
-								<div className="mt-0.5 rounded-md bg-muted/40 p-0.5">
+								<div className="mt-1 rounded-md bg-muted/40 p-1">
+									<p className="mb-1 px-1 text-[9px] font-black uppercase tracking-[0.14em] text-primary/80">Subkategori {activeRoot.name} · navigasi menu</p>
 									<div aria-label={`Subkategori ${activeRoot.name}`} className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 										<button type="button" data-category-chip={String(activeRoot._id)} className={chipClassName(props.activeCategoryId === activeRoot._id, true)} onClick={() => scrollToCategory(activeRoot._id)}>Semua {activeRoot.name}</button>
 										{subcategories.map((subcategory) => (
@@ -317,8 +339,8 @@ export function renderMenuSection(props: MenuSectionProps) {
 								const showSubcategoryHeading = productCategory?.parentId && firstProductIndexByCategory.get(String(productCategory._id)) === index;
 								return (
 									<div key={product._id}>
-										{showRootCategoryHeading ? <div data-category-section={rootCategoryId} className="scroll-mt-28 pt-3 first:pt-0"><h4 className="px-1 text-sm font-black text-foreground">{rootCategory.name}</h4><div className="mt-1 h-0.5 w-8 rounded-full bg-primary" /></div> : null}
-										{showSubcategoryHeading ? <div data-category-section={String(productCategory._id)} className="scroll-mt-28 pt-3 pb-2"><h5 className="px-1 text-xs font-black text-primary">{productCategory.name}</h5><div className="mt-1 h-px w-full bg-primary/15" /></div> : null}
+										{showRootCategoryHeading ? <div data-category-section={rootCategoryId} data-category-section-level="root" className="scroll-mt-28 pt-3 first:pt-0"><h4 className="px-1 text-sm font-black text-foreground">{rootCategory.name}</h4><div className="mt-1 h-0.5 w-8 rounded-full bg-primary" /></div> : null}
+										{showSubcategoryHeading ? <div data-category-section={String(productCategory._id)} data-category-section-level="subcategory" className="scroll-mt-28 pt-3 pb-2"><h5 className="px-1 text-xs font-black text-primary">{productCategory.name}</h5><div className="mt-1 h-px w-full bg-primary/15" /></div> : null}
 										<article className="flex items-start gap-2 rounded-[16px] border border-border/80 bg-card p-1.5 shadow-[0_2px_10px_rgba(9,9,11,0.04)] transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)]">
 										<ProductImageButton src={product.image} alt={product.name} isSold={isSold} />
 										<div className="min-w-0 flex-1 py-0">

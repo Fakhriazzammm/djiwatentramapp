@@ -3,14 +3,14 @@ import type { Id } from "@/types/backend-compat";
 export const GUEST_ORDER_HISTORY_KEY = "customer-guest-order-history-v1";
 const GUEST_ORDER_TTL_MS = 60 * 60 * 1000;
 
-type GuestOrderReference = { orderId: string; expiresAt: number };
+type GuestOrderReference = { orderId: string; expiresAt: number; accessToken?: string };
 
-export function rememberGuestOrder(orderId: string) {
+export function rememberGuestOrder(orderId: string, accessToken?: string) {
 	if (typeof window === "undefined" || !orderId) return;
 	try {
 		const now = Date.now();
 		const current = readGuestOrderReferences(now);
-		const next = [{ orderId, expiresAt: now + GUEST_ORDER_TTL_MS }, ...current.filter((item) => item.orderId !== orderId)].slice(0, 10);
+		const next = [{ orderId, expiresAt: now + GUEST_ORDER_TTL_MS, ...(accessToken ? { accessToken } : {}) }, ...current.filter((item) => item.orderId !== orderId)].slice(0, 10);
 		window.localStorage.setItem(GUEST_ORDER_HISTORY_KEY, JSON.stringify(next));
 	} catch { /* ignore storage errors */ }
 }

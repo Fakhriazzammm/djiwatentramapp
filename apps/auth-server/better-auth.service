@@ -7,15 +7,16 @@ Requires=docker.service
 Type=simple
 User=ubuntu
 WorkingDirectory=/opt/djiwatentramapp/apps/auth-server
+EnvironmentFile=/etc/djiwatentramapp/better-auth.env
 ExecStart=/usr/local/bin/bun src/index.ts
 Restart=always
 RestartSec=5
-Environment=BETTER_AUTH_SECRET=coKdFoMHuRmQrwMzYiJHSlG0kGy7F56KF1vEhXELmA8=
-Environment=BETTER_AUTH_URL=https://djiwatentram.yumme.id
+
+Environment=BETTER_AUTH_URL=https://api.djiwatentram.web.id
 Environment=BETTER_AUTH_PORT=3001
-Environment=BETTER_AUTH_API_KEY=ba_5gxlku2ytxamrt4izhq481grqgsz6tl9
-Environment=GOOGLE_CLIENT_ID=559298319721-pivu1oompqkc21t3sgau2oao39jpms9r.apps.googleusercontent.com
-Environment=GOOGLE_CLIENT_SECRET=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
+
+
+
 
 [Install]
 WantedBy=multi-user.target

@@ -1,0 +1,80 @@
+/* ==================================================================
+ * Djiwa Checkout Standard v2 — additional classes for CustomerCheckout.
+ * Extends the shared primitive class system (no parallel design tokens).
+ * Plain CSS on purpose: renders identically with or without Tailwind.
+ * ================================================================== */
+
+/* header extras (CheckoutHeader already provides step/title/description) */
+.djiwa-checkout-head-row{display:flex;align-items:center;justify-content:flex-end;gap:8px}
+.djiwa-checkout-head-row:first-child{justify-content:space-between}
+.djiwa-checkout-head-icon{display:grid;place-items:center;width:30px;height:30px;flex:0 0 30px;border-radius:9px;background:#edf3fc;color:var(--checkout-primary);font-size:14px}
+.djiwa-checkout-edit{min-height:44px;padding:9px 12px;border:1px solid #cfe0fb;border-radius:11px;background:#f3f8ff;color:var(--checkout-primary);font-family:inherit;font-size:11px;font-weight:800;cursor:pointer}
+
+/* order detail block */
+.djiwa-checkout-detail{padding:11px;border-radius:12px;background:#f4f7fc}
+.djiwa-checkout-detail-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.djiwa-checkout-detail-head p{margin:0;color:var(--checkout-muted);font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.djiwa-checkout-detail-head span{color:var(--checkout-muted);font-size:10px;font-weight:700}
+.djiwa-checkout-items{display:grid;gap:9px;margin:0;padding:0;list-style:none}
+.djiwa-checkout-item{display:flex;align-items:center;gap:9px}
+.djiwa-checkout-item-image{display:block;flex:0 0 40px;width:40px;height:40px;overflow:hidden;border-radius:11px;background:#e7ecf4}
+.djiwa-checkout-item-image img{display:block;width:100%;height:100%;object-fit:cover}
+.djiwa-checkout-item-copy{display:grid;gap:1px;min-width:0;flex:1}
+.djiwa-checkout-item-copy strong{overflow:hidden;font-size:12px;line-height:1.25;text-overflow:ellipsis;white-space:nowrap}
+.djiwa-checkout-item-copy small{color:var(--checkout-muted);font-size:10px}
+.djiwa-checkout-item-price{flex:0 0 auto;font-size:12px;font-weight:800}
+.djiwa-checkout-item-remove{display:grid;place-items:center;flex:0 0 auto;width:30px;height:30px;border:1px solid var(--checkout-border);border-radius:9px;background:var(--checkout-surface);color:var(--checkout-muted);font-size:14px;cursor:pointer}
+.djiwa-checkout-qty{display:flex;align-items:center;gap:6px;margin-top:6px}
+.djiwa-checkout-qty button{display:grid;place-items:center;width:36px;height:36px;border:1px solid var(--checkout-border);border-radius:999px;background:var(--checkout-surface);color:var(--checkout-text);font-family:inherit;font-size:15px;font-weight:800;cursor:pointer}
+.djiwa-checkout-qty button:last-child{border-color:var(--checkout-primary);background:var(--checkout-primary);color:#fff}
+.djiwa-checkout-qty span{min-width:22px;text-align:center;font-size:12px;font-weight:800}
+
+/* fields */
+.djiwa-checkout-field{display:grid;gap:4px}
+.djiwa-checkout-label{display:inline-flex;gap:2px;color:var(--checkout-muted);font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
+.djiwa-checkout-required{color:#c73822}
+.djiwa-checkout-hint{color:var(--checkout-muted);font-size:10px;line-height:1.45}
+.djiwa-checkout-input,.djiwa-checkout-textarea{display:block;width:100%;min-height:44px;padding:9px 11px;border:1px solid var(--checkout-border);border-radius:11px;background:var(--checkout-surface);color:var(--checkout-text);font-family:inherit;font-size:12px;line-height:1.4;outline:none}
+.djiwa-checkout-textarea{min-height:84px;resize:vertical}
+.djiwa-checkout-input:focus,.djiwa-checkout-textarea:focus{border-color:var(--checkout-primary);box-shadow:0 0 0 3px rgba(23,93,204,.12)}
+
+/* switch */
+.djiwa-checkout-switch{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid var(--checkout-border);border-radius:11px;background:#f7f9fc}
+.djiwa-checkout-switch-copy{display:grid;gap:2px;min-width:0}
+.djiwa-checkout-switch-copy strong{font-size:11px;line-height:1.25}
+.djiwa-checkout-switch-copy small{color:var(--checkout-muted);font-size:10px}
+.djiwa-switch{position:relative;flex:0 0 auto;width:46px;height:44px;padding:0;border:0;border-radius:999px;background:rgba(104,117,138,.25);cursor:pointer;transition:background .16s ease}
+.djiwa-switch.is-on{background:var(--checkout-primary)}
+.djiwa-switch-knob{position:absolute;top:12px;left:5px;width:20px;height:20px;border-radius:999px;background:#fff;box-shadow:0 1px 2px rgba(15,23,42,.22);transition:left .16s ease}
+.djiwa-switch.is-on .djiwa-switch-knob{left:21px}
+
+/* payment extras */
+.djiwa-payment-option-wrap{display:grid;gap:0}
+.djiwa-payment-topup{display:flex;align-items:center;justify-content:space-between;gap:9px;padding:8px 10px;border:1px solid #f1d9a3;border-top:0;border-radius:0 0 11px 11px;background:#fff9eb}
+.djiwa-payment-topup p{margin:0;color:#8a5a12;font-size:10px;font-weight:600;line-height:1.45}
+.djiwa-payment-topup button{flex:0 0 auto;min-height:36px;padding:7px 11px;border:0;border-radius:9px;background:#b8720f;color:#fff;font-family:inherit;font-size:10px;font-weight:800;cursor:pointer}
+
+/* feedback + summary extras */
+.djiwa-checkout-alert{margin:10px 0 0;padding:10px 11px;border:1px solid #f2c8c8;border-radius:12px;background:#fff4f4;color:#9c2b2b;font-size:11px;font-weight:600;line-height:1.5}
+.djiwa-summary-rows{gap:0}
+.djiwa-summary-note{margin:6px 0 0;color:var(--checkout-muted);font-size:10px;line-height:1.5}
+.djiwa-summary-total-row{border-top:1px solid var(--checkout-border);border-bottom:0}
+.djiwa-order-summary-row.is-promo strong{color:#ea580c}
+.djiwa-order-summary-row.is-reward strong{color:#059669}
+.djiwa-order-summary-row.is-adjust-up strong{color:#b45309}
+.djiwa-order-summary-row.is-adjust-down strong{color:#047857}
+
+/* action row: both buttons share the width (Djiwa Checkout Standard) */
+.djiwa-checkout-actions .djiwa-checkout-back,.djiwa-checkout-actions .djiwa-checkout-primary{flex:1}
+
+/* empty cart */
+.djiwa-checkout-empty{padding:22px;border:1px dashed var(--checkout-border);border-radius:16px;background:var(--checkout-surface);text-align:center}
+.djiwa-checkout-empty-icon{display:grid;place-items:center;width:46px;height:46px;margin:0 auto;border-radius:14px;background:#eef2f8;font-size:20px}
+.djiwa-checkout-empty h2{margin:11px 0 0;font-size:14px;line-height:1.25}
+.djiwa-checkout-empty p{margin:5px 0 0;color:var(--checkout-muted);font-size:11px;line-height:1.5}
+.djiwa-checkout-empty-action{margin:14px auto 0;min-height:44px;padding:9px 14px;border:1px solid var(--checkout-primary);border-radius:11px;background:var(--checkout-primary);color:#fff;font-family:inherit;font-size:11px;font-weight:800;cursor:pointer}
+
+@media(max-width:420px){
+  .djiwa-checkout-item-image{flex-basis:36px;width:36px;height:36px}
+  .djiwa-checkout-empty{padding:18px}
+}

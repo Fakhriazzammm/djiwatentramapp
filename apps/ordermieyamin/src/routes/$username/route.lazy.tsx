@@ -77,7 +77,7 @@ function MemberHomePage() {
 		}
 
 		// Tidak cocok → redirect ke landing
-		navigate({ to: "/" });
+		navigate({ to: "/", search: {} as any });
 	}, [resolved, isLoading, isAuthenticated, customer, username, navigate]);
 
 	// Sinkronkan guest data kalau berubah (mis. setelah daftar ulang)
@@ -244,7 +244,7 @@ function MemberHomePage() {
 							className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground transition-[color,background-color,transform] duration-[180ms] hover:bg-destructive/10 hover:text-destructive active:scale-[.97]"
 							onClick={async () => {
 								await logout();
-								navigate({ to: "/" });
+								navigate({ to: "/", search: {} as any });
 							}}
 						>
 							<LogOut className="h-4 w-4" />

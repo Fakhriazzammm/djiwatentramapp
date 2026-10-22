@@ -8,6 +8,7 @@ import { investorAuth, registerInvestorPortalRoutes } from "./investor-portal.js
 import { buildCoffeePassportStickerPrompt, generateCoffeePassportPng, stickerModel, stickerPromptVersion } from "./coffee-passport-sticker.js";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { createHmac } from "node:crypto";
 
 const app = new Hono();
 const MAYAR_PROXY_URL = process.env.MAYAR_PROXY_URL || "https://supabase.yumme.id/functions/v1/mayar-proxy";
@@ -15,6 +16,7 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPA
 const MAYAR_DEFAULT_MOBILE = process.env.MAYAR_DEFAULT_MOBILE || "";
 const customerOrigins = [
   "https://djiwatentram.yumme.id",
+  "https://pay.djiwatentram.web.id",
   "https://investor.yumme.id",
   "https://merchandise.yumme.id",
   "https://booking.yumme.id",
@@ -22,6 +24,7 @@ const customerOrigins = [
   "https://ordermieyamin.yumme.id",
   "https://500kopitasik.yumme.id",
   "https://kolmarketing.yumme.id",
+  "https://rekrutmen.yumme.id",
   "http://localhost:5173",
   "http://localhost:3010",
 ];
@@ -50,6 +53,17 @@ app.use(
   }),
 );
 
+// Customer data endpoints also use the Better Auth cross-subdomain session cookie.
+app.use(
+  "/api/customer/*",
+  cors({
+    origin: customerOrigins,
+    allowHeaders: ["Accept", "Content-Type", "Authorization"],
+    allowMethods: ["POST", "GET", "OPTIONS"],
+    credentials: true,
+  }),
+);
+
 // CORS — passport data is requested from the 500 Kopi subdomain.
 app.use(
   "/api/coffee-passport/*",
@@ -60,6 +74,27 @@ app.use(
     credentials: true,
   }),
 );
+
+// Recruitment uses the same Google/customer OAuth client and callback.
+app.get("/api/auth/recruitment-session", async (c) => {
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  const email = session?.user?.email?.trim().toLowerCase();
+  if (!session?.user?.id || !email || !RECRUITMENT_BRIDGE_SECRET) return c.json({ success: false, error: "HRD_REQUIRED" }, 403);
+  let employee = await pool.query(`SELECT source_id, is_active FROM public.yumi_users WHERE lower(btrim(email)) = $1 LIMIT 1`, [email]);
+  if (!employee.rows[0]) {
+    const role = await pool.query(`SELECT source_id FROM public.yumi_roles WHERE lower(btrim(name)) = 'hrd' LIMIT 1`);
+    const roleId = role.rows[0]?.source_id || "role_hrd";
+    if (!role.rows[0]) await pool.query(`INSERT INTO public.yumi_roles (source_id, name, permissions, raw) VALUES ($1, 'HRD', '[]'::jsonb, jsonb_build_object('source', 'recruitment_google')) ON CONFLICT DO NOTHING`, [roleId]);
+    const sourceId = `hrd_${crypto.randomUUID().replace(/-/g, "")}`;
+    const username = `google_${crypto.randomUUID().replace(/-/g, "").slice(0, 20)}`;
+    await pool.query(`INSERT INTO public.yumi_users (source_id, username, name, role_source_id, is_active, auth_user_id, email, slug, raw) VALUES ($1, $2, $3, $4, false, $5, $6, $2, jsonb_build_object('registrationStatus', 'pending', 'registrationSource', 'recruitment_google'))`, [sourceId, username, session.user.name || email, roleId, session.user.id, email]);
+    employee = await pool.query(`SELECT source_id, is_active FROM public.yumi_users WHERE source_id = $1`, [sourceId]);
+  }
+  if (!employee.rows[0]?.is_active) return c.json({ success: false, error: "HRD_PENDING", pending: true }, 403);
+  const payload = Buffer.from(JSON.stringify({ sub: session.user.id, role: "HRD", exp: Date.now() + 8 * 60 * 60 * 1000 })).toString("base64url");
+  const signature = createHmac("sha256", RECRUITMENT_BRIDGE_SECRET).update(payload).digest("base64url");
+  return c.json({ success: true, token: `${payload}.${signature}`, role: "HRD" });
+});
 
 // Better Auth handler (customer)
 app.on(["POST", "GET"], "/api/auth/*", (c) => {
@@ -152,8 +187,10 @@ app.post("/api/kol/claim", async (c) => {
 registerKolPortalRoutes(app, auth, pool);
 
 // ── Better Auth KARYAWAN (staff) ──────────────────────────────────
+const RECRUITMENT_BRIDGE_SECRET = process.env.REKRUTMEN_AUTH_BRIDGE_SECRET || "";
 const staffOrigins = [
   "https://karyawan.yumme.id",
+  "https://rekrutmen.yumme.id",
   "http://localhost:5173",
   "http://localhost:5174",
 ];
@@ -167,6 +204,23 @@ app.use(
     credentials: true,
   }),
 );
+
+app.get("/api/staff-auth/recruitment-session", async (c) => {
+  const session = await staffAuth.api.getSession({ headers: c.req.raw.headers });
+  const email = session?.user?.email?.trim().toLowerCase();
+  if (!session?.user?.id || !email || !RECRUITMENT_BRIDGE_SECRET) {
+    return c.json({ success: false, error: "HRD_REQUIRED" }, 403);
+  }
+  const employee = await pool.query(
+    `SELECT source_id FROM public.yumi_users
+      WHERE is_active = true AND lower(btrim(email)) = $1 LIMIT 1`,
+    [email],
+  );
+  if (!employee.rows[0]) return c.json({ success: false, error: "HRD_REQUIRED" }, 403);
+  const payload = Buffer.from(JSON.stringify({ sub: session.user.id, role: "HRD", exp: Date.now() + 8 * 60 * 60 * 1000 })).toString("base64url");
+  const signature = createHmac("sha256", RECRUITMENT_BRIDGE_SECRET).update(payload).digest("base64url");
+  return c.json({ success: true, token: `${payload}.${signature}`, role: "HRD" });
+});
 
 app.on(["POST", "GET"], "/api/staff-auth/*", (c) => {
   return staffAuth.handler(c.req.raw);
@@ -650,9 +704,211 @@ function privateJson(body: Record<string, unknown>, status = 200) {
   });
 }
 
+
+const payBridgeTickets = new Map<string, { userId: string; expiresAt: number }>();
+const payBridgeSessions = new Map<string, { userId: string; expiresAt: number }>();
+const PAY_BRIDGE_ORIGIN = "https://pay.djiwatentram.web.id";
+const PAY_BRIDGE_TTL_MS = 90_000;
+const PAY_SESSION_TTL_SECONDS = 900;
+
+function prunePayBridgeState() {
+  const now = Date.now();
+  for (const [key, value] of payBridgeTickets) if (value.expiresAt <= now) payBridgeTickets.delete(key);
+  for (const [key, value] of payBridgeSessions) if (value.expiresAt <= now) payBridgeSessions.delete(key);
+}
+
+async function customerForUser(userId: string) {
+  const result = await pool.query(
+    "SELECT source_id, name, email, phone, photo_url FROM public.pos_customers_view WHERE source_id = $1 LIMIT 1",
+    [userId],
+  );
+  return result.rows[0] ?? null;
+}
+
+function paySessionId(headers: Headers) {
+  const match = headers.get("cookie")?.match(/(?:^|;\s*)djiwa_pay_session=([^;]+)/);
+  return match?.[1] || "";
+}
+
+async function requirePaySession(headers: Headers) {
+  prunePayBridgeState();
+  const current = payBridgeSessions.get(paySessionId(headers));
+  if (!current || current.expiresAt <= Date.now()) return null;
+  const customer = await customerForUser(current.userId);
+  return customer ? { userId: current.userId, customer } : null;
+}
+
+app.get("/api/customer/pay-bridge/start", async (c) => {
+  const session = await requireCustomerSession(c.req.raw.headers);
+  if (!session?.user?.id) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const returnTo = c.req.query("returnTo") || `${PAY_BRIDGE_ORIGIN}/wallet`;
+  let target: URL;
+  try {
+    target = new URL(returnTo);
+    if (target.origin !== PAY_BRIDGE_ORIGIN || target.protocol !== "https:") throw new Error("invalid target");
+  } catch {
+    target = new URL("/wallet", PAY_BRIDGE_ORIGIN);
+  }
+  prunePayBridgeState();
+  const ticket = crypto.randomUUID().replace(/-/g, "");
+  payBridgeTickets.set(ticket, { userId: session.user.id, expiresAt: Date.now() + PAY_BRIDGE_TTL_MS });
+  target.searchParams.set("bridgeToken", ticket);
+  return c.redirect(target.toString(), 302);
+});
+
+app.post("/api/pay-bridge/exchange", async (c) => {
+  const body = await c.req.json().catch(() => ({})) as { token?: unknown };
+  const ticket = typeof body.token === "string" ? body.token.trim() : "";
+  prunePayBridgeState();
+  const record = payBridgeTickets.get(ticket);
+  payBridgeTickets.delete(ticket);
+  if (!record || record.expiresAt <= Date.now()) return privateJson({ success: false, error: "BRIDGE_EXPIRED" }, 401);
+  const customer = await customerForUser(record.userId);
+  if (!customer) return privateJson({ success: false, error: "CUSTOMER_NOT_FOUND" }, 403);
+  const sessionId = crypto.randomUUID().replace(/-/g, "");
+  payBridgeSessions.set(sessionId, { userId: record.userId, expiresAt: Date.now() + PAY_SESSION_TTL_SECONDS * 1000 });
+  return new Response(JSON.stringify({ success: true, customer }), { status: 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "Set-Cookie": `djiwa_pay_session=${sessionId}; Max-Age=${PAY_SESSION_TTL_SECONDS}; Path=/; HttpOnly; Secure; SameSite=Lax` } });
+});
+
+app.get("/api/pay-bridge/profile", async (c) => {
+  const session = await requirePaySession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  return privateJson({ success: true, customer: session.customer });
+});
+
+app.post("/api/pay-bridge/wallet", async (c) => {
+  const session = await requirePaySession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const body = await c.req.json().catch(() => ({})) as { action?: unknown; amount?: unknown };
+  const action = typeof body.action === "string" ? body.action : "get";
+  const sourceId = String(session.customer.source_id || "");
+  const email = String(session.customer.email || "");
+  if (!sourceId || !email) return privateJson({ success: false, error: "PROFILE_INCOMPLETE" }, 422);
+  if (action === "get") {
+    const wallet = await pool.query("SELECT * FROM pos.customer_wallets WHERE customer_id = $1 LIMIT 1", [sourceId]);
+    const ledger = await pool.query("SELECT * FROM pos.customer_wallet_ledger WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 100", [sourceId]);
+    return privateJson({ success: true, wallet: wallet.rows[0] ?? null, ledger: ledger.rows });
+  }
+  if (action !== "topup") return privateJson({ success: false, error: "UNKNOWN_ACTION" }, 400);
+  const amount = Number(body.amount);
+  if (!Number.isSafeInteger(amount) || amount < 1000) return privateJson({ success: false, error: "INVALID_AMOUNT" }, 400);
+  const supabaseUrl = MAYAR_PROXY_URL.replace(/\/functions\/v1\/mayar-proxy\/?$/, "");
+  const response = await fetch(`${supabaseUrl}/functions/v1/customer-wallet`, { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }, body: JSON.stringify({ action: "topup", sourceId, email, amount, sourceApp: "djiwapay", origin: PAY_BRIDGE_ORIGIN, idempotencyKey: `djiwapay-${sourceId}-${crypto.randomUUID()}` }) });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.result?.invoice_url) return privateJson({ success: false, error: "TOPUP_FAILED" }, 502);
+  return privateJson({ success: true, result: payload.result });
+});
+
+const CUSTOMER_REVIEW_ORDER_STATUSES = new Set(["paid", "completed", "settled"]);
+
+app.post("/api/customer/product-reviews", async (c) => {
+  const session = await requireCustomerSession(c.req.raw.headers);
+  if (!session?.user?.id) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const body = await c.req.json().catch(() => ({})) as { productSourceId?: unknown; orderSourceId?: unknown; rating?: unknown; comment?: unknown };
+  const productId = typeof body.productSourceId === "string" ? body.productSourceId.trim() : "";
+  const orderId = typeof body.orderSourceId === "string" ? body.orderSourceId.trim() : "";
+  const rating = Number(body.rating);
+  const comment = typeof body.comment === "string" ? body.comment.trim() : "";
+  if (!productId || productId.length > 160 || !orderId || orderId.length > 160 || !Number.isInteger(rating) || rating < 1 || rating > 5 || comment.length > 500) {
+    return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const order = await client.query<{ customer_source_id: string | null; status: string | null }>(
+      "SELECT customer_source_id, status FROM pos.orders WHERE source_id = $1 FOR SHARE",
+      [orderId],
+    );
+    const eligibleOrder = order.rows[0];
+    if (!eligibleOrder || eligibleOrder.customer_source_id !== session.user.id || !CUSTOMER_REVIEW_ORDER_STATUSES.has(String(eligibleOrder.status ?? "").toLowerCase())) {
+      await client.query("ROLLBACK");
+      return privateJson({ success: false, error: "ORDER_NOT_ELIGIBLE", message: "Review hanya dapat dibuat untuk order milik customer yang sudah selesai atau lunas." }, 403);
+    }
+    const product = await client.query("SELECT 1 FROM pos.products WHERE source_id = $1 LIMIT 1", [productId]);
+    if (!product.rows[0]) {
+      await client.query("ROLLBACK");
+      return privateJson({ success: false, error: "PRODUCT_NOT_FOUND" }, 404);
+    }
+    const item = await client.query(
+      "SELECT 1 FROM pos.order_items WHERE order_source_id = $1 AND product_source_id = $2 AND quantity > 0 AND (status IS NULL OR status NOT IN ('cancelled', 'canceled')) LIMIT 1",
+      [orderId, productId],
+    );
+    if (!item.rows[0]) {
+      await client.query("ROLLBACK");
+      return privateJson({ success: false, error: "PRODUCT_NOT_IN_ORDER", message: "Produk tidak terdapat pada order tersebut." }, 403);
+    }
+    const displayName = String(session.user.name ?? "Customer").trim().split(/\s+/)[0]?.slice(0, 80) || "Customer";
+    const inserted = await client.query(
+      `INSERT INTO pos.product_reviews (product_source_id, order_source_id, customer_user_id, customer_display_name, rating, comment, status, verified_purchase)
+       VALUES ($1, $2, $3, $4, $5, NULLIF($6, ''), 'pending', true)
+       RETURNING id, product_source_id, rating, comment, customer_display_name, created_at, status`,
+      [productId, orderId, session.user.id, displayName, rating, comment],
+    );
+    await client.query("COMMIT");
+    return privateJson({ success: true, review: inserted.rows[0], message: "Ulasan dikirim untuk ditinjau." });
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    if ((error as { code?: string }).code === "23505") return privateJson({ success: false, error: "DUPLICATE_REVIEW", message: "Produk pada order ini sudah pernah diulas." }, 409);
+    console.error("Customer product review write failed", (error as Error).message);
+    return privateJson({ success: false, error: "REQUEST_FAILED" }, 500);
+  } finally {
+    client.release();
+  }
+});
+
+app.post("/api/customer/product-reviews/report", async (c) => {
+  const session = await requireCustomerSession(c.req.raw.headers);
+  if (!session?.user?.id) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const body = await c.req.json().catch(() => ({})) as { reviewId?: unknown; reason?: unknown };
+  const reviewId = typeof body.reviewId === "string" ? body.reviewId.trim() : "";
+  const reason = typeof body.reason === "string" ? body.reason.trim().slice(0, 240) : "";
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(reviewId)) {
+    return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+  }
+  const review = await pool.query<{ id: string; status: string; customer_user_id: string | null }>(
+    "SELECT id, status, customer_user_id FROM pos.product_reviews WHERE id = $1::uuid LIMIT 1",
+    [reviewId],
+  );
+  const row = review.rows[0];
+  if (!row || !(row.status === "published" || (row.status === "pending" && row.customer_user_id === session.user.id))) {
+    return privateJson({ success: false, error: "REVIEW_NOT_FOUND" }, 404);
+  }
+  const updated = await pool.query(
+    "UPDATE pos.product_reviews SET status = 'reported', moderation_note = $2, moderated_by = $3, moderated_at = now() WHERE id = $1::uuid AND status = $4 RETURNING id",
+    [reviewId, reason || "Dilaporkan customer", `customer:${session.user.id}`, row.status],
+  );
+  if (!updated.rows[0]) return privateJson({ success: false, error: "REVIEW_ALREADY_CHANGED" }, 409);
+  return privateJson({ success: true, reviewId, reported: true });
+});
+
+function trustedProfileImage(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  try {
+    const url = new URL(value.trim());
+    const hostname = url.hostname.toLowerCase();
+    if (url.protocol !== "https:" || !(hostname === "googleusercontent.com" || hostname.endsWith(".googleusercontent.com"))) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 app.get("/api/customer/profile", async (c) => {
   const session = await requireCustomerSession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+
+  // Project the identity-bound Google image server-side only. Preserve a manually uploaded portrait.
+  const identityImage = trustedProfileImage((session.user as { image?: unknown }).image);
+  if (identityImage) {
+    await pool.query(
+      `UPDATE pos.customers
+          SET photo_url = $1, updated_at = now()
+        WHERE source_id = $2
+          AND NULLIF(BTRIM(photo_url), '') IS NULL`,
+      [identityImage, session.user.id],
+    );
+  }
 
   const result = await pool.query(
     "SELECT * FROM public.pos_customers_view WHERE source_id = $1 LIMIT 1",
@@ -661,12 +917,95 @@ app.get("/api/customer/profile", async (c) => {
   return privateJson({ success: true, customer: result.rows[0] ?? null });
 });
 
+
+function customerOrderTrackingSelect(whereSql: string) {
+  return `
+    SELECT o.*,
+      COALESCE(groups.groups, '[]'::json) AS "trackingGroups",
+      COALESCE(groups.total_groups, 0)::int AS "trackingGroupCount",
+      COALESCE(groups.finished_groups, 0)::int AS "trackingFinishedGroupCount",
+      COALESCE(est.estimated_ready_at, NULL) AS "estimatedReadyAt",
+      CASE WHEN o.status = 'pending'
+        AND (lower(COALESCE(o."paymentReceiptKind", '')) = 'gateway_pending'
+          OR lower(COALESCE(o."paymentMethod", '')) IN ('mayar', 'qris'))
+        THEN to_timestamp(o."createdAt" / 1000.0) + interval '30 minutes'
+        ELSE NULL END AS "paymentDeadlineAt",
+      sla.sla_started_at AS "slaStartedAt",
+      sla.sla_deadline_at AS "slaDeadlineAt",
+      (sla.sla_deadline_at IS NOT NULL AND sla.sla_deadline_at < now()
+        AND o.status NOT IN ('completed', 'cancelled')
+        AND NOT (COALESCE(groups.total_groups, 0) > 0
+          AND COALESCE(groups.finished_groups, 0) = COALESCE(groups.total_groups, 0))) AS "isLate",
+      CASE WHEN sla.sla_deadline_at IS NOT NULL AND sla.sla_deadline_at < now()
+        AND o.status NOT IN ('completed', 'cancelled')
+        AND NOT (COALESCE(groups.total_groups, 0) > 0
+          AND COALESCE(groups.finished_groups, 0) = COALESCE(groups.total_groups, 0))
+        THEN floor(extract(epoch from (now() - sla.sla_deadline_at)) / 60)::int ELSE 0 END AS "lateMinutes",
+      CASE
+        WHEN o.status = 'cancelled' THEN 'cancelled'
+        WHEN o.status NOT IN ('paid', 'completed') THEN 'pending_payment'
+        WHEN o.status = 'completed' AND COALESCE(groups.total_groups, 0) = 0 THEN 'completed'
+        WHEN COALESCE(groups.total_groups, 0) > 0
+          AND COALESCE(groups.finished_groups, 0) = COALESCE(groups.total_groups, 0)
+          THEN CASE WHEN lower(COALESCE(o."orderType", '')) IN ('dine_in', 'dine-in', 'dinein')
+                    THEN 'ready_for_table' ELSE 'ready_for_pickup' END
+        WHEN COALESCE(groups.preparing_groups, 0) > 0 THEN 'preparing'
+        ELSE 'received'
+      END AS "trackingStatus"
+    FROM public.pos_orders o
+    LEFT JOIN (
+      SELECT order_no,
+        json_agg(json_build_object(
+          'groupType', group_type,
+          'status', status,
+          'completedAt', selesai_at,
+          'updatedAt', updated_at
+        ) ORDER BY group_type) AS groups,
+        count(*)::int AS total_groups,
+        count(*) FILTER (WHERE status = 'selesai')::int AS finished_groups,
+        count(*) FILTER (WHERE status = 'dibuat')::int AS preparing_groups
+      FROM pos.order_status
+      GROUP BY order_no
+    ) groups ON groups.order_no = o."orderNumber"
+    LEFT JOIN pos.order_tracking_estimates est
+      ON est.order_source_id = o."_id"
+    LEFT JOIN LATERAL (
+      SELECT
+        coalesce(paid.occurred_at, to_timestamp(o."createdAt" / 1000.0)) AS sla_started_at,
+        coalesce(paid.occurred_at, to_timestamp(o."createdAt" / 1000.0)) + (coalesce(policy.sla_minutes, 30) * interval '1 minute') AS sla_deadline_at
+      FROM (SELECT 1) seed
+      LEFT JOIN LATERAL (
+        SELECT occurred_at
+        FROM pos.order_tracking_events
+        WHERE order_source_id = o."_id"
+          AND event_type = 'order_lifecycle'
+          AND to_status = 'paid'
+        ORDER BY occurred_at ASC
+        LIMIT 1
+      ) paid ON true
+      LEFT JOIN LATERAL (
+        SELECT sla_minutes
+        FROM pos.order_tracking_sla_policies
+        WHERE active
+          AND (effective_from IS NULL OR effective_from <= now())
+          AND (effective_until IS NULL OR effective_until > now())
+          AND (order_type = '*' OR order_type = lower(coalesce(o."orderType", '*')))
+        ORDER BY (order_type <> '*') DESC, effective_from DESC
+        LIMIT 1
+      ) policy ON true
+    ) sla ON o.status IN ('paid', 'completed')
+    ${whereSql}
+    ORDER BY o."createdAt" DESC NULLS LAST
+    LIMIT 50
+  `;
+}
+
 app.get("/api/customer/orders", async (c) => {
   const session = await requireCustomerSession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
 
   const result = await pool.query(
-    'SELECT * FROM public.pos_orders WHERE "customerSourceId" = $1 ORDER BY "createdAt" DESC NULLS LAST LIMIT 50',
+    customerOrderTrackingSelect('WHERE o."customerSourceId" = $1'),
     [session.user.id],
   );
   return privateJson({ success: true, orders: result.rows });
@@ -739,17 +1078,24 @@ app.post("/api/customer/push/status", async (c) => {
 });
 
 app.post("/api/customer/guest-orders", async (c) => {
-  const body = await c.req.json().catch(() => ({})) as { orderIds?: unknown };
-  const orderIds = Array.isArray(body.orderIds)
-    ? Array.from(new Set(body.orderIds.filter((value): value is string =>
-        typeof value === "string" && /^order_[a-f0-9]{24}$/.test(value),
-      ))).slice(0, 20)
+  const body = await c.req.json().catch(() => ({})) as { orders?: unknown };
+  const references = Array.isArray(body.orders)
+    ? body.orders.map((value) => {
+        const item = value && typeof value === "object" ? value as Record<string, unknown> : {};
+        return { orderId: String(item.orderId ?? ""), accessToken: String(item.accessToken ?? "") };
+      }).filter((item) => /^order_[a-f0-9]{24}$/.test(item.orderId) && item.accessToken.length >= 20).slice(0, 20)
     : [];
-  if (orderIds.length === 0) return privateJson({ success: true, orders: [] });
+  if (references.length === 0) return privateJson({ success: true, orders: [] });
 
   const result = await pool.query(
-    'SELECT * FROM public.pos_orders WHERE "_id" = ANY($1::text[]) ORDER BY "createdAt" DESC NULLS LAST',
-    [orderIds],
+    customerOrderTrackingSelect(`WHERE EXISTS (
+      SELECT 1 FROM pos.orders raw
+      JOIN json_to_recordset($1::json) AS guest_ref("orderId" text, "accessToken" text)
+        ON guest_ref."orderId" = raw.source_id
+       AND guest_ref."accessToken" = raw.guest_access_token
+      WHERE raw.source_id = o."_id"
+    )`),
+    [JSON.stringify(references)],
   );
   return privateJson({ success: true, orders: result.rows });
 });

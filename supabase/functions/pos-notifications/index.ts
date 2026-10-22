@@ -20,6 +20,38 @@ const ORDER_NOTIFICATION_RETENTION_MS = 24 * 60 * 60 * 1000;
 const REST_PAGE_SIZE = 500;
 const REST_MAX_PAGES = 20;
 
+
+function canonicalOrderNumber(order: any) {
+  const raw = String(order.orderNumber ?? order.order_number ?? "").trim();
+  if (!raw) return null;
+  if (/^ORD-[A-Z]+-[A-Z0-9]+-\d{4}-\d{6}$/i.test(raw)) return raw.toUpperCase();
+  const match = raw.match(/^ORD(\d{1,6})-([A-Z0-9]+)-/i);
+  if (!match) return raw;
+  const sequence = match[1].padStart(4, "0");
+  const type = match[2].toUpperCase();
+  const timestamp = Number(order.createdAt ?? order.created_at ?? Date.now());
+  const date = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Jakarta",
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+  }).format(new Date(timestamp));
+  const source = String(order.source ?? "").trim().toLowerCase();
+  const brand = String(order.brandSlug ?? order.brand_slug ?? "").trim().toLowerCase();
+  const business = String(order.businessUnit ?? order.business_unit ?? "").trim().toLowerCase();
+  const sourceApp = String(order.sourceApp ?? order.source_app ?? "").trim().toLowerCase();
+  const channel = brand === "merchandise" ? "MERCH"
+    : brand === "b2b" || business === "b2b" ? "B2B"
+      : source === "customer_self_service" || sourceApp.includes("djiwaapp") ? "APP"
+        : source === "booking" ? "BOOK"
+          : source.includes("gofood") || sourceApp.includes("gofood") ? "GF"
+            : source.includes("grabfood") || sourceApp.includes("grabfood") ? "GRAB"
+              : source.includes("shopeefood") || sourceApp.includes("shopeefood") ? "SF"
+                : source === "telegram" || sourceApp.includes("telegram") ? "TG"
+                  : "POS";
+  return `ORD-${channel}-${type}-${sequence}-${date.replaceAll("/", "")}`;
+}
+
 function response(body: Json, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -121,7 +153,8 @@ async function dispatchWebPush(notification: any) {
   // @ts-ignore Deno resolves the npm package at Edge Function runtime.
   const webpush = await import("npm:web-push@3.6.7");
   webpush.default?.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
-  const body = JSON.stringify({ title: notification.title, body: notification.message, notificationId: notification.id, url: notification.action_type === "open_order" ? "/admin/orders" : "/admin" });
+  const orderReference = String(notification.order_number ?? notification.order_source_id ?? "").trim();
+  const body = JSON.stringify({ title: notification.title, body: notification.message, notificationId: notification.id, url: notification.action_type === "open_order" && orderReference ? `/admin/orders/${encodeURIComponent(orderReference)}` : "/admin" });
   await Promise.all(targets.map(async (item: any) => {
     const delivery = await dbWrite(
       "pos_notification_push_deliveries",
@@ -212,12 +245,13 @@ async function syncRecentOrders() {
   // only newly observed IDs create a popup in the client.
   const since = new Date(Date.now() - ORDER_NOTIFICATION_RETENTION_MS).toISOString();
   const orders = await dbGetPaged("pos_orders", {
-    select: "_id,orderNumber,status,totalAmount,paymentMethod,paymentReceiptKind,paymentGateway,customerName,tableNumber,orderType,source,sourceApp,createdAt,items",
+    select: "_id,orderNumber,status,totalAmount,subtotalAmount,shippingFeeAmount,paymentMethod,paymentReceiptKind,paymentGateway,customerName,tableNumber,orderType,daily_receipt_no,receipt_kind,source,sourceApp,brandSlug,businessUnit,createdAt,items,deliveryProvider,deliveryContactName,deliveryContactPhone,deliveryAddress,deliveryNotes",
     order: "createdAt.desc",
   });
   let created = 0;
   for (const order of orders ?? []) {
     const source = sourceOf(order);
+    const displayOrderNumber = canonicalOrderNumber(order);
     const createdAt = Number(order.createdAt ?? 0);
     if (!source || !Number.isFinite(createdAt) || createdAt < Date.parse(since)) continue;
     const status = String(order.status ?? "").toLowerCase();
@@ -261,29 +295,32 @@ async function syncRecentOrders() {
           ? `Pesanan ${sourceLabel} sudah dibayar dengan Djiwa Pay`
           : payment === "mayar"
             ? `Pesanan ${sourceLabel} sudah lunas`
-            : `Order ${order.orderNumber ?? order._id} berstatus ${status}`;
+            : `Order ${displayOrderNumber ?? order._id} berstatus ${status}`;
     }
     if (!type || !order._id) continue;
-
-    // Satu order tidak boleh menampilkan state pembayaran lama dan baru
-    // bersamaan. Setelah order settled, nonaktifkan notifikasi pending lama;
-    // dedupe_key tetap menjaga agar event paid hanya dibuat sekali.
-    if (status === "paid" || status === "completed") {
-      await dbWrite(
-        "pos_notifications",
-        "PATCH",
-        { is_active: false },
-        `?order_source_id=eq.${encodeURIComponent(String(order._id))}&notification_type=in.%28order_cashier_pending,order_mayar_pending%29&is_active=eq.true`,
-      );
+    const receiptNumber = Number(order.dailyReceiptNo ?? order.daily_receipt_no ?? 0);
+    const receiptKind = String(order.receiptKind ?? order.receipt_kind ?? order.orderType ?? "").toLowerCase();
+    const receiptType = receiptKind === "dine_in" ? "DINE IN" : receiptKind === "takeaway" ? "TAKEAWAY" : "ORDER";
+    const paymentLabel = payment === "cashier" ? "Bayar Tunai di Kasir" : payment === "mayar" ? "QRIS" : payment === "wallet" ? "Djiwa Pay" : payment.toUpperCase();
+    if (receiptNumber > 0) {
+      const paymentStatusLabel = status === "paid" || status === "completed" ? "LUNAS" : status === "pending" ? "BELUM LUNAS" : status.toUpperCase();
+      const itemCount = Array.isArray(order.items) ? order.items.reduce((sum: number, item: any) => sum + Number(item.quantity ?? 0), 0) : 0;
+      const customerLabel = String(order.customerName ?? "Pelanggan Umum").trim() || "Pelanggan Umum";
+      const totalLabel = `Rp${Number(order.totalAmount ?? 0).toLocaleString("id-ID")}`;
+      const tableLabel = String(order.tableNumber ?? "").trim();
+      message = `Struk #${receiptNumber} · ${receiptType}\n${displayOrderNumber}\nSumber: ${sourceLabel}\nPembayaran: ${paymentLabel}\nCustomer: ${customerLabel}\nStatus: ${paymentStatusLabel}\nTotal: ${totalLabel} · ${itemCount} item${tableLabel ? ` · Meja ${tableLabel}` : ""}`;
     }
 
+    // Never mutate or deactivate a previous order event. A settlement creates
+    // its own order_paid card; the unique dedupe key only prevents replaying
+    // the same order + event type.
     const result = await dbWrite("pos_notifications", "POST", {
       notification_type: type,
       priority: type === "order_cashier_pending" ? "high" : "normal",
       title,
       message,
       order_source_id: String(order._id),
-      order_number: order.orderNumber ?? null,
+      order_number: displayOrderNumber,
       source,
       source_app: source === "pos" ? "pos" : "customer",
       source_module: "orders",
@@ -294,13 +331,22 @@ async function syncRecentOrders() {
       action_type: "open_order",
       action_payload: {
         orderId: order._id,
-        orderNumber: order.orderNumber ?? null,
+        orderNumber: displayOrderNumber,
         source,
         paymentMethod: payment === "mayar" ? "qris" : payment === "wallet" ? "wallet" : payment === "cashier" ? "cashier" : "unknown",
         paymentStatus: status,
         customerName: order.customerName ?? null,
+        deliveryProvider: order.deliveryProvider ?? null,
+        deliveryContactName: order.deliveryContactName ?? null,
+        deliveryContactPhone: order.deliveryContactPhone ?? null,
+        deliveryAddress: order.deliveryAddress ?? null,
+        deliveryNotes: order.deliveryNotes ?? null,
+        shippingFee: Number(order.shippingFeeAmount ?? 0),
+        subtotalAmount: Number(order.subtotalAmount ?? 0),
         tableNumber: order.tableNumber ?? null,
         orderType: order.orderType ?? null,
+        receiptNumber: receiptNumber > 0 ? receiptNumber : null,
+        receiptType,
         itemCount: Array.isArray(order.items) ? order.items.reduce((sum: number, item: any) => sum + Number(item.quantity ?? 0), 0) : 0,
         totalAmount: Number(order.totalAmount ?? 0),
         items: Array.isArray(order.items) ? order.items : [],
@@ -335,18 +381,6 @@ async function listNotifications(user: UserContext) {
     limit: "500",
   });
   const now = Date.now();
-  const orderIds = [...new Set((rows ?? []).map((item: any) => String(item.order_source_id ?? "")).filter(Boolean))];
-  const orderStatuses = new Map<string, string>();
-  if (orderIds.length > 0) {
-    const orders = await dbGet("pos_orders", {
-      select: "_id,status",
-      _id: `in.(${orderIds.join(",")})`,
-      limit: "500",
-    });
-    for (const order of orders ?? []) {
-      orderStatuses.set(String(order._id), String(order.status ?? "").toLowerCase());
-    }
-  }
   const expiredOrderIds = (rows ?? [])
     .filter((item: any) => {
       if (!String(item.notification_type ?? "").startsWith("order_")) return false;
@@ -371,13 +405,10 @@ async function listNotifications(user: UserContext) {
     if (item.target_user_id && item.target_user_id !== user.id) return false;
     if (item.target_role && item.target_role.toLowerCase() !== user.role) return false;
     if (item.target_branch_id && item.target_branch_id !== user.branchId) return false;
-    const orderStatus = item.order_source_id
-      ? orderStatuses.get(String(item.order_source_id))
-      : undefined;
-    if (item.order_source_id && orderStatus === "cancelled"
-      && ["order_cashier_pending", "order_mayar_pending"].includes(String(item.notification_type))) return false;
-    if ((item.notification_type === "order_cashier_pending" || item.notification_type === "order_mayar_pending")
-      && (orderStatus === "paid" || orderStatus === "completed")) return false;
+    // Keep every persisted order event visible. A later paid event must not
+    // replace or hide the earlier cashier/QRIS-pending event; each event is
+    // an individual notification card and dedupe is limited to the same
+    // order + event type at insert time.
     return true;
   }).map((item: any) => ({
     ...item,

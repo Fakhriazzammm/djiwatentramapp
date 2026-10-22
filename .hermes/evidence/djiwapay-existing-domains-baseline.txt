@@ -1,0 +1,23 @@
+captured_at_utc=2026-10-21T18:23:46Z
+[https://djiwatentram.web.id]
+HTTP/1.1 200 OK
+Server: nginx/1.24.0 (Ubuntu)
+Date: Wed, 21 Oct 2026 18:23:46 GMT
+Content-Type: text/html
+Content-Length: 1985
+Last-Modified: Wed, 21 Oct 2026 18:11:59 GMT
+Connection: keep-alive
+ETag: "6ad9006f-7c1"
+Accept-Ranges: bytes
+
+[https://djiwatentram.yumme.id]
+HTTP/1.1 200 OK
+Server: nginx/1.24.0 (Ubuntu)
+Date: Wed, 21 Oct 2026 18:23:46 GMT
+Content-Type: text/html
+Content-Length: 1451
+Last-Modified: Mon, 12 Oct 2026 12:31:47 GMT
+Connection: keep-alive
+ETag: "6accd333-5ab"
+Cache-Control: no-cache, no-store, must-revalidate
+Accept-Ranges: bytes

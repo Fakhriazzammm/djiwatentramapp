@@ -47,7 +47,7 @@ function ProfilePage() {
 					<h1 className="mt-3 font-display text-lg font-black">Profil member</h1>
 					<p className="mt-1 text-xs leading-relaxed text-muted-foreground">Masuk atau daftar untuk melihat poin, riwayat, dan mengelola profilmu.</p>
 					<div className="mt-4 space-y-2">
-						<button type="button" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-white" onClick={() => navigate({ to: "/" })}>
+						<button type="button" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-white" onClick={() => navigate({ to: "/", search: {} as any })}>
 							<LogIn className="h-3.5 w-3.5" /> Masuk / Daftar
 						</button>
 						<button type="button" className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] border border-border px-3 py-2.5 text-xs font-bold text-muted-foreground" onClick={() => navigate({ to: "/$username", params: { username } })}>

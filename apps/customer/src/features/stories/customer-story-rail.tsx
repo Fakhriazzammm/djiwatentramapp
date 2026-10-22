@@ -1,6 +1,6 @@
 import { AlertCircle, Plus, RefreshCw } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { CustomerSplash } from "@/components/customer/customer-entry";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useCustomerStories } from "./use-customer-stories";
 import { StoryAvatar } from "./story-avatar";
@@ -90,13 +90,7 @@ export function CustomerStoryRail() {
         </div>
       ) : null}
 
-      {state === "loading" ? (
-        <div className="flex gap-3 overflow-hidden" aria-busy="true" aria-label="Memuat Story">
-          <Skeleton className="h-14 w-[60px] shrink-0 rounded-full" />
-          <Skeleton className="h-14 w-[60px] shrink-0 rounded-full" />
-          <Skeleton className="h-14 w-[60px] shrink-0 rounded-full" />
-        </div>
-      ) : null}
+      {state === "loading" ? <CustomerSplash /> : null}
 
       {state === "error" ? (
         <div className="flex items-start gap-2 rounded-2xl border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive" role="alert">

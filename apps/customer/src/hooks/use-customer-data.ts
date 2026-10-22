@@ -21,6 +21,16 @@ export type CustomerOrder = {
 	tableNumber: string | null;
 	items: CustomerOrderItem[];
 	createdAt: number;
+	trackingStatus?: string | null;
+	paymentDeadlineAt?: string | null;
+	estimatedReadyAt?: string | null;
+	slaStartedAt?: string | null;
+	slaDeadlineAt?: string | null;
+	isLate?: boolean;
+	lateMinutes?: number;
+	trackingGroupCount?: number;
+	trackingFinishedGroupCount?: number;
+	trackingGroups?: Array<{ groupType: string; status: string; completedAt?: string | null; updatedAt?: string | null }>;
 };
 
 export type CustomerOrderItem = {
@@ -30,6 +40,7 @@ export type CustomerOrderItem = {
 	price: number;
 	originalPrice?: number;
 	variant?: string | null;
+	status?: string | null;
 };
 
 export type CustomerPointEntry = {
@@ -67,9 +78,20 @@ function mapOrder(row: Record<string, unknown>): CustomerOrder {
 					price: Number(item.price ?? 0),
 					originalPrice: item.originalPrice == null ? undefined : Number(item.originalPrice),
 					variant: (item.variant as string | null | undefined) ?? null,
+					status: (item.status as string | null | undefined) ?? null,
 				}))
 			: [],
 		createdAt: Number(row.createdAt ?? row.created_at ?? row._creationTime ?? 0),
+		trackingStatus: (row.trackingStatus ?? row.tracking_status) as string | null | undefined,
+		paymentDeadlineAt: (row.paymentDeadlineAt ?? row.payment_deadline_at) as string | null | undefined,
+		estimatedReadyAt: (row.estimatedReadyAt ?? row.estimated_ready_at) as string | null | undefined,
+		slaStartedAt: (row.slaStartedAt ?? row.sla_started_at) as string | null | undefined,
+		slaDeadlineAt: (row.slaDeadlineAt ?? row.sla_deadline_at) as string | null | undefined,
+		isLate: Boolean(row.isLate ?? row.is_late ?? false),
+		lateMinutes: Number(row.lateMinutes ?? row.late_minutes ?? 0),
+		trackingGroupCount: Number(row.trackingGroupCount ?? row.tracking_group_count ?? 0),
+		trackingFinishedGroupCount: Number(row.trackingFinishedGroupCount ?? row.tracking_finished_group_count ?? 0),
+		trackingGroups: Array.isArray(row.trackingGroups ?? row.tracking_groups) ? (row.trackingGroups ?? row.tracking_groups) as CustomerOrder["trackingGroups"] : [],
 	};
 }
 
@@ -86,7 +108,7 @@ function mapPointEntry(row: Record<string, unknown>): CustomerPointEntry {
 	};
 }
 
-const CUSTOMER_API_BASE = "https://djiwatentram.yumme.id/api/customer";
+const CUSTOMER_API_BASE = "https://api.yumme.id/v1/customer";
 
 // ── useCustomerOrders ──────────────────────────────────────────
 // Query pos_orders WHERE customer_source_id = user.id.
@@ -108,7 +130,7 @@ export function useCustomerOrders(options?: { onRealtimeUpdate?: () => void }) {
 					method: "POST",
 					credentials: "include",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ orderIds: references.map((item) => item.orderId) }),
+					body: JSON.stringify({ orders: references.map((item) => ({ orderId: item.orderId, accessToken: item.accessToken })) }),
 				});
 				if (!response.ok) throw new Error(`Guest orders HTTP ${response.status}`);
 				const payload = await response.json() as { success?: boolean; orders?: Record<string, unknown>[] };

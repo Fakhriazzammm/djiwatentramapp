@@ -1,4 +1,5 @@
 import { MARKETPLACE_BRAND_SLUG } from "@/lib/marketplace-config";
+import { openDjiwaPay } from "@/lib/djiwapay";
 import {
 	Bell,
 	ChevronRight,
@@ -42,7 +43,7 @@ import { useOrderContext } from "@/hooks/use-order-context";
 import type { OrderStep } from "@/hooks/use-order-context";
 import type { CartItem, ServiceRequestType, PaymentChoice } from "@/components/customer/types";
 import { ShippingSection } from "@/components/customer/shipping-section";
-import { CUSTOMER_ORDERING_DEFAULTS, currency, normalizeMenuCode } from "@/components/customer/types";
+import { CUSTOMER_ORDERING_DEFAULTS, currency, normalizeMenuCode, rememberGuestOrder } from "@/components/customer/types";
 import { BottomButton, CartRow, CustomerOrderProgress, SummaryCardLines } from "@/components/customer/shared-components";
 const BarcodeScanner = lazy(() => import("@/components/customer/barcode-scanner").then((module) => ({ default: module.BarcodeScanner })));
 const ProductSheet = lazy(() => import("@/components/customer/product-sheet").then((module) => ({ default: module.ProductSheet })));
@@ -693,6 +694,7 @@ function OrderPage() {
 		try {
 			const orderCustomerName = shippingReceiverName.trim();
 			const normalizedNotes = notes.trim() || undefined;
+			const guestAccessToken = !isAuthenticated && typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : null;
 			const payload = {
 				items: cart.map((item) => ({
 					productId: item.productId,
@@ -738,6 +740,7 @@ function OrderPage() {
 					},
 				},
 				customerSourceId: customer?.sourceId,
+				guestAccessToken,
 			};
 
 			if (paymentChoice === "wallet") {
@@ -749,6 +752,7 @@ function OrderPage() {
 					isOpenBill: true,
 				});
 				persistMerchandiseOrderAccessKey(orderId, checkoutRequestKeyRef.current);
+				if (!isAuthenticated) rememberGuestOrder(String(orderId), guestAccessToken ?? undefined);
 				let walletHoldId: string | null = null;
 				let walletCaptured = false;
 				try {
@@ -797,6 +801,7 @@ function OrderPage() {
 					isOpenBill: true,
 				});
 				persistMerchandiseOrderAccessKey(orderId, checkoutRequestKeyRef.current);
+				if (!isAuthenticated) rememberGuestOrder(String(orderId), guestAccessToken ?? undefined);
 				const redirectUrl =
 					typeof window !== "undefined"
 						? `${window.location.origin}/${encodeURIComponent(username)}/order?step=receipt&session=${encodeURIComponent(sessionRef.current)}&orderId=${encodeURIComponent(String(orderId))}`
@@ -1008,7 +1013,7 @@ function OrderPage() {
 							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 								<div className="flex items-center gap-2.5">
 									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Bell className="h-5 w-5" /></div>
-									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 2</p><h2 className="text-base font-black">Tambahkan free refill?</h2></div>
+									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Langkah 1 dari 5</p><h2 className="text-base font-black">Tambahkan free refill?</h2></div>
 								</div>
 								<div className="mt-2.5 rounded-xl border border-primary/15 bg-primary/5 p-2.5">
 									<p className="text-xs font-black">{activeFreeRefillPromo?.name || "Free refill minuman tersedia"}</p>
@@ -1028,7 +1033,7 @@ function OrderPage() {
 						: null}
 
 					{/* ── Checkout section ────────────────────────── */}
-					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, shippingReceiverName, shippingAddress, shippingPhone, guestEmail, isAuthenticated, djiwaPayDiscount, isSubmitting, notes, onBackToMenu: () => setStep("menu"), onContinueToShipping: continueToShipping, paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setShippingReceiverName, setShippingAddress, setShippingPhone, setGuestEmail, setNotes, setPaymentChoice, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => window.location.assign(`https://djiwatentram.yumme.id/${username}/saldo`), checkoutError }) : null}
+					{step === "checkout" ? renderCheckoutSection({ cart, checkout, config, currency, customerName, shippingReceiverName, shippingAddress, shippingPhone, guestEmail, isAuthenticated, djiwaPayDiscount, djiwaPayDiscountRate: djiwaPayDiscountPercent, isSubmitting, notes, onBackToMenu: () => setStep("menu"), onContinueToShipping: continueToShipping, paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setShippingReceiverName, setShippingAddress, setShippingPhone, setGuestEmail, setNotes, setPaymentChoice, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => openDjiwaPay(username), checkoutError }) : null}
 					{step === "shipping" ? <ShippingSection cart={cart} shippingProvider={shippingProvider} setShippingProvider={setShippingProvider} onBackToCheckout={() => setStep("checkout")} onContinueToPayment={checkout} isSubmitting={isSubmitting} productSubtotal={productSubtotal} total={total} checkoutError={checkoutError} /> : null}
 
 					{/* ── Receipt section ─────────────────────────── */}

@@ -1,65 +1,69 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 import { CUSTOMER_LOGO_FALLBACK } from "@/lib/asset-url";
+import { LogoTraceLoader } from "./LogoTraceLoader";
 
 type CustomerSplashProps = {
   logoUrl?: string;
-  storeName: string;
+  storeName?: string;
+  /** While true the logo trace loops; pass false or isComplete once data is ready. */
+  loading?: boolean;
+  isComplete?: boolean;
+  onDone?: () => void;
+  /** Progressive status line shown under the brand; falls back to the default tagline. */
+  statusMessage?: string;
+  offline?: boolean;
+  stalled?: boolean;
+  onRetry?: () => void;
+  secondaryLabel?: string;
+  onSecondary?: () => void;
 };
 
-export function CustomerSplash({ logoUrl, storeName }: CustomerSplashProps) {
+export function CustomerSplash({
+  storeName = "Djiwa Tentram",
+  loading = true,
+  isComplete = false,
+  onDone,
+  statusMessage,
+  offline = false,
+  stalled = false,
+  onRetry,
+  secondaryLabel,
+  onSecondary,
+}: CustomerSplashProps) {
   const reduceMotion = useReducedMotion();
-  const brandLogoUrl = logoUrl || CUSTOMER_LOGO_FALLBACK;
+  const statusText = statusMessage ?? "Menyiapkan pengalaman pesan yang lebih mudah";
 
   return (
     <div className="app-page flex min-h-app items-center justify-center px-4 py-8">
       <motion.section
         aria-label="Membuka Djiwa Tentram"
+        aria-busy={loading}
         className="app-shell flex min-h-[min(720px,calc(100dvh-4rem))] w-full max-w-md flex-col items-center justify-center bg-background px-8 text-center"
         initial={reduceMotion ? { opacity: 1 } : { opacity: 0, scale: 0.96 }}
         animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
         exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 1.02 }}
         transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
       >
-        <img alt={storeName} className="h-24 w-24 rounded-[28px] object-contain" src={brandLogoUrl} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = CUSTOMER_LOGO_FALLBACK; }} />
+        <LogoTraceLoader loading={loading} isComplete={isComplete} size={96} ariaLabel={`Membuka ${storeName}`} className="h-24 w-24 text-primary" onDone={onDone} />
         <p className="mt-5 text-[11px] font-black uppercase tracking-[0.24em] text-primary">Djiwa Tentram</p>
-        <p className="mt-2 text-xs text-muted-foreground">Menyiapkan pengalaman pesan yang lebih mudah</p>
+        <p aria-live="polite" className={`mt-2 text-[13px] leading-relaxed ${offline ? "text-foreground" : "text-foreground/80"}`}>
+          {statusText}
+        </p>
+        {stalled ? (
+          <div className="mt-5 w-full max-w-[260px] space-y-2">
+            <button type="button" onClick={onRetry} className="min-h-11 w-full rounded-[14px] bg-primary px-5 py-3 text-sm font-black text-primary-foreground shadow-sm">
+              Coba lagi
+            </button>
+            {secondaryLabel ? (
+              <button type="button" onClick={onSecondary} className="min-h-11 w-full rounded-[14px] border border-border bg-background px-5 py-3 text-sm font-bold text-muted-foreground">
+                {secondaryLabel}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </motion.section>
     </div>
-  );
-}
-
-type RouteTransitionSplashProps = {
-  logoUrl?: string;
-  storeName?: string;
-};
-
-export function RouteTransitionSplash({ logoUrl, storeName }: RouteTransitionSplashProps) {
-  const reduceMotion = useReducedMotion();
-  const brandLogoUrl = logoUrl || CUSTOMER_LOGO_FALLBACK;
-  const label = storeName || "Djiwa Tentram";
-
-  return (
-    <motion.div
-      aria-hidden="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background"
-      initial={reduceMotion ? { opacity: 1 } : { opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={reduceMotion ? { opacity: 0 } : { opacity: 0 }}
-      transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
-    >
-      <motion.img
-        alt={label}
-        className="h-14 w-14 rounded-2xl object-contain"
-        src={brandLogoUrl}
-        onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = CUSTOMER_LOGO_FALLBACK; }}
-        initial={reduceMotion ? {} : { scale: 0.8, opacity: 0 }}
-        animate={reduceMotion ? {} : { scale: 1, opacity: 1 }}
-        transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-      />
-      <p className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Memuat halaman</p>
-      <span className="mt-3 h-1.5 w-1.5 animate-pulse rounded-full bg-primary" aria-label="Memuat" />
-    </motion.div>
   );
 }
 

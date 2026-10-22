@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
+import { createClient } from "@/lib/client";
 
 export type PosNotification = {
   id: string;
@@ -18,6 +19,13 @@ export type PosNotification = {
   readAt?: string | null;
   acknowledgedAt?: string | null;
 };
+
+export function isDeliveryNotification(item: PosNotification | null | undefined) {
+  const payload = item?.action_payload ?? {};
+  const orderType = String(payload.orderType ?? payload.order_type ?? "").toLowerCase();
+  return orderType === "delivery" || orderType.includes("delivery")
+    || Boolean(payload.deliveryAddress ?? payload.delivery_address ?? payload.deliveryProvider ?? payload.shippingProvider);
+}
 
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pos-notifications`;
 
@@ -45,6 +53,7 @@ export function usePosNotifications(orderRefreshKey?: string) {
   const [notifications, setNotifications] = useState<PosNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [realtimeStatus, setRealtimeStatus] = useState<"connecting" | "connected" | "fallback">("connecting");
 
   const refresh = useCallback(async (syncOrders = true) => {
     const effectiveToken = getEffectiveToken();
@@ -74,12 +83,25 @@ export function usePosNotifications(orderRefreshKey?: string) {
 
   useEffect(() => {
     void refresh(true);
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`pos-notifications-live:${Math.random().toString(36).slice(2)}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "pos_notifications" },
+        () => { void refresh(false); },
+      );
+    channel.subscribe((status: string) => {
+      if (status === "SUBSCRIBED") setRealtimeStatus("connected");
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") setRealtimeStatus("fallback");
+    });
     const timer = window.setInterval(() => void refresh(false), 15000);
     const onVisible = () => { if (document.visibilityState === "visible") void refresh(false); };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
+      void supabase.removeChannel(channel);
     };
   }, [refresh, orderRefreshKey]);
 
@@ -109,7 +131,7 @@ export function usePosNotifications(orderRefreshKey?: string) {
     }
   }, [getEffectiveToken, refresh]);
 
-  return { notifications, unreadCount, isLoading, error, refresh, markRead, removeNotification };
+  return { notifications, unreadCount, isLoading, error, refresh, markRead, removeNotification, realtimeStatus };
 }
 
 export function useCreatePosAdminNotification() {

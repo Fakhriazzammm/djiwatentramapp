@@ -1,4 +1,5 @@
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { allocateDailyReceiptNo } from "@yumipos/web-shared/lib/daily-receipt";
 import { createClient } from "@/lib/client";
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
@@ -43,7 +44,7 @@ function generateOrderNumber(args: {
 	orderType?: string;
 	platform?: string;
 	createdAt: number;
-	receiptNo?: number;
+	receiptNo: number;
 }) {
 	return formatOrderNumber({
 		sequence: args.receiptNo,
@@ -2492,21 +2493,12 @@ export function useHybridCreateOrder() {
 				: autoComplete
 					? "completed"
 					: "paid";
-
-			// Daily receipt numbering
 			const kind = args?.source === "pos"
-				? (args?.orderType === "takeaway" ? "takeaway" : "dine_in")
-				: args?.source === "customer_self_service"
-					? "dine_in"
-					: "online";
-			let dailyReceiptNo = null;
-			try {
-				const { data: rpcData, error: rpcErr } = await supabase.rpc(
-					"next_daily_receipt_no",
-					{ p_order_kind: kind }
-				);
-				if (!rpcErr && rpcData != null) dailyReceiptNo = rpcData;
-			} catch (_) {} // best-effort
+							? (args?.orderType === "takeaway" ? "takeaway" : "dine_in")
+							: args?.source === "customer_self_service"
+								? "dine_in"
+								: "online";
+			const dailyReceiptNo = await allocateDailyReceiptNo(supabase);
 
 			const orderNumber = generateOrderNumber({
 				source: args?.source,
@@ -2582,7 +2574,7 @@ const orderRow = {
 					gateway_invoice_id: args?.paymentGateway?.invoiceId ?? null,
 					creation_time: orderCreatedAt,
 					idempotency_key: idempotencyKey,
-					raw: { ...(args ?? {}), authUserId: currentUser?._id ?? null },
+					raw: { ...(args ?? {}), dailyReceiptNo, receiptKind: kind, orderNumber, authUserId: currentUser?._id ?? null },
 				};
 
 				const { error: orderError } = await pos.from("orders").insert(orderRow);
@@ -2637,7 +2629,7 @@ const orderRow = {
 						order_source_id: orderId,
 						creation_time: Date.now(),
 						metadata: {
-							dailyReceiptNo: dailyReceiptNo ?? undefined,
+							dailyReceiptNo,
 							orderNumber,
 							source: "pos",
 						},

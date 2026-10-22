@@ -257,12 +257,14 @@ class SumoPodClient:
         image_base64_uri: str,
         model: str = VISION_MODEL,
         timeout: int = 90,
+        prompt_override: str | None = None,
+        max_tokens: int | None = None,
     ) -> dict:
         """Vision/OCR via SumoPod — return structured JSON data from receipt.
 
         Returns dict with: type, name, category, items, total, date, time, merchant, receiptNumber, paymentMethod, confidence, rawText
         """
-        prompt = """Analisis gambar struk/nota belanja ini dan ekstrak data dalam format JSON berikut. STRUK BISA PANJANG — baca SEMUA item, jangan sampai ada yang terlewat. teks di rawText harus LENGKAP (semua teks yang terbaca), jangan dipotong.
+        prompt = prompt_override or """Analisis gambar struk/nota belanja ini dan ekstrak data dalam format JSON berikut. STRUK BISA PANJANG — baca SEMUA item, jangan sampai ada yang terlewat. teks di rawText harus LENGKAP (semua teks yang terbaca), jangan dipotong.
 
 { "type": "expense", "name": "Nama Merchant/Toko", "category": "Kategori", "transactionType": "expense", "total": 0, "subtotal": 0, "tax": 0, "serviceCharge": 0, "discount": 0, "items": [{"name": "Nama item", "qty": 1, "price": 0, "subtotal": 0, "unit": "pcs"}], "date": "YYYY-MM-DD", "time": "HH:MM", "receiptNumber": "", "paymentMethod": "Cash/Debit/QRIS", "notes": "", "confidence": 0.9, "rawText": "SEMUA teks yang terbaca di struk, jangan dipotong" }
 
@@ -305,7 +307,7 @@ PENTING:
                     }
                 ],
                 "temperature": 0.1,
-                "max_tokens": 16384,
+                "max_tokens": max_tokens or 16384,
                 "stream": False,
             }
 

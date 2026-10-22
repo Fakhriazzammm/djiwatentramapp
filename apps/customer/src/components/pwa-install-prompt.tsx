@@ -18,6 +18,29 @@ function isMobile() {
   return window.matchMedia("(max-width: 900px)").matches || /android|iphone|ipad|ipod/i.test(navigator.userAgent);
 }
 
+const INSTALL_PROMPT_SEEN_KEY = "djiwa-pwa-install-prompt-seen-date";
+
+function localDateKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+function wasInstallPromptSeenToday() {
+  try {
+    return localStorage.getItem(INSTALL_PROMPT_SEEN_KEY) === localDateKey();
+  } catch {
+    return false;
+  }
+}
+
+function markInstallPromptSeenToday() {
+  try {
+    localStorage.setItem(INSTALL_PROMPT_SEEN_KEY, localDateKey());
+  } catch {
+    // Prompt tetap boleh dipakai jika storage browser diblokir.
+  }
+}
+
 type InstallGuide = {
   title: string;
   steps: string[];
@@ -60,12 +83,19 @@ export function PwaInstallPrompt() {
   const [installing, setInstalling] = useState(false);
 
   useEffect(() => {
-    if (!isMobile() || isStandalone()) return;
+    if (!isMobile() || isStandalone() || wasInstallPromptSeenToday()) return;
 
     const showIosGuide = isIos();
+    const displayMode = window.matchMedia("(display-mode: standalone)");
+    const hideIfStandalone = () => {
+      if (!isStandalone()) return;
+      setVisible(false);
+      setDeferredPrompt(null);
+    };
     if (showIosGuide) {
       const timer = window.setTimeout(() => {
         setIos(true);
+        markInstallPromptSeenToday();
         setVisible(true);
       }, 1800);
       return () => window.clearTimeout(timer);
@@ -74,24 +104,36 @@ export function PwaInstallPrompt() {
     const handleBeforeInstall = (event: Event) => {
       event.preventDefault();
       setDeferredPrompt(event as BeforeInstallPromptEvent);
-      window.setTimeout(() => setVisible(true), 900);
+      window.setTimeout(() => {
+        markInstallPromptSeenToday();
+        setVisible(true);
+      }, 900);
     };
     const handleInstalled = () => {
+      markInstallPromptSeenToday();
+      hideIfStandalone();
       setVisible(false);
       setDeferredPrompt(null);
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstall);
     window.addEventListener("appinstalled", handleInstalled);
+    displayMode.addEventListener?.("change", hideIfStandalone);
+    document.addEventListener("visibilitychange", hideIfStandalone);
+    window.addEventListener("pageshow", hideIfStandalone);
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
       window.removeEventListener("appinstalled", handleInstalled);
+      displayMode.removeEventListener?.("change", hideIfStandalone);
+      document.removeEventListener("visibilitychange", hideIfStandalone);
+      window.removeEventListener("pageshow", hideIfStandalone);
     };
   }, []);
 
   if (!visible || isStandalone()) return null;
 
   const close = () => {
+    markInstallPromptSeenToday();
     setVisible(false);
   };
 

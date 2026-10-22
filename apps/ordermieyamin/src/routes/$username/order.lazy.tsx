@@ -62,6 +62,7 @@ function OrderPage() {
 	const { username } = Route.useParams();
 	const search = Route.useSearch();
 	const brandSlug = import.meta.env.VITE_BRAND_SLUG || "djiwatentram";
+	const checkoutRequestKeyRef = useRef<string | null>(null);
 
 	const siteSettings = useHybridSiteSettings();
 	const brandSettings = useHybridBookingSettings(brandSlug);
@@ -275,7 +276,7 @@ function OrderPage() {
 
 	// Sync: context state → URL (when step changes)
 	useEffect(() => {
-		const params: Record<string, string> = { step };
+		const params: { step: OrderStep; table?: string; orderId?: string } = { step };
 		if (step === "receipt" && receipt?.orderId) {
 			params.orderId = String(receipt.orderId);
 		}
@@ -763,7 +764,7 @@ function OrderPage() {
 							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 								<div className="flex items-center gap-2.5">
 									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Users className="h-5 w-5" /></div>
-									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 1</p><h2 className="text-base font-black">Berapa orang yang memesan?</h2></div>
+									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Langkah 1 dari 4</p><h2 className="text-base font-black">Berapa orang yang memesan?</h2></div>
 								</div>
 								<div className="mt-2.5 grid grid-cols-3 gap-1.5">
 									{[1,2,3,4,5,6,7,8].map((value) => (
@@ -801,7 +802,7 @@ function OrderPage() {
 							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 								<div className="flex items-center gap-2.5">
 									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Bell className="h-5 w-5" /></div>
-									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 2</p><h2 className="text-base font-black">Tambahkan free refill?</h2></div>
+									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Langkah 2 dari 4</p><h2 className="text-base font-black">Tambahkan free refill?</h2></div>
 								</div>
 								<div className="mt-2.5 rounded-xl border border-primary/15 bg-primary/5 p-2.5">
 									<p className="text-xs font-black">{activeFreeRefillPromo?.name || "Free refill minuman tersedia"}</p>

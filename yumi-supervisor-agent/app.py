@@ -38,6 +38,17 @@ WIB = timezone(timedelta(hours=7))
 logger = logging.getLogger(__name__)
 
 
+def _order_identity(row: dict) -> str:
+    """Persisted identity for delivery; display numbers are legacy fallback only.
+
+    Do not match ID-backed rows against legacy display-number cursor entries:
+    startup baselining/cutoff prevents replay while new same-number orders remain
+    independent. _id in pos_orders is the persisted source_id.
+    """
+    persisted = row.get("_id") or row.get("source_id")
+    return f"id:{persisted}" if persisted else _display_order_no(row)
+
+
 def _display_order_no(row: dict) -> str:
     """Canonical display code; legacy DB order_number remains unchanged."""
     raw = str(row.get("orderNumber") or row.get("order_number") or "-").strip()
@@ -46,7 +57,11 @@ def _display_order_no(row: dict) -> str:
     business = str(row.get("businessUnit") or row.get("business_unit") or "").strip().lower()
     brand = str(row.get("brandSlug") or row.get("brand_slug") or "").strip().lower()
     is_b2b = business == "b2b" or brand == "b2b"
-    if re.match(r"^ORD-[A-Z]+-[A-Z]+-\d{4}-\d{6}$", raw, re.I) and not (is_b2b and not raw.upper().startswith("ORD-B2B-")):
+    # `ORD-...-0000-...` adalah placeholder saat nomor struk belum ada.
+    # Jangan dikembalikan apa adanya; susun kode kanonik dari daily_receipt_no.
+    is_placeholder = bool(re.match(r"^ORD-[A-Z]+-[A-Z]+-0{4}-\d{6}$", raw, re.I))
+    if (not is_placeholder
+            and re.match(r"^ORD-[A-Z]+-[A-Z]+-\d{4}-\d{6}$", raw, re.I) and not (is_b2b and not raw.upper().startswith("ORD-B2B-"))):
         return raw.upper()
     match = re.match(r"^ORD(?:-[A-Z]+-[A-Z]+-)?(\d{1,6})-", raw, re.I)
     sequence = row.get("daily_receipt_no") or (match.group(1) if match else None)
@@ -929,13 +944,15 @@ def _payment_status_keyboard(order: dict):
         ])
     return None
 
-async def _mark_operational_message_paid(order_no: str) -> bool:
+async def _mark_operational_message_paid(order_no: str, order_identity: str | None = None) -> bool:
     """Edit the existing Bar/Kitchen message instead of sending a second order."""
     updated = True
     found = False
     for group_type in ("barista", "kitchen"):
         order = _active_orders.get(f"{order_no}|{group_type}")
         if not order or not order.get("message_id"):
+            continue
+        if order_identity and order.get("order_identity", order_no) != order_identity:
             continue
         found = True
         lines = str(order.get("base_text") or "").splitlines()
@@ -1152,7 +1169,8 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
                                       arrival_time: str | None = None,
                                       payment_note: str | None = None,
                                       payment_label: str | None = None,
-                                      table_number: str | None = None) -> bool:
+                                      table_number: str | None = None,
+                                      order_identity: str | None = None) -> bool:
     shift = await _find_shift_at_time(ts_ms)
     team = shift.get("team_members", "")
     type_labels = {
@@ -1244,6 +1262,7 @@ async def _send_barista_notification(app, order_no: str, customer: str, order_ty
         key = f"{order_no}|barista"
         _active_orders[key] = {
             "key": key,
+            "order_identity": order_identity or order_no,
             "message": msg,
             "base_text": base_text,
             "chat_id": BARISTA_GROUP_ID,
@@ -1269,7 +1288,8 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
                                       source_label: str | None = None,
                                       arrival_time: str | None = None,
                                       payment_note: str | None = None,
-                                      table_number: str | None = None) -> bool:
+                                      table_number: str | None = None,
+                                      order_identity: str | None = None) -> bool:
     shift = await _find_shift_at_time(ts_ms)
     team = shift.get("team_members", "")
     type_labels = {
@@ -1363,6 +1383,7 @@ async def _send_kitchen_notification(app, order_no: str, customer: str, order_ty
         key = f"{order_no}|kitchen"
         _active_orders[key] = {
             "key": key,
+            "order_identity": order_identity or order_no,
             "message": msg,
             "base_text": base_text,
             "chat_id": KITCHEN_GROUP_ID,
@@ -1533,7 +1554,7 @@ def _load_supervisor_cursor() -> tuple[int, set[str], int, set[str]]:
     return ts, set(), 0, set()
 
 def _save_supervisor_cursor(ts: int, nos: set[str], csr_ts: int = 0, paid_update_nos: set[str] | None = None):
-    """Persist cursor, reported order numbers, and paid-update dedupe."""
+    """Persist cursor and order identities (legacy display entries remain valid)."""
     with open(_CURSOR_FILE, "w") as f:
         f.write(f"{ts}\n")
         for no in sorted(nos):
@@ -1683,14 +1704,14 @@ async def _seed_existing_order_notifications() -> bool:
     try:
         settled_rows = await _fetch(
             "pos_orders",
-            "select=orderNumber,status,paymentReceiptKind,createdAt,_creationTime,source,businessUnit,orderType,daily_receipt_no"
+            "select=_id,orderNumber,status,paymentReceiptKind,createdAt,_creationTime,source,businessUnit,orderType,daily_receipt_no"
             "&status=in.(paid,completed)"
             f"&_creationTime=gte.{lower_bound}&_creationTime=lte.{now_ms}"
             "&order=_creationTime.desc&limit=1000",
         )
         cashier_rows = await _fetch(
             "pos_orders",
-            "select=orderNumber,status,paymentReceiptKind,createdAt,_creationTime,source,businessUnit,orderType,daily_receipt_no"
+            "select=_id,orderNumber,status,paymentReceiptKind,createdAt,_creationTime,source,businessUnit,orderType,daily_receipt_no"
             "&source=eq.customer_self_service&status=eq.pending"
             "&paymentMethod=eq.cash&paymentReceiptKind=eq.cashier_pending"
             f"&_creationTime=gte.{lower_bound}&_creationTime=lte.{now_ms}&limit=100",
@@ -1701,13 +1722,13 @@ async def _seed_existing_order_notifications() -> bool:
         return False
 
     rows = [*settled_rows, *cashier_rows]
-    existing = {_display_order_no(row) for row in rows if _display_order_no(row) != "-"}
+    existing = {_order_identity(row) for row in rows if _order_identity(row) != "-"}
     paid_cashier = {
-        _display_order_no(row)
+        _order_identity(row)
         for row in settled_rows
-        if _display_order_no(row) != "-"
+        if _order_identity(row) != "-"
         and row.get("source") == "customer_self_service"
-        and row.get("paymentReceiptKind") == "cashier_pending"
+        and row.get("paymentReceiptKind") in ("cashier_pending", "cashier")
     }
     new_reported = existing - _reported_order_nos
     new_paid = paid_cashier - _cashier_paid_update_nos
@@ -1734,6 +1755,7 @@ async def _seed_existing_order_notifications() -> bool:
 async def _send_missing_paid_operational_notifications(app, row: dict) -> bool:
     """Send paid cashier orders to Bar/Kitchen only when no old message exists."""
     order_no = _display_order_no(row)
+    order_identity = _order_identity(row)
     items = row.get("items") or []
     food_items = await _get_food_items(items)
     bev_items = await _get_beverage_items(items)
@@ -1751,6 +1773,7 @@ async def _send_missing_paid_operational_notifications(app, row: dict) -> bool:
     paid_note = "LUNAS — DJIWA APP - BAYAR TUNAI DI KASIR"
     common = {
         "order_no": order_no,
+        "order_identity": order_identity,
         "customer": customer,
         "order_type": order_type,
         "ts_ms": ts_ms,
@@ -1768,9 +1791,9 @@ async def _send_missing_paid_operational_notifications(app, row: dict) -> bool:
     results = []
 
     if food_items:
-        key = f"{order_no}|kitchen"
-        existing = _active_orders.get(key)
-        if existing and existing.get("message_id"):
+        key = f"{order_identity}|kitchen"
+        existing = _active_orders.get(f"{order_no}|kitchen")
+        if existing and existing.get("message_id") and existing.get("order_identity", order_no) == order_identity:
             results.append(True)
         elif key in _channel_sent:
             results.append(True)
@@ -1782,9 +1805,9 @@ async def _send_missing_paid_operational_notifications(app, row: dict) -> bool:
                 _save_channel_sent()
 
     if bev_items:
-        key = f"{order_no}|barista"
-        existing = _active_orders.get(key)
-        if existing and existing.get("message_id"):
+        key = f"{order_identity}|barista"
+        existing = _active_orders.get(f"{order_no}|barista")
+        if existing and existing.get("message_id") and existing.get("order_identity", order_no) == order_identity:
             results.append(True)
         elif key in _channel_sent:
             results.append(True)
@@ -1801,6 +1824,7 @@ async def _send_missing_paid_operational_notifications(app, row: dict) -> bool:
 async def _send_cashier_payment_update(app, row: dict):
     """Edit production messages and send one settlement update to Transactions."""
     order_no = _display_order_no(row)
+    order_identity = _order_identity(row)
     daily_no = row.get("daily_receipt_no")
     order_type = str(row.get("orderType") or "dine_in")
     kind_label = {"dine_in": "DINE IN", "takeaway": "TAKEAWAY", "online": "ONLINE"}.get(order_type, order_type.upper())
@@ -1821,15 +1845,15 @@ async def _send_cashier_payment_update(app, row: dict):
         f"👤 {row.get('customerName') or 'Pelanggan'}",
         f"👥 Kasir: {cashier}",
     ])
-    operational_ok = await _mark_operational_message_paid(order_no)
+    operational_ok = await _mark_operational_message_paid(order_no, order_identity)
     paid_operational_ok = await _send_missing_paid_operational_notifications(app, row)
     operational_ok = operational_ok and paid_operational_ok
-    transaction_key = f"{order_no}|paid-transaction"
+    transaction_key = f"{order_identity}|paid-transaction"
     transaction_ok = transaction_key in _channel_sent
     if not transaction_ok:
         settlement_text = "\n".join(lines)
-        if _transaction_message_ids.get(order_no):
-            transaction_ok = await _edit_transaction_message_paid(order_no, settlement_text)
+        if _transaction_message_ids.get(order_identity):
+            transaction_ok = await _edit_transaction_message_paid(order_identity, settlement_text)
         else:
             try:
                 await _send_with_retry(app.bot, TRANSACTION_GROUP_ID, settlement_text)
@@ -1857,7 +1881,8 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
                                           source_label: str | None = None,
                                       arrival_time: str | None = None,
                                       payment_note: str | None = None,
-                                      table_number: str | None = None) -> bool:
+                                      table_number: str | None = None,
+                                      order_identity: str | None = None) -> bool:
     shift = await _find_shift_at_time(ts_ms)
     cashier = shift.get("cashier_name", "?")
     team = shift.get("team_members", "")
@@ -1923,7 +1948,7 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
         try:
             transaction_text = "\n".join(special_lines)
             msg = await _send_with_retry(app.bot, TRANSACTION_GROUP_ID, transaction_text)
-            _transaction_message_ids[order_no] = {"message_id": msg.message_id, "text": transaction_text}
+            _transaction_message_ids[order_identity or order_no] = {"message_id": msg.message_id, "text": transaction_text}
             _save_transaction_message_ids()
             logger.info("Transaction notification sent for %s to group %s", order_no, TRANSACTION_GROUP_ID)
             return True
@@ -2064,7 +2089,7 @@ async def _send_transaction_notification(app, order_no: str, customer: str, tota
 
     try:
         msg = await _send_with_retry(app.bot, TRANSACTION_GROUP_ID, text)
-        _transaction_message_ids[order_no] = {"message_id": msg.message_id, "text": text}
+        _transaction_message_ids[order_identity or order_no] = {"message_id": msg.message_id, "text": text}
         _save_transaction_message_ids()
         logger.info("Transaction notification sent for %s to group %s", order_no, TRANSACTION_GROUP_ID)
         return True
@@ -2264,9 +2289,9 @@ async def _check_new_orders(app):
             f"&_creationTime=lte.{now_ms}"
             "&order=_creationTime.desc&limit=100",
         )
-        by_id = {str(row.get("_id")): row for row in rows if row.get("_id")}
+        by_id = {_order_identity(row): row for row in rows}
         for row in [*customer_rows, *cashier_rows]:
-            row_id = str(row.get("_id") or "")
+            row_id = _order_identity(row)
             if row_id and row_id not in by_id:
                 by_id[row_id] = row
         rows = sorted(
@@ -2308,6 +2333,7 @@ async def _check_new_orders(app):
         if str(row.get("status") or "").lower() == "cancelled":
             continue
         order_no = _display_order_no(row)
+        order_identity = _order_identity(row)
         ts = int(float(row.get("_creationTime") or 0))
         if ts > max_creation_time:
             max_creation_time = ts
@@ -2323,25 +2349,25 @@ async def _check_new_orders(app):
             and row.get("status") in ("paid", "completed")
         )
         if is_cashier_paid:
-            if order_no not in _cashier_paid_update_nos:
-                retry_at = _settlement_retry_not_before.get(order_no, 0)
+            if order_identity not in _cashier_paid_update_nos:
+                retry_at = _settlement_retry_not_before.get(order_identity, 0)
                 if now_ms < retry_at:
                     continue
                 settlement_ok = await _send_cashier_payment_update(app, row)
                 if settlement_ok:
-                    _cashier_paid_update_nos.add(order_no)
-                    _reported_order_nos.add(order_no)
-                    _settlement_retry_not_before.pop(order_no, None)
+                    _cashier_paid_update_nos.add(order_identity)
+                    _reported_order_nos.add(order_identity)
+                    _settlement_retry_not_before.pop(order_identity, None)
                     _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos)
                 else:
                     # Telegram edit failures (especially 429) must not be retried
                     # every poll interval. Keep the failed settlement pending, but
                     # give Telegram a real cooldown before the next attempt.
-                    _settlement_retry_not_before[order_no] = now_ms + 5 * 60_000
+                    _settlement_retry_not_before[order_identity] = now_ms + 5 * 60_000
                     logger.warning("Settlement delivery incomplete for %s; retry after 5m", order_no)
             continue
 
-        if order_no in _reported_order_nos:
+        if order_identity in _reported_order_nos:
             continue
         customer = row.get("customerName") or "Pelanggan"
         order_type = row.get("orderType") or "dine_in"
@@ -2486,15 +2512,15 @@ async def _check_new_orders(app):
         # Untuk cashier_pending, channel operasional ditunda sampai paid.
         channel_results = []
         if not is_cashier_pending and food_items:
-            channel_key = f"{order_no}|kitchen"
-            sent = True if channel_key in _channel_sent else await _send_kitchen_notification(app, order_no, customer, order_type, food_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label, row.get("arrivalTime"), payment_note, row.get("tableNumber"))
+            channel_key = f"{order_identity}|kitchen"
+            sent = True if channel_key in _channel_sent else await _send_kitchen_notification(app, order_no, customer, order_type, food_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label, row.get("arrivalTime"), payment_note, row.get("tableNumber"), order_identity=order_identity)
             channel_results.append(sent)
             if sent:
                 _channel_sent.add(channel_key)
                 _save_channel_sent()
         if not is_cashier_pending and bev_items:
-            channel_key = f"{order_no}|barista"
-            sent = True if channel_key in _channel_sent else await _send_barista_notification(app, order_no, customer, order_type, bev_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label, row.get("arrivalTime"), payment_note, None, row.get("tableNumber"))
+            channel_key = f"{order_identity}|barista"
+            sent = True if channel_key in _channel_sent else await _send_barista_notification(app, order_no, customer, order_type, bev_items, ts, struk_line, guest_count, notes, discount_amount, voucher_id, free_refill, source_label, row.get("arrivalTime"), payment_note, None, row.get("tableNumber"), order_identity=order_identity)
             channel_results.append(sent)
             if sent:
                 _channel_sent.add(channel_key)
@@ -2502,8 +2528,8 @@ async def _check_new_orders(app):
 
         # ── Transaction notification ──
         payment = row.get("paymentMethod") or "-"
-        transaction_key = f"{order_no}|transaction"
-        transaction_sent = True if transaction_key in _channel_sent else await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context, source_label, row.get("arrivalTime"), payment_note, row.get("tableNumber"))
+        transaction_key = f"{order_identity}|transaction"
+        transaction_sent = True if transaction_key in _channel_sent else await _send_transaction_notification(app, order_no, customer, total, payment, ts, struk_line, items, guest_count, notes, discount_amount, voucher_id, free_refill, delivery_context, source_label, row.get("arrivalTime"), payment_note, row.get("tableNumber"), order_identity=order_identity)
         if transaction_sent:
             _channel_sent.add(transaction_key)
             _save_channel_sent()
@@ -2513,7 +2539,7 @@ async def _check_new_orders(app):
             continue
 
         # Legacy points are retired; Djiwa Pay is the only customer balance.
-        _reported_order_nos.add(order_no)
+        _reported_order_nos.add(order_identity)
 
     _last_order_check_ms = max_creation_time if retry_from_time is None else max(_last_order_check_ms, retry_from_time - 1)
     _save_supervisor_cursor(_last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_update_nos)
@@ -2698,6 +2724,7 @@ async def _check_closed_shifts(bot: Bot):
     try:
         url = f"{SUPABASE_URL}/rest/v1/shifts"
         q = (f"select=source_id,shift_name,cashier_name,team_members,start_time,end_time,cash_breakdown"
+             f",starting_cash,ending_cash_expected,ending_cash_physical,payment_breakdown_actual,raw"
              f"&end_time=gt.{cursor}"
              f"&end_time=lte.{now_ms}"
              f"&order=end_time.asc")
@@ -2795,6 +2822,24 @@ async def _check_closed_shifts(bot: Bot):
             int(str(key).replace("bill", "")) * int(value or 0)
             for key, value in cash_breakdown.items()
         )
+        # Reconciliation persisted at close. Surfaced explicitly so the
+        # transaction group can audit the drawer without opening the POS.
+        starting_cash = float(shift.get("starting_cash") or 0)
+        expected_raw = shift.get("ending_cash_expected")
+        physical_raw = shift.get("ending_cash_physical")
+        expected_cash = float(expected_raw) if expected_raw is not None else None
+        physical_cash = float(physical_raw) if physical_raw is not None else None
+        cash_variance = (
+            physical_cash - expected_cash
+            if physical_cash is not None and expected_cash is not None
+            else None
+        )
+        payment_actual = shift.get("payment_breakdown_actual") or {}
+        djiwa_app_cashier = float(payment_actual.get("djiwaapp_bayar_kasir") or 0)
+        evidence_url = ""
+        shift_raw = shift.get("raw")
+        if isinstance(shift_raw, dict):
+            evidence_url = str(shift_raw.get("closingEvidenceUrl") or "")
         # Payment summary is read from settled POS orders for the same shift
         # window. Keep this separate from order-status rows: one order can have
         # both Kitchen and Barista status records.
@@ -2857,6 +2902,24 @@ async def _check_closed_shifts(bot: Bot):
             ])
         else:
             transaction_lines.extend(["", "💵 <b>Rincian Tunai</b>", "Tidak ada pecahan tunai."])
+        if expected_cash is not None or physical_cash is not None:
+            transaction_lines.extend([
+                "",
+                "🧮 <b>Rekonsiliasi Kas</b>",
+                f"   Modal awal: Rp{starting_cash:,.0f}",
+                f"   DjiwaApp Bayar Kasir: Rp{djiwa_app_cashier:,.0f}",
+                f"   Uang seharusnya: Rp{(expected_cash or 0):,.0f}",
+                f"   Uang fisik: Rp{(physical_cash or 0):,.0f}",
+            ])
+            if cash_variance is None:
+                transaction_lines.append("   Selisih: —")
+            elif abs(cash_variance) < 0.5:
+                transaction_lines.append("   Selisih: ✅ Pas (Rp0)")
+            else:
+                arah = "⬆️ Lebih" if cash_variance > 0 else "⬇️ Kurang"
+                transaction_lines.append(f"   Selisih: {arah} Rp{abs(cash_variance):,.0f}")
+        if evidence_url:
+            transaction_lines.extend(["", "📸 Foto bukti tutup kasir terlampir"])
         try:
             await bot.send_message(
                 chat_id=TRANSACTION_GROUP_ID,
@@ -2866,6 +2929,19 @@ async def _check_closed_shifts(bot: Bot):
             logger.info("shift_recap: sent cashier recap to transaction for shift %s", s_id)
         except Exception as e:
             logger.warning("shift_recap send transaction for %s: %s", s_id, e)
+
+        # Evidence photo is uploaded server-side at close and referenced by the
+        # shift row, so the recap can attach the same audited image.
+        if evidence_url:
+            try:
+                await bot.send_photo(
+                    chat_id=TRANSACTION_GROUP_ID,
+                    photo=evidence_url,
+                    caption=f"📸 Foto bukti tutup kasir — {s_name}",
+                )
+                logger.info("shift_recap: evidence photo sent for shift %s", s_id)
+            except Exception as e:
+                logger.warning("shift_recap evidence photo %s: %s", s_id, e)
 
         if s_end > last_ts:
             last_ts = s_end

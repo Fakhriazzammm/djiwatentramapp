@@ -1,7 +1,7 @@
 {
-  "version": "0.2.138",
-  "commitHash": "b7cb751",
-  "message": "feat(booking): strengthen operational booking workspace",
-  "buildDate": "2026-09-21",
-  "generatedAt": "2026-09-21T11:26:52.192Z"
+  "version": "0.2.507",
+  "commitHash": "8d43640",
+  "message": "fix(admin): paginate dashboard order analytics",
+  "buildDate": "2026-10-10",
+  "generatedAt": "2026-10-10T10:34:39.849Z"
 }

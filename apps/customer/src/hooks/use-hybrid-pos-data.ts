@@ -501,6 +501,19 @@ const DEFAULT_PLATFORMS = [
 	{ id: "shopeefood", name: "ShopeeFood", icon: "ShoppingBag", commissionRate: 0.20, isActive: true, sortOrder: 4 },
 ];
 
+const singleFlight = new Map<string, Promise<unknown>>();
+
+/** Request identik dipakai bersama semua pemanggil selama masih berjalan. */
+function withSingleFlight<T>(key: string, run: () => Promise<T>): Promise<T> {
+	const existing = singleFlight.get(key);
+	if (existing) return existing as Promise<T>;
+	const run$ = run().finally(() => {
+		singleFlight.delete(key);
+	});
+	singleFlight.set(key, run$);
+	return run$;
+}
+
 async function fetchSiteSettings() {
 	const supabase = createClient();
 	const { data, error } = await supabase
@@ -2142,7 +2155,7 @@ async function fetchDashboardStats() {
 }
 
 export function useHybridSiteSettings(refreshTrigger?: number) {
-	const supabaseData = useSupabaseValue("site-settings", fetchSiteSettings, [], {
+	const supabaseData = useSupabaseValue("site-settings", () => withSingleFlight("site-settings", fetchSiteSettings), [], {
 		cacheKey: "customer:site-settings",
 		cacheTtlMs: 600_000,
 		...(refreshTrigger !== undefined ? { refreshTrigger } : {}),
@@ -2228,7 +2241,7 @@ export function useHybridProducts(categoryId?: string | null, refreshTrigger?: n
 export function useHybridBestSellers(refreshTrigger?: number) {
 	// Best-seller totals are derived from pos.orders/order_items. Do not cache
 	// this read model: the shared realtime listener reloads it after settlement.
-	const supabaseData = useSupabaseValue("best-sellers", fetchBestSellers, [], {
+	const supabaseData = useSupabaseValue("best-sellers", () => withSingleFlight("best-sellers", fetchBestSellers), [], {
 		refreshMs: 30_000,
 		...(refreshTrigger !== undefined ? { refreshTrigger } : {}),
 	});
@@ -2236,7 +2249,13 @@ export function useHybridBestSellers(refreshTrigger?: number) {
 }
 
 export function useHybridAllProducts(refreshTrigger?: number) {
-	const supabaseData = useSupabaseValue("products-all", fetchAllProducts, [], refreshTrigger !== undefined ? { refreshTrigger } : undefined);
+	// Stale-while-revalidate: cache lokal dipakai instan supaya splash tidak menunggu
+	// jaringan, lalu data segar menyusul (realtime listener tetap reload saat berubah).
+	const supabaseData = useSupabaseValue("products-all", () => withSingleFlight("products-all", fetchAllProducts), [], {
+		cacheKey: "customer:products-all",
+		cacheTtlMs: 600_000,
+		...(refreshTrigger !== undefined ? { refreshTrigger } : {}),
+	});
 	return supabaseData as ProductRecord[] | undefined;
 }
 
