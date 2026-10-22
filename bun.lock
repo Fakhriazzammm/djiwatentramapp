@@ -117,6 +117,7 @@
         "@supabase/supabase-js": "^2.103.3",
         "@tailwindcss/vite": "^4.0.15",
         "@tanstack/react-router": "^1.141.1",
+        "@yumipos/djiwapay-core": "workspace:*",
         "@yumipos/env": "workspace:*",
         "@yumipos/web-shared": "workspace:*",
         "@zxing/library": "^0.23.0",
@@ -177,6 +178,7 @@
         "@supabase/supabase-js": "^2.103.3",
         "@tailwindcss/vite": "^4.0.15",
         "@tanstack/react-router": "^1.141.1",
+        "@yumipos/djiwapay-core": "workspace:*",
         "@yumipos/env": "workspace:*",
         "@yumipos/web-shared": "workspace:*",
         "@zxing/library": "^0.23.0",
@@ -213,10 +215,12 @@
       "dependencies": {
         "@better-auth/infra": "^0.3.6",
         "@supabase/supabase-js": "^2.103.3",
+        "@yumipos/djiwa-checkout-ui": "workspace:*",
         "@yumipos/djiwapay-core": "workspace:*",
         "@yumipos/djiwapay-ui": "workspace:*",
         "@yumipos/web-shared": "workspace:*",
         "better-auth": "^1.6.23",
+        "framer-motion": "^12.23.24",
         "lucide-react": "^0.473.0",
         "react": "19.2.3",
         "react-dom": "19.2.3",
@@ -342,6 +346,7 @@
         "@supabase/supabase-js": "^2.103.3",
         "@tailwindcss/vite": "^4.0.15",
         "@tanstack/react-router": "^1.141.1",
+        "@yumipos/djiwapay-core": "workspace:*",
         "@yumipos/env": "workspace:*",
         "@yumipos/web-shared": "workspace:*",
         "@zxing/library": "^0.23.0",
@@ -517,6 +522,17 @@
     "packages/config": {
       "name": "@yumipos/config",
       "version": "0.0.0",
+    },
+    "packages/djiwa-checkout-ui": {
+      "name": "@yumipos/djiwa-checkout-ui",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/react": "19.2.7",
+        "typescript": "catalog:",
+      },
+      "peerDependencies": {
+        "react": "^19.0.0",
+      },
     },
     "packages/djiwapay-core": {
       "name": "@yumipos/djiwapay-core",
@@ -1251,6 +1267,8 @@
     "@yumipos/config": ["@yumipos/config@workspace:packages/config"],
 
     "@yumipos/customer": ["@yumipos/customer@workspace:apps/customer"],
+
+    "@yumipos/djiwa-checkout-ui": ["@yumipos/djiwa-checkout-ui@workspace:packages/djiwa-checkout-ui"],
 
     "@yumipos/djiwapay": ["@yumipos/djiwapay@workspace:apps/djiwapay"],
 
