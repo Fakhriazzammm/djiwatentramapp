@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowDownLeft, ArrowUpRight, Bell, Car, CreditCard, Droplets, Eye, EyeOff, Gamepad2, HeartPulse, HelpCircle, House, ReceiptText, RefreshCw, ScanLine, Smartphone, Tv, UserRound, Wallet, Wifi, X, Zap } from "lucide-react";
-import { checkPpobStatus, checkTopupStatus, createPpobInvoice, purchasePpob, readPpobCatalog, type PpobProduct, type PpobPurchaseResult, type WalletResponse } from "../../lib/wallet-adapter";
+import { checkPpobStatus, checkTopupStatus, checkPostpaidStatus, createPpobInvoice, inquirePostpaid, payPostpaid, purchasePpob, readPpobCatalog, readPostpaidCatalog, type PpobProduct, type PpobPurchaseResult, type PostpaidInquiry, type PostpaidProduct, type WalletResponse } from "../../lib/wallet-adapter";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import type { CustomerProfile, PayNavigationContext } from "../../lib/identity-adapter";
 import type { WalletLedgerEntry } from "@yumipos/djiwapay-core";
@@ -12,6 +12,7 @@ import { parseCheckoutDraft, serializeCheckoutDraft, type CheckoutDraft } from "
 import { checkoutCustomerNumberHint, parsePpobPath } from "../../lib/djiwa-pay-routes";
 import { DjiwaPayWalletAction } from "./djiwa-pay-wallet-actions";
 import { walletQuickActionState } from "../../lib/djiwa-pay-availability";
+import { postpaidTotal, validatePostpaidCustomerNumber } from "../../lib/djiwa-pay-postpaid";
 
 const money = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 const date = (value: string) => { const parsed = new Date(value); return Number.isNaN(parsed.getTime()) ? "" : parsed.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }); };
@@ -70,6 +71,14 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   const [ppobCatalog, setPpobCatalog] = useState<PpobProduct[] | null>(null);
   const [ppobCatalogLoading, setPpobCatalogLoading] = useState(false);
   const [ppobCatalogError, setPpobCatalogError] = useState<string | null>(null);
+  const [postpaidService, setPostpaidService] = useState<"pln" | "pdam" | null>(null);
+  const [postpaidCatalog, setPostpaidCatalog] = useState<PostpaidProduct[] | null>(null);
+  const [postpaidProductCode, setPostpaidProductCode] = useState("");
+  const [postpaidCustomerNumber, setPostpaidCustomerNumber] = useState("");
+  const [postpaidInquiry, setPostpaidInquiry] = useState<PostpaidInquiry | null>(null);
+  const [postpaidStage, setPostpaidStage] = useState<"detail" | "confirmation" | "pending" | "success" | "failed">("detail");
+  const [postpaidBusy, setPostpaidBusy] = useState(false);
+  const [postpaidMessage, setPostpaidMessage] = useState<string | null>(null);
   const [returnToPpob, setReturnToPpob] = useState<string | null>(null);
   const [routePath, setRoutePath] = useState(() => window.location.pathname);
   const [ppobReceiptDraft, setPpobReceiptDraft] = useState<CheckoutDraft["receipt"] | null>(null);
@@ -87,7 +96,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     try { const parsed = JSON.parse(window.localStorage.getItem(`djiwa-pay-favorite-numbers:${profile.source_id}`) || "[]"); return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string").slice(0, 5) : []; } catch { return []; }
   });
   const goPpobRoute = (path: string) => { window.history.pushState({ ppob: true }, "", path); setRoutePath(path); };
-  const closePpob = () => { setPpobOpen(false); setPpobFilter("all"); setSelectedPpobProduct(null); setPpobQuery(""); setPpobOperator("all"); setPpobSort("default"); setPpobCustomerNumber(""); setPpobPaymentMessage(null); setPpobReviewOpen(false); setPpobPaymentMethod("wallet"); setPpobSuccess(null); goPpobRoute("/"); };
+  const closePpob = () => { setPpobOpen(false); setPpobFilter("all"); setSelectedPpobProduct(null); setPostpaidService(null); setPostpaidCatalog(null); setPostpaidInquiry(null); setPostpaidProductCode(""); setPostpaidCustomerNumber(""); setPostpaidStage("detail"); setPostpaidMessage(null); setPpobQuery(""); setPpobOperator("all"); setPpobSort("default"); setPpobCustomerNumber(""); setPpobPaymentMessage(null); setPpobReviewOpen(false); setPpobPaymentMethod("wallet"); setPpobSuccess(null); goPpobRoute("/"); };
   const rememberCustomerNumber = (value: string) => { const next = [value, ...recentCustomerNumbers.filter((item) => item !== value)].slice(0, 5); setRecentCustomerNumbers(next); try { window.localStorage.setItem(recentNumbersKey, JSON.stringify(next)); } catch { /* best effort */ } };
   const toggleFavoriteCustomerNumber = (value: string) => { const next = favoriteCustomerNumbers.includes(value) ? favoriteCustomerNumbers.filter((item) => item !== value) : [value, ...favoriteCustomerNumbers].slice(0, 5); setFavoriteCustomerNumbers(next); try { window.localStorage.setItem(favoritesKey, JSON.stringify(next)); } catch { /* best effort */ } };
   const ppobProductRoute = (stage: string, product = selectedPpobProduct) => product ? `/ppob/${encodeURIComponent(ppobFilter)}/produk/${encodeURIComponent(product.product_code)}/${stage}` : `/ppob/${encodeURIComponent(ppobFilter)}`;
@@ -217,10 +226,15 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     setPpobOpen(false); setTopupStage("detail"); setTopupOpen(true);
   };
   useEffect(() => {
-    if (!ppobOpen || String(ppobFilter) === "all" || ppobCatalog || ppobCatalogLoading) return;
+    if (!ppobOpen || postpaidService || String(ppobFilter) === "all" || ppobCatalog || ppobCatalogLoading) return;
     setPpobCatalogLoading(true); setPpobCatalogError(null);
     readPpobCatalog().then(setPpobCatalog).catch((cause) => setPpobCatalogError(cause instanceof Error ? cause.message : "Katalog PPOB gagal dimuat")).finally(() => setPpobCatalogLoading(false));
-  }, [ppobOpen, ppobFilter, ppobCatalog, ppobCatalogLoading]);
+  }, [ppobOpen, ppobFilter, ppobCatalog, ppobCatalogLoading, postpaidService]);
+  useEffect(() => {
+    if (!ppobOpen || !postpaidService || postpaidCatalog) return;
+    setPostpaidBusy(true); setPostpaidMessage(null);
+    readPostpaidCatalog(postpaidService).then((items) => { setPostpaidCatalog(items); if (items[0]) setPostpaidProductCode(items[0].code); }).catch((cause) => setPostpaidMessage(cause instanceof Error ? cause.message : "Katalog pascabayar gagal dimuat")).finally(() => setPostpaidBusy(false));
+  }, [ppobOpen, postpaidService, postpaidCatalog]);
   useEffect(() => {
     if (!selectedPpobProduct || !ppobReviewOpen) return;
     setPpobPaymentMethod((current) => preferredPaymentMethod("ppob", current, wallet?.wallet.available_balance ?? 0, selectedPpobProduct.product_price));
@@ -291,10 +305,35 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     return () => window.clearInterval(timer);
   }, [ppobInvoiceId, ppobPaymentStatus, ppobPaymentBusy]);
   const openPpob = (key: string, label: string) => {
+    if (key === "pln-bill" || key === "pdam") {
+      const service = key === "pdam" ? "pdam" : "pln";
+      setPostpaidService(service); setPostpaidCatalog(null); setPostpaidInquiry(null); setPostpaidProductCode(""); setPostpaidCustomerNumber(""); setPostpaidStage("detail"); setPostpaidMessage(null); setPpobOpen(true); setPpobFilter(key); goPpobRoute(`/ppob/${encodeURIComponent(key)}`); return;
+    }
     const providerType = key === "game" ? "game" : ["pln-token", "pln-bill"].includes(key) ? "pln" : key;
     setPpobFilter(providerType);
     setPpobOpen(true);
     goPpobRoute(`/ppob/${encodeURIComponent(providerType)}`);
+  };
+  const postpaidNumberValidation = postpaidService ? validatePostpaidCustomerNumber(postpaidService, postpaidCustomerNumber) : { valid: false, message: null };
+  const submitPostpaidInquiry = async () => {
+    if (!postpaidService || !postpaidProductCode || !postpaidNumberValidation.valid) return;
+    setPostpaidBusy(true); setPostpaidMessage(null);
+    try { const result = await inquirePostpaid(postpaidService, postpaidProductCode, postpaidCustomerNumber); setPostpaidInquiry(result); setPostpaidStage(result.status === "failed" ? "failed" : "confirmation"); }
+    catch (cause) { setPostpaidStage("failed"); setPostpaidMessage(cause instanceof Error ? cause.message : "Inquiry tagihan gagal."); }
+    finally { setPostpaidBusy(false); }
+  };
+  const submitPostpaidPayment = async () => {
+    if (!postpaidInquiry || postpaidInquiry.status === "failed") return;
+    setPostpaidBusy(true); setPostpaidStage("pending"); setPostpaidMessage(null);
+    try { const result = await payPostpaid(postpaidInquiry.refId); if (result.status === "success") { setPostpaidStage("success"); setPostpaidInquiry((current) => current ? { ...current, status: "success", message: result.data?.message } : current); onRefresh(); } else if (result.status === "failed") { setPostpaidStage("failed"); setPostpaidMessage(result.error || result.data?.message || "Pembayaran gagal."); } else { setPostpaidStage("pending"); setPostpaidMessage(result.data?.message || "Pembayaran sedang diproses."); } }
+    catch (cause) { setPostpaidStage("pending"); setPostpaidMessage(cause instanceof Error ? cause.message : "Status pembayaran belum tersedia."); }
+    finally { setPostpaidBusy(false); }
+  };
+  const refreshPostpaidStatus = async () => {
+    if (!postpaidInquiry || postpaidBusy) return;
+    setPostpaidBusy(true);
+    try { const result = await checkPostpaidStatus(postpaidInquiry.refId); if (result.status === "success") setPostpaidStage("success"); else if (result.status === "failed") { setPostpaidStage("failed"); setPostpaidMessage(result.error || result.data?.message || "Pembayaran gagal."); } else setPostpaidStage("pending"); }
+    finally { setPostpaidBusy(false); }
   };
   const operatorName = (product: PpobProduct) => { const source = `${product.product_description} ${product.product_code} ${product.icon_url}`.toLowerCase(); if (source.includes("axis")) return "AXIS"; if (source.includes("indosat") || source.includes("isat")) return "Indosat"; if (source.includes("byu") || source.includes("by.u")) return "by.U"; if (source.includes("telkomsel") || source.includes("tsel")) return "Telkomsel"; if (source.includes("tri") || source.includes("three")) return "Tri"; if (source.includes("smartfren")) return "Smartfren"; return "Lainnya"; };
   const ppobOperatorProducts = (ppobCatalog ?? []).filter((product) => product.product_type.toLowerCase() === ppobFilter);
@@ -320,6 +359,21 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
         onDone={() => { setPpobReceiptDraft(null); clearDraft(); closePpob(); }}
       />
     </main>
+  );
+  if (ppobOpen && postpaidService) return (
+    <main className="pay-page ppob-page djiwa-checkout-page ppob-detail-active"><section className="ppob-page-card postpaid-checkout-card">
+      <button className="ppob-step-back" onClick={closePpob} aria-label="Kembali">← Kembali</button><span className="ppob-step-label">PEMBAYARAN {postpaidService === "pln" ? "PLN" : "PDAM"}</span><h1>{postpaidService === "pln" ? "Tagihan PLN" : "Tagihan PDAM"}</h1><p>Masukkan nomor pelanggan untuk melihat tagihan terbaru sebelum membayar.</p>
+      {postpaidStage === "success" ? <div className="djiwa-payment-notice is-success" role="status"><strong>Pembayaran berhasil</strong><small>Tagihan {postpaidService.toUpperCase()} sudah dibayar. Ref: {postpaidInquiry?.refId}</small><button className="primary-action" onClick={closePpob}>Selesai</button></div> : <>
+        {postpaidBusy && !postpaidCatalog ? <div className="ppob-page-empty">Memuat produk tagihan...</div> : null}
+        {postpaidCatalog?.length ? <label className="djiwa-checkout-field"><span className="djiwa-checkout-label">Jenis layanan</span><select className="ppob-customer-input" value={postpaidProductCode} onChange={(event) => setPostpaidProductCode(event.target.value)}>{postpaidCatalog.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label> : null}
+        <label className="djiwa-checkout-field"><span className="djiwa-checkout-label">Nomor pelanggan <em>*</em></span><input className="ppob-customer-input" inputMode="numeric" value={postpaidCustomerNumber} onChange={(event) => setPostpaidCustomerNumber(event.target.value.replace(/\D/g, "").slice(0, 20))} placeholder={postpaidService === "pln" ? "11–13 digit ID pelanggan" : "Nomor pelanggan PDAM"} /></label>
+        {!postpaidNumberValidation.valid && postpaidCustomerNumber ? <small className="djiwa-checkout-hint">{postpaidNumberValidation.message}</small> : null}
+        {postpaidInquiry && postpaidStage !== "detail" ? <div className="ppob-customer-summary"><div><span>Nama pelanggan</span><strong>{postpaidInquiry.customerName || "-"}</strong></div><div><span>Periode</span><strong>{postpaidInquiry.period || "-"}</strong></div><div><span>Tagihan</span><strong>{money(postpaidInquiry.billAmount)}</strong></div><div><span>Biaya admin</span><strong>{money(postpaidInquiry.adminFee)}</strong></div><div className="is-total"><span>Total pembayaran</span><strong>{money(postpaidTotal(postpaidInquiry.billAmount, postpaidInquiry.adminFee))}</strong></div></div> : null}
+        {postpaidMessage ? <div className="ppob-payment-message" role="alert">{postpaidMessage}</div> : null}
+        {postpaidStage === "pending" ? <div className="djiwa-payment-notice is-warning" role="status"><strong>Pembayaran sedang diproses</strong><small>Saldo tetap ditahan sampai provider memberi hasil definitif.</small><button className="djiwa-payment-notice-action" onClick={() => void refreshPostpaidStatus()} disabled={postpaidBusy}>{postpaidBusy ? "Memeriksa..." : "Periksa status"}</button></div> : null}
+        <div className="checkout-actions"><button className="ppob-checkout-back" onClick={() => postpaidStage === "confirmation" ? setPostpaidStage("detail") : closePpob()}>Kembali</button>{postpaidStage === "confirmation" ? <button className="primary-action" onClick={() => void submitPostpaidPayment()} disabled={postpaidBusy}>{postpaidBusy ? "Memproses..." : `Bayar ${money(postpaidInquiry?.totalAmount || 0)}`}</button> : <button className="primary-action" onClick={() => void submitPostpaidInquiry()} disabled={postpaidBusy || !postpaidProductCode || !postpaidNumberValidation.valid}>{postpaidBusy ? "Memeriksa..." : "Lihat tagihan"}</button>}</div>
+      </>}
+    </section></main>
   );
   if (ppobOpen && selectedPpobProduct) return (
     <main className="pay-page ppob-page djiwa-checkout-page ppob-detail-active">

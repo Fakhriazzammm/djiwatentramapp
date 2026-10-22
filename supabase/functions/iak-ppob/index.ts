@@ -1,13 +1,14 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import md5 from "npm:blueimp-md5@2.19.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { buildSignature } from "./adapter.ts";
+import { createIakActionHandler } from "./handler.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const username = Deno.env.get("IAK_USERNAME")?.trim() ?? "";
 const apiKey = Deno.env.get("IAK_API_KEY")?.trim() ?? "";
-const baseUrl = (Deno.env.get("IAK_BASE_URL")?.trim() || "https://prepaid.iak.id/api").replace(/\/$/, "");
+const baseUrl = (Deno.env.get("IAK_BASE_URL")?.trim() || "https://api.iak.id/api").replace(/\/$/, "");
 if (!supabaseUrl || !serviceRoleKey) throw new Error("Missing Supabase function secrets");
 const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
@@ -15,21 +16,11 @@ type Json = Record<string, unknown>;
 const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
 function reply(body: Json, status = 200) { return new Response(JSON.stringify(body), { status, headers: jsonHeaders }); }
 function text(value: unknown) { return typeof value === "string" ? value.trim() : ""; }
-function sign(value: string) { return md5(value); }
+function sign(value: string) { return buildSignature("", "", value); }
 function configured() { return Boolean(username && apiKey); }
 function authError() { return reply({ success: false, error: { code: "IAK_NOT_CONFIGURED", message: "IAK username/API key belum dikonfigurasi sebagai secret server" } }, 503); }
 
-async function iak(path: string, body: Json) {
-  const response = await fetch(`${baseUrl}/${path.replace(/^\//, "")}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(30_000),
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(`IAK HTTP ${response.status}`);
-  return payload;
-}
+const actionHandler = createIakActionHandler({ username, apiKey, baseUrl });
 
 async function callback(request: Request) {
   if (!configured()) return authError();
@@ -42,15 +33,15 @@ async function callback(request: Request) {
   if (receivedSign !== sign(`${username}${apiKey}${refId}`)) return reply({ success: false, error: { code: "INVALID_SIGNATURE", message: "Signature callback tidak valid" } }, 401);
   const status = text(data.status);
   if (!["0", "1", "2"].includes(status)) return reply({ success: false, error: { code: "INVALID_STATUS", message: "Status callback tidak dikenal" } }, 400);
-  const existing = await admin.schema("pos").from("ppob_transactions").select("payload").eq("ref_id", refId).maybeSingle();
+  const existing = await admin.schema("pos").from("ppob_transactions").select("payload,wallet_hold_id,payment_status").eq("ref_id", refId).maybeSingle();
   if (existing.error) {
     console.error("iak callback lookup failed", { code: existing.error.code });
     return reply({ success: false, error: { code: "CALLBACK_LOOKUP_FAILED", message: "Callback belum dapat diproses" } }, 500);
   }
   const existingPayload = existing.data?.payload && typeof existing.data.payload === "object" ? existing.data.payload as Json : {};
   const mergedPayload = { ...existingPayload, ...data };
-  const holdId = text(existingPayload.wallet_hold_id);
-  if (holdId && status === "0") {
+  const holdId = text(existing.data?.wallet_hold_id || existingPayload.wallet_hold_id);
+  if (holdId && status === "1") {
     const captured = await admin.schema("pos").rpc("wallet_capture_hold", { p_hold_id: holdId, p_idempotency_key: `callback_capture_${refId}` });
     if (captured.error) return reply({ success: false, error: { code: "CALLBACK_SETTLEMENT_FAILED", message: "Saldo belum dapat diselesaikan" } }, 500);
   } else if (holdId && status === "2") {
@@ -68,6 +59,10 @@ async function callback(request: Request) {
     iak_balance: Number(data.balance) || null,
     iak_transaction_id: text(data.tr_id) || null,
     response_code: text(data.rc) || null,
+    wallet_hold_id: holdId || null,
+    payment_status: status === "1" ? "paid" : status === "2" ? "failed" : (existing.data?.payment_status || "pending"),
+    provider_status: status === "1" ? "success" : status === "2" ? "failed" : "pending",
+    provider_updated_at: new Date().toISOString(),
     payload: mergedPayload,
     updated_at: new Date().toISOString(),
   };
@@ -80,16 +75,8 @@ async function callback(request: Request) {
 }
 
 async function handleAction(body: Json) {
-  if (!configured()) return authError();
-  const action = text(body.action);
-  if (action === "check-balance") return reply({ success: true, data: await iak("check-balance", { username, sign: sign(`${username}${apiKey}bl`) }) });
-  if (action === "price-list") return reply({ success: true, data: await iak("pricelist", { username, sign: sign(`${username}${apiKey}pl`), status: "active" }) });
-  if (action === "top-up") {
-    const refId = text(body.ref_id); const customerId = text(body.customer_id); const productCode = text(body.product_code);
-    if (!refId || !customerId || !productCode) return reply({ success: false, error: { code: "INVALID_TOPUP", message: "ref_id, customer_id, dan product_code wajib diisi" } }, 400);
-    return reply({ success: true, data: await iak("top-up", { username, ref_id: refId, customer_id: customerId, product_code: productCode, sign: sign(`${username}${apiKey}${refId}`) }) });
-  }
-  return reply({ success: false, error: { code: "UNKNOWN_ACTION", message: "Gunakan check-balance, price-list, atau top-up" } }, 400);
+  const result = await actionHandler(body);
+  return reply(result.body, result.status);
 }
 
 Deno.serve(async (request) => {

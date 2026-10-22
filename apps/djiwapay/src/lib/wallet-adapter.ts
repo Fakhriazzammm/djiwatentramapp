@@ -67,3 +67,31 @@ export async function requestWalletWithdrawal(draft: WalletWithdrawalDraft): Pro
   if (!response.ok || !payload.success) throw new Error(payload.error || "WITHDRAWAL_REQUEST_FAILED");
   return payload;
 }
+
+export type PostpaidProduct = { code: string; name: string; type: string; status: "active" | "inactive"; fee?: number; commission?: number };
+export type PostpaidInquiry = { refId: string; serviceType: string; productCode: string; customerNumber: string; customerName?: string; period?: string; billAmount: number; adminFee: number; totalAmount: number; status: "pending" | "success" | "failed"; message?: string };
+export type PostpaidPaymentResult = { success: boolean; status?: "pending" | "success" | "failed"; data?: PostpaidInquiry & { serialNumber?: string; reference?: string }; error?: string };
+async function postpaidRequest<T>(body: Record<string, unknown>): Promise<T> {
+  const endpoint = body.action === "price-list" ? "catalog" : String(body.action);
+  const response = await fetch("/api/pay-bridge/ppob/postpaid/" + endpoint, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const payload = await response.json().catch(() => ({})) as T & { error?: string; success?: boolean };
+  if (!response.ok && !payload.error) throw new Error("PPOB pascabayar belum dapat diproses");
+  return payload;
+}
+export async function readPostpaidCatalog(serviceType: "pln" | "pdam"): Promise<PostpaidProduct[]> {
+  const payload = await postpaidRequest<{ success: boolean; data?: { products?: PostpaidProduct[] }; error?: string }>({ action: "price-list", kind: "postpaid", service_type: serviceType });
+  const products = payload.data?.products;
+  if (!payload.success || !Array.isArray(products)) throw new Error(payload.error || "Katalog pascabayar tidak valid");
+  return products.filter((item) => item.status === "active");
+}
+export async function inquirePostpaid(serviceType: "pln" | "pdam", productCode: string, customerNumber: string): Promise<PostpaidInquiry> {
+  const payload = await postpaidRequest<{ success: boolean; data?: PostpaidInquiry; error?: string }>({ action: "inquiry", serviceType, productCode, customerNumber });
+  if (!payload.success || !payload.data) throw new Error(payload.error || "Inquiry tagihan gagal");
+  return payload.data;
+}
+export async function payPostpaid(refId: string): Promise<PostpaidPaymentResult> {
+  return postpaidRequest<PostpaidPaymentResult>({ action: "payment", refId, paymentMethod: "wallet" });
+}
+export async function checkPostpaidStatus(refId: string): Promise<PostpaidPaymentResult> {
+  return postpaidRequest<PostpaidPaymentResult>({ action: "status", refId });
+}
