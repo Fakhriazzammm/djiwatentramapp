@@ -69,3 +69,4 @@
 .ppob-selection.ppob-step-page>.ppob-pay-button{width:100%;min-height:52px;margin-top:16px!important;border-radius:12px;background:#175dcc;color:#fff;padding:0 18px!important}
 .ppob-selection.ppob-step-page>.ppob-pay-button:disabled{background:#e5eaf2;color:#7b899d}
 @media(min-width:700px){.ppob-selection.ppob-step-page{align-items:center}.ppob-selection.ppob-step-page>*{width:100%}}
+.ppob-product-name{display:flex;align-items:center;min-height:34px}.ppob-product-name strong{font-size:14px;color:#24324a;white-space:nowrap}
