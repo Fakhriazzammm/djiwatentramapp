@@ -62,6 +62,7 @@ function OrderPage() {
 	const { username } = Route.useParams();
 	const search = Route.useSearch();
 	const brandSlug = import.meta.env.VITE_BRAND_SLUG || "djiwatentram";
+	const checkoutRequestKeyRef = useRef<string | null>(null);
 
 	const siteSettings = useHybridSiteSettings();
 	const brandSettings = useHybridBookingSettings(brandSlug);
@@ -275,7 +276,7 @@ function OrderPage() {
 
 	// Sync: context state → URL (when step changes)
 	useEffect(() => {
-		const params: Record<string, string> = { step };
+		const params: { step: OrderStep; table?: string; orderId?: string } = { step };
 		if (step === "receipt" && receipt?.orderId) {
 			params.orderId = String(receipt.orderId);
 		}

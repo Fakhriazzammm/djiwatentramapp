@@ -135,6 +135,9 @@ export function useSupabaseLiveValue<T>(
 			channelEntry.refCount++;
 		}
 
+		const registeredChannel = channelEntry;
+		if (!registeredChannel) return;
+
 		// Only poll for non-cached data (cached data uses 5 min interval above)
 		const timer = !options?.cacheKey
 			? window.setInterval(() => void reload(), refreshMs)
@@ -144,9 +147,9 @@ export function useSupabaseLiveValue<T>(
 			active = false;
 			if (timer) window.clearInterval(timer);
 
-			channelEntry.refCount--;
-			if (channelEntry.refCount <= 0) {
-				channelEntry.unsubscribe();
+			registeredChannel.refCount--;
+			if (registeredChannel.refCount <= 0) {
+				registeredChannel.unsubscribe();
 				sharedChannels.delete(channelKey);
 			}
 		};

@@ -65,7 +65,7 @@ function DaftarPage() {
 							type="button"
 							className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground"
 							aria-label="Kembali ke halaman utama"
-							onClick={() => navigate({ to: "/" })}
+							onClick={() => navigate({ to: "/", search: {} as any })}
 						>
 							<ArrowLeft className="h-3.5 w-3.5" />
 						</button>

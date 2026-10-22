@@ -102,7 +102,7 @@ function NotifikasiPage() {
 	return (
 		<div className="app-page min-h-app">
 			<div className="app-shell mx-auto min-h-app max-w-md bg-background">
-				<CustomerHeader title="Notifikasi" subtitle="Djiwa Tentram" onBack={goHome} leading={<ArrowLeft className="h-4 w-4" />} action={isAuthenticated && unreadCount > 0 ? <button type="button" onClick={markAllRead} className="flex min-h-10 items-center gap-1 rounded-xl px-2 text-[10px] font-black text-primary transition-colors hover:bg-primary/10 active:scale-[.97]" aria-label="Tandai semua notifikasi sudah dibaca"><CheckCheck className="h-3.5 w-3.5" /> Tandai dibaca</button> : undefined} />
+				<CustomerHeader title="Notifikasi" subtitle="Djiwa Tentram" onBack={goHome} leading={<ArrowLeft className="h-4 w-4" />} right={isAuthenticated && unreadCount > 0 ? <button type="button" onClick={markAllRead} className="flex min-h-10 items-center gap-1 rounded-xl px-2 text-[10px] font-black text-primary transition-colors hover:bg-primary/10 active:scale-[.97]" aria-label="Tandai semua notifikasi sudah dibaca"><CheckCheck className="h-3.5 w-3.5" /> Tandai dibaca</button> : undefined} />
 
 				<main className="px-3 py-4">
 					<CustomerPushActivation />

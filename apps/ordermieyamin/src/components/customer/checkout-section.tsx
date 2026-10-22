@@ -14,6 +14,9 @@ export interface CheckoutSectionProps {
 	dessertLater: boolean;
 	freeRefillCharge: number;
 	hasDessertInCart: boolean;
+	isAuthenticated: boolean;
+	guestEmail: string;
+	guestPhone: string;
 	isSubmitting: boolean;
 	notes: string;
 	paymentChoice: PaymentChoice;
@@ -23,7 +26,9 @@ export interface CheckoutSectionProps {
 	serviceChargeAmount: number;
 	serviceChargeRate: number;
 	setCustomerName: (v: string) => void;
-	setDessertLater: React.Dispatch<React.SetStateAction<boolean>>;
+	setDessertLater: (value: boolean) => void;
+	setGuestEmail: (v: string) => void;
+	setGuestPhone: (v: string) => void;
 	setNotes: (v: string) => void;
 	setPaymentChoice: (v: PaymentChoice) => void;
 	setTableNumber: (v: string) => void;
@@ -87,7 +92,7 @@ export function renderCheckoutSection(props: CheckoutSectionProps) {
 						<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Catatan order</label>
 						<textarea aria-label="Catatan order" className="min-h-[88px] w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none" value={props.notes} onChange={(event) => props.setNotes(event.target.value)} placeholder="Contoh: saus dipisah, tanpa es" />
 					</div>
-					{props.config.enableDessertLater && props.hasDessertInCart ? <div className="flex items-center justify-between rounded-[14px] border border-primary/15 bg-primary/5 px-3 py-2"><div><p className="font-bold text-[10px] text-foreground">Bawakan dessert nanti</p><p className="text-[10px] text-muted-foreground">Bisa dipanggil saat sudah siap.</p></div><button type="button" role="switch" aria-checked={props.dessertLater} aria-label="Bawakan dessert nanti" className={cn("relative h-11 w-12 rounded-full transition-all", props.dessertLater ? "bg-primary" : "bg-muted-foreground/20")} onClick={() => props.setDessertLater((value: boolean) => !value)}><span className={cn("absolute top-2.5 h-6 w-6 rounded-full bg-white shadow-sm transition-all", props.dessertLater ? "right-1" : "left-1")} /></button></div> : null}
+					{props.config.enableDessertLater && props.hasDessertInCart ? <div className="flex items-center justify-between rounded-[14px] border border-primary/15 bg-primary/5 px-3 py-2"><div><p className="font-bold text-[10px] text-foreground">Bawakan dessert nanti</p><p className="text-[10px] text-muted-foreground">Bisa dipanggil saat sudah siap.</p></div><button type="button" role="switch" aria-checked={props.dessertLater} aria-label="Bawakan dessert nanti" className={cn("relative h-11 w-12 rounded-full transition-all", props.dessertLater ? "bg-primary" : "bg-muted-foreground/20")} onClick={() => props.setDessertLater(!props.dessertLater)}><span className={cn("absolute top-2.5 h-6 w-6 rounded-full bg-white shadow-sm transition-all", props.dessertLater ? "right-1" : "left-1")} /></button></div> : null}
 				</div>
 			</div>
 			<div className="rounded-3xl border border-border bg-card p-4 shadow-sm">

@@ -1,4 +1,5 @@
 ﻿import type { Doc, Id } from "@/types/backend-compat";
+import { currency } from "@/components/customer/types";
 
 export interface PricingResult {
 	finalPrice: number;

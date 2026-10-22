@@ -123,11 +123,11 @@ export function useHybridMayarConfig() {
 	return localConfig as any;
 }
 
-export function useHybridOrderById(id?: string | null) {
+export function useHybridOrderById(id?: string | null, refreshTrigger = 0) {
 	const supabaseData = useSupabaseValue(
 		`order-by-id:${id ?? "skip"}`,
 		() => (id ? fetchOrderById(id) : Promise.resolve(null)),
-		[id]
+		[id, refreshTrigger]
 	);
 	return supabaseData as any;
 }
