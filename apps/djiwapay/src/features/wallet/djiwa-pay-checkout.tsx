@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { QrCode, WalletCards } from "lucide-react";
 import {
   CheckoutField,
@@ -148,6 +148,7 @@ export function DjiwaPayCheckout({
 }
 
 export function DjiwaPaySuccess({ productName, operator, customerNumber, amount, serialNumber, reference, onDone }: { productName: string; operator: string; customerNumber: string; amount: number; serialNumber?: string; reference?: string; onDone: () => void }) {
+  const [copied, setCopied] = useState(false);
   const currency = money;
   const cart: CheckoutCartItem[] = [{ productId: "djiwa-pay-success", name: productName, variant: operator, price: amount, quantity: 1 }];
   const summary = (
@@ -171,7 +172,7 @@ export function DjiwaPaySuccess({ productName, operator, customerNumber, amount,
       cart={cart}
       currency={currency}
       showOrderDetail={false}
-      fields={<div className="djiwa-payment-notice is-success" role="status"><strong>Transaksi selesai</strong><small>Saldo Djiwa Pay telah dipotong dan provider mengonfirmasi pembelian.</small></div>}
+      fields={<div className="djiwa-payment-notice is-success" role="status"><strong>Transaksi selesai</strong><small>Saldo Djiwa Pay telah dipotong dan provider mengonfirmasi pembelian.</small><div className="djiwa-receipt-actions"><button type="button" onClick={() => { const text = [productName, operator, customerNumber, serialNumber, reference].filter(Boolean).join(" · "); void navigator.clipboard?.writeText(text).then(() => setCopied(true)); }}>{copied ? "Tersalin" : "Salin detail"}</button><button type="button" onClick={() => { if (navigator.share) void navigator.share({ title: "Struk Djiwa Pay", text: `${productName} · ${customerNumber} · ${currency(amount)}` }); else void navigator.clipboard?.writeText(`${productName} · ${customerNumber} · ${currency(amount)}`).then(() => setCopied(true)); }}>Bagikan</button></div></div>}
       notesLabel="Catatan transaksi"
       notesPlaceholder="Opsional"
       notes=""

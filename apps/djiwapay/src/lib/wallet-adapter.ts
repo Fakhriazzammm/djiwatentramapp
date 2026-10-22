@@ -1,5 +1,6 @@
 import type { WalletLedgerEntry, WalletSummary } from "@yumipos/djiwapay-core";
 export type WalletResponse = { wallet: WalletSummary; ledger: WalletLedgerEntry[] };
+export type TopupStatusResponse = { status: "pending" | "success" | "expired"; message?: string; wallet?: WalletSummary; ledger?: WalletLedgerEntry[] };
 export async function readWallet(_profile: { source_id: string }): Promise<WalletResponse> {
   const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "get" }) });
   if (response.status === 401) throw new Error("Sesi Djiwa Pay kedaluwarsa");
@@ -40,5 +41,12 @@ export async function checkPpobStatus(invoiceId: string): Promise<PpobStatusResu
   const response = await fetch("/api/pay-bridge/ppob/status", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ invoiceId }) });
   const payload = await response.json().catch(() => ({})) as PpobStatusResult;
   if (!response.ok && !payload.error) throw new Error("Status pembayaran belum dapat diperiksa");
+  return payload;
+}
+
+export async function checkTopupStatus(invoiceId: string): Promise<TopupStatusResponse> {
+  const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "topup-status", invoiceId }) });
+  const payload = await response.json().catch(() => ({})) as TopupStatusResponse & { error?: string };
+  if (!response.ok) throw new Error(payload.error || "Status top up belum dapat diperiksa");
   return payload;
 }

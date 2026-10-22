@@ -68,6 +68,7 @@
 
 /* action row: both buttons share the width (Djiwa Checkout Standard) */
 .djiwa-checkout-actions .djiwa-checkout-back,.djiwa-checkout-actions .djiwa-checkout-primary{flex:1}
+.djiwa-receipt-actions{display:flex;gap:8px;margin-top:8px}.djiwa-receipt-actions button{min-height:36px;padding:7px 10px;border:1px solid #c5e7d2;border-radius:9px;background:#fff;color:#187346;font:800 10px/1 inherit;cursor:pointer}
 
 /* empty cart */
 .djiwa-checkout-empty{padding:22px;border:1px dashed var(--checkout-border);border-radius:16px;background:var(--checkout-surface);text-align:center}

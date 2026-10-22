@@ -909,7 +909,7 @@ app.post("/api/pay-bridge/ppob/purchase", async (c) => {
 app.post("/api/pay-bridge/wallet", async (c) => {
   const session = await requirePaySession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
-  const body = await c.req.json().catch(() => ({})) as { action?: unknown; amount?: unknown };
+  const body = await c.req.json().catch(() => ({})) as { action?: unknown; amount?: unknown; invoiceId?: unknown };
   const action = typeof body.action === "string" ? body.action : "get";
   const sourceId = String(session.customer.source_id || "");
   const email = String(session.customer.email || "");
@@ -919,12 +919,30 @@ app.post("/api/pay-bridge/wallet", async (c) => {
     const ledger = await pool.query("SELECT * FROM pos.customer_wallet_ledger WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 100", [sourceId]);
     return privateJson({ success: true, wallet: wallet.rows[0] ?? null, ledger: ledger.rows });
   }
+  if (action === "topup-status") {
+    const invoiceId = typeof body.invoiceId === "string" ? body.invoiceId.trim() : "";
+    if (!invoiceId) return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+    const invoiceResponse = await fetch(MAYAR_PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(SUPABASE_ANON_KEY ? { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } : {}) },
+      body: JSON.stringify({ action: "get-invoice-detail", invoiceId }),
+    });
+    const invoicePayload = await invoiceResponse.json().catch(() => ({})) as any;
+    const invoiceData = invoicePayload?.data || {};
+    const providerStatus = String(invoiceData.status || "").toLowerCase();
+    if (!invoiceResponse.ok || !invoicePayload.success) return privateJson({ success: true, status: "pending", message: "Status top up belum dapat diperbarui." });
+    if (["expired", "closed", "cancelled", "canceled", "void"].includes(providerStatus)) return privateJson({ success: true, status: "expired", message: `Invoice top up ${providerStatus}.` });
+    if (!["paid", "success", "completed"].includes(providerStatus)) return privateJson({ success: true, status: "pending", message: "Pembayaran QRIS belum terkonfirmasi." });
+    const wallet = await pool.query("SELECT * FROM pos.customer_wallets WHERE customer_id = $1 LIMIT 1", [sourceId]);
+    const ledger = await pool.query("SELECT * FROM pos.customer_wallet_ledger WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 100", [sourceId]);
+    return privateJson({ success: true, status: "success", wallet: wallet.rows[0] ?? null, ledger: ledger.rows, message: "Top up berhasil terkonfirmasi." });
+  }
   if (action !== "topup") return privateJson({ success: false, error: "UNKNOWN_ACTION" }, 400);
   const amount = Number(body.amount);
   if (!Number.isSafeInteger(amount) || amount < 1000) return privateJson({ success: false, error: "INVALID_AMOUNT" }, 400);
   const supabaseUrl = MAYAR_PROXY_URL.replace(/\/functions\/v1\/mayar-proxy\/?$/, "");
   const response = await fetch(`${supabaseUrl}/functions/v1/customer-wallet`, { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }, body: JSON.stringify({ action: "topup", sourceId, email, amount, sourceApp: "djiwapay", origin: PAY_BRIDGE_ORIGIN, idempotencyKey: `djiwapay-${sourceId}-${crypto.randomUUID()}` }) });
-  const payload = await response.json().catch(() => ({})) as { result?: { invoice_url?: unknown }; error?: unknown; message?: unknown };
+  const payload = await response.json().catch(() => ({})) as { result?: { invoice_url?: unknown; invoice_id?: unknown; invoiceId?: unknown; id?: unknown }; error?: unknown; message?: unknown };
   if (!response.ok || typeof payload?.result?.invoice_url !== "string") {
     const upstreamMessage = payload?.error && typeof payload.error === "object" && "message" in payload.error
       ? String((payload.error as { message?: unknown }).message || "")
@@ -936,7 +954,8 @@ app.post("/api/pay-bridge/wallet", async (c) => {
         : "Top up gagal disiapkan. Silakan coba lagi.";
     return privateJson({ success: false, error: safeMessage }, 502);
   }
-  return privateJson({ success: true, result: payload.result });
+  const invoiceId = payload.result?.invoice_id ?? payload.result?.invoiceId ?? payload.result?.id;
+  return privateJson({ success: true, result: { ...payload.result, ...(invoiceId ? { invoice_id: String(invoiceId) } : {}) } });
 });
 
 const CUSTOMER_REVIEW_ORDER_STATUSES = new Set(["paid", "completed", "settled"]);

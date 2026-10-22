@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowDownLeft, ArrowUpRight, Bell, Car, CreditCard, Droplets, Eye, EyeOff, Gamepad2, HeartPulse, HelpCircle, House, ReceiptText, RefreshCw, ScanLine, Smartphone, Tv, UserRound, Wallet, Wifi, X, Zap } from "lucide-react";
-import { checkPpobStatus, createPpobInvoice, purchasePpob, readPpobCatalog, type PpobProduct, type PpobPurchaseResult, type WalletResponse } from "../../lib/wallet-adapter";
+import { checkPpobStatus, checkTopupStatus, createPpobInvoice, purchasePpob, readPpobCatalog, type PpobProduct, type PpobPurchaseResult, type WalletResponse } from "../../lib/wallet-adapter";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import type { CustomerProfile, PayNavigationContext } from "../../lib/identity-adapter";
 import { CheckoutActionBar, CheckoutSection, OrderSummary, PaymentMethodCard } from "@yumipos/djiwa-checkout-ui";
@@ -30,7 +30,7 @@ const ppobServices = [
   ["multifinance", "Cicilan", "Bayar pembiayaan", Car, "slate"],
 ] as const;
 
-type Props = { profile: CustomerProfile; wallet: WalletResponse | null; loading: boolean; error: string | null; busy: boolean; onRefresh: () => void; onTopup: (amount: number) => Promise<void> | void; navigationContext: PayNavigationContext };
+type Props = { profile: CustomerProfile; wallet: WalletResponse | null; loading: boolean; error: string | null; busy: boolean; onRefresh: () => void; onTopup: (amount: number) => Promise<{ invoiceUrl: string; invoiceId?: string }>; navigationContext: PayNavigationContext };
 
 function PpobReceipt({ product, number, serialNumber, reference, onDone }: { product: PpobProduct; number: string; serialNumber?: string; reference?: string; onDone: () => void }) {
   const [stage, setStage] = useState<"processing" | "printing" | "complete">("processing");
@@ -46,6 +46,8 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   const [topupOpen, setTopupOpen] = useState(false);
   const [topupStage, setTopupStage] = useState<"detail" | "payment">("detail");
   const [topupPending, setTopupPending] = useState(false);
+  const [topupStatus, setTopupStatus] = useState<"idle" | "pending" | "success" | "expired">("idle");
+  const [topupInvoiceId, setTopupInvoiceId] = useState<string | null>(null);
   const [ppobOpen, setPpobOpen] = useState(false);
   const [ppobFilter, setPpobFilter] = useState("all");
   const [selectedPpobProduct, setSelectedPpobProduct] = useState<PpobProduct | null>(null);
@@ -68,6 +70,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   const [ppobReceiptDraft, setPpobReceiptDraft] = useState<CheckoutDraft["receipt"] | null>(null);
   const [draftRestored, setDraftRestored] = useState(false);
   const goPpobRoute = (path: string) => { window.history.pushState({ ppob: true }, "", path); setRoutePath(path); };
+  const closePpob = () => { setPpobOpen(false); setPpobFilter("all"); setSelectedPpobProduct(null); setPpobQuery(""); setPpobOperator("all"); setPpobSort("default"); setPpobCustomerNumber(""); setPpobPaymentMessage(null); setPpobReviewOpen(false); setPpobPaymentMethod("wallet"); setPpobSuccess(null); goPpobRoute("/"); };
   const ppobProductRoute = (stage: string, product = selectedPpobProduct) => product ? `/ppob/${encodeURIComponent(ppobFilter)}/produk/${encodeURIComponent(product.product_code)}/${stage}` : `/ppob/${encodeURIComponent(ppobFilter)}`;
   const draftKey = `djiwa-pay-checkout:${profile.source_id}`;
   const saveDraft = (draft: CheckoutDraft) => { try { window.sessionStorage.setItem(draftKey, serializeCheckoutDraft(draft)); } catch { /* storage is best effort */ } };
@@ -77,6 +80,17 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
+  useEffect(() => {
+    if (!topupOpen && !ppobOpen && !soon) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (soon) setSoon(null);
+      else if (topupOpen && !busy) setTopupOpen(false);
+      else if (ppobOpen) closePpob();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [busy, closePpob, ppobOpen, soon, topupOpen]);
   useEffect(() => {
     if (draftRestored) return;
     setDraftRestored(true);
@@ -108,7 +122,9 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
         goPpobRoute(draft.returnTo);
       } else {
         setTopupStage("payment");
-        setTopupPending(true);
+        setTopupInvoiceId(draft.invoiceId ?? null);
+        setTopupStatus(draft.status === "expired" ? "expired" : "pending");
+        setTopupPending(draft.status !== "expired");
         setTopupOpen(true);
       }
     } catch { /* malformed session state is ignored safely */ }
@@ -154,14 +170,19 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     if (selectedPpobProduct && returnToPpob) {
       saveDraft({ kind: "ppob", productCode: selectedPpobProduct.product_code, category: ppobFilter, customerNumber: ppobCustomerNumber, amount: selectedPpobProduct.product_price, topupAmount, paymentMethod: ppobPaymentMethod, returnTo: returnToPpob });
     } else {
-      saveDraft({ kind: "topup", productCode: "djiwa-pay-topup", category: "topup", customerNumber: "", amount: topupAmount, topupAmount, paymentMethod: "mayar", returnTo: "/" });
+    saveDraft({ kind: "topup", productCode: "djiwa-pay-topup", category: "topup", customerNumber: "", amount: topupAmount, topupAmount, paymentMethod: "mayar", status: "pending", createdAt: Date.now(), returnTo: "/" });
     }
     setTopupPending(true);
+    setTopupStatus("pending");
     try {
-      await onTopup(topupAmount);
+      const invoice = await onTopup(topupAmount);
+      setTopupInvoiceId(invoice.invoiceId ?? null);
+      saveDraft({ kind: "topup", productCode: "djiwa-pay-topup", category: "topup", customerNumber: "", amount: topupAmount, topupAmount, invoiceId: invoice.invoiceId, invoiceUrl: invoice.invoiceUrl, paymentMethod: "mayar", status: "pending", createdAt: Date.now(), returnTo: "/" });
+      window.location.assign(invoice.invoiceUrl);
     } catch {
       clearDraft();
       setTopupPending(false);
+      setTopupStatus("idle");
     }
   };
   const openTopupForPpob = () => {
@@ -202,6 +223,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   const applyPpobResult = (result: PpobPurchaseResult) => {
     setPpobPaymentStatus(result.status === "pending" ? "pending" : result.status === "success" ? "idle" : "failed");
     setPpobPaymentMessage(result.status === "success" ? `Pembayaran berhasil.${result.serialNumber ? ` SN: ${result.serialNumber}` : ""}` : result.status === "pending" ? `Transaksi sedang diproses.${result.refId ? ` Ref: ${result.refId}` : ""}` : (result.error || "Pembayaran gagal."));
+    if (result.status === "failed") clearDraft();
     if (selectedPpobProduct && isSettledPpob(result)) {
       const receipt = { serialNumber: result.serialNumber ?? undefined, reference: result.refId ?? undefined };
       saveDraft({ kind: "ppob", productCode: selectedPpobProduct.product_code, category: ppobFilter, customerNumber: ppobCustomerNumber, amount: selectedPpobProduct.product_price, receipt, paymentMethod: ppobPaymentMethod, returnTo: ppobProductRoute("struk") });
@@ -215,6 +237,35 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     catch (cause) { setPpobPaymentStatus("failed"); setPpobPaymentMessage(cause instanceof Error ? cause.message : "Status pembayaran belum dapat diperiksa."); }
     finally { setPpobPaymentBusy(false); }
   };
+  const refreshTopupPayment = async () => {
+    if (!topupInvoiceId || busy) { onRefresh(); return; }
+    setTopupStatus("pending");
+    try {
+      const result = await checkTopupStatus(topupInvoiceId);
+      if (result.status === "success") {
+        setTopupPending(false);
+        setTopupStatus("success");
+        clearDraft();
+        onRefresh();
+      } else if (result.status === "expired") {
+        setTopupPending(false);
+        setTopupStatus("expired");
+        clearDraft();
+      }
+    } catch {
+      setTopupStatus("pending");
+    }
+  };
+  useEffect(() => {
+    if (!topupPending || !topupInvoiceId) return;
+    const timer = window.setInterval(() => { void refreshTopupPayment(); }, 5000);
+    return () => window.clearInterval(timer);
+  }, [topupInvoiceId, topupPending, busy]);
+  useEffect(() => {
+    if (!ppobPaymentStatus || ppobPaymentStatus !== "pending" || !ppobInvoiceId) return;
+    const timer = window.setInterval(() => { void refreshPpobPayment(); }, 5000);
+    return () => window.clearInterval(timer);
+  }, [ppobInvoiceId, ppobPaymentStatus, ppobPaymentBusy]);
   const openPpob = (key: string, label: string) => {
     const providerType = key === "game" ? "game" : key === "pln-token" ? "pln" : key;
     if (["pulsa", "data", "game", "pln-token"].includes(key)) { setPpobFilter(providerType); setPpobOpen(true); goPpobRoute(`/ppob/${encodeURIComponent(providerType)}`); return; }
@@ -241,7 +292,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
         amount={ppobSuccess!.product.product_price}
         serialNumber={ppobSuccess!.serialNumber}
         reference={ppobSuccess!.reference}
-        onDone={() => { setPpobSuccess(null); setPpobReceiptDraft(null); setPpobOpen(false); clearDraft(); goPpobRoute("/"); }}
+        onDone={() => { setPpobReceiptDraft(null); clearDraft(); closePpob(); }}
       />
     </main>
   );
@@ -343,10 +394,20 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
         walletBalance={wallet?.wallet.available_balance ?? 0}
         busy={busy}
         pending={topupPending}
-        notice={topupPending ? <div className="djiwa-payment-notice is-warning" role="status"><strong>Invoice top-up masih menunggu konfirmasi</strong><small>Jika Anda sudah membayar QRIS, perbarui saldo. Untuk membuat invoice baru, kembali ke nominal.</small><button type="button" className="djiwa-payment-notice-action" onClick={onRefresh}>Perbarui saldo</button></div> : null}
-        onBack={() => { if (topupStage === "payment" && topupPending) { setTopupPending(false); clearDraft(); setTopupStage("detail"); return; } if (topupStage === "payment") setTopupStage("detail"); else { setTopupOpen(false); clearDraft(); if (returnToPpob) { setPpobOpen(true); setPpobReviewOpen(true); goPpobRoute(returnToPpob); } setReturnToPpob(null); } }}
+        notice={topupStatus === "success" ? <div className="djiwa-payment-notice is-success" role="status"><strong>Top up berhasil</strong><small>Saldo Djiwa Pay sudah diperbarui.</small></div> : topupStatus === "expired" ? <div className="djiwa-payment-notice is-warning" role="alert"><strong>Invoice top up kedaluwarsa</strong><small>Buat invoice baru untuk mencoba pembayaran lagi.</small></div> : topupPending ? <div className="djiwa-payment-notice is-warning" role="status"><strong>Invoice top-up masih menunggu konfirmasi</strong><small>Status akan diperiksa otomatis. Anda juga dapat memeriksanya sekarang.</small><button type="button" className="djiwa-payment-notice-action" onClick={() => void refreshTopupPayment()} disabled={busy}>{busy ? "Memeriksa..." : "Periksa status"}</button></div> : null}
+        onBack={() => { if (topupStage === "payment" && topupPending) { setTopupPending(false); setTopupStatus("idle"); clearDraft(); setTopupStage("detail"); return; } if (topupStage === "payment") setTopupStage("detail"); else { setTopupOpen(false); clearDraft(); if (returnToPpob) { setPpobOpen(true); setPpobReviewOpen(true); goPpobRoute(returnToPpob); } setReturnToPpob(null); } }}
         onPrimary={submitTopup}
       />
+    </main>
+  );
+  if (!wallet && error) return (
+    <main className="pay-page">
+      <section className="surface wallet-unavailable" role="alert">
+        <span className="eyebrow">DJIWA PAY</span>
+        <h1>Saldo belum dapat dimuat</h1>
+        <p>{error}</p>
+        <button type="button" className="primary-action" onClick={onRefresh} disabled={loading}>{loading ? "Mencoba lagi…" : "Coba lagi"}</button>
+      </section>
     </main>
   );
   return <main className="pay-page">

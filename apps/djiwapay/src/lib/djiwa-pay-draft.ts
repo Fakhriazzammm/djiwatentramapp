@@ -1,4 +1,5 @@
 import type { PayCheckoutKind, PayPaymentMethod } from "./djiwa-pay-checkout";
+import type { PayTransactionStatus } from "./djiwa-pay-transaction";
 
 export type CheckoutDraft = {
   kind: PayCheckoutKind;
@@ -8,6 +9,9 @@ export type CheckoutDraft = {
   amount: number;
   topupAmount?: number;
   invoiceId?: string;
+  invoiceUrl?: string;
+  status?: PayTransactionStatus;
+  createdAt?: number;
   pending?: boolean;
   receipt?: { serialNumber?: string; reference?: string };
   paymentMethod: PayPaymentMethod;
@@ -30,6 +34,9 @@ export function parseCheckoutDraft(value: string | null): CheckoutDraft | null {
       typeof parsed.amount !== "number" ||
       (parsed.topupAmount !== undefined && typeof parsed.topupAmount !== "number") ||
       (parsed.invoiceId !== undefined && typeof parsed.invoiceId !== "string") ||
+      (parsed.invoiceUrl !== undefined && typeof parsed.invoiceUrl !== "string") ||
+      (parsed.status !== undefined && !["idle", "pending", "success", "failed", "expired"].includes(parsed.status)) ||
+      (parsed.createdAt !== undefined && typeof parsed.createdAt !== "number") ||
       (parsed.pending !== undefined && typeof parsed.pending !== "boolean") ||
       (parsed.receipt !== undefined && (!parsed.receipt || typeof parsed.receipt !== "object" || (parsed.receipt.serialNumber !== undefined && typeof parsed.receipt.serialNumber !== "string") || (parsed.receipt.reference !== undefined && typeof parsed.receipt.reference !== "string"))) ||
       (parsed.paymentMethod !== "wallet" && parsed.paymentMethod !== "mayar") ||
