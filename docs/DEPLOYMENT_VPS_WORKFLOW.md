@@ -125,6 +125,8 @@ Jangan menjalankan `supabase db push` ke cloud secara otomatis. Gunakan Supabase
 - Checkout QRIS menyimpan draft di `sessionStorage` agar dapat kembali setelah redirect provider.
 - Invoice QRIS menyimpan `invoiceId`; status dapat diperiksa melalui `/api/pay-bridge/ppob/status`.
 - Top up Djiwa Pay menyimpan `invoiceId` bila provider mengembalikannya; status dapat diperiksa melalui action `topup-status` pada `/api/pay-bridge/wallet`.
+- Migration `20261022193605_customer_wallet_internal_transfer.sql` menambahkan transfer store credit atomik antar customer; migration harus diterapkan ke database VPS sebelum action `transfer` digunakan.
+- Transfer internal bukan withdraw/cash-out; fitur payout eksternal tetap memerlukan provider payout dan verifikasi rekening.
 - Status `pending` tidak boleh dianggap berhasil dan tombol bayar harus terkunci sampai provider memberi hasil final.
 - Catalog PPOB berasal dari provider IAK; jangan hardcode harga produk pada frontend.
 

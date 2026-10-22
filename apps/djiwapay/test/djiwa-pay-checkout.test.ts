@@ -9,6 +9,7 @@ import {
 } from "../src/lib/djiwa-pay-checkout";
 import { parseCheckoutDraft, serializeCheckoutDraft } from "../src/lib/djiwa-pay-draft";
 import { canPollTransaction, normalizePayTransactionStatus, shouldClearTransactionDraft, transactionStatusLabel } from "../src/lib/djiwa-pay-transaction";
+import { buildWalletReceivePayload, validateWalletTransfer } from "../src/lib/djiwa-pay-transfer";
 
 describe("Djiwa Pay checkout presentation contract", () => {
   test.each([
@@ -83,5 +84,16 @@ describe("Djiwa Pay checkout presentation contract", () => {
     expect(canPollTransaction("pending", null)).toBe(false);
     expect(shouldClearTransactionDraft("success")).toBe(true);
     expect(shouldClearTransactionDraft("pending")).toBe(false);
+  });
+
+  test("validates internal wallet transfer drafts", () => {
+    expect(validateWalletTransfer({ recipient: "", amount: 1000, note: "" }).valid).toBe(false);
+    expect(validateWalletTransfer({ recipient: "user@example.com", amount: 999, note: "" }).valid).toBe(false);
+    expect(validateWalletTransfer({ recipient: "user@example.com", amount: 1000, note: "Bantuan makan" })).toEqual({ valid: true, message: null });
+    expect(validateWalletTransfer({ recipient: "user@example.com", amount: 10_000_001, note: "" }).valid).toBe(false);
+  });
+
+  test("creates a non-sensitive receive payload", () => {
+    expect(buildWalletReceivePayload("cust_123")).toBe("djiwapay://transfer?recipient=cust_123");
   });
 });
