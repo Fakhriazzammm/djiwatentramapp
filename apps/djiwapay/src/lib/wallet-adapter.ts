@@ -18,3 +18,11 @@ export async function readPpobCatalog(): Promise<PpobProduct[]> {
   if (!payload.success || !Array.isArray(products)) throw new Error("Format katalog PPOB tidak valid");
   return products.filter((product) => product.status === "active");
 }
+
+export type PpobPurchaseResult = { success: boolean; status?: "success" | "pending" | "failed"; message?: string; error?: string; refId?: string; serialNumber?: string | null };
+export async function purchasePpob(productCode: string, customerNumber: string): Promise<PpobPurchaseResult> {
+  const response = await fetch("/api/pay-bridge/ppob/purchase", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productCode, customerNumber }) });
+  const payload = await response.json().catch(() => ({})) as PpobPurchaseResult;
+  if (!response.ok && !payload.error) throw new Error("Pembayaran PPOB gagal diproses");
+  return payload;
+}
