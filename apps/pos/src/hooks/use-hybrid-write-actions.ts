@@ -1,5 +1,4 @@
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
-import { formatOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { allocateDailyReceiptNo } from "@yumipos/web-shared/lib/daily-receipt";
 import { createClient } from "@/lib/client";
 import { useAction, useMutation } from "@/lib/backend-bridge";
