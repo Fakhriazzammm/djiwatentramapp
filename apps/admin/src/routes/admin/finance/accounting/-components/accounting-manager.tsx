@@ -1,7 +1,7 @@
 import { createElement, useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { useAdminConfirm } from "@/hooks/use-admin-confirm";
+import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { createClient } from "@/lib/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,7 +58,6 @@ const ACCOUNT_TYPES = [
 const supabase = createClient();
 
 export function AccountingManager() {
-	const { confirm, dialog: confirmDialog } = useAdminConfirm();
 	const navigate = useNavigate();
 	const [accounts, setAccounts] = useState<COAAccount[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -197,7 +196,7 @@ export function AccountingManager() {
 			if (countError) throw countError;
 
 			if (count && count > 0) {
-				const ok = await confirm({
+				const ok = await requestAdminConfirm({
 					title: "Akun memiliki entri",
 					message: `Akun ini memiliki ${count} entri akuntansi. Nonaktifkan saja? (Nonaktifkan = akun tetap tersimpan, Batal = tidak ada perubahan)`,
 					confirmText: "Nonaktifkan",
@@ -270,7 +269,6 @@ export function AccountingManager() {
 
 	return (
 		<div className="flex flex-1 flex-col overflow-hidden">
-			{confirmDialog}
 			{/* Header */}
 			<div className="flex items-center gap-3 border-b px-4 py-3">
 				<button

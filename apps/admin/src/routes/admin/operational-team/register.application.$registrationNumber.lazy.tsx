@@ -1,6 +1,6 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useAdminConfirm } from "@/hooks/use-admin-confirm";
+import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { ArrowLeft, CheckCircle2, Download, Eye, FileSignature, FileText, Loader2, PencilLine, ShieldCheck, Trash2, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +30,6 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 
 /* -------- component -------- */
 function ApplicationDetailPage() {
-	const { confirm, dialog: confirmDialog } = useAdminConfirm();
 	const { registrationNumber } = Route.useParams() as { registrationNumber: string };
 	const navigate = useNavigate();
 	const siteSettings = useHybridSiteSettings();
@@ -249,7 +248,7 @@ function ApplicationDetailPage() {
 			return;
 		}
 		if (onboardingSettings.approvalPreview.requireConfirmation) {
-			const approved = await confirm({
+			const approved = await requestAdminConfirm({
 				title: "Setujui pendaftaran?",
 				message: `Approve ${app.full_name} dan buat akun user?`,
 				confirmText: "Approve",
@@ -310,7 +309,7 @@ function ApplicationDetailPage() {
 	/* ── Delete ── */
 	async function handleDelete() {
 		if (!app) return;
-		const removeApplication = await confirm({
+		const removeApplication = await requestAdminConfirm({
 			title: "Hapus pendaftaran?",
 			message: `Hapus pendaftaran "${app.full_name}"? Aksi ini tidak bisa dibatalkan.`,
 			confirmText: "Hapus",
@@ -362,7 +361,6 @@ function ApplicationDetailPage() {
 
 	return (
 		<div className="mx-auto max-w-6xl space-y-4 px-3 py-4 sm:px-4 sm:py-6 sm:space-y-6">
-			{confirmDialog}
 
 			{/* ── Header ── */}
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -52,6 +52,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { filterCommandItems, type AdminCommandItem } from "@/lib/admin-command-search";
+import { AdminDialogHost } from "@/components/admin/admin-dialog-host";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -1453,6 +1454,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 				)}
 			</AnimatePresence>
 
+			<AdminDialogHost />
 			<AdminCommandPalette
 				hasPermission={hasPermission}
 				items={COMMAND_ITEMS}

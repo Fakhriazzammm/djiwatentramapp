@@ -1,3 +1,4 @@
+import { requestAdminConfirm } from "@/lib/admin-dialogs";
 ﻿import { useState, useMemo, useEffect, useRef } from "react";
 import {
 	Wallet,
@@ -461,7 +462,7 @@ export function TransactionDetailReport({
 	// ── Undo Delete ──────────────────────────────────────────────────────────
 	const handleDelete = async (transaction: any) => {
 		if (viewMode === "item" && transaction.rowType === "receipt_item") {
-			if (!confirm(`Hapus item ${transaction.receiptItemIndex}/${transaction.receiptItemCount} dari struk ini?`)) return;
+			if (!(await requestAdminConfirm({ title: "Hapus item struk?", message: `Hapus item ${transaction.receiptItemIndex}/${transaction.receiptItemCount} dari struk ini?`, confirmText: "Hapus" }))) return;
 			try {
 				await deleteTransactionScanItem({ id: transaction._id, itemIndex: Number(transaction.itemIndex) || 0 });
 				toast.success("Item struk berhasil dihapus");
@@ -566,7 +567,7 @@ export function TransactionDetailReport({
 			...new Set(txRows.map((r: any) => r._id as Id<"financialTransactions">)),
 		];
 
-		if (!confirm(`Hapus ${idsToDelete.length} transaksi dan ${receiptItemRows.length} item struk?`)) return;
+		if (!(await requestAdminConfirm({ title: "Hapus transaksi?", message: `Hapus ${idsToDelete.length} transaksi dan ${receiptItemRows.length} item struk?`, confirmText: "Hapus" }))) return;
 
 		try {
 			if (idsToDelete.length > 0) await deleteTransactionsBulk({ ids: idsToDelete });

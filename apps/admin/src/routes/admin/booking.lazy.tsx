@@ -16,7 +16,7 @@ import {
 	Pencil,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useAdminConfirm } from "@/hooks/use-admin-confirm";
+import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { toast } from "sonner";
 import { BookingTimelineSummary } from "@yumipos/web-shared/booking/timeline";
 import { fetchBookingTimeline } from "@/lib/api-helper";
@@ -576,7 +576,6 @@ function OrderRow({
 export type BookingWorkspaceTab = "calendar" | "orders" | "capacity" | "general" | "products" | "form";
 
 export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspaceTab } = {}) {
-	const { confirm, dialog: confirmDialog } = useAdminConfirm();
 	const routeSearch = useSearch({ from: "/admin/booking" }) as { tab?: string };
 	const requestedTab = routeSearch.tab ?? forcedTab;
 	const settings = useHybridBookingSettings("booking");
@@ -750,7 +749,7 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 
 	const handleDeleteBooking = async (id: Id<"bookingOrders">, paymentStatus?: string) => {
 		if (paymentStatus === "paid") {
-			const cancelPaid = await confirm({
+			const cancelPaid = await requestAdminConfirm({
 				title: "Batalkan booking lunas?",
 				message: "Booking sudah lunas. Booking akan dibatalkan dan tetap disimpan sebagai histori. Lanjutkan?",
 				confirmText: "Batalkan booking",
@@ -766,7 +765,7 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 			}
 			return;
 		}
-		const removeBooking = await confirm({
+		const removeBooking = await requestAdminConfirm({
 			title: "Hapus booking?",
 			message: "Apakah Anda yakin ingin menghapus booking ini? Tindakan ini tidak dapat dibatalkan.",
 			confirmText: "Hapus",
@@ -892,7 +891,7 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 
 	const handleBulkDeleteCapacity = async () => {
 		if (selectedCapacityIds.length === 0 || isDeletingCapacity) return;
-		const removeCapacity = await confirm({
+		const removeCapacity = await requestAdminConfirm({
 			title: "Hapus pengaturan kapasitas?",
 			message: `Hapus ${selectedCapacityIds.length} pengaturan kapasitas terpilih? Tanggal akan kembali memakai kapasitas default.`,
 			confirmText: "Hapus",
@@ -1032,7 +1031,6 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 
 	return (
 		<div className="mx-auto max-w-6xl space-y-4 pb-8 md:space-y-5">
-			{confirmDialog}
 			{/* Header */}
 			<div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
 				<div>

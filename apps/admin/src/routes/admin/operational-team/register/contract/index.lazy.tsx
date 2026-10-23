@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useHybridSiteSettings, useHybridStaffRoles, triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridUpdateSiteSettings } from "@/hooks/use-hybrid-write-actions";
-import { useAdminConfirm } from "@/hooks/use-admin-confirm";
+import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { normalizeEmployeeOnboardingSettings } from "@/lib/employee-onboarding-settings";
 
 type TemplateInfo = {
@@ -35,7 +35,6 @@ function extractNameFromKey(key: string, roles: any[]): string {
 }
 
 function ContractLandingPage() {
-	const { confirm, dialog: confirmDialog } = useAdminConfirm();
 	const siteSettings = useHybridSiteSettings();
 	const roles = useHybridStaffRoles() ?? [];
 	const updateSiteSettings = useHybridUpdateSiteSettings();
@@ -110,7 +109,7 @@ function ContractLandingPage() {
 	const savedCount = templates.filter((t) => t.isSaved).length;
 
 	const handleDelete = useCallback(async (templateId: string, name: string) => {
-		const accepted = await confirm({
+		const accepted = await requestAdminConfirm({
 			title: "Hapus template?",
 			message: `Hapus template "${name}"?`,
 			confirmText: "Hapus",
@@ -154,7 +153,6 @@ function ContractLandingPage() {
 
 	return (
 		<div className="mx-auto max-w-5xl px-4 py-6">
-			{confirmDialog}
 			{/* ── Header ── */}
 			<div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div className="flex items-center gap-3">
