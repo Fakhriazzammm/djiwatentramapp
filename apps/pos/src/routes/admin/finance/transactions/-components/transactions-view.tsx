@@ -259,7 +259,50 @@ export function TransactionsView() {
 			: undefined; // not shown
 
 	return (
-		<div className="space-y-2 bg-white text-slate-900">
+		<div className="pos-transactions-mobile space-y-2 bg-white text-slate-900">
+			{/* Keep the report's filtering, selection and permission-checked actions in one
+			    place. Only reflow non-virtualized rows; its virtualizer assumes 54px rows. */}
+			<style>{`
+				@media (max-width: 767px) {
+					.pos-transactions-mobile table:has(> colgroup > col:nth-child(10)):not(:has(> tbody > tr > td[style*="height"])) {
+						min-width: 0;
+						display: block;
+						& > colgroup { display: none; }
+						& > thead { display: block; position: static; background: white; }
+						& > thead th:not(:first-child) { display: none; }
+						& > thead th:first-child > div::after {
+							content: "Pilih semua"; margin-left: 8px; font-size: 14px; text-transform: none;
+						}
+						& > tbody { display: block; padding: 12px; }
+						& > tbody > tr { display: block; }
+						& > tbody > tr.group {
+							display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 4px;
+							border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-bottom: 12px;
+						}
+						& > tbody > tr.group > td {
+							display: block; width: auto; min-width: 0; padding: 4px; border: 0; background: transparent;
+							white-space: normal; overflow-wrap: anywhere; text-align: left; font-size: 14px;
+						}
+						& > tbody > tr.group > td span { font-size: inherit; max-width: none; white-space: normal; }
+						& > tbody > tr.group > td:nth-child(2) { display: none; }
+						& > tbody > tr.group > td:nth-child(3) { grid-column: 2; grid-row: 1; }
+						& > tbody > tr.group > td:nth-child(4) { grid-column: 3; grid-row: 1; }
+						& > tbody > tr.group > td:nth-child(9) { grid-column: 1 / -1; grid-row: 2; font-size: 18px; }
+						& > tbody > tr.group > td:nth-child(5),
+						& > tbody > tr.group > td:nth-child(6) { grid-column: 1 / -1; }
+						& > tbody > tr.group > td:nth-child(7) { grid-column: 1 / 3; }
+						& > tbody > tr.group > td:nth-child(8) { grid-column: 3; }
+						& > tbody > tr.group > td:nth-child(10):not(:last-child) { grid-column: 1 / -1; }
+						& > tbody > tr.group > td:nth-child(10):not(:last-child)::before { content: "Saldo: "; }
+						& > tbody > tr.group > td:last-child { grid-column: 1 / -1; }
+						& > tbody > tr.group > td:last-child > div { justify-content: flex-end; opacity: 1; gap: 12px; }
+						& > tbody > tr > td[colspan] { display: block; width: 100%; }
+						& > tbody > tr > td[colspan] > div { margin-left: 0; }
+					}
+					.pos-transactions-mobile button { min-height: 44px; min-width: 44px; }
+					.pos-transactions-mobile input, .pos-transactions-mobile select { min-height: 44px; font-size: 16px; }
+				}
+			`}</style>
 			<TransactionDetailReport
 				range={dateRange}
 				viewMode={viewMode}

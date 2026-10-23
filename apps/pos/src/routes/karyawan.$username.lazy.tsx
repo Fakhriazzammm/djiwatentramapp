@@ -695,7 +695,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 								<div className="pt-2 space-y-2.5">
 									<Button 
 										className="h-12 w-full rounded-xl text-base font-bold shadow-lg shadow-primary/20"
-										onClick={() => navigate({ to: "/login" as any })}
+										onClick={() => navigate({ to: "/karyawan/login" as any })}
 									>
 										MASUK KE SISTEM
 									</Button>
@@ -747,7 +747,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 											)}
 										</div>
 									</div>
-									<Button variant="ghost" size="sm" onClick={async () => { await logout(); navigate({ to: "/login" as any }); }} className="shrink-0 rounded-lg h-7 w-7 p-0">
+									<Button variant="ghost" size="sm" onClick={async () => { await logout(); navigate({ to: "/karyawan/login" as any }); }} className="shrink-0 rounded-lg h-7 w-7 p-0">
 										<LogOut className="h-3.5 w-3.5 text-muted-foreground" />
 									</Button>
 								</div>

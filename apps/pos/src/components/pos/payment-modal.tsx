@@ -240,9 +240,8 @@ export function PaymentConfirmationModal({
 		if (manualMethods?.transfer !== false) {
 			options.push({ id: "transfer", label: "TRANSFER BANK" });
 		}
-		if (siteSettings?.mayarEnabled) {
-			options.push({ id: "qris_mayar", label: "QRIS DINAMIS" });
-		}
+		// Dynamic Mayar QRIS is not offered in POS: the current proxy only
+		// authorizes customer/B2B order sources.
 
 		// Fallback default
 		if (options.length === 0) {

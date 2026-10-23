@@ -2987,7 +2987,7 @@ export function SettingsPage({
 										<Button size="sm" onClick={() => window.open("/register?preview=admin", "_blank")} type="button"><Eye className="mr-1.5 h-3.5 w-3.5" />Preview Form</Button>
 										<Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/operational-team/register/contract"} type="button"><FileSignature className="mr-1.5 h-3.5 w-3.5" />Template Kontrak</Button>
 										<Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/operational-team/register/riwayat"} type="button"><FileText className="mr-1.5 h-3.5 w-3.5" />Riwayat Kontrak</Button>
-										<Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/operational-team/register/approval"} type="button"><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />Persetujuan</Button>
+										<Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/operational-team/register/onboarding"} type="button"><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />Persetujuan</Button>
 										<Button size="sm" variant="outline" onClick={() => window.location.href = "/admin/operational-team/register/onboarding"} type="button"><ClipboardList className="mr-1.5 h-3.5 w-3.5" />Review Kandidat</Button>
 									</div>
 								</div>

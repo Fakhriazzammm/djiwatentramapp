@@ -775,6 +775,7 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 			_id: String(row._id ?? ""),
 		_creationTime: Number(row._creationTime ?? row.createdAt ?? 0),
 		orderNumber: row.orderNumber ?? "",
+		shiftId: row.shiftId ?? row.shiftSourceId ?? row.shift_id ?? row.shift_source_id ?? row.raw?.shiftId ?? row.raw?.shiftSourceId ?? row.raw?.shift_id ?? row.raw?.shift_source_id ?? null,
 		totalAmount: Number(row.totalAmount ?? 0),
 		status: row.status ?? null,
 		paymentMethod: row.paymentMethod ?? null,
