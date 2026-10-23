@@ -136,6 +136,8 @@ import {
 import { ShiftPaymentReconciliation } from "@/components/pos/shift-payment-reconciliation";
 import { createClient } from "@/lib/client";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
+import { getOfflineManager } from "@/lib/offline-manager";
+import { getShiftClosingTasks } from "@/lib/pos-panels";
 import {
 	buildReceiptMetaFromCart,
 	buildReceiptMetaFromOrder,
@@ -209,12 +211,14 @@ export function MenuSidebar({
 	triggerOpen, 
 	onOpenChange,
 	initialTab = "dashboard",
+	onTabChange,
 	hideTabs = false,
 	hideTrigger = false
 }: { 
 	triggerOpen?: boolean; 
 	onOpenChange?: (open: boolean) => void;
 	initialTab?: string;
+	onTabChange?: (tab: string) => void;
 	hideTabs?: boolean;
 	hideTrigger?: boolean;
 }) {
@@ -361,7 +365,7 @@ export function MenuSidebar({
 			toast.success("Pesanan disimpan");
 			clearCart();
 			setIsParkDialogOpen(false);
-			setIsOpen(false);
+			handleOpenChange(false);
 		} catch (error) {
 			console.error(error);
 			toast.error("Gagal menyimpan pesanan");
@@ -423,7 +427,7 @@ export function MenuSidebar({
 			});
 			await deleteOrder({ id: order._id });
 			toast.success("Pesanan dipulihkan ke keranjang");
-			setIsOpen(false);
+			handleOpenChange(false);
 		} catch (error) {
 			console.error(error);
 			toast.error("Gagal memulihkan pesanan");
@@ -591,7 +595,7 @@ export function MenuSidebar({
 							<Button 
 								variant="ghost" 
 								size="sm" 
-								className="h-8 w-8 p-0 rounded-full shrink-0 bg-muted/50 hover:bg-muted" 
+								className="h-11 w-11 p-0 rounded-full shrink-0 bg-muted/50 hover:bg-muted"
 								onClick={() => {
 									setIsOpen(false);
 									onOpenChange?.(false);
@@ -608,8 +612,8 @@ export function MenuSidebar({
 								<div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin bg-background">
 									<div className="p-4 pb-20">
 										<DashboardTab
-											onClose={() => setIsOpen(false)}
-											onNavigate={setActiveTab}
+											onClose={() => handleOpenChange(false)}
+											onNavigate={tab => {setActiveTab(tab); onTabChange?.(tab);}}
 											onSelectOrder={setSelectedOrder}
 											onParkOrder={() => setIsParkDialogOpen(true)}
 											todayTransactions={todayTransactions}
@@ -642,7 +646,7 @@ export function MenuSidebar({
 												<HistoryTab onSelectOrder={setSelectedOrder} onPrint={siteSettings?.allowOpenBillPrint !== false ? handlePrintOrder : undefined} />
 											) : (
 												<ParkirTab
-													onClose={() => setIsOpen(false)}
+													onClose={() => handleOpenChange(false)}
 													onRestore={handleRestoreOrder}
 												onSelectOrder={setSelectedOrder}
 												onPrint={siteSettings?.allowOpenBillPrint !== false ? handlePrintOrder : undefined}
@@ -655,7 +659,7 @@ export function MenuSidebar({
 							{activeTab === "kas" && (
 								<div className="flex-1 overflow-y-auto min-h-0 bg-background scrollbar-thin">
 									<div className="p-4 pb-12">
-										<KasTab onClose={() => setIsOpen(false)} />
+									<KasTab onClose={() => handleOpenChange(false)} />
 									</div>
 								</div>
 							)}
@@ -669,7 +673,7 @@ export function MenuSidebar({
 							{activeTab === "antrian" && (
 								<div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin bg-background">
 									<div className="p-4 pb-20">
-										<AntrianTab onClose={() => setIsOpen(false)} />
+									<AntrianTab onClose={() => handleOpenChange(false)} />
 									</div>
 								</div>
 							)}
@@ -681,7 +685,7 @@ export function MenuSidebar({
 							{activeTab === "settings" && (
 								<div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin bg-background">
 									<div className="p-4 pb-20">
-										<SettingsTab onClose={() => setIsOpen(false)} />
+									<SettingsTab onClose={() => handleOpenChange(false)} />
 									</div>
 								</div>
 							)}
@@ -1405,7 +1409,7 @@ function ParkirTab({
 		});
 	};
 
-	const allSelected = Boolean(orders?.length) && selectedIds.size === orders.length;
+	const allSelected = Boolean(orders?.length) && selectedIds.size === (orders?.length ?? 0);
 
 	const handleSelectAll = () => {
 		if (!orders) return;
@@ -2251,7 +2255,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [paymentActual, setPaymentActual] = useState<Partial<Record<keyof ShiftPaymentBreakdown, number | null>>>({ ...EMPTY_SHIFT_PAYMENT_ACTUAL });
 	const [notes, setNotes] = useState("");
 	// Pengeluaran saat tutup shift
-	const [endShiftExpenses, setEndShiftExpenses] = useState<{id: number; category: string; amount: string; description: string}[]>([]);
+	const [endShiftExpenses, setEndShiftExpenses] = useState<{id: number; category: string; amount: string; description: string; savedId?: string}[]>([]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [submitNotice, setSubmitNotice] = useState<string | null>(null);
@@ -2260,6 +2264,10 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [showStartChecklist, setShowStartChecklist] = useState(false);
 	const [onlineFoodChecklist, setOnlineFoodChecklist] = useState<OnlineFoodChecklist>(() => createEmptyOnlineFoodChecklist());
 	const [openRequestId, setOpenRequestId] = useState<string | null>(null);
+	const [queuedCount, setQueuedCount] = useState(() => getOfflineManager().getState().queuedActions.length);
+	const [handoverConfirmed, setHandoverConfirmed] = useState(false);
+	const closeInFlight = useRef(false);
+	useEffect(() => getOfflineManager().subscribe(state => setQueuedCount(state.queuedActions.length)), []);
 	
 	// Cash Breakdown State
 	const [breakdown, setBreakdown] = useState<Record<string, number>>({
@@ -2320,6 +2328,9 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		return () => { cancelled = true; window.clearInterval(refresh); };
 	}, [shiftStatus?.isOpen, shiftStatus?.ongoingShift?.teamMembers, shiftStatus?.ongoingShift?.startTime, allUsers]);
 	const todayOrders = useHybridOrders();
+	const closingTasks = getShiftClosingTasks((todayOrders ?? []) as any[], String(shiftStatus?.shiftInfo?.shiftId ?? "") || null, queuedCount, Number(shiftStatus?.ongoingShift?.startTime ?? 0));
+	const unfinishedSignature = `${closingTasks.unpaid}:${closingTasks.inProduction}`;
+	useEffect(() => setHandoverConfirmed(false), [unfinishedSignature]);
 	const selectedShiftSchedule = useMemo(() => {
 		const activeShiftName = shiftStatus?.shiftInfo?.shiftName || shiftName;
 		return siteSettings?.shiftSettings?.shiftSchedules?.find(
@@ -2563,6 +2574,18 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	}, [currentUser?._id]);
 
 	const handleEndShift = async () => {
+		if (closeInFlight.current) return;
+		if (todayOrders === undefined) {setSubmitError("Pesanan shift masih dimuat. Tunggu sebentar sebelum menutup shift."); return;}
+		if (!navigator.onLine || getOfflineManager().getState().queuedActions.length > 0) {
+			setSubmitError("Sambungkan internet dan selesaikan sinkronisasi pesanan sebelum menutup shift. Buka Lainnya → Pusat sinkronisasi.");
+			setShowEndConfirm(false);
+			return;
+		}
+		if ((closingTasks.unpaid > 0 || closingTasks.inProduction > 0) && !handoverConfirmed) {
+			setSubmitError("Periksa tagihan terbuka dan pesanan produksi, lalu konfirmasi serah terima di checklist.");
+			setShowEndConfirm(false);
+			return;
+		}
 		if (shiftTimeGate.blocked) {
 			setSubmitError(null);
 			setSubmitNotice(`⏰ ${shiftTimeGate.message}`);
@@ -2593,15 +2616,17 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			return;
 		}
 
+		closeInFlight.current = true;
 		setIsSubmitting(true);
 		setSubmitError(null);
 		setSubmitNotice(null);
 		try {
-			// Record any end-of-shift expenses first
+			// The same expense row keeps its fingerprint when closing is retried.
 			for (const exp of endShiftExpenses) {
+				if (exp.savedId) continue;
 				const amt = Number(exp.amount);
 				if (amt <= 0) continue;
-				await createTransaction({
+				const savedId = await createTransaction({
 					type: "expense",
 					amount: amt,
 					category: exp.category || "Lainnya",
@@ -2609,7 +2634,9 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					date: Date.now(),
 					status: "completed",
 					paymentMethod: "tunai",
+					sourceFingerprint: `shift-close:${shiftStatus.shiftInfo.shiftId}:expense:${exp.id}`,
 				});
+				setEndShiftExpenses(rows => rows.map(row => row.id === exp.id ? {...row, savedId: String(savedId)} : row));
 			}
 			const completedShiftStartTime =
 				shiftStatus?.ongoingShift?.startTime || Date.now();
@@ -2802,6 +2829,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 				toast.error(message);
 			}
 		} finally {
+			closeInFlight.current = false;
 			setIsSubmitting(false);
 		}
 	};
@@ -2907,7 +2935,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 	};
 
 	return (
-		<div className="space-y-2 pt-1">
+		<div className="space-y-4 pt-1 [&_input:not([type=checkbox])]:min-h-11 [&_input]:text-base [&_select]:min-h-11 [&_select]:text-base [&_textarea]:min-h-20 [&_textarea]:text-base [&_button]:min-h-11">
 			{!isClosingShift ? (
 				<>
 					<div className="space-y-0.5 text-center">
@@ -3116,6 +3144,13 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 				) : (
 					/* AKHIRI SHIFT UI */
 					<div className="space-y-3">
+						<section className="rounded-2xl border border-border bg-card p-4" aria-labelledby="closing-checklist-title">
+							<h4 id="closing-checklist-title" className="text-base font-semibold">Sebelum menutup shift</h4>
+							{todayOrders === undefined ? <p role="status" className="mt-2 text-sm text-muted-foreground">Memuat pesanan shift…</p> : null}
+							<div className="mt-3 grid grid-cols-3 gap-2 text-center">{[{label:"Belum sinkron",value:queuedCount},{label:"Belum lunas",value:closingTasks.unpaid},{label:"Dalam produksi",value:closingTasks.inProduction}].map(item => <div key={item.label} className={`rounded-xl p-2 ${item.value ? "bg-amber-50 text-amber-800" : "bg-muted/40 text-muted-foreground"}`}><p className="text-xl font-bold tabular-nums">{item.value}</p><p className="mt-1 text-xs leading-4">{item.label}</p></div>)}</div>
+							{queuedCount > 0 ? <p role="alert" className="mt-3 text-sm text-amber-800">Kirim pesanan offline melalui Pusat sinkronisasi sebelum melanjutkan.</p> : null}
+							{closingTasks.unpaid > 0 || closingTasks.inProduction > 0 ? <label className="mt-3 flex min-h-12 cursor-pointer items-start gap-3 rounded-xl bg-muted/30 p-3 text-sm"><input type="checkbox" checked={handoverConfirmed} onChange={event => setHandoverConfirmed(event.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-primary"/><span>Saya sudah memeriksa pesanan yang belum selesai dan mengonfirmasi serah terimanya.</span></label> : todayOrders !== undefined ? <p className="mt-3 text-sm text-muted-foreground">Tidak ada pesanan tertunda pada shift ini.</p> : null}
+						</section>
 						<Card className={`border ${activeClosingStaff.length > 0 ? "border-amber-300 bg-amber-50/50" : "border-emerald-200 bg-emerald-50/30"}`}>
 							<CardContent className="p-3">
 								<div className="flex items-center justify-between gap-2">
@@ -3182,7 +3217,8 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 								) : (
 									<div className="space-y-2">
 										{endShiftExpenses.map((exp, idx) => (
-											<div key={exp.id} className="rounded-lg border border-border bg-muted/20 p-2.5 space-y-2">
+											<fieldset key={exp.id} disabled={isSubmitting || Boolean(exp.savedId)} aria-label={`Pengeluaran ${idx + 1}`} className="min-w-0 rounded-lg border border-border bg-muted/20 p-3 space-y-2 disabled:opacity-75">
+												{exp.savedId ? <p className="text-sm text-emerald-700 dark:text-emerald-400">Sudah tersimpan. Tidak dikirim ulang saat mencoba tutup shift lagi. Koreksi melalui menu pengeluaran.</p> : null}
 												<div className="flex items-center justify-between">
 													<span className="text-[11px] font-bold uppercase text-muted-foreground">Pengeluaran #{idx + 1}</span>
 													<button
@@ -3231,7 +3267,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 														/>
 													</div>
 												</div>
-											</div>
+											</fieldset>
 										))}
 									</div>
 								)}
@@ -3270,15 +3306,15 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 				)}
 				{shiftType === "akhiri" && <div className="sticky bottom-0 z-20 -mx-1 bg-background/95 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
 					<Button
-						className={`w-full h-11 font-black uppercase tracking-widest text-[11px] shadow-lg transition-all active:scale-95 ${shiftType === 'mulai' ? 'bg-primary hover:bg-primary/90' : shiftTimeGate.blocked ? 'bg-amber-500 hover:bg-amber-500 cursor-not-allowed' : 'bg-destructive hover:bg-destructive/90'}`}
-						disabled={shiftType === "akhiri" ? isSubmitting || closingAttendanceLoading || Boolean(closingAttendanceError) || shiftTimeGate.blocked || Object.keys(expectedPaymentBreakdown).some((key) => paymentActual[key as keyof ShiftPaymentBreakdown] === null || paymentActual[key as keyof ShiftPaymentBreakdown] === undefined) : isSubmitting}
+						className={`w-full h-11 font-black uppercase tracking-widest text-[11px] shadow-lg transition-all active:scale-95 ${shiftTimeGate.blocked ? 'bg-amber-500 hover:bg-amber-500 cursor-not-allowed' : 'bg-destructive hover:bg-destructive/90'}`}
+						disabled={isSubmitting || todayOrders === undefined || !navigator.onLine || queuedCount > 0 || ((closingTasks.unpaid > 0 || closingTasks.inProduction > 0) && !handoverConfirmed) || closingAttendanceLoading || Boolean(closingAttendanceError) || shiftTimeGate.blocked || Object.keys(expectedPaymentBreakdown).some((key) => paymentActual[key as keyof ShiftPaymentBreakdown] === null || paymentActual[key as keyof ShiftPaymentBreakdown] === undefined)}
 						type="button"
 						onClick={() => setShowEndConfirm(true)}
 					>
 						{isSubmitting ? (
 							<Loader2 className="mr-2 h-3 w-3 animate-spin text-white" />
 						) : (
-							shiftType === "mulai" ? <div className="flex items-center justify-center gap-1.5"><SquarePlay className="h-3.5 w-3.5" /> Buka Shift</div> : shiftTimeGate.blocked ? <div className="flex items-center justify-center gap-1.5"><Clock className="h-3.5 w-3.5" /> Tunggu sampai {selectedShiftSchedule?.closeTime} WIB</div> : <div className="flex items-center justify-center gap-1.5"><SquarePower className="h-3.5 w-3.5" /> Akhiri & Kirim Laporan</div>
+							shiftTimeGate.blocked ? <div className="flex items-center justify-center gap-1.5"><Clock className="h-3.5 w-3.5" /> Tunggu sampai {selectedShiftSchedule?.closeTime} WIB</div> : <div className="flex items-center justify-center gap-1.5"><SquarePower className="h-3.5 w-3.5" /> Akhiri & Kirim Laporan</div>
 						)}
 					</Button>
 				</div>}

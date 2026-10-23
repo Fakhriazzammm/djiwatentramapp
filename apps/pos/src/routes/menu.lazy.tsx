@@ -24,6 +24,8 @@ import {
 	ChevronDown,
 	ClipboardList,
 	Receipt,
+	MoreHorizontal,
+	ShieldCheck,
 } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -93,6 +95,15 @@ import { StockToolbarPanel } from "@/components/pos/stock-toolbar-panel";
 import { StockTutorial, shouldShowStockTutorial } from "@/components/pos/stock-tutorial";
 import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 import { getAdditionalOrderDiscount } from "@yumipos/web-shared/lib/order-pricing";
+import { calculateOrderTax } from "@yumipos/web-shared/lib/tax-calculator";
+import { canAccessAdminRoute } from "@/lib/route-metadata";
+import { useYumiAuth } from "@/hooks/useYumiAuth";
+import { usePosPanel } from "@/hooks/use-pos-panel";
+import { getShiftClosingTasks, type PosPanel } from "@/lib/pos-panels";
+import type { CheckoutSubmissionResult } from "@/lib/pos-checkout";
+import { OfflineSyncCenter } from "@/components/pos/offline-sync-center";
+import { PosWorkspaceMenu, PosReadinessSheet, type WorkspaceAction } from "@/components/pos/pos-workspace-menu";
+import { getOrderRequestKey, clearOrderRequestKey, readPendingCheckoutRecovery, type CheckoutRecoveryRequest } from "@/lib/pos-order-request";
 
 const fmt = (n: number) =>
 	new Intl.NumberFormat("id-ID", {
@@ -460,6 +471,16 @@ function PrinterStatusBadge() {
 function MenuPage() {
 	const reduceMotion = useReducedMotion();
 	const navigate = useNavigate();
+	const { user: currentUser, role, isAdmin, logout } = useYumiAuth();
+	const { panel, openPanel } = usePosPanel();
+	const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+	const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+	useEffect(() => {
+		const update = () => setIsOnline(navigator.onLine);
+		window.addEventListener("online", update);
+		window.addEventListener("offline", update);
+		return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); };
+	}, []);
 	// Queries
 	const siteSettings = useHybridSiteSettings();
 	const mayarConfig = useHybridMayarConfig();
@@ -524,6 +545,7 @@ function MenuPage() {
 		voucherDiscountAmount,
 		appliedVoucher,
 		customerInfo,
+		checkoutDraft,
 	} = useCart();
 
 	// Local state
@@ -532,19 +554,24 @@ function MenuPage() {
 	const [isSearchFocused, setIsSearchFocused] = useState(false);
 	const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
 	const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
-	const [isCartOpen, setIsCartOpen] = useState(false);
+	const isCartOpen = panel === "cart";
+	const setIsCartOpen = (open: boolean) => openPanel(open ? "cart" : null);
 	const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [pendingCheckoutRequest, setPendingCheckoutRequest] = useState(() => readPendingCheckoutRecovery());
 	const submitInFlightRef = useRef(false);
 	const paymentRequestIdRef = useRef<string | null>(null);
-	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-	const [isStockPanelOpen, setIsStockPanelOpen] = useState(false);
+	const isSidebarOpen = panel !== null && ["dashboard", "transaksi", "kas", "antrian", "stok", "yumi", "settings"].includes(panel);
+	const setIsSidebarOpen = (open: boolean) => openPanel(open ? "dashboard" : null);
+	const isStockPanelOpen = panel === "stock";
+	const setIsStockPanelOpen = (open: boolean) => openPanel(open ? "stock" : null);
 	const [stockTutorialOpen, setStockTutorialOpen] = useState(false);
 	const [stockTutorialShiftName, setStockTutorialShiftName] = useState("");
 	const shiftStateObservedRef = useRef(false);
 	const previousShiftOpenRef = useRef(false);
 	const [productRefreshTick, setProductRefreshTick] = useState(0);
-	const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+	const isNotificationCenterOpen = panel === "notifications";
+	const setIsNotificationCenterOpen = (open: boolean) => openPanel(open ? "notifications" : null);
 	const [transactionAlertIds, setTransactionAlertIds] = useState<string[]>([]);
 	const cashierPaidInFlightRef = useRef<Set<string>>(new Set());
 	const [selectedOrderNotification, setSelectedOrderNotification] = useState<any | null>(null);
@@ -553,7 +580,7 @@ function MenuPage() {
 	const hasSeededNotificationsRef = useRef(false);
 const notificationSeedTimerRef = useRef<number | undefined>(undefined);
 const notificationSeedCompletedAtRef = useRef<number | null>(null);
-	const [activeSidebarTab, setActiveSidebarTab] = useState("dashboard");
+	const activeSidebarTab = isSidebarOpen ? panel! : "dashboard";
 	const [keyboardFocusZone, setKeyboardFocusZone] = useState<FocusZone>("header");
 	const [focusedCategoryIndex, setFocusedCategoryIndex] = useState(0);
 	const [lastOrderId, setLastOrderId] = useState<Id<"orders"> | null>(null);
@@ -578,6 +605,21 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	useEffect(() => { setShiftStatusMountKey(c => c + 1); }, []);
 	const shiftStatus = useHybridShiftStatus(shiftStatusMountKey);
 	const isShiftOpen = shiftStatus?.isOpen ?? false;
+	const closingTasks = getShiftClosingTasks((orders ?? []) as any[], String(shiftStatus?.ongoingShift?._id ?? shiftStatus?.shiftInfo?.shiftId ?? "") || null, offlinePendingCount, Number(shiftStatus?.ongoingShift?.startTime ?? 0));
+	const canViewReports = isAdmin || Boolean(role?.permissions?.includes("finance:view") || role?.permissions?.includes("analytics:view"));
+	const canOpenAdmin = isAdmin || Boolean(role?.permissions?.some((permission: string) => ["analytics:view", "orders:view", "finance:view", "products:manage", "inventory:manage", "users:manage", "settings:manage"].includes(permission)));
+	function handleWorkspaceAction(action: WorkspaceAction) {
+		if (["dashboard", "transaksi", "kas", "antrian", "stock", "yumi", "settings", "sync", "readiness"].includes(action)) {openPanel(action as PosPanel); return;}
+		if (action === "logout") {setLogoutConfirmOpen(true); return;}
+		if (action === "report") {if (canViewReports) void navigate({to:"/laporan"} as any); return;}
+		if (action === "admin") {
+			const destination = ["/admin", "/admin/orders", "/admin/finance", "/admin/products", "/admin/inventory", "/admin/operational-team", "/admin/settings"].find(path => canAccessAdminRoute(path, isAdmin, role?.permissions ?? []));
+			if (canOpenAdmin && destination) void navigate({to:destination} as any);
+			return;
+		}
+		if (action === "profile") {const username = currentUser?.slug || currentUser?.username; if (username) void navigate({to:"/karyawan/$username",params:{username}} as any); return;}
+		void navigate({to:action === "booking" ? "/booking" : "/attendance"} as any);
+	}
 
 	useEffect(() => {
 		if (!shiftStatus) return;
@@ -904,14 +946,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		return () => window.removeEventListener("resize", updateColumns);
 	}, []);
 
-	// Auto-open customer info step on mobile if not submitted
-	useEffect(() => {
-		if (typeof window !== "undefined" && window.innerWidth < 768) {
-			if (!customerInfo.isSubmitted && cartItems.length === 0) {
-				setIsCartOpen(true);
-			}
-		}
-	}, [customerInfo.isSubmitted, cartItems.length]);
+	// Checkout opens only on intent; landing and restored URL panels must stay visible.
 
 	// Refs for scrolling
 	const categoryScrollRef = useRef<HTMLDivElement>(null);
@@ -1221,7 +1256,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					// Back button is removed
 					break;
 				case "menu":
-					setIsSidebarOpen(true);
+					openPanel("more");
 					break;
 				case "search":
 					const searchInput = document.querySelector(
@@ -1238,7 +1273,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					}
 			}
 		},
-		[]
+		[openPanel]
 	);
 
 	const handleFocusZoneChange = useCallback((zone: FocusZone) => {
@@ -1274,7 +1309,9 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				}
 			},
 			onFocusZoneChange: handleFocusZoneChange,
-			enabled: !isSearchFocused && !selectedProduct && !isCartOpen && !isPaymentOpen,
+			// Sheets/dialogs own focus while open. POS shortcuts must not consume
+			// Tab/Enter or activate products behind the modal surface.
+			enabled: !panel && !isSearchFocused && !selectedProduct && !isCartOpen && !isPaymentOpen,
 		});
 
 	// Get cart quantity for a product
@@ -1608,6 +1645,11 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	]);
 
 	// Handle order submission from payment modal or sidebar
+	const checkoutSnapshot: CheckoutRecoveryRequest["snapshot"] = {
+		cartItems, customerInfo, appliedVoucher, promoDiscountAmount, voucherDiscountAmount, activeDiscounts,
+		taxPolicy: {taxEnabled: siteSettings?.taxEnabled ?? false, taxRate: Number(siteSettings?.taxRate ?? 0), serviceChargeRate: Number(siteSettings?.serviceChargeRate ?? 0)},
+		shiftId: shiftStatus?.ongoingShift?._id ?? shiftStatus?.shiftInfo?.shiftId ?? null,
+	};
 	const handlePaymentConfirm = useCallback(
 		async (
 				finalAmount: number,
@@ -1622,28 +1664,29 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					cashReceived?: number;
 					changeAmount?: number;
 					assignments?: { groupType: "barista" | "kitchen"; assignedTo: string; items: { productName: string; quantity: number; assignedTo: string }[] }[];
-				}
-			) => {
+				},
+				recoverySnapshot?: CheckoutRecoveryRequest["snapshot"],
+			): Promise<CheckoutSubmissionResult> => {
+			const snapshot = recoverySnapshot ?? checkoutSnapshot;
+			const {cartItems, customerInfo, appliedVoucher, promoDiscountAmount, voucherDiscountAmount, activeDiscounts} = snapshot;
 			if (submitInFlightRef.current) {
-				toast.loading("Pesanan sedang diproses. Jangan tekan tombol lagi.", { id: "order-submit" });
-				return;
+				throw new Error("Pesanan sedang diproses. Tunggu hasilnya sebelum mencoba lagi.");
+			}
+			if (pendingCheckoutRequest && !recoverySnapshot) {
+				throw new Error("Pulihkan pesanan awal terlebih dahulu agar tidak membuat transaksi ganda.");
 			}
 			if (!isShiftOpen) {
-				toast.error("Buka shift terlebih dahulu di Dashboard");
-				return;
+				throw new Error("Buka shift terlebih dahulu melalui menu Shift.");
 			}
-			if (cartItems.length === 0) return;
+			if (cartItems.length === 0) throw new Error("Pilih menu terlebih dahulu.");
 			submitInFlightRef.current = true;
 			setIsSubmitting(true);
 			try {
-				const idempotencyKey =
-					paymentRequestIdRef.current ??
-					(globalThis.crypto?.randomUUID?.() || `pos-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-				paymentRequestIdRef.current = idempotencyKey;
 					const useMayarGateway = paymentMethod === "qris_mayar";
+					if (useMayarGateway && !navigator.onLine) throw new Error("QRIS dinamis membutuhkan koneksi. Pilih tunai atau sambungkan internet terlebih dahulu.");
 					const normalizedPaymentMethod = useMayarGateway
 						? "mayar"
-						: (paymentMethod as "cash" | "qris" | "transfer") || "cash";
+						: paymentMethod === "tunai" ? "cash" : paymentMethod || "cash";
 					let mayarInvoice:
 						| { id?: string; transactionId?: string; link?: string }
 						| undefined;
@@ -1663,6 +1706,18 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					}
 
 					const shouldOpenBill = Boolean(orderData?.isOpenBill || useMayarGateway);
+					const { taxAmount, serviceChargeAmount } = calculateOrderTax({
+						items: cartItems,
+						voucherDiscountAmount,
+						...snapshot.taxPolicy,
+						source: "pos",
+						paymentMethod: paymentMethod || "tunai",
+					});
+					// Allocate the stable request identity only after local validation and
+					// tax calculation have succeeded. A locally invalid draft must not
+					// become an unrecoverable remote-write attempt.
+					const idempotencyKey = getOrderRequestKey(JSON.stringify({snapshot, finalAmount, paymentMethod, discountId, orderData}));
+					paymentRequestIdRef.current = idempotencyKey;
 					const orderPayload = {
 						items: cartItems.map((i) => ({
 							productId: i.productId as Id<"products">,
@@ -1677,7 +1732,11 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						totalAmount: finalAmount,
 						paymentMethod: normalizedPaymentMethod,
 						source: "pos" as const,
-						shiftId: shiftStatus?.ongoingShift?._id ?? shiftStatus?.shiftInfo?.shiftId ?? null,
+						createdAt: Date.now(),
+						cashReceived: orderData?.cashReceived,
+						changeAmount: orderData?.changeAmount,
+						freeRefillSelected: customerInfo.isFreeRefill,
+						shiftId: snapshot.shiftId,
 						customerName: customerInfo.name || "Pelanggan",
 						customerEmail: customerInfo.email?.trim() || null,
 						customerPhone: customerInfo.phone?.trim() || null,
@@ -1722,11 +1781,12 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 				if (!navigator.onLine) {
 					queueOfflineAction("createOrder", orderPayload);
+					paymentRequestIdRef.current = null;
+					clearOrderRequestKey();
 					toast.warning("Offline: pesanan masuk antrean sinkronisasi");
 					clearCart();
 					setIsPaymentOpen(false);
-					setIsCartOpen(false);
-					return;
+					return {orderId:null,status:"queued",paymentMethod:normalizedPaymentMethod,total:finalAmount,customerName:customerInfo.name,cashReceived:orderData?.cashReceived,changeAmount:orderData?.changeAmount};
 				}
 
 				const orderId = await createOrder(orderPayload);
@@ -1747,9 +1807,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				if (shouldOpenBill) {
 					if (useMayarGateway) {
 						toast.success("Invoice pembayaran berhasil dibuat"); triggerHybridRefresh();
-						if (mayarInvoice?.link && typeof window !== "undefined") {
-							window.open(mayarInvoice.link, "_blank", "noopener,noreferrer");
-						}
 					} else {
 						toast.success("Open bill berhasil disimpan!"); triggerHybridRefresh();
 					}
@@ -1764,19 +1821,22 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				}
 
 				paymentRequestIdRef.current = null;
+				clearOrderRequestKey();
 				clearCart();
 				setIsPaymentOpen(false);
-				setIsCartOpen(false);
+				return {orderId:String(orderId),status:shouldOpenBill?"pending":"paid",paymentMethod:normalizedPaymentMethod,total:finalAmount,invoiceUrl:mayarInvoice?.link,customerName:customerInfo.name,cashReceived:orderData?.cashReceived,changeAmount:orderData?.changeAmount};
 			} catch (error) {
 				console.error(error);
-				toast.error((error as Error).message || "Gagal membuat pesanan");
+				throw error;
 			} finally {
 				submitInFlightRef.current = false;
 				setIsSubmitting(false);
+				setPendingCheckoutRequest(readPendingCheckoutRecovery());
 			}
 		},
 		[
 			activeDiscounts,
+			checkoutSnapshot,
 			appliedVoucher,
 			cartItems,
 			createOrder,
@@ -1786,6 +1846,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			handlePrint,
 			isShiftOpen,
 			mayarConfig?.configured,
+			pendingCheckoutRequest,
 			promoDiscountAmount,
 			serviceChargeAmount,
 			siteSettings?.autoPrintKitchenReceipt,
@@ -1794,17 +1855,30 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			siteSettings?.storePhone,
 			taxAmount,
 			voucherDiscountAmount,
-				customerInfo.name,
-				customerInfo.notes,
+				customerInfo,
+				shiftStatus,
 			]
 		);
+	const handleRecoverCheckout = useCallback(async (): Promise<CheckoutSubmissionResult> => {
+		const attempt = readPendingCheckoutRecovery();
+		if (!attempt) {
+			setPendingCheckoutRequest(null);
+			throw new Error("Data pemulihan tidak tersedia. Periksa riwayat pesanan sebelum mencoba lagi.");
+		}
+		return handlePaymentConfirm(
+			attempt.finalAmount,
+			attempt.discountId,
+			attempt.paymentMethod,
+			attempt.orderData,
+			attempt.snapshot,
+		);
+	}, [handlePaymentConfirm]);
 
 	const cartDiscountPreview = Math.max(0, discountAmount || 0);
 	const printerStatus = bluetoothPrinter.getStatus();
 
 	const handleOpenSidebar = (tabId: string) => {
-		setActiveSidebarTab(tabId);
-		setIsSidebarOpen(true);
+		openPanel(tabId as PosPanel);
 	};
 
 	return (
@@ -1864,8 +1938,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 							</p>
 							<button
 								onClick={() => {
-									setActiveSidebarTab("dashboard");
-									setIsSidebarOpen(true);
+									openPanel("kas");
 								}}
 								className="flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground text-xs transition-all hover:opacity-90 active:scale-95 w-full shadow-lg shadow-primary/20"
 								type="button"
@@ -1905,9 +1978,9 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 							</div>
 							<PrinterStatusBadge />
 							{offlinePendingCount > 0 && (
-								<div className="bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-md whitespace-nowrap leading-none font-semibold text-[10px]">
+								<button type="button" onClick={() => openPanel("sync")} className="min-h-11 bg-amber-50 text-amber-700 px-2 rounded-xl whitespace-nowrap font-semibold text-xs">
 									Sync {offlinePendingCount}
-								</div>
+								</button>
 							)}
 						</div>
 					</div>
@@ -1927,7 +2000,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				{/* MAIN Y-SCROLL CONTAINER */}
 				<main
 					ref={mainScrollRef}
-					className="flex-1 overflow-y-auto scroll-smooth bg-muted/10 relative pb-20 md:pb-0"
+					className="flex-1 overflow-y-auto scroll-smooth bg-muted/10 relative pb-[calc(11rem+env(safe-area-inset-bottom))] md:pb-0"
 				>
 					<header
 						ref={headerRef}
@@ -1966,12 +2039,13 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								</div>
 							</div>
 							<div className="flex items-center gap-1 shrink-0">
+								<button type="button" onClick={() => openPanel("readiness")} aria-label="Kesiapan kasir" className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><ShieldCheck className="h-5 w-5"/></button>
 								<button
 									type="button"
 									onClick={() => {
 										navigate({ to: "/notifications" });
 									}}
-									className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors hover:bg-muted/80 shrink-0"
+									className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-muted-foreground transition-colors hover:bg-muted/80 shrink-0"
 									aria-label={unreadCount > 0 ? `${unreadCount} notifikasi belum dibaca` : "Buka notifikasi"}
 								>
 									<Bell className="h-4 w-4" />
@@ -1981,6 +2055,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 										</span>
 									)}
 								</button>
+								<button type="button" onClick={() => openPanel("more")} aria-label="Semua menu kasir" className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><MoreHorizontal className="h-5 w-5"/></button>
 							</div>
 						</div>
 					</div>
@@ -2230,6 +2305,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					triggerOpen={isSidebarOpen} 
 					onOpenChange={setIsSidebarOpen} 
 					initialTab={activeSidebarTab}
+					onTabChange={tab => openPanel(tab as PosPanel)}
 				/>
 				<BarcodeTransactionScanner
 					open={isBarcodeScannerOpen}
@@ -2551,78 +2627,18 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						setStockTutorialOpen(false);
 					}}
 				/>
-				{/* === BOTTOM NAVIGATION BAR (Fixed) === */}
-				<nav className="fixed inset-x-0 bottom-0 z-30 min-h-[76px] border-t border-border/60 bg-background/95 px-2 pt-2 pb-2 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] backdrop-blur-md safe-area-bottom md:hidden">
-					<div className="mx-auto flex min-h-[60px] max-w-lg items-center justify-around gap-0.5 sm:max-w-none sm:gap-1">
-						{BOTTOM_NAV_ITEMS.map((item, index) => {
-							const isFocused = isKeyboardActive && isZoneFocused("header") && focusedHeaderIndex === index + 1;
-							const isActive = item.id === "notifications"
-									? isNotificationCenterOpen
-									: isSidebarOpen && activeSidebarTab === item.id;
-							const needsAttention = item.id === "kas" && !isShiftOpen;
-							const illustration = BOTTOM_NAV_3D_ICONS[item.id];
-
-							return (
-								<motion.button
-									key={item.id}
-									type="button"
-									onClick={() => {
-										if (item.id === "notifications") {
-											setIsNotificationCenterOpen(true);
-											void refreshNotifications(true);
-											return;
-										}
-										setActiveSidebarTab(item.id);
-										setIsSidebarOpen(true);
-									}}
-									whileTap={reduceMotion ? undefined : { scale: 0.92 }}
-									whileHover={reduceMotion ? undefined : { y: -1 }}
-									transition={{ type: "spring" as const, stiffness: 420, damping: 28, mass: 0.7 }}
-									className={cn(
-										"flex min-w-[48px] flex-1 flex-col items-center gap-1 rounded-lg py-1 outline-none sm:min-w-[56px]",
-										isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
-										isFocused && "ring-1 ring-primary",
-									)}
-									aria-label={item.label}
-								>
-									<span className={cn(
-										"flex h-11 w-11 items-center justify-center rounded-xl",
-										isActive ? "bg-primary/10" : "bg-transparent hover:bg-muted/50",
-										needsAttention && "bg-rose-50 text-rose-600",
-									)}>
-										<motion.span
-											animate={reduceMotion ? undefined : isActive ? { scale: 1.1, y: -2 } : { scale: 1, y: 0 }}
-											transition={{ type: "spring" as const, stiffness: 420, damping: 28, mass: 0.7 }}
-											className="flex h-10 w-10 items-center justify-center"
-										>
-											<Djiwa3DIcon name={illustration} size="sm" alt="" className="h-10 w-10 object-contain drop-shadow-[0_4px_5px_rgba(0,0,0,0.18)]" />
-										</motion.span>
-									</span>
-									<span className="block text-center text-[9px] font-bold uppercase leading-none tracking-tight sm:hidden">{item.label.split(" ")[0]}</span>
-									<span className="hidden text-center text-[10px] font-bold uppercase leading-none tracking-tight sm:block">{item.label}</span>
-								</motion.button>
-							);
-						})}
-						<motion.button
-							type="button"
-							onClick={() => navigate({ to: "/laporan" })}
-							whileTap={reduceMotion ? undefined : { scale: 0.92 }}
-							whileHover={reduceMotion ? undefined : { y: -1 }}
-							transition={{ type: "spring" as const, stiffness: 420, damping: 28, mass: 0.7 }}
-							className="flex min-w-[48px] flex-1 flex-col items-center gap-1 rounded-lg py-1 text-muted-foreground outline-none hover:text-foreground sm:min-w-[56px]"
-							aria-label="Laporan"
-						>
-							<span className="flex h-9 w-10 items-center justify-center rounded-md hover:bg-muted/50">
-								<motion.span
-									whileTap={reduceMotion ? undefined : { scale: 0.9 }}
-									className="flex h-10 w-10 items-center justify-center"
-								>
-									<Djiwa3DIcon name={BOTTOM_NAV_REPORT_ICON} size="sm" alt="" className="h-10 w-10 object-contain drop-shadow-[0_4px_5px_rgba(0,0,0,0.18)]" />
-								</motion.span>
-							</span>
-							<span className="block text-center text-[9px] font-bold uppercase leading-none tracking-tight sm:hidden">Laporan</span>
-							<span className="hidden text-center text-[10px] font-bold uppercase leading-none tracking-tight sm:block">Laporan</span>
-						</motion.button>
+				{/* Primary mobile navigation stays within thumb reach. */}
+				<nav aria-label="Navigasi kasir" className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/95 px-2 pt-1.5 pb-[calc(.5rem+env(safe-area-inset-bottom))] backdrop-blur-xl md:hidden">
+					<div className="mx-auto grid max-w-xl grid-cols-4 gap-1">
+						{[
+							{id: null, label:"Kasir", icon:ShoppingBag},
+							{id:"transaksi", label:"Pesanan", icon:Receipt},
+							{id:"kas", label:"Shift", icon:Wallet},
+							{id:"more", label:"Lainnya", icon:MoreHorizontal},
+						].map(item => <button key={item.label} type="button" aria-current={panel === item.id ? "page" : undefined} onClick={() => openPanel(item.id as PosPanel | null)} className={cn("flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-xs font-semibold transition", panel === item.id ? "bg-primary/8 text-primary" : "text-muted-foreground active:bg-muted")}>
+							<span className="relative"><item.icon className="h-5 w-5"/>{item.id === "kas" && !isShiftOpen ? <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-amber-500"/> : null}</span>
+							{item.label}
+						</button>)}
 					</div>
 				</nav>
 			</div>
@@ -2633,21 +2649,24 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					onConfirmPayment={handlePaymentConfirm} 
 					isSubmitting={isSubmitting} 
 					lastOrderId={lastOrderId}
+					onPrintOrder={(orderId, mode) => { void handlePrint(orderId as Id<"orders">, mode); }}
 					onPrintLastOrder={() => lastOrderId && handlePrint(lastOrderId)}
 					onPrintOpenBill={handlePrintCurrentOpenBill}
 					onPrintKitchen={() => lastOrderId && handlePrint(lastOrderId, "kitchen")}
 					canPrintOpenBill={siteSettings?.allowOpenBillPrint !== false}
+					pendingPayment={pendingCheckoutRequest ? { customerName: pendingCheckoutRequest.snapshot.customerInfo.name, total: pendingCheckoutRequest.finalAmount } : undefined}
+					onRecoverPayment={handleRecoverCheckout}
 				/>
 			</div>
 
 			{/* === CART BUTTON (Floating Mobile) === */}
-			{(totalItems > 0 || !customerInfo.isSubmitted) && (
-				<div className="fixed bottom-[6.75rem] left-4 right-4 z-40 px-3 md:hidden">
+			{(totalItems > 0 || checkoutDraft.result) && (
+				<div className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] left-3 right-3 z-40 md:hidden">
 					<button
 						type="button"
 						onClick={() => setIsCartOpen(true)}
 						className={cn(
-							"flex w-full items-center justify-between rounded-2xl px-3 py-2.5 font-bold text-white shadow-lg",
+							"flex min-h-14 w-full items-center justify-between rounded-2xl px-4 py-3 font-semibold text-white shadow-lg",
 							"transition-all active:opacity-90 active:scale-[0.98]",
 						)}
 						style={{ background: themeColor ?? "var(--color-primary)" }}
@@ -2658,13 +2677,13 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 									<span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/25 text-xs">
 										{totalItems}
 									</span>
-									<span className="text-xs">Lihat Keranjang</span>
+								<span className="text-sm">Lihat keranjang</span>
 								</div>
 								<span className="text-sm">{fmt(finalTotal)}</span>
 							</>
 						) : (
 							<div className="flex w-full items-center justify-center gap-2">
-								<span className="text-sm uppercase tracking-widest font-black">Mulai Pesanan</span>
+								<span className="text-sm font-semibold">Lihat hasil transaksi</span>
 							</div>
 						)}
 					</button>
@@ -2694,11 +2713,18 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				onConfirmPayment={handlePaymentConfirm}
 				isSubmitting={isSubmitting}
 				lastOrderId={lastOrderId}
+				onPrintOrder={(orderId, mode) => { void handlePrint(orderId as Id<"orders">, mode); }}
 				onPrintLastOrder={() => lastOrderId && handlePrint(lastOrderId)}
 				onPrintOpenBill={handlePrintCurrentOpenBill}
 				onPrintKitchen={() => lastOrderId && handlePrint(lastOrderId, "kitchen")}
 				canPrintOpenBill={siteSettings?.allowOpenBillPrint !== false}
+				pendingPayment={pendingCheckoutRequest ? { customerName: pendingCheckoutRequest.snapshot.customerInfo.name, total: pendingCheckoutRequest.finalAmount } : undefined}
+				onRecoverPayment={handleRecoverCheckout}
 			/>
+			<PosWorkspaceMenu open={panel === "more"} onOpenChange={open => openPanel(open ? "more" : null)} onAction={handleWorkspaceAction} userName={currentUser?.name || "Kasir"} canAdmin={canOpenAdmin} canReport={canViewReports} hasProfile={Boolean(currentUser?.slug || currentUser?.username)} pendingCount={offlinePendingCount}/>
+			<PosReadinessSheet open={panel === "readiness"} onOpenChange={open => openPanel(open ? "readiness" : null)} shiftOpen={isShiftOpen} shiftKnown={shiftStatus !== undefined} cashierName={shiftStatus?.shiftInfo?.cashierName || ""} online={isOnline} pendingCount={offlinePendingCount} unpaidCount={closingTasks.unpaid} onAction={handleWorkspaceAction}/>
+			<OfflineSyncCenter open={panel === "sync"} onOpenChange={open => openPanel(open ? "sync" : null)}/>
+			<Dialog open={logoutConfirmOpen} onOpenChange={setLogoutConfirmOpen}><DialogContent className="max-w-sm rounded-3xl p-5"><DialogHeader><DialogTitle>Keluar akun kasir?</DialogTitle><DialogDescription>{cartItems.length ? "Pesanan yang belum dikirim akan tetap tersimpan sebagai draft di terminal ini. Pastikan kasir berikutnya memeriksanya." : "Pesanan offline yang belum terkirim tetap tersimpan di terminal ini."}</DialogDescription></DialogHeader><div className="grid grid-cols-2 gap-3"><button type="button" onClick={() => setLogoutConfirmOpen(false)} className="min-h-12 rounded-xl border text-sm font-semibold">Tetap di sini</button><button type="button" onClick={async () => { await logout(); void navigate({to:"/kasir/login",replace:true} as any); }} className="min-h-12 rounded-xl bg-destructive text-sm font-semibold text-white">Keluar akun</button></div></DialogContent></Dialog>
 
 			{/* === PAYMENT MODAL === */}
 			<PaymentConfirmationModal
@@ -2708,7 +2734,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					setIsPaymentOpen(false);
 				}}
 				isSubmitting={isSubmitting}
-				onConfirm={handlePaymentConfirm}
+				onConfirm={async (...args) => { try { await handlePaymentConfirm(...args); } catch(error) {toast.error(error instanceof Error ? error.message : "Pesanan belum tersimpan. Coba lagi.");} }}
 			/>
 
 			<Dialog open={shiftReminderOpen} onOpenChange={setShiftReminderOpen}>
@@ -2763,8 +2789,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 							type="button"
 							onClick={() => {
 								setShiftReminderOpen(false);
-								setActiveSidebarTab("kas");
-								setIsSidebarOpen(true);
+								openPanel("kas");
 							}}
 							className="rounded-xl bg-primary px-4 py-2.5 font-bold text-primary-foreground transition-all hover:opacity-90"
 						>

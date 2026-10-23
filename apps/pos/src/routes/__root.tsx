@@ -1,4 +1,4 @@
-import { Outlet, createRootRoute, useLocation, useNavigate } from "@tanstack/react-router";
+import { Link, Outlet, createRootRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { useGlobalKeyboardNavigation } from "../hooks/useGlobalKeyboardNavigation";
 import { useSiteBrandingMetadata } from "../hooks/useSiteBrandingMetadata";
 import { useHybridSiteSettings } from "../hooks/use-hybrid-pos-data";
@@ -7,6 +7,7 @@ import { useYumiAuth, YumiAuthProvider } from "../hooks/useYumiAuth";
 import { useDemoMode } from "@yumipos/web-shared";
 import { useEffect } from "react";
 import { clearTransactionVoiceQueue, unlockAudio } from "../lib/transaction-voice-queue";
+import { isLoginRoute, isPublicRoute, loginPathFor, RETURN_PATH_KEY, safeReturnPath } from "../lib/route-metadata";
 import { Skeleton } from "../components/ui/skeleton";
 
 function PosRoutePending() {
@@ -24,7 +25,7 @@ function PosRoutePending() {
 function RootContent() {
 	const navigate = useNavigate();
 	const location = useLocation();
-	const { isAuthenticated, isLoading, isStaff, isAdmin, user, role } = useYumiAuth();
+	const { isAuthenticated, isLoading, role } = useYumiAuth();
 	const siteSettings = useHybridSiteSettings();
 
 	// Demo mode — client viewer: mask all numbers
@@ -52,24 +53,32 @@ function RootContent() {
 	useEffect(() => {
 		if (isLoading) return;
 
-		const isPublicPage =
-			location.pathname === "/admin/login" ||
-			location.pathname === "/karyawan/login" ||
-			location.pathname === "/kasir/login" ||
-			location.pathname === "/laporan" ||
-			location.pathname === "/register" ||
-			location.pathname.startsWith("/register/selesai/");
-		
+		const isPublicPage = isPublicRoute(location.pathname);
 		if (!isAuthenticated) {
 			if (location.pathname === "/register" && siteSettings?.employeeOnboarding?.registrationEnabled === false) {
-				navigate({ to: "/kasir/login" as any, replace: true });
+				navigate({ to: "/kasir/login", replace: true });
 				return;
 			}
 			if (!isPublicPage) {
-				navigate({ to: "/kasir/login" as any, replace: true });
+				const returnPath = safeReturnPath(location.href);
+				try {
+					if (returnPath) sessionStorage.setItem(RETURN_PATH_KEY, returnPath);
+				} catch { /* Login remains available when browser storage is disabled. */ }
+				navigate({ to: loginPathFor(location.pathname), replace: true });
+			}
+		} else if (!isLoginRoute(location.pathname)) {
+			// Login pages first navigate to their normal destination. Restore the
+			// interrupted local route on that next render, without changing login flows.
+			let returnPath: string | null = null;
+			try {
+				returnPath = safeReturnPath(sessionStorage.getItem(RETURN_PATH_KEY));
+				sessionStorage.removeItem(RETURN_PATH_KEY);
+			} catch { /* Storage is optional. */ }
+			if (returnPath && returnPath !== location.href) {
+				navigate({ href: returnPath, replace: true });
 			}
 		}
-	}, [isAuthenticated, isLoading, isStaff, user, location.pathname, navigate]);
+	}, [isAuthenticated, isLoading, location.href, location.pathname, navigate, siteSettings?.employeeOnboarding?.registrationEnabled]);
 
 	// Preload face recognition models saat user login
 	useEffect(() => {
@@ -78,7 +87,7 @@ function RootContent() {
 		}
 	}, [isAuthenticated]);
 
-	if (isLoading) {
+	if (isLoading || (!isAuthenticated && !isPublicRoute(location.pathname))) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-[#0a0a0b]">
 				<div className="relative h-16 w-16">
@@ -96,7 +105,19 @@ function RootContent() {
 	);
 }
 
+function PosNotFound() {
+	return (
+		<main className="flex min-h-app flex-col items-center justify-center gap-4 px-6 text-center">
+			<p className="text-sm text-muted-foreground">404</p>
+			<h1 className="text-2xl font-semibold">Halaman tidak ditemukan</h1>
+			<p className="max-w-sm text-muted-foreground">Tautan mungkin sudah berubah. Kembali ke POS untuk melanjutkan pekerjaan.</p>
+			<Link to="/menu" className="inline-flex min-h-11 items-center rounded-xl bg-primary px-5 font-medium text-primary-foreground">Kembali ke POS</Link>
+		</main>
+	);
+}
+
 export const Route = createRootRoute({
+	notFoundComponent: PosNotFound,
 	pendingComponent: PosRoutePending,
 	component: () => (
 		<YumiAuthProvider>

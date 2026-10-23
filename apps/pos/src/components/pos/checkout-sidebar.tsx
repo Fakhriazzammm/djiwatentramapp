@@ -1,1170 +1,1067 @@
-﻿import { useCart } from "@/context/cart-context";
-import { toast } from "sonner";
-import {
-	User,
-	ShoppingBag,
-	Trash2,
-	Minus,
-	Plus,
-	CreditCard,
-	ChevronRight,
-	ChevronLeft,
-	Wallet,
-	QrCode,
-	Banknote,
-	Calculator,
-	Zap,
-	Tag,
-	Coffee,
-	ChefHat,
-	Clock,
-	ChevronDown,
-	X,
-	Printer,
-	Bluetooth,
-	Search,
-	Star,
-	MousePointerClick,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useMemo, useRef, useState } from "react";
+import { Minus, Plus, Search, X } from "lucide-react";
+import { useCart } from "@/context/cart-context";
+import { useAppData } from "@/context/app-data-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useState, useMemo, useEffect } from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { ShimmerSkeleton } from "@/components/ui/loading-state";
-import { isDiscountApplicable } from "@/lib/utils/pricing";
 import {
 	useHybridShiftStatus,
 	useHybridCategories,
 	useHybridStaffUsers,
 	DEFAULT_ORDER_TYPES,
 } from "@/hooks/use-hybrid-pos-data";
-import { useAppData } from "@/context/app-data-context";
 import { calculateOrderTax } from "@yumipos/web-shared/lib/tax-calculator";
-import type { Doc } from "@/types/backend-compat";
+import { isDiscountApplicable } from "@/lib/utils/pricing";
+import { cn } from "@/lib/utils";
+import {
+	canPrintCheckoutResult,
+	createCheckoutDraft,
+	isCheckoutResult,
+	reconcileAssignments,
+	validateCheckout,
+	type ConfirmCheckoutPayment,
+	type CheckoutSubmissionResult,
+} from "@/lib/pos-checkout";
+import { CheckoutResult, formatCheckoutAmount as fmt } from "./checkout-result";
+import { CheckoutRecoveryNotice } from "./checkout-recovery-notice";
 import { CustomerSearchModal } from "./customer-search-modal";
-import { ReceiptPrinterAnimation } from "./receipt-printer-animation";
-import { bluetoothPrinter } from "@/lib/bluetooth-printer";
 
-// ── Role → Production Track mapping ──
-const ROLE_TRACK_MAP: Record<string, "bar" | "kitchen" | "both"> = {
-	barista: "bar",
-	bartender: "bar",
-	bar: "bar",
-	chef: "kitchen",
-	koki: "kitchen",
-	kitchen: "kitchen",
-	cook: "kitchen",
-};
-
-function getStaffTrack(roleName: string | null | undefined): "bar" | "kitchen" | "both" | null {
-	if (!roleName) return null;
-	return ROLE_TRACK_MAP[roleName.toLowerCase().trim()] ?? null;
-}
-
-export function CheckoutSidebar({ 
-	onConfirmPayment,
-	isSubmitting = false,
-	onClose,
-	initialStep = "menu",
-	lastOrderId,
-	onPrintLastOrder,
-	onPrintOpenBill,
-	onPrintKitchen,
-	canPrintOpenBill = true,
-}: { 
-	onConfirmPayment?: (
-		finalAmount: number,
-		discountId?: string,
-		paymentMethod?: string,
-		orderData?: {
-			tableNumber?: string;
-			orderType?: string;
-			notes?: string;
-			autoComplete?: boolean;
-			isOpenBill?: boolean;
-			cashReceived?: number;
-			changeAmount?: number;
-			assignments?: { groupType: "barista" | "kitchen"; assignedTo: string; items: { productName: string; quantity: number; assignedTo: string }[] }[];
-		}
-	) => void;
+export interface CheckoutSidebarProps {
+	onConfirmPayment?: ConfirmCheckoutPayment;
 	isSubmitting?: boolean;
 	onClose?: () => void;
+	/** Legacy route entry hints. A recovered draft takes precedence. */
 	initialStep?: "customer" | "menu" | "payment" | "receipt" | "assign";
 	lastOrderId?: string | null;
 	onPrintLastOrder?: () => void;
 	onPrintOpenBill?: () => void;
 	onPrintKitchen?: () => void;
 	canPrintOpenBill?: boolean;
-}) {
+	/** Preferred printing API: always receives the just-submitted order ID. */
+	onPrintOrder?: (orderId: string, mode?: "kitchen") => void;
+	pendingPayment?: { customerName: string; total: number };
+	onRecoverPayment?: () => Promise<CheckoutSubmissionResult>;
+}
+
+export function CheckoutSidebar({
+	onConfirmPayment,
+	isSubmitting = false,
+	onClose,
+	lastOrderId,
+	onPrintLastOrder,
+	onPrintOpenBill,
+	onPrintKitchen,
+	canPrintOpenBill = true,
+	onPrintOrder,
+	pendingPayment,
+	onRecoverPayment,
+}: CheckoutSidebarProps) {
 	const {
 		items,
 		updateQuantity,
 		updateItemPrice,
-		grossAmount,
-		totalAmount,
 		totalItems,
-		customerInfo,
-		updateCustomerInfo,
+		totalAmount,
+		grossAmount,
 		promoDiscountAmount,
 		voucherDiscountAmount,
-
 		appliedVoucher,
 		applyVoucher,
+		customerInfo,
+		updateCustomerInfo,
+		checkoutDraft: draft,
+		setCheckoutDraft,
 		clearCart,
 		platformTotal,
 		commissionAmount,
 		netRevenue,
 	} = useCart();
-
-	const { siteSettings, activeDiscounts: allActiveDiscounts } = useAppData();
-	const taxEnabled = siteSettings?.taxEnabled ?? false;
-	const taxRate = Number(siteSettings?.taxRate ?? 0);
-	const serviceChargeRate = Number(siteSettings?.serviceChargeRate ?? 0);
+	const { siteSettings, activeDiscounts } = useAppData();
 	const shiftStatus = useHybridShiftStatus();
-	const isShiftOpen = shiftStatus?.isOpen ?? false;
-
-		const [hasChosenOrderType, setHasChosenOrderType] = useState(false);
-		const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
-
-	const orderTypes = useMemo(() => {
-		const types = siteSettings?.orderTypes ?? DEFAULT_ORDER_TYPES;
-		return types
-			.filter((type: any) => type.isActive)
-			.sort((a: any, b: any) => a.sortOrder - b.sortOrder);
-	}, [siteSettings]);
-
-	const selectedOrderType = useMemo(() => {
-		return orderTypes.find((type: any) => type.id === customerInfo.orderType) || orderTypes[0];
-	}, [orderTypes, customerInfo.orderType]);
-
-	const platforms = useMemo(() => {
-		const raw = siteSettings?.platforms ?? [];
-		return raw.filter((p: any) => p.isActive).sort((a: any, b: any) => a.sortOrder - b.sortOrder);
-	}, [siteSettings]);
-	const selectedPlatform = useMemo(() => {
-		return platforms.find((p: any) => p.id === customerInfo.platform) || null;
-	}, [platforms, customerInfo.platform]);
-	const platformName = selectedPlatform?.name ?? "";
-
-	const [activeStep, setActiveStep] = useState<"customer" | "menu" | "payment" | "receipt" | "assign">(
-		initialStep || "menu"
-	);
-	
-	// Payment State
-	const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("");
-	const [cashReceived, setCashReceived] = useState<number | "">("");
-	const [changeAmount, setChangeAmount] = useState(0);
-	const [autoComplete, setAutoComplete] = useState(false);
-	const [selectedDiscountId, setSelectedDiscountId] = useState<string | null>(appliedVoucher?._id || null);
-	const selectedTaxCalculation = selectedPaymentMethod
-		? calculateOrderTax({
-				items,
-				voucherDiscountAmount,
-				taxEnabled: siteSettings?.taxEnabled ?? false,
-				taxRate,
-				serviceChargeRate,
-				source: "pos",
-				paymentMethod: selectedPaymentMethod,
-			})
-		: null;
-	const finalTotal = selectedTaxCalculation?.finalTotal ?? Math.max(0, totalAmount - voucherDiscountAmount);
-	const taxAmount = selectedTaxCalculation?.taxAmount ?? 0;
-	const serviceChargeAmount = selectedTaxCalculation?.serviceChargeAmount ?? 0;
-	const receiptReference = lastOrderId || "ORDER BARU";
-	const receiptCustomer = customerInfo as any;
-	const [printerConnected, setPrinterConnected] = useState(() => bluetoothPrinter.isConnected());
-	useEffect(() => {
-		const syncPrinterState = () => setPrinterConnected(bluetoothPrinter.isConnected());
-		syncPrinterState();
-		const timer = window.setInterval(syncPrinterState, 1000);
-		return () => window.clearInterval(timer);
-	}, []);
-	const handleConnectPrinter = async () => {
-		try {
-			await bluetoothPrinter.connect();
-			setPrinterConnected(true);
-			toast.success("Printer Bluetooth berhasil terhubung");
-		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Gagal menghubungkan printer Bluetooth");
-		}
-	};
-
-	// ── Assignment state for Step 4 ──
-	interface GroupAssignment {
-		groupType: "barista" | "kitchen";
-		assignedTo: string;
-		items: { productId: string; productName: string; variant?: string; quantity: number; assignedTo: string }[];
-	}
-
-	// Build group assignments from cart items + categories
 	const categories = useHybridCategories();
-	const [groupAssignments, setGroupAssignments] = useState<GroupAssignment[]>([]);
-
-	// Compute on-duty staff from shift
-	const onDutyStaff = useMemo(() => {
-		const names = new Set<string>();
-		const cashierName = shiftStatus?.ongoingShift?.cashierName || shiftStatus?.shiftInfo?.cashierName;
-		if (cashierName) names.add(cashierName.trim());
-		const teamRaw = shiftStatus?.ongoingShift?.teamMembers || "";
-		teamRaw
-			.split(/[,\n;|]/g)
-			.map((name: string) => name.trim())
-			.filter(Boolean)
-			.forEach((name: string) => names.add(name));
-		if (names.size === 0) names.add("Kasir");
-		return Array.from(names);
-	}, [shiftStatus?.ongoingShift?.cashierName, shiftStatus?.ongoingShift?.teamMembers, shiftStatus?.shiftInfo?.cashierName]);
-
-	// Staff users data for role-based filtering
 	const staffUsers = useHybridStaffUsers();
-	const staffRoleMap = useMemo(() => {
-		const map = new Map<string, string | null>();
-		for (const u of staffUsers ?? []) {
-			const key = u.name?.toLowerCase().trim();
-			if (key) map.set(key, u.roleName || null);
-		}
-		return map;
-	}, [staffUsers]);
-
-	// Filter on-duty staff by role track for each production group
-	const filteredStaffByGroup = useMemo(() => ({
-		barista: onDutyStaff.filter(name => {
-			const role = staffRoleMap.get(name.toLowerCase().trim());
-			const track = getStaffTrack(role);
-			return track === "bar" || track === "both";
-		}),
-		kitchen: onDutyStaff.filter(name => {
-			const role = staffRoleMap.get(name.toLowerCase().trim());
-			const track = getStaffTrack(role);
-			return track === "kitchen" || track === "both";
-		}),
-	}), [onDutyStaff, staffRoleMap]);
-
-	// Rebuild assignments when items or categories change
-	useEffect(() => {
-		if (!categories || items.length === 0) return;
-		const catTrackMap = new Map<string, "bar" | "kitchen" | null>();
-		for (const cat of categories as any[]) {
-			catTrackMap.set(cat._id, cat.track ?? null);
-		}
-		const barItems: GroupAssignment["items"] = [];
-		const kitchenItems: GroupAssignment["items"] = [];
-		for (const item of items) {
-			const track = item.category ? catTrackMap.get(item.category) : null;
-			const entry = {
-				productId: item.productId,
-				productName: item.name,
-				variant: item.variant,
-				quantity: item.quantity,
-				assignedTo: "" as string,
-			};
-			if (track === "kitchen") {
-				kitchenItems.push(entry);
-			} else {
-				barItems.push(entry);
-			}
-		}
-		const newAssignments: GroupAssignment[] = [];
-		if (barItems.length > 0) {
-			newAssignments.push({
-				groupType: "barista",
-				assignedTo: "",
-				items: barItems.map((i) => ({ ...i, assignedTo: "" })),
-			});
-		}
-		if (kitchenItems.length > 0) {
-			newAssignments.push({
-				groupType: "kitchen",
-				assignedTo: "",
-				items: kitchenItems.map((i) => ({ ...i, assignedTo: "" })),
-			});
-		}
-		setGroupAssignments(newAssignments);
-	}, [items, categories, onDutyStaff, filteredStaffByGroup]);
-
-	const fmt = (n: number) =>
-		new Intl.NumberFormat("id-ID", {
-			style: "currency",
-			currency: "IDR",
-			maximumFractionDigits: 0,
-		}).format(n);
-
-	// Reset to step 1 (menu) when cart is cleared (after successful payment)
-	useEffect(() => {
-		if (items.length === 0 && !customerInfo.isSubmitted && activeStep !== "menu") {
-			setActiveStep("menu");
-		}
-	}, [items.length, activeStep, customerInfo.isSubmitted]);
-
-	// Calculate Change
-	useEffect(() => {
-		if (typeof cashReceived === "number" && cashReceived >= finalTotal) {
-			setChangeAmount(cashReceived - finalTotal);
-		} else {
-			setChangeAmount(0);
-		}
-	}, [cashReceived, finalTotal]);
-
-	const handleQuickCash = (amount: number) => {
-		setCashReceived(amount);
+	const isShiftOpen = shiftStatus?.isOpen ?? false;
+	const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
+	const [submitting, setSubmitting] = useState(false);
+	const [submitError, setSubmitError] = useState<string | null>(null);
+	const inFlight = useRef(false);
+	const busy = isSubmitting || submitting;
+	const patch = (update: Partial<typeof draft>) => {
+		setSubmitError(null);
+		setCheckoutDraft((prev) => ({ ...prev, ...update }));
 	};
-
-	// Payment Options
+	const orderTypes = [...(siteSettings?.orderTypes ?? DEFAULT_ORDER_TYPES)]
+		.filter((type) => type.isActive)
+		.sort((a, b) => a.sortOrder - b.sortOrder);
+	const selectedOrderType = orderTypes.find(
+		(type) => type.id === customerInfo.orderType,
+	);
+	const platforms = [...(siteSettings?.platforms ?? [])]
+		.filter((p) => p.isActive)
+		.sort((a, b) => a.sortOrder - b.sortOrder);
 	const paymentOptions = useMemo(() => {
-		const options = [];
-		const manualMethods = siteSettings?.paymentMethodsManual;
-
-		if (manualMethods?.cash !== false) {
-			options.push({ id: "tunai", label: "TUNAI (CASH)" });
-		}
-		if (manualMethods?.qris !== false) {
-			options.push({ id: "qris", label: "QRIS STATIS" });
-		}
-		if (manualMethods?.transfer !== false) {
-			options.push({ id: "transfer", label: "TRANSFER BANK" });
-		}
-		if (siteSettings?.mayarEnabled) {
-			options.push({ id: "qris_mayar", label: "QRIS DINAMIS" });
-		}
-
-		if (options.length === 0) {
-			options.push({ id: "tunai", label: "TUNAI (CASH)" });
-		}
-
+		const options: { id: string; label: string }[] = [];
+		if (siteSettings?.paymentMethodsManual?.cash !== false)
+			options.push({ id: "tunai", label: "Tunai" });
+		if (siteSettings?.paymentMethodsManual?.qris !== false)
+			options.push({ id: "qris", label: "QRIS statis" });
+		if (siteSettings?.paymentMethodsManual?.transfer !== false)
+			options.push({ id: "transfer", label: "Transfer bank" });
+		// Mayar's current Edge Function contract accepts customer/B2B orders,
+		// not cashier-originated POS orders. Keep the unsupported method out of
+		// the cashier flow until the server contract is expanded end-to-end.
 		return options;
 	}, [siteSettings]);
-
-	// Filter discounts
-	const validDiscounts = useMemo(() => {
-		if (!allActiveDiscounts) return [];
-
-		const now = new Date();
-		const context = {
-			currentTimestamp: now.getTime(),
-			currentDay: now.getDay(),
-			currentTimeVal: now.getHours() * 60 + now.getMinutes(),
-		};
-
-		return allActiveDiscounts.filter((discount: Doc<"discounts">) => {
-			if (discount.targetType === "ALL") {
-				return isDiscountApplicable(discount, { _id: "", price: 0, categoryId: "" }, context);
-			}
-			return items.some((item) =>
-				isDiscountApplicable(discount, { _id: item.productId, price: item.price, categoryId: item.category || "" }, context)
-			);
-		});
-	}, [allActiveDiscounts, items]);
-
-	const activeMarketingPromos = useMemo(() => {
-		if (!allActiveDiscounts || items.length === 0 || promoDiscountAmount <= 0) {
-			return [] as string[];
-		}
-
-		const now = new Date();
-		const context = {
-			currentTimestamp: now.getTime(),
-			currentDay: now.getDay(),
-			currentTimeVal: now.getHours() * 60 + now.getMinutes(),
-		};
-
-		const labels = allActiveDiscounts
-			.filter((discount: Doc<"discounts">) => discount._id !== selectedDiscountId)
-			.filter((discount: Doc<"discounts">) => {
-				if (discount.targetType === "ALL") {
-					return isDiscountApplicable(discount, { _id: "", price: 0, categoryId: "" }, context);
-				}
-				return items.some((item) =>
-					isDiscountApplicable(discount, { _id: item.productId, price: item.price, categoryId: item.category || "" }, context)
-				);
-			})
-			.map((discount: Doc<"discounts">) =>
-				discount.isHappyHour ? `Happy Hour - ${discount.name}` : `Promo Marketing - ${discount.name}`
-			);
-
-		return [...new Set(labels)];
-	}, [allActiveDiscounts, items, promoDiscountAmount, selectedDiscountId]);
-
-	useEffect(() => {
-		if (!allActiveDiscounts) return;
-
-		if (!selectedDiscountId) {
-			if (appliedVoucher) {
-				applyVoucher(null);
-			}
-			return;
-		}
-
-		const selectedVoucher =
-			allActiveDiscounts.find((discount: Doc<"discounts">) => discount._id === selectedDiscountId) || null;
-
-		if (!selectedVoucher) {
-			applyVoucher(null);
-			return;
-		}
-
-		applyVoucher({
-			_id: selectedVoucher._id,
-			name: selectedVoucher.name,
-			type: selectedVoucher.type,
-			value: selectedVoucher.value,
-			targetType: selectedVoucher.targetType,
-			targetIds: (selectedVoucher as { targetIds?: string[] }).targetIds,
-		});
-	}, [selectedDiscountId, allActiveDiscounts, appliedVoucher, applyVoucher]);
-
-	const handleConfirmPayment = () => {
-		setActiveStep("receipt");
-	};
-
-	const handleSubmitAssignment = () => {
-		if (!onConfirmPayment) return;
-		const validAssignments = groupAssignments
-			.map(ga => ({
-				...ga,
-				items: ga.items.filter(item => item.assignedTo !== ""),
-			}))
-			.filter(ga => ga.items.length > 0)
-			.map(ga => ({
-				groupType: ga.groupType,
-				assignedTo: ga.assignedTo,
-				items: ga.items.map(item => ({
-					productName: item.productName,
-					quantity: item.quantity,
-					assignedTo: item.assignedTo,
+	const tax = calculateOrderTax({
+		items,
+		voucherDiscountAmount,
+		taxEnabled: siteSettings?.taxEnabled ?? false,
+		taxRate: Number(siteSettings?.taxRate ?? 0),
+		serviceChargeRate: Number(siteSettings?.serviceChargeRate ?? 0),
+		source: "pos",
+		paymentMethod: draft.paymentMethod || "tunai",
+	});
+	const total = tax.finalTotal;
+	const change =
+		typeof draft.cashReceived === "number"
+			? Math.max(0, draft.cashReceived - total)
+			: 0;
+	const assignments = useMemo(
+		() =>
+			reconcileAssignments(
+				items,
+				(categories ?? []).map((category) => ({
+					_id: String(category._id),
+					track: category.track as string | null | undefined,
 				})),
-			}));
-		onConfirmPayment(
-			finalTotal,
-			selectedDiscountId || undefined,
-			selectedPaymentMethod,
-			{
-				tableNumber: customerInfo.tableNumber,
-				orderType: customerInfo.orderType,
-				autoComplete,
-				isOpenBill: false,
-				cashReceived: typeof cashReceived === "number" ? cashReceived : 0,
-				changeAmount: changeAmount,
-				assignments: validAssignments,
-			}
+				draft.assignments,
+			),
+		[items, categories, draft.assignments],
+	);
+	const staffByGroup = useMemo(() => {
+		const shift = shiftStatus?.ongoingShift;
+		const names = new Set<string>(
+			[
+				shift?.cashierName || shiftStatus?.shiftInfo?.cashierName || "",
+				...(shift?.teamMembers || "").split(/[,\n;|]/),
+			]
+				.map((name) => name.trim())
+				.filter(Boolean),
 		);
-	};
+		const groupForRole: Record<string, string> = {
+			barista: "barista",
+			bartender: "barista",
+			bar: "barista",
+			chef: "kitchen",
+			koki: "kitchen",
+			kitchen: "kitchen",
+			cook: "kitchen",
+		};
+		const groupNames = (group: string) =>
+			[...names].filter((name) => {
+				const role = staffUsers?.find(
+					(user) => user.name?.toLowerCase().trim() === name.toLowerCase(),
+				)?.roleName;
+				return role ? groupForRole[role.toLowerCase().trim()] === group : false;
+			});
+		return { barista: groupNames("barista"), kitchen: groupNames("kitchen") };
+	}, [shiftStatus, staffUsers]);
+	const validDiscounts = useMemo(() => {
+		const now = new Date();
+		const context = {
+			currentTimestamp: now.getTime(),
+			currentDay: now.getDay(),
+			currentTimeVal: now.getHours() * 60 + now.getMinutes(),
+		};
+		return (activeDiscounts ?? []).filter((discount) =>
+			discount.targetType === "ALL"
+				? isDiscountApplicable(
+						discount,
+						{ _id: "", price: 0, categoryId: "" },
+						context,
+					)
+				: items.some((item) =>
+						isDiscountApplicable(
+							discount,
+							{
+								_id: item.productId,
+								price: item.price,
+								categoryId: item.category || "",
+							},
+							context,
+						),
+					),
+		);
+	}, [activeDiscounts, items]);
+	const validation = validateCheckout({
+		itemCount: items.length,
+		total,
+		paymentMethod: draft.paymentMethod,
+		cashReceived: draft.cashReceived,
+		isShiftOpen,
+		customer: customerInfo,
+	});
+	const paymentUnavailable = Boolean(
+		draft.paymentMethod &&
+		!paymentOptions.some((option) => option.id === draft.paymentMethod),
+	);
+	const canPrint = canPrintCheckoutResult(draft.result, lastOrderId);
+	const result = draft.result;
+	const hasPendingPayment = Boolean(pendingPayment);
+	const activeStep = result
+		? "result"
+		: draft.step === "payment"
+			? "payment"
+			: "order";
 
-	const handleSaveOrderQuick = () => {
-		if (!isShiftOpen) {
-			toast.error("Buka shift terlebih dahulu di Dashboard");
+	const submit = async (isOpenBill = false) => {
+		if (inFlight.current || busy || hasPendingPayment) return;
+		const error = validateCheckout({
+			itemCount: items.length,
+			total,
+			paymentMethod: draft.paymentMethod,
+			cashReceived: draft.cashReceived,
+			isShiftOpen,
+			customer: customerInfo,
+			isOpenBill,
+		});
+		if (error || (!isOpenBill && paymentUnavailable)) {
+			setSubmitError(
+				error || "Metode pembayaran ini tidak tersedia. Pilih metode lain.",
+			);
 			return;
 		}
-		if (onConfirmPayment) {
-			onConfirmPayment(
-				finalTotal,
-				undefined,
-				"cash",
+		if (!onConfirmPayment) {
+			setSubmitError("Checkout belum tersedia. Muat ulang atau hubungi admin.");
+			return;
+		}
+		inFlight.current = true;
+		setSubmitting(true);
+		setSubmitError(null);
+		try {
+			const submitted = await onConfirmPayment(
+				total,
+				appliedVoucher?._id,
+				isOpenBill ? "cash" : draft.paymentMethod,
 				{
 					tableNumber: customerInfo.tableNumber,
 					orderType: customerInfo.orderType,
-					autoComplete: false,
-					isOpenBill: true,
-				}
+					notes: customerInfo.notes,
+					autoComplete: isOpenBill ? false : draft.autoComplete,
+					isOpenBill,
+					...(!isOpenBill &&
+					(draft.paymentMethod === "tunai" || draft.paymentMethod === "cash") &&
+					typeof draft.cashReceived === "number"
+						? { cashReceived: draft.cashReceived, changeAmount: change }
+						: {}),
+					assignments: assignments
+						.map((group) => ({
+							...group,
+							items: group.items.filter((item) => item.assignedTo),
+						}))
+						.filter((group) => group.items.length > 0),
+				},
 			);
+			if (!isCheckoutResult(submitted))
+				throw new Error(
+					"Hasil transaksi tidak tersedia. Periksa riwayat pesanan sebelum mencoba lagi.",
+				);
+			// The parent clears the cart before resolving. Install this snapshot afterwards;
+			// cart-cleared effects must never replace a successful result with an empty order.
+			setCheckoutDraft({
+				...createCheckoutDraft(),
+				step: "result",
+				result: { ...submitted },
+			});
+		} catch (error) {
+			setSubmitError(
+				error instanceof Error
+					? error.message
+					: "Pesanan gagal disimpan. Draft tetap tersedia; coba lagi.",
+			);
+		} finally {
+			inFlight.current = false;
+			setSubmitting(false);
 		}
 	};
-
-	return (
-		<div className="relative flex h-full flex-col border-l border-border bg-[#f8f9fa] shadow-sm dark:bg-background">
-			<div className="flex items-center justify-between gap-2 border-b border-border bg-background px-3 py-2">
-				<nav aria-label="Tahapan checkout" className="no-scrollbar min-w-0 flex-1 overflow-x-auto">
-				<div className="flex w-max min-w-full items-center gap-1.5 sm:gap-2 md:gap-2">
-					<div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-						<div className={cn(
-							"flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black transition-all md:h-7 md:w-7 md:text-[11px]",
-							activeStep === "menu" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
-						)}>1</div>
-						<span className={cn("text-[11px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "menu" ? "text-foreground" : "text-muted-foreground")}>Menu</span>
-					</div>
-					<ChevronRight className="mx-0.5 h-3 w-3 text-muted-foreground/40 md:h-3.5 md:w-3.5" />
-					<div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-						<div className={cn(
-							"flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black transition-all md:h-7 md:w-7 md:text-[11px]",
-							activeStep === "customer" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
-						)}>2</div>
-						<span className={cn("text-[11px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "customer" ? "text-foreground" : "text-muted-foreground")}>Info</span>
-					</div>
-					<ChevronRight className="mx-0.5 h-3 w-3 text-muted-foreground/40 md:h-3.5 md:w-3.5" />
-					<div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-						<div className={cn(
-							"flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black transition-all md:h-7 md:w-7 md:text-[11px]",
-							activeStep === "payment" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
-						)}>3</div>
-						<span className={cn("text-[11px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "payment" ? "text-foreground" : "text-muted-foreground")}>Bayar</span>
-					</div>
-					<ChevronRight className="mx-0.5 h-3 w-3 text-muted-foreground/40 md:h-3.5 md:w-3.5" />
-					<div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-						<div className={cn(
-							"flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black transition-all md:h-7 md:w-7 md:text-[11px]",
-							activeStep === "receipt" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
-						)}>4</div>
-						<span className={cn("text-[11px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "receipt" ? "text-foreground" : "text-muted-foreground")}>Struk</span>
-					</div>
-					<ChevronRight className="mx-0.5 h-3 w-3 text-muted-foreground/40 md:h-3.5 md:w-3.5" />
-					<div className="flex shrink-0 items-center gap-1.5 sm:gap-2"><div className={cn("flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black transition-all md:h-7 md:w-7 md:text-[11px]", activeStep === "assign" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-muted text-muted-foreground")}>5</div><span className={cn("text-[11px] font-black uppercase tracking-wide md:text-[12px]", activeStep === "assign" ? "text-foreground" : "text-muted-foreground")}>Tim</span></div>
-				</div>
-				</nav>
-				<div className="flex shrink-0 items-center gap-2 text-muted-foreground">
-					{lastOrderId && onPrintLastOrder && (
-						<Button
-							variant="outline"
-							size="sm"
-							className="h-8 gap-1.5 rounded-xl border-primary/20 bg-primary/5 px-2.5 text-[10px] font-black uppercase tracking-wide text-primary hover:bg-primary/10 md:h-8 md:px-2.5 md:text-[10px]"
-							onClick={onPrintLastOrder}
-						>
-							<Printer className="h-3.5 w-3.5" />
-							Struk
-						</Button>
-					)}
-					{onClose && (
-						<Button 
-							variant="ghost" 
-							size="sm" 
-							className="size-11 shrink-0 rounded-full p-0 md:size-8"
-							onClick={onClose}
-							aria-label="Tutup"
-						>
-							<X className="h-4.5 w-4.5" />
-						</Button>
-					)}
-				</div>
+	const recover = async () => {
+		if (inFlight.current || busy || !onRecoverPayment) return;
+		inFlight.current = true;
+		setSubmitting(true);
+		setSubmitError(null);
+		try {
+			const recovered = await onRecoverPayment();
+			if (!isCheckoutResult(recovered)) {
+				throw new Error("Hasil pemulihan tidak tersedia. Periksa riwayat pesanan.");
+			}
+			setCheckoutDraft({
+				...createCheckoutDraft(),
+				step: "result",
+				result: { ...recovered },
+			});
+		} catch (error) {
+			setSubmitError(
+				error instanceof Error
+					? error.message
+					: "Pesanan awal belum dapat dipulihkan. Coba lagi.",
+			);
+		} finally {
+			inFlight.current = false;
+			setSubmitting(false);
+		}
+	};
+	const customerFields = (
+		<div className="space-y-3">
+			<div className="flex items-end gap-2">
+				<label className="flex-1 space-y-1">
+					<span>
+						Nama pelanggan
+						{draft.paymentMethod === "qris_mayar" ? " (wajib)" : " (opsional)"}
+					</span>
+					<Input
+						className="h-11 text-sm"
+						value={customerInfo.name}
+						onChange={(e) => updateCustomerInfo({ name: e.target.value })}
+						autoComplete="name"
+					/>
+				</label>
+				<Button
+					aria-label="Cari pelanggan"
+					variant="outline"
+					className="h-11 w-11 shrink-0 px-0"
+					onClick={() => setCustomerSearchOpen(true)}
+				>
+					<Search className="h-4 w-4" />
+				</Button>
 			</div>
-
-			<ScrollArea className="flex-1 min-h-0">
-				<div className={cn("space-y-3 p-3 md:space-y-3 md:p-3", activeStep === "payment" || activeStep === "receipt" || activeStep === "assign" ? "pb-24" : "pb-20")}>
-					{/* Section 1: Informasi Pelanggan */}
-					{activeStep === "customer" && (
-						<div className="fade-in animate-in space-y-3 duration-300 slide-in-from-right-4 md:space-y-3.5">
-							<div className="flex items-center justify-between">
-								<div className="flex items-center gap-2">
-									<User className="h-4 w-4 text-primary" />
-									<h3 className="text-xs font-bold uppercase tracking-wider">Informasi Pelanggan</h3>
-								</div>
-								<Button
-									variant="ghost"
-									size="sm"
-									className="h-6 px-1.5 text-[10px] text-muted-foreground font-bold"
-									onClick={() => setActiveStep("menu")}
-								>
-									<ChevronLeft className="mr-1 h-3 w-3" /> Kembali
-								</Button>
-							</div>
-
-							<div className="rounded-xl border border-primary/10 bg-white px-2.5 py-2 shadow-sm md:px-3 md:py-2.5">
-								<div className="flex items-center gap-2">
-									<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary md:h-9 md:w-9">
-										<User className="h-4 w-4 md:h-4.5 md:w-4.5" />
-									</div>
-									<div className="min-w-0 flex-1">
-										<h3 className="text-sm font-black uppercase tracking-wide text-foreground">
-											Informasi Pelanggan
-										</h3>
-										<p className="mt-0.5 text-[12px] leading-snug text-muted-foreground md:text-[13px]">
-											Isi data pelanggan sebelum lanjut ke pembayaran.
-										</p>
-									</div>
-								</div>
-							</div>
-
-							<div className="grid gap-2.5 md:gap-3">
-								<div className="space-y-1.5">
-									<Label htmlFor="customer-name" className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">Nama Pelanggan</Label>
-									<div className="flex gap-1.5 items-start">
-										<div className="relative flex-1">
-											<Input
-												id="customer-name"
-												placeholder="Masukkan nama pelanggan"
-												value={customerInfo.name}
-												onChange={(e) => {
-													updateCustomerInfo({ name: e.target.value });
-												}}
-												className="h-9 rounded-xl border-border/70 bg-white px-3 text-sm font-semibold placeholder:text-xs placeholder:font-medium md:h-11 md:rounded-[1.15rem] md:px-3.5 md:text-base md:placeholder:text-sm"
-											/>
-											{customerInfo.customer_source_id && (
-												<span className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-black text-amber-700 uppercase tracking-wider shadow-sm">
-													<Star className="h-2.5 w-2.5 fill-amber-400" /> Member
-												</span>
-											)}
-										</div>
+			{selectedOrderType?.requiresTableNumber && (
+				<label className="block space-y-1">
+					<span>Nomor meja (opsional)</span>
+					<Input
+						className="h-11 text-sm"
+						value={customerInfo.tableNumber}
+						onChange={(e) =>
+							updateCustomerInfo({ tableNumber: e.target.value })
+						}
+					/>
+				</label>
+			)}
+			<label className="block space-y-1">
+				<span>Catatan pesanan (opsional)</span>
+				<Input
+					className="h-11 text-sm"
+					value={customerInfo.notes}
+					onChange={(e) => updateCustomerInfo({ notes: e.target.value })}
+				/>
+			</label>
+		</div>
+	);
+	return (
+		<div className="relative flex h-full min-h-0 flex-col bg-background text-sm [&_input]:text-base [&_select]:text-base [&_textarea]:text-base">
+			<header className="flex shrink-0 items-center gap-2 border-b border-border p-3">
+				<nav
+					aria-label="Tahapan checkout"
+					className="flex flex-1 items-center justify-between gap-2 text-[13px]"
+				>
+					{(
+						[
+							["order", "Pesanan"],
+							["payment", "Pembayaran"],
+							["result", "Hasil"],
+						] as const
+					).map(([step, label], index) => (
+						<span
+							key={step}
+							aria-current={activeStep === step ? "step" : undefined}
+							className={cn(
+								"font-medium",
+								activeStep === step ? "text-primary" : "text-muted-foreground",
+							)}
+						>
+							{index + 1}. {label}
+						</span>
+					))}
+				</nav>
+				{onClose && (
+					<Button
+						variant="ghost"
+						aria-label="Tutup checkout"
+						className="h-11 w-11 shrink-0 px-0"
+						onClick={onClose}
+					>
+						<X className="h-5 w-5" />
+					</Button>
+				)}
+			</header>
+			<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+				{result ? (
+					<CheckoutResult
+						result={result}
+						onPrint={
+							result.orderId &&
+							result.status !== "queued" &&
+							(onPrintOrder || (canPrint && onPrintLastOrder))
+								? () =>
+										onPrintOrder
+											? onPrintOrder(result.orderId!)
+											: onPrintLastOrder?.()
+								: undefined
+						}
+						onPrintKitchen={
+							result.orderId &&
+							result.status !== "queued" &&
+							(onPrintOrder || (canPrint && onPrintKitchen))
+								? () =>
+										onPrintOrder
+											? onPrintOrder(result.orderId!, "kitchen")
+											: onPrintKitchen?.()
+								: undefined
+						}
+					/>
+				) : (
+					<div className="space-y-4 p-4">
+						{hasPendingPayment && pendingPayment && (
+							<CheckoutRecoveryNotice
+								customerName={pendingPayment.customerName}
+								total={pendingPayment.total}
+								busy={busy}
+								onRecover={() => void recover()}
+							/>
+						)}
+						<fieldset
+							disabled={busy || hasPendingPayment}
+							className="min-w-0 space-y-4 disabled:opacity-70"
+						>
+						{activeStep === "order" ? (
+							<>
+								<h2 className="font-bold">Pesanan ({totalItems})</h2>
+								<div className="flex flex-wrap gap-2" aria-label="Tipe pesanan">
+									{orderTypes.map((type) => (
 										<Button
-											variant="outline"
-											size="icon"
-											className="h-9 w-9 shrink-0 rounded-xl border-border/70 md:h-11 md:w-11"
-											onClick={() => setCustomerSearchOpen(true)}
-											type="button"
-											title="Cari pelanggan terdaftar"
+											key={type.id}
+											variant={
+												customerInfo.orderType === type.id
+													? "default"
+													: "outline"
+											}
+											className="min-h-11 text-sm"
+											aria-pressed={customerInfo.orderType === type.id}
+											onClick={() =>
+												updateCustomerInfo({
+													orderType: type.id,
+													...(type.id !== "online"
+														? {
+																platform: undefined,
+																platformCommission: undefined,
+															}
+														: {}),
+												})
+											}
 										>
-											<Search className="h-4 w-4" />
+											{type.label}
 										</Button>
-									</div>
-								</div>
-								<div className="grid grid-cols-2 gap-2.5">
-									<div className="space-y-1.5">
-										<Label htmlFor="customer-email" className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground">Email</Label>
-										<Input id="customer-email" type="email" placeholder="email@contoh.com" value={customerInfo.email || ""} onChange={(e) => updateCustomerInfo({ email: e.target.value })} className="h-10 rounded-[1rem] border-border/70 bg-white px-3 text-sm" />
-									</div>
-									<div className="space-y-1.5">
-										<Label htmlFor="customer-phone" className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground">WhatsApp</Label>
-										<Input id="customer-phone" type="tel" inputMode="tel" placeholder="08xxxxxxxxxx" value={customerInfo.phone || ""} onChange={(e) => updateCustomerInfo({ phone: e.target.value })} className="h-10 rounded-[1rem] border-border/70 bg-white px-3 text-sm" />
-									</div>
-								</div>
-
-								<div className={cn(
-									"grid gap-2.5",
-									selectedOrderType?.requiresTableNumber ? "grid-cols-2" : "grid-cols-1"
-								)}>
-									{selectedOrderType?.requiresTableNumber && (
-										<div className="space-y-1.5">
-											<Label htmlFor="table-number" className="text-[11px] font-black uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">No. Meja</Label>
-											<Input
-												id="table-number"
-												placeholder="01"
-												value={customerInfo.tableNumber}
-												onChange={(e) => updateCustomerInfo({ tableNumber: e.target.value })}
-												className="h-10 rounded-[1rem] border-border/70 bg-white px-3 text-sm font-black tracking-wide placeholder:text-xs placeholder:font-medium md:h-11 md:rounded-[1.15rem] md:px-3.5 md:text-base md:placeholder:text-sm"
-											/>
-										</div>
-									)}
-								</div>
-
-								{/* Free Refill Toggle */}
-								<div className="mt-0.5 flex items-center justify-between rounded-[1.2rem] border border-primary/15 bg-gradient-to-r from-primary/[0.06] via-sky-50/50 to-background p-2.5 shadow-sm md:rounded-[1.35rem] md:p-3">
-									<div className="flex items-center gap-2.5 md:gap-3">
-										<div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-											<Coffee className="h-4 w-4 md:h-4.5 md:w-4.5" />
-										</div>
-										<div className="min-w-0 flex-1">
-											<span className="block text-xs font-black uppercase tracking-[0.14em] text-primary md:text-sm">
-												Free Refill Minuman
-											</span>
-											<p className="text-[11px] font-medium leading-snug text-muted-foreground md:text-xs">
-												Otomatis masuk ke keranjang jika aktif.
-											</p>
-										</div>
-									</div>
-									<button
-										aria-label="Toggle free refill"
-										className={cn(
-											"relative h-5 w-9 shrink-0 rounded-full transition-all duration-300 md:h-7 md:w-12",
-											customerInfo.isFreeRefill
-												? "bg-primary shadow-md shadow-primary/20"
-												: "bg-muted-foreground/20"
-										)}
-										onClick={() => updateCustomerInfo({ isFreeRefill: !customerInfo.isFreeRefill })}
-										type="button"
-									>
-										<div className={cn(
-											"absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-300 md:h-6 md:w-6",
-											customerInfo.isFreeRefill ? "right-0.5" : "left-0.5"
-										)} />
-									</button>
-								</div>
-							</div>
-
-						</div>
-					)}
-
-					{/* Section 2: Pilih Menu (Cart Items) */}
-				{activeStep === "menu" && (
-					<div className="space-y-4 fade-in animate-in slide-in-from-right-4 duration-300">
-						{/* Order Type + Platform — 1 baris center */}
-						<div className="flex flex-col items-center gap-2">
-							<div className="flex items-center justify-center gap-1 flex-wrap">
-								{orderTypes.map((type: any) => (
-									<button
-										key={type.id}
-										type="button"
-										onClick={() => { updateCustomerInfo({ orderType: type.id, ...(type.id !== "online" ? { platform: undefined, platformCommission: undefined } : {}) }); setHasChosenOrderType(true); }}
-										className={cn(
-											"shrink-0 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-wide transition-all",
-											customerInfo.orderType === type.id
-												? "bg-primary text-primary-foreground shadow-sm scale-105"
-												: "bg-muted/60 text-muted-foreground hover:bg-muted"
-										)}
-								>
-									{type.label}
-								</button>
-							))}
-							{selectedOrderType?.id === "online" && platforms.length > 0 && (
-								<>
-									<span className="mx-0.5 h-4 w-px shrink-0 bg-border" />
-									{platforms.map((p: any) => (
-										<button
-											key={p.id}
-											type="button"
-											onClick={() => updateCustomerInfo({ platform: p.id, platformCommission: p.commissionRate })}
-											className={cn(
-												"shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide transition-all",
-												customerInfo.platform === p.id
-													? "bg-orange-500 text-white shadow-sm"
-													: "bg-orange-50 text-orange-600 hover:bg-orange-100"
-											)}
-										>
-											{p.name}
-										</button>
 									))}
-								</>
-							)}
-							</div>
-							{!hasChosenOrderType && (
-								<span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 animate-pulse shadow-sm">
-									<MousePointerClick className="h-3 w-3" aria-hidden="true" />
-									Ketuk untuk pilih tipe pesanan
-								</span>
-							)}
-						</div>
-						<div className="flex items-center justify-between">
-								<div className="flex items-center gap-2">
-									<ShoppingBag className="h-4 w-4 text-primary" />
-									<h3 className="text-xs font-bold uppercase tracking-wider">Pesanan ({totalItems})</h3>
 								</div>
-								<Button 
-									variant="ghost" 
-									size="sm" 
-									className="h-6 px-1.5 text-[10px] text-muted-foreground font-bold"
-									onClick={() => setActiveStep("customer")}
-								>
-									<ChevronRight className="mr-1 h-3 w-3" /> Isi Info
-								</Button>
-							</div>
-
-							{items.length === 0 ? (
-								<div className="flex flex-col items-center justify-center py-8 text-center bg-muted/20 rounded-xl border border-dashed border-border">
-									<ShoppingBag className="h-8 w-8 text-muted-foreground/30 mb-2" />
-									<p className="text-[10px] font-medium text-muted-foreground">Belum ada menu terpilih</p>
-								</div>
-							) : (
+								{selectedOrderType?.id === "online" && (
+									<div className="space-y-2">
+										<p>Platform pesanan</p>
+										<div className="flex flex-wrap gap-2">
+											{platforms.map((platform) => (
+												<Button
+													key={platform.id}
+													variant={
+														customerInfo.platform === platform.id
+															? "default"
+															: "outline"
+													}
+													className="min-h-11 text-sm"
+													aria-pressed={customerInfo.platform === platform.id}
+													onClick={() =>
+														updateCustomerInfo({
+															platform: platform.id,
+															platformCommission: platform.commissionRate,
+														})
+													}
+												>
+													{platform.name}
+												</Button>
+											))}
+										</div>
+									</div>
+								)}
+								{items.length === 0 && (
+									<p className="rounded-xl border border-dashed border-border p-6 text-center text-muted-foreground">
+										Belum ada menu. Tambahkan menu untuk mulai memesan.
+									</p>
+								)}
 								<div className="space-y-3">
 									{items.map((item) => (
-										<div key={`${item.productId}-${item.variant}`} className="group relative flex gap-3 rounded-lg border border-border bg-background p-1.5 transition-all hover:border-primary/50">
-											<div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md bg-muted">
-												{item.image && <img src={item.image} alt={item.name} className="h-full w-full object-cover" />}
-											</div>
-											<div className="flex flex-1 flex-col justify-between min-w-0">
-												<div className="flex justify-between items-start gap-1">
-													<h4 className="line-clamp-1 text-[10px] font-bold text-foreground leading-tight">{item.name}</h4>
-													{customerInfo.orderType === "online" ? (
-														<input
-															type="number"
-															value={item.price}
-															onChange={(e) => updateItemPrice(item.productId, item.variant, parseInt(e.target.value) || 0)}
-															className="w-16 text-right text-[11px] font-bold bg-transparent border-b border-dashed border-orange-300 focus:outline-none focus:border-orange-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-														/>
-													) : (
-														<p className="text-[10px] font-bold shrink-0">{fmt(item.price * item.quantity)}</p>
+										<article
+											className="space-y-2 rounded-xl border border-border p-3"
+											key={`${item.productId}-${item.variant || "default"}`}
+										>
+											<div className="flex justify-between gap-2">
+												<div className="min-w-0">
+													<p className="font-medium">{item.name}</p>
+													{item.variant && (
+														<p className="text-[13px] text-muted-foreground">
+															{item.variant}
+														</p>
 													)}
 												</div>
-												{item.variant && <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-tight truncate">{item.variant}</p>}
-										{item.platformPrice && item.platformPrice !== item.originalPrice && (
-											<p className="text-[11px] text-muted-foreground line-through">Menu: {fmt((item.originalPrice ?? item.price) * item.quantity)}</p>
-										)}
-										
-										<div className="mt-1.5 flex items-center justify-between">
-													<div className="flex items-center gap-1.5 bg-muted rounded-md p-0.5">
-														<button 
-															onClick={() => updateQuantity(item.productId, item.variant, -1)}
-															className="h-5 w-5 flex items-center justify-center rounded bg-background shadow-sm hover:bg-muted active:scale-90 transition-all"
-														>
-															{item.quantity === 1 ? <Trash2 className="h-2.5 w-2.5 text-destructive" /> : <Minus className="h-2.5 w-2.5" />}
-														</button>
-														<span className="min-w-[14px] text-center text-[10px] font-bold">{item.quantity}</span>
-														<button 
-															onClick={() => updateQuantity(item.productId, item.variant, 1)}
-															className="h-5 w-5 flex items-center justify-center rounded bg-background shadow-sm hover:bg-muted active:scale-90 transition-all"
-														>
-															<Plus className="h-2.5 w-2.5" />
-														</button>
-													</div>
-													<p className="text-[11px] text-muted-foreground font-medium">{fmt(item.price)}</p>
-												</div>
+												<span className="shrink-0 font-medium">
+													{fmt(item.price * item.quantity)}
+												</span>
 											</div>
-										</div>
+											{customerInfo.orderType === "online" && (
+												<label className="block space-y-1">
+													<span>Harga platform per item</span>
+													<Input
+														type="number"
+														inputMode="numeric"
+														min="0"
+														className="h-11"
+														value={item.platformPrice ?? item.price}
+														onChange={(e) => {
+															const price = Number(e.target.value);
+															if (Number.isFinite(price) && price >= 0)
+																updateItemPrice(
+																	item.productId,
+																	item.variant,
+																	price,
+																);
+														}}
+													/>
+												</label>
+											)}
+											<div className="flex items-center justify-end gap-3">
+												<Button
+													aria-label={`Kurangi ${item.name}${item.variant ? ` ${item.variant}` : ""}`}
+													className="h-11 w-11 px-0"
+													variant="outline"
+													onClick={() =>
+														updateQuantity(item.productId, item.variant, -1)
+													}
+												>
+													<Minus className="h-4 w-4" />
+												</Button>
+												<span
+													className="min-w-6 text-center"
+													aria-label="Jumlah"
+												>
+													{item.quantity}
+												</span>
+												<Button
+													aria-label={`Tambah ${item.name}${item.variant ? ` ${item.variant}` : ""}`}
+													className="h-11 w-11 px-0"
+													variant="outline"
+													onClick={() =>
+														updateQuantity(item.productId, item.variant, 1)
+													}
+												>
+													<Plus className="h-4 w-4" />
+												</Button>
+											</div>
+										</article>
 									))}
 								</div>
-							)}
-
-
-
-						</div>
-					)}
-
-					{/* Section 3: Ringkasan & Pembayaran */}
-					{activeStep === "payment" && (
-						<div className="space-y-4 fade-in animate-in slide-in-from-right-4 duration-300">
-							<div className="flex items-center justify-between">
-								<div className="flex items-center gap-2">
-									<CreditCard className="h-4 w-4 text-primary" />
-									<h3 className="text-xs font-bold uppercase tracking-wider">Pembayaran</h3>
+								{customerFields}
+								<label className="flex min-h-11 items-center gap-3">
+									<input
+										type="checkbox"
+										className="h-5 w-5 accent-primary"
+										checked={customerInfo.isFreeRefill}
+										onChange={(e) =>
+											updateCustomerInfo({ isFreeRefill: e.target.checked })
+										}
+									/>
+									<span>Free refill minuman (sesuai promo aktif)</span>
+								</label>
+							</>
+						) : (
+							<>
+								<div className="flex items-center justify-between gap-2">
+									<h2 className="font-bold">Pembayaran</h2>
+									<Button
+										variant="outline"
+										className="min-h-11 text-sm"
+										onClick={() => patch({ step: "order" })}
+									>
+										Ubah pesanan
+									</Button>
 								</div>
-								<Button 
-									variant="ghost" 
-									size="sm" 
-									className="h-6 px-1.5 text-[10px] text-muted-foreground font-bold"
-									onClick={() => setActiveStep("customer")}
+								<p className="text-muted-foreground">
+									Periksa total dan metode sebelum konfirmasi. Pesanan belum
+									dibayar.
+								</p>
+								<div
+									className="grid grid-cols-2 gap-2"
+									aria-label="Metode pembayaran"
 								>
-									<ChevronLeft className="mr-1 h-3 w-3" /> Edit Info
-								</Button>
-							</div>
-
-							{/* Metode Pembayaran */}
-							<div className="space-y-2">
-								<h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Pilih Metode</h3>
-								<div className="grid grid-cols-2 gap-2">
-									{paymentOptions.map((opt) => {
-										const isSelected = selectedPaymentMethod === opt.id;
-										let Icon = Wallet;
-										if (opt.id === "qris" || opt.id === "qris_mayar") Icon = QrCode;
-										if (opt.id === "transfer") Icon = Banknote;
-
-										return (
-											<button
-												key={opt.id}
-												type="button"
-												onClick={() => setSelectedPaymentMethod(opt.id)}
-												className={`flex items-center gap-2 rounded-xl border px-2 py-1.5 transition-all active:scale-95 ${
-													isSelected
-														? "border-primary bg-primary/10 text-primary shadow-sm"
-														: "border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-												}`}
-											>
-												<div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${isSelected ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}>
-													<Icon className="h-3 w-3" />
-												</div>
-												<span className="text-[11px] font-bold uppercase tracking-wider text-left leading-tight">
-													{opt.label}
-												</span>
-											</button>
-										);
-									})}
-								</div>
-							</div>
-
-							{/* --- SECTION: CASH ASSISTANT --- */}
-							{selectedPaymentMethod === "tunai" && (
-								<div className="space-y-2 rounded-xl bg-muted/30 border border-border p-2.5">
-									<div className="flex items-center gap-2 mb-1">
-										<Calculator className="h-3.5 w-3.5 text-primary" />
-										<h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Kalkulator Tunai</h3>
-									</div>
-									<div className="space-y-2">
-										<div className="space-y-1">
-											<label className="block font-bold text-muted-foreground text-[10px] uppercase tracking-widest ml-1">
-												Uang Diterima (Rp)
-											</label>
-											<div className="relative">
-												<span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-xs">
-													Rp
-												</span>
-												<input
-													className="w-full rounded-lg border-2 border-border bg-background py-1.5 pl-7 pr-2 text-xs font-black text-foreground outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/5"
-													onChange={(e) => {
-														const val = e.target.value.replace(/\D/g, "");
-														setCashReceived(val === "" ? "" : parseInt(val));
-													}}
-													placeholder="0"
-													type="text"
-													value={cashReceived === "" ? "" : new Intl.NumberFormat("id-ID").format(cashReceived)}
-												/>
-											</div>
-										</div>
-										<div className="grid grid-cols-3 gap-1.5">
-											{[50000, 100000].map(amount => (
-												<button
-													key={amount}
-													type="button"
-													onClick={() => handleQuickCash(amount)}
-													className="rounded-lg border border-border bg-background py-1.5 text-[11px] font-bold transition-all hover:border-primary hover:text-primary active:scale-95 shadow-sm"
-												>
-													{amount / 1000}K
-												</button>
-											))}
-											<button
-												type="button"
-												onClick={() => handleQuickCash(finalTotal)}
-												className="rounded-lg border border-primary bg-primary/10 py-1.5 text-[11px] font-bold text-primary transition-all hover:bg-primary/20 active:scale-95 shadow-sm"
-											>
-												PAS
-											</button>
-										</div>
-									</div>
-
-									{cashReceived !== "" && (
-										<div className="mt-2 flex items-center justify-between border-t border-dashed border-border pt-2 text-emerald-600">
-											<span className="font-bold text-[11px] uppercase tracking-widest">Kembalian</span>
-											<span className="font-black text-base tracking-tighter">
-												{fmt(changeAmount)}
-											</span>
-										</div>
-									)}
-								</div>
-							)}
-
-							{/* Voucher & Auto Complete */}
-							<div className="space-y-2">
-								{/* Discount Dropdown */}
-								{validDiscounts.length > 0 && (
-									<div className="relative">
-										<label
-											className="mb-1 block font-bold text-muted-foreground text-[10px] uppercase tracking-widest ml-1"
-											htmlFor="discount-select"
+									{paymentOptions.map((option) => (
+										<Button
+											variant={
+												draft.paymentMethod === option.id
+													? "default"
+													: "outline"
+											}
+											key={option.id}
+											className="min-h-11 whitespace-normal text-sm"
+											aria-pressed={draft.paymentMethod === option.id}
+											onClick={() => patch({ paymentMethod: option.id })}
 										>
-											Voucher / Diskon
+											{option.label}
+										</Button>
+									))}
+								</div>
+								{paymentOptions.length === 0 && (
+									<p role="alert" className="text-destructive">
+										Tidak ada metode pembayaran aktif. Hubungi admin.
+									</p>
+								)}
+								{draft.paymentMethod === "tunai" && (
+									<div className="space-y-3 rounded-xl border border-border p-3">
+										<label className="block space-y-1">
+											<span>Uang diterima (wajib)</span>
+											<Input
+												type="number"
+												min="0"
+												inputMode="numeric"
+												className="h-11 text-base"
+												placeholder="Masukkan nominal"
+												value={draft.cashReceived}
+												aria-describedby="checkout-payment-help"
+												aria-invalid={
+													draft.cashReceived !== "" &&
+													draft.cashReceived < total
+												}
+												onChange={(e) =>
+													patch({
+														cashReceived:
+															e.target.value === ""
+																? ""
+																: Number(e.target.value),
+													})
+												}
+											/>
 										</label>
+										<div className="grid grid-cols-3 gap-2">
+											{[50000, 100000].map((amount) => (
+												<Button
+													key={amount}
+													variant="outline"
+													className="min-h-11 px-1 text-sm"
+													onClick={() => patch({ cashReceived: amount })}
+												>
+													{fmt(amount)}
+												</Button>
+											))}
+											<Button
+												variant="secondary"
+												className="min-h-11 px-1 text-sm"
+												onClick={() => patch({ cashReceived: total })}
+											>
+												Uang pas
+											</Button>
+										</div>
+										<p className="flex justify-between">
+											<span>Kembalian</span>
+											<strong>{fmt(change)}</strong>
+										</p>
+									</div>
+								)}
+								{draft.paymentMethod === "qris_mayar" && (
+									<div className="space-y-3 rounded-xl border border-border p-3">
+										<p className="font-medium">
+											QRIS dinamis memerlukan koneksi internet. Nama, email dan
+											telepon wajib diisi sebelum membuat pembayaran.
+										</p>
+										<label className="block space-y-1">
+											<span>Nama pelanggan (wajib)</span>
+											<Input
+												className="h-11"
+												required
+												value={customerInfo.name}
+												autoComplete="name"
+												onChange={(e) =>
+													updateCustomerInfo({ name: e.target.value })
+												}
+											/>
+										</label>
+										<label className="block space-y-1">
+											<span>Email (wajib)</span>
+											<Input
+												className="h-11"
+												type="email"
+												inputMode="email"
+												required
+												value={customerInfo.email || ""}
+												autoComplete="email"
+												onChange={(e) =>
+													updateCustomerInfo({ email: e.target.value })
+												}
+											/>
+										</label>
+										<label className="block space-y-1">
+											<span>Telepon (wajib)</span>
+											<Input
+												className="h-11"
+												type="tel"
+												inputMode="tel"
+												required
+												value={customerInfo.phone || ""}
+												autoComplete="tel"
+												onChange={(e) =>
+													updateCustomerInfo({ phone: e.target.value })
+												}
+											/>
+										</label>
+									</div>
+								)}
+								{draft.paymentMethod === "qris" && (
+									<p className="text-muted-foreground">
+										Pastikan pembayaran QRIS statis sudah diterima sebelum
+										konfirmasi.
+									</p>
+								)}
+								{draft.paymentMethod === "transfer" && (
+									<p className="text-muted-foreground">
+										Pastikan transfer bank sudah diterima sebelum konfirmasi.
+									</p>
+								)}
+								{(validDiscounts.length > 0 || appliedVoucher) && (
+									<label className="block space-y-1">
+										<span>Voucher / diskon</span>
 										<select
-											className="w-full appearance-none rounded-lg border border-border bg-background py-1 pr-7 pl-2 font-bold text-foreground text-[11px] outline-none transition-all focus:border-primary/50 focus:ring-4 focus:ring-primary/5"
-											id="discount-select"
-											onChange={(e) => setSelectedDiscountId(e.target.value)}
-											value={selectedDiscountId || ""}
+											className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm"
+											value={appliedVoucher?._id || ""}
+											onChange={(e) => {
+												const voucher = validDiscounts.find(
+													(d) => d._id === e.target.value,
+												);
+												applyVoucher(
+													voucher
+														? {
+																_id: voucher._id,
+																name: voucher.name,
+																type: voucher.type,
+																value: voucher.value,
+																targetType: voucher.targetType,
+																targetIds: voucher.targetIds,
+															}
+														: null,
+												);
+											}}
 										>
-											<option value="">TANPA VOUCHER</option>
-											{validDiscounts.map((d: Doc<"discounts">) => (
-												<option key={String(d._id)} value={String(d._id)}>
-													{d.name.toUpperCase()} (
-													{d.type === "PERCENTAGE"
-														? `${d.value}%`
-														: `RP ${d.value}`}
-													)
+											<option value="">Tanpa voucher</option>
+											{appliedVoucher &&
+												!validDiscounts.some(
+													(d) => d._id === appliedVoucher._id,
+												) && (
+													<option value={appliedVoucher._id}>
+														{appliedVoucher.name}
+													</option>
+												)}
+											{validDiscounts.map((d) => (
+												<option key={d._id} value={d._id}>
+													{d.name}
 												</option>
 											))}
 										</select>
-										<Tag className="pointer-events-none absolute bottom-2 right-2.5 h-3 w-3 text-muted-foreground/40" />
-									</div>
+									</label>
 								)}
-
-								{/* Auto Complete Toggle */}
-								<div className="flex items-center justify-between p-1.5 rounded-lg border border-border bg-background">
-									<div className="flex items-center gap-2">
-										<div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10 text-primary">
-											<Zap className="h-3 w-3" />
-										</div>
-										<div className="space-y-0">
-											<div className="flex items-center gap-1">
-												<span className="block font-bold text-foreground text-[11px] uppercase tracking-widest">Otomatis Selesai</span>
-											</div>
-											<p className="text-[7px] text-muted-foreground font-medium leading-none mt-0.5">Status order langsung selesai</p>
-										</div>
-									</div>
-									<button
-										className={`relative h-4 w-8 rounded-full transition-all duration-300 ${autoComplete ? "bg-primary shadow-sm shadow-primary/20" : "bg-muted-foreground/20"}`}
-										onClick={() => setAutoComplete(!autoComplete)}
-										type="button"
-									>
-										<div className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition-all duration-300 ${autoComplete ? "right-0.5" : "left-0.5"}`} />
-									</button>
-								</div>
-							</div>
-						</div>
-					)}
-
-					{/* Section 4: Struk */}
-					{activeStep === "receipt" && (
-						<div className="space-y-3 animate-in slide-in-from-bottom-6 duration-500">
-							<div className="flex items-center justify-between"><div className="flex items-center gap-2"><Printer className="h-4 w-4 text-primary" /><h3 className="text-xs font-bold uppercase tracking-wider">Struk</h3></div><span className="text-[10px] font-bold text-emerald-600">Siap ditinjau</span></div>
-							<ReceiptPrinterAnimation orderReference={receiptReference} total={finalTotal} paymentLabel={selectedPaymentMethod === "tunai" ? "Tunai" : selectedPaymentMethod ? "QRIS" : "Pilih metode"} statusLabel="Struk siap ditinjau">
-							<div className="mx-auto max-w-sm px-1 text-slate-800"><div className="text-center"><p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">DJIWA TENTRAM</p><p className="mt-1 text-[10px] text-slate-500">REVIEW STRUK</p></div><div className="my-3 border-t border-dashed border-slate-300" />{items.slice(0, 8).map((item) => <div key={`${item.productId}-${item.variant || "default"}`} className="flex justify-between gap-2 text-[10px]"><span className="min-w-0 truncate">{item.quantity}× {item.name}</span><span className="shrink-0">{fmt(item.price * item.quantity)}</span></div>)}<div className="my-3 border-t border-dashed border-slate-300" /><div className="space-y-1 text-[10px]"><div className="flex justify-between"><span>Subtotal</span><span>{fmt(grossAmount)}</span></div>{promoDiscountAmount > 0 && <div className="flex justify-between text-emerald-700"><span>Promo</span><span>-{fmt(promoDiscountAmount)}</span></div>}{voucherDiscountAmount > 0 && <div className="flex justify-between text-emerald-700"><span>Voucher</span><span>-{fmt(voucherDiscountAmount)}</span></div>}{taxEnabled && <><div className="flex justify-between"><span>Dasar pajak</span><span>{fmt(Math.max(0, totalAmount - voucherDiscountAmount))}</span></div><div className="flex justify-between"><span>PBJT ({taxRate}%)</span><span>{selectedPaymentMethod ? fmt(taxAmount) : "Pilih metode"}</span></div></>}{!taxEnabled && <p className="text-[10px] leading-relaxed text-muted-foreground">Harga menu sudah termasuk PBJT atas makanan dan/atau minuman sesuai ketentuan yang berlaku di Kota Tasikmalaya.</p>}<div className="flex justify-between"><span>Service charge ({serviceChargeRate}%)</span><span>{selectedPaymentMethod ? fmt(serviceChargeAmount) : "Pilih metode"}</span></div>{selectedTaxCalculation && selectedTaxCalculation.roundingAdjustment !== 0 && <div className="flex justify-between"><span>Pembulatan</span><span>{fmt(selectedTaxCalculation.roundingAdjustment)}</span></div>}<div className="flex justify-between border-t border-slate-200 pt-2 text-sm font-black text-primary"><span>TOTAL</span><span>{fmt(finalTotal)}</span></div></div><div className="mt-3 border-t border-dashed border-slate-300 pt-2 text-[10px]"><div className="flex justify-between"><span>Metode</span><span>{selectedPaymentMethod === "tunai" ? "Tunai" : selectedPaymentMethod ? "QRIS" : "-"}</span></div><div className="flex justify-between"><span>Nama</span><span>{receiptCustomer.name || "-"}</span></div><div className="flex justify-between"><span>Meja</span><span>{receiptCustomer.tableNumber || "-"}</span></div><div className="flex justify-between"><span>Tipe</span><span>{receiptCustomer.orderType === "takeaway" ? "Takeaway" : "Dine In"}</span></div><div className="flex justify-between"><span>Kasir</span><span>{shiftStatus?.shiftInfo?.cashierName || "Kasir"}</span></div><div className="flex justify-between"><span>Catatan</span><span className="max-w-[65%] truncate">{receiptCustomer.notes || "-"}</span></div></div><div className="mt-3 border-t border-dashed border-slate-300 pt-2 text-center text-[10px] tracking-[0.2em]">{receiptReference}</div></div>
-							</ReceiptPrinterAnimation>
-						</div>
-					)}
-
-					{/* Section 5: Assign Produksi */}
-					{activeStep === "assign" && (
-						<div className="space-y-3 fade-in animate-in slide-in-from-right-4 duration-300">
-							<div className="flex items-center justify-between">
-								<div className="flex items-center gap-2">
-									<User className="h-4 w-4 text-primary" />
-									<h3 className="text-xs font-bold uppercase tracking-wider">Assign Produksi</h3>
-								</div>
-								<Button
-									variant="ghost"
-									size="sm"
-									className="h-6 px-1.5 text-[10px] text-muted-foreground font-bold"
-									onClick={() => setActiveStep("payment")}
-								>
-									<ChevronLeft className="mr-1 h-3 w-3" /> Kembali
-								</Button>
-							</div>
-
-							{groupAssignments.map((group) => (
-								<div key={group.groupType} className="rounded-xl border border-border/60 bg-white p-2.5 space-y-2 shadow-sm">
-									<div className="flex items-center justify-between">
-										<div className="flex items-center gap-1.5">
-											{group.groupType === "barista" ? <Coffee className="h-3.5 w-3.5 text-amber-600" /> : <ChefHat className="h-3.5 w-3.5 text-orange-600" />}
-											<span className="text-[10px] font-black uppercase tracking-wider">
-												{group.groupType === "barista" ? "Barista" : "Kitchen"} ({group.items.length} item)
-											</span>
-										</div>
-										<select
-											value={group.assignedTo}
-											onChange={(e) => {
-												const newVal = e.target.value;
-												setGroupAssignments(prev => prev.map(g =>
-													g.groupType === group.groupType
-														? { ...g, assignedTo: newVal, items: g.items.map(item => ({ ...item, assignedTo: newVal })) }
-														: g
-												));
-											}}
-											className="rounded-lg border border-border/60 px-2 py-1 text-[10px] font-bold bg-background"
-										>
-											<option value="">Tidak ditugaskan</option>
-											{filteredStaffByGroup[group.groupType].length > 0 && (
-												filteredStaffByGroup[group.groupType].map(name => (
-													<option key={name} value={name}>{name}</option>
-												))
-											)}
-										</select>
-									</div>
-
-									<div className="space-y-1">
-										{group.items.map((item, idx) => (
-											<div key={idx} className="flex items-center justify-between text-[11px] py-0.5">
-												<div className="flex-1 min-w-0 flex items-center gap-1">
-													<span className="truncate">{item.productName}</span>
-													{item.variant && <span className="text-[11px] text-muted-foreground/60 truncate">({item.variant})</span>}
-													<span className="text-muted-foreground shrink-0">x{item.quantity}</span>
-												</div>
+								<label className="flex min-h-11 items-center gap-3">
+									<input
+										className="h-5 w-5 accent-primary"
+										type="checkbox"
+										checked={draft.autoComplete}
+										onChange={(e) => patch({ autoComplete: e.target.checked })}
+									/>
+									<span>Otomatis selesaikan pesanan</span>
+								</label>
+								<details className="rounded-xl border border-border p-3">
+									<summary className="flex min-h-11 cursor-pointer items-center font-medium">
+										Atur tim (opsional)
+									</summary>
+									<p className="mb-3 text-muted-foreground">
+										Pesanan dapat dikirim tanpa penugasan khusus.
+									</p>
+									{assignments.map((group) => (
+										<div key={group.groupType} className="mb-4 space-y-2">
+											<label className="block space-y-1">
+												<span>
+													{group.groupType === "barista" ? "Barista" : "Dapur"}
+												</span>
 												<select
-													value={item.assignedTo}
-													onChange={(e) => {
-														const newStaff = e.target.value;
-														setGroupAssignments(prev => prev.map(g =>
-															g.groupType === group.groupType
-																? { ...g, items: g.items.map((it, i) => i === idx ? { ...it, assignedTo: newStaff } : it) }
-																: g
-														));
-													}}
-													className="rounded border border-border/40 px-1.5 py-0.5 text-[11px] font-medium bg-background"
+													className="h-11 w-full rounded-lg border border-border bg-background px-2"
+													value={group.assignedTo}
+													onChange={(e) =>
+														patch({
+															assignments: assignments.map((g) =>
+																g.groupType === group.groupType
+																	? {
+																			...g,
+																			assignedTo: e.target.value,
+																			items: g.items.map((i) => ({
+																				...i,
+																				assignedTo: e.target.value,
+																			})),
+																		}
+																	: g,
+															),
+														})
+													}
 												>
-													<option value="">Tidak ditugaskan</option>
-													{filteredStaffByGroup[group.groupType].length > 0 && (
-														filteredStaffByGroup[group.groupType].map(name => (
-															<option key={name} value={name}>{name}</option>
-														))
-													)}
+													<option value="">Tanpa penugasan khusus</option>
+													{[
+														...new Set(
+															[
+																...staffByGroup[group.groupType],
+																group.assignedTo,
+															].filter(Boolean),
+														),
+													].map((name) => (
+														<option key={name}>{name}</option>
+													))}
 												</select>
-											</div>
-										))}
-									</div>
-								</div>
-							))}
-						</div>
-					)}
-				</div>
-			</ScrollArea>
-
-			<div className="border-t border-border bg-card p-2.5 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
-				{activeStep === "customer" && (
-					<div className="grid gap-2">
-						<Button
-							onClick={() => setActiveStep("menu")}
-							className="h-10 w-full text-xs font-bold bg-background text-foreground hover:bg-muted"
-							variant="outline"
-						>
-							<ChevronLeft className="mr-2 h-4 w-4" /> Kembali
-						</Button>
-						<Button
-							onClick={() => {
-								updateCustomerInfo({ isSubmitted: true });
-								if (!isShiftOpen) {
-									toast.error("Buka shift terlebih dahulu di Dashboard");
-									return;
-								}
-								setActiveStep("payment");
-							}}
-							disabled={items.length === 0 || !isShiftOpen}
-							className="h-10 w-full text-xs font-bold shadow-md"
-						>
-							Lanjut Bayar <ChevronRight className="ml-2 h-4 w-4" />
-						</Button>
-					</div>
-				)}
-
-				{activeStep === "menu" && (
-					<div className="grid gap-2">
-						<div className="flex gap-2">
-							{canPrintOpenBill && onPrintOpenBill && (
-								<Button
-									onClick={onPrintOpenBill}
-									disabled={items.length === 0}
-									className="h-10 w-10 shrink-0 px-0"
-									title="Cetak Open Bill"
-									variant="outline"
-								>
-									<Printer className="h-4 w-4" />
-								</Button>
-							)}
-							<Button
-								onClick={() => setActiveStep("customer")}
-								className="h-11 flex-1 text-xs font-bold bg-background text-foreground hover:bg-muted"
-								variant="outline"
-							>
-								Kembali
-							</Button>
-						</div>
-						<div className="grid grid-cols-2 gap-2">
-							<Button
-								onClick={handleSaveOrderQuick}
-								disabled={items.length === 0 || isSubmitting || !isShiftOpen}
-								className="h-11 min-w-0 px-3 text-[11px] sm:text-xs font-bold bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm"
-								variant="secondary"
-							>
-								<span className="truncate">
-									{isSubmitting ? "Menyimpan..." : "Simpan Pesanan"}
-								</span>
-							</Button>
-							<Button
-								onClick={() => {
-									setActiveStep("customer");
-								}}
-								disabled={items.length === 0}
-								className="h-11 min-w-0 px-3 text-[11px] sm:text-xs font-bold shadow-md"
-							>
-								<span className="truncate">Lanjut Info</span>
-								<ChevronRight className="ml-1 h-4 w-4 shrink-0" />
-							</Button>
-						</div>
-					</div>
-				)}
-
-				{activeStep === "payment" && (
-					<Button
-						onClick={handleConfirmPayment}
-						disabled={items.length === 0 || isSubmitting || !selectedPaymentMethod || (selectedPaymentMethod === "tunai" && typeof cashReceived === "number" && cashReceived < finalTotal)}
-						className="w-full h-10 text-xs font-black uppercase tracking-widest shadow-lg active:scale-[0.98] transition-all"
-						size="lg"
-					>
-						{isSubmitting ? (
-							<ShimmerSkeleton className="h-4 w-20 bg-white/20" />
-						) : (
-							"Lanjut Struk"
+											</label>
+											{group.items.map((item, index) => (
+												<label
+													className="block space-y-1"
+													key={`${item.productId}-${item.variant}`}
+												>
+													<span>
+														{item.quantity}× {item.productName}
+														{item.variant ? ` (${item.variant})` : ""}
+													</span>
+													<select
+														className="h-11 w-full rounded-lg border border-border bg-background px-2"
+														value={item.assignedTo}
+														onChange={(e) =>
+															patch({
+																assignments: assignments.map((g) =>
+																	g.groupType === group.groupType
+																		? {
+																				...g,
+																				items: g.items.map((i, n) =>
+																					n === index
+																						? {
+																								...i,
+																								assignedTo: e.target.value,
+																							}
+																						: i,
+																				),
+																			}
+																		: g,
+																),
+															})
+														}
+													>
+														<option value="">Tanpa penugasan khusus</option>
+														{[
+															...new Set(
+																[
+																	...staffByGroup[group.groupType],
+																	item.assignedTo,
+																].filter(Boolean),
+															),
+														].map((name) => (
+															<option key={name}>{name}</option>
+														))}
+													</select>
+												</label>
+											))}
+										</div>
+									))}
+								</details>
+							</>
 						)}
-					</Button>
-				)}
-
-				{activeStep === "receipt" && (
-					<div className="space-y-2"><div className="grid grid-cols-4 gap-2"><Button type="button" variant="outline" onClick={handleConnectPrinter} className={cn("h-9 px-1 text-[10px] font-bold", printerConnected ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100" : "border-red-200 bg-red-50 text-red-700 hover:bg-red-100")}><Bluetooth className="mr-1 h-3 w-3" />{printerConnected ? "Terhubung" : "Connect"}</Button><Button type="button" variant="outline" disabled={!lastOrderId || !onPrintLastOrder} onClick={onPrintLastOrder} className="h-9 px-1 text-[10px] font-bold"><Printer className="mr-1 h-3 w-3" />Lunas</Button><Button type="button" variant="outline" disabled={!lastOrderId || !onPrintOpenBill || !canPrintOpenBill} onClick={onPrintOpenBill} className="h-9 px-1 text-[10px] font-bold"><Printer className="mr-1 h-3 w-3" />Open Bill</Button><Button type="button" variant="outline" disabled={!lastOrderId || !onPrintKitchen} onClick={onPrintKitchen} className="h-9 px-1 text-[10px] font-bold"><Printer className="mr-1 h-3 w-3" />Kitchen</Button></div><div className="grid grid-cols-2 gap-2"><Button type="button" variant="outline" onClick={() => setActiveStep("payment")} className="h-10 text-xs font-bold"><ChevronLeft className="mr-1 h-4 w-4" />Kembali Bayar</Button><Button type="button" onClick={() => setActiveStep("assign")} className="h-10 text-xs font-black">Konfirmasi & Tim<ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>
-				)}
-
-				{activeStep === "assign" && (
-					<div className="grid grid-cols-2 gap-2"><Button type="button" variant="outline" onClick={() => setActiveStep("receipt")} className="h-10 text-xs font-bold"><ChevronLeft className="mr-1 h-4 w-4" />Kembali Struk</Button><Button onClick={handleSubmitAssignment} disabled={items.length === 0 || isSubmitting} className="h-10 text-xs font-black uppercase tracking-widest shadow-lg active:scale-[0.98] transition-all" size="lg">
-						{isSubmitting ? <ShimmerSkeleton className="h-4 w-20 bg-white/20" /> : "Kirim ke Produksi"}
-					</Button></div>
+						<dl className="space-y-2 rounded-xl bg-muted/40 p-3 text-[13px]">
+							<div className="flex justify-between">
+								<dt>Subtotal</dt>
+								<dd>{fmt(grossAmount)}</dd>
+							</div>
+							{promoDiscountAmount > 0 && (
+								<div className="flex justify-between">
+									<dt>Promo</dt>
+									<dd>−{fmt(promoDiscountAmount)}</dd>
+								</div>
+							)}
+							{voucherDiscountAmount > 0 && (
+								<div className="flex justify-between">
+									<dt>Voucher</dt>
+									<dd>−{fmt(voucherDiscountAmount)}</dd>
+								</div>
+							)}
+							{siteSettings?.taxEnabled ? (
+								<>
+									<div className="flex justify-between">
+										<dt>Dasar pajak</dt>
+										<dd>
+											{fmt(Math.max(0, totalAmount - voucherDiscountAmount))}
+										</dd>
+									</div>
+									<div className="flex justify-between">
+										<dt>PBJT ({tax.taxRate}%)</dt>
+										<dd>{fmt(tax.taxAmount)}</dd>
+									</div>
+								</>
+							) : (
+								<div>
+									<dt className="sr-only">Pajak</dt>
+									<dd className="text-muted-foreground">
+										Harga menu sudah termasuk PBJT atas makanan dan/atau minuman
+										sesuai ketentuan yang berlaku di Kota Tasikmalaya.
+									</dd>
+								</div>
+							)}
+							{tax.serviceChargeAmount > 0 && (
+								<div className="flex justify-between">
+									<dt>Service charge ({tax.serviceChargeRate}%)</dt>
+									<dd>{fmt(tax.serviceChargeAmount)}</dd>
+								</div>
+							)}
+							{tax.roundingAdjustment !== 0 && (
+								<div className="flex justify-between">
+									<dt>Pembulatan</dt>
+									<dd>{fmt(tax.roundingAdjustment)}</dd>
+								</div>
+							)}
+							<div className="flex justify-between border-t border-border pt-2 text-base font-bold">
+								<dt>Total</dt>
+								<dd>{fmt(total)}</dd>
+							</div>
+							{customerInfo.orderType === "online" && (
+								<>
+									<div className="flex justify-between">
+										<dt>Total platform</dt>
+										<dd>{fmt(platformTotal)}</dd>
+									</div>
+									<div className="flex justify-between">
+										<dt>Komisi</dt>
+										<dd>{fmt(commissionAmount)}</dd>
+									</div>
+									<div className="flex justify-between">
+										<dt>Pendapatan bersih</dt>
+										<dd>{fmt(netRevenue)}</dd>
+									</div>
+								</>
+							)}
+						</dl>
+						</fieldset>
+					</div>
 				)}
 			</div>
-
+			{result ? (
+				<footer className="shrink-0 border-t border-border bg-background p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+					<Button
+						className="min-h-11 w-full text-sm"
+						onClick={() => {
+							clearCart();
+							setSubmitError(null);
+						}}
+					>
+						Pesanan baru
+					</Button>
+				</footer>
+			) : hasPendingPayment ? (
+				<footer className="shrink-0 space-y-2 border-t border-border bg-background p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+					{submitError && <p className="text-[13px] text-destructive" role="alert">{submitError}</p>}
+					<p className="text-center text-[13px] text-muted-foreground">Pulihkan pesanan awal untuk melanjutkan. Draft saat ini dikunci.</p>
+				</footer>
+			) : (
+				<footer className="shrink-0 space-y-2 border-t border-border bg-background p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+					{submitError && (
+						<p className="text-[13px] text-destructive" role="alert">
+							{submitError}
+						</p>
+					)}
+					{activeStep === "payment" ? (
+						<>
+							<p
+								id="checkout-payment-help"
+								className={cn(
+									"text-[13px]",
+									validation || paymentUnavailable
+										? "text-destructive"
+										: "text-muted-foreground",
+								)}
+								aria-live="polite"
+							>
+								{paymentUnavailable
+									? "Metode tersimpan tidak tersedia. Pilih metode lain."
+									: validation ||
+										"Periksa nominal sebelum mengonfirmasi pembayaran."}
+							</p>
+							<Button
+								className="min-h-11 w-full text-sm"
+								disabled={
+									busy ||
+									Boolean(validation) ||
+									paymentUnavailable ||
+									!onConfirmPayment
+								}
+								onClick={() => void submit()}
+							>
+								{busy
+									? "Memproses…"
+									: draft.paymentMethod === "qris_mayar"
+										? `Buat pembayaran · ${fmt(total)}`
+										: `Konfirmasi pembayaran · ${fmt(total)}`}
+							</Button>
+						</>
+					) : (
+						<>
+							{!isShiftOpen && (
+								<p className="text-[13px] text-destructive">
+									Buka shift terlebih dahulu di menu Shift untuk menyimpan atau
+									membayar.
+								</p>
+							)}
+							<Button
+								className="min-h-11 w-full text-sm"
+								disabled={!items.length || busy}
+								onClick={() => patch({ step: "payment" })}
+							>
+								Lanjut pembayaran · {fmt(total)}
+							</Button>
+							<div className="flex gap-2">
+								<Button
+									variant="secondary"
+									className="min-h-11 flex-1 text-sm"
+									disabled={
+										!items.length || busy || !isShiftOpen || !onConfirmPayment
+									}
+									onClick={() => void submit(true)}
+								>
+									{busy ? "Menyimpan…" : "Simpan pesanan"}
+								</Button>
+								{canPrintOpenBill && onPrintOpenBill && (
+									<Button
+										variant="outline"
+										className="min-h-11 flex-1 text-sm"
+										disabled={!items.length || busy}
+										onClick={onPrintOpenBill}
+									>
+										Cetak open bill
+									</Button>
+								)}
+							</div>
+						</>
+					)}
+				</footer>
+			)}
 			<CustomerSearchModal
 				open={customerSearchOpen}
 				onOpenChange={setCustomerSearchOpen}
-				onSelect={(customer) => {
-					updateCustomerInfo({ name: customer.name, email: customer.email || "", phone: customer.phone || "", customer_source_id: customer.source_id });
-				}}
+				onSelect={(customer) =>
+					updateCustomerInfo({
+						name: customer.name,
+						email: customer.email || "",
+						phone: customer.phone || "",
+						customer_source_id: customer.source_id,
+					})
+				}
 			/>
 		</div>
 	);
