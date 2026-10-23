@@ -13,6 +13,15 @@ export async function readWallet(_profile: { source_id: string }): Promise<Walle
 }
 
 export type PpobProduct = { product_code: string; product_description: string; product_nominal: string; product_details?: string; product_price: number; product_type: string; status: string; icon_url?: string };
+export function ppobProductName(product: Pick<PpobProduct, "product_nominal" | "product_description" | "product_code">): string {
+  const nominal = String(product.product_nominal ?? "").trim();
+  if (nominal) {
+    const numericNominal = Number(nominal);
+    if (Number.isFinite(numericNominal)) return `Paket ${numericNominal.toLocaleString("id-ID")}`;
+    return nominal;
+  }
+  return product.product_description.trim() || product.product_code;
+}
 export async function readPpobCatalog(): Promise<PpobProduct[]> {
   const response = await fetch("https://api.djiwatentram.web.id/api/ppob/iak/", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "price-list" }) });
   if (!response.ok) throw new Error("Katalog PPOB tidak dapat dimuat");
