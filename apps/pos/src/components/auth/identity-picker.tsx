@@ -74,6 +74,9 @@ export function IdentityPicker({
 	};
 
 	const searching = query.trim().length > 0;
+	// The initial screen stays quiet: recent accounts are available as quick
+	// chips, while the full roster is only rendered after an explicit search.
+	const visibleUsers = searching ? filtered : [];
 	const avatarTone = ACCENT_AVATAR[accent];
 
 	return (
@@ -105,11 +108,12 @@ export function IdentityPicker({
 				<>
 					<div className="mt-6 flex items-baseline justify-between">
 						<h2 className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-							Terakhir dipakai
+							Pilih cepat
 						</h2>
+						<span className="text-xs text-muted-foreground">Akun terakhir dipakai</span>
 					</div>
 					<div className="mt-2.5 flex flex-wrap gap-2">
-						{recentUsers.map((user) => (
+						{recentUsers.slice(0, 4).map((user) => (
 							<button
 								key={user._id}
 								type="button"
@@ -130,10 +134,10 @@ export function IdentityPicker({
 
 			<div className="mt-6 flex items-baseline justify-between gap-3">
 				<h2 className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-					{searching ? "Hasil pencarian" : `Semua ${noun}`}
+					{searching ? "Hasil pencarian" : "Cari akun untuk melanjutkan"}
 				</h2>
 				<span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-					{searching ? `${filtered.length} dari ${users.length}` : `${users.length} ${noun}`}
+					{searching ? `${filtered.length} hasil` : "Nama atau username"}
 				</span>
 			</div>
 
@@ -186,7 +190,7 @@ export function IdentityPicker({
 							Muat ulang
 						</button>
 					</div>
-				) : filtered.length === 0 ? (
+				) : searching && filtered.length === 0 ? (
 					<div className="rounded-[18px] border border-border bg-card px-6 py-10 text-center">
 						<div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
 							<Search className="h-5 w-5" aria-hidden="true" />
@@ -203,11 +207,23 @@ export function IdentityPicker({
 							Hapus pencarian
 						</button>
 					</div>
+				) : !searching ? (
+					recentUsers.length > 0 ? null : (
+						<div className="rounded-[18px] border border-dashed border-border bg-card px-6 py-10 text-center">
+							<div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+								<Search className="h-5 w-5" aria-hidden="true" />
+							</div>
+							<h3 className="text-[15px] font-bold tracking-tight">Cari nama kasir</h3>
+							<p className="mx-auto mt-2 max-w-xs text-[13px] leading-relaxed text-muted-foreground">
+								Ketik nama atau username di kolom pencarian untuk menemukan akun yang akan dipakai.
+							</p>
+						</div>
+					)
 				) : (
 					<>
 						{/* phone: rows. A list is the fastest thing to read on a narrow screen. */}
 						<div className="overflow-hidden rounded-[18px] border border-border bg-card shadow-sm md:hidden">
-							{filtered.map((user, index) => (
+							{visibleUsers.map((user, index) => (
 								<button
 									key={user._id}
 									type="button"
@@ -235,7 +251,7 @@ export function IdentityPicker({
 						{/* terminal: name cards. Fewer pixels per decision, and a bigger target
 						    for a finger that is holding something else. */}
 						<div className="hidden gap-3.5 md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-							{filtered.map((user) => (
+							{visibleUsers.map((user) => (
 								<button
 									key={user._id}
 									type="button"
@@ -263,7 +279,9 @@ export function IdentityPicker({
 			{!isLoading && !error && users.length > 0 ? (
 				<p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/70">
 					<Users className="h-3 w-3" aria-hidden="true" />
-					{noun === "karyawan" ? "Pilih nama kamu, lalu masukkan 6 digit PIN." : "Pilih akun, lalu masukkan 6 digit PIN."}
+					{searching
+						? "Pilih hasil yang sesuai, lalu masukkan 6 digit PIN."
+						: "Cari akun lain dengan nama atau username."}
 				</p>
 			) : null}
 		</div>
