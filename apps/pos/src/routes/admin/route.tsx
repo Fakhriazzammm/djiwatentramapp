@@ -56,6 +56,7 @@ import {
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { APP_VERSION } from "@/lib/version";
+import { canAccessAdminRoute, HR_DESTINATIONS } from "@/lib/route-metadata";
 import { Footer } from "@/components/layout/Footer";
 
 export const Route = createFileRoute("/admin")({
@@ -104,8 +105,8 @@ const PAGE_TITLES: Record<string, string> = {
 
 // Bottom nav items (Djiwa Tentram AI at center index 2)
 const BOTTOM_NAV_ITEMS = [
-	{ to: "/admin", icon: LayoutDashboard, label: "Dasbor", exact: true, permission: "analytics:view" },
-	{ to: "/admin/orders", icon: ClipboardList, label: "Pesanan", permission: "orders:view" },
+	{ to: "/admin", icon: LayoutDashboard, label: "Dasbor", exact: true },
+	{ to: "/admin/orders", icon: ClipboardList, label: "Pesanan" },
 	{
 		to: "/admin/ai-chat",
 		icon: Sparkles,
@@ -113,12 +114,13 @@ const BOTTOM_NAV_ITEMS = [
 		exact: true,
 		isCenter: true,
 	},
-	{ to: "/admin/finance", icon: Wallet, label: "Keuangan", permission: "finance:view" },
+	{ to: "/admin/finance", icon: Wallet, label: "Keuangan" },
 	{ to: "", icon: MoreHorizontal, label: "Lainnya", isMore: true },
 ];
 
 // Pages that belong to "Lainnya" menu
 const MORE_MENU_PATHS = [
+	...HR_DESTINATIONS.map((item) => item.to),
 	"/admin/products",
 	"/admin/recipe",
 	"/admin/recipe/hpp",
@@ -145,28 +147,29 @@ const MORE_MENU_PATHS = [
 
 // Quick menu items grouped by section (accessible from bottom sheet)
 const QUICK_MENU_SECTIONS = [
+	{ label: "Tim & SDM", items: HR_DESTINATIONS.map((item) => ({ ...item, icon: Users })) },
 	{
 		label: "Manajemen",
 		items: [
-			{ to: "/admin/products", icon: Package, label: "Produk", permission: "products:manage" },
-			{ to: "/admin/recipe", icon: BookOpen, label: "Resep", permission: "inventory:manage" },
-			{ to: "/admin/recipe/hpp", icon: Calculator, label: "HPP", permission: "inventory:manage" },
-			{ to: "/admin/recipe/base", icon: FileText, label: "Base Recipe", permission: "inventory:manage" },
-			{ to: "/admin/inventory", icon: Archive, label: "Inventaris", permission: "inventory:manage" },
-			{ to: '/admin/stock-overview', icon: BarChart3, label: 'Ringkasan Stok', permission: 'inventory:manage' },
-			{ to: "/admin/booking", icon: Calendar, label: "Booking", permission: "orders:view" },
+			{ to: "/admin/products", icon: Package, label: "Produk" },
+			{ to: "/admin/recipe", icon: BookOpen, label: "Resep" },
+			{ to: "/admin/recipe/hpp", icon: Calculator, label: "HPP" },
+			{ to: "/admin/recipe/base", icon: FileText, label: "Base Recipe" },
+			{ to: "/admin/inventory", icon: Archive, label: "Inventaris" },
+			{ to: '/admin/stock-overview', icon: BarChart3, label: 'Ringkasan Stok' },
+			{ to: "/admin/booking", icon: Calendar, label: "Booking" },
 		],
 	},
 	{
 		label: "Keuangan",
 		items: [
-			{ to: "/admin/finance", icon: Wallet, label: "Keuangan", permission: "finance:view" },
-			{ to: "/admin/finance/transactions", icon: ClipboardList, label: "Transaksi", permission: "finance:view" },
-			{ to: "/admin/finance/accounting", icon: BookOpen, label: "Akuntansi", permission: "finance:view" },
-			{ to: "/admin/finance/expenses", icon: Receipt, label: "Pengeluaran", permission: "finance:view" },
-			{ to: "/admin/finance/reports", icon: FileBarChart, label: "Laporan", permission: "finance:view" },
-			{ to: "/admin/finance/shift-reports", icon: Users, label: "Laporan Shift", permission: "finance:view" },
-			{ to: "/admin/recipe/hpp", icon: Calculator, label: "HPP", permission: "finance:view" },
+			{ to: "/admin/finance", icon: Wallet, label: "Keuangan" },
+			{ to: "/admin/finance/transactions", icon: ClipboardList, label: "Transaksi" },
+			{ to: "/admin/finance/accounting", icon: BookOpen, label: "Akuntansi" },
+			{ to: "/admin/finance/expenses", icon: Receipt, label: "Pengeluaran" },
+			{ to: "/admin/finance/reports", icon: FileBarChart, label: "Laporan" },
+			{ to: "/admin/finance/shift-reports", icon: Users, label: "Laporan Shift" },
+			{ to: "/admin/recipe/hpp", icon: Calculator, label: "HPP" },
 		],
 	},
 	{
@@ -174,25 +177,23 @@ const QUICK_MENU_SECTIONS = [
 		items: [
 			{ to: "/admin/kitchen", icon: ChefHat, label: "Dapur" },
 			{ to: "/admin/bar", icon: Beer, label: "Bar" },
-			{ to: "/admin/customer-service", icon: Bell, label: "Layanan", permission: "orders:view" },
-			{ to: "/admin/operational-team/karyawan", icon: Users, label: "Karyawan", permission: "users:manage" },
+			{ to: "/admin/customer-service", icon: Bell, label: "Layanan" },
 		],
 	},
 	{
 		label: "Marketing",
 		items: [
-			{ to: "/admin/discounts", icon: Percent, label: "Promosi", permission: "products:manage" },
-			{ to: "/admin/minigames", icon: Gamepad2, label: "Mini Games", permission: "products:manage" },
+			{ to: "/admin/discounts", icon: Percent, label: "Promosi" },
+			{ to: "/admin/minigames", icon: Gamepad2, label: "Mini Games" },
 			{ to: "/admin/customers", icon: Users, label: "Pelanggan" },
-			{ to: "/admin/operational-team/rekrutmen", icon: FileText, label: "Rekrutmen", permission: "users:manage" },
 		],
 	},
 	{
 		label: "Lainnya",
 		items: [
-			{ to: "/admin/forecasting", icon: Grid3X3, label: "Forecast", permission: "analytics:view" },
-	{ to: "/admin/recommendation-metrics", icon: BarChart3, label: "Recommendation", permission: "analytics:view" },
-			{ to: "/admin/settings", icon: Settings, label: "Pengaturan", permission: "settings:manage" },
+			{ to: "/admin/forecasting", icon: Grid3X3, label: "Forecast" },
+	{ to: "/admin/recommendation-metrics", icon: BarChart3, label: "Recommendation" },
+			{ to: "/admin/settings", icon: Settings, label: "Pengaturan" },
 		],
 	},
 ];
@@ -201,9 +202,6 @@ const OPERATIONAL_PATHS = [
 	"/admin/kitchen",
 	"/admin/bar",
 ];
-
-// Flat list for backward compat
-const QUICK_MENU_ITEMS = QUICK_MENU_SECTIONS.flatMap((s) => s.items);
 
 // Finance sub-routes for auto-expanding the submenu
 const FINANCE_PATHS = [
@@ -215,29 +213,11 @@ const FINANCE_PATHS = [
 	"/admin/finance/expenses",
 ];
 
-const OPERATIONAL_TEAM_PATHS = [
-	"/admin/operational-team/karyawan",
-	"/admin/operational-team",
-	"/admin/operational-team/attendance",
-	"/admin/operational-team/payroll",
-	"/admin/operational-team/payroll/slip",
-	"/admin/operational-team/register",
-	"/admin/operational-team/register/onboarding",
-	"/admin/operational-team/register/contract",
-	"/admin/operational-team/register/riwayat",
-	"/admin/operational-team/rekrutmen",
-	];
+const OPERATIONAL_TEAM_PATHS = HR_DESTINATIONS.map((item) => item.to);
 
 function AdminLayout() {
 	const navigate = useNavigate();
 	const { user: authUser, logout, isAdmin, role, isAuthenticated, isLoading } = useYumiAuth();
-	const [isAccessDenied, setIsAccessDenied] = useState(false);
-
-	const hasPermission = (permId?: string) => {
-		if (isAdmin) return true;
-		if (!permId) return true;
-		return role?.permissions?.includes(permId) || false;
-	};
 	const [isCollapsed, setIsCollapsed] = useState(() => {
 		if (typeof window !== "undefined") {
 			return localStorage.getItem("admin-sidebar-collapsed") === "true";
@@ -245,6 +225,7 @@ function AdminLayout() {
 		return false;
 	});
 	const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false);
+	const [menuSearch, setMenuSearch] = useState("");
 	const [adminPopupDensity] = useState<"compact" | "normal">(() => {
 		if (typeof window !== "undefined") {
 			const saved = localStorage.getItem("admin-popup-density");
@@ -269,24 +250,14 @@ function AdminLayout() {
 	
 	const isAIChat = location.pathname === "/admin/ai-chat";
 	const isOperational = OPERATIONAL_PATHS.some(p => location.pathname.startsWith(p));
-	const currentPageTitle = PAGE_TITLES[location.pathname] || "Admin";
+	const currentPageTitle = HR_DESTINATIONS.find((item) => item.to === location.pathname)?.label || PAGE_TITLES[location.pathname] || "Admin";
 
-	// Route Guard
-	useEffect(() => {
-		if (isAuthenticated && !isLoading) {
-			const currentPath = location.pathname;
-			const allItems = [...BOTTOM_NAV_ITEMS, ...QUICK_MENU_ITEMS];
-			const matchedItem = allItems
-				.filter((item) => item.to && currentPath.startsWith(item.to))
-				.sort((a, b) => b.to.length - a.to.length)[0];
-			
-			if (matchedItem?.permission && !hasPermission(matchedItem.permission)) {
-				setIsAccessDenied(true);
-			} else {
-				setIsAccessDenied(false);
-			}
-		}
-	}, [location.pathname, isAuthenticated, isLoading, role, isAdmin]);
+	const isAccessDenied = isAuthenticated && !isLoading && !canAccessAdminRoute(location.pathname, isAdmin, role?.permissions);
+	const visibleMenuSections = QUICK_MENU_SECTIONS.map((section) => ({
+		...section,
+		items: section.items.filter((item) => canAccessAdminRoute(item.to, isAdmin, role?.permissions)
+			&& `${section.label} ${item.label}`.toLocaleLowerCase().includes(menuSearch.trim().toLocaleLowerCase())),
+	})).filter((section) => section.items.length > 0);
 
 	// Auto-open finance submenu if on a finance route
 	const isOnFinancePath = FINANCE_PATHS.some((p) =>
@@ -341,7 +312,17 @@ function AdminLayout() {
 	// Close quick menu on route change
 	useEffect(() => {
 		setIsQuickMenuOpen(false);
-	}, []);
+		setMenuSearch("");
+	}, [location.pathname]);
+
+	useEffect(() => {
+		if (!isQuickMenuOpen) return;
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") setIsQuickMenuOpen(false);
+		};
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, [isQuickMenuOpen]);
 
 	useEffect(() => {
 		document.body.classList.add("admin-shell");
@@ -421,14 +402,12 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Dasbor"
 						to="/admin"
-						permission="analytics:view"
 					/>
 					<DesktopNavLink
 						icon={<ClipboardList />}
 						isCollapsed={isCollapsed}
 						label="Pesanan"
 						to="/admin/orders"
-						permission="orders:view"
 					/>
 
 					{/* MANAJEMEN */}
@@ -438,63 +417,57 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Produk"
 						to="/admin/products"
-						permission="products:manage"
 					/>
 					<DesktopNavLink
 						icon={<BookOpen />}
 						isCollapsed={isCollapsed}
 						label="Resep"
 						to="/admin/recipe"
-						permission="inventory:manage"
 					/>
 					<DesktopNavLink
 						icon={<Calculator />}
 						isCollapsed={isCollapsed}
 						label="HPP"
 						to="/admin/recipe/hpp"
-						permission="inventory:manage"
 					/>
 					<DesktopNavLink
 						icon={<Archive />}
 						isCollapsed={isCollapsed}
 						label="Inventaris"
 						to="/admin/inventory"
-						permission="inventory:manage"
 					/>
 					<DesktopNavLink
 						icon={<BarChart3 />}
 						isCollapsed={isCollapsed}
 						label="Ringkasan Stok"
 						to="/admin/stock-overview"
-						permission="inventory:manage"
 					/>
 					<DesktopNavLink
 						icon={<Calendar />}
 						isCollapsed={isCollapsed}
 						label="Booking"
 						to="/admin/booking"
-						permission="orders:view"
 					/>
 
 					{/* OPERASIONAL */}
 					<SidebarSection isCollapsed={isCollapsed} label="Operasional" />
 					<DesktopNavLink icon={<ChefHat />} isCollapsed={isCollapsed} label="Dapur" to="/admin/kitchen" />
 					<DesktopNavLink icon={<Beer />} isCollapsed={isCollapsed} label="Bar" to="/admin/bar" />
-					<DesktopNavLink icon={<Bell />} isCollapsed={isCollapsed} label="Layanan Customer" to="/admin/customer-service" permission="orders:view" />
+					<DesktopNavLink icon={<Bell />} isCollapsed={isCollapsed} label="Layanan Customer" to="/admin/customer-service" />
 					{isCollapsed ? (
 						<>
-							<DesktopNavLink icon={<LayoutDashboard />} isCollapsed={isCollapsed} label="Dashboard" to="/admin/operational-team" permission="users:manage" />
-							<DesktopNavLink icon={<Users />} isCollapsed={isCollapsed} label="Karyawan" to="/admin/operational-team/karyawan" permission="users:manage" />
-							<DesktopNavLink icon={<FileBarChart />} isCollapsed={isCollapsed} label="Absensi" to="/admin/operational-team/attendance" permission="users:manage" />
-							<DesktopNavLink icon={<CalendarDays />} isCollapsed={isCollapsed} label="Jadwal" to="/admin/operational-team/attendance/jadwal" permission="users:manage" />
-							<DesktopNavLink icon={<Settings />} isCollapsed={isCollapsed} label="Pengaturan Absensi" to="/admin/operational-team/attendance/pengaturan" permission="users:manage" />
-							<DesktopNavLink icon={<Wallet />} isCollapsed={isCollapsed} label="Gaji & Role" to="/admin/operational-team/payroll" permission="users:manage" />
-							<DesktopNavLink icon={<FileText />} isCollapsed={isCollapsed} label="Slip Gaji" to="/admin/operational-team/payroll/slip" permission="users:manage" />
-							<DesktopNavLink icon={<UserPlus />} isCollapsed={isCollapsed} label="Register" to="/admin/operational-team/register" permission="users:manage" />
-							<DesktopNavLink icon={<ClipboardList />} isCollapsed={isCollapsed} label="Onboarding" to="/admin/operational-team/register/onboarding" permission="users:manage" />
-							<DesktopNavLink icon={<FileSignature />} isCollapsed={isCollapsed} label="Kontrak" to="/admin/operational-team/register/contract" permission="users:manage" />
-							<DesktopNavLink icon={<FileText />} isCollapsed={isCollapsed} label="Riwayat Kontrak" to="/admin/operational-team/register/riwayat" permission="users:manage" />
-							<DesktopNavLink icon={<FileText />} isCollapsed={isCollapsed} label="Rekrutmen" to="/admin/operational-team/rekrutmen" permission="users:manage" />
+							<DesktopNavLink icon={<LayoutDashboard />} isCollapsed={isCollapsed} label="Dashboard" to="/admin/operational-team" />
+							<DesktopNavLink icon={<Users />} isCollapsed={isCollapsed} label="Karyawan" to="/admin/operational-team/karyawan" />
+							<DesktopNavLink icon={<FileBarChart />} isCollapsed={isCollapsed} label="Absensi" to="/admin/operational-team/attendance" />
+							<DesktopNavLink icon={<CalendarDays />} isCollapsed={isCollapsed} label="Jadwal" to="/admin/operational-team/attendance/jadwal" />
+							<DesktopNavLink icon={<Settings />} isCollapsed={isCollapsed} label="Pengaturan Absensi" to="/admin/operational-team/attendance/pengaturan" />
+							<DesktopNavLink icon={<Wallet />} isCollapsed={isCollapsed} label="Gaji & Role" to="/admin/operational-team/payroll" />
+							<DesktopNavLink icon={<FileText />} isCollapsed={isCollapsed} label="Slip Gaji" to="/admin/operational-team/payroll/slip" />
+							<DesktopNavLink icon={<UserPlus />} isCollapsed={isCollapsed} label="Register" to="/admin/operational-team/register" />
+							<DesktopNavLink icon={<ClipboardList />} isCollapsed={isCollapsed} label="Onboarding" to="/admin/operational-team/register/onboarding" />
+							<DesktopNavLink icon={<FileSignature />} isCollapsed={isCollapsed} label="Kontrak" to="/admin/operational-team/register/contract" />
+							<DesktopNavLink icon={<FileText />} isCollapsed={isCollapsed} label="Riwayat Kontrak" to="/admin/operational-team/register/riwayat" />
+							<DesktopNavLink icon={<FileText />} isCollapsed={isCollapsed} label="Rekrutmen" to="/admin/operational-team/rekrutmen" />
 						</>
 					) : (
 						<>
@@ -509,19 +482,19 @@ function AdminLayout() {
 								{isOperationalTeamOpen && (
 									<motion.div animate={{ height: "auto", opacity: 1 }} className="overflow-hidden" exit={{ height: 0, opacity: 0 }} initial={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeInOut" }}>
 										<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
-											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/operational-team" permission="users:manage" />
-											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<Users />} label="Karyawan" to="/admin/operational-team/karyawan" permission="users:manage" />
-											<DesktopSubNavLink icon={<FileText />} label="Data Karyawan" to="/admin/operational-team/karyawan/data" permission="users:manage" />
-											<DesktopSubNavLink icon={<FileBarChart />} label="Absensi" to="/admin/operational-team/attendance" permission="users:manage" />
-										<DesktopSubNavLink icon={<CalendarDays />} label="Jadwal" to="/admin/operational-team/attendance/jadwal" permission="users:manage" />
-										<DesktopSubNavLink icon={<Settings />} label="Pengaturan Absensi" to="/admin/operational-team/attendance/pengaturan" permission="users:manage" />
-											<DesktopSubNavLink icon={<Wallet />} label="Gaji & Role" to="/admin/operational-team/payroll" permission="users:manage" />
-										<DesktopSubNavLink icon={<FileText />} label="Slip Gaji" to="/admin/operational-team/payroll/slip" permission="users:manage" />
-										<DesktopSubNavLink icon={<UserPlus />} label="Register Karyawan" to="/admin/operational-team/register" permission="users:manage" />
-										<DesktopSubNavLink icon={<ClipboardList />} label="Onboarding" to="/admin/operational-team/register/onboarding" permission="users:manage" />
-										<DesktopSubNavLink icon={<FileSignature />} label="Kontrak Kerja" to="/admin/operational-team/register/contract" permission="users:manage" />
-										<DesktopSubNavLink icon={<FileText />} label="Riwayat Kontrak" to="/admin/operational-team/register/riwayat" permission="users:manage" />
-									<DesktopSubNavLink icon={<FileText />} label="Rekrutmen" to="/admin/operational-team/rekrutmen" permission="users:manage" />
+											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/operational-team" />
+											<DesktopSubNavLink activeOptions={{ exact: true }} icon={<Users />} label="Karyawan" to="/admin/operational-team/karyawan" />
+											<DesktopSubNavLink icon={<FileText />} label="Data Karyawan" to="/admin/operational-team/karyawan/data" />
+											<DesktopSubNavLink icon={<FileBarChart />} label="Absensi" to="/admin/operational-team/attendance" />
+										<DesktopSubNavLink icon={<CalendarDays />} label="Jadwal" to="/admin/operational-team/attendance/jadwal" />
+										<DesktopSubNavLink icon={<Settings />} label="Pengaturan Absensi" to="/admin/operational-team/attendance/pengaturan" />
+											<DesktopSubNavLink icon={<Wallet />} label="Gaji & Role" to="/admin/operational-team/payroll" />
+										<DesktopSubNavLink icon={<FileText />} label="Slip Gaji" to="/admin/operational-team/payroll/slip" />
+										<DesktopSubNavLink icon={<UserPlus />} label="Register Karyawan" to="/admin/operational-team/register" />
+										<DesktopSubNavLink icon={<ClipboardList />} label="Onboarding" to="/admin/operational-team/register/onboarding" />
+										<DesktopSubNavLink icon={<FileSignature />} label="Kontrak Kerja" to="/admin/operational-team/register/contract" />
+										<DesktopSubNavLink icon={<FileText />} label="Riwayat Kontrak" to="/admin/operational-team/register/riwayat" />
+									<DesktopSubNavLink icon={<FileText />} label="Rekrutmen" to="/admin/operational-team/rekrutmen" />
 										</div>
 									</motion.div>
 								)}
@@ -538,42 +511,36 @@ function AdminLayout() {
 								isCollapsed={isCollapsed}
 								label="Keuangan"
 								to="/admin/finance"
-								permission="finance:view"
 							/>
 							<DesktopNavLink
 								icon={<ClipboardList />}
 								isCollapsed={isCollapsed}
 								label="Transaksi"
 								to="/admin/finance/transactions"
-								permission="finance:view"
 							/>
 							<DesktopNavLink
 								icon={<BookOpen />}
 								isCollapsed={isCollapsed}
 								label="Akuntansi"
 								to="/admin/finance/accounting"
-								permission="finance:view"
 							/>
 							<DesktopNavLink
 								icon={<FileBarChart />}
 								isCollapsed={isCollapsed}
 								label="Laporan"
 								to="/admin/finance/reports"
-								permission="finance:view"
 							/>
 							<DesktopNavLink
 								icon={<Users />}
 								isCollapsed={isCollapsed}
 								label="Laporan Shift"
 								to="/admin/finance/shift-reports"
-								permission="finance:view"
 							/>
 							<DesktopNavLink
 								icon={<Calculator />}
 								isCollapsed={isCollapsed}
 								label="HPP"
 								to="/admin/recipe/hpp"
-								permission="finance:view"
 							/>
 						</>
 					) : (
@@ -616,43 +583,36 @@ function AdminLayout() {
 												icon={<Wallet />}
 												label="Overview"
 												to="/admin/finance"
-												permission="finance:view"
 											/>
 									<DesktopSubNavLink
 										icon={<ClipboardList />}
 										label="Transaksi"
 										to="/admin/finance/transactions"
-										permission="finance:view"
 									/>
 									<DesktopSubNavLink
 											icon={<BookOpen />}
 											label="Akuntansi"
 											to="/admin/finance/accounting"
-											permission="finance:view"
 										/>
 										<DesktopSubNavLink
 											icon={<Receipt />}
 											label="Pengeluaran"
 											to="/admin/finance/expenses"
-											permission="finance:view"
 										/>
 										<DesktopSubNavLink
 															icon={<FileBarChart />}
 															label="Laporan"
 												to="/admin/finance/reports"
-												permission="finance:view"
 											/>
 											<DesktopSubNavLink
 												icon={<Users />}
 												label="Laporan Shift"
 												to="/admin/finance/shift-reports"
-												permission="finance:view"
 											/>
 											<DesktopSubNavLink
 												icon={<Calculator />}
 												label="HPP"
 												to="/admin/recipe/hpp"
-												permission="finance:view"
 											/>
 										</div>
 									</motion.div>
@@ -668,14 +628,12 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Promosi"
 						to="/admin/discounts"
-						permission="products:manage"
 					/>
 					<DesktopNavLink
 						icon={<Gamepad2 />}
 						isCollapsed={isCollapsed}
 						label="Mini Games"
 						to="/admin/minigames"
-						permission="products:manage"
 					/>
 					<DesktopNavLink
 						icon={<Users />}
@@ -730,7 +688,6 @@ function AdminLayout() {
 						isCollapsed={isCollapsed}
 						label="Pengaturan"
 						to="/admin/settings"
-						permission="settings:manage"
 					/>
 
 					{/* System Monitor - external link */}
@@ -865,7 +822,7 @@ function AdminLayout() {
 					className={(isAIChat || isOperational) ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto min-h-0 p-3 pb-20 md:p-4 md:pb-4"}
 				>
 					{isAccessDenied ? (
-						<PermissionDenied onBack={() => navigate({ to: "/admin" })} />
+						<PermissionDenied onBack={() => navigate({ to: "/menu" })} />
 					) : (
 						<Outlet />
 					)}
@@ -892,7 +849,8 @@ function AdminLayout() {
 						{/* Quick Menu Panel */}
 						<motion.div
 							animate={{ y: 0, opacity: 1 }}
-							className="fixed right-0 bottom-0 left-0 z-50 rounded-t-2xl border-border border-t bg-card px-4 pt-4 pb-6 shadow-2xl md:hidden"
+							className="safe-area-bottom fixed right-0 bottom-0 left-0 z-50 max-h-[85dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-border border-t bg-card px-4 pt-4 pb-6 shadow-2xl md:hidden"
+							role="dialog" aria-modal="true" aria-label="Menu administrasi"
 							exit={{ y: "100%", opacity: 0 }}
 							initial={{ y: "100%", opacity: 0 }}
 							transition={{ type: "spring", damping: 25, stiffness: 300 }}
@@ -904,7 +862,7 @@ function AdminLayout() {
 							<div className="mb-4 flex items-center justify-between">
 								<h3 className="font-semibold text-foreground">Menu</h3>
 								<button
-									className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80 active:scale-95"
+									aria-label="Tutup menu" className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80 active:scale-95"
 									onClick={() => setIsQuickMenuOpen(false)}
 									type="button"
 								>
@@ -912,16 +870,18 @@ function AdminLayout() {
 								</button>
 							</div>
 
+							<input autoFocus aria-label="Cari menu" placeholder="Cari menu, absensi, gaji…" value={menuSearch} onChange={(event) => setMenuSearch(event.target.value)} className="mb-4 h-11 w-full rounded-xl border border-border bg-background px-3 text-base" />
+							{visibleMenuSections.length === 0 && <p role="status" className="py-6 text-center text-sm text-muted-foreground">Menu tidak ditemukan. Coba kata lain.</p>}
 							{/* Grouped Quick Menu */}
 							<div className="space-y-3">
-								{QUICK_MENU_SECTIONS.map((section) => (
+								{visibleMenuSections.map((section) => (
 									<div key={section.label}>
 										<p className="mb-1.5 px-1 font-semibold text-[10px] text-muted-foreground uppercase tracking-wider">
 											{section.label}
 										</p>
 										<div className="grid grid-cols-3 gap-2">
 											{section.items.map((item) => {
-												const hasPermission = !item.permission || isAdmin || role?.permissions?.includes(item.permission);
+												const hasPermission = !item.to || canAccessAdminRoute(item.to, isAdmin, role?.permissions);
 												if (!hasPermission) return null;
 
 												return (
@@ -939,7 +899,7 @@ function AdminLayout() {
 														>
 															<item.icon className="h-4 w-4" />
 														</div>
-														<span className="text-center font-medium text-[10px] text-foreground leading-tight">
+														<span className="text-center font-medium text-xs text-foreground leading-tight">
 															{item.label}
 														</span>
 													</Link>
@@ -996,7 +956,7 @@ function AdminLayout() {
 				<nav className="safe-area-bottom fixed inset-x-0 bottom-0 z-30 border-border border-t bg-background/95 backdrop-blur-md md:hidden">
 					<div className="flex items-stretch px-2">
 						{BOTTOM_NAV_ITEMS.map((item, index) => {
-							const hasPermission = !item.permission || isAdmin || role?.permissions?.includes(item.permission);
+							const hasPermission = !item.to || canAccessAdminRoute(item.to, isAdmin, role?.permissions);
 							if (!hasPermission) return null;
 
 							const isCenter = index === 2; // AI Chat at center
@@ -1247,17 +1207,15 @@ function DesktopNavLink({
 	label,
 	activeOptions,
 	isCollapsed,
-	permission,
 }: {
 	to: string;
 	icon: React.ReactNode;
 	label: string;
 	activeOptions?: { exact?: boolean };
 	isCollapsed: boolean;
-	permission?: string;
 }) {
 	const { isAdmin, role } = useYumiAuth();
-	const hasPermission = !permission || isAdmin || role?.permissions?.includes(permission);
+	const hasPermission = canAccessAdminRoute(to, isAdmin, role?.permissions);
 
 	if (!hasPermission) return null;
 
@@ -1298,16 +1256,14 @@ function DesktopSubNavLink({
 	icon,
 	label,
 	activeOptions,
-	permission,
 }: {
 	to: string;
 	icon: React.ReactNode;
 	label: string;
 	activeOptions?: { exact?: boolean };
-	permission?: string;
 }) {
 	const { isAdmin, role } = useYumiAuth();
-	const hasPermission = !permission || isAdmin || role?.permissions?.includes(permission);
+	const hasPermission = canAccessAdminRoute(to, isAdmin, role?.permissions);
 
 	if (!hasPermission) return null;
 

@@ -386,7 +386,7 @@ function RegisterPage() {
 								Saat ini pendaftaran karyawan baru sedang tidak dibuka.{" "}
 								Silakan hubungi admin untuk informasi lebih lanjut.
 							</p>
-							<Button onClick={() => { window.location.href = "/login"; }}>
+							<Button onClick={() => { window.location.href = "/kasir/login"; }}>
 								Kembali ke Login
 							</Button>
 						</CardContent>

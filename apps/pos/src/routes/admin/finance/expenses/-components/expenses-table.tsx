@@ -234,7 +234,7 @@ export function ExpensesTable() {
 						{PERIOD_BUTTONS.map((btn) => (
 							<button
 								key={btn.value}
-								className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+								className={`min-h-11 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
 									period === btn.value
 										? "bg-slate-900 text-white"
 										: "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -250,7 +250,8 @@ export function ExpensesTable() {
 
 					{/* Category filter */}
 					<select
-						className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
+						aria-label="Filter kategori pengeluaran"
+						className="min-h-11 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
 						onChange={(e) => setFilterCategory(e.target.value)}
 						value={filterCategory}
 					>
@@ -266,7 +267,8 @@ export function ExpensesTable() {
 					<div className="relative">
 						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
 						<input
-							className="w-full sm:w-56 rounded-lg border border-slate-200 bg-white pl-9 pr-12 py-1.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
+							aria-label="Cari pengeluaran"
+							className="min-h-11 w-full sm:w-56 rounded-lg border border-slate-200 bg-white pl-9 pr-12 py-1.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400"
 							onChange={(e) => setSearchQuery(e.target.value)}
 							placeholder="Cari deskripsi / merchant..."
 							type="text"
@@ -309,7 +311,36 @@ export function ExpensesTable() {
 				{/* ── Table ── */}
 				{filtered.length > 0 && (
 					<>
-						<div className="overflow-x-auto rounded-xl border border-slate-200">
+						<div className="mb-3 flex flex-wrap items-center gap-2 md:hidden">
+							<label htmlFor="expense-mobile-sort" className="text-sm font-medium text-slate-700">Urutkan</label>
+							<select id="expense-mobile-sort" value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className="min-h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700">
+								<option value="date">Tanggal</option><option value="amount">Jumlah</option><option value="category">Kategori</option>
+							</select>
+							<button type="button" onClick={() => setSortOrder((value) => value === "asc" ? "desc" : "asc")} className="min-h-11 rounded-lg border border-slate-200 px-3 text-sm text-slate-700">
+								{sortOrder === "asc" ? "Menaik ↑" : "Menurun ↓"}
+							</button>
+						</div>
+						<ul aria-label="Daftar pengeluaran" className="space-y-3 md:hidden">
+							{paged.map((tx) => (
+								<li key={tx._id} className="rounded-xl border border-slate-200 bg-white p-3">
+									<div className="flex flex-wrap items-start justify-between gap-2">
+										<span className={`rounded-full px-2.5 py-1 text-xs font-medium ${categoryColor(tx.category)}`}>{categoryLabel(tx.category)}</span>
+										<p className="text-base font-semibold text-red-600">Rp {formatCurrencyIDR(tx.amount)}</p>
+									</div>
+									<h2 className="mt-2 break-words text-sm font-semibold text-slate-900">{tx.description || tx.merchant || categoryLabel(tx.category)}</h2>
+									{tx.merchant && <p className="mt-1 break-words text-sm text-slate-600">{tx.merchant}</p>}
+									<div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600">
+										<time dateTime={new Date(tx.date).toISOString()}>{format(new Date(tx.date), "dd MMM yyyy", { locale: localeID })}</time>
+										<span>{tx.status === "completed" ? "Selesai" : tx.status === "pending" ? "Menunggu" : tx.status === "failed" ? "Gagal" : tx.status}</span>
+										{tx.paymentMethod && <span className="capitalize">{tx.paymentMethod}</span>}
+									</div>
+									<button type="button" onClick={() => setSelectedTx(tx)} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50" aria-label={`Buka detail pengeluaran ${tx.description || tx.merchant || categoryLabel(tx.category)}`}>
+										Buka detail
+									</button>
+								</li>
+							))}
+						</ul>
+						<div className="hidden overflow-x-auto rounded-xl border border-slate-200 md:block">
 							<table className="w-full text-sm">
 								<thead>
 									<tr className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
@@ -427,7 +458,8 @@ export function ExpensesTable() {
 								</span>
 								<div className="flex items-center gap-2">
 									<button
-										className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 disabled:opacity-30"
+										className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30"
+										aria-label="Halaman sebelumnya"
 										disabled={safePage <= 1}
 										onClick={() => setPage((p) => Math.max(1, p - 1))}
 									>
@@ -437,7 +469,8 @@ export function ExpensesTable() {
 										{safePage} / {totalPages}
 									</span>
 									<button
-										className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 disabled:opacity-30"
+										className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30"
+										aria-label="Halaman berikutnya"
 										disabled={safePage >= totalPages}
 										onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
 									>
