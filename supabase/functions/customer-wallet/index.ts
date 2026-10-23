@@ -36,13 +36,50 @@ async function getWallet(payload: Json) {
   if (!data) {
     const { data: ensured, error: ensureError } = await admin.schema("pos").rpc("wallet_ensure", { p_customer_id: sourceId });
     if (ensureError) throw ensureError;
-    return { wallet: ensured, ledger: [] };
+    return { wallet: ensured, ledger: [], transactions: [] };
   }
   let ledgerQuery = admin.schema("pos").from("customer_wallet_ledger").select("*").eq("customer_id", sourceId);
   if (sourceApp) ledgerQuery = ledgerQuery.eq("source_app", sourceApp);
   const { data: ledger, error: ledgerError } = await ledgerQuery.order("created_at", { ascending: false }).limit(100);
   if (ledgerError) throw ledgerError;
-  return { wallet: data, ledger: ledger ?? [] };
+  const { data: transactions, error: transactionError } = await admin.schema("pos").rpc("wallet_transactions_for_customer", { p_customer_id: sourceId, p_limit: 100, p_offset: 0 });
+  if (transactionError) throw transactionError;
+  return { wallet: data, ledger: ledger ?? [], transactions: transactions ?? [] };
+}
+
+async function walletNotifications(sourceId: string) {
+  const { data: notifications, error } = await admin
+    .from("pos_notifications")
+    .select("*,pos_notification_reads(read_at,acknowledged_at)")
+    .eq("target_user_id", sourceId)
+    .eq("is_active", true)
+    .in("notification_type", ["wallet_transfer_sent", "wallet_transfer_received"])
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return (notifications ?? []).map((row: any) => ({ ...row, unread: !row.pos_notification_reads?.[0]?.read_at }));
+}
+
+async function markWalletNotification(payload: Json, markAll = false) {
+  const sourceId = text(payload.sourceId); const email = text(payload.email);
+  await ownedCustomer(sourceId, email);
+  if (markAll) {
+    const { data: rows, error } = await admin.from("pos_notifications").select("id").eq("target_user_id", sourceId).eq("is_active", true).in("notification_type", ["wallet_transfer_sent", "wallet_transfer_received"]);
+    if (error) throw error;
+    for (const row of rows ?? []) {
+      const { error: writeError } = await admin.from("pos_notification_reads").upsert({ notification_id: row.id, user_id: sourceId, read_at: new Date().toISOString() }, { onConflict: "notification_id,user_id" });
+      if (writeError) throw writeError;
+    }
+    return { success: true };
+  }
+  const notificationId = text(payload.notificationId);
+  if (!notificationId) throw new Error("notificationId wajib diisi");
+  const { data: visible, error: visibleError } = await admin.from("pos_notifications").select("id").eq("id", notificationId).eq("target_user_id", sourceId).eq("is_active", true).maybeSingle();
+  if (visibleError) throw visibleError;
+  if (!visible) throw new Error("Notification tidak ditemukan");
+  const { error } = await admin.from("pos_notification_reads").upsert({ notification_id: notificationId, user_id: sourceId, read_at: new Date().toISOString() }, { onConflict: "notification_id,user_id" });
+  if (error) throw error;
+  return { success: true };
 }
 
 async function createTopup(payload: Json) {
@@ -208,6 +245,13 @@ Deno.serve(async (req) => {
     const body = await req.json() as Json;
     const action = text(body.action);
     if (action === "get") return response({ success: true, ...(await getWallet(body)) });
+    if (action === "notifications") {
+      const sourceId = text(body.sourceId); const email = text(body.email);
+      await ownedCustomer(sourceId, email);
+      return response({ success: true, notifications: await walletNotifications(sourceId) });
+    }
+    if (action === "mark-notification-read") return response(await markWalletNotification(body));
+    if (action === "mark-all-notifications-read") return response(await markWalletNotification(body, true));
     if (action === "topup") return response({ success: true, result: await createTopup(body) });
     if (action === "hold") return response({ success: true, result: await createHold(body) });
     if (action === "capture") return response({ success: true, result: await mutateHold(body, "capture") });

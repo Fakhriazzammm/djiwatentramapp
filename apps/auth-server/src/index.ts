@@ -1026,7 +1026,7 @@ app.post("/api/pay-bridge/ppob/purchase", async (c) => {
 app.post("/api/pay-bridge/wallet", async (c) => {
   const session = await requirePaySession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
-  const body = await c.req.json().catch(() => ({})) as { action?: unknown; amount?: unknown; invoiceId?: unknown; recipient?: unknown; phone?: unknown; note?: unknown; idempotencyKey?: unknown; bankName?: unknown; accountNumber?: unknown; accountName?: unknown };
+  const body = await c.req.json().catch(() => ({})) as { action?: unknown; amount?: unknown; invoiceId?: unknown; recipient?: unknown; phone?: unknown; note?: unknown; idempotencyKey?: unknown; bankName?: unknown; accountNumber?: unknown; accountName?: unknown; notificationId?: unknown };
   const action = typeof body.action === "string" ? body.action : "get";
   const sourceId = String(session.customer.source_id || "");
   const email = String(session.customer.email || "");
@@ -1034,7 +1034,49 @@ app.post("/api/pay-bridge/wallet", async (c) => {
   if (action === "get") {
     const wallet = await pool.query("SELECT * FROM pos.customer_wallets WHERE customer_id = $1 LIMIT 1", [sourceId]);
     const ledger = await pool.query("SELECT * FROM pos.customer_wallet_ledger WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 100", [sourceId]);
-    return privateJson({ success: true, wallet: wallet.rows[0] ?? null, ledger: ledger.rows });
+    const transactions = await pool.query("SELECT * FROM pos.wallet_transactions_for_customer($1, $2, $3)", [sourceId, 100, 0]);
+    return privateJson({ success: true, wallet: wallet.rows[0] ?? null, ledger: ledger.rows, transactions: transactions.rows });
+  }
+  if (action === "notifications") {
+    const rows = await pool.query(
+      `SELECT n.*, r.read_at, r.acknowledged_at
+         FROM public.pos_notifications n
+         LEFT JOIN public.pos_notification_reads r
+           ON r.notification_id = n.id AND r.user_id = $1
+        WHERE n.is_active = true
+          AND n.target_user_id = $1
+          AND n.notification_type IN ('wallet_transfer_sent', 'wallet_transfer_received')
+          AND (n.expires_at IS NULL OR n.expires_at > now())
+        ORDER BY n.created_at DESC
+        LIMIT 100`,
+      [sourceId],
+    );
+    return privateJson({ success: true, notifications: rows.rows.map((row) => ({ ...row, unread: !row.read_at })) });
+  }
+  if (action === "mark-notification-read") {
+    const notificationId = typeof body.notificationId === "string" ? body.notificationId.trim() : "";
+    if (!notificationId) return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+    const visible = await pool.query("SELECT id FROM public.pos_notifications WHERE id = $1::uuid AND target_user_id = $2 AND is_active = true LIMIT 1", [notificationId, sourceId]);
+    if (!visible.rows[0]) return privateJson({ success: false, error: "NOTIFICATION_NOT_FOUND" }, 404);
+    await pool.query(
+      `INSERT INTO public.pos_notification_reads(notification_id, user_id, read_at)
+       VALUES ($1::uuid, $2, now())
+       ON CONFLICT (notification_id, user_id) DO UPDATE SET read_at = now()`,
+      [notificationId, sourceId],
+    );
+    return privateJson({ success: true });
+  }
+  if (action === "mark-all-notifications-read") {
+    await pool.query(
+      `INSERT INTO public.pos_notification_reads(notification_id, user_id, read_at)
+       SELECT n.id, $1, now()
+       FROM public.pos_notifications n
+       WHERE n.target_user_id = $1 AND n.is_active = true
+         AND n.notification_type IN ('wallet_transfer_sent', 'wallet_transfer_received')
+       ON CONFLICT (notification_id, user_id) DO UPDATE SET read_at = now()`,
+      [sourceId],
+    );
+    return privateJson({ success: true });
   }
   if (action === "resolve-recipient") {
     const rawPhone = typeof body.phone === "string" ? body.phone : "";

@@ -3,13 +3,11 @@ import { validateCustomerNumber } from "./djiwa-pay-checkout";
 export type PpobRouteStage = "detail" | "konfirmasi" | "struk";
 export type PpobRoute = { category: string; productCode?: string; stage?: PpobRouteStage };
 
-export const availablePpobServiceKeys = ["pulsa", "data", "pln-token", "pln-bill", "pdam", "game", "etoll", "emeterai"] as const;
-
 const categoryPattern = "[^/]+";
 const productPattern = "[^/]+";
 const stagePattern = "(?:detail|konfirmasi|struk)";
 const ppobPattern = new RegExp(`^/ppob(?:/(${categoryPattern})(?:/produk/(${productPattern})/(${stagePattern}))?)?/?$`);
-const supportedCategories = new Set(["pulsa", "data", "game", "pln", "pln-bill", "pdam", "etoll", "emeterai"]);
+const supportedCategories = new Set(["pulsa", "data", "game", "pln", "pln-bill", "pdam"]);
 
 export function parsePpobPath(pathname: string): PpobRoute | null {
   const match = ppobPattern.exec(pathname);
