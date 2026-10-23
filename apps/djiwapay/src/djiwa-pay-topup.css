@@ -1,0 +1,118 @@
+.topup-sheet {
+  max-height: min(94dvh, 840px);
+  background: #f7f8fa;
+  padding: 12px 18px calc(18px + env(safe-area-inset-bottom));
+}
+
+.sheet-transfer {
+  display: block;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
+}
+
+.sheet-transfer-party {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sheet-transfer-party small,
+.sheet-transfer-party b {
+  display: block;
+}
+
+.sheet-transfer-party small {
+  color: #8490a3;
+  font-size: 11px;
+}
+
+.sheet-transfer-party b {
+  margin-top: 3px;
+  color: #172033;
+  font-size: 15px;
+}
+
+.sheet-transfer-party svg {
+  flex: none;
+  color: #0876c9;
+}
+
+.sheet-transfer-divider {
+  height: 1px;
+  margin: 8px 0;
+  background: #dbe3ed;
+}
+
+.sheet-eyebrow {
+  margin-top: 18px;
+  color: #6f7782;
+  letter-spacing: .18em;
+}
+
+.amount-options {
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.amount-options button {
+  min-height: 48px;
+  border-radius: 14px;
+  font-size: 10px;
+}
+
+.sheet-amount {
+  margin-top: 18px;
+}
+
+.sheet-amount strong {
+  min-height: 52px;
+  font-size: 38px;
+}
+
+.keypad {
+  max-width: 310px;
+  gap: 2px 8px;
+  margin-top: 18px;
+}
+
+.keypad button {
+  height: 52px;
+  border-radius: 14px;
+  font-size: 24px;
+}
+
+.sheet-submit {
+  margin-top: 18px;
+  min-height: 52px;
+  border-radius: 16px;
+}
+
+.sheet-submit:disabled {
+  background: #c8d5e6;
+  color: #fff;
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+@media (max-width: 430px) {
+  .topup-sheet {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .sheet-transfer-party b {
+    font-size: 14px;
+  }
+
+  .amount-options {
+    gap: 6px;
+  }
+
+  .amount-options button {
+    min-height: 46px;
+    padding: 0 4px;
+  }
+}

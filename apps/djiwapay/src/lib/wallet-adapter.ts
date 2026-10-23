@@ -1,8 +1,10 @@
 import type { WalletLedgerEntry, WalletSummary } from "@yumipos/djiwapay-core";
 import type { WalletWithdrawalDraft } from "./djiwa-pay-withdrawal";
+import { normalizeWalletPhone } from "./djiwa-pay-transfer";
 export type WalletResponse = { wallet: WalletSummary; ledger: WalletLedgerEntry[] };
 export type TopupStatusResponse = { status: "pending" | "success" | "expired"; message?: string; wallet?: WalletSummary; ledger?: WalletLedgerEntry[] };
 export type WalletTransferResult = { success: boolean; error?: string; transfer?: { transfer_id?: string; amount?: number; sender_balance?: number }; recipient?: { sourceId: string; name: string } };
+export type WalletRecipientResult = { success: boolean; error?: string; recipient?: { name: string; phone: string } };
 export async function readWallet(_profile: { source_id: string }): Promise<WalletResponse> {
   const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "get" }) });
   if (response.status === 401) throw new Error("Sesi Djiwa Pay kedaluwarsa");
@@ -13,6 +15,15 @@ export async function readWallet(_profile: { source_id: string }): Promise<Walle
 }
 
 export type PpobProduct = { product_code: string; product_description: string; product_nominal: string; product_details?: string; product_price: number; product_type: string; status: string; icon_url?: string };
+export function ppobProductName(product: Pick<PpobProduct, "product_nominal" | "product_description" | "product_code">): string {
+  const nominal = String(product.product_nominal ?? "").trim();
+  if (nominal) {
+    const numericNominal = Number(nominal);
+    if (Number.isFinite(numericNominal)) return `Paket ${numericNominal.toLocaleString("id-ID")}`;
+    return nominal;
+  }
+  return product.product_description.trim() || product.product_code;
+}
 export async function readPpobCatalog(): Promise<PpobProduct[]> {
   const response = await fetch("https://api.djiwatentram.web.id/api/ppob/iak/", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "price-list" }) });
   if (!response.ok) throw new Error("Katalog PPOB tidak dapat dimuat");
@@ -54,9 +65,17 @@ export async function checkTopupStatus(invoiceId: string): Promise<TopupStatusRe
 }
 
 export async function transferWallet(recipient: string, amount: number, note = ""): Promise<WalletTransferResult> {
-  const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "transfer", recipient, amount, note, idempotencyKey: `djiwapay-transfer-${crypto.randomUUID()}` }) });
+  const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "transfer", phone: normalizeWalletPhone(recipient), amount, note, idempotencyKey: `djiwapay-transfer-${crypto.randomUUID()}` }) });
   const payload = await response.json().catch(() => ({})) as WalletTransferResult;
   if (!response.ok || !payload.success) throw new Error(payload.error || "Transfer saldo gagal diproses");
+  return payload;
+}
+
+export async function resolveWalletRecipient(phone: string): Promise<WalletRecipientResult> {
+  const normalizedPhone = normalizeWalletPhone(phone);
+  const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "resolve-recipient", phone: normalizedPhone }) });
+  const payload = await response.json().catch(() => ({})) as WalletRecipientResult;
+  if (!response.ok || !payload.success) throw new Error(payload.error || "RECIPIENT_NOT_FOUND");
   return payload;
 }
 
@@ -66,4 +85,32 @@ export async function requestWalletWithdrawal(draft: WalletWithdrawalDraft): Pro
   const payload = await response.json().catch(() => ({})) as WalletWithdrawalResult;
   if (!response.ok || !payload.success) throw new Error(payload.error || "WITHDRAWAL_REQUEST_FAILED");
   return payload;
+}
+
+export type PostpaidProduct = { code: string; name: string; type: string; status: "active" | "inactive"; fee?: number; commission?: number };
+export type PostpaidInquiry = { refId: string; serviceType: string; productCode: string; customerNumber: string; customerName?: string; period?: string; billAmount: number; adminFee: number; totalAmount: number; status: "pending" | "success" | "failed"; message?: string };
+export type PostpaidPaymentResult = { success: boolean; status?: "pending" | "success" | "failed"; data?: PostpaidInquiry & { serialNumber?: string; reference?: string }; error?: string };
+async function postpaidRequest<T>(body: Record<string, unknown>): Promise<T> {
+  const endpoint = body.action === "price-list" ? "catalog" : String(body.action);
+  const response = await fetch("/api/pay-bridge/ppob/postpaid/" + endpoint, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const payload = await response.json().catch(() => ({})) as T & { error?: string; success?: boolean };
+  if (!response.ok && !payload.error) throw new Error("PPOB pascabayar belum dapat diproses");
+  return payload;
+}
+export async function readPostpaidCatalog(serviceType: "pln" | "pdam"): Promise<PostpaidProduct[]> {
+  const payload = await postpaidRequest<{ success: boolean; data?: { products?: PostpaidProduct[] }; error?: string }>({ action: "price-list", kind: "postpaid", service_type: serviceType });
+  const products = payload.data?.products;
+  if (!payload.success || !Array.isArray(products)) throw new Error(payload.error || "Katalog pascabayar tidak valid");
+  return products.filter((item) => item.status === "active");
+}
+export async function inquirePostpaid(serviceType: "pln" | "pdam", productCode: string, customerNumber: string): Promise<PostpaidInquiry> {
+  const payload = await postpaidRequest<{ success: boolean; data?: PostpaidInquiry; error?: string }>({ action: "inquiry", serviceType, productCode, customerNumber });
+  if (!payload.success || !payload.data) throw new Error(payload.error || "Inquiry tagihan gagal");
+  return payload.data;
+}
+export async function payPostpaid(refId: string): Promise<PostpaidPaymentResult> {
+  return postpaidRequest<PostpaidPaymentResult>({ action: "payment", refId, paymentMethod: "wallet" });
+}
+export async function checkPostpaidStatus(refId: string): Promise<PostpaidPaymentResult> {
+  return postpaidRequest<PostpaidPaymentResult>({ action: "status", refId });
 }

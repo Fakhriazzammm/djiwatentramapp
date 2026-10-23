@@ -1,7 +1,7 @@
 import { createAuthClient } from "better-auth/react";
 
 export const authClient = createAuthClient({ baseURL: "https://api.djiwatentram.web.id/api/auth", fetchOptions: { credentials: "include" } });
-export type CustomerProfile = { source_id: string; name: string | null; email: string | null; wallet_status?: "active" | "blocked" };
+export type CustomerProfile = { source_id: string; name: string | null; email: string | null; phone?: string | null; wallet_status?: "active" | "blocked" };
 const BRIDGE_START = "https://api.djiwatentram.web.id/api/customer/pay-bridge/start";
 const CUSTOMER_AUTH_ORIGIN = "https://djiwatentram.web.id/masuk";
 export type PayNavigationContext = { source: "customer"; username: string } | null;
