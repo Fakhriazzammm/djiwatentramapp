@@ -32,6 +32,8 @@ const ppobServices = [
   ["pln-bill", "Tagihan PLN", "Bayar listrik bulanan", ReceiptText, "orange"],
   ["pdam", "PDAM", "Tagihan air", Droplets, "cyan"],
   ["game", "Voucher Game", "Top up game favorit", Gamepad2, "emerald"],
+  ["etoll", "eToll & eWallet", "Isi DANA dan layanan digital", CreditCard, "indigo"],
+  ["emeterai", "eMeterai", "Beli e-Meterai elektronik", ReceiptText, "slate"],
 ] as const;
 
 const visiblePpobServices = ppobServices.filter(([key]) => availablePpobServiceKeys.includes(key as typeof availablePpobServiceKeys[number]));

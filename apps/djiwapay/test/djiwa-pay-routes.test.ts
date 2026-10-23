@@ -32,6 +32,6 @@ describe("Djiwa Pay route contract", () => {
   });
 
   test("exposes only PPOB services with an active IAK flow", () => {
-    expect(availablePpobServiceKeys).toEqual(["pulsa", "data", "pln-token", "pln-bill", "pdam", "game"]);
+    expect(availablePpobServiceKeys).toEqual(["pulsa", "data", "pln-token", "pln-bill", "pdam", "game", "etoll", "emeterai"]);
   });
 });
