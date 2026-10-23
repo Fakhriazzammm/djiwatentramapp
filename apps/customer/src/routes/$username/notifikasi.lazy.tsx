@@ -8,6 +8,7 @@ import { currency } from "@/components/customer/types";
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { CustomerSectionSkeleton } from "@/components/customer/customer-states";
 import { CustomerPushActivation } from "@/components/customer/customer-push-activation";
+import { markAllCustomerWalletNotificationsRead, markCustomerWalletNotificationRead, readCustomerWalletNotifications, type CustomerWalletNotification } from "@/lib/customer-wallet-adapter";
 
 export const Route = createLazyFileRoute("/$username/notifikasi")({
 	component: NotifikasiPage,
@@ -41,6 +42,14 @@ function NotifikasiPage() {
 	const navigate = useNavigate();
 	const { isAuthenticated, isLoading: authLoading, customer } = useCustomerAuth();
 	const { orders, isLoading } = useCustomerOrders();
+	const [walletNotifications, setWalletNotifications] = useState<CustomerWalletNotification[] | undefined>(undefined);
+	const [walletNotificationsError, setWalletNotificationsError] = useState<string | null>(null);
+	useEffect(() => {
+		if (!customer?.sourceId || !customer.email || !isAuthenticated) { setWalletNotifications([]); return; }
+		let cancelled = false;
+		void readCustomerWalletNotifications(customer.sourceId, customer.email).then((items) => { if (!cancelled) setWalletNotifications(items); }).catch((error) => { if (!cancelled) { setWalletNotifications([]); setWalletNotificationsError(error instanceof Error ? error.message : "Notifikasi saldo belum dapat dimuat"); } });
+		return () => { cancelled = true; };
+	}, [customer?.email, customer?.sourceId, isAuthenticated]);
 
 	// Timestamp terakhir kali halaman ini dibuka → penanda "belum dibaca"
 	// First visit: seed ke sekarang agar riwayat lama tidak tampil "baru semua".
@@ -63,8 +72,16 @@ function NotifikasiPage() {
 		try { localStorage.setItem(SEEN_KEY, String(next)); } catch {}
 	};
 
-	const markAllRead = () => persistLastSeen(Date.now());
-	const markNotificationRead = (createdAt: number) => persistLastSeen(createdAt);
+	const markAllRead = async () => {
+		persistLastSeen(Date.now());
+		if (!customer?.sourceId || !customer.email) return;
+		try { await markAllCustomerWalletNotificationsRead(customer.sourceId, customer.email); setWalletNotifications((items) => items?.map((item) => ({ ...item, unread: false }))); } catch { /* local order notifications remain usable */ }
+	};
+	const markNotificationRead = async (createdAt: number, walletNotificationId?: string) => {
+		persistLastSeen(createdAt);
+		if (!walletNotificationId || !customer?.sourceId || !customer.email) return;
+		try { await markCustomerWalletNotificationRead(customer.sourceId, customer.email, walletNotificationId); setWalletNotifications((items) => items?.map((item) => item.id === walletNotificationId ? { ...item, unread: false } : item)); } catch { /* best effort */ }
+	};
 
 	const goHome = () => navigate({ to: "/$username", params: { username } });
 
@@ -83,7 +100,7 @@ function NotifikasiPage() {
 	}, [customer?.createdAt, customer?.name, customer?.sourceId, lastSeen]);
 
 	const notifications = useMemo(() => {
-		if (!orders) return undefined;
+		if (!orders || walletNotifications === undefined) return undefined;
 		const orderNotifications = orders.map((order) => {
 			const statusKey = order.status?.toLowerCase?.() ?? "";
 			return {
@@ -95,8 +112,17 @@ function NotifikasiPage() {
 				isGreeting: false,
 			};
 		});
-		return memberGreeting ? [memberGreeting, ...orderNotifications] : orderNotifications;
-	}, [memberGreeting, orders, lastSeen]);
+		const walletItems = walletNotifications.map((item) => ({
+			id: `wallet-${item.id}`,
+			title: item.title,
+			message: item.message,
+			createdAt: Date.parse(item.created_at),
+			unread: item.unread,
+			isGreeting: false,
+			walletNotificationId: item.id,
+		}));
+		return memberGreeting ? [memberGreeting, ...walletItems, ...orderNotifications] : [...walletItems, ...orderNotifications];
+	}, [memberGreeting, orders, lastSeen, walletNotifications]);
 	const unreadCount = notifications?.filter((notification) => notification.unread).length ?? 0;
 
 	return (
@@ -140,11 +166,12 @@ function NotifikasiPage() {
 						</div>
 					) : (
 						<div className="space-y-2">
+							{walletNotificationsError ? <p className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">{walletNotificationsError}</p> : null}
 							{notifications.map((notif) => (
 								<button
 									type="button"
 									key={notif.id}
-									onClick={() => { markNotificationRead(notif.createdAt); if (notif.isGreeting) goHome(); else navigate({ to: "/$username/riwayat", params: { username } }); }}
+								onClick={() => { const walletNotificationId = "walletNotificationId" in notif && typeof notif.walletNotificationId === "string" ? notif.walletNotificationId : undefined; void markNotificationRead(notif.createdAt, walletNotificationId); if (notif.isGreeting) goHome(); else if (walletNotificationId) navigate({ to: "/$username/saldo", params: { username } }); else navigate({ to: "/$username/riwayat", params: { username } }); }}
 									className={`flex w-full gap-3 rounded-[20px] border px-3 py-3 text-left shadow-sm transition-all duration-[180ms] active:scale-[.98] ${notif.unread ? "border-primary/30 bg-primary/5" : "border-border bg-card"}`}
 								>
 									<div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${notif.unread ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
