@@ -1042,9 +1042,18 @@ app.post("/api/pay-bridge/wallet", async (c) => {
     const normalizedPhone = phone.startsWith("0") ? `62${phone.slice(1)}` : phone;
     if (!/^628\d{8,11}$/.test(normalizedPhone)) return privateJson({ success: false, error: "INVALID_PHONE" }, 400);
     const recipientResult = await pool.query<{ name: string | null; phone: string | null }>(
-      `SELECT name, phone FROM pos.customers
-       WHERE is_active = true
-         AND regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') = $1
+      `WITH customer_phones AS (
+         SELECT name, phone,
+           CASE
+             WHEN regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') LIKE '0%'
+               THEN '62' || substring(regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') from 2)
+             ELSE regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g')
+           END AS normalized_phone
+         FROM pos.customers
+         WHERE is_active = true
+       )
+       SELECT name, phone FROM customer_phones
+       WHERE normalized_phone = $1
        LIMIT 2`,
       [normalizedPhone],
     );
@@ -1063,9 +1072,18 @@ app.post("/api/pay-bridge/wallet", async (c) => {
       return privateJson({ success: false, error: "INVALID_TRANSFER" }, 400);
     }
     const recipientResult = await pool.query<{ source_id: string; name: string | null }>(
-      `SELECT source_id, name FROM pos.customers
-       WHERE is_active = true
-         AND regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') = $1
+      `WITH customer_phones AS (
+         SELECT source_id, name,
+           CASE
+             WHEN regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') LIKE '0%'
+               THEN '62' || substring(regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') from 2)
+             ELSE regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g')
+           END AS normalized_phone
+         FROM pos.customers
+         WHERE is_active = true
+       )
+       SELECT source_id, name FROM customer_phones
+       WHERE normalized_phone = $1
        LIMIT 2`,
       [recipient],
     );
