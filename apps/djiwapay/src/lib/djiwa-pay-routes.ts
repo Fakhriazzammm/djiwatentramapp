@@ -3,6 +3,8 @@ import { validateCustomerNumber } from "./djiwa-pay-checkout";
 export type PpobRouteStage = "detail" | "konfirmasi" | "struk";
 export type PpobRoute = { category: string; productCode?: string; stage?: PpobRouteStage };
 
+export const availablePpobServiceKeys = ["pulsa", "data", "pln-token", "pln-bill", "pdam", "game"] as const;
+
 const categoryPattern = "[^/]+";
 const productPattern = "[^/]+";
 const stagePattern = "(?:detail|konfirmasi|struk)";

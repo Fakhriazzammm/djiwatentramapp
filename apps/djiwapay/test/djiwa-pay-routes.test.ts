@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { checkoutCustomerNumberHint, isKnownPayPath, parsePpobPath } from "../src/lib/djiwa-pay-routes";
+import { availablePpobServiceKeys, checkoutCustomerNumberHint, isKnownPayPath, parsePpobPath } from "../src/lib/djiwa-pay-routes";
 
 describe("Djiwa Pay route contract", () => {
   test.each([
@@ -29,5 +29,9 @@ describe("Djiwa Pay route contract", () => {
     expect(checkoutCustomerNumberHint("")).toBe("Masukkan nomor tujuan untuk melanjutkan.");
     expect(checkoutCustomerNumberHint("08123")).toBe("Nomor tujuan harus 8–20 digit.");
     expect(checkoutCustomerNumberHint("081234567890")).toBeNull();
+  });
+
+  test("exposes only PPOB services with an active IAK flow", () => {
+    expect(availablePpobServiceKeys).toEqual(["pulsa", "data", "pln-token", "pln-bill", "pdam", "game"]);
   });
 });
