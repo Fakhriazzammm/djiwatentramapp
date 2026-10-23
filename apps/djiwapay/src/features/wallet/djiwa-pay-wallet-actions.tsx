@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, Copy, Share2, WalletCards, X } from "lucide-react";
 import type { CustomerProfile } from "../../lib/identity-adapter";
-import { requestWalletWithdrawal, transferWallet } from "../../lib/wallet-adapter";
+import { requestWalletWithdrawal, resolveWalletRecipient, transferWallet } from "../../lib/wallet-adapter";
 import { validateWalletWithdrawal } from "../../lib/djiwa-pay-withdrawal";
-import { buildWalletReceivePayload, validateWalletTransfer } from "../../lib/djiwa-pay-transfer";
+import { buildWalletReceivePayload, normalizeWalletPhone, validateWalletTransfer } from "../../lib/djiwa-pay-transfer";
 
 const money = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 
@@ -18,6 +18,8 @@ type Props = {
 
 export function DjiwaPayWalletAction({ mode, profile, balance, onClose, onSuccess, initialRecipient = "" }: Props) {
   const [recipient, setRecipient] = useState(initialRecipient);
+  const [verifiedRecipient, setVerifiedRecipient] = useState<{ phone: string; name: string } | null>(null);
+  const [checkingRecipient, setCheckingRecipient] = useState(false);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [bankName, setBankName] = useState("");
@@ -26,22 +28,39 @@ export function DjiwaPayWalletAction({ mode, profile, balance, onClose, onSucces
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const receivePayload = useMemo(() => buildWalletReceivePayload(profile.source_id), [profile.source_id]);
+  const receivePhone = normalizeWalletPhone(profile.phone || "");
+  const receivePayload = useMemo(() => buildWalletReceivePayload(receivePhone), [receivePhone]);
 
   const copy = async (value: string) => {
-    try { await navigator.clipboard?.writeText(value); setCopied(true); window.setTimeout(() => setCopied(false), 1800); } catch { setMessage("Salin manual ID penerima di bawah."); }
+    try { await navigator.clipboard?.writeText(value); setCopied(true); window.setTimeout(() => setCopied(false), 1800); } catch { setMessage("Salin manual nomor HP penerima di bawah."); }
   };
 
   const submit = async () => {
     const validation = validateWalletTransfer({ recipient, amount: Number(amount), note });
     if (!validation.valid) { setMessage(validation.message); return; }
+    if (!verifiedRecipient || verifiedRecipient.phone !== normalizeWalletPhone(recipient)) { setMessage("Cek nomor HP penerima terlebih dahulu."); return; }
     if (Number(amount) > balance) { setMessage(`Saldo tersedia ${money(balance)}.`); return; }
     setBusy(true); setMessage(null);
     try { await transferWallet(recipient, Number(amount), note); onSuccess(); }
     catch (cause) {
       const code = cause instanceof Error ? cause.message : "TRANSFER_FAILED";
-      setMessage(code === "RECIPIENT_NOT_FOUND" ? "Penerima tidak ditemukan. Gunakan email, nomor HP, atau ID customer yang terdaftar." : code === "INSUFFICIENT_BALANCE" ? `Saldo tersedia ${money(balance)}.` : code === "SELF_TRANSFER" ? "Tidak dapat transfer ke wallet sendiri." : "Transfer belum berhasil. Coba lagi.");
+      setMessage(code === "RECIPIENT_NOT_FOUND" ? "Penerima tidak ditemukan. Pastikan nomor HP sudah terdaftar di Djiwa Pay." : code === "RECIPIENT_AMBIGUOUS" ? "Nomor HP terdaftar lebih dari satu akun. Gunakan nomor lain." : code === "INSUFFICIENT_BALANCE" ? `Saldo tersedia ${money(balance)}.` : code === "SELF_TRANSFER" ? "Tidak dapat transfer ke wallet sendiri." : "Transfer belum berhasil. Coba lagi.");
     } finally { setBusy(false); }
+  };
+
+  const checkRecipient = async () => {
+    const phone = normalizeWalletPhone(recipient);
+    const validation = validateWalletTransfer({ recipient, amount: 1000, note: "" });
+    if (!validation.valid && !phone) { setMessage(validation.message); return; }
+    if (!/^628\d{8,11}$/.test(phone)) { setMessage("Nomor HP harus berupa nomor Indonesia yang valid."); return; }
+    setCheckingRecipient(true); setMessage(null); setVerifiedRecipient(null);
+    try {
+      const result = await resolveWalletRecipient(phone);
+      setVerifiedRecipient({ phone, name: result.recipient?.name || "Customer Djiwa" });
+    } catch (cause) {
+      const code = cause instanceof Error ? cause.message : "RECIPIENT_NOT_FOUND";
+      setMessage(code === "RECIPIENT_AMBIGUOUS" ? "Nomor HP terdaftar lebih dari satu akun. Gunakan nomor lain." : "Penerima tidak ditemukan. Pastikan nomor HP sudah terdaftar di Djiwa Pay.");
+    } finally { setCheckingRecipient(false); }
   };
 
   const submitWithdrawal = async () => {
@@ -72,17 +91,17 @@ export function DjiwaPayWalletAction({ mode, profile, balance, onClose, onSucces
         <button type="button" className="primary-action" onClick={() => void submitWithdrawal()} disabled={busy}>{busy ? "Mengirim permintaan..." : `Tarik ${amount ? money(Number(amount)) : "saldo"}`}</button>
       </> : mode === "send" ? <>
         <div className="wallet-action-intro"><span className="wallet-action-icon send"><ArrowUpRight size={20} /></span><div><strong>Kirim ke customer Djiwa Pay</strong><small>Transfer internal diproses langsung dan aman.</small></div></div>
-        <label className="wallet-action-field"><span>Email, nomor HP, atau ID penerima</span><input value={recipient} onChange={(event) => setRecipient(event.currentTarget.value)} placeholder="contoh@email.com" autoComplete="off" /></label>
+        <label className="wallet-action-field"><span>Nomor HP penerima</span><div className="wallet-action-recipient"><input value={recipient} onChange={(event) => { setRecipient(event.currentTarget.value.replace(/[^\d+\s-]/g, "")); setVerifiedRecipient(null); }} placeholder="08xxxxxxxxxx" inputMode="tel" autoComplete="tel" /><button type="button" className="secondary-action" onClick={() => void checkRecipient()} disabled={checkingRecipient}>{checkingRecipient ? "Mengecek..." : "Cek penerima"}</button></div><small>Pastikan nama penerima sesuai sebelum mengirim saldo.</small></label>
+        {verifiedRecipient ? <div className="wallet-recipient-verified" role="status"><span>✓</span><div><small>Penerima terverifikasi</small><strong>{verifiedRecipient.name}</strong><em>{recipient}</em></div></div> : null}
         <label className="wallet-action-field"><span>Nominal transfer</span><div className="wallet-action-amount"><b>Rp</b><input value={amount} inputMode="numeric" onChange={(event) => setAmount(event.currentTarget.value.replace(/\D/g, "").slice(0, 8))} placeholder="1000" /></div><small>Minimal Rp1.000 · saldo tersedia {money(balance)}</small></label>
         <label className="wallet-action-field"><span>Catatan <em>opsional</em></span><input value={note} onChange={(event) => setNote(event.currentTarget.value.slice(0, 120))} placeholder="Misalnya: patungan makan" maxLength={120} /></label>
         {message ? <p className="wallet-action-message" role="alert">{message}</p> : null}
-        <button type="button" className="primary-action" onClick={() => void submit()} disabled={busy}>{busy ? "Memproses transfer..." : `Kirim ${amount ? money(Number(amount)) : "saldo"}`}</button>
+        <button type="button" className="primary-action" onClick={() => void submit()} disabled={busy || !verifiedRecipient}>{busy ? "Memproses transfer..." : `Kirim ${amount ? money(Number(amount)) : "saldo"}`}</button>
       </> : <>
-        <div className="wallet-action-intro"><span className="wallet-action-icon receive"><ArrowDownLeft size={20} /></span><div><strong>Bagikan ID penerimaan</strong><small>Pengirim memakai ID ini untuk mengirim saldo ke wallet Anda.</small></div></div>
-        <div className="wallet-receive-card"><WalletCards size={24} /><span><small>ID penerima</small><strong>{profile.source_id}</strong></span><button type="button" onClick={() => void copy(profile.source_id)} aria-label="Salin ID penerima"><Copy size={17} /></button></div>
-        <div className="wallet-receive-payload"><small>Payload QR / scanner</small><code>{receivePayload}</code></div>
-        <div className="wallet-action-buttons"><button type="button" className="secondary-action" onClick={() => void copy(receivePayload)}><Copy size={16} />{copied ? "Tersalin" : "Salin payload"}</button><button type="button" className="primary-action" onClick={() => { if (navigator.share) void navigator.share({ title: "Djiwa Pay", text: `Kirim saldo ke ID ${profile.source_id}`, url: receivePayload }); else void copy(receivePayload); }}><Share2 size={16} />Bagikan</button></div>
-        <p className="wallet-action-helper">Jangan bagikan payload ini jika Anda tidak ingin menerima transfer dari orang lain.</p>
+        <div className="wallet-action-intro"><span className="wallet-action-icon receive"><ArrowDownLeft size={20} /></span><div><strong>Bagikan nomor HP Anda</strong><small>Pengirim akan mengecek nama Anda sebelum mengirim saldo.</small></div></div>
+        {receivePhone ? <div className="wallet-receive-card"><WalletCards size={24} /><span><small>Nomor HP penerima</small><strong>{profile.phone}</strong></span><button type="button" onClick={() => void copy(profile.phone || "")} aria-label="Salin nomor HP penerima"><Copy size={17} /></button></div> : <div className="wallet-action-message" role="alert">Nomor HP belum tersedia. Lengkapi nomor HP di profil agar bisa menerima saldo.</div>}
+        {receivePhone ? <><div className="wallet-receive-payload"><small>Payload QR / scanner</small><code>{receivePayload}</code></div><div className="wallet-action-buttons"><button type="button" className="secondary-action" onClick={() => void copy(receivePayload)}><Copy size={16} />{copied ? "Tersalin" : "Salin payload"}</button><button type="button" className="primary-action" onClick={() => { if (navigator.share) void navigator.share({ title: "Djiwa Pay", text: `Kirim saldo ke nomor HP ${profile.phone}`, url: receivePayload }); else void copy(receivePayload); }}><Share2 size={16} />Bagikan</button></div></> : null}
+        <p className="wallet-action-helper">Nomor HP digunakan untuk menemukan akun dan menampilkan nama penerima sebelum transfer.</p>
       </>}
     </section>
   </div>;

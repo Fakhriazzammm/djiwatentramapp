@@ -12,7 +12,7 @@ export function DjiwaPayWalletScanner({ onClose, onDetected }: { onClose: () => 
     let cancelled = false;
     const start = async () => {
       if (!("BarcodeDetector" in window) || !navigator.mediaDevices?.getUserMedia) {
-        setStatus("Browser ini belum mendukung scan QR. Gunakan fitur Terima untuk menyalin ID penerima.");
+        setStatus("Browser ini belum mendukung scan QR. Gunakan fitur Terima untuk menyalin nomor HP penerima.");
         return;
       }
       try {
@@ -37,6 +37,6 @@ export function DjiwaPayWalletScanner({ onClose, onDetected }: { onClose: () => 
 }
 
 export function parseWalletRecipient(rawValue: string) {
-  try { const url = new URL(rawValue); if (url.protocol !== "djiwapay:") return null; const recipient = url.searchParams.get("recipient")?.trim(); return recipient || null; } catch { return null; }
+  try { const url = new URL(rawValue); if (url.protocol !== "djiwapay:") return null; const phone = url.searchParams.get("phone")?.trim(); return phone || null; } catch { return null; }
 }
 

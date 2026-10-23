@@ -1026,7 +1026,7 @@ app.post("/api/pay-bridge/ppob/purchase", async (c) => {
 app.post("/api/pay-bridge/wallet", async (c) => {
   const session = await requirePaySession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
-  const body = await c.req.json().catch(() => ({})) as { action?: unknown; amount?: unknown; invoiceId?: unknown; recipient?: unknown; note?: unknown; idempotencyKey?: unknown; bankName?: unknown; accountNumber?: unknown; accountName?: unknown };
+  const body = await c.req.json().catch(() => ({})) as { action?: unknown; amount?: unknown; invoiceId?: unknown; recipient?: unknown; phone?: unknown; note?: unknown; idempotencyKey?: unknown; bankName?: unknown; accountNumber?: unknown; accountName?: unknown };
   const action = typeof body.action === "string" ? body.action : "get";
   const sourceId = String(session.customer.source_id || "");
   const email = String(session.customer.email || "");
@@ -1036,22 +1036,40 @@ app.post("/api/pay-bridge/wallet", async (c) => {
     const ledger = await pool.query("SELECT * FROM pos.customer_wallet_ledger WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 100", [sourceId]);
     return privateJson({ success: true, wallet: wallet.rows[0] ?? null, ledger: ledger.rows });
   }
+  if (action === "resolve-recipient") {
+    const rawPhone = typeof body.phone === "string" ? body.phone : "";
+    const phone = rawPhone.replace(/\D/g, "");
+    const normalizedPhone = phone.startsWith("0") ? `62${phone.slice(1)}` : phone;
+    if (!/^628\d{8,11}$/.test(normalizedPhone)) return privateJson({ success: false, error: "INVALID_PHONE" }, 400);
+    const recipientResult = await pool.query<{ name: string | null; phone: string | null }>(
+      `SELECT name, phone FROM pos.customers
+       WHERE is_active = true
+         AND regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') = $1
+       LIMIT 2`,
+      [normalizedPhone],
+    );
+    if (recipientResult.rows.length > 1) return privateJson({ success: false, error: "RECIPIENT_AMBIGUOUS" }, 409);
+    const target = recipientResult.rows[0];
+    if (!target) return privateJson({ success: false, error: "RECIPIENT_NOT_FOUND" }, 404);
+    return privateJson({ success: true, recipient: { name: target.name || "Customer Djiwa", phone: normalizedPhone } });
+  }
   if (action === "transfer") {
-    const recipient = typeof body.recipient === "string" ? body.recipient.trim() : "";
+    const rawPhone = typeof body.phone === "string" ? body.phone : typeof body.recipient === "string" ? body.recipient : "";
+    const digits = rawPhone.replace(/\D/g, "");
+    const recipient = digits.startsWith("0") ? `62${digits.slice(1)}` : digits;
     const amount = Number(body.amount);
     const note = typeof body.note === "string" ? body.note.trim().slice(0, 120) : "";
-    if (!recipient || recipient.length > 160 || !Number.isSafeInteger(amount) || amount < 1000 || amount > 10_000_000) {
+    if (!/^628\d{8,11}$/.test(recipient) || !Number.isSafeInteger(amount) || amount < 1000 || amount > 10_000_000) {
       return privateJson({ success: false, error: "INVALID_TRANSFER" }, 400);
     }
     const recipientResult = await pool.query<{ source_id: string; name: string | null }>(
       `SELECT source_id, name FROM pos.customers
        WHERE is_active = true
-         AND (source_id = $1 OR lower(coalesce(email, '')) = lower($1)
-           OR regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') = regexp_replace($1, '[^0-9]', '', 'g')
-           OR lower(coalesce(username, '')) = lower($1))
-       LIMIT 1`,
+         AND regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') = $1
+       LIMIT 2`,
       [recipient],
     );
+    if (recipientResult.rows.length > 1) return privateJson({ success: false, error: "RECIPIENT_AMBIGUOUS" }, 409);
     const target = recipientResult.rows[0];
     if (!target) return privateJson({ success: false, error: "RECIPIENT_NOT_FOUND" }, 404);
     if (target.source_id === sourceId) return privateJson({ success: false, error: "SELF_TRANSFER" }, 400);

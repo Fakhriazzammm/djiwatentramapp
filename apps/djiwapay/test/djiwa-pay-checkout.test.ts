@@ -9,7 +9,7 @@ import {
 } from "../src/lib/djiwa-pay-checkout";
 import { parseCheckoutDraft, serializeCheckoutDraft } from "../src/lib/djiwa-pay-draft";
 import { canPollTransaction, normalizePayTransactionStatus, shouldClearTransactionDraft, transactionStatusLabel } from "../src/lib/djiwa-pay-transaction";
-import { buildWalletReceivePayload, validateWalletTransfer } from "../src/lib/djiwa-pay-transfer";
+import { buildWalletReceivePayload, normalizeWalletPhone, validateWalletTransfer } from "../src/lib/djiwa-pay-transfer";
 import { parseWalletRecipient } from "../src/features/wallet/djiwa-pay-wallet-scanner";
 import { validateWalletWithdrawal } from "../src/lib/djiwa-pay-withdrawal";
 import { walletQuickActionState } from "../src/lib/djiwa-pay-availability";
@@ -89,16 +89,18 @@ describe("Djiwa Pay checkout presentation contract", () => {
     expect(shouldClearTransactionDraft("pending")).toBe(false);
   });
 
-  test("validates internal wallet transfer drafts", () => {
+  test("validates phone-only internal wallet transfer drafts", () => {
     expect(validateWalletTransfer({ recipient: "", amount: 1000, note: "" }).valid).toBe(false);
-    expect(validateWalletTransfer({ recipient: "user@example.com", amount: 999, note: "" }).valid).toBe(false);
-    expect(validateWalletTransfer({ recipient: "user@example.com", amount: 1000, note: "Bantuan makan" })).toEqual({ valid: true, message: null });
+    expect(validateWalletTransfer({ recipient: "user@example.com", amount: 1000, note: "" }).valid).toBe(false);
+    expect(validateWalletTransfer({ recipient: "081234567890", amount: 1000, note: "Bantuan makan" })).toEqual({ valid: true, message: null });
     expect(validateWalletTransfer({ recipient: "user@example.com", amount: 10_000_001, note: "" }).valid).toBe(false);
   });
 
-  test("creates a non-sensitive receive payload", () => {
-    expect(buildWalletReceivePayload("cust_123")).toBe("djiwapay://transfer?recipient=cust_123");
-    expect(parseWalletRecipient("djiwapay://transfer?recipient=cust_123")).toBe("cust_123");
+  test("normalizes Indonesian phone numbers and creates a phone receive payload", () => {
+    expect(normalizeWalletPhone("0812-3456-7890")).toBe("6281234567890");
+    expect(normalizeWalletPhone("+62 812 3456 7890")).toBe("6281234567890");
+    expect(buildWalletReceivePayload("081234567890")).toBe("djiwapay://transfer?phone=6281234567890");
+    expect(parseWalletRecipient("djiwapay://transfer?phone=6281234567890")).toBe("6281234567890");
     expect(parseWalletRecipient("https://example.com/qr?recipient=cust_123")).toBeNull();
   });
 
