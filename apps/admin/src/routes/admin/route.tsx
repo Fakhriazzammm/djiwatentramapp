@@ -48,8 +48,10 @@ import {
 	BarChart3,
 	CalendarDays,
 	CheckCircle2,
+	Search,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { filterCommandItems, type AdminCommandItem } from "@/lib/admin-command-search";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -318,6 +320,20 @@ const OPERATIONAL_PATHS = [
 // Flat list for backward compat
 const QUICK_MENU_ITEMS = QUICK_MENU_SECTIONS.flatMap((s) => s.items);
 
+const COMMAND_ITEMS: AdminCommandItem[] = [
+	{ to: "/admin", label: "Dashboard", group: "Utama", permission: "analytics:view", keywords: ["beranda", "home"] },
+	{ to: "/admin/orders", label: "Pesanan", group: "Utama", permission: "orders:view", keywords: ["order", "transaksi"] },
+	{ to: "/admin/ai-chat", label: "Djiwa Tentram AI", group: "Utama", keywords: ["ai", "yumi", "asisten"] },
+	...QUICK_MENU_SECTIONS.flatMap((section) =>
+		section.items.map((item) => ({
+			to: item.to,
+			label: item.label,
+			group: section.label,
+			permission: item.permission,
+		})),
+	),
+];
+
 // Finance sub-routes for auto-expanding the submenu
 const FINANCE_PATHS = [
 	"/admin/finance",
@@ -403,6 +419,22 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 	};
 	const [isCollapsed, setIsCollapsed] = useState(false);
 	const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false);
+	const [isCommandOpen, setIsCommandOpen] = useState(false);
+
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+				event.preventDefault();
+				setIsCommandOpen((open) => !open);
+				return;
+			}
+			if (event.key === "Escape" && isQuickMenuOpen) {
+				setIsQuickMenuOpen(false);
+			}
+		};
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, [isQuickMenuOpen]);
 	const [adminPopupDensity] = useState<"compact" | "normal">(() => {
 		if (typeof window !== "undefined") {
 			const saved = localStorage.getItem("admin-popup-density");
@@ -678,6 +710,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 				{/* Toggle Button */}
 				<button
 					className="absolute top-20 -right-3 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background shadow-sm transition-transform hover:scale-110 active:scale-95"
+					aria-label={isCollapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
 					onClick={() => setIsCollapsed(!isCollapsed)}
 					type="button"
 				>
@@ -1244,6 +1277,16 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 						</div>
 					</div>
 					<div className="flex items-center gap-2">
+						<button
+							aria-keyshortcuts="Control+K Meta+K"
+							aria-label="Cari menu (Ctrl+K)"
+							className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							onClick={() => setIsCommandOpen(true)}
+							title="Cari menu (Ctrl+K)"
+							type="button"
+						>
+							<Search className="h-4 w-4" />
+						</button>
 						<AdminNotificationCenter onNavigate={(path) => navigate({ to: path as any })} />
 						<DropdownMenu>
 							<DropdownMenuTrigger
@@ -1326,7 +1369,10 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 						{/* Quick Menu Panel */}
 						<motion.div
 							animate={{ y: 0, opacity: 1 }}
+							aria-label="Menu admin"
+							aria-modal="true"
 							className="fixed right-0 bottom-0 left-0 z-50 max-h-[calc(100dvh-4rem)] overflow-y-auto rounded-t-2xl border-border border-t bg-card px-3 pt-2.5 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl md:hidden"
+							role="dialog"
 							exit={{ y: "100%", opacity: 0 }}
 							initial={{ y: "100%", opacity: 0 }}
 							transition={{ type: "spring", damping: 25, stiffness: 300 }}
@@ -1406,6 +1452,17 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 					</>
 				)}
 			</AnimatePresence>
+
+			<AdminCommandPalette
+				hasPermission={hasPermission}
+				items={COMMAND_ITEMS}
+				onClose={() => setIsCommandOpen(false)}
+				onSelect={(to) => {
+					setIsCommandOpen(false);
+					navigate({ to: to as any });
+				}}
+				open={isCommandOpen}
+			/>
 
 			{/* === MOBILE HOME ENTRY NAVIGATION === */}
 			{isHomeEntryMode && (
@@ -1569,6 +1626,113 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 	);
 }
 
+
+function AdminCommandPalette({
+	open,
+	items,
+	hasPermission,
+	onSelect,
+	onClose,
+}: {
+	open: boolean;
+	items: AdminCommandItem[];
+	hasPermission: (permission?: string) => boolean;
+	onSelect: (to: string) => void;
+	onClose: () => void;
+}) {
+	const [query, setQuery] = useState("");
+	const [active, setActive] = useState(0);
+
+	useEffect(() => {
+		if (open) {
+			setQuery("");
+			setActive(0);
+		}
+	}, [open]);
+
+	const results = useMemo(
+		() => (open ? filterCommandItems(items, query, hasPermission) : []),
+		[items, query, hasPermission, open],
+	);
+
+	if (!open) return null;
+
+	const choose = (index: number) => {
+		const item = results[index];
+		if (item) onSelect(item.to);
+	};
+
+	const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+		if (event.key === "ArrowDown") {
+			event.preventDefault();
+			setActive((index) => Math.min(index + 1, Math.max(results.length - 1, 0)));
+		} else if (event.key === "ArrowUp") {
+			event.preventDefault();
+			setActive((index) => Math.max(index - 1, 0));
+		} else if (event.key === "Enter") {
+			event.preventDefault();
+			choose(active);
+		} else if (event.key === "Escape") {
+			onClose();
+		}
+	};
+
+	return (
+		<div
+			className="fixed inset-0 z-[60] flex items-start justify-center bg-black/40 p-4 pt-[12vh]"
+			onClick={onClose}
+		>
+			<div
+				aria-label="Cari menu admin"
+				aria-modal="true"
+				className="w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+				onClick={(event) => event.stopPropagation()}
+				role="dialog"
+			>
+				<div className="flex items-center gap-2 border-border border-b px-4">
+					<Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+					<input
+						aria-activedescendant={results[active] ? `admin-command-${active}` : undefined}
+						aria-controls="admin-command-results"
+						aria-expanded="true"
+						aria-label="Cari menu"
+						autoFocus
+						className="h-12 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+						onChange={(event) => {
+							setQuery(event.target.value);
+							setActive(0);
+						}}
+						onKeyDown={onKeyDown}
+						placeholder="Cari menu, halaman, atau fitur…"
+						role="combobox"
+						value={query}
+					/>
+					<kbd className="hidden rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground sm:inline">Esc</kbd>
+				</div>
+				<ul className="max-h-[60vh] overflow-y-auto p-2" id="admin-command-results" role="listbox">
+					{results.length === 0 ? (
+						<li className="px-3 py-8 text-center text-sm text-muted-foreground">Tidak ada menu yang cocok</li>
+					) : (
+						results.map((item, index) => (
+							<li
+								aria-selected={index === active}
+								className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm ${index === active ? "bg-primary/10 text-primary" : "text-foreground"}`}
+								id={`admin-command-${index}`}
+								key={item.to}
+								onClick={() => choose(index)}
+								onMouseEnter={() => setActive(index)}
+								role="option"
+							>
+								<span className="truncate font-medium">{item.label}</span>
+								<span className="shrink-0 text-[11px] text-muted-foreground">{item.group}</span>
+							</li>
+						))
+					)}
+				</ul>
+			</div>
+		</div>
+	);
+}
 
 function PermissionDenied({ onBack }: { onBack: () => void }) {
 	return (

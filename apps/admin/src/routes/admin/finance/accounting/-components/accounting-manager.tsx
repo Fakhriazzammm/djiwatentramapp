@@ -1,5 +1,7 @@
 import { createElement, useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
+import { useAdminConfirm } from "@/hooks/use-admin-confirm";
 import { createClient } from "@/lib/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +58,7 @@ const ACCOUNT_TYPES = [
 const supabase = createClient();
 
 export function AccountingManager() {
+	const { confirm, dialog: confirmDialog } = useAdminConfirm();
 	const navigate = useNavigate();
 	const [accounts, setAccounts] = useState<COAAccount[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -177,7 +180,7 @@ export function AccountingManager() {
 		} catch (e: unknown) {
 			const err = e as { message?: string };
 			console.error("Failed to save account:", err);
-			alert(`Gagal menyimpan: ${err.message || "Unknown"}`);
+			toast.error(`Gagal menyimpan: ${err.message || "Unknown"}`);
 		} finally {
 			setSaving(false);
 		}
@@ -194,9 +197,12 @@ export function AccountingManager() {
 			if (countError) throw countError;
 
 			if (count && count > 0) {
-				const ok = confirm(
-					`Akun ini memiliki ${count} entri akuntansi. Nonaktifkan saja? (OK = nonaktifkan, Batal = batalkan)`
-				);
+				const ok = await confirm({
+					title: "Akun memiliki entri",
+					message: `Akun ini memiliki ${count} entri akuntansi. Nonaktifkan saja? (Nonaktifkan = akun tetap tersimpan, Batal = tidak ada perubahan)`,
+					confirmText: "Nonaktifkan",
+					variant: "warning",
+				});
 				if (!ok) return;
 				// Deactivate instead of delete
 				const { error } = await supabase
@@ -216,7 +222,7 @@ export function AccountingManager() {
 		} catch (e: unknown) {
 			const err = e as { message?: string };
 			console.error("Failed to delete account:", err);
-			alert(`Gagal menghapus: ${err.message || "Unknown"}`);
+			toast.error(`Gagal menghapus: ${err.message || "Unknown"}`);
 		}
 	}
 
@@ -264,6 +270,7 @@ export function AccountingManager() {
 
 	return (
 		<div className="flex flex-1 flex-col overflow-hidden">
+			{confirmDialog}
 			{/* Header */}
 			<div className="flex items-center gap-3 border-b px-4 py-3">
 				<button

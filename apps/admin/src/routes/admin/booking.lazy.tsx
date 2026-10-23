@@ -16,6 +16,7 @@ import {
 	Pencil,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useAdminConfirm } from "@/hooks/use-admin-confirm";
 import { toast } from "sonner";
 import { BookingTimelineSummary } from "@yumipos/web-shared/booking/timeline";
 import { fetchBookingTimeline } from "@/lib/api-helper";
@@ -575,6 +576,7 @@ function OrderRow({
 export type BookingWorkspaceTab = "calendar" | "orders" | "capacity" | "general" | "products" | "form";
 
 export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspaceTab } = {}) {
+	const { confirm, dialog: confirmDialog } = useAdminConfirm();
 	const routeSearch = useSearch({ from: "/admin/booking" }) as { tab?: string };
 	const requestedTab = routeSearch.tab ?? forcedTab;
 	const settings = useHybridBookingSettings("booking");
@@ -748,7 +750,12 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 
 	const handleDeleteBooking = async (id: Id<"bookingOrders">, paymentStatus?: string) => {
 		if (paymentStatus === "paid") {
-			if (!confirm("Booking sudah lunas. Booking akan dibatalkan dan tetap disimpan sebagai histori. Lanjutkan?")) return;
+			const cancelPaid = await confirm({
+				title: "Batalkan booking lunas?",
+				message: "Booking sudah lunas. Booking akan dibatalkan dan tetap disimpan sebagai histori. Lanjutkan?",
+				confirmText: "Batalkan booking",
+			});
+			if (!cancelPaid) return;
 			const tid = toast.loading("Membatalkan booking...");
 			try {
 				await updateBookingStatus({ id, bookingStatus: "cancelled" as any });
@@ -759,7 +766,12 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 			}
 			return;
 		}
-		if (!confirm("Apakah Anda yakin ingin menghapus booking ini? Tindakan ini tidak dapat dibatalkan.")) return;
+		const removeBooking = await confirm({
+			title: "Hapus booking?",
+			message: "Apakah Anda yakin ingin menghapus booking ini? Tindakan ini tidak dapat dibatalkan.",
+			confirmText: "Hapus",
+		});
+		if (!removeBooking) return;
 		
 		const tid = toast.loading("Menghapus booking...");
 		try {
@@ -880,7 +892,12 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 
 	const handleBulkDeleteCapacity = async () => {
 		if (selectedCapacityIds.length === 0 || isDeletingCapacity) return;
-		if (!confirm(`Hapus ${selectedCapacityIds.length} pengaturan kapasitas terpilih? Tanggal akan kembali memakai kapasitas default.`)) return;
+		const removeCapacity = await confirm({
+			title: "Hapus pengaturan kapasitas?",
+			message: `Hapus ${selectedCapacityIds.length} pengaturan kapasitas terpilih? Tanggal akan kembali memakai kapasitas default.`,
+			confirmText: "Hapus",
+		});
+		if (!removeCapacity) return;
 		setIsDeletingCapacity(true);
 		const tid = toast.loading(`Menghapus ${selectedCapacityIds.length} kapasitas...`);
 		try {
@@ -1015,6 +1032,7 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 
 	return (
 		<div className="mx-auto max-w-6xl space-y-4 pb-8 md:space-y-5">
+			{confirmDialog}
 			{/* Header */}
 			<div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
 				<div>

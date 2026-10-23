@@ -5,6 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
+import { useAdminConfirm } from "@/hooks/use-admin-confirm";
 import { invokeDirectFetch } from "@/lib/api-helper";
 
 type LeaveRow = {
@@ -39,6 +40,7 @@ function LeaveRequestsPage() {
   const [status, setStatus] = useState("all");
   const [refreshKey, setRefreshKey] = useState(0);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const { confirm, dialog: confirmDialog } = useAdminConfirm();
 
   useEffect(() => {
     let active = true;
@@ -64,7 +66,13 @@ function LeaveRequestsPage() {
   const updateStatus = async (requestId: string, nextStatus: "approve" | "reject") => {
     if (!token || processingId) return;
     const label = nextStatus === "approve" ? "menyetujui" : "menolak";
-    if (!window.confirm(`Yakin ${label} pengajuan ini?`)) return;
+    const accepted = await confirm({
+      title: nextStatus === "approve" ? "Setujui pengajuan?" : "Tolak pengajuan?",
+      message: `Yakin ${label} pengajuan ini?`,
+      confirmText: nextStatus === "approve" ? "Setujui" : "Tolak",
+      variant: nextStatus === "approve" ? "info" : "danger",
+    });
+    if (!accepted) return;
     setProcessingId(requestId);
     setError(null);
     try {
@@ -99,6 +107,7 @@ function LeaveRequestsPage() {
 
   return (
     <main className="flex flex-col gap-4 p-4 md:p-6">
+      {confirmDialog}
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Karyawan App</p>

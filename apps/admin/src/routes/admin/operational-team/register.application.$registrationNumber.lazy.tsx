@@ -1,5 +1,6 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useAdminConfirm } from "@/hooks/use-admin-confirm";
 import { ArrowLeft, CheckCircle2, Download, Eye, FileSignature, FileText, Loader2, PencilLine, ShieldCheck, Trash2, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,7 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 
 /* -------- component -------- */
 function ApplicationDetailPage() {
+	const { confirm, dialog: confirmDialog } = useAdminConfirm();
 	const { registrationNumber } = Route.useParams() as { registrationNumber: string };
 	const navigate = useNavigate();
 	const siteSettings = useHybridSiteSettings();
@@ -246,7 +248,15 @@ function ApplicationDetailPage() {
 			toast.error("PIN harus 6 digit");
 			return;
 		}
-		if (onboardingSettings.approvalPreview.requireConfirmation && !window.confirm(`Approve ${app.full_name} dan buat akun user?`)) return;
+		if (onboardingSettings.approvalPreview.requireConfirmation) {
+			const approved = await confirm({
+				title: "Setujui pendaftaran?",
+				message: `Approve ${app.full_name} dan buat akun user?`,
+				confirmText: "Approve",
+				variant: "info",
+			});
+			if (!approved) return;
+		}
 		setIsSaving(true);
 		try {
 			const approvalStartDate = new Date().toISOString().slice(0, 10);
@@ -300,7 +310,12 @@ function ApplicationDetailPage() {
 	/* ── Delete ── */
 	async function handleDelete() {
 		if (!app) return;
-		if (!window.confirm(`Hapus pendaftaran "${app.full_name}"? Aksi ini tidak bisa dibatalkan.`)) return;
+		const removeApplication = await confirm({
+			title: "Hapus pendaftaran?",
+			message: `Hapus pendaftaran "${app.full_name}"? Aksi ini tidak bisa dibatalkan.`,
+			confirmText: "Hapus",
+		});
+		if (!removeApplication) return;
 		setIsDeleting(true);
 		try {
 			await deleteApp(app.id);
@@ -347,6 +362,7 @@ function ApplicationDetailPage() {
 
 	return (
 		<div className="mx-auto max-w-6xl space-y-4 px-3 py-4 sm:px-4 sm:py-6 sm:space-y-6">
+			{confirmDialog}
 
 			{/* ── Header ── */}
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

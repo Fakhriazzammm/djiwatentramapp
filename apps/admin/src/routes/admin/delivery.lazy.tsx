@@ -1,6 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { AlertCircle, ArrowRight, Check, CheckCircle2, ChevronDown, Circle, CreditCard, Package, RefreshCw, Search, Settings2, Truck, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAdminConfirm } from "@/hooks/use-admin-confirm";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -130,6 +131,7 @@ function DeliveryTimeline({ status }: { status: string }) {
 }
 
 function AdminCustomerDelivery() {
+  const { confirm, dialog: confirmDialog } = useAdminConfirm();
   const { token } = useYumiAuth();
   const requestVersion = useRef(0);
   const settingsSection = useRef<HTMLElement>(null);
@@ -154,7 +156,14 @@ function AdminCustomerDelivery() {
   }, [token]);
   useEffect(() => { void refresh(); return () => { requestVersion.current++; }; }, [refresh]);
   const bookShipment = async (order: CustomerDeliveryOrder) => {
-    if (bookingId || !window.confirm(`Buat pesanan kurir Biteship untuk order #${order.orderNumber}? Tindakan ini dapat menggunakan saldo akun Biteship.`)) return;
+    if (bookingId) return;
+    const accepted = await confirm({
+      title: "Buat pesanan kurir?",
+      message: `Buat pesanan kurir Biteship untuk order #${order.orderNumber}? Tindakan ini dapat menggunakan saldo akun Biteship.`,
+      confirmText: "Buat pesanan",
+      variant: "warning",
+    });
+    if (!accepted) return;
     setBookingId(order._id); setActionError(null);
     try {
       await deliveryApi("delivery-admin", { action: "create_shipment", staffToken: token, sourceId: order._id });
@@ -170,7 +179,7 @@ function AdminCustomerDelivery() {
     { label: "Terkirim", count: orders.filter((o) => normalizeStatus(o) === "delivered").length, context: "Pengiriman selesai", icon: CheckCircle2, accent: "bg-emerald-50 text-emerald-600" },
     { label: "Dibatalkan", count: orders.filter((o) => normalizeStatus(o) === "cancelled").length, context: "Order dibatalkan", icon: XCircle, accent: "bg-rose-50 text-rose-600" },
   ];
-  return <main className="min-h-full space-y-5 bg-slate-50/80 p-4 pb-20 text-slate-900 md:p-6">
+  return <main className="min-h-full space-y-5 bg-slate-50/80 p-4 pb-20 text-slate-900 md:p-6">{confirmDialog}
     <header className="flex flex-wrap items-center justify-between gap-4">
       <div>
         <div className="mb-1 flex items-center gap-2 text-xs font-medium text-slate-500"><Truck className="h-4 w-4" aria-hidden="true" /> Operasional · Delivery</div>
