@@ -10,11 +10,6 @@ const ACCENT_AVATAR: Record<LoginAccent, string> = {
 	blue: "bg-primary/10 text-primary",
 };
 
-const ACCENT_RING: Record<LoginAccent, string> = {
-	amber: "focus:border-amber-500 focus:ring-amber-500/20",
-	blue: "focus:border-primary focus:ring-primary/20",
-};
-
 /* Who is at the till is a short list read quickly, so the roster is drawn
    inline instead of in a dropdown that floats over the page: one state to
    read, no overlay to dismiss, and it still works when the list is long. */
@@ -81,8 +76,14 @@ export function IdentityPicker({
 
 	return (
 		<div className="mt-6 flex min-h-0 flex-1 flex-col">
-			<label className="flex h-12 items-center gap-2.5 rounded-[14px] border border-border bg-card px-3.5 shadow-sm transition-colors focus-within:ring-2 focus-within:ring-ring/20">
-				<Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+			<label
+				className={`flex h-14 items-center gap-3 rounded-[16px] border bg-card px-4 shadow-sm transition-[border-color,box-shadow] focus-within:ring-4 ${
+					accent === "amber"
+						? "border-border focus-within:border-amber-500 focus-within:ring-amber-500/10"
+						: "border-border focus-within:border-primary focus-within:ring-primary/10"
+				}`}
+			>
+				<Search className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
 				<input
 					autoFocus
 					type="text"
@@ -90,14 +91,14 @@ export function IdentityPicker({
 					onChange={(event) => setQuery(event.target.value)}
 					placeholder="Cari nama atau username…"
 					aria-label={`Cari nama atau username ${noun}`}
-					className={`h-full w-full bg-transparent text-[15px] font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground/70 ${ACCENT_RING[accent]}`}
+					className="h-full min-w-0 flex-1 border-0 bg-transparent text-[15px] font-medium outline-none ring-0 placeholder:font-normal placeholder:text-muted-foreground/70 focus:border-0 focus:outline-none focus:ring-0"
 				/>
 				{query ? (
 					<button
 						type="button"
 						onClick={() => setQuery("")}
 						aria-label="Hapus pencarian"
-						className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+						className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
 					>
 						<X className="h-4 w-4" aria-hidden="true" />
 					</button>
