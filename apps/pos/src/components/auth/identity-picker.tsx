@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { ChevronRight, RefreshCw, Search, UserPlus, Users } from "lucide-react";
+import { ChevronRight, RefreshCw, Search, UserPlus, Users, X } from "lucide-react";
 import type { YumiPublicUser } from "@/lib/yumi-auth-client";
 import { useRecentIdentities } from "@/hooks/use-recent-identities";
 import type { LoginAccent } from "./login-shell";
+import { normalizeKasirSearch } from "@/lib/kasir-login-utils";
 
 const ACCENT_AVATAR: Record<LoginAccent, string> = {
 	amber: "bg-amber-500/10 text-amber-600",
@@ -42,7 +43,7 @@ export function IdentityPicker({
 	const { recent, remember } = useRecentIdentities(recentKey);
 
 	const filtered = useMemo(() => {
-		const keyword = query.trim().toLowerCase();
+		const keyword = normalizeKasirSearch(query).toLowerCase();
 		if (!keyword) return users;
 		return users.filter((user) => {
 			const haystacks = [user.name, user.slug, user.username, user.initial]
@@ -84,10 +85,20 @@ export function IdentityPicker({
 					type="text"
 					value={query}
 					onChange={(event) => setQuery(event.target.value)}
-					placeholder="Cari nama…"
-					aria-label={`Cari nama ${noun}`}
+					placeholder="Cari nama atau username…"
+					aria-label={`Cari nama atau username ${noun}`}
 					className={`h-full w-full bg-transparent text-[15px] font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground/70 ${ACCENT_RING[accent]}`}
 				/>
+				{query ? (
+					<button
+						type="button"
+						onClick={() => setQuery("")}
+						aria-label="Hapus pencarian"
+						className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+					>
+						<X className="h-4 w-4" aria-hidden="true" />
+					</button>
+				) : null}
 			</label>
 
 			{!searching && recentUsers.length > 0 ? (
@@ -182,7 +193,7 @@ export function IdentityPicker({
 						</div>
 						<h3 className="text-[15px] font-bold tracking-tight">Tidak ada yang cocok</h3>
 						<p className="mx-auto mt-2 max-w-xs text-[13px] leading-relaxed text-muted-foreground">
-							Tidak ada nama yang mengandung “{query.trim()}”. Coba potongan nama lain, misalnya nama depan.
+							Tidak ada nama atau username yang mengandung “{normalizeKasirSearch(query)}”. Coba kata kunci lain.
 						</p>
 						<button
 							type="button"

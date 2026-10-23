@@ -1,9 +1,7 @@
 import { useEffect } from "react";
-import { CheckCircle2, ChevronRight, CreditCard, X } from "lucide-react";
-import type { PosNotification } from "@/hooks/use-pos-notifications";
+import { isDeliveryNotification, type PosNotification } from "@/hooks/use-pos-notifications";
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { CheckCircle2, ChevronRight, CreditCard, MapPin, X } from "lucide-react";
-import { isDeliveryNotification, type PosNotification } from "@/hooks/use-pos-notifications";
 
 type TransactionAlertStackProps = {
   notifications: PosNotification[];
