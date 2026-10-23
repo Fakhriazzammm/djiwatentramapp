@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, CheckCircle2, ChevronRight, CircleDollarSign, Clock3, Eye, EyeOff, Package, RefreshCw, ShoppingBag, WalletCards } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { formatSyncAge } from "@/lib/admin-command-search";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,7 +43,24 @@ function TooltipContent({ active, payload, label }: any) { if (!active || !paylo
 
 export default function OperationalDecisionDashboard() {
   const [isDataHidden, setIsDataHidden] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState(() => Date.now());
+  const [, setAgeTick] = useState(0);
   const stats = useHybridDashboardStats();
+
+  useEffect(() => {
+    if (stats) setLastSyncedAt(Date.now());
+  }, [stats]);
+
+  useEffect(() => {
+    const ageTimer = window.setInterval(() => setAgeTick((tick) => tick + 1), 30_000);
+    const refreshTimer = window.setInterval(() => {
+      if (document.visibilityState === "visible") triggerHybridRefresh();
+    }, 60_000);
+    return () => {
+      window.clearInterval(ageTimer);
+      window.clearInterval(refreshTimer);
+    };
+  }, []);
   const orders = useHybridOrders();
   const shiftStatus = useHybridShiftStatus();
   const shifts = useMemo(() => shiftStatus?.allShifts?.filter(Boolean) ?? [], [shiftStatus?.allShifts]);
@@ -70,6 +88,7 @@ export default function OperationalDecisionDashboard() {
     return [...totals.values()].sort((left, right) => right.amount - left.amount).slice(0, 4);
   }, [orders, todayRange.end, todayRange.start]);
   if (!stats || !orders || !shiftStatus) return <CompactSkeleton />;
+  const syncAgeLabel = formatSyncAge(lastSyncedAt, Date.now());
   const p = stats.periodComparisons;
   const totalOrders = Object.values(todayOrderStatus).reduce((sum, value) => sum + value, 0);
   const openShifts = shifts.filter((shift: any) => !shift.endTime).length;
@@ -79,7 +98,7 @@ export default function OperationalDecisionDashboard() {
   const averageOrder = p.today.orders ? p.today.revenue / p.today.orders : 0;
 
   return <main className="min-h-full bg-white px-2.5 py-2 text-[#1d1d1f]"><div className="mx-auto max-w-[1440px] space-y-2.5">
-    <header className="flex min-h-11 items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-[#0b2342] text-white"><BarChart3 className="h-4 w-4" /></span><div className="min-w-0"><div className="flex items-center gap-2"><h1 className="truncate text-base font-bold tracking-[-.025em] sm:text-lg">Pusat Pantau Operasional</h1><Badge className="hidden rounded-full bg-[#eaf8ef] px-2 py-0.5 text-[10px] font-semibold text-[#248a3d] sm:inline-flex">LIVE</Badge></div><p className="truncate text-[11px] text-[#6e6e73]">Djiwa Tentram Cafe &amp; Resto · keputusan berbasis data · WIB</p></div></div><div className="flex items-center gap-1.5"><Button aria-label={isDataHidden ? "Tampilkan seluruh data" : "Sembunyikan seluruh data"} className="h-9 w-9 rounded-xl bg-white p-0 text-[#1d1d1f] shadow-sm hover:bg-[#f5f5f7]" onClick={() => setIsDataHidden((hidden) => !hidden)} title={isDataHidden ? "Tampilkan data" : "Sembunyikan data"} type="button" variant="outline">{isDataHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</Button><Button className="h-9 shrink-0 rounded-xl bg-white px-3 text-xs text-[#1d1d1f] shadow-sm hover:bg-white/80" onClick={() => triggerHybridRefresh()} type="button" variant="outline"><RefreshCw className="mr-1.5 h-3.5 w-3.5" />Refresh</Button></div></header>
+    <header className="flex min-h-11 items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-[#0b2342] text-white"><BarChart3 className="h-4 w-4" /></span><div className="min-w-0"><div className="flex items-center gap-2"><h1 className="truncate text-base font-bold tracking-[-.025em] sm:text-lg">Pusat Pantau Operasional</h1><Badge className="hidden rounded-full bg-[#eaf8ef] px-2 py-0.5 text-[10px] font-semibold text-[#248a3d] sm:inline-flex">LIVE</Badge></div><p className="truncate text-[11px] text-[#6e6e73]">Djiwa Tentram Cafe &amp; Resto · keputusan berbasis data · WIB</p></div></div><div className="flex items-center gap-1.5"><Button aria-label={isDataHidden ? "Tampilkan seluruh data" : "Sembunyikan seluruh data"} className="h-9 w-9 rounded-xl bg-white p-0 text-[#1d1d1f] shadow-sm hover:bg-[#f5f5f7]" onClick={() => setIsDataHidden((hidden) => !hidden)} title={isDataHidden ? "Tampilkan data" : "Sembunyikan data"} type="button" variant="outline">{isDataHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</Button><span aria-live="polite" className="hidden whitespace-nowrap text-[10px] text-[#6e6e73] sm:inline">Diperbarui {syncAgeLabel}</span><Button aria-label={`Refresh data, terakhir diperbarui ${syncAgeLabel}`} className="h-9 shrink-0 rounded-xl bg-white px-3 text-xs text-[#1d1d1f] shadow-sm hover:bg-white/80" onClick={() => triggerHybridRefresh()} type="button" variant="outline"><RefreshCw className="mr-1.5 h-3.5 w-3.5" />Refresh</Button></div></header>
 
     <div>
       <div className="space-y-3">

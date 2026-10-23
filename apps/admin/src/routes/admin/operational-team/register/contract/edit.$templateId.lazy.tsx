@@ -1,3 +1,4 @@
+import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { createLazyFileRoute, useParams, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, FileSignature, Download, GripVertical, Loader2, Plus, Save, Sparkles, Trash2, Upload, ArrowLeft, X } from "lucide-react";
@@ -361,7 +362,7 @@ function ContractEditPage() {
 
 	async function deleteTemplate() {
 		if (templateId === "__default__") { toast.error("Template default tidak dapat dihapus"); return; }
-		if (!window.confirm(`Hapus template ${selectedRoleName || templateId}?`)) return;
+		if (!(await requestAdminConfirm({ title: "Hapus template?", message: `Hapus template ${selectedRoleName || templateId}?`, confirmText: "Hapus" }))) return;
 		setIsSaving(true);
 		try {
 			const nextTemplates = { ...contractTemplatesByRoleId };
@@ -691,7 +692,7 @@ Pastikan body pasal 1 menyebut "${companyName} sebagai perwakilan perusahaan".`;
 					{/* Employment Type */}
 					<div className="rounded-lg border bg-card p-2.5 flex items-center gap-2">
 						<span className="text-[11px] font-medium text-muted-foreground shrink-0">Tipe:</span>
-						<Select value={selectedEmploymentType} onValueChange={(v: any) => { if (isDirty && !window.confirm("Ganti tipe kerja? Perubahan belum disimpan.")) return; setSelectedEmploymentType(String(v || "probation")); }}>
+						<Select value={selectedEmploymentType} onValueChange={(v: any) => { const next = String(v || "probation"); if (!isDirty) { setSelectedEmploymentType(next); return; } void requestAdminConfirm({ title: "Ganti tipe kerja?", message: "Perubahan belum disimpan akan hilang.", confirmText: "Ganti" }).then((accepted) => { if (accepted) setSelectedEmploymentType(next); }); }}>
 							<SelectTrigger className="h-7 text-xs flex-1">
 								<SelectValue />
 							</SelectTrigger>

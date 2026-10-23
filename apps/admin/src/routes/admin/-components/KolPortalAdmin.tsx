@@ -1,3 +1,4 @@
+import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import {
   CalendarDays,
   Check,
@@ -168,7 +169,7 @@ export function KolPortalAdminPage() {
   };
   const inviteAction = async (action: "invite_revoke" | "invite_resend", invitationId: string) => {
     if (!token) return;
-    if (action === "invite_revoke" && !window.confirm("Cabut link undangan ini? Link tidak akan dapat digunakan lagi.")) return;
+    if (action === "invite_revoke" && !(await requestAdminConfirm({ title: "Cabut undangan?", message: "Cabut link undangan ini? Link tidak akan dapat digunakan lagi.", confirmText: "Cabut" }))) return;
     setBusy(`${action}:${invitationId}`); setInviteError("");
     try {
       const result = await callAdmin<InviteCreateResponse | undefined>(token, action, { invitationId });

@@ -1,3 +1,5 @@
+import { requestAdminConfirm } from "@/lib/admin-dialogs";
+import { toast } from "sonner";
 import { createLazyFileRoute } from "@tanstack/react-router";
 import {
   Activity,
@@ -171,8 +173,8 @@ function AdminDjiwaRun() {
       const response = await invokeDirectFetch<{ success?: boolean; error?: { message?: string } }>(adminFunctionUrl(), { method: "POST", headers: { "Content-Type": "application/json", "x-admin-secret": ADMIN_SECRET }, body: JSON.stringify({ action, ...payload, actor_id: "admin" }) });
       if (response.success === false) throw new Error(response.error?.message || "Penyimpanan gagal");
       await load();
-      window.alert("Konfigurasi tersimpan dan tercatat di audit log.");
-    } catch (error) { window.alert(error instanceof Error ? error.message : "Penyimpanan gagal"); }
+      toast.success("Konfigurasi tersimpan dan tercatat di audit log.");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Penyimpanan gagal"); }
     finally { setSaving(false); }
   }
 
@@ -186,17 +188,17 @@ function AdminDjiwaRun() {
   function dateIso(value: string) { return value ? new Date(value).toISOString() : value; }
   async function submitCampaign(event: React.FormEvent) {
     event.preventDefault();
-    let settings: unknown; try { settings = JSON.parse(campaignDraft.settings || "{}"); } catch { window.alert("Settings campaign harus JSON valid"); return; }
+    let settings: unknown; try { settings = JSON.parse(campaignDraft.settings || "{}"); } catch { toast.error("Settings campaign harus JSON valid"); return; }
     await saveSettings("admin_save_campaign", { ...campaignDraft, starts_at: dateIso(campaignDraft.starts_at), ends_at: dateIso(campaignDraft.ends_at), settings });
   }
   async function submitTier(event: React.FormEvent) {
     event.preventDefault();
-    let rewardConfig: unknown; try { rewardConfig = JSON.parse(tierDraft.reward_config || "{}"); } catch { window.alert("Reward config harus JSON valid"); return; }
+    let rewardConfig: unknown; try { rewardConfig = JSON.parse(tierDraft.reward_config || "{}"); } catch { toast.error("Reward config harus JSON valid"); return; }
     await saveSettings("admin_save_tier", { ...tierDraft, eligible_product_ids: tierDraft.eligible_product_ids.split(",").map((id) => id.trim()).filter(Boolean), max_amount: tierDraft.max_amount || null, expiry_hours: tierDraft.expiry_hours || null, reward_config: rewardConfig });
   }
 
   async function deleteSetting(action: "admin_delete_campaign" | "admin_delete_tier", id: string) {
-    if (!window.confirm("Hapus konfigurasi ini? Data yang masih direferensikan database akan menolak penghapusan.")) return;
+    if (!(await requestAdminConfirm({ title: "Hapus konfigurasi?", message: "Hapus konfigurasi ini? Data yang masih direferensikan database akan menolak penghapusan.", confirmText: "Hapus" }))) return;
     await saveSettings(action, { id });
   }
 
@@ -211,7 +213,7 @@ function AdminDjiwaRun() {
     });
     setActionKey(null);
     if (response.success !== false) await load();
-    else window.alert(`Aksi review gagal: ${response.error?.message || "unknown error"}`);
+    else toast.error(`Aksi review gagal: ${response.error?.message || "unknown error"}`);
   }
 
   return (

@@ -42,7 +42,7 @@ const QUICK_ACTIONS: ReadonlyArray<QuickActionItem> = [
 		subtitle: "Ringkasan shift",
 		icon: TrendingUp,
 		gradient: "from-violet-500 to-indigo-500",
-		href: "/admin",
+		href: "/admin/finance/reports",
 	},
 ];
 
