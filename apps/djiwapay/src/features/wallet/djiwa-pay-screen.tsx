@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowDownLeft, ArrowUpRight, Bell, Car, CreditCard, Droplets, Eye, EyeOff, Gamepad2, HeartPulse, HelpCircle, House, ReceiptText, RefreshCw, ScanLine, Smartphone, Tv, UserRound, Wallet, Wifi, X, Zap } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Bell, CreditCard, Droplets, Eye, EyeOff, Gamepad2, HelpCircle, House, ReceiptText, RefreshCw, ScanLine, Smartphone, UserRound, Wallet, Wifi, X, Zap } from "lucide-react";
 import { checkPpobStatus, checkTopupStatus, checkPostpaidStatus, createPpobInvoice, inquirePostpaid, payPostpaid, purchasePpob, readPpobCatalog, readPostpaidCatalog, type PpobProduct, type PpobPurchaseResult, type PostpaidInquiry, type PostpaidProduct, type WalletResponse } from "../../lib/wallet-adapter";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import type { CustomerProfile, PayNavigationContext } from "../../lib/identity-adapter";
@@ -9,7 +9,7 @@ import { CheckoutActionBar, CheckoutSection, OrderSummary, PaymentMethodCard } f
 import { DjiwaPayCheckout, DjiwaPaySuccess } from "./djiwa-pay-checkout";
 import { isSettledPpob, preferredPaymentMethod, validateCustomerNumber } from "../../lib/djiwa-pay-checkout";
 import { parseCheckoutDraft, serializeCheckoutDraft, type CheckoutDraft } from "../../lib/djiwa-pay-draft";
-import { checkoutCustomerNumberHint, parsePpobPath } from "../../lib/djiwa-pay-routes";
+import { availablePpobServiceKeys, checkoutCustomerNumberHint, parsePpobPath } from "../../lib/djiwa-pay-routes";
 import { DjiwaPayWalletAction } from "./djiwa-pay-wallet-actions";
 import { walletQuickActionState } from "../../lib/djiwa-pay-availability";
 import { applyTopupKey, normalizeTopupAmount, shouldShowTopupPayment } from "../../lib/djiwa-pay-topup";
@@ -31,11 +31,10 @@ const ppobServices = [
   ["pln-token", "Token PLN", "Beli token listrik", Zap, "amber"],
   ["pln-bill", "Tagihan PLN", "Bayar listrik bulanan", ReceiptText, "orange"],
   ["pdam", "PDAM", "Tagihan air", Droplets, "cyan"],
-  ["bpjs", "BPJS", "Kesehatan dan ketenagakerjaan", HeartPulse, "rose"],
-  ["tv", "TV & Streaming", "Bayar langganan", Tv, "indigo"],
   ["game", "Voucher Game", "Top up game favorit", Gamepad2, "emerald"],
-  ["multifinance", "Cicilan", "Bayar pembiayaan", Car, "slate"],
 ] as const;
+
+const visiblePpobServices = ppobServices.filter(([key]) => availablePpobServiceKeys.includes(key as typeof availablePpobServiceKeys[number]));
 
 type Props = { profile: CustomerProfile; wallet: WalletResponse | null; loading: boolean; error: string | null; busy: boolean; onRefresh: () => void; onTopup: (amount: number) => Promise<{ invoiceUrl: string; invoiceId?: string }>; navigationContext: PayNavigationContext };
 
@@ -499,7 +498,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     <motion.section className="wallet-card" aria-label="Ringkasan saldo Djiwa Pay" initial={reduceMotion ? false : { opacity: 0, y: 8 }} animate={reduceMotion ? undefined : { opacity: 1, y: 0 }} transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}><img src="/assets/djiwa-pay-abstract-3d.png" alt="" aria-hidden="true" className="wallet-art" /><div className="wallet-overlay" />{!reduceMotion ? <motion.div className="wallet-shine" aria-hidden="true" animate={{ x: [0, 360, 720] }} transition={{ duration: 4.8, repeat: Infinity, repeatDelay: 2.4, ease: "easeInOut" }} /> : null}<div className="wallet-content"><div className="wallet-card-top"><div className="wallet-brand"><span className="wallet-brand-mark"><Wallet size={15} /></span><span>DJIWA PAY<small>Digital wallet</small></span></div><span className="wallet-status">{status}</span></div><div className="wallet-balance-label">Saldo tersedia</div><motion.strong className="wallet-balance" initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }} animate={reduceMotion ? undefined : { opacity: 1, scale: 1 }} transition={{ delay: 0.12, duration: 0.32, ease: [0.32, 0.72, 0, 1] }}>{loading ? "••••••" : visible ? money(wallet?.wallet.available_balance ?? 0) : "••••••"}</motion.strong><div className="wallet-card-bottom"><div className="wallet-identity"><b>{profile.name ?? profile.email ?? "Customer"}</b><small title={userId}><span>USER ID</span><strong>{userId}</strong></small></div><div className="wallet-controls"><button className="wallet-card-icon" onClick={() => setVisible((value) => !value)} aria-label={visible ? "Sembunyikan saldo" : "Tampilkan saldo"}>{visible ? <EyeOff size={16} /> : <Eye size={16} />}</button><button className="wallet-card-icon" onClick={onRefresh} aria-label="Segarkan saldo"><RefreshCw size={16} /></button></div></div></div></motion.section>
     <section className="surface ppob-section" aria-labelledby="ppob-title">
       <div className="section-heading ppob-heading"><div><span className="eyebrow">LAYANAN DIGITAL</span><h2 id="ppob-title">Pembayaran PPOB</h2><p>Bayar kebutuhan harian dari satu saldo.</p></div><button className="ppob-more" onClick={() => { setPpobOpen(true); goPpobRoute("/ppob"); }}>Lihat semua</button></div>
-      <div className="ppob-grid">{ppobServices.slice(0, 8).map(([key, label, description, Icon, color]) => <button key={key} className="ppob-tile" onClick={() => openPpob(key, label)} aria-label={`${label}, ${description}`}><span className={`ppob-tile-icon ${color}`}><Icon size={19} strokeWidth={2.2} /></span><strong>{label}</strong><small>{description}</small></button>)}</div>
+      <div className="ppob-grid">{visiblePpobServices.map(([key, label, description, Icon, color]) => <button key={key} className="ppob-tile" onClick={() => openPpob(key, label)} aria-label={`${label}, ${description}`}><span className={`ppob-tile-icon ${color}`}><Icon size={19} strokeWidth={2.2} /></span><strong>{label}</strong><small>{description}</small></button>)}</div>
     </section>
     {error ? <section className="inline-error" role="alert">{error}</section> : null}
     <section className="surface quick-actions" aria-labelledby="quick-actions-title"><div className="section-heading"><div><span className="eyebrow">DJIWA PAY</span><h2 id="quick-actions-title">Aksi cepat</h2></div><Wallet size={17} /></div><div className="action-grid">{actions.map(([key, label, asset, supported, badge, color]) => <button key={key} className="action-item" onClick={() => actionClick(key, label)} aria-label={supported ? label : `${label}, segera hadir`}><span className={`action-badge ${color}`}>{badge}</span><span className="action-icon"><img src={`/assets/djiwa-pay-actions/${asset}`} alt="" aria-hidden="true" loading="lazy" decoding="async" /></span><span>{label}</span></button>)}</div></section>
