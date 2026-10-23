@@ -600,12 +600,23 @@
 	position: static; width: auto; height: auto; padding: inherit;
 	margin: inherit; overflow: visible; clip: auto; white-space: normal;
 }
-*:focus-visible {
-	outline: 2px solid var(--foreground, #1a2332);
+:where(button, a, summary, [role="button"]):focus-visible,
+:where([tabindex]:not([tabindex="-1"])):not(input, textarea, select):focus-visible {
+	outline: 2px solid color-mix(in srgb, var(--primary) 72%, white 28%);
 	outline-offset: 3px;
-	box-shadow: 0 0 0 5px color-mix(in srgb, var(--primary) 35%, transparent 65%);
+	box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent 82%);
 	border-radius: var(--radius-md, 0.5rem);
 }
+
+/* Form controls own their border/ring. Keeping them out of the generic rule
+   prevents a dark browser-like outline from stacking with component styles. */
+:where(input, textarea, select):focus-visible {
+	outline: none;
+	outline-offset: 0;
+	border-color: color-mix(in srgb, var(--primary) 68%, var(--border) 32%);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent 84%);
+}
+
 *:focus:not(:focus-visible) { outline: none; }
 
 .skip-link {
@@ -618,7 +629,11 @@
 .skip-link:focus { top: 0; }
 
 @media (prefers-contrast: high) {
-	*:focus-visible { outline-width: 3px; outline-offset: 3px; }
+	:where(button, a, summary, [role="button"]):focus-visible,
+	:where([tabindex]:not([tabindex="-1"])):not(input, textarea, select):focus-visible {
+		outline-width: 3px;
+		outline-offset: 3px;
+	}
 }
 @media (prefers-reduced-motion: reduce) {
 	*, *::before, *::after {

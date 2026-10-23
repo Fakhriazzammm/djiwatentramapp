@@ -1,7 +1,7 @@
 {
-  "version": "0.2.500",
-  "commitHash": "f5d274f",
-  "message": "fix(pos): persist availability RPC execute grants",
-  "buildDate": "2026-10-09",
-  "generatedAt": "2026-10-09T06:20:38.765Z"
+  "version": "0.2.530",
+  "commitHash": "7851ab0",
+  "message": "feat(pos): complete mobile-first workflow polish",
+  "buildDate": "2026-10-23",
+  "generatedAt": "2026-10-23T15:37:15.048Z"
 }

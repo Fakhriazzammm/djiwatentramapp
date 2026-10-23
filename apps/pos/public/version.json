@@ -1,7 +1,7 @@
 {
-  "version": "0.2.514",
-  "commitHash": "8d43640",
-  "message": "fix(admin): paginate dashboard order analytics",
-  "buildDate": "2026-10-11",
-  "generatedAt": "2026-10-11T13:08:30.134Z"
+  "version": "0.2.531",
+  "commitHash": "7851ab0",
+  "message": "feat(pos): complete mobile-first workflow polish",
+  "buildDate": "2026-10-23",
+  "generatedAt": "2026-10-23T15:37:15.182Z"
 }

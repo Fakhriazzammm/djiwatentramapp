@@ -70,6 +70,7 @@ button, a, input, select { -webkit-tap-highlight-color: transparent; }
 .investor-display { font-family: var(--font-display); letter-spacing: -0.04em; }
 .investor-panel { border: 1px solid rgb(212 221 231 / 82%); background: var(--djiwa-surface); border-radius: 24px; box-shadow: 0 12px 32px rgb(18 36 58 / 6%); }
 .investor-focus:focus-visible { outline: 3px solid rgb(201 168 91 / 84%); outline-offset: 3px; }
+.investor-focus:where(input, textarea, select):focus-visible { outline: none; outline-offset: 0; border-color: rgb(201 168 91 / 84%); box-shadow: 0 0 0 2px rgb(201 168 91 / 20%); }
 .investor-grid {
   background-image: linear-gradient(rgb(201 168 91 / 8%) 1px, transparent 1px), linear-gradient(90deg, rgb(201 168 91 / 8%) 1px, transparent 1px);
   background-size: 42px 42px;

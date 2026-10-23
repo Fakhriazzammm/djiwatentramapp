@@ -91,7 +91,7 @@ export function IdentityPicker({
 					onChange={(event) => setQuery(event.target.value)}
 					placeholder="Cari nama atau username…"
 					aria-label={`Cari nama atau username ${noun}`}
-					className="h-full min-w-0 flex-1 border-0 bg-transparent text-[15px] font-medium outline-none ring-0 placeholder:font-normal placeholder:text-muted-foreground/70 focus:border-0 focus:outline-none focus:ring-0"
+					className="h-full min-w-0 flex-1 border-0 bg-transparent text-[15px] font-medium outline-none ring-0 placeholder:font-normal placeholder:text-muted-foreground/70 focus:border-0 focus:outline-none focus:ring-0 focus-visible:border-0 focus-visible:outline-none focus-visible:ring-0"
 				/>
 				{query ? (
 					<button

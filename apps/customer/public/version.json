@@ -1,7 +1,7 @@
 {
-  "version": "0.2.528",
-  "commitHash": "594972f",
-  "message": "Merge fix/pos-otp-pin-ui: POS login redesign and root route",
-  "buildDate": "2026-10-11",
-  "generatedAt": "2026-10-11T16:04:39.489Z"
+  "version": "0.2.531",
+  "commitHash": "7851ab0",
+  "message": "feat(pos): complete mobile-first workflow polish",
+  "buildDate": "2026-10-23",
+  "generatedAt": "2026-10-23T15:37:15.682Z"
 }

@@ -9,16 +9,17 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* iOS DNA: focus ring konsisten WCAG AA untuk semua kontrol interaktif */
-a:focus-visible,
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-[tabindex]:focus-visible {
-  outline: 2px solid var(--primary, #1a5dc6);
+/* Keep keyboard focus visible without stacking an outline on form controls. */
+:where(a, button, [role="button"]):focus-visible,
+:where([tabindex]:not([tabindex="-1"])):not(input, select, textarea):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary, #1a5dc6) 72%, white 28%);
   outline-offset: 2px;
   border-radius: 6px;
+}
+
+:where(input, select, textarea):focus-visible {
+  outline: none;
+  outline-offset: 0;
 }
 
 /* Order Mie Yamin — compact iOS/mobile app typography across every step/page. */

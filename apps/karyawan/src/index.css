@@ -28,9 +28,16 @@
 		text-wrap: balance;
 	}
 
-	:where(button, a, input, select, textarea, [role="button"]):focus-visible {
+	:where(button, a, [role="button"]):focus-visible,
+	:where([tabindex]:not([tabindex="-1"])):not(input, select, textarea):focus-visible {
 		outline: 3px solid color-mix(in srgb, var(--primary) 36%, transparent);
 		outline-offset: 2px;
+	}
+
+	/* Form controls use the shared border/ring treatment, not a second outline. */
+	:where(input, select, textarea):focus-visible {
+		outline: none;
+		outline-offset: 0;
 	}
 
 	:where(button, input, select, [role="button"]) {
