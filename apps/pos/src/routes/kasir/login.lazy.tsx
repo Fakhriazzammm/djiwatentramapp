@@ -6,6 +6,7 @@ import { listPublicYumiUsers, loginWithYumiPin, type YumiPublicUser } from "@/li
 import { IdentityPicker } from "@/components/auth/identity-picker";
 import { LoginShell } from "@/components/auth/login-shell";
 import { OneTimeCode, type OneTimeCodeStatus } from "@/components/ui/OneTimeCode";
+import { getKasirLoginErrorMessage } from "@/lib/kasir-login-utils";
 
 export const Route = createLazyFileRoute("/kasir/login")({
 	component: KasirLoginPage,
@@ -21,6 +22,7 @@ function KasirLoginPage() {
 	const [selectedUser, setSelectedUser] = useState<YumiPublicUser | null>(null);
 	const [pin, setPin] = useState("");
 	const [isVerifying, setIsVerifying] = useState(false);
+	const [pinError, setPinError] = useState<string | null>(null);
 	// the caller's verdict on the code; OneTimeCode only draws it
 	const [otpStatus, setOtpStatus] = useState<OneTimeCodeStatus>("idle");
 	const submissionPending = useRef(false);
@@ -48,13 +50,20 @@ function KasirLoginPage() {
 	const handleSelectUser = (user: YumiPublicUser) => {
 		setSelectedUser(user);
 		setPin("");
+		setPinError(null);
 		setOtpStatus("idle");
 	};
 
 	const handleBack = () => {
 		setSelectedUser(null);
 		setPin("");
+		setPinError(null);
 		setOtpStatus("idle");
+	};
+
+	const handlePinChange = (nextPin: string) => {
+		if (pinError) setPinError(null);
+		setPin(nextPin);
 	};
 
 	const handleSubmitPin = async () => {
@@ -62,6 +71,7 @@ function KasirLoginPage() {
 		submissionPending.current = true;
 
 		setIsVerifying(true);
+		setPinError(null);
 		setOtpStatus("checking");
 		try {
 			const result = await loginWithYumiPin(selectedUser._id, pin);
@@ -73,9 +83,11 @@ function KasirLoginPage() {
 			toast.success(`Selamat datang, ${result.user.name}`);
 			setPin("");
 			navigate({ to: "/menu" as any, replace: true });
-		} catch (err: any) {
-			toast.error(err.message || "PIN salah");
+		} catch (err: unknown) {
+			const message = getKasirLoginErrorMessage(err);
+			toast.error(message);
 			setPin("");
+			setPinError(message);
 			// let the row shiver and drain, then hand it back empty
 			setOtpStatus("error");
 			window.setTimeout(() => setOtpStatus("idle"), 1300);
@@ -87,10 +99,10 @@ function KasirLoginPage() {
 
 	// Auto-submit when pin reaches 6 digits
 	useEffect(() => {
-		if (pin.length === 6 && !isVerifying) {
+		if (pin.length === 6 && !isVerifying && !pinError) {
 			handleSubmitPin();
 		}
-	}, [pin, isVerifying]);
+	}, [pin, isVerifying, pinError]);
 
 	// Redirect when already authenticated
 	useEffect(() => {
@@ -118,7 +130,7 @@ function KasirLoginPage() {
 				<div className="mt-8 flex flex-col items-center gap-4">
 					<OneTimeCode
 						value={pin}
-						onChange={setPin}
+						onChange={handlePinChange}
 						status={otpStatus}
 						disabled={isVerifying}
 						autoFocus
@@ -132,10 +144,21 @@ function KasirLoginPage() {
 							Memproses…
 						</p>
 					) : otpStatus === "error" ? (
-						<p className="text-[11px] font-bold uppercase tracking-widest text-destructive">
-							PIN salah, coba lagi.
+						<p className="max-w-xs text-center text-xs font-medium leading-relaxed text-destructive">
+							{pinError || "PIN salah, coba lagi."}
 						</p>
 					) : null}
+					<button
+						type="button"
+						onClick={() => void handleSubmitPin()}
+						disabled={pin.length !== 6 || isVerifying}
+						className="mt-2 h-11 w-full max-w-[280px] rounded-xl bg-amber-500 px-5 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+					>
+						{isVerifying ? "Memproses…" : "Masuk"}
+					</button>
+					<p className="text-center text-xs text-muted-foreground">
+						PIN tidak bisa digunakan? Hubungi admin outlet untuk reset.
+					</p>
 				</div>
 			</LoginShell>
 		);

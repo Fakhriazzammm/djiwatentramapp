@@ -1,8 +1,6 @@
-import { Banknote, CheckCircle2, Clock3, MapPin, ReceiptText, X } from "lucide-react";
-import type { PosNotification } from "@/hooks/use-pos-notifications";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { Banknote, CheckCircle2, Clock3, MapPin, ReceiptText, Truck, X } from "lucide-react";
 import { isDeliveryNotification, type PosNotification } from "@/hooks/use-pos-notifications";
+import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 type PosOrderDetailSheetProps = {

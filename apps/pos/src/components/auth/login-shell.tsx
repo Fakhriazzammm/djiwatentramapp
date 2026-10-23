@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Wifi, WifiOff } from "lucide-react";
 import { Footer } from "@/components/layout/Footer";
 import { LoginBrandMark, useLoginBrand } from "./login-brand";
 
@@ -26,6 +26,25 @@ function useClock() {
 	return now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 }
 
+function useOnlineStatus() {
+	const [isOnline, setIsOnline] = useState(() =>
+		typeof navigator === "undefined" ? true : navigator.onLine,
+	);
+
+	useEffect(() => {
+		const handleOnline = () => setIsOnline(true);
+		const handleOffline = () => setIsOnline(false);
+		window.addEventListener("online", handleOnline);
+		window.addEventListener("offline", handleOffline);
+		return () => {
+			window.removeEventListener("online", handleOnline);
+			window.removeEventListener("offline", handleOffline);
+		};
+	}, []);
+
+	return isOnline;
+}
+
 export function LoginShell({
 	title,
 	subtitle,
@@ -45,6 +64,7 @@ export function LoginShell({
 }) {
 	const { appName } = useLoginBrand();
 	const clock = useClock();
+	const isOnline = useOnlineStatus();
 
 	return (
 		<div className="fixed inset-0 z-50 flex h-dvh w-full flex-col overflow-hidden bg-background text-foreground">
@@ -53,8 +73,24 @@ export function LoginShell({
 					<LoginBrandMark />
 					<span className="truncate text-sm font-extrabold tracking-tight">{appName}</span>
 				</div>
-				<span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">{clock}</span>
+				<div className="flex shrink-0 items-center gap-3">
+					<span
+						role="status"
+						className={`inline-flex items-center gap-1.5 text-[11px] font-semibold ${isOnline ? "text-emerald-600" : "text-destructive"}`}
+					>
+						{isOnline ? <Wifi className="h-3.5 w-3.5" aria-hidden="true" /> : <WifiOff className="h-3.5 w-3.5" aria-hidden="true" />}
+						{isOnline ? "Terhubung" : "Offline"}
+					</span>
+					<span className="text-xs font-medium tabular-nums text-muted-foreground">{clock}</span>
+				</div>
 			</header>
+			{!isOnline ? (
+				<div className="mx-auto mt-3 w-full max-w-3xl px-6" role="alert">
+					<div className="rounded-xl border border-destructive/20 bg-destructive/5 px-3.5 py-2.5 text-xs font-medium text-destructive">
+						Koneksi terputus. Login membutuhkan koneksi ke server.
+					</div>
+				</div>
+			) : null}
 
 			<main className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-y-auto px-6 pb-6 pt-3">
 				{onBack ? (
