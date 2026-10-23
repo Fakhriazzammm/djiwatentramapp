@@ -1,6 +1,10 @@
 const MAX_TOPUP_DIGITS = 8;
 export const MIN_TOPUP_AMOUNT = 1000;
 
+export function shouldShowTopupPayment(topupOpen: boolean, stage: "detail" | "payment") {
+  return topupOpen && stage === "payment";
+}
+
 export function applyTopupKey(current: string, key: string) {
   if (key === "delete") return current.length > 1 ? current.slice(0, -1) : "0";
   if (!/^\d$/.test(key)) return current;
