@@ -1,15 +1,49 @@
 import type { WalletLedgerEntry, WalletSummary } from "@yumipos/djiwapay-core";
 import type { WalletWithdrawalDraft } from "./djiwa-pay-withdrawal";
-export type WalletResponse = { wallet: WalletSummary; ledger: WalletLedgerEntry[] };
+export type WalletResponse = { wallet: WalletSummary; ledger: WalletLedgerEntry[]; transactions?: WalletTransaction[] };
+export type WalletTransaction = {
+  id: number;
+  transfer_id: string | null;
+  direction: "credit" | "debit";
+  category: "transfer" | "topup" | "payment" | "refund" | "hold" | "release" | "adjustment" | string;
+  type: string;
+  amount: number;
+  balance_after: number;
+  status: string;
+  counterparty_name: string | null;
+  counterparty_phone: string | null;
+  reference_type: string | null;
+  reference_id: string | null;
+  note: string | null;
+  created_at: string;
+};
+export type WalletNotification = { id: string; title: string; message: string; notification_type: string; action_payload?: { transferId?: string }; created_at: string; unread: boolean };
 export type TopupStatusResponse = { status: "pending" | "success" | "expired"; message?: string; wallet?: WalletSummary; ledger?: WalletLedgerEntry[] };
 export type WalletTransferResult = { success: boolean; error?: string; transfer?: { transfer_id?: string; amount?: number; sender_balance?: number }; recipient?: { sourceId: string; name: string } };
-export async function readWallet(_profile: { source_id: string }): Promise<WalletResponse> {
+export async function readWallet(_profile: { source_id: string }): Promise<WalletResponse & { transactions: WalletTransaction[] }> {
   const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "get" }) });
   if (response.status === 401) throw new Error("Sesi Djiwa Pay kedaluwarsa");
   if (!response.ok) throw new Error("Wallet customer tidak dapat dimuat");
-  const payload = await response.json() as { wallet?: WalletSummary; ledger?: WalletLedgerEntry[] };
+  const payload = await response.json() as { wallet?: WalletSummary; ledger?: WalletLedgerEntry[]; transactions?: WalletTransaction[] };
   if (!payload.wallet) throw new Error("Wallet customer tidak ditemukan");
-  return { wallet: payload.wallet, ledger: payload.ledger ?? [] };
+  return { wallet: payload.wallet, ledger: payload.ledger ?? [], transactions: payload.transactions ?? [] };
+}
+
+export async function readWalletNotifications(): Promise<WalletNotification[]> {
+  const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "notifications" }) });
+  const payload = await response.json().catch(() => ({})) as { notifications?: WalletNotification[]; error?: string };
+  if (!response.ok) throw new Error(payload.error || "Notifikasi wallet gagal dimuat");
+  return payload.notifications ?? [];
+}
+
+export async function markWalletNotificationRead(notificationId: string): Promise<void> {
+  const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "mark-notification-read", notificationId }) });
+  if (!response.ok) throw new Error("Notifikasi wallet gagal diperbarui");
+}
+
+export async function markAllWalletNotificationsRead(): Promise<void> {
+  const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "mark-all-notifications-read" }) });
+  if (!response.ok) throw new Error("Notifikasi wallet gagal diperbarui");
 }
 
 export type PpobProduct = { product_code: string; product_description: string; product_nominal: string; product_details?: string; product_price: number; product_type: string; status: string; icon_url?: string };

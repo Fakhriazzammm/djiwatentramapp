@@ -3,6 +3,7 @@ import { createClient } from "@/lib/client";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { readGuestOrderReferences } from "@/components/customer/types";
 import { useCustomerAuth, type CustomerUser } from "@/hooks/use-customer-auth";
+import type { CustomerWalletTransaction } from "@/lib/customer-wallet-adapter";
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -271,24 +272,26 @@ export function useCustomerWallet() {
   const { customer, isLoading: authLoading } = useCustomerAuth();
   const [wallet, setWallet] = useState<CustomerWallet | null>(null);
   const [ledger, setLedger] = useState<CustomerWalletLedgerEntry[]>([]);
+  const [transactions, setTransactions] = useState<CustomerWalletTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const hasLoadedWallet = useRef(false);
 
-  const loadWallet = useCallback(async (): Promise<{ wallet: CustomerWallet | null; ledger: CustomerWalletLedgerEntry[] } | null> => {
+  const loadWallet = useCallback(async (): Promise<{ wallet: CustomerWallet | null; ledger: CustomerWalletLedgerEntry[]; transactions: CustomerWalletTransaction[] } | null> => {
     if (!customer?.sourceId || !customer.email) {
-      setWallet(null); setLedger([]); setIsLoading(false); return null;
+      setWallet(null); setLedger([]); setTransactions([]); setIsLoading(false); return null;
     }
     if (!hasLoadedWallet.current) setIsLoading(true);
     setError(null);
     try {
-      const result = await invokeEdgeFunction<{ wallet: CustomerWallet; ledger: CustomerWalletLedgerEntry[] }>("customer-wallet", {
+      const result = await invokeEdgeFunction<{ wallet: CustomerWallet; ledger: CustomerWalletLedgerEntry[]; transactions?: CustomerWalletTransaction[] }>("customer-wallet", {
         action: "get", sourceId: customer.sourceId, email: customer.email,
       });
       setWallet(result.wallet ?? null);
       setLedger(result.ledger ?? []);
+      setTransactions(result.transactions ?? []);
       hasLoadedWallet.current = true;
-      return { wallet: result.wallet ?? null, ledger: result.ledger ?? [] };
+      return { wallet: result.wallet ?? null, ledger: result.ledger ?? [], transactions: result.transactions ?? [] };
     } catch (err) {
       const message = err instanceof Error ? err.message : "Gagal memuat saldo wallet";
       console.error("[useCustomerWallet]", message);
@@ -296,6 +299,7 @@ export function useCustomerWallet() {
       if (!hasLoadedWallet.current) {
         setWallet(null);
         setLedger([]);
+        setTransactions([]);
       }
       return null;
     } finally { setIsLoading(false); }
@@ -306,5 +310,5 @@ export function useCustomerWallet() {
     void loadWallet();
   }, [authLoading, loadWallet]);
 
-  return { wallet, ledger, isLoading: authLoading || isLoading, error, refetch: loadWallet };
+  return { wallet, ledger, transactions, isLoading: authLoading || isLoading, error, refetch: loadWallet };
 }
