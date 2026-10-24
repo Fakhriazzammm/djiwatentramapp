@@ -5,9 +5,10 @@ import { useSupabaseLiveValue } from "./use-supabase-live-value";
 function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
-	deps: readonly unknown[]
+	deps: readonly unknown[],
+	options?: { refreshTrigger?: number; refreshMs?: number }
 ) {
-	return useSupabaseLiveValue(key, load, deps);
+	return useSupabaseLiveValue(key, load, deps, options);
 }
 
 function resolveMayarConfig() {
@@ -123,11 +124,18 @@ export function useHybridMayarConfig() {
 	return localConfig as any;
 }
 
-export function useHybridOrderById(id?: string | null, refreshTrigger = 0) {
+export function useHybridOrderById(
+	id?: string | null,
+	refreshOrOptions?: number | { refreshTrigger?: number; refreshMs?: number },
+) {
+	const options = typeof refreshOrOptions === "number"
+		? { refreshTrigger: refreshOrOptions }
+		: refreshOrOptions;
 	const supabaseData = useSupabaseValue(
 		`order-by-id:${id ?? "skip"}`,
 		() => (id ? fetchOrderById(id) : Promise.resolve(null)),
-		[id, refreshTrigger]
+		[id],
+		options,
 	);
 	return supabaseData as any;
 }
