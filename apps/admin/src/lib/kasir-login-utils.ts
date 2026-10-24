@@ -3,6 +3,10 @@ type LoginErrorLike = {
 	message?: string;
 };
 
+export function getKasirLoginSuccessRoute() {
+	return "/admin" as const;
+}
+
 function asLoginError(error: unknown): LoginErrorLike {
 	if (error instanceof Error) return { message: error.message };
 	if (typeof error === "object" && error !== null) {
