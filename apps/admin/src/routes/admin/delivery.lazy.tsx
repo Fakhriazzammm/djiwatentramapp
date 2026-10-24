@@ -1,6 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { AlertCircle, ArrowRight, Check, CheckCircle2, ChevronDown, Circle, CreditCard, Package, RefreshCw, Search, Settings2, Truck, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -154,7 +155,14 @@ function AdminCustomerDelivery() {
   }, [token]);
   useEffect(() => { void refresh(); return () => { requestVersion.current++; }; }, [refresh]);
   const bookShipment = async (order: CustomerDeliveryOrder) => {
-    if (bookingId || !window.confirm(`Buat pesanan kurir Biteship untuk order #${order.orderNumber}? Tindakan ini dapat menggunakan saldo akun Biteship.`)) return;
+    if (bookingId) return;
+    const accepted = await requestAdminConfirm({
+      title: "Buat pesanan kurir?",
+      message: `Buat pesanan kurir Biteship untuk order #${order.orderNumber}? Tindakan ini dapat menggunakan saldo akun Biteship.`,
+      confirmText: "Buat pesanan",
+      variant: "warning",
+    });
+    if (!accepted) return;
     setBookingId(order._id); setActionError(null);
     try {
       await deliveryApi("delivery-admin", { action: "create_shipment", staffToken: token, sourceId: order._id });
