@@ -2,10 +2,15 @@ import { describe, expect, it } from "bun:test";
 import {
 	getKasirLoginErrorMessage,
 	isRetryableKasirLoginError,
+	getKasirLoginSuccessRoute,
 	normalizeKasirSearch,
 } from "./kasir-login-utils";
 
 describe("kasir login utils", () => {
+	it("opens the admin dashboard after a successful cashier login", () => {
+		expect(getKasirLoginSuccessRoute()).toBe("/admin");
+	});
+
 	it("normalizes search input without changing its meaning", () => {
 		expect(normalizeKasirSearch("  Budi   ")).toBe("Budi");
 		expect(normalizeKasirSearch("   ")).toBe("");

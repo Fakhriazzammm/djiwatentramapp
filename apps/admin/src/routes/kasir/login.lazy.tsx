@@ -14,6 +14,7 @@ import { Footer } from "@/components/layout/Footer";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { listPublicYumiUsers, loginWithYumiPin, type YumiPublicUser } from "@/lib/yumi-auth-client";
+import { getKasirLoginSuccessRoute } from "@/lib/kasir-login-utils";
 
 export const Route = createLazyFileRoute("/kasir/login")({
 	component: KasirLoginPage,
@@ -91,7 +92,7 @@ function KasirLoginPage() {
 			
 			toast.success(`Selamat datang, ${result.user.name}`);
 			setPin("");
-			navigate({ to: "/menu" as any, replace: true });
+			navigate({ to: getKasirLoginSuccessRoute() as any, replace: true });
 		} catch (err: any) {
 			toast.error(err.message || "PIN salah");
 			setPin("");
@@ -110,7 +111,7 @@ function KasirLoginPage() {
 	// Redirect when already authenticated
 	useEffect(() => {
 		if (isAuthenticated) {
-			navigate({ to: "/menu" as any, replace: true });
+			navigate({ to: getKasirLoginSuccessRoute() as any, replace: true });
 		}
 	}, [isAuthenticated, navigate]);
 
