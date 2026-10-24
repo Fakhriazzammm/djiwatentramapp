@@ -1,7 +1,7 @@
 {
-  "version": "0.2.528",
-  "commitHash": "594972f",
-  "message": "Merge fix/pos-otp-pin-ui: POS login redesign and root route",
-  "buildDate": "2026-10-11",
-  "generatedAt": "2026-10-11T16:04:39.489Z"
+  "version": "0.2.69",
+  "commitHash": "4592e26",
+  "message": "fix(db): resync order item identity sequence",
+  "buildDate": "2026-10-24",
+  "generatedAt": "2026-10-24T06:13:07.937Z"
 }
