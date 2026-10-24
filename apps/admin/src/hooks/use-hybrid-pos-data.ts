@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
+import { SITE_SETTINGS_ORDER } from "@/lib/site-settings-utils";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import {
 	aggregateHourlySales,
@@ -472,7 +473,10 @@ async function fetchSiteSettings() {
 		.from("pos_site_settings")
 		.select("*")
 		.not("raw->shiftSettings", "is", null)
-		.order("_id", { ascending: false })
+		.order(SITE_SETTINGS_ORDER.column, {
+			ascending: SITE_SETTINGS_ORDER.ascending,
+			nullsFirst: SITE_SETTINGS_ORDER.nullsFirst,
+		})
 		.limit(1)
 		.maybeSingle();
 
