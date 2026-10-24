@@ -4,13 +4,17 @@
 DO $$
 DECLARE
   v_max_id bigint;
+  v_last_value bigint;
+  v_is_called boolean;
 BEGIN
   SELECT max(id) INTO v_max_id FROM pos.order_items;
 
-  IF v_max_id IS NULL THEN
-    PERFORM setval('pos.order_items_id_seq'::regclass, 1, false);
-  ELSE
-    PERFORM setval('pos.order_items_id_seq'::regclass, v_max_id, true);
+  IF v_max_id IS NOT NULL THEN
+    SELECT last_value, is_called INTO v_last_value, v_is_called FROM pos.order_items_id_seq;
+    -- Never move the sequence backwards; only repair a stale next value.
+    IF v_last_value < v_max_id OR (v_last_value = v_max_id AND NOT v_is_called) THEN
+      PERFORM setval('pos.order_items_id_seq'::regclass, v_max_id, true);
+    END IF;
   END IF;
 END
 $$;
