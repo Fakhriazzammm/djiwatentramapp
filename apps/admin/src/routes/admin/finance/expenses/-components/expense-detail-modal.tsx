@@ -1,3 +1,4 @@
+import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { X, Receipt, Image, ExternalLink } from "lucide-react";
 import { formatCurrencyIDR } from "@/lib/export-utils";
 import type { TransactionRow } from "@/lib/export-utils";
@@ -120,7 +121,7 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 
 	const postLink = async (link: any) => {
 		if (link?.status !== "approved" || postingId) return;
-		if (!window.confirm(`Posting ${link.rawName} ke stok bahan baku?`)) return;
+		if (!(await requestAdminConfirm({ title: "Posting ke stok?", message: `Posting ${link.rawName} ke stok bahan baku?`, confirmText: "Posting" }))) return;
 		setPostingId(link._id);
 		try {
 			const supabase = createClient();

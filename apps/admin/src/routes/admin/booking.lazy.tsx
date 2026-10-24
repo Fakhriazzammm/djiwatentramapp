@@ -16,6 +16,7 @@ import {
 	Pencil,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { toast } from "sonner";
 import { BookingTimelineSummary } from "@yumipos/web-shared/booking/timeline";
 import { fetchBookingTimeline } from "@/lib/api-helper";
@@ -748,7 +749,12 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 
 	const handleDeleteBooking = async (id: Id<"bookingOrders">, paymentStatus?: string) => {
 		if (paymentStatus === "paid") {
-			if (!confirm("Booking sudah lunas. Booking akan dibatalkan dan tetap disimpan sebagai histori. Lanjutkan?")) return;
+			const cancelPaid = await requestAdminConfirm({
+				title: "Batalkan booking lunas?",
+				message: "Booking sudah lunas. Booking akan dibatalkan dan tetap disimpan sebagai histori. Lanjutkan?",
+				confirmText: "Batalkan booking",
+			});
+			if (!cancelPaid) return;
 			const tid = toast.loading("Membatalkan booking...");
 			try {
 				await updateBookingStatus({ id, bookingStatus: "cancelled" as any });
@@ -759,7 +765,12 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 			}
 			return;
 		}
-		if (!confirm("Apakah Anda yakin ingin menghapus booking ini? Tindakan ini tidak dapat dibatalkan.")) return;
+		const removeBooking = await requestAdminConfirm({
+			title: "Hapus booking?",
+			message: "Apakah Anda yakin ingin menghapus booking ini? Tindakan ini tidak dapat dibatalkan.",
+			confirmText: "Hapus",
+		});
+		if (!removeBooking) return;
 		
 		const tid = toast.loading("Menghapus booking...");
 		try {
@@ -880,7 +891,12 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 
 	const handleBulkDeleteCapacity = async () => {
 		if (selectedCapacityIds.length === 0 || isDeletingCapacity) return;
-		if (!confirm(`Hapus ${selectedCapacityIds.length} pengaturan kapasitas terpilih? Tanggal akan kembali memakai kapasitas default.`)) return;
+		const removeCapacity = await requestAdminConfirm({
+			title: "Hapus pengaturan kapasitas?",
+			message: `Hapus ${selectedCapacityIds.length} pengaturan kapasitas terpilih? Tanggal akan kembali memakai kapasitas default.`,
+			confirmText: "Hapus",
+		});
+		if (!removeCapacity) return;
 		setIsDeletingCapacity(true);
 		const tid = toast.loading(`Menghapus ${selectedCapacityIds.length} kapasitas...`);
 		try {

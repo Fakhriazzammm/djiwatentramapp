@@ -1,5 +1,6 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { ArrowLeft, CheckCircle2, Download, Eye, FileSignature, FileText, Loader2, PencilLine, ShieldCheck, Trash2, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -246,7 +247,15 @@ function ApplicationDetailPage() {
 			toast.error("PIN harus 6 digit");
 			return;
 		}
-		if (onboardingSettings.approvalPreview.requireConfirmation && !window.confirm(`Approve ${app.full_name} dan buat akun user?`)) return;
+		if (onboardingSettings.approvalPreview.requireConfirmation) {
+			const approved = await requestAdminConfirm({
+				title: "Setujui pendaftaran?",
+				message: `Approve ${app.full_name} dan buat akun user?`,
+				confirmText: "Approve",
+				variant: "info",
+			});
+			if (!approved) return;
+		}
 		setIsSaving(true);
 		try {
 			const approvalStartDate = new Date().toISOString().slice(0, 10);
@@ -300,7 +309,12 @@ function ApplicationDetailPage() {
 	/* ── Delete ── */
 	async function handleDelete() {
 		if (!app) return;
-		if (!window.confirm(`Hapus pendaftaran "${app.full_name}"? Aksi ini tidak bisa dibatalkan.`)) return;
+		const removeApplication = await requestAdminConfirm({
+			title: "Hapus pendaftaran?",
+			message: `Hapus pendaftaran "${app.full_name}"? Aksi ini tidak bisa dibatalkan.`,
+			confirmText: "Hapus",
+		});
+		if (!removeApplication) return;
 		setIsDeleting(true);
 		try {
 			await deleteApp(app.id);

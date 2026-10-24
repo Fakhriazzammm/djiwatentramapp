@@ -5,6 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
+import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { invokeDirectFetch } from "@/lib/api-helper";
 
 type LeaveRow = {
@@ -64,7 +65,13 @@ function LeaveRequestsPage() {
   const updateStatus = async (requestId: string, nextStatus: "approve" | "reject") => {
     if (!token || processingId) return;
     const label = nextStatus === "approve" ? "menyetujui" : "menolak";
-    if (!window.confirm(`Yakin ${label} pengajuan ini?`)) return;
+    const accepted = await requestAdminConfirm({
+      title: nextStatus === "approve" ? "Setujui pengajuan?" : "Tolak pengajuan?",
+      message: `Yakin ${label} pengajuan ini?`,
+      confirmText: nextStatus === "approve" ? "Setujui" : "Tolak",
+      variant: nextStatus === "approve" ? "info" : "danger",
+    });
+    if (!accepted) return;
     setProcessingId(requestId);
     setError(null);
     try {
