@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const AUTH_BASE = "https://api.yumme.id";
+const AUTH_BASE = import.meta.env.VITE_AUTH_URL?.trim() || "https://api.djiwatentram.web.id";
 const LOGIN_URL = `${AUTH_BASE}/masuk`;
 
 type BookingCustomer = { sourceId: string; name: string; email: string; phone: string };
