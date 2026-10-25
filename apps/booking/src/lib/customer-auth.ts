@@ -31,8 +31,8 @@ export function useBookingCustomerAuth(): AuthState {
       try {
         const sessionResponse = await authFetch(`${AUTH_BASE}/get-session`);
         if (!sessionResponse.ok) throw new Error("session unavailable");
-        const session = await sessionResponse.json() as { user?: { id?: string; name?: string | null; email?: string | null } };
-        if (!session.user?.id) {
+        const session = await sessionResponse.json() as { user?: { id?: string; name?: string | null; email?: string | null } } | null;
+        if (!session?.user?.id) {
           if (active) setState({ isLoading: false, isAuthenticated: false, customer: null, error: null });
           return;
         }
