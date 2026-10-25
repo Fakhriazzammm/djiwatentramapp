@@ -1,4 +1,7 @@
-const legacyStorageOrigin = "https://xaemykhjpkgypqqpfdcb.supabase.co";
+const legacyStorageOrigins = new Set([
+  "https://xaemykhjpkgypqqpfdcb.supabase.co",
+  "https://supabase.yumme.id",
+]);
 const selfHostedStorageOrigin = "https://supabase.djiwatentram.web.id";
 
 export function resolvePosAssetUrl(value?: unknown): string | undefined {
@@ -8,7 +11,7 @@ export function resolvePosAssetUrl(value?: unknown): string | undefined {
   if (!/^https?:\/\//i.test(input)) return input;
   try {
     const url = new URL(input);
-    if (url.origin === legacyStorageOrigin) {
+    if (legacyStorageOrigins.has(url.origin)) {
       url.protocol = "https:";
       url.host = new URL(selfHostedStorageOrigin).host;
       return url.toString();
