@@ -1,7 +1,7 @@
 {
-  "version": "0.2.536",
-  "commitHash": "f61e6de",
-  "message": "fix(pos): align cashier menu with mobile-first shell",
+  "version": "0.2.539",
+  "commitHash": "d171b51",
+  "message": "fix(pos): run Vite build with Bun runtime",
   "buildDate": "2026-10-25",
-  "generatedAt": "2026-10-25T07:21:49.248Z"
+  "generatedAt": "2026-10-25T07:30:09.953Z"
 }

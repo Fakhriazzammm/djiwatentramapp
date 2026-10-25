@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.536",
+	semantic: "0.2.539",
 	// Git/deploy commit hash (short)
-	commitHash: "f61e6de",
-	message: "fix(pos): align cashier menu with mobile-first shell",
+	commitHash: "d171b51",
+	message: "fix(pos): run Vite build with Bun runtime",
 	// Commit subject for the update prompt
-	commitMessage: "fix(pos): align cashier menu with mobile-first shell",
+	commitMessage: "fix(pos): run Vite build with Bun runtime",
 	// Build timestamp
 	buildDate: "2026-10-25",
 	// Full version string for display
