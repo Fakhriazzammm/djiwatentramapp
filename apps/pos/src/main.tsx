@@ -30,6 +30,7 @@ declare module "@tanstack/react-router" {
 
 // Hermes: trigger Vercel rebuild — contract+payslip live
 const rootElement = document.getElementById("root")!;
+document.body.classList.add("pos-app");
 
 // registerType: "autoUpdate" di vite.config.ts — SW auto-aktifasi + reload.
 // JANGAN kasih onNeedRefresh karena itu masukkin "prompt mode" yang bikin

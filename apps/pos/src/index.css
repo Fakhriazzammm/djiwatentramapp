@@ -172,3 +172,32 @@ body.admin-shell[data-admin-density="compact"] [data-admin-modal-backdrop] {
 	background-size: 200% 100%;
 	animation: shimmer 1.5s ease-in-out infinite;
 }
+
+/* POS control contract: one border and one keyboard focus owner. */
+.pos-app :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select, [role="combobox"]) {
+	border: 1px solid var(--border) !important;
+	outline: none !important;
+	box-shadow: none;
+}
+
+.pos-app :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select, [role="combobox"]):focus {
+	border-color: color-mix(in srgb, var(--primary) 45%, var(--border)) !important;
+	outline: none !important;
+	box-shadow: none;
+}
+
+.pos-app :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select, [role="combobox"]):focus-visible {
+	border-color: var(--ring) !important;
+	outline: 2px solid color-mix(in srgb, var(--ring) 32%, transparent);
+	outline-offset: 0;
+	box-shadow: none;
+}
+
+.pos-app :where(input[aria-invalid="true"], textarea[aria-invalid="true"], select[aria-invalid="true"], [role="combobox"][aria-invalid="true"]) {
+	border-color: var(--destructive) !important;
+}
+
+.pos-app :where(input:disabled, textarea:disabled, select:disabled, [role="combobox"][aria-disabled="true"]) {
+	outline: none !important;
+	box-shadow: none;
+}
