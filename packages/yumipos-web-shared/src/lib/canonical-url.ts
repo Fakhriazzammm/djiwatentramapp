@@ -16,11 +16,12 @@ const FIRST_PARTY_ORIGIN_MAP: Readonly<Record<string, string>> = {
   "https://pay.yumme.id": "https://pay.djiwatentram.web.id",
 };
 
-const SIGNED_QUERY_KEY = /^(token|signature|sig|expires|x-amz-|x-goog-|sv|se|sp)$/i;
+const SIGNED_QUERY_KEY = /^(token|signature|sig|expires|sv|se|sp)$/i;
+const SIGNED_QUERY_PREFIX = /^(x-amz-|x-goog-)/i;
 
 function isSignedUrl(url: URL): boolean {
   for (const key of url.searchParams.keys()) {
-    if (SIGNED_QUERY_KEY.test(key)) return true;
+    if (SIGNED_QUERY_KEY.test(key) || SIGNED_QUERY_PREFIX.test(key)) return true;
   }
   return false;
 }

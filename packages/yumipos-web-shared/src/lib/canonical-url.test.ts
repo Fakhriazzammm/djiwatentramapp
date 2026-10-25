@@ -12,6 +12,11 @@ describe("canonical first-party URL resolver", () => {
     expect(resolveCanonicalUrl(signed)).toBe(signed);
   });
 
+  it("does not rewrite provider-signed URLs with prefixed credential keys", () => {
+    const signed = "https://supabase.yumme.id/storage/menu.jpg?x-amz-signature=abc&x-amz-date=20261025";
+    expect(resolveCanonicalUrl(signed)).toBe(signed);
+  });
+
   it("leaves third-party, relative, and non-network values unchanged", () => {
     expect(resolveCanonicalUrl("https://images.example.com/menu.jpg?x=1")).toBe("https://images.example.com/menu.jpg?x=1");
     expect(resolveCanonicalUrl("/assets/menu.jpg")).toBe("/assets/menu.jpg");
