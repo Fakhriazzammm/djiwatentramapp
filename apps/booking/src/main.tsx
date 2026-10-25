@@ -105,13 +105,15 @@ export default function App() {
   useEffect(() => { sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft)); }, [draft]);
 
   useEffect(() => {
-    if (screen !== "status" || !statusCode.trim() || statusResult || statusLoading) return;
+    if (screen !== "status" || !statusCode.trim()) return;
     let active = true;
+    const code = statusCode.trim();
     setStatusLoading(true);
     setStatusError(null);
-    lookupBooking(statusCode.trim()).then((value) => { if (active) setStatusResult(value); }).catch((error: unknown) => { if (active) setStatusError(error instanceof Error ? error.message : "Status tidak tersedia."); }).finally(() => { if (active) setStatusLoading(false); });
+    setStatusResult(null);
+    lookupBooking(code).then((value) => { if (active) setStatusResult(value); }).catch((error: unknown) => { if (active) setStatusError(error instanceof Error ? error.message : "Status tidak tersedia."); }).finally(() => { if (active) setStatusLoading(false); });
     return () => { active = false; };
-  }, [screen, statusCode, statusResult, statusLoading]);
+  }, [screen, statusCode]);
 
   const settings = data?.settings;
   const capacities = data?.capacities ?? [];
