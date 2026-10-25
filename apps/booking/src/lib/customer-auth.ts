@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 const AUTH_BASE = "https://auth.zantara.id/api/auth";
-const CUSTOMER_API_BASE = "https://api.yumme.id/v1/customer";
+const CUSTOMER_API_BASE = "https://djiwatentram.yumme.id/api/customer";
 // Browser navigation needs the customer login page, not an auth API endpoint.
 const LOGIN_URL = "https://djiwatentram.yumme.id/masuk";
 
