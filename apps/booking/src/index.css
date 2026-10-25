@@ -432,3 +432,23 @@ h1 em { color: var(--booking-accent); font-style: normal; }
   .menu-shell .product-card img, .menu-shell .product-card .product-image { width: 68px; height: 68px; min-width: 68px; min-height: 68px; flex-basis: 68px; }
   .menu-shell .product-body h3 { font-size: 13px; }
 }
+
+.booking-receipt-shell { margin: 18px 0 0; }
+.booking-receipt-paper { position: relative; max-width: 520px; margin: 0 auto; padding: 28px 24px 24px; overflow: hidden; border: 1px solid #cfe8d8; border-radius: 24px; color: var(--ink); background: linear-gradient(145deg, #fff, #f8fffa); box-shadow: 0 14px 32px rgba(31, 77, 48, .10); }
+.booking-receipt-paper.is-pending { border-color: #f2dfb5; background: linear-gradient(145deg, #fff, #fffdf7); }
+.booking-receipt-edge { position: absolute; inset: 0 0 auto; height: 5px; background: #329960; }
+.is-pending .booking-receipt-edge { background: #d99b2b; }
+.booking-receipt-header { text-align: center; }
+.booking-receipt-status-icon { width: 42px; height: 42px; margin: 0 auto 12px; display: grid; place-items: center; border-radius: 15px; color: #fff; background: #329960; }
+.booking-receipt-status-icon.is-pending { color: #78551b; background: #fff0c9; font-weight: 900; }
+.booking-receipt-header h2 { margin: 8px 0 6px; font-size: 22px; letter-spacing: -.04em; }
+.booking-receipt-header p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.booking-receipt-code { margin: 22px 0 0; padding: 15px; border: 1px dashed #b8d9c2; border-radius: 16px; text-align: center; background: rgba(255,255,255,.7); }
+.is-pending .booking-receipt-code { border-color: #ead39b; }
+.booking-receipt-code span { display: block; color: var(--muted); font-size: 11px; }
+.booking-receipt-code strong { display: block; margin: 5px 0 9px; color: var(--booking-accent); font-size: 22px; letter-spacing: .08em; }
+.booking-receipt-code button, .booking-receipt-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.booking-receipt-code button { min-height: 34px; padding: 0 10px; border-radius: 10px; color: var(--booking-accent); background: transparent; font-size: 11px; font-weight: 800; }
+.booking-receipt-actions { display: flex; justify-content: center; margin-top: 12px; }
+@media print { body * { visibility: hidden !important; } .booking-receipt-paper, .booking-receipt-paper * { visibility: visible !important; } .booking-receipt-paper { position: absolute; inset: 0; max-width: 100%; border: 0; box-shadow: none; } .booking-receipt-actions { display: none; } }
+@media (prefers-reduced-motion: reduce) { .booking-receipt-paper, .booking-receipt-actions button { transition: none !important; } }
