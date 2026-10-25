@@ -48,6 +48,9 @@ export interface QueuedAction {
 	data: unknown;
 	retries: number;
 	maxRetries: number;
+	status: "pending" | "failed";
+	lastError?: string;
+	lastAttemptAt?: number;
 }
 
 type ActionExecutor = (action: QueuedAction) => Promise<void>;
@@ -56,8 +59,11 @@ export interface OfflineState {
 	isOnline: boolean;
 	isOfflineMode: boolean;
 	queuedActions: QueuedAction[];
+	/** All retained unsynced actions, including failed records. */
 	pendingSyncCount: number;
 	lastSyncTime: number;
+	isSyncing: boolean;
+	storageError: string | null;
 }
 
 export interface OfflineConfig {
@@ -113,7 +119,10 @@ export class OfflineManager {
 	private readonly state: Writable<OfflineState>;
 	private retryTimer: NodeJS.Timeout | null = null;
 	private readonly executors = new Map<QueuedAction["type"], ActionExecutor>();
-	private isSyncing = false;
+	private syncPromise: Promise<void> | null = null;
+	private readonly retryPromises = new Map<string, Promise<void>>();
+	private storageReadable = true;
+	private readonly eventCleanup: (() => void)[] = [];
 
 	constructor(config: Partial<OfflineConfig> = {}) {
 		this.config = { ...DEFAULT_CONFIG, ...config };
@@ -122,10 +131,12 @@ export class OfflineManager {
 		const persistedState = this.loadPersistedState();
 
 		this.state = writable<OfflineState>({
-			isOnline: navigator.onLine,
+			isOnline: typeof navigator === "undefined" ? false : navigator.onLine,
 			isOfflineMode: false,
 			queuedActions: persistedState?.queuedActions || [],
-			pendingSyncCount: 0,
+			pendingSyncCount: persistedState?.queuedActions?.length ?? 0,
+			isSyncing: false,
+			storageError: this.storageReadable ? null : "Antrean tersimpan tidak dapat dibaca. Pulihkan penyimpanan perangkat sebelum melanjutkan.",
 			lastSyncTime: persistedState?.lastSyncTime || Date.now(),
 		});
 
@@ -142,11 +153,15 @@ export class OfflineManager {
 	}
 
 	setState(update: Partial<OfflineState>): void {
-		this.state.update((current) => {
-			const newState = { ...current, ...update };
+		const newState = { ...this.getState(), ...update, storageError: null };
+		newState.pendingSyncCount = newState.queuedActions.length;
+		try {
 			this.persistState(newState);
-			return newState;
-		});
+		} catch (error) {
+			this.state.update((state) => ({ ...state, storageError: error instanceof Error ? error.message : "Antrean belum tersimpan." }));
+			throw error;
+		}
+		this.state.update(() => newState);
 	}
 
 	subscribe(run: (state: OfflineState) => void): () => void {
@@ -168,21 +183,24 @@ export class OfflineManager {
 
 		const handleOnline = () => {
 			console.log("[OfflineManager] Connection restored");
-			this.setState({ isOnline: true });
-			this.syncQueuedActions();
+			this.state.update((state) => ({ ...state, isOnline: true }));
+			void this.syncQueuedActions().catch(() => { /* Retained for manual recovery. */ });
 		};
 
 		const handleOffline = () => {
 			console.log("[OfflineManager] Connection lost");
-			this.setState({ isOnline: false });
+			this.state.update((state) => ({ ...state, isOnline: false }));
 		};
 
 		window.addEventListener("online", handleOnline);
 		window.addEventListener("offline", handleOffline);
 
-		// Cleanup on page unload
-		window.addEventListener("beforeunload", () => {
-			this.cleanup();
+		const handleUnload = () => this.cleanup();
+		window.addEventListener("beforeunload", handleUnload);
+		this.eventCleanup.push(() => {
+			window.removeEventListener("online", handleOnline);
+			window.removeEventListener("offline", handleOffline);
+			window.removeEventListener("beforeunload", handleUnload);
 		});
 	}
 
@@ -205,6 +223,7 @@ export class OfflineManager {
 			data,
 			retries: 0,
 			maxRetries: this.config.maxRetries,
+			status: "pending",
 		};
 
 		this.setState({
@@ -212,7 +231,6 @@ export class OfflineManager {
 			pendingSyncCount: currentState.pendingSyncCount + 1,
 		});
 
-		console.log(`[OfflineManager] Queued action: ${action.id}`);
 		return action.id;
 	}
 
@@ -240,75 +258,67 @@ export class OfflineManager {
 	// SYNC MANAGEMENT
 	// ============================================
 
-	async syncQueuedActions(): Promise<void> {
-		if (this.isSyncing) {
-			return;
-		}
-		if (!this.getState().isOnline) {
-			console.log("[OfflineManager] Still offline, skipping sync");
-			return;
-		}
-
-		const currentState = this.getState();
-		const { queuedActions } = currentState;
-
-		if (queuedActions.length === 0) {
-			console.log("[OfflineManager] No actions to sync");
-			return;
-		}
-
-		console.log(`[OfflineManager] Syncing ${queuedActions.length} actions...`);
-		this.isSyncing = true;
-
-		let syncedCount = 0;
-		let failedCount = 0;
-
-		try {
-			for (const action of queuedActions) {
-				try {
-					await this.executeAction(action);
-					this.removeAction(action.id);
-					syncedCount++;
-				} catch (error) {
-					console.error(`[OfflineManager] Failed to sync ${action.id}:`, error);
-
-					// Increment retry count
-					action.retries++;
-
-					if (action.retries >= action.maxRetries) {
-						console.error(
-							`[OfflineManager] Max retries exceeded for ${action.id}`
-						);
-						this.removeAction(action.id);
-						failedCount++;
-					}
-				}
+	/** Retry one retained failure. Identity/data stay unchanged; offline retries wait for connectivity. */
+	retryAction(actionId: string): Promise<void> {
+		const existing = this.retryPromises.get(actionId);
+		if (existing) return existing;
+		const retry = Promise.resolve().then(async () => {
+			if (this.syncPromise) await this.syncPromise;
+			const action = this.getState().queuedActions.find((item) => item.id === actionId);
+			if (!action) return;
+			if (action.status === "failed") {
+				this.replaceAction({ ...action, status: "pending", retries: 0, lastError: undefined });
 			}
-		} finally {
-			this.isSyncing = false;
-			this.setState({
-				lastSyncTime: Date.now(),
-				pendingSyncCount: this.getState().queuedActions.length,
-			});
-		}
-
-		console.log(
-			`[OfflineManager] Sync complete: ${syncedCount} synced, ${failedCount} failed`
-		);
+			await this.syncQueuedActions();
+		}).finally(() => { this.retryPromises.delete(actionId); });
+		this.retryPromises.set(actionId, retry);
+		return retry;
 	}
 
-	private async executeAction(action: QueuedAction): Promise<void> {
-		console.log(
-			`[OfflineManager] Executing action: ${action.type}`,
-			action.data
-		);
+	/** Concurrent callers join the same sync; failed records require explicit retryAction. */
+	syncQueuedActions(): Promise<void> {
+		if (this.syncPromise) return this.syncPromise;
+		if (!this.config.enabled || !this.getState().isOnline) return Promise.resolve();
+		// Defer execution so the lock exists before notifying subscribers or running executors.
+		this.syncPromise = Promise.resolve().then(() => this.runSync()).finally(() => {
+			this.syncPromise = null;
+			this.state.update((state) => ({ ...state, isSyncing: false }));
+		});
+		return this.syncPromise;
+	}
 
-		const executor = this.executors.get(action.type);
-		if (!executor) {
-			throw new Error(`No executor registered for ${action.type}`);
+	private replaceAction(action: QueuedAction): void {
+		this.setState({ queuedActions: this.getState().queuedActions.map((item) => item.id === action.id ? action : item) });
+	}
+
+	private async runSync(): Promise<void> {
+		const actions = this.getState().queuedActions.filter((action) => action.status === "pending");
+		if (actions.length === 0) return;
+		this.state.update((state) => ({ ...state, isSyncing: true }));
+		for (const queued of actions) {
+			if (!this.getState().isOnline) break;
+			const action = this.getState().queuedActions.find((item) => item.id === queued.id);
+			if (!action || action.status !== "pending") continue;
+			const executor = this.executors.get(action.type);
+			// Executors register after startup; absence must not consume retry attempts.
+			if (!executor) continue;
+			// Persist a recovery stop before sending. A crash or storage failure after the
+			// request may mean it succeeded remotely; do not automatically send it again.
+			const attempt: QueuedAction = { ...action, status: "failed", lastAttemptAt: Date.now(),
+				lastError: "Status pengiriman belum pasti. Periksa transaksi sebelum mencoba lagi." };
+			this.replaceAction(attempt);
+			try {
+				await executor(attempt);
+			} catch {
+				const retries = action.retries + 1;
+				this.replaceAction({ ...attempt, retries, status: retries >= action.maxRetries ? "failed" : "pending",
+					lastError: "Transaksi belum tersinkron. Periksa koneksi dan data transaksi, lalu coba lagi." });
+				continue;
+			}
+			// A failed local acknowledgement remains a retained failure, not an automatic retry.
+			this.removeAction(action.id);
 		}
-
-		await executor(action);
+		this.setState({ lastSyncTime: Date.now() });
 	}
 
 	private startSyncWhenOnline(): void {
@@ -317,7 +327,7 @@ export class OfflineManager {
 		}
 		this.retryTimer = setInterval(() => {
 			if (this.getState().isOnline && this.getState().queuedActions.length > 0) {
-				void this.syncQueuedActions();
+				void this.syncQueuedActions().catch(() => { /* Durable records stay available. */ });
 			}
 		}, this.config.retryInterval);
 	}
@@ -327,27 +337,38 @@ export class OfflineManager {
 	// ============================================
 
 	private persistState(state: OfflineState): void {
+		if (!this.storageReadable) throw new Error("Antrean tersimpan tidak dapat dibaca. Pulihkan penyimpanan sebelum melanjutkan.");
 		try {
-			const toPersist = {
-				queuedActions: state.queuedActions,
-				lastSyncTime: state.lastSyncTime,
-			};
-			localStorage.setItem(this.config.storageKey, JSON.stringify(toPersist));
-		} catch (error) {
-			console.error("[OfflineManager] Failed to persist state:", error);
+			localStorage.setItem(this.config.storageKey, JSON.stringify({
+				queuedActions: state.queuedActions, lastSyncTime: state.lastSyncTime,
+			}));
+		} catch {
+			throw new Error("Antrean belum tersimpan. Periksa ruang penyimpanan perangkat lalu coba lagi.");
 		}
 	}
 
 	private loadPersistedState(): Partial<OfflineState> | null {
 		try {
 			const data = localStorage.getItem(this.config.storageKey);
-			if (data) {
-				return JSON.parse(data);
-			}
-		} catch (error) {
-			console.error("[OfflineManager] Failed to load persisted state:", error);
+			if (!data) return null;
+			const parsed = JSON.parse(data);
+			if (!parsed || !Array.isArray(parsed.queuedActions)) throw new Error("Invalid queue");
+			const queuedActions = parsed.queuedActions.map((action: QueuedAction) => {
+				if (!action || typeof action.id !== "string" || typeof action.type !== "string") throw new Error("Invalid action");
+				const retries = Number.isFinite(action.retries) ? Math.max(0, action.retries) : 0;
+				const maxRetries = Number.isFinite(action.maxRetries) ? Math.max(1, action.maxRetries) : this.config.maxRetries;
+				return { ...action, retries, maxRetries,
+					status: action.status === "failed" || retries >= maxRetries ? "failed" : "pending",
+					// Never display arbitrary persisted backend errors or credentials.
+					lastError: action.lastError || retries >= maxRetries ? "Transaksi belum tersinkron. Periksa transaksi sebelum mencoba lagi." : undefined,
+				} satisfies QueuedAction;
+			});
+			return { queuedActions, lastSyncTime: typeof parsed.lastSyncTime === "number" ? parsed.lastSyncTime : 0 };
+		} catch {
+			// Do not overwrite records if storage is unavailable or cannot be decoded.
+			this.storageReadable = false;
+			return null;
 		}
-		return null;
 	}
 
 	clearPersistedState(): void {
@@ -382,7 +403,7 @@ export class OfflineManager {
 		if (this.retryTimer) {
 			clearInterval(this.retryTimer);
 		}
-		// Remove event listeners is handled by page unload
+		for (const dispose of this.eventCleanup.splice(0)) dispose();
 	}
 }
 

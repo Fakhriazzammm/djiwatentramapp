@@ -1,6 +1,7 @@
 import { formatOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { allocateDailyReceiptNo } from "@yumipos/web-shared/lib/daily-receipt";
 import { createClient } from "@/lib/client";
+import { assertOrderRetryAcknowledgement } from "@/lib/order-retry-acknowledgement";
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useCallback, useState } from "react";
@@ -2521,11 +2522,14 @@ export function useHybridCreateOrder() {
 			if (idempotencyKey) {
 				const { data: existingOrder, error: existingError } = await pos
 					.from("orders")
-					.select("source_id")
+					.select("source_id,status,total_amount")
 					.eq("idempotency_key", idempotencyKey)
 					.maybeSingle();
 				if (existingError) throw existingError;
-				if (existingOrder?.source_id) return existingOrder.source_id;
+				if (existingOrder?.source_id) {
+					await assertOrderRetryAcknowledgement(pos, existingOrder, args);
+					return existingOrder.source_id;
+				}
 			}
 			const autoComplete = Boolean(args?.autoComplete);
 			const nextStatus = isOpenBill
@@ -2623,11 +2627,14 @@ const orderRow = {
 					if (idempotencyKey && orderError.code === "23505") {
 						const { data: concurrentOrder, error: concurrentError } = await pos
 							.from("orders")
-							.select("source_id")
+							.select("source_id,status,total_amount")
 							.eq("idempotency_key", idempotencyKey)
 							.maybeSingle();
 						if (concurrentError) throw concurrentError;
-						if (concurrentOrder?.source_id) return concurrentOrder.source_id;
+						if (concurrentOrder?.source_id) {
+							await assertOrderRetryAcknowledgement(pos, concurrentOrder, args);
+							return concurrentOrder.source_id;
+						}
 					}
 					throw orderError;
 				}
@@ -2660,7 +2667,7 @@ const orderRow = {
 					const financialRow = {
 						source_id: makeSourceId("fin"),
 						tx_type: "income",
-						amount: Number(args?.totalAmount ?? 0),
+						amount: orderRow.total_amount,
 						category: "Penjualan",
 						description: `Penjualan Pesanan #${orderNumber}`,
 						merchant: args?.customerName ?? null,
