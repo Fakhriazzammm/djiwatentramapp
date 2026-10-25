@@ -26,6 +26,7 @@ export function getSafeCustomerReturnUrl(searchString: string) {
       "https://merchandise.yumme.id",
       "https://ordermieyamin.yumme.id",
       "https://booking.yumme.id",
+      "https://booking.djiwatentram.web.id",
       "http://localhost:3010",
       "http://localhost:5174",
     ]);

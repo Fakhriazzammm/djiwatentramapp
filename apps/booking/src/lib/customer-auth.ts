@@ -69,10 +69,14 @@ export function useBookingCustomerAuth(): AuthState {
   return state;
 }
 
-export function redirectToBookingLogin() {
-  const returnTo = `${window.location.origin}/?step=checkout`;
+export function buildBookingLoginUrl(origin = window.location.origin) {
+  const returnTo = `${origin}/?step=checkout`;
   const url = new URL(LOGIN_URL);
   url.searchParams.set("sso", "1");
   url.searchParams.set("returnTo", returnTo);
-  window.location.assign(url.toString());
+  return url.toString();
+}
+
+export function redirectToBookingLogin() {
+  window.location.assign(buildBookingLoginUrl());
 }

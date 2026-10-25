@@ -17,6 +17,7 @@ describe("customer authentication", () => {
   it("preserves permitted SSO handoffs and rejects unsafe destinations", () => {
     const search = (url: string) => `?sso=1&returnTo=${encodeURIComponent(url)}`;
     expect(getSafeCustomerReturnUrl(search("https://booking.yumme.id/?stage=order"))).toBe("https://booking.yumme.id/?stage=order");
+    expect(getSafeCustomerReturnUrl(search("https://booking.djiwatentram.web.id/?step=checkout"))).toBe("https://booking.djiwatentram.web.id/?step=checkout");
     for (const url of ["https://evil.example/", "//booking.yumme.id/", "https://user:pass@booking.yumme.id/", "https://booking.yumme.id/admin", "https://booking.yumme.id/?next=https://evil.example", "https://booking.yumme.id/#evil"]) {
       expect(getSafeCustomerReturnUrl(search(url))).toBe(null);
     }

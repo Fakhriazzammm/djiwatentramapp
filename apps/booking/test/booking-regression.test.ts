@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseCustomerProfile } from "../src/lib/customer-auth";
+import { buildBookingLoginUrl, parseCustomerProfile } from "../src/lib/customer-auth";
 import { validateCustomer } from "../src/lib/booking-validation";
 import { parseStoredInvoice } from "../src/lib/payment-recovery";
 
@@ -8,6 +8,15 @@ describe("booking customer checkout regressions", () => {
     expect(parseCustomerProfile({ success: true, customer: { source_id: "cust-1", name: "Ada", email: "ada@example.com", phone: "081234567890" } }, { id: "session-1" })).toEqual({ sourceId: "cust-1", name: "Ada", email: "ada@example.com", phone: "081234567890" });
     expect(parseCustomerProfile({ success: true, customer: { name: "Ada" } }, { id: "session-1", email: "ada@example.com" })).toBeNull();
     expect(parseCustomerProfile({ success: false, customer: { source_id: "cust-1", name: "Ada", email: "ada@example.com", phone: "081234567890" } }, { id: "session-1" })).toBeNull();
+  });
+
+  test("builds checkout login navigation on the customer page, never the API host", () => {
+    const login = new URL(buildBookingLoginUrl("https://booking.djiwatentram.web.id"));
+    expect(login.origin).toBe("https://djiwatentram.web.id");
+    expect(login.pathname).toBe("/masuk");
+    expect(login.searchParams.get("sso")).toBe("1");
+    expect(login.searchParams.get("returnTo")).toBe("https://booking.djiwatentram.web.id/?step=checkout");
+    expect(login.origin).not.toBe("https://api.djiwatentram.web.id");
   });
 
   test("validates customer input without accepting malformed phone or email", () => {
