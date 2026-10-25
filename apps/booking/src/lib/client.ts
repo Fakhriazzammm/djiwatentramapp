@@ -1,5 +1,6 @@
 import { createClient as createSharedClient } from "@yumipos/web-shared/lib/client";
 import { BOOKING_API_URL, BOOKING_SLUG, DEV_FALLBACK, SUPABASE_URL, type BookingOption } from "./booking-constants";
+import { resolveBookingAssetUrl } from "./asset-url";
 
 export type BookingCustomField = { id: string; label: string; type: string; options: string[]; placeholder: string; required: boolean; isBookingEventOption?: boolean };
 export type BookingSettings = {
@@ -136,7 +137,7 @@ export async function loadBookingData() {
       displayOrder: Number(row.displayOrder ?? 0),
     })).filter((category) => category.id && category.name),
     products: (() => {
-      const mapped = (products.data ?? []).map((row: any) => ({ id: String(row._id ?? row.id ?? row.sourceId), name: row.name ?? "", description: row.description ?? null, imageUrl: row.imageUrl ?? row.imagePath ?? row.image ?? null, price: Number(row.price ?? 0), promoPrice: row.promoPrice == null ? null : Number(row.promoPrice), categoryId: row.categoryId == null ? null : String(row.categoryId), category: row.categoryName ?? row.category ?? null, menuNumber: row.menuNumber ?? null }));
+      const mapped = (products.data ?? []).map((row: any) => ({ id: String(row._id ?? row.id ?? row.sourceId), name: row.name ?? "", description: row.description ?? null, imageUrl: resolveBookingAssetUrl(row.imageUrl ?? row.imagePath ?? row.image_url ?? row.image_path ?? row.image), price: Number(row.price ?? 0), promoPrice: row.promoPrice == null ? null : Number(row.promoPrice), categoryId: row.categoryId == null ? null : String(row.categoryId), category: row.categoryName ?? row.category ?? null, menuNumber: row.menuNumber ?? null }));
       const featuredIds = settingsValue?.featuredProductIds ?? [];
       if (featuredIds.length === 0) return mapped;
       const byId = new Map(mapped.map((product) => [product.id, product]));
