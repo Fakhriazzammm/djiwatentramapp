@@ -1,5 +1,16 @@
 import { createClient as createSharedClient } from "@yumipos/web-shared/lib/client";
 import { BOOKING_API_URL, BOOKING_SLUG, DEV_FALLBACK, SUPABASE_URL, type BookingOption } from "./booking-constants";
+import { parseStoredInvoice } from "./payment-recovery";
+
+function resolveProductImage(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const raw = value.trim();
+  try {
+    const url = new URL(raw, "https://supabase.djiwatentram.web.id");
+    if (url.hostname === "supabase.yumme.id") url.hostname = "supabase.djiwatentram.web.id";
+    return url.toString();
+  } catch { return null; }
+}
 
 export type BookingCustomField = { id: string; label: string; type: string; options: string[]; placeholder: string; required: boolean; isBookingEventOption?: boolean };
 export type BookingSettings = {
@@ -136,7 +147,7 @@ export async function loadBookingData() {
       displayOrder: Number(row.displayOrder ?? 0),
     })).filter((category) => category.id && category.name),
     products: (() => {
-      const mapped = (products.data ?? []).map((row: any) => ({ id: String(row._id ?? row.id ?? row.sourceId), name: row.name ?? "", description: row.description ?? null, imageUrl: row.imageUrl ?? row.imagePath ?? row.image ?? null, price: Number(row.price ?? 0), promoPrice: row.promoPrice == null ? null : Number(row.promoPrice), categoryId: row.categoryId == null ? null : String(row.categoryId), category: row.categoryName ?? row.category ?? null, menuNumber: row.menuNumber ?? null }));
+      const mapped = (products.data ?? []).map((row: any) => ({ id: String(row._id ?? row.id ?? row.sourceId), name: row.name ?? "", description: row.description ?? null, imageUrl: resolveProductImage(row.imageUrl ?? row.imagePath ?? row.image), price: Number(row.price ?? 0), promoPrice: row.promoPrice == null ? null : Number(row.promoPrice), categoryId: row.categoryId == null ? null : String(row.categoryId), category: row.categoryName ?? row.category ?? null, menuNumber: row.menuNumber ?? null }));
       const featuredIds = settingsValue?.featuredProductIds ?? [];
       if (featuredIds.length === 0) return mapped;
       const byId = new Map(mapped.map((product) => [product.id, product]));
@@ -221,14 +232,11 @@ export async function createBookingPayment(booking: BookingResult, draft: Bookin
   const credentials = getGuestCredentials();
   const storageKey = `booking-payment-${booking.bookingCode}`;
   const stored = sessionStorage.getItem(storageKey);
-  if (stored) {
-    try {
-      const existing = JSON.parse(stored) as { invoiceId?: string; invoiceUrl?: string };
-      if (existing.invoiceId && existing.invoiceUrl) {
-        await callBookingApi("attach-payment", { slug: BOOKING_SLUG, bookingCode: booking.bookingCode, accessToken: credentials.accessToken, paymentGateway: { provider: "mayar", invoiceId: existing.invoiceId, invoiceUrl: existing.invoiceUrl, status: "pending" } });
-        return existing;
-      }
-    } catch { sessionStorage.removeItem(storageKey); }
+  const existing = parseStoredInvoice(stored);
+  if (stored && !existing) sessionStorage.removeItem(storageKey);
+  if (existing) {
+    await callBookingApi("attach-payment", { slug: BOOKING_SLUG, bookingCode: booking.bookingCode, accessToken: credentials.accessToken, paymentGateway: { provider: "mayar", invoiceId: existing.invoiceId, invoiceUrl: existing.invoiceUrl, status: "pending" } });
+    return existing;
   }
   const pending = getPendingPayment(booking.bookingCode);
   if (pending?.invoiceId && pending.invoiceUrl) {

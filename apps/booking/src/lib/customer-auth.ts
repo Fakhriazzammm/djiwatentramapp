@@ -7,9 +7,24 @@ const CUSTOMER_API_BASE = "https://api.djiwatentram.web.id/api/customer";
 // Browser navigation needs the customer login page, not an auth API endpoint.
 const LOGIN_URL = "https://djiwatentram.web.id/masuk";
 
-type BookingCustomer = { sourceId: string; name: string; email: string; phone: string };
+export type BookingCustomer = { sourceId: string; name: string; email: string; phone: string };
 
 type AuthState = { isLoading: boolean; isAuthenticated: boolean; customer: BookingCustomer | null; error: string | null };
+
+type SessionUser = { id?: string; name?: string | null; email?: string | null };
+
+export function parseCustomerProfile(payload: unknown, sessionUser: SessionUser): BookingCustomer | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const body = payload as { success?: unknown; customer?: unknown };
+  if (body.success !== true || !body.customer || typeof body.customer !== "object" || Array.isArray(body.customer)) return null;
+  const profile = body.customer as Record<string, unknown>;
+  const sourceId = String(profile.source_id ?? sessionUser.id ?? "").trim();
+  const name = String(profile.name ?? sessionUser.name ?? "").trim();
+  const email = String(profile.email ?? sessionUser.email ?? "").trim();
+  const phone = String(profile.phone ?? "").trim();
+  if (!sourceId || !name || !email || !phone) return null;
+  return { sourceId, name, email, phone };
+}
 
 const AUTH_TIMEOUT_MS = 8000;
 
@@ -38,14 +53,9 @@ export function useBookingCustomerAuth(): AuthState {
         }
         const profileResponse = await authFetch(`${CUSTOMER_API_BASE}/profile`);
         if (!profileResponse.ok) throw new Error(`profile request failed (${profileResponse.status})`);
-        const profilePayload = await profileResponse.json().catch(() => null) as { success?: boolean; customer?: Record<string, unknown> } | null;
-        const profile = profilePayload?.success ? profilePayload.customer : undefined;
-        const customer: BookingCustomer = {
-          sourceId: String(profile?.source_id ?? session.user.id),
-          name: String(profile?.name ?? session.user.name ?? ""),
-          email: String(profile?.email ?? session.user.email ?? ""),
-          phone: String(profile?.phone ?? ""),
-        };
+        const profilePayload = await profileResponse.json().catch(() => null);
+        const customer = parseCustomerProfile(profilePayload, session.user);
+        if (!customer) throw new Error("customer profile is incomplete");
         if (active) setState({ isLoading: false, isAuthenticated: true, customer, error: null });
       } catch (error: unknown) {
         const message = error instanceof DOMException && error.name === "AbortError"
