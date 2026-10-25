@@ -1171,7 +1171,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 
 					{/* System Monitor - external link */}
 					<a
-						href="https://supabase.yumme.id/monitor/"
+						href="https://supabase.djiwatentram.web.id/monitor/"
 						target="_blank"
 						rel="noopener noreferrer"
 						className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 font-medium text-sm transition-all hover:bg-muted hover:text-foreground ${isCollapsed ? "justify-center px-0" : "text-muted-foreground"
