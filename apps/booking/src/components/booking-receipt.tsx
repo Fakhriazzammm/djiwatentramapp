@@ -10,7 +10,17 @@ type BookingReceiptProps = {
 };
 
 function ReceiptPaper({ result }: { result: BookingResult }) {
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "success" | "error">("idle");
+
+  async function copyBookingCode() {
+    try {
+      if (!navigator.clipboard) throw new Error("Clipboard tidak tersedia");
+      await navigator.clipboard.writeText(result.bookingCode);
+      setCopyState("success");
+    } catch {
+      setCopyState("error");
+    }
+  }
   const total = result.totalAmount ?? result.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const paid = result.paymentStatus.toLowerCase() === "paid";
 
@@ -29,9 +39,10 @@ function ReceiptPaper({ result }: { result: BookingResult }) {
       <div className="booking-receipt-code">
         <span>Kode booking</span>
         <strong>{result.bookingCode}</strong>
-        <button type="button" onClick={() => { void navigator.clipboard?.writeText(result.bookingCode); setCopied(true); }}>
-          <Copy size={14} /> {copied ? "Tersalin" : "Salin kode"}
+        <button type="button" onClick={() => { void copyBookingCode(); }}>
+          <Copy size={14} /> {copyState === "success" ? "Tersalin" : copyState === "error" ? "Gagal menyalin" : "Salin kode"}
         </button>
+        {copyState === "error" && <span role="status">Salin kode tidak tersedia di perangkat ini.</span>}
       </div>
 
       <div className="receipt-meta">
