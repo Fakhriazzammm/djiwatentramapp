@@ -198,7 +198,7 @@ function normalizeResult(raw: BookingResult & { bookingId?: string; bookingDate?
 export async function createBooking(draft: BookingDraft): Promise<BookingResult> {
   if (BOOKING_API_URL) {
     const credentials = getGuestCredentials();
-    let result = normalizeResult(await callBookingApi("create", { slug: BOOKING_SLUG, bookingDate: draft.date, arrivalTime: draft.arrivalTime, guestCount: draft.guests, customerName: draft.customer.name, customerPhone: draft.customer.phone, customerEmail: draft.customer.email, customerSourceId: draft.customerSourceId, notes: draft.customer.notes, customAnswers: draft.customAnswers, items: draft.items.map((item) => ({ productId: item.productId, quantity: item.quantity })), guestSessionId: credentials.guestSessionId, accessToken: credentials.accessToken, idempotencyKey: credentials.idempotencyKey }));
+    let result = normalizeResult(await callBookingApi("create", { slug: BOOKING_SLUG, bookingDate: draft.date, arrivalTime: draft.arrivalTime, guestCount: draft.guests, customerName: draft.customer.name, customerPhone: draft.customer.phone, customerEmail: draft.customer.email, customerSourceId: draft.customerSourceId, notes: draft.customer.notes, customAnswers: draft.customAnswers, items: draft.items.map((item) => ({ productId: item.productId, quantity: item.quantity })), paymentMethod: "qris", guestSessionId: credentials.guestSessionId, accessToken: credentials.accessToken, idempotencyKey: credentials.idempotencyKey }));
     if (result.bookingId && result.bookingCode && result.items.length === 0) {
       try {
         const recovered = await lookupBooking(result.bookingCode);
@@ -236,7 +236,7 @@ export async function createBookingPayment(booking: BookingResult, draft: Bookin
     return pending;
   }
   const redirectUrl = `${window.location.origin}/status?code=${encodeURIComponent(booking.bookingCode)}`;
-  const invoiceResponse = await callMayar({ action: "create-invoice", name: draft.customer.name, email: draft.customer.email || undefined, mobile: draft.customer.phone, redirectUrl, description: `Booking ${BOOKING_SLUG} ${booking.bookingCode} untuk ${draft.date}`, expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), extraData: { bookingId: booking.bookingId, bookingCode: booking.bookingCode, slug: BOOKING_SLUG }, items: booking.items.map((item) => ({ quantity: item.quantity, rate: item.price, description: item.name })) });
+  const invoiceResponse = await callMayar({ action: "create-invoice", paymentMethod: "qris", name: draft.customer.name, email: draft.customer.email || undefined, mobile: draft.customer.phone, redirectUrl, description: `Booking ${BOOKING_SLUG} ${booking.bookingCode} untuk ${draft.date}`, expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), extraData: { bookingId: booking.bookingId, bookingCode: booking.bookingCode, slug: BOOKING_SLUG }, items: booking.items.map((item) => ({ quantity: item.quantity, rate: item.price, description: item.name })) });
   const payment = invoiceResponse?.data || invoiceResponse;
   const invoiceId = String(payment?.id || "");
   const invoiceUrl = String(payment?.link || payment?.paymentUrl || payment?.url || "");

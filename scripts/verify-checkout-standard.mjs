@@ -99,9 +99,10 @@ for (const app of config.customerCheckoutApps) {
     }
   } else {
     if (!checkoutFiles.length) failures.push(`${app}: missing checkout-section.tsx standard surface`);
-    if (!importsShared(sourceText, "CheckoutPage")) failures.push(`${app}: checkout-section.tsx must use shared CheckoutPage`);
-    if (!importsShared(sourceText, "PaymentMethodCard")) failures.push(`${app}: checkout-section.tsx must use shared PaymentMethodCard`);
-    if (!importsShared(sourceText, "CheckoutHeader")) failures.push(`${app}: checkout-section.tsx must use shared CheckoutHeader`);
+    const usesSharedCustomerCheckout = importsShared(sourceText, "CustomerCheckout");
+    if (!usesSharedCustomerCheckout && !importsShared(sourceText, "CheckoutPage")) failures.push(`${app}: checkout-section.tsx must use shared CheckoutPage or CustomerCheckout`);
+    if (!usesSharedCustomerCheckout && !importsShared(sourceText, "PaymentMethodCard")) failures.push(`${app}: checkout-section.tsx must use shared PaymentMethodCard`);
+    if (!usesSharedCustomerCheckout && !importsShared(sourceText, "CheckoutHeader")) failures.push(`${app}: checkout-section.tsx must use shared CheckoutHeader`);
   }
 
   // canonical format contract — checkout/order flow files must not regress
