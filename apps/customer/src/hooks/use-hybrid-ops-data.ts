@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import { readGuestOrderReferences } from "@/components/customer/types";
-import { fetchCustomerOrderById, normalizeCustomerOrderReferences } from "@/lib/customer-api";
+import { normalizeCustomerOrderReferences } from "@/lib/customer-api";
+import { loadCustomerReceiptOrder } from "@/lib/customer-receipt";
 
 function useSupabaseValue<T>(
 	key: string,
@@ -21,7 +22,7 @@ function resolveMayarConfig() {
 }
 
 async function fetchOrderById(id: string, signal: AbortSignal) {
-	return fetchCustomerOrderById(id, normalizeCustomerOrderReferences(readGuestOrderReferences()), signal);
+	return loadCustomerReceiptOrder(id, normalizeCustomerOrderReferences(readGuestOrderReferences()), signal);
 }
 
 async function fetchVariationPresets() {
