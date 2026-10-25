@@ -191,6 +191,18 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .status-result { margin: 18px 0 0; padding: 24px; text-align: left; }
 .status-result h2 { margin: 8px 0; }
 .status-result a { display: inline-flex; align-items: center; gap: 6px; color: var(--booking-accent); font-size: 13px; font-weight: 700; }
+.status-card { border-color: #f2dfb5; background: #fffdf7; }
+.receipt-card { border-color: #cfe8d8; background: linear-gradient(145deg, #ffffff, #f8fffa); }
+.receipt-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 18px 0; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.receipt-meta span, .receipt-heading, .receipt-lines small { display: block; color: var(--muted); font-size: 11px; }
+.receipt-meta strong { display: block; margin-top: 4px; font-size: 13px; }
+.receipt-heading { display: flex; justify-content: space-between; padding-bottom: 4px; font-weight: 700; }
+.receipt-lines .line span { min-width: 0; }
+.receipt-lines small { margin-top: 3px; }
+.receipt-total { margin-top: 12px; color: var(--ink); font-size: 15px; }
+.receipt-total strong { color: #21834b; font-size: 18px; }
+.receipt-note { margin: 16px 0 0; font-size: 12px; }
+.pending-note { margin: 16px 0; padding: 12px; border-radius: 14px; color: #78551b; background: #fff4d8; font-size: 12px; line-height: 1.5; }
 .progress-wrap { margin-bottom: 18px; }
 .progress-label { margin-bottom: 8px; color: var(--muted); font-size: 11px; font-weight: 700; }
 .choice-list { display: grid; gap: 12px; }
@@ -383,3 +395,40 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .app-update-spin { animation: spin .8s linear infinite; }
 @keyframes app-update-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes app-update-rise { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+/* Compact booking menu: keep the catalog scannable without hiding controls. */
+.menu-shell .topbar { min-height: 64px; padding-top: calc(7px + env(safe-area-inset-top)); padding-bottom: 7px; }
+.menu-shell .brand { gap: 8px; }
+.menu-shell .brand-mark, .menu-shell .brand-logo { width: 32px; height: 32px; flex-basis: 32px; border-radius: 10px; }
+.menu-shell .brand strong { font-size: 14px; }
+.menu-shell .brand span { margin-top: 1px; font-size: 10px; }
+.menu-shell .menu-back-button { width: 44px; height: 44px; }
+.menu-shell .header-progress { padding-top: 5px; padding-bottom: 5px; }
+.menu-shell main { padding-top: 6px; }
+.menu-shell .step-heading { margin-bottom: 14px; }
+.menu-shell .step-heading h2 { font-size: clamp(22px, 5vw, 28px); }
+.menu-shell .step-heading p { margin-top: 3px; font-size: 12px; }
+.menu-shell .search-box { min-height: 44px; margin-bottom: 10px; }
+.menu-shell .menu-filters { gap: 8px; margin-bottom: 8px; }
+.menu-shell .product-grid { gap: 8px; }
+.menu-shell .product-card { display: flex; align-items: center; gap: 10px; min-height: 0; padding: 9px; border-radius: 15px; }
+.menu-shell .product-card img, .menu-shell .product-card .product-image { width: 76px; height: 76px; min-width: 76px; min-height: 76px; flex: 0 0 76px; border-radius: 12px; object-fit: cover; }
+.menu-shell .product-body { padding: 0; }
+.menu-shell .product-body h3 { margin: 3px 0 3px; font-size: 14px; line-height: 1.2; }
+.menu-shell .product-description { display: -webkit-box; margin: 0 0 5px; overflow: hidden; font-size: 11px; line-height: 1.3; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
+.menu-shell .product-body > strong { font-size: 14px; }
+.menu-shell .quantity-control { min-height: 36px; margin-top: 5px; gap: 6px; }
+.menu-shell .quantity-control button { width: 36px; height: 36px; border-radius: 10px; }
+.menu-shell .quantity-control .add-button { width: 42px; min-width: 42px; }
+.menu-shell .product-image { color: #8091aa; background: #edf3fb; }
+.menu-shell .product-image svg { width: 22px; }
+@media (min-width: 761px) {
+  .menu-shell .product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .menu-shell .product-card { display: flex; padding: 9px; gap: 10px; border-radius: 16px; }
+  .menu-shell .product-card img, .menu-shell .product-card .product-image { width: 82px; height: 82px; min-width: 82px; min-height: 82px; flex-basis: 82px; }
+}
+@media (max-width: 380px) {
+  .menu-shell main { padding-left: 12px; padding-right: 12px; }
+  .menu-shell .product-card img, .menu-shell .product-card .product-image { width: 68px; height: 68px; min-width: 68px; min-height: 68px; flex-basis: 68px; }
+  .menu-shell .product-body h3 { font-size: 13px; }
+}
