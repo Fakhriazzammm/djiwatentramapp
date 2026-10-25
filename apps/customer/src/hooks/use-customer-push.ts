@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
+import { subscribeCustomerPush, unsubscribeCustomerPush } from "@/lib/customer-api";
 
 export type CustomerPushState = "unsupported" | "default" | "denied" | "ready" | "subscribed";
 
@@ -82,13 +83,7 @@ export function useCustomerPush() {
         userVisibleOnly: true,
         applicationServerKey: base64ToUint8Array(publicKey),
       });
-      const response = await fetch("https://api.yumme.id/v1/customer/push/subscribe", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...subscription.toJSON(), userAgent: navigator.userAgent }),
-      });
-      if (!response.ok) throw new Error("Pendaftaran notifikasi gagal");
+      await subscribeCustomerPush({ ...subscription.toJSON(), userAgent: navigator.userAgent });
       setState("subscribed");
       setLocalFlag(AUTO_ENABLE_DISABLED_KEY, false);
       setLocalFlag(AUTO_ENABLE_ATTEMPTED_KEY, true);
@@ -113,12 +108,7 @@ export function useCustomerPush() {
       const registration = await getRegistration();
       const subscription = await registration.pushManager.getSubscription();
       if (!subscription) { setState("ready"); return; }
-      await fetch("https://api.yumme.id/v1/customer/push/unsubscribe", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ endpoint: subscription.endpoint }),
-      });
+      await unsubscribeCustomerPush(subscription.endpoint);
       await subscription.unsubscribe();
       setState("ready");
       toast.success("Notifikasi dimatikan di perangkat ini.");

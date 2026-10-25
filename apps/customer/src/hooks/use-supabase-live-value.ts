@@ -7,6 +7,7 @@ export type UseSupabaseLiveValueOptions = {
 	refreshMs?: number;
 	refreshTrigger?: number;
 	onRealtimeUpdate?: () => void;
+	onError?: (error: unknown) => void;
 	/** Cache key for localStorage. When set, data is cached and rendered instantly on next load */
 	cacheKey?: string;
 	/** Cache TTL in ms (default: 5 minutes). Only used when cacheKey is set */
@@ -76,6 +77,8 @@ export function useSupabaseLiveValue<T>(
 	const reloadFnRef = useRef<() => Promise<void>>(async () => {});
 	const onRealtimeUpdateRef = useRef(options?.onRealtimeUpdate);
 	onRealtimeUpdateRef.current = options?.onRealtimeUpdate;
+	const onErrorRef = useRef(options?.onError);
+	onErrorRef.current = options?.onError;
 
 	useEffect(() => {
 		if (!isSupabaseConfigured()) {
@@ -115,6 +118,7 @@ export function useSupabaseLiveValue<T>(
 				}
 			} catch (error) {
 				console.warn(`[supabase-hybrid:${key}]`, error);
+				onErrorRef.current?.(error);
 				if (active) setData(null);
 			} finally {
 				inFlight = false;

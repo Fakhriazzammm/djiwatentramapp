@@ -26,8 +26,7 @@ import {
 	useHybridSiteSettings,
 } from "@/hooks/use-hybrid-pos-data";
 import { useHybridBookingSettings } from "@/hooks/use-hybrid-booking-data";
-import { useHybridMayarConfig } from "@/hooks/use-hybrid-ops-data";
-import { useHybridOrderById } from "@yumipos/web-shared/hooks/use-hybrid-ops-data";
+import { useHybridMayarConfig, useHybridOrderById } from "@/hooks/use-hybrid-ops-data";
 import { useProductUpsellRecommendations } from "@/hooks/use-product-upsells";
 import {
 	useHybridCreateOrder,
@@ -65,22 +64,6 @@ import { reserveDjiwaRunCheckoutReward, releaseDjiwaRunCheckoutReward, finalizeD
 export const Route = createLazyFileRoute("/$username/order")({
 	component: OrderPage,
 });
-
-// Preserve guest/member authorization while reading the authoritative DB order.
-async function loadReceiptOrder(id: string) {
-	const accessToken = readGuestOrderReferences().find((reference) => reference.orderId === id)?.accessToken;
-	const baseUrl = "https://api.yumme.id/v1/customer";
-	const response = await fetch(`${baseUrl}/${accessToken ? "guest-orders" : "orders"}`, accessToken ? {
-		method: "POST",
-		credentials: "include",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ orders: [{ orderId: id, accessToken }] }),
-	} : { credentials: "include", headers: { Accept: "application/json" } });
-	if (!response.ok) throw new Error(`Order fetch HTTP ${response.status}`);
-	const payload = await response.json() as { success?: boolean; orders?: Array<Record<string, unknown>> };
-	const orders = payload.success ? payload.orders ?? [] : [];
-	return accessToken ? orders[0] ?? null : orders.find((row) => String(row._id ?? row.id ?? row.source_id) === id) ?? null;
-}
 
 function OrderPage() {
 	const shouldReduceMotion = useReducedMotion();
