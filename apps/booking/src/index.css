@@ -32,6 +32,52 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 0; 
 /* Borderless text controls across the standalone booking app. */
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select { border-width: 0 !important; border-color: transparent !important; }
 
+/* Booking checkout: keep the shared surface, but restore a clear form rhythm. */
+.app-shell:has(.djiwa-checkout-page) { width: min(100%, 880px); }
+.app-shell:has(.djiwa-checkout-page) main { padding: 22px 28px 32px; }
+.djiwa-checkout-page { display: grid; gap: 14px; }
+.djiwa-checkout-page .djiwa-checkout-card { gap: 16px; }
+.djiwa-checkout-page .djiwa-checkout-section,
+.djiwa-checkout-page .djiwa-order-summary { margin: 0; border-radius: 22px; }
+.djiwa-checkout-page .djiwa-checkout-section { padding: 22px; }
+.djiwa-checkout-page .djiwa-checkout-header { padding-bottom: 18px; }
+.djiwa-checkout-page .djiwa-checkout-header h1 { font-size: clamp(24px, 3vw, 30px); }
+.djiwa-checkout-page .djiwa-checkout-head-row { margin-top: -6px; }
+.djiwa-checkout-page .djiwa-checkout-detail { padding: 16px; border: 1px solid #e0e8f3; border-radius: 18px; background: #f7faff; }
+.djiwa-checkout-page .djiwa-checkout-detail-head { margin-bottom: 12px; }
+.djiwa-checkout-page .djiwa-checkout-items { gap: 11px; }
+.djiwa-checkout-page .djiwa-checkout-item { gap: 11px; }
+.djiwa-checkout-page .djiwa-checkout-item-image { width: 48px; height: 48px; flex-basis: 48px; border-radius: 14px; }
+.djiwa-checkout-page .djiwa-checkout-item-copy { gap: 3px; }
+.djiwa-checkout-page .djiwa-checkout-item-copy strong { font-size: 13px; }
+.djiwa-checkout-page .djiwa-checkout-item-copy small { font-size: 11px; }
+.djiwa-checkout-page .djiwa-checkout-item-price { font-size: 13px; }
+.djiwa-checkout-booking-context { display: grid; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #e0e8f3; }
+.djiwa-checkout-booking-context__primary { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 10px; }
+.djiwa-checkout-booking-context__primary span { color: var(--checkout-muted, var(--muted)); font-size: 12px; font-weight: 700; }
+.djiwa-checkout-booking-context__primary strong { color: var(--checkout-text, var(--ink)); font-size: 15px; letter-spacing: -.02em; }
+.djiwa-checkout-booking-context__meta { display: flex; align-items: center; gap: 8px; color: var(--checkout-muted, var(--muted)); font-size: 11px; font-weight: 700; }
+.djiwa-checkout-fields { display: grid; gap: 15px; padding-top: 2px; }
+.djiwa-checkout-field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
+.djiwa-checkout-page .djiwa-checkout-field { gap: 7px; }
+.djiwa-checkout-page .djiwa-checkout-input,
+.djiwa-checkout-page .djiwa-checkout-textarea { min-height: 48px; padding: 12px 14px; border: 1px solid #dbe3ee !important; border-radius: 13px; background: #fbfcff; }
+.djiwa-checkout-page .djiwa-checkout-textarea { min-height: 92px; }
+.djiwa-checkout-page .djiwa-checkout-input::placeholder,
+.djiwa-checkout-page .djiwa-checkout-textarea::placeholder { color: #9aa7b8; }
+.djiwa-checkout-page .djiwa-checkout-input:focus,
+.djiwa-checkout-page .djiwa-checkout-textarea:focus { border-color: var(--booking-accent) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--booking-accent) 13%, transparent); }
+.djiwa-checkout-page .djiwa-checkout-section-heading { padding-bottom: 2px; }
+.djiwa-checkout-page .djiwa-payment-methods { gap: 9px; margin-top: 5px; }
+.djiwa-checkout-page .djiwa-payment-method { min-height: 60px; padding: 11px 13px; border-radius: 14px; }
+.djiwa-checkout-page .djiwa-order-summary { padding: 18px 22px; }
+.djiwa-checkout-page .djiwa-order-summary-row { min-height: 34px; padding: 8px 0; font-size: 12px; }
+.djiwa-checkout-page .djiwa-order-summary-row strong { font-size: 12px; }
+.djiwa-checkout-page .djiwa-order-summary-row.is-total strong { font-size: 18px; }
+.djiwa-checkout-page .djiwa-summary-note { margin: 10px 0 0; font-size: 11px; }
+.djiwa-checkout-page .djiwa-checkout-actions { margin-top: 14px; padding: 14px 0 0; border-top-color: #e0e8f3; background: transparent; }
+.djiwa-checkout-page .djiwa-checkout-actions button { min-height: 50px; border-radius: 14px; }
+
 h1, h2, h3, strong { font-family: "Plus Jakarta Sans", Inter, sans-serif; }
 p { color: var(--muted); line-height: 1.6; }
 
@@ -329,6 +375,14 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 760px) {
+  .app-shell:has(.djiwa-checkout-page) { width: 100%; }
+  .app-shell:has(.djiwa-checkout-page) main { padding: 8px 16px calc(12px + env(safe-area-inset-bottom)); }
+  .djiwa-checkout-page .djiwa-checkout-section { padding: 16px; border-radius: 18px; }
+  .djiwa-checkout-page .djiwa-order-summary { padding: 16px; border-radius: 18px; }
+  .djiwa-checkout-field-row { grid-template-columns: 1fr; gap: 15px; }
+  .djiwa-checkout-page .djiwa-checkout-header h1 { font-size: 23px; }
+  .djiwa-checkout-page .djiwa-checkout-item-image { width: 42px; height: 42px; flex-basis: 42px; }
+  .djiwa-checkout-page .djiwa-checkout-actions { padding-top: 12px; }
   main { padding: 4px 16px calc(8px + env(safe-area-inset-bottom)); }
   .topbar { padding-left: 16px; padding-right: 16px; }
 

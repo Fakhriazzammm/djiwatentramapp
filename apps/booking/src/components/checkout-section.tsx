@@ -58,12 +58,14 @@ export function CheckoutSection({ step, totalSteps, settings, bookingType, event
       orderDetailExtra={<BookingContext bookingType={bookingType} eventType={eventType} date={date} arrivalTime={arrivalTime} guests={guests} tableCount={tableCount} />}
       fields={(
         <div className="djiwa-checkout-fields">
-          <CheckoutField label="Nama lengkap" required htmlFor="booking-customer-name" hint={errors.name}>
-            <CheckoutInput id="booking-customer-name" value={customer.name} onChange={(event) => updateCustomer("name", event.currentTarget.value)} placeholder="Nama lengkap" aria-invalid={Boolean(errors.name)} />
-          </CheckoutField>
-          <CheckoutField label="Nomor WhatsApp" required htmlFor="booking-customer-phone" hint={errors.phone}>
-            <CheckoutInput id="booking-customer-phone" value={customer.phone} onChange={(event) => updateCustomer("phone", event.currentTarget.value)} placeholder="08… atau +62…" inputMode="tel" aria-invalid={Boolean(errors.phone)} />
-          </CheckoutField>
+          <div className="djiwa-checkout-field-row">
+            <CheckoutField label="Nama lengkap" required htmlFor="booking-customer-name" hint={errors.name}>
+              <CheckoutInput id="booking-customer-name" value={customer.name} onChange={(event) => updateCustomer("name", event.currentTarget.value)} placeholder="Nama lengkap" aria-invalid={Boolean(errors.name)} />
+            </CheckoutField>
+            <CheckoutField label="Nomor WhatsApp" required htmlFor="booking-customer-phone" hint={errors.phone}>
+              <CheckoutInput id="booking-customer-phone" value={customer.phone} onChange={(event) => updateCustomer("phone", event.currentTarget.value)} placeholder="08… atau +62…" inputMode="tel" aria-invalid={Boolean(errors.phone)} />
+            </CheckoutField>
+          </div>
           <CheckoutField label="Email" htmlFor="booking-customer-email" hint={errors.email}>
             <CheckoutInput id="booking-customer-email" value={customer.email} onChange={(event) => updateCustomer("email", event.currentTarget.value)} placeholder="nama@email.com" inputMode="email" aria-invalid={Boolean(errors.email)} />
           </CheckoutField>
@@ -98,7 +100,13 @@ export function CheckoutSection({ step, totalSteps, settings, bookingType, event
 }
 
 function BookingContext({ bookingType, eventType, date, arrivalTime, guests, tableCount }: Pick<CheckoutSectionProps, "bookingType" | "eventType" | "date" | "arrivalTime" | "guests" | "tableCount">) {
-  return <div className="djiwa-checkout-booking-context"><span>{bookingType?.label || "Booking"}{eventType ? ` · ${eventType.label}` : ""}</span><strong>{formatDate(date)} · {arrivalTime || "Jam belum diisi"}</strong><small>{guests} tamu · {tableCount} meja</small></div>;
+  return <div className="djiwa-checkout-booking-context" aria-label="Ringkasan booking">
+    <div className="djiwa-checkout-booking-context__primary">
+      <span>{bookingType?.label || "Booking"}{eventType ? ` · ${eventType.label}` : ""}</span>
+      <strong>{formatDate(date)} · {arrivalTime || "Jam belum diisi"}</strong>
+    </div>
+    <div className="djiwa-checkout-booking-context__meta"><span>{guests} tamu</span><span aria-hidden="true">·</span><span>{tableCount} meja</span></div>
+  </div>;
 }
 
 function BookingCustomFieldInput({ field, value, error, onChange }: { field: BookingCustomField; value: unknown; error?: string; onChange: (value: unknown) => void }) {
