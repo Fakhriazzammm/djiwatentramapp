@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, CalendarDays, CalendarHeart, Check, ChevronRight, CircleAlert, Clock3, Copy, CreditCard, ExternalLink, GraduationCap, Handshake, HeartHandshake, Minus, Plus, Search, Sparkles, Users, UsersRound, UtensilsCrossed } from "lucide-react";
 import { BOOKING_STEPS, type BookingOption, type BookingStep } from "./lib/booking-constants";
 import { currency, formatDate, todayIso } from "./lib/booking-formatters";
@@ -80,7 +80,8 @@ export default function App() {
   const [statusResult, setStatusResult] = useState<BookingResult | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
-  const { isAuthenticated, customer, error: authError } = useBookingCustomerAuth();
+  const { isLoading: authLoading, isAuthenticated, customer, error: authError } = useBookingCustomerAuth();
+  const submitLock = useRef(false);
 
   useEffect(() => {
     canonicalizeLegacyPath();
@@ -132,6 +133,11 @@ export default function App() {
     else if (screen === "menu" && !hasMenu) navigate("review");
   }, [data, hasBookingType, hasMenu, requiresEvent, screen]);
   const nextFromCheckout = async () => {
+    if (submitLock.current) return;
+    if (authLoading) {
+      setSubmitError("Menyiapkan sesi pelanggan… coba lagi sebentar.");
+      return;
+    }
     if (authError) {
       setSubmitError(authError);
       return;
@@ -142,7 +148,11 @@ export default function App() {
     }
     const customerErrors = validateCustomer(draft.customer);
     const customErrors = requiredFieldErrors(settings?.customFields ?? [], draft.customAnswers);
-    if (Object.keys(customerErrors).length || Object.keys(customErrors).length) return;
+    if (Object.keys(customerErrors).length || Object.keys(customErrors).length) {
+      setSubmitError("Periksa kembali data pelanggan dan kolom wajib.");
+      return;
+    }
+    submitLock.current = true;
     setSubmitting(true); setSubmitError(null);
     try {
       const bookingDraft: BookingDraft = { customerSourceId: customer.sourceId, bookingType: draft.bookingType, bookingTypeLabel: selectedType?.label || draft.bookingType, eventType: draft.eventType || undefined, eventTypeLabel: selectedEvent?.label, eventTypeOther: draft.eventTypeOther || undefined, date: draft.selectedDate, arrivalTime: draft.arrivalTime, guests: draft.guests, tableCount, items: cartItems.map((item) => ({ productId: item.id, name: item.name, price: item.promoPrice ?? item.price, quantity: item.quantity })), customer: draft.customer, customAnswers: { ...draft.customAnswers, "Tipe booking": draft.bookingType, "Tipe booking label": selectedType?.label || draft.bookingType, "Jenis acara": draft.eventType || null, "Jenis acara label": selectedEvent?.label || null, "Jenis acara lainnya": draft.eventTypeOther || null, "Jam kedatangan": draft.arrivalTime } };
@@ -154,7 +164,7 @@ export default function App() {
       sessionStorage.removeItem("booking-pending-result");
       if (!payment.invoiceUrl) throw new Error("Link pembayaran tidak tersedia.");
       window.location.assign(payment.invoiceUrl);
-    } catch (error: unknown) { setSubmitError(error instanceof Error ? error.message : "Pembayaran belum berhasil disiapkan. Data booking tetap tersimpan untuk dicoba lagi."); } finally { setSubmitting(false); }
+    } catch (error: unknown) { setSubmitError(error instanceof Error ? error.message : "Pembayaran belum berhasil disiapkan. Data booking tetap tersimpan untuk dicoba lagi."); } finally { submitLock.current = false; setSubmitting(false); }
   };
 
   if (screen === "success") return <Shell settings={settings} onBack={() => navigate("landing")}><Success code={statusCode} onStatus={() => navigate("status")} /></Shell>;
@@ -184,6 +194,11 @@ function Shell({ settings, children, onBack, menu = false, progressStep, progres
 }
 function Landing({ settings, loading, error, retry, onStart, onStatus, showCustomerPromo }: { settings?: BookingSettings | null; loading: boolean; error: string | null; retry: () => void; onStart: () => void; onStatus: () => void; showCustomerPromo: boolean }) { const inactive = settings != null && !settings.isActive; return <section className="landing"><div className="hero"><div className="eyebrow"><Clock3 size={15} /> Booking langsung dari sumber resmi</div><h1>Rencanakan acaramu, <em>tanpa ribet.</em></h1><p>{settings?.description || "Pilih kebutuhan booking, tanggal, jumlah tamu, dan menu sebelum datang."}</p><div className="hero-actions"><button className="button primary" disabled={inactive || loading} onClick={onStart}>{inactive ? "Booking sedang ditutup" : "Mulai booking"} {!inactive && !loading && <ChevronRight size={18} />}</button><button className="button secondary" onClick={onStatus}>Cek booking <Search size={17} /></button></div><div className="payment-note"><CreditCard size={16} /><span>Pembayaran dilakukan setelah review melalui QRIS atau virtual account Djiwa Tentram.</span></div></div>{showCustomerPromo && <a className="booking-promo" href="https://booking.yumme.id/" aria-label="Booking acara dan kolaborasi di Djiwa Tentram"><img src="/booking-collaboration-banner.png" alt="Booking acara dan kolaborasi di Djiwa Tentram — mulai booking di booking.yumme.id" loading="lazy" /></a>}<div className="info-grid"><Info icon={<CalendarDays />} title="Tanggal fleksibel" text="Pilih hari yang masih tersedia." /><Info icon={<Users />} title="Kapasitas jelas" text="Kami hitungkan kebutuhan mejamu." /><Info icon={<UtensilsCrossed />} title="Menu siap saat datang" text="Pilih menu lebih awal agar persiapan lebih cepat." /></div>{loading && <StateCard text="Memuat pengaturan booking…" loading />}{error && <StateCard text={error} action="Coba lagi" onAction={retry} error />}{inactive && <StateCard text="Booking sedang tidak aktif. Silakan cek kembali nanti." error />}</section>; }
 function Info({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) { return <div className="info-card"><span className="info-icon">{icon}</span><strong>{title}</strong><span>{text}</span></div>; }
+function ProductImage({ src, name }: { src?: string | null; name: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <div className="product-image" role="img" aria-label={`Foto ${name} tidak tersedia`}><UtensilsCrossed /></div>;
+  return <img src={src} alt={`${name} — foto menu`} loading="lazy" onError={() => setFailed(true)} />;
+}
 function StateCard({ text, loading, error, action, onAction }: { text: string; loading?: boolean; error?: boolean; action?: string; onAction?: () => void }) { return <div className={`state-card ${error ? "error" : ""}`}>{loading ? <div className="spinner" /> : <CircleAlert size={19} />}<span>{text}</span>{action && <button className="text-button" onClick={onAction}>{action}</button>}</div>; }
 function Progress({ active, hasType = true, hasEvent = true, hasMenu = true }: { active: BookingStep; hasType?: boolean; hasEvent?: boolean; hasMenu?: boolean }) { const steps = BOOKING_STEPS.filter((step) => (step !== "type" || hasType) && (step !== "event-type" || hasEvent) && (step !== "menu" || hasMenu)); const index = steps.indexOf(active); return <div className="progress-wrap"><div className="progress-label">Langkah {index + 1} dari {steps.length}</div><div className="progress">{steps.map((step, stepIndex) => <span className={step === active ? "active" : index > stepIndex ? "done" : ""} key={step}>{index > stepIndex ? <Check size={13} /> : stepIndex + 1}</span>)}</div></div>; }
 function StepHeader({ number, title, detail }: { number: string; title: string; detail: string }) { return <div className="step-heading"><span className="step-number">{number}</span><div><h2>{title}</h2><p>{detail}</p></div></div>; }
@@ -296,7 +311,7 @@ function MenuStep({ products, categories, bookingType, eventType, date, guests, 
     {(categoryFilter !== "all" || subcategoryFilter !== "all") && <button className="clear-filter" onClick={() => { setCategoryFilter("all"); setSubcategoryFilter("all"); }} type="button">Reset filter</button>}
     {products.length === 0 ? <StateCard text="Menu belum tersedia dari Supabase. Booking belum dapat dilanjutkan." error /> : filtered.length === 0 ? <StateCard text="Menu tidak ditemukan pada filter ini." /> : <div className="product-grid">
       {filtered.map((item) => { const quantity = cart[item.id] ?? 0; return <article className={`product-card ${quantity ? "selected" : ""}`} key={item.id} onClick={() => addOne(item.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); addOne(item.id); } }} role="button" tabIndex={0} aria-label={`${item.name}, ${quantity ? `jumlah ${quantity}` : "belum dipilih"}. Klik untuk tambah satu`}>
-        {item.imageUrl ? <img src={item.imageUrl} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <div className="product-image"><UtensilsCrossed /></div>}
+        <ProductImage src={item.imageUrl} name={item.name} />
         <div className="product-body"><span className="menu-number">{item.menuNumber ? `#${item.menuNumber}` : "Menu"}</span><h3>{item.name}</h3>{item.description && <p className="product-description">{item.description}</p>}<strong>{currency(item.promoPrice ?? item.price)}</strong><div className="quantity-control" onClick={stopCardClick}>{quantity > 0 ? <><button aria-label={`Kurangi ${item.name}`} onClick={() => setQuantity(item.id, quantity - 1)}><Minus size={15} /></button><b aria-live="polite">{quantity}</b><button aria-label={`Tambah ${item.name}`} onClick={() => setQuantity(item.id, quantity + 1)}><Plus size={15} /></button></> : <button className="add-button" aria-label={`Tambah ${item.name}`} onClick={() => addOne(item.id)}><Plus size={24} /></button>}</div></div>
       </article>; })}
     </div>}
