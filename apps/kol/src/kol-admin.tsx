@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { createAuthClient } from "better-auth/react";
 import { CalendarDays, Check, Clock3, LogOut, RefreshCw, Search, ShieldCheck, Users, X } from "lucide-react";
 
-const AUTH_BASE = "https://api.yumme.id/v1/auth";
-const API_BASE = "https://api.yumme.id/v1/kol/admin";
+const AUTH_BASE = "https://api.djiwatentram.web.id/v1/auth";
+const API_BASE = "https://api.djiwatentram.web.id/v1/kol/admin";
 const authClient = createAuthClient({ baseURL: AUTH_BASE, fetchOptions: { credentials: "include" } });
 
 type Creator = {

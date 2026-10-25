@@ -69,7 +69,7 @@ export const Route = createLazyFileRoute("/$username/order")({
 // Preserve guest/member authorization while reading the authoritative DB order.
 async function loadReceiptOrder(id: string) {
 	const accessToken = readGuestOrderReferences().find((reference) => reference.orderId === id)?.accessToken;
-	const baseUrl = "https://api.yumme.id/v1/customer";
+	const baseUrl = import.meta.env.VITE_CUSTOMER_API_URL?.trim() || "https://api.djiwatentram.web.id/v1/customer";
 	const response = await fetch(`${baseUrl}/${accessToken ? "guest-orders" : "orders"}`, accessToken ? {
 		method: "POST",
 		credentials: "include",

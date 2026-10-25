@@ -18,7 +18,7 @@ type PublicSnapshot = {
   completeness: "partial" | "unavailable";
 };
 
-const INVESTOR_API_BASE = import.meta.env.VITE_INVESTOR_API_URL?.trim() || "https://api.yumme.id";
+const INVESTOR_API_BASE = import.meta.env.VITE_INVESTOR_API_URL?.trim() || "https://api.djiwatentram.web.id";
 const dateFormatter = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
 function formatRupiah(value: number | null) {

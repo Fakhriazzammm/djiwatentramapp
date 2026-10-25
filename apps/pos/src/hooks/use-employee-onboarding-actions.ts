@@ -192,7 +192,7 @@ export function useHybridSubmitEmployeeApplication() {
 						`🎯 Role: ${roleName}`,
 						`⏰ Waktu: ${now}`,
 						"",
-						`🔗 Review: https://pos.yumme.id/admin/operational-team/register/onboarding`,
+						`🔗 Review: https://djiwatentram.web.id/admin/operational-team/register/onboarding`,
 						"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
 					].join("\n");
 					await fetch(supabaseUrl + "/functions/v1/send-telegram-report", {

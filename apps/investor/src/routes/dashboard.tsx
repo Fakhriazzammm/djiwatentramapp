@@ -22,7 +22,7 @@ type InvestorMetrics = {
   completeness: "available" | "partial" | "unavailable";
 };
 
-const API_BASE = import.meta.env.VITE_INVESTOR_API_URL?.trim() || "https://api.yumme.id";
+const API_BASE = import.meta.env.VITE_INVESTOR_API_URL?.trim() || "https://api.djiwatentram.web.id";
 
 function formatRupiah(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return "Belum tersedia";
