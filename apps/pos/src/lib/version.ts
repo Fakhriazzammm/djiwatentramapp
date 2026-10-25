@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.543",
+	semantic: "0.2.544",
 	// Git/deploy commit hash (short)
-	commitHash: "5a59ba6",
-	message: "fix(pos): use Bun runtime for Vite production build",
+	commitHash: "39e347d",
+	message: "chore(pos): stamp verified PR67 build",
 	// Commit subject for the update prompt
-	commitMessage: "fix(pos): use Bun runtime for Vite production build",
+	commitMessage: "chore(pos): stamp verified PR67 build",
 	// Build timestamp
 	buildDate: "2026-10-25",
 	// Full version string for display
