@@ -1,4 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { normalizeMayarPaymentUrl } from "./payment-url.ts";
+import { canonicalBookingReturnUrl, guestExpiryIso } from "./payment-contract.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -67,18 +69,66 @@ async function getStatus(body: JsonRecord) {
   return callRpc("get_public_booking_status", { p_slug: slug, p_booking_code: code, p_access_token: accessToken });
 }
 
-async function attachPayment(body: JsonRecord) {
-  const slug = text(body.slug, 80), code = text(body.bookingCode, 40), accessToken = token(body.accessToken);
-  const gateway = body.paymentGateway && typeof body.paymentGateway === "object" ? body.paymentGateway : null;
-  if (!slug || !code || !accessToken || !gateway) {
-    throw Object.assign(new Error("slug, bookingCode, accessToken, and paymentGateway are required"), { status: 400 });
+async function createPayment(body: JsonRecord) {
+  const status = await getStatus(body) as JsonRecord;
+  const args = { p_slug: text(body.slug, 80), p_booking_code: text(body.bookingCode, 40), p_access_token: token(body.accessToken) };
+  const claimId = crypto.randomUUID();
+  const hasRequestedGateway = body.paymentGateway !== undefined && body.paymentGateway !== null;
+  const requestedGateway = hasRequestedGateway && typeof body.paymentGateway === "object" && !Array.isArray(body.paymentGateway)
+    ? body.paymentGateway as JsonRecord
+    : null;
+  if (hasRequestedGateway && !requestedGateway) return fail("INVALID_PAYMENT_URL", "Stored payment link is not a valid Mayar URL", 400);
+  const requestedUrl = requestedGateway ? normalizeMayarPaymentUrl(requestedGateway.invoiceUrl) : null;
+  if (requestedGateway && (requestedGateway.provider !== "mayar" || !text(requestedGateway.invoiceId, 160) || !requestedUrl)) {
+    return fail("INVALID_PAYMENT_URL", "Stored payment link is not a valid Mayar URL", 400);
   }
-  return callRpc("attach_public_booking_payment", {
-    p_slug: slug,
-    p_booking_code: code,
-    p_access_token: accessToken,
-    p_payment_gateway: gateway,
+  const contract = await callRpc("prepare_public_booking_payment", {
+    ...args,
+    p_claim_id: claimId,
+    ...(requestedGateway ? { p_payment_gateway: {
+      provider: "mayar",
+      invoiceId: text(requestedGateway.invoiceId, 160),
+      invoiceUrl: requestedUrl,
+      transactionId: requestedGateway.transactionId ? text(requestedGateway.transactionId, 160) : null,
+      status: "pending",
+    } } : {}),
+  }) as JsonRecord;
+  const gateway = contract.paymentGateway as JsonRecord | undefined;
+  const savedUrl = normalizeMayarPaymentUrl(gateway?.invoiceUrl);
+  const savedInvoiceId = text(gateway?.invoiceId, 160);
+  if (savedInvoiceId && savedUrl) {
+    return json({ success: true, data: { ...status, invoiceId: savedInvoiceId, invoiceUrl: savedUrl } });
+  }
+  if (requestedGateway) return fail("PAYMENT_ATTACH_FAILED", "Stored payment link could not be attached; reconciliation required before retry", 502);
+  if (contract.claimed !== true) return fail("PAYMENT_IN_PROGRESS", "Booking payment is being prepared; retry status shortly", 409);
+
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/mayar-proxy`, {
+    method: "POST", redirect: "error", signal: AbortSignal.timeout(20000),
+    headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "create-invoice", name: contract.customerName, email: contract.customerEmail,
+      mobile: contract.customerPhone, description: `Booking ${status.bookingCode}`,
+ expiredAt: guestExpiryIso(contract.guestExpiresAt),
+ ...(canonicalBookingReturnUrl(body.redirectUrl, status.bookingCode)
+   ? { redirectUrl: canonicalBookingReturnUrl(body.redirectUrl, status.bookingCode) }
+   : {}),
+      items: (contract.items as JsonRecord[]).map((item) => ({ description: item.name, quantity: item.quantity, rate: item.price })),
+      extraData: { bookingId: status.bookingId, bookingCode: status.bookingCode } }),
   });
+  const result = await response.json().catch(() => null) as JsonRecord | null;
+  if (!response.ok || result?.success !== true || !(result.data as JsonRecord | undefined)?.id || !(result.data as JsonRecord | undefined)?.link) {
+    return fail("PAYMENT_CREATE_FAILED", "Unable to prepare booking payment; reconciliation required before retry", 502);
+  }
+  const providerData = result.data as JsonRecord;
+  const invoiceUrl = normalizeMayarPaymentUrl(providerData.link);
+  const providerInvoiceId = text(providerData.id, 160);
+  if (!providerInvoiceId || !invoiceUrl) return fail("PAYMENT_CREATE_FAILED", "Mayar returned an invalid payment response; reconciliation required before retry", 502);
+  const attached = await callRpc("prepare_public_booking_payment", { ...args, p_claim_id: claimId,
+    p_payment_gateway: { provider: "mayar", invoiceId: providerInvoiceId, invoiceUrl,
+    transactionId: providerData.transactionId || null, status: "pending" } }) as JsonRecord;
+  const saved = attached.paymentGateway as JsonRecord;
+  const persistedUrl = normalizeMayarPaymentUrl(saved?.invoiceUrl);
+  if (!saved?.invoiceId || !persistedUrl) return fail("PAYMENT_ATTACH_FAILED", "Mayar payment was not persisted; reconciliation required before retry", 502);
+  return json({ success: true, data: { ...status, invoiceId: saved.invoiceId, invoiceUrl: persistedUrl } });
 }
 
 Deno.serve(async (req) => {
@@ -87,13 +137,12 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json() as JsonRecord;
     const action = text(body.action, 32);
+    if (action === "create-payment" || action === "attach-payment") return await createPayment(body);
     const result = action === "create"
       ? await createBooking(body)
       : action === "status"
         ? await getStatus(body)
-        : action === "attach-payment"
-          ? await attachPayment(body)
-          : (() => { throw Object.assign(new Error("action must be create, status, or attach-payment"), { status: 400 }); })();
+        : (() => { throw Object.assign(new Error("action must be create, status, or create-payment"), { status: 400 }); })();
     return json({ success: true, data: result });
   } catch (error) {
     const status = typeof error === "object" && error !== null && "status" in error ? Number((error as { status?: unknown }).status) : 500;

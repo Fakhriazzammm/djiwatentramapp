@@ -186,7 +186,7 @@ function getPublishableKey() {
   return import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 }
 
-async function callBookingApi(action: "create" | "status" | "attach-payment", body: Record<string, unknown>) {
+async function callBookingApi(action: "create" | "status" | "attach-payment" | "create-payment", body: Record<string, unknown>) {
   const key = getPublishableKey();
   const response = await fetch(BOOKING_API_URL, { method: "POST", headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ action, ...body }) });
   const result = await response.json().catch(() => null) as { success?: boolean; data?: unknown; error?: { message?: string } } | null;
@@ -243,16 +243,15 @@ export async function createBookingPayment(booking: BookingResult, draft: Bookin
     await callBookingApi("attach-payment", { slug: BOOKING_SLUG, bookingCode: booking.bookingCode, accessToken: credentials.accessToken, paymentGateway: { provider: "mayar", invoiceId: pending.invoiceId, invoiceUrl: pending.invoiceUrl, status: "pending" } });
     return pending;
   }
-  const redirectUrl = `${window.location.origin}/status?code=${encodeURIComponent(booking.bookingCode)}`;
-  const invoiceResponse = await callMayar({ action: "create-invoice", name: draft.customer.name, email: draft.customer.email || undefined, mobile: draft.customer.phone, redirectUrl, description: `Booking ${BOOKING_SLUG} ${booking.bookingCode} untuk ${draft.date}`, expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), extraData: { bookingId: booking.bookingId, bookingCode: booking.bookingCode, slug: BOOKING_SLUG }, items: booking.items.map((item) => ({ quantity: item.quantity, rate: item.price, description: item.name })) });
-  const payment = invoiceResponse?.data || invoiceResponse;
-  const invoiceId = String(payment?.id || "");
-  const invoiceUrl = String(payment?.link || payment?.paymentUrl || payment?.url || "");
+  const redirectUrl = typeof window !== "undefined" ? `${window.location.origin}/status` : undefined;
+  const result = await callBookingApi("create-payment", { slug: BOOKING_SLUG, bookingCode: booking.bookingCode, accessToken: credentials.accessToken, redirectUrl });
+  const invoiceId = String((result as BookingResult & { invoiceId?: unknown }).invoiceId || "");
+  const invoiceUrl = String((result as BookingResult & { invoiceUrl?: unknown }).invoiceUrl || "");
   if (!invoiceId || !invoiceUrl) throw new Error("Link pembayaran belum tersedia.");
-  sessionStorage.setItem(storageKey, JSON.stringify({ invoiceId, invoiceUrl }));
-  sessionStorage.setItem(`booking-pending-payment-${booking.bookingCode}`, JSON.stringify({ invoiceId, invoiceUrl }));
-  await callBookingApi("attach-payment", { slug: BOOKING_SLUG, bookingCode: booking.bookingCode, accessToken: credentials.accessToken, paymentGateway: { provider: "mayar", invoiceId, invoiceUrl, transactionId: payment?.transactionId || null, status: "pending" } });
-  return { invoiceId, invoiceUrl };
+  const invoice = { invoiceId, invoiceUrl };
+  sessionStorage.setItem(storageKey, JSON.stringify(invoice));
+  sessionStorage.setItem(`booking-pending-payment-${booking.bookingCode}`, JSON.stringify(invoice));
+  return invoice;
 }
 
 export async function lookupBooking(code: string) {
