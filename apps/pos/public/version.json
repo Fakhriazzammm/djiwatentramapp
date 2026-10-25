@@ -1,7 +1,7 @@
 {
-  "version": "0.2.514",
-  "commitHash": "8d43640",
-  "message": "fix(admin): paginate dashboard order analytics",
-  "buildDate": "2026-10-11",
-  "generatedAt": "2026-10-11T13:08:30.134Z"
+  "version": "0.2.536",
+  "commitHash": "f61e6de",
+  "message": "fix(pos): align cashier menu with mobile-first shell",
+  "buildDate": "2026-10-25",
+  "generatedAt": "2026-10-25T07:21:49.248Z"
 }
