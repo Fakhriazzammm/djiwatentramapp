@@ -25,6 +25,7 @@ export default defineConfig({
         cacheId: "djiwa-booking-v7",
         navigateFallback: "/index.html",
         globPatterns: ["**/*.{js,css,html,webmanifest,svg,png}"],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
