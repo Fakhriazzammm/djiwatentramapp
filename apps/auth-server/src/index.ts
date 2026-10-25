@@ -9,26 +9,14 @@ import { buildCoffeePassportStickerPrompt, generateCoffeePassportPng, stickerMod
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createHmac } from "node:crypto";
+import { customerTrustedOrigins } from "./customer-auth-config.js";
 
 const app = new Hono();
 const MAYAR_PROXY_URL = process.env.MAYAR_PROXY_URL || "https://supabase.djiwatentram.web.id/functions/v1/mayar-proxy";
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
 const MAYAR_DEFAULT_MOBILE = process.env.MAYAR_DEFAULT_MOBILE || "";
 const IAK_PPOB_URL = process.env.IAK_PPOB_URL || "https://api.djiwatentram.web.id/api/ppob/iak/";
-const customerOrigins = [
-  "https://djiwatentram.yumme.id",
-  "https://pay.djiwatentram.web.id",
-  "https://investor.yumme.id",
-  "https://merchandise.yumme.id",
-  "https://booking.yumme.id",
-  "https://b2b.yumme.id",
-  "https://ordermieyamin.yumme.id",
-  "https://500kopitasik.yumme.id",
-  "https://kolmarketing.yumme.id",
-  "https://rekrutmen.yumme.id",
-  "http://localhost:5173",
-  "http://localhost:3010",
-];
+const customerOrigins = [...customerTrustedOrigins];
 const stickerRateLimit = new Map<string, number[]>();
 
 function allowStickerRequest(key: string) {

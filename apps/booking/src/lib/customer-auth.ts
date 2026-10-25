@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 const AUTH_BASE = import.meta.env.VITE_AUTH_URL?.trim() || "https://api.djiwatentram.web.id";
-const CUSTOMER_APP_ORIGIN = import.meta.env.VITE_CUSTOMER_APP_URL?.trim() || "https://djiwatentram.yumme.id";
+const CUSTOMER_APP_ORIGIN = import.meta.env.VITE_CUSTOMER_APP_URL?.trim() || "https://djiwatentram.web.id";
 const LOGIN_URL = `${CUSTOMER_APP_ORIGIN}/masuk`;
 
 type BookingCustomer = { sourceId: string; name: string; email: string; phone: string };

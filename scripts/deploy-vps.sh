@@ -110,7 +110,7 @@ case "$APP" in
 		deploy_app "karyawan" "karyawan.yumme.id"
 		;;
 	customer)
-		deploy_app "customer" "djiwatentram.yumme.id"
+		deploy_app "customer" "djiwatentram.web.id"
 		deploy_edge_function "customer-auth"
 		deploy_edge_function "djiwa-run"
 		;;
@@ -121,7 +121,7 @@ case "$APP" in
 	all|*)
 		deploy_app "pos" "pos.yumme.id"
 		deploy_app "karyawan" "karyawan.yumme.id"
-		deploy_app "customer" "djiwatentram.yumme.id"
+		deploy_app "customer" "djiwatentram.web.id"
 		deploy_app "admin" "admindjiwatentram.yumme.id"
 		deploy_edge_function "customer-auth"
 		deploy_edge_function "djiwa-run"

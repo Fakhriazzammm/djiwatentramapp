@@ -11,7 +11,7 @@ describe("booking customer auth contract", () => {
   test("builds a customer-app login URL that returns to booking checkout", () => {
     const loginUrl = new URL(buildBookingLoginUrl("https://booking.yumme.id"));
 
-    expect(loginUrl.origin).toBe("https://djiwatentram.yumme.id");
+    expect(loginUrl.origin).toBe("https://djiwatentram.web.id");
     expect(loginUrl.pathname).toBe("/masuk");
     expect(loginUrl.searchParams.get("sso")).toBe("1");
     expect(loginUrl.searchParams.get("returnTo")).toBe("https://booking.yumme.id/?step=checkout");
