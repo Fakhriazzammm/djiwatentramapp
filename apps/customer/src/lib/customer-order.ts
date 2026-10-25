@@ -38,6 +38,7 @@ export type CustomerOrder = {
   customerName?: string | null;
   customerDescription?: string | null;
   notes?: string | null;
+  items: CustomerOrderItem[];
   createdAt: number;
   trackingStatus?: string | null;
   paymentDeadlineAt?: string | null;

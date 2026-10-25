@@ -1,5 +1,8 @@
-import { describe, expect, it } from "bun:test";
 import { mapCustomerOrder } from "./customer-order";
+
+declare const describe: (name: string, fn: () => void) => void;
+declare const it: (name: string, fn: () => void | Promise<void>) => void;
+declare const expect: (value: unknown) => any;
 
 describe("mapCustomerOrder", () => {
   it("maps camelCase and snake_case order fields without dropping payment metadata", () => {

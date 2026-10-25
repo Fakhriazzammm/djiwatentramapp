@@ -1,4 +1,3 @@
-import { afterEach, describe, expect, it } from "bun:test";
 import {
   CUSTOMER_API_BASE,
   fetchCustomerOrderById,
@@ -9,7 +8,16 @@ import {
   type CustomerOrderReference,
 } from "./customer-api";
 
+declare const afterEach: (fn: () => void) => void;
+declare const describe: (name: string, fn: () => void) => void;
+declare const it: (name: string, fn: () => void | Promise<void>) => void;
+declare const expect: (value: unknown) => any;
+
 const originalFetch = globalThis.fetch;
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+}
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
@@ -20,7 +28,7 @@ describe("customer API boundary", () => {
     let request: { input: RequestInfo | URL; init?: RequestInit } | undefined;
     globalThis.fetch = (async (input, init) => {
       request = { input, init };
-      return Response.json({ success: true, orders: [{ _id: "order_1" }] });
+      return jsonResponse({ success: true, orders: [{ _id: "order_1" }] });
     }) as typeof fetch;
 
     await expect(fetchMemberOrders()).resolves.toEqual([{ _id: "order_1" }]);
@@ -33,7 +41,7 @@ describe("customer API boundary", () => {
     let request: { input: RequestInfo | URL; init?: RequestInit } | undefined;
     globalThis.fetch = (async (input, init) => {
       request = { input, init };
-      return Response.json({ success: true, orders: [{ _id: "order_guest" }] });
+      return jsonResponse({ success: true, orders: [{ _id: "order_guest" }] });
     }) as typeof fetch;
     const references: CustomerOrderReference[] = [{ orderId: "order_guest", accessToken: "guest-token-123" }];
 
@@ -46,7 +54,7 @@ describe("customer API boundary", () => {
   });
 
   it("selects the authorized order detail from member results", async () => {
-    globalThis.fetch = (async () => Response.json({
+    globalThis.fetch = (async () => jsonResponse({
       success: true,
       orders: [{ source_id: "order_other" }, { source_id: "order_target", status: "paid" }],
     })) as typeof fetch;
@@ -58,7 +66,7 @@ describe("customer API boundary", () => {
     let requestBody = "";
     globalThis.fetch = (async (_input, init) => {
       requestBody = String(init?.body);
-      return Response.json({ success: true, orders: [{ _id: "order_guest", status: "paid" }] });
+      return jsonResponse({ success: true, orders: [{ _id: "order_guest", status: "paid" }] });
     }) as typeof fetch;
     const references: CustomerOrderReference[] = [{ orderId: "order_guest", accessToken: "guest-token-123" }];
 

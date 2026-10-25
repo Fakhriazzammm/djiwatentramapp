@@ -5,6 +5,15 @@ export type CustomerOrderReference = {
   accessToken: string;
 };
 
+export type CustomerOrderReferenceInput = {
+  orderId: string;
+  accessToken?: string;
+};
+
+export function normalizeCustomerOrderReferences(references: ReadonlyArray<CustomerOrderReferenceInput>) {
+  return references.filter((reference): reference is CustomerOrderReference => Boolean(reference.accessToken));
+}
+
 type CustomerApiResponse = {
   success?: boolean;
   orders?: Array<Record<string, unknown>>;

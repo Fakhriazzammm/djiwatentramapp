@@ -2,8 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import { readGuestOrderReferences } from "@/components/customer/types";
-
-const CUSTOMER_ORDER_API = "https://api.yumme.id/v1/customer";
+import { fetchCustomerOrderById, normalizeCustomerOrderReferences } from "@/lib/customer-api";
 
 function useSupabaseValue<T>(
 	key: string,
@@ -22,31 +21,7 @@ function resolveMayarConfig() {
 }
 
 async function fetchOrderById(id: string, signal: AbortSignal) {
-	const accessToken = readGuestOrderReferences().find((reference) => reference.orderId === id)?.accessToken;
-	if (accessToken) {
-		const response = await fetch(`${CUSTOMER_ORDER_API}/guest-orders`, {
-			method: "POST",
-			signal,
-			credentials: "include",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ orders: [{ orderId: id, accessToken }] }),
-		});
-		if (!response.ok) throw new Error(`Order fetch HTTP ${response.status}`);
-		const payload = (await response.json()) as { success?: boolean; orders?: unknown[] };
-		return (payload.success ? payload.orders?.[0] : null) ?? null;
-	}
-
-	// Members authenticate through Better Auth, so the protected member endpoint
-	// is the source of truth. The previous implementation sent an empty guest
-	// request for members, which produced an empty receipt after live tracking.
-	const response = await fetch(`${CUSTOMER_ORDER_API}/orders`, {
-		signal,
-		credentials: "include",
-		headers: { Accept: "application/json" },
-	});
-	if (!response.ok) throw new Error(`Order fetch HTTP ${response.status}`);
-	const payload = (await response.json()) as { success?: boolean; orders?: Array<Record<string, unknown>> };
-	return (payload.success ? payload.orders ?? [] : []).find((row) => String(row._id ?? row.id ?? row.source_id) === id) ?? null;
+	return fetchCustomerOrderById(id, normalizeCustomerOrderReferences(readGuestOrderReferences()), signal);
 }
 
 async function fetchVariationPresets() {
