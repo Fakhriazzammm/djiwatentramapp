@@ -1,4 +1,6 @@
-export const CUSTOMER_API_BASE = "https://api.djiwatentram.web.id/v1/customer";
+import { CUSTOMER_API_BASE } from "@/lib/customer-auth-config";
+
+export { CUSTOMER_API_BASE } from "@/lib/customer-auth-config";
 
 export type CustomerOrderReference = {
   orderId: string;
