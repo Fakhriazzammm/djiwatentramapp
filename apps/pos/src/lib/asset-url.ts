@@ -1,5 +1,5 @@
 const legacyStorageOrigin = "https://xaemykhjpkgypqqpfdcb.supabase.co";
-const selfHostedStorageOrigin = "https://supabase.yumme.id";
+const selfHostedStorageOrigin = "https://supabase.djiwatentram.web.id";
 
 export function resolvePosAssetUrl(value?: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
