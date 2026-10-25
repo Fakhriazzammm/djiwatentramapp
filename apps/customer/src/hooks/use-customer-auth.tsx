@@ -9,6 +9,7 @@ import {
 } from "react";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { authClient } from "@/lib/auth-client";
+import { CUSTOMER_API_BASE } from "@/lib/customer-auth-config";
 import { toast } from "sonner";
 
 // ── Types ──────────────────────────────────────────────────────
@@ -113,8 +114,6 @@ function mapCustomerRow(row: Record<string, unknown>): CustomerUser {
     createdAt: (row.created_at as string) ?? null,
   };
 }
-
-const CUSTOMER_API_BASE = "https://api.yumme.id/v1/customer";
 
 async function fetchCustomer(
   sourceId: string,
