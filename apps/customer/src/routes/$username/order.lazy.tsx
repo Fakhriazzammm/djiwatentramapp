@@ -60,6 +60,7 @@ import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields, hasValidCustomerPhone } from "@/lib/customer-profile-completeness";
 import { reserveDjiwaRunCheckoutReward, releaseDjiwaRunCheckoutReward, finalizeDjiwaRunCheckoutReward } from "@/lib/djiwa-run-client";
+import { getCustomerHiddenCategoryIds } from "@/lib/customer-catalog-visibility";
 
 export const Route = createLazyFileRoute("/$username/order")({
 	component: OrderPage,
@@ -520,6 +521,14 @@ function OrderPage() {
 		() => (categories ? [...categories].sort((a, b) => a.order - b.order) : []),
 		[categories]
 	);
+	const hiddenCustomerCategoryIds = useMemo(
+		() => getCustomerHiddenCategoryIds(orderedCategories),
+		[orderedCategories],
+	);
+	const customerVisibleCategories = useMemo(
+		() => orderedCategories.filter((category) => !hiddenCustomerCategoryIds.has(String(category._id))),
+		[hiddenCustomerCategoryIds, orderedCategories],
+	);
 	const orderedProducts = useMemo(
 		() =>
 			products
@@ -529,32 +538,28 @@ function OrderPage() {
 				: [],
 		[products]
 	);
+	const customerVisibleProducts = useMemo(
+		() => orderedProducts.filter((product) => !hiddenCustomerCategoryIds.has(String(product.categoryId))),
+		[hiddenCustomerCategoryIds, orderedProducts],
+	);
 	const filteredProducts = useMemo(() => {
 		const query = catalogQuery.trim().toLowerCase();
-		const categoryById = new Map(orderedCategories.map((category) => [String(category._id), category]));
-		const selectedCategory = activeCategoryId ? categoryById.get(String(activeCategoryId)) : null;
-		const matchesCategory = (product: (typeof orderedProducts)[number]) => {
-			if (!selectedCategory) return true;
-			const productCategory = categoryById.get(String(product.categoryId));
-			return String(productCategory?._id ?? "") === String(selectedCategory._id) || String(productCategory?.parentId ?? "") === String(selectedCategory._id) || String(selectedCategory.parentId ?? "") === String(productCategory?._id ?? "");
-		};
 		// Customer catalog follows the reference anchor pattern: category chips
-		// scroll to sections while the full catalog remains one vertical flow.
-		// Category filtering remains scoped to POS; customer should not hit a
-		// dead-end after the selected section.
-		return orderedProducts.filter((product) => (!query || product.name.toLowerCase().includes(query) || String(product.menuNumber ?? "").includes(query)));
-	}, [activeCategoryId, catalogQuery, orderedCategories, orderedProducts]);
+		// scroll to sections while the visible customer catalog remains one
+		// vertical flow.
+		return customerVisibleProducts.filter((product) => !query || product.name.toLowerCase().includes(query) || String(product.menuNumber ?? "").includes(query));
+	}, [catalogQuery, customerVisibleProducts]);
 	const menuNumberIndex = useMemo(() => {
-		const lookup = new Map<string, (typeof orderedProducts)[number]>();
+		const lookup = new Map<string, (typeof customerVisibleProducts)[number]>();
 		const duplicates = new Set<string>();
-		for (const product of orderedProducts) {
+		for (const product of customerVisibleProducts) {
 			if (product.menuNumber == null) continue;
 			const code = normalizeMenuCode(product.menuNumber);
 			if (lookup.has(code)) duplicates.add(code);
 			else lookup.set(code, product);
 		}
 		return { lookup, duplicates };
-	}, [orderedProducts]);
+	}, [customerVisibleProducts]);
 	const productByMenuNumber = menuNumberIndex.lookup;
 	const activeFreeRefillPromo = useMemo(() => {
 		if (!discounts) return null;
@@ -1505,7 +1510,7 @@ function OrderPage() {
 
 					{/* ── Menu section ────────────────────────────── */}
 					{step === "menu"
-						? renderMenuSection({ onProductIntent: (_product, origin) => setPendingProductOrigin(origin), onProductAdded: (_product, origin) => { setRecommendationFlight({ image: _product.image, name: _product.name, left: origin.left + origin.width / 2 - 22, top: origin.top + origin.height / 2 - 22 }); window.setTimeout(() => setRecommendationFlight(null), 700); }, activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, showDineInSummary: orderMode === "dine_in", discounts: memberDiscounts, filteredProducts, freeRefillCharge, bestSellers, recentProductIds, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId: selectMenuCategory, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
+						? renderMenuSection({ onProductIntent: (_product, origin) => setPendingProductOrigin(origin), onProductAdded: (_product, origin) => { setRecommendationFlight({ image: _product.image, name: _product.name, left: origin.left + origin.width / 2 - 22, top: origin.top + origin.height / 2 - 22 }); window.setTimeout(() => setRecommendationFlight(null), 700); }, activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, showDineInSummary: orderMode === "dine_in", discounts: memberDiscounts, filteredProducts, freeRefillCharge, bestSellers, recentProductIds, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories: customerVisibleCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId: selectMenuCategory, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
 						: null}
 					{step === "menu" ? <div className="grid grid-cols-2 gap-2 px-2 pb-4"><button type="button" onClick={() => setStep(orderMode === "delivery" ? "address" : "party")} className="min-h-11 rounded-[14px] border border-border bg-card px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button><button type="button" disabled={!cart.length} onClick={() => setStep(orderMode === "delivery" ? "shipping" : "review")} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke {orderMode === "delivery" ? "pengantaran" : "review"} →</button></div> : null}
 
