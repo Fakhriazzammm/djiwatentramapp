@@ -11,13 +11,13 @@ const categories=["Food & Beverage","Coffee","Lifestyle","Travel","Fashion","Bea
 const contentOptions=["Review makanan","Review kopi","Short video","Instagram Story","Reels","Foto & carousel","Live review"];
 const collaborationOptions=["Review kunjungan","Konten TikTok","Instagram Reels","Instagram Story","Foto & carousel","Terbuka untuk diskusi"];
 const fmt=(value:string)=>{const n=Number(value)||0;return n>=1e6?`${(n/1e6).toFixed(1)}M`:n>=1e3?`${(n/1e3).toFixed(1)}K`:value||"—"};
-const AUTH_BASE="https://api.yumme.id/v1/auth";
-const KOL_API="https://api.yumme.id/v1/kol";
+const AUTH_BASE="https://api.djiwatentram.web.id/v1/auth";
+const KOL_API="https://api.djiwatentram.web.id/v1/kol";
 const authClient=createAuthClient({baseURL:AUTH_BASE,fetchOptions:{credentials:"include"}});
 type BetterSession={user:{id:string;name?:string|null;email?:string|null;image?:string|null}};
 async function getKolSession():Promise<BetterSession|null>{const response=await fetch(`${AUTH_BASE}/get-session`,{credentials:"include",headers:{Accept:"application/json"}});if(!response.ok)return null;return await response.json() as BetterSession|null}
 type KolClaim={userType:string;linked:boolean;ambiguous:boolean;profile:{source_id:string;name:string;username:string;status:string}|null};
-async function claimKolRole():Promise<KolClaim>{const response=await fetch("https://api.yumme.id/v1/kol/claim",{method:"POST",credentials:"include",headers:{Accept:"application/json"}});if(!response.ok)throw new Error("Akun Google belum dapat disiapkan sebagai KOL.");return await response.json() as KolClaim}
+async function claimKolRole():Promise<KolClaim>{const response=await fetch("https://api.djiwatentram.web.id/v1/kol/claim",{method:"POST",credentials:"include",headers:{Accept:"application/json"}});if(!response.ok)throw new Error("Akun Google belum dapat disiapkan sebagai KOL.");return await response.json() as KolClaim}
 async function getKolIntake(){const response=await fetch(`${KOL_API}/portal/intake`,{credentials:"include",headers:{Accept:"application/json"}});if(!response.ok)return null;const body=await response.json().catch(()=>null);return body?.data||null}
 async function startGoogleSignIn(callbackPath="/"){const {data,error}=await authClient.signIn.social({provider:"google",callbackURL:window.location.origin+callbackPath});if(error)throw new Error(error.message||"Gagal membuka Google Auth.");if(!data?.url)throw new Error("URL login Google tidak diterima server.");window.location.assign(data.url)}
 type InviteContext={
