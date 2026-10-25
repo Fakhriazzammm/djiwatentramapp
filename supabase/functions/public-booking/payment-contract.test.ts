@@ -6,8 +6,11 @@ describe("public booking payment contract", () => {
   test("accepts only HTTPS Mayar payment URLs", () => {
     expect(normalizeMayarPaymentUrl("https://mayar.id/invoice/abc")).toBe("https://mayar.id/invoice/abc");
     expect(normalizeMayarPaymentUrl("https://checkout.mayar.id/invoice/abc")).toBe("https://checkout.mayar.id/invoice/abc");
+    expect(normalizeMayarPaymentUrl("https://zantara.myr.id/invoices/abc")).toBe("https://zantara.myr.id/invoices/abc");
+    expect(normalizeMayarPaymentUrl("https://myr.id/invoices/abc")).toBe("https://myr.id/invoices/abc");
     expect(normalizeMayarPaymentUrl("http://mayar.id/invoice/abc")).toBeNull();
     expect(normalizeMayarPaymentUrl("https://mayar.id.evil.example/invoice/abc")).toBeNull();
+    expect(normalizeMayarPaymentUrl("https://myr.id.evil.example/invoice/abc")).toBeNull();
   });
 
   test("normalizes only booking status return URLs on supported domains", () => {

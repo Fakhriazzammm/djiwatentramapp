@@ -81,10 +81,10 @@ async function createPayment(body: JsonRecord): Promise<Response> {
   const requestedGateway = hasRequestedGateway && typeof body.paymentGateway === "object" && !Array.isArray(body.paymentGateway)
     ? body.paymentGateway as JsonRecord
     : null;
-  if (hasRequestedGateway && !requestedGateway) return fail("INVALID_PAYMENT_URL", "Stored payment link is not a valid Mayar URL", 400);
+  if (hasRequestedGateway && !requestedGateway) return fail("INVALID_PAYMENT_URL", "Link pembayaran tersimpan tidak valid", 400);
   const requestedUrl = requestedGateway ? normalizeMayarPaymentUrl(requestedGateway.invoiceUrl) : null;
   if (requestedGateway && (requestedGateway.provider !== "mayar" || !text(requestedGateway.invoiceId, 160) || !requestedUrl)) {
-    return fail("INVALID_PAYMENT_URL", "Stored payment link is not a valid Mayar URL", 400);
+    return fail("INVALID_PAYMENT_URL", "Link pembayaran tersimpan tidak valid", 400);
   }
 
   const claimId = crypto.randomUUID();
@@ -146,12 +146,12 @@ async function createPayment(body: JsonRecord): Promise<Response> {
       return fail("PAYMENT_CREATE_FAILED", "Unable to prepare booking payment; reconciliation required before retry", 502);
     }
   } catch {
-    return fail("PAYMENT_CREATE_FAILED", "Unable to reach Mayar; reconciliation required before retry", 502);
+    return fail("PAYMENT_CREATE_FAILED", "Layanan pembayaran tidak dapat dihubungi; silakan coba lagi", 502);
   }
 
   const invoiceId = text(providerData.id, 160);
   const invoiceUrl = normalizeMayarPaymentUrl(providerData.link);
-  if (!invoiceId || !invoiceUrl) return fail("PAYMENT_CREATE_FAILED", "Mayar returned an invalid payment response; reconciliation required before retry", 502);
+  if (!invoiceId || !invoiceUrl) return fail("PAYMENT_CREATE_FAILED", "Layanan pembayaran mengembalikan data tidak valid; silakan coba lagi", 502);
   const attached = await callRpc("prepare_public_booking_payment", {
     ...args,
     p_claim_id: claimId,
@@ -166,7 +166,7 @@ async function createPayment(body: JsonRecord): Promise<Response> {
   const saved = record((attached as JsonRecord).paymentGateway);
   const persistedId = text(saved.invoiceId, 160);
   const persistedUrl = normalizeMayarPaymentUrl(saved.invoiceUrl);
-  if (!persistedId || !persistedUrl) return fail("PAYMENT_ATTACH_FAILED", "Mayar payment was not persisted; reconciliation required before retry", 502);
+  if (!persistedId || !persistedUrl) return fail("PAYMENT_ATTACH_FAILED", "Data pembayaran belum tersimpan; silakan coba lagi", 502);
   return json({ success: true, data: { ...status, invoiceId: persistedId, invoiceUrl: persistedUrl } });
 }
 

@@ -48,7 +48,7 @@ export function CheckoutSection({ step, totalSteps, settings, bookingType, event
       totalSteps={totalSteps}
       eyebrow="Booking"
       title="Data pemesan & pembayaran"
-      description="Periksa data booking, lalu lanjutkan ke pembayaran QRIS/Mayar."
+      description="Periksa data booking, lalu lanjutkan ke pembayaran QRIS."
       cart={cart}
       currency={formatCurrency}
       emptyState={{ title: "Menu belum dipilih", description: "Pilih minimal satu menu sebelum melanjutkan pembayaran.", actionLabel: "Kembali ke menu" }}

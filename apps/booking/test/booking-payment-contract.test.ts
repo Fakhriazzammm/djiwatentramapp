@@ -25,4 +25,10 @@ describe("booking server payment contract", () => {
     expect(client).toContain("booking-pending-payment-");
     expect(client).toContain("paymentGateway");
   });
+
+  test("does not expose provider branding in the booking checkout copy", () => {
+    const checkout = read("apps/booking/src/components/checkout-section.tsx");
+    expect(checkout).not.toContain("Mayar");
+    expect(checkout).not.toContain("QRIS/Mayar");
+  });
 });
