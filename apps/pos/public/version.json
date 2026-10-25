@@ -1,7 +1,7 @@
 {
-  "version": "0.2.514",
-  "commitHash": "8d43640",
-  "message": "fix(admin): paginate dashboard order analytics",
-  "buildDate": "2026-10-11",
-  "generatedAt": "2026-10-11T13:08:30.134Z"
+  "version": "0.2.543",
+  "commitHash": "5a59ba6",
+  "message": "fix(pos): use Bun runtime for Vite production build",
+  "buildDate": "2026-10-25",
+  "generatedAt": "2026-10-25T09:45:20.775Z"
 }
