@@ -13,14 +13,14 @@ Compared canonical commit `7851ab04f90bfb5d89f2602ca635e9fae5997e1` against inte
 | `apps/pos/src/components/pos/checkout-result.test.tsx` | present | canonical tree comparison |
 | `apps/pos/src/components/pos/checkout-result.tsx` | present | canonical tree comparison |
 | `apps/pos/src/components/pos/checkout-sidebar.tsx` | present | canonical tree comparison |
-| `apps/pos/src/components/pos/menu-sidebar.tsx` | superseded/needs review | canonical tree comparison |
+| `apps/pos/src/components/pos/menu-sidebar.tsx` | superseded (preserved newer production semantics) | canonical tree comparison |
 | `apps/pos/src/components/pos/notification-center.tsx` | present | canonical tree comparison |
 | `apps/pos/src/components/pos/offline-sync-center.tsx` | present | canonical tree comparison |
 | `apps/pos/src/components/pos/payment-modal.tsx` | present | canonical tree comparison |
 | `apps/pos/src/components/pos/pos-workspace-menu.tsx` | present | canonical tree comparison |
 | `apps/pos/src/context/cart-context.tsx` | present | canonical tree comparison |
 | `apps/pos/src/hooks/use-hybrid-pos-data.ts` | present | canonical tree comparison |
-| `apps/pos/src/hooks/use-hybrid-write-actions.ts` | superseded/needs review | canonical tree comparison |
+| `apps/pos/src/hooks/use-hybrid-write-actions.ts` | superseded (preserved newer production semantics) | canonical tree comparison |
 | `apps/pos/src/hooks/use-pos-panel.ts` | present | canonical tree comparison |
 | `apps/pos/src/hooks/useGlobalKeyboardNavigation.ts` | present | canonical tree comparison |
 | `apps/pos/src/lib/offline-manager.test.ts` | present | canonical tree comparison |
