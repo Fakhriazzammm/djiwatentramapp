@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, CalendarDays, CalendarHeart, Check, ChevronRight, CircleAlert, Clock3, Copy, CreditCard, ExternalLink, GraduationCap, Handshake, HeartHandshake, Minus, Plus, Search, Sparkles, Users, UsersRound, UtensilsCrossed } from "lucide-react";
 import { BOOKING_STEPS, type BookingOption, type BookingStep } from "./lib/booking-constants";
 import { currency, formatDate, todayIso } from "./lib/booking-formatters";
@@ -82,7 +82,8 @@ export default function App() {
   const [statusResult, setStatusResult] = useState<BookingResult | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
-  const { isAuthenticated, customer } = useBookingCustomerAuth();
+  const { isLoading: authLoading, isAuthenticated, customer, error: authError } = useBookingCustomerAuth();
+  const submitLock = useRef(false);
 
   useEffect(() => {
     canonicalizeLegacyPath();
@@ -134,6 +135,15 @@ export default function App() {
     else if (screen === "menu" && !hasMenu) navigate("review");
   }, [data, hasBookingType, hasMenu, requiresEvent, screen]);
   const nextFromCheckout = async () => {
+    if (submitLock.current) return;
+    if (authLoading) {
+      setSubmitError("Menyiapkan sesi pelanggan… coba lagi sebentar.");
+      return;
+    }
+    if (authError) {
+      setSubmitError(authError);
+      return;
+    }
     if (!isAuthenticated || !customer) {
       redirectToBookingLogin();
       return;
@@ -141,6 +151,7 @@ export default function App() {
     const customerErrors = validateCustomer(draft.customer);
     const customErrors = requiredFieldErrors(settings?.customFields ?? [], draft.customAnswers);
     if (Object.keys(customerErrors).length || Object.keys(customErrors).length) return;
+    submitLock.current = true;
     setSubmitting(true); setSubmitError(null);
     try {
       const bookingDraft: BookingDraft = { customerSourceId: customer.sourceId, bookingType: draft.bookingType, bookingTypeLabel: selectedType?.label || draft.bookingType, eventType: draft.eventType || undefined, eventTypeLabel: selectedEvent?.label, eventTypeOther: draft.eventTypeOther || undefined, date: draft.selectedDate, arrivalTime: draft.arrivalTime, guests: draft.guests, tableCount, items: cartItems.map((item) => ({ productId: item.id, name: item.name, price: item.promoPrice ?? item.price, quantity: item.quantity })), customer: draft.customer, customAnswers: { ...draft.customAnswers, "Tipe booking": draft.bookingType, "Tipe booking label": selectedType?.label || draft.bookingType, "Jenis acara": draft.eventType || null, "Jenis acara label": selectedEvent?.label || null, "Jenis acara lainnya": draft.eventTypeOther || null, "Jam kedatangan": draft.arrivalTime } };
@@ -152,7 +163,7 @@ export default function App() {
       sessionStorage.removeItem("booking-pending-result");
       if (!payment.invoiceUrl) throw new Error("Link pembayaran tidak tersedia.");
       window.location.assign(payment.invoiceUrl);
-    } catch (error: unknown) { setSubmitError(error instanceof Error ? error.message : "Pembayaran belum berhasil disiapkan. Data booking tetap tersimpan untuk dicoba lagi."); } finally { setSubmitting(false); }
+    } catch (error: unknown) { setSubmitError(error instanceof Error ? error.message : "Pembayaran belum berhasil disiapkan. Data booking tetap tersimpan untuk dicoba lagi."); } finally { submitLock.current = false; setSubmitting(false); }
   };
 
   if (screen === "success") return <Shell settings={settings} onBack={() => navigate("landing")}><Success code={statusCode} onStatus={() => navigate("status")} /></Shell>;

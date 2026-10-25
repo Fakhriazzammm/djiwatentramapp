@@ -6,7 +6,7 @@ const LOGIN_URL = `${CUSTOMER_APP_ORIGIN}/masuk`;
 
 type BookingCustomer = { sourceId: string; name: string; email: string; phone: string };
 
-type AuthState = { isLoading: boolean; isAuthenticated: boolean; customer: BookingCustomer | null };
+type AuthState = { isLoading: boolean; isAuthenticated: boolean; customer: BookingCustomer | null; error: string | null };
 
 export async function fetchBookingCustomer(): Promise<BookingCustomer | null> {
   const sessionResponse = await fetch(`${AUTH_BASE}/api/auth/get-session`, { credentials: "include", headers: { Accept: "application/json" } });
@@ -26,15 +26,15 @@ export async function fetchBookingCustomer(): Promise<BookingCustomer | null> {
 }
 
 export function useBookingCustomerAuth(): AuthState {
-  const [state, setState] = useState<AuthState>({ isLoading: true, isAuthenticated: false, customer: null });
+  const [state, setState] = useState<AuthState>({ isLoading: true, isAuthenticated: false, customer: null, error: null });
   useEffect(() => {
     let active = true;
     (async () => {
       try {
         const customer = await fetchBookingCustomer();
-        if (active) setState(customer ? { isLoading: false, isAuthenticated: true, customer } : { isLoading: false, isAuthenticated: false, customer: null });
+        if (active) setState(customer ? { isLoading: false, isAuthenticated: true, customer, error: null } : { isLoading: false, isAuthenticated: false, customer: null, error: null });
       } catch {
-        if (active) setState({ isLoading: false, isAuthenticated: false, customer: null });
+        if (active) setState({ isLoading: false, isAuthenticated: false, customer: null, error: "Sesi pelanggan tidak dapat dimuat. Coba lagi sebentar." });
       }
     })();
     return () => { active = false; };

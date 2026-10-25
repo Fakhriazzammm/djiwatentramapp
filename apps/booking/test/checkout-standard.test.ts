@@ -19,5 +19,6 @@ describe("booking shared checkout contract", () => {
   test("uses the shared checkout surface and canonical QRIS payment method", () => {
     expect(read("apps/booking/src/components/checkout-section.tsx")).toContain("CustomerCheckout");
     expect(read("apps/booking/src/lib/client.ts")).toContain('paymentMethod: "qris"');
+    expect(read("apps/booking/src/lib/client.ts")).toContain('callBookingApi("create-payment"');
   });
 });
