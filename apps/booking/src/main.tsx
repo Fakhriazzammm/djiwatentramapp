@@ -80,7 +80,7 @@ export default function App() {
   const [statusResult, setStatusResult] = useState<BookingResult | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
-  const { isAuthenticated, customer } = useBookingCustomerAuth();
+  const { isAuthenticated, customer, error: authError } = useBookingCustomerAuth();
 
   useEffect(() => {
     canonicalizeLegacyPath();
@@ -132,6 +132,10 @@ export default function App() {
     else if (screen === "menu" && !hasMenu) navigate("review");
   }, [data, hasBookingType, hasMenu, requiresEvent, screen]);
   const nextFromCheckout = async () => {
+    if (authError) {
+      setSubmitError(authError);
+      return;
+    }
     if (!isAuthenticated || !customer) {
       redirectToBookingLogin();
       return;
