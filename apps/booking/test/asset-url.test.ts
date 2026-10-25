@@ -12,8 +12,13 @@ describe("booking asset URLs", () => {
       .toBe("https://supabase.djiwatentram.web.id/storage/v1/object/public/app-assets/products/menu.jpg");
   });
 
-  test("preserves already valid external image URLs", () => {
+  test("uses the booking-local copy for the retired ordermieyamin asset", () => {
     expect(resolveBookingAssetUrl("https://ordermieyamin.yumme.id/mie-yamin-product.png"))
-      .toBe("https://ordermieyamin.yumme.id/mie-yamin-product.png");
+      .toBe("/mie-yamin-product.png");
+  });
+
+  test("preserves unrelated valid external image URLs", () => {
+    expect(resolveBookingAssetUrl("https://images.example.com/menu.jpg"))
+      .toBe("https://images.example.com/menu.jpg");
   });
 });

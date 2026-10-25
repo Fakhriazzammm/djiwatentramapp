@@ -9,11 +9,16 @@ const retiredStorageOrigins = new Set([
 
 const liveStorageOrigin = "https://supabase.djiwatentram.web.id";
 const defaultStorageBaseUrl = `${liveStorageOrigin}/storage/v1/object/public`;
+const localAssetAliases = new Map([
+  ["https://ordermieyamin.yumme.id/mie-yamin-product.png", "/mie-yamin-product.png"],
+]);
 
 export function resolveBookingAssetUrl(value?: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const input = value.trim();
   if (!input) return undefined;
+  const localAlias = localAssetAliases.get(input);
+  if (localAlias) return localAlias;
 
   if (/^https?:\/\//i.test(input)) {
     try {
