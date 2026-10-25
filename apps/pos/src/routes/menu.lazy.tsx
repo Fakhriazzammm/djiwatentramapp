@@ -2230,6 +2230,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					triggerOpen={isSidebarOpen} 
 					onOpenChange={setIsSidebarOpen} 
 					initialTab={activeSidebarTab}
+					onTabChange={setActiveSidebarTab}
 				/>
 				<BarcodeTransactionScanner
 					open={isBarcodeScannerOpen}

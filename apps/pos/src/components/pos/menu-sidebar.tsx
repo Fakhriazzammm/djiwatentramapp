@@ -204,12 +204,14 @@ export function MenuSidebar({
 	triggerOpen, 
 	onOpenChange,
 	initialTab = "dashboard",
+	onTabChange,
 	hideTabs = false,
 	hideTrigger = false
 }: { 
 	triggerOpen?: boolean; 
 	onOpenChange?: (open: boolean) => void;
 	initialTab?: string;
+	onTabChange?: (tab: string) => void;
 	hideTabs?: boolean;
 	hideTrigger?: boolean;
 }) {
@@ -586,7 +588,7 @@ export function MenuSidebar({
 							<Button 
 								variant="ghost" 
 								size="sm" 
-								className="h-8 w-8 p-0 rounded-full shrink-0 bg-muted/50 hover:bg-muted" 
+								className="h-11 w-11 p-0 rounded-full shrink-0 bg-muted/50 hover:bg-muted"
 								onClick={() => {
 									setIsOpen(false);
 									onOpenChange?.(false);
@@ -604,7 +606,7 @@ export function MenuSidebar({
 									<div className="p-4 pb-20">
 										<DashboardTab
 											onClose={() => setIsOpen(false)}
-											onNavigate={setActiveTab}
+											onNavigate={tab => { setActiveTab(tab); onTabChange?.(tab); }}
 											onSelectOrder={setSelectedOrder}
 											onParkOrder={() => setIsParkDialogOpen(true)}
 											todayTransactions={todayTransactions}
