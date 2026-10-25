@@ -10,6 +10,7 @@ import {
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
+import { customerApiUrl } from "@/lib/customer-api";
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -114,13 +115,11 @@ function mapCustomerRow(row: Record<string, unknown>): CustomerUser {
   };
 }
 
-const CUSTOMER_API_BASE = import.meta.env.VITE_CUSTOMER_API_URL?.trim() || "https://api.djiwatentram.web.id/v1/customer";
-
 async function fetchCustomer(
   sourceId: string,
   _email?: string | null,
 ): Promise<CustomerUser | null> {
-  const response = await fetch(`${CUSTOMER_API_BASE}/profile`, {
+  const response = await fetch(customerApiUrl("profile"), {
     credentials: "include",
     headers: { Accept: "application/json" },
   });

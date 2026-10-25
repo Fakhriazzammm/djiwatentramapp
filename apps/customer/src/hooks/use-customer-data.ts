@@ -3,6 +3,7 @@ import { createClient } from "@/lib/client";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { readGuestOrderReferences } from "@/components/customer/types";
 import { useCustomerAuth, type CustomerUser } from "@/hooks/use-customer-auth";
+import { buildCustomerOrdersRequest } from "@/lib/customer-api";
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -108,7 +109,6 @@ function mapPointEntry(row: Record<string, unknown>): CustomerPointEntry {
 	};
 }
 
-const CUSTOMER_API_BASE = import.meta.env.VITE_CUSTOMER_API_URL?.trim() || "https://api.djiwatentram.web.id/v1/customer";
 
 // ── useCustomerOrders ──────────────────────────────────────────
 // Query pos_orders WHERE customer_source_id = user.id.
@@ -123,29 +123,16 @@ export function useCustomerOrders(options?: { onRealtimeUpdate?: () => void }) {
 	const data = useSupabaseLiveValue<CustomerOrder[]>(
 		`customer-orders-${sourceId ?? "guest"}`,
 		async () => {
-			if (!sourceId) {
-				const references = readGuestOrderReferences();
-				if (references.length === 0) return [];
-				const response = await fetch(`${CUSTOMER_API_BASE}/guest-orders`, {
-					method: "POST",
-					credentials: "include",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ orders: references.map((item) => ({ orderId: item.orderId, accessToken: item.accessToken })) }),
-				});
-				if (!response.ok) throw new Error(`Guest orders HTTP ${response.status}`);
-				const payload = await response.json() as { success?: boolean; orders?: Record<string, unknown>[] };
-				const rows = payload.success ? payload.orders ?? [] : [];
-				const byId = new Map(rows.map((row) => [String(row._id ?? row.id), row]));
-				return references.map((item) => byId.get(item.orderId)).filter(Boolean).map((row) => mapOrder(row as Record<string, unknown>));
-			}
-
-			const response = await fetch(`${CUSTOMER_API_BASE}/orders`, {
-				credentials: "include",
-				headers: { Accept: "application/json" },
-			});
-			if (!response.ok) throw new Error(`Customer orders HTTP ${response.status}`);
+			const references = readGuestOrderReferences().map((item) => ({ orderId: item.orderId, accessToken: item.accessToken }));
+			const request = buildCustomerOrdersRequest(sourceId, references);
+			if (!request) return [];
+			const response = await fetch(request.url, request.init);
+			if (!response.ok) throw new Error(`${sourceId ? "Customer" : "Guest"} orders HTTP ${response.status}`);
 			const payload = await response.json() as { success?: boolean; orders?: Record<string, unknown>[] };
-			return (payload.success ? payload.orders ?? [] : []).map((row) => mapOrder(row));
+			const rows = payload.success ? payload.orders ?? [] : [];
+			if (sourceId) return rows.map((row) => mapOrder(row));
+			const byId = new Map(rows.map((row) => [String(row._id ?? row.id), row]));
+			return references.map((item) => byId.get(item.orderId)).filter(Boolean).map((row) => mapOrder(row as Record<string, unknown>));
 		},
 		[sourceId],
 		{
