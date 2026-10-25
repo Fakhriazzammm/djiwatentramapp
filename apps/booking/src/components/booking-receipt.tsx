@@ -9,6 +9,25 @@ type BookingReceiptProps = {
   loading: boolean;
 };
 
+type ReceiptState = "paid" | "pending" | "failed" | "expired" | "cancelled";
+
+function receiptState(paymentStatus: string): ReceiptState {
+  const normalized = paymentStatus.toLowerCase();
+  if (normalized === "paid") return "paid";
+  if (normalized === "failed") return "failed";
+  if (normalized === "expired") return "expired";
+  if (normalized === "cancelled" || normalized === "canceled") return "cancelled";
+  return "pending";
+}
+
+const receiptCopy: Record<ReceiptState, { eyebrow: string; title: string; description: string }> = {
+  paid: { eyebrow: "Pembayaran terverifikasi", title: "Booking siap digunakan", description: "Simpan bukti ini saat datang ke lokasi." },
+  pending: { eyebrow: "Menunggu pembayaran", title: "Booking tercatat", description: "Selesaikan pembayaran, lalu cek kembali statusnya." },
+  failed: { eyebrow: "Pembayaran gagal", title: "Booking belum terbayar", description: "Pembayaran belum berhasil. Periksa metode pembayaran atau hubungi kami." },
+  expired: { eyebrow: "Pembayaran kedaluwarsa", title: "Booking belum terbayar", description: "Batas waktu pembayaran telah lewat. Hubungi kami untuk bantuan." },
+  cancelled: { eyebrow: "Pembayaran dibatalkan", title: "Booking belum terbayar", description: "Pembayaran dibatalkan dan booking belum dapat digunakan." },
+};
+
 function ReceiptPaper({ result }: { result: BookingResult }) {
   const [copyState, setCopyState] = useState<"idle" | "success" | "error">("idle");
 
@@ -22,7 +41,9 @@ function ReceiptPaper({ result }: { result: BookingResult }) {
     }
   }
   const total = result.totalAmount ?? result.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const paid = result.paymentStatus.toLowerCase() === "paid";
+  const state = receiptState(result.paymentStatus);
+  const paid = state === "paid";
+  const copy = receiptCopy[state];
 
   return (
     <article className={`booking-receipt-paper ${paid ? "is-paid" : "is-pending"}`} data-receipt-export-root="true">
@@ -31,9 +52,9 @@ function ReceiptPaper({ result }: { result: BookingResult }) {
         <div className={`booking-receipt-status-icon ${paid ? "is-paid" : "is-pending"}`} aria-hidden="true">
           {paid ? <Check size={20} strokeWidth={3} /> : <span>!</span>}
         </div>
-        <span className="eyebrow">{paid ? "Pembayaran terverifikasi" : "Menunggu pembayaran"}</span>
-        <h2>{paid ? "Booking siap digunakan" : "Booking tercatat"}</h2>
-        <p>{paid ? "Simpan bukti ini saat datang ke lokasi." : "Selesaikan pembayaran, lalu cek kembali statusnya."}</p>
+        <span className="eyebrow">{copy.eyebrow}</span>
+        <h2>{copy.title}</h2>
+        <p>{copy.description}</p>
       </header>
 
       <div className="booking-receipt-code">
@@ -68,12 +89,13 @@ function ReceiptPaper({ result }: { result: BookingResult }) {
 }
 
 export function BookingReceipt({ result, onRetry, loading }: BookingReceiptProps) {
-  const paid = result.paymentStatus.toLowerCase() === "paid";
+  const state = receiptState(result.paymentStatus);
+  const paid = state === "paid";
   return (
     <div className="booking-receipt-shell">
       <ReceiptPaper result={result} />
       <div className="booking-receipt-actions">
-        {paid ? <button type="button" className="button secondary" onClick={() => window.print()}><Printer size={16} /> Cetak / simpan PDF</button> : <button type="button" className="button secondary" onClick={onRetry} disabled={loading}><RefreshCw size={16} /> {loading ? "Memperbarui…" : "Coba lagi"}</button>}
+        {paid ? <button type="button" className="button secondary" onClick={() => window.print()}><Printer size={16} /> Cetak / simpan PDF</button> : state === "pending" ? <button type="button" className="button secondary" onClick={onRetry} disabled={loading}><RefreshCw size={16} /> {loading ? "Memperbarui…" : "Coba lagi"}</button> : null}
       </div>
     </div>
   );
