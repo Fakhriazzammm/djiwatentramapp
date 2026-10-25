@@ -115,25 +115,35 @@ function mapCustomerRow(row: Record<string, unknown>): CustomerUser {
 }
 
 const CUSTOMER_API_BASE = import.meta.env.VITE_CUSTOMER_API_URL?.trim() || "https://api.djiwatentram.web.id/v1/customer";
+export const CUSTOMER_PROFILE_TIMEOUT_MS = 8_000;
 
-async function fetchCustomer(
+export async function fetchCustomer(
   sourceId: string,
   _email?: string | null,
+  timeoutMs = CUSTOMER_PROFILE_TIMEOUT_MS,
 ): Promise<CustomerUser | null> {
-  const response = await fetch(`${CUSTOMER_API_BASE}/profile`, {
-    credentials: "include",
-    headers: { Accept: "application/json" },
-  });
-  if (response.status === 401) return null;
-  if (!response.ok) throw new Error(`Customer profile HTTP ${response.status}`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-  const payload = await response.json() as {
-    success?: boolean;
-    customer?: Record<string, unknown> | null;
-  };
-  const row = payload.success ? payload.customer : null;
-  if (!row || String(row.source_id ?? "") !== sourceId) return null;
-  return mapCustomerRow(row);
+  try {
+    const response = await fetch(`${CUSTOMER_API_BASE}/profile`, {
+      credentials: "include",
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    });
+    if (response.status === 401) return null;
+    if (!response.ok) throw new Error(`Customer profile HTTP ${response.status}`);
+
+    const payload = await response.json() as {
+      success?: boolean;
+      customer?: Record<string, unknown> | null;
+    };
+    const row = payload.success ? payload.customer : null;
+    if (!row || String(row.source_id ?? "") !== sourceId) return null;
+    return mapCustomerRow(row);
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function buildFallbackCustomer(
