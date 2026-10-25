@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { resolveCanonicalAssetUrl } from "../../../../../packages/yumipos-web-shared/src/lib/canonical-url";
 import { Check, Minus, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
@@ -41,6 +42,7 @@ export function ProductSheet({
 		return sum + (option?.price ?? 0);
 	}, 0);
 	const unitPrice = pricing.finalPrice + variantPrice;
+	const productImage = resolveCanonicalAssetUrl((product as any).image, (product as any).imageUrl, (product as any).image_url);
 
 	return (
 		<div className="flex max-h-full min-h-0 flex-col overflow-hidden">
@@ -48,8 +50,8 @@ export function ProductSheet({
 				<div className="h-1 w-10 rounded-full bg-foreground/20" />
 			</div>
 			<div className="relative h-40 shrink-0 bg-muted sm:h-44">
-				{product.image ? (
-					<img alt={product.name} className="h-full w-full object-cover" src={product.image} />
+				{productImage ? (
+					<img alt={product.name} className="h-full w-full object-cover" src={productImage} />
 				) : null}
 				<button
 					type="button"
@@ -136,7 +138,7 @@ export function ProductSheet({
 							originalPrice: pricing.originalPrice + variantPrice,
 							quantity,
 							variant: Object.values(variants).length > 0 ? Object.values(variants).join(", ") : undefined,
-							image: product.image,
+							image: productImage,
 							categoryId: product.categoryId,
 							menuNumber: product.menuNumber,
 						})}

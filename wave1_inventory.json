@@ -1,0 +1,170 @@
+{
+  "status": "TESTING",
+  "wave": "wave1-safe-canonical-source",
+  "host": "VM-4-244-ubuntu / 43.173.20.62",
+  "repo": "/opt/djiwatentramapp",
+  "remote_worktree": "/home/ubuntu/djiwa-bima-wave1",
+  "baseline_head": "656153332a2512113d1f4dc69f2cbd7f063468d5",
+  "app_count": 13,
+  "apps": [
+    {
+      "app": "djiwapay",
+      "domain": "pay.djiwatentram.web.id",
+      "legacy_origins": [
+        "pay.yumme.id"
+      ]
+    },
+    {
+      "app": "booking",
+      "domain": "booking.djiwatentram.web.id",
+      "legacy_origins": [
+        "booking.yumme.id"
+      ]
+    },
+    {
+      "app": "500kopitasik",
+      "domain": "kopitasik.djiwatentram.web.id",
+      "legacy_origins": [
+        "500kopitasik.yumme.id"
+      ]
+    },
+    {
+      "app": "linkbio",
+      "domain": "linkbio.djiwatentram.web.id",
+      "legacy_origins": [
+        "linkbio.yumme.id"
+      ]
+    },
+    {
+      "app": "customer",
+      "domain": "djiwatentram.web.id",
+      "aliases": [
+        "www.djiwatentram.web.id"
+      ],
+      "legacy_origins": [
+        "djiwatentram.yumme.id"
+      ]
+    },
+    {
+      "app": "admin",
+      "domain": "admin.djiwatentram.web.id",
+      "legacy_origins": [
+        "admindjiwatentram.yumme.id"
+      ]
+    },
+    {
+      "app": "pos",
+      "domain": "pos.djiwatentram.web.id",
+      "legacy_origins": [
+        "pos.yumme.id"
+      ]
+    },
+    {
+      "app": "b2b",
+      "domain": "b2b.djiwatentram.web.id",
+      "legacy_origins": [
+        "b2b.yumme.id"
+      ]
+    },
+    {
+      "app": "merchandise",
+      "domain": "merchandise.djiwatentram.web.id",
+      "legacy_origins": [
+        "merchandise.yumme.id"
+      ]
+    },
+    {
+      "app": "ordermieyamin",
+      "domain": "ordermieyamin.djiwatentram.web.id",
+      "legacy_origins": [
+        "ordermieyamin.yumme.id"
+      ]
+    },
+    {
+      "app": "karyawan",
+      "domain": "karyawan.djiwatentram.web.id",
+      "legacy_origins": [
+        "karyawan.yumme.id"
+      ]
+    },
+    {
+      "app": "kolmarketing",
+      "domain": "kol.djiwatentram.web.id",
+      "legacy_origins": [
+        "kolmarketing.yumme.id"
+      ]
+    },
+    {
+      "app": "investor",
+      "domain": "investor.djiwatentram.web.id",
+      "legacy_origins": [
+        "investor.yumme.id"
+      ]
+    }
+  ],
+  "shared_origins": {
+    "api": {
+      "legacy": "https://api.yumme.id",
+      "canonical": "https://api.djiwatentram.web.id"
+    },
+    "supabase": {
+      "legacy": "https://supabase.yumme.id",
+      "canonical": "https://supabase.djiwatentram.web.id"
+    },
+    "ssh": {
+      "legacy": "43.129.54.5",
+      "canonical": "43.173.20.62"
+    }
+  },
+  "live_config_findings": {
+    "legacy_hosts_in_served_dist": "8 apps per parent live bundle audit; stale/orphan chunks must be separated from current index import graph and sw precache",
+    "customer_legacy_storage": "supabase.yumme.id product paths timed out; canonical same paths returned JPEG bytes",
+    "canonical_3d_assets": "representative current customer assets HTTP 200; preserve registry and navigation"
+  },
+  "source_coverage": {
+    "scope_excludes": [
+      "node_modules",
+      ".git",
+      "dist",
+      "backups",
+      ".venv"
+    ],
+    "all_13_apps": true,
+    "source_and_runtime_configs": true,
+    "history_and_product_hooks": true,
+    "current_graph_classification": "pending wave verification; no claim that orphan legacy chunks are reachable"
+  },
+  "safety": {
+    "db_writes": false,
+    "schema_changes": false,
+    "auth_payment_config_changes": false,
+    "deploy": false,
+    "signed_url_rewrite": false
+  },
+  "checkpoint": {
+    "state": "TESTING",
+    "scope": "shared canonical origin resolver + product image consumers in customer/merchandise/b2b; inventory all 13 apps"
+  },
+  "source_changes": [
+    "Added explicit known first-party origin map; preserves pathname/query/hash.",
+    "Leaves signed URLs, third-party, relative, and data URLs unchanged.",
+    "Applied resolver at existing product image boundary only; no order/history query or record identifiers changed."
+  ],
+  "verification": {
+    "resolver_tests": "4 pass, 0 fail, 7 expect calls (bun test)",
+    "diff_check": "pass",
+    "typecheck": "pre-existing errors only; no errors in changed product-sheet/canonical-url files; full app typecheck remains nonzero",
+    "build": "blocked by baseline Vite config/unplugin path undefined under isolated worktree dependency setup",
+    "image_http": "legacy status 000 timeout; canonical status 200, 17050 bytes; canonical first bytes JPEG SOI/ JFIF"
+  },
+  "history_data_path": {
+    "customer_hook": "apps/customer/src/hooks/use-customer-data.ts -> CUSTOMER_API_BASE/orders and /guest-orders; pos_orders reference retained",
+    "detail_hook": "apps/customer/src/hooks/use-hybrid-ops-data.ts -> /orders, /guest-orders and pos_orders query",
+    "records_touched": false
+  },
+  "remaining_next_wave": [
+    "Parent review current index import graphs and SW precache for 8 apps with legacy strings; classify orphan chunks.",
+    "Parent gate runtime env/config endpoint migration across remaining apps; do not rewrite DB/auth/payment.",
+    "Build/deploy canonical bundles on new VPS, then verify routes, records, menu images, 3D assets, and navbar parity."
+  ]
+}

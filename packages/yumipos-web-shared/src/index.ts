@@ -1,5 +1,6 @@
 // @yumipos/web-shared — barrel export
 export * from "./lib/client";
+export * from "./lib/canonical-url";
 export * from "./lib/utils";
 export * from "./lib/utils/pricing";
 export * from "./lib/backend-bridge";

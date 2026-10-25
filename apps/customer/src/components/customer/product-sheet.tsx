@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { resolveCanonicalAssetUrl } from "../../../../../packages/yumipos-web-shared/src/lib/canonical-url";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useCustomerOrders } from "@/hooks/use-customer-data";
 import { useCreateProductReview, useProductReviewSummary, useProductReviews } from "@/hooks/use-product-reviews";
@@ -76,7 +77,7 @@ export function ProductSheet({
 	const nutritionIsEstimate = nutrition?.status === "draft";
 	const nutritionValues = nutrition && [nutrition.caloriesKcal, nutrition.proteinG, nutrition.carbohydratesG, nutrition.fatG].every((value) => Number.isFinite(Number(value)) && Number(value) >= 0);
 	const unitPrice = pricing.finalPrice + variantPrice;
-	const productImage = String((product as any).image ?? (product as any).imageUrl ?? (product as any).image_url ?? "").trim() || undefined;
+	const productImage = resolveCanonicalAssetUrl((product as any).image, (product as any).imageUrl, (product as any).image_url);
 	const ratingAverage = summary?.ratingAverage;
 	const reviewCount = summary?.publishedCount ?? 0;
 	const submitReview = async () => {
@@ -239,7 +240,7 @@ export function ProductSheet({
 							originalPrice: pricing.originalPrice + variantPrice,
 							quantity,
 							variant: Object.values(variants).length > 0 ? Object.values(variants).join(", ") : undefined,
-							image: product.image,
+							image: productImage,
 							categoryId: product.categoryId,
 							menuNumber: product.menuNumber,
 						})}
