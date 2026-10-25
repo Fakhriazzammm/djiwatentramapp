@@ -1,7 +1,7 @@
 {
-  "version": "0.2.544",
-  "commitHash": "39e347d",
-  "message": "chore(pos): stamp verified PR67 build",
+  "version": "0.2.546",
+  "commitHash": "63137cf",
+  "message": "fix(pos): restore catalog photos and unify input focus",
   "buildDate": "2026-10-25",
-  "generatedAt": "2026-10-25T09:47:39.781Z"
+  "generatedAt": "2026-10-25T10:02:09.044Z"
 }

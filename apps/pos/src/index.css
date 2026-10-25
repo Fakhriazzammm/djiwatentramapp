@@ -188,7 +188,7 @@ body.admin-shell[data-admin-density="compact"] [data-admin-modal-backdrop] {
 
 .pos-app :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select, [role="combobox"]):focus-visible {
 	border-color: var(--ring) !important;
-	outline: 2px solid color-mix(in srgb, var(--ring) 32%, transparent);
+	outline: 2px solid color-mix(in srgb, var(--ring) 32%, transparent) !important;
 	outline-offset: 0;
 	box-shadow: none;
 }

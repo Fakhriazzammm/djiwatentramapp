@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.544",
+	semantic: "0.2.546",
 	// Git/deploy commit hash (short)
-	commitHash: "39e347d",
-	message: "chore(pos): stamp verified PR67 build",
+	commitHash: "63137cf",
+	message: "fix(pos): restore catalog photos and unify input focus",
 	// Commit subject for the update prompt
-	commitMessage: "chore(pos): stamp verified PR67 build",
+	commitMessage: "fix(pos): restore catalog photos and unify input focus",
 	// Build timestamp
 	buildDate: "2026-10-25",
 	// Full version string for display
