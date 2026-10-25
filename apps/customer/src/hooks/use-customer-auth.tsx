@@ -119,10 +119,18 @@ async function fetchCustomer(
   sourceId: string,
   _email?: string | null,
 ): Promise<CustomerUser | null> {
-  const response = await fetch(customerApiUrl("profile"), {
-    credentials: "include",
-    headers: { Accept: "application/json" },
-  });
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 8_000);
+  let response: Response;
+  try {
+    response = await fetch(customerApiUrl("profile"), {
+      credentials: "include",
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    });
+  } finally {
+    window.clearTimeout(timeout);
+  }
   if (response.status === 401) return null;
   if (!response.ok) throw new Error(`Customer profile HTTP ${response.status}`);
 

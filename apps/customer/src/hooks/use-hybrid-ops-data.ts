@@ -3,7 +3,7 @@ import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import { readGuestOrderReferences } from "@/components/customer/types";
 
-const CUSTOMER_ORDER_API = import.meta.env.VITE_CUSTOMER_API_URL?.trim() || "https://api.djiwatentram.web.id/v1/customer";
+import { customerApiUrl } from "@/lib/customer-api";
 
 function useSupabaseValue<T>(
 	key: string,
@@ -24,7 +24,7 @@ function resolveMayarConfig() {
 async function fetchOrderById(id: string, signal: AbortSignal) {
 	const accessToken = readGuestOrderReferences().find((reference) => reference.orderId === id)?.accessToken;
 	if (accessToken) {
-		const response = await fetch(`${CUSTOMER_ORDER_API}/guest-orders`, {
+		const response = await fetch(customerApiUrl("guest-orders"), {
 			method: "POST",
 			signal,
 			credentials: "include",
@@ -39,7 +39,7 @@ async function fetchOrderById(id: string, signal: AbortSignal) {
 	// Members authenticate through Better Auth, so the protected member endpoint
 	// is the source of truth. The previous implementation sent an empty guest
 	// request for members, which produced an empty receipt after live tracking.
-	const response = await fetch(`${CUSTOMER_ORDER_API}/orders`, {
+	const response = await fetch(customerApiUrl("orders"), {
 		signal,
 		credentials: "include",
 		headers: { Accept: "application/json" },

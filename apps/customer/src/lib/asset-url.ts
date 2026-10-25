@@ -4,6 +4,7 @@ const configuredStorageBaseUrl = (
 
 const legacyStorageOrigins = new Set([
   "https://xaemykhjpkgypqqpfdcb.supabase.co",
+  "https://supabase.yumme.id",
 ]);
 
 const selfHostedStorageOrigin = "https://supabase.djiwatentram.web.id";
