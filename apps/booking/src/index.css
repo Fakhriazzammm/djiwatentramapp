@@ -162,8 +162,9 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .product-card { overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); cursor: pointer; transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
 .product-card:hover, .product-card:focus-visible { border-color: #b9d0f5; box-shadow: var(--shadow-soft); outline: 0; }
 .product-card.selected { border-color: var(--booking-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--booking-accent) 16%, transparent); }
-.product-card img, .product-image { width: 100%; height: 135px; object-fit: cover; background: #eef3fa; display: grid; place-items: center; color: #98a8bf; }
-.product-body { padding: 14px; }
+.product-media { width: 100%; height: 135px; overflow: hidden; border-radius: 16px; background: #eef3fa; display: grid; place-items: center; color: #98a8bf; }
+.product-media img, .product-media .product-image { width: 100%; height: 100%; object-fit: cover; background: #eef3fa; display: grid; place-items: center; color: #98a8bf; }
+.product-body { min-width: 0; padding: 14px; }
 .menu-number { color: var(--booking-accent); font-size: 10px; font-weight: 800; }
 .product-body h3 { margin: 6px 0 11px; min-height: 38px; line-height: 1.35; }
 .product-body > strong { font-size: 14px; }
@@ -317,12 +318,12 @@ h1 em { color: var(--booking-accent); font-style: normal; }
   .menu-flow { max-width: 976px; }
   .menu-flow .product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
   .menu-flow .product-card { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: stretch; min-height: 132px; gap: 14px; padding: 10px; border-radius: 24px; }
-  .menu-flow .product-card img, .menu-flow .product-card .product-image { width: 112px; height: 112px; min-width: 112px; min-height: 112px; border-radius: 18px; }
-  .menu-flow .product-body { padding: 3px 0; }
+  .menu-flow .product-media { width: 112px; height: 112px; min-width: 112px; min-height: 112px; border-radius: 18px; }
+  .menu-flow .product-body { min-height: 112px; padding: 3px 0; display: flex; flex-direction: column; }
   .menu-flow .product-body h3 { min-height: 0; margin: 5px 0 7px; font-size: 14px; line-height: 1.25; }
   .menu-flow .product-description { display: -webkit-box; margin: 5px 0 8px; overflow: hidden; font-size: 12px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
   .menu-flow .product-body > strong { color: var(--booking-accent); font-size: 14px; }
-  .menu-flow .quantity-control { margin-top: 9px; }
+  .menu-flow .quantity-control { margin-top: auto; padding-top: 9px; }
   .menu-flow .quantity-control .add-button { width: 42px; min-width: 42px; min-height: 38px; padding: 0; color: #fff; background: var(--booking-accent); }
 }
 
@@ -348,13 +349,13 @@ h1 em { color: var(--booking-accent); font-style: normal; }
   .menu-filters select { min-height: 44px; padding: 0 10px; border-radius: 14px; font-size: 12px; }
   .product-grid { display: flex; flex-direction: column; gap: 10px; }
   .product-card { display: flex; align-items: center; gap: 12px; min-height: 0; padding: 10px; border-radius: 24px; }
-  .product-card img, .product-card .product-image { width: 88px; height: 88px; min-width: 88px; min-height: 88px; flex: 0 0 88px; border-radius: 18px; object-fit: cover; }
-  .product-body { min-width: 0; flex: 1; padding: 2px 0; }
+  .product-media { width: 88px; height: 88px; min-width: 88px; min-height: 88px; flex: 0 0 88px; border-radius: 18px; }
+  .product-body { min-width: 0; flex: 1; padding: 2px 0; display: flex; flex-direction: column; }
   .menu-number { font-size: 10px; }
   .product-body h3 { min-height: 0; margin: 4px 0 7px; font-size: 14px; line-height: 1.25; }
   .product-description { display: -webkit-box; margin: 5px 0 8px; overflow: hidden; color: var(--muted); font-size: 12px; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
   .product-body > strong { color: var(--booking-accent); font-size: 15px; }
-  .quantity-control { min-height: 38px; margin-top: 9px; gap: 7px; }
+  .quantity-control { min-height: 38px; margin-top: auto; padding-top: 9px; gap: 7px; }
   .quantity-control button { width: 38px; height: 38px; border-radius: 11px; }
   .quantity-control .add-button { width: 54px; min-width: 54px; padding: 0; color: #fff; background: var(--booking-accent); }
   .quantity-control b { min-width: 24px; }
