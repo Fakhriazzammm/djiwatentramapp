@@ -1,7 +1,7 @@
 {
-  "version": "0.2.413",
-  "commitHash": "11f6f57",
-  "message": "fix(order-tracking): use guest token for receipt reads",
-  "buildDate": "2026-10-04",
-  "generatedAt": "2026-10-04T07:19:47.142Z"
+  "version": "0.2.416",
+  "commitHash": "a2dfb11",
+  "message": "fix(customer): commit the product-review modules the branch already imports",
+  "buildDate": "2026-10-25",
+  "generatedAt": "2026-10-25T13:24:06.734Z"
 }
