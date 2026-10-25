@@ -109,26 +109,34 @@ function mapCustomerRow(row: Record<string, unknown>): CustomerUser {
   };
 }
 
-const CUSTOMER_API_BASE = "https://djiwatentram.yumme.id/api/customer";
+const CUSTOMER_API_BASE = "https://api.djiwatentram.web.id/api/customer";
+const CUSTOMER_PROFILE_TIMEOUT_MS = 8_000;
 
 async function fetchCustomer(
   sourceId: string,
   _email?: string | null,
 ): Promise<CustomerUser | null> {
-  const response = await fetch(`${CUSTOMER_API_BASE}/profile`, {
-    credentials: "include",
-    headers: { Accept: "application/json" },
-  });
-  if (response.status === 401) return null;
-  if (!response.ok) throw new Error(`Customer profile HTTP ${response.status}`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), CUSTOMER_PROFILE_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${CUSTOMER_API_BASE}/profile`, {
+      credentials: "include",
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    });
+    if (response.status === 401) return null;
+    if (!response.ok) throw new Error(`Customer profile HTTP ${response.status}`);
 
-  const payload = await response.json() as {
-    success?: boolean;
-    customer?: Record<string, unknown> | null;
-  };
-  const row = payload.success ? payload.customer : null;
-  if (!row || String(row.source_id ?? "") !== sourceId) return null;
-  return mapCustomerRow(row);
+    const payload = await response.json() as {
+      success?: boolean;
+      customer?: Record<string, unknown> | null;
+    };
+    const row = payload.success ? payload.customer : null;
+    if (!row || String(row.source_id ?? "") !== sourceId) return null;
+    return mapCustomerRow(row);
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function buildFallbackCustomer(
