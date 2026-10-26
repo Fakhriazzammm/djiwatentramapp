@@ -26,6 +26,7 @@ import { CheckoutResult, formatCheckoutAmount as fmt } from "./checkout-result";
 import { CheckoutRecoveryNotice } from "./checkout-recovery-notice";
 import { CustomerSearchModal } from "./customer-search-modal";
 import { CheckoutStepHeader } from "./checkout-stepper";
+import { CheckoutCartItem } from "./checkout-cart-item";
 
 export interface CheckoutSidebarProps {
 	onConfirmPayment?: ConfirmCheckoutPayment;
@@ -312,15 +313,15 @@ export function CheckoutSidebar({
 		}
 	};
 	const customerFields = (
-		<div className="space-y-2 rounded-xl border border-border/70 bg-card p-2.5 shadow-sm">
-			<div className="flex items-end gap-2">
+		<div className="space-y-1.5 rounded-lg border border-border/70 bg-card p-2 shadow-sm">
+			<div className="flex items-end gap-1.5">
 				<label className="flex-1 space-y-1 text-xs font-semibold">
 					<span className="text-foreground">
 						Nama pelanggan
 						{draft.paymentMethod === "qris_mayar" ? " (wajib)" : " (opsional)"}
 					</span>
 					<Input
-						className="h-9 text-sm"
+						className="h-8 text-xs"
 						value={customerInfo.name}
 						onChange={(e) => updateCustomerInfo({ name: e.target.value })}
 						autoComplete="name"
@@ -329,7 +330,7 @@ export function CheckoutSidebar({
 				<Button
 					aria-label="Cari pelanggan"
 					variant="outline"
-					className="h-9 w-9 shrink-0 rounded-lg px-0 shadow-sm"
+					className="h-8 w-8 shrink-0 rounded-lg px-0 shadow-sm"
 					onClick={() => setCustomerSearchOpen(true)}
 				>
 					<Search className="h-4 w-4" />
@@ -339,7 +340,7 @@ export function CheckoutSidebar({
 				<label className="block space-y-1 text-xs font-semibold">
 					<span>Nomor meja (opsional)</span>
 					<Input
-						className="h-9 text-sm"
+						className="h-8 text-xs"
 						value={customerInfo.tableNumber}
 						onChange={(e) =>
 							updateCustomerInfo({ tableNumber: e.target.value })
@@ -350,7 +351,7 @@ export function CheckoutSidebar({
 			<label className="block space-y-1 text-xs font-semibold">
 				<span>Catatan pesanan (opsional)</span>
 				<Input
-					className="h-9 text-sm"
+					className="h-8 text-xs"
 					value={customerInfo.notes}
 					onChange={(e) => updateCustomerInfo({ notes: e.target.value })}
 				/>
@@ -391,7 +392,7 @@ export function CheckoutSidebar({
 						}
 					/>
 				) : (
-					<div className="space-y-2.5 p-3 sm:p-4">
+					<div className="space-y-1.5 p-2 sm:p-3">
 						{hasPendingPayment && pendingPayment && (
 							<CheckoutRecoveryNotice
 								customerName={pendingPayment.customerName}
@@ -402,20 +403,20 @@ export function CheckoutSidebar({
 						)}
 						<fieldset
 							disabled={busy || hasPendingPayment}
-							className="min-w-0 space-y-2.5 disabled:opacity-60"
+							className="min-w-0 space-y-1.5 disabled:opacity-60"
 						>
 						{activeStep === "order" ? (
 							<>
-								<div className="flex items-end justify-between gap-3">
+								<div className="flex items-center justify-between gap-2">
 									<div>
-										<p className="text-[9px] font-black uppercase tracking-[0.14em] text-primary">Langkah 1 dari 3</p>
-										<h2 className="mt-0.5 text-base font-black tracking-tight text-foreground">Pesanan ({totalItems})</h2>
+										<p className="text-[8px] font-black uppercase tracking-[0.12em] text-primary">Langkah 1 dari 3</p>
+										<h2 className="mt-0.5 text-sm font-black tracking-tight text-foreground">Pesanan ({totalItems})</h2>
 									</div>
-									<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">Draft aktif</span>
+									<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-bold text-primary">Draft aktif</span>
 								</div>
-								<div className="rounded-xl border border-border/70 bg-card p-2.5 shadow-sm">
-									<p className="mb-1 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Jenis pesanan</p>
-									<div className="flex flex-wrap gap-2" aria-label="Tipe pesanan">
+								<div className="rounded-lg border border-border/70 bg-card p-2 shadow-sm">
+									<p className="mb-1 text-[9px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Jenis pesanan</p>
+									<div className="flex flex-wrap gap-1.5" aria-label="Tipe pesanan">
 									{orderTypes.map((type) => (
 										<Button
 											key={type.id}
@@ -424,7 +425,7 @@ export function CheckoutSidebar({
 													? "default"
 													: "outline"
 											}
-											className="min-h-9 rounded-lg px-3 text-xs font-bold shadow-sm"
+											className="min-h-8 rounded-md px-2.5 text-[11px] font-bold shadow-sm"
 											aria-pressed={customerInfo.orderType === type.id}
 											onClick={() =>
 												updateCustomerInfo({
@@ -444,9 +445,9 @@ export function CheckoutSidebar({
 									</div>
 								</div>
 								{selectedOrderType?.id === "online" && (
-									<div className="space-y-1.5 rounded-xl border border-primary/20 bg-primary/[0.04] p-2.5">
-										<p className="text-[10px] font-bold uppercase tracking-[0.1em] text-primary">Platform pesanan</p>
-										<div className="flex flex-wrap gap-2">
+									<div className="space-y-1 rounded-lg border border-primary/20 bg-primary/[0.04] p-2">
+										<p className="text-[9px] font-bold uppercase tracking-[0.1em] text-primary">Platform pesanan</p>
+										<div className="flex flex-wrap gap-1.5">
 											{platforms.map((platform) => (
 												<Button
 													key={platform.id}
@@ -455,7 +456,7 @@ export function CheckoutSidebar({
 															? "default"
 															: "outline"
 													}
-															className="min-h-9 rounded-lg text-xs font-bold shadow-sm"
+																className="min-h-8 rounded-md px-2.5 text-[11px] font-bold shadow-sm"
 													aria-pressed={customerInfo.platform === platform.id}
 													onClick={() =>
 														updateCustomerInfo({
@@ -475,10 +476,21 @@ export function CheckoutSidebar({
 										Belum ada menu. Tambahkan menu untuk mulai memesan.
 									</p>
 								)}
-								<div className="space-y-2">
+								<div className="space-y-1">
 									{items.map((item) => (
-										<article
-											className="space-y-2 rounded-xl border border-border/80 bg-card p-2.5 shadow-sm transition-shadow hover:shadow-md"
+										<div key={`${item.productId}-${item.variant || "default"}`}>
+											<CheckoutCartItem
+												item={item}
+												onQuantityChange={(delta) =>
+													updateQuantity(item.productId, item.variant, delta)
+												}
+												onPriceChange={(price) =>
+													updateItemPrice(item.productId, item.variant, price)
+												}
+												showPlatformPrice={customerInfo.orderType === "online"}
+											/>
+											<article
+												className="hidden space-y-2 rounded-xl border border-border/80 bg-card p-2.5 shadow-sm transition-shadow hover:shadow-md"
 											key={`${item.productId}-${item.variant || "default"}`}
 										>
 											<div className="flex justify-between gap-2">
@@ -543,14 +555,15 @@ export function CheckoutSidebar({
 													<Plus className="h-4 w-4" />
 												</Button>
 											</div>
-										</article>
+											</article>
+										</div>
 									))}
 								</div>
 								{customerFields}
-								<label className="flex min-h-9 items-center gap-2 rounded-xl border border-border/70 bg-card px-2.5 py-2 text-xs font-semibold shadow-sm">
+								<label className="flex min-h-8 items-center gap-2 rounded-lg border border-border/70 bg-card px-2 py-1.5 text-[11px] font-semibold shadow-sm">
 									<input
 										type="checkbox"
-										className="h-5 w-5 accent-primary"
+										className="h-4 w-4 accent-primary"
 										checked={customerInfo.isFreeRefill}
 										onChange={(e) =>
 											updateCustomerInfo({ isFreeRefill: e.target.checked })
@@ -860,7 +873,7 @@ export function CheckoutSidebar({
 								</details>
 							</>
 						)}
-						<dl className="space-y-1.5 rounded-xl border border-border/70 bg-card p-2.5 text-[11px] shadow-sm">
+						<dl className="space-y-1 rounded-lg border border-border/70 bg-card p-2 text-[10px] shadow-sm">
 							<div className="flex justify-between">
 								<dt>Subtotal</dt>
 								<dd>{fmt(grossAmount)}</dd>
@@ -893,7 +906,7 @@ export function CheckoutSidebar({
 							) : (
 								<div>
 									<dt className="sr-only">Pajak</dt>
-									<dd className="text-muted-foreground">
+									<dd className="text-[9px] leading-tight text-muted-foreground">
 										Harga menu sudah termasuk PBJT atas makanan dan/atau minuman
 										sesuai ketentuan yang berlaku di Kota Tasikmalaya.
 									</dd>

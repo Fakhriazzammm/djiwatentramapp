@@ -26,7 +26,7 @@ describe("resolvePosAssetUrl", () => {
 		expect(resolvePosAssetUrl(objectPath.slice(1))).toBe(
 			`https://supabase.djiwatentram.web.id${objectPath}`,
 		);
-		expect(resolvePosAssetUrl("kg27q5bn2a6322kmtf5aqxgpg182sgnc")).toBeUndefined();
-		expect(resolvePosAssetUrl("   ")).toBeUndefined();
+		expect(resolvePosAssetUrl("kg27q5bn2a6322kmtf5aqxgpg182sgnc")).toBe(undefined);
+		expect(resolvePosAssetUrl("   ")).toBe(undefined);
 	});
 });
