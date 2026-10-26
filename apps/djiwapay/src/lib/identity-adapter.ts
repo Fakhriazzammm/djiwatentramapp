@@ -1,6 +1,14 @@
 import { createAuthClient } from "better-auth/react";
 
 export const authClient = createAuthClient({ baseURL: "https://api.djiwatentram.web.id/api/auth", fetchOptions: { credentials: "include" } });
+export function buildGoogleSignInOptions(callbackURL: string) {
+  return {
+    provider: "google" as const,
+    callbackURL,
+    errorCallbackURL: callbackURL,
+    disableRedirect: true as const,
+  };
+}
 export type CustomerProfile = { source_id: string; name: string | null; email: string | null; phone?: string | null; wallet_status?: "active" | "blocked" };
 const BRIDGE_START = "https://api.djiwatentram.web.id/api/customer/pay-bridge/start";
 const CUSTOMER_AUTH_ORIGIN = "https://djiwatentram.web.id/masuk";
