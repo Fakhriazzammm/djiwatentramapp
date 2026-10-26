@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deploy script for Admin subdomain (admindjiwatentram.yumme.id)
+# Deploy script for Admin subdomain (admindjiwatentram.web.id)
 # Admin app = build eksklusif dari apps/admin (jangan pernah memakai artifact apps/pos)
 # Flow: build admin -> validasi marker route Admin -> copy dist ke webroot admin domain
 #
@@ -10,8 +10,8 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$SCRIPT_DIR"
 
-ADMIN_DOMAIN="admindjiwatentram.yumme.id"
-POS_DOMAIN="pos.yumme.id"
+ADMIN_DOMAIN="admindjiwatentram.web.id"
+POS_DOMAIN="pos.djiwatentram.web.id"
 DEBUG="${DEBUG:-0}"
 
 echo "🚀 Deploying Admin subdomain -> https://$ADMIN_DOMAIN"
@@ -66,7 +66,7 @@ echo "🔍 Verifying..."
 ADMIN_LOGIN=$(curl -s -o /dev/null -w '%{http_code}' "https://$ADMIN_DOMAIN/admin/login")
 ADMIN_CUSTOMERS=$(curl -s -o /dev/null -w '%{http_code}' "https://$ADMIN_DOMAIN/admin/customers")
 POS_REGRESSION=$(curl -s -o /dev/null -w '%{http_code}' "https://$POS_DOMAIN/admin")
-SUPABASE_API=$(curl -s -o /dev/null -w '%{http_code}' "https://supabase.yumme.id/rest/v1/")
+SUPABASE_API=$(curl -s -o /dev/null -w '%{http_code}' "https://supabase.djiwatentram.web.id/rest/v1/")
 
 echo "  admin/login        -> $ADMIN_LOGIN"
 echo "  admin/customers    -> $ADMIN_CUSTOMERS"

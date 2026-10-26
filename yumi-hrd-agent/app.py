@@ -554,7 +554,7 @@ async def cmd_employee_app(update: Update, context: ContextTypes.DEFAULT_TYPE):
         hashlib.sha256,
     ).hexdigest()
     mini_url = (
-        "https://karyawan.yumme.id/absen-keluar-mini"
+        "https://karyawan.djiwatentram.web.id/absen-keluar-mini"
         f"?uid={emp_id}&t={ts}&sig={sig}&mode=home"
     )
     try:
@@ -861,7 +861,7 @@ async def cmd_clockout(update: Update, context: ContextTypes.DEFAULT_TYPE):
         hashlib.sha256,
     ).hexdigest()
     mini_url = (
-        f"https://karyawan.yumme.id/absen-keluar-mini"
+        f"https://karyawan.djiwatentram.web.id/absen-keluar-mini"
         f"?uid={emp_id}&t={ts}&sig={sig}&mode=closing"
     )
     try:

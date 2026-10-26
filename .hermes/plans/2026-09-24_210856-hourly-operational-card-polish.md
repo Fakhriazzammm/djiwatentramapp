@@ -434,10 +434,10 @@ bun run build:admin
 - Stage only authored Admin source/test files from this task.
 - Build Admin only.
 - Deploy only `apps/admin/dist/` to the canonical webroot:
-  `/var/www/admindjiwatentram.yumme.id/`.
+  `/var/www/admindjiwatentram.web.id/`.
 - Preserve `models/`, `face-models/`, `sounds/`, and `test-upload.html`.
 - Verify the correct canonical domain:
-  `https://admindjiwatentram.yumme.id/admin`.
+  `https://admindjiwatentram.web.id/admin`.
 - Verify `version.json`, index bundle, dashboard chunk, and production marker.
 
 ---
@@ -476,7 +476,7 @@ All changes to `-HourlyTransactionAnalysis.tsx` must be applied sequentially to 
 | Sparse one-day data is interpreted as staffing truth | Keep prominent warning and avoid automatic recommendations. |
 | Existing dashboard sections shift or break | Additive widget-only changes; verify neighboring sections before release. |
 | Generated version files pollute commit | Revert unrelated generated metadata; selective stage only. |
-| Wrong production target | Use canonical `admindjiwatentram.yumme.id` mapping and verify public `version.json`. |
+| Wrong production target | Use canonical `admindjiwatentram.web.id` mapping and verify public `version.json`. |
 | Browser cache hides a valid deploy | Verify public index/bundle/version first; then test fresh browser or clear Service Worker once. |
 
 ---
@@ -501,7 +501,7 @@ All changes to `-HourlyTransactionAnalysis.tsx` must be applied sequentially to 
 - [ ] Existing dashboard statistics/charts/data are not removed or changed.
 - [ ] Existing unit tests pass.
 - [ ] Admin build passes.
-- [ ] Production bundle and marker are verified on `admindjiwatentram.yumme.id`.
+- [ ] Production bundle and marker are verified on `admindjiwatentram.web.id`.
 - [ ] No database, payment, inventory, auth, or Telegram behavior is changed.
 
 ---

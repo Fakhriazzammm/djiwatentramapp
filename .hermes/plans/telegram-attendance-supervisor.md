@@ -569,9 +569,9 @@ Bot → simpan foto → kirim ke Gemini Vision:
 
 | # | Skenario | Step | Expected |
 |---|----------|------|----------|
-| 1 | **Profile — belum terhubung** | Buka karyawan.yumme.id/profil | ❌ Status "Belum terhubung" + instruksi |
+| 1 | **Profile — belum terhubung** | Buka karyawan.djiwatentram.web.id/profil | ❌ Status "Belum terhubung" + instruksi |
 | 2 | **Daftar sukses** | `/daftar AYUNDA PUTRI` di bot | ✅ "Registrasi Berhasil!" |
-| 3 | **Profile — sudah terhubung** | Refresh karyawan.yumme.id/profil | ✅ Status "Terhubung sebagai AYUNDA PUTRI" |
+| 3 | **Profile — sudah terhubung** | Refresh karyawan.djiwatentram.web.id/profil | ✅ Status "Terhubung sebagai AYUNDA PUTRI" |
 | 4 | **Daftar ganda** | `/daftar AYUNDA PUTRI` lagi | ⚠️ "Sudah terdaftar" |
 | 5 | **Clock-in sukses** | `/clockin` | ✅ "Absen Masuk — 04/07 17:30 WIB" |
 | 6 | **Clock-in ganda** | `/clockin` lagi | ⚠️ "Sudah absen masuk jam 17:30" |

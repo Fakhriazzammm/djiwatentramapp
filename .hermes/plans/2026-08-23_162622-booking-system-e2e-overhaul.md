@@ -2,7 +2,7 @@
 
 ## Goal
 
-Merombak sistem booking Djiwa Tentram secara end-to-end agar menjadi workspace operasional yang cepat dipindai, aman untuk kapasitas dan pembayaran, mudah dirawat, serta terintegrasi penuh dengan public booking app di `https://booking.yumme.id`.
+Merombak sistem booking Djiwa Tentram secara end-to-end agar menjadi workspace operasional yang cepat dipindai, aman untuk kapasitas dan pembayaran, mudah dirawat, serta terintegrasi penuh dengan public booking app di `https://booking.djiwatentram.web.id`.
 
 Scope mencakup:
 
@@ -25,8 +25,8 @@ Scope mencakup:
 
 ### Domain dan app
 
-- Admin canonical: `https://admindjiwatentram.yumme.id/admin/booking`
-- Public booking canonical: `https://booking.yumme.id`
+- Admin canonical: `https://admindjiwatentram.web.id/admin/booking`
+- Public booking canonical: `https://booking.djiwatentram.web.id`
 - Admin implementation:
   - `apps/admin/src/routes/admin/booking.lazy.tsx`
   - `apps/pos/src/routes/admin/booking.lazy.tsx`
@@ -709,13 +709,13 @@ Validation:
 ## Acceptance criteria
 
 - Settings save mempertahankan unknown raw config keys.
-- Public preview searah dengan `booking.yumme.id`.
+- Public preview searah dengan `booking.djiwatentram.web.id`.
 - Menu inactive/zero-price tidak lolos tanpa warning.
 - Custom form menghasilkan stable payload dan stable historical snapshot.
 
 ---
 
-# Phase 5 — Public `booking.yumme.id` Refactor
+# Phase 5 — Public `booking.djiwatentram.web.id` Refactor
 
 ## Objective
 
@@ -963,7 +963,7 @@ Wave 8 — release
 
 ## E2E/manual
 
-1. Open `booking.yumme.id`.
+1. Open `booking.djiwatentram.web.id`.
 2. Complete non-event flow.
 3. Complete event flow.
 4. Select date near capacity.
@@ -1012,9 +1012,9 @@ TMPDIR=/opt/djiwatentramapp/.tmp bun run --cwd apps/booking build
 ## Domain
 
 ```text
-https://admindjiwatentram.yumme.id/admin/booking → 200/auth redirect as expected
-https://booking.yumme.id/                  → 200
-https://booking.yumme.id/booking           → 200
+https://admindjiwatentram.web.id/admin/booking → 200/auth redirect as expected
+https://booking.djiwatentram.web.id/                  → 200
+https://booking.djiwatentram.web.id/booking           → 200
 ```
 
 Verify:
@@ -1138,5 +1138,5 @@ These should be confirmed before risky implementation starts:
 
 Created: 2026-08-23 WIB
 Target project: `/opt/djiwatentramapp`
-Canonical public integration: `https://booking.yumme.id`
-Canonical admin integration: `https://admindjiwatentram.yumme.id/admin/booking`
+Canonical public integration: `https://booking.djiwatentram.web.id`
+Canonical admin integration: `https://admindjiwatentram.web.id/admin/booking`

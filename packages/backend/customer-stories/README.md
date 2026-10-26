@@ -9,7 +9,7 @@ Status: **Worker deployed and bound to R2 + KV**. Dedicated Worker source berada
 - Dedicated Worker entrypoint is `workers/customer-stories/src/index.ts`, with separate `workers/customer-stories/wrangler.toml`.
 - R2 binding `STORIES_BUCKET` targets `djiwa-customer-stories`; KV binding `CUSTOMER_STORIES_KV` stores minimal moderation state.
 - Customer and Merchandise origins are explicitly allowed for credentialed CORS.
-- Customer authentication is Better Auth on the Node/Bun VPS service at `https://djiwatentram.yumme.id/api/auth`, with an HttpOnly cross-subdomain cookie. The Worker introspects the session through `AUTH_ORIGIN` and fails closed when unavailable.
+- Customer authentication is Better Auth on the Node/Bun VPS service at `https://djiwatentram.web.id/api/auth`, with an HttpOnly cross-subdomain cookie. The Worker introspects the session through `AUTH_ORIGIN` and fails closed when unavailable.
 - `apps/auth-server/.env` contains secrets and is not read or copied into Worker configuration.
 - Existing Supabase Edge Functions are a different deployment/runtime and do not provide an R2 binding or signed-URL contract.
 
@@ -156,17 +156,17 @@ BASE_URL="https://<approved-story-worker>"
 
 # CORS preflight
 curl -i -X OPTIONS "$BASE_URL/stories" \
-  -H 'Origin: https://djiwatentram.yumme.id' \
+  -H 'Origin: https://djiwatentram.web.id' \
   -H 'Access-Control-Request-Method: GET'
 
 # Feed (must fail closed without the approved auth credential)
 curl -i "$BASE_URL/stories" \
-  -H 'Origin: https://djiwatentram.yumme.id' \
+  -H 'Origin: https://djiwatentram.web.id' \
   -H 'Accept: application/json'
 
 # Invalid upload (must be 400; server expiry must not be client-controlled)
 curl -i -X POST "$BASE_URL/stories/upload-url" \
-  -H 'Origin: https://djiwatentram.yumme.id' \
+  -H 'Origin: https://djiwatentram.web.id' \
   -H 'Content-Type: application/json' \
   --data '{"mediaType":"video","contentType":"video/mp4","sizeBytes":1,"durationSeconds":15.01,"extension":"mp4"}'
 ```

@@ -4,9 +4,9 @@
 
 **Status:** Implementation approved — strategy decisions confirmed on 2026-09-17.
 
-**Goal:** Membangun landing page utama `yumme.id` sebagai corporate website Yumme Group yang memosisikan Yumme sebagai F&B operating group: membangun dan mengelola brand F&B, menyediakan teknologi operasional, mengelola people/HR, serta membantu pertumbuhan melalui KOL dan digital marketing.
+**Goal:** Membangun landing page utama `djiwatentram.web.id` sebagai corporate website Yumme Group yang memosisikan Yumme sebagai F&B operating group: membangun dan mengelola brand F&B, menyediakan teknologi operasional, mengelola people/HR, serta membantu pertumbuhan melalui KOL dan digital marketing.
 
-**Architecture:** Buat app corporate terpisah untuk `yumme.id`, bukan menumpang pada `apps/customer`, `apps/admin`, atau `apps/kol`. Landing page bersifat public, cepat, SEO-friendly, responsive, dan tidak mengubah business logic aplikasi operasional yang sudah ada. App akan memiliki jalur CTA ke ekosistem existing seperti Djiwa Tentram, KOL Partnership, booking, POS, HR, dan contact/business inquiry.
+**Architecture:** Buat app corporate terpisah untuk `djiwatentram.web.id`, bukan menumpang pada `apps/customer`, `apps/admin`, atau `apps/kol`. Landing page bersifat public, cepat, SEO-friendly, responsive, dan tidak mengubah business logic aplikasi operasional yang sudah ada. App akan memiliki jalur CTA ke ekosistem existing seperti Djiwa Tentram, KOL Partnership, booking, POS, HR, dan contact/business inquiry.
 
 **Tech Stack:** React + Vite + TypeScript, Tailwind CSS v4, shared UI/tokens dari `packages/yumipos-web-shared`, Lucide icons, Framer Motion hanya untuk motion yang bermakna, `DESIGN.md` sebagai design contract, Apple HIG + AI Product Design DNA v2.0.
 
@@ -474,8 +474,8 @@ Export tidak boleh menimpa shared theme tanpa review diff.
 - Check no horizontal overflow or CTA clipping.
 - Check console/network errors.
 - Verify SEO metadata, OG tags, favicon, manifest if PWA is used.
-- Deploy only the corporate app to the verified `yumme.id` webroot.
-- Smoke test `yumme.id`, assets, cache, and canonical URL.
+- Deploy only the corporate app to the verified `djiwatentram.web.id` webroot.
+- Smoke test `djiwatentram.web.id`, assets, cache, and canonical URL.
 
 **Output:** visual QA evidence + deployment response.
 
@@ -550,7 +550,7 @@ Tasks modifying the same route, theme, or CSS file must run sequentially. Indepe
 - No business logic changes in existing apps.
 - No destructive database changes.
 - No hardcoded secrets.
-- `yumme.id` deployment mapping is verified before release.
+- `djiwatentram.web.id` deployment mapping is verified before release.
 - Build/typecheck passes for the new app.
 - Live screenshot and console/network check are captured before claiming completion.
 
@@ -574,8 +574,8 @@ Tasks modifying the same route, theme, or CSS file must run sequentially. Indepe
 ### Rollback
 
 - Landing app can be disabled/repointed without touching existing F&B apps.
-- Do not modify existing domain routes until the new `yumme.id` artifact is verified.
-- Keep previous `yumme.id` deployment artifact available for immediate revert.
+- Do not modify existing domain routes until the new `djiwatentram.web.id` artifact is verified.
+- Keep previous `djiwatentram.web.id` deployment artifact available for immediate revert.
 - Any database inquiry migration must be additive and separately reversible with explicit approval.
 
 ---
@@ -601,8 +601,8 @@ bun run --cwd apps/yumme typecheck
 git diff --check
 
 # Runtime checks after deployment
-curl -skI https://yumme.id
-curl -skL https://yumme.id/ | head -c 2000
+curl -skI https://djiwatentram.web.id
+curl -skL https://djiwatentram.web.id/ | head -c 2000
 ```
 
 Use selective git staging only:
@@ -665,4 +665,4 @@ Only after Gate A should implementation begin.
 ## Remaining Technical Decisions
 
 - Persistence channel untuk business inquiry masih harus dipilih sebelum form benar-benar diaktifkan: email, CRM, atau endpoint/database baru.
-- Mapping webroot/deployment `yumme.id` masih perlu diverifikasi di server/Vercel sebelum production deploy.
+- Mapping webroot/deployment `djiwatentram.web.id` masih perlu diverifikasi di server/Vercel sebelum production deploy.

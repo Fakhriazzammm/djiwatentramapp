@@ -1,8 +1,8 @@
 import { createAuthClient } from "better-auth/react";
 import { sentinelClient } from "@better-auth/infra/client";
 
-const AUTH_SERVER_URL = "https://api.yumme.id/v1/auth";
-const DJIWA_APP_LOGIN_URL = "https://djiwatentram.yumme.id/masuk";
+const AUTH_SERVER_URL = "https://api.djiwatentram.web.id/v1/auth";
+const DJIWA_APP_LOGIN_URL = "https://djiwatentram.web.id/masuk";
 
 export function redirectToDjiwaAppLogin(returnTo = `${window.location.origin}/masuk?sso=1`) {
   const url = new URL(DJIWA_APP_LOGIN_URL);

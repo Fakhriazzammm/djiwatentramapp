@@ -12,7 +12,7 @@
 ## Security invariants
 
 - Identity is resolved from the authenticated Better Auth session and server-backed customer profile.
-- Query parameters are navigation context only; they are never an authority source. The canonical host stays under `.yumme.id` so the existing cross-subdomain session cookie remains compatible.
+- Query parameters are navigation context only; they are never an authority source. The canonical host stays under `.djiwatentram.web.id` so the existing cross-subdomain session cookie remains compatible.
 - `returnTo` accepts only allowlisted HTTPS origins and is normalized to an encoded path.
 - Wallet ownership is checked by the existing server contract; a mismatched customer/wallet is rejected.
 - The canonical app does not create a payment invoice until an authenticated profile is resolved.

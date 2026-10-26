@@ -11,33 +11,14 @@ import { join } from "node:path";
 import { createHmac } from "node:crypto";
 
 const app = new Hono();
-const MAYAR_PROXY_URL = process.env.MAYAR_PROXY_URL || "https://supabase.djiwatentram.web.id/functions/v1/mayar-proxy";
+const MAYAR_PROXY_URL = process.env.MAYAR_PROXY_URL || "";
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
 const MAYAR_DEFAULT_MOBILE = process.env.MAYAR_DEFAULT_MOBILE || "";
-const IAK_PPOB_URL = process.env.IAK_PPOB_URL || "https://api.djiwatentram.web.id/api/ppob/iak/";
-const customerOrigins = [
-  "https://djiwatentram.yumme.id",
-  "https://djiwatentram.web.id",
-  "https://pay.djiwatentram.web.id",
-  "https://investor.yumme.id",
-  "https://investor.djiwatentram.web.id",
-  "https://merchandise.yumme.id",
-  "https://merchandise.djiwatentram.web.id",
-  "https://booking.yumme.id",
-  "https://booking.djiwatentram.web.id",
-  "https://b2b.yumme.id",
-  "https://b2b.djiwatentram.web.id",
-  "https://ordermieyamin.yumme.id",
-  "https://ordermieyamin.djiwatentram.web.id",
-  "https://500kopitasik.yumme.id",
-  "https://kopitasik.djiwatentram.web.id",
-  "https://kolmarketing.yumme.id",
-  "https://kol.djiwatentram.web.id",
-  "https://rekrutmen.yumme.id",
-  "https://rekrutmen.djiwatentram.web.id",
-  "http://localhost:5173",
-  "http://localhost:3010",
-];
+const IAK_PPOB_URL = process.env.IAK_PPOB_URL || "";
+const customerOrigins = (process.env.CUSTOMER_ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
 const stickerRateLimit = new Map<string, number[]>();
 
 function allowStickerRequest(key: string) {

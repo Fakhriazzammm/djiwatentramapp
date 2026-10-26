@@ -4,7 +4,7 @@
 >
 > **Architecture:** Copy proven flow dari POS app (`apps/pos`) ke karyawan app. Flow: Pilih Staff → Cek hasFace → (PIN-only / Face-only / PIN+Face Enroll) → Clock In/Out.
 >
-> **Route:** `apps/karyawan` sebagai PWA mandiri di domain karyawan.yumme.id
+> **Route:** `apps/karyawan` sebagai PWA mandiri di domain karyawan.djiwatentram.web.id
 
 **Tech Stack:** React 19, TanStack Router, face-api.js, react-webcam, Supabase, @yumipos/web-shared
 
@@ -932,7 +932,7 @@ Vercel auto-deploy untuk karyawan app akan build dari `apps/karyawan`. Jangan de
 ### Task 5.3: Manual verification scenarios
 
 **Skenario A — Face-only absen (user punya wajah):**
-1. Buka karyawan.yumme.id → `/attendance`
+1. Buka karyawan.djiwatentram.web.id → `/attendance`
 2. Pilih staff yang **sudah punya wajah**
 3. Kamera muncul → deteksi wajah → "Berhasil Absen Masuk"
 4. Cek log kehadiran di profil — muncul check_in hari ini

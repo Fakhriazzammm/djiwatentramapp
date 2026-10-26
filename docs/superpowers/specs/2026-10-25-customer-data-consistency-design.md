@@ -4,7 +4,7 @@
 
 Memastikan `apps/customer` pada `djiwatentram.web.id` menampilkan data yang benar-benar dimiliki customer yang sedang login: profil existing, seluruh pesanan/transaksi, detail struk, status pembayaran, saldo dan ledger Djiwa Pay, serta notifikasi push.
 
-Masalah yang ditemukan adalah migrasi backend yang belum konsisten. Profil dan Better Auth sudah memakai `api.djiwatentram.web.id`, tetapi beberapa pembacaan data masih memakai `api.yumme.id`, dan loader detail struk masih membaca order langsung dari Supabase melalui hook shared. Jalur-jalur itu dapat menghasilkan data kosong atau tidak melewati otorisasi customer yang sama.
+Masalah yang ditemukan adalah migrasi backend yang belum konsisten. Profil dan Better Auth sudah memakai `api.djiwatentram.web.id`, tetapi beberapa pembacaan data masih memakai `api.djiwatentram.web.id`, dan loader detail struk masih membaca order langsung dari Supabase melalui hook shared. Jalur-jalur itu dapat menghasilkan data kosong atau tidak melewati otorisasi customer yang sama.
 
 ## Goals
 

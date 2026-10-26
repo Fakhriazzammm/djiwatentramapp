@@ -152,7 +152,7 @@
 
   Run: `bun test apps/customer/src/lib/customer-api.test.ts`
 
-  Expected: FAIL because the current receipt path still uses the shared direct-Supabase loader and push still targets `api.yumme.id`.
+  Expected: FAIL because the current receipt path still uses the shared direct-Supabase loader and push still targets `api.djiwatentram.web.id`.
 
 - [ ] **Step 3: Route receipt and push reads/writes through the customer boundary**
 

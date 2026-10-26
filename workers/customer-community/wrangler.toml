@@ -7,6 +7,6 @@ binding = "COMMUNITY_BUCKET"
 bucket_name = "djiwa-customer-community"
 
 [vars]
-AUTH_ORIGIN = "https://djiwatentram.yumme.id"
-SUPABASE_URL = "https://supabase.yumme.id"
-ALLOWED_ORIGINS = "https://djiwatentram.yumme.id,https://admindjiwatentram.yumme.id,http://localhost:5173,http://localhost:3003"
+AUTH_ORIGIN = "https://djiwatentram.web.id"
+SUPABASE_URL = "https://supabase.djiwatentram.web.id"
+ALLOWED_ORIGINS = "https://djiwatentram.web.id,https://admindjiwatentram.web.id,http://localhost:5173,http://localhost:3003"

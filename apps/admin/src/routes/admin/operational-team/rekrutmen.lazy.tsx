@@ -506,7 +506,7 @@ function AdminRekrutmen() {
           <div className="rk-positions-head">
             <div>
               <div className="rk-positions-title">Pengaturan Lowongan</div>
-              <div className="rk-positions-sub">Kontrol posisi yang tampil di rekrutmen.yumme.id. Perubahan langsung tersinkron.</div>
+              <div className="rk-positions-sub">Kontrol posisi yang tampil di rekrutmen.djiwatentram.web.id. Perubahan langsung tersinkron.</div>
             </div>
             <button className="rk-segmented-item" onClick={() => setShowPositions((v) => !v)}>{showPositions ? "Sembunyikan" : "Kelola"}</button>
           </div>

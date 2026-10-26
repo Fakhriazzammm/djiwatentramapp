@@ -9,7 +9,7 @@ sys.path.insert(0, '/opt/djiwatentramapp/yumi-finance-agent')
 from sumopod_client import SumoPodClient
 
 WIB = timezone(timedelta(hours=7))
-SUPABASE_URL = "https://supabase.yumme.id"
+SUPABASE_URL = "https://supabase.djiwatentram.web.id"
 SERVICE_KEY = None  # will load below
 MAX_IMAGE_SIZE = 2400
 JPEG_QUALITY = 88

@@ -193,7 +193,7 @@ function BrandCustomerIndex() {
 								</button>
 
 								<a
-									href="https://booking.yumme.id/"
+									href="https://booking.djiwatentram.web.id/"
 									aria-label="Booking Acara & Kolaborasi"
 									className="mt-2 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-[14px] border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary transition-all duration-[180ms] hover:bg-primary/10 active:scale-[.97]"
 								>

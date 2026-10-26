@@ -458,7 +458,7 @@ Production:
 
 ```text
 Deploy hanya apps/admin/dist
-Target admindjiwatentram.yumme.id
+Target admindjiwatentram.web.id
 Verifikasi HTTP, index hash, lazy bundle, dan Service Worker
 ```
 
@@ -1019,15 +1019,15 @@ Jika browser tidak tersedia, jangan klaim visual sudah tervalidasi. Gunakan evid
 Deploy hanya Admin:
 
 ```text
-https://admindjiwatentram.yumme.id
+https://admindjiwatentram.web.id
 ```
 
 Verifikasi:
 
 ```bash
-curl -I https://admindjiwatentram.yumme.id/
-curl -I https://admindjiwatentram.yumme.id/admin
-curl -fsS https://admindjiwatentram.yumme.id/ | grep -E 'index-.*\\.(js|css)'
+curl -I https://admindjiwatentram.web.id/
+curl -I https://admindjiwatentram.web.id/admin
+curl -fsS https://admindjiwatentram.web.id/ | grep -E 'index-.*\\.(js|css)'
 ```
 
 Pastikan:

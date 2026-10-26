@@ -703,9 +703,9 @@ Fix `apps/admin/vercel.json` before deployment:
 ### Canonical deployment mapping
 
 ```text
-apps/admin    → admindjiwatentram.yumme.id
-apps/pos      → pos.yumme.id
-apps/customer → djiwatentram.yumme.id
+apps/admin    → admindjiwatentram.web.id
+apps/pos      → pos.djiwatentram.web.id
+apps/customer → djiwatentram.web.id
 ```
 
 ### Production verification

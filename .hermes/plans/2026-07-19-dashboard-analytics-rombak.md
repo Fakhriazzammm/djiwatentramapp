@@ -632,7 +632,7 @@ cd /opt/djiwatentramapp/apps/pos && npm run build 2>&1 | tail -10
 **Expected:** Build success, no TypeScript errors.
 
 **E2E Verification Steps:**
-1. `browser_navigate` ke `https://pos.yumme.id/home`
+1. `browser_navigate` ke `https://pos.djiwatentram.web.id/home`
 2. `browser_vision` → screenshot, verify:
    - [ ] Tidak ada section "Ringkasan Shift"
    - [ ] Ada 4 kartu Today's Pulse

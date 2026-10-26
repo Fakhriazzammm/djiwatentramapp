@@ -31,7 +31,7 @@ async function login(email: string, password: string) {
 async function register(email: string, password: string, name: string) {
 	const { data, error } = await admin.auth.signUp({
 		email, password,
-		options: { data: { name }, emailRedirectTo: "https://djiwatentram.yumme.id" },
+		options: { data: { name }, emailRedirectTo: "https://djiwatentram.web.id" },
 	});
 	if (error) return respond({ error: error.message });
 	return respond({
@@ -43,7 +43,7 @@ async function register(email: string, password: string, name: string) {
 
 async function resetPassword(email: string) {
 	const { error } = await admin.auth.resetPasswordForEmail(email, {
-		redirectTo: "https://djiwatentram.yumme.id",
+		redirectTo: "https://djiwatentram.web.id",
 	});
 	if (error) return respond({ error: error.message });
 	return respond({ success: true });

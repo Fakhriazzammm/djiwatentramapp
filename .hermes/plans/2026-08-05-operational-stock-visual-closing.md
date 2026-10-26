@@ -375,7 +375,7 @@ Aman
 
 ## 6. Cross-App Integration Mapping
 
-### apps/karyawan (`karyawan.yumme.id`)
+### apps/karyawan (`karyawan.djiwatentram.web.id`)
 
 | Data | Source | Used in |
 |---|---|---|
@@ -384,7 +384,7 @@ Aman
 | Closing report | `process-closing` | Mini App/browser closing submission |
 | Success/error state | Edge response | closing result UI |
 
-### apps/admin (`admindjiwatentram.yumme.id`)
+### apps/admin (`admindjiwatentram.web.id`)
 
 | Data | Source | Used in |
 |---|---|---|
@@ -393,7 +393,7 @@ Aman
 | Closing reports | `pos.stock_opname_logs` | review, filters, detail |
 | Technical detail | existing fields | secondary disclosure only |
 
-### apps/pos (`pos.yumme.id`)
+### apps/pos (`pos.djiwatentram.web.id`)
 
 | Data | Source | Used in |
 |---|---|---|
