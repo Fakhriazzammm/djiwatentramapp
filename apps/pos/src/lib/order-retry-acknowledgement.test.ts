@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import ts from "typescript";
 import { createClient } from "@supabase/supabase-js";
 import { assertOrderRetryAcknowledgement } from "./order-retry-acknowledgement";
+import { reconcileInterruptedOrder } from "./order-retry-reconciliation";
 
 const requestedItems = [
 	{ productId: "coffee", productName: "Kopi", variant: "hot", quantity: 2, price: 15000 },
@@ -23,6 +24,7 @@ type Fixture = {
 	items?: Record<string, unknown>[];
 	finance?: Record<string, unknown>[];
 	queryError?: "orders" | "order_items" | "financial_transactions";
+	repair?: boolean;
 };
 function database(fixture: Fixture = {}) {
 	const requests: { method: string; url: URL; body: any }[] = [];
@@ -57,6 +59,14 @@ function database(fixture: Fixture = {}) {
 			if (method === "POST") {
 				if (table === "calculate_order_tax") return reply({ totalAmount: 44000 });
 				if (table === "orders" && fixture.race) return reply({ code: "23505", message: "duplicate" }, 409);
+				if (fixture.repair && table === "order_items") {
+					fixture.items = savedItems;
+					return new Response(null, { status: 201 });
+				}
+				if (fixture.repair && table === "financial_transactions") {
+					fixture.finance = [settlement];
+					return new Response(null, { status: 201 });
+				}
 				if (fixture.newOrder && ["orders", "order_items", "financial_transactions"].includes(table ?? "")) return new Response(null, { status: 201 });
 			}
 			throw new Error(`Unexpected database request: ${method} ${url.pathname}`);
@@ -81,6 +91,7 @@ async function orderAction(client: ReturnType<typeof database>["client"]) {
 		createClient: () => client, allocateDailyReceiptNo: async () => 7,
 		generateOrderNumber: () => "ORD-7", makeSourceId: (prefix: string) => `${prefix}_new`,
 		assertOrderRetryAcknowledgement,
+		reconcileInterruptedOrder,
 	};
 	return new Function("exports", ...Object.keys(dependencies), `${compiled}\nreturn exports.useHybridCreateOrder();`)({}, ...Object.values(dependencies));
 }
@@ -90,20 +101,19 @@ const request = { idempotencyKey: "request-1", items: requestedItems, totalAmoun
 describe("create-order retry acknowledgement", () => {
 	for (const race of [false, true]) {
 		const path = race ? "23505 race" : "existing key";
-		it(`${path}: keeps an incomplete header unacknowledged`, async () => {
-			const db = database({ race, items: [] });
-			const action = await orderAction(db.client);
-			await assert.rejects(action(request), /belum|periksa/i);
-			assert.equal(db.requests.filter((entry) => entry.method !== "GET" && entry.url.pathname.endsWith("order_items")).length, 0);
+		it(`${path}: repairs an incomplete header without creating a second order`, async () => {
+			const db = database({ race, repair: true, items: [], finance: [] });
+			expect(await (await orderAction(db.client))(request)).toBe("order_saved");
+			assert.equal(db.requests.filter((entry) => entry.method === "POST" && entry.url.pathname.endsWith("orders")).length <= 1, true);
 		});
-		it(`${path}: keeps a paid order without settlement unacknowledged`, async () => {
-			const db = database({ race, finance: [] });
-			await assert.rejects((await orderAction(db.client))(request), /belum|periksa/i);
+		it(`${path}: repairs a paid order without settlement`, async () => {
+			const db = database({ race, repair: true, finance: [] });
+			expect(await (await orderAction(db.client))(request)).toBe("order_saved");
 		});
 		for (const queryError of ["order_items", "financial_transactions"] as const) {
 			it(`${path}: retains the retry when ${queryError} cannot be read`, async () => {
 				const db = database({ race, queryError });
-				await assert.rejects((await orderAction(db.client))(request), /belum.*diverifikasi/i);
+				await assert.rejects((await orderAction(db.client))(request), /belum.*dipulihkan|periksa/i);
 			});
 		}
 		it(`${path}: acknowledges a fully persisted paid order`, async () => {
@@ -115,10 +125,20 @@ describe("create-order retry acknowledgement", () => {
 			expect(await (await orderAction(db.client))({ ...request, isOpenBill: true })).toBe("order_saved");
 		});
 	}
+	it("repairs a missing item line before acknowledging the existing payment", async () => {
+		const db = database({ repair: true, items: savedItems.slice(0, 1) });
+		expect(await (await orderAction(db.client))(request)).toBe("order_saved");
+	});
 	it("writes new settlement using the persisted authoritative tax total", async () => {
 		const db = database({ newOrder: true });
 		expect(await (await orderAction(db.client))(request)).toBe("order_new");
 		assert.equal(db.requests.find((entry) => entry.method === "POST" && entry.url.pathname.endsWith("financial_transactions"))?.body.amount, 44000);
+	});
+	it("repairs an existing paid order whose item and settlement writes were interrupted", async () => {
+		const db = database({ repair: true, items: [], finance: [] });
+		expect(await (await orderAction(db.client))(request)).toBe("order_saved");
+		assert.equal(db.requests.some((entry) => entry.method === "POST" && entry.url.pathname.endsWith("order_items")), true);
+		assert.equal(db.requests.some((entry) => entry.method === "POST" && entry.url.pathname.endsWith("financial_transactions")), true);
 	});
 });
 
@@ -131,7 +151,6 @@ describe("retry verification fails closed", () => {
 		});
 	}
 	const cases: [string, Fixture][] = [
-		["missing line", { items: savedItems.slice(0, 1) }],
 		["extra line", { items: [...savedItems, { ...savedItems[0], line_no: 3 }] }],
 		["duplicate line", { items: [savedItems[0], savedItems[0]] }],
 		["different product", { items: [{ ...savedItems[0], product_source_id: "tea" }, savedItems[1]] }],
@@ -156,7 +175,7 @@ describe("retry verification fails closed", () => {
 		it(`does not acknowledge ${name}`, async () => {
 			const db = database(fixture);
 			await assert.rejects((await orderAction(db.client))(request), (error: Error) => {
-				assert.match(error.message, /belum|periksa/i);
+				assert.match(error.message, /belum|periksa|berbeda|valid/i);
 				assert.match(error.message, /admin|kembali/i);
 				assert.equal(error.message.includes("private database detail"), false);
 				return true;

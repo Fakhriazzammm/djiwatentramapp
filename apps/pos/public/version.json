@@ -1,7 +1,7 @@
 {
-  "version": "0.2.547",
-  "commitHash": "e0017cf",
-  "message": "chore(pos): stamp image and input fixes",
-  "buildDate": "2026-10-25",
-  "generatedAt": "2026-10-25T10:03:38.014Z"
+  "version": "0.2.548",
+  "commitHash": "7a35f6e",
+  "message": "fix(pos): resolve legacy self-hosted product image URLs",
+  "buildDate": "2026-10-26",
+  "generatedAt": "2026-10-26T05:16:22.335Z"
 }

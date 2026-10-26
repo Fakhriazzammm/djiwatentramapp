@@ -2,6 +2,7 @@ import { formatOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { allocateDailyReceiptNo } from "@yumipos/web-shared/lib/daily-receipt";
 import { createClient } from "@/lib/client";
 import { assertOrderRetryAcknowledgement } from "@/lib/order-retry-acknowledgement";
+import { reconcileInterruptedOrder } from "@/lib/order-retry-reconciliation";
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useCallback, useState } from "react";
@@ -2522,11 +2523,12 @@ export function useHybridCreateOrder() {
 			if (idempotencyKey) {
 				const { data: existingOrder, error: existingError } = await pos
 					.from("orders")
-					.select("source_id,status,total_amount")
+					.select("source_id,status,total_amount,order_number,customer_name,payment_method,created_at,daily_receipt_no,receipt_kind")
 					.eq("idempotency_key", idempotencyKey)
 					.maybeSingle();
 				if (existingError) throw existingError;
 				if (existingOrder?.source_id) {
+					await reconcileInterruptedOrder(pos, existingOrder, args);
 					await assertOrderRetryAcknowledgement(pos, existingOrder, args);
 					return existingOrder.source_id;
 				}
@@ -2627,11 +2629,12 @@ const orderRow = {
 					if (idempotencyKey && orderError.code === "23505") {
 						const { data: concurrentOrder, error: concurrentError } = await pos
 							.from("orders")
-							.select("source_id,status,total_amount")
+							.select("source_id,status,total_amount,order_number,customer_name,payment_method,created_at,daily_receipt_no,receipt_kind")
 							.eq("idempotency_key", idempotencyKey)
 							.maybeSingle();
 						if (concurrentError) throw concurrentError;
 						if (concurrentOrder?.source_id) {
+							await reconcileInterruptedOrder(pos, concurrentOrder, args);
 							await assertOrderRetryAcknowledgement(pos, concurrentOrder, args);
 							return concurrentOrder.source_id;
 						}
