@@ -983,7 +983,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				}
 			}
 		},
-		[categoryTabs, scrollCategoryIntoView]
+		[categoryTabs]
 	);
 
 	useEffect(() => {
@@ -2100,7 +2100,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 										isActive
 											? "bg-primary text-primary-foreground shadow-md ring-1 ring-primary"
 											: "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50",
-										isFocused && "ring-2 ring-primary ring-offset-2 transition-shadow"
 									)}
 								>
 									{cat.name}
@@ -2202,7 +2201,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								    className={cn(
 								      "group relative flex flex-col overflow-hidden rounded-2xl border bg-card shadow-sm text-left",
 								      "transition-shadow",
-								      isFocused && "ring-2 ring-primary ring-offset-2 shadow-lg"
 								    )}
 									>
 										{/* Image */}
@@ -2252,10 +2250,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 												</div>
 											)}
 
-											{/* Keyboard focus indicator */}
-											{isFocused && (
-												<div className="absolute inset-0 border-2 border-primary rounded-t-2xl pointer-events-none" />
-											)}
 										</div>
 
 										{/* Info */}
