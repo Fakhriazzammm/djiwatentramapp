@@ -23,7 +23,7 @@
 - The shared order writer stamps the Merchandise brand and a separate merchandise receipt kind. `apps/admin/src/routes/admin/orders.lazy.tsx` currently has no Merchandise business filter/channel classification.
 - Existing `pos.orders` fields include `source_id`, `order_number`, `total_amount`, `status`, `payment_method`, `order_type`, `source`, `brand_slug`, `payment_gateway`, and `gateway_invoice_id`; `pos.order_items` holds `order_source_id`, `line_no`, `product_source_id`, `quantity`, and `price`. `public.pos_orders` exposes brand and delivery fields. Confirm the live schema/migrations before any additive DDL.
 - Mayar’s physical-product documentation describes stock, terms, sales start time, and expired date; its order page describes shipping workflow. The reviewed pages do **not** document a native preorder lifecycle or preorder-specific API field. Mayar V2 `POST /invoices/create` accepts invoice items, expiry, payment method, and `extraData`; it is a suitable payment step, not a reservation/fulfillment engine.
-- Production roots for both `https://djiwatentram.yumme.id/` and `https://merchandise.yumme.id/` returned HTTP 200 during this read-only review. No live catalog rows/counts were queried.
+- Production roots for both `https://djiwatentram.web.id/` and `https://merchandise.djiwatentram.web.id/` returned HTTP 200 during this read-only review. No live catalog rows/counts were queried.
 
 ## Recommended product boundary
 

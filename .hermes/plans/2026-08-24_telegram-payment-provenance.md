@@ -8,9 +8,9 @@
 
 Membuat sumber dan metode pembayaran order terbaca jelas, konsisten, dan dapat dipercaya di seluruh ekosistem:
 
-- Customer App: `djiwatentram.yumme.id`
-- POS: `pos.yumme.id/menu`
-- Admin: `admindjiwatentram.yumme.id`
+- Customer App: `djiwatentram.web.id`
+- POS: `pos.djiwatentram.web.id/menu`
+- Admin: `admindjiwatentram.web.id`
 - Yumi Supervisor Bot
 - Grup Transaksi
 - Grup Kitchen
@@ -197,7 +197,7 @@ Tujuannya menemukan kombinasi legacy sebelum menentukan compatibility mapping.
 
 ## Perubahan Customer App
 
-Target: `apps/customer`, domain `djiwatentram.yumme.id`.
+Target: `apps/customer`, domain `djiwatentram.web.id`.
 
 ### Checkout
 
@@ -251,9 +251,9 @@ Pertahankan gate yang sudah ada untuk pembayaran online:
 
 Jangan memasukkan nomor/email restoran sebagai fallback.
 
-## Perubahan POS — `pos.yumme.id/menu`
+## Perubahan POS — `pos.djiwatentram.web.id/menu`
 
-Ya, halaman kasir `/menu` di `pos.yumme.id/menu` juga berubah pada sisi tampilan dan mapping data, tetapi **tidak mengubah konsep metode pembayaran POS langsung**.
+Ya, halaman kasir `/menu` di `pos.djiwatentram.web.id/menu` juga berubah pada sisi tampilan dan mapping data, tetapi **tidak mengubah konsep metode pembayaran POS langsung**.
 
 ### Yang berubah di halaman `/menu`
 
@@ -333,7 +333,7 @@ Ya, halaman kasir `/menu` di `pos.yumme.id/menu` juga berubah pada sisi tampilan
 - Metode internal yang benar-benar dipakai order POS langsung.
 - Riwayat transaksi lama tidak diubah massal.
 
-## Perubahan POS — `pos.yumme.id/menu`
+## Perubahan POS — `pos.djiwatentram.web.id/menu`
 
 Target file awal yang perlu diaudit/diperbarui:
 
@@ -389,7 +389,7 @@ Jangan mengubah status payment hanya karena label UI berubah. Settlement tunai t
 
 ## Perubahan Saat Tutup Kasir / Akhiri Shift
 
-Perubahan label pembayaran juga harus masuk ke flow tutup kasir di `pos.yumme.id/menu`, tetapi **tidak boleh mengubah rumus rekonsiliasi kas**.
+Perubahan label pembayaran juga harus masuk ke flow tutup kasir di `pos.djiwatentram.web.id/menu`, tetapi **tidak boleh mengubah rumus rekonsiliasi kas**.
 
 ### Prinsip utama tutup kasir
 
@@ -695,7 +695,7 @@ Kegagalan notifikasi tidak membatalkan financial close. Target Report dan Transa
 - Tidak ada double count akibat status Bar/Kitchen.
 - Kegagalan notifikasi tidak membatalkan penutupan shift.
 
-## Perubahan Admin — `admindjiwatentram.yumme.id`
+## Perubahan Admin — `admindjiwatentram.web.id`
 
 Target file awal:
 

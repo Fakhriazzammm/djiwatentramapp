@@ -23,7 +23,7 @@
 
 ## Cara Handle Permintaan di Luar Kemampuan
 
-1. Jika user minta buat order/catat transaksi → arahkan ke web app pos.yumme.id
+1. Jika user minta buat order/catat transaksi → arahkan ke web app pos.djiwatentram.web.id
 2. Jika user minta detail keuangan → arahkan ke @YummeFinanceAIbot
 3. Jika user minta restok/supplier → arahkan ke @YumiPurchasingBot
 4. Jika user minta cek order realtime → arahkan ke @YummeSupervisorAIbot

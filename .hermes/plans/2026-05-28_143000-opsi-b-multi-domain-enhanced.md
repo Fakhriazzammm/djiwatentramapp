@@ -13,8 +13,8 @@ Pisahkan satu Vite PWA (`apps/web`) menjadi **dua app terpisah** dengan **dua do
 
 | App | Domain | Audience | PWA Name | Auth (Phase 1) | Auth (Phase 2) |
 |---|---|---|---|---|
-| **POS** (internal) | `pos.yumme.id` | Kasir, Admin, Owner | "Djiwa Tentram POS" | YumiAuth (PIN/email) | — |
-| **Customer** | `djiwatentram.yumme.id` | Customer | "Djiwa Tentram App" | None (public) | Email + password (simple) |
+| **POS** (internal) | `pos.djiwatentram.web.id` | Kasir, Admin, Owner | "Djiwa Tentram POS" | YumiAuth (PIN/email) | — |
+| **Customer** | `djiwatentram.web.id` | Customer | "Djiwa Tentram App" | None (public) | Email + password (simple) |
 
 Backend & database tetap **satu Supabase yang sama**. Shared code di `packages/yumipos-web-shared`.
 
@@ -22,8 +22,8 @@ Backend & database tetap **satu Supabase yang sama**. Shared code di `packages/y
 
 | Aspect | Old Plan (May 15) | New Plan (May 28) |
 |---|---|---|
-| Internal domain | `app.djiwatentram.yumme.id` | `pos.yumme.id` |
-| Customer domain | `order.djiwatentram.yumme.id` | `djiwatentram.yumme.id` (root domain) |
+| Internal domain | `app.djiwatentram.web.id` | `pos.djiwatentram.web.id` |
+| Customer domain | `order.djiwatentram.web.id` | `djiwatentram.web.id` (root domain) |
 | Deploy | Caddy/Nginx VPS | **Cloudflare Pages** (existing setup) |
 | Bundle optimization | Not addressed | ✅ Per-app bundle analysis & tree-shaking |
 | Cache strategy | Basic | ✅ Differentiated: POS network-first, Customer cache-first images |
@@ -64,7 +64,7 @@ djiwatentramapp/
 ### 2.2 Deploy Saat Ini
 
 - **Cloudflare Pages**: auto-deploy dari GitHub push
-- **Domain**: `app.djiwatentram.yumme.id` (current, single)
+- **Domain**: `app.djiwatentram.web.id` (current, single)
 - **Build**: `turbo build` → serve `apps/web/dist`
 - **Supabase Edge Functions**: auto-deploy via GitHub Actions
 
@@ -93,15 +93,15 @@ Semua route kecuali `/$brandSlug*` — ~126 file:
                     ┌──────────────────────────────┐
                     │        Supabase Backend       │
                     │  DB + RLS + Edge Functions    │
-                    │  CORS: pos.yumme.id,  │
-                    │        djiwatentram.yumme.id       │
+                    │  CORS: pos.djiwatentram.web.id,  │
+                    │        djiwatentram.web.id       │
                     └──────┬──────────────┬────────┘
                            │              │
               ┌────────────▼──┐    ┌──────▼────────────┐
               │  POS App                  │    │  Customer App            │
               │  "Djiwa Tentram POS"      │    │  "Djiwa Tentram App"     │
               │                           │    │                          │
-              │  pos.djiwa-               │    │  djiwatentram.yumme.id        │
+              │  pos.djiwa-               │    │  djiwatentram.web.id        │
               │  tentram.com              │    │                          │
               │                           │    │  Build: 1.5MB            │
               │  Build: 4.2MB             │    │  (no admin/pos)          │
@@ -283,7 +283,7 @@ workbox: {
 | | POS App | Customer App |
 |---|---|---|
 | **CF Project** | `yumme-pos` | `yumme-app` |
-| **Domain** | `pos.yumme.id` | `djiwatentram.yumme.id` |
+| **Domain** | `pos.djiwatentram.web.id` | `djiwatentram.web.id` |
 | **Branch** | `main` (path: `apps/pos`) | `main` (path: `apps/customer`) |
 | **Build command** | `cd ../.. && bun run build:pos` | `cd ../.. && bun run build:customer` |
 | **Output dir** | `apps/pos/dist` | `apps/customer/dist` |
@@ -307,9 +307,9 @@ workbox: {
 
 Tambahkan di Supabase Dashboard → Settings → API:
 ```
-pos.yumme.id, djiwatentram.yumme.id
+pos.djiwatentram.web.id, djiwatentram.web.id
 ```
-(Sudah ada `app.djiwatentram.yumme.id` — tambahin dua ini, jangan hapus yang lama dulu sampai transisi selesai)
+(Sudah ada `app.djiwatentram.web.id` — tambahin dua ini, jangan hapus yang lama dulu sampai transisi selesai)
 
 ---
 
@@ -478,8 +478,8 @@ Step 4.2: Update turbo.json pipeline
 Step 4.3: Create CF Pages project for yumme-pos
 Step 4.4: Create CF Pages project for yumme-app
 Step 4.5: Setup DNS
-  - pos.yumme.id → yumme-pos.pages.dev
-  - djiwatentram.yumme.id → yumme-app.pages.dev
+  - pos.djiwatentram.web.id → yumme-pos.pages.dev
+  - djiwatentram.web.id → yumme-app.pages.dev
 Step 4.6: Update Supabase CORS
 Step 4.7: Test both domains
 ```
@@ -487,18 +487,18 @@ Step 4.7: Test both domains
 ### Phase 5: Cleanup (30 menit)
 
 ```
-Step 5.1: Smoke test all POS routes on pos.yumme.id
-Step 5.2: Smoke test customer app on djiwatentram.yumme.id
+Step 5.1: Smoke test all POS routes on pos.djiwatentram.web.id
+Step 5.2: Smoke test customer app on djiwatentram.web.id
 Step 5.3: Delete apps/web
 Step 5.4: Update CI/CD if any
-Step 5.5: Remove old app.djiwatentram.yumme.id DNS after transition
+Step 5.5: Remove old app.djiwatentram.web.id DNS after transition
 ```
 
 ---
 
 ## 12. ⚠️ Operational Safety — Zero Disruption Guarantee
 
-Sistem sedang dipakai produksi (`app.djiwatentram.yumme.id` live). **Tidak boleh ada downtime atau gangguan operasional kasir/customer selama proses split.**
+Sistem sedang dipakai produksi (`app.djiwatentram.web.id` live). **Tidak boleh ada downtime atau gangguan operasional kasir/customer selama proses split.**
 
 ### 12.1 Prinsip "No Touch" pada App yang Sedang Jalan
 
@@ -507,38 +507,38 @@ Sistem sedang dipakai produksi (`app.djiwatentram.yumme.id` live). **Tidak boleh
 | **Jangan sentuh `apps/web/`** | Tidak ada edit, hapus, atau rename. `apps/web` adalah source of truth yang sedang live. |
 | **Develop di samping, bukan di tempat** | `apps/pos/` dan `apps/customer/` dibuat sebagai app BARU, bukan hasil modifikasi `apps/web`. |
 | **Build terisolasi** | `turbo build --filter=@yumipos/pos` tidak akan menyentuh `apps/web/dist/` yang sedang di-serve. |
-| **Deploy ke CF project terpisah** | `yumme-pos` dan `yumme-app` adalah project CF Pages BARU — tidak mengubah project existing yang serve `app.djiwatentram.yumme.id`. |
+| **Deploy ke CF project terpisah** | `yumme-pos` dan `yumme-app` adalah project CF Pages BARU — tidak mengubah project existing yang serve `app.djiwatentram.web.id`. |
 
 ### 12.2 Strategi Parallel Run
 
 ```
 FASE DEVELOPMENT (1-2 hari)
 ═══════════════════════════════════════════════
-  app.djiwatentram.yumme.id  →  apps/web (PRODUKSI, tidak disentuh)
+  app.djiwatentram.web.id  →  apps/web (PRODUKSI, tidak disentuh)
   
   apps/pos/      ← develop & build lokal (localhost:3002)
   apps/customer/ ← develop & build lokal (localhost:3003)
   
   ✗ Tidak ada yang deploy ke production
   ✗ Tidak ada perubahan di apps/web
-  ✗ Kasir & customer tetap pakai app.djiwatentram.yumme.id
+  ✗ Kasir & customer tetap pakai app.djiwatentram.web.id
 
 FASE STAGING (1 hari)
 ═══════════════════════════════════════════════
-  app.djiwatentram.yumme.id  →  apps/web (PRODUKSI, masih live)
+  app.djiwatentram.web.id  →  apps/web (PRODUKSI, masih live)
   
-  pos.yumme.id  →  yumme-pos (STAGING, test internal)
-  djiwatentram.yumme.id      →  yumme-app (STAGING, test internal)
+  pos.djiwatentram.web.id  →  yumme-pos (STAGING, test internal)
+  djiwatentram.web.id      →  yumme-app (STAGING, test internal)
   
-  ✓ Tim internal tes POS di pos.yumme.id
-  ✓ Tim internal tes customer di djiwatentram.yumme.id
+  ✓ Tim internal tes POS di pos.djiwatentram.web.id
+  ✓ Tim internal tes customer di djiwatentram.web.id
   ✗ Customer belum diarahkan ke domain baru
 
 FASE CUTOVER (1 jam, bisa di luar jam operasional)
 ═══════════════════════════════════════════════
   1. Umumkan maintenance window (misal: jam 10 malam)
-  2. DNS: app.djiwatentram.yumme.id → CNAME ke yumme-pos.pages.dev
-  3. DNS: djiwatentram.yumme.id → CNAME ke yumme-app.pages.dev (jika sebelumnya beda)
+  2. DNS: app.djiwatentram.web.id → CNAME ke yumme-pos.pages.dev
+  3. DNS: djiwatentram.web.id → CNAME ke yumme-app.pages.dev (jika sebelumnya beda)
   4. Test 15 menit: order kasir + customer order + payment
   5. Jika OK → done. Jika gagal → revert DNS (5 menit)
   6. apps/web/ disimpan 1 minggu sebagai cold backup
@@ -589,7 +589,7 @@ Jika setelah cutover ada masalah:
 
 1. Buka Cloudflare Dashboard → DNS
 2. Revert CNAME record:
-   app.djiwatentram.yumme.id → KEMBALI ke yumme.pages.dev (existing)
+   app.djiwatentram.web.id → KEMBALI ke yumme.pages.dev (existing)
 3. Tunggu propagasi (TTL 60 detik = max 1 menit)
 4. Kasir refresh halaman → kembali ke app lama
 
@@ -667,7 +667,7 @@ CREATE TABLE public.customer_profiles (
 ### 15.3 Flow Login Customer
 
 ```
-Customer buka djiwatentram.yumme.id
+Customer buka djiwatentram.web.id
   ↓
 Welcome screen — dua opsi:
   ├── "Pesan tanpa login" → langsung ke menu (seperti sekarang)
@@ -712,7 +712,7 @@ export const Route = createRootRoute({
 ### 15.6 Customer Profile Page — `/profile/$slug`
 
 ```
-djiwatentram.yumme.id/profile/azzam
+djiwatentram.web.id/profile/azzam
 ├── Info akun: nama, email, phone, join date
 ├── Order history: list order terakhir (status, total, tanggal)
 ├── Loyalty points: total points, reward yang tersedia
@@ -753,11 +753,11 @@ Data dari:
 
 ## 16. Open Questions
 
-1. **Domain final?** `pos.yumme.id` & `djiwatentram.yumme.id` — confirm?
+1. **Domain final?** `pos.djiwatentram.web.id` & `djiwatentram.web.id` — confirm?
 2. **Progressive migration?** Keep `apps/web` running during transition, or cutover?
 3. **PWA icons?** Need 2 sets of icons (pos-192, pos-512, app-192, app-512) — who designs?
 4. **Customer SEO?** Customer app still SPA. Need SSR for SEO later?
-5. **Current `app.djiwatentram.yumme.id`?** Redirect ke `pos.yumme.id` setelah transition?
+5. **Current `app.djiwatentram.web.id`?** Redirect ke `pos.djiwatentram.web.id` setelah transition?
 6. **yumi-ai-bot?** Tetap di internal (Python app, bukan bagian web frontend) — no change needed.
 7. **Split `use-hybrid-write-actions.ts`?** Wajib. File 6084L campur shared + POS. Audit & split before extraction.
 8. **Phase 2 timing?** Kapan customer auth diimplementasikan? Setelah Phase 1 stabil 1-2 minggu?
@@ -785,6 +785,6 @@ Data dari:
 
 Jika terjadi masalah:
 1. `apps/web` tetap ada sampai semua verified
-2. DNS bisa langsung di-revert ke `app.djiwatentram.yumme.id` → `apps/web` (CF Pages)
+2. DNS bisa langsung di-revert ke `app.djiwatentram.web.id` → `apps/web` (CF Pages)
 3. Supabase gak ada perubahan — rollback zero-downtime
 4. CF Pages deploy instant rollback via dashboard

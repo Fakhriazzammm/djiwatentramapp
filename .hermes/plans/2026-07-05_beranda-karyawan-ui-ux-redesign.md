@@ -1,8 +1,8 @@
-# Plan: UI/UX Redesign — Beranda Karyawan (`karyawan.yumme.id/$username`)
+# Plan: UI/UX Redesign — Beranda Karyawan (`karyawan.djiwatentram.web.id/$username`)
 
 ## Goal
 
-Migrasikan tampilan halaman `karyawan.yumme.id/$username` dari layout **profil (scroll-based)** menjadi **Mobile-First Dashboard** dengan **Bottom Navigation** (5 tab) yang mengadopsi desain referensi: Header profil + Banner info + Grid Menu 8 ikon + Sticky Bottom Nav.
+Migrasikan tampilan halaman `karyawan.djiwatentram.web.id/$username` dari layout **profil (scroll-based)** menjadi **Mobile-First Dashboard** dengan **Bottom Navigation** (5 tab) yang mengadopsi desain referensi: Header profil + Banner info + Grid Menu 8 ikon + Sticky Bottom Nav.
 
 **Referensi:** Screenshot employee portal "DJIWA TENTRAM INTERNAL" dengan:
 - Header: Logo + greeting dinamis + $namauser + Jabatan + avatar
@@ -168,7 +168,7 @@ Tujuannya: mengurangi kompleksitas file utama sebelum refactor besar.
 | # | Task |
 |---|------|
 | 7.1 | Build + typecheck: `cd /opt/djiwatentramapp && cd apps/web && npx tsc --noEmit` |
-| 7.2 | Test: navigate ke `karyawan.yumme.id/$username`, unlock PIN, verifikasi semua tab |
+| 7.2 | Test: navigate ke `karyawan.djiwatentram.web.id/$username`, unlock PIN, verifikasi semua tab |
 | 7.3 | Test: tombol Absensi → redirect ke `/attendance` |
 | 7.4 | Test: tombol Izin/Cuti/Sakit → halaman `/karyawan/$username/izin` |
 | 7.5 | Test: tombol Slip Gaji → tab Profile + scroll ke section payslip |

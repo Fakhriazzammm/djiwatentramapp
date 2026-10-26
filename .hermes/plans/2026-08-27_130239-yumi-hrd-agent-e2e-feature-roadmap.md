@@ -10,8 +10,8 @@ Mengembangkan fitur baru Yumi HRD Agent secara terintegrasi dengan:
 
 ```text
 @yumihrdbot
-  ↔ apps/karyawan / karyawan.yumme.id
-  ↔ apps/admin / admindjiwatentram.yumme.id
+  ↔ apps/karyawan / karyawan.djiwatentram.web.id
+  ↔ apps/admin / admindjiwatentram.web.id
   ↔ attendance, schedule, leave, payroll, notification
 ```
 
@@ -57,7 +57,7 @@ Batasan/risiko yang harus dipertahankan:
 - Telegram notification bersifat best-effort dan tidak boleh mengubah hasil attendance write;
 - jangan memakai `getUpdates` manual dengan `allowed_updates` channel-only karena dapat mengganggu polling DM.
 
-### `apps/karyawan` — `karyawan.yumme.id`
+### `apps/karyawan` — `karyawan.djiwatentram.web.id`
 
 Route yang sudah tersedia dan harus dipakai ulang, bukan diduplikasi:
 
@@ -84,7 +84,7 @@ Fungsi existing:
 - `/$username/absensi` adalah launcher menuju flow bot Telegram, bukan write path alternatif;
 - `absen-keluar-mini` menangani closing checklist/stock opname/check-out signed flow.
 
-### `apps/admin` — `admindjiwatentram.yumme.id`
+### `apps/admin` — `admindjiwatentram.web.id`
 
 Surface yang sudah tersedia:
 
@@ -275,7 +275,7 @@ Bot dapat menyediakan shortcut:
 ```text
 ⚙️ Menu Lainnya
   → Ajukan Izin/Cuti
-  → buka karyawan.yumme.id/{username}/izin
+  → buka karyawan.djiwatentram.web.id/{username}/izin
 ```
 
 Bot tidak membuat pengajuan kedua; gunakan link ke form canonical atau API/RPC yang sama.
@@ -621,7 +621,7 @@ Keyboard utama tetap ringkas dan menjadi satu-satunya alur operasional utama:
 📖 Bantuan
 ```
 
-Semua fitur harian wajib dapat dijalankan dengan tombol Telegram, tanpa meminta karyawan mengetik slash command. Tombol dapat membuka flow chat, inline keyboard, atau deep link ke route canonical `karyawan.yumme.id` sesuai kompleksitas fitur.
+Semua fitur harian wajib dapat dijalankan dengan tombol Telegram, tanpa meminta karyawan mengetik slash command. Tombol dapat membuka flow chat, inline keyboard, atau deep link ke route canonical `karyawan.djiwatentram.web.id` sesuai kompleksitas fitur.
 
 Slash command hanya dipertahankan sebagai fallback teknis:
 
@@ -745,8 +745,8 @@ Never hardcode a schedule assignment, employee role, payroll amount, recipient I
 - Integration tests for leave approval, schedule visibility, correction audit, and DM dedupe.
 - Build `apps/karyawan`, `apps/admin`, and bot checks according to touched scope.
 - Verify canonical domains:
-  - `https://karyawan.yumme.id`
-  - `https://admindjiwatentram.yumme.id`
+  - `https://karyawan.djiwatentram.web.id`
+  - `https://admindjiwatentram.web.id`
 - Verify Bot service, Telegram commands, Mini App links, and notification delivery.
 - Test real read-only paths and approved test records only.
 - Deploy only affected app/function/service.
@@ -789,7 +789,7 @@ contract
 leaderboard
 ```
 
-Tetapi implementasinya masih merender beberapa data/form secara inline di `absen-keluar-mini.lazy.tsx`, sementara `karyawan.yumme.id` memiliki route canonical terpisah:
+Tetapi implementasinya masih merender beberapa data/form secara inline di `absen-keluar-mini.lazy.tsx`, sementara `karyawan.djiwatentram.web.id` memiliki route canonical terpisah:
 
 ```text
 /$username/beranda
@@ -806,7 +806,7 @@ Tetapi implementasinya masih merender beberapa data/form secara inline di `absen
 
 ### Keputusan arsitektur
 
-Mini App harus memiliki **parity behavior dan data** dengan `karyawan.yumme.id`, tetapi tidak harus menyalin markup desktop/web secara mentah.
+Mini App harus memiliki **parity behavior dan data** dengan `karyawan.djiwatentram.web.id`, tetapi tidak harus menyalin markup desktop/web secara mentah.
 
 ```text
 Canonical feature/data contract dibuat di apps/karyawan
@@ -820,7 +820,7 @@ Aturan:
 
 - Jangan membuat approval, schedule, leave, payroll, atau attendance logic kedua di Mini App.
 - Mini App boleh memakai layout yang lebih compact dan Telegram WebApp API.
-- Status, data, permission, validation, dan side effect harus sama dengan `karyawan.yumme.id`.
+- Status, data, permission, validation, dan side effect harus sama dengan `karyawan.djiwatentram.web.id`.
 - Untuk fitur yang belum ada di `apps/karyawan`, buat route/komponen canonical di `apps/karyawan` terlebih dahulu, lalu expose sebagai tab Mini App.
 - Signed Telegram link hanya berfungsi sebagai authentication handoff; tidak boleh menjadi bypass Yumi HRD verification atau Admin authorization.
 
@@ -867,7 +867,7 @@ Aturan:
 Pertahankan route existing:
 
 ```text
-karyawan.yumme.id/$username/izin
+karyawan.djiwatentram.web.id/$username/izin
 ```
 
 Lengkapi alur:
@@ -1028,7 +1028,7 @@ Mode closing tidak boleh tercampur dengan workspace biasa dan tetap menjalankan 
 ### Parity
 
 - Compare every Mini App section with the corresponding `apps/karyawan` route.
-- Test the same employee via `karyawan.yumme.id` and Telegram Mini App.
+- Test the same employee via `karyawan.djiwatentram.web.id` and Telegram Mini App.
 - Confirm identical schedule, attendance, leave, and payroll status.
 - Test WIB boundary around midnight and month changes.
 
@@ -1052,7 +1052,7 @@ Mode closing tidak boleh tercampur dengan workspace biasa dan tetap menjalankan 
 
 - Build `apps/karyawan` and any changed Admin app serially.
 - Python compile and service restart for changed Bot code.
-- Verify `karyawan.yumme.id`, `admindjiwatentram.yumme.id`, and Telegram Bot runtime.
+- Verify `karyawan.djiwatentram.web.id`, `admindjiwatentram.web.id`, and Telegram Bot runtime.
 - Verify lazy chunks, `version.json`, service worker, and signed route markers.
 - Capture mobile 375px screenshots where browser is available; report limitations honestly.
 
@@ -1069,7 +1069,7 @@ Jangan membuat semua fitur baru langsung di Mini App secara inline. Urutan yang 
 5. Verifikasi parity per employee dan per role
 ```
 
-Dengan pendekatan ini, `karyawan.yumme.id` dan Mini App tidak akan memiliki dua versi aturan yang berbeda.
+Dengan pendekatan ini, `karyawan.djiwatentram.web.id` dan Mini App tidak akan memiliki dua versi aturan yang berbeda.
 
 ## Open Decisions Before Coding
 

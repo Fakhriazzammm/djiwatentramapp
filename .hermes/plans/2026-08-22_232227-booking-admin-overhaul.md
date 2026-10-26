@@ -27,8 +27,8 @@ Fokus utama:
 - Hook kapasitas: `useHybridBookingDateCapacities`, `useHybridSetBookingDateCapacity`, `useHybridSetBookingBulkDateCapacity`
 - Hook settings: `useHybridBookingSettings`, `useHybridUpdateBookingSettings`
 - Export: `exportBookingOrdersPDF`, `exportBookingOrdersExcel`, `exportBookingOrdersJPG`
-- Domain production: `https://admindjiwatentram.yumme.id/admin/booking`
-- Public booking: `https://booking.yumme.id`
+- Domain production: `https://admindjiwatentram.web.id/admin/booking`
+- Public booking: `https://booking.djiwatentram.web.id`
 
 ### Tab yang sudah ada
 
@@ -660,7 +660,7 @@ Jangan mengurangi inventory hanya karena booking pending.
 # Multi-source Data Flow
 
 ```text
-booking.yumme.id
+booking.djiwatentram.web.id
   └─ public booking RPC
       ├─ pos.booking_orders
       ├─ pos.booking_order_items
@@ -801,7 +801,7 @@ Nilai yang tidak boleh hardcoded di frontend:
 git diff --check
 bun run check-types
 bun run build
-curl -I https://admindjiwatentram.yumme.id/admin/booking
+curl -I https://admindjiwatentram.web.id/admin/booking
 verifikasi hashed booking chunk
 verifikasi migration apply di database canonical
 verifikasi Edge Function runtime
@@ -839,7 +839,7 @@ Typecheck baseline harus dicatat terpisah dari error baru.
 7. Pisahkan visual grouping operational/settings.
 8. Implement arrival/check-in actions.
 9. Implement timeline, WhatsApp, dan reminders setelah status stabil.
-10. Build, deploy hanya `apps/admin` ke `admindjiwatentram.yumme.id`, lalu verifikasi live.
+10. Build, deploy hanya `apps/admin` ke `admindjiwatentram.web.id`, lalu verifikasi live.
 
 ## Open Questions Before Implementation
 
@@ -847,5 +847,5 @@ Typecheck baseline harus dicatat terpisah dari error baru.
 2. Apakah booking paid boleh dibatalkan langsung oleh admin, atau wajib approval supervisor?
 3. Apakah reminder dikirim melalui WhatsApp, Telegram internal, atau keduanya?
 4. Apakah `group_meal` tetap perlu menampilkan item menu di daftar booking utama?
-5. Apakah booking manual tetap dipertahankan, atau semua booking harus berasal dari `booking.yumme.id`?
+5. Apakah booking manual tetap dipertahankan, atau semua booking harus berasal dari `booking.djiwatentram.web.id`?
 6. Apakah finance transaction booking boleh di-refund dari halaman Admin atau hanya melalui proses finance?

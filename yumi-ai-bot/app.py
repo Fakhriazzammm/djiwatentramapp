@@ -629,7 +629,7 @@ async def _gather_context() -> str:
 
     if hints:
         return "Konteks realtime: " + " | ".join(hints)
-    return "Konteks: Ekosistem Djiwa Tentram — POS (pos.yumme.id), Customer (djiwatentram.yumme.id), Karyawan (karyawan.yumme.id)"
+    return "Konteks: Ekosistem Djiwa Tentram — POS (pos.djiwatentram.web.id), Customer (djiwatentram.web.id), Karyawan (karyawan.djiwatentram.web.id)"
 
 
 # ===================================================================
@@ -3297,8 +3297,8 @@ async def _handle_save_report(request):
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(html_content)
 
-        # Use supabase.yumme.id for public access
-        public_url = f"https://supabase.yumme.id/reports/{filename}"
+        # Use supabase.djiwatentram.web.id for public access
+        public_url = f"https://supabase.djiwatentram.web.id/reports/{filename}"
         logger.info("Report saved: %s -> %s", filepath, public_url)
 
         return web.json_response({
@@ -3465,7 +3465,7 @@ async def on_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
             msg_parts.append(f"📅 Periode: {month_name} {s['year']}")
 
         msg_parts.append(f"")
-        msg_parts.append(f"🔄 Cek di: pos.yumme.id/admin/operational-team/attendance/jadwal")
+        msg_parts.append(f"🔄 Cek di: pos.djiwatentram.web.id/admin/operational-team/attendance/jadwal")
 
         await _reply_msg(update, context, "\n".join(msg_parts))
 

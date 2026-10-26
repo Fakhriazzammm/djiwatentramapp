@@ -144,7 +144,7 @@ Customer bottom navigation
 
 - Review only intended files in `git diff --name-only HEAD`.
 - Confirm no wallet/payment/database behavior changed unintentionally.
-- Deploy only `djiwatentram.yumme.id` after explicit release approval.
+- Deploy only `djiwatentram.web.id` after explicit release approval.
 - Verify `version.json`, `index.html`, hashed saldo chunk, and asset Content-Type from canonical domain.
 - Provide screenshot evidence; if browser remains unavailable, report the limitation honestly.
 

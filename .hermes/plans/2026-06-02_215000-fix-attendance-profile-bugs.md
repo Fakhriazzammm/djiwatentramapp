@@ -226,7 +226,7 @@ Steps 5-9 (bug 4,5,6,7,9) — semua di `$username.lazy.tsx`.
 
 1. Build lokal: `cd /opt/djiwatentramapp && npx vite build apps/karyawan --mode production`
 2. Push ke GitHub: `git push origin main`
-3. Verifikasi Vercel deploy: cek bundle hash `curl -sL https://karyawan.yumme.id/attendance | grep -oP 'src="/assets/index-\K[A-Za-z0-9]+'`
+3. Verifikasi Vercel deploy: cek bundle hash `curl -sL https://karyawan.djiwatentram.web.id/attendance | grep -oP 'src="/assets/index-\K[A-Za-z0-9]+'`
 4. Test flow: login → `/attendance` auto-detect → face/PIN → sukses → redirect ke `/{slug}` (bukan `/{_id}`)
 5. Test profile page tidak white screen
 6. Test PIN salah: harus clear input

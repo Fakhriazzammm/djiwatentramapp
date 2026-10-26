@@ -65,7 +65,7 @@ describe("KOL public visibility and inquiry API", () => {
     const { app, harness } = appFor([{ id: "kol-public-id" }]);
     const response = await app.request("/api/kol/public/annisa/inquiries", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Origin: "https://kolmarketing.yumme.id" },
+      headers: { "Content-Type": "application/json", Origin: "https://kolmarketing.djiwatentram.web.id" },
       body: JSON.stringify({
         businessName: "Brand Co",
         contactName: "Ayu",
@@ -95,7 +95,7 @@ describe("KOL public visibility and inquiry API", () => {
     expect(blocked.status).toBe(403);
     const invalid = await app.request("/api/kol/public/annisa/inquiries", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Origin: "https://kolmarketing.yumme.id" },
+      headers: { "Content-Type": "application/json", Origin: "https://kolmarketing.djiwatentram.web.id" },
       body: JSON.stringify({ businessName: "B", contactName: "A", brief: "no", contactEmail: "not-email" }),
     });
     expect(invalid.status).toBe(400);

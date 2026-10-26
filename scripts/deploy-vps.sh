@@ -104,25 +104,25 @@ install_notification_sync
 
 case "$APP" in
 	pos)
-		deploy_app "pos" "pos.yumme.id"
+		deploy_app "pos" "pos.djiwatentram.web.id"
 		;;
 	karyawan)
-		deploy_app "karyawan" "karyawan.yumme.id"
+		deploy_app "karyawan" "karyawan.djiwatentram.web.id"
 		;;
 	customer)
-		deploy_app "customer" "djiwatentram.yumme.id"
+		deploy_app "customer" "djiwatentram.web.id"
 		deploy_edge_function "customer-auth"
 		deploy_edge_function "djiwa-run"
 		;;
 	admin|web)
 		# `web` dipertahankan sebagai alias legacy, tetapi sumber Admin selalu apps/admin.
-		deploy_app "admin" "admindjiwatentram.yumme.id"
+		deploy_app "admin" "admindjiwatentram.web.id"
 		;;
 	all|*)
-		deploy_app "pos" "pos.yumme.id"
-		deploy_app "karyawan" "karyawan.yumme.id"
-		deploy_app "customer" "djiwatentram.yumme.id"
-		deploy_app "admin" "admindjiwatentram.yumme.id"
+		deploy_app "pos" "pos.djiwatentram.web.id"
+		deploy_app "karyawan" "karyawan.djiwatentram.web.id"
+		deploy_app "customer" "djiwatentram.web.id"
+		deploy_app "admin" "admindjiwatentram.web.id"
 		deploy_edge_function "customer-auth"
 		deploy_edge_function "djiwa-run"
 		;;

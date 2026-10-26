@@ -52,7 +52,7 @@ Tambahkan secara additive dan compact:
 
 1. **Booking Acara & Kolaborasi**
    - menggantikan terminology lama `Booking meja & menu` jika ditemukan pada guest CTA;
-   - target canonical: `https://booking.yumme.id/`;
+   - target canonical: `https://booking.djiwatentram.web.id/`;
    - jika pada Home existing tidak ada CTA `Booking meja & menu`, jangan menghapus `Pesanan Saya` atau `Mulai Pesan`; tambahkan sebagai secondary card/action.
 
 2. **Product discovery**
@@ -603,7 +603,7 @@ Do not modify unrelated apps, admin/POS routes, shared global theme, payment log
    - `Booking Acara & Kolaborasi`
    - `Menu Best Seller`
    - `Jam operasional`
-8. Deploy only customer webroot `djiwatentram.yumme.id`.
+8. Deploy only customer webroot `djiwatentram.web.id`.
 9. Verify production HTTP and deployed hashed bundle.
 10. Commit only session-owned customer files.
 
@@ -637,7 +637,7 @@ Do not modify unrelated apps, admin/POS routes, shared global theme, payment log
 ### Added Home sections
 
 - [ ] Booking label is `Booking Acara & Kolaborasi`.
-- [ ] Booking target is exactly `https://booking.yumme.id/`.
+- [ ] Booking target is exactly `https://booking.djiwatentram.web.id/`.
 - [ ] Booking does not replace existing primary order/history actions accidentally.
 - [ ] Best Seller carousel remains horizontal and touch-friendly.
 - [ ] Restaurant information uses live site settings.

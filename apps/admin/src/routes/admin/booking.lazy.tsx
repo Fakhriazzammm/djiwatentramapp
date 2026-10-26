@@ -1045,7 +1045,7 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 				<div className="flex gap-2">
 					<a
 						className="flex items-center gap-1.5 rounded-xl border border-border bg-background px-4 py-2.5 font-medium text-foreground text-sm hover:bg-muted transition-colors"
-						href={(import.meta.env.VITE_PUBLIC_BOOKING_URL as string | undefined)?.trim() || "https://booking.yumme.id/"}
+						href={(import.meta.env.VITE_PUBLIC_BOOKING_URL as string | undefined)?.trim() || ""}
 						rel="noreferrer"
 						target="_blank"
 					>

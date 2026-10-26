@@ -744,7 +744,7 @@ Tidak direncanakan berubah:
 12. Pastikan review dan payload memakai sumber state yang sama.
 13. Jalankan typecheck/build package.
 14. QA mobile untuk setiap state tanpa membuat payment production.
-15. Deploy hanya `ordermieyamin.yumme.id` setelah approval/verifikasi.
+15. Deploy hanya `ordermieyamin.djiwatentram.web.id` setelah approval/verifikasi.
 
 ## 12. Validation / Acceptance Criteria
 

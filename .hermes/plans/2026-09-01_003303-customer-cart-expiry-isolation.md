@@ -6,7 +6,7 @@ Plan only. Belum ada perubahan source code, database, localStorage user, deploym
 
 ## Goal
 
-Mencegah keranjang pada `djiwatentram.yumme.id` menampilkan item dari hari/sesi/customer sebelumnya, sambil tetap mempertahankan pengalaman cart saat refresh dan perpindahan halaman dalam satu sesi pemesanan.
+Mencegah keranjang pada `djiwatentram.web.id` menampilkan item dari hari/sesi/customer sebelumnya, sambil tetap mempertahankan pengalaman cart saat refresh dan perpindahan halaman dalam satu sesi pemesanan.
 
 ## Current Context
 
@@ -186,8 +186,8 @@ git diff --check
 
 Verifikasi runtime:
 
-- `https://djiwatentram.yumme.id/version.json`
-- `https://djiwatentram.yumme.id/sw.js`
+- `https://djiwatentram.web.id/version.json`
+- `https://djiwatentram.web.id/sw.js`
 - Customer route order dari domain canonical.
 - Browser test pada guest session baru.
 - Browser test member A → logout → member B.

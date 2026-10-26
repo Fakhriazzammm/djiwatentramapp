@@ -1,4 +1,4 @@
-# Plan: `apps/booking` — Customer Booking App di `booking.yumme.id`
+# Plan: `apps/booking` — Customer Booking App di `booking.djiwatentram.web.id`
 
 ## Status
 
@@ -15,7 +15,7 @@ Membuat aplikasi customer-facing baru di `apps/booking` untuk booking tanggal ku
 Target domain resmi:
 
 ```text
-https://booking.yumme.id
+https://booking.djiwatentram.web.id
 ```
 
 Target DNS/VPS saat ini perlu diverifikasi sebelum perubahan. Jangan mengasumsikan record existing.
@@ -32,7 +32,7 @@ Shared backend: Supabase project/database existing
 Shared catalog: public.pos_products_all
 Shared booking tables: pos.booking_*
 Existing internal management: apps/pos /admin/booking
-New public domain: booking.yumme.id
+New public domain: booking.djiwatentram.web.id
 ```
 
 ### Alasan
@@ -53,7 +53,7 @@ New public domain: booking.yumme.id
 
 ---
 
-# Phase 0 — Provision `booking.yumme.id` terlebih dahulu
+# Phase 0 — Provision `booking.djiwatentram.web.id` terlebih dahulu
 
 Ini wajib menjadi langkah pertama sebelum frontend booking dideploy.
 
@@ -62,7 +62,7 @@ Ini wajib menjadi langkah pertama sebelum frontend booking dideploy.
 Jalankan dari environment profile yang memiliki Hostinger API token:
 
 ```bash
-hostinger dns records list yumme.id --format json
+hostinger dns records list djiwatentram.web.id --format json
 ```
 
 Verifikasi:
@@ -80,14 +80,14 @@ Jangan menulis token ke repository atau plan.
 Jika tidak ada konflik, gunakan A record additive:
 
 ```bash
-hostinger dns records validate yumme.id \
+hostinger dns records validate djiwatentram.web.id \
   --zone '[{"name":"booking","type":"A","records":[{"content":"43.129.54.5"}],"ttl":300}]'
 ```
 
 ## 0.3 Apply dengan safety flag
 
 ```bash
-hostinger dns records update yumme.id \
+hostinger dns records update djiwatentram.web.id \
   --zone '[{"name":"booking","type":"A","records":[{"content":"43.129.54.5"}],"ttl":300}]' \
   --overwrite=false
 ```
@@ -97,10 +97,10 @@ Jika record CNAME `booking` sudah ada, jangan menambahkan A record bersamaan. Au
 ## 0.4 Verify DNS berlapis
 
 ```bash
-dig @ns1.dns-parking.com booking.yumme.id A +short
-dig booking.yumme.id A +short
-dig @8.8.8.8 booking.yumme.id A +short
-dig @1.1.1.1 booking.yumme.id A +short
+dig @ns1.dns-parking.com booking.djiwatentram.web.id A +short
+dig booking.djiwatentram.web.id A +short
+dig @8.8.8.8 booking.djiwatentram.web.id A +short
+dig @1.1.1.1 booking.djiwatentram.web.id A +short
 ```
 
 Expected:
@@ -116,22 +116,22 @@ Public resolver propagation harus dibedakan dari authoritative DNS.
 Buat web root dedicated, misalnya:
 
 ```text
-/var/www/booking.yumme.id
+/var/www/booking.djiwatentram.web.id
 ```
 
-Buat server block baru hanya untuk `booking.yumme.id`, dengan SPA fallback ke `index.html`. Jangan mengubah server block:
+Buat server block baru hanya untuk `booking.djiwatentram.web.id`, dengan SPA fallback ke `index.html`. Jangan mengubah server block:
 
-- `djiwatentram.yumme.id` → apps/customer
-- `pos.yumme.id` → apps/pos
-- `admindjiwatentram.yumme.id` → apps/admin
-- `karyawan.yumme.id` → apps/karyawan
+- `djiwatentram.web.id` → apps/customer
+- `pos.djiwatentram.web.id` → apps/pos
+- `admindjiwatentram.web.id` → apps/admin
+- `karyawan.djiwatentram.web.id` → apps/karyawan
 
 Verifikasi:
 
 ```bash
 sudo nginx -t
 sudo systemctl reload nginx
-curl -I --resolve booking.yumme.id:80:43.129.54.5 http://booking.yumme.id/
+curl -I --resolve booking.djiwatentram.web.id:80:43.129.54.5 http://booking.djiwatentram.web.id/
 ```
 
 ## 0.6 TLS
@@ -139,19 +139,19 @@ curl -I --resolve booking.yumme.id:80:43.129.54.5 http://booking.yumme.id/
 Setelah HTTP vhost lulus:
 
 ```bash
-sudo certbot --nginx -d booking.yumme.id \
+sudo certbot --nginx -d booking.djiwatentram.web.id \
   --non-interactive --agree-tos --email <production-contact-email>
 ```
 
 Verifikasi:
 
 ```bash
-curl -sk -o /dev/null -w '%{http_code}\n' https://booking.yumme.id/
-openssl s_client -connect booking.yumme.id:443 -servername booking.yumme.id </dev/null 2>/dev/null \
+curl -sk -o /dev/null -w '%{http_code}\n' https://booking.djiwatentram.web.id/
+openssl s_client -connect booking.djiwatentram.web.id:443 -servername booking.djiwatentram.web.id </dev/null 2>/dev/null \
   | openssl x509 -noout -subject -dates
 ```
 
-Rollback DNS/vhost harus hanya menghapus `booking.yumme.id`, tanpa menyentuh domain existing.
+Rollback DNS/vhost harus hanya menghapus `booking.djiwatentram.web.id`, tanpa menyentuh domain existing.
 
 ---
 
@@ -187,7 +187,7 @@ apps/booking/src/lib/booking-validation.ts
 VITE_SUPABASE_URL
 VITE_SUPABASE_ANON_KEY
 VITE_BOOKING_SLUG=booking
-VITE_PUBLIC_APP_URL=https://booking.yumme.id
+VITE_PUBLIC_APP_URL=https://booking.djiwatentram.web.id
 ```
 
 - Tidak menaruh token service role di frontend.
@@ -536,7 +536,7 @@ Required integration:
 
 - Add a prominent `Booking` entry on the customer landing/home after the primary ordering CTA.
 - Add booking shortcut in customer navigation only if it does not duplicate/conflict with the primary `Pesan` action.
-- Deep link to `https://booking.yumme.id/` or a configured booking URL; do not copy booking flow into customer route tree.
+- Deep link to `https://booking.djiwatentram.web.id/` or a configured booking URL; do not copy booking flow into customer route tree.
 - Member context handoff must be safe: use existing auth/session, never pass raw secret/token in URL.
 - Optional Phase 5: customer booking history/deep link from `/riwayat` or profile.
 - Existing customer order route, cart, payment, and bottom navigation must remain unchanged.
@@ -683,7 +683,7 @@ Add a dedicated build filter/script:
 Deploy only:
 
 ```text
-apps/booking/dist → /var/www/booking.yumme.id
+apps/booking/dist → /var/www/booking.djiwatentram.web.id
 ```
 
 Do not deploy booking build to any existing domain.
@@ -698,12 +698,12 @@ Do not deploy booking build to any existing domain.
 ## Production verification
 
 ```bash
-curl -sk -o /dev/null -w '%{http_code}\n' https://booking.yumme.id/
-curl -sk https://booking.yumme.id/ | head
-curl -sk -o /dev/null -w '%{http_code}\n' https://djiwatentram.yumme.id/
-curl -sk -o /dev/null -w '%{http_code}\n' https://pos.yumme.id/
-curl -sk -o /dev/null -w '%{http_code}\n' https://karyawan.yumme.id/
-curl -sk -o /dev/null -w '%{http_code}\n' https://admindjiwatentram.yumme.id/
+curl -sk -o /dev/null -w '%{http_code}\n' https://booking.djiwatentram.web.id/
+curl -sk https://booking.djiwatentram.web.id/ | head
+curl -sk -o /dev/null -w '%{http_code}\n' https://djiwatentram.web.id/
+curl -sk -o /dev/null -w '%{http_code}\n' https://pos.djiwatentram.web.id/
+curl -sk -o /dev/null -w '%{http_code}\n' https://karyawan.djiwatentram.web.id/
+curl -sk -o /dev/null -w '%{http_code}\n' https://admindjiwatentram.web.id/
 ```
 
 Existing domains must remain healthy.
@@ -765,7 +765,7 @@ admin confirms → customer status changes; cancelled booking releases capacity
 - loading/empty/error states;
 - keyboard/focus accessibility;
 - browser console zero new errors;
-- real deployed `booking.yumme.id` hashed asset marker.
+- real deployed `booking.djiwatentram.web.id` hashed asset marker.
 
 ## Database preview evidence
 
@@ -841,7 +841,7 @@ No hardcoded capacity, price, business hours, staff name, payment account, or me
 ## Wave 0 — Infrastructure prerequisite
 
 1. Hostinger DNS audit.
-2. Provision `booking.yumme.id`.
+2. Provision `booking.djiwatentram.web.id`.
 3. Nginx HTTP vhost.
 4. TLS.
 5. Verify domain routing before app deploy.
@@ -885,7 +885,7 @@ No hardcoded capacity, price, business hours, staff name, payment account, or me
 ## Wave 5 — Production release
 
 1. Build only changed app/shared packages.
-2. Deploy only `/var/www/booking.yumme.id` plus required backend functions.
+2. Deploy only `/var/www/booking.djiwatentram.web.id` plus required backend functions.
 3. Verify booking domain.
 4. Verify all existing domains.
 5. Run guest/member/capacity/payment E2E.
@@ -896,7 +896,7 @@ No hardcoded capacity, price, business hours, staff name, payment account, or me
 
 # Acceptance criteria
 
-- [ ] `booking.yumme.id` provisioned and verified before app deployment.
+- [ ] `booking.djiwatentram.web.id` provisioned and verified before app deployment.
 - [ ] DNS uses safe additive change; no existing records lost.
 - [ ] HTTPS works with valid certificate.
 - [ ] `apps/booking` builds and typechecks.
@@ -918,7 +918,7 @@ No hardcoded capacity, price, business hours, staff name, payment account, or me
 ## Preview evidence expected before declaring complete
 
 ```text
-🖼️ Browser: booking.yumme.id landing/calendar/review/success screenshots
+🖼️ Browser: booking.djiwatentram.web.id landing/calendar/review/success screenshots
 🗃️ Database: booking row + items + capacity query result
 🔌 API: secure create/status response
 🧾 POS: booking visible in admin booking list

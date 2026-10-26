@@ -2,7 +2,7 @@
 
 ## Goal
 
-Menambahkan voice notification yang aman dan berurutan pada `pos.yumme.id/menu`:
+Menambahkan voice notification yang aman dan berurutan pada `pos.djiwatentram.web.id/menu`:
 
 1. Setiap event voice selalu memainkan `/sounds/transaction-success.mp3` **1 kali terlebih dahulu**.
 2. Setelah MP3 selesai, baru memainkan voice ResponsiveVoice/TTS.
@@ -250,7 +250,7 @@ Tidak mengubah migration database kecuali audit runtime menemukan field yang mem
 7. Integrasikan `/menu` agar semua event memakai satu queue instance global.
 8. Tambahkan unit test untuk urutan MP3 → TTS → next event.
 9. Jalankan typecheck/build POS.
-10. Verifikasi bundle lazy route dan asset `/sounds/transaction-success.mp3` pada domain canonical `https://pos.yumme.id`.
+10. Verifikasi bundle lazy route dan asset `/sounds/transaction-success.mp3` pada domain canonical `https://pos.djiwatentram.web.id`.
 11. Lakukan controlled test event non-produktif/expiring tanpa membuat transaksi finansial palsu.
 12. Verifikasi dua event simultaneous: event B baru boleh mulai setelah event A selesai.
 
@@ -277,7 +277,7 @@ Tidak mengubah migration database kecuali audit runtime menemukan field yang mem
 - Refresh halaman tidak mengulang event lama.
 - Order yang diterima melalui dua polling source tidak berbunyi dua kali.
 - `GET /sounds/transaction-success.mp3` mengembalikan `audio/mpeg`.
-- Production `index.html`, hashed lazy chunk, dan `version.json` diverifikasi dari `pos.yumme.id`.
+- Production `index.html`, hashed lazy chunk, dan `version.json` diverifikasi dari `pos.djiwatentram.web.id`.
 - Tidak ada API secret REST ResponsiveVoice di JS bundle; API key CDN mengikuti konfigurasi SDK browser yang diminta user.
 
 ## Risks and Mitigations

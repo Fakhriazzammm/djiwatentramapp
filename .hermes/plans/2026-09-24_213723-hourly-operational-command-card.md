@@ -691,7 +691,7 @@ Acceptance:
 - Verify bundle markers.
 - Selective git add only changed source/test/plan files.
 - Commit and push.
-- Deploy only Admin dist to `/var/www/admindjiwatentram.yumme.id/`.
+- Deploy only Admin dist to `/var/www/admindjiwatentram.web.id/`.
 - Verify `/version.json`, `index.html`, bundle marker, and production URL.
 
 ---

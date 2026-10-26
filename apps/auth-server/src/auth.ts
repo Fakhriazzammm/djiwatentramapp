@@ -10,26 +10,17 @@ export const pool = new Pool({
   database: "postgres",
 });
 
+const customerAuthBaseUrl = (process.env.CUSTOMER_APP_URL ?? "").trim().replace(/\/$/, "");
+const customerTrustedOrigins = (process.env.CUSTOMER_ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+
 export const auth = betterAuth({
   database: pool,
-  baseURL: "https://djiwatentram.yumme.id",
+  baseURL: customerAuthBaseUrl,
   // Customer sessions are shared by the Djiwa App storefronts.
-  trustedOrigins: [
-    "https://djiwatentram.yumme.id",
-    "https://pay.djiwatentram.web.id",
-    "https://investor.yumme.id",
-    "https://merchandise.yumme.id",
-    "https://booking.yumme.id",
-    "https://b2b.yumme.id",
-    "https://ordermieyamin.yumme.id",
-    "https://500kopitasik.yumme.id",
-    "https://djiwatravel.com",
-    "https://www.djiwatravel.com",
-    "https://kolmarketing.yumme.id",
-    "https://rekrutmen.yumme.id",
-    "http://localhost:5173",
-    "http://localhost:3010",
-  ],
+  trustedOrigins: customerTrustedOrigins,
   // Share the central customer session across Djiwa App subdomains.
   advanced: {
     cookies: {
@@ -38,7 +29,7 @@ export const auth = betterAuth({
     },
     crossSubDomainCookies: {
       enabled: true,
-      domain: ".yumme.id",
+      domain: process.env.AUTH_COOKIE_DOMAIN,
     },
     defaultCookieAttributes: {
       secure: true,

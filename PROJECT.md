@@ -412,7 +412,7 @@ Views map snake_case columns to camelCase for frontend consumption.
 | `TELEGRAM_REPORT_CHAT_ID` | yumi-ai, onboarding-admin | Default chat ID (typo fallbacks: TELEGRAM_CHAT_ID, TELELEGRAM_CHAT_ID) |
 | `ONBOARDING_ADMIN_SECRET` | onboarding-admin, delete-employee-cascade | Admin secret header |
 | `OPENAI_API_KEY` | yumi-ai | OpenAI API key |
-| `VITE_APP_BASE_URL` | onboarding-admin | App URL (default: https://pos.yumme.id) |
+| `VITE_APP_BASE_URL` | onboarding-admin | App URL (default: https://pos.djiwatentram.web.id) |
 | `CRON_SECRET` | auto-close-shifts | Optional cron auth |
 | `MGMT_ACCESS_TOKEN` | generate-payroll | Supabase Management API token |
 

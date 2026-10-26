@@ -1,4 +1,4 @@
--- Migration: Create recruitment_candidates table for rekrutmen.yumme.id
+-- Migration: Create recruitment_candidates table for rekrutmen.djiwatentram.web.id
 -- This stores candidate applications submitted via the public form
 -- Schema: pos (same as other business tables)
 

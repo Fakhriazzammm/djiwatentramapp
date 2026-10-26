@@ -2,7 +2,7 @@
 
 > **For Hermes:** Use the `subagent-driven-development` skill to implement this plan task-by-task.
 
-**Goal:** Mengubah landing `b2b.yumme.id` menjadi storefront B2B yang langsung menjual produk produksi Djiwa Tentram—Mie Mentah Kiloan menu 3013—dengan copy, layout, dan CTA yang tertarget ke pemilik usaha/kitchen/purchasing, sambil mempertahankan alur katalog, checkout, Mayar, dan SSO yang sudah mengikuti `apps/merchandise`.
+**Goal:** Mengubah landing `b2b.djiwatentram.web.id` menjadi storefront B2B yang langsung menjual produk produksi Djiwa Tentram—Mie Mentah Kiloan menu 3013—dengan copy, layout, dan CTA yang tertarget ke pemilik usaha/kitchen/purchasing, sambil mempertahankan alur katalog, checkout, Mayar, dan SSO yang sudah mengikuti `apps/merchandise`.
 
 **Architecture:** Pertahankan `apps/b2b` sebagai standalone clone storefront dengan shared Supabase, Better Auth, cart, order, Mayar, receipt, dan SSO contract. Jadikan route `/` sebagai satu-satunya landing marketing utama. Pertahankan `/daftar` sebagai route teknis onboarding guest yang tidak perlu dipromosikan sebagai halaman terpisah. Ubah `/produksi` menjadi redirect/alias kompatibilitas ke `/` agar URL lama tidak rusak.
 
@@ -13,7 +13,7 @@
 ## Status dan Konteks Saat Ini
 
 - Repository: `/opt/djiwatentramapp`.
-- Target app: `apps/b2b`, domain `https://b2b.yumme.id`.
+- Target app: `apps/b2b`, domain `https://b2b.djiwatentram.web.id`.
 - App referensi UX: `apps/merchandise`.
 - Produk target: `Mie Mentah Kiloan Djiwa Tentram`, menu number `3013`, harga database target `Rp30.000`, kategori `B2B` → `Produksi`.
 - `/produksi` saat ini adalah landing terpisah dengan hero produk dan CTA.
@@ -26,7 +26,7 @@
 
 ## Acceptance Criteria
 
-1. `https://b2b.yumme.id/` langsung menjelaskan produk produksi mie, target buyer, manfaat, harga/unit, status, dan CTA.
+1. `https://b2b.djiwatentram.web.id/` langsung menjelaskan produk produksi mie, target buyer, manfaat, harga/unit, status, dan CTA.
 2. Tidak ada copy generik seperti "Pesan favoritmu", "tanpa antre", "Menu Best Seller", atau copy restoran dine-in pada landing B2B.
 3. Produk utama yang ditampilkan berasal dari data katalog B2B/menu `3013`; fallback hanya digunakan untuk loading/error dan diberi perlakuan yang jelas.
 4. `/produksi` tidak menjadi flow kedua; route tersebut redirect ke `/` atau menjadi alias yang tidak membuat UI duplikat.
@@ -255,7 +255,7 @@ Modify `apps/b2b/src/routes/produksi.tsx`/`produksi.lazy.tsx`:
 
 ### Cross-channel navigation
 
-- B2B → Customer Cafe keeps `https://djiwatentram.yumme.id/<username>/order?step=table` for cafe context.
+- B2B → Customer Cafe keeps `https://djiwatentram.web.id/<username>/order?step=table` for cafe context.
 - B2B → Merchandise keeps the existing member/guest handoff if present, with guest going to `/daftar` on the target origin.
 - B2B channel remains active in `CustomerChannelSwitcher`.
 - Landing copy must not imply that the B2B route is a cafe ordering flow.
@@ -358,7 +358,7 @@ pos.orders
 - Order read-back: existing order hook/read model used by `useHybridOrderById`.
 - Mayar create: `POST /functions/v1/mayar-proxy` action `create-invoice-from-order`.
 - Mayar status: same function action `get-invoice-detail`.
-- Auth: Better Auth central endpoint `https://djiwatentram.yumme.id/api/auth` with credentials included.
+- Auth: Better Auth central endpoint `https://djiwatentram.web.id/api/auth` with credentials included.
 
 ---
 
@@ -404,7 +404,7 @@ pos.orders
 | Product image | Product image field | `/mie-yamin-product.png` |
 | Availability | Product active/is_available + quantity | Neutral loading state; never assume paid/active from unknown |
 | Category label | Category records B2B → Produksi | `Produksi` only as display fallback |
-| Brand name/domain | `marketplace-config.ts` and env | `Djiwa B2B`, `b2b.yumme.id` |
+| Brand name/domain | `marketplace-config.ts` and env | `Djiwa B2B`, `b2b.djiwatentram.web.id` |
 | CTA copy | UI copy reviewed in this plan | None in data layer |
 | Payment status | order/provider/webhook read-back | Pending/unknown copy, never paid |
 | Tax/service charge | Admin/site settings and existing pricing hook | Existing safe defaults only |
@@ -470,9 +470,9 @@ Before release, search for and remove generic hardcoded consumer copy in B2B lan
 - Verify no root bundle/landing lazy chunk contains removed generic copy.
 - Verify no production chunk contains `No. Meja`/`Nomor meja`.
 - Verify Mayar channels/status endpoint health without creating a real invoice/order.
-- Deploy only B2B dist artifact to `/var/www/b2b.yumme.id`.
+- Deploy only B2B dist artifact to `/var/www/b2b.djiwatentram.web.id`.
 - Verify Nginx, canonical HTTPS routes, index, service worker, and hashed lazy chunks.
-- Verify `apps/merchandise` and `djiwatentram.yumme.id` remain reachable.
+- Verify `apps/merchandise` and `djiwatentram.web.id` remain reachable.
 
 ---
 
@@ -506,9 +506,9 @@ bunx vite build --mode production
 cd /opt/djiwatentramapp
 git diff --check -- apps/b2b
 
-curl -fsSIL https://b2b.yumme.id/
-curl -fsSIL https://b2b.yumme.id/produksi
-curl -fsSIL https://b2b.yumme.id/daftar
+curl -fsSIL https://b2b.djiwatentram.web.id/
+curl -fsSIL https://b2b.djiwatentram.web.id/produksi
+curl -fsSIL https://b2b.djiwatentram.web.id/daftar
 ```
 
 ### Bundle checks

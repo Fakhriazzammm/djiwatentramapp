@@ -3,7 +3,7 @@
 **Status:** Draft — menunggu persetujuan implementasi
 **Tanggal:** 2026-09-21 WIB
 **Scope:** `apps/admin` — seluruh workspace Admin Booking
-**Entry domain:** Admin `admindjiwatentram.yumme.id`
+**Entry domain:** Admin `admindjiwatentram.web.id`
 **Design source of truth:** `/opt/djiwatentramapp/DESIGN.md` + `frontend-design/ai-product-design-dna/SKILL.md` + Apple HIG
 **Domain skill:** `software-development/admin-booking-ux-overhaul`
 
