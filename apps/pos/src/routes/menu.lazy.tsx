@@ -1036,32 +1036,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		};
 	}, [filteredProductsLength, hasMoreProducts, isLoading]);
 
-		(action: "menu" | "back" | "search" | string) => {
-			switch (action) {
-				case "back":
-					// Back button is removed
-					break;
-				case "menu":
-					openPanel("more");
-					break;
-				case "search":
-					const searchInput = document.querySelector(
-						'input[placeholder*="Cari"]'
-					) as HTMLInputElement;
-					if (searchInput) {
-						searchInput.focus();
-					}
-					break;
-				default:
-					// Check if it's one of the sidebar menu tabs
-					if (SIDEBAR_MENU_ITEMS.some(item => item.id === action)) {
-						handleOpenSidebar(action);
-					}
-			}
-		},
-		[openPanel]
-	);
-
 	// Get cart quantity for a product
 	const getCartQty = (productId: string) =>
 		cartItems
