@@ -168,4 +168,8 @@ describe("retry verification fails closed", () => {
 		const db = database({ order: { ...paidOrder, status: "completed" }, items: [...savedItems].reverse() });
 		expect(await (await orderAction(db.client))(request)).toBe("order_saved");
 	});
+	it("accepts legacy settlements without a raw kind", async () => {
+		const db = database({ finance: [{ ...settlement, raw: {} }] });
+		expect(await (await orderAction(db.client))(request)).toBe("order_saved");
+	});
 });

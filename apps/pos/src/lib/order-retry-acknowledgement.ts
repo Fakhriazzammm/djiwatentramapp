@@ -76,8 +76,15 @@ export async function assertOrderRetryAcknowledgement(
 				.eq("tx_type", "income");
 			if (financeError) throw financeError;
 			const settlement = transactions?.[0];
+			// Older POS settlements were written before `raw.kind` was added. The
+			// order link, income type, completed status, and exact amount already
+			// prove that transaction belongs to this order; only reject an explicit
+			// non-settlement kind so legacy paid orders remain recoverable.
+			const settlementKind = settlement?.raw?.kind;
+			const hasUnexpectedSettlementKind = settlementKind !== undefined &&
+				settlementKind !== null && !SETTLEMENT_KINDS.has(settlementKind);
 			if (transactions?.length !== 1 || settlement?.tx_type !== "income" ||
-				settlement.status !== "completed" || !SETTLEMENT_KINDS.has(settlement.raw?.kind) ||
+				settlement.status !== "completed" || hasUnexpectedSettlementKind ||
 				!sameNumber(settlement.amount, order.total_amount)) {
 				throw blocked("pencatatan pembayaran belum lengkap atau tidak sesuai");
 			}
