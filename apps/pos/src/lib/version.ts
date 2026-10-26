@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.548",
+	semantic: "0.2.551",
 	// Git/deploy commit hash (short)
-	commitHash: "7a35f6e",
-	message: "fix(pos): resolve legacy self-hosted product image URLs",
+	commitHash: "1506a71",
+	message: "fix(pos): run production bundling with Node",
 	// Commit subject for the update prompt
-	commitMessage: "fix(pos): resolve legacy self-hosted product image URLs",
+	commitMessage: "fix(pos): run production bundling with Node",
 	// Build timestamp
 	buildDate: "2026-10-26",
 	// Full version string for display

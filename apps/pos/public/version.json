@@ -1,7 +1,7 @@
 {
-  "version": "0.2.548",
-  "commitHash": "7a35f6e",
-  "message": "fix(pos): resolve legacy self-hosted product image URLs",
+  "version": "0.2.551",
+  "commitHash": "1506a71",
+  "message": "fix(pos): run production bundling with Node",
   "buildDate": "2026-10-26",
-  "generatedAt": "2026-10-26T05:16:22.335Z"
+  "generatedAt": "2026-10-26T07:06:09.879Z"
 }
