@@ -640,6 +640,22 @@ type MenuRecipeIngredient = {
 	amount: number;
 };
 
+// Toolbar quantities represent ready-to-sell portions, not ingredient receipts.
+// The RPC locks the row and marks zero stock SOLD in the same transaction.
+export function useHybridAdjustReadyMenuStock() {
+	return useCallback(async (args: { productId: string; delta: number; currentQuantity: number }) => {
+		const { data, error } = await createClient().schema("pos").rpc("adjust_ready_menu_stock", {
+			p_product_source_id: args.productId,
+			p_delta: args.delta,
+			p_expected_quantity: args.currentQuantity,
+		});
+		if (error) throw error;
+		const result = Array.isArray(data) ? data[0] : data;
+		if (!result) throw new Error("Perubahan stok tidak dikonfirmasi server");
+		return { quantity: Number(result.quantity), isAvailable: Boolean(result.is_available) };
+	}, []);
+}
+
 type MenuRecipeSnapshot = {
 	_id?: string;
 	productId?: string;

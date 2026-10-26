@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Check, Loader2, Package, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useHybridBulkUpdateProducts, useHybridUpdateProduct, useHybridAdjustMenuStockWithRecipe } from "@/hooks/use-hybrid-write-actions";
+import { useHybridBulkUpdateProducts, useHybridUpdateProduct, useHybridAdjustReadyMenuStock } from "@/hooks/use-hybrid-write-actions";
 
 type Product = {
   _id: string;
@@ -40,7 +40,7 @@ export function StockToolbarPanel({ products, categories, onClose, onRefresh }: 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const updateProduct = useHybridUpdateProduct();
-  const adjustMenuStockWithRecipe = useHybridAdjustMenuStockWithRecipe();
+  const adjustReadyMenuStock = useHybridAdjustReadyMenuStock();
   const bulkUpdate = useHybridBulkUpdateProducts();
 
   const parents = useMemo(() => categories.filter((category) => !category.parentId && category.track !== "hidden"), [categories]);
@@ -98,12 +98,12 @@ export function StockToolbarPanel({ products, categories, onClose, onRefresh }: 
     if (next === Number(product.quantity ?? 0)) return;
     setSaving(String(product._id), true);
     try {
-      await adjustMenuStockWithRecipe({ productId: product._id, deltaMenu: delta, currentQuantity: Number(product.quantity ?? 0), source: "pos_menu_stock", notes: `Perubahan stok menu ${product.name} dari toolbar POS` });
-      if (next === 0) await updateProduct({ id: product._id, isAvailable: false });
-      toast.success(`Stok ${product.name}: ${next} porsi`);
+      const result = await adjustReadyMenuStock({ productId: product._id, delta, currentQuantity: Number(product.quantity ?? 0) });
+      toast.success(`Stok ${product.name}: ${result.quantity} porsi`);
       onRefresh?.();
     } catch (error: any) {
       toast.error(error?.message || "Gagal mengubah stok");
+      onRefresh?.();
     } finally {
       setSaving(String(product._id), false);
     }
