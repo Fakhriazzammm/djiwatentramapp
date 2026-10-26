@@ -15,7 +15,7 @@ type RequestedItem = {
 };
 
 class OrderRetryAcknowledgementError extends Error {}
-const SETTLEMENT_KINDS = new Set(["order_settlement", "cashier_order_settlement", "mayar_order_settlement", "order_settlement_update_order", "order_settlement_status_update"]);
+const SETTLEMENT_KINDS = new Set(["order_settlement", "order_settlement_repair", "cashier_order_settlement", "mayar_order_settlement", "order_settlement_update_order", "order_settlement_status_update"]);
 
 function sameNumber(persisted: unknown, requested: unknown) {
 	return persisted !== null && persisted !== undefined &&
@@ -32,7 +32,11 @@ function sameNumber(persisted: unknown, requested: unknown) {
 export async function assertOrderRetryAcknowledgement(
 	pos: ReturnType<SupabaseClient["schema"]>,
 	order: RetryOrder,
-	request: { items?: RequestedItem[]; isOpenBill?: boolean },
+	request: {
+		items?: RequestedItem[];
+		isOpenBill?: boolean;
+		repairMissingSettlement?: () => Promise<void>;
+	},
 ): Promise<void> {
 	const blocked = (reason: string) => new OrderRetryAcknowledgementError(
 		`Pesanan ${order.source_id} belum dapat dikonfirmasi: ${reason}. ` +
@@ -69,12 +73,22 @@ export async function assertOrderRetryAcknowledgement(
 			throw blocked("item tersimpan berbeda dari data antrean");
 		}
 		if (paid) {
-			const { data: transactions, error: financeError } = await pos
+			let { data: transactions, error: financeError } = await pos
 				.from("financial_transactions")
 				.select("tx_type,amount,status,raw")
 				.eq("order_source_id", order.source_id)
 				.eq("tx_type", "income");
 			if (financeError) throw financeError;
+			if ((!transactions || transactions.length === 0) && request.repairMissingSettlement) {
+				await request.repairMissingSettlement();
+				const refreshed = await pos
+					.from("financial_transactions")
+					.select("tx_type,amount,status,raw")
+					.eq("order_source_id", order.source_id)
+					.eq("tx_type", "income");
+				if (refreshed.error) throw refreshed.error;
+				transactions = refreshed.data;
+			}
 			const settlement = transactions?.[0];
 			// Older POS settlements were written before `raw.kind` was added. The
 			// order link, income type, completed status, and exact amount already

@@ -2549,7 +2549,15 @@ export function useHybridCreateOrder() {
 					.maybeSingle();
 				if (existingError) throw existingError;
 				if (existingOrder?.source_id) {
-					await assertOrderRetryAcknowledgement(pos, existingOrder, args);
+					await assertOrderRetryAcknowledgement(pos, existingOrder, {
+						...args,
+						repairMissingSettlement: async () => {
+							const { error: repairError } = await pos.rpc("repair_pos_order_settlement", {
+								p_order_id: existingOrder.source_id,
+							});
+							if (repairError) throw repairError;
+						},
+					});
 					return existingOrder.source_id;
 				}
 			}
@@ -2653,7 +2661,15 @@ const orderRow = {
 							.maybeSingle();
 						if (concurrentError) throw concurrentError;
 						if (concurrentOrder?.source_id) {
-							await assertOrderRetryAcknowledgement(pos, concurrentOrder, args);
+							await assertOrderRetryAcknowledgement(pos, concurrentOrder, {
+								...args,
+								repairMissingSettlement: async () => {
+									const { error: repairError } = await pos.rpc("repair_pos_order_settlement", {
+										p_order_id: concurrentOrder.source_id,
+									});
+									if (repairError) throw repairError;
+								},
+							});
 							return concurrentOrder.source_id;
 						}
 					}
@@ -2685,31 +2701,11 @@ const orderRow = {
 				}
 
 				if (!isOpenBill) {
-					const financialRow = {
-						source_id: makeSourceId("fin"),
-						tx_type: "income",
-						amount: orderRow.total_amount,
-						category: "Penjualan",
-						description: `Penjualan Pesanan #${orderNumber}`,
-						merchant: args?.customerName ?? null,
-						tx_date: orderCreatedAt,
-						payment_method: args?.paymentMethod ?? null,
-						status: "completed",
-						order_source_id: orderId,
-						creation_time: Date.now(),
-						metadata: {
-							dailyReceiptNo,
-							orderNumber,
-							source: "pos",
-						},
-						raw: {
-							kind: "order_settlement",
-							orderId,
-						},
-					};
-					const { error: financialError } = await pos
-						.from("financial_transactions")
-						.insert(financialRow);
+					// Cashiers cannot write the finance ledger directly under RLS.
+					// The security-definer RPC inserts this settlement idempotently.
+					const { error: financialError } = await pos.rpc("repair_pos_order_settlement", {
+						p_order_id: orderId,
+					});
 					if (financialError) throw financialError;
 				}
 
