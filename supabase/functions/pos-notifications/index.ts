@@ -136,7 +136,7 @@ async function pushStatus(user: UserContext, endpoint: unknown) {
 async function dispatchWebPush(notification: any) {
   const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY") ?? "";
   const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY") ?? "";
-  const vapidSubject = Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@yumme.id";
+  const vapidSubject = Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@djiwatentram.web.id";
   if (!vapidPublicKey || !vapidPrivateKey || !notification?.id) return;
   const subscriptions = await dbGet("pos_notification_push_subscriptions", { select: "id,endpoint,p256dh,auth,user_id,customer_id,app_scope,target_role,target_branch_id", is_active: "eq.true", limit: "500" });
   const targets = (subscriptions ?? []).filter((item: any) => {
@@ -230,17 +230,12 @@ function sourceOf(order: any) {
 }
 
 function paymentType(order: any) {
-  const canonical = String(order.paymentChannelCanonical ?? order.payment_channel_canonical ?? "").trim().toLowerCase();
-  if (canonical === "qris_mayar") return "mayar";
-  if (canonical === "djiwa_pay") return "wallet";
-  if (canonical === "cashier_cash") return "cashier";
   const receipt = String(order.paymentReceiptKind ?? order.payment_receipt_kind ?? "").trim().toLowerCase();
   const method = String(order.paymentMethod ?? order.payment_method ?? "").trim().toLowerCase();
   const gateway = order.paymentGateway ?? order.payment_gateway;
-  // Provider evidence wins over stale cashier metadata from older orders.
-  if (receipt.includes("gateway") || receipt.includes("mayar") || ["qris", "qris_mayar", "mayar", "gateway"].includes(method) || gateway) return "mayar";
-  if (receipt.includes("wallet") || method === "wallet" || method === "djiwa_pay" || receipt === "wallet_paid") return "wallet";
   if (receipt.includes("cashier") || method === "cash" || method === "tunai" || method === "cashier") return "cashier";
+  if (receipt.includes("wallet") || method === "wallet" || method === "djiwaapp") return "wallet";
+  if (receipt.includes("mayar") || gateway) return "mayar";
   return "unknown";
 }
 
@@ -250,7 +245,7 @@ async function syncRecentOrders() {
   // only newly observed IDs create a popup in the client.
   const since = new Date(Date.now() - ORDER_NOTIFICATION_RETENTION_MS).toISOString();
   const orders = await dbGetPaged("pos_orders", {
-    select: "_id,orderNumber,status,totalAmount,subtotalAmount,shippingFeeAmount,paymentMethod,paymentReceiptKind,paymentGateway,paymentChannelCanonical,customerName,tableNumber,orderType,daily_receipt_no,receipt_kind,source,sourceApp,brandSlug,businessUnit,createdAt,items,deliveryProvider,deliveryContactName,deliveryContactPhone,deliveryAddress,deliveryNotes",
+    select: "_id,orderNumber,status,totalAmount,subtotalAmount,shippingFeeAmount,paymentMethod,paymentReceiptKind,paymentGateway,customerName,tableNumber,orderType,daily_receipt_no,receipt_kind,source,sourceApp,brandSlug,businessUnit,createdAt,items,deliveryProvider,deliveryContactName,deliveryContactPhone,deliveryAddress,deliveryNotes",
     order: "createdAt.desc",
   });
   let created = 0;

@@ -407,7 +407,7 @@ Jika nanti user ingin definisi `jam ramai` yang configurable, buat setting admin
 3. Stage explicit session-owned files; never `git add -A`/`.`.
 4. Commit source.
 5. Push GitHub and verify local/remote SHA equality.
-6. Deploy Admin to `/var/www/admindjiwatram.yumme.id/` with runtime asset exclusions.
+6. Deploy Admin to `/var/www/admindjiwatram.djiwatentram.web.id/` with runtime asset exclusions.
 7. Verify `index.html`, `version.json`, entry bundle, and hourly widget marker parity.
 8. Verify production with browser when DNS is available; do not claim live visual verification from local webroot alone.
 

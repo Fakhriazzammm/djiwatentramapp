@@ -31,7 +31,7 @@ Tambahan requirement bisnis:
 8. Reward hanya dapat digunakan untuk transaksi produk/menu Djiwa Tentram di:
 
 ```txt
-https://djiwatentram.yumme.id
+https://djiwatentram.web.id
 ```
 
 9. Reward tidak dapat dicairkan, ditransfer, diuangkan, atau digunakan di storefront merchandise/B2B/brand lain.
@@ -80,7 +80,7 @@ Temuan:
 
 - Google social provider sudah dikonfigurasi melalui `GOOGLE_CLIENT_ID` dan `GOOGLE_CLIENT_SECRET`.
 - Customer session menggunakan httpOnly cookie.
-- Cookie cross-subdomain sudah memakai domain `.yumme.id`.
+- Cookie cross-subdomain sudah memakai domain `.djiwatentram.web.id`.
 - `accountLinking` sudah aktif dengan `allowDifferentEmails: false`.
 - `trustedOrigins` dan CORS masih perlu ditambah untuk domain baru 500 Kopi Tasik.
 - Callback Google menggunakan Better Auth, bukan Supabase GoTrue.
@@ -325,7 +325,7 @@ ke:
 https://<domain-500kopitasik>/api/auth/callback/google
 ```
 
-Karena cookie pusat menggunakan `.yumme.id`, domain app baru harus tetap berada di domain yang kompatibel dengan kebijakan cookie tersebut.
+Karena cookie pusat menggunakan `.djiwatentram.web.id`, domain app baru harus tetap berada di domain yang kompatibel dengan kebijakan cookie tersebut.
 
 ### Existing Djiwa customer auth boundary
 
@@ -718,7 +718,7 @@ The browser must never directly update `available_balance` or `rewarded_shop_cou
 Requirement:
 
 ```txt
-Reward hanya digunakan untuk produk/menu Djiwa Tentram di djiwatentram.yumme.id
+Reward hanya digunakan untuk produk/menu Djiwa Tentram di djiwatentram.web.id
 ```
 
 Enforcement must happen server-side at checkout, not only by hiding a button.
@@ -730,7 +730,7 @@ Reward hold/capture is allowed only if:
 ```txt
 order customer belongs to Better Auth customer session
 order storefront/brand = djiwatentram
-order source/domain = djiwatentram.yumme.id
+order source/domain = djiwatentram.web.id
 order contains valid Djiwa Tentram menu/product scope
 order total is positive
 ```
@@ -738,9 +738,9 @@ order total is positive
 Reject reward use for:
 
 ```txt
-merchandise.yumme.id
-b2b.yumme.id
-ordermieyamin.yumme.id
+merchandise.djiwatentram.web.id
+b2b.djiwatentram.web.id
+ordermieyamin.djiwatentram.web.id
 admin/POS manual orders
 cash withdrawal
 customer-to-customer transfer
@@ -1192,7 +1192,7 @@ They must be marked development-only and excluded from production seed/deploy pa
 
 ## Open Questions Before Implementation
 
-1. Apa domain final aplikasi: `500kopitasik.yumme.id`, domain lain, atau hanya path sementara?
+1. Apa domain final aplikasi: `500kopitasik.djiwatentram.web.id`, domain lain, atau hanya path sementara?
 2. Apakah reward Rp500 langsung diberikan setelah AI sticker `completed`, atau setelah moderator/visit validation tambahan?
 3. Apakah reward memiliki expiry?
 4. Apakah reward dapat digabung dengan saldo Djiwa Pay umum dalam satu transaksi Djiwa Tentram?
@@ -1617,7 +1617,7 @@ Gunakan vision/screenshot review saat implementation. Jika asset berisi typograp
 Aplikasi akan memakai subdomain resmi:
 
 ```txt
-https://500kopitasik.yumme.id
+https://500kopitasik.djiwatentram.web.id
 ```
 
 Target hosting:
@@ -1626,7 +1626,7 @@ Target hosting:
 DNS        Hostinger DNS via Hostinger CLI
 Web server VPS ini
 Frontend   static Vite SPA melalui Nginx
-Webroot    /var/www/500kopitasik.yumme.id/
+Webroot    /var/www/500kopitasik.djiwatentram.web.id/
 SSL        Let's Encrypt / Certbot
 ```
 
@@ -1639,7 +1639,7 @@ Provisioning hanya dilakukan setelah app berhasil build dan ada approval deploym
 ```txt
 1. hostinger version
 2. cek autentikasi CLI tanpa menampilkan token
-3. list DNS yumme.id
+3. list DNS djiwatentram.web.id
 4. cek apakah 500kopitasik sudah punya A/CNAME record
 5. validate A record ke IP VPS
 6. apply dengan overwrite=false
@@ -1651,13 +1651,13 @@ Provisioning hanya dilakukan setelah app berhasil build dan ada approval deploym
 Command pattern yang direncanakan:
 
 ```bash
-hostinger dns records list yumme.id --format json
-hostinger dns records validate yumme.id \\
+hostinger dns records list djiwatentram.web.id --format json
+hostinger dns records validate djiwatentram.web.id \\
   --zone '[{"name":"500kopitasik","type":"A","records":[{"content":"<VPS_IP>"}],"ttl":300}]'
-hostinger dns records update yumme.id \\
+hostinger dns records update djiwatentram.web.id \\
   --zone '[{"name":"500kopitasik","type":"A","records":[{"content":"<VPS_IP>"}],"ttl":300}]' \\
   --overwrite=false
-hostinger dns records list yumme.id --format json
+hostinger dns records list djiwatentram.web.id --format json
 ```
 
 Rules:
@@ -1678,7 +1678,7 @@ Aplikasi ini direncanakan sebagai pure static SPA, bukan Node/PM2 backend:
 bun install/build target app saja
 → apps/500kopitasik/dist
 → staging artifact
-→ /var/www/500kopitasik.yumme.id/
+→ /var/www/500kopitasik.djiwatentram.web.id/
 → Nginx SPA fallback
 → HTTPS
 ```
@@ -1687,8 +1687,8 @@ Nginx block harus additive:
 
 ```nginx
 server {
-    server_name 500kopitasik.yumme.id;
-    root /var/www/500kopitasik.yumme.id;
+    server_name 500kopitasik.djiwatentram.web.id;
+    root /var/www/500kopitasik.djiwatentram.web.id;
     index index.html;
 
     client_max_body_size 15m;
@@ -1723,7 +1723,7 @@ Provisioning sequence:
 6. tulis HTTP-only Nginx block
 7. nginx -t
 8. reload Nginx
-9. certbot untuk 500kopitasik.yumme.id
+9. certbot untuk 500kopitasik.djiwatentram.web.id
 10. nginx -t + reload bila diperlukan
 11. verifikasi HTTPS dengan --resolve dan public DNS
 ```
@@ -1763,7 +1763,7 @@ Default metadata yang direncanakan:
 <meta name="description" content="Jelajahi dan kumpulkan 500 coffee shop di Tasikmalaya. Foto kunjunganmu, buat sticker, simpan cerita, dan raih reward Djiwa Pay untuk menu Djiwa Tentram." />
 <meta name="application-name" content="500 Kopi Tasik" />
 <meta name="theme-color" content="#FAFAFA" />
-<link rel="canonical" href="https://500kopitasik.yumme.id/" />
+<link rel="canonical" href="https://500kopitasik.djiwatentram.web.id/" />
 ```
 
 Open Graph/Twitter metadata:
@@ -1773,12 +1773,12 @@ Open Graph/Twitter metadata:
 <meta property="og:site_name" content="500 Kopi Tasik" />
 <meta property="og:title" content="500 Kopi Tasik — Coffee Passport Tasikmalaya" />
 <meta property="og:description" content="Datang, foto, ceritakan, jadikan sticker, dan kumpulkan 500 coffee shop Tasikmalaya." />
-<meta property="og:url" content="https://500kopitasik.yumme.id/" />
-<meta property="og:image" content="https://500kopitasik.yumme.id/og-cover.png" />
+<meta property="og:url" content="https://500kopitasik.djiwatentram.web.id/" />
+<meta property="og:image" content="https://500kopitasik.djiwatentram.web.id/og-cover.png" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="500 Kopi Tasik — Coffee Passport Tasikmalaya" />
 <meta name="twitter:description" content="Visual coffee diary untuk menjelajahi 500 coffee shop di Tasikmalaya." />
-<meta name="twitter:image" content="https://500kopitasik.yumme.id/og-cover.png" />
+<meta name="twitter:image" content="https://500kopitasik.djiwatentram.web.id/og-cover.png" />
 ```
 
 SEO copy harus tetap jujur:
@@ -2123,5 +2123,5 @@ Collection +1
 Reward Djiwa Pay +Rp500
         ↓
 Saldo reward hanya dapat dipakai
-untuk menu Djiwa Tentram di djiwatentram.yumme.id
+untuk menu Djiwa Tentram di djiwatentram.web.id
 ```

@@ -31,7 +31,7 @@ SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 BARISTA_GROUP_ID = int(os.getenv("BARISTA_GROUP_ID", "-5182004468"))
 KITCHEN_GROUP_ID = int(os.getenv("KITCHEN_GROUP_ID", "-5199093599"))
 TRANSACTION_GROUP_ID = int(os.getenv("TRANSACTION_GROUP_ID", "-1003927364523"))
-MAYAR_RECONCILE_URL = os.getenv("MAYAR_RECONCILE_URL", "https://supabase.yumme.id/functions/v1/mayar-webhook")
+MAYAR_RECONCILE_URL = os.getenv("MAYAR_RECONCILE_URL", "https://supabase.djiwatentram.web.id/functions/v1/mayar-webhook")
 MAYAR_WEBHOOK_TOKEN = os.getenv("MAYAR_WEBHOOK_TOKEN", "")
 
 WIB = timezone(timedelta(hours=7))

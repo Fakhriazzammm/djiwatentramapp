@@ -58,7 +58,7 @@ export function useOpnameRunner() {
   }, []);
 
   const submitOpname = useCallback(async (opnameResult: OpnameCheckResult, staffName: string, userId: string, auth?: { pinCode?: string; faceDescriptor?: number[]; location?: { lat: number; lng: number } | null }) => {
-    const response = await fetch("https://supabase.yumme.id/functions/v1/process-closing", {
+    const response = await fetch("https://supabase.djiwatentram.web.id/functions/v1/process-closing", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, userName: staffName, roleName: opnameResult.role, shiftName: opnameResult.shiftName, role: opnameResult.role, items: opnameResult.items, source: "pos_web", kebersihan: [], pinCode: auth?.pinCode, faceDescriptor: auth?.faceDescriptor, location: auth?.location }),
     });

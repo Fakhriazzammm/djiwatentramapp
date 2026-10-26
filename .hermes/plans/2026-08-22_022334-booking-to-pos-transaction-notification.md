@@ -2,7 +2,7 @@
 
 ## Goal
 
-Memastikan seluruh data dari `booking.yumme.id` tersimpan lengkap, membentuk transaksi operasional yang dapat dibaca `apps/pos`, dan mengirim notifikasi yang benar ke:
+Memastikan seluruh data dari `booking.djiwatentram.web.id` tersimpan lengkap, membentuk transaksi operasional yang dapat dibaca `apps/pos`, dan mengirim notifikasi yang benar ke:
 
 - grup transaksi
 - grup Bar

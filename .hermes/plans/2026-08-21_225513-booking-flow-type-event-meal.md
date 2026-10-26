@@ -2,7 +2,7 @@
 
 **Status:** Plan only — belum ada implementasi, migration, commit, push, atau deploy.
 **Target app:** `/opt/djiwatentramapp/apps/booking`
-**Domain:** `https://booking.yumme.id`
+**Domain:** `https://booking.djiwatentram.web.id`
 **Tanggal plan:** 2026-08-21
 
 ## 1. Goal
@@ -361,7 +361,7 @@ pos.orders / public booking storage
 
 ### Supabase self-hosted sebagai source of truth
 
-Semua data yang memengaruhi UI, availability, harga, dan payload booking wajib berasal dari Supabase self-hosted di `supabase.yumme.id` melalui public-safe view/RPC atau Edge Function. Frontend tidak boleh menjadi sumber data bisnis.
+Semua data yang memengaruhi UI, availability, harga, dan payload booking wajib berasal dari Supabase self-hosted di `supabase.djiwatentram.web.id` melalui public-safe view/RPC atau Edge Function. Frontend tidak boleh menjadi sumber data bisnis.
 
 ```text
 Supabase self-hosted

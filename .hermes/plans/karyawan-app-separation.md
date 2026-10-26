@@ -2,7 +2,7 @@
 
 ## Ringkasan
 
-Buat app baru `apps/karyawan` (`@yumipos/karyawan`) dengan PWA sendiri, domain `karyawan.yumme.id`. Admin Operational Team tetap di `apps/pos`.
+Buat app baru `apps/karyawan` (`@yumipos/karyawan`) dengan PWA sendiri, domain `karyawan.djiwatentram.web.id`. Admin Operational Team tetap di `apps/pos`.
 
 ---
 
@@ -13,7 +13,7 @@ Production `apps/pos` **TIDAK BOLEH error** di setiap tahap. Strategi migrasi:
 1. **Dual-path copy**: File dipindah ke web-shared DULU, POS tetap pakai `@/` path lama — kedua versi jalan bareng
 2. **Swap import satu per satu**: Setiap kali ganti import dari `@/` ke `@yumipos/web-shared`, **build & test** dulu
 3. **Tahap 'no-op'**: Tidak ada file di POS yang dihapus sebelum apps/karyawan deployed & verified
-4. **Karyawan routes tetap di POS** sampai apps/karyawan live di karyawan.yumme.id
+4. **Karyawan routes tetap di POS** sampai apps/karyawan live di karyawan.djiwatentram.web.id
 5. **Hapus duplikasi terakhir**: Baru setelah verified, hapus karyawan routes + hooks duplikat dari POS
 
 ### Urutan aman (dependency chain)
@@ -179,12 +179,12 @@ Tambah task `build` dan `dev` (inherit dari default).
 
 ## Tahap 3: Deploy apps/karyawan
 
-### 3a. Deploy ke karyawan.yumme.id
-- `apps/karyawan` → deploy ke **karyawan.yumme.id** (Cloudflare Pages atau Vercel)
-- SETELAH verified live dan akses login/profile berfungsi penuh di karyawan.yumme.id, baru lanjut
+### 3a. Deploy ke karyawan.djiwatentram.web.id
+- `apps/karyawan` → deploy ke **karyawan.djiwatentram.web.id** (Cloudflare Pages atau Vercel)
+- SETELAH verified live dan akses login/profile berfungsi penuh di karyawan.djiwatentram.web.id, baru lanjut
 
 ### 3b. Home page redirect (`home.lazy.tsx`) — AFTER deploy verified
-Link avatar click → `https://karyawan.yumme.id/{slug}` buka tab baru (window.open)
+Link avatar click → `https://karyawan.djiwatentram.web.id/{slug}` buka tab baru (window.open)
 Sementara masih bisa navigasi internal POS juga sebagai fallback
 
 ### 3c. Hapus dari POS (LAST STEP — setelah apps/karyawan live ≥1 hari)

@@ -1,4 +1,4 @@
-# Plan: Pisahkan Admin ke App Terpisah (`apps/web` → `admindjiwatentram.yumme.id`)
+# Plan: Pisahkan Admin ke App Terpisah (`apps/web` → `admindjiwatentram.web.id`)
 
 **Tanggal:** 2026-07-29
 **Author:** Zantara
@@ -12,7 +12,7 @@
 |---|---|
 | **`apps/web` SUDAH ADA** | Struktur `apps/web/src/routes/admin/*` hampir identik dengan `apps/pos/src/routes/admin/*` (117 vs 121 file). Ini bukan dari nol. |
 | `apps/web` punya entry point lengkap | `index.html` + `src/main.tsx` ✅ |
-| `VITE_SUPABASE_URL` di web | `https://supabase.yumme.id` — **SAMA** dengan pos → data dari Supabase self-host yang sama → **data akan muncul** ✅ |
+| `VITE_SUPABASE_URL` di web | `https://supabase.djiwatentram.web.id` — **SAMA** dengan pos → data dari Supabase self-host yang sama → **data akan muncul** ✅ |
 | `apps/web/src/lib/client.ts` | `createBrowserClient(VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY)` → terhubung Supabase ✅ |
 | **Beda admin** | pos punya `customers.*` + `operational-team/rekrutmen.*` yang **TIDAK ada di web** (2 modul kurang) |
 | `apps/web` hooks | Pakai hook **LOKAL** (`@/hooks`, `@/components`) — bukan shared package. Tapi tetap nembak Supabase sama. |
@@ -23,13 +23,13 @@
 `apps/web` **sudah 95% siap jadi admin app**. Yang perlu dilengkapi:
 1. Tambah 2 modul missing (`customers`, `rekrutmen`) agar **tidak ada fitur berkurang**.
 2. Tambah case `web` ke `deploy-vps.sh`.
-3. Deploy `apps/web` → `admindjiwatentram.yumme.id` (ganti isi webroot dari "copy-pos" jadi "build-web").
+3. Deploy `apps/web` → `admindjiwatentram.web.id` (ganti isi webroot dari "copy-pos" jadi "build-web").
 4. Verifikasi data muncul.
 
 ---
 
 ## 🎯 Goal
-- Admin berjalan sebagai **app terpisah** (`apps/web`) di `admindjiwatentram.yumme.id`.
+- Admin berjalan sebagai **app terpisah** (`apps/web`) di `admindjiwatentram.web.id`.
 - Tetap **terhubung ke pos/karyawan/customer** via Supabase self-host yang sama (data sinkron).
 - **Tidak ada fitur berkurang** (customers + rekrutmen ditambahkan).
 - **Data muncul** (verifikasi: chunk Supabase ada + API respond).
@@ -45,19 +45,19 @@
 - Tambah entri menu ke `apps/web/src/routes/admin/route.tsx` (PAGE_TITLES, QUICK_MENU_SECTIONS, MORE_MENU_PATHS, BOTTOM_NAV) supaya konsisten dengan pos.
 
 ### FASE 2 — Tambah case `web` ke deploy-vps.sh
-- Di fungsi argumen handler: `web) deploy_app "web" "admindjiwatentram.yumme.id" ;;`
+- Di fungsi argumen handler: `web) deploy_app "web" "admindjiwatentram.web.id" ;;`
 - Pastikan build script `build:web` ada di root package.json (atau `bun run build` di folder web).
 
 ### FASE 3 — Build & Deploy
 - `bun run build:web` (atau `cd apps/web && bun run build`).
-- Clear `/var/www/admindjiwatentram.yumme.id/*`, copy `apps/web/dist/*`.
+- Clear `/var/www/admindjiwatentram.web.id/*`, copy `apps/web/dist/*`.
 - `chown www-data`.
 
 ### FASE 4 — Verifikasi "Data Muncul"
 - `curl` admin domain → 200.
-- Cek chunk JS webroot berisi `https://supabase.yumme.id` (bukti data source benar).
+- Cek chunk JS webroot berisi `https://supabase.djiwatentram.web.id` (bukti data source benar).
 - Cek `/rest/v1/` masih 200.
-- Regression: `pos.yumme.id` tetap 200 (kita TIDAK ubah dist pos).
+- Regression: `pos.djiwatentram.web.id` tetap 200 (kita TIDAK ubah dist pos).
 
 ---
 
@@ -82,8 +82,8 @@
 ---
 
 ## ✅ Success Criteria
-- [ ] `admindjiwatentram.yumme.id` serve build `apps/web` (bukan copy pos)
+- [ ] `admindjiwatentram.web.id` serve build `apps/web` (bukan copy pos)
 - [ ] 2 modul baru (customers, rekrutmen) ada di menu admin
-- [ ] Chunk JS berisi `https://supabase.yumme.id` → data source benar
-- [ ] `pos.yumme.id` tetap 200 (regression aman)
+- [ ] Chunk JS berisi `https://supabase.djiwatentram.web.id` → data source benar
+- [ ] `pos.djiwatentram.web.id` tetap 200 (regression aman)
 - [ ] Tidak ada fitur admin yang hilang vs pos

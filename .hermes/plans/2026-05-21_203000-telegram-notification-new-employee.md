@@ -122,7 +122,7 @@ Ada pendaftar baru yang perlu direview! 👀
 🎯 Role: Barista
 ⏰ Waktu: 21 Mei 2026 14:30
 
-🔗 Review: https://pos.yumme.id/admin/operational-team/register/onboarding
+🔗 Review: https://pos.djiwatentram.web.id/admin/operational-team/register/onboarding
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 

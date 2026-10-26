@@ -1,4 +1,4 @@
-# Plan: Pindahkan Admin POS ke Subdomain Baru `admindjiwatentram.yumme.id`
+# Plan: Pindahkan Admin POS ke Subdomain Baru `admindjiwatentram.web.id`
 
 **Tanggal:** 2026-07-29
 **Author:** Zantara
@@ -9,7 +9,7 @@
 
 ## 🎯 Goal
 
-Membuat subdomain baru `admindjiwatentram.yumme.id` yang menampung **seluruh panel admin** (yang sekarang di `pos.yumme.id/admin`), untuk mempermudah pengelolaan admin.
+Membuat subdomain baru `admindjiwatentram.web.id` yang menampung **seluruh panel admin** (yang sekarang di `pos.djiwatentram.web.id/admin`), untuk mempermudah pengelolaan admin.
 
 **Syarat mutlak dari user:**
 1. Sistem, fitur, fungsi **sama persis** — tidak ada yang berkurang. Boleh ditambah, tidak boleh dihapus.
@@ -24,20 +24,20 @@ Membuat subdomain baru `admindjiwatentram.yumme.id` yang menampung **seluruh pan
 
 | Fakta | Detail |
 |---|---|
-| **`pos.yumme.id` bukan app "admin"** | Ia adalah **1 app monolitik** `@yumipos/pos` yang berisi: `/admin/*` (116 file), `/kasir/login`, `/attendance`, `/attendance/stock-opname`, `/menu`, `/register`, `/booking`, `/karyawan/login`, `/dashboard`, `/home`. Admin cuma **1 sub-route**. |
+| **`pos.djiwatentram.web.id` bukan app "admin"** | Ia adalah **1 app monolitik** `@yumipos/pos` yang berisi: `/admin/*` (116 file), `/kasir/login`, `/attendance`, `/attendance/stock-opname`, `/menu`, `/register`, `/booking`, `/karyawan/login`, `/dashboard`, `/home`. Admin cuma **1 sub-route**. |
 | **Admin sangat terkopling** | Admin memakai hook & komponen shared: `use-hybrid-pos-data` (43×), `use-hybrid-write-actions` (21×), `use-hybrid-finance-analytics-data` (14×), `useYumiAuth`, `Footer`, `dropdown-menu`, dll. Hook yang **sama persis** dipakai kasir/attendance/menu. |
 | **Auth guard** | `__root.tsx` → kalau `!isAuthenticated` redirect ke `/kasir/login`. Admin login di `/admin/login`. Guard permission per-item pakai `isAdmin \|\| role?.permissions?.includes(...)`. |
 | **Router** | TanStack Router, default basepath `/`. Tidak ada `basepath` custom. |
-| **Deploy** | `bun run build:pos` (turbo filter `@yumipos/pos`) → `dist/` (21 MB) → copy ke `/var/www/pos.yumme.id`. Script: `scripts/deploy-vps.sh pos`. |
+| **Deploy** | `bun run build:pos` (turbo filter `@yumipos/pos`) → `dist/` (21 MB) → copy ke `/var/www/pos.djiwatentram.web.id`. Script: `scripts/deploy-vps.sh pos`. |
 | **PWA** | pos punya service worker + manifest, `scope: "/"`, `registerType: autoUpdate`. |
-| **Nginx** | `/etc/nginx/sites-enabled/djiwa-pos` → `server_name pos.yumme.id`, root `/var/www/pos.yumme.id`, SPA fallback, proxy `/api/rekrutmen/` → :3456. SSL via certbot. |
+| **Nginx** | `/etc/nginx/sites-enabled/djiwa-pos` → `server_name pos.djiwatentram.web.id`, root `/var/www/pos.djiwatentram.web.id`, SPA fallback, proxy `/api/rekrutmen/` → :3456. SSL via certbot. |
 | **DNS** | `admindjiwatentram` **BELUM ADA**. Yang ada: pos, karyawan, djiwatentram, hrd, supabase, rekrutmen, belajarjepang → semua A record → `43.129.54.5`. Hostinger CLI config ADA ✅. |
-| **App lain tidak link ke /admin** | `apps/karyawan` & `apps/customer` **tidak** punya link ke `pos.yumme.id/admin`. Aman dari sisi itu. |
+| **App lain tidak link ke /admin** | `apps/karyawan` & `apps/customer` **tidak** punya link ke `pos.djiwatentram.web.id/admin`. Aman dari sisi itu. |
 
 ### Apa yang sudah ada vs apa yang diminta
 
-- **Sudah ada:** Admin lengkap & berfungsi di `pos.yumme.id/admin` (dasbor, produk, resep, HPP, inventaris, keuangan+akuntansi+transaksi+laporan+shift, pesanan, promosi, Yumi AI, tim operasional: absensi+payroll+register+kontrak+karyawan+rekrutmen, kitchen, bar, customer service, booking, minigames, forecasting, settings, stock-overview).
-- **Diminta:** Admin yang sama, tapi diakses lewat domain sendiri `admindjiwatentram.yumme.id` agar pengelolaan lebih mudah. UI boleh dirombak (compact/professional) selama fungsi utuh.
+- **Sudah ada:** Admin lengkap & berfungsi di `pos.djiwatentram.web.id/admin` (dasbor, produk, resep, HPP, inventaris, keuangan+akuntansi+transaksi+laporan+shift, pesanan, promosi, Yumi AI, tim operasional: absensi+payroll+register+kontrak+karyawan+rekrutmen, kitchen, bar, customer service, booking, minigames, forecasting, settings, stock-overview).
+- **Diminta:** Admin yang sama, tapi diakses lewat domain sendiri `admindjiwatentram.web.id` agar pengelolaan lebih mudah. UI boleh dirombak (compact/professional) selama fungsi utuh.
 
 ---
 
@@ -47,12 +47,12 @@ Ada 3 cara memindahkan admin ke subdomain. Masing-masing punya trade-off nyata u
 
 ### Opsi A — **Domain baru, app POS yang SAMA (multi-host, tanpa split kode)** ⭐
 
-Deploy `dist/` POS yang **sama** ke `/var/www/admindjiwatentram.yumme.id`, tambahkan `admindjiwatentram.yumme.id` ke nginx (host tambahan), user akses `admindjiwatentram.yumme.id/admin`. Opsional: root `/` di domain admin auto-redirect ke `/admin/login`.
+Deploy `dist/` POS yang **sama** ke `/var/www/admindjiwatentram.web.id`, tambahkan `admindjiwatentram.web.id` ke nginx (host tambahan), user akses `admindjiwatentram.web.id/admin`. Opsional: root `/` di domain admin auto-redirect ke `/admin/login`.
 
 | Pros | Cons |
 |---|---|
 | ✅ **ZERO perubahan kode aplikasi** — tidak sentuh hooks/komponen shared | ❌ Domain admin juga secara teknis bisa buka `/kasir`, `/menu` (bisa di-hide, tapi kode tetap ada) |
-| ✅ **Risiko operasional ~nol** — `pos.yumme.id` tidak berubah sama sekali | ❌ Dua domain melayani bundle 21 MB yang sama (duplikasi disk, wajar) |
+| ✅ **Risiko operasional ~nol** — `pos.djiwatentram.web.id` tidak berubah sama sekali | ❌ Dua domain melayani bundle 21 MB yang sama (duplikasi disk, wajar) |
 | ✅ Cepat: DNS + nginx + copy dist + certbot | ❌ Bukan pemisahan "bersih" secara arsitektur (tapi user minta kemudahan akses, bukan pemisahan kode) |
 | ✅ Bisa langsung online hari ini, rollback instan (hapus nginx block) | ❌ PWA scope sama → kalau user install PWA dari 2 domain, 2 entri terpisah (bukan masalah) |
 | ✅ Rombak UI admin = edit `route.tsx` admin saja, kena ke KEDUA domain sekaligus (konsisten) | |
@@ -69,7 +69,7 @@ Buat workspace `apps/admin` baru, pindahkan 116 file route admin + ekstrak semua
 | | ❌ Duplikasi config (vite, tailwind, tsconfig, PWA) + maintenance 2× |
 | | ❌ Melanggar "tanpa error karena operasional berjalan" — window risiko besar |
 
-### Opsi C — **Reverse-proxy only (nginx rewrite `admindjiwatentram.yumme.id/` → `pos.yumme.id/admin`)**
+### Opsi C — **Reverse-proxy only (nginx rewrite `admindjiwatentram.web.id/` → `pos.djiwatentram.web.id/admin`)**
 
 Domain admin nginx proxy_pass ke pos, atau rewrite root ke /admin. Tanpa deploy dist terpisah.
 
@@ -83,14 +83,14 @@ Domain admin nginx proxy_pass ke pos, atau rewrite root ke /admin. Tanpa deploy 
 
 **Alasan:**
 1. **Memenuhi tujuan user 100%** — user minta "subdomain baru untuk mempermudah pengelolaan admin", BUKAN "pisahkan kode admin dari POS". Opsi A memberi domain khusus admin tanpa menyentuh apa pun yang bisa merusak operasional.
-2. **Zero risk ke operasional** — `pos.yumme.id` (kasir, absensi, order) **tidak berubah satu byte pun**. Ini syarat mutlak "tanpa error karena operasional berjalan".
+2. **Zero risk ke operasional** — `pos.djiwatentram.web.id` (kasir, absensi, order) **tidak berubah satu byte pun**. Ini syarat mutlak "tanpa error karena operasional berjalan".
 3. **Rollback instan** — kalau ada masalah, hapus 1 nginx server block → selesai. Opsi B tidak bisa di-rollback semudah itu.
 4. **Rombak UI tetap bisa** — permintaan "UI boleh dirombak" dikerjakan dengan mengedit `admin/route.tsx` + halaman admin. Karena app sama, perubahan otomatis konsisten di kedua domain. **Tidak ada fitur yang hilang** karena kode 100% sama.
 5. Kalau nanti user benar-benar mau pemisahan kode penuh (Opsi B), itu bisa jadi fase lanjutan **setelah** domain admin stabil — tidak perlu ambil risiko sekarang.
 
 **Guard tambahan (opsional, aman):** Di domain admin, root `/` bisa langsung ke `/admin/login`. Bisa lewat 2 cara:
 - (a) nginx: `location = / { return 302 /admin/login; }` di server block admin saja — TIDAK sentuh kode.
-- (b) Deteksi hostname di app: kalau `window.location.hostname === "admindjiwatentram.yumme.id"` → default route ke `/admin`. Sedikit sentuh kode tapi terpusat di 1 tempat.
+- (b) Deteksi hostname di app: kalau `window.location.hostname === "admindjiwatentram.web.id"` → default route ke `/admin`. Sedikit sentuh kode tapi terpusat di 1 tempat.
 Rekomendasi: **cara (a) nginx** — nol perubahan kode.
 
 ---
@@ -98,36 +98,36 @@ Rekomendasi: **cara (a) nginx** — nol perubahan kode.
 ## 🗂️ Proposed Approach (Opsi A) — Langkah Detail
 
 ### FASE 0 — Persiapan (read-only, verifikasi)
-1. Verifikasi Hostinger CLI/token aktif: `curl` list DNS `yumme.id` (sudah ✅).
+1. Verifikasi Hostinger CLI/token aktif: `curl` list DNS `djiwatentram.web.id` (sudah ✅).
 2. Cek disk VPS ≥ 3 GB free (dibutuhkan build): `df -h /`.
-3. Konfirmasi build POS terkini sehat: bandingkan `/var/www/pos.yumme.id/version.json` dengan `dist`.
+3. Konfirmasi build POS terkini sehat: bandingkan `/var/www/pos.djiwatentram.web.id/version.json` dengan `dist`.
 
 ### FASE 1 — DNS (Hostinger CLI)
 4. **Validate** dulu record baru:
    ```bash
-   hostinger dns records validate yumme.id \
+   hostinger dns records validate djiwatentram.web.id \
      --zone '[{"name":"admindjiwatentram","type":"A","records":[{"content":"43.129.54.5"}],"ttl":300}]'
    ```
 5. **Apply** dengan `--overwrite=false` (append, tidak hapus record lain):
    ```bash
-   hostinger dns records update yumme.id \
+   hostinger dns records update djiwatentram.web.id \
      --zone '[{"name":"admindjiwatentram","type":"A","records":[{"content":"43.129.54.5"}],"ttl":300}]' \
      --overwrite=false
    ```
-6. **Verify propagasi**: `dig @ns1.dns-parking.com admindjiwatentram.yumme.id A +short` → harus `43.129.54.5`. Lalu `dig @8.8.8.8 ...`.
+6. **Verify propagasi**: `dig @ns1.dns-parking.com admindjiwatentram.web.id A +short` → harus `43.129.54.5`. Lalu `dig @8.8.8.8 ...`.
    - ⚠️ Karena ini record **BARU** (bukan mengganti CNAME lama), tidak ada masalah stale-cache ISP. Propagasi cepat (TTL 300s).
 
 ### FASE 2 — Direktori & Nginx (HTTP dulu, untuk certbot)
 7. Buat direktori web root:
    ```bash
-   sudo mkdir -p /var/www/admindjiwatentram.yumme.id
+   sudo mkdir -p /var/www/admindjiwatentram.web.id
    ```
 8. Buat nginx server block **HTTP-only** dulu (agar certbot bisa jalan — hindari deadlock cert):
    ```nginx
    # /etc/nginx/sites-available/djiwa-admin
    server {
-       server_name admindjiwatentram.yumme.id;
-       root /var/www/admindjiwatentram.yumme.id;
+       server_name admindjiwatentram.web.id;
+       root /var/www/admindjiwatentram.web.id;
        index index.html;
        client_max_body_size 10m;
 
@@ -162,10 +162,10 @@ Rekomendasi: **cara (a) nginx** — nol perubahan kode.
 ### FASE 3 — SSL (certbot Let's Encrypt)
 10. Issue cert (nginx plugin auto-upgrade block ke 443):
     ```bash
-    sudo certbot --nginx -d admindjiwatentram.yumme.id \
+    sudo certbot --nginx -d admindjiwatentram.web.id \
       --non-interactive --agree-tos --email <email-owner>
     ```
-11. Verify: `curl -sk -o /dev/null -w "%{http_code}\n" https://admindjiwatentram.yumme.id/admin/login`.
+11. Verify: `curl -sk -o /dev/null -w "%{http_code}\n" https://admindjiwatentram.web.id/admin/login`.
 
 ### FASE 4 — Rombak UI Admin (sesuai skill design DNA) — DIKERJAKAN DI KODE POS
 > Karena app sama, ini otomatis apply ke kedua domain. **Tidak menghapus fitur apa pun.**
@@ -184,19 +184,19 @@ Rekomendasi: **cara (a) nginx** — nol perubahan kode.
 17. Deploy ke KEDUA domain (pos sudah live, admin domain baru):
     ```bash
     # domain admin baru
-    sudo rm -rf /var/www/admindjiwatentram.yumme.id/*
-    sudo cp -r apps/pos/dist/* /var/www/admindjiwatentram.yumme.id/
-    sudo chown -R www-data:www-data /var/www/admindjiwatentram.yumme.id/
-    # pos.yumme.id di-redeploy HANYA jika FASE 4 mengubah UI (kalau tidak, biarkan)
-    sudo cp -r apps/pos/dist/* /var/www/pos.yumme.id/   # hanya jika UI dirombak
-    sudo chown -R www-data:www-data /var/www/pos.yumme.id/
+    sudo rm -rf /var/www/admindjiwatentram.web.id/*
+    sudo cp -r apps/pos/dist/* /var/www/admindjiwatentram.web.id/
+    sudo chown -R www-data:www-data /var/www/admindjiwatentram.web.id/
+    # pos.djiwatentram.web.id di-redeploy HANYA jika FASE 4 mengubah UI (kalau tidak, biarkan)
+    sudo cp -r apps/pos/dist/* /var/www/pos.djiwatentram.web.id/   # hanya jika UI dirombak
+    sudo chown -R www-data:www-data /var/www/pos.djiwatentram.web.id/
     ```
-    - ⚠️ Kalau FASE 4 di-skip (UI tidak dirombak), `pos.yumme.id` **tidak disentuh** sama sekali → risiko nol.
+    - ⚠️ Kalau FASE 4 di-skip (UI tidak dirombak), `pos.djiwatentram.web.id` **tidak disentuh** sama sekali → risiko nol.
 
 ### FASE 6 — Verifikasi End-to-End
-18. Login admin di `https://admindjiwatentram.yumme.id/admin/login` → dasbor tampil.
+18. Login admin di `https://admindjiwatentram.web.id/admin/login` → dasbor tampil.
 19. Cek 5 modul kritikal: Keuangan, Transaksi, Absensi, Payroll, Inventaris → data live tampil.
-20. **Regression pos.yumme.id**: buka `https://pos.yumme.id/kasir/login`, `/attendance` → pastikan operasional TIDAK terganggu.
+20. **Regression pos.djiwatentram.web.id**: buka `https://pos.djiwatentram.web.id/kasir/login`, `/attendance` → pastikan operasional TIDAK terganggu.
 21. Cek console error (browser_console) di kedua domain.
 22. Cek PWA: manifest & SW load di admin domain.
 23. Screenshot bukti (browser_vision) sebelum vs sesudah UI rombak.
@@ -206,9 +206,9 @@ Rekomendasi: **cara (a) nginx** — nol perubahan kode.
 ## 🗄️ Database / Backend Impact
 
 **TIDAK ADA perubahan database.** Admin domain baru pakai:
-- `VITE_SUPABASE_URL=https://supabase.yumme.id` (sama) — build env tidak berubah.
+- `VITE_SUPABASE_URL=https://supabase.djiwatentram.web.id` (sama) — build env tidak berubah.
 - Edge Functions, RLS, Better Auth (:3001), rekrutmen (:3456) — semua tetap. Domain admin memproxy `/api/rekrutmen/` sama seperti pos.
-- ⚠️ **CORS/Auth check**: `VITE_AUTH_URL` & Better Auth mungkin punya allowed-origins. Perlu cek apakah `admindjiwatentram.yumme.id` harus di-whitelist di config Better Auth / Supabase auth redirect. **(OPEN QUESTION #2 di bawah)**
+- ⚠️ **CORS/Auth check**: `VITE_AUTH_URL` & Better Auth mungkin punya allowed-origins. Perlu cek apakah `admindjiwatentram.web.id` harus di-whitelist di config Better Auth / Supabase auth redirect. **(OPEN QUESTION #2 di bawah)**
 
 ---
 
@@ -217,11 +217,11 @@ Rekomendasi: **cara (a) nginx** — nol perubahan kode.
 ### Infrastruktur (server, bukan repo)
 | File | Aksi |
 |---|---|
-| DNS `yumme.id` (Hostinger) | + A record `admindjiwatentram` |
+| DNS `djiwatentram.web.id` (Hostinger) | + A record `admindjiwatentram` |
 | `/etc/nginx/sites-available/djiwa-admin` | **BARU** — server block |
 | `/etc/nginx/sites-enabled/djiwa-admin` | **BARU** — symlink |
-| `/etc/letsencrypt/live/admindjiwatentram.yumme.id/` | **BARU** — cert (certbot) |
-| `/var/www/admindjiwatentram.yumme.id/` | **BARU** — dist POS |
+| `/etc/letsencrypt/live/admindjiwatentram.web.id/` | **BARU** — cert (certbot) |
+| `/var/www/admindjiwatentram.web.id/` | **BARU** — dist POS |
 
 ### Kode repo (HANYA jika FASE 4 rombak UI dijalankan)
 | File | Aksi |
@@ -238,9 +238,9 @@ Rekomendasi: **cara (a) nginx** — nol perubahan kode.
 
 1. `nginx -t` sukses sebelum reload.
 2. `dig` admindjiwatentram → 43.129.54.5 (authoritative + public).
-3. `curl -sk https://admindjiwatentram.yumme.id/admin/login` → 200 + HTML.
+3. `curl -sk https://admindjiwatentram.web.id/admin/login` → 200 + HTML.
 4. Login admin sukses, dasbor + 5 modul tampil data live.
-5. **pos.yumme.id regression**: kasir/attendance masih normal (bukti operasional aman).
+5. **pos.djiwatentram.web.id regression**: kasir/attendance masih normal (bukti operasional aman).
 6. Browser console 0 error di kedua domain.
 7. Build `bun run build:pos` exit 0.
 8. Kalau UI dirombak: semua entri menu lama masih ada (checklist 116 route + 3 menu-group).
@@ -252,7 +252,7 @@ Rekomendasi: **cara (a) nginx** — nol perubahan kode.
 | Risiko | Dampak | Mitigasi |
 |---|---|---|
 | Certbot deadlock (cert belum ada saat nginx test) | SSL gagal | Pakai HTTP-only block dulu (FASE 2), baru certbot upgrade (skill hostinger-cli) |
-| Redeploy `pos.yumme.id` untuk UI baru bikin downtime sesaat | Kasir kehilangan akses beberapa detik | Deploy pakai `cp -r` (atomic-ish); atau deploy ke domain admin dulu, pos belakangan di jam sepi. Kalau UI tidak dirombak → pos tidak disentuh |
+| Redeploy `pos.djiwatentram.web.id` untuk UI baru bikin downtime sesaat | Kasir kehilangan akses beberapa detik | Deploy pakai `cp -r` (atomic-ish); atau deploy ke domain admin dulu, pos belakangan di jam sepi. Kalau UI tidak dirombak → pos tidak disentuh |
 | Better Auth / Supabase belum whitelist origin admin | Login admin gagal (CORS) | **Cek dulu** config Better Auth allowed-origins sebelum go-live (OPEN Q#2). Tambah origin bila perlu (additive, tidak hapus pos) |
 | Tab corruption saat rombak `route.tsx` (tab-indented) | Sidebar rusak `\t\t\t` | Pakai `execute_code` open() / heredoc, byte-check `\t` tiap edit (skill plan) |
 | PWA SW cache lama nyangkut di domain admin | User lihat versi lama | `registerType: autoUpdate` + no-cache header sw.js sudah ada. Hard-refresh saat verifikasi |
@@ -263,7 +263,7 @@ Rekomendasi: **cara (a) nginx** — nol perubahan kode.
 ## ❓ Open Questions (perlu jawaban user sebelum eksekusi)
 
 1. **UI rombak: iya/tidak & seberapa jauh?**
-   User bilang "boleh dirombak". Tapi merombak = redeploy `pos.yumme.id` juga (karena app sama) → ada window deploy singkat. Pilihan:
+   User bilang "boleh dirombak". Tapi merombak = redeploy `pos.djiwatentram.web.id` juga (karena app sama) → ada window deploy singkat. Pilihan:
    - **(a)** Go-live domain admin dulu TANPA rombak UI (nol risiko ke pos), rombak UI menyusul terjadwal.
    - **(b)** Rombak UI sekalian sekarang, deploy dua-duanya (butuh window jam sepi).
 2. **Email untuk certbot Let's Encrypt?** (default pakai email owner — konfirmasi alamat).
@@ -280,4 +280,4 @@ Jika suatu saat mau pemisahan kode penuh (Opsi B): buat `apps/admin`, ekstrak sh
 
 ## 📌 Ringkasan Rekomendasi
 
-> **Opsi A**: Tambah DNS `admindjiwatentram.yumme.id` → nginx host baru → certbot → copy `dist` POS yang sama → (opsional) rombak UI admin. Memenuhi tujuan "domain khusus admin untuk kemudahan" dengan **risiko operasional ~nol** dan **rollback instan**. Fitur 100% utuh karena kode sama.
+> **Opsi A**: Tambah DNS `admindjiwatentram.web.id` → nginx host baru → certbot → copy `dist` POS yang sama → (opsional) rombak UI admin. Memenuhi tujuan "domain khusus admin untuk kemudahan" dengan **risiko operasional ~nol** dan **rollback instan**. Fitur 100% utuh karena kode sama.

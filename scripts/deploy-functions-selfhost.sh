@@ -74,4 +74,4 @@ fi
 
 echo ""
 echo "✅ Deploy complete!"
-echo "   Functions available at: https://supabase.yumme.id/functions/v1/"
+echo "   Functions available at: https://supabase.djiwatentram.web.id/functions/v1/"

@@ -189,7 +189,7 @@ Semua route utama ter-build sebagai lazy chunks:
 | Payment gateway (Mayar) | Butuh sandbox credentials valid |
 | bulkScanImageData | Butuh gambar struk asli |
 | logoutSession | Butuh session token valid |
-| Frontend di production (pos.yumme.id) | Tidak termasuk dalam scope smoke test lokal |
+| Frontend di production (pos.djiwatentram.web.id) | Tidak termasuk dalam scope smoke test lokal |
 
 ---
 

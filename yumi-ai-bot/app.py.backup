@@ -144,7 +144,7 @@ async def _gather_context() -> str:
 
     if hints:
         return "Konteks realtime YumiPOS: " + " | ".join(hints)
-    return "Konteks: YumiPOS Djiwa Tentram Coffee (pos.yumme.id)"
+    return "Konteks: YumiPOS Djiwa Tentram Coffee (pos.djiwatentram.web.id)"
 
 
 # ===================================================================
@@ -1048,11 +1048,11 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id
         context_hint = await _gather_context()
         context_hint += (
-            "\nKamu adalah Yumi AI untuk YumiPOS (Djiwa Tentram Coffee, pos.yumme.id). "
+            "\nKamu adalah Yumi AI untuk YumiPOS (Djiwa Tentram Coffee, pos.djiwatentram.web.id). "
             "Jawab dalam Bahasa Indonesia, ringkas, actionable. "
             "Jika user tanya data, berikan angka dan insight. "
             "Jika user minta action (buat order, catat transaksi, dll), jelaskan bahwa fitur itu "
-            "tersedia di web app pos.yumme.id."
+            "tersedia di web app pos.djiwatentram.web.id."
         )
 
         reply = await _ask_yumi_ai(

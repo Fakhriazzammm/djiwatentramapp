@@ -27,7 +27,7 @@ type InquiryForm = {
   website: string;
 };
 
-const API = "https://api.yumme.id/v1/kol";
+const API = "https://api.djiwatentram.web.id/v1/kol";
 const emptyInquiry: InquiryForm = { businessName: "", contactName: "", contactEmail: "", contactPhone: "", preferredContact: "either", brief: "", website: "" };
 const availabilityText: Record<string, string> = {
   open: "Terbuka untuk kolaborasi",

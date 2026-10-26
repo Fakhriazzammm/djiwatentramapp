@@ -33,7 +33,7 @@ VITE_SUPABASE_URL=https://xaemykhjpkgypqqpfdcb.supabase.co
 VITE_SUPABASE_ANON_KEY=(copy from apps/web/.env)
 ```
 
-6. Custom domain: `pos.yumme.id`
+6. Custom domain: `pos.djiwatentram.web.id`
 
 ---
 
@@ -51,7 +51,7 @@ Root directory:     apps/customer
 ```
 
 3. Same env variables as above
-4. Custom domain: `djiwatentram.yumme.id`
+4. Custom domain: `djiwatentram.web.id`
 
 ---
 
@@ -82,13 +82,13 @@ bun run build:customer
 ## Step 5: Staging Test
 
 1. Deploy kedua project CF Pages
-2. Tes `pos.yumme.id`:
+2. Tes `pos.djiwatentram.web.id`:
    - [ ] Login kasir
    - [ ] `/menu` — tambah item, checkout, payment
    - [ ] `/admin/inventory` — edit stok
    - [ ] `/admin/operational-team/karyawan` — lihat data
    - [ ] Shift buka/tutup
-3. Tes `djiwatentram.yumme.id`:
+3. Tes `djiwatentram.web.id`:
    - [ ] `/djiwatentram` — welcome screen
    - [ ] Browse menu, tambah ke cart
    - [ ] Checkout + payment
@@ -99,7 +99,7 @@ bun run build:customer
 ## Step 6: Cutover (Malam, 23:00)
 
 1. Umumkan maintenance ke tim kasir
-2. Update DNS `app.yumme.id` → redirect ke `pos.yumme.id`
+2. Update DNS `app.djiwatentram.web.id` → redirect ke `pos.djiwatentram.web.id`
 3. Test 15 menit: POS + customer order
 4. Kalau OK → done
 5. Kalau gagal → revert DNS (5 menit, TTL 60 detik)
@@ -110,7 +110,7 @@ bun run build:customer
 
 ```
 Cloudflare Dashboard → DNS → Records
-  app.yumme.id → KEMBALI ke yumme-app.pages.dev (existing)
+  app.djiwatentram.web.id → KEMBALI ke yumme-app.pages.dev (existing)
 Propagasi max 1 menit (TTL 60 detik)
 ```
 

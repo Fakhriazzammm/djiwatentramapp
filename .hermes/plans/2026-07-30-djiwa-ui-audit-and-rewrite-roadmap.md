@@ -1,7 +1,7 @@
 # Djiwa Tentram — UI/UX Audit + Zero-shadcn Rewrite Roadmap
 
 > Generated: 2026-07-30 20:22 WIB
-> Domain mapping: admin → admindjiwatentram.yumme.id, pos → pos.yumme.id, karyawan → karyawan.yumme.id, customer → djiwatentram.yumme.id
+> Domain mapping: admin → admindjiwatentram.web.id, pos → pos.djiwatentram.web.id, karyawan → karyawan.djiwatentram.web.id, customer → djiwatentram.web.id
 
 ## 🔍 Ringkasan Temuan Audit
 
@@ -11,7 +11,7 @@
 |--------|--------|
 | **Duplikasi apps/admin & apps/pos** | 308 dari 309 path source identik byte-for-byte. Hanya 5 file berbeda: `route.tsx`, `__root.tsx`, `index.tsx`, `index.lazy.tsx`, `version.ts`. Perbedaan minor (landing page, root redirect). |
 | **Rute identik** | 54 lazy routes admin = 54 lazy routes pos. Komponen yang sama, hook yang sama, isu yang sama. |
-| **Keduanya aktif** | admin → admindjiwatentram.yumme.id (nginx root `/var/www/admindjiwatentram.yumme.id`), pos → pos.yumme.id (nginx root `/var/www/pos.yumme.id`). |
+| **Keduanya aktif** | admin → admindjiwatentram.web.id (nginx root `/var/www/admindjiwatentram.web.id`), pos → pos.djiwatentram.web.id (nginx root `/var/www/pos.djiwatentram.web.id`). |
 | **Implikasi** | Setiap UI fix perlu diterapkan di **dua tempat** selama duplikasi ini ada. Ini sumber utama inefisiensi. |
 
 ### B. Shared Design System — Status
@@ -68,24 +68,24 @@ Jadi **shadcn hanya sebagai styling base**, bukan sebagai komponen. Real depende
 
 ### F. Route Inventory per App
 
-#### apps/admin (deployed to admindjiwatentram.yumme.id)
+#### apps/admin (deployed to admindjiwatentram.web.id)
 - 53 lazy routes + ~40 non-lazy (route definitions)
 - Full POS admin: menu, inventory, products, orders, finance, operational team, settings
 - Admin panel: dashboard, ai-chat, customers, discounts, forecasting, booking
 - Auth: login (admin, kasir, karyawan), register
 - Landing: `/` redirect ke `/admin/login`
 
-#### apps/pos (deployed to pos.yumme.id)
+#### apps/pos (deployed to pos.djiwatentram.web.id)
 - 54 lazy routes (identik dengan admin)
 - Sama persis: menu, inventory, products, orders, finance, operational team, settings
 - Bedanya landing: `/` adalah landing page (hero + features) bukan login redirect
 
-#### apps/karyawan (deployed to karyawan.yumme.id)
+#### apps/karyawan (deployed to karyawan.djiwatentram.web.id)
 - 17 route files
 - Fitur: beranda, absensi (masuk/keluar), jadwal, profil, izin, notifikasi, leaderboard, slip gaji, rekap absensi, kontrak
 - Layout: BottomNavbar + mobile shell
 
-#### apps/customer (deployed to djiwatentram.yumme.id)
+#### apps/customer (deployed to djiwatentram.web.id)
 - 12 route files
 - Fitur: home (guest/member), order, riwayat, promo, poin, profile, notifikasi, favorit, minigames
 - Layout: app-shell + max-w-md + bottom nav (guest/member shared)
@@ -180,7 +180,7 @@ Mengganti @base-ui wrappers dengan primitives custom tanpa external dependency.
 | 4.1 | TypeScript `tsc --noEmit` | Semua 4 app — 0 errors target |
 | 4.2 | Build `bun run build` | Semua 4 app — 0 errors target |
 | 4.3 | Visual verification | Screenshot tiap halaman utama via browser |
-| 4.4 | Deploy admin | `admindjiwatentram.yumme.id` |
+| 4.4 | Deploy admin | `admindjiwatentram.web.id` |
 
 ---
 
@@ -234,7 +234,7 @@ Wave 4 (sequential — butuh semua selesai)
 1. **Mulai dari Wave 1** — aman, additive, efek langsung terlihat di production
 2. **Wave 2 per komponen** — kerjakan dari yang paling sederhana (Checkbox, Tabs, ScrollArea) dulu, baru yang kompleks (Select, Dialog)
 3. **Wave 3.1 (konsolidasi admin+pos)** — **TUNDA** sampai user meminta. Saat ini duplikasi tidak menghentikan development.
-4. **Setiap sub-wave selesai** → `bun run build` di setiap app yang diubah → deploy ke `admindjiwatentram.yumme.id`
+4. **Setiap sub-wave selesai** → `bun run build` di setiap app yang diubah → deploy ke `admindjiwatentram.web.id`
 
 ---
 

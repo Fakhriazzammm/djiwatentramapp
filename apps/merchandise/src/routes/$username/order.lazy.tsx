@@ -678,13 +678,13 @@ function OrderPage() {
 		if (paymentChoice === "mayar") {
 			if (isAuthenticated && missingContactFields.length > 0) {
 				toast.error(getCustomerContactMessage(missingContactFields));
-				window.location.assign(`https://djiwatentram.yumme.id/${username}/profile`);
+				window.location.assign(`https://djiwatentram.web.id/${username}/profile`);
 				return;
 			}
 		}
 		if (paymentChoice === "wallet" && (!isAuthenticated || missingContactFields.length > 0)) {
 			toast.error(isAuthenticated ? getCustomerContactMessage(missingContactFields) : "Masuk dan lengkapi profil untuk pembayaran Djiwa Pay");
-			if (isAuthenticated) window.location.assign(`https://djiwatentram.yumme.id/${username}/profile`);
+			if (isAuthenticated) window.location.assign(`https://djiwatentram.web.id/${username}/profile`);
 			else navigate({ to: "/masuk" });
 			return;
 		}
@@ -968,7 +968,7 @@ function OrderPage() {
 	// ── Render ───────────────────────────────────────────────────
 
 	const handleOrderHeaderBack = () => {
-		window.location.assign(`https://djiwatentram.yumme.id/${encodeURIComponent(username)}`);
+		window.location.assign(`https://djiwatentram.web.id/${encodeURIComponent(username)}`);
 	};
 
 	return (
@@ -1003,7 +1003,7 @@ function OrderPage() {
 							isLoading={authLoading}
 							onOpenAuth={() => navigate({ to: "/masuk" })}
 							onLogout={logout}
-							onProfileClick={() => window.location.assign(`https://djiwatentram.yumme.id/${username}/profile`)}
+							onProfileClick={() => window.location.assign(`https://djiwatentram.web.id/${username}/profile`)}
 						/>
 					</div>
 
@@ -1044,7 +1044,7 @@ function OrderPage() {
 				{step !== "checkout" && !cartOpen && !serviceOpen && !scannerOpen && !productSheet ? (
 					<div className="app-bottom-bar fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md px-2 pb-2 pt-1.5">
 						<div className="app-card grid grid-cols-4 gap-1.5 p-1.5">
-							<BottomButton label="Djiwa App" icon={<Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => window.location.assign(`https://djiwatentram.yumme.id/${encodeURIComponent(username)}`)} />
+							<BottomButton label="Djiwa App" icon={<Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => window.location.assign(`https://djiwatentram.web.id/${encodeURIComponent(username)}`)} />
 							<BottomButton label="Menu" icon={<Djiwa3DIcon name="delivery-management" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setStep("menu")} />
 							<BottomButton label="Keranjang" icon={<Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setCartOpen(true)} badge={totalItems > 0 ? String(totalItems) : undefined} />
 							<BottomButton label={receipt ? "Struk" : "Checkout"} icon={<Djiwa3DIcon name="order-receipt" size="micro" alt="" className="h-5 w-5 object-contain" />} onClick={() => setStep(receipt ? "receipt" : "checkout")} primary disabled={!receipt && !cart.length} />

@@ -11,5 +11,5 @@ binding = "CUSTOMER_STORIES_KV"
 id = "51f2a20c2cfa45fbaaa9ea6e5dcbebb9"
 
 [vars]
-AUTH_ORIGIN = "https://djiwatentram.yumme.id"
-ALLOWED_ORIGINS = "https://djiwatentram.yumme.id,https://merchandise.yumme.id,http://localhost:5173,http://localhost:3003"
+AUTH_ORIGIN = "https://djiwatentram.web.id"
+ALLOWED_ORIGINS = "https://djiwatentram.web.id,https://merchandise.djiwatentram.web.id,http://localhost:5173,http://localhost:3003"

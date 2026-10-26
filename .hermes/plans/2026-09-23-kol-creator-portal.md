@@ -4,7 +4,7 @@
 
 **Goal:** Mengembangkan `apps/kol` dari form pendaftaran menjadi Creator Portal lengkap: profile, edit profile, portfolio, campaign, submission bukti konten, notifikasi, public profile, badge, dan booking kedatangan creator dengan kapasitas maksimum satu creator per hari.
 
-**Architecture:** `apps/kol` tetap menjadi frontend canonical untuk creator (`kolmarketing.yumme.id`). `apps/admin` tetap menjadi satu-satunya tempat admin mengelola KOL, campaign, approval, badge, dan booking override. Data private tidak dibaca langsung oleh browser; semua mutation sensitif melalui Better Auth KOL API atau Edge Function yang melakukan validasi server-side. Booking creator dibuat sebagai domain terpisah dari booking customer, dengan unique constraint per tanggal dan timezone bisnis Asia/Jakarta.
+**Architecture:** `apps/kol` tetap menjadi frontend canonical untuk creator (`kolmarketing.djiwatentram.web.id`). `apps/admin` tetap menjadi satu-satunya tempat admin mengelola KOL, campaign, approval, badge, dan booking override. Data private tidak dibaca langsung oleh browser; semua mutation sensitif melalui Better Auth KOL API atau Edge Function yang melakukan validasi server-side. Booking creator dibuat sebagai domain terpisah dari booking customer, dengan unique constraint per tanggal dan timezone bisnis Asia/Jakarta.
 
 **Tech Stack:** React 19 + Vite + TypeScript, Better Auth, Hono auth server, Supabase PostgreSQL/schema `pos`, Supabase Edge Functions, Tailwind CSS v4, Framer Motion, lucide-react.
 

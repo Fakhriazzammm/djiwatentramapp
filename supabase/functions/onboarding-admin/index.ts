@@ -360,7 +360,7 @@ async function handleApprove(
         .eq("id", String(applicationId))
         .maybeSingle();
       const regNumber = (appData.data?.raw as any)?.registrationNumber ?? "";
-      const appBaseUrl = Deno.env.get("VITE_APP_BASE_URL") ?? "https://pos.yumme.id";
+      const appBaseUrl = Deno.env.get("VITE_APP_BASE_URL") ?? "https://pos.djiwatentram.web.id";
       const roleName = String((payload.employment as any)?.roleName ?? "-");
       const phone = appData.data?.phone ?? "-";
       const registrationLink = regNumber
@@ -467,7 +467,7 @@ async function handleApprove(
           "     • Melihat jadwal shift kamu",
           "",
           "💡 Tips:",
-          "  • Jangan lupa login ke aplikasi POS di https://pos.yumme.id",
+          "  • Jangan lupa login ke aplikasi POS di https://pos.djiwatentram.web.id",
           "  • Username dan password sudah diberikan oleh admin",
           "  • Kalau ada kendala, tanyakan ke tim manajemen ya",
         ] : []),

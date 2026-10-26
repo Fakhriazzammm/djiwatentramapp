@@ -318,7 +318,7 @@ placeholder="Cari produk..."
    Expected: build success, 0 TS error.
 3. Screenshot bukti (jika browser available):
    ```bash
-   browser_navigate → pos.yumme.id/menu → browser_vision("Cek: gauge stok, jam tidak lag, bottom nav, target bonus")
+   browser_navigate → pos.djiwatentram.web.id/menu → browser_vision("Cek: gauge stok, jam tidak lag, bottom nav, target bonus")
    ```
    Atau deploy ke VPS lalu cek via browser.
 4. Mobile viewport 375px: pastikan tidak ada overflow/clip.

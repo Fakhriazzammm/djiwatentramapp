@@ -19,12 +19,12 @@ const supabaseUrl = Deno.env.get("YUMI_SUPABASE_URL") ?? Deno.env.get("SUPABASE_
 /**
  * Base URL yang bisa dibuka browser. `SUPABASE_URL` di dalam container adalah
  * http://kong:8000 (hanya valid antar-container), dan `SUPABASE_PUBLIC_URL` di
- * server ini salah konfigurasi — menunjuk ke https://pos.yumme.id (app POS),
+ * server ini salah konfigurasi — menunjuk ke https://pos.djiwatentram.web.id (app POS),
  * bukan ke API gateway. Jadi URL publik diambil dari env khusus, dengan default
  * ke domain API yang dipakai semua app (lihat VITE_SUPABASE_URL di apps/*).
  */
 const publicSupabaseUrl = (
-	Deno.env.get("YUMI_PUBLIC_SUPABASE_URL") ?? "https://supabase.yumme.id"
+	Deno.env.get("YUMI_PUBLIC_SUPABASE_URL") ?? "https://supabase.djiwatentram.web.id"
 ).replace(/\/+$/, "");
 const supabaseServiceRoleKey = Deno.env.get("YUMI_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
