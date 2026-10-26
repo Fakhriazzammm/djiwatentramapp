@@ -6,6 +6,7 @@ import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useCallback } from "react";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { formatOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { shouldAllocateReceiptNumber } from "@/lib/order-receipt-allocation";
 
 type FunctionReference<_Kind extends "mutation" | "action"> = unknown;
 const api = new Proxy(
@@ -2490,15 +2491,19 @@ export function useHybridCreateOrder() {
 							: args?.source === "customer_self_service"
 								? "dine_in"
 								: "online";
-			const dailyReceiptNo = await allocateDailyReceiptNo(supabase);
+			const dailyReceiptNo = shouldAllocateReceiptNumber({ isOpenBill, autoComplete })
+				? await allocateDailyReceiptNo(supabase)
+				: null;
 
-			const orderNumber = generateOrderNumber({
-				source: args?.source,
-				orderType: args?.orderType,
-				createdAt: orderCreatedAt,
-				receiptNo: dailyReceiptNo,
-				customerName: args?.customerName || undefined,
-			});
+			const orderNumber = dailyReceiptNo == null
+				? null
+				: generateOrderNumber({
+					source: args?.source,
+					orderType: args?.orderType,
+					createdAt: orderCreatedAt,
+					receiptNo: dailyReceiptNo,
+					customerName: args?.customerName || undefined,
+				});
 				const orderId = makeSourceId("order");
 
 
