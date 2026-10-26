@@ -10,6 +10,8 @@ it("removes the dedicated POS keyboard-navigation feature and visible hints", ()
  expect(menuSource).not.toContain("useMenuKeyboardNav");
  expect(menuSource).not.toContain("KEYBOARD SHORTCUT HINTS");
  expect(menuSource).not.toContain("F1: Header");
+ expect(menuSource).not.toContain("scrollCategoryIntoView");
+ expect(menuSource).not.toContain("isFocused");
 });
 
 it("keeps ordinary product search and barcode controls", () => {

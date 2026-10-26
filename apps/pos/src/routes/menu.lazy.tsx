@@ -2360,10 +2360,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 												</div>
 											)}
 
-											{/* Keyboard focus indicator */}
-											{isFocused && (
-												<div className="absolute inset-0 border-2 border-primary rounded-t-2xl pointer-events-none" />
-											)}
 										</div>
 
 										{/* Info */}
