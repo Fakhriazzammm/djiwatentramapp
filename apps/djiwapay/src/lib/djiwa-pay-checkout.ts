@@ -15,7 +15,7 @@ export function paymentLabel(kind: PayCheckoutKind, method: PayPaymentMethod, am
     style: "currency",
     currency: "IDR",
     maximumFractionDigits: 0,
-  }).format(amount).replace(/\u00a0/g, " ");
+  }).format(amount).replace(/\u00a0/g, " ").replace(/^Rp\s*/, "Rp ");
 
   if (kind === "topup" || method === "mayar") return `Lanjutkan ke QRIS${kind === "ppob" ? ` · ${formattedAmount}` : ""}`;
   return `Bayar dengan Djiwa Pay · ${formattedAmount}`;
