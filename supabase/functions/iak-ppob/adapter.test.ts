@@ -33,7 +33,8 @@ describe("IAK adapter", () => {
   test("builds service-specific requests and rejects unknown service types", () => {
     expect(buildPrepaidRequest("top-up", { refId: "r1", customerId: "0812", productCode: "xld25000" })).toMatchObject({ path: "top-up", body: { ref_id: "r1", customer_id: "0812", product_code: "xld25000" } });
     expect(buildPostpaidInquiryRequest({ serviceType: "pdam", productCode: "PDAMKOTA.SURABAYA", customerNumber: "10200000", refId: "r2" })).toMatchObject({ path: "v1/bill/check", body: { commands: "inq-pasca", code: "PDAMKOTA.SURABAYA", hp: "10200000", ref_id: "r2" } });
-    expect(buildPostpaidPaymentRequest({ serviceType: "pln", productCode: "PLNPOST", customerNumber: "12345678901", refId: "r3" })).toMatchObject({ path: "v1/bill/check", body: { commands: "pay-pasca", code: "PLNPOST", hp: "12345678901", ref_id: "r3" } });
+    expect(buildPostpaidPaymentRequest({ serviceType: "pln", providerTransactionId: "9732791" })).toMatchObject({ path: "v1/bill/check", body: { commands: "pay-pasca", tr_id: "9732791" } });
+    expect(buildCheckStatusRequest({ kind: "postpaid", serviceType: "pdam", refId: "r4" })).toEqual({ path: "v1/bill/check", body: { commands: "checkstatus", ref_id: "r4" } });
     expect(buildCheckStatusRequest({ kind: "prepaid", refId: "r4" })).toEqual({ path: "check-status", body: { ref_id: "r4" } });
     expect(() => buildPostpaidInquiryRequest({ serviceType: "unknown", productCode: "x", customerNumber: "1", refId: "r5" })).toThrow("UNKNOWN_SERVICE_TYPE");
   });

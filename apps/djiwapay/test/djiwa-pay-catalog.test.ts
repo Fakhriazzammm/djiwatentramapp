@@ -21,6 +21,10 @@ describe("PPOB product naming", () => {
     expect(ppobProductName(product({ product_nominal: "Arena Breakout 1.580 Bonds" }))).toBe("Arena Breakout 1.580 Bonds");
   });
 
+  test("uses the product description when the provider sends NaN", () => {
+    expect(ppobProductName(product({ product_nominal: "NaN", product_description: "Telkomsel Internet 5GB" }))).toBe("Telkomsel Internet 5GB");
+  });
+
   test("falls back to description when nominal is empty", () => {
     expect(ppobProductName(product({ product_nominal: "", product_description: "E-Meterai" }))).toBe("E-Meterai");
   });

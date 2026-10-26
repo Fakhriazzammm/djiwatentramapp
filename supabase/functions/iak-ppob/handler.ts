@@ -52,8 +52,9 @@ export function createIakActionHandler(config: IakHandlerConfig) {
       if (action === "price-list") {
         if (kind === "postpaid") {
           if (!postpaidServices.has(serviceType)) return failure("UNKNOWN_SERVICE_TYPE", "Jenis layanan pascabayar tidak didukung");
-          const payload = await provider("v1/bill/list", { commands: "pln", status: "active", username: config.username, sign: buildSignature(config.username, config.apiKey, "pl") });
-          const raw = Array.isArray(dataOf(payload).products) ? dataOf(payload).products as Json[] : Array.isArray(dataOf(payload).data) ? dataOf(payload).data as Json[] : [];
+          const type = ({ multifinance: "finance", tax: "pajak-daerah", insurance: "asuransi" } as Record<string, string>)[serviceType] ?? serviceType;
+          const payload = await provider(`v1/bill/check/${encodeURIComponent(type)}`, { commands: "pricelist-pasca", status: "active", username: config.username, sign: buildSignature(config.username, config.apiKey, "pl") });
+          const raw = Array.isArray(dataOf(payload).pasca) ? dataOf(payload).pasca as Json[] : Array.isArray(dataOf(payload).products) ? dataOf(payload).products as Json[] : Array.isArray(dataOf(payload).data) ? dataOf(payload).data as Json[] : [];
           return success({ ...payload as Json, products: raw.map(normalizePostpaidProduct) });
         }
         if (serviceType && !prepaidServices.has(serviceType)) return failure("UNKNOWN_SERVICE_TYPE", "Jenis layanan prabayar tidak didukung");
@@ -69,18 +70,23 @@ export function createIakActionHandler(config: IakHandlerConfig) {
       }
       if (action === "inquiry" || action === "payment") {
         const productCode = text(body.product_code); const customerNumber = text(body.customer_number || body.customer_id);
-        if (kind !== "postpaid" || !serviceType || !productCode || !customerNumber || !refId) return failure("INVALID_POSTPAID_REQUEST", "kind pascabayar, service_type, product_code, customer_number, dan ref_id wajib diisi");
-        const request = action === "inquiry" ? buildPostpaidInquiryRequest({ serviceType, productCode, customerNumber, refId }) : buildPostpaidPaymentRequest({ serviceType, productCode, customerNumber, refId });
-        const payload = await provider(request.path, { username: config.username, ...request.body, sign: buildSignature(config.username, config.apiKey, refId) });
+        if (kind !== "postpaid" || !serviceType || !refId) return failure("INVALID_POSTPAID_REQUEST", "Jenis layanan dan referensi wajib diisi");
+        const providerTransactionId = String(body.provider_transaction_id ?? "").trim();
+        const request = action === "inquiry"
+          ? buildPostpaidInquiryRequest({ serviceType, productCode, customerNumber, refId })
+          : buildPostpaidPaymentRequest({ serviceType, providerTransactionId });
+        const signKey = action === "inquiry" ? refId : providerTransactionId;
+        const payload = await provider(request.path, { username: config.username, ...request.body, sign: buildSignature(config.username, config.apiKey, signKey) });
         const raw = dataOf(payload);
-        return success({ refId, serviceType, productCode, customerNumber, customerName: text(raw.customer_name || raw.name) || undefined, period: text(raw.period || raw.periode) || undefined, billAmount: numberValue(raw.bill_amount || raw.bill || raw.tagihan), adminFee: numberValue(raw.admin_fee || raw.admin), totalAmount: numberValue(raw.total_amount || raw.total), status: normalizeProviderStatus(raw.status || raw.rc), message: text(raw.message), raw: payload });
+        const transactionId = String(raw.tr_id ?? "").trim();
+        return success({ refId, serviceType, productCode, customerNumber, providerTransactionId: transactionId || undefined, customerName: text(raw.tr_name || raw.customer_name || raw.name) || undefined, period: text(raw.period || raw.periode) || undefined, billAmount: numberValue(raw.nominal ?? raw.bill_amount ?? raw.bill ?? raw.tagihan), adminFee: numberValue(raw.admin_fee ?? raw.admin), totalAmount: numberValue(raw.price ?? raw.total_amount ?? raw.total), status: normalizeProviderStatus(raw.status ?? raw.response_code ?? raw.rc), message: text(raw.message), serialNumber: text(raw.sn), raw: payload });
       }
       if (action === "check-status") {
         if (!refId) return failure("INVALID_STATUS_REQUEST", "ref_id wajib diisi");
         const request = buildCheckStatusRequest({ kind, refId, serviceType: serviceType || undefined });
-        const payload = await provider(request.path, { username: config.username, ...request.body, sign: buildSignature(config.username, config.apiKey, refId) });
+        const payload = await provider(request.path, { username: config.username, ...request.body, sign: buildSignature(config.username, config.apiKey, kind === "postpaid" ? "cs" : refId) });
         const raw = dataOf(payload);
-        return success({ refId, status: normalizeProviderStatus(raw.status || raw.rc), message: text(raw.message), serialNumber: text(raw.sn), raw: payload });
+        return success({ refId, status: normalizeProviderStatus(raw.status ?? raw.response_code ?? raw.rc), message: text(raw.message), serialNumber: text(raw.sn), raw: payload });
       }
       return failure("UNKNOWN_ACTION", "Gunakan check-balance, price-list, inquiry, top-up, payment, atau check-status");
     } catch (error) {

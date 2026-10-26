@@ -1,3 +1,4 @@
+import { postpaidPaymentStatus } from "./postpaid-status";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
@@ -784,7 +785,7 @@ function safePostpaidRecord(row: Record<string, any>) {
     billAmount: Number(row.bill_amount || 0),
     adminFee: Number(row.admin_fee || 0),
     totalAmount: Number(row.total_amount || row.price || 0),
-    status: row.provider_status === "success" || row.status === "0" ? "success" : row.provider_status === "failed" || row.status === "2" ? "failed" : "pending",
+    status: postpaidPaymentStatus(row),
     paymentStatus: row.payment_status || "pending",
     message: row.message || null,
     serialNumber: row.serial_number || null,
@@ -845,6 +846,8 @@ app.post("/api/pay-bridge/ppob/postpaid/payment", async (c) => {
   const row = found.rows[0];
   if (!row) return privateJson({ success: false, error: "PPOB_TRANSACTION_NOT_FOUND" }, 404);
   if (row.payment_status === "paid" && row.provider_status === "success") return privateJson({ success: true, status: "success", data: safePostpaidRecord(row) });
+  const providerTransactionId = String(row.inquiry_payload?.providerTransactionId ?? "").trim();
+  if (row.inquiry_payload?.status !== "success" || !/^\d+$/.test(providerTransactionId)) return privateJson({ success: false, error: "INVALID_INQUIRY" }, 422);
   const amount = Math.round(Number(row.total_amount || row.price));
   const hold = await pool.query("SELECT pos.wallet_create_hold($1,$2,$3,$4) AS result", [sourceId, refId, amount, `ppob_postpaid_${refId}`]);
   const holdResult = hold.rows[0]?.result;
@@ -853,7 +856,7 @@ app.post("/api/pay-bridge/ppob/postpaid/payment", async (c) => {
   await pool.query("UPDATE pos.ppob_transactions SET wallet_hold_id=$1,payment_status='pending',status='1',updated_at=now() WHERE ref_id=$2", [holdId, refId]);
   let result: Record<string, any>;
   try {
-    result = await callIakPpob({ action: "payment", kind: "postpaid", service_type: row.service_type, product_code: row.product_code, customer_number: row.customer_number || row.customer_id, ref_id: refId });
+    result = await callIakPpob({ action: "payment", kind: "postpaid", service_type: row.service_type, product_code: row.product_code, customer_number: row.customer_number || row.customer_id, ref_id: refId, provider_transaction_id: providerTransactionId });
   } catch {
     return privateJson({ success: true, status: "pending", data: { refId, message: "Provider belum merespons. Saldo masih ditahan sementara." } }, 202);
   }
