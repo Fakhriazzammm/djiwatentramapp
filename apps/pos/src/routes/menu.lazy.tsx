@@ -67,7 +67,6 @@ import {
 	useHybridMayarCreateInvoice,
 	useHybridUpdateOrder,
 } from "@/hooks/use-hybrid-write-actions";
-import { useMenuKeyboardNav, type FocusZone } from "@/hooks/use-menu-keyboard-nav";
 import { useCart } from "@/context/cart-context";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
 import {
@@ -551,7 +550,6 @@ function MenuPage() {
 	// Local state
 	const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
 	const [searchQuery, setSearchQuery] = useState("");
-	const [isSearchFocused, setIsSearchFocused] = useState(false);
 	const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
 	const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
 	const isCartOpen = panel === "cart";
@@ -581,8 +579,6 @@ function MenuPage() {
 const notificationSeedTimerRef = useRef<number | undefined>(undefined);
 const notificationSeedCompletedAtRef = useRef<number | null>(null);
 	const activeSidebarTab = isSidebarOpen ? panel! : "dashboard";
-	const [keyboardFocusZone, setKeyboardFocusZone] = useState<FocusZone>("header");
-	const [focusedCategoryIndex, setFocusedCategoryIndex] = useState(0);
 	const [lastOrderId, setLastOrderId] = useState<Id<"orders"> | null>(null);
 	const djiwaAppOrderStatusRef = useRef<Map<string, string>>(new Map());
 	const djiwaAppOrderSeedTimerRef = useRef<number | undefined>(undefined);
@@ -818,8 +814,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		shiftReminderMinutes,
 	]);
 
-	// Responsive grid columns
-	const [gridColumns, setGridColumns] = useState(4);
 	const [isTargetExpanded, setIsTargetExpanded] = useState(false);
 	const [isSearchActive, setIsSearchActive] = useState(false);
 	const progress = useHybridCurrentMonthProgress();
@@ -931,27 +925,10 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		[dailyBonusSummary]
 	);
 
-	useEffect(() => {
-		const updateColumns = () => {
-			const width = window.innerWidth;
-			if (width >= 1536) setGridColumns(5); // 2xl
-			else if (width >= 1280) setGridColumns(4); // xl
-			else if (width >= 1024) setGridColumns(3); // lg
-			else if (width >= 768) setGridColumns(2); // md
-			else if (width >= 640) setGridColumns(3); // sm
-			else setGridColumns(2); // mobile — 2 col for readability
-		};
-		updateColumns();
-		window.addEventListener("resize", updateColumns);
-		return () => window.removeEventListener("resize", updateColumns);
-	}, []);
-
 	// Checkout opens only on intent; landing and restored URL panels must stay visible.
 
 	// Refs for scrolling
-	const categoryScrollRef = useRef<HTMLDivElement>(null);
 	const productGridRef = useRef<HTMLDivElement>(null);
-	const headerRef = useRef<HTMLDivElement>(null);
 	const mainScrollRef = useRef<HTMLElement>(null);
 	const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
 	const isLoadingMoreRef = useRef(false);
@@ -1038,72 +1015,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		return { categoryTabs: tabs, activeSubcategories: subs, activeParentName: parentName };
 	}, [categories, activeParentId]);
 
-	// Scroll category into view
-	const scrollCategoryIntoView = useCallback((index: number) => {
-		if (categoryScrollRef.current) {
-			const buttons = categoryScrollRef.current.querySelectorAll("button");
-			if (buttons[index]) {
-				buttons[index].scrollIntoView({ behavior: "smooth", inline: "center" });
-			}
-		}
-	}, []);
-
-	// Scroll product into view
-	const scrollProductIntoView = useCallback((index: number) => {
-		if (productGridRef.current) {
-			const productElements = productGridRef.current.querySelectorAll("[data-product-index]");
-			if (productElements[index]) {
-				(productElements[index] as HTMLElement).scrollIntoView({
-					behavior: "smooth",
-					block: "nearest",
-				});
-			}
-		}
-	}, []);
-
-	// Keyboard navigation handlers
-	const handleProductSelect = useCallback(
-		(index: number) => {
-			scrollProductIntoView(index);
-		},
-		[scrollProductIntoView]
-	);
-
-	const handleProductActivate = useCallback(
-		(index: number) => {
-			if (filteredProducts && filteredProducts[index]) {
-				const product = filteredProducts[index];
-				const hasVariations = product.variations && product.variations.length > 0;
-				if (hasVariations) {
-					setSelectedProduct(product);
-				} else {
-					// Quick add to cart
-					const pricing = calculateEffectivePrice(
-						{
-							_id: product._id,
-							price: product.price,
-							categoryId: product.categoryId,
-						},
-						activeDiscounts,
-						{ allowHappyHour: false }
-					);
-					if (customerInfo.orderType === "online") { setPriceDialogProduct({ product, defaultPrice: pricing.finalPrice }); setPriceDialogValue(String(pricing.finalPrice)); return; }
-					addToCart({
-						productId: product._id,
-						name: product.name,
-						price: pricing.finalPrice,
-						originalPrice: pricing.originalPrice,
-						quantity: 1,
-						image: product.image,
-						category: product.categoryId,
-					});
-					toast.success(`${product.name} ditambahkan ke keranjang`);
-				}
-			}
-		},
-		[filteredProducts, activeDiscounts, addToCart, customerInfo.orderType]
-	);
-
 	const handleBarcodeDetected = useCallback(
 		async (code: string) => {
 			const normalizedCode = code.trim().toLowerCase();
@@ -1173,8 +1084,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 	const handleCategorySelect = useCallback(
 		(index: number) => {
-			setFocusedCategoryIndex(index);
-			scrollCategoryIntoView(index);
 			mainScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
 			if (index === 0) {
 				setActiveCategoryId(null);
@@ -1185,18 +1094,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				}
 			}
 		},
-		[categoryTabs, scrollCategoryIntoView]
-	);
-
-	const handleCategoryChange = useCallback(
-		(direction: "left" | "right") => {
-			scrollCategoryIntoView(
-				direction === "right"
-					? Math.min(focusedCategoryIndex + 1, categoryTabs.length - 1)
-					: Math.max(focusedCategoryIndex - 1, 0)
-			);
-		},
-		[focusedCategoryIndex, categoryTabs.length, scrollCategoryIntoView]
+		[categoryTabs]
 	);
 
 	useEffect(() => {
@@ -1248,71 +1146,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			}
 		};
 	}, [filteredProductsLength, hasMoreProducts, isLoading]);
-
-	const handleHeaderAction = useCallback(
-		(action: "menu" | "back" | "search" | string) => {
-			switch (action) {
-				case "back":
-					// Back button is removed
-					break;
-				case "menu":
-					openPanel("more");
-					break;
-				case "search":
-					const searchInput = document.querySelector(
-						'input[placeholder*="Cari"]'
-					) as HTMLInputElement;
-					if (searchInput) {
-						searchInput.focus();
-					}
-					break;
-				default:
-					// Check if it's one of the sidebar menu tabs
-					if (SIDEBAR_MENU_ITEMS.some(item => item.id === action)) {
-						handleOpenSidebar(action);
-					}
-			}
-		},
-		[openPanel]
-	);
-
-	const handleFocusZoneChange = useCallback((zone: FocusZone) => {
-		setKeyboardFocusZone(zone);
-	}, []);
-
-	// Initialize keyboard navigation
-	const { focusZone, focusedIndex, focusedHeaderIndex, setFocusZone, setFocusedIndex, isZoneFocused, isKeyboardActive } =
-		useMenuKeyboardNav({
-			productCount: filteredProducts?.length || 0,
-			gridColumns,
-			onProductSelect: handleProductSelect,
-			onProductActivate: handleProductActivate,
-			categoryCount: categoryTabs.length,
-			onCategorySelect: handleCategorySelect,
-			onCategoryChange: handleCategoryChange,
-			onHeaderAction: (action) => {
-				// If action is a number string, it's a sidebar menu index
-				const index = parseInt(action);
-				if (!isNaN(index) && SIDEBAR_MENU_ITEMS[index]) {
-					handleOpenSidebar(SIDEBAR_MENU_ITEMS[index].id);
-				} else {
-					handleHeaderAction(action);
-				}
-			},
-			headerItemCount: 1 + SIDEBAR_MENU_ITEMS.length, // 1 for logo + menu buttons
-			cartItemCount: totalItems,
-			onCartOpen: () => setIsCartOpen(true),
-			onCartClose: () => setIsCartOpen(false),
-			onCartItemRemove: (index) => {
-				if (cartItems[index]) {
-					removeFromCart(cartItems[index].productId, cartItems[index].variant);
-				}
-			},
-			onFocusZoneChange: handleFocusZoneChange,
-			// Sheets/dialogs own focus while open. POS shortcuts must not consume
-			// Tab/Enter or activate products behind the modal surface.
-			enabled: !panel && !isSearchFocused && !selectedProduct && !isCartOpen && !isPaymentOpen,
-		});
 
 	// Get cart quantity for a product
 	const getCartQty = (productId: string) =>
@@ -2003,7 +1836,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					className="flex-1 overflow-y-auto scroll-smooth bg-muted/10 relative pb-[calc(11rem+env(safe-area-inset-bottom))] md:pb-0"
 				>
 					<header
-						ref={headerRef}
 						className={cn(
 							"bg-background shrink-0"
 						)}
@@ -2013,7 +1845,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						<div 
 							className={cn(
 								"flex items-center justify-between min-w-0 transition-all",
-								isKeyboardActive && isZoneFocused("header") && focusedHeaderIndex === 0 && "ring-2 ring-primary ring-offset-4 rounded-lg"
 							)}
 						>
 							<div className="flex items-center gap-2.5 min-w-0">
@@ -2337,8 +2168,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								placeholder="Cari produk..."
 								value={searchQuery}
 								onChange={(e) => setSearchQuery(e.target.value)}
-								onFocus={() => setIsSearchFocused(true)}
-								onBlur={() => setIsSearchFocused(false)}
 								className="h-9 pl-8 pr-8 bg-background border-border/60 focus:border-primary shadow-sm rounded-xl transition-all text-sm"
 							/>
 							{searchQuery && (
@@ -2365,15 +2194,12 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 					{/* Category Tabs - Top Header (Main Categories Only) */}
 					<div
-						ref={categoryScrollRef}
 						className={cn(
 							"flex gap-1 overflow-x-auto px-3 pb-1.5 scrollbar-none mask-fade-edges"
 						)}
 					>
 						{categoryTabs.map((cat, index) => {
 							const isActive = activeParentId === cat._id || (cat._id === "all" && !activeParentId);
-							const isFocused = isKeyboardActive && isZoneFocused("categories") && focusedCategoryIndex === index;
-							
 							return (
 								<button
 									key={cat._id}
@@ -2384,7 +2210,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 										isActive
 											? "bg-primary text-primary-foreground shadow-md ring-1 ring-primary"
 											: "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50",
-										isFocused && "ring-2 ring-primary ring-offset-2 transition-shadow"
 									)}
 								>
 									{cat.name}
@@ -2466,12 +2291,10 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								);
 								const cartQty = getCartQty(product._id);
 				const isSold = product.isAvailable === false || Number(product.quantity ?? 0) <= 0;
-								const isFocused = isKeyboardActive && isZoneFocused("products") && focusedIndex === index;
 
 								return (
 								  <motion.button
 								    key={product._id}
-								    data-product-index={index}
 								    type="button"
 								    onClick={() => handleProductClick(product)}
 								    layout
@@ -2488,7 +2311,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								    className={cn(
 								      "group relative flex flex-col overflow-hidden rounded-2xl border bg-card shadow-sm text-left",
 								      "transition-shadow",
-								      isFocused && "ring-2 ring-primary ring-offset-2 shadow-lg"
 								    )}
 									>
 										{/* Image */}
@@ -2799,17 +2621,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				</DialogContent>
 			</Dialog>
 
-			{/* === KEYBOARD SHORTCUT HINTS === */}
-			<div className="fixed bottom-1 right-2 z-10 hidden md:block">
-				<div className="flex items-center gap-2 text-[10px] text-muted-foreground/60">
-					<span>F1: Header</span>
-					<span>F2: Kategori</span>
-					<span>F3: Produk</span>
-					<span>F4: Keranjang</span>
-					<span>Enter: Pilih</span>
-					<span>Esc: Kembali</span>
-				</div>
-			</div>
 			{priceDialogProduct && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setPriceDialogProduct(null)}>
 					<div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
