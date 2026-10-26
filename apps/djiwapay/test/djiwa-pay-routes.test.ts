@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { checkoutCustomerNumberHint, isKnownPayPath, parsePpobPath } from "../src/lib/djiwa-pay-routes";
+import { checkoutCustomerNumberHint, isKnownPayPath, parsePpobPath, postpaidServiceForCategory } from "../src/lib/djiwa-pay-routes";
 
 describe("Djiwa Pay route contract", () => {
   test.each([
@@ -15,6 +15,17 @@ describe("Djiwa Pay route contract", () => {
     ["/ppob/pulsa/unknown/TSEL5/detail", false],
   ])("recognizes %s as %s", (pathname, expected) => {
     expect(isKnownPayPath(pathname)).toBe(expected);
+  });
+
+  test("keeps unavailable categories on their own route", () => {
+    expect(parsePpobPath("/ppob/bpjs")).toEqual({ category: "bpjs" });
+    expect(parsePpobPath("/ppob/tv")).toEqual({ category: "tv" });
+  });
+
+  test("restores postpaid service from a direct URL", () => {
+    expect(postpaidServiceForCategory("pln-bill")).toBe("pln");
+    expect(postpaidServiceForCategory("pdam")).toBe("pdam");
+    expect(postpaidServiceForCategory("pulsa")).toBeNull();
   });
 
   test("parses a product route for browser history restoration", () => {

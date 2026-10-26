@@ -48,17 +48,17 @@ export function buildPostpaidInquiryRequest(input: PostpaidInput) {
   return { path: "v1/bill/check", body: { commands: "inq-pasca", code: input.productCode, hp: input.customerNumber, ref_id: input.refId } };
 }
 
-export function buildPostpaidPaymentRequest(input: PostpaidInput) {
+export function buildPostpaidPaymentRequest(input: { serviceType: string; providerTransactionId: string }) {
   assertService(input.serviceType, "postpaid");
-  if (!input.productCode || !input.customerNumber || !input.refId) throw new Error("INVALID_POSTPAID_REQUEST");
-  return { path: "v1/bill/check", body: { commands: "pay-pasca", code: input.productCode, hp: input.customerNumber, ref_id: input.refId } };
+  if (!/^\d+$/.test(input.providerTransactionId)) throw new Error("INVALID_POSTPAID_REQUEST");
+  return { path: "v1/bill/check", body: { commands: "pay-pasca", tr_id: input.providerTransactionId } };
 }
 
 export function buildCheckStatusRequest(input: { kind: IakServiceKind; refId: string; serviceType?: string }) {
   if (!input.refId) throw new Error("INVALID_STATUS_REQUEST");
   if (input.kind === "postpaid") {
     assertService(input.serviceType ?? "", "postpaid");
-    return { path: "v1/bill/check", body: { commands: "checkstatus-pasca", ref_id: input.refId } };
+    return { path: "v1/bill/check", body: { commands: "checkstatus", ref_id: input.refId } };
   }
   return { path: "check-status", body: { ref_id: input.refId } };
 }
