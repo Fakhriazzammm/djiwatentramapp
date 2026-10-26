@@ -22,10 +22,10 @@ export function CheckoutRecoveryNotice({
 			<div className="flex items-start gap-3">
 				<AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
 				<div className="min-w-0 space-y-1">
-					<h2 className="font-bold">Pesanan sebelumnya belum pasti</h2>
+					<h2 className="font-bold">Pesanan sebelumnya belum selesai</h2>
 					<p className="text-sm">
-						Server mungkin sudah menerima pesanan ini, tetapi hasilnya belum
-						sempat kembali ke kasir.
+						Status pesanan sebelumnya belum tampil. Jangan kirim atau bayar
+						pesanan ini lagi agar tidak tercatat dua kali.
 					</p>
 				</div>
 			</div>
@@ -40,8 +40,8 @@ export function CheckoutRecoveryNotice({
 				</div>
 			</div>
 			<p className="text-sm font-medium">
-				Pemulihan memakai pesanan awal dan akan menggantikan draft saat ini.
-				Jangan membuat pesanan pengganti agar tidak terjadi transaksi ganda.
+				Gunakan pesanan awal di atas untuk melanjutkan. Pesanan yang sedang
+				dibuka akan digantikan.
 			</p>
 			<Button
 				type="button"
@@ -51,7 +51,7 @@ export function CheckoutRecoveryNotice({
 				onClick={onRecover}
 			>
 				<RotateCcw className="mr-2 h-4 w-4" aria-hidden="true" />
-				{busy ? "Memulihkan pesanan…" : "Pulihkan pesanan awal"}
+				{busy ? "Memeriksa pesanan…" : "Lanjutkan pesanan sebelumnya"}
 			</Button>
 		</section>
 	);

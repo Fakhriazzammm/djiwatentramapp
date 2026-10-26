@@ -303,7 +303,7 @@ export function CheckoutSidebar({
 			setSubmitError(
 				error instanceof Error
 					? error.message
-					: "Pesanan awal belum dapat dipulihkan. Coba lagi.",
+					: "Pesanan sebelumnya belum bisa dilanjutkan. Coba lagi.",
 			);
 		} finally {
 			inFlight.current = false;

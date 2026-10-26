@@ -7,7 +7,15 @@ it("shows the original checkout and warns that recovery does not submit edited i
 	expect(html).toContain("Ayu");
 	expect(html).toContain("10.000");
 	expect(html).toContain("pesanan awal");
-	expect(html).toContain("menggantikan draft");
+	expect(html).toContain("akan digantikan");
+});
+
+it("uses cashier-friendly recovery language without technical terms", () => {
+	const html = renderToStaticMarkup(<CheckoutRecoveryNotice customerName="Ayu" total={10000} busy={false} onRecover={() => {}} />);
+	expect(html).toContain("Pesanan sebelumnya belum selesai");
+	expect(html).toContain("Status pesanan sebelumnya belum tampil");
+	expect(html).not.toContain("Server");
+	expect(html).not.toContain("draft");
 });
 
 it("offers one explicit recovery action and disables it while sending", () => {

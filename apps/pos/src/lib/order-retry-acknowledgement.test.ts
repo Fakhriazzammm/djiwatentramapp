@@ -113,7 +113,7 @@ describe("create-order retry acknowledgement", () => {
 		for (const queryError of ["order_items", "financial_transactions"] as const) {
 			it(`${path}: retains the retry when ${queryError} cannot be read`, async () => {
 				const db = database({ race, queryError });
-				await assert.rejects((await orderAction(db.client))(request), /belum.*dipulihkan|periksa/i);
+				await assert.rejects((await orderAction(db.client))(request), /belum.*bisa dilanjutkan|periksa/i);
 			});
 		}
 		it(`${path}: acknowledges a fully persisted paid order`, async () => {

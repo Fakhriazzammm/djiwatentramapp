@@ -68,12 +68,12 @@ export async function reconcileInterruptedOrder(
 	request: RetryRequest,
 ): Promise<void> {
 	const blocked = (reason: string) => new Error(
-		`Pesanan ${order.source_id} belum dapat dipulihkan: ${reason}. ` +
-		"Jangan membuat pesanan pengganti. Coba pulihkan kembali; jika tetap gagal, minta admin memeriksa pesanan dan pembayaran.",
+		`Pesanan sebelumnya belum bisa dilanjutkan. ${reason} ` +
+		"Jangan membuat pesanan baru. Coba lagi; jika tetap gagal, minta admin memeriksa pesanan dan pembayaran.",
 	);
 	const requestedItems = request.items;
 	if (!Array.isArray(requestedItems) || requestedItems.length === 0) {
-		throw blocked("data item pesanan awal belum lengkap");
+		throw blocked("Detail pesanan belum lengkap.");
 	}
 	if (request.paymentMethod && order.payment_method && request.paymentMethod !== order.payment_method) {
 		throw blocked("metode pembayaran berbeda dari pesanan awal");
@@ -89,12 +89,12 @@ export async function reconcileInterruptedOrder(
 	for (const item of (savedItems ?? []) as Record<string, unknown>[]) {
 		const lineNo = Number(item.line_no);
 		if (!Number.isInteger(lineNo) || savedByLine.has(lineNo)) {
-			throw blocked("item tersimpan tidak valid");
+			throw blocked("Detail pesanan tidak sesuai.");
 		}
 		savedByLine.set(lineNo, item);
 	}
 	if ([...savedByLine.keys()].some((lineNo) => lineNo < 1 || lineNo > requestedItems.length)) {
-		throw blocked("item tersimpan berbeda dari pesanan awal");
+		throw blocked("Detail pesanan berbeda dari pesanan awal.");
 	}
 
 	const missingItems = requestedItems.flatMap((item, index) => {
@@ -102,7 +102,7 @@ export async function reconcileInterruptedOrder(
 		const saved = savedByLine.get(lineNo);
 		if (saved) {
 			if (!sameItem(saved, item)) {
-				throw blocked("item tersimpan berbeda dari pesanan awal");
+				throw blocked("Detail pesanan berbeda dari pesanan awal.");
 			}
 			return [];
 		}
@@ -161,7 +161,7 @@ export async function reconcileInterruptedOrder(
 	});
 	if (settlementError) throw settlementError;
 	} catch (error) {
-		if (error instanceof Error && error.message.startsWith(`Pesanan ${order.source_id} belum dapat dipulihkan:`)) throw error;
-		throw blocked("item atau pencatatan pembayaran belum berhasil diverifikasi");
+		if (error instanceof Error && error.message.startsWith("Pesanan sebelumnya belum bisa dilanjutkan.")) throw error;
+		throw blocked("Status pembayaran belum bisa dipastikan.");
 	}
 }
