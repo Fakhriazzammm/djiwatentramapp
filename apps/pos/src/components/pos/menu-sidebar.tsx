@@ -139,6 +139,12 @@ import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { getOfflineManager } from "@/lib/offline-manager";
 import { getShiftClosingTasks } from "@/lib/pos-panels";
 import {
+	formatShiftOpeningCurrency,
+	restoreShiftOpeningDraft,
+	serializeShiftOpeningDraft,
+	validateShiftOpening,
+} from "@/lib/shift-opening-flow";
+import {
 	buildReceiptMetaFromCart,
 	buildReceiptMetaFromOrder,
 } from "@/lib/receipt-data";
@@ -182,6 +188,16 @@ const ONLINE_FOOD_STATUS_OPTIONS: Array<{ value: OnlineFoodStatus; label: string
 	{ value: "problem", label: "Bermasalah" },
 	{ value: "not_used", label: "Tidak digunakan" },
 ];
+
+const SHIFT_OPENING_DRAFT_KEY = "pos.shift-opening-draft.v1";
+const OPERATIONAL_CHECKS = [
+	{ key: "cashDrawer", label: "Laci kas siap" },
+	{ key: "printer", label: "Printer struk terhubung" },
+	{ key: "payments", label: "QRIS / EDC siap" },
+	{ key: "internet", label: "Internet tersambung" },
+	{ key: "menuSync", label: "Produk dan harga sudah sinkron" },
+	{ key: "stock", label: "Stok utama sudah dicek" },
+] as const;
 
 function createEmptyOnlineFoodChecklist(): OnlineFoodChecklist {
 	return {
@@ -2260,9 +2276,11 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [submitNotice, setSubmitNotice] = useState<string | null>(null);
 	const [showEndConfirm, setShowEndConfirm] = useState(false);
-	const [showStartConfirm, setShowStartConfirm] = useState(false);
-	const [showStartChecklist, setShowStartChecklist] = useState(false);
+	const [startStep, setStartStep] = useState<1 | 2 | 3 | 4>(1);
+	const [startSuccess, setStartSuccess] = useState<{ cashierName: string; shiftName: string; amount: number } | null>(null);
+	const [teamSearch, setTeamSearch] = useState("");
 	const [onlineFoodChecklist, setOnlineFoodChecklist] = useState<OnlineFoodChecklist>(() => createEmptyOnlineFoodChecklist());
+	const [operationalChecklist, setOperationalChecklist] = useState<Record<string, boolean>>(() => Object.fromEntries(OPERATIONAL_CHECKS.map(({ key }) => [key, false])));
 	const [openRequestId, setOpenRequestId] = useState<string | null>(null);
 	const [queuedCount, setQueuedCount] = useState(() => getOfflineManager().getState().queuedActions.length);
 	const [handoverConfirmed, setHandoverConfirmed] = useState(false);
@@ -2378,6 +2396,12 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		}
 	}, [cashierName, shiftType]);
 
+	useEffect(() => {
+		if (shiftType === "mulai" && currentUser?.name && !cashierName) {
+			setCashierName(currentUser.name);
+		}
+	}, [cashierName, currentUser?.name, shiftType]);
+
 	// Auto-fill default starting cash and first predefined shift
 	useEffect(() => {
 		if (shiftType === "mulai" && siteSettings?.shiftSettings) {
@@ -2392,6 +2416,25 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			}
 		}
 	}, [shiftType, siteSettings, amount, shiftName]);
+
+	useEffect(() => {
+		if (typeof window === "undefined" || shiftType !== "mulai") return;
+		const draft = restoreShiftOpeningDraft(window.localStorage.getItem(SHIFT_OPENING_DRAFT_KEY));
+		if (!draft) return;
+		setCashierName(draft.cashierName);
+		setShiftName(draft.shiftName);
+		setAmount(draft.amount);
+		setTeamMembers(draft.teamMembers);
+		setNotes(draft.notes);
+	}, [shiftType]);
+
+	useEffect(() => {
+		if (typeof window === "undefined" || shiftType !== "mulai" || startSuccess) return;
+		window.localStorage.setItem(
+			SHIFT_OPENING_DRAFT_KEY,
+			serializeShiftOpeningDraft({ cashierName, shiftName, amount, teamMembers, notes })
+		);
+	}, [amount, cashierName, notes, shiftName, startSuccess, teamMembers, shiftType]);
 
 	// Auto-calculated shift summary for UI display
 	let shiftIncome = 0;
@@ -2517,6 +2560,23 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		if (others.length) sections.push({ role: "Lainnya", users: others });
 		return sections;
 	}, [staffUsers]);
+
+	const visibleStaffSections = useMemo(() => {
+		const query = teamSearch.trim().toLowerCase();
+		if (!query) return staffSections;
+		return staffSections?.map((section) => ({
+			...section,
+			users: section.users.filter((user: any) => user.name.toLowerCase().includes(query)),
+		})).filter((section) => section.users.length > 0) ?? null;
+	}, [staffSections, teamSearch]);
+
+	const toggleVisibleTeamMembers = useCallback(() => {
+		const visibleNames = visibleStaffSections?.flatMap((section) => section.users.map((user: any) => user.name)) ?? [];
+		setTeamMembers((current) => visibleNames.every((name) => current.includes(name))
+			? current.filter((name) => !visibleNames.includes(name))
+			: Array.from(new Set([...current, ...visibleNames]))
+		);
+	}, [visibleStaffSections]);
 
 	// ── Helper: Kirim notifikasi Telegram ──
 	const sendTelegramNotif = useCallback(async (title: string, details: Record<string, string>, timeExtras?: { startTime?: number; endTime?: number }) => {
@@ -2847,15 +2907,24 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			const selectedTeamIds = teamMembers
 				.map((name) => staffUsers.find((u: any) => u.name?.trim()?.toLowerCase() === name.trim().toLowerCase())?._id)
 				.filter(Boolean);
+			const incompleteOperationalChecks = OPERATIONAL_CHECKS.filter(({ key }) => !operationalChecklist[key]);
+			if (incompleteOperationalChecks.length > 0) {
+				throw new Error(`Checklist operasional belum selesai: ${incompleteOperationalChecks.map(({ label }) => label).join(", ")}`);
+			}
 			const incompletePlatforms = ONLINE_FOOD_PLATFORMS.filter(({ key }) => onlineFoodChecklist[key].status === "pending");
 			if (incompletePlatforms.length > 0) {
 				throw new Error(`Checklist wajib belum selesai: ${incompletePlatforms.map(({ label }) => label).join(", ")}`);
 			}
-			const checklistLines = ONLINE_FOOD_PLATFORMS.map(({ key, label }) => {
+			const checklistLines = [
+				"Operasional:",
+				...OPERATIONAL_CHECKS.map(({ label }) => `✓ ${label}`),
+				"Online food:",
+				...ONLINE_FOOD_PLATFORMS.map(({ key, label }) => {
 				const item = onlineFoodChecklist[key];
 				const statusLabel = ONLINE_FOOD_STATUS_OPTIONS.find((option) => option.value === item.status)?.label ?? item.status;
 				return `${label}: ${statusLabel}${item.note.trim() ? ` — ${item.note.trim()}` : ""}`;
-			}).join("\n");
+				}),
+			].join("\n");
 			const openedShiftId = await startShift({
 				cashierName: cashierName.trim(),
 				cashierUserId: cashier?._id ?? null,
@@ -2869,8 +2938,6 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			});
 			await captureStockSnapshot(String(openedShiftId), "opening");
 			playShiftSound(`open:${openRequestId ?? `${cashierName.trim()}:${shiftName.trim()}`}`, "/sounds/cashier-shift-open.mp3");
-			setShowStartConfirm(false);
-			setShowStartChecklist(false);
 			toast.success("Shift berhasil dimulai");
 			const teamFormatted = formatTeamByRole(teamMembers, staffUsers);
 			const notificationDelivered = await sendTelegramNotif("✅ SHIFT DIBUKA", {
@@ -2886,13 +2953,11 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			} else {
 				toast.success("Notifikasi pembukaan shift terkirim");
 			}
+			setStartStep(4);
+			setStartSuccess({ cashierName: cashierName.trim(), shiftName: shiftName.trim(), amount: startingCash });
 			setShiftRefreshTrigger((c) => c + 1);
 			setOpenRequestId(null);
-			setAmount("");
-			setNotes("");
-			setCashierName("");
-			setTeamMembers([]);
-			onClose();
+			window.localStorage.removeItem(SHIFT_OPENING_DRAFT_KEY);
 		} catch (error) {
 			console.error(error);
 			const message = error instanceof Error ? error.message : "Gagal membuka shift";
@@ -2908,13 +2973,9 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 		setSubmitError(null);
 		setSubmitNotice(null);
 		if (shiftType === "mulai") {
-			const startingCash = Number(amount);
-			if (!cashierName.trim() || !shiftName.trim()) {
-				toast.error("Nama kasir dan nama shift wajib diisi");
-				return;
-			}
-			if (!Number.isFinite(startingCash) || startingCash < 0) {
-				toast.error("Modal kasir harus berupa angka 0 atau lebih");
+			const openingError = validateShiftOpening({ cashierName, shiftName, amount });
+			if (openingError) {
+				toast.error(openingError);
 				return;
 			}
 			if (!openRequestId) {
@@ -2924,7 +2985,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 						: `${Date.now()}-${Math.random().toString(36).slice(2)}`
 				);
 			}
-			setShowStartConfirm(true);
+			setStartStep(2);
 			return;
 		}
 
@@ -2934,22 +2995,50 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 		setIsSubmitting(false);
 	};
 
+	const finishStartFlow = () => {
+		setStartSuccess(null);
+		setStartStep(1);
+		setAmount("");
+		setNotes("");
+		setCashierName("");
+		setTeamMembers([]);
+		setOnlineFoodChecklist(createEmptyOnlineFoodChecklist());
+		setOperationalChecklist(Object.fromEntries(OPERATIONAL_CHECKS.map(({ key }) => [key, false])));
+		onClose();
+	};
+
 	return (
 		<div className="space-y-4 pt-1 [&_input:not([type=checkbox])]:min-h-11 [&_input]:text-base [&_select]:min-h-11 [&_select]:text-base [&_textarea]:min-h-20 [&_textarea]:text-base [&_button]:min-h-11">
-			{!isClosingShift ? (
+			{startSuccess ? (
+				<section className="space-y-4 rounded-[28px] border border-emerald-200 bg-emerald-50/70 p-5 text-center shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/10">
+					<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
+						<CheckCircle2 className="h-7 w-7" />
+					</div>
+					<div>
+						<h3 className="text-xl font-black tracking-tight text-emerald-900 dark:text-emerald-100">Shift siap digunakan</h3>
+						<p className="mt-1 text-sm text-emerald-800/80 dark:text-emerald-200/80">Kasir sudah boleh mulai menerima transaksi.</p>
+					</div>
+					<div className="rounded-2xl bg-white/80 p-4 text-left text-sm shadow-sm dark:bg-background/50">
+						<div className="flex justify-between gap-3"><span className="text-muted-foreground">Kasir</span><strong>{startSuccess.cashierName}</strong></div>
+						<div className="mt-2 flex justify-between gap-3"><span className="text-muted-foreground">Shift</span><strong>{startSuccess.shiftName}</strong></div>
+						<div className="mt-2 flex justify-between gap-3 border-t pt-2"><span className="text-muted-foreground">Modal awal</span><strong className="text-primary">{formatShiftOpeningCurrency(String(startSuccess.amount))}</strong></div>
+					</div>
+					<Button type="button" className="h-12 w-full rounded-2xl text-sm font-black" onClick={finishStartFlow}>Masuk ke Kasir</Button>
+				</section>
+			) : !isClosingShift ? (
 				<>
 					<div className="space-y-0.5 text-center">
-						<h3 className="font-black text-base tracking-tight">Buka Shift</h3>
-						<p className="text-muted-foreground text-[10px] font-medium">Siapkan data shift sebelum kasir mulai beroperasi</p>
+						<h3 className="font-black text-xl tracking-tight">Buka Shift</h3>
+						<p className="text-muted-foreground text-xs font-medium">Siapkan kasir dalam kurang dari satu menit</p>
 					</div>
-					<div className="grid grid-cols-4 gap-1 rounded-xl border border-border/70 bg-muted/30 p-1 text-center">
+					<div className="grid grid-cols-4 gap-1 rounded-2xl border border-border/70 bg-muted/30 p-1 text-center">
 						{["Data Shift", "Review", "Checklist", "Selesai"].map((step, index) => (
-							<div key={step} className={`rounded-lg px-1 py-2 text-[9px] font-black leading-tight ${index === 0 ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>
+							<div key={step} className={`rounded-xl px-1 py-2 text-[9px] font-black leading-tight ${index + 1 === startStep ? "bg-primary text-primary-foreground shadow-sm" : index + 1 < startStep ? "text-primary" : "text-muted-foreground"}`}>
 								<span className="block text-[10px]">{index + 1}</span>{step}
 							</div>
 						))}
 					</div>
-					<div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] font-semibold text-muted-foreground">Lengkapi kasir, shift, tim, dan modal awal. Setelah itu Anda akan meninjau data sebelum checklist online food.</div>
+					<div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs font-semibold text-muted-foreground">{startStep === 1 ? "Pilih kasir, shift, dan isi modal awal." : startStep === 2 ? "Pastikan data pembukaan sudah benar." : "Cek kesiapan channel order sebelum mulai."}</div>
 				</>
 			) : (
 				<div className="space-y-1 text-center">
@@ -2958,30 +3047,6 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					<p className="text-[11px] font-bold text-rose-600">Shift aktif: {shiftStatus?.shiftInfo?.shiftName || "Shift berjalan"}</p>
 				</div>
 			)}
-
-			<div className="flex gap-1 rounded-lg bg-muted/50 p-1">
-				<button
-					className={`flex-1 rounded-md px-3 py-2 font-black text-xs transition-all ${
-						shiftType === "mulai"
-							? "bg-primary text-white shadow-sm"
-							: "text-muted-foreground hover:text-foreground opacity-50 grayscale pointer-events-none"
-					}`}
-					type="button"
-					title={shiftType === "mulai" ? "Buka shift baru" : "Tutup shift aktif terlebih dahulu"}
-				>
-					Mulai Shift
-				</button>
-				<button
-					className={`flex-1 rounded-md px-3 py-2 font-black text-xs transition-all ${
-						shiftType === "akhiri"
-							? "bg-destructive text-white shadow-sm"
-							: "text-muted-foreground hover:text-foreground opacity-50 grayscale pointer-events-none"
-					}`}
-					type="button"
-				>
-					Akhiri Shift
-				</button>
-			</div>
 
 			<form className="space-y-3 pb-6" onSubmit={handleSubmit}>
 				{shiftType === "akhiri" && selectedShiftSchedule?.closeTime && (
@@ -3002,7 +3067,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 						</div>
 					</div>
 				)}
-				{shiftType === "mulai" ? (
+				{shiftType === "mulai" && startStep === 1 ? (
 					<>
 						<div className="grid grid-cols-2 gap-3">
 							<div className="space-y-1.5">
@@ -3085,36 +3150,33 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 						</div>
 						<div className="space-y-1.5">
 							<Label className="text-[10px] font-bold uppercase text-muted-foreground">Tim Bertugas (Opsional)</Label>
-							<div className="rounded-md border bg-background p-2 space-y-2 max-h-48 overflow-y-auto">
-																{!staffSections ? (
-																	<p className="text-[10px] text-muted-foreground italic px-1">Memuat data staff...</p>
-																) : staffSections.map(({ role, users }) => (
-																	<div key={role}>
-																		<p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/70 mb-1 px-1">{role}</p>
-																		{users.map((u: any) => (
-																			<label
-																				key={u._id}
-																				className="flex items-center gap-2 px-1 py-0.5 rounded hover:bg-muted/50 cursor-pointer"
-																			>
-																				<Checkbox
-																					checked={teamMembers.includes(u.name)}
-																					onCheckedChange={(checked: boolean) => {
-																						setTeamMembers(prev =>
-																							checked
-																								? [...prev, u.name]
-																								: prev.filter(n => n !== u.name)
-																						);
-																					}}
-																				/>
-																				<span className="text-xs">{u.name}</span>
-																			</label>
-																		))}
-																	</div>
-																))}
+							<div className="rounded-2xl border bg-background p-3 space-y-2">
+								<div className="flex items-center gap-2">
+									<Search className="h-4 w-4 text-muted-foreground" />
+									<Input value={teamSearch} onChange={(event) => setTeamSearch(event.target.value)} placeholder="Cari anggota tim" className="h-10 border-0 bg-muted/40 text-sm shadow-none focus-visible:ring-1" />
+									<Button type="button" variant="ghost" className="h-10 shrink-0 px-2 text-xs font-bold text-primary" onClick={toggleVisibleTeamMembers}>Pilih semua</Button>
+								</div>
+								<div className="max-h-44 space-y-2 overflow-y-auto pr-1">
+									{!visibleStaffSections ? (
+										<p className="px-1 py-2 text-xs italic text-muted-foreground">Memuat anggota tim...</p>
+									) : visibleStaffSections.length === 0 ? (
+										<p className="px-1 py-2 text-xs text-muted-foreground">Tidak ada anggota yang cocok.</p>
+									) : visibleStaffSections.map(({ role, users }) => (
+										<div key={role}>
+											<p className="mb-1 px-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">{role}</p>
+											{users.map((u: any) => (
+												<label key={u._id} className="flex min-h-10 cursor-pointer items-center gap-3 rounded-xl px-2 hover:bg-muted/50">
+													<Checkbox checked={teamMembers.includes(u.name)} onCheckedChange={(checked: boolean) => setTeamMembers((prev) => checked ? [...new Set([...prev, u.name])] : prev.filter((name) => name !== u.name))} />
+													<span className="text-sm">{u.name}</span>
+												</label>
+											))}
+										</div>
+									))}
+								</div>
 							</div>
 							{teamMembers.length > 0 && (
 								<p className="text-[10px] text-muted-foreground">
-									Dipilih: <span className="font-semibold text-foreground">{teamMembers.join(", ")}</span>
+									{teamMembers.length} anggota dipilih
 								</p>
 							)}
 						</div>
@@ -3133,6 +3195,13 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 									value={amount}
 								/>
 							</div>
+							<div className="mt-2 flex flex-wrap gap-2">
+								{[50000, 100000, 200000, 500000].map((value) => (
+									<button key={value} type="button" onClick={() => setAmount(String(value))} className="min-h-9 rounded-full border border-border bg-background px-3 text-xs font-bold text-muted-foreground transition-colors hover:border-primary hover:text-primary">
+										{formatShiftOpeningCurrency(String(value))}
+									</button>
+								))}
+							</div>
 						</div>
 						<div className="sticky bottom-0 z-30 -mx-1 mt-3 bg-background/95 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
 							<Button type="submit" disabled={isSubmitting} className="h-11 w-full bg-primary font-black uppercase tracking-widest text-[11px] shadow-lg hover:bg-primary/90">
@@ -3141,7 +3210,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 							</Button>
 						</div>
 					</>
-				) : (
+				) : shiftType === "akhiri" ? (
 					/* AKHIRI SHIFT UI */
 					<div className="space-y-3">
 						<section className="rounded-2xl border border-border bg-card p-4" aria-labelledby="closing-checklist-title">
@@ -3303,7 +3372,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 				)}
 
 					</div>
-				)}
+					) : null}
 				{shiftType === "akhiri" && <div className="sticky bottom-0 z-20 -mx-1 bg-background/95 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
 					<Button
 						className={`w-full h-11 font-black uppercase tracking-widest text-[11px] shadow-lg transition-all active:scale-95 ${shiftTimeGate.blocked ? 'bg-amber-500 hover:bg-amber-500 cursor-not-allowed' : 'bg-destructive hover:bg-destructive/90'}`}
@@ -3321,7 +3390,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			</form>
 
 			{/* Checklist aktivasi online food */}
-			{!isClosingShift && showStartChecklist && (
+			{!isClosingShift && startStep === 3 && (
 				<section className="mt-4 space-y-3 rounded-2xl border border-primary/20 bg-card p-3 shadow-sm">
 					<div className="space-y-1">
 						<h4 className="flex items-center gap-2 text-sm font-black uppercase tracking-tight">
@@ -3331,7 +3400,25 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 					</div>
 					<div className="space-y-2 text-xs">
 						<div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
-							Buka aplikasi merchant masing-masing, pastikan siap menerima pesanan, lalu pilih statusnya. Jangan masukkan password atau data login ke sini.
+							Pastikan area kasir siap. Untuk online food, buka aplikasi merchant masing-masing lalu pilih statusnya. Jangan masukkan password atau data login ke sini.
+						</div>
+						<div className="rounded-2xl border border-border bg-background p-3">
+							<div className="mb-2 flex items-center justify-between gap-2">
+								<h5 className="text-xs font-black">Kesiapan operasional</h5>
+								<Button type="button" variant="ghost" className="h-8 px-2 text-[10px] font-bold text-primary" onClick={() => setOperationalChecklist(Object.fromEntries(OPERATIONAL_CHECKS.map(({ key }) => [key, true])))}>Tandai semua</Button>
+							</div>
+							<div className="grid gap-1 sm:grid-cols-2">
+								{OPERATIONAL_CHECKS.map(({ key, label }) => (
+									<label key={key} className="flex min-h-10 cursor-pointer items-center gap-3 rounded-xl px-2 hover:bg-muted/50">
+										<Checkbox checked={Boolean(operationalChecklist[key])} onCheckedChange={(checked: boolean) => setOperationalChecklist((current) => ({ ...current, [key]: checked }))} />
+										<span className="text-xs font-medium">{label}</span>
+									</label>
+								))}
+							</div>
+						</div>
+						<div className="flex items-center justify-between px-1 pt-1">
+							<h5 className="text-xs font-black">Status online food</h5>
+							<span className="text-[10px] font-bold text-muted-foreground">Wajib diberi status</span>
 						</div>
 						{ONLINE_FOOD_PLATFORMS.map(({ key, label }) => {
 							const item = onlineFoodChecklist[key];
@@ -3358,7 +3445,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 						{isSubmitting && <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 font-semibold"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Menyimpan shift, modal, dan checklist...</div>}
 					</div>
 					<div className="flex gap-2">
-						<Button type="button" variant="outline" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={() => { setShowStartChecklist(false); setShowStartConfirm(true); }}>Kembali</Button>
+						<Button type="button" variant="outline" className="flex-1 h-10 rounded-xl text-xs font-bold" disabled={isSubmitting} onClick={() => setStartStep(2)}>Kembali</Button>
 						<Button type="button" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={confirmStartShift}>
 							{isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
 							{isSubmitting ? "Menyimpan..." : "Buka Shift"}
@@ -3368,7 +3455,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			)}
 
 			{/* Preview & konfirmasi buka shift */}
-			{!isClosingShift && showStartConfirm && (
+			{!isClosingShift && startStep === 2 && (
 				<section className="mt-4 space-y-3 rounded-2xl border border-primary/20 bg-card p-3 shadow-sm">
 					<div className="space-y-1">
 						<h4 className="flex items-center gap-2 text-sm font-black uppercase tracking-tight">
@@ -3377,12 +3464,14 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 						</h4>
 					</div>
 					<div className="space-y-3 text-xs">
-						<div className="rounded-xl border bg-muted/30 p-3 space-y-2">
+							<div className="rounded-2xl border bg-muted/30 p-4 space-y-3">
 							<div className="flex justify-between gap-3"><span className="text-muted-foreground">Kasir</span><span className="font-bold text-right">{cashierName || "-"}</span></div>
 							<div className="flex justify-between gap-3"><span className="text-muted-foreground">Shift</span><span className="font-bold text-right">{shiftName || "-"}</span></div>
 							{selectedShiftSchedule?.openTime && selectedShiftSchedule?.closeTime && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Jadwal</span><span className="font-bold text-right">{selectedShiftSchedule.openTime}–{selectedShiftSchedule.closeTime} WIB</span></div>}
+								<div className="flex justify-between gap-3"><span className="text-muted-foreground">Tim</span><span className="font-bold text-right">{teamMembers.length ? `${teamMembers.length} anggota` : "Tidak ada"}</span></div>
 							<div className="flex justify-between gap-3 border-t pt-2"><span className="flex items-center gap-1 text-muted-foreground"><Banknote className="h-3.5 w-3.5" /> Modal awal</span><span className="font-black text-primary">Rp {Number(amount || 0).toLocaleString("id-ID")}</span></div>
 						</div>
+							<Button type="button" variant="ghost" className="h-9 w-full rounded-xl text-xs font-bold text-primary" onClick={() => setStartStep(1)}>Ubah data</Button>
 						<div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
 							Shift dan transaksi <span className="font-bold text-foreground">Modal Awal</span> akan disimpan atomic. Checklist online food wajib diselesaikan sebelum shift dibuka.
 						</div>
@@ -3390,8 +3479,8 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 						{submitError && <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive">{submitError}</div>}
 					</div>
 					<div className="flex gap-2">
-						<Button type="button" variant="outline" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={() => setShowStartConfirm(false)}>Kembali</Button>
-						<Button type="button" className="flex-1 h-9 text-xs font-bold" disabled={isSubmitting} onClick={() => { setShowStartConfirm(false); setShowStartChecklist(true); }}>
+						<Button type="button" variant="outline" className="flex-1 h-10 rounded-xl text-xs font-bold" disabled={isSubmitting} onClick={() => setStartStep(1)}>Kembali</Button>
+						<Button type="button" className="flex-1 h-10 rounded-xl text-xs font-bold" disabled={isSubmitting} onClick={() => setStartStep(3)}>
 							<ArrowDownCircle className="h-3.5 w-3.5" />
 							Lanjut Checklist Online Food
 						</Button>
