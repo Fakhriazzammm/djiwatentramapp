@@ -18,9 +18,9 @@
 	--safe-area-bottom: env(safe-area-inset-bottom, 0px);
 	--safe-area-left: env(safe-area-inset-left, 0px);
 
-	/* Font System (DNA §10 — Display ≠ Body) */
-	--font-body: "Geist Variable", "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	--font-display: "Plus Jakarta Sans", "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	/* Font System (DNA §10 — Apple system typography, Display ≠ Body) */
+	--font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+	--font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, system-ui, sans-serif;
 
 	/* Theme: Clean White & Deep Azure Accent — HEX fallbacks */
 	--background: #fefefe;
