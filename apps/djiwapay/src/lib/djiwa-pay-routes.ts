@@ -7,7 +7,7 @@ const categoryPattern = "[^/]+";
 const productPattern = "[^/]+";
 const stagePattern = "(?:detail|konfirmasi|struk)";
 const ppobPattern = new RegExp(`^/ppob(?:/(${categoryPattern})(?:/produk/(${productPattern})/(${stagePattern}))?)?/?$`);
-const supportedCategories = new Set(["pulsa", "data", "game", "pln", "pln-bill", "pdam"]);
+const supportedCategories = new Set(["pulsa", "data", "game", "pln", "pln-bill", "pdam", "bpjs", "tv", "multifinance"]);
 
 export function parsePpobPath(pathname: string): PpobRoute | null {
   const match = ppobPattern.exec(pathname);
@@ -23,4 +23,10 @@ export function isKnownPayPath(pathname: string) {
 export function checkoutCustomerNumberHint(value: string) {
   const validation = validateCustomerNumber(value);
   return validation.valid ? null : value ? validation.message : "Masukkan nomor tujuan untuk melanjutkan.";
+}
+
+export function postpaidServiceForCategory(category: string): "pln" | "pdam" | null {
+  if (category === "pln-bill") return "pln";
+  if (category === "pdam") return "pdam";
+  return null;
 }
