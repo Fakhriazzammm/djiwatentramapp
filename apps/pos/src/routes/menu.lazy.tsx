@@ -814,6 +814,8 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		shiftReminderMinutes,
 	]);
 
+	const [isTargetExpanded, setIsTargetExpanded] = useState(false);
+
 	const progress = useHybridCurrentMonthProgress();
 
 	const shiftPct = useMemo(
