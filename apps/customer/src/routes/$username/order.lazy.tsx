@@ -61,6 +61,7 @@ import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields, hasValidCustomerPhone } from "@/lib/customer-profile-completeness";
 import { reserveDjiwaRunCheckoutReward, releaseDjiwaRunCheckoutReward, finalizeDjiwaRunCheckoutReward } from "@/lib/djiwa-run-client";
 import { getCustomerHiddenCategoryIds } from "@/lib/customer-catalog-visibility";
+import { shouldShowPaymentProcessing } from "@/lib/payment-processing";
 
 export const Route = createLazyFileRoute("/$username/order")({
 	component: OrderPage,
@@ -468,9 +469,15 @@ function OrderPage() {
 		|| ["cash", "cashier", "tunai", "wallet", "djiwa_pay"].includes(backendPaymentMethod);
 	const processingCurrentOrder = Boolean(processingOrderId && String(receipt?.orderId) === processingOrderId
 		&& backendPayment && String(backendPayment._id ?? backendPayment.id ?? backendPayment.source_id ?? receipt?.orderId) === processingOrderId);
-	const showPaymentProcessing = Boolean(processingOrderId && (!processingCurrentOrder || (!backendSettled && !isExistingNonMayarReceipt)));
 	const paymentReceived = processingCurrentOrder && (providerPaidOrderId === processingOrderId
 		|| String(backendPayment?.paymentGateway?.status ?? backendPayment?.payment_gateway?.status).toLowerCase() === "paid");
+	const showPaymentProcessing = shouldShowPaymentProcessing({
+		processingOrderId,
+		processingCurrentOrder,
+		backendSettled,
+		existingNonMayarReceipt: isExistingNonMayarReceipt,
+		providerPaid: paymentReceived,
+	});
 
 	useEffect(() => {
 		if (search.step === "receipt" && search.orderId && String(receipt?.orderId) !== String(search.orderId)) {
@@ -1543,7 +1550,7 @@ function OrderPage() {
 						if (!receipt?.orderId) return;
 						void updateOrderStatus({ id: receipt.orderId, status: "cancelled" }).catch(() => undefined);
 						setReceipt((previous) => previous ? { ...previous, mode: "cashier_expired" } : previous);
-					}, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
+					}, onOpenService: () => setServiceOpen(true), receipt: paymentReceived && receipt.mode === "mayar_pending" ? { ...receipt, mode: "paid" } : receipt, storeName, total }) : null}
 				</main>
 
 				<AnimatePresence>
