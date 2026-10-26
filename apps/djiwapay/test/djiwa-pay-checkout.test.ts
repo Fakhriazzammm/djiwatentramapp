@@ -13,6 +13,7 @@ import { buildWalletReceivePayload, normalizeWalletPhone, validateWalletTransfer
 import { parseWalletRecipient } from "../src/features/wallet/djiwa-pay-wallet-scanner";
 import { validateWalletWithdrawal } from "../src/lib/djiwa-pay-withdrawal";
 import { walletQuickActionState } from "../src/lib/djiwa-pay-availability";
+import { resolveWalletRecipient, transferWallet } from "../src/lib/wallet-adapter";
 
 describe("Djiwa Pay checkout presentation contract", () => {
   test.each([
@@ -102,6 +103,37 @@ describe("Djiwa Pay checkout presentation contract", () => {
     expect(buildWalletReceivePayload("081234567890")).toBe("djiwapay://transfer?phone=6281234567890");
     expect(parseWalletRecipient("djiwapay://transfer?phone=6281234567890")).toBe("6281234567890");
     expect(parseWalletRecipient("https://example.com/qr?recipient=cust_123")).toBeNull();
+  });
+
+  test("resolves a recipient through the phone-only wallet bridge", async () => {
+    const originalFetch = globalThis.fetch;
+    let requestBody: Record<string, unknown> | undefined;
+    globalThis.fetch = (async (_input, init) => {
+      requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return new Response(JSON.stringify({ success: true, recipient: { name: "Ayu", phone: "6281234567890" } }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }) as typeof fetch;
+    try {
+      await expect(resolveWalletRecipient("0812-3456-7890")).resolves.toMatchObject({ recipient: { name: "Ayu", phone: "6281234567890" } });
+      expect(requestBody).toMatchObject({ action: "resolve-recipient", phone: "6281234567890" });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("sends a normalized phone to the transfer bridge", async () => {
+    const originalFetch = globalThis.fetch;
+    let requestBody: Record<string, unknown> | undefined;
+    globalThis.fetch = (async (_input, init) => {
+      requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }) as typeof fetch;
+    try {
+      await transferWallet("0812-3456-7890", 1000, "Bantuan makan");
+      expect(requestBody).toMatchObject({ action: "transfer", phone: "6281234567890", amount: 1000, note: "Bantuan makan" });
+      expect(requestBody).not.toHaveProperty("recipient");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   test("validates withdrawal requests without allowing unsafe account data", () => {
