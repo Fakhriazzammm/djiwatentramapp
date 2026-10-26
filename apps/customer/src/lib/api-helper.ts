@@ -149,7 +149,10 @@ export async function invokeEdgeFunction<T = Record<string, unknown>>(
 				errBody = await context.json();
 			}
 			if (errBody) return parseEdgeFunctionResponse<T>(errBody, error.status || 500);
-		} catch {
+		} catch (parseError) {
+			// parseEdgeFunctionResponse uses ApiError for structured server errors.
+			// Do not replace that useful message with the generic transport error.
+			if (parseError instanceof ApiError) throw parseError;
 			// keep the transport message when the response body is unavailable
 		}
 		throw new ApiError("FUNCTION_ERROR", detail, error.status || 500);
