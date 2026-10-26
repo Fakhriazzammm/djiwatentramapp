@@ -373,28 +373,49 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     </main>
   );
   if (ppobOpen && ["bpjs", "tv", "multifinance"].includes(ppobFilter)) return (
-    <main className="pay-page ppob-page djiwa-checkout-page"><section className="ppob-page-card">
-      <button className="ppob-step-back" onClick={closePpob}>← Kembali</button>
-      <h1>{ppobFilter === "bpjs" ? "BPJS" : ppobFilter === "tv" ? "TV & Streaming" : "Cicilan"}</h1>
-      <p>Layanan ini belum tersedia. Silakan kembali dan pilih layanan lain.</p>
-    </section></main>
+    <main className="pay-page ppob-page djiwa-checkout-page ppob-unavailable-active">
+      <section className="ppob-unavailable-card" aria-labelledby="ppob-unavailable-title">
+        <div className="postpaid-checkout-top">
+          <button className="postpaid-back" onClick={closePpob} aria-label="Kembali ke daftar layanan">← <span>Kembali</span></button>
+          <span className="postpaid-step-label">LAYANAN DIGITAL</span>
+        </div>
+        <div className="ppob-unavailable-icon" aria-hidden="true"><HelpCircle size={24} /></div>
+        <header className="ppob-unavailable-heading">
+          <h1 id="ppob-unavailable-title">{ppobFilter === "bpjs" ? "BPJS" : ppobFilter === "tv" ? "TV & Streaming" : "Cicilan"}</h1>
+          <p>Layanan ini belum tersedia di Djiwa Pay. Silakan kembali dan pilih layanan lain.</p>
+        </header>
+        <div className="ppob-unavailable-note" role="status"><strong>Belum tersedia</strong><span>Saldo dan transaksi Anda tidak akan berubah.</span></div>
+      </section>
+    </main>
   );
   if (ppobOpen && postpaidService) return (
-    <main className="pay-page ppob-page djiwa-checkout-page"><section className="ppob-page-card postpaid-checkout-card">
-      <button className="ppob-step-back" onClick={closePpob} aria-label="Kembali">← Kembali</button><span className="ppob-step-label">PEMBAYARAN {postpaidService === "pln" ? "PLN" : "PDAM"}</span><h1>{postpaidService === "pln" ? "Tagihan PLN" : "Tagihan PDAM"}</h1><p>Masukkan nomor pelanggan untuk melihat tagihan terbaru sebelum membayar.</p>
-      {postpaidStage === "success" ? <div className="djiwa-payment-notice is-success" role="status"><strong>Pembayaran berhasil</strong><small>Tagihan {postpaidService.toUpperCase()} sudah dibayar. Ref: {postpaidInquiry?.refId}</small><button className="primary-action" onClick={closePpob}>Selesai</button></div> : <>
-        {postpaidBusy && !postpaidCatalog ? <div className="ppob-page-empty">Memuat produk tagihan...</div> : null}
-        {!postpaidBusy && postpaidMessage && !postpaidCatalog ? <div role="alert" className="ppob-page-empty error"><strong>Layanan belum dapat dimuat.</strong><span>Silakan coba lagi.</span><button type="button" onClick={() => { setPostpaidMessage(null); setPostpaidRetry((value) => value + 1); }}>Coba lagi</button></div> : null}
-        {!postpaidBusy && postpaidCatalog?.length === 0 ? <div className="ppob-page-empty" role="status">Produk belum tersedia untuk layanan ini.</div> : null}
-        {postpaidCatalog?.length ? <label className="djiwa-checkout-field"><span className="djiwa-checkout-label">Jenis layanan</span><select className="ppob-customer-input" value={postpaidProductCode} onChange={(event) => { setPostpaidProductCode(event.target.value); setPostpaidInquiry(null); setPostpaidStage("detail"); setPostpaidMessage(null); }} disabled={postpaidBusy || postpaidStage === "pending"}>{postpaidCatalog.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label> : null}
-        <label className="djiwa-checkout-field"><span className="djiwa-checkout-label">Nomor pelanggan <em>*</em></span><input className="ppob-customer-input" inputMode="numeric" value={postpaidCustomerNumber} onChange={(event) => { setPostpaidCustomerNumber(event.target.value.replace(/\D/g, "").slice(0, 20)); setPostpaidInquiry(null); setPostpaidStage("detail"); setPostpaidMessage(null); }} disabled={postpaidBusy || postpaidStage === "pending"} placeholder={postpaidService === "pln" ? "11–13 digit ID pelanggan" : "Nomor pelanggan PDAM"} /></label>
-        {!postpaidNumberValidation.valid && postpaidCustomerNumber ? <small className="djiwa-checkout-hint">{postpaidNumberValidation.message}</small> : null}
-        {postpaidInquiry && postpaidStage !== "detail" ? <div className="ppob-customer-summary"><div><span>Nama pelanggan</span><strong>{postpaidInquiry.customerName || "-"}</strong></div><div><span>Periode</span><strong>{postpaidInquiry.period || "-"}</strong></div><div><span>Tagihan</span><strong>{money(postpaidInquiry.billAmount)}</strong></div><div><span>Biaya admin</span><strong>{money(postpaidInquiry.adminFee)}</strong></div><div className="is-total"><span>Total pembayaran</span><strong>{money(postpaidTotal(postpaidInquiry.billAmount, postpaidInquiry.adminFee))}</strong></div></div> : null}
-        {postpaidMessage && (postpaidCatalog !== null || postpaidStage !== "detail") ? <div className="ppob-payment-message" role="alert">{postpaidMessage}</div> : null}
-        {postpaidStage === "pending" ? <div className="djiwa-payment-notice is-warning" role="status"><strong>Pembayaran sedang diproses</strong><small>Saldo tetap ditahan sampai provider memberi hasil definitif.</small><button className="djiwa-payment-notice-action" onClick={() => void refreshPostpaidStatus()} disabled={postpaidBusy}>{postpaidBusy ? "Memeriksa..." : "Periksa status"}</button></div> : null}
-        <div className="checkout-actions"><button className="ppob-checkout-back" onClick={() => postpaidStage === "confirmation" ? setPostpaidStage("detail") : closePpob()}>Kembali</button>{postpaidStage === "confirmation" ? <button className="primary-action" onClick={() => void submitPostpaidPayment()} disabled={postpaidBusy}>{postpaidBusy ? "Memproses..." : `Bayar ${money(postpaidInquiry?.totalAmount || 0)}`}</button> : <button className="primary-action" onClick={() => void submitPostpaidInquiry()} disabled={postpaidBusy || !postpaidProductCode || !postpaidNumberValidation.valid}>{postpaidBusy ? "Memeriksa..." : "Lihat tagihan"}</button>}</div>
-      </>}
-    </section></main>
+    <main className="pay-page ppob-page djiwa-checkout-page ppob-postpaid-active">
+      <section className="ppob-page-card postpaid-checkout-card" aria-labelledby="postpaid-title">
+        <div className="postpaid-checkout-top">
+          <button className="postpaid-back" onClick={closePpob} aria-label="Kembali ke daftar layanan">← <span>Kembali</span></button>
+          <span className="postpaid-step-label">TAGIHAN {postpaidService === "pln" ? "PLN" : "PDAM"}</span>
+        </div>
+        <header className="postpaid-checkout-heading">
+          <h1 id="postpaid-title">Tagihan {postpaidService.toUpperCase()}</h1>
+          <p>Masukkan nomor pelanggan untuk melihat rincian tagihan sebelum membayar.</p>
+        </header>
+        {postpaidStage === "success" ? <div className="djiwa-payment-notice is-success" role="status"><strong>Pembayaran berhasil</strong><small>Tagihan {postpaidService.toUpperCase()} sudah dibayar. Ref: {postpaidInquiry?.refId}</small><button className="primary-action" onClick={closePpob}>Selesai</button></div> : <>
+          {postpaidBusy && !postpaidCatalog ? <div className="postpaid-loading" role="status"><span className="postpaid-loading-mark" aria-hidden="true" />Memuat pilihan tagihan...</div> : null}
+          {!postpaidBusy && postpaidMessage && !postpaidCatalog ? <div role="alert" className="postpaid-load-error"><div><strong>Katalog belum dapat dimuat</strong><span>Periksa koneksi lalu coba muat ulang.</span></div><button type="button" onClick={() => { setPostpaidMessage(null); setPostpaidRetry((value) => value + 1); }}>Muat ulang katalog</button></div> : null}
+          {!postpaidBusy && postpaidCatalog?.length === 0 ? <div className="postpaid-empty" role="status">Produk tagihan belum tersedia untuk layanan ini.</div> : null}
+          {postpaidCatalog?.length ? <label className="djiwa-checkout-field"><span className="djiwa-checkout-label">Jenis layanan</span><select className="ppob-customer-input" value={postpaidProductCode} onChange={(event) => { setPostpaidProductCode(event.target.value); setPostpaidInquiry(null); setPostpaidStage("detail"); setPostpaidMessage(null); }} disabled={postpaidBusy || postpaidStage === "pending"}>{postpaidCatalog.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label> : null}
+          <label className="djiwa-checkout-field"><span className="djiwa-checkout-label">Nomor pelanggan <em>*</em></span><input className="ppob-customer-input" inputMode="numeric" autoComplete="off" value={postpaidCustomerNumber} onChange={(event) => { setPostpaidCustomerNumber(event.target.value.replace(/\D/g, "").slice(0, 20)); setPostpaidInquiry(null); setPostpaidStage("detail"); setPostpaidMessage(null); }} disabled={postpaidBusy || postpaidStage === "pending"} placeholder={postpaidService === "pln" ? "11–13 digit ID pelanggan" : "Nomor pelanggan PDAM"} /></label>
+          {!postpaidNumberValidation.valid && postpaidCustomerNumber ? <small className="djiwa-checkout-hint">{postpaidNumberValidation.message}</small> : null}
+          {postpaidInquiry && postpaidStage !== "detail" ? <div className="ppob-customer-summary"><div><span>Nama pelanggan</span><strong>{postpaidInquiry.customerName || "-"}</strong></div><div><span>Periode</span><strong>{postpaidInquiry.period || "-"}</strong></div><div><span>Tagihan</span><strong>{money(postpaidInquiry.billAmount)}</strong></div><div><span>Biaya admin</span><strong>{money(postpaidInquiry.adminFee)}</strong></div><div className="is-total"><span>Total pembayaran</span><strong>{money(postpaidTotal(postpaidInquiry.billAmount, postpaidInquiry.adminFee))}</strong></div></div> : null}
+          {postpaidMessage && (postpaidCatalog !== null || postpaidStage !== "detail") ? <div className="ppob-payment-message" role="alert">{postpaidMessage}</div> : null}
+          {postpaidStage === "pending" ? <div className="djiwa-payment-notice is-warning" role="status"><strong>Pembayaran sedang diproses</strong><small>Saldo tetap ditahan sampai provider memberi hasil definitif.</small><button className="djiwa-payment-notice-action" onClick={() => void refreshPostpaidStatus()} disabled={postpaidBusy}>{postpaidBusy ? "Memeriksa..." : "Periksa status"}</button></div> : null}
+          <div className={`postpaid-actions ${postpaidStage === "confirmation" ? "has-secondary" : ""}`}>
+            {postpaidStage === "confirmation" ? <button className="postpaid-secondary-action" onClick={() => setPostpaidStage("detail")}>Ubah data</button> : null}
+            {postpaidStage === "confirmation" ? <button className="primary-action" onClick={() => void submitPostpaidPayment()} disabled={postpaidBusy}>{postpaidBusy ? "Memproses..." : `Bayar ${money(postpaidInquiry?.totalAmount || 0)}`}</button> : postpaidStage !== "pending" ? <button className="primary-action" onClick={() => void submitPostpaidInquiry()} disabled={postpaidBusy || !postpaidProductCode || !postpaidNumberValidation.valid}>{postpaidBusy ? "Memeriksa..." : "Lihat tagihan"}</button> : null}
+          </div>
+        </>}
+      </section>
+    </main>
   );
   if (ppobOpen && selectedPpobProduct) return (
     <main className="pay-page ppob-page djiwa-checkout-page ppob-detail-active">

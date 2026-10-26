@@ -1,0 +1,51 @@
+/* Postpaid bill entry: clear header, compact service error, and non-overlapping actions. */
+/* Tailwind Preflight in this app zeroes text-field borders with !important. Restore the intended field borders inside the same base layer so every Djiwa Pay form stays legible. */
+@layer base{
+  .djiwa-checkout-page input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]).djiwa-checkout-input,.djiwa-checkout-page textarea.djiwa-checkout-textarea,.djiwa-checkout-page input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]).ppob-customer-input,.djiwa-checkout-page select.ppob-customer-input,.wallet-action-sheet .wallet-action-field>input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),.wallet-action-sheet .wallet-action-recipient>input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]){border-width:1px!important;border-style:solid!important;border-color:#cbd5e1!important}
+  .djiwa-checkout-page input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]).djiwa-checkout-input:focus,.djiwa-checkout-page textarea.djiwa-checkout-textarea:focus,.djiwa-checkout-page input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]).ppob-customer-input:focus,.djiwa-checkout-page select.ppob-customer-input:focus,.wallet-action-sheet .wallet-action-field>input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):focus,.wallet-action-sheet .wallet-action-recipient>input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):focus{border-color:#2563a9!important}
+}
+.ppob-postpaid-active{min-height:100dvh;max-width:none!important;margin:0!important;padding:32px 20px 48px!important;background:#f5f7fb!important}
+.ppob-postpaid-active>.postpaid-checkout-card{display:grid;gap:20px;width:min(100%,540px);margin:0 auto!important;padding:28px!important;border:1px solid #e6ebf2;border-radius:24px;background:#fff;box-shadow:0 16px 40px rgba(26,45,77,.08)}
+.postpaid-checkout-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.postpaid-back{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 10px 0 0;border:0;background:transparent;color:#315985;font-family:inherit;font-size:13px;font-weight:700;line-height:1.2;cursor:pointer}
+.postpaid-back:focus-visible,.postpaid-actions button:focus-visible,.postpaid-load-error button:focus-visible{outline:3px solid rgba(26,93,198,.24);outline-offset:2px}
+.postpaid-step-label{color:#6680a4;font-size:10px;font-weight:800;letter-spacing:.13em;text-align:right}
+.postpaid-checkout-heading{padding-bottom:18px;border-bottom:1px solid #edf0f5}
+.postpaid-checkout-heading h1{margin:0;color:#17233d;font-size:24px;line-height:1.2;letter-spacing:-.03em}
+.postpaid-checkout-heading p{max-width:430px;margin:8px 0 0;color:#64748b;font-size:14px;line-height:1.55}
+.ppob-postpaid-active>.postpaid-checkout-card>.djiwa-checkout-field{gap:8px}
+.ppob-postpaid-active .djiwa-checkout-label{font-size:11px;letter-spacing:.08em}
+.ppob-postpaid-active .djiwa-checkout-label em{color:#c73822;font-style:normal}
+.ppob-postpaid-active .ppob-customer-input{width:100%;min-height:52px;margin:0;padding:0 14px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;color:#17233d;font-family:inherit;font-size:15px;font-weight:500;line-height:1.4;outline:none}
+.ppob-postpaid-active .ppob-customer-input:focus{border-color:#2563a9;box-shadow:0 0 0 3px rgba(37,99,169,.13)}
+.ppob-postpaid-active .ppob-customer-input:disabled{background:#f6f8fb;color:#64748b}
+.postpaid-load-error{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px;border:1px solid #f2d2d2;border-radius:14px;background:#fff7f6;color:#733333}
+.postpaid-load-error>div{display:grid;gap:4px;min-width:0}
+.postpaid-load-error strong{font-size:13px}
+.postpaid-load-error span{color:#805252;font-size:12px;line-height:1.4}
+.postpaid-load-error button{flex:none;min-height:38px;padding:8px 11px;border:1px solid #e5baba;border-radius:10px;background:#fff;color:#8b3434;font-family:inherit;font-size:11px;font-weight:800;line-height:1.2;cursor:pointer}
+.postpaid-loading,.postpaid-empty{display:flex;align-items:center;gap:10px;min-height:52px;padding:12px 14px;border:1px solid #e6ebf2;border-radius:12px;background:#f8fafc;color:#53647a;font-size:12px}
+.postpaid-loading-mark{width:16px;height:16px;border:2px solid #d5e2f2;border-top-color:#2563a9;border-radius:50%;animation:spin 1s linear infinite}
+.postpaid-actions{display:flex;gap:10px;margin-top:2px}
+.postpaid-actions .primary-action,.postpaid-secondary-action{flex:1;min-height:50px;border-radius:12px;font-family:inherit;font-size:13px;font-weight:800;line-height:1.2}
+.postpaid-actions .primary-action{background:#1a5dc6;box-shadow:0 5px 12px rgba(26,93,198,.18)}
+.postpaid-actions .primary-action:disabled{box-shadow:none}
+.postpaid-secondary-action{border:1px solid #dce4ee;background:#fff;color:#34445c;cursor:pointer}
+.ppob-page-empty.error{align-items:flex-start;gap:8px;margin:12px 0;padding:16px;border:1px solid #f2d2d2;border-radius:14px;background:#fff7f6;color:#733333;text-align:left}
+.ppob-page-empty.error strong{color:#733333;font-size:13px}
+.ppob-page-empty.error button{align-self:flex-start;min-height:38px;margin-top:3px;padding:8px 12px;border:1px solid #e5baba;border-radius:10px;background:#fff;color:#8b3434;font-family:inherit;font-size:11px;font-weight:800;cursor:pointer}
+.ppob-page-empty.error button:focus-visible{outline:3px solid rgba(26,93,198,.24);outline-offset:2px}
+.ppob-category strong{font-size:12px;line-height:1.25}
+.ppob-category small{color:#718096;font-size:10px;line-height:1.35}
+.ppob-unavailable-active{min-height:100dvh;max-width:none!important;margin:0!important;padding:32px 20px 48px!important;background:#f5f7fb!important}
+.ppob-unavailable-card{display:grid;gap:18px;width:min(100%,540px);margin:0 auto;padding:28px;border:1px solid #e6ebf2;border-radius:24px;background:#fff;box-shadow:0 16px 40px rgba(26,45,77,.08)}
+.ppob-unavailable-card .postpaid-back:focus-visible{outline:3px solid rgba(26,93,198,.24);outline-offset:2px}
+.ppob-unavailable-icon{display:grid;place-items:center;width:52px;height:52px;border-radius:16px;background:#edf4ff;color:#2563a9}
+.ppob-unavailable-heading h1{margin:0;color:#17233d;font-size:24px;line-height:1.2;letter-spacing:-.03em}
+.ppob-unavailable-heading p{max-width:430px;margin:8px 0 0;color:#64748b;font-size:14px;line-height:1.55}
+.ppob-unavailable-note{display:grid;gap:4px;padding:14px 16px;border:1px solid #e6ebf2;border-radius:14px;background:#f8fafc}
+.ppob-unavailable-note strong{color:#34445c;font-size:12px}
+.ppob-unavailable-note span{color:#64748b;font-size:12px;line-height:1.4}
+@media(max-width:520px){.ppob-postpaid-active{padding:calc(16px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom))!important}.ppob-postpaid-active>.postpaid-checkout-card{gap:18px;padding:22px 18px!important;border-radius:20px}.postpaid-checkout-heading h1{font-size:22px}.postpaid-checkout-heading p{font-size:13px}.postpaid-load-error{align-items:flex-start;flex-direction:column}.postpaid-load-error button{width:100%}}
+@media(max-width:520px){.ppob-unavailable-active{padding:calc(16px + env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom))!important}.ppob-unavailable-card{gap:16px;padding:22px 18px;border-radius:20px}.ppob-unavailable-heading h1{font-size:22px}.ppob-unavailable-heading p{font-size:13px}}
+@media(prefers-reduced-motion:reduce){.postpaid-loading-mark{animation:none}}
