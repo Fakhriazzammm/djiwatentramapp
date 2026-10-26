@@ -1,8 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
 @import "@yumipos/web-shared/theme.css";
 
 :root {
-  font-family: var(--font-body, Inter), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-body);
   color: var(--foreground, #1a2332);
   background: var(--surface-page, #f7f9fc);
   font-synthesis: none;
@@ -31,7 +30,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 0; 
 /* Borderless text controls across the standalone booking app. */
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select { border-width: 0 !important; border-color: transparent !important; }
 
-h1, h2, h3, strong { font-family: "Plus Jakarta Sans", Inter, sans-serif; }
+h1, h2, h3, strong { font-family: var(--font-display); }
 p { color: var(--muted); line-height: 1.6; }
 
 .app-shell { width: min(100%, 520px); min-height: 100dvh; margin: 0 auto; display: flex; flex-direction: column; background: var(--surface-muted); box-shadow: 0 0 60px rgba(15,23,42,.06); }
@@ -107,7 +106,7 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .calendar-day, .calendar-empty { min-width: 0; min-height: 62px; }
 .calendar-day { padding: 8px 4px 6px; border: 1px solid transparent; border-radius: 15px; color: var(--ink); background: var(--surface-muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; transition: transform 180ms var(--ease-ios), border-color 180ms var(--ease-ios), background 180ms var(--ease-ios); }
 .calendar-day:hover:not(:disabled) { border-color: #c6d8f5; background: var(--booking-accent-soft); transform: translateY(-1px); }
-.calendar-day span { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 16px; font-weight: 800; line-height: 1; }
+.calendar-day span { font-family: var(--font-display); font-size: 16px; font-weight: 800; line-height: 1; }
 .calendar-day small { color: #329960; font-size: 9px; font-weight: 700; }
 .calendar-day.available { background: #f4fbf7; }
 .calendar-day.limited small { color: #b7791f; }
@@ -127,7 +126,7 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .arrival-details.has-date { border-color: #c6d8f5; }
 .arrival-summary { padding-bottom: 17px; border-bottom: 1px solid var(--line); }
 .arrival-summary .field-label { margin-bottom: 5px; }
-.arrival-summary strong { display: block; color: var(--ink); font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 18px; letter-spacing: -.03em; }
+.arrival-summary strong { display: block; color: var(--ink); font-family: var(--font-display); font-size: 18px; letter-spacing: -.03em; }
 .arrival-summary small { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; }
 .arrival-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, .8fr); gap: 24px; padding-top: 17px; }
 .guest-field, .arrival-time-field { min-width: 0; }
@@ -136,14 +135,14 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .time-input-shell { min-height: 56px; margin-top: 8px; padding: 0 13px; display: flex; align-items: center; gap: 10px; border: 1px solid #cfd9e8; border-radius: 16px; color: var(--booking-accent); background: var(--surface); box-shadow: 0 4px 12px rgba(15,23,42,.04); transition: border-color 180ms var(--ease-ios), box-shadow 180ms var(--ease-ios), background 180ms var(--ease-ios); }
 .time-input-shell:focus-within { border-color: var(--booking-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--booking-accent) 13%, transparent); }
 .time-input-icon { flex: 0 0 auto; }
-.arrival-time-field .time-input { min-width: 0; flex: 1; width: 100%; min-height: 52px; padding: 0; border: 0; color: var(--ink); background: transparent; outline: 0; font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 20px; font-weight: 800; letter-spacing: -.025em; text-align: left; }
+.arrival-time-field .time-input { min-width: 0; flex: 1; width: 100%; min-height: 52px; padding: 0; border: 0; color: var(--ink); background: transparent; outline: 0; font-family: var(--font-display); font-size: 20px; font-weight: 800; letter-spacing: -.025em; text-align: left; }
 .arrival-time-field .time-input:disabled { color: #98a2b3; background: transparent; }
 .time-zone { flex: 0 0 auto; padding: 6px 8px; border-radius: 8px; color: var(--booking-accent); background: var(--booking-accent-soft); font-size: 10px; font-weight: 800; letter-spacing: .04em; }
 .arrival-time-field small { display: block; margin-top: 7px; color: var(--muted); font-size: 11px; }
 .selection-panel { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 24px; padding: 16px 18px; }
 .selection-date { margin: -2px 0 0; color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1.35; }
 .selection-panel .stepper { grid-column: 2; grid-row: 1 / span 2; align-self: center; justify-content: center; gap: 10px; max-width: none; }
-.stepper strong small { color: var(--muted); font-family: Inter, sans-serif; font-size: 12px; font-weight: 600; }
+.stepper strong small { color: var(--muted); font-family: var(--font-body); font-size: 12px; font-weight: 600; }
 .selection-panel .helper { grid-column: 1; }
 .field-label { display: block; color: var(--muted); font-size: 12px; font-weight: 700; margin-bottom: 7px; }
 .stepper { display: flex; align-items: center; justify-content: flex-start; gap: 10px; max-width: 240px; }

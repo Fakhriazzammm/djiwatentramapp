@@ -1,12 +1,10 @@
-@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 @import "@yumipos/web-shared/theme.css";
 
 :root {
   color: #17233f;
   background: #f6f9ff;
-  font-family: Geist, Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-body);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-tap-highlight-color: transparent;
