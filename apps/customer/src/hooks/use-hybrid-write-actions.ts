@@ -2474,6 +2474,13 @@ export function useHybridCreateOrder() {
 					: "paid";
 
 				if (idempotencyKey) {
+					if (args?.paymentMethod === "wallet" && args?.customerSourceId && args?.customerEmail) {
+						const existing = await invokeEdgeFunction<{ orderId: string | null }>("customer-wallet", {
+							action: "find-order", sourceId: args.customerSourceId,
+							email: args.customerEmail, idempotencyKey,
+						});
+						if (existing.orderId) return existing.orderId;
+					} else {
 					const { data: existingOrder, error: existingError } = await pos
 						.from("orders")
 						.select("source_id")
@@ -2484,6 +2491,7 @@ export function useHybridCreateOrder() {
 					// permission denied; let the INSERT path remain authoritative.
 					if (existingError && existingError.code !== "42501") throw existingError;
 					if (existingOrder?.source_id) return existingOrder.source_id;
+					}
 				}
 			const kind = args?.source === "pos"
 							? (args?.orderType === "takeaway" ? "takeaway" : "dine_in")
@@ -2578,6 +2586,14 @@ const orderRow = {
 				const { error: orderError } = await pos.from("orders").insert(orderRow);
 				if (orderError) {
 					if (idempotencyKey && orderError.code === "23505") {
+						if (args?.paymentMethod === "wallet" && args?.customerSourceId && args?.customerEmail) {
+							const existing = await invokeEdgeFunction<{ orderId: string | null }>("customer-wallet", {
+								action: "find-order", sourceId: args.customerSourceId,
+								email: args.customerEmail, idempotencyKey,
+							});
+							if (existing.orderId) return existing.orderId;
+							throw orderError;
+						}
 						const { data: concurrentOrder, error: concurrentError } = await pos
 							.from("orders")
 							.select("source_id")

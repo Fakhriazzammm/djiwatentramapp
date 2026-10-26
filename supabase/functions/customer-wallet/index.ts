@@ -244,6 +244,17 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json() as Json;
     const action = text(body.action);
+    if (action === "find-order") {
+      const sourceId = text(body.sourceId);
+      await ownedCustomer(sourceId, text(body.email));
+      const key = text(body.idempotencyKey);
+      if (!key) return fail("INVALID_INPUT", "idempotencyKey wajib diisi");
+      const { data, error } = await admin.schema("pos").from("orders")
+        .select("source_id").eq("customer_source_id", sourceId)
+        .eq("payment_method", "wallet").eq("idempotency_key", key).maybeSingle();
+      if (error) throw error;
+      return response({ success: true, orderId: data?.source_id ?? null });
+    }
     if (action === "get") return response({ success: true, ...(await getWallet(body)) });
     if (action === "notifications") {
       const sourceId = text(body.sourceId); const email = text(body.email);

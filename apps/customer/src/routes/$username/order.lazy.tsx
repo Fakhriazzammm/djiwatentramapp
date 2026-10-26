@@ -1311,7 +1311,6 @@ function OrderPage() {
 		}
 		setRetryingPayment(true);
 		try {
-			await updateOrderStatus({ id: receipt.orderId, status: "pending" });
 			if (paymentMethod.includes("wallet") || paymentMethod.includes("djiwa")) {
 				if (!customer?.sourceId || !customer.email) throw new Error("Masuk dan lengkapi profil untuk retry Djiwa Pay");
 				const key = `retry-wallet-${orderId}-${Date.now()}`;
@@ -1327,6 +1326,7 @@ function OrderPage() {
 				await invokeEdgeFunction("customer-wallet", { action: "settle-order", sourceId: customer.sourceId, email: customer.email, orderId, holdId: holdResponse.result.hold_id, idempotencyKey: key });
 				toast.success("Pembayaran Djiwa Pay berhasil diproses");
 			} else {
+				await updateOrderStatus({ id: receipt.orderId, status: "pending" });
 				const redirectUrl = `${window.location.origin}/${encodeURIComponent(username)}/order?step=receipt&session=${encodeURIComponent(sessionRef.current)}&orderId=${encodeURIComponent(orderId)}`;
 				const invoice = await createMayarInvoice({ orderId, idempotencyKey: `retry-mayar-${orderId}-${Date.now()}`, redirectUrl, paymentMethod: "qris", mobile: checkoutPhone || "", forceNew: true });
 				if (!invoice?.data?.id || !invoice.data.link) throw new Error(invoice?.messages || "Link pembayaran baru tidak tersedia");
