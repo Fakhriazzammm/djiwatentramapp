@@ -1296,7 +1296,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								status: "created" as const,
 						  }
 						: undefined,
-					paymentReceiptKind: mayarInvoice ? "cashier_pending" as const : undefined,
+					paymentReceiptKind: mayarInvoice ? "gateway_pending" as const : undefined,
 					isOpenBill: shouldOpenBill,
 					autoComplete: shouldOpenBill ? false : orderData?.autoComplete,
 					assignments: orderData?.assignments,
