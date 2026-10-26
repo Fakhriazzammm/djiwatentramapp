@@ -814,6 +814,115 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		shiftReminderMinutes,
 	]);
 
+	const progress = useHybridCurrentMonthProgress();
+
+	const shiftPct = useMemo(
+		() => Math.max(0, progress?.shiftTarget ? (progress.shiftCollected / progress.shiftTarget) * 100 : 0),
+		[progress?.shiftCollected, progress?.shiftTarget]
+	);
+	const dailyPct = useMemo(
+		() => Math.max(0, progress?.dailyTarget ? (progress.dailyCollected / progress.dailyTarget) * 100 : 0),
+		[progress?.dailyCollected, progress?.dailyTarget]
+	);
+	const monthlyPct = useMemo(
+		() => Math.max(0, progress?.progressPct ?? 0),
+		[progress?.progressPct]
+	);
+
+	const roleBonusConfigById = useMemo(() => {
+		const map = new Map<string, RoleBonusConfig>();
+		(roles ?? []).forEach((role: any) => {
+			const config = normalizeRoleBonusConfig(role);
+			if (config) {
+				map.set(String(role._id), config);
+			}
+		});
+		return map;
+	}, [roles]);
+
+	const onDutyNameList = useMemo(() => {
+		const names = new Set<string>();
+		const cashierName = shiftStatus?.ongoingShift?.cashierName || shiftStatus?.shiftInfo?.cashierName;
+		if (cashierName) names.add(cashierName.trim());
+
+		const teamRaw = shiftStatus?.ongoingShift?.teamMembers || "";
+		teamRaw
+			.split(/[,\n;|]/g)
+			.map((name: string) => name.trim())
+			.filter(Boolean)
+			.forEach((name: string) => names.add(name));
+
+		return Array.from(names);
+	}, [shiftStatus?.ongoingShift?.cashierName, shiftStatus?.ongoingShift?.teamMembers, shiftStatus?.shiftInfo?.cashierName]);
+
+	const onDutyMembers = useMemo(() => {
+		const allUsers = users ?? [];
+		return onDutyNameList.map((name) => {
+			const matched = allUsers.find(
+				(user: any) => normalizePersonName(user.name) === normalizePersonName(name)
+			);
+			return {
+				name,
+				roleId: matched?.roleId ?? null,
+				roleName: matched?.roleName ?? "-",
+			};
+		});
+	}, [onDutyNameList, users]);
+
+	const memberBonusSummary = useMemo((): MemberBonusSummary[] => {
+		return onDutyMembers
+			.map((member) => {
+				if (!member.roleId) return null;
+				const config = roleBonusConfigById.get(String(member.roleId));
+				if (!config) return null;
+				const achievementPct =
+					config.basis === "shift"
+						? shiftPct
+						: config.basis === "daily"
+							? dailyPct
+							: monthlyPct;
+				const summary = summarizeRoleBonus(achievementPct, config);
+				return {
+					memberName: member.name,
+					roleName: member.roleName,
+					basis: config.basis,
+					achievementPct: summary.achievementPct,
+					achievedBonus: summary.achievedBonus,
+					reachedThresholds: summary.reachedThresholds,
+					nextTier: summary.nextTier,
+					allTiers: summary.allTiers,
+				};
+			})
+			.filter((item): item is MemberBonusSummary => item !== null);
+	}, [onDutyMembers, roleBonusConfigById, shiftPct, dailyPct, monthlyPct]);
+
+	const shiftBonusSummary = useMemo(
+		() =>
+			memberBonusSummary.filter((item) => item.basis === "shift"),
+		[memberBonusSummary]
+	);
+
+	const dailyBonusSummary = useMemo(
+		() =>
+			memberBonusSummary.filter((item) => item.basis === "daily"),
+		[memberBonusSummary]
+	);
+
+	const monthlyBonusSummary = useMemo(
+		() =>
+			memberBonusSummary.filter((item) => item.basis === "monthly"),
+		[memberBonusSummary]
+	);
+
+	const totalShiftBonusNow = useMemo(
+		() => shiftBonusSummary.reduce((sum, item) => sum + item.achievedBonus, 0),
+		[shiftBonusSummary]
+	);
+	const totalDailyBonusNow = useMemo(
+		() => dailyBonusSummary.reduce((sum, item) => sum + item.achievedBonus, 0),
+		[dailyBonusSummary]
+	);
+
 	// Checkout opens only on intent; landing and restored URL panels must stay visible.
 
 	// Refs for scrolling
