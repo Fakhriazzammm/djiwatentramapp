@@ -8,6 +8,7 @@ import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { BarcodeLines, ReceiptTotalsBreakdown } from "./shared-components";
 import { ReceiptActions } from "./split-bill-sheet";
 import { PaymentDocumentAnimation } from "./payment-document-animation";
+import { resolveReceiptStatus } from "@/lib/receipt-status";
 
 // Status lifecycle order — live tracker di struk
 const STATUS_STEPS = [
@@ -115,6 +116,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	}) || props.receipt.fallbackReference;
 	const orderStatus = props.currentOrder?.status;
 	const mode = orderStatus === "paid" || orderStatus === "completed" ? "paid" : props.receipt.mode;
+	const receiptStatus = resolveReceiptStatus(mode, orderStatus);
 	const isExpired = mode === "cashier_expired" || String(orderStatus ?? "").toLowerCase() === "cancelled" || String(orderStatus ?? "").toLowerCase() === "expired";
 	// The refreshed order is authoritative; receipt state can still contain the
 	// pre-settlement choice while the order read is catching up.
@@ -147,11 +149,11 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	const deliveryTrackingId = (props.currentOrder as any)?.deliveryTrackingId ?? (props.currentOrder as any)?.delivery_tracking_id;
 	const deliveryWaybillId = (props.currentOrder as any)?.deliveryWaybillId ?? (props.currentOrder as any)?.delivery_waybill_id;
 
-	const unifiedStatusLabel = mode === "cashier_expired" ? "DIBATALKAN" : orderStatus === "paid" ? "LUNAS"
-		: orderStatus === "completed" ? "SELESAI"
+	const unifiedStatusLabel = receiptStatus === "cancelled" ? "DIBATALKAN" : receiptStatus === "paid" ? "LUNAS"
+		: receiptStatus === "completed" ? "SELESAI"
 		: "OPEN BILL";
-	const unifiedStatusColor = mode === "cashier_expired" ? "text-red-600" : orderStatus === "paid" ? "text-blue-600"
-		: orderStatus === "completed" ? "text-emerald-600"
+	const unifiedStatusColor = receiptStatus === "cancelled" ? "text-red-600" : receiptStatus === "paid" ? "text-blue-600"
+		: receiptStatus === "completed" ? "text-emerald-600"
 		: "text-amber-600";
 	const isQrisPayment = normalizedPaymentMethod.includes("qris") || normalizedPaymentMethod.includes("mayar");
 	const canRetryPayment = mode !== "paid" && (isWalletPayment || isQrisPayment || isCashierPayment);
