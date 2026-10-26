@@ -27,6 +27,8 @@ describe("checkout stepper", () => {
 		expect(html).toContain('aria-current="step"');
 		expect(html).toContain("shadow-sm");
 		expect(html).toContain("bg-card");
+		expect(html).toContain("size-6");
+		expect(html).toContain("text-[11px]");
 	});
 
 	it("locks back navigation while checkout recovery is pending", () => {
