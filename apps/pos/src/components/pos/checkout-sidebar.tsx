@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Minus, Plus, Search, X } from "lucide-react";
+import { ArrowLeft, Minus, Plus, Search } from "lucide-react";
 import { useCart } from "@/context/cart-context";
 import { useAppData } from "@/context/app-data-context";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import {
 import { CheckoutResult, formatCheckoutAmount as fmt } from "./checkout-result";
 import { CheckoutRecoveryNotice } from "./checkout-recovery-notice";
 import { CustomerSearchModal } from "./customer-search-modal";
+import { CheckoutStepHeader } from "./checkout-stepper";
 
 export interface CheckoutSidebarProps {
 	onConfirmPayment?: ConfirmCheckoutPayment;
@@ -311,10 +312,10 @@ export function CheckoutSidebar({
 		}
 	};
 	const customerFields = (
-		<div className="space-y-3">
+		<div className="space-y-3 rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
 			<div className="flex items-end gap-2">
-				<label className="flex-1 space-y-1">
-					<span>
+				<label className="flex-1 space-y-1.5 text-sm font-semibold">
+					<span className="text-foreground">
 						Nama pelanggan
 						{draft.paymentMethod === "qris_mayar" ? " (wajib)" : " (opsional)"}
 					</span>
@@ -328,14 +329,14 @@ export function CheckoutSidebar({
 				<Button
 					aria-label="Cari pelanggan"
 					variant="outline"
-					className="h-11 w-11 shrink-0 px-0"
+					className="h-11 w-11 shrink-0 rounded-xl px-0 shadow-sm"
 					onClick={() => setCustomerSearchOpen(true)}
 				>
 					<Search className="h-4 w-4" />
 				</Button>
 			</div>
 			{selectedOrderType?.requiresTableNumber && (
-				<label className="block space-y-1">
+				<label className="block space-y-1.5 text-sm font-semibold">
 					<span>Nomor meja (opsional)</span>
 					<Input
 						className="h-11 text-sm"
@@ -346,7 +347,7 @@ export function CheckoutSidebar({
 					/>
 				</label>
 			)}
-			<label className="block space-y-1">
+			<label className="block space-y-1.5 text-sm font-semibold">
 				<span>Catatan pesanan (opsional)</span>
 				<Input
 					className="h-11 text-sm"
@@ -357,43 +358,14 @@ export function CheckoutSidebar({
 		</div>
 	);
 	return (
-		<div className="relative flex h-full min-h-0 flex-col bg-background text-sm [&_input]:text-base [&_select]:text-base [&_textarea]:text-base">
-			<header className="flex shrink-0 items-center gap-2 border-b border-border p-3">
-				<nav
-					aria-label="Tahapan checkout"
-					className="flex flex-1 items-center justify-between gap-2 text-[13px]"
-				>
-					{(
-						[
-							["order", "Pesanan"],
-							["payment", "Pembayaran"],
-							["result", "Hasil"],
-						] as const
-					).map(([step, label], index) => (
-						<span
-							key={step}
-							aria-current={activeStep === step ? "step" : undefined}
-							className={cn(
-								"font-medium",
-								activeStep === step ? "text-primary" : "text-muted-foreground",
-							)}
-						>
-							{index + 1}. {label}
-						</span>
-					))}
-				</nav>
-				{onClose && (
-					<Button
-						variant="ghost"
-						aria-label="Tutup checkout"
-						className="h-11 w-11 shrink-0 px-0"
-						onClick={onClose}
-					>
-						<X className="h-5 w-5" />
-					</Button>
-				)}
-			</header>
-			<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+		<div className="relative flex h-full min-h-0 flex-col bg-slate-100/70 text-sm [&_input]:text-base [&_select]:text-base [&_textarea]:text-base">
+			<CheckoutStepHeader
+				activeStep={activeStep}
+				disabled={busy || hasPendingPayment}
+				onStepChange={(step) => patch({ step })}
+				onClose={onClose}
+			/>
+			<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-gradient-to-br from-slate-100/70 via-background to-primary/[0.035]">
 				{result ? (
 					<CheckoutResult
 						result={result}
@@ -419,7 +391,7 @@ export function CheckoutSidebar({
 						}
 					/>
 				) : (
-					<div className="space-y-4 p-4">
+					<div className="space-y-4 p-4 sm:p-5">
 						{hasPendingPayment && pendingPayment && (
 							<CheckoutRecoveryNotice
 								customerName={pendingPayment.customerName}
@@ -430,12 +402,20 @@ export function CheckoutSidebar({
 						)}
 						<fieldset
 							disabled={busy || hasPendingPayment}
-							className="min-w-0 space-y-4 disabled:opacity-70"
+							className="min-w-0 space-y-4 disabled:opacity-60"
 						>
 						{activeStep === "order" ? (
 							<>
-								<h2 className="font-bold">Pesanan ({totalItems})</h2>
-								<div className="flex flex-wrap gap-2" aria-label="Tipe pesanan">
+								<div className="flex items-end justify-between gap-3">
+									<div>
+										<p className="text-[11px] font-black uppercase tracking-[0.16em] text-primary">Langkah 1 dari 3</p>
+										<h2 className="mt-1 text-lg font-black tracking-tight text-foreground">Pesanan ({totalItems})</h2>
+									</div>
+									<span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">Draft aktif</span>
+								</div>
+								<div className="rounded-2xl border border-border/70 bg-card p-3 shadow-sm">
+									<p className="mb-2 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Jenis pesanan</p>
+									<div className="flex flex-wrap gap-2" aria-label="Tipe pesanan">
 									{orderTypes.map((type) => (
 										<Button
 											key={type.id}
@@ -444,7 +424,7 @@ export function CheckoutSidebar({
 													? "default"
 													: "outline"
 											}
-											className="min-h-11 text-sm"
+											className="min-h-11 rounded-xl px-4 text-sm font-bold shadow-sm"
 											aria-pressed={customerInfo.orderType === type.id}
 											onClick={() =>
 												updateCustomerInfo({
@@ -461,10 +441,11 @@ export function CheckoutSidebar({
 											{type.label}
 										</Button>
 									))}
+									</div>
 								</div>
 								{selectedOrderType?.id === "online" && (
-									<div className="space-y-2">
-										<p>Platform pesanan</p>
+									<div className="space-y-2 rounded-2xl border border-primary/20 bg-primary/[0.04] p-3">
+										<p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">Platform pesanan</p>
 										<div className="flex flex-wrap gap-2">
 											{platforms.map((platform) => (
 												<Button
@@ -474,7 +455,7 @@ export function CheckoutSidebar({
 															? "default"
 															: "outline"
 													}
-													className="min-h-11 text-sm"
+															className="min-h-11 rounded-xl text-sm font-bold shadow-sm"
 													aria-pressed={customerInfo.platform === platform.id}
 													onClick={() =>
 														updateCustomerInfo({
@@ -497,12 +478,12 @@ export function CheckoutSidebar({
 								<div className="space-y-3">
 									{items.map((item) => (
 										<article
-											className="space-y-2 rounded-xl border border-border p-3"
+											className="space-y-3 rounded-2xl border border-border/80 bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
 											key={`${item.productId}-${item.variant || "default"}`}
 										>
 											<div className="flex justify-between gap-2">
 												<div className="min-w-0">
-													<p className="font-medium">{item.name}</p>
+															<p className="font-bold text-foreground">{item.name}</p>
 													{item.variant && (
 														<p className="text-[13px] text-muted-foreground">
 															{item.variant}
@@ -537,7 +518,7 @@ export function CheckoutSidebar({
 											<div className="flex items-center justify-end gap-3">
 												<Button
 													aria-label={`Kurangi ${item.name}${item.variant ? ` ${item.variant}` : ""}`}
-													className="h-11 w-11 px-0"
+																className="h-11 w-11 rounded-xl px-0 shadow-sm"
 													variant="outline"
 													onClick={() =>
 														updateQuantity(item.productId, item.variant, -1)
@@ -553,7 +534,7 @@ export function CheckoutSidebar({
 												</span>
 												<Button
 													aria-label={`Tambah ${item.name}${item.variant ? ` ${item.variant}` : ""}`}
-													className="h-11 w-11 px-0"
+																className="h-11 w-11 rounded-xl px-0 shadow-sm"
 													variant="outline"
 													onClick={() =>
 														updateQuantity(item.productId, item.variant, 1)
@@ -566,7 +547,7 @@ export function CheckoutSidebar({
 									))}
 								</div>
 								{customerFields}
-								<label className="flex min-h-11 items-center gap-3">
+								<label className="flex min-h-12 items-center gap-3 rounded-2xl border border-border/70 bg-card px-4 py-3 text-sm font-semibold shadow-sm">
 									<input
 										type="checkbox"
 										className="h-5 w-5 accent-primary"
@@ -580,20 +561,23 @@ export function CheckoutSidebar({
 							</>
 						) : (
 							<>
-								<div className="flex items-center justify-between gap-2">
-									<h2 className="font-bold">Pembayaran</h2>
-									<Button
-										variant="outline"
-										className="min-h-11 text-sm"
-										onClick={() => patch({ step: "order" })}
-									>
-										Ubah pesanan
-									</Button>
+								<div className="flex items-end justify-between gap-3">
+									<div>
+										<p className="text-[11px] font-black uppercase tracking-[0.16em] text-primary">Langkah 2 dari 3</p>
+										<h2 className="mt-1 text-lg font-black tracking-tight text-foreground">Pembayaran</h2>
+									</div>
+									<span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">Belum dikonfirmasi</span>
 								</div>
-								<p className="text-muted-foreground">
-									Periksa total dan metode sebelum konfirmasi. Pesanan belum
-									dibayar.
-								</p>
+								<div className="rounded-2xl border border-primary/20 bg-primary/[0.04] p-4 shadow-sm">
+									<p className="text-sm text-muted-foreground">
+										Periksa total dan metode sebelum konfirmasi. Pesanan belum
+										dibayar.
+									</p>
+									<div className="mt-3 flex items-center justify-between gap-3 border-t border-primary/10 pt-3">
+										<span className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Total sementara</span>
+										<strong className="text-lg font-black text-primary">{fmt(total)}</strong>
+									</div>
+								</div>
 								<div
 									className="grid grid-cols-2 gap-2"
 									aria-label="Metode pembayaran"
@@ -606,7 +590,7 @@ export function CheckoutSidebar({
 													: "outline"
 											}
 											key={option.id}
-											className="min-h-11 whitespace-normal text-sm"
+											className="min-h-11 rounded-xl whitespace-normal text-sm font-bold shadow-sm"
 											aria-pressed={draft.paymentMethod === option.id}
 											onClick={() => patch({ paymentMethod: option.id })}
 										>
@@ -620,7 +604,7 @@ export function CheckoutSidebar({
 									</p>
 								)}
 								{draft.paymentMethod === "tunai" && (
-									<div className="space-y-3 rounded-xl border border-border p-3">
+									<div className="space-y-3 rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
 										<label className="block space-y-1">
 											<span>Uang diterima (wajib)</span>
 											<Input
@@ -671,7 +655,7 @@ export function CheckoutSidebar({
 									</div>
 								)}
 								{draft.paymentMethod === "qris_mayar" && (
-									<div className="space-y-3 rounded-xl border border-border p-3">
+									<div className="space-y-3 rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
 										<p className="font-medium">
 											QRIS dinamis memerlukan koneksi internet. Nama, email dan
 											telepon wajib diisi sebelum membuat pembayaran.
@@ -876,7 +860,7 @@ export function CheckoutSidebar({
 								</details>
 							</>
 						)}
-						<dl className="space-y-2 rounded-xl bg-muted/40 p-3 text-[13px]">
+						<dl className="space-y-2 rounded-2xl border border-border/70 bg-card p-4 text-[13px] shadow-sm">
 							<div className="flex justify-between">
 								<dt>Subtotal</dt>
 								<dd>{fmt(grossAmount)}</dd>
@@ -953,9 +937,9 @@ export function CheckoutSidebar({
 				)}
 			</div>
 			{result ? (
-				<footer className="shrink-0 border-t border-border bg-background p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+				<footer className="shrink-0 border-t border-border/70 bg-card/95 p-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
 					<Button
-						className="min-h-11 w-full text-sm"
+						className="min-h-11 w-full rounded-xl text-sm font-bold shadow-sm"
 						onClick={() => {
 							clearCart();
 							setSubmitError(null);
@@ -965,12 +949,12 @@ export function CheckoutSidebar({
 					</Button>
 				</footer>
 			) : hasPendingPayment ? (
-				<footer className="shrink-0 space-y-2 border-t border-border bg-background p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+				<footer className="shrink-0 space-y-2 border-t border-border/70 bg-card/95 p-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
 					{submitError && <p className="text-[13px] text-destructive" role="alert">{submitError}</p>}
 					<p className="text-center text-[13px] text-muted-foreground">Pulihkan pesanan awal untuk melanjutkan. Draft saat ini dikunci.</p>
 				</footer>
 			) : (
-				<footer className="shrink-0 space-y-2 border-t border-border bg-background p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+				<footer className="shrink-0 space-y-2 border-t border-border/70 bg-card/95 p-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
 					{submitError && (
 						<p className="text-[13px] text-destructive" role="alert">
 							{submitError}
@@ -994,7 +978,16 @@ export function CheckoutSidebar({
 										"Periksa nominal sebelum mengonfirmasi pembayaran."}
 							</p>
 							<Button
-								className="min-h-11 w-full text-sm"
+								variant="ghost"
+								className="min-h-10 w-full justify-center gap-2 rounded-xl text-sm font-bold text-muted-foreground hover:bg-primary/10 hover:text-primary"
+								disabled={busy}
+								onClick={() => patch({ step: "order" })}
+							>
+								<ArrowLeft className="size-4" aria-hidden="true" />
+								Kembali ke pesanan
+							</Button>
+							<Button
+								className="min-h-12 w-full rounded-xl text-sm font-bold shadow-sm"
 								disabled={
 									busy ||
 									Boolean(validation) ||
@@ -1019,7 +1012,7 @@ export function CheckoutSidebar({
 								</p>
 							)}
 							<Button
-								className="min-h-11 w-full text-sm"
+								className="min-h-12 w-full rounded-xl text-sm font-bold shadow-sm"
 								disabled={!items.length || busy}
 								onClick={() => patch({ step: "payment" })}
 							>
@@ -1028,7 +1021,7 @@ export function CheckoutSidebar({
 							<div className="flex gap-2">
 								<Button
 									variant="secondary"
-									className="min-h-11 flex-1 text-sm"
+									className="min-h-11 flex-1 rounded-xl text-sm font-bold shadow-sm"
 									disabled={
 										!items.length || busy || !isShiftOpen || !onConfirmPayment
 									}
@@ -1039,7 +1032,7 @@ export function CheckoutSidebar({
 								{canPrintOpenBill && onPrintOpenBill && (
 									<Button
 										variant="outline"
-										className="min-h-11 flex-1 text-sm"
+										className="min-h-11 flex-1 rounded-xl text-sm font-bold shadow-sm"
 										disabled={!items.length || busy}
 										onClick={onPrintOpenBill}
 									>
