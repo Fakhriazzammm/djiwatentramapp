@@ -40,7 +40,7 @@ export function CheckoutRecoveryNotice({
 				</div>
 			</div>
 			<p className="text-[11px] font-medium leading-snug">
-				Pemulihan memakai pesanan awal dan akan menggantikan draft saat ini.
+				Pemulihan memakai data pesanan awal. Perubahan checkout ini tidak digunakan.
 				Jangan membuat pesanan pengganti agar tidak terjadi transaksi ganda.
 			</p>
 			<Button
