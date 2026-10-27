@@ -15,3 +15,7 @@ export function normalizeTopupAmount(input: string) {
   const value = Number(input.replace(/\D/g, ""));
   return { value: Number.isSafeInteger(value) ? value : 0, valid: Number.isSafeInteger(value) && value >= MIN_TOPUP_AMOUNT } as const;
 }
+
+export function normalizeTopupDigits(input: string) {
+  return input.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, MAX_TOPUP_DIGITS);
+}

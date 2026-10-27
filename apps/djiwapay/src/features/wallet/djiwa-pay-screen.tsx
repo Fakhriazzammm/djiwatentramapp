@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowDownLeft, ArrowUpRight, Bell, Car, CreditCard, Droplets, Eye, EyeOff, Gamepad2, HeartPulse, HelpCircle, House, ReceiptText, RefreshCw, ScanLine, Smartphone, Tv, UserRound, Wallet, Wifi, X, Zap } from "lucide-react";
 import { checkPpobStatus, checkTopupStatus, checkPostpaidStatus, createPpobInvoice, inquirePostpaid, markAllWalletNotificationsRead, markWalletNotificationRead, payPostpaid, ppobProductName, purchasePpob, readPpobCatalog, readPostpaidCatalog, readWalletNotifications, type PpobProduct, type PpobPurchaseResult, type PostpaidInquiry, type PostpaidProduct, type WalletNotification, type WalletResponse, type WalletTransaction } from "../../lib/wallet-adapter";
@@ -6,6 +6,7 @@ import { Djiwa3DIcon } from "@yumipos/web-shared";
 import type { CustomerProfile, PayNavigationContext } from "../../lib/identity-adapter";
 import { CheckoutActionBar, CheckoutSection, OrderSummary, PaymentMethodCard } from "@yumipos/djiwa-checkout-ui";
 import { DjiwaPayCheckout, DjiwaPaySuccess } from "./djiwa-pay-checkout";
+import { DjiwaPayTopup } from "./djiwa-pay-topup";
 import { isSettledPpob, preferredPaymentMethod, validateCustomerNumber } from "../../lib/djiwa-pay-checkout";
 import { parseCheckoutDraft, serializeCheckoutDraft, type CheckoutDraft } from "../../lib/djiwa-pay-draft";
 import { checkoutCustomerNumberHint, parsePpobPath, parseWalletPath, postpaidServiceForCategory } from "../../lib/djiwa-pay-routes";
@@ -203,14 +204,13 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   const customerCommunity = navigationContext?.source === "customer" ? `${customerHome}/komunitas` : customerHome;
   const customerProfile = navigationContext?.source === "customer" ? `${customerHome}/profile` : customerHome;
   const actionClick = (key: string) => {
-    if (key === "topup") { setTopupStage("detail"); setTopupOpen(true); goPayRoute("/wallet/topup"); }
+    if (key === "topup") { setTopupStage("detail"); setTopupStatus("idle"); setTopupPending(false); setTopupInvoiceId(null); setTopupOpen(true); goPayRoute("/wallet/topup"); }
     else if (key === "send") goPayRoute("/wallet/transfer");
     else if (key === "receive") goPayRoute("/wallet/receive");
     else if (key === "scan") goPayRoute("/wallet/transfer?mode=scan");
     else if (key === "history") goPayRoute("/wallet/history");
     else if (key === "help") goPayRoute("/wallet/help");
   };
-  const presetAmounts = useMemo(() => [50000, 100000, 500000, 1000000], []);
   const submitTopup = async () => {
     if (topupStage === "detail") { setTopupStage("payment"); return; }
     const topupAmount = Number(amount);
@@ -233,12 +233,32 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
       setTopupStatus("idle");
     }
   };
+  const leaveTopup = () => {
+    const destination = returnToPpob;
+    setTopupOpen(false);
+    setTopupStage("detail");
+    setTopupStatus("idle");
+    setTopupPending(false);
+    setTopupInvoiceId(null);
+    setReturnToPpob(null);
+    clearDraft();
+    if (destination) { setPpobOpen(true); setPpobReviewOpen(true); goPpobRoute(destination); }
+    else goPayRoute("/");
+  };
+  const goBackInTopup = () => {
+    if (topupStage === "payment") {
+      if (topupPending) { setTopupPending(false); setTopupStatus("idle"); clearDraft(); }
+      setTopupStage("detail");
+      return;
+    }
+    leaveTopup();
+  };
   const openTopupForPpob = () => {
     if (!selectedPpobProduct) return;
     const returnTo = ppobProductRoute("konfirmasi");
     setReturnToPpob(returnTo);
     saveDraft({ kind: "ppob", productCode: selectedPpobProduct.product_code, category: ppobFilter, customerNumber: ppobCustomerNumber, amount: selectedPpobProduct.product_price, topupAmount: Number(amount) || 50000, paymentMethod: ppobPaymentMethod, returnTo });
-    setPpobOpen(false); setTopupStage("detail"); setTopupOpen(true); goPayRoute("/wallet/topup");
+    setPpobOpen(false); setTopupStage("detail"); setTopupStatus("idle"); setTopupPending(false); setTopupInvoiceId(null); setTopupOpen(true); goPayRoute("/wallet/topup");
   };
   useEffect(() => {
     if (!ppobOpen || postpaidService || ["all", "bpjs", "tv", "multifinance"].includes(ppobFilter) || ppobCatalog || ppobCatalogLoading || ppobCatalogError) return;
@@ -537,25 +557,21 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
         </>}
       </div> : null}</section>}</main>);
   if (topupOpen || walletRoute?.page === "topup") return (
-    <main className="pay-page djiwa-checkout-page">
-      <DjiwaPayCheckout
-        kind="topup"
-        stage={topupStage}
-        amount={Number(amount) || 0}
-        productId="djiwa-pay-topup"
-        productName="Isi saldo Djiwa Pay"
-        productDescription="QRIS Mayar"
-        amountEditor={<div className="djiwa-checkout-field"><span className="djiwa-checkout-label">Nominal isi saldo</span><div className="djiwa-amount-presets">{presetAmounts.map((value) => <button key={value} type="button" className={Number(amount) === value ? "is-selected" : ""} onClick={() => setAmount(String(value))}>{money(value)}</button>)}</div><label className="djiwa-amount-input"><span>Rp</span><input aria-label="Nominal isi saldo" inputMode="numeric" value={amount} onChange={(event) => setAmount(event.currentTarget.value.replace(/\D/g, "").slice(0, 8))} placeholder="1000" /></label><small className="djiwa-checkout-hint">Minimal top-up Rp1.000. Saldo masuk setelah pembayaran QRIS terkonfirmasi.</small></div>}
-        paymentMethod="mayar"
-        onPaymentMethodChange={() => undefined}
-        walletBalance={wallet?.wallet.available_balance ?? 0}
-        busy={busy}
-        pending={topupPending}
-        notice={topupStatus === "success" ? <div className="djiwa-payment-notice is-success" role="status"><strong>Top up berhasil</strong><small>Saldo Djiwa Pay sudah diperbarui.</small></div> : topupStatus === "expired" ? <div className="djiwa-payment-notice is-warning" role="alert"><strong>Invoice top up kedaluwarsa</strong><small>Buat invoice baru untuk mencoba pembayaran lagi.</small></div> : topupPending ? <div className="djiwa-payment-notice is-warning" role="status"><strong>Invoice top-up masih menunggu konfirmasi</strong><small>Status akan diperiksa otomatis. Anda juga dapat memeriksanya sekarang.</small><button type="button" className="djiwa-payment-notice-action" onClick={() => void refreshTopupPayment()} disabled={busy}>{busy ? "Memeriksa..." : "Periksa status"}</button></div> : null}
-        onBack={() => { if (topupStage === "payment" && topupPending) { setTopupPending(false); setTopupStatus("idle"); clearDraft(); setTopupStage("detail"); return; } if (topupStage === "payment") setTopupStage("detail"); else { setTopupOpen(false); clearDraft(); if (returnToPpob) { setPpobOpen(true); setPpobReviewOpen(true); goPpobRoute(returnToPpob); } else goPayRoute("/"); setReturnToPpob(null); } }}
-        onPrimary={submitTopup}
-      />
-    </main>
+    <DjiwaPayTopup
+      stage={topupStage}
+      status={topupStatus}
+      amount={amount}
+      balance={wallet?.wallet.available_balance ?? 0}
+      busy={busy}
+      pending={topupPending}
+      returningToPpob={Boolean(returnToPpob)}
+      onAmountChange={setAmount}
+      onBack={goBackInTopup}
+      onPrimary={submitTopup}
+      onCheckStatus={() => void refreshTopupPayment()}
+      onRestart={() => { setTopupStatus("idle"); setTopupPending(false); setTopupInvoiceId(null); setTopupStage("detail"); clearDraft(); }}
+      onDone={leaveTopup}
+    />
   );
   if (!wallet && error) return (
     <main className="pay-page">
