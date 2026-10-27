@@ -16,8 +16,23 @@ export function parsePpobPath(pathname: string): PpobRoute | null {
   return { category: match[1] ? decodeURIComponent(match[1]) : "all", ...(match[2] ? { productCode: decodeURIComponent(match[2]) } : {}), ...(match[3] ? { stage: match[3] as PpobRouteStage } : {}) };
 }
 
+export type WalletRoute = {
+  page: "topup" | "transfer" | "receive" | "history" | "help";
+  transactionId?: string;
+};
+
+const walletPagePattern = /^\/wallet\/(topup|transfer|receive|history|help)\/?$/;
+const walletTransactionPattern = /^\/wallet\/history\/([^/]+)\/?$/;
+
+export function parseWalletPath(pathname: string): WalletRoute | null {
+  const transactionMatch = walletTransactionPattern.exec(pathname);
+  if (transactionMatch) return { page: "history", transactionId: decodeURIComponent(transactionMatch[1]) };
+  const pageMatch = walletPagePattern.exec(pathname);
+  return pageMatch ? { page: pageMatch[1] as WalletRoute["page"] } : null;
+}
+
 export function isKnownPayPath(pathname: string) {
-  return pathname === "/" || pathname === "/wallet" || parsePpobPath(pathname) !== null;
+  return pathname === "/" || pathname === "/wallet" || parseWalletPath(pathname) !== null || parsePpobPath(pathname) !== null;
 }
 
 export function checkoutCustomerNumberHint(value: string) {

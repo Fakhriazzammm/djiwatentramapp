@@ -1,10 +1,18 @@
 import { describe, expect, test } from "bun:test";
-import { checkoutCustomerNumberHint, isKnownPayPath, parsePpobPath, postpaidServiceForCategory } from "../src/lib/djiwa-pay-routes";
+import { checkoutCustomerNumberHint, isKnownPayPath, parsePpobPath, parseWalletPath, postpaidServiceForCategory } from "../src/lib/djiwa-pay-routes";
 
 describe("Djiwa Pay route contract", () => {
   test.each([
     ["/", true],
     ["/wallet", true],
+    ["/wallet/topup", true],
+    ["/wallet/transfer", true],
+    ["/wallet/receive", true],
+    ["/wallet/history", true],
+    ["/wallet/history/123", true],
+    ["/wallet/help", true],
+    ["/wallet/withdraw", false],
+    ["/wallet/card", false],
     ["/ppob", true],
     ["/ppob/pulsa", true],
     ["/ppob/pulsa/produk/TSEL5/detail", true],
@@ -15,6 +23,15 @@ describe("Djiwa Pay route contract", () => {
     ["/ppob/pulsa/unknown/TSEL5/detail", false],
   ])("recognizes %s as %s", (pathname, expected) => {
     expect(isKnownPayPath(pathname)).toBe(expected);
+  });
+
+  test("restores quick actions and transaction details from a direct URL", () => {
+    expect(parseWalletPath("/wallet/topup")).toEqual({ page: "topup" });
+    expect(parseWalletPath("/wallet/transfer")).toEqual({ page: "transfer" });
+    expect(parseWalletPath("/wallet/receive")).toEqual({ page: "receive" });
+    expect(parseWalletPath("/wallet/help")).toEqual({ page: "help" });
+    expect(parseWalletPath("/wallet/history/transfer%20123")).toEqual({ page: "history", transactionId: "transfer 123" });
+    expect(parseWalletPath("/wallet/topup/extra")).toBeNull();
   });
 
   test("keeps unavailable categories on their own route", () => {

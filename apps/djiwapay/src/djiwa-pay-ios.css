@@ -1,0 +1,303 @@
+/* Djiwa Pay iOS visual language: native typography, grouped surfaces and 44pt controls. */
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  color: #1c1c1e;
+  background: #f2f2f7;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body { background: #f2f2f7; }
+button, input, select, textarea { font-family: inherit; }
+button { touch-action: manipulation; }
+button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid rgba(10, 132, 255, .32); outline-offset: 3px; }
+button:disabled { cursor: default; }
+
+.pay-page {
+  width: 100%;
+  max-width: 480px;
+  min-height: 100dvh;
+  padding: calc(8px + env(safe-area-inset-top)) 16px calc(104px + env(safe-area-inset-bottom));
+  background: #f2f2f7;
+}
+
+.pay-header {
+  min-height: 48px;
+  margin: 0 0 12px;
+  grid-template-columns: 48px minmax(0, 1fr) 88px;
+}
+.pay-header h1 { font-size: 17px; font-weight: 650; letter-spacing: -.025em; }
+.pay-header small { margin-top: 2px; color: #8e8e93; font-size: 10px; }
+.pay-header-actions { gap: 4px; }
+.round-control {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: #0a84ff;
+  transition: transform .18s ease, background .18s ease;
+}
+.round-control:active { transform: scale(.9); background: rgba(120, 120, 128, .12); }
+
+.wallet-card {
+  min-height: 216px;
+  border-radius: 26px;
+  background: linear-gradient(145deg, #101d46, #174b9d 62%, #0a84ff);
+  box-shadow: 0 16px 36px rgba(21, 66, 137, .22), 0 2px 6px rgba(15, 35, 75, .12);
+}
+.wallet-content { min-height: 216px; padding: 18px; }
+.wallet-balance { font-size: 31px; font-weight: 700; letter-spacing: -.045em; }
+.wallet-status { border-color: rgba(255,255,255,.22); font-weight: 650; }
+.wallet-card-icon { width: 44px; height: 44px; border: 0; transition: transform .18s ease, background .18s ease; }
+.wallet-card-icon:active { transform: scale(.9); background: rgba(255,255,255,.28); }
+
+.surface, .summary-card {
+  border: 0;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,.025);
+}
+.surface { margin-top: 14px; padding: 16px; }
+.section-heading h2 { font-size: 19px; font-weight: 700; letter-spacing: -.025em; }
+.eyebrow, .ppob-page-label, .ios-section-label { color: #8e8e93; font-size: 10px; font-weight: 650; letter-spacing: .08em; }
+
+.action-grid { gap: 8px 2px; margin-top: 12px; }
+.action-item {
+  min-height: 88px;
+  gap: 7px;
+  border-radius: 16px;
+  color: #1c1c1e;
+  font-size: 11px;
+  font-weight: 550;
+  transition: transform .16s ease, background .16s ease, opacity .16s ease;
+}
+.action-item:not(:disabled):active { transform: scale(.94); background: rgba(120,120,128,.1); }
+.action-item:disabled { opacity: .48; }
+.action-item:disabled .action-badge { opacity: 1; }
+.action-icon { width: 48px; height: 48px; }
+.action-icon img { width: 46px; height: 46px; }
+.action-badge { top: 1px; left: 50%; transform: translateX(-50%); background: #8e8e93; font-size: 8px; }
+
+.summary-grid { gap: 10px; margin-top: 14px; }
+.summary-card { padding: 16px; }
+.summary-card span { color: #8e8e93; font-size: 11px; }
+.summary-card strong { margin-top: 6px; font-size: 16px; letter-spacing: -.02em; }
+.credit-text { color: #248a3d !important; }
+.debit-text { color: #1c1c1e !important; }
+.bottom-nav {
+  border-top: .5px solid rgba(60,60,67,.18);
+  background: rgba(249,249,249,.88);
+  box-shadow: none;
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+.bottom-nav a, .bottom-nav button { min-height: 52px; }
+.bottom-nav .active { color: #0a84ff; }
+
+/* Shared full-page navigation. */
+.ios-page-header { margin: 0 -4px 20px; }
+.ios-navigation-bar {
+  display: grid;
+  grid-template-columns: minmax(88px, 1fr) auto minmax(88px, 1fr);
+  align-items: center;
+  min-height: 48px;
+}
+.ios-back-button {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  min-width: 64px;
+  min-height: 44px;
+  margin-left: -8px;
+  padding: 0 8px 0 2px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #0a84ff;
+  font-size: 16px;
+  cursor: pointer;
+  transition: transform .16s ease, background .16s ease;
+}
+.ios-back-button:active { transform: scale(.96); background: rgba(10,132,255,.08); }
+.ios-navigation-title { max-width: 160px; overflow: hidden; font-size: 16px; font-weight: 600; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
+.ios-navigation-trailing { display: flex; align-items: center; justify-content: flex-end; min-height: 44px; }
+.ios-large-title { padding: 12px 4px 0; }
+.ios-large-title h1 { margin: 0; color: #000; font-size: 32px; font-weight: 750; line-height: 1.12; letter-spacing: -.045em; }
+.ios-large-title p { max-width: 350px; margin: 8px 0 0; color: #6e6e73; font-size: 14px; line-height: 1.45; }
+.ios-history-count { display: grid; place-items: center; min-width: 28px; height: 28px; padding: 0 8px; border-radius: 14px; background: rgba(120,120,128,.12); color: #6e6e73; font-size: 12px; font-weight: 650; }
+
+/* Transfer, receive and withdrawal are grouped iOS forms, never sheets. */
+.wallet-action-page { max-width: 520px; }
+.wallet-action-page .wallet-action-sheet {
+  display: grid;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  gap: 18px;
+  overflow: visible;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.wallet-action-intro {
+  gap: 12px;
+  margin: 0;
+  padding: 16px;
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.025);
+}
+.wallet-action-intro strong { font-size: 15px; font-weight: 650; letter-spacing: -.015em; }
+.wallet-action-intro small { margin-top: 4px; color: #6e6e73; font-size: 12px; line-height: 1.45; }
+.wallet-action-icon { width: 46px; height: 46px; border-radius: 14px; }
+.wallet-action-icon.send { background: rgba(10,132,255,.12); color: #0a84ff; }
+.wallet-action-icon.receive { background: rgba(52,199,89,.13); color: #248a3d; }
+.wallet-action-field { display: grid; gap: 7px; color: #3a3a3c; font-size: 12px; font-weight: 600; }
+.wallet-action-field > span { margin: 0 2px; }
+.wallet-action-field em { color: #8e8e93; font-weight: 400; }
+.wallet-action-field > input,
+.wallet-action-field .wallet-action-recipient > input,
+.wallet-action-field .wallet-action-amount {
+  width: 100%;
+  min-height: 50px;
+  height: 50px;
+  border: 1px solid rgba(60,60,67,.12) !important;
+  border-radius: 14px;
+  background: #fff;
+  color: #1c1c1e;
+  box-shadow: 0 1px 2px rgba(0,0,0,.02);
+  font-size: 16px;
+  font-weight: 450;
+}
+.wallet-action-field > input { padding: 0 14px; }
+.wallet-action-field > input:focus,
+.wallet-action-field .wallet-action-recipient > input:focus,
+.wallet-action-field .wallet-action-amount:focus-within {
+  border-color: #0a84ff !important;
+  box-shadow: 0 0 0 4px rgba(10,132,255,.1);
+}
+.wallet-action-field > small { margin: 0 2px; color: #8e8e93; font-size: 11px; font-weight: 400; line-height: 1.4; }
+.wallet-action-recipient { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
+.wallet-action-recipient input { min-width: 0; padding: 0 12px; }
+.wallet-action-recipient .secondary-action { min-height: 50px; padding: 0 14px; border-radius: 14px; font-size: 12px; }
+.wallet-action-amount { padding: 0 14px; color: #0a84ff; }
+.wallet-action-amount input { min-width: 0; height: 48px; border: 0; background: transparent; font-size: 20px; font-weight: 600; }
+.wallet-recipient-verified { padding: 14px; border: 0; border-radius: 16px; background: rgba(52,199,89,.1); }
+.wallet-recipient-verified strong { font-size: 14px; }
+.wallet-action-message { padding: 13px 14px; border-radius: 14px; background: rgba(255,59,48,.1); color: #c9342c; font-size: 12px; }
+.wallet-action-sheet > .primary-action,
+.wallet-action-buttons > button,
+.ios-copy-button {
+  min-height: 50px;
+  border: 0;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  transition: transform .16s ease, opacity .16s ease;
+}
+.wallet-action-sheet > .primary-action { width: 100%; background: #0a84ff; box-shadow: none; }
+.wallet-action-sheet > .primary-action:disabled { background: rgba(120,120,128,.16); color: #8e8e93; opacity: 1; }
+.wallet-action-sheet > .primary-action:not(:disabled):active,
+.wallet-action-buttons > button:active,
+.ios-copy-button:active { transform: scale(.98); opacity: .82; }
+.wallet-receive-card { gap: 14px; padding: 18px 16px; border: 0; border-radius: 18px; background: #fff; }
+.wallet-receive-card > svg { color: #0a84ff; }
+.wallet-receive-card small { color: #8e8e93; font-size: 11px; }
+.wallet-receive-card strong { margin-top: 4px; font-size: 18px; letter-spacing: -.02em; }
+.wallet-receive-card button { width: 44px; height: 44px; border-radius: 12px; color: #0a84ff; }
+.wallet-receive-payload { padding: 14px; border: 0; border-radius: 16px; background: rgba(120,120,128,.08); }
+.wallet-receive-payload small { color: #8e8e93; }
+.wallet-receive-payload code { color: #3a3a3c; font-size: 11px; overflow-wrap: anywhere; }
+.wallet-action-buttons { gap: 10px; }
+.wallet-action-buttons > button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.wallet-action-buttons .primary-action { background: #0a84ff; }
+.wallet-action-buttons .secondary-action { border: 0; background: rgba(10,132,255,.1); color: #0a84ff; }
+.wallet-action-helper { margin: 0 8px; color: #8e8e93; font-size: 12px; line-height: 1.5; text-align: center; }
+
+/* History uses a native segmented control and inset grouped rows. */
+.ios-segmented-control { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 2px; margin-bottom: 18px; padding: 2px; border-radius: 10px; background: rgba(118,118,128,.12); }
+.ios-segmented-control button { min-height: 34px; padding: 0 5px; border: 0; border-radius: 8px; background: transparent; color: #3a3a3c; font-size: 12px; font-weight: 550; cursor: pointer; }
+.ios-segmented-control button.is-active { background: #fff; color: #000; box-shadow: 0 2px 6px rgba(0,0,0,.12), 0 .5px 1px rgba(0,0,0,.08); }
+.ios-history-group, .ios-detail-group { overflow: hidden; border-radius: 18px; background: #fff; }
+.ios-history-list > button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 76px; padding: 12px 12px 12px 14px; border: 0; border-bottom: .5px solid rgba(60,60,67,.14); background: #fff; color: #1c1c1e; text-align: left; cursor: pointer; }
+.ios-history-list > button:last-child { border-bottom: 0; }
+.ios-history-list > button:active { background: rgba(120,120,128,.08); }
+.ios-history-icon { display: grid; flex: 0 0 40px; place-items: center; width: 40px; height: 40px; border-radius: 13px; }
+.ios-history-icon.credit { background: rgba(52,199,89,.12); color: #248a3d; }
+.ios-history-icon.debit { background: rgba(10,132,255,.1); color: #0a84ff; }
+.ios-history-copy { display: grid; flex: 1; gap: 5px; min-width: 0; }
+.ios-history-copy strong { overflow: hidden; font-size: 14px; font-weight: 600; letter-spacing: -.015em; text-overflow: ellipsis; white-space: nowrap; }
+.ios-history-copy small { overflow: hidden; color: #8e8e93; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.ios-history-value { display: flex; align-items: center; gap: 5px; flex: none; }
+.ios-history-value strong { max-width: 116px; font-size: 12px; font-weight: 600; letter-spacing: -.015em; }
+.ios-history-value svg { color: #c7c7cc; }
+.ios-history-empty { display: grid; justify-items: center; gap: 8px; min-height: 220px; align-content: center; padding: 24px; color: #8e8e93; text-align: center; }
+.ios-history-empty strong { color: #3a3a3c; font-size: 16px; }
+.ios-history-empty p { max-width: 260px; margin: 0; font-size: 13px; line-height: 1.45; }
+.ios-loader { width: 22px; height: 22px; border: 2px solid rgba(10,132,255,.18); border-top-color: #0a84ff; border-radius: 50%; animation: spin .8s linear infinite; }
+.ios-transaction-hero { display: grid; justify-items: center; padding: 20px 16px 26px; text-align: center; }
+.ios-transaction-hero-icon { display: grid; place-items: center; width: 58px; height: 58px; margin-bottom: 14px; border-radius: 19px; background: rgba(10,132,255,.1); color: #0a84ff; }
+.ios-transaction-hero.credit .ios-transaction-hero-icon { background: rgba(52,199,89,.12); color: #248a3d; }
+.ios-transaction-hero > small { color: #6e6e73; font-size: 13px; }
+.ios-transaction-hero > strong { margin: 7px 0 12px; font-size: 32px; font-weight: 700; letter-spacing: -.04em; }
+.ios-status-pill { padding: 5px 10px; border-radius: 12px; background: rgba(52,199,89,.12); color: #248a3d; font-size: 11px; font-weight: 650; text-transform: capitalize; }
+.ios-detail-group { padding: 0 16px; }
+.ios-detail-group > div { display: grid; grid-template-columns: 105px minmax(0,1fr); gap: 12px; padding: 15px 0; border-bottom: .5px solid rgba(60,60,67,.14); font-size: 13px; line-height: 1.45; }
+.ios-detail-group > div:last-child { border-bottom: 0; }
+.ios-detail-group span { color: #8e8e93; }
+.ios-detail-group strong { min-width: 0; overflow-wrap: anywhere; text-align: right; font-weight: 550; }
+.ios-mono { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size: 11px; }
+.ios-copy-button { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 16px; background: rgba(10,132,255,.1); color: #0a84ff; cursor: pointer; }
+
+/* Help content stays useful without inventing an unavailable support channel. */
+.ios-help-hero { display: flex; align-items: flex-start; gap: 13px; padding: 17px; border-radius: 18px; background: linear-gradient(135deg, #0a84ff, #0060df); color: #fff; }
+.ios-help-hero > span { display: grid; flex: 0 0 42px; place-items: center; width: 42px; height: 42px; border-radius: 13px; background: rgba(255,255,255,.16); }
+.ios-help-hero strong { font-size: 15px; font-weight: 650; }
+.ios-help-hero p { margin: 5px 0 0; color: rgba(255,255,255,.82); font-size: 12px; line-height: 1.5; }
+.ios-shortcut-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 24px; }
+.ios-shortcut-grid button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px; border: 0; border-radius: 15px; background: #fff; color: #0a84ff; font-size: 13px; font-weight: 600; cursor: pointer; }
+.ios-shortcut-grid button:active { background: rgba(10,132,255,.08); }
+.ios-section-label { display: block; margin: 0 16px 8px; }
+.ios-disclosure-list { overflow: hidden; border-radius: 18px; background: #fff; }
+.ios-disclosure-list details { border-bottom: .5px solid rgba(60,60,67,.14); }
+.ios-disclosure-list details:last-child { border-bottom: 0; }
+.ios-disclosure-list summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 14px 16px; color: #1c1c1e; font-size: 14px; font-weight: 550; line-height: 1.35; cursor: pointer; list-style: none; }
+.ios-disclosure-list summary::-webkit-details-marker { display: none; }
+.ios-disclosure-list summary span { color: #0a84ff; font-size: 22px; font-weight: 400; transition: transform .18s ease; }
+.ios-disclosure-list details[open] summary span { transform: rotate(45deg); }
+.ios-disclosure-list details p { margin: -2px 16px 16px; color: #6e6e73; font-size: 13px; line-height: 1.55; }
+.ios-help-footnote, .ios-help-assurance { display: flex; align-items: center; justify-content: center; gap: 7px; color: #8e8e93; font-size: 11px; line-height: 1.45; }
+.ios-help-footnote { margin: 16px 12px; }
+.ios-help-footnote svg, .ios-help-assurance svg { flex: none; }
+.ios-help-assurance { justify-content: flex-start; margin: 0 4px; padding: 13px 14px; border-radius: 14px; background: rgba(120,120,128,.08); }
+
+/* Checkout shares the same native spacing, controls and grouped cards. */
+.djiwa-checkout-page { --checkout-bg: #f2f2f7; --checkout-border: rgba(60,60,67,.12); --checkout-text: #1c1c1e; --checkout-muted: #6e6e73; --checkout-primary: #0a84ff; --checkout-selected: rgba(10,132,255,.08); }
+.djiwa-checkout-page .djiwa-checkout-header h1 { font-size: 28px; font-weight: 750; letter-spacing: -.04em; }
+.djiwa-checkout-page .djiwa-checkout-section,
+.djiwa-checkout-page .djiwa-order-summary { border: 0; border-radius: 18px; box-shadow: 0 1px 2px rgba(0,0,0,.025); }
+.djiwa-checkout-page .djiwa-checkout-input,
+.djiwa-checkout-page .djiwa-checkout-textarea { min-height: 50px; border-radius: 14px; font-size: 16px; }
+.djiwa-checkout-page .djiwa-checkout-actions button { min-height: 50px; border-radius: 14px; font-size: 14px; }
+.djiwa-checkout-page .djiwa-checkout-primary { background: #0a84ff; }
+
+@media (max-width: 390px) {
+  .pay-page { padding-right: 13px; padding-left: 13px; }
+  .ios-large-title h1 { font-size: 30px; }
+  .ios-history-value strong { max-width: 92px; font-size: 11px; }
+  .ios-history-list > button { gap: 9px; padding-left: 11px; }
+  .ios-history-copy strong { font-size: 13px; }
+  .ios-detail-group > div { grid-template-columns: 88px minmax(0,1fr); }
+  .wallet-action-recipient { grid-template-columns: 1fr; }
+  .wallet-action-recipient .secondary-action { width: 100%; }
+}
+
+@media (min-width: 700px) {
+  .pay-page { padding-top: 20px; }
+  .ios-page-header { margin-top: 4px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ios-loader { animation: none; }
+  .ios-disclosure-list summary span, .ios-back-button, .action-item, .wallet-card-icon, .round-control { transition: none; }
+}

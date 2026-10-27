@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Copy, Share2, WalletCards, X } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Copy, Share2, WalletCards } from "lucide-react";
 import type { CustomerProfile } from "../../lib/identity-adapter";
+import { DjiwaPayPageHeader } from "./djiwa-pay-page-header";
 import { requestWalletWithdrawal, resolveWalletRecipient, transferWallet } from "../../lib/wallet-adapter";
 import { validateWalletWithdrawal } from "../../lib/djiwa-pay-withdrawal";
 import { buildWalletReceivePayload, normalizeWalletPhone, validateWalletTransfer } from "../../lib/djiwa-pay-transfer";
@@ -76,10 +77,12 @@ export function DjiwaPayWalletAction({ mode, profile, balance, onClose, onSucces
     } finally { setBusy(false); }
   };
 
-  return <div className="wallet-action-backdrop" role="presentation" onClick={onClose}>
-    <section className="wallet-action-sheet" role="dialog" aria-modal="true" aria-labelledby="wallet-action-title" onClick={(event) => event.stopPropagation()}>
-      <div className="sheet-handle" />
-      <div className="sheet-header"><button type="button" className="sheet-close" onClick={onClose} aria-label="Tutup"><X size={18} /></button><h2 id="wallet-action-title">{mode === "send" ? "Kirim saldo" : mode === "withdraw" ? "Tarik dana" : "Terima saldo"}</h2><span className="sheet-spacer" /></div>
+  const title = mode === "send" ? "Kirim Saldo" : mode === "withdraw" ? "Tarik Dana" : "Terima Saldo";
+  const subtitle = mode === "send" ? "Transfer ke sesama pengguna Djiwa Pay." : mode === "withdraw" ? "Kirim permintaan pencairan ke rekening Anda." : "Bagikan detail akun untuk menerima transfer.";
+
+  return <main className="pay-page wallet-action-page">
+    <DjiwaPayPageHeader title={title} subtitle={subtitle} onBack={onClose} />
+    <section className="wallet-action-sheet" aria-label={title}>
       {mode === "withdraw" ? <>
         <div className="wallet-action-intro"><span className="wallet-action-icon receive"><ArrowDownLeft size={20} /></span><div><strong>Tarik saldo ke rekening</strong><small>Permintaan akan ditinjau admin. Saldo belum dipotong sampai disetujui.</small></div></div>
         <label className="wallet-action-field"><span>Nama bank</span><input value={bankName} onChange={(event) => setBankName(event.currentTarget.value.slice(0, 80))} placeholder="Contoh: BCA" autoComplete="organization" /></label>
@@ -104,6 +107,6 @@ export function DjiwaPayWalletAction({ mode, profile, balance, onClose, onSucces
         <p className="wallet-action-helper">Nomor HP digunakan untuk menemukan akun dan menampilkan nama penerima sebelum transfer.</p>
       </>}
     </section>
-  </div>;
+  </main>;
 }
 
