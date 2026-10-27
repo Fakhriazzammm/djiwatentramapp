@@ -22,13 +22,47 @@ export type WalletNotification = { id: string; title: string; message: string; n
 export type TopupStatusResponse = { status: "pending" | "success" | "expired"; message?: string; wallet?: WalletSummary; ledger?: WalletLedgerEntry[] };
 export type WalletTransferResult = { success: boolean; error?: string; transfer?: { transfer_id?: string; amount?: number; sender_balance?: number }; recipient?: { sourceId: string; name: string } };
 export type WalletRecipientResult = { success: boolean; error?: string; recipient?: { name: string; phone: string } };
+
+// PostgreSQL NUMERIC values arrive from node-postgres as strings. Convert them
+// at the API boundary so wallet arithmetic cannot accidentally concatenate.
+function walletAmount(value: unknown): number {
+  const amount = typeof value === "number" ? value : Number(value);
+  return Number.isSafeInteger(amount) ? amount : 0;
+}
+
+function normalizeWalletSummary(wallet: WalletSummary): WalletSummary {
+  return {
+    ...wallet,
+    available_balance: walletAmount(wallet.available_balance),
+    held_balance: walletAmount(wallet.held_balance),
+    total_credited: walletAmount(wallet.total_credited),
+    total_debited: walletAmount(wallet.total_debited),
+  };
+}
+
+function normalizeLedger(entries: WalletLedgerEntry[]): WalletLedgerEntry[] {
+  return entries.map((entry) => ({ ...entry, amount: walletAmount(entry.amount) }));
+}
+
+function normalizeTransactions(entries: WalletTransaction[]): WalletTransaction[] {
+  return entries.map((entry) => ({
+    ...entry,
+    amount: walletAmount(entry.amount),
+    balance_after: walletAmount(entry.balance_after),
+  }));
+}
+
 export async function readWallet(_profile: { source_id: string }): Promise<WalletResponse & { transactions: WalletTransaction[] }> {
   const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "get" }) });
   if (response.status === 401) throw new Error("Sesi Djiwa Pay kedaluwarsa");
   if (!response.ok) throw new Error("Wallet customer tidak dapat dimuat");
   const payload = await response.json() as { wallet?: WalletSummary; ledger?: WalletLedgerEntry[]; transactions?: WalletTransaction[] };
   if (!payload.wallet) throw new Error("Wallet customer tidak ditemukan");
-  return { wallet: payload.wallet, ledger: payload.ledger ?? [], transactions: payload.transactions ?? [] };
+  return {
+    wallet: normalizeWalletSummary(payload.wallet),
+    ledger: normalizeLedger(payload.ledger ?? []),
+    transactions: normalizeTransactions(payload.transactions ?? []),
+  };
 }
 
 export async function readWalletNotifications(): Promise<WalletNotification[]> {

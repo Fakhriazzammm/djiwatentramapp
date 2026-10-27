@@ -50,6 +50,8 @@ export function DjiwaPayTopup({
 }: DjiwaPayTopupProps) {
   const normalized = normalizeTopupAmount(amount);
   const value = normalized.value;
+  const availableBalance = Number.isSafeInteger(Number(balance)) ? Number(balance) : 0;
+  const projectedBalance = Number.isSafeInteger(availableBalance + value) ? availableBalance + value : availableBalance;
   const isDetail = stage === "detail";
   const isSuccess = status === "success";
   const isExpired = status === "expired";
@@ -73,7 +75,7 @@ export function DjiwaPayTopup({
           <section className="topup-success-card" aria-label="Detail top up">
             <div>
               <span>Saldo sekarang</span>
-              <b>{money(balance)}</b>
+              <b>{money(availableBalance)}</b>
             </div>
             <div>
               <span>Metode</span>
@@ -140,11 +142,11 @@ export function DjiwaPayTopup({
               <div className="topup-hero-balance">
                 <div>
                   <span>Saldo saat ini</span>
-                  <b>{money(balance)}</b>
+                  <b>{money(availableBalance)}</b>
                 </div>
                 <div>
                   <span>Setelah top up</span>
-                  <b>{money(balance + value)}</b>
+                  <b>{money(projectedBalance)}</b>
                 </div>
               </div>
             </section>

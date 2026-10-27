@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowDownLeft, ArrowUpRight, Bell, Car, CreditCard, Droplets, Eye, EyeOff, Gamepad2, HeartPulse, HelpCircle, House, ReceiptText, RefreshCw, ScanLine, Smartphone, Tv, UserRound, Wallet, Wifi, X, Zap } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Bell, Car, CheckCheck, CreditCard, Droplets, Eye, EyeOff, Gamepad2, HeartPulse, HelpCircle, House, ReceiptText, RefreshCw, ScanLine, Smartphone, Tv, UserRound, Wallet, Wifi, X, Zap } from "lucide-react";
 import { checkPpobStatus, checkTopupStatus, checkPostpaidStatus, createPpobInvoice, inquirePostpaid, markAllWalletNotificationsRead, markWalletNotificationRead, payPostpaid, ppobProductName, purchasePpob, readPpobCatalog, readPostpaidCatalog, readWalletNotifications, type PpobProduct, type PpobPurchaseResult, type PostpaidInquiry, type PostpaidProduct, type WalletNotification, type WalletResponse, type WalletTransaction } from "../../lib/wallet-adapter";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import type { CustomerProfile, PayNavigationContext } from "../../lib/identity-adapter";
@@ -14,6 +14,7 @@ import { djiwaPaySplashLabel, isDjiwaPayPageReady } from "../../lib/djiwa-pay-sp
 import { DjiwaPayWalletAction } from "./djiwa-pay-wallet-actions";
 import { DjiwaPayHistory } from "./djiwa-pay-history";
 import { DjiwaPayHelp } from "./djiwa-pay-help";
+import { DjiwaPayPageHeader } from "./djiwa-pay-page-header";
 import { walletQuickActionState } from "../../lib/djiwa-pay-availability";
 import { postpaidTotal, validatePostpaidCustomerNumber } from "../../lib/djiwa-pay-postpaid";
 
@@ -590,7 +591,21 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   }
   if (walletRoute?.page === "transfer" || walletRoute?.page === "receive") return <DjiwaPayWalletAction mode={walletRoute.page === "transfer" ? "send" : "receive"} profile={profile} balance={wallet?.wallet.available_balance ?? 0} initialMode={transferInitialMode} initialRecipient={transferInitialRecipient} onClose={() => goPayRoute("/")} onSuccess={() => { goPayRoute("/"); onRefresh(); if (!previewOnly) void refreshWalletNotifications(); }} />;
   if (walletRoute?.page === "help") return <DjiwaPayHelp onBack={() => goPayRoute("/")} onNavigate={goPayRoute} />;
-  if (notificationsOpen) return <main className="pay-page"><header className="pay-header"><button className="round-control" onClick={() => { onNavigate("Kembali ke Saldo Djiwa Pay"); setNotificationsOpen(false); }} aria-label="Kembali ke Saldo Djiwa Pay">‹</button><div><h1>Notifikasi</h1><small>{walletNotifications.filter((item) => item.unread).length ? `${walletNotifications.filter((item) => item.unread).length} belum dibaca` : "Semua aktivitas saldo"}</small></div><button type="button" className="text-action" disabled={notificationsBusy || !walletNotifications.some((item) => item.unread)} onClick={async () => { setNotificationsBusy(true); try { await markAllWalletNotificationsRead(); await refreshWalletNotifications(); } finally { setNotificationsBusy(false); } }}>Tandai dibaca</button></header><section className="surface activity-card wallet-notification-card" aria-labelledby="wallet-notifications-title"><div className="section-heading"><div><span className="eyebrow">DJIWA PAY</span><h2 id="wallet-notifications-title">Aktivitas terbaru</h2></div></div>{walletNotifications.length === 0 ? <div className="activity-empty"><span>Notifikasi transfer dan saldo akan muncul di sini.</span></div> : <div className="activity-list">{walletNotifications.map((notification) => <button type="button" className={`activity-row activity-row-button ${notification.unread ? "is-unread" : ""}`} key={notification.id} onClick={async () => { if (notification.unread) { await markWalletNotificationRead(notification.id); await refreshWalletNotifications(); } }}><span className="activity-icon credit"><Bell size={16} /></span><span className="activity-copy"><b>{notification.title}</b><small>{notification.message} · {date(notification.created_at)}</small></span>{notification.unread ? <span className="notification-dot" aria-label="Belum dibaca" /> : null}</button>)}</div>}</section></main>;
+  if (notificationsOpen) {
+    const unreadCount = walletNotifications.filter((item) => item.unread).length;
+    return <main className="pay-page wallet-notifications-page">
+      <DjiwaPayPageHeader
+        title="Notifikasi"
+        subtitle={unreadCount ? `${unreadCount} belum dibaca` : "Semua aktivitas saldo"}
+        onBack={() => { onNavigate("Kembali ke Saldo Djiwa Pay"); setNotificationsOpen(false); }}
+        trailing={<button type="button" className="ios-mark-read" disabled={notificationsBusy || unreadCount === 0} onClick={async () => { setNotificationsBusy(true); try { await markAllWalletNotificationsRead(); await refreshWalletNotifications(); } finally { setNotificationsBusy(false); } }}><CheckCheck size={16} /><span>{notificationsBusy ? "Memproses" : "Baca semua"}</span></button>}
+      />
+      <section className="ios-history-group wallet-notification-card" aria-labelledby="wallet-notifications-title">
+        <div className="wallet-notifications-heading"><span className="ios-section-label">DJIWA PAY</span><h2 id="wallet-notifications-title">Aktivitas terbaru</h2></div>
+        {walletNotifications.length === 0 ? <div className="ios-history-empty"><Bell size={28} /><strong>Belum ada notifikasi</strong><p>Notifikasi transfer dan saldo akan muncul di sini.</p></div> : <div className="ios-history-list">{walletNotifications.map((notification) => <button type="button" className={`wallet-notification-row ${notification.unread ? "is-unread" : ""}`} key={notification.id} onClick={async () => { if (notification.unread) { await markWalletNotificationRead(notification.id); await refreshWalletNotifications(); } }}><span className="ios-history-icon credit"><Bell size={18} /></span><span className="ios-history-copy"><strong>{notification.title}</strong><small>{notification.message} · {date(notification.created_at)}</small></span>{notification.unread ? <span className="notification-dot" aria-label="Belum dibaca" /> : null}</button>)}</div>}
+      </section>
+    </main>;
+  }
   return <main className="pay-page">
     <header className="pay-header"><button className="round-control" onClick={() => window.location.assign(customerHome)} aria-label="Kembali ke Djiwa Tentram">‹</button><div><h1>Saldo Djiwa Pay</h1><small>Digital wallet</small></div><div className="pay-header-actions"><button type="button" className="round-control notification-bell" onClick={() => { onNavigate("Membuka Notifikasi"); setNotificationsOpen(true); }} aria-label={`Notifikasi${walletNotifications.some((item) => item.unread) ? `, ${walletNotifications.filter((item) => item.unread).length} belum dibaca` : ""}`}><Bell size={17} />{walletNotifications.some((item) => item.unread) ? <span className="notification-badge">{walletNotifications.filter((item) => item.unread).length > 9 ? "9+" : walletNotifications.filter((item) => item.unread).length}</span> : null}</button><button className="round-control" onClick={onRefresh} disabled={loading} aria-label="Segarkan saldo"><RefreshCw size={16} className={loading ? "spin" : ""} /></button></div></header>
     {previewOnly ? <p className="local-preview-banner" role="status">Pratinjau lokal · data contoh · transaksi dinonaktifkan</p> : null}
