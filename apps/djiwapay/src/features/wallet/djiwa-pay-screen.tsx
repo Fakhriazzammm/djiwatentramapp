@@ -345,7 +345,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     notificationsOpen,
     notificationsLoading,
     ppobSuccess: Boolean(ppobSuccess),
-    ppobPageActive: ppobRoute !== null || ppobOpen,
+    ppobPageActive: ppobRoute !== null,
     ppobCategory,
     ppobCatalogReady: ppobCatalog !== null || ppobCatalogError !== null,
     postpaidActive: Boolean(routePostpaidService || postpaidService),

@@ -33,7 +33,7 @@ export type DjiwaPayPageData = {
   notificationsOpen: boolean;
   notificationsLoading: boolean;
   ppobSuccess: boolean;
-  /** True when the URL or state is showing a PPOB page. */
+  /** True when the destination URL is a PPOB page. */
   ppobPageActive: boolean;
   ppobCategory: string;
   /** Catalog loaded, failed, or not needed (category picker). */
