@@ -20,7 +20,7 @@ const scanAction = walletQuickActionState("scan");
 const withdrawAction = walletQuickActionState("withdraw");
 const actions = [
   ["topup", "Isi Saldo", "topup.webp", true, "", ""], ["send", "Kirim", "send.webp", true, "", ""], ["receive", "Terima", "receive.webp", true, "", ""], ["scan", "Scan QR", "scan-qr.webp", scanAction.supported, scanAction.badge, "cyan"],
-  ["history", "Riwayat", "history.webp", true, "", ""], ["card", "Kartu", "card.webp", false, "Soon", ""], ["withdraw", "Tarik Dana", "withdraw.webp", withdrawAction.supported, withdrawAction.badge, "orange"], ["help", "Bantuan", "help.webp", true, "", ""],
+  ["history", "Riwayat", "history.webp", true, "", ""], ["card", "Kartu", "card.webp", false, "Soon", "indigo"], ["withdraw", "Tarik Dana", "withdraw.webp", withdrawAction.supported, withdrawAction.badge, "orange"], ["help", "Bantuan", "help.webp", true, "", ""],
 ] as const;
 
 const ppobServices = [
