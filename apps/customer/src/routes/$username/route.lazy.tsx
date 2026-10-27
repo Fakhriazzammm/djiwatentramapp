@@ -20,6 +20,7 @@ import { RecentOrdersCarousel } from "@/components/customer/recent-orders-carous
 import { CustomerHomeDiscovery } from "@/components/customer/customer-home-discovery";
 import { B2BPromoBanner } from "@/components/customer/b2b-promo-banner";
 import { CustomerLiveOrderCard } from "@/components/customer/customer-live-order-card";
+import { getCustomerPayPath } from "@/lib/customer-pay-navigation";
 
 type GuestData = {
 	name: string;
@@ -105,7 +106,7 @@ function MemberHomePage() {
 		if (typeof window !== "undefined") window.location.assign(path);
 	};
 	const goDjiwaPay = () => {
-		if (typeof window !== "undefined") window.location.assign(`https://api.djiwatentram.web.id/api/customer/pay-bridge/start?returnTo=${encodeURIComponent("https://pay.djiwatentram.web.id/?source=customer&username=${encodeURIComponent(username)}")}`);
+		if (typeof window !== "undefined") window.location.assign(getCustomerPayPath(username));
 	};
 	const customerNav = [
 		{ label: "Home", icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname === `/${username}`, onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}`) },

@@ -14,6 +14,8 @@ const BRIDGE_START = "https://api.djiwatentram.web.id/api/customer/pay-bridge/st
 const CUSTOMER_AUTH_ORIGIN = "https://djiwatentram.web.id/masuk";
 export type PayNavigationContext = { source: "customer"; username: string } | null;
 export function getPayNavigationContext(): PayNavigationContext {
+  const pathMatch = /^\/([^/]+)\/wallet\/?$/.exec(window.location.pathname);
+  if (pathMatch) return { source: "customer", username: decodeURIComponent(pathMatch[1]) };
   const params = new URLSearchParams(window.location.search);
   const username = params.get("username");
   return params.get("source") === "customer" && username ? { source: "customer", username } : null;

@@ -23,6 +23,12 @@ export type WalletRoute = {
 
 const walletPagePattern = /^\/wallet\/(topup|transfer|receive|history|help)\/?$/;
 const walletTransactionPattern = /^\/wallet\/history\/([^/]+)\/?$/;
+const customerWalletPattern = /^\/([^/]+)\/wallet\/?$/;
+
+export function parseCustomerWalletUsername(pathname: string): string | null {
+  const match = customerWalletPattern.exec(pathname);
+  return match ? decodeURIComponent(match[1]) : null;
+}
 
 export function parseWalletPath(pathname: string): WalletRoute | null {
   const transactionMatch = walletTransactionPattern.exec(pathname);
@@ -32,7 +38,7 @@ export function parseWalletPath(pathname: string): WalletRoute | null {
 }
 
 export function isKnownPayPath(pathname: string) {
-  return pathname === "/" || pathname === "/wallet" || parseWalletPath(pathname) !== null || parsePpobPath(pathname) !== null;
+  return pathname === "/" || pathname === "/wallet" || parseCustomerWalletUsername(pathname) !== null || parseWalletPath(pathname) !== null || parsePpobPath(pathname) !== null;
 }
 
 export function checkoutCustomerNumberHint(value: string) {
