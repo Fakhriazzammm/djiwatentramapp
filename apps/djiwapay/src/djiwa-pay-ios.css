@@ -382,11 +382,22 @@ button:disabled { cursor: default; }
   text-transform: uppercase;
 }
 .djiwa-splash-label { margin: 7px 0 0; color: #6e6e73; font-size: 13px; line-height: 1.45; }
+.djiwa-splash-hint {
+  margin: 10px 0 0;
+  color: #8e8e93;
+  font-size: 12px;
+  line-height: 1.45;
+  animation: djiwa-pay-splash-hint-in .3s ease both;
+}
 
 @keyframes logo-trace-loader-loop { to { stroke-dashoffset: -1; } }
 @keyframes djiwa-pay-splash-in {
   from { opacity: 0; transform: scale(.96); }
   to { opacity: 1; transform: scale(1); }
+}
+@keyframes djiwa-pay-splash-hint-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

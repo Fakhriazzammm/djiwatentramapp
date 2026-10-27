@@ -9,7 +9,7 @@ import { DjiwaPayCheckout, DjiwaPaySuccess } from "./djiwa-pay-checkout";
 import { isSettledPpob, preferredPaymentMethod, validateCustomerNumber } from "../../lib/djiwa-pay-checkout";
 import { parseCheckoutDraft, serializeCheckoutDraft, type CheckoutDraft } from "../../lib/djiwa-pay-draft";
 import { checkoutCustomerNumberHint, parsePpobPath, parseWalletPath, postpaidServiceForCategory } from "../../lib/djiwa-pay-routes";
-import { djiwaPaySplashLabel } from "../../lib/djiwa-pay-splash";
+import { djiwaPaySplashLabel, isDjiwaPayPageReady } from "../../lib/djiwa-pay-splash";
 import { DjiwaPayWalletAction } from "./djiwa-pay-wallet-actions";
 import { DjiwaPayHistory } from "./djiwa-pay-history";
 import { DjiwaPayHelp } from "./djiwa-pay-help";
@@ -38,7 +38,7 @@ const ppobServices = [
   ["multifinance", "Cicilan", "Bayar pembiayaan", Car, "slate"],
 ] as const;
 
-type Props = { profile: CustomerProfile; wallet: WalletResponse | null; loading: boolean; error: string | null; busy: boolean; onRefresh: () => void; onTopup: (amount: number) => Promise<{ invoiceUrl: string; invoiceId?: string }>; navigationContext: PayNavigationContext; onNavigate: (label?: string) => void };
+type Props = { profile: CustomerProfile; wallet: WalletResponse | null; loading: boolean; error: string | null; busy: boolean; onRefresh: () => void; onTopup: (amount: number) => Promise<{ invoiceUrl: string; invoiceId?: string }>; navigationContext: PayNavigationContext; onNavigate: (label?: string) => void; onPageReady: () => void; transitionId: number };
 
 function PpobReceipt({ product, number, serialNumber, reference, onDone }: { product: PpobProduct; number: string; serialNumber?: string; reference?: string; onDone: () => void }) {
   const [stage, setStage] = useState<"processing" | "printing" | "complete">("processing");
@@ -47,7 +47,7 @@ function PpobReceipt({ product, number, serialNumber, reference, onDone }: { pro
   return <div className="ppob-receipt-backdrop"><section className="ppob-receipt-shell" role="dialog" aria-modal="true" aria-labelledby="ppob-receipt-title"><div className="ppob-receipt-brand"><span>D</span><strong>Djiwa Pay</strong><small>{stage === "complete" ? "Pembayaran berhasil" : stage === "printing" ? "Menyiapkan struk" : "Memproses pembayaran"}</small></div><div className={`ppob-receipt-paper ${stage}`}><div className="ppob-receipt-check">{stage === "complete" ? "✓" : "·"}</div><h2 id="ppob-receipt-title">Pembayaran Berhasil</h2><p className="ppob-receipt-caption">Struk digital transaksi PPOB</p><div className="ppob-receipt-rows"><span>Operator <b>{operator}</b></span><span>Produk <b>{product.product_description}</b></span><span>Nomor tujuan <b>{number}</b></span><span>Total <b>{money(product.product_price)}</b></span><span>Metode <b>Saldo Djiwa Pay</b></span>{serialNumber ? <span>Serial Number <b>{serialNumber}</b></span> : null}{reference ? <span>Referensi <b>{reference}</b></span> : null}</div><div className="ppob-receipt-status">{stage === "complete" ? "Transaksi selesai dan saldo telah dipotong." : stage === "printing" ? "Menyiapkan struk digital..." : "Memverifikasi transaksi..."}</div></div>{stage === "complete" ? <button className="primary-action" onClick={onDone}>Selesai</button> : <div className="ppob-receipt-progress" aria-live="polite">{stage === "printing" ? "Menyiapkan struk..." : "Memproses..."}</div>}</section></div>;
 }
 
-export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefresh, onTopup, navigationContext, onNavigate }: Props) {
+export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefresh, onTopup, navigationContext, onNavigate, onPageReady, transitionId }: Props) {
   const [visible, setVisible] = useState(false);
   const [amount, setAmount] = useState("50000");
   const [soon, setSoon] = useState<string | null>(null);
@@ -88,6 +88,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   const [draftRestored, setDraftRestored] = useState(false);
   const [activityFilter, setActivityFilter] = useState<"all" | "credit" | "debit" | "transfer">("all");
   const [walletNotifications, setWalletNotifications] = useState<WalletNotification[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
   const [notificationsBusy, setNotificationsBusy] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const recentNumbersKey = `djiwa-pay-recent-numbers:${profile.source_id}`;
@@ -99,7 +100,9 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     try { const parsed = JSON.parse(window.localStorage.getItem(`djiwa-pay-favorite-numbers:${profile.source_id}`) || "[]"); return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string").slice(0, 5) : []; } catch { return []; }
   });
   const refreshWalletNotifications = async () => {
+    setNotificationsLoading(true);
     try { setWalletNotifications(await readWalletNotifications()); } catch { /* wallet remains usable when notification service is unavailable */ }
+    finally { setNotificationsLoading(false); }
   };
   useEffect(() => { void refreshWalletNotifications(); }, [profile.source_id]);
   const goPpobRoute = (path: string, silent = false) => { if (!silent) onNavigate(djiwaPaySplashLabel(path)); window.history.pushState({ ppob: true }, "", path); setRoutePath(path); };
@@ -330,6 +333,32 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     goPpobRoute(`/ppob/${encodeURIComponent(providerType)}`);
   };
   const postpaidNumberValidation = postpaidService ? validatePostpaidCustomerNumber(postpaidService, postpaidCustomerNumber) : { valid: false, message: null };
+  // The splash follows the URL rather than `ppobOpen` because a deep link only
+  // sets that flag in an effect, after the first render.
+  const ppobRoute = parsePpobPath(routePath);
+  const ppobCategory = ppobRoute?.category ?? ppobFilter;
+  const routePostpaidService = postpaidServiceForCategory(ppobCategory);
+  const pageReady = isDjiwaPayPageReady({
+    offline: typeof navigator !== "undefined" && navigator.onLine === false,
+    walletLoading: loading,
+    walletPage: walletRoute?.page ?? null,
+    notificationsOpen,
+    notificationsLoading,
+    ppobSuccess: Boolean(ppobSuccess),
+    ppobPageActive: ppobRoute !== null || ppobOpen,
+    ppobCategory,
+    ppobCatalogReady: ppobCatalog !== null || ppobCatalogError !== null,
+    postpaidActive: Boolean(routePostpaidService || postpaidService),
+    postpaidCatalogReady: postpaidCatalog !== null || postpaidMessage !== null,
+    selectedPpobProduct:
+      Boolean(selectedPpobProduct) ||
+      (Boolean(ppobRoute?.productCode) && (ppobCatalog !== null || ppobCatalogError !== null)),
+  });
+  // `release` is idempotent; re-running it on state changes is harmless. The
+  // transition id makes sure each new splash can release its own page.
+  useEffect(() => {
+    if (pageReady) onPageReady();
+  }, [onPageReady, pageReady, transitionId]);
   const submitPostpaidInquiry = async () => {
     if (!postpaidService || !postpaidProductCode || !postpaidNumberValidation.valid) return;
     setPostpaidBusy(true); setPostpaidMessage(null);
