@@ -2549,9 +2549,20 @@ export function useHybridCreateOrder() {
 					.maybeSingle();
 				if (existingError) throw existingError;
 				if (existingOrder?.source_id) {
-					await assertOrderRetryAcknowledgement(pos, existingOrder, args);
+					await assertOrderRetryAcknowledgement(pos, existingOrder, {
+						...args,
+						...(args?.source === "pos" ? { repairMissingSettlement: async () => {
+							const { error } = await pos.rpc("repair_pos_order_settlement", {
+								p_order_id: existingOrder.source_id,
+							});
+							if (error) throw error;
+						} } : {}),
+					});
 					return existingOrder.source_id;
 				}
+			}
+			if (args?.reconcileOnly) {
+				throw new Error("Pesanan belum ditemukan di server. Periksa riwayat pesanan sebelum melanjutkan.");
 			}
 			const autoComplete = Boolean(args?.autoComplete);
 			const nextStatus = isOpenBill
@@ -2653,13 +2664,22 @@ const orderRow = {
 							.maybeSingle();
 						if (concurrentError) throw concurrentError;
 						if (concurrentOrder?.source_id) {
-							await assertOrderRetryAcknowledgement(pos, concurrentOrder, args);
+							await assertOrderRetryAcknowledgement(pos, concurrentOrder, {
+								...args,
+								...(args?.source === "pos" ? { repairMissingSettlement: async () => {
+									const { error } = await pos.rpc("repair_pos_order_settlement", {
+										p_order_id: concurrentOrder.source_id,
+									});
+									if (error) throw error;
+								} } : {}),
+							});
 							return concurrentOrder.source_id;
 						}
 					}
 					throw orderError;
 				}
 
+				try {
 				const orderItems = Array.isArray(args?.items)
 					? args.items.map((item: any, index: number) => ({
 							order_source_id: orderId,
@@ -2685,32 +2705,53 @@ const orderRow = {
 				}
 
 				if (!isOpenBill) {
-					const financialRow = {
-						source_id: makeSourceId("fin"),
-						tx_type: "income",
-						amount: orderRow.total_amount,
-						category: "Penjualan",
-						description: `Penjualan Pesanan #${orderNumber}`,
-						merchant: args?.customerName ?? null,
-						tx_date: orderCreatedAt,
-						payment_method: args?.paymentMethod ?? null,
-						status: "completed",
-						order_source_id: orderId,
-						creation_time: Date.now(),
-						metadata: {
-							dailyReceiptNo,
-							orderNumber,
-							source: "pos",
-						},
-						raw: {
-							kind: "order_settlement",
-							orderId,
-						},
-					};
-					const { error: financialError } = await pos
-						.from("financial_transactions")
-						.insert(financialRow);
-					if (financialError) throw financialError;
+					if (args?.source === "pos") {
+						const { error: settlementError } = await pos.rpc("repair_pos_order_settlement", {
+							p_order_id: orderId,
+						});
+						if (settlementError) throw settlementError;
+					} else {
+						const financialRow = {
+							source_id: makeSourceId("fin"),
+							tx_type: "income",
+							amount: orderRow.total_amount,
+							category: "Penjualan",
+							description: `Penjualan Pesanan #${orderNumber}`,
+							merchant: args?.customerName ?? null,
+							tx_date: orderCreatedAt,
+							payment_method: args?.paymentMethod ?? null,
+							status: "completed",
+							order_source_id: orderId,
+							creation_time: Date.now(),
+							metadata: { dailyReceiptNo, orderNumber, source: args?.source ?? null },
+							raw: { kind: "order_settlement", orderId },
+						};
+						const { error: financialError } = await pos.from("financial_transactions").insert(financialRow);
+						if (financialError) throw financialError;
+					}
+				}
+				} catch (writeError) {
+					// The order header/items may already be durable when the settlement
+					// response is lost. Verify that same idempotent order and repair only
+					// its missing settlement before returning it as successful.
+					try {
+						await assertOrderRetryAcknowledgement(
+							pos,
+							{ source_id: orderId, status: nextStatus, total_amount: orderRow.total_amount },
+							{
+								...args,
+								...(args?.source === "pos" ? { repairMissingSettlement: async () => {
+									const { error } = await pos.rpc("repair_pos_order_settlement", {
+										p_order_id: orderId,
+									});
+									if (error) throw error;
+								} } : {}),
+							},
+						);
+						return orderId;
+					} catch {
+						throw writeError;
+					}
 				}
 
 				// Auto-deduct inventory untuk order completed (direct create)
