@@ -22,6 +22,14 @@ describe("POS opening shift UX contract", () => {
 		expect(source).toContain("Masuk ke Kasir");
 	});
 
+	it("refreshes shared shift status after opening a shift", () => {
+		const startSuccess = source.indexOf('toast.success("Shift berhasil dimulai")');
+		const refresh = source.indexOf("triggerHybridRefresh();", startSuccess);
+
+		expect(startSuccess).toBeGreaterThan(-1);
+		expect(refresh).toBeGreaterThan(startSuccess);
+	});
+
 	it("does not reintroduce keyboard shortcut UI", () => {
 		expect(source).not.toContain("KEYBOARD SHORTCUT");
 		expect(source).not.toContain("useMenuKeyboardNav");

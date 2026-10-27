@@ -2939,6 +2939,9 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			await captureStockSnapshot(String(openedShiftId), "opening");
 			playShiftSound(`open:${openRequestId ?? `${cashierName.trim()}:${shiftName.trim()}`}`, "/sounds/cashier-shift-open.mp3");
 			toast.success("Shift berhasil dimulai");
+			// Pembayaran dan workspace utama punya instance status shift sendiri.
+			// Refresh global agar keduanya langsung melihat shift yang baru dibuka.
+			triggerHybridRefresh();
 			const teamFormatted = formatTeamByRole(teamMembers, staffUsers);
 			const notificationDelivered = await sendTelegramNotif("✅ SHIFT DIBUKA", {
 				"🏪": "Djiwa Tentram",
