@@ -9,8 +9,7 @@ import {
 } from "../src/lib/djiwa-pay-checkout";
 import { parseCheckoutDraft, serializeCheckoutDraft } from "../src/lib/djiwa-pay-draft";
 import { canPollTransaction, normalizePayTransactionStatus, shouldClearTransactionDraft, transactionStatusLabel } from "../src/lib/djiwa-pay-transaction";
-import { buildWalletReceivePayload, normalizeWalletPhone, validateWalletTransfer } from "../src/lib/djiwa-pay-transfer";
-import { parseWalletRecipient } from "../src/features/wallet/djiwa-pay-wallet-scanner";
+import { buildWalletReceivePayload, normalizeWalletPhone, parseWalletRecipientPayload, validateWalletTransfer } from "../src/lib/djiwa-pay-transfer";
 import { validateWalletWithdrawal } from "../src/lib/djiwa-pay-withdrawal";
 import { walletQuickActionState } from "../src/lib/djiwa-pay-availability";
 import { resolveWalletRecipient, transferWallet } from "../src/lib/wallet-adapter";
@@ -101,8 +100,8 @@ describe("Djiwa Pay checkout presentation contract", () => {
     expect(normalizeWalletPhone("0812-3456-7890")).toBe("6281234567890");
     expect(normalizeWalletPhone("+62 812 3456 7890")).toBe("6281234567890");
     expect(buildWalletReceivePayload("081234567890")).toBe("djiwapay://transfer?phone=6281234567890");
-    expect(parseWalletRecipient("djiwapay://transfer?phone=6281234567890")).toBe("6281234567890");
-    expect(parseWalletRecipient("https://example.com/qr?recipient=cust_123")).toBeNull();
+    expect(parseWalletRecipientPayload("djiwapay://transfer?phone=6281234567890")).toBe("6281234567890");
+    expect(parseWalletRecipientPayload("https://example.com/qr?recipient=cust_123")).toBeNull();
   });
 
   test("resolves a recipient through the phone-only wallet bridge", async () => {
@@ -142,8 +141,8 @@ describe("Djiwa Pay checkout presentation contract", () => {
     expect(validateWalletWithdrawal({ amount: 10000, bankName: "BCA", accountNumber: "abc123", accountName: "Djiwa Tentram", note: "" }).valid).toBe(false);
   });
 
-  test("marks scanner and withdrawal actions as coming soon", () => {
-    expect(walletQuickActionState("scan")).toEqual({ supported: false, badge: "Soon" });
+  test("keeps the scanner available and only withdrawal as coming soon", () => {
+    expect(walletQuickActionState("scan")).toEqual({ supported: true, badge: "" });
     expect(walletQuickActionState("withdraw")).toEqual({ supported: false, badge: "Soon" });
     expect(walletQuickActionState("send")).toEqual({ supported: true, badge: "" });
   });

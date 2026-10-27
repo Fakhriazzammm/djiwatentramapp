@@ -20,7 +20,9 @@
     "@yumipos/web-shared": "workspace:*",
     "better-auth": "^1.6.23",
     "framer-motion": "^12.23.24",
+    "jsqr": "^1.4.0",
     "lucide-react": "^0.473.0",
+    "qrcode-generator": "^2.0.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "tailwind-merge": "^3.3.1"

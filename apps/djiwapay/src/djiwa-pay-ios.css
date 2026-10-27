@@ -214,6 +214,41 @@ button:disabled { cursor: default; }
 .wallet-action-buttons .secondary-action { border: 0; background: rgba(10,132,255,.1); color: #0a84ff; }
 .wallet-action-helper { margin: 0 8px; color: #8e8e93; font-size: 12px; line-height: 1.5; text-align: center; }
 
+/* Transfer offers manual entry and an inline QR camera, never a popup. */
+.wallet-action-mode { grid-template-columns: repeat(2,minmax(0,1fr)); margin-bottom: 0; }
+.wallet-action-mode button { min-height: 36px; font-size: 13px; }
+.wallet-action-scan-hint { display: flex; align-items: center; justify-content: center; gap: 6px; margin: -4px 4px 0; text-align: left; }
+.wallet-action-scan-hint svg { flex: none; color: #0a84ff; }
+.wallet-action-scan-hint b { color: #3a3a3c; font-weight: 600; }
+.wallet-scanner { display: grid; gap: 14px; }
+.wallet-scanner-preview { position: relative; width: 100%; max-width: 330px; min-height: 0; margin: 0 auto; overflow: hidden; aspect-ratio: 1; border-radius: 24px; background: #000; }
+.wallet-scanner-preview::after { content: none; display: none; }
+.wallet-scanner-preview video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.wallet-scanner-frame { position: absolute; inset: 15%; border: 2px solid rgba(255,255,255,.94); border-radius: 24px; box-shadow: 0 0 0 999px rgba(0,0,0,.34); }
+.wallet-scanner-status { display: flex; align-items: flex-start; justify-content: center; gap: 7px; margin: 0; padding: 12px 14px; border-radius: 14px; background: rgba(120,120,128,.08); color: #3a3a3c; font-size: 12px; line-height: 1.45; }
+.wallet-scanner-status svg { flex: none; margin-top: 1px; color: #0a84ff; }
+.wallet-scanner-status.is-error { background: rgba(255,59,48,.1); color: #c9342c; }
+.wallet-scanner-status.is-error svg { color: #c9342c; }
+.wallet-scanner-manual { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 50px; border: 0; border-radius: 14px; background: rgba(10,132,255,.1); color: #0a84ff; font-size: 14px; font-weight: 600; cursor: pointer; }
+.wallet-scanner-manual:active { transform: scale(.98); opacity: .82; }
+
+/* Receive shows a real per-account QR that the transfer scanner can read. */
+.wallet-qr-card { display: grid; justify-items: center; gap: 14px; padding: 22px 18px 18px; border-radius: 22px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.025); text-align: center; }
+.wallet-qr-code { display: grid; place-items: center; width: min(230px,64vw); padding: 14px; border: 1px solid rgba(60,60,67,.1); border-radius: 22px; background: #fff; }
+.wallet-qr-code svg { display: block; width: 100%; height: auto; aspect-ratio: 1; shape-rendering: crispEdges; }
+.wallet-qr-identity { display: grid; gap: 4px; }
+.wallet-qr-identity small { color: #8e8e93; font-size: 10px; font-weight: 650; letter-spacing: .08em; }
+.wallet-qr-identity strong { max-width: 100%; color: #1c1c1e; font-size: 18px; font-weight: 650; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.wallet-qr-identity span { color: #6e6e73; font-size: 13px; }
+.wallet-qr-hint { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; color: #8e8e93; font-size: 11px; line-height: 1.45; }
+.wallet-qr-hint svg { flex: none; color: #0a84ff; }
+.wallet-qr-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wallet-qr-actions .primary-action,
+.wallet-qr-actions .secondary-action { display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: 100%; min-height: 50px; padding: 0 12px; border: 0; border-radius: 14px; font-size: 14px; font-weight: 600; }
+.wallet-qr-actions .primary-action { background: #0a84ff; color: #fff; }
+.wallet-qr-actions .secondary-action { background: rgba(10,132,255,.1); color: #0a84ff; }
+.wallet-qr-actions button:active { transform: scale(.98); opacity: .82; }
+
 /* History uses a native segmented control and inset grouped rows. */
 .ios-segmented-control { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 2px; margin-bottom: 18px; padding: 2px; border-radius: 10px; background: rgba(118,118,128,.12); }
 .ios-segmented-control button { min-height: 34px; padding: 0 5px; border: 0; border-radius: 8px; background: transparent; color: #3a3a3c; font-size: 12px; font-weight: 550; cursor: pointer; }
@@ -290,6 +325,8 @@ button:disabled { cursor: default; }
   .ios-detail-group > div { grid-template-columns: 88px minmax(0,1fr); }
   .wallet-action-recipient { grid-template-columns: 1fr; }
   .wallet-action-recipient .secondary-action { width: 100%; }
+  .wallet-qr-actions { grid-template-columns: 1fr; }
+  .wallet-qr-code { width: min(216px,66vw); }
 }
 
 @media (min-width: 700px) {
