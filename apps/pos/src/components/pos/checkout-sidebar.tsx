@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Minus, Plus, Search } from "lucide-react";
 import { useCart } from "@/context/cart-context";
 import { useAppData } from "@/context/app-data-context";
@@ -27,6 +27,8 @@ import { CheckoutRecoveryNotice } from "./checkout-recovery-notice";
 import { CustomerSearchModal } from "./customer-search-modal";
 import { CheckoutStepHeader } from "./checkout-stepper";
 import { CheckoutCartItem } from "./checkout-cart-item";
+
+let autoRecoveryRequestKey: string | null = null;
 
 export interface CheckoutSidebarProps {
 	onConfirmPayment?: ConfirmCheckoutPayment;
@@ -286,7 +288,7 @@ export function CheckoutSidebar({
 			setSubmitting(false);
 		}
 	};
-	const recover = async () => {
+	const recover = useCallback(async () => {
 		if (inFlight.current || busy || !onRecoverPayment) return;
 		inFlight.current = true;
 		setSubmitting(true);
@@ -311,7 +313,17 @@ export function CheckoutSidebar({
 			inFlight.current = false;
 			setSubmitting(false);
 		}
-	};
+	}, [busy, onRecoverPayment]);
+	useEffect(() => {
+		if (!pendingPayment) {
+		autoRecoveryRequestKey = null;
+			return;
+		}
+		const requestKey = `${pendingPayment.customerName}:${pendingPayment.total}`;
+		if (autoRecoveryRequestKey === requestKey || busy || !onRecoverPayment) return;
+		autoRecoveryRequestKey = requestKey;
+		void recover();
+	}, [busy, onRecoverPayment, pendingPayment, recover]);
 	const customerFields = (
 		<div className="space-y-1.5 rounded-lg border border-border/70 bg-card p-2 shadow-sm">
 			<div className="flex items-end gap-1.5">
@@ -973,9 +985,6 @@ export function CheckoutSidebar({
 			) : hasPendingPayment ? (
 				<footer className="shrink-0 space-y-2 border-t border-black/[0.06] bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur-xl pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-white/10 dark:bg-[#1C1C1E]/95">
 					{submitError && <p className="text-[13px] text-destructive" role="alert">{submitError}</p>}
-					<p className="text-center text-[13px] text-muted-foreground">
-						Pulihkan pesanan awal untuk melanjutkan. Checkout dikunci sementara.
-					</p>
 				</footer>
 			) : (
 				<footer className="shrink-0 space-y-2 border-t border-black/[0.06] bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur-xl pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-white/10 dark:bg-[#1C1C1E]/95">

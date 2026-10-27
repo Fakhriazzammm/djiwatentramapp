@@ -4,6 +4,7 @@ import {
 	BarChart3,
 	Bell,
 	Bot,
+	Check,
 	Clock,
 	Coffee,
 	FileText,
@@ -39,7 +40,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { MenuSidebar } from "@/components/pos/menu-sidebar";
 import { CartDrawer } from "@/components/pos/cart-drawer";
 import { CheckoutSidebar } from "@/components/pos/checkout-sidebar";
@@ -1508,7 +1509,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			if (pendingCheckoutRequest && !recoverySnapshot) {
 				throw new Error("Pulihkan pesanan awal terlebih dahulu agar tidak membuat transaksi ganda.");
 			}
-			if (!isShiftOpen) {
+			if (!isShiftOpen && !recoverySnapshot) {
 				throw new Error("Buka shift terlebih dahulu melalui menu Shift.");
 			}
 			if (cartItems.length === 0) throw new Error("Pilih menu terlebih dahulu.");
@@ -1607,6 +1608,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						: undefined,
 					paymentReceiptKind: mayarInvoice ? "gateway_pending" as const : undefined,
 					idempotencyKey,
+					reconcileOnly: Boolean(recoverySnapshot && !isShiftOpen),
 					isOpenBill: shouldOpenBill,
 					autoComplete: shouldOpenBill ? false : orderData?.autoComplete,
 					assignments: orderData?.assignments,
@@ -2510,7 +2512,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 			{/* === PRODUCT DETAIL SHEET === */}
 			<Sheet open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
-				<SheetContent side="bottom" className="p-0 rounded-t-2xl max-h-[90vh] overflow-y-auto">
+				<SheetContent side="bottom" showCloseButton={false} className="max-h-[92dvh] overflow-hidden rounded-t-[28px] border-border/70 bg-background p-0 shadow-2xl">
 					<ProductDetailSheet
 						product={selectedProduct}
 						activeDiscounts={activeDiscounts}
@@ -2671,18 +2673,23 @@ function ProductDetailSheet({
 }) {
 	const [quantity, setQuantity] = useState(1);
 	const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
+	const rawVariationGroups = Array.isArray(product?.variations) ? product.variations : [];
+	const variationGroups = rawVariationGroups
+		.map((group: any, index: number) => ({
+			key: "variation-" + index,
+			label: String(group?.name ?? group?.type ?? "").trim() || "Pilihan " + (index + 1),
+			options: Array.isArray(group?.options) ? group.options : [],
+		}))
+		.filter((group: any) => group.options.length > 0);
 
-	// Reset state when product changes
 	useEffect(() => {
-		if (product) {
-			setQuantity(1);
-			const defaultVariants = Object.fromEntries(
-				(product.variations ?? [])
-					.map((group: any) => [group.type, group.options?.[0]?.name])
-					.filter((entry: [string | undefined, string | undefined]): entry is [string, string] => Boolean(entry[0] && entry[1]))
-			);
-			setSelectedVariants(defaultVariants);
-		}
+		if (!product) return;
+		setQuantity(1);
+		const defaults: [string, string][] = rawVariationGroups.flatMap((group: any, index: number) => {
+			const firstOption = Array.isArray(group?.options) ? group.options[0] : undefined;
+			return firstOption?.name ? [["variation-" + index, firstOption.name]] : [];
+		});
+		setSelectedVariants(Object.fromEntries(defaults));
 	}, [product]);
 
 	if (!product) return null;
@@ -2697,24 +2704,17 @@ function ProductDetailSheet({
 		{ allowHappyHour: false }
 	);
 
-	// Calculate variant price
-	const variantPrice = Object.entries(selectedVariants).reduce((sum, [groupType, optionName]) => {
-		const group = product.variations?.find((g: any) => g.type === groupType);
-		const opt = group?.options.find((o: any) => o.name === optionName);
-		return sum + (opt?.price ?? 0);
+	const variantPrice = variationGroups.reduce((sum: number, group: any) => {
+		const option = group.options.find((item: any) => item.name === selectedVariants[group.key]);
+		return sum + (Number(option?.price) || 0);
 	}, 0);
-
 	const unitPrice = pricing.finalPrice + variantPrice;
 	const totalPrice = unitPrice * quantity;
-	const variationGroups = product.variations ?? [];
-	const hasVariations = variationGroups.length > 0;
-	const isSelectionComplete = variationGroups.every(
-		(group: any) => !group.options?.length || Boolean(selectedVariants[group.type])
-	);
-
-	const variantLabel = Object.entries(selectedVariants)
-		.map(([, v]) => v)
-		.join(", ");
+	const isSelectionComplete = variationGroups.every((group: any) => Boolean(selectedVariants[group.key]));
+	const variantLabel = variationGroups
+		.map((group: any) => selectedVariants[group.key])
+		.filter(Boolean)
+		.join(" · ");
 
 	const handleAdd = () => {
 		onAddToCart({
@@ -2730,168 +2730,126 @@ function ProductDetailSheet({
 	};
 
 	return (
-		<div className="flex flex-col bg-background">
-			<div className="sticky top-0 z-10 border-b border-border/60 bg-background/95 px-3 pb-3 pt-3 backdrop-blur">
+		<div className="flex max-h-[92dvh] min-h-0 flex-col bg-background">
+			<header className="shrink-0 px-4 pb-3 pt-2">
+				<div className="mx-auto mb-3 h-1 w-9 rounded-full bg-muted-foreground/25" aria-hidden="true" />
 				<div className="flex items-start justify-between gap-3">
 					<div className="min-w-0">
-						<p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary/80">
-							Pilih Variasi
-						</p>
-						<h2 className="mt-1 text-base font-black leading-tight text-foreground">
-							{product.name}
-						</h2>
-						{product.description && (
-							<p className="mt-1 line-clamp-2 text-sm leading-snug text-muted-foreground">
-								{product.description}
-							</p>
-						)}
+						<SheetTitle className="text-xl leading-tight tracking-tight text-foreground">{product.name}</SheetTitle>
+						{product.description && <p className="mt-1 line-clamp-2 text-sm leading-snug text-muted-foreground">{product.description}</p>}
 					</div>
 					<button
 						type="button"
 						onClick={onClose}
-						className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:bg-muted"
-						aria-label="Tutup"
+						className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted/70 text-muted-foreground transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+						aria-label="Tutup detail produk"
 					>
-						<X className="h-3.5 w-3.5" />
+						<X className="h-5 w-5" />
 					</button>
 				</div>
-
-				<div className="mt-3 flex flex-wrap items-center gap-2">
-					<div className="rounded-2xl bg-primary/10 px-3 py-2">
-						<div className="flex items-center gap-2">
-							{pricing.isPromo && (
-								<span className="text-xs font-semibold text-muted-foreground line-through">
-									{fmt(pricing.originalPrice)}
-								</span>
-							)}
-							<span className="text-sm font-black text-primary">
-								{fmt(pricing.finalPrice)}
-							</span>
-						</div>
+				<div className="mt-3 flex min-h-11 items-center justify-between gap-3 rounded-2xl bg-muted/45 px-3.5 py-2">
+					<div className="flex min-w-0 items-center gap-2">
+						{pricing.isPromo && <span className="truncate text-xs font-medium text-muted-foreground line-through">{fmt(pricing.originalPrice)}</span>}
+						<span className="truncate text-base font-bold tabular-nums text-foreground">{fmt(pricing.finalPrice)}</span>
 					</div>
-					{pricing.isPromo && pricing.discountName && (
-						<span className="rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-600">
-							{pricing.discountName}
-						</span>
-					)}
-					{variantLabel && (
-						<span className="rounded-full bg-muted px-3 py-1 text-[11px] font-medium text-muted-foreground">
-							{variantLabel}
-						</span>
-					)}
+					{pricing.isPromo && pricing.discountName && <span className="shrink-0 rounded-full bg-red-500/10 px-2.5 py-1 text-[11px] font-semibold text-red-600">{pricing.discountName}</span>}
 				</div>
-			</div>
+			</header>
 
-			<div className="flex flex-col gap-4 px-4 py-4">
-				{hasVariations && (
-					<div className="space-y-4">
+			<div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain border-t border-border/60 px-4 py-4">
+				{variationGroups.length > 0 && (
+					<div className="space-y-3">
 						{variationGroups.map((group: any) => (
-							<div key={group.type} className="rounded-2xl border border-border/70 bg-card p-2.5">
-								<div className="mb-2 flex items-center justify-between gap-3">
-									<p className="text-sm font-bold text-foreground">{group.type}</p>
-									<span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-										{selectedVariants[group.type] ? "Dipilih" : "Pilih"}
+							<section key={group.key} className="rounded-[20px] border border-border/60 bg-muted/20 p-3" aria-labelledby={group.key + "-title"}>
+								<div className="mb-2.5 flex items-center justify-between gap-3">
+									<div className="min-w-0">
+										<h3 id={group.key + "-title"} className="truncate text-sm font-semibold text-foreground">{group.label}</h3>
+										<p className="mt-0.5 text-xs text-muted-foreground">Pilih satu</p>
+									</div>
+									<span className="shrink-0 text-xs font-medium text-muted-foreground" aria-live="polite">
+										{selectedVariants[group.key] ? "Dipilih" : "Belum dipilih"}
 									</span>
 								</div>
-								<div className="grid grid-cols-2 gap-2">
-									{group.options.map((opt: any) => {
-										const selected = selectedVariants[group.type] === opt.name;
+								<div className="grid grid-cols-2 gap-2" role="radiogroup" aria-labelledby={group.key + "-title"}>
+									{group.options.map((option: any) => {
+										const selected = selectedVariants[group.key] === option.name;
+										const optionPrice = Number(option.price) || 0;
 										return (
 											<button
-												key={opt.name}
+												key={option.name}
 												type="button"
-												onClick={() =>
-													setSelectedVariants((prev) => ({
-														...prev,
-														[group.type]: opt.name,
-													}))
-												}
+												role="radio"
+												aria-checked={selected}
+												tabIndex={selected ? 0 : -1}
+												onKeyDown={(event) => {
+													const direction = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 0;
+													if (!direction) return;
+													event.preventDefault();
+													const options = Array.from(event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="radio"]') ?? []);
+													const currentIndex = options.indexOf(event.currentTarget);
+													const nextIndex = (currentIndex + direction + options.length) % options.length;
+													options[nextIndex]?.focus();
+													options[nextIndex]?.click();
+												}}
+												onClick={() => setSelectedVariants((previous) => ({ ...previous, [group.key]: option.name }))}
 												className={cn(
-													"rounded-2xl border px-2.5 py-2.5 text-left transition-all",
+													"flex min-h-12 min-w-0 items-center justify-between gap-2 rounded-2xl border px-3 py-2.5 text-left transition-colors active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
 													selected
-														? "border-primary bg-primary text-primary-foreground shadow-md"
-														: "border-border bg-background text-foreground hover:border-primary/40 hover:bg-muted/50"
+														? "border-primary bg-primary text-primary-foreground shadow-sm"
+														: "border-border/80 bg-background text-foreground hover:border-primary/40"
 												)}
 											>
-												<div className="flex items-center justify-between gap-2">
-													<span className="text-xs font-bold leading-tight">{opt.name}</span>
-													<span
-														className={cn(
-															"text-[11px] font-semibold",
-															selected ? "text-primary-foreground/85" : "text-muted-foreground"
-														)}
-													>
-														{opt.price > 0 ? `+${fmt(opt.price)}` : "Default"}
-													</span>
-												</div>
+												<span className="min-w-0 break-words text-sm font-semibold leading-tight">{option.name}</span>
+												<span className="flex shrink-0 items-center gap-1.5 text-xs font-medium tabular-nums">
+													{optionPrice > 0 ? "+" + fmt(optionPrice) : "Tanpa biaya"}
+													{selected ? <Check className="h-4 w-4" aria-hidden="true" /> : null}
+												</span>
 											</button>
 										);
 									})}
 								</div>
-							</div>
+							</section>
 						))}
 					</div>
 				)}
 
-				<div className="rounded-2xl border border-border/70 bg-card p-3">
-					<div className="flex items-center justify-between gap-3">
-						<div>
-							<p className="text-sm font-bold text-foreground">Jumlah</p>
-							<p className="text-xs text-muted-foreground">
-								Atur porsi sebelum tambah ke keranjang
-							</p>
-						</div>
-						<div className="flex items-center gap-2 rounded-2xl bg-muted/50 p-1">
-							<button
-								type="button"
-								onClick={() => setQuantity(Math.max(1, quantity - 1))}
-								className="flex h-8 w-8 items-center justify-center rounded-lg bg-background text-foreground shadow-sm transition-colors hover:bg-muted"
-								aria-label="Kurangi"
-							>
-								<Minus className="h-3.5 w-3.5" />
-							</button>
-							<span className="min-w-[2rem] text-center text-base font-black text-foreground">
-								{quantity}
-							</span>
-							<button
-								type="button"
-								onClick={() => setQuantity(quantity + 1)}
-								className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-opacity hover:opacity-90"
-								aria-label="Tambah"
-							>
-								<Plus className="h-3.5 w-3.5" />
-							</button>
-						</div>
+				<section className="flex items-center justify-between gap-3 rounded-[20px] border border-border/60 bg-muted/20 p-3" aria-label="Jumlah pesanan">
+					<div className="min-w-0">
+						<h3 className="text-sm font-semibold text-foreground">Jumlah</h3>
+						<p className="mt-0.5 text-xs text-muted-foreground">Atur porsi</p>
 					</div>
-				</div>
+					<div className="flex h-12 shrink-0 items-center gap-1 rounded-full bg-muted/60 p-1">
+						<button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="flex h-10 w-10 items-center justify-center rounded-full bg-background text-foreground shadow-sm transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label="Kurangi jumlah">
+							<Minus className="h-4 w-4" />
+						</button>
+						<span className="min-w-8 text-center text-sm font-bold tabular-nums text-foreground" aria-live="polite">{quantity}</span>
+						<button type="button" onClick={() => setQuantity((value) => value + 1)} className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" aria-label="Tambah jumlah">
+							<Plus className="h-4 w-4" />
+						</button>
+					</div>
+				</section>
 			</div>
 
-			<div className="sticky bottom-0 z-10 border-t border-border/60 bg-background/95 px-3 pb-4 pt-2 backdrop-blur">
-				<div className="mb-3 flex items-center justify-between rounded-2xl bg-muted/40 px-3 py-2">
-					<div>
-						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-							Total
-						</p>
-						<p className="text-sm font-black text-foreground">{fmt(totalPrice)}</p>
+			<footer className="shrink-0 border-t border-border/70 bg-background px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3">
+				<div className="mb-3 flex items-center justify-between gap-3 rounded-2xl bg-muted/45 px-3.5 py-2.5">
+					<div className="min-w-0">
+						<p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Total · {quantity} item</p>
+						<p className="mt-0.5 truncate text-base font-bold tabular-nums text-foreground">{fmt(totalPrice)}</p>
 					</div>
-					<div className="text-right text-[11px] text-muted-foreground">
-						<p>{quantity} item</p>
-						<p>{variantLabel || "Tanpa variasi tambahan"}</p>
-					</div>
+					<p className="max-w-[48%] truncate text-right text-xs font-medium text-muted-foreground" aria-live="polite">
+						{variantLabel || "Tanpa variasi"}
+					</p>
 				</div>
-
 				<button
 					type="button"
 					onClick={handleAdd}
 					disabled={!isSelectionComplete}
-					className="flex w-full items-center justify-between rounded-2xl bg-primary px-3 py-2.5 font-bold text-primary-foreground shadow-md transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+					className="flex min-h-14 w-full items-center justify-between rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-transform active:scale-[.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					<span>Tambah ke Keranjang</span>
-					<span>{fmt(totalPrice)}</span>
+					<span>Tambah ke keranjang</span>
+					<span className="tabular-nums">{fmt(totalPrice)}</span>
 				</button>
-			</div>
+			</footer>
 		</div>
 	);
 }
-
-
