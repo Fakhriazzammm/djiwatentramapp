@@ -1,3 +1,5 @@
+import { normalizePaymentMethod, PAYMENT_METHOD_LABELS } from "./payment-contract";
+
 export type PaymentLabelInput = {
   source?: string | null;
   paymentMethod?: string | null;
@@ -13,28 +15,24 @@ export function formatPaymentLabel(
   options: { includeAppPrefix?: boolean } = {},
 ): string {
   const source = normalize(input.source);
-  const method = normalize(input.paymentMethod);
-  const receiptKind = normalize(input.paymentReceiptKind);
   const includeAppPrefix = options.includeAppPrefix ?? source === "customer_self_service";
   const isDjiwaApp = source === "customer_self_service";
   const isMieYamin = source === "ordermieyamin_b2b";
 
   let methodLabel: string;
-  if (isMieYamin && ["djiwaapp", "qris", "qris_mayar", "mayar"].includes(method)) {
+  const canonical = normalizePaymentMethod(input);
+  if (canonical !== "unknown" && !(isMieYamin && canonical === "djiwa_pay")) {
+    methodLabel = PAYMENT_METHOD_LABELS[canonical];
+  } else if (isMieYamin && ["djiwaapp", "qris", "qris_mayar", "mayar"].includes(normalize(input.paymentMethod))) {
     methodLabel = "QRIS";
-  } else if (method === "cash" || method === "tunai" || receiptKind === "cashier_pending" || receiptKind === "cashier") {
-    methodLabel = "Bayar Tunai di Kasir";
-  } else if (method === "wallet" || method === "djiwa_pay") {
-    methodLabel = "Djiwa Pay";
-  } else if (method === "qris" || method === "qris_mayar" || method === "mayar" || method === "djiwaapp" && input.paymentGateway) {
-    methodLabel = "QRIS";
-  } else if (method === "djiwaapp") {
+  } else if (normalize(input.paymentMethod) === "djiwaapp") {
     methodLabel = "Metode pembayaran lama";
-  } else if (method === "transfer" || method === "bank_transfer") {
+  } else if (["transfer", "bank_transfer"].includes(normalize(input.paymentMethod))) {
     methodLabel = "Transfer Bank";
-  } else if (method === "edc" || method === "debit" || method === "credit") {
+  } else if (["edc", "debit", "credit"].includes(normalize(input.paymentMethod))) {
     methodLabel = "EDC";
   } else {
+    const method = normalize(input.paymentMethod);
     methodLabel = method ? method.toUpperCase() : "Metode pembayaran tidak diketahui";
   }
 

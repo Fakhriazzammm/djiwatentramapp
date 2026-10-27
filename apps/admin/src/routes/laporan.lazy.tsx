@@ -21,10 +21,19 @@ import {
 import {
 	useHybridAllTransactions,
 } from "@/hooks/use-hybrid-finance-analytics-data";
+import { normalizePaymentMethod } from "@yumipos/web-shared/lib/payment-contract";
 
 export const Route = createLazyFileRoute("/laporan")({
 	component: LaporanPage,
 });
+
+function canonicalPayment(order: any) {
+	return normalizePaymentMethod({
+		paymentMethod: order.paymentMethod ?? order.payment_method,
+		paymentReceiptKind: order.paymentReceiptKind ?? order.payment_receipt_kind,
+		paymentGateway: order.paymentGateway ?? order.payment_gateway,
+	});
+}
 
 function LaporanPage() {
 	const navigate = useNavigate();
@@ -69,27 +78,15 @@ function LaporanPage() {
 		);
 
 		const totalCash = completedOrders
-			.filter(
-				(o: Doc<"orders">) =>
-					o.paymentMethod === "cash" || o.paymentMethod === "tunai"
-			)
+			.filter((o: Doc<"orders">) => canonicalPayment(o) === "cashier_cash")
 			.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 
 		const totalQris = completedOrders
-			.filter(
-				(o: Doc<"orders">) =>
-					o.paymentMethod === "qris" || o.paymentMethod === "transfer"
-			)
+			.filter((o: Doc<"orders">) => canonicalPayment(o) === "qris_mayar")
 			.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 
 		const totalOther = completedOrders
-			.filter(
-				(o: Doc<"orders">) =>
-					o.paymentMethod !== "cash" &&
-					o.paymentMethod !== "tunai" &&
-					o.paymentMethod !== "qris" &&
-					o.paymentMethod !== "transfer"
-			)
+			.filter((o: Doc<"orders">) => !["cashier_cash", "qris_mayar"].includes(canonicalPayment(o)))
 			.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 
 		const totalItems = completedOrders.reduce(
@@ -174,33 +171,19 @@ function LaporanPage() {
 							o.createdAt >= sStart && o.createdAt <= sEnd
 					);
 					const sCash = sOrders
-						.filter(
-							(o: Doc<"orders">) =>
-								o.paymentMethod === "cash" ||
-								o.paymentMethod === "tunai"
-						)
+						.filter((o: Doc<"orders">) => canonicalPayment(o) === "cashier_cash")
 						.reduce(
 							(acc: number, o: Doc<"orders">) => acc + o.totalAmount,
 							0
 						);
 					const sQris = sOrders
-						.filter(
-							(o: Doc<"orders">) =>
-								o.paymentMethod === "qris" ||
-								o.paymentMethod === "transfer"
-						)
+						.filter((o: Doc<"orders">) => canonicalPayment(o) === "qris_mayar")
 						.reduce(
 							(acc: number, o: Doc<"orders">) => acc + o.totalAmount,
 							0
 						);
 					const sOther = sOrders
-						.filter(
-							(o: Doc<"orders">) =>
-								o.paymentMethod !== "cash" &&
-								o.paymentMethod !== "tunai" &&
-								o.paymentMethod !== "qris" &&
-								o.paymentMethod !== "transfer"
-						)
+						.filter((o: Doc<"orders">) => !["cashier_cash", "qris_mayar"].includes(canonicalPayment(o)))
 						.reduce(
 							(acc: number, o: Doc<"orders">) => acc + o.totalAmount,
 							0

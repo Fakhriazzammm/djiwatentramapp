@@ -2712,6 +2712,9 @@ export function useHybridUpdateOrder() {
 				if (args.tableNumber !== undefined) {
 					updates.table_number = args.tableNumber ?? null;
 				}
+				if (args.paymentReceiptKind !== undefined) {
+					updates.payment_receipt_kind = args.paymentReceiptKind ?? null;
+				}
 
 				if (Object.keys(updates).length === 0) {
 					return;
@@ -2719,48 +2722,18 @@ export function useHybridUpdateOrder() {
 
 				const supabase = createClient();
 
-				// Jika status berubah ke paid/completed, buat financial transaction
+				// Semua settlement pembayaran harus melewati boundary Supabase yang idempotent.
 				const newStatus = updates.status as string | null;
 				if (newStatus === "paid" || newStatus === "completed") {
-					const { data: order, error: getError } = await supabase
-						.schema("pos")
-						.from("orders")
-						.select("source_id, status, order_number, total_amount, payment_method, created_at, daily_receipt_no, source, source_app, business_unit, brand_slug, order_type, platform")
-						.eq("source_id", id)
-						.maybeSingle();
-					if (getError) throw getError;
-					if (!order) throw new Error("Order not found");
-
-					const wasPaid =
-						order.status === "paid" || order.status === "completed";
-					if (!wasPaid) {
-						const txDate = Number(args?.date ?? order.created_at ?? Date.now());
-						const { error: txError } = await supabase
-							.schema("pos")
-							.from("financial_transactions")
-							.insert({
-								source_id: makeSourceId("fin"),
-								tx_type: "income",
-								amount: Number(order.total_amount ?? 0),
-								category: "Penjualan",
-								description: `Penjualan Pesanan #${getDisplayOrderNumber(order.order_number, { sequence: (order as any).daily_receipt_no, createdAt: (order as any).created_at, source: (order as any).source, sourceApp: (order as any).source_app, businessUnit: (order as any).business_unit, brandSlug: (order as any).brand_slug, orderType: (order as any).order_type, platform: (order as any).platform })}`,
-								tx_date: txDate,
-								payment_method: order.payment_method ?? null,
-								status: "completed",
-								order_source_id: id,
-								creation_time: Date.now(),
-								metadata: {
-									dailyReceiptNo: (order as any).daily_receipt_no ?? undefined,
-									orderNumber: order.order_number ?? undefined,
-									source: "pos",
-								},
-								raw: {
-									kind: "order_settlement_update_order",
-									orderId: id,
-								},
-							});
-						if (txError) throw txError;
+					if (args.paymentReceiptKind === "cashier") {
+						const { error } = await supabase.schema("pos").rpc("settle_cashier_order", {
+							p_order_id: id,
+							p_payment_method: args.paymentMethod ?? "cash",
+						});
+						if (error) throw new Error(`Gagal menyelesaikan pembayaran kasir: ${error.message}`);
+						return;
 					}
+					throw new Error("Pembayaran harus diselesaikan melalui provider settlement, bukan perubahan status manual");
 				}
 
 				const { error } = await supabase
@@ -2901,38 +2874,7 @@ export function useHybridUpdateOrderStatus() {
 				const wasPaid =
 					order.status === "paid" || order.status === "completed";
 				if (isNowPaid && !wasPaid) {
-					const transactionDate = Number(
-						args?.transactionDate ?? order.created_at ?? Date.now()
-					);
-					const { error: txError } = await pos
-						.from("financial_transactions")
-						.insert({
-							source_id: makeSourceId("fin"),
-							tx_type: "income",
-							amount: Number(order.total_amount ?? 0),
-							category: "Penjualan",
-							description: `Penjualan Pesanan #${getDisplayOrderNumber(order.order_number, { sequence: (order as any).daily_receipt_no, createdAt: (order as any).created_at, source: (order as any).source, sourceApp: (order as any).source_app, businessUnit: (order as any).business_unit, brandSlug: (order as any).brand_slug, orderType: (order as any).order_type, platform: (order as any).platform })}`,
-							tx_date: transactionDate,
-							payment_method: order.payment_method ?? null,
-							status: "completed",
-							order_source_id: id,
-							creation_time: Date.now(),
-							metadata: {
-								dailyReceiptNo: (order as any).daily_receipt_no ?? undefined,
-								orderNumber: order.order_number ?? undefined,
-								source: (order as any).source,
-								sourceApp: (order as any).source_app,
-								businessUnit: (order as any).business_unit,
-								brandSlug: (order as any).brand_slug,
-								orderType: (order as any).order_type,
-								platform: (order as any).platform,
-							},
-							raw: {
-								kind: "order_settlement_status_update",
-								orderId: id,
-							},
-						});
-					if (txError) throw txError;
+					throw new Error("Pembayaran harus diselesaikan melalui settlement pembayaran, bukan perubahan status manual");
 				}
 
 				const { error: updateError } = await pos

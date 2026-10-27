@@ -22,11 +22,13 @@ type Fixture = {
 	order?: typeof paidOrder;
 	items?: Record<string, unknown>[];
 	finance?: Record<string, unknown>[];
+	repairAddsSettlement?: boolean;
 	queryError?: "orders" | "order_items" | "financial_transactions";
 };
 function database(fixture: Fixture = {}) {
 	const requests: { method: string; url: URL; body: any }[] = [];
 	let orderReads = 0;
+	let financeRows = fixture.finance ?? [settlement];
 	const client = createClient("https://pos.test", "test-key", {
 		auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
 		global: { fetch: async (input, init) => {
@@ -51,11 +53,15 @@ function database(fixture: Fixture = {}) {
 				if (table === "order_items") return reply(rows(fixture.items ?? savedItems));
 				if (table === "financial_transactions") {
 					assert.equal(url.searchParams.get("tx_type"), "eq.income");
-					return reply(rows(fixture.finance ?? [settlement]));
+					return reply(rows(financeRows));
 				}
 			}
 			if (method === "POST") {
 				if (table === "calculate_order_tax") return reply({ totalAmount: 44000 });
+				if (table === "repair_pos_order_settlement" && (fixture.repairAddsSettlement || fixture.newOrder)) {
+					if (fixture.repairAddsSettlement) financeRows = [settlement];
+					return reply({ orderId: "order_saved", repaired: true });
+				}
 				if (table === "orders" && fixture.race) return reply({ code: "23505", message: "duplicate" }, 409);
 				if (fixture.newOrder && ["orders", "order_items", "financial_transactions"].includes(table ?? "")) return new Response(null, { status: 201 });
 			}
@@ -115,10 +121,16 @@ describe("create-order retry acknowledgement", () => {
 			expect(await (await orderAction(db.client))({ ...request, isOpenBill: true })).toBe("order_saved");
 		});
 	}
+	it("repairs a paid order whose settlement write was interrupted", async () => {
+		const db = database({ finance: [], repairAddsSettlement: true });
+		expect(await (await orderAction(db.client))(request)).toBe("order_saved");
+		expect(db.requests.some((entry) => entry.url.pathname.endsWith("repair_pos_order_settlement"))).toBe(true);
+	});
 	it("writes new settlement using the persisted authoritative tax total", async () => {
 		const db = database({ newOrder: true });
 		expect(await (await orderAction(db.client))(request)).toBe("order_new");
-		assert.equal(db.requests.find((entry) => entry.method === "POST" && entry.url.pathname.endsWith("financial_transactions"))?.body.amount, 44000);
+		expect(db.requests.some((entry) => entry.method === "POST" && entry.url.pathname.endsWith("repair_pos_order_settlement"))).toBe(true);
+		expect(db.requests.some((entry) => entry.method === "POST" && entry.url.pathname.endsWith("financial_transactions"))).toBe(false);
 	});
 });
 
@@ -166,6 +178,10 @@ describe("retry verification fails closed", () => {
 	}
 	it("accepts a completed order and unordered persisted lines", async () => {
 		const db = database({ order: { ...paidOrder, status: "completed" }, items: [...savedItems].reverse() });
+		expect(await (await orderAction(db.client))(request)).toBe("order_saved");
+	});
+	it("accepts legacy settlements without a raw kind", async () => {
+		const db = database({ finance: [{ ...settlement, raw: {} }] });
 		expect(await (await orderAction(db.client))(request)).toBe("order_saved");
 	});
 });

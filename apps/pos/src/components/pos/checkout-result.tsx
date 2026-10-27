@@ -31,15 +31,15 @@ export function CheckoutResult({
 			: undefined;
 	return (
 		<section
-			className="space-y-4 p-4 text-sm"
+			className="space-y-2.5 p-3 text-xs"
 			aria-label="Hasil transaksi"
 			aria-live="polite"
 		>
-			<div className={`rounded-2xl border p-5 ${result.status === "paid" ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100" : "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100"}`}>
-				<StatusIcon className="mb-3 h-9 w-9" aria-hidden="true" />
+			<div className={`rounded-xl border p-3 ${result.status === "paid" ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100" : "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100"}`}>
+				<StatusIcon className="mb-2 h-7 w-7" aria-hidden="true" />
 				<p className="mb-1 text-xs font-medium">Hasil transaksi</p>
-				<h2 className="text-xl font-bold">{labels[result.status]}</h2>
-				<p className="mt-2 text-2xl font-bold tabular-nums">{formatCheckoutAmount(result.total)}</p>
+				<h2 className="text-lg font-bold">{labels[result.status]}</h2>
+				<p className="mt-1 text-xl font-bold tabular-nums">{formatCheckoutAmount(result.total)}</p>
 			</div>
 			<p>
 				{result.orderId ? (
@@ -64,7 +64,7 @@ export function CheckoutResult({
 					status pesanan.
 				</p>
 			)}
-			<dl className="space-y-2 rounded-xl border border-border p-4">
+			<dl className="space-y-1.5 rounded-xl border border-border p-2.5">
 				<div className="flex justify-between gap-3">
 					<dt>Total</dt>
 					<dd className="font-bold">{formatCheckoutAmount(result.total)}</dd>
@@ -99,7 +99,7 @@ export function CheckoutResult({
 			</dl>
 			{invoiceUrl && (
 				<a
-					className="flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 font-medium text-primary"
+					className="flex min-h-9 items-center justify-center rounded-lg border border-primary px-3 text-xs font-medium text-primary"
 					href={invoiceUrl}
 					target="_blank"
 					rel="noopener noreferrer"
@@ -112,7 +112,7 @@ export function CheckoutResult({
 					{onPrint && (
 						<Button
 							variant="outline"
-							className="min-h-11 text-sm"
+							className="min-h-9 text-xs"
 							onClick={onPrint}
 						>
 							{result.status === "paid"
@@ -123,7 +123,7 @@ export function CheckoutResult({
 					{onPrintKitchen && (
 						<Button
 							variant="outline"
-							className="min-h-11 text-sm"
+							className="min-h-9 text-xs"
 							onClick={onPrintKitchen}
 						>
 							Cetak dapur

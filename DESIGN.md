@@ -29,8 +29,8 @@ Jangan membuat token per aplikasi, menyalin raw global CSS, atau membuat primiti
 | Theme | Light, white/near-white surfaces |
 | Primary accent | Deep Azure `#1a5dc6` |
 | Semantic colors | Green success, amber warning, red destructive—hanya untuk makna |
-| Display font | Plus Jakarta Sans |
-| Body font | Geist / Inter fallback |
+| Display font | SF Pro Display / system fallback |
+| Body font | SF Pro Text / system fallback |
 | Major card radius | 24px |
 | Control radius | 14px |
 | Compact data surface | 10–16px sesuai density, bukan major card |

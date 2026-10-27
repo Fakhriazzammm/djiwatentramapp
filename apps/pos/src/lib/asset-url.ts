@@ -1,16 +1,28 @@
-const legacyStorageOrigin = "https://xaemykhjpkgypqqpfdcb.supabase.co";
-const selfHostedStorageOrigin = "https://supabase.djiwatentram.web.id";
+const activeStorageOrigin = "https://supabase.djiwatentram.web.id";
+const activeStorageHost = new URL(activeStorageOrigin).host;
+const legacyStorageHosts = new Set([
+	new URL("https://xaemykhjpkgypqqpfdcb.supabase.co").host,
+	new URL("https://supabase.yumme.id").host,
+]);
 
 export function resolvePosAssetUrl(value?: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const input = value.trim();
   if (!input) return undefined;
-  if (!/^https?:\/\//i.test(input)) return input;
+
+  if (!/^https?:\/\//i.test(input)) {
+    const relativePath = input.replace(/^\/+/, "");
+    if (relativePath.startsWith("storage/v1/object/")) {
+      return `${activeStorageOrigin}/${relativePath}`;
+    }
+    return undefined;
+  }
+
   try {
     const url = new URL(input);
-    if (url.origin === legacyStorageOrigin) {
+    if (legacyStorageHosts.has(url.host.toLowerCase())) {
       url.protocol = "https:";
-      url.host = new URL(selfHostedStorageOrigin).host;
+      url.host = activeStorageHost;
       return url.toString();
     }
   } catch {

@@ -1,5 +1,6 @@
 import type { WalletLedgerEntry, WalletSummary } from "@yumipos/djiwapay-core";
 import type { WalletWithdrawalDraft } from "./djiwa-pay-withdrawal";
+import { normalizeWalletPhone } from "./djiwa-pay-transfer";
 export type WalletResponse = { wallet: WalletSummary; ledger: WalletLedgerEntry[]; transactions?: WalletTransaction[] };
 export type WalletTransaction = {
   id: number;
@@ -20,6 +21,7 @@ export type WalletTransaction = {
 export type WalletNotification = { id: string; title: string; message: string; notification_type: string; action_payload?: { transferId?: string }; created_at: string; unread: boolean };
 export type TopupStatusResponse = { status: "pending" | "success" | "expired"; message?: string; wallet?: WalletSummary; ledger?: WalletLedgerEntry[] };
 export type WalletTransferResult = { success: boolean; error?: string; transfer?: { transfer_id?: string; amount?: number; sender_balance?: number }; recipient?: { sourceId: string; name: string } };
+export type WalletRecipientResult = { success: boolean; error?: string; recipient?: { name: string; phone: string } };
 export async function readWallet(_profile: { source_id: string }): Promise<WalletResponse & { transactions: WalletTransaction[] }> {
   const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "get" }) });
   if (response.status === 401) throw new Error("Sesi Djiwa Pay kedaluwarsa");
@@ -47,6 +49,15 @@ export async function markAllWalletNotificationsRead(): Promise<void> {
 }
 
 export type PpobProduct = { product_code: string; product_description: string; product_nominal: string; product_details?: string; product_price: number; product_type: string; status: string; icon_url?: string };
+export function ppobProductName(product: Pick<PpobProduct, "product_nominal" | "product_description" | "product_code">): string {
+  const nominal = String(product.product_nominal ?? "").trim();
+  if (nominal && nominal.toLowerCase() !== "nan") {
+    const numericNominal = Number(nominal);
+    if (Number.isFinite(numericNominal)) return `Paket ${numericNominal.toLocaleString("id-ID")}`;
+    return nominal;
+  }
+  return product.product_description.trim() || product.product_code;
+}
 export async function readPpobCatalog(): Promise<PpobProduct[]> {
   const response = await fetch("https://api.djiwatentram.web.id/api/ppob/iak/", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "price-list" }) });
   if (!response.ok) throw new Error("Katalog PPOB tidak dapat dimuat");
@@ -88,9 +99,16 @@ export async function checkTopupStatus(invoiceId: string): Promise<TopupStatusRe
 }
 
 export async function transferWallet(recipient: string, amount: number, note = ""): Promise<WalletTransferResult> {
-  const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "transfer", recipient, amount, note, idempotencyKey: `djiwapay-transfer-${crypto.randomUUID()}` }) });
+  const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "transfer", phone: normalizeWalletPhone(recipient), amount, note, idempotencyKey: `djiwapay-transfer-${crypto.randomUUID()}` }) });
   const payload = await response.json().catch(() => ({})) as WalletTransferResult;
   if (!response.ok || !payload.success) throw new Error(payload.error || "Transfer saldo gagal diproses");
+  return payload;
+}
+
+export async function resolveWalletRecipient(phone: string): Promise<WalletRecipientResult> {
+  const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "resolve-recipient", phone: normalizeWalletPhone(phone) }) });
+  const payload = await response.json().catch(() => ({})) as WalletRecipientResult;
+  if (!response.ok || !payload.success) throw new Error(payload.error || "RECIPIENT_NOT_FOUND");
   return payload;
 }
 

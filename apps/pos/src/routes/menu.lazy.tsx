@@ -815,7 +815,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 	]);
 
 	const [isTargetExpanded, setIsTargetExpanded] = useState(false);
-	const [isSearchActive, setIsSearchActive] = useState(false);
+
 	const progress = useHybridCurrentMonthProgress();
 
 	const shiftPct = useMemo(
@@ -1605,7 +1605,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								status: "created" as const,
 						  }
 						: undefined,
-					paymentReceiptKind: mayarInvoice ? "cashier_pending" as const : undefined,
+					paymentReceiptKind: mayarInvoice ? "gateway_pending" as const : undefined,
 					idempotencyKey,
 					isOpenBill: shouldOpenBill,
 					autoComplete: shouldOpenBill ? false : orderData?.autoComplete,
