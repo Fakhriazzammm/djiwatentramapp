@@ -7,7 +7,7 @@ it("shows the original checkout and warns that recovery does not submit edited i
 	expect(html).toContain("Ayu");
 	expect(html).toContain("10.000");
 	expect(html).toContain("pesanan awal");
-	expect(html).toContain("menggantikan draft");
+	expect(html).toContain("Perubahan checkout ini tidak digunakan");
 });
 
 it("offers one explicit recovery action and disables it while sending", () => {

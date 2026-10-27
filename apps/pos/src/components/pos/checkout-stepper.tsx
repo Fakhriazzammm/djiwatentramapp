@@ -42,7 +42,7 @@ export function CheckoutStepHeader({
 	onClose,
 }: CheckoutStepHeaderProps) {
 	return (
-		<header className="shrink-0 border-b border-border/70 bg-card/95 px-2 py-1.5 shadow-sm backdrop-blur sm:px-3">
+		<header className="shrink-0 border-b border-black/[0.06] bg-white/90 px-3 py-2 backdrop-blur-xl dark:border-white/10 dark:bg-[#1C1C1E]/90 sm:px-4">
 			<nav
 				aria-label="Tahapan checkout"
 				className="flex items-center gap-1"
@@ -54,15 +54,15 @@ export function CheckoutStepHeader({
 						<>
 							<span
 								className={cn(
-								"grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-black transition-colors",
-									state === "current" && "bg-primary text-primary-foreground shadow-sm",
+									"grid size-7 shrink-0 place-items-center rounded-full text-xs font-semibold transition-colors",
+									state === "current" && "bg-primary text-primary-foreground",
 									state === "complete" && "bg-emerald-100 text-emerald-700",
-									state === "upcoming" && "bg-muted text-muted-foreground",
+									state === "upcoming" && "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500",
 								)}
 							>
 								{state === "complete" ? <Check className="size-4" aria-hidden="true" /> : index + 1}
 							</span>
-								<span className="hidden max-w-[5.5rem] truncate whitespace-nowrap text-[11px] min-[360px]:inline">{label}</span>
+							<span className="hidden max-w-[5.5rem] truncate whitespace-nowrap text-xs min-[360px]:inline">{label}</span>
 						</>
 					);
 					return (
@@ -71,7 +71,7 @@ export function CheckoutStepHeader({
 								<Button
 									type="button"
 									variant="ghost"
-									className="h-auto min-w-0 justify-start gap-1.5 rounded-lg px-1 py-1 text-left text-[11px] font-bold text-foreground hover:bg-primary/10 hover:text-primary sm:px-1.5"
+									className="min-h-11 h-auto min-w-0 justify-start gap-1.5 rounded-xl px-1.5 py-1 text-left text-xs font-semibold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 sm:px-2"
 									aria-label={`Kembali ke ${label}`}
 									disabled={disabled}
 									onClick={() => onStepChange(id)}
@@ -82,7 +82,7 @@ export function CheckoutStepHeader({
 								<span
 									aria-current={state === "current" ? "step" : undefined}
 									className={cn(
-									"flex min-w-0 items-center gap-1.5 rounded-lg px-1 py-1 text-[11px] font-bold sm:px-1.5",
+										"flex min-h-11 min-w-0 items-center gap-1.5 rounded-xl px-1.5 py-1 text-xs font-semibold sm:px-2",
 										state === "current" && "bg-primary/10 text-primary",
 										state === "complete" && "text-emerald-700",
 										state === "upcoming" && "text-muted-foreground",
@@ -107,7 +107,7 @@ export function CheckoutStepHeader({
 					<Button
 						type="button"
 						variant="outline"
-						className="hidden h-8 shrink-0 gap-1 rounded-lg px-2 text-[11px] font-bold sm:inline-flex"
+						className="hidden h-11 shrink-0 gap-1 rounded-xl px-3 text-sm font-semibold sm:inline-flex"
 						aria-label="Kembali ke Pesanan"
 							disabled={disabled}
 						onClick={() => onStepChange("order")}
@@ -120,7 +120,7 @@ export function CheckoutStepHeader({
 					<Button
 						variant="ghost"
 						aria-label="Tutup checkout"
-						className="h-8 w-8 shrink-0 rounded-lg px-0"
+					className="h-11 w-11 shrink-0 rounded-full px-0 text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800"
 						onClick={onClose}
 					>
 						<X className="size-5" />

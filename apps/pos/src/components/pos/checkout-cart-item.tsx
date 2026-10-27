@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Minus, Plus, ShoppingBag } from "lucide-react";
 import type { CartItem } from "@/context/cart-context";
 import { resolvePosAssetUrl } from "@/lib/asset-url";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -27,8 +26,8 @@ export function CheckoutCartItem({
 	}, [imageSrc]);
 
 	return (
-		<article className="flex items-center gap-2 rounded-lg border border-border/70 bg-card p-2 shadow-sm">
-			<div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-md bg-muted/60">
+		<article className="flex items-center gap-3 px-3 py-3">
+			<div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800">
 				{imageSrc && !imageFailed ? (
 					<img
 						src={imageSrc}
@@ -47,12 +46,12 @@ export function CheckoutCartItem({
 			<div className="min-w-0 flex-1">
 				<div className="flex items-start justify-between gap-2">
 					<div className="min-w-0">
-						<p className="truncate text-xs font-bold text-foreground">{item.name}</p>
+						<p className="truncate text-sm font-semibold text-foreground">{item.name}</p>
 						{item.variant && (
 							<p className="truncate text-[10px] text-muted-foreground">{item.variant}</p>
 						)}
 					</div>
-					<span className="shrink-0 text-xs font-semibold">Rp{(item.price * item.quantity).toLocaleString("id-ID")}</span>
+						<span className="shrink-0 text-sm font-semibold tabular-nums">Rp{(item.price * item.quantity).toLocaleString("id-ID")}</span>
 				</div>
 				<div className="mt-1 flex items-center justify-between gap-2">
 					{showPlatformPrice ? (
@@ -62,7 +61,7 @@ export function CheckoutCartItem({
 								type="number"
 								inputMode="numeric"
 								min="0"
-								className="h-7 w-24 px-1.5 text-xs"
+								className="min-h-11 w-24 px-2 text-sm"
 								value={item.platformPrice ?? item.price}
 								onChange={(event) => {
 									const price = Number(event.target.value);
@@ -77,8 +76,8 @@ export function CheckoutCartItem({
 						<Button
 							type="button"
 							aria-label={`Kurangi ${item.name}${item.variant ? ` ${item.variant}` : ""}`}
-							className={cn("h-7 w-7 rounded-md p-0", "shadow-none")}
-							variant="outline"
+							className="h-11 w-11 rounded-full bg-slate-100 p-0 text-slate-700 shadow-none dark:bg-slate-700 dark:text-slate-100"
+							variant="ghost"
 							onClick={() => onQuantityChange(-1)}
 						>
 							<Minus className="h-3 w-3" />
@@ -89,8 +88,8 @@ export function CheckoutCartItem({
 						<Button
 							type="button"
 							aria-label={`Tambah ${item.name}${item.variant ? ` ${item.variant}` : ""}`}
-							className="h-7 w-7 rounded-md p-0 shadow-none"
-							variant="outline"
+							className="h-11 w-11 rounded-full bg-slate-100 p-0 text-slate-700 shadow-none dark:bg-slate-700 dark:text-slate-100"
+							variant="ghost"
 							onClick={() => onQuantityChange(1)}
 						>
 							<Plus className="h-3 w-3" />

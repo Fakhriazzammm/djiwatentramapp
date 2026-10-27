@@ -10,7 +10,6 @@ import {
 import {
 	createCheckoutDraft,
 	createCustomerInfo,
-	readCheckoutStorage,
 	POS_CHECKOUT_STORAGE_KEY,
 	type CheckoutDraft,
 	type CheckoutCustomerInfo,
@@ -84,76 +83,27 @@ const POS_CART_STORAGE_KEY = "pos_cart_regular_pricing_v1";
 export function CartProvider({ children }: { children: ReactNode }) {
 	const { siteSettings, activeDiscounts } = useAppData();
 
-	const [items, setItems] = useState<CartItem[]>(() => {
-		// Load cart from localStorage on mount
-		if (typeof window !== "undefined") {
-			const savedCart = localStorage.getItem(POS_CART_STORAGE_KEY);
-			if (savedCart) {
-				try {
-					return JSON.parse(savedCart);
-				} catch {
-					return [];
-				}
-			}
-		}
-		return [];
-	});
-
-	const [appliedVoucher, setAppliedVoucher] = useState<AppliedVoucher | null>(
-		() => {
-			if (typeof window !== "undefined") {
-				const savedVoucher = localStorage.getItem("pos_voucher");
-				if (savedVoucher) {
-					try {
-						return JSON.parse(savedVoucher);
-					} catch {
-						return null;
-					}
-				}
-			}
-			return null;
-		},
-	);
-
+	const [items, setItems] = useState<CartItem[]>([]);
+	const [appliedVoucher, setAppliedVoucher] = useState<AppliedVoucher | null>(null);
 	const [customerInfo, setCustomerInfo] = useState<CheckoutCustomerInfo>(
-		() => readCheckoutStorage().customerInfo,
+		createCustomerInfo,
 	);
 	const [checkoutDraft, setCheckoutDraft] = useState<CheckoutDraft>(
-		() => readCheckoutStorage().checkout,
+		createCheckoutDraft,
 	);
 
 	useEffect(() => {
 		try {
-			window.localStorage.setItem(
-				POS_CHECKOUT_STORAGE_KEY,
-				JSON.stringify({ version: 1, customerInfo, checkout: checkoutDraft }),
-			);
+			window.localStorage.removeItem(POS_CART_STORAGE_KEY);
+			window.localStorage.removeItem(POS_CHECKOUT_STORAGE_KEY);
 		} catch {
-			/* Storage can be unavailable; keep the in-memory draft usable. */
+			/* Storage can be unavailable; current-session state remains usable. */
 		}
-	}, [customerInfo, checkoutDraft]);
+	}, []);
 
 	const updateCustomerInfo = (info: Partial<typeof customerInfo>) => {
 		setCustomerInfo((prev) => ({ ...prev, ...info }));
 	};
-
-	// Save cart to localStorage whenever it changes
-	useEffect(() => {
-		if (typeof window !== "undefined") {
-			localStorage.setItem(POS_CART_STORAGE_KEY, JSON.stringify(items));
-		}
-	}, [items]);
-
-	// Save voucher to localStorage
-	useEffect(() => {
-		if (typeof window !== "undefined") {
-			if (appliedVoucher) {
-				localStorage.setItem("pos_voucher", JSON.stringify(appliedVoucher));
-			} else {
-				localStorage.removeItem("pos_voucher");
-			}
-		}
-	}, [appliedVoucher]);
 
 	// Automatic Free Refill Logic
 	useEffect(() => {
