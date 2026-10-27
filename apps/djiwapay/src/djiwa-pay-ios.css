@@ -338,3 +338,58 @@ button:disabled { cursor: default; }
   .ios-loader { animation: none; }
   .ios-disclosure-list summary span, .ios-back-button, .action-item, .wallet-card-icon, .round-control { transition: none; }
 }
+
+/* Brand splash: the same traced Djiwa mark on every Djiwa Pay page change. */
+.djiwa-splash {
+  position: fixed;
+  z-index: 3000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: calc(32px + env(safe-area-inset-top)) 24px calc(32px + env(safe-area-inset-bottom));
+  background: #f2f2f7;
+  opacity: 1;
+  transition: opacity .22s cubic-bezier(.32, .72, 0, 1);
+}
+.djiwa-splash::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(320px, 78vw);
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(26, 93, 198, .1), transparent 68%);
+  content: "";
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+.djiwa-splash.is-leaving { opacity: 0; pointer-events: none; }
+.djiwa-splash-content {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  animation: djiwa-pay-splash-in .38s cubic-bezier(.32, .72, 0, 1) both;
+}
+.djiwa-splash-logo { color: #1a5dc6; }
+.djiwa-pay-logo-trace { animation: logo-trace-loader-loop 1.4s linear infinite; }
+.djiwa-splash-brand {
+  margin: 18px 0 0;
+  color: #1a5dc6;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+}
+.djiwa-splash-label { margin: 7px 0 0; color: #6e6e73; font-size: 13px; line-height: 1.45; }
+
+@keyframes logo-trace-loader-loop { to { stroke-dashoffset: -1; } }
+@keyframes djiwa-pay-splash-in {
+  from { opacity: 0; transform: scale(.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .djiwa-splash, .djiwa-splash-content { transition: none; animation: none; }
+  .djiwa-pay-logo-trace { animation: none; stroke-dasharray: none; opacity: .7; }
+}
