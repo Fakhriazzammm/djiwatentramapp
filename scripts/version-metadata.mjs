@@ -17,7 +17,6 @@ function normalizeCommit(value) {
 
 function getEnvCommitHash() {
 	return (
-		normalizeCommit(process.env.VERCEL_GIT_COMMIT_SHA) ||
 		normalizeCommit(process.env.CF_PAGES_COMMIT_SHA) ||
 		normalizeCommit(process.env.RENDER_GIT_COMMIT) ||
 		normalizeCommit(process.env.COMMIT_REF) ||
@@ -66,15 +65,10 @@ function readBuildCounter(rootDir) {
 }
 
 /**
- * Increment counter file (VPS/local) atau baca dari VERCEL_BUILD_NUMBER (Vercel).
+ * Increment counter file untuk build VPS/local.
  * Hanya dipanggil SEKALI per build, dari update-version.mjs.
  */
 export function incrementBuildCounter(rootDir) {
-	// Di Vercel: pakai VERCEL_BUILD_NUMBER (global sequential counter, tidak perlu disimpan)
-	if (process.env.VERCEL_BUILD_NUMBER) {
-		return parseInt(process.env.VERCEL_BUILD_NUMBER, 10);
-	}
-
 	// Di VPS / local: increment counter file (persistent)
 	const current = readCounterValue(rootDir);
 	const next = current + 1;
