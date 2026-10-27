@@ -2730,24 +2730,24 @@ function ProductDetailSheet({
 	};
 
 	return (
-		<div className="flex max-h-[92dvh] min-h-0 flex-col bg-background">
-			<header className="shrink-0 px-4 pb-3 pt-2">
-				<div className="mx-auto mb-3 h-1 w-9 rounded-full bg-muted-foreground/25" aria-hidden="true" />
+		<div className="flex max-h-[84dvh] min-h-0 flex-col bg-background">
+			<header className="shrink-0 px-4 pb-2 pt-2">
+				<div className="mx-auto mb-2 h-1 w-8 rounded-full bg-muted-foreground/25" aria-hidden="true" />
 				<div className="flex items-start justify-between gap-3">
 					<div className="min-w-0">
-						<SheetTitle className="text-xl leading-tight tracking-tight text-foreground">{product.name}</SheetTitle>
-						{product.description && <p className="mt-1 line-clamp-2 text-sm leading-snug text-muted-foreground">{product.description}</p>}
+						<SheetTitle className="text-lg leading-tight tracking-tight text-foreground">{product.name}</SheetTitle>
+						{product.description && <p className="mt-1 line-clamp-2 text-xs leading-snug text-muted-foreground">{product.description}</p>}
 					</div>
 					<button
 						type="button"
 						onClick={onClose}
-						className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted/70 text-muted-foreground transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+						className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/70 text-muted-foreground transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 						aria-label="Tutup detail produk"
 					>
 						<X className="h-5 w-5" />
 					</button>
 				</div>
-				<div className="mt-3 flex min-h-11 items-center justify-between gap-3 rounded-2xl bg-muted/45 px-3.5 py-2">
+				<div className="mt-2 flex min-h-9 items-center justify-between gap-3 rounded-xl bg-muted/45 px-3 py-1.5">
 					<div className="flex min-w-0 items-center gap-2">
 						{pricing.isPromo && <span className="truncate text-xs font-medium text-muted-foreground line-through">{fmt(pricing.originalPrice)}</span>}
 						<span className="truncate text-base font-bold tabular-nums text-foreground">{fmt(pricing.finalPrice)}</span>
@@ -2756,21 +2756,20 @@ function ProductDetailSheet({
 				</div>
 			</header>
 
-			<div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain border-t border-border/60 px-4 py-4">
+			<div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain border-t border-border/60 px-3 py-3">
 				{variationGroups.length > 0 && (
-					<div className="space-y-3">
+					<div className="space-y-2.5">
 						{variationGroups.map((group: any) => (
-							<section key={group.key} className="rounded-[20px] border border-border/60 bg-muted/20 p-3" aria-labelledby={group.key + "-title"}>
-								<div className="mb-2.5 flex items-center justify-between gap-3">
+							<section key={group.key} className="rounded-2xl border border-border/60 bg-muted/20 p-2.5" aria-labelledby={group.key + "-title"}>
+								<div className="mb-2 flex items-center justify-between gap-3">
 									<div className="min-w-0">
 										<h3 id={group.key + "-title"} className="truncate text-sm font-semibold text-foreground">{group.label}</h3>
-										<p className="mt-0.5 text-xs text-muted-foreground">Pilih satu</p>
 									</div>
-									<span className="shrink-0 text-xs font-medium text-muted-foreground" aria-live="polite">
+									<span className="shrink-0 text-[11px] font-medium text-muted-foreground" aria-live="polite">
 										{selectedVariants[group.key] ? "Dipilih" : "Belum dipilih"}
 									</span>
 								</div>
-								<div className="grid grid-cols-2 gap-2" role="radiogroup" aria-labelledby={group.key + "-title"}>
+								<div className="flex gap-2 overflow-x-auto overscroll-x-contain pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="radiogroup" aria-labelledby={group.key + "-title"}>
 									{group.options.map((option: any) => {
 										const selected = selectedVariants[group.key] === option.name;
 										const optionPrice = Number(option.price) || 0;
@@ -2793,16 +2792,16 @@ function ProductDetailSheet({
 												}}
 												onClick={() => setSelectedVariants((previous) => ({ ...previous, [group.key]: option.name }))}
 												className={cn(
-													"flex min-h-12 min-w-0 items-center justify-between gap-2 rounded-2xl border px-3 py-2.5 text-left transition-colors active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+												"flex h-10 min-w-[9.5rem] flex-1 items-center justify-between gap-1.5 rounded-xl border px-2.5 text-left transition-colors active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
 													selected
 														? "border-primary bg-primary text-primary-foreground shadow-sm"
 														: "border-border/80 bg-background text-foreground hover:border-primary/40"
 												)}
 											>
-												<span className="min-w-0 break-words text-sm font-semibold leading-tight">{option.name}</span>
-												<span className="flex shrink-0 items-center gap-1.5 text-xs font-medium tabular-nums">
-													{optionPrice > 0 ? "+" + fmt(optionPrice) : "Tanpa biaya"}
-													{selected ? <Check className="h-4 w-4" aria-hidden="true" /> : null}
+												<span className="min-w-0 truncate whitespace-nowrap text-[13px] font-semibold leading-tight">{option.name}</span>
+												<span className="flex shrink-0 items-center gap-1 text-[11px] font-medium tabular-nums">
+													{optionPrice > 0 ? "+" + fmt(optionPrice) : "Gratis"}
+													{selected ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}
 												</span>
 											</button>
 										);
@@ -2813,25 +2812,25 @@ function ProductDetailSheet({
 					</div>
 				)}
 
-				<section className="flex items-center justify-between gap-3 rounded-[20px] border border-border/60 bg-muted/20 p-3" aria-label="Jumlah pesanan">
+				<section className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-muted/20 p-2.5" aria-label="Jumlah pesanan">
 					<div className="min-w-0">
 						<h3 className="text-sm font-semibold text-foreground">Jumlah</h3>
 						<p className="mt-0.5 text-xs text-muted-foreground">Atur porsi</p>
 					</div>
-					<div className="flex h-12 shrink-0 items-center gap-1 rounded-full bg-muted/60 p-1">
-						<button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="flex h-10 w-10 items-center justify-center rounded-full bg-background text-foreground shadow-sm transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label="Kurangi jumlah">
+					<div className="flex h-10 shrink-0 items-center gap-1 rounded-full bg-muted/60 p-1">
+						<button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="flex h-8 w-8 items-center justify-center rounded-full bg-background text-foreground shadow-sm transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label="Kurangi jumlah">
 							<Minus className="h-4 w-4" />
 						</button>
-						<span className="min-w-8 text-center text-sm font-bold tabular-nums text-foreground" aria-live="polite">{quantity}</span>
-						<button type="button" onClick={() => setQuantity((value) => value + 1)} className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" aria-label="Tambah jumlah">
+						<span className="min-w-7 text-center text-sm font-bold tabular-nums text-foreground" aria-live="polite">{quantity}</span>
+						<button type="button" onClick={() => setQuantity((value) => value + 1)} className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" aria-label="Tambah jumlah">
 							<Plus className="h-4 w-4" />
 						</button>
 					</div>
 				</section>
 			</div>
 
-			<footer className="shrink-0 border-t border-border/70 bg-background px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3">
-				<div className="mb-3 flex items-center justify-between gap-3 rounded-2xl bg-muted/45 px-3.5 py-2.5">
+			<footer className="shrink-0 border-t border-border/70 bg-background px-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2">
+				<div className="mb-2 flex items-center justify-between gap-3 rounded-xl bg-muted/45 px-3 py-2">
 					<div className="min-w-0">
 						<p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Total · {quantity} item</p>
 						<p className="mt-0.5 truncate text-base font-bold tabular-nums text-foreground">{fmt(totalPrice)}</p>
@@ -2844,7 +2843,7 @@ function ProductDetailSheet({
 					type="button"
 					onClick={handleAdd}
 					disabled={!isSelectionComplete}
-					className="flex min-h-14 w-full items-center justify-between rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-transform active:scale-[.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+					className="flex min-h-12 w-full items-center justify-between rounded-xl bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-transform active:scale-[.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					<span>Tambah ke keranjang</span>
 					<span className="tabular-nums">{fmt(totalPrice)}</span>
