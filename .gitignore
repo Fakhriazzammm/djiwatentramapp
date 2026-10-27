@@ -57,8 +57,6 @@ venv/
 
 # Temp files
 result_batch_analyze.txt
-=
-.vercel
 
 # Runtime state (must survive VPS git auto-pulls)
 .runtime/

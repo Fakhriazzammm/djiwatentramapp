@@ -121,7 +121,7 @@ export async function applyAppUpdate() {
 	if (typeof window === "undefined" || applyingUpdate) return;
 	applyingUpdate = true;
 
-	// Jika versi sama — update palsu (misal commit-only rebuild di Vercel).
+	// Jika versi sama — update palsu, misalnya rebuild tanpa perubahan aplikasi.
 	// Set inflight flag biar polling skip 1x, reset state, dan close dialog.
 	// JANGAN reload — tidak ada update baru.
 	if (latestUpdateInfo && latestUpdateInfo.currentVersion === latestUpdateInfo.latestVersion &&

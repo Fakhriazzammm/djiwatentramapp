@@ -1,6 +1,6 @@
 name = "djiwatentramapp"
 # Cloudflare Pages — https://pages.cloudflare.com
-# Build: apps/web (.vercel.json) bukan untuk Cloudflare
+# Build output untuk deployment Cloudflare Pages.
 # Output: apps/web/dist
 
 pages_build_output_dir = "apps/web/dist"

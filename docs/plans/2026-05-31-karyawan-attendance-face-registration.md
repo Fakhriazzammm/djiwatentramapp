@@ -927,7 +927,7 @@ git commit -m "feat: add PIN-OR-Face attendance flow to karyawan app"
 git push origin main
 ```
 
-Vercel auto-deploy untuk karyawan app akan build dari `apps/karyawan`. Jangan debug CF Pages build failures — Vercel yang handle.
+Deployment VPS untuk karyawan app akan build dari `apps/karyawan`. Jangan debug Cloudflare Pages build failures jika deployment yang dipakai adalah VPS.
 
 ### Task 5.3: Manual verification scenarios
 

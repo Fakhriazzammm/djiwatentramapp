@@ -28,7 +28,6 @@ declare module "@tanstack/react-router" {
 	}
 }
 
-// Hermes: trigger Vercel rebuild — contract+payslip live
 const rootElement = document.getElementById("root")!;
 
 // registerType: "autoUpdate" di vite.config.ts — SW auto-aktifasi + reload.

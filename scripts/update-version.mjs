@@ -57,7 +57,7 @@ for (const dir of appDirs) {
 	try {
 		writeFileSync(targetPath, versionContent);
 	} catch {
-		// Directory may not exist (e.g. monorepo sub-app deployed individually on Vercel)
+		// Directory may not exist in a partial checkout.
 		console.warn(`⚠ Skipping ${dir}/src/lib/version.ts (not available)`);
 	}
 }
