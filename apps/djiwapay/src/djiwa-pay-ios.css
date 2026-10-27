@@ -200,7 +200,7 @@ button:disabled { cursor: default; }
 .wallet-action-sheet > .primary-action:not(:disabled):active,
 .wallet-action-buttons > button:active,
 .ios-copy-button:active { transform: scale(.98); opacity: .82; }
-.wallet-receive-card { gap: 14px; padding: 18px 16px; border: 0; border-radius: 18px; background: #fff; }
+.wallet-receive-card { gap: 14px; padding: 18px 16px; border: 0; border-radius: 18px; background: #fff; color: #1c1c1e; }
 .wallet-receive-card > svg { color: #0a84ff; }
 .wallet-receive-card small { color: #8e8e93; font-size: 11px; }
 .wallet-receive-card strong { margin-top: 4px; font-size: 18px; letter-spacing: -.02em; }
