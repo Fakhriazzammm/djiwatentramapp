@@ -31,11 +31,11 @@ export function CheckoutResult({
 			: undefined;
 	return (
 		<section
-			className="space-y-2.5 p-3 text-xs"
+			className="space-y-4 p-4 text-sm"
 			aria-label="Hasil transaksi"
 			aria-live="polite"
 		>
-			<div className={`rounded-xl border p-3 ${result.status === "paid" ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100" : "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100"}`}>
+			<div className={`rounded-3xl border p-5 shadow-sm ${result.status === "paid" ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-100" : "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100"}`}>
 				<StatusIcon className="mb-2 h-7 w-7" aria-hidden="true" />
 				<p className="mb-1 text-xs font-medium">Hasil transaksi</p>
 				<h2 className="text-lg font-bold">{labels[result.status]}</h2>
@@ -64,7 +64,7 @@ export function CheckoutResult({
 					status pesanan.
 				</p>
 			)}
-			<dl className="space-y-1.5 rounded-xl border border-border p-2.5">
+			<dl className="space-y-3 rounded-2xl border border-black/[0.06] bg-white p-4 dark:border-white/10 dark:bg-[#2C2C2E]">
 				<div className="flex justify-between gap-3">
 					<dt>Total</dt>
 					<dd className="font-bold">{formatCheckoutAmount(result.total)}</dd>
