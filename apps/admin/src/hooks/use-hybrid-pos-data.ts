@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
 import { adminProtectedRead } from "@/lib/admin-protected-read";
 import { getCriticalDashboardReadFailure } from "@/lib/dashboard-data-integrity";
-import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
+import { useSupabaseLiveValue, useSupabaseLiveValueState } from "@/hooks/use-supabase-live-value";
 import {
 	aggregateHourlySales,
 	getHourlyAnalysisDateRange,
@@ -2401,6 +2401,21 @@ export function useHybridDashboardStats() {
 		{ tables: ['shifts', 'orders', 'order_items', 'financial_transactions', 'booking_orders', 'inventory', 'products'] }
 	);
 	return supabaseData as DashboardStatsRecord | undefined;
+}
+
+export function useHybridDashboardStatsState() {
+	const globalTick = useGlobalRefreshTrigger();
+	return useSupabaseLiveValueState(
+		"dashboard-stats-state",
+		fetchDashboardStats,
+		[],
+		{ refreshTrigger: globalTick, refreshMs: 30_000 },
+	) as {
+		data: DashboardStatsRecord | null;
+		status: "loading" | "ready" | "error";
+		error: Error | null;
+		reload: () => Promise<void>;
+	};
 }
 
 

@@ -10,7 +10,8 @@ import { formatCurrencyIDR } from "@/lib/export-utils";
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { formatTimeWIB, getWibDayRange } from "@/lib/wib-utils";
 import HourlyTransactionAnalysis from "@/routes/admin/-HourlyTransactionAnalysis";
-import { triggerHybridRefresh, useHybridDashboardStats, useHybridOrders, useHybridShiftStatus } from "@/hooks/use-hybrid-pos-data";
+import { triggerHybridRefresh, useHybridDashboardStatsState, useHybridOrders, useHybridShiftStatus } from "@/hooks/use-hybrid-pos-data";
+import { getDashboardLoadState } from "@/lib/dashboard-load-state";
 
 const periodItems = [
   ["today", "Hari ini"], ["yesterday", "Kemarin"], ["thisWeek", "Minggu ini"],
@@ -45,7 +46,8 @@ export default function OperationalDecisionDashboard() {
   const [isDataHidden, setIsDataHidden] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState(() => Date.now());
   const [, setAgeTick] = useState(0);
-  const stats = useHybridDashboardStats();
+	const dashboardState = useHybridDashboardStatsState();
+	const stats = dashboardState.data;
 
   useEffect(() => {
     if (stats) setLastSyncedAt(Date.now());
@@ -87,7 +89,12 @@ export default function OperationalDecisionDashboard() {
     }
     return [...totals.values()].sort((left, right) => right.amount - left.amount).slice(0, 4);
   }, [orders, todayRange.end, todayRange.start]);
-  if (!stats) return <CompactSkeleton />;
+	const loadState = getDashboardLoadState(dashboardState.status, stats);
+	if (loadState === "loading") return <CompactSkeleton />;
+	if (loadState === "error") {
+		return <main className="min-h-full bg-white px-3 py-4 text-[#1d1d1f]"><div className="mx-auto max-w-[720px] rounded-2xl border border-[#ff3b30]/20 bg-[#fff5f4] p-4"><h1 className="text-base font-bold">Dashboard belum dapat memuat data</h1><p className="mt-1 text-sm text-[#6e6e73]">{dashboardState.error?.message ?? "Koneksi data Admin gagal."}</p><Button className="mt-3 rounded-xl" onClick={() => void dashboardState.reload()} type="button" variant="outline"><RefreshCw className="mr-1.5 h-3.5 w-3.5" />Coba lagi</Button></div></main>;
+	}
+	if (!stats) return <CompactSkeleton />;
   const syncAgeLabel = formatSyncAge(lastSyncedAt, Date.now());
   const p = stats.periodComparisons;
   const totalOrders = Object.values(todayOrderStatus).reduce((sum, value) => sum + value, 0);
