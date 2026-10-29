@@ -16,9 +16,29 @@ ADMIN_WEBROOT="$CANONICAL_CHECKOUT/apps/admin/dist"
 POS_DOMAIN="pos.djiwatentram.web.id"
 DEBUG="${DEBUG:-0}"
 
-if [ "$SCRIPT_DIR" != "$CANONICAL_CHECKOUT" ]; then
+DEPLOY_FROM_WORKTREE="${DEPLOY_FROM_WORKTREE:-0}"
+ALLOW_DIRTY="${ALLOW_DIRTY:-0}"
+
+if [ "$SCRIPT_DIR" != "$CANONICAL_CHECKOUT" ] && [ "$DEPLOY_FROM_WORKTREE" != "1" ]; then
 	echo "❌ Deploy Admin wajib dijalankan dari checkout canonical $CANONICAL_CHECKOUT (host djiwa-vps)."
+	echo "   Dari worktree bersih: DEPLOY_FROM_WORKTREE=1 $0"
 	exit 1
+fi
+
+# ── Guard: artifact harus dibangun dari main yang bersih ──
+# Insiden: dist admin pernah dibangun dari working tree tertinggal beberapa commit,
+# sehingga dashboard kembali memakai read lama dan menampilkan
+# "Dashboard belum dapat memuat data" walau kode di main sudah benar.
+if [ "$ALLOW_DIRTY" != "1" ]; then
+	if [ -n "$(git status --porcelain)" ]; then
+		echo "❌ Working tree kotor — artifact akan dibangun dari kode yang salah."
+		echo "   Commit/stash dulu, atau deploy dari worktree bersih:"
+		echo "     git worktree add /tmp/deploy-main origin/main"
+		echo "     DEPLOY_FROM_WORKTREE=1 /tmp/deploy-main/scripts/deploy-admin.sh"
+		echo "   Override (tidak disarankan): ALLOW_DIRTY=1 $0"
+		exit 1
+	fi
+	echo "✅ Source: $(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse --short HEAD) — tree bersih"
 fi
 
 echo "🚀 Deploying Admin subdomain -> https://$ADMIN_DOMAIN"
@@ -52,7 +72,14 @@ for marker in '/admin/kol' '/admin/community' '/admin/customers'; do
 		exit 1
 	fi
 done
-echo "✅ Artifact guard passed: route Admin lengkap"
+
+# Guard fungsional: dashboard wajib membaca lewat admin-protected-read.
+if ! grep -Rqs -- 'admin-protected-read' apps/admin/dist/assets; then
+	echo "❌ Artifact Admin tidak valid: jalur baca admin-protected-read tidak ada."
+	echo "   Dashboard akan fallback ke PostgREST anon dan gagal memuat data."
+	exit 1
+fi
+echo "✅ Artifact guard passed: route Admin lengkap + protected read aktif"
 
 if [ "$DEBUG" = "1" ]; then
 	echo "🐛 DEBUG mode: skip copy. Dist ada di apps/admin/dist/"
