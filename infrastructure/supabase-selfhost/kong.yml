@@ -1,0 +1,214 @@
+# Kong configuration for Supabase self-host
+# Routes /rest/v1/* → PostgREST, /auth/v1/* → GoTrue
+
+_format_version: "2.1"
+_transform: true
+
+services:
+  - name: rest
+    url: http://rest:3000
+    routes:
+      - name: rest-route
+        paths:
+          - /rest/v1
+        strip_path: true
+        methods:
+          - GET
+          - POST
+          - PATCH
+          - PUT
+          - DELETE
+          - OPTIONS
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods:
+            - GET
+            - POST
+            - PATCH
+            - PUT
+            - DELETE
+            - OPTIONS
+          headers:
+            - apikey
+            - Authorization
+            - X-Client-Info
+            - Content-Type
+            - Accept
+            - Prefer
+            - Accept-Profile
+            - Content-Profile
+          preflight_continue: false
+
+  - name: auth
+    url: http://auth:8081
+    routes:
+      - name: auth-route
+        paths:
+          - /auth/v1
+        strip_path: true
+        methods:
+          - GET
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+          - OPTIONS
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - https://admin.djiwatentram.web.id
+            - https://admindjiwatentram.yumme.id
+            - https://pos.yumme.id
+            - https://karyawan.yumme.id
+            - https://djiwatentram.yumme.id
+            - https://pos.djiwatentram.web.id
+            - https://djiwatentram.web.id
+          credentials: true
+          methods:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+            - OPTIONS
+          headers:
+            - apikey
+            - Authorization
+            - X-Client-Info
+            - X-Supabase-Api-Version
+            - Content-Type
+          preflight_continue: false
+
+  - name: storage
+    url: http://storage:5000
+    routes:
+      - name: storage-route
+        paths:
+          - /storage/v1
+        strip_path: true
+        methods:
+          - GET
+          - POST
+          - PATCH
+          - PUT
+          - DELETE
+          - OPTIONS
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods:
+            - GET
+            - POST
+            - PATCH
+            - PUT
+            - DELETE
+            - OPTIONS
+          headers:
+            - apikey
+            - Authorization
+            - X-Client-Info
+            - Content-Type
+            - Digest
+            - Origin
+          exposed_headers:
+            - Content-Range
+            - X-Request-Id
+          preflight_continue: false
+
+  - name: realtime-ws
+    url: http://realtime:4000/socket/websocket
+    routes:
+      - name: realtime-ws-route
+        paths:
+          - /realtime/v1/websocket
+        strip_path: true
+        methods:
+          - GET
+          - POST
+          - OPTIONS
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods:
+            - GET
+            - POST
+            - OPTIONS
+          headers:
+            - apikey
+            - Authorization
+            - X-Client-Info
+            - Content-Type
+          preflight_continue: false
+
+  - name: realtime-http
+    url: http://realtime:4000
+    routes:
+      - name: realtime-http-route
+        paths:
+          - /realtime/v1
+        strip_path: true
+        methods:
+          - GET
+          - POST
+          - OPTIONS
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods:
+            - GET
+            - POST
+            - OPTIONS
+          headers:
+            - apikey
+            - Authorization
+            - X-Client-Info
+            - Content-Type
+          preflight_continue: false
+
+  - name: functions-v1
+    url: http://functions:9000/
+    read_timeout: 150000
+    routes:
+      - name: functions-v1-all
+        strip_path: true
+        paths:
+          - /functions/v1/
+        methods:
+          - GET
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+          - OPTIONS
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+            - OPTIONS
+          headers:
+            - apikey
+            - Authorization
+            - X-Client-Info
+            - X-Admin-Secret
+            - Content-Type
+            - Accept
+            - x-yumi-session-token
+            - X-Yumi-Session-Token
+          preflight_continue: false
