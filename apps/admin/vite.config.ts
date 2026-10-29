@@ -12,7 +12,9 @@ export default defineConfig({
 		TanStackRouterVite(),
 		tailwindcss(),
 		VitePWA({
-			registerType: "prompt",
+			// Admin data fixes must reach an already-open PWA session without
+			// requiring the operator to discover and accept a hidden prompt.
+			registerType: "autoUpdate",
 			includeAssets: ["logo.png", "vite.svg"],
 			manifest: {
 				name: adminPwaSettings.name,
@@ -44,7 +46,9 @@ export default defineConfig({
 				],
 			},
 			workbox: {
-				cacheId: "djiwa-admin-booking-v3",
+				// Bump this when the data access path changes so an installed Admin
+				// PWA cannot keep serving the pre-self-host bundle from v3.
+				cacheId: "djiwa-admin-booking-v4",
 				importScripts: ["/push-sw.js"],
 				navigateFallback: "/index.html",
 				maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,

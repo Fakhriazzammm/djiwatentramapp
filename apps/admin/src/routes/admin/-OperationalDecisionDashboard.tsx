@@ -61,7 +61,7 @@ export default function OperationalDecisionDashboard() {
       window.clearInterval(refreshTimer);
     };
   }, []);
-  const orders = useHybridOrders();
+  const orders = useHybridOrders({ limit: 1000 });
   const shiftStatus = useHybridShiftStatus();
   const shifts = useMemo(() => shiftStatus?.allShifts?.filter(Boolean) ?? [], [shiftStatus?.allShifts]);
   const todayRange = getWibDayRange(Date.now());
@@ -87,7 +87,7 @@ export default function OperationalDecisionDashboard() {
     }
     return [...totals.values()].sort((left, right) => right.amount - left.amount).slice(0, 4);
   }, [orders, todayRange.end, todayRange.start]);
-  if (!stats || !orders || !shiftStatus) return <CompactSkeleton />;
+  if (!stats) return <CompactSkeleton />;
   const syncAgeLabel = formatSyncAge(lastSyncedAt, Date.now());
   const p = stats.periodComparisons;
   const totalOrders = Object.values(todayOrderStatus).reduce((sum, value) => sum + value, 0);

@@ -6,6 +6,7 @@ import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useCallback, useState } from "react";
 import { invokeBookingAdmin, invokeEdgeFunction } from "@/lib/api-helper";
 import { formatOrderNumber, getOrderChannel } from "@yumipos/web-shared/lib/order-number";
+import { adminProtectedRead } from "@/lib/admin-protected-read";
 
 type FunctionReference<_Kind extends "mutation" | "action"> = unknown;
 const api = new Proxy(
@@ -2181,13 +2182,12 @@ export function useHybridGenerateScanReport() {
 			const period = String(args?.period ?? "daily") as "daily" | "weekly" | "monthly";
 			const days = period === "daily" ? 1 : period === "weekly" ? 7 : 30;
 			const start = Date.now() - days * 24 * 60 * 60 * 1000;
-			const { data, error } = await createClient()
-				.from("pos_financial_transactions")
-				.select("*")
-				.gte("date", start)
-				.order("date", { ascending: false });
-			if (error) throw error;
-			const expenseRows = (data ?? []).filter((row: any) => String(row.type) === "expense");
+			const data = await adminProtectedRead("finance", {
+				select: "*",
+				gte: { date: start },
+				order: [{ column: "date", ascending: false }],
+			});
+			const expenseRows = data.filter((row: any) => String(row.type) === "expense");
 			const totalExpense = expenseRows.reduce(
 				(sum: number, row: any) => sum + Number(row.amount ?? 0),
 				0
@@ -4537,13 +4537,11 @@ export function useHybridEndShift() {
 					}
 				}
 
-				const { data: txRows, error: txError } = await supabase
-					.from("pos_financial_transactions")
-					.select("type, amount, category, paymentMethod, status")
-					.gte("date", Number(shift.startTime))
-					.lte("date", endTime);
-				if (txError) throw txError;
-				const rows = txRows ?? [];
+				const rows = await adminProtectedRead("finance", {
+					select: "type, amount, category, paymentMethod, status",
+					gte: { date: Number(shift.startTime) },
+					lte: { date: endTime },
+				});
 				const completed = rows.filter(
 					(row: any) => String(row.status ?? "completed") === "completed"
 				);

@@ -110,7 +110,7 @@ export function aggregateHourlySales(
 
 	for (const row of rows) {
 		const timestamp = Number(row.createdAt);
-		const status = String(row.status ?? "").toLowerCase();
+		const status = String(row.status ?? "").trim().toLowerCase();
 		if (!Number.isFinite(timestamp) || !SETTLED_ORDER_STATUSES.has(status)) continue;
 		if (range && (timestamp < range.start || timestamp > range.end)) continue;
 

@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import { createClient } from "@/lib/client";
 import { invokeEdgeFunction } from "@/lib/api-helper";
+import { adminProtectedRead } from "@/lib/admin-protected-read";
+import { loadAllRows, loadCustomerRows } from "@/lib/customers-data";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -330,25 +332,51 @@ function AdminCustomers() {
 		"admin-customers",
 		async () => {
 			const supabase = createClient();
-			const [{ data: customerRows, error: customerError }, { data: orderRows, error: orderError }] = await Promise.all([
-				supabase.from("pos_customers_view").select("*").order("total_spent", { ascending: false }),
-				supabase.from("pos_orders").select("*").in("source", ["customer_self_service", "ordermieyamin_b2b"]).order("createdAt", { ascending: false }).limit(2000),
-			]);
-			if (customerError) throw customerError;
-			if (orderError) throw orderError;
-			const settledOrders = (orderRows ?? []).filter(isSettledOrder);
-			return ((customerRows ?? []) as Customer[]).map((customer) => {
-				const orders = settledOrders.filter((order) => customerMatchesOrder(customer, order));
-				if (orders.length === 0) return customer;
-				const totalSpent = orders.reduce((sum, order) => sum + Number(order.totalAmount ?? order.total_amount ?? 0), 0);
-				const lastOrderAt = orders.reduce((latest, order) => Math.max(latest, Number(order.createdAt ?? order.created_at ?? 0)), 0);
-				return {
-					...customer,
-					total_orders: orders.length,
-					total_spent: totalSpent,
-					last_order_at: lastOrderAt > 0 ? new Date(lastOrderAt).toISOString() : customer.last_order_at,
-				};
-			});
+			return loadCustomerRows(
+				async () => {
+					const data = await loadAllRows(async ([from, to]) => {
+						const { data: page, error } = await supabase
+							.from("pos_customers_view")
+							.select("*")
+							.order("total_spent", { ascending: false })
+							.order("source_id", { ascending: true })
+							.range(from, to);
+						if (error) throw error;
+						return (page ?? []) as Customer[];
+					});
+					return { data, error: null };
+				},
+				async () => {
+					const data = await loadAllRows(
+						(range) => adminProtectedRead("orders", {
+							select: "_id,orderNumber,status,source,createdAt,totalAmount,customerSourceId,authUserId,customerEmail,customerName",
+							in: {
+								source: ["customer_self_service", "ordermieyamin_b2b"],
+								status: ["paid", "completed"],
+							},
+							order: [{ column: "createdAt", ascending: false }, { column: "_id", ascending: false }],
+							range,
+						}),
+						1000,
+					);
+					return { data, error: null };
+				},
+				(customerRows, orderRows) => {
+					const settledOrders = orderRows.filter(isSettledOrder);
+					return customerRows.map((customer) => {
+						const orders = settledOrders.filter((order) => customerMatchesOrder(customer, order));
+						if (orders.length === 0) return customer;
+						const totalSpent = orders.reduce((sum, order) => sum + Number(order.totalAmount ?? order.total_amount ?? 0), 0);
+						const lastOrderAt = orders.reduce((latest, order) => Math.max(latest, Number(order.createdAt ?? order.created_at ?? 0)), 0);
+						return {
+							...customer,
+							total_orders: orders.length,
+							total_spent: totalSpent,
+							last_order_at: lastOrderAt > 0 ? new Date(lastOrderAt).toISOString() : customer.last_order_at,
+						};
+					});
+				},
+			);
 		},
 		[],
 		{ tables: ["customers", "customer_wallets", "orders", "order_items"] }
@@ -362,16 +390,23 @@ function AdminCustomers() {
 		if (!detailCustomer?.source_id) { setSelectedCustomerOrders([]); return; }
 		let active = true;
 		setCustomerOrdersLoading(true);
-		createClient().from("pos_orders").select("*").order("createdAt", { ascending: false }).limit(2000)
-			.then(({ data, error }) => {
+		loadAllRows(
+			(range) => adminProtectedRead("orders", {
+				select: "*",
+				order: [{ column: "createdAt", ascending: false }, { column: "_id", ascending: false }],
+				range,
+			}),
+			1000,
+		)
+			.then((data) => {
 				if (!active) return;
-				if (error) {
-					console.warn("[customers] order detail error:", error);
-					setSelectedCustomerOrders([]);
-					setCustomerOrdersLoading(false);
-					return;
-				}
-				setSelectedCustomerOrders((data || []).filter((order: any) => customerMatchesOrder(detailCustomer, order)).slice(0, 50));
+				setSelectedCustomerOrders(data.filter((order: any) => customerMatchesOrder(detailCustomer, order)).slice(0, 50));
+				setCustomerOrdersLoading(false);
+			})
+			.catch((error) => {
+				if (!active) return;
+				console.warn("[customers] order detail error:", error);
+				setSelectedCustomerOrders([]);
 				setCustomerOrdersLoading(false);
 			});
 		return () => { active = false; };

@@ -6,6 +6,7 @@ import { preloadFaceModels } from "../components/auth/FaceRecognition";
 import { useYumiAuth, YumiAuthProvider } from "../hooks/useYumiAuth";
 import { useDemoMode } from "@yumipos/web-shared";
 import { useEffect } from "react";
+import { AdminSplash } from "../components/admin/admin-splash";
 
 function RootContent() {
 	const navigate = useNavigate();
@@ -51,14 +52,7 @@ function RootContent() {
 	}, [isAuthenticated]);
 
 	if (isLoading) {
-		return (
-			<div className="flex min-h-screen items-center justify-center bg-[#0a0a0b]">
-				<div className="relative h-16 w-16">
-					<div className="absolute inset-0 rounded-full border-4 border-primary/20" />
-					<div className="absolute inset-0 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-				</div>
-			</div>
-		);
+		return <AdminSplash />;
 	}
 
 	return (
@@ -69,6 +63,7 @@ function RootContent() {
 }
 
 export const Route = createRootRoute({
+	pendingComponent: AdminSplash,
 	component: () => (
 		<YumiAuthProvider>
 			<RootContent />

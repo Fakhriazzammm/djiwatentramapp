@@ -74,7 +74,7 @@ import {
 	buildReceiptMetaFromOrder,
 } from "@/lib/receipt-data";
 import { playSuccessSound } from "@/lib/play-success-sound";
-import { createClient } from "@/lib/client";
+import { adminProtectedRead } from "@/lib/admin-protected-read";
 import { QueueHorizontalBar } from "@/components/pos/queue-horizontal-bar";
 
 const fmt = (n: number) =>
@@ -1014,13 +1014,12 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 			// ⚡ Fallback: order mungkin belum masuk cache (race condition setelah auto-print)
 			if (!order) {
-				const supabase = createClient();
-				const { data: freshOrder } = await supabase
-					.from("pos_orders")
-					.select("*")
-					.eq("_id", orderId)
-					.maybeSingle();
-				order = freshOrder as any;
+				const rows = await adminProtectedRead("orders", {
+					select: "*",
+					eq: { _id: orderId },
+					limit: 1,
+				});
+				order = rows[0] as any;
 			}
 
 			if (!order) {

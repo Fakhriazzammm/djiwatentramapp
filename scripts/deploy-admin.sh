@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deploy script for Admin subdomain (admindjiwatentram.web.id)
+# Deploy script for Admin subdomain (admin.djiwatentram.web.id)
 # Admin app = build eksklusif dari apps/admin (jangan pernah memakai artifact apps/pos)
 # Flow: build admin -> validasi marker route Admin -> copy dist ke webroot admin domain
 #
@@ -10,9 +10,16 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$SCRIPT_DIR"
 
-ADMIN_DOMAIN="admindjiwatentram.web.id"
+ADMIN_DOMAIN="admin.djiwatentram.web.id"
+CANONICAL_CHECKOUT="/opt/djiwatentramapp"
+ADMIN_WEBROOT="$CANONICAL_CHECKOUT/apps/admin/dist"
 POS_DOMAIN="pos.djiwatentram.web.id"
 DEBUG="${DEBUG:-0}"
+
+if [ "$SCRIPT_DIR" != "$CANONICAL_CHECKOUT" ]; then
+	echo "❌ Deploy Admin wajib dijalankan dari checkout canonical $CANONICAL_CHECKOUT (host djiwa-vps)."
+	exit 1
+fi
 
 echo "🚀 Deploying Admin subdomain -> https://$ADMIN_DOMAIN"
 echo "Source artifact: apps/admin/dist (isolated dari apps/pos)"
@@ -52,13 +59,15 @@ if [ "$DEBUG" = "1" ]; then
 	exit 0
 fi
 
-# ── Copy ke domain admin ──
+# ── Artifact sudah berada di webroot canonical ──
 echo ""
-echo "📁 Copying admin dist -> /var/www/$ADMIN_DOMAIN/..."
-sudo rm -rf "/var/www/$ADMIN_DOMAIN/"*
-sudo cp -r "apps/admin/dist/"* "/var/www/$ADMIN_DOMAIN/"
-sudo chown -R www-data:www-data "/var/www/$ADMIN_DOMAIN/"
-echo "✅ Admin deployed to https://$ADMIN_DOMAIN/"
+if [ "$ADMIN_WEBROOT" != "$SCRIPT_DIR/apps/admin/dist" ]; then
+	echo "📁 Syncing admin dist -> $ADMIN_WEBROOT..."
+	mkdir -p "$ADMIN_WEBROOT"
+	rsync -a --delete "apps/admin/dist/" "$ADMIN_WEBROOT/"
+fi
+test -f "$ADMIN_WEBROOT/index.html"
+echo "✅ Admin deployed to https://$ADMIN_DOMAIN/ from $ADMIN_WEBROOT"
 
 # ── Verifikasi ──
 echo ""

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
-import { SITE_SETTINGS_ORDER } from "@/lib/site-settings-utils";
+import { adminProtectedRead } from "@/lib/admin-protected-read";
+import { getCriticalDashboardReadFailure } from "@/lib/dashboard-data-integrity";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import {
 	aggregateHourlySales,
@@ -473,10 +474,7 @@ async function fetchSiteSettings() {
 		.from("pos_site_settings")
 		.select("*")
 		.not("raw->shiftSettings", "is", null)
-		.order(SITE_SETTINGS_ORDER.column, {
-			ascending: SITE_SETTINGS_ORDER.ascending,
-			nullsFirst: SITE_SETTINGS_ORDER.nullsFirst,
-		})
+		.order("_id", { ascending: false })
 		.limit(1)
 		.maybeSingle();
 
@@ -756,7 +754,12 @@ async function fetchAllDiscounts() {
 	})) as DiscountRecord[];
 }
 
-async function fetchOrders(options?: { status?: string; limit?: number }) {
+async function fetchOrders(options?: {
+	status?: string;
+	limit?: number;
+	createdAtRange?: { start: number; end: number };
+	select?: string;
+}) {
 	const supabase = createClient();
 	const pageSize = 1000;
 	const rows: any[] = [];
@@ -767,17 +770,19 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 			: pageStart + pageSize - 1;
 		if (pageEnd < pageStart) break;
 
-		let query = supabase
-			.from("pos_orders")
-			.select("*")
-			.order("createdAt", { ascending: false })
-			.order("_id", { ascending: false })
-			.range(pageStart, pageEnd);
-		if (options?.status) query = query.eq("status", options.status);
-
-		const { data, error } = await query;
-		if (error) throw error;
-		rows.push(...(data ?? []));
+		const data = await adminProtectedRead("orders", {
+			select: options?.select ?? "*",
+			order: [{ column: "createdAt", ascending: false }, { column: "_id", ascending: false }],
+			range: [pageStart, pageEnd],
+			...(options?.status ? { eq: { status: options.status } } : {}),
+			...(options?.createdAtRange
+				? {
+						gte: { createdAt: options.createdAtRange.start },
+						lte: { createdAt: options.createdAtRange.end },
+				  }
+				: {}),
+		});
+		rows.push(...data);
 		if (!data || data.length < pageEnd - pageStart + 1 || (options?.limit && rows.length >= options.limit)) break;
 	}
 
@@ -879,14 +884,7 @@ async function fetchOrders(options?: { status?: string; limit?: number }) {
 
 async function fetchHourlyTransactions(range: { start: number; end: number }) {
 	const supabase = createClient();
-	const { data, error } = await supabase
-		.from("pos_orders")
-		.select("_id,createdAt,status,totalAmount")
-		.gte("createdAt", range.start)
-		.lte("createdAt", range.end)
-		.order("createdAt", { ascending: true });
-
-	if (error) throw error;
+	const data = await adminProtectedRead("orders", { select: "_id,createdAt,status,totalAmount", gte: { createdAt: range.start }, lte: { createdAt: range.end }, order: [{ column: "createdAt", ascending: true }] });
 	return (data ?? []).map((row: any) => ({
 		createdAt: Number(row.createdAt ?? 0),
 		status: row.status ?? null,
@@ -949,21 +947,28 @@ async function fetchInventory() {
 	})) as InventoryRecord[];
 }
 
-async function fetchBookingOrders() {
+async function fetchBookingOrders(options?: {
+	createdAtRange?: { start: number; end: number };
+	select?: string;
+}) {
 	const supabase = createClient();
 	const pageSize = 1000;
 	const rows: any[] = [];
 
 	for (let pageStart = 0; ; pageStart += pageSize) {
 		const pageEnd = pageStart + pageSize - 1;
-		const { data, error } = await supabase
-			.from("pos_booking_orders")
-			.select("*")
-			.order("createdAt", { ascending: false })
-			.order("_id", { ascending: false })
-			.range(pageStart, pageEnd);
-		if (error) throw error;
-		rows.push(...(data ?? []));
+		const data = await adminProtectedRead("booking", {
+			select: options?.select ?? "*",
+			order: [{ column: "createdAt", ascending: false }, { column: "_id", ascending: false }],
+			range: [pageStart, pageEnd],
+			...(options?.createdAtRange
+				? {
+						gte: { createdAt: options.createdAtRange.start },
+						lte: { createdAt: options.createdAtRange.end },
+				  }
+				: {}),
+		});
+		rows.push(...data);
 		if (!data || data.length < pageSize) break;
 	}
 
@@ -1010,16 +1015,14 @@ async function fetchBookingOrders() {
 	})) as BookingOrderRecord[];
 }
 
-async function fetchFinancialTransactions() {
+async function fetchFinancialTransactions(options?: { summaryOnly?: boolean }) {
 	const supabase = createClient();
-	const { data, error } = await supabase
-		.from("pos_financial_transactions")
-		.select("*")
-		.order("date", { ascending: false });
+	const data = await adminProtectedRead("finance", {
+		select: options?.summaryOnly ? "type,amount,date,status" : "*",
+		order: [{ column: "date", ascending: false }],
+	});
 
-	if (error) throw error;
-
-	return (data ?? []).map((row: any) => ({
+	return data.map((row: any) => ({
 		_id: row._id,
 		type: row.type ?? "",
 		amount: Number(row.amount ?? 0),
@@ -1215,19 +1218,18 @@ export async function fetchShiftReports() {
 		const sid = s.source_id;
 		const st = Number(s.start_time ?? 0);
 		try {
-			const { data: orders } = await supabase
-				.schema("pos")
-				.from("orders")
-				.select("total_amount, discount_amount, payment_method, status")
-				.gte("created_at", st)
-				.in("status", ["completed", "paid"]);
+			const orders = await adminProtectedRead("orders", {
+				select: "totalAmount, discountAmount, paymentMethod, status",
+				gte: { createdAt: st },
+				in: { status: ["completed", "paid"] },
+			});
 			if (orders) {
 				let total = 0, cash = 0, qris = 0, discount = 0;
 				for (const o of orders as any[]) {
-					const p = Number(o.total_amount ?? 0);
+					const p = Number(o.totalAmount ?? 0);
 					total += p;
-					discount += Number(o.discount_amount ?? 0);
-					const m = String(o.payment_method ?? "").toLowerCase();
+					discount += Number(o.discountAmount ?? 0);
+					const m = String(o.paymentMethod ?? "").toLowerCase();
 					if (m.includes("cash") || m.includes("tunai")) cash += p;
 					else if (m.includes("qris") || m.includes("qr")) qris += p;
 				}
@@ -1242,20 +1244,18 @@ export async function fetchShiftReports() {
 	// Untuk daily_collected, query global per hari
 	const now = Date.now();
 	const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
-	const { data: dailyTx } = await supabase
-		.schema("pos")
-		.from("financial_transactions")
-		.select("tx_date,amount,category")
-		.eq("tx_type", "income")
-		.in("status", ["completed"])
-		.not("category", "in", `("Modal Awal","Setoran Akhir")`)
-		.gte("tx_date", thirtyDaysAgo)
-		.lte("tx_date", now);
+	const dailyTx = await adminProtectedRead("finance", {
+		select: "date,amount,category,type,status",
+		eq: { type: "income", status: "completed" },
+		gte: { date: thirtyDaysAgo },
+		lte: { date: now },
+	});
 	// Himpun daily collected per day (UTC day start)
 	const dailyCollectedMap = new Map<string, number>();
 	if (dailyTx) {
 		for (const tx of dailyTx as any[]) {
-			const d = new Date(Number(tx.tx_date ?? 0));
+			if (tx.category === "Modal Awal" || tx.category === "Setoran Akhir") continue;
+			const d = new Date(Number(tx.date ?? 0));
 			const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 			dailyCollectedMap.set(key, (dailyCollectedMap.get(key) ?? 0) + Number(tx.amount ?? 0));
 		}
@@ -1387,9 +1387,9 @@ async function fetchShiftDetails(args: { startTime: number; endTime?: number }) 
 	const [
 		{ data: reportRow, error: reportError },
 		{ data: shiftRow, error: shiftError },
-		{ data: orders, error: ordersError },
-		{ data: bookings, error: bookingsError },
-		{ data: transactions, error: transactionsError },
+		orders,
+		bookings,
+		transactions,
 		{ data: products, error: productsError },
 		{ data: categories, error: categoriesError },
 	] = await Promise.all([
@@ -1399,31 +1399,15 @@ async function fetchShiftDetails(args: { startTime: number; endTime?: number }) 
 			.eq("start_time", rangeStart)
 			.maybeSingle(),
 		supabase.from("pos_shifts").select("*").eq("startTime", rangeStart).maybeSingle(),
-		supabase
-			.from("pos_orders")
-			.select("*")
-			.gte("createdAt", rangeStart)
-			.lte("createdAt", rangeEnd),
-		supabase
-			.from("pos_booking_orders")
-			.select("*")
-			.gte("createdAt", rangeStart)
-			.lte("createdAt", rangeEnd),
-		supabase
-			.from("pos_financial_transactions")
-			.select("*")
-			.gte("date", rangeStart)
-			.lte("date", rangeEnd)
-			.order("date", { ascending: false }),
+		adminProtectedRead("orders", { select: "*", gte: { createdAt: rangeStart }, lte: { createdAt: rangeEnd } }),
+		adminProtectedRead("booking", { select: "*", gte: { createdAt: rangeStart }, lte: { createdAt: rangeEnd } }),
+		adminProtectedRead("finance", { select: "*", gte: { date: rangeStart }, lte: { date: rangeEnd }, order: [{ column: "date", ascending: false }] }),
 		supabase.from("pos_products_all").select("*"),
 		supabase.from("pos_categories").select("*"),
 	]);
 
 	if (reportError) throw reportError;
 	if (shiftError) throw shiftError;
-	if (ordersError) throw ordersError;
-	if (bookingsError) throw bookingsError;
-	if (transactionsError) throw transactionsError;
 	if (productsError) throw productsError;
 	if (categoriesError) throw categoriesError;
 
@@ -1853,25 +1837,67 @@ function getBookingFinancialSnapshot(booking: BookingOrderRecord) {
 	};
 }
 
-async function fetchDashboardStats() {
-	const [
-		orders,
-		bookings,
-		allProducts,
-		inventory,
-		detailedShifts,
-		financialTransactions,
-	] = await Promise.all([
-		fetchOrders(),
-		fetchBookingOrders(),
-		fetchAllProducts(),
-		fetchInventory(),
-		fetchDetailedShifts(),
-		fetchFinancialTransactions(),
+function withDashboardTimeout<T>(promise: Promise<T>, label: string, timeoutMs = 15_000) {
+	return Promise.race([
+		promise,
+		new Promise<T>((_, reject) => {
+			setTimeout(() => reject(new Error(`${label} dashboard read timeout`)), timeoutMs);
+		}),
 	]);
+}
 
+async function fetchDashboardStats() {
 	const now = Date.now();
 	const todayRange = getWibDayRange(now);
+	const shiftedNow = new Date(now + WIB_OFFSET_MS);
+	const monthStart = Date.UTC(shiftedNow.getUTCFullYear(), shiftedNow.getUTCMonth(), 1) - WIB_OFFSET_MS;
+	const previousMonthStart = Date.UTC(shiftedNow.getUTCFullYear(), shiftedNow.getUTCMonth() - 1, 1) - WIB_OFFSET_MS;
+	const reportRange = { start: previousMonthStart, end: todayRange.end };
+	const results = await Promise.allSettled([
+		withDashboardTimeout(fetchOrders({
+			createdAtRange: reportRange,
+			// Dashboard analytics do not need customer/contact/delivery payloads.
+			// Keeping this projection small avoids a false empty dashboard when a
+			// large order payload hits the browser or Edge Function timeout.
+			select: "_id,orderNumber,totalAmount,status,paymentMethod,customerName,createdAt,items,discountAmount,taxAmount,serviceChargeAmount,source,businessUnit,orderType,brandSlug",
+		}), "orders"),
+		withDashboardTimeout(fetchBookingOrders({
+			createdAtRange: reportRange,
+			select: "_id,bookingCode,customerName,customerPhone,customerEmail,notes,bookingDate,totalAmount,paymentMethod,paymentStatus,bookingStatus,guestCount,tableCount,createdAt,items",
+		}), "booking"),
+		withDashboardTimeout(fetchAllProducts(), "products"),
+		withDashboardTimeout(fetchInventory(), "inventory"),
+		withDashboardTimeout(fetchDetailedShifts(), "shifts"),
+		withDashboardTimeout(fetchFinancialTransactions({ summaryOnly: true }), "finance"),
+	]);
+	const [ordersResult, bookingsResult, productsResult, inventoryResult, shiftsResult, financeResult] = results;
+	const criticalFailure = getCriticalDashboardReadFailure({
+		orders: ordersResult.status,
+		booking: bookingsResult.status,
+		products: productsResult.status,
+		inventory: inventoryResult.status,
+		shifts: shiftsResult.status,
+		finance: financeResult.status,
+	});
+	if (criticalFailure) throw new Error(criticalFailure);
+	for (const [label, result] of [
+		["orders", ordersResult],
+		["booking", bookingsResult],
+		["products", productsResult],
+		["inventory", inventoryResult],
+		["shifts", shiftsResult],
+		["finance", financeResult],
+	] as const) {
+		if (result.status === "rejected") {
+			console.warn(`[dashboard-stats:${label}]`, result.reason);
+		}
+	}
+	const orders = ordersResult.status === "fulfilled" ? ordersResult.value : [];
+	const bookings = bookingsResult.status === "fulfilled" ? bookingsResult.value : [];
+	const allProducts = productsResult.status === "fulfilled" ? productsResult.value : [];
+	const inventory = inventoryResult.status === "fulfilled" ? inventoryResult.value : [];
+	const detailedShifts = shiftsResult.status === "fulfilled" ? shiftsResult.value : [];
+	const financialTransactions = financeResult.status === "fulfilled" ? financeResult.value : [];
 	const todayOrders = orders.filter(
 		(order) => order.createdAt >= todayRange.start && order.createdAt <= todayRange.end
 	);
@@ -2001,13 +2027,10 @@ async function fetchDashboardStats() {
 				validBookings.reduce((sum, booking) => sum + getBookingFinancialSnapshot(booking).finalCollected, 0),
 		};
 	};
-	const shiftedNow = new Date(now + WIB_OFFSET_MS);
 	const weekdayFromMonday = (shiftedNow.getUTCDay() + 6) % 7;
 	const todayStart = todayRange.start;
 	const thisWeekStart = todayStart - weekdayFromMonday * DAY_MS;
 	const previousWeekStart = thisWeekStart - 7 * DAY_MS;
-	const monthStart = Date.UTC(shiftedNow.getUTCFullYear(), shiftedNow.getUTCMonth(), 1) - WIB_OFFSET_MS;
-	const previousMonthStart = Date.UTC(shiftedNow.getUTCFullYear(), shiftedNow.getUTCMonth() - 1, 1) - WIB_OFFSET_MS;
 	const periodComparisons = {
 		today: periodRange(todayRange.start, todayRange.end),
 		yesterday: periodRange(todayRange.start - DAY_MS, todayRange.start - 1),
@@ -2395,14 +2418,9 @@ export function useHybridTransactionCosts(inventoryIds: string[]) {
 
 		(async () => {
 			const supabase = createClient();
-			const { data, error } = await supabase
-				.from("pos_financial_transactions")
-				.select("inventoryId, amount, createdAt")
-				.in("inventoryId", validIds)
-				.eq("type", "expense")
-				.order("createdAt", { ascending: false });
+			const data = await adminProtectedRead("finance", { select: "inventoryId, amount, createdAt", in: { inventoryId: validIds }, eq: { type: "expense" }, order: [{ column: "createdAt", ascending: false }] });
 
-			if (error || cancelled) return;
+			if (cancelled) return;
 
 			const map: Record<string, number> = {};
 			for (const row of data ?? []) {
@@ -2467,9 +2485,12 @@ export type UpdateOrderStatusPayload = {
 
 async function fetchOrderStatus(): Promise<OrderStatusRecord[]> {
 	const supabase = createClient();
+	const operationalWindow = getWibDayRange(Date.now());
 	const { data, error } = await supabase
 		.from("pos_order_status")
 		.select("*")
+		.gte("created_at", new Date(operationalWindow.start).toISOString())
+		.lte("created_at", new Date(operationalWindow.end).toISOString())
 		.order("created_at", { ascending: false })
 		.limit(100);
 	if (error) {

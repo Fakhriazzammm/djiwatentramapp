@@ -13,6 +13,7 @@ import { useHybridOrderStatus, useHybridShiftStatus } from "@/hooks/use-hybrid-p
 import type { OrderStatusRecord } from "@/hooks/use-hybrid-pos-data";
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { useHybridWriteOrderStatus, useHybridUpdateOrderStaff } from "@/hooks/use-hybrid-write-actions";
+import { adminProtectedRead } from "@/lib/admin-protected-read";
 
 export function formatTimeAgo(isoStr?: string | null): string {
 	if (!isoStr) return "--";
@@ -245,23 +246,18 @@ export function CompletedDetailModal({
 		setItemsLoading(true);
 		(async () => {
 			try {
-				const { createClient } = await import("@/lib/client");
-				const supabase = createClient();
-				const { data, error } = await supabase
-					.from("pos_orders")
-					.select("items")
-					.eq("orderNumber", order.order_no)
-					.maybeSingle();
+				const rows = await adminProtectedRead<{ items?: unknown }>("orders", {
+					select: "items",
+					eq: { orderNumber: order.order_no },
+					limit: 1,
+				});
+				const data = rows[0] ?? null;
 				if (!cancelled) {
-					if (error) {
-						console.error("[antrian] Failed to fetch order items:", error);
-						setItems([]);
-					} else {
-						setItems(Array.isArray(data?.items) ? data.items : []);
-					}
+					setItems(Array.isArray(data?.items) ? data.items : []);
 					setItemsLoading(false);
 				}
-			} catch {
+			} catch (error) {
+				console.error("[antrian] Failed to fetch order items:", error);
 				if (!cancelled) {
 					setItems([]);
 					setItemsLoading(false);
