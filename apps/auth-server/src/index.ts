@@ -698,7 +698,8 @@ function privateJson(body: Record<string, unknown>, status = 200) {
 
 const payBridgeTickets = new Map<string, { userId: string; expiresAt: number }>();
 const payBridgeSessions = new Map<string, { userId: string; expiresAt: number }>();
-const PAY_BRIDGE_ORIGIN = "https://pay.djiwatentram.web.id";
+const PAY_BRIDGE_ORIGIN = "https://djiwapay.web.id";
+const PAY_BRIDGE_ORIGINS = new Set([PAY_BRIDGE_ORIGIN, "https://pay.djiwatentram.web.id"]);
 const PAY_BRIDGE_TTL_MS = 90_000;
 const PAY_SESSION_TTL_SECONDS = 900;
 
@@ -736,7 +737,7 @@ app.get("/api/customer/pay-bridge/start", async (c) => {
   let target: URL;
   try {
     target = new URL(returnTo);
-    if (target.origin !== PAY_BRIDGE_ORIGIN || target.protocol !== "https:") throw new Error("invalid target");
+    if (!PAY_BRIDGE_ORIGINS.has(target.origin) || target.protocol !== "https:") throw new Error("invalid target");
   } catch {
     target = new URL("/wallet", PAY_BRIDGE_ORIGIN);
   }

@@ -1,6 +1,8 @@
 import { createAuthClient } from "better-auth/react";
 
-export const authClient = createAuthClient({ baseURL: "https://api.djiwatentram.web.id/api/auth", fetchOptions: { credentials: "include" } });
+export const CUSTOMER_AUTH_BASE = "https://api.djiwatentram.web.id/v1/auth";
+export const BRIDGE_START = "https://api.djiwatentram.web.id/v1/customer/pay-bridge/start";
+export const authClient = createAuthClient({ baseURL: CUSTOMER_AUTH_BASE, fetchOptions: { credentials: "include" } });
 export function buildGoogleSignInOptions(callbackURL: string) {
   return {
     provider: "google" as const,
@@ -9,8 +11,23 @@ export function buildGoogleSignInOptions(callbackURL: string) {
     disableRedirect: true as const,
   };
 }
+export function cleanAuthCallbackURL(value: string) {
+  const url = new URL(value);
+  url.searchParams.delete("error");
+  url.searchParams.delete("error_description");
+  url.searchParams.delete("error_uri");
+  return url.toString();
+}
+export function buildCustomerAuthUrl(currentUrl = window.location.href) {
+  const returnTo = new URL(currentUrl);
+  returnTo.search = "";
+  returnTo.searchParams.set("sso", "1");
+  return `${CUSTOMER_AUTH_ORIGIN}?sso=1&returnTo=${encodeURIComponent(returnTo.toString())}`;
+}
+export function shouldResumePayBridge(currentUrl = window.location.href) {
+  return new URL(currentUrl).searchParams.get("sso") === "1";
+}
 export type CustomerProfile = { source_id: string; name: string | null; email: string | null; phone?: string | null; wallet_status?: "active" | "blocked" };
-const BRIDGE_START = "https://api.djiwatentram.web.id/api/customer/pay-bridge/start";
 const CUSTOMER_AUTH_ORIGIN = "https://djiwatentram.web.id/masuk";
 export type PayNavigationContext = { source: "customer"; username: string } | null;
 export function getPayNavigationContext(): PayNavigationContext {
@@ -35,11 +52,6 @@ export function buildPayBridgeStartUrl() {
   return `${BRIDGE_START}?returnTo=${encodeURIComponent(window.location.href.split("?")[0])}`;
 }
 
-export function buildCustomerAuthUrl() {
-  const returnTo = `${window.location.origin}`;
-  return `${CUSTOMER_AUTH_ORIGIN}?sso=1&returnTo=${encodeURIComponent(returnTo)}`;
-}
-
 export async function resolveIdentity(): Promise<CustomerProfile | null> {
   const bridged = await exchangeBridgeToken();
   if (bridged) return bridged;
@@ -49,6 +61,10 @@ export async function resolveIdentity(): Promise<CustomerProfile | null> {
     return payload.success ? payload.customer ?? null : null;
   }
   if (response.status !== 401) throw new Error(`Sesi Djiwa Pay HTTP ${response.status}`);
+  if (shouldResumePayBridge()) {
+    window.location.assign(buildPayBridgeStartUrl());
+    return null;
+  }
   const session = await authClient.getSession();
   if (session.data?.user) {
     window.location.assign(buildPayBridgeStartUrl());

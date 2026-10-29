@@ -31,7 +31,7 @@ export function buildWalletReceivePayload(phone: string) {
   return `djiwapay://transfer?phone=${encodeURIComponent(normalizeWalletPhone(phone))}`;
 }
 
-const payTransferHosts = new Set(["pay.djiwatentram.web.id"]);
+const payTransferHosts = new Set(["djiwapay.web.id", "pay.djiwatentram.web.id"]);
 const validWalletPhone = (value: string | null) => {
   const phone = normalizeWalletPhone(value ?? "");
   return /^628\d{8,11}$/.test(phone) ? phone : null;
@@ -39,8 +39,8 @@ const validWalletPhone = (value: string | null) => {
 
 /**
  * Reads a Djiwa Pay receive QR. The canonical payload is
- * `djiwapay://transfer?phone=...`; a pay.djiwatentram.web.id transfer link is
- * accepted as well so a QR opened from a browser keeps working.
+ * `djiwapay://transfer?phone=...`; links from both the custom and legacy
+ * browser domains are accepted so existing QR codes keep working.
  */
 export function parseWalletRecipientPayload(value: string) {
   try {

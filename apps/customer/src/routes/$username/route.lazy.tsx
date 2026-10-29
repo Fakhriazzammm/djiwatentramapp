@@ -107,7 +107,8 @@ function MemberHomePage() {
 		if (typeof window !== "undefined") window.location.assign(path);
 	};
 	const goDjiwaPay = () => {
-		if (typeof window !== "undefined") window.location.assign(getCustomerPayPath(username));
+		if (typeof window === "undefined") return;
+		window.location.assign(isAuthenticated && customer ? getCustomerPayPath(username) : `/${encodeURIComponent(username)}/saldo`);
 	};
 	const customerNav = [
 		{ label: "Home", icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname === `/${username}`, onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}`) },

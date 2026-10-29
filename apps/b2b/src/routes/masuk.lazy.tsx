@@ -42,6 +42,10 @@ function CustomerAuthPage() {
     if (isAuthenticated && customer) {
       const intent = window.localStorage.getItem("b2b-checkout-intent");
       if (intent === "produksi") window.localStorage.removeItem("b2b-checkout-intent");
+      if (new URLSearchParams(window.location.search).get("next") === "saldo") {
+        navigate({ to: "/$username/saldo", params: { username: customer.username } });
+        return;
+      }
       navigate({ to: `/${customer.username}/order`, search: { step: "menu" } });
     }
   }, [customer, isAuthenticated, navigate]);

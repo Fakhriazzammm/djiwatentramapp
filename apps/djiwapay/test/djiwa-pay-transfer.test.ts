@@ -16,7 +16,12 @@ describe("Djiwa Pay receive QR", () => {
     expect(parseWalletRecipientPayload(payload)).toBe("6285156399831");
   });
 
-  test("accepts a transfer link from the pay domain", () => {
+  test("accepts a transfer link from the custom domain", () => {
+    expect(parseWalletRecipientPayload("https://djiwapay.web.id/wallet/transfer?phone=085156399831")).toBe("6285156399831");
+    expect(parseWalletRecipientPayload("https://djiwapay.web.id/wallet/transfer/?phone=6285156399831")).toBe("6285156399831");
+  });
+
+  test("keeps accepting transfer links from the legacy pay domain", () => {
     expect(parseWalletRecipientPayload("https://pay.djiwatentram.web.id/wallet/transfer?phone=085156399831")).toBe("6285156399831");
     expect(parseWalletRecipientPayload("https://pay.djiwatentram.web.id/wallet/transfer/?phone=6285156399831")).toBe("6285156399831");
   });

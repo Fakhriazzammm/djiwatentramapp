@@ -1,13 +1,19 @@
 #!/bin/bash
 # Auto-deploy script for Djiwa Tentram apps (VPS)
 # Run after git pull to rebuild and redeploy all apps
-# Usage: ./scripts/deploy-vps.sh [pos|karyawan|customer|admin|all]
+# Usage: ./scripts/deploy-vps.sh [pos|karyawan|customer|admin|djiwapay|all]
 
 set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$SCRIPT_DIR"
 
 APP="${1:-all}"
+CANONICAL_CHECKOUT="/opt/djiwatentramapp"
+
+if [ "$SCRIPT_DIR" != "$CANONICAL_CHECKOUT" ]; then
+	echo "❌ Deploy wajib dijalankan dari checkout canonical $CANONICAL_CHECKOUT pada host djiwa-vps."
+	exit 1
+fi
 
 echo "🚀 Deploying Djiwa Tentram apps to VPS..."
 echo "Target: $APP"
@@ -53,12 +59,11 @@ deploy_app() {
 
 	echo "✅ Build succeeded for $name"
 
-	# Hapus dulu file lama, lalu copy yang baru
-	sudo rm -rf "/var/www/$domain/"*
-	echo "📁 Copying to /var/www/$domain/..."
-	sudo cp -r "apps/$name/dist/"* "/var/www/$domain/"
-	sudo chown -R www-data:www-data "/var/www/$domain/"
-	echo "✅ $name deployed to https://$domain/"
+	# Nginx canonical langsung melayani dist dari checkout produksi.
+	# Jangan menyalin lagi ke /var/www atau domain legacy.
+	local webroot="$SCRIPT_DIR/apps/$name/dist"
+	test -f "$webroot/index.html"
+	echo "✅ $name deployed to https://$domain/ from $webroot"
 }
 
 # ── Deploy Edge Function ──
@@ -116,13 +121,17 @@ case "$APP" in
 		;;
 	admin|web)
 		# `web` dipertahankan sebagai alias legacy, tetapi sumber Admin selalu apps/admin.
-		deploy_app "admin" "admindjiwatentram.web.id"
+		deploy_app "admin" "admin.djiwatentram.web.id"
+		;;
+	djiwapay|pay)
+		deploy_app "djiwapay" "djiwapay.web.id"
 		;;
 	all|*)
 		deploy_app "pos" "pos.djiwatentram.web.id"
 		deploy_app "karyawan" "karyawan.djiwatentram.web.id"
 		deploy_app "customer" "djiwatentram.web.id"
-		deploy_app "admin" "admindjiwatentram.web.id"
+		deploy_app "admin" "admin.djiwatentram.web.id"
+		deploy_app "djiwapay" "djiwapay.web.id"
 		deploy_edge_function "customer-auth"
 		deploy_edge_function "djiwa-run"
 		;;
