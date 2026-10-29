@@ -59,6 +59,10 @@ function CustomerAuthPage() {
         window.location.assign(returnTo);
         return;
       }
+      if (new URLSearchParams(window.location.search).get("next") === "saldo") {
+        navigate({ to: "/$username/saldo", params: { username: customer.username } });
+        return;
+      }
       navigate({ to: `/${customer.username}` });
     }
   }, [customer, isAuthenticated, navigate]);
