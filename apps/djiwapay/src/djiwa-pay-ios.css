@@ -31,6 +31,19 @@ button:disabled { cursor: default; }
   background: var(--djiwa-bg);
 }
 
+/* Framed by a host that already draws the bottom tab bar (Djiwa Travel keeps
+   its 4.5rem nav visible below the iframe). The host owns the navigation, so
+   Pay drops its copy and the 104px it reserved for it. */
+.pay-page--embedded {
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+/* Keeps the header grid balanced when the back control is hidden inside a host. */
+.pay-header-spacer {
+  width: 40px;
+  height: 40px;
+}
+
 /* Shared iOS foundations used by every wallet route. */
 .pay-page :is(input, select, textarea) { accent-color: var(--djiwa-blue); }
 .pay-page :is(button, a, input, select, textarea) { -webkit-tap-highlight-color: transparent; }
