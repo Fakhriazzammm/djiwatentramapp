@@ -67,9 +67,18 @@ function proxyPath(value: string | null): string | null {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 15_000);
+  const timeout = window.setTimeout(() => controller.abort(), 8_000);
+  const externalSignal = init?.signal;
+  const abortFromCaller = () => controller.abort(externalSignal?.reason);
+  if (externalSignal?.aborted) abortFromCaller();
+  else externalSignal?.addEventListener("abort", abortFromCaller, { once: true });
   try {
-    const response = await fetch(`${API_BASE}${path}`, { ...init, credentials: "include", signal: init?.signal ?? controller.signal });
+    const response = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      cache: "no-store",
+      credentials: "include",
+      signal: controller.signal,
+    });
     const contentType = response.headers.get("content-type") || "";
     const payload = contentType.includes("application/json")
       ? await response.json().catch(() => null) as { error?: string } | null
@@ -78,10 +87,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     if (!response.ok || payload.error) throw new CommunityClientError(payload.error || `Komunitas gagal dimuat (HTTP ${response.status}).`);
     return payload as T;
   } catch (reason) {
-    if (reason instanceof DOMException && reason.name === "AbortError") throw new CommunityClientError("Koneksi Komunitas timeout. Coba lagi.");
+    if (controller.signal.aborted && !externalSignal?.aborted) throw new CommunityClientError("Koneksi Komunitas terlalu lama. Coba lagi.");
+    if (reason instanceof DOMException && reason.name === "AbortError") throw new CommunityClientError("Koneksi Komunitas dibatalkan. Coba lagi.");
     throw reason;
   } finally {
     window.clearTimeout(timeout);
+    externalSignal?.removeEventListener("abort", abortFromCaller);
   }
 }
 
