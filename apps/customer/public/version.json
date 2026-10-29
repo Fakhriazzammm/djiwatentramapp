@@ -1,7 +1,7 @@
 {
-  "version": "0.2.531",
-  "commitHash": "7851ab0",
-  "message": "feat(pos): complete mobile-first workflow polish",
-  "buildDate": "2026-10-23",
-  "generatedAt": "2026-10-23T15:37:15.682Z"
+  "version": "0.2.557",
+  "commitHash": "562523d",
+  "message": "fix(customer): require login before opening wallet",
+  "buildDate": "2026-10-29",
+  "generatedAt": "2026-10-29T10:23:54.810Z"
 }
