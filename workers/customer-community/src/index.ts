@@ -361,16 +361,13 @@ export default {
         const cursorValue = url.searchParams.get("cursor");
         const cursor = cursorValue ? decodeActivityCursor(cursorValue) : null;
         if (cursorValue && !cursor) return json({ error: "Cursor activity tidak valid." }, 400, origin);
-        const now = new Date().toISOString();
         const filters = [
           "activity_type=eq.order_completed",
           "visibility=eq.public",
           "status=eq.active",
-          `visible_at=lte.${encodeURIComponent(now)}`,
-          `expires_at=gt.${encodeURIComponent(now)}`,
           "order=visible_at.desc,id.desc",
           `limit=${parsedLimit + 1}`,
-          "select=id,activity_type,display_name_snapshot,display_mode,avatar_url_snapshot,product_source_id,product_name_snapshot,product_image_snapshot,price_snapshot,nutrition_snapshot,order_settled_at,visible_at,expires_at",
+          "select=id,activity_type,display_name_snapshot,display_mode,avatar_url_snapshot,product_source_id,product_name_snapshot,product_image_snapshot,price_snapshot,nutrition_snapshot,order_settled_at,visible_at",
         ];
         if (cursor) {
           filters.push(`or=(visible_at.lt.${encodeURIComponent(cursor.visibleAt)},and(visible_at.eq.${encodeURIComponent(cursor.visibleAt)},id.lt.${encodeURIComponent(cursor.id)}))`);
