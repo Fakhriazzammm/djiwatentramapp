@@ -1,3 +1,4 @@
+import { CUSTOMER_API_BASE } from "./customer-auth-config";
 import { loadCustomerOrders } from "./customer-order-loader";
 
 declare const afterEach: (fn: () => void) => void;
@@ -25,7 +26,7 @@ describe("loadCustomerOrders", () => {
 
     const orders = await loadCustomerOrders("customer_1", []);
 
-    expect(requestedUrl).toBe("https://api.djiwatentram.web.id/v1/customer/orders");
+    expect(requestedUrl).toBe(`${CUSTOMER_API_BASE}/orders`);
     expect(orders).toHaveLength(1);
     expect(orders[0]).toMatchObject({ id: "order_member", totalAmount: 90000, status: "paid" });
   });

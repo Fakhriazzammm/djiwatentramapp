@@ -1,3 +1,4 @@
+import { CUSTOMER_API_BASE } from "./customer-auth-config";
 import { loadCustomerReceiptOrder } from "./customer-receipt";
 import type { CustomerOrderReference } from "./customer-api";
 
@@ -18,7 +19,7 @@ describe("customer receipt loader", () => {
     }) as typeof fetch;
 
     await expect(loadCustomerReceiptOrder("order_member", [])).resolves.toEqual({ _id: "order_member", status: "paid" });
-    expect(requestedUrl).toBe("https://api.djiwatentram.web.id/v1/customer/orders");
+    expect(requestedUrl).toBe(`${CUSTOMER_API_BASE}/orders`);
   });
 
   it("loads a guest receipt with its access token", async () => {

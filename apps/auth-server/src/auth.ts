@@ -1,6 +1,11 @@
 import { betterAuth } from "better-auth";
 import { Pool } from "pg";
 import { dash } from "@better-auth/infra";
+import {
+  customerAuthAdvancedConfig,
+  customerAuthBaseUrl,
+  resolveCustomerTrustedOrigins,
+} from "./customer-auth-config.js";
 
 export const pool = new Pool({
   host: "localhost",
@@ -10,33 +15,15 @@ export const pool = new Pool({
   database: "postgres",
 });
 
-const customerAuthBaseUrl = (process.env.CUSTOMER_APP_URL ?? "").trim().replace(/\/$/, "");
-const customerTrustedOrigins = (process.env.CUSTOMER_ALLOWED_ORIGINS ?? "")
-  .split(",")
-  .map((value) => value.trim())
-  .filter(Boolean);
-
 export const auth = betterAuth({
   database: pool,
+  // Resolved per request from an allowlist so every storefront domain keeps a
+  // first-party callback URL instead of one hardcoded origin.
   baseURL: customerAuthBaseUrl,
   // Customer sessions are shared by the Djiwa App storefronts.
-  trustedOrigins: customerTrustedOrigins,
+  trustedOrigins: resolveCustomerTrustedOrigins(),
   // Share the central customer session across Djiwa App subdomains.
-  advanced: {
-    cookies: {
-      // Match the database OAuth verification entry's ten-minute TTL.
-      state: { attributes: { maxAge: 600 } },
-    },
-    crossSubDomainCookies: {
-      enabled: true,
-      domain: process.env.AUTH_COOKIE_DOMAIN,
-    },
-    defaultCookieAttributes: {
-      secure: true,
-      httpOnly: true,
-      sameSite: "lax",
-    },
-  },
+  advanced: customerAuthAdvancedConfig(),
   emailAndPassword: {
     enabled: true,
   },
