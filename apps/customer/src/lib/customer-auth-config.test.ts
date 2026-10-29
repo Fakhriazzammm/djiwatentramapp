@@ -5,9 +5,9 @@ declare const it: (name: string, fn: () => void) => void;
 declare const expect: (value: unknown) => { toBe(expected: unknown): void };
 
 describe("customer auth configuration", () => {
-	it("uses the canonical Djiwa origin for auth and data APIs", () => {
+	it("keeps auth same-origin and routes customer data to the canonical API", () => {
 		expect(CUSTOMER_API_ORIGIN).toBe("https://api.djiwatentram.web.id");
-		expect(CUSTOMER_AUTH_BASE).toBe("https://api.djiwatentram.web.id/v1/auth");
+		expect(CUSTOMER_AUTH_BASE).toBe("/api/auth");
 		expect(CUSTOMER_API_BASE).toBe("https://api.djiwatentram.web.id/v1/customer");
 	});
 });
