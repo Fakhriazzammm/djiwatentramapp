@@ -1,7 +1,7 @@
-<!-- convex-ai-start -->
-This project uses [Convex](https://convex.dev) as its backend.
+# Claude Code guidance
 
-When working on Convex code, **always read `packages\backend\convex/_generated/ai/guidelines.md` first** for important guidelines on how to correctly use Convex APIs and patterns. The file contains rules that override what you may have learned about Convex from training data.
+Follow the repository-wide instructions in [`AGENTS.md`](AGENTS.md). This repository uses Supabase; do not follow stale Convex instructions.
 
-Convex agent skills for common tasks can be installed by running `npx convex ai-files install`.
-<!-- convex-ai-end -->
+Work may span projects, apps, and VPS hosts. Identify the active repository, app, environment, and deployment target from their own instructions before acting. The deployment target documented in this repository applies only to this repository.
+
+For product UI, read [`DESIGN.md`](DESIGN.md) and inspect the existing shared components, theme tokens, and Djiwa 3D asset catalog before making changes. For repository structure and domain context, start with [`README.md`](README.md) and [`PROJECT.md`](PROJECT.md).

@@ -1,181 +1,119 @@
-# Djiwa Tentram Product Design Standard
+# Djiwa Tentram UI/UX Design Standard
 
-> Source of truth UI/UX untuk Admin, POS, Karyawan, dan Customer.
-> Berdasarkan AI Product Design DNA v2.0, Apple HIG, Airbnb, Gojek/Uber, Stripe, Linear, dan reference implementation Plastix.
+> Standar untuk seluruh aplikasi Djiwa Tentram. Arah visual: pengalaman produk Apple yang tenang, presisi, mudah disentuh, dan terasa premium, dengan identitas Djiwa Tentram sendiri. Gunakan aset ikon 3D Djiwa sebagai ikon ilustratif utama.
 
-## 1. Prinsip Produk
+## 1. Prinsip pengalaman
 
-Setiap layar harus menjawab dalam tiga detik:
+- Pengguna harus paham konteks, informasi terpenting, dan tindakan berikutnya dalam beberapa detik.
+- Utamakan konten, keterbacaan, hierarki, dan respons antarmuka; hindari ornamen yang tidak membantu tugas.
+- Gunakan pola iOS sebagai referensi kualitas interaksi dan layout, bukan menyalin merek, layar, atau komponen Apple secara literal.
+- Mobile-first untuk Customer, Karyawan, dan alur kasir; Admin boleh desktop-first tetapi tetap nyaman disentuh pada tablet.
+- Setiap layar mempertahankan bahasa Indonesia yang jelas dan aturan domain yang sudah berjalan.
 
-1. Di mana saya?
-2. Apa yang bisa saya lakukan?
-3. Apa tindakan berikutnya?
+## 2. Source of truth dan urutan inspeksi
 
-UI harus terasa **premium, ramah, minimal, modern, cepat, profesional, tenang, dan percaya diri**. Kejelasan operasional selalu lebih penting daripada dekorasi.
+Sebelum mengubah UI, periksa berurutan:
 
-## 2. Source of Truth
+1. Token tema di `packages/yumipos-web-shared/src/theme.css` dan stylesheet app terkait di `apps/*/src/index.css`.
+2. Primitive dan pola yang sudah ada di `packages/yumipos-web-shared/src/components/ui/`.
+3. Komponen layout di `packages/yumipos-web-shared/src/components/layout/`.
+4. Ikon 3D dan pemetaan komponennya di `packages/yumipos-web-shared/src/assets/djiwa-icons-v2/` dan `components/ui/djiwa-3d-icon.tsx`.
+5. Implementasi app terdekat sebelum menambah varian baru.
 
-- Tokens: `packages/yumipos-web-shared/src/theme.css`
-- Components: `packages/yumipos-web-shared/src/components/ui/`
-- App imports: `apps/*/src/index.css`
-- Icons: `lucide-react`, line-only, rounded, stroke 2px
+Jangan menganggap seluruh app memiliki token identik. Pertahankan tema brand dan semantic color yang sudah dipakai app; bila perlu token lintas app, tambahkan pada shared theme dengan fallback yang kompatibel.
 
-Jangan membuat token per aplikasi, menyalin raw global CSS, atau membuat primitive baru bila shared component sudah tersedia.
+## 3. Bahasa visual: Apple-inspired
 
-## 3. Visual Tokens
+- Permukaan terang dan berlapis halus; gunakan ruang kosong dengan sengaja, garis pemisah tipis, dan bayangan ringan.
+- Tipografi sistem yang mudah dibaca. Gunakan skala dan bobot yang konsisten; hindari terlalu banyak ukuran atau heading dekoratif.
+- Radius lembut dan konsisten dengan token aktual. Jangan mengarang angka universal bila app sudah memiliki token.
+- Warna aksen mengikuti brand app. Hijau, amber, dan merah khusus status sukses, perhatian, serta destruktif.
+- Hindari glassmorphism berat, gradien dekoratif, outline berlebihan, kumpulan kartu seragam, dan bayangan gelap.
+- Gunakan safe area pada layar mobile, navigasi bawah yang tidak menutupi konten, dan sheet/modal yang terasa native serta mudah ditutup.
 
-| Token | Standard |
-|---|---|
-| Theme | Light, white/near-white surfaces |
-| Primary accent | Deep Azure `#1a5dc6` |
-| Semantic colors | Green success, amber warning, red destructive—hanya untuk makna |
-| Display font | SF Pro Display / system fallback |
-| Body font | SF Pro Text / system fallback |
-| Major card radius | 24px |
-| Control radius | 14px |
-| Compact data surface | 10–16px sesuai density, bukan major card |
-| Shadow | Soft `rgba(9,9,11,0.04–0.12)` |
-| Content padding | 16–24px |
-| Touch target | Minimum 44×44px pada aksi utama dan mobile |
+## 4. Ikon 3D — standar wajib
 
-Display dan body wajib terlihat berbeda. Heading menggunakan `font-display`; body menggunakan `font-sans`.
+Ikon fitur, navigasi, benefit, kategori, dan empty state yang bersifat ilustratif wajib memakai aset 3D yang sesuai dari katalog `djiwa-icons-v2` melalui komponen `Djiwa3DIcon`.
 
-## 4. Hierarchy
+- Cari aset yang paling tepat di katalog/manifest sebelum meminta atau membuat aset baru. Gunakan nama ikon yang sudah diekspor oleh `djiwa-3d-icon.tsx`.
+- Jangan mengganti ikon 3D dengan emoji, ikon flat, ikon Lucide generik, CSS drawing, atau karakter teks sebagai jalan pintas.
+- Ikon 3D adalah elemen ilustratif; aksi kecil dan kontrol padat boleh memakai Lucide sebagai ikon kontrol saja (mis. chevron, close, search, edit, status tindakan). Jangan memakai Lucide sebagai pengganti ikon fitur 3D.
+- Pertahankan rasio gambar, `object-contain`, ukuran semantik, dan deskripsi alt. Ikon dekoratif memakai alt kosong; ikon bermakna harus memiliki label aksesibel melalui teks atau alt.
+- Jika katalog belum memiliki aset yang sesuai, jangan menyamarkan ikon flat sebagai aset final. Catat kebutuhan aset spesifik dan gunakan fallback sementara yang sudah menjadi pola produk, dengan status sementara yang jelas.
+- Jaga konsistensi crop, skala, pencahayaan, dan gaya render antar ikon dalam satu layar. Hindari menumpuk banyak ilustrasi 3D dalam satu area padat.
 
-Urutan default:
+Contoh penggunaan:
 
-```text
-Navigation
-└── Page identity / greeting
-    ├── Primary insight or task
-    ├── Primary actions
-    ├── Supporting statistics
-    ├── Recent activity / operational content
-    ├── Recommendations
-    └── Secondary information
+```tsx
+import { Djiwa3DIcon } from "@yumipos/web-shared"; // sesuaikan dengan pola export app
+
+<Djiwa3DIcon name="payment-wallet" size="sm" alt="" />
 ```
 
-Larangan:
+Periksa export dan import yang benar di app target; contoh ini menunjukkan pola, bukan jaminan jalur export setiap app.
 
-- dashboard berisi banyak stat card identik;
-- metrik sama diulang tanpa tujuan;
-- CTA utama tenggelam;
-- semua informasi memiliki bobot visual sama;
-- card digunakan sebagai pembungkus dekoratif tanpa satu pesan utama.
+## 5. Layout dan komponen
 
-## 5. Domain Rules
+- Gunakan satu kolom pada mobile untuk alur utama. Susun navigasi, identitas halaman, konten utama, lalu tindakan utama dengan urutan yang jelas.
+- Batasi lebar baca pada halaman berbasis teks. Untuk POS, tabel, atau operasional gunakan ruang layar secara efisien.
+- Tampilkan satu aksi primer yang menonjol per konteks; aksi sekunder terlihat tetapi tidak bersaing.
+- Gunakan card hanya untuk mengelompokkan konten yang memiliki hubungan atau tindakan jelas. Hindari card di dalam card.
+- Form memiliki label tetap, bantuan dekat dengan field, validasi kontekstual, dan pesan error yang dapat ditindaklanjuti.
+- Sheet untuk tugas ringkas dan kontekstual; halaman penuh untuk tugas kompleks atau yang perlu URL/navigasi sendiri.
+- Tabel padat diperbolehkan untuk Admin. Pada layar kecil, sediakan representasi ringkas atau scroll horizontal yang disengaja dan terlihat.
+- Gunakan komponen shared sebelum membuat primitive lokal. Jika variasi baru dibutuhkan, buat API yang kecil dan konsisten.
 
-### Admin
-
-- Desktop-first tetapi tetap usable pada tablet/mobile.
-- Data table boleh compact; major sections tetap memakai hierarchy dan whitespace.
-- Insight/exception/action lebih penting daripada kumpulan statistik.
-
-### POS
-
-- Kecepatan dan akurasi lebih penting daripada whitespace berlebihan.
-- Product selection, cart, total, dan checkout harus selalu jelas.
-- Jangan mengubah order, payment, printing, shift, atau inventory behavior saat styling.
-
-### Karyawan
-
-- Mobile-first dan one-hand operation.
-- Attendance, schedule, payroll, permission, dan notification harus mudah dipahami dalam kondisi lapangan.
-- Safe area dan touch target wajib.
+## 6. Pola per produk
 
 ### Customer
 
-- Friendly, simple, visual, dan conversion-oriented.
-- Gunakan Lucide; emoji tidak boleh menjadi UI icon.
-- Primary CTA dan member benefit harus jelas tanpa membuat halaman terasa seperti admin dashboard.
+Mobile-first, ramah, visual, cepat untuk memesan. Produk, harga, kustomisasi, benefit, status pesanan, dan CTA harus mudah ditemukan. Gunakan aset 3D untuk fitur/benefit; foto produk tetap memakai foto produk.
 
-## 6. Motion
+### POS
 
-| Interaction | Duration | Easing |
-|---|---:|---|
-| Micro interaction | 180ms | `cubic-bezier(.32,.72,0,1)` |
-| Navigation/sheet | 320ms | `cubic-bezier(.32,.72,0,1)` |
-| Spring-like entry | 420ms | `cubic-bezier(.32,.72,0,1)` |
-| Press feedback | `scale(.97)` | 180ms |
+Kecepatan, akurasi, dan keterbacaan saat sibuk adalah prioritas. Produk, cart, total, metode pembayaran, status shift, dan langkah checkout harus jelas. Jangan mengubah urutan transaksi, payment, receipt/printing, inventory, atau perilaku shift sebagai bagian dari styling.
 
-Motion harus menjelaskan navigation, success, loading, focus, atau progress. Hormati `prefers-reduced-motion` dan hindari animasi dekoratif.
+### Karyawan
 
-## 7. Required UX States
+Mobile-first dan mudah digunakan satu tangan. Jadwal, presensi, payroll, izin, dan status harus terbaca sekilas. Sediakan target sentuh yang cukup dan dukung kondisi lapangan.
 
-Setiap data-driven feature harus menangani:
+### Admin
 
-1. Loading—skeleton shimmer, bukan teks spinner.
-2. Empty—icon/illustration, headline, description, CTA bila relevan.
-3. Error—pesan aman, inline feedback, retry.
-4. Success—toast atau state singkat yang jelas.
-5. Confirmation—sebelum destructive action.
-6. Disabled/pending—cegah double submission.
-7. Offline/stale—jelaskan bila data tidak terbaru.
+Utamakan tugas, pengecualian, dan keputusan. Ringkasan metrik harus bermakna dan tidak mengulang informasi. Tetap responsif di tablet/mobile tanpa mengorbankan alur desktop operasional.
 
-Gunakan shared `Skeleton`, `AsyncBoundary`, `EmptyState`, `ErrorState`, `SuccessState`, `Button`, dan Dialog primitives.
+## 7. Interaksi, motion, dan state
 
-## 8. Accessibility
+- Beri feedback langsung untuk tap, submit, navigasi, perubahan status, dan error.
+- Motion singkat dan fungsional untuk transisi, sheet, progress, serta perubahan state; hormati `prefers-reduced-motion`.
+- Cegah submit ganda untuk aksi yang membuat transaksi atau mengubah data.
+- Setiap fitur data menangani loading, empty, error, success, pending/disabled, dan offline/stale bila relevan.
+- Gunakan shared state components yang tersedia. Empty state boleh memakai ilustrasi 3D yang relevan; error tetap menyampaikan solusi dan retry bila aman.
+- Konfirmasi sebelum aksi destruktif atau sulit dibatalkan. Jangan meminta konfirmasi untuk aksi rutin yang aman.
 
-- Semantic landmarks: `nav`, `main`, `section`, `article`, heading berurutan.
-- Full keyboard support dan visible focus.
-- WCAG AA contrast.
-- Label programatik untuk control/icon button.
-- Mobile action minimum 44×44px.
-- Jangan mengandalkan warna saja untuk status.
-- Jangan memotong judul penting dengan `truncate`.
-- Semua motion menghormati reduced-motion.
+## 8. Aksesibilitas dan responsive
 
-## 9. Responsive Matrix
+- HTML semantik, urutan heading, label kontrol, keyboard support, dan focus indicator yang terlihat.
+- Kontras minimal WCAG AA; status tidak dibedakan dengan warna saja.
+- Target sentuh utama minimal 44×44 CSS px bila ruang memungkinkan.
+- Hormati safe area dan zoom teks; jangan memotong judul, harga, status, atau CTA penting.
+- Periksa lebar 375, 768, 1024, dan 1440 px atau breakpoint yang relevan pada app.
+- Tidak ada overflow horizontal yang tidak disengaja; elemen fixed/sticky tidak boleh menutupi konten atau CTA.
 
-Setiap halaman diverifikasi pada:
+## 9. Guardrail engineering
 
-| Width | Target |
-|---:|---|
-| 375px | mobile phone |
-| 768px | tablet/large phone |
-| 1024px | small desktop/tablet landscape |
-| 1440px | desktop operational |
+- Styling tidak mengubah business logic, kontrak API, otorisasi, atau makna data.
+- Jangan menambah dependency untuk kebutuhan yang sudah dicakup stack dan komponen saat ini.
+- Hindari global selector baru dan CSS lintas app yang tidak terisolasi.
+- Pertahankan semantic colors dan kontrak visual brand. Jangan mengubah aksen app tanpa permintaan eksplisit.
+- Jangan membuat ulang aset 3D yang sudah ada; pakai katalog dan komponen resmi.
 
-Quality gate:
+## 10. Checklist review
 
-- tidak ada horizontal overflow yang tidak disengaja;
-- sticky/fixed element tidak menutupi konten;
-- table memiliki mobile representation atau intentional scroll;
-- title, price, status, dan CTA tidak terpotong;
-- safe-area respected;
-- hanya content region yang semestinya scroll.
-
-## 10. Icons and Content
-
-- Gunakan Lucide line icons, stroke 2px, ukuran konsisten.
-- Emoji tidak digunakan sebagai icon UI.
-- Filled icon hanya untuk active/selected state bila meningkatkan clarity.
-- Gunakan data realistis dan Bahasa Indonesia yang jelas.
-- Hindari jargon teknis, stack trace, atau error internal pada user-facing UI.
-
-## 11. Engineering Guardrails
-
-- Shared-first, additive, incremental.
-- Tidak boleh mengubah business logic dalam UI migration.
-- Tidak boleh menyalin global selectors dari standalone HTML.
-- Scoped CSS harus berada di bawah wrapper unik.
-- Jangan menambah dependency hanya untuk styling bila Tailwind/Radix/Lucide mencukupi.
-- Admin dan POS yang memiliki file paralel harus tetap sinkron kecuali behavior memang berbeda.
-
-## 12. Definition of Done
-
-Sebuah halaman hanya boleh dinyatakan selesai bila:
-
-- [ ] Purpose dan CTA jelas dalam tiga detik.
-- [ ] Shared tokens/components digunakan.
-- [ ] Display/body typography benar.
-- [ ] Spacing, radius, shadow, dan icons konsisten.
-- [ ] Loading, empty, error, success, dan confirmation tersedia sesuai kebutuhan.
-- [ ] Keyboard, focus, contrast, dan touch target lolos.
-- [ ] Tidak ada truncation/overflow pada responsive matrix.
-- [ ] Business behavior dan data flow tidak berubah.
-- [ ] Build/typecheck relevan lulus.
-- [ ] Screenshot live benar-benar diperiksa.
-- [ ] Browser console/network tidak memiliki error baru.
-
-Checklist adalah batas minimum; screenshot dan functional regression tetap menjadi bukti utama.
+- [ ] Tujuan, hierarki informasi, dan aksi primer jelas.
+- [ ] Token dan shared component yang sesuai sudah dipakai.
+- [ ] Ikon ilustratif memakai aset 3D katalog; ikon kontrol kecil hanya memakai pola kontrol yang ada.
+- [ ] Loading, empty, error, success, pending, dan konfirmasi tersedia sesuai konteks.
+- [ ] Mobile, safe area, keyboard, focus, contrast, dan target sentuh diperiksa.
+- [ ] Tidak ada truncation atau overflow yang tidak disengaja.
+- [ ] Aturan transaksi dan data tetap sama.
+- [ ] Pemeriksaan relevan dijalankan dan hasilnya dilaporkan dengan tepat.
