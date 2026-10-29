@@ -13,6 +13,7 @@ import { MemberOnboarding, ProfileCompletionOnboarding } from "@/components/cust
 import { CustomerBottomNav, CustomerLiveShiftIndicator } from "@/components/customer/customer-shell";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { CustomerSplash } from "@/components/customer/customer-entry";
+import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
 import { CustomerHomeHeader, CustomerHomeServiceGrid, CustomerWalletSummary, DjiwaPayOfferCard } from "@/components/customer/customer-home-sections";
 import { CustomerStoryRail } from "@/features/stories/customer-story-rail";
@@ -310,7 +311,9 @@ function MemberHomePage() {
 	}
 
 	// ── Member view (authenticated) ────────────────
-	if (!customer) return null;
+	// Auth/username redirects can briefly render this route before customer
+	// profile state is ready. Keep a visible loading surface instead of blanking.
+	if (!customer) return <CustomerPageSkeleton label="Menyiapkan akun" />;
 
 	const displayName = customer.name || customer.username || "Member";
 	const missingContactFields = getMissingCustomerFields(customer);
