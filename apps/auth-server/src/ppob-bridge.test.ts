@@ -9,6 +9,12 @@ describe("postpaid pay bridge contract", () => {
     expect(source).toContain("PAY_BRIDGE_ORIGINS");
   });
 
+  test("sets the Pay bridge session cookie for cross-site iframe requests", async () => {
+    const source = await readFile(new URL("./index.ts", import.meta.url), "utf8");
+    expect(source).toContain("SameSite=None");
+    expect(source).toContain("Partitioned");
+  });
+
   test("registers inquiry, payment, and status routes", async () => {
     const source = await readFile(new URL("./index.ts", import.meta.url), "utf8");
     expect(source).toContain("/api/pay-bridge/ppob/postpaid/inquiry");

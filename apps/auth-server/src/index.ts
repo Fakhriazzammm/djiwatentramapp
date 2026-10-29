@@ -759,7 +759,7 @@ app.post("/api/pay-bridge/exchange", async (c) => {
   if (!customer) return privateJson({ success: false, error: "CUSTOMER_NOT_FOUND" }, 403);
   const sessionId = crypto.randomUUID().replace(/-/g, "");
   payBridgeSessions.set(sessionId, { userId: record.userId, expiresAt: Date.now() + PAY_SESSION_TTL_SECONDS * 1000 });
-  return new Response(JSON.stringify({ success: true, customer }), { status: 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "Set-Cookie": `djiwa_pay_session=${sessionId}; Max-Age=${PAY_SESSION_TTL_SECONDS}; Path=/; HttpOnly; Secure; SameSite=Lax` } });
+  return new Response(JSON.stringify({ success: true, customer }), { status: 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "Set-Cookie": `djiwa_pay_session=${sessionId}; Max-Age=${PAY_SESSION_TTL_SECONDS}; Path=/; HttpOnly; Secure; SameSite=None; Partitioned` } });
 });
 
 app.get("/api/pay-bridge/profile", async (c) => {
