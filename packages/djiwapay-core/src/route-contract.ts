@@ -1,10 +1,9 @@
 import type { DjiwaPayContext, ReturnTarget } from "./types";
 
 export const PAY_ORIGIN = "https://djiwapay.web.id";
-// Djiwa Pay lives outside .djiwatentram.web.id, so the shared customer session
-// cookie is not sent on a direct top-level visit. Host apps must enter Pay
-// through the auth server bridge, which trades that cookie for a Pay ticket.
-export const PAY_BRIDGE_START_URL = "https://api.djiwatentram.web.id/v1/customer/pay-bridge/start";
+// The customer session cookie is host-only on djiwatentram.web.id, so the
+// bridge must be started through that first-party origin.
+export const PAY_BRIDGE_START_URL = "https://djiwatentram.web.id/api/customer/pay-bridge/start";
 export const ALLOWED_RETURN_ORIGINS = new Set([
   "https://djiwatentram.web.id",
   "https://djiwatentram.web.id",

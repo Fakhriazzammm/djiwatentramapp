@@ -1,7 +1,9 @@
 import { createAuthClient } from "better-auth/react";
 
 export const CUSTOMER_AUTH_BASE = "https://api.djiwatentram.web.id/v1/auth";
-export const BRIDGE_START = "https://api.djiwatentram.web.id/v1/customer/pay-bridge/start";
+// The customer session cookie is host-only on djiwatentram.web.id. Keep the
+// bridge request first-party so the browser sends that cookie after SSO.
+export const BRIDGE_START = "https://djiwatentram.web.id/api/customer/pay-bridge/start";
 export const authClient = createAuthClient({ baseURL: CUSTOMER_AUTH_BASE, fetchOptions: { credentials: "include" } });
 export function buildGoogleSignInOptions(callbackURL: string) {
   return {
