@@ -10,6 +10,7 @@ import { buildCoffeePassportStickerPrompt, generateCoffeePassportPng, stickerMod
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createHmac } from "node:crypto";
+import { createTravelWalletPaymentEndpoint } from "./travel-wallet-payment.js";
 
 const app = new Hono();
 const MAYAR_PROXY_URL = process.env.MAYAR_PROXY_URL || "";
@@ -1299,6 +1300,30 @@ function trustedProfileImage(value: unknown): string | null {
     return null;
   }
 }
+
+const travelWalletPaymentEndpoint = createTravelWalletPaymentEndpoint({
+  secret: () => process.env.DJIWA_TRAVEL_WALLET_PAYMENT_SECRET || "",
+  resolveCustomerId: async (headers) => {
+    const session = await requireCustomerSession(headers);
+    return session?.user?.id ?? null;
+  },
+  isActiveCustomer: async (customerId) => {
+    const result = await pool.query(
+      "SELECT 1 FROM pos.customers WHERE source_id = $1 AND is_active = true LIMIT 1",
+      [customerId],
+    );
+    return result.rowCount === 1;
+  },
+  charge: async ({ customerId, orderId, amount }) => {
+    const result = await pool.query(
+      "SELECT pos.wallet_charge_travel_order($1, $2, $3) AS result",
+      [customerId, orderId, amount],
+    );
+    return result.rows[0]?.result ?? null;
+  },
+});
+
+app.post("/api/customer/travel-wallet-payment", (c) => travelWalletPaymentEndpoint(c.req.raw));
 
 app.get("/api/customer/profile", async (c) => {
   const session = await requireCustomerSession(c.req.raw.headers);
