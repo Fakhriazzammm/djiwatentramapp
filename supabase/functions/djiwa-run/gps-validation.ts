@@ -46,20 +46,21 @@ export function validateGpsSession(input: {
   if (pts.length < RULES.minPoints) return empty(["FEW_POINTS"], "Titik GPS valid terlalu sedikit");
 
   const flags = new Set<GpsFlag>();
-  let meters = 0, movingMs = 0;
+  let meters = 0, movingMs = 0, activeMs = 0; // activeMs excludes pauses/gaps (> maxGapMs)
   for (let i = 1; i < pts.length; i++) {
     const dt = pts[i].t - pts[i - 1].t;
-    if (dt > RULES.maxGapMs) continue; // gap breaks the segment; never interpolate
+    if (dt > RULES.maxGapMs) continue; // gap (pause/signal loss) breaks the segment; never interpolate
+    activeMs += dt;
     const d = haversineM(pts[i - 1].lat, pts[i - 1].lng, pts[i].lat, pts[i].lng);
     if (d > RULES.teleportM && dt <= RULES.teleportMs) { flags.add("TELEPORT"); continue; }
     if (d / (dt / 1000) > RULES.maxSpeedMps[activityType]) { flags.add("SPEED"); continue; }
     meters += d; movingMs += dt;
   }
   const spanMs = pts[pts.length - 1].t - pts[0].t;
-  const durationSeconds = Math.round(spanMs / 1000);
+  const durationSeconds = Math.round(activeMs / 1000);
   const distanceKm = Math.round((meters / 1000) * 100) / 100;
-  const expected = Math.max(1, Math.floor(spanMs / 5000)); // ~1 sample / 5 s
-  if (pts.length / expected < RULES.minCoverage && movingMs / spanMs < RULES.minCoverage) flags.add("COVERAGE");
+  const expected = Math.max(1, Math.floor(activeMs / 5000)); // ~1 sample / 5 s
+  if (pts.length / expected < RULES.minCoverage && movingMs / Math.max(1, activeMs) < RULES.minCoverage) flags.add("COVERAGE");
   if (durationSeconds < RULES.minDurationS || durationSeconds > RULES.maxDurationS) flags.add("DURATION");
   if (spanMs > nowMs - startedAtMs + RULES.serverToleranceMs) flags.add("TIME_SPOOF");
   if (distanceKm < RULES.minDistanceKm) flags.add("SHORT");

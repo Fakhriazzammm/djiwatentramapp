@@ -1,14 +1,14 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { AlertCircle, ArrowLeft, CheckCircle2, Clock3, CloudUpload, MapPin, RefreshCw, ShieldCheck, Trophy, Upload, XCircle } from "lucide-react";
-import { CustomerHeader } from "@/components/customer/customer-shell";
+import { AlertCircle, ArrowLeft, CheckCircle2, Clock3, CloudUpload, MapPin, RefreshCw, ShieldCheck, Trophy, Upload, X, XCircle } from "lucide-react";
+import { Djiwa3DIcon } from "@yumipos/web-shared";
+import { CustomerBottomNav, CustomerHeader } from "@/components/customer/customer-shell";
 import { CustomerSectionSkeleton } from "@/components/customer/customer-states";
-import { RunProgressHero } from "@/components/customer/run-progress-hero";
-import { RunSocialPanel } from "@/components/customer/run-social-panel";
-import { RunTrackerPanel } from "@/components/customer/run-tracker-panel";
+import { NoGpsNotice, RunHomeView, RunLiveView, RunRankingView, RunResultView, daysLeft } from "@/components/customer/run-views";
+import { useRunTracker } from "@/hooks/use-run-tracker";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
-import { DjiwaRunUnavailableError, confirmDjiwaRunActivity, getDjiwaRunOverview, submitDjiwaRunActivity, type RunActivity, type RunLocation, type RunOcrResult, type RunOverview, type RunSessionVerdict, type RunSubmissionResult } from "@/lib/djiwa-run-client";
+import { DjiwaRunUnavailableError, confirmDjiwaRunActivity, getDjiwaRunOverview, getRunSocial, runTeamAction, submitDjiwaRunActivity, type RunActivity, type RunLocation, type RunOcrResult, type RunOverview, type RunSessionVerdict, type RunSocial, type RunSubmissionResult } from "@/lib/djiwa-run-client";
 
 export const Route = createLazyFileRoute("/$username/run")({ component: DjiwaRunPage });
 
@@ -66,6 +66,15 @@ function DjiwaRunPage() {
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const reduceMotion = useReducedMotion();
+  type RunView = "home" | "live" | "result" | "ranking" | "manual";
+  const [view, setView] = useState<RunView>("home");
+  const [social, setSocial] = useState<RunSocial | null>(null);
+  const [socialLoading, setSocialLoading] = useState(false);
+  const [socialError, setSocialError] = useState<string | null>(null);
+  const [rankTab, setRankTab] = useState<"people" | "teams">("people");
+  const [rankScope, setRankScope] = useState<"week" | "month">("week");
+  const [teamName, setTeamName] = useState("");
+  const [teamBusy, setTeamBusy] = useState(false);
   const [socialKey, setSocialKey] = useState(0);
 
   useEffect(() => {
@@ -86,13 +95,31 @@ function DjiwaRunPage() {
     if (!customer?.sourceId) return;
     getDjiwaRunOverview(customer.sourceId, customer.email).then((value) => setOverview(value)).catch(() => undefined);
   };
-  const handleRunFinished = (_verdict: RunSessionVerdict) => { reloadOverview(); setSocialKey((key) => key + 1); };
+  const handleRunFinished = useCallback((_verdict: RunSessionVerdict) => { reloadOverview(); setSocialKey((key) => key + 1); setView("result"); }, [customer?.sourceId]);
   const handleShare = (verdict: RunSessionVerdict) => {
     const text = `Baru selesai ${verdict.stats.distance_km.toFixed(2)} km di Djiwa Run!`;
     try { sessionStorage.setItem("djiwa-community-draft", text); } catch { /* draft is optional */ }
     navigate({ to: "/$username/komunitas", params: { username } });
   };
 
+  const tracker = useRunTracker({ customerSourceId: customer?.sourceId ?? null, customerEmail: customer?.email ?? null, campaignId: overview.campaignId ?? null, onFinished: handleRunFinished });
+  useEffect(() => {
+    if (!customer?.sourceId || !overview.campaignId) return;
+    let active = true;
+    setSocialLoading(true); setSocialError(null);
+    getRunSocial({ customerSourceId: customer.sourceId, customerEmail: customer.email, campaignId: overview.campaignId, scope: rankScope })
+      .then((value) => { if (active) setSocial(value); })
+      .catch(() => { if (active) setSocialError("Peringkat belum dapat dimuat."); })
+      .finally(() => { if (active) setSocialLoading(false); });
+    return () => { active = false; };
+  }, [customer?.sourceId, overview.campaignId, rankScope, socialKey]);
+  const runTeam = async (action: "create_team" | "join_team" | "leave_team", teamId?: string) => {
+    if (!customer?.sourceId || !overview.campaignId) return;
+    setTeamBusy(true); setSocialError(null);
+    try { await runTeamAction({ customerSourceId: customer.sourceId, customerEmail: customer.email, campaignId: overview.campaignId, action, name: teamName.trim() || undefined, teamId }); setTeamName(""); setSocialKey((key) => key + 1); }
+    catch (e) { setSocialError(e instanceof Error ? e.message : "Aksi tim gagal."); }
+    finally { setTeamBusy(false); }
+  };
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
   const detectLocation = () => {
@@ -172,28 +199,54 @@ function DjiwaRunPage() {
   const monthlyTargetLabel = overview.monthlyTargetKm > 0 ? `${formatKm(overview.monthlyTargetKm)} KM` : "target belum tersedia";
   const nextTier = overview.tiers.find((tier) => tier.status === "in_progress") ?? overview.tiers[0] ?? null;
 
+
+  const goHome = () => navigate({ to: "/$username", params: { username } });
+  const sessionActive = tracker.active || (tracker.phase === "error" && tracker.points.length > 0);
+  const effectiveView: RunView = sessionActive ? "live" : view;
+  const left = daysLeft(overview.periodLabel);
+  const titles: Record<RunView, [string, string]> = {
+    home: ["Djiwa Run", `${overview.campaignName}${left != null ? ` · sisa ${left} hari` : ""}`],
+    live: ["Sedang berlari", tracker.phase === "paused" ? "Dijeda" : "GPS aktif"],
+    result: ["Hasil lari", overview.campaignName],
+    ranking: ["Peringkat", overview.campaignName],
+    manual: ["Catat manual", "Upload bukti dari aplikasi olahraga"],
+  };
+  const onBack = effectiveView === "live" ? () => { if (window.confirm("Batalkan sesi lari ini? Data lari tidak akan disimpan.")) void tracker.cancel(); } : effectiveView === "home" ? goHome : () => setView("home");
+  const navItems = [
+    { label: "Home", active: false, onSelect: goHome, icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" /> },
+    { label: "Pesan", active: false, onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }), icon: <Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" /> },
+    { label: "Komunitas", active: false, onSelect: () => navigate({ to: "/$username/komunitas", params: { username } }), icon: <Djiwa3DIcon name="navigation-community" size="micro" alt="" className="h-5 w-5 object-contain" /> },
+    { label: "Saldo", active: false, onSelect: () => navigate({ to: "/$username/saldo", params: { username } }), icon: <Djiwa3DIcon name="navigation-wallet" size="micro" alt="" className="h-5 w-5 object-contain" /> },
+    { label: "Profil", active: false, onSelect: () => navigate({ to: "/$username/profile", params: { username } }), icon: <Djiwa3DIcon name="navigation-profile" size="micro" alt="" className="h-5 w-5 object-contain" /> },
+  ];
   const revealProps = reduceMotion ? {} : { initial: "hidden", animate: "show", variants: runReveal };
 
   return (
     <div className="app-page min-h-app"><div className="app-shell mx-auto min-h-app max-w-md overflow-x-hidden bg-background">
-      <CustomerHeader title="Djiwa Run" subtitle={overview.periodLabel} onBack={() => navigate({ to: "/$username", params: { username } })} leading={<ArrowLeft className="h-4 w-4" />} />
-      <main className="space-y-4 px-3 py-4 pb-32">
-        {overviewError ? <motion.div {...revealProps} className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs leading-relaxed text-amber-950" role="status"><p className="font-black">Data campaign belum tersedia</p><p className="mt-0.5">{overviewError} Tampilan progres akan muncul setelah backend Djiwa Run aktif.</p></motion.div> : null}
+      <CustomerHeader title={titles[effectiveView][0]} subtitle={titles[effectiveView][1]} onBack={onBack} leading={effectiveView === "live" ? <X className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />} />
+      <main className="space-y-3 px-4 py-3 pb-32">
+        {overviewError ? <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs leading-relaxed text-amber-950" role="status"><p className="font-black">Data campaign belum tersedia</p><p className="mt-0.5">{overviewError}</p></div> : null}
 
-        <RunProgressHero overview={overview} />
-        <RunTrackerPanel customerSourceId={customer.sourceId} customerEmail={customer.email} campaignId={overview.campaignId ?? null} onFinished={handleRunFinished} onShare={handleShare} />
+        {effectiveView === "home" ? <>
+          {tracker.phase === "no_gps" ? <NoGpsNotice message={tracker.message} onManual={() => setView("manual")} /> : null}
+          <RunHomeView overview={overview} streak={social?.streak ?? 0} canStart={Boolean(overview.campaignId)} starting={tracker.phase === "starting"} error={tracker.phase === "error" ? tracker.message : null} onStart={(type) => void tracker.start(type)} onManual={() => setView("manual")} onRanking={() => setView("ranking")} />
+        </> : null}
 
-        <motion.section {...revealProps} transition={reduceMotion ? undefined : { ...runSpring, delay: 0.06 }} className="grid grid-cols-3 gap-2" aria-label="Ringkasan progres">
-          <div className="rounded-2xl border border-border bg-card p-3 shadow-sm"><p className="text-[10px] font-bold text-muted-foreground">Bulan ini</p><p className="mt-1 text-lg font-black tracking-tight">{formatKm(overview.monthlyDistanceKm)}</p><p className="text-[10px] font-bold text-primary">{monthlyPercent}%</p></div>
-          <div className="rounded-2xl border border-border bg-card p-3 shadow-sm"><p className="text-[10px] font-bold text-muted-foreground">Sprint</p><p className="mt-1 text-lg font-black tracking-tight">{formatKm(overview.weeklyDistanceKm)}</p><p className="text-[10px] font-bold text-primary">{weeklyPercent}%</p></div>
-          <div className="rounded-2xl border border-border bg-card p-3 shadow-sm"><p className="text-[10px] font-bold text-muted-foreground">Tier</p><p className="mt-1 text-lg font-black tracking-tight">{overview.tiers.length || 0}</p><p className="text-[10px] font-bold text-primary">level</p></div>
-        </motion.section>
+        {effectiveView === "live" ? <RunLiveView phase={tracker.phase === "paused" || tracker.phase === "finishing" || tracker.phase === "error" ? tracker.phase : "tracking"} points={tracker.points} distanceKm={tracker.distanceKm} paceSecondsPerKm={tracker.paceSecondsPerKm} elapsedSeconds={tracker.elapsedSeconds} accuracy={tracker.accuracy ?? null} targetKm={overview.monthlyTargetKm} doneKm={overview.monthlyDistanceKm} message={tracker.message} onPause={tracker.pause} onResume={tracker.resume} onFinish={() => void tracker.finish()} onRetry={() => void tracker.finish()} /> : null}
 
-        <motion.section {...revealProps} transition={reduceMotion ? undefined : { ...runSpring, delay: 0.08 }} className="rounded-[24px] border border-border bg-card p-4 shadow-sm" aria-labelledby="run-milestone-title">
-          <div className="flex items-center justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Milestone berikutnya</p><h2 id="run-milestone-title" className="mt-1 text-sm font-black">{nextTier ? nextTier.name : "Reward akan segera hadir"}</h2></div>{nextTier ? <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-black text-primary">{formatKm(nextTier.targetKm)} KM</span> : null}</div>
-          {nextTier ? <><div className="mt-3 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${progress(nextTier.distanceKm, nextTier.targetKm)}%` }} /></div><div className="mt-2 flex items-center justify-between text-[11px]"><span className="font-bold text-muted-foreground">{formatKm(nextTier.distanceKm)} KM terkumpul</span><span className="font-black text-primary">{nextTier.rewardName ?? "Reward terkunci"}</span></div></> : <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Tier dan reward akan muncul saat campaign aktif.</p>}
-        </motion.section>
+        {effectiveView === "result" && tracker.verdict ? <RunResultView verdict={tracker.verdict} activityType={tracker.activityType} streak={social?.streak ?? 0} onShare={() => handleShare(tracker.verdict!)} onAgain={() => { tracker.clearVerdict(); setView("home"); }} /> : null}
+        {effectiveView === "result" && !tracker.verdict ? <p className="text-sm text-muted-foreground">Belum ada hasil lari.</p> : null}
 
+        {effectiveView === "ranking" ? <>
+          <RunRankingView social={social} loading={socialLoading} error={socialError} tab={rankTab} setTab={setRankTab} scope={rankScope} setScope={setRankScope} overview={overview} busy={teamBusy} teamName={teamName} setTeamName={setTeamName} onTeam={(action, teamId) => void runTeam(action, teamId)} />
+        <div className="grid grid-cols-2 gap-2">
+          <motion.section {...revealProps} transition={reduceMotion ? undefined : { ...runSpring, delay: 0.18 }} className="rounded-[24px] border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2"><Trophy className="h-4 w-4 text-primary" /><h2 className="text-xs font-black">Tier & reward</h2></div>{overview.tiers.length > 0 ? <div className="mt-3 space-y-2">{overview.tiers.slice(0, 3).map((tier) => <div key={tier.code} className="rounded-2xl bg-muted/40 px-2.5 py-2"><div className="flex items-center gap-2"><span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${tier.status === "completed" || tier.status === "upgraded" ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary"}`}>{tier.status === "completed" || tier.status === "upgraded" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Trophy className="h-3.5 w-3.5" />}</span><p className="min-w-0 text-[11px] font-black">{tier.name}</p></div><p className="mt-1 text-[10px] text-muted-foreground">{formatKm(tier.distanceKm)} / {formatKm(tier.targetKm)} KM</p></div>)}</div> : <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Reward akan muncul saat campaign aktif.</p>}</motion.section>
+          <motion.section {...revealProps} transition={reduceMotion ? undefined : { ...runSpring, delay: 0.22 }} className="rounded-[24px] border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /><h2 className="text-xs font-black">Djiwa Pay</h2></div>{overview.rewardName ? <div className="mt-3 rounded-2xl bg-primary/5 px-2.5 py-2"><p className="text-[11px] font-black">{overview.rewardName}</p><p className="mt-1 text-[10px] text-muted-foreground">{overview.rewardStatus ?? "Tersedia"}{overview.rewardExpiresAt ? ` · s/d ${new Date(overview.rewardExpiresAt).toLocaleDateString("id-ID")}` : ""}</p>{overview.rewardId && ["unlocked", "credited"].includes(overview.rewardStatus ?? "") ? <button type="button" onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu", runRewardId: overview.rewardId ?? undefined } })} className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-primary px-2 py-2 text-[11px] font-black text-primary-foreground">Gunakan di Pesan</button> : null}</div> : <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Belum ada reward terbuka.</p>}</motion.section>
+        </div>
+        <motion.section {...revealProps} transition={reduceMotion ? undefined : { ...runSpring, delay: 0.26 }} className="rounded-[26px] border border-border bg-card p-4 shadow-sm"><div className="flex items-center gap-2"><Clock3 className="h-4 w-4 text-primary" /><h2 className="text-sm font-black">Riwayat aktivitas</h2></div>{overview.activities.length > 0 ? <div className="mt-3 space-y-2">{overview.activities.map((activity) => <div key={activity.id} className="flex items-center gap-3 border-b border-border/60 py-2 last:border-0"><div className="min-w-0 flex-1"><p className="text-xs font-black">{activity.activityType} · {formatKm(activity.distanceKm)} KM</p><p className="text-[11px] text-muted-foreground">{activity.activityDate || "Tanggal belum tersedia"}</p></div><span className={`rounded-full px-2 py-1 text-[10px] font-black ${activity.status === "accepted" ? "bg-emerald-100 text-emerald-700" : activity.status === "rejected" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>{statusLabel(activity.status)}</span></div>)}</div> : <p className="mt-3 rounded-2xl bg-muted/40 px-3 py-3 text-xs text-muted-foreground">Belum ada aktivitas tercatat. Upload bukti pertamamu untuk mulai!</p>}</motion.section>
+        </> : null}
+
+        {effectiveView === "manual" ? <>
         <motion.section {...revealProps} transition={reduceMotion ? undefined : { ...runSpring, delay: 0.1 }} className="rounded-[26px] border border-primary/20 bg-primary/5 p-4 shadow-sm" aria-labelledby="upload-area-title"><div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm"><MapPin className="h-5 w-5" /></span><div><h2 id="upload-area-title" className="text-sm font-black">Satu langkah lagi</h2><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Izinkan lokasi di area Djiwa Tentram untuk membuka upload bukti lari.</p></div></div><div className={`mt-3 rounded-2xl border px-3 py-3 text-xs ${locationReady ? "border-emerald-200 bg-emerald-50 text-emerald-950" : "border-border bg-card text-foreground"}`} role="status" aria-live="polite"><p className="font-black">{locationMessage(locationState)}</p>{locationState !== "inside" ? <><button type="button" onClick={detectLocation} disabled={locationState === "loading"} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-primary px-4 py-2.5 text-xs font-black text-primary-foreground disabled:opacity-60">{locationState === "loading" ? <RefreshCw className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />} {locationState === "idle" ? "Izinkan lokasi" : locationState === "permission_denied" ? "Coba lagi setelah izinkan" : "Coba deteksi ulang"}</button>{locationState === "permission_denied" ? <><button type="button" onClick={() => setShowLocationHelp((value) => !value)} className="mt-2 min-h-10 w-full rounded-[14px] border border-border bg-card px-3 py-2 text-xs font-black text-foreground">{showLocationHelp ? "Tutup panduan" : "Cara mengaktifkan lokasi"}</button>{showLocationHelp ? <div className="mt-2 rounded-2xl bg-muted/50 px-3 py-3 text-[11px] leading-relaxed text-muted-foreground"><p className="font-black text-foreground">Buka pengaturan situs di browser</p><p className="mt-1">Pilih ikon pengaturan di samping alamat situs, izinkan <span className="font-bold">Location/Lokasi</span>, lalu kembali ke halaman ini dan tekan coba lagi.</p></div> : null}</> : null}</> : <p className="mt-1 text-[11px]">Lokasi hanya digunakan untuk validasi upload ini.</p>}</div></motion.section>
 
         <motion.section id="run-manual" {...revealProps} transition={reduceMotion ? undefined : { ...runSpring, delay: 0.14 }} className="rounded-[26px] border border-border bg-card p-4 shadow-sm"><div className="flex items-center justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Langkah berikutnya</p><h2 className="mt-1 text-base font-black">Upload screenshot fitness</h2></div><CloudUpload className="h-5 w-5 text-primary" /></div><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Nama member, tanggal, jenis aktivitas, jarak, pace, durasi, dan jejak GPS harus terlihat jelas.</p><details className="mt-3 overflow-hidden rounded-2xl border border-primary/15 bg-primary/5"><summary className="cursor-pointer list-none px-3 py-3 text-xs font-black text-primary">Lihat contoh screenshot yang diterima</summary><div className="border-t border-primary/10 p-2"><img src="/djiwa-run-proof-example.webp" alt="Contoh screenshot aktivitas lari dengan tanggal, jarak, pace, dan durasi terlihat" loading="lazy" className="max-h-[28rem] w-full rounded-xl object-contain bg-slate-950" /><p className="px-1 pt-2 text-[11px] leading-relaxed text-muted-foreground">Pastikan tanggal aktivitas, jenis olahraga, jarak, pace, durasi, dan jejak GPS terbaca. Contoh ini memakai nama serta rute ilustrasi untuk privasi.</p></div></details><input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => chooseFile(event.target.files?.[0])} />{previewUrl ? <div className="mt-3 overflow-hidden rounded-2xl border border-border"><img src={previewUrl} alt="Preview screenshot aktivitas" className="max-h-72 w-full object-contain bg-muted/30" /><div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2"><span className="min-w-0 truncate text-[11px] font-bold">{selectedFile?.name}</span><button type="button" onClick={() => { setSelectedFile(null); setPreviewUrl(null); }} className="min-h-10 rounded-xl px-2 text-xs font-black text-destructive">Hapus</button></div></div> : null}{fileError ? <p className="mt-2 text-xs font-bold text-destructive" role="alert">{fileError}</p> : null}<button type="button" onClick={() => fileInputRef.current?.click()} disabled={!locationReady || submissionState === "processing"} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] border border-primary/30 bg-primary/10 px-4 py-2.5 text-sm font-black text-primary disabled:cursor-not-allowed disabled:opacity-50"><Upload className="h-4 w-4" /> Pilih screenshot</button>{selectedFile && locationReady && submissionState !== "confirmation" ? <button type="button" onClick={submit} disabled={submissionState === "processing"} className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-primary px-4 py-2.5 text-sm font-black text-primary-foreground disabled:opacity-60">{submissionState === "processing" ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CloudUpload className="h-4 w-4" />} Kirim untuk dibaca AI</button> : null}
@@ -203,15 +256,9 @@ function DjiwaRunPage() {
           {submissionState === "error" ? <p className="mt-3 text-xs font-bold text-destructive" role="alert">{submissionError}</p> : null}
           {submissionState === "rejected" && ocrResult ? <OcrRejected result={ocrResult} /> : null}
           {submissionState === "accepted" || submissionState === "review" ? <SubmissionResult result={submission} /> : null}</motion.section>
-
-        <div className="grid grid-cols-2 gap-2">
-          <motion.section {...revealProps} transition={reduceMotion ? undefined : { ...runSpring, delay: 0.18 }} className="rounded-[24px] border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2"><Trophy className="h-4 w-4 text-primary" /><h2 className="text-xs font-black">Tier & reward</h2></div>{overview.tiers.length > 0 ? <div className="mt-3 space-y-2">{overview.tiers.slice(0, 3).map((tier) => <div key={tier.code} className="rounded-2xl bg-muted/40 px-2.5 py-2"><div className="flex items-center gap-2"><span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${tier.status === "completed" || tier.status === "upgraded" ? "bg-emerald-100 text-emerald-700" : "bg-primary/10 text-primary"}`}>{tier.status === "completed" || tier.status === "upgraded" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Trophy className="h-3.5 w-3.5" />}</span><p className="min-w-0 text-[11px] font-black">{tier.name}</p></div><p className="mt-1 text-[10px] text-muted-foreground">{formatKm(tier.distanceKm)} / {formatKm(tier.targetKm)} KM</p></div>)}</div> : <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Reward akan muncul saat campaign aktif.</p>}</motion.section>
-          <motion.section {...revealProps} transition={reduceMotion ? undefined : { ...runSpring, delay: 0.22 }} className="rounded-[24px] border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /><h2 className="text-xs font-black">Djiwa Pay</h2></div>{overview.rewardName ? <div className="mt-3 rounded-2xl bg-primary/5 px-2.5 py-2"><p className="text-[11px] font-black">{overview.rewardName}</p><p className="mt-1 text-[10px] text-muted-foreground">{overview.rewardStatus ?? "Tersedia"}{overview.rewardExpiresAt ? ` · s/d ${new Date(overview.rewardExpiresAt).toLocaleDateString("id-ID")}` : ""}</p>{overview.rewardId && ["unlocked", "credited"].includes(overview.rewardStatus ?? "") ? <button type="button" onClick={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu", runRewardId: overview.rewardId ?? undefined } })} className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-primary px-2 py-2 text-[11px] font-black text-primary-foreground">Gunakan di Pesan</button> : null}</div> : <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Belum ada reward terbuka.</p>}</motion.section>
-        </div>
-
-        <RunSocialPanel customerSourceId={customer.sourceId} customerEmail={customer.email} campaignId={overview.campaignId ?? null} refreshKey={socialKey} />
-        <motion.section {...revealProps} transition={reduceMotion ? undefined : { ...runSpring, delay: 0.26 }} className="rounded-[26px] border border-border bg-card p-4 shadow-sm"><div className="flex items-center gap-2"><Clock3 className="h-4 w-4 text-primary" /><h2 className="text-sm font-black">Riwayat aktivitas</h2></div>{overview.activities.length > 0 ? <div className="mt-3 space-y-2">{overview.activities.map((activity) => <div key={activity.id} className="flex items-center gap-3 border-b border-border/60 py-2 last:border-0"><div className="min-w-0 flex-1"><p className="text-xs font-black">{activity.activityType} · {formatKm(activity.distanceKm)} KM</p><p className="text-[11px] text-muted-foreground">{activity.activityDate || "Tanggal belum tersedia"}</p></div><span className={`rounded-full px-2 py-1 text-[10px] font-black ${activity.status === "accepted" ? "bg-emerald-100 text-emerald-700" : activity.status === "rejected" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>{statusLabel(activity.status)}</span></div>)}</div> : <p className="mt-3 rounded-2xl bg-muted/40 px-3 py-3 text-xs text-muted-foreground">Belum ada aktivitas tercatat. Upload bukti pertamamu untuk mulai!</p>}</motion.section>
+        </> : null}
       </main>
+      {effectiveView === "home" || effectiveView === "ranking" ? <CustomerBottomNav items={navItems} /> : null}
     </div></div>
   );
 }

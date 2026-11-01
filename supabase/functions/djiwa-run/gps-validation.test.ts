@@ -46,6 +46,11 @@ test("dense samples: 300 m in 1 s is TELEPORT", () => {
   const v = validateGpsSession({ points: pts, activityType: "running", startedAtMs: START, nowMs: now(600) });
   assert.ok(v.flags.includes("TELEPORT"));
 });
+test("pause: a 5 minute pause is excluded from duration and pace", () => {
+  const a = track(3, 900); const b = track(3, 900).map((p) => ({ ...p, lat: p.lat + 0.03, t: p.t + 1200 * 1000 }));
+  const v = validateGpsSession({ points: [...a, ...b], activityType: "running", startedAtMs: START, nowMs: START + 2200 * 1000 });
+  assert.equal(v.status, "accepted"); assert.ok(v.durationSeconds >= 1790 && v.durationSeconds <= 1810); assert.ok((v.paceSecondsPerKm ?? 0) < 420);
+});
 test("daily caps", () => {
   assert.equal(dailyCapVerdict({ sessionsToday: 3, kmToday: 1, newKm: 1 }).ok, false);
   assert.equal(dailyCapVerdict({ sessionsToday: 1, kmToday: 14, newKm: 2 }).ok, false);
