@@ -56,3 +56,16 @@
   /* Only the neutral border token changes; semantic border utilities retain their colors. */
   --border: var(--app-separator);
 }
+
+/*
+ * iOS grouped canvas must be continuous. The root wrappers (body, .mobile-shell and the
+ * `min-h-app bg-background` wrapper in __root.tsx) were white while .app-page was #f2f2f7,
+ * so the grey stopped at the page height and the nav padding / footer / side gutters
+ * rendered white on every customer route. Same value as --app-canvas above.
+ */
+html:not(.dark),
+html:not(.dark) body,
+html:not(.dark) .mobile-shell,
+html:not(.dark) .mobile-shell > .min-h-app {
+  background-color: #f2f2f7;
+}
