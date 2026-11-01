@@ -16,7 +16,6 @@ import {
 	Pencil,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { toast } from "sonner";
 import { BookingTimelineSummary } from "@yumipos/web-shared/booking/timeline";
 import { fetchBookingTimeline } from "@/lib/api-helper";
@@ -749,12 +748,7 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 
 	const handleDeleteBooking = async (id: Id<"bookingOrders">, paymentStatus?: string) => {
 		if (paymentStatus === "paid") {
-			const cancelPaid = await requestAdminConfirm({
-				title: "Batalkan booking lunas?",
-				message: "Booking sudah lunas. Booking akan dibatalkan dan tetap disimpan sebagai histori. Lanjutkan?",
-				confirmText: "Batalkan booking",
-			});
-			if (!cancelPaid) return;
+			if (!confirm("Booking sudah lunas. Booking akan dibatalkan dan tetap disimpan sebagai histori. Lanjutkan?")) return;
 			const tid = toast.loading("Membatalkan booking...");
 			try {
 				await updateBookingStatus({ id, bookingStatus: "cancelled" as any });
@@ -765,12 +759,7 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 			}
 			return;
 		}
-		const removeBooking = await requestAdminConfirm({
-			title: "Hapus booking?",
-			message: "Apakah Anda yakin ingin menghapus booking ini? Tindakan ini tidak dapat dibatalkan.",
-			confirmText: "Hapus",
-		});
-		if (!removeBooking) return;
+		if (!confirm("Apakah Anda yakin ingin menghapus booking ini? Tindakan ini tidak dapat dibatalkan.")) return;
 		
 		const tid = toast.loading("Menghapus booking...");
 		try {
@@ -891,12 +880,7 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 
 	const handleBulkDeleteCapacity = async () => {
 		if (selectedCapacityIds.length === 0 || isDeletingCapacity) return;
-		const removeCapacity = await requestAdminConfirm({
-			title: "Hapus pengaturan kapasitas?",
-			message: `Hapus ${selectedCapacityIds.length} pengaturan kapasitas terpilih? Tanggal akan kembali memakai kapasitas default.`,
-			confirmText: "Hapus",
-		});
-		if (!removeCapacity) return;
+		if (!confirm(`Hapus ${selectedCapacityIds.length} pengaturan kapasitas terpilih? Tanggal akan kembali memakai kapasitas default.`)) return;
 		setIsDeletingCapacity(true);
 		const tid = toast.loading(`Menghapus ${selectedCapacityIds.length} kapasitas...`);
 		try {
@@ -1045,7 +1029,7 @@ export function BookingSettingsPage({ forcedTab }: { forcedTab?: BookingWorkspac
 				<div className="flex gap-2">
 					<a
 						className="flex items-center gap-1.5 rounded-xl border border-border bg-background px-4 py-2.5 font-medium text-foreground text-sm hover:bg-muted transition-colors"
-						href={(import.meta.env.VITE_PUBLIC_BOOKING_URL as string | undefined)?.trim() || ""}
+						href={(import.meta.env.VITE_PUBLIC_BOOKING_URL as string | undefined)?.trim() || "https://booking.djiwatentram.web.id/"}
 						rel="noreferrer"
 						target="_blank"
 					>

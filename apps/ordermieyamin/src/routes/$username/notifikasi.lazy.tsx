@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useCustomerOrders } from "@/hooks/use-customer-data";
 import { currency } from "@/components/customer/types";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { CustomerSectionSkeleton } from "@/components/customer/customer-states";
 
 export const Route = createLazyFileRoute("/$username/notifikasi")({
@@ -83,7 +82,7 @@ function NotifikasiPage() {
 			const statusKey = order.status?.toLowerCase?.() ?? "";
 			return {
 				id: order.id,
-				title: `Pesanan #${getDisplayOrderNumber(order.orderNumber, { sequence: (order as any).dailyReceiptNo ?? (order as any).daily_receipt_no, createdAt: order.createdAt, source: (order as any).source, businessUnit: "ordermieyamin", orderType: order.orderType })}`,
+				title: `Pesanan #${order.orderNumber || order.id.slice(0, 8)}`,
 				message: `Pesananmu (${currency(order.totalAmount)}) ${STATUS_MESSAGE[statusKey] ?? `berstatus ${order.status}`}.`,
 				createdAt: order.createdAt,
 				unread: order.createdAt > lastSeen,

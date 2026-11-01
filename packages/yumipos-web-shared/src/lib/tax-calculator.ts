@@ -1,5 +1,3 @@
-import { normalizePaymentMethod } from "./payment-contract";
-
 /**
  * Canonical, framework-free order tax calculator shared by POS, Admin, and Customer.
  *
@@ -116,21 +114,19 @@ export function roundToThousandHalfDown(amount: number): number {
 /** Resolve payment provenance before applying the cashier-cash exemption. */
 export function resolvePaymentChannel(input: Pick<TaxCalculationInput, "source" | "paymentMethod" | "paymentChoice" | "paymentReceiptKind">): PaymentChannelCanonical {
   const source = normalized(input.source);
+  const method = normalized(input.paymentMethod);
   const choice = normalized(input.paymentChoice);
-  const canonical = normalizePaymentMethod({
-    paymentMethod: input.paymentMethod,
-    paymentReceiptKind: input.paymentReceiptKind,
-  });
+  const receiptKind = normalized(input.paymentReceiptKind);
 
   if (source === "pos") {
-    if (canonical === "cashier_cash") return "pos_cashier_cash";
-    if (canonical === "qris_mayar") return "pos_cashier_qris";
+    if (method === "cash" || method === "tunai") return "pos_cashier_cash";
+    if (["qris", "qris_mayar"].includes(method)) return "pos_cashier_qris";
   }
 
   if (source === "customer" || source === "customer_self_service") {
-    if (choice === "wallet" || canonical === "djiwa_pay") return "customer_wallet";
-    if (choice === "cashier" || canonical === "cashier_cash") return "customer_cashier";
-    if (choice === "mayar" || canonical === "qris_mayar") return "customer_qris";
+    if (choice === "wallet" || method === "wallet") return "customer_wallet";
+    if (choice === "cashier" || receiptKind === "cashier_pending") return "customer_cashier";
+    if (choice === "mayar" || method === "qris" || method === "qris_mayar") return "customer_qris";
   }
 
   return "unknown";

@@ -1,7 +1,7 @@
 {
-  "version": "0.2.555",
-  "commitHash": "9ed9104",
-  "message": "fix(pos): recover legacy paid checkout retries",
+  "version": "0.2.557",
+  "commitHash": "7701e09",
+  "message": "fix(customer): normalize legacy product image URLs",
   "buildDate": "2026-10-26",
-  "generatedAt": "2026-10-26T08:44:07.982Z"
+  "generatedAt": "2026-10-26T17:01:17.982Z"
 }

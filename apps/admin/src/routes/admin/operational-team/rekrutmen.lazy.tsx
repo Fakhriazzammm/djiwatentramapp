@@ -1,4 +1,3 @@
-import { toast } from "sonner";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
 import {
@@ -272,7 +271,7 @@ function AdminRekrutmen() {
   async function saveStatus() {
     if (!modalRecordId) return;
     if (config.readOnly) {
-      toast.info("Data onboarding bersumber dari workflow onboarding dan hanya dapat dibaca di sini.");
+      alert("Data onboarding bersumber dari workflow onboarding dan hanya dapat dibaca di sini.");
       closeModal();
       return;
     }
@@ -290,7 +289,7 @@ function AdminRekrutmen() {
       closeModal();
       await fetchAllData();
     } catch (e: any) {
-      toast.error("Gagal update: " + (e.message || "unknown"));
+      alert("Gagal update: " + (e.message || "unknown"));
     } finally {
       setSaving(false);
     }

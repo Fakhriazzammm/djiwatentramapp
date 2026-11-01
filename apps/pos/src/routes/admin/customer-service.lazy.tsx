@@ -19,9 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useHybridCustomerServiceRequests } from "@/hooks/use-hybrid-finance-analytics-data";
 import { useHybridUpdateCustomerServiceStatus } from "@/hooks/use-hybrid-write-actions";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
-import { AnimatedCount } from "@yumipos/web-shared/components/ui/animated-metric";
 
 export const Route = createLazyFileRoute("/admin/customer-service")({
 	component: CustomerServiceRequestsPage,
@@ -172,7 +170,7 @@ function CustomerServiceRequestsPage() {
 									</div>
 									<div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
 										<span>Brand: {request.brandSlug}</span>
-										{request.orderNumber ? <span>Order: {getDisplayOrderNumber(request.orderNumber, { source: request.source, brandSlug: request.brandSlug })}</span> : null}
+										{request.orderNumber ? <span>Order: {request.orderNumber}</span> : null}
 									</div>
 									{request.notes ? (
 										<div className="rounded-2xl bg-muted/40 px-3 py-2 text-sm text-foreground">
@@ -246,7 +244,7 @@ function SummaryCard({
 				{icon}
 				<span className="text-xs font-semibold uppercase tracking-wider">{label}</span>
 			</div>
-			<p className="mt-2 text-2xl font-black"><AnimatedCount value={value} /></p>
+			<p className="mt-2 text-2xl font-black">{value}</p>
 		</div>
 	);
 }

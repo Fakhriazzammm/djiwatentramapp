@@ -8,7 +8,6 @@ import { exportRecruitmentCsv, exportRecruitmentPdf, exportRecruitmentSpreadshee
 type ApiCandidate = RecruitmentCandidate & { name?: string; phone?: string; position?: string; workType?: string; applicationDate?: string; cvUrl?: string; createdAt?: string; gender?: string; birthDate?: string; socialMedia?: string; airtableId?: string };
 type ApiPosition = RecruitmentPosition & { isOpen?: boolean; sortOrder?: number };
 const value = (row: Record<string, unknown>, ...keys: string[]) => keys.map((key) => row[key]).find((item) => item !== undefined && item !== null && item !== "") as string | number | undefined;
-const BULK_STATUS_OPTIONS = ["Application Received", "Screening", "Interview Completed", "Offer", "Hired", "Onboarding", "Selesai", "Rejected", "Withdrawn"];
 
 function normalizeCandidate(row: ApiCandidate): RecruitmentCandidate {
   return { ...row, airtable_id: String(value(row, "airtable_id", "airtableId") ?? ""), jenis_kelamin: String(value(row, "jenis_kelamin", "gender") ?? ""), tanggal_lahir: String(value(row, "tanggal_lahir", "birthDate") ?? ""), sosial_media: String(value(row, "sosial_media", "socialMedia") ?? ""), nama_lengkap: String(value(row, "nama_lengkap", "name") ?? ""), email: String(value(row, "email") ?? ""), nomor_telepon: String(value(row, "nomor_telepon", "phone") ?? ""), posisi_dilamar: String(value(row, "posisi_dilamar", "position") ?? ""), tipe_kerja: String(value(row, "tipe_kerja", "workType") ?? ""), application_date: String(value(row, "application_date", "applicationDate") ?? ""), cv_url: String(value(row, "cv_url", "cvUrl") ?? ""), created_at: String(value(row, "created_at", "createdAt") ?? "") };
@@ -33,20 +32,7 @@ export function RecruitmentDashboardPage() {
   const positions = useMemo(() => listData<ApiPosition>(positionsQuery.data), [positionsQuery.data]);
   const interviews = useMemo(() => listData<RecruitmentInterview>(interviewsQuery.data), [interviewsQuery.data]);
   const report = reportsQuery.data as (typeof reportsQuery.data & { byStatus?: Array<{ status: string; count: number }>; byPosition?: Array<{ position: string; count: number }> }) | null;
-  const normalizedStatusCounts = useMemo(() => {
-    if (candidates.length) {
-      return candidates.reduce<Record<string, number>>((result, candidate) => {
-        const status = candidate.status === "Applied" ? "Application Received" : candidate.status || "Unknown";
-        result[status] = (result[status] || 0) + 1;
-        return result;
-      }, {});
-    }
-    return Object.entries(statusCounts).reduce<Record<string, number>>((result, [rawStatus, count]) => {
-      const status = rawStatus === "Applied" ? "Application Received" : rawStatus;
-      result[status] = (result[status] || 0) + Number(count || 0);
-      return result;
-    }, {});
-  }, [candidates, statusCounts]);
+  const normalizedStatusCounts = useMemo(() => candidates.reduce<Record<string, number>>((result, candidate) => { const status = candidate.status === "Applied" ? "Application Received" : candidate.status || "Unknown"; result[status] = (result[status] || 0) + 1; return result; }, { ...statusCounts }), [candidates, statusCounts]);
   const totalCandidates = candidates.length || dashboard?.totalCandidates || 0;
   const activeCandidates = Math.max(totalCandidates - (normalizedStatusCounts.Rejected || 0) - (normalizedStatusCounts.Withdrawn || 0) - (normalizedStatusCounts.Selesai || 0), 0);
   const newCandidates = candidates.filter((candidate) => candidate.created_at && Date.now() - new Date(candidate.created_at).getTime() <= 7 * 24 * 60 * 60 * 1000).length;
@@ -57,7 +43,7 @@ export function RecruitmentDashboardPage() {
   const loading = dashboardQuery.loading || candidatesQuery.loading || positionsQuery.loading || reportsQuery.loading || interviewsQuery.loading;
   const error = dashboardQuery.error || candidatesQuery.error || positionsQuery.error || reportsQuery.error || interviewsQuery.error;
   const reload = () => { dashboardQuery.reload(); candidatesQuery.reload(); positionsQuery.reload(); reportsQuery.reload(); interviewsQuery.reload(); };
-  return <RecruitmentShell title="Recruitment Dashboard" description="Ringkasan lengkap kandidat, pipeline, interview, posisi, dan analisis rekrutmen." actions={<RefreshButton onClick={reload} loading={loading} />}><PageState loading={loading} error={error} onRetry={reload}><KpiStrip items={[{ label: "Total kandidat", value: totalCandidates }, { label: "Kandidat aktif", value: activeCandidates }, { label: "Lamaran 7 hari", value: newCandidates }, { label: "Interview mendatang", value: upcomingInterviews.length }, { label: "Hired", value: normalizedStatusCounts.Hired || 0 }, { label: "Posisi terbuka", value: positions.filter((position) => position.isOpen ?? position.is_open).length }]} /><div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]"><DashboardBars title="Distribusi tahap rekrutmen" items={statusChart} /><DashboardBars title="Kandidat berdasarkan posisi" items={positionChart} tone="violet" /></div><div className="grid gap-4 lg:grid-cols-[1.25fr_1fr]"><SectionCard title="Analisis cepat" icon={<FileBarChart className="h-4 w-4" />}><div className="grid gap-3 sm:grid-cols-2"><div className="rounded-xl bg-blue-50 p-3"><p className="text-xs text-blue-700">Application Received</p><p className="mt-1 text-2xl font-semibold text-blue-900">{normalizedStatusCounts["Application Received"] || 0}</p><p className="mt-1 text-xs text-blue-700">Kandidat yang perlu diproses</p></div><div className="rounded-xl bg-violet-50 p-3"><p className="text-xs text-violet-700">Interview conversion</p><p className="mt-1 text-2xl font-semibold text-violet-900">{totalCandidates ? `${Math.round(((normalizedStatusCounts["Interview Scheduled"] || 0) / totalCandidates) * 100)}%` : "—"}</p><p className="mt-1 text-xs text-violet-700">Sudah masuk jadwal interview</p></div><div className="rounded-xl bg-emerald-50 p-3"><p className="text-xs text-emerald-700">Hired + Selesai</p><p className="mt-1 text-2xl font-semibold text-emerald-900">{(normalizedStatusCounts.Hired || 0) + (normalizedStatusCounts.Selesai || 0)}</p><p className="mt-1 text-xs text-emerald-700">Kandidat mencapai tahap akhir</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="text-xs text-amber-700">Perlu perhatian</p><p className="mt-1 text-2xl font-semibold text-amber-900">{(normalizedStatusCounts.Screening || 0) + (normalizedStatusCounts.Offer || 0)}</p><p className="mt-1 text-xs text-amber-700">Screening dan offer terbuka</p></div></div></SectionCard><SectionCard title="Interview mendatang" icon={<CalendarClock className="h-4 w-4" />}><div className="space-y-3">{upcomingInterviews.length ? upcomingInterviews.slice(0, 5).map((item) => <div key={item.id} className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0"><div><p className="font-medium">{item.candidate_name || candidates.find((candidate) => candidate.id === item.candidate_id)?.nama_lengkap || item.candidate_id || "Kandidat"}</p><p className="text-xs text-slate-500">{item.scheduled_at ? new Date(item.scheduled_at).toLocaleString("id-ID") : "Jadwal belum tersedia"}</p></div><StatusBadge status={item.status || "Scheduled"} /></div>) : <p className="text-sm text-slate-500">Belum ada interview mendatang.</p>}</div></SectionCard></div><div className="grid gap-4 lg:grid-cols-2"><SectionCard title="Kandidat terbaru" icon={<UsersRound className="h-4 w-4" />}><div className="space-y-3">{recent.length ? recent.map((candidate) => <div key={candidate.id} className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0"><div className="min-w-0"><p className="truncate font-medium">{candidate.nama_lengkap || "Tanpa nama"}</p><p className="truncate text-xs text-slate-500">{candidate.posisi_dilamar || "Posisi belum diisi"} · {candidate.application_date || "Tanggal belum ada"}</p></div><StatusBadge status={candidate.status} /></div>) : <p className="text-sm text-slate-500">Belum ada kandidat terbaru.</p>}</div></SectionCard><SectionCard title="Posisi lowongan" icon={<FileBarChart className="h-4 w-4" />}><div className="space-y-3">{positions.length ? positions.slice(0, 7).map((position) => <div key={position.id} className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0"><div className="min-w-0"><p className="truncate font-medium">{position.title}</p><p className="truncate text-xs text-slate-500">{position.summary || "Ringkasan belum tersedia"}</p></div><span className={`shrink-0 text-xs font-medium ${position.isOpen ?? position.is_open ? "text-emerald-600" : "text-slate-400"}`}>{position.isOpen ?? position.is_open ? "Open" : "Closed"}</span></div>) : <p className="text-sm text-slate-500">Belum ada posisi.</p>}</div></SectionCard></div><div className="flex flex-wrap gap-2"><span className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700"><ArrowUpRight className="h-3.5 w-3.5" />Gunakan Kandidat untuk detail dan bulk action</span><span className="inline-flex items-center gap-1.5 rounded-xl bg-violet-50 px-3 py-2 text-xs font-medium text-violet-700"><CalendarDays className="h-3.5 w-3.5" />Gunakan Interview untuk jadwal dan hasil interview</span></div></PageState></RecruitmentShell>;
+  return <RecruitmentShell title="Recruitment Dashboard" description="Ringkasan lengkap kandidat, pipeline, interview, posisi, dan analisis rekrutmen." actions={<RefreshButton onClick={reload} loading={loading} />}><PageState loading={loading} error={error} onRetry={reload}><KpiStrip items={[{ label: "Total kandidat", value: totalCandidates }, { label: "Kandidat aktif", value: activeCandidates }, { label: "Lamaran 7 hari", value: newCandidates }, { label: "Interview mendatang", value: upcomingInterviews.length }, { label: "Hired", value: normalizedStatusCounts.Hired || 0 }, { label: "Posisi terbuka", value: positions.filter((position) => position.isOpen ?? position.is_open).length }]} /><div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]"><DashboardBars title="Distribusi tahap rekrutmen" items={statusChart} /><DashboardBars title="Kandidat berdasarkan posisi" items={positionChart} tone="violet" /></div><div className="grid gap-4 lg:grid-cols-[1.25fr_1fr]"><SectionCard title="Analisis cepat" icon={<FileBarChart className="h-4 w-4" />}><div className="grid gap-3 sm:grid-cols-2"><div className="rounded-xl bg-blue-50 p-3"><p className="text-xs text-blue-700">Application Received</p><p className="mt-1 text-2xl font-semibold text-blue-900">{normalizedStatusCounts["Application Received"] || 0}</p><p className="mt-1 text-xs text-blue-700">Kandidat yang perlu diproses</p></div><div className="rounded-xl bg-violet-50 p-3"><p className="text-xs text-violet-700">Interview conversion</p><p className="mt-1 text-2xl font-semibold text-violet-900">{totalCandidates ? `${Math.round(((normalizedStatusCounts["Interview Scheduled"] || 0) / totalCandidates) * 100)}%` : "—"}</p><p className="mt-1 text-xs text-violet-700">Sudah masuk jadwal interview</p></div><div className="rounded-xl bg-emerald-50 p-3"><p className="text-xs text-emerald-700">Hired + Selesai</p><p className="mt-1 text-2xl font-semibold text-emerald-900">{(normalizedStatusCounts.Hired || 0) + (normalizedStatusCounts.Selesai || 0)}</p><p className="mt-1 text-xs text-emerald-700">Kandidat mencapai tahap akhir</p></div><div className="rounded-xl bg-amber-50 p-3"><p className="text-xs text-amber-700">Perlu perhatian</p><p className="mt-1 text-2xl font-semibold text-amber-900">{(normalizedStatusCounts.Screening || 0) + (normalizedStatusCounts.Offer || 0)}</p><p className="mt-1 text-xs text-amber-700">Screening dan offer terbuka</p></div></div></SectionCard><SectionCard title="Interview mendatang" icon={<CalendarClock className="h-4 w-4" />}><div className="space-y-3">{upcomingInterviews.length ? upcomingInterviews.slice(0, 5).map((item) => <div key={item.id} className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0"><div><p className="font-medium">{item.candidate_name || item.candidate_id || "Kandidat"}</p><p className="text-xs text-slate-500">{item.scheduled_at ? new Date(item.scheduled_at).toLocaleString("id-ID") : "Jadwal belum tersedia"}</p></div><StatusBadge status={item.status || "Scheduled"} /></div>) : <p className="text-sm text-slate-500">Belum ada interview mendatang.</p>}</div></SectionCard></div><div className="grid gap-4 lg:grid-cols-2"><SectionCard title="Kandidat terbaru" icon={<UsersRound className="h-4 w-4" />}><div className="space-y-3">{recent.length ? recent.map((candidate) => <div key={candidate.id} className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0"><div className="min-w-0"><p className="truncate font-medium">{candidate.nama_lengkap || "Tanpa nama"}</p><p className="truncate text-xs text-slate-500">{candidate.posisi_dilamar || "Posisi belum diisi"} · {candidate.application_date || "Tanggal belum ada"}</p></div><StatusBadge status={candidate.status} /></div>) : <p className="text-sm text-slate-500">Belum ada kandidat terbaru.</p>}</div></SectionCard><SectionCard title="Posisi lowongan" icon={<FileBarChart className="h-4 w-4" />}><div className="space-y-3">{positions.length ? positions.slice(0, 7).map((position) => <div key={position.id} className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0"><div className="min-w-0"><p className="truncate font-medium">{position.title}</p><p className="truncate text-xs text-slate-500">{position.summary || "Ringkasan belum tersedia"}</p></div><span className={`shrink-0 text-xs font-medium ${position.isOpen ?? position.is_open ? "text-emerald-600" : "text-slate-400"}`}>{position.isOpen ?? position.is_open ? "Open" : "Closed"}</span></div>) : <p className="text-sm text-slate-500">Belum ada posisi.</p>}</div></SectionCard></div><div className="flex flex-wrap gap-2"><span className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700"><ArrowUpRight className="h-3.5 w-3.5" />Gunakan Kandidat untuk detail dan bulk action</span><span className="inline-flex items-center gap-1.5 rounded-xl bg-violet-50 px-3 py-2 text-xs font-medium text-violet-700"><CalendarDays className="h-3.5 w-3.5" />Gunakan Interview untuk jadwal dan hasil interview</span></div></PageState></RecruitmentShell>;
 }
 
 export function CandidatesPage() {
@@ -66,11 +52,6 @@ export function CandidatesPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [positionFilter, setPositionFilter] = useState("");
-  const [genderFilter, setGenderFilter] = useState("");
-  const [workTypeFilter, setWorkTypeFilter] = useState("");
-  const [cvFilter, setCvFilter] = useState("");
-  const [applicationFrom, setApplicationFrom] = useState("");
-  const [applicationTo, setApplicationTo] = useState("");
   const [sortBy, setSortBy] = useState("applicationDate");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [selected, setSelected] = useState<RecruitmentCandidate | null>(null);
@@ -81,42 +62,27 @@ export function CandidatesPage() {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [confirmBulkStatus, setConfirmBulkStatus] = useState(false);
   const allCandidates = useMemo(() => listData<ApiCandidate>(query.data).map(normalizeCandidate), [query.data]);
-  const statuses = useMemo(() => Array.from(new Set(allCandidates.map((candidate) => candidate.status).filter((status): status is string => Boolean(status)))).sort(), [allCandidates]);
-  const positions = useMemo(() => Array.from(new Set(allCandidates.map((candidate) => candidate.posisi_dilamar).filter((position): position is string => Boolean(position)))).sort(), [allCandidates]);
-  const genders = useMemo(() => Array.from(new Set(allCandidates.map((candidate) => candidate.jenis_kelamin).filter((gender): gender is string => Boolean(gender)))).sort(), [allCandidates]);
-  const workTypes = useMemo(() => Array.from(new Set(allCandidates.map((candidate) => candidate.tipe_kerja).filter((workType): workType is string => Boolean(workType)))).sort(), [allCandidates]);
+  const statuses = useMemo(() => Array.from(new Set(allCandidates.map((candidate) => candidate.status).filter(Boolean))).sort(), [allCandidates]);
+  const positions = useMemo(() => Array.from(new Set(allCandidates.map((candidate) => candidate.posisi_dilamar).filter(Boolean))).sort(), [allCandidates]);
   const candidates = useMemo(() => {
     const keyword = search.trim().toLowerCase();
     return [...allCandidates].filter((candidate) => {
-      const haystack = `${candidate.nama_lengkap} ${candidate.email ?? ""} ${candidate.posisi_dilamar ?? ""} ${candidate.nomor_telepon ?? ""} ${candidate.sosial_media ?? ""} ${candidate.notes ?? ""}`.toLowerCase();
-      const applied = (candidate.application_date || "").slice(0, 10);
-      const hasCv = Boolean(candidate.cv_url);
-      return (!keyword || haystack.includes(keyword))
-        && (!statusFilter || candidate.status === statusFilter)
-        && (!positionFilter || candidate.posisi_dilamar === positionFilter)
-        && (!genderFilter || candidate.jenis_kelamin === genderFilter)
-        && (!workTypeFilter || candidate.tipe_kerja === workTypeFilter)
-        && (!cvFilter || (cvFilter === "available" ? hasCv : !hasCv))
-        && (!applicationFrom || (applied && applied >= applicationFrom))
-        && (!applicationTo || (applied && applied <= applicationTo));
+      const haystack = `${candidate.nama_lengkap} ${candidate.email ?? ""} ${candidate.posisi_dilamar ?? ""}`.toLowerCase();
+      return (!keyword || haystack.includes(keyword)) && (!statusFilter || candidate.status === statusFilter) && (!positionFilter || candidate.posisi_dilamar === positionFilter);
     }).sort((a, b) => {
       const values: Record<string, (candidate: RecruitmentCandidate) => string> = {
         name: (candidate) => candidate.nama_lengkap || "",
-        gender: (candidate) => candidate.jenis_kelamin || "",
-        birthDate: (candidate) => candidate.tanggal_lahir || "",
         position: (candidate) => candidate.posisi_dilamar || "",
         status: (candidate) => candidate.status || "",
         phone: (candidate) => candidate.nomor_telepon || "",
-        cv: (candidate) => candidate.cv_url ? "1" : "0",
         applicationDate: (candidate) => candidate.application_date || "",
       };
       const left = values[sortBy]?.(a) ?? "";
       const right = values[sortBy]?.(b) ?? "";
       return left.localeCompare(right, "id", { numeric: true }) * (sortDirection === "asc" ? 1 : -1);
     });
-  }, [allCandidates, applicationFrom, applicationTo, cvFilter, genderFilter, positionFilter, search, sortBy, sortDirection, statusFilter, workTypeFilter]);
+  }, [allCandidates, positionFilter, search, sortBy, sortDirection, statusFilter]);
   const handleSort = (key: string) => { if (sortBy === key) setSortDirection((value) => value === "asc" ? "desc" : "asc"); else { setSortBy(key); setSortDirection("asc"); } };
   const handleStatusChange = async (candidate: RecruitmentCandidate, status: string) => {
     await mutate(`/candidates/${encodeURIComponent(candidate.id)}`, { method: "PATCH", body: JSON.stringify({ status }) });
@@ -127,12 +93,12 @@ export function CandidatesPage() {
     setBulkBusy(true); setBulkError(null);
     try {
       await mutate("/candidates/bulk", { method: "POST", body: JSON.stringify({ action, ids: selectedIds, ...(action === "status" ? { status: bulkStatus } : {}) }) });
-      setSelectedIds([]); setBulkStatus(""); setConfirmDelete(false); setConfirmBulkStatus(false); await query.reload();
+      setSelectedIds([]); setBulkStatus(""); setConfirmDelete(false); await query.reload();
     } catch (reason) { setBulkError(reason instanceof Error ? reason.message : "Aksi bulk gagal diproses"); }
     finally { setBulkBusy(false); }
   };
-  const toggleAll = (checked: boolean) => setSelectedIds(checked ? candidates.slice(0, 200).map((candidate) => candidate.id) : []);
-  const toggleCandidate = (id: string) => setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : current.length < 200 ? [...current, id] : current);
+  const toggleAll = (checked: boolean) => setSelectedIds(checked ? candidates.map((candidate) => candidate.id) : []);
+  const toggleCandidate = (id: string) => setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
   const runExport = async (kind: "csv" | "xlsx" | "pdf") => {
     if (!candidates.length) return;
     setExporting(kind); setExportError(null);
@@ -141,20 +107,14 @@ export function CandidatesPage() {
     finally { setExporting(null); }
   };
   return <RecruitmentShell title="Kandidat" description="Review kandidat dari endpoint recruitment yang terproteksi." actions={<RefreshButton onClick={query.reload} loading={query.loading || Boolean(exporting) || bulkBusy} />}><PageState loading={query.loading} error={query.error} onRetry={query.reload}><RecruitmentToolbar search={search} onSearch={setSearch}>
-    {selectedIds.length > 0 && <><span className="mr-1 text-xs font-semibold text-blue-700">{selectedIds.length} dipilih</span><select aria-label="Status bulk kandidat" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" disabled={bulkBusy} onChange={(event) => setBulkStatus(event.target.value)} value={bulkStatus}><option value="">Pilih status...</option>{BULK_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}</select><button type="button" disabled={!bulkStatus || bulkBusy} onClick={() => setConfirmBulkStatus(true)} className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">Ubah status</button><button type="button" disabled={bulkBusy} onClick={() => setConfirmDelete(true)} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 text-sm font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50"><Trash2 className="h-4 w-4" />Hapus</button><button type="button" disabled={bulkBusy} onClick={() => setSelectedIds([])} className="h-10 rounded-xl px-3 text-sm font-medium text-slate-600 hover:bg-slate-100">Batal pilih</button></>}
+    {selectedIds.length > 0 && <><span className="mr-1 text-xs font-semibold text-blue-700">{selectedIds.length} dipilih</span><select aria-label="Status bulk kandidat" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" disabled={bulkBusy} onChange={(event) => setBulkStatus(event.target.value)} value={bulkStatus}><option value="">Pilih status...</option>{statuses.map((status) => <option key={status} value={status}>{status}</option>)}</select><button type="button" disabled={!bulkStatus || bulkBusy} onClick={() => void runBulk("status")} className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">Ubah status</button><button type="button" disabled={bulkBusy} onClick={() => setConfirmDelete(true)} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 text-sm font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50"><Trash2 className="h-4 w-4" />Hapus</button><button type="button" disabled={bulkBusy} onClick={() => setSelectedIds([])} className="h-10 rounded-xl px-3 text-sm font-medium text-slate-600 hover:bg-slate-100">Batal pilih</button></>}
     <button type="button" disabled={!candidates.length || Boolean(exporting) || bulkBusy} onClick={() => runExport("xlsx")} className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50" title="Spreadsheet Excel"><FileSpreadsheet className="h-4 w-4" />Excel</button>
     <button type="button" disabled={!candidates.length || Boolean(exporting)} onClick={() => runExport("csv")} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50" title="CSV kompatibel Excel"><Download className="h-4 w-4" />CSV</button>
     <button type="button" disabled={!candidates.length || Boolean(exporting)} onClick={() => runExport("pdf")} className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50" title="PDF untuk dibagikan atau dicetak"><FileText className="h-4 w-4" />PDF</button>
     <select aria-label="Filter status" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" onChange={(event) => setStatusFilter(event.target.value)} value={statusFilter}><option value="">Semua status</option>{statuses.map((status) => <option key={status} value={status}>{status}</option>)}</select>
     <select aria-label="Filter posisi" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" onChange={(event) => setPositionFilter(event.target.value)} value={positionFilter}><option value="">Semua posisi</option>{positions.map((position) => <option key={position} value={position}>{position}</option>)}</select>
-    <select aria-label="Filter jenis kelamin" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" onChange={(event) => setGenderFilter(event.target.value)} value={genderFilter}><option value="">Semua gender</option>{genders.map((gender) => <option key={gender} value={gender}>{gender}</option>)}</select>
-    <select aria-label="Filter tipe kerja" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" onChange={(event) => setWorkTypeFilter(event.target.value)} value={workTypeFilter}><option value="">Semua tipe kerja</option>{workTypes.map((workType) => <option key={workType} value={workType}>{workType}</option>)}</select>
-    <select aria-label="Filter CV" className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm" onChange={(event) => setCvFilter(event.target.value)} value={cvFilter}><option value="">Semua CV</option><option value="available">Ada CV</option><option value="missing">Belum ada CV</option></select>
-    <input aria-label="Dari tanggal melamar" type="date" value={applicationFrom} onChange={(event) => setApplicationFrom(event.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-2 text-sm" />
-    <input aria-label="Sampai tanggal melamar" type="date" value={applicationTo} onChange={(event) => setApplicationTo(event.target.value)} className="h-10 rounded-xl border border-slate-200 bg-white px-2 text-sm" />
-    <button type="button" onClick={() => { setStatusFilter(""); setPositionFilter(""); setGenderFilter(""); setWorkTypeFilter(""); setCvFilter(""); setApplicationFrom(""); setApplicationTo(""); setSearch(""); }} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-600 hover:bg-slate-50">Reset filter</button>
     <span className="text-xs text-slate-500">{candidates.length} dari {allCandidates.length} kandidat</span>
-  </RecruitmentToolbar>{(exportError || bulkError) && <p className="text-sm text-rose-600" role="alert">{exportError || bulkError}</p>}<CandidateTable candidates={candidates} onSelect={setSelected} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} onStatusChange={handleStatusChange} selectedIds={selectedIds} onToggle={toggleCandidate} onToggleAll={toggleAll} /><CandidateDetailSheet candidate={selected} onClose={() => setSelected(null)} /><ConfirmActionDialog open={confirmBulkStatus} title={`Ubah status ${selectedIds.length} kandidat?`} description={`Semua kandidat terpilih akan diubah ke status ${bulkStatus}. Perubahan akan tercatat di riwayat kandidat.`} onCancel={() => setConfirmBulkStatus(false)} onConfirm={() => void runBulk("status")} /><ConfirmActionDialog open={confirmDelete} title={`Hapus ${selectedIds.length} kandidat terpilih?`} description="Data kandidat dan data workflow terkait akan dihapus. Tindakan ini tidak dapat dipulihkan." onCancel={() => setConfirmDelete(false)} onConfirm={() => void runBulk("delete")} /></PageState></RecruitmentShell>;
+  </RecruitmentToolbar>{(exportError || bulkError) && <p className="text-sm text-rose-600" role="alert">{exportError || bulkError}</p>}<CandidateTable candidates={candidates} onSelect={setSelected} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} onStatusChange={handleStatusChange} selectedIds={selectedIds} onToggle={toggleCandidate} onToggleAll={toggleAll} /><CandidateDetailSheet candidate={selected} onClose={() => setSelected(null)} /><ConfirmActionDialog open={confirmDelete} title={`Hapus ${selectedIds.length} kandidat terpilih?`} description="Data kandidat dan data workflow terkait akan dihapus. Tindakan ini tidak dapat dipulihkan." onCancel={() => setConfirmDelete(false)} onConfirm={() => void runBulk("delete")} /></PageState></RecruitmentShell>;
 }
 
 function DataTable({ children, headers }: { children: ReactNode; headers: string[] }) { return <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm"><table className="w-full min-w-[640px] text-left text-sm"><thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr>{headers.map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{children}</tbody></table></div>; }
@@ -196,52 +156,8 @@ export function PositionsPage() {
   </RecruitmentShell>;
 }
 
-export function InterviewsPage() {
-  const query = useRecruitmentInterviews();
-  const candidatesQuery = useRecruitmentCandidates();
-  const interviews = listData<RecruitmentInterview>(query.data);
-  const candidates = useMemo(() => listData<ApiCandidate>(candidatesQuery.data).map(normalizeCandidate), [candidatesQuery.data]);
-  const activeInterviewCandidates = new Set(interviews.filter((item) => item.status !== "Cancelled").map((item) => item.candidate_id).filter(Boolean));
-  const waitingCandidates = candidates
-    .filter((candidate) => candidate.status === "Interview Scheduled" && !activeInterviewCandidates.has(candidate.id))
-    .map((candidate): RecruitmentInterview => ({
-      id: `pending-${candidate.id}`,
-      candidate_id: candidate.id,
-      candidate_name: candidate.nama_lengkap,
-      status: "Menunggu Jadwal",
-    }));
-  const rows = [...waitingCandidates, ...interviews];
-  const reload = () => { query.reload(); candidatesQuery.reload(); };
-  const loading = query.loading || candidatesQuery.loading;
-  const error = query.error || candidatesQuery.error;
-  return <RecruitmentShell title="Interview" description="Jadwal interview dan kandidat tahap interview yang masih menunggu jadwal." actions={<RefreshButton onClick={reload} loading={loading} />}>
-    <PageState loading={loading} error={error} onRetry={reload}>
-      {rows.length ? <DataTable headers={["Kandidat", "Jadwal", "Interviewer", "Status", "Lokasi"]}>{rows.map((item) => <tr key={item.id}>
-        <td className="px-4 py-3 font-medium">{item.candidate_name || candidates.find((candidate) => candidate.id === item.candidate_id)?.nama_lengkap || item.candidate_id || "—"}</td>
-        <td className="px-4 py-3 text-slate-500">{item.scheduled_at ? new Date(item.scheduled_at).toLocaleString("id-ID") : "Belum dijadwalkan"}</td>
-        <td className="px-4 py-3 text-slate-600">{item.interviewer_name || item.interviewer_user_id || "Belum ditetapkan"}</td>
-        <td className="px-4 py-3"><StatusBadge status={item.status || "Scheduled"} /></td>
-        <td className="px-4 py-3 text-slate-500">{item.location || item.meeting_url || "—"}</td>
-      </tr>)}</DataTable> : <EmptyState title="Belum ada kandidat interview" description="Kandidat akan tampil saat statusnya masuk tahap Interview Scheduled." />}
-    </PageState>
-  </RecruitmentShell>;
-}
+export function InterviewsPage() { const query = useRecruitmentInterviews(); const interviews = listData<RecruitmentInterview>(query.data); return <RecruitmentShell title="Interview" description="Jadwal dan hasil interview kandidat dalam satu daftar." actions={<RefreshButton onClick={query.reload} loading={query.loading} />}><PageState loading={query.loading} error={query.error} onRetry={query.reload}>{interviews.length ? <DataTable headers={["Kandidat", "Jadwal", "Interviewer", "Status", "Lokasi"]}>{interviews.map((item) => <tr key={item.id}><td className="px-4 py-3 font-medium">{item.candidate_name || item.candidate_id || "—"}</td><td className="px-4 py-3 text-slate-500">{item.scheduled_at ? new Date(item.scheduled_at).toLocaleString("id-ID") : "—"}</td><td className="px-4 py-3 text-slate-600">{item.interviewer_name || item.interviewer_user_id || "—"}</td><td className="px-4 py-3"><StatusBadge status={item.status} /></td><td className="px-4 py-3 text-slate-500">{item.location || item.meeting_url || "—"}</td></tr>)}</DataTable> : <EmptyState title="Belum ada interview" description="Interview dari /api/rekrutmen/interviews akan tampil di sini." />}</PageState></RecruitmentShell>; }
 
-export function OnboardingPage() {
-  const query = useRecruitmentOnboarding();
-  const items = listData<RecruitmentOnboardingItem>(query.data);
-  return <RecruitmentShell title="Onboarding" description="Pantau pengajuan onboarding karyawan dari sumber onboarding aktif." actions={<RefreshButton onClick={query.reload} loading={query.loading} />}>
-    <PageState loading={query.loading} error={query.error} onRetry={query.reload}>
-      {items.length ? <DataTable headers={["Karyawan", "Status", "Mulai", "Probation", "Jadwal training", "Catatan"]}>{items.map((item) => <tr key={item.id}>
-        <td className="px-4 py-3"><div className="font-medium">{item.full_name || "—"}</div><div className="text-xs text-slate-500">{item.email || item.phone || ""}</div></td>
-        <td className="px-4 py-3"><StatusBadge status={item.status || "pending"} /></td>
-        <td className="px-4 py-3 text-slate-500">{item.start_date || "—"}</td>
-        <td className="px-4 py-3 text-slate-500">{item.probation_end_date || "—"}</td>
-        <td className="px-4 py-3 text-slate-500">{item.training_schedule || "—"}</td>
-        <td className="max-w-[240px] truncate px-4 py-3 text-slate-500" title={item.review_notes || ""}>{item.review_notes || "—"}</td>
-      </tr>)}</DataTable> : <EmptyState title="Belum ada pengajuan onboarding" description="Pengajuan onboarding dari workflow karyawan akan tampil di sini." />}
-    </PageState>
-  </RecruitmentShell>;
-}
+export function OnboardingPage() { const query = useRecruitmentOnboarding(); const items = listData<RecruitmentOnboardingItem>(query.data); return <RecruitmentShell title="Onboarding" description="Pantau task onboarding yang perlu diselesaikan." actions={<RefreshButton onClick={query.reload} loading={query.loading} />}><PageState loading={query.loading} error={query.error} onRetry={query.reload}>{items.length ? <DataTable headers={["Kandidat", "Task", "Status", "Due date", "Updated"]}>{items.map((item) => <tr key={item.id}><td className="px-4 py-3 font-medium">{item.full_name || item.candidate_id || "—"}</td><td className="px-4 py-3 text-slate-600">{item.label || item.task_key || "—"}</td><td className="px-4 py-3"><StatusBadge status={item.status} /></td><td className="px-4 py-3 text-slate-500">{item.due_date || "—"}</td><td className="px-4 py-3 text-slate-500">{item.updated_at ? new Date(item.updated_at).toLocaleDateString("id-ID") : "—"}</td></tr>)}</DataTable> : <EmptyState title="Belum ada onboarding" description="Task onboarding akan tampil setelah kandidat masuk tahap onboarding." />}</PageState></RecruitmentShell>; }
 
 export function ReportsPage() { const query = useRecruitmentReports(); const report = query.data as (typeof query.data & { byStatus?: Array<{ status: string; count: number }>; byPosition?: Array<{ position: string; count: number }> }) | null; const funnel = report?.funnel ?? report?.byStatus ?? []; return <RecruitmentShell title="Laporan" description="Ringkasan funnel recruitment berdasarkan data kandidat." actions={<RefreshButton onClick={query.reload} loading={query.loading} />}><PageState loading={query.loading} error={query.error} onRetry={query.reload}><KpiStrip items={[{ label: "Status funnel", value: funnel.length }, { label: "Posisi terisi", value: report?.by_position?.length ?? report?.byPosition?.length ?? 0 }]} /><SectionCard title="Funnel recruitment" icon={<CalendarDays className="h-4 w-4" />}><div className="space-y-3">{funnel.length ? funnel.map((item) => <div key={item.status} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"><span className="text-sm text-slate-600">{item.status}</span><span className="font-semibold">{item.count}</span></div>) : <p className="text-sm text-slate-500">Belum ada data laporan.</p>}</div></SectionCard></PageState></RecruitmentShell>; }

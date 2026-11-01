@@ -4,6 +4,7 @@ import logging
 import asyncio
 import re
 import time
+import fcntl
 from html import escape
 from collections import Counter
 from datetime import datetime, timezone, timedelta
@@ -31,7 +32,7 @@ SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 BARISTA_GROUP_ID = int(os.getenv("BARISTA_GROUP_ID", "-5182004468"))
 KITCHEN_GROUP_ID = int(os.getenv("KITCHEN_GROUP_ID", "-5199093599"))
 TRANSACTION_GROUP_ID = int(os.getenv("TRANSACTION_GROUP_ID", "-1003927364523"))
-MAYAR_RECONCILE_URL = os.getenv("MAYAR_RECONCILE_URL", "https://supabase.djiwatentram.web.id/functions/v1/mayar-webhook")
+MAYAR_RECONCILE_URL = os.getenv("MAYAR_RECONCILE_URL", "https://djiwatentram.web.id/functions/v1/mayar-webhook")
 MAYAR_WEBHOOK_TOKEN = os.getenv("MAYAR_WEBHOOK_TOKEN", "")
 
 WIB = timezone(timedelta(hours=7))
@@ -1491,6 +1492,27 @@ async def _handle_callback(update: Update, context):
 _AGENT_DIR = os.path.dirname(os.path.abspath(__file__))
 _STATE_DIR = os.path.join(os.path.dirname(_AGENT_DIR), ".runtime", "yumi-supervisor-agent")
 os.makedirs(_STATE_DIR, exist_ok=True)
+_WORKER_LOCK_FILE = os.path.join(_STATE_DIR, "notification-worker.lock")
+_worker_lock_handle = None
+
+def _acquire_worker_lock() -> None:
+    """Enforce one notification owner per host across restarts/autopull."""
+    global _worker_lock_handle
+    if _worker_lock_handle is not None:
+        return
+    _worker_lock_handle = open(_WORKER_LOCK_FILE, "a+")
+    try:
+        fcntl.flock(_worker_lock_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        _worker_lock_handle.close()
+        _worker_lock_handle = None
+        raise RuntimeError("notification worker already owns durable lock") from exc
+    _worker_lock_handle.seek(0)
+    _worker_lock_handle.truncate()
+    _worker_lock_handle.write(str(os.getpid()))
+    _worker_lock_handle.flush()
+_acquire_worker_lock()
+
 _LEGACY_CURSOR_FILE = os.path.join(_AGENT_DIR, ".yumi_supervisor_cursor.txt")
 _CURSOR_FILE = os.path.join(_STATE_DIR, "yumi_supervisor_cursor.txt")
 
@@ -1549,13 +1571,14 @@ def _load_supervisor_cursor() -> tuple[int, set[str], int, set[str]]:
                 return ts, nos, csr_ts, paid_update_nos
         except (FileNotFoundError, ValueError, IndexError):
             pass
-    # Default: look back 24 hours on first run
-    ts = int((_now_wib() - timedelta(hours=24)).timestamp() * 1000)
-    return ts, set(), 0, set()
+    # Missing/corrupt state must never manufacture a historical replay window.
+    # The successful startup baseline is the only authority for old rows.
+    return 0, set(), 0, set()
 
 def _save_supervisor_cursor(ts: int, nos: set[str], csr_ts: int = 0, paid_update_nos: set[str] | None = None):
     """Persist cursor and order identities (legacy display entries remain valid)."""
-    with open(_CURSOR_FILE, "w") as f:
+    tmp = f"{_CURSOR_FILE}.tmp.{os.getpid()}"
+    with open(tmp, "w") as f:
         f.write(f"{ts}\n")
         for no in sorted(nos):
             f.write(f"{no}\n")
@@ -1564,6 +1587,9 @@ def _save_supervisor_cursor(ts: int, nos: set[str], csr_ts: int = 0, paid_update
         f.write("---paid-updates---\n")
         for no in sorted(paid_update_nos or set()):
             f.write(f"{no}\n")
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, _CURSOR_FILE)
 
 _BOOKING_CURSOR_FILE = os.path.join(_STATE_DIR, "yumi_supervisor_booking_transactions.txt")
 
@@ -1586,6 +1612,7 @@ _last_order_check_ms, _reported_order_nos, _last_csr_check_ms, _cashier_paid_upd
 # Failed settlement edits must not hammer Telegram every 5 seconds.
 _settlement_retry_not_before: dict[str, int] = {}
 _cashier_paid_seed_ready = False
+_startup_baseline_ready = False
 # Rows at or before this boundary are recovery data, not new events. This
 # prevents the bounded customer lookback from replaying historical orders
 # after a restart or an order-number format migration.
@@ -1604,9 +1631,13 @@ except FileNotFoundError:
 _channel_sent.update(f"{order_no}|transaction" for order_no in _reported_order_nos)
 
 def _save_channel_sent() -> None:
-    with open(_CHANNEL_SENT_FILE, "w") as f:
+    tmp = f"{_CHANNEL_SENT_FILE}.tmp.{os.getpid()}"
+    with open(tmp, "w") as f:
         for key in sorted(_channel_sent)[-3000:]:
             f.write(f"{key}\n")
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, _CHANNEL_SENT_FILE)
 
 _save_channel_sent()
 
@@ -1698,7 +1729,7 @@ async def _seed_existing_order_notifications() -> bool:
     The normal poll intentionally reads a seven-day recovery window. On startup,
     all rows already inside that window are existing state, not new events.
     """
-    global _reported_order_nos, _cashier_paid_update_nos, _cashier_paid_seed_ready, _startup_event_cutoff_ms
+    global _reported_order_nos, _cashier_paid_update_nos, _cashier_paid_seed_ready, _startup_event_cutoff_ms, _startup_baseline_ready
     now_ms = int(_now_wib().timestamp() * 1000)
     lower_bound = max(0, now_ms - 7 * 86_400_000)
     try:
@@ -1718,7 +1749,8 @@ async def _seed_existing_order_notifications() -> bool:
         )
     except Exception as e:
         _cashier_paid_seed_ready = False
-        logger.warning("Existing order baseline skipped: %s", e)
+        _startup_baseline_ready = False
+        logger.warning("Existing order baseline unavailable; polling remains fail-closed: %s", e)
         return False
 
     rows = [*settled_rows, *cashier_rows]
@@ -1743,6 +1775,7 @@ async def _seed_existing_order_notifications() -> bool:
         )
     _cashier_paid_seed_ready = True
     _startup_event_cutoff_ms = now_ms
+    _startup_baseline_ready = True
     logger.info(
         "Existing order baseline: acknowledged=%d new_reported=%d new_paid=%d",
         len(existing), len(new_reported), len(new_paid),
@@ -2239,6 +2272,9 @@ async def _check_new_booking_transactions(app):
 
 
 async def _check_new_orders(app):
+    if not _startup_baseline_ready:
+        logger.info("order poll held: startup baseline unavailable")
+        return 0
     global _last_order_check_ms, _reported_order_nos, _cashier_paid_update_nos, _startup_event_cutoff_ms
     if not _cashier_paid_seed_ready:
         logger.warning("Order polling paused: cashier settlement seed is not ready")
@@ -2995,7 +3031,8 @@ async def _post_init(app):
     """Called after Application initialization — sets up lookups and background tasks."""
     global _app
     _app = app
-    logger.info("Starting Yumi Supervisor Agent...")
+    _acquire_worker_lock()
+    logger.info("Starting Yumi Supervisor Agent with durable single-owner lock...")
     me = await app.bot.get_me()
     logger.info("Bot: @%s", me.username)
     logger.info("Barista group: %s", BARISTA_GROUP_ID)
@@ -3026,7 +3063,9 @@ async def _post_init(app):
     # Restore active orders from Supabase (persistent across restarts)
     await _load_active_orders(app.bot)
     # Baseline all historical lookback rows before the first delivery poll.
-    await _seed_existing_order_notifications()
+    # Do not start delivery polling until the baseline succeeds.
+    while not await _seed_existing_order_notifications():
+        await asyncio.sleep(5)
 
     # First poll check (catch up with any orders since start)
     await _reconcile_mayar_payments(force=True)

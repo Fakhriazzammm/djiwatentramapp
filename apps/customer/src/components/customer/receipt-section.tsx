@@ -8,7 +8,6 @@ import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { BarcodeLines, ReceiptTotalsBreakdown } from "./shared-components";
 import { ReceiptActions } from "./split-bill-sheet";
 import { PaymentDocumentAnimation } from "./payment-document-animation";
-import { resolveReceiptStatus } from "@/lib/receipt-status";
 
 // Status lifecycle order — live tracker di struk
 const STATUS_STEPS = [
@@ -116,7 +115,6 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	}) || props.receipt.fallbackReference;
 	const orderStatus = props.currentOrder?.status;
 	const mode = orderStatus === "paid" || orderStatus === "completed" ? "paid" : props.receipt.mode;
-	const receiptStatus = resolveReceiptStatus(mode, orderStatus);
 	const isExpired = mode === "cashier_expired" || String(orderStatus ?? "").toLowerCase() === "cancelled" || String(orderStatus ?? "").toLowerCase() === "expired";
 	// The refreshed order is authoritative; receipt state can still contain the
 	// pre-settlement choice while the order read is catching up.
@@ -149,11 +147,11 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	const deliveryTrackingId = (props.currentOrder as any)?.deliveryTrackingId ?? (props.currentOrder as any)?.delivery_tracking_id;
 	const deliveryWaybillId = (props.currentOrder as any)?.deliveryWaybillId ?? (props.currentOrder as any)?.delivery_waybill_id;
 
-	const unifiedStatusLabel = receiptStatus === "cancelled" ? "DIBATALKAN" : receiptStatus === "paid" ? "LUNAS"
-		: receiptStatus === "completed" ? "SELESAI"
+	const unifiedStatusLabel = mode === "cashier_expired" ? "DIBATALKAN" : orderStatus === "paid" ? "LUNAS"
+		: orderStatus === "completed" ? "SELESAI"
 		: "OPEN BILL";
-	const unifiedStatusColor = receiptStatus === "cancelled" ? "text-red-600" : receiptStatus === "paid" ? "text-blue-600"
-		: receiptStatus === "completed" ? "text-emerald-600"
+	const unifiedStatusColor = mode === "cashier_expired" ? "text-red-600" : orderStatus === "paid" ? "text-blue-600"
+		: orderStatus === "completed" ? "text-emerald-600"
 		: "text-amber-600";
 	const isQrisPayment = normalizedPaymentMethod.includes("qris") || normalizedPaymentMethod.includes("mayar");
 	const canRetryPayment = mode !== "paid" && (isWalletPayment || isQrisPayment || isCashierPayment);
@@ -219,7 +217,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 			>
 				<div className="text-center">
 				<div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">{mode === "paid" ? <CheckCircle2 className="h-5 w-5" /> : <Wallet className="h-5 w-5" />}</div>
-				<p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">{isExpired ? "Order dibatalkan" : "Langkah 6 dari 6 · Selesai / Struk"}</p>
+				<p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-primary/70">{isExpired ? "Order dibatalkan" : "Step 5 · Selesai / Struk"}</p>
 				<h2 className="mt-1 font-display text-lg font-black tracking-tight">{receiptTitle}</h2>
 				<p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{receiptDescription}</p>
 				<div className="mt-3 border-t border-border pt-3">{props.logoUrl ? <img alt={props.storeName} className="mx-auto h-10 object-contain" src={props.logoUrl} /> : null}<div className="mt-2.5 space-y-0.5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Nomor order</p><p className="text-xl font-black tracking-[0.12em] text-foreground">{orderReference}</p></div><div className="mt-3 border-t border-border pt-3"><div className="flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Metode</span><span className="font-bold">{paymentLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Status</span><span className={cn("font-bold", unifiedStatusColor)}>{unifiedStatusLabel}</span></div><div className="mt-1 flex items-center justify-between text-[11px]"><span className="text-muted-foreground">Total</span><span className="font-black">{currency(props.currentOrder?.totalAmount ?? props.total)}</span></div></div>

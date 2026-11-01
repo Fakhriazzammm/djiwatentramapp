@@ -257,11 +257,8 @@ async function fetchAllPublicUsers() {
 	return (data ?? []).map((row: any) => ({ _id: row._id, name: row.name, slug: row.slug || String(row.username || "").split("@")[0] || "", username: row.username || "", initial: row.initial || String(row.name || "").charAt(0).toUpperCase(), hasFace: Boolean(row.hasFace), roleId: row.roleId ?? null, roleName: row.roleName ?? "Team", isActive: row.isActive !== false, photoUrl: row.photoUrl ?? null, raw: row.raw ?? null }));
 }
 
-export function useHybridAllPublicUsers(refreshTrigger?: number) {
-	const supabaseData = useSupabaseValue("attendance-all-public-users", fetchAllPublicUsers, [], {
-		refreshTrigger,
-		tables: ["yumi_users", "yumi_roles"],
-	});
+export function useHybridAllPublicUsers() {
+	const supabaseData = useSupabaseValue("attendance-all-public-users", fetchAllPublicUsers, []);
 	return supabaseData as any;
 }
 

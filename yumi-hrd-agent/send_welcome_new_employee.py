@@ -148,7 +148,7 @@ def build_welcome(app):
             "     \u2022 Melihat jadwal shift kamu\n"
             "\n"
             "\U0001f4a1 Tips:\n"
-            "  \u2022 Jangan lupa login ke aplikasi POS di https://pos.djiwatentram.web.id\n"
+            "  \u2022 Jangan lupa login ke aplikasi POS di https://pos.yumme.id\n"
             "  \u2022 Username dan password sudah diberikan oleh admin\n"
             "  \u2022 Kalau ada kendala, tanyakan ke tim manajemen ya"
         )

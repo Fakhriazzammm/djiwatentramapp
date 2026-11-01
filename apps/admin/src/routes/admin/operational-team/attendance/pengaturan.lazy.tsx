@@ -1,4 +1,3 @@
-import { requestAdminPrompt } from "@/lib/admin-dialogs";
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -221,8 +220,8 @@ function AttendancePengaturanPage() {
 									</p>
 								</div>
 								<button
-									onClick={async () => {
-										const rawName = await requestAdminPrompt({ title: "Shift baru", placeholder: "Nama shift", confirmText: "Tambah" });
+									onClick={() => {
+										const rawName = window.prompt("Masukkan nama shift baru:");
 										const name = rawName?.trim();
 										if (name) {
 											const nextShifts = [...shiftSettings.predefinedShifts, name];
@@ -539,8 +538,8 @@ function AttendancePengaturanPage() {
 								Grup Staff ({rosterTemplate.groups.length})
 							</h4>
 							<button
-								onClick={async () => {
-									const label = await requestAdminPrompt({ title: "Grup staff baru", placeholder: "Contoh: DJIWA TENTRAM", confirmText: "Tambah" });
+								onClick={() => {
+									const label = window.prompt("Nama grup (contoh: DJIWA TENTRAM):");
 									if (label?.trim()) {
 										setRosterTemplate((prev) => ({
 											...prev,

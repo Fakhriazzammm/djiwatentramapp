@@ -1,4 +1,3 @@
-import { postpaidPaymentStatus } from "./postpaid-status";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
@@ -11,16 +10,14 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createHmac } from "node:crypto";
 import { createTravelWalletPaymentEndpoint } from "./travel-wallet-payment.js";
+import { customerTrustedOrigins } from "./customer-auth-config.js";
 
 const app = new Hono();
-const MAYAR_PROXY_URL = process.env.MAYAR_PROXY_URL || "";
+const MAYAR_PROXY_URL = process.env.MAYAR_PROXY_URL || "https://supabase.djiwatentram.web.id/functions/v1/mayar-proxy";
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
 const MAYAR_DEFAULT_MOBILE = process.env.MAYAR_DEFAULT_MOBILE || "";
-const IAK_PPOB_URL = process.env.IAK_PPOB_URL || "";
-const customerOrigins = (process.env.CUSTOMER_ALLOWED_ORIGINS ?? "")
-  .split(",")
-  .map((value) => value.trim())
-  .filter(Boolean);
+const IAK_PPOB_URL = process.env.IAK_PPOB_URL || "https://api.djiwatentram.web.id/api/ppob/iak/";
+const customerOrigins = [...customerTrustedOrigins];
 const stickerRateLimit = new Map<string, number[]>();
 
 function allowStickerRequest(key: string) {
@@ -787,7 +784,7 @@ function safePostpaidRecord(row: Record<string, any>) {
     billAmount: Number(row.bill_amount || 0),
     adminFee: Number(row.admin_fee || 0),
     totalAmount: Number(row.total_amount || row.price || 0),
-    status: postpaidPaymentStatus(row),
+    status: row.provider_status === "success" || row.status === "0" ? "success" : row.provider_status === "failed" || row.status === "2" ? "failed" : "pending",
     paymentStatus: row.payment_status || "pending",
     message: row.message || null,
     serialNumber: row.serial_number || null,
@@ -848,8 +845,6 @@ app.post("/api/pay-bridge/ppob/postpaid/payment", async (c) => {
   const row = found.rows[0];
   if (!row) return privateJson({ success: false, error: "PPOB_TRANSACTION_NOT_FOUND" }, 404);
   if (row.payment_status === "paid" && row.provider_status === "success") return privateJson({ success: true, status: "success", data: safePostpaidRecord(row) });
-  const providerTransactionId = String(row.inquiry_payload?.providerTransactionId ?? "").trim();
-  if (row.inquiry_payload?.status !== "success" || !/^\d+$/.test(providerTransactionId)) return privateJson({ success: false, error: "INVALID_INQUIRY" }, 422);
   const amount = Math.round(Number(row.total_amount || row.price));
   const hold = await pool.query("SELECT pos.wallet_create_hold($1,$2,$3,$4) AS result", [sourceId, refId, amount, `ppob_postpaid_${refId}`]);
   const holdResult = hold.rows[0]?.result;
@@ -858,7 +853,7 @@ app.post("/api/pay-bridge/ppob/postpaid/payment", async (c) => {
   await pool.query("UPDATE pos.ppob_transactions SET wallet_hold_id=$1,payment_status='pending',status='1',updated_at=now() WHERE ref_id=$2", [holdId, refId]);
   let result: Record<string, any>;
   try {
-    result = await callIakPpob({ action: "payment", kind: "postpaid", service_type: row.service_type, product_code: row.product_code, customer_number: row.customer_number || row.customer_id, ref_id: refId, provider_transaction_id: providerTransactionId });
+    result = await callIakPpob({ action: "payment", kind: "postpaid", service_type: row.service_type, product_code: row.product_code, customer_number: row.customer_number || row.customer_id, ref_id: refId });
   } catch {
     return privateJson({ success: true, status: "pending", data: { refId, message: "Provider belum merespons. Saldo masih ditahan sementara." } }, 202);
   }

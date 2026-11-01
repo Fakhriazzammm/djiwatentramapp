@@ -1,11 +1,7 @@
 import { betterAuth } from "better-auth";
 import { Pool } from "pg";
 import { dash } from "@better-auth/infra";
-import {
-  customerAuthAdvancedConfig,
-  customerAuthBaseUrl,
-  resolveCustomerTrustedOrigins,
-} from "./customer-auth-config.js";
+import { customerAuthAdvancedConfig, customerAuthBaseUrl, customerTrustedOrigins } from "./customer-auth-config.js";
 
 export const pool = new Pool({
   host: "localhost",
@@ -17,12 +13,10 @@ export const pool = new Pool({
 
 export const auth = betterAuth({
   database: pool,
-  // Resolved per request from an allowlist so every storefront domain keeps a
-  // first-party callback URL instead of one hardcoded origin.
   baseURL: customerAuthBaseUrl,
-  // Customer sessions are shared by the Djiwa App storefronts.
-  trustedOrigins: resolveCustomerTrustedOrigins(),
-  // Share the central customer session across Djiwa App subdomains.
+  trustedOrigins: [...customerTrustedOrigins],
+  // A host-only cookie belongs to the central API host and works for every
+  // frontend that calls the API with credentials, regardless of its domain.
   advanced: customerAuthAdvancedConfig(),
   emailAndPassword: {
     enabled: true,

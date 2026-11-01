@@ -62,7 +62,7 @@ def build_message(d):
         lines.append(f"📄 CV: {cv}")
     lines.append(f"🕒 Masuk: {waktu}")
     lines.append("")
-    lines.append("— via rekrutmen.djiwatentram.web.id")
+    lines.append("— via rekrutmen.yumme.id")
     return "\n".join(lines)
 
 

@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useHybridSiteSettings, useHybridStaffRoles, triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
 import { useHybridUpdateSiteSettings } from "@/hooks/use-hybrid-write-actions";
-import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { normalizeEmployeeOnboardingSettings } from "@/lib/employee-onboarding-settings";
 
 type TemplateInfo = {
@@ -109,12 +108,7 @@ function ContractLandingPage() {
 	const savedCount = templates.filter((t) => t.isSaved).length;
 
 	const handleDelete = useCallback(async (templateId: string, name: string) => {
-		const accepted = await requestAdminConfirm({
-			title: "Hapus template?",
-			message: `Hapus template "${name}"?`,
-			confirmText: "Hapus",
-		});
-		if (!accepted) return;
+		if (!window.confirm(`Hapus template "${name}"?`)) return;
 		setIsDeleting(templateId);
 		try {
 			const nextTemplates = { ...contractTemplatesByRoleId };

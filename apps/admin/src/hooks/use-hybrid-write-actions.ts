@@ -1,4 +1,3 @@
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { allocateDailyReceiptNo } from "@yumipos/web-shared/lib/daily-receipt";
 import { createClient } from "@/lib/client";
 import { useAction, useMutation } from "@/lib/backend-bridge";
@@ -6,7 +5,6 @@ import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useCallback, useState } from "react";
 import { invokeBookingAdmin, invokeEdgeFunction } from "@/lib/api-helper";
 import { formatOrderNumber, getOrderChannel } from "@yumipos/web-shared/lib/order-number";
-import { adminProtectedRead } from "@/lib/admin-protected-read";
 
 type FunctionReference<_Kind extends "mutation" | "action"> = unknown;
 const api = new Proxy(
@@ -2182,12 +2180,13 @@ export function useHybridGenerateScanReport() {
 			const period = String(args?.period ?? "daily") as "daily" | "weekly" | "monthly";
 			const days = period === "daily" ? 1 : period === "weekly" ? 7 : 30;
 			const start = Date.now() - days * 24 * 60 * 60 * 1000;
-			const data = await adminProtectedRead("finance", {
-				select: "*",
-				gte: { date: start },
-				order: [{ column: "date", ascending: false }],
-			});
-			const expenseRows = data.filter((row: any) => String(row.type) === "expense");
+			const { data, error } = await createClient()
+				.from("pos_financial_transactions")
+				.select("*")
+				.gte("date", start)
+				.order("date", { ascending: false });
+			if (error) throw error;
+			const expenseRows = (data ?? []).filter((row: any) => String(row.type) === "expense");
 			const totalExpense = expenseRows.reduce(
 				(sum: number, row: any) => sum + Number(row.amount ?? 0),
 				0
@@ -2505,7 +2504,7 @@ export function useHybridCreateOrder() {
 				orderType: args?.orderType,
 				platform: args?.platform,
 				createdAt: orderCreatedAt,
-				receiptNo: dailyReceiptNo ?? undefined,
+				receiptNo: dailyReceiptNo,
 			});
 				const orderId = makeSourceId("order");
 
@@ -2739,7 +2738,45 @@ export function useHybridUpdateOrder() {
 				// Jika status berubah ke paid/completed, buat financial transaction
 				const newStatus = updates.status as string | null;
 				if (newStatus === "paid" || newStatus === "completed") {
-					throw new Error("Pembayaran harus diselesaikan melalui settlement pembayaran, bukan perubahan status manual");
+					const { data: order, error: getError } = await supabase
+						.schema("pos")
+						.from("orders")
+						.select("source_id, status, order_number, total_amount, payment_method, created_at, daily_receipt_no")
+						.eq("source_id", id)
+						.maybeSingle();
+					if (getError) throw getError;
+					if (!order) throw new Error("Order not found");
+
+					const wasPaid =
+						order.status === "paid" || order.status === "completed";
+					if (!wasPaid) {
+						const txDate = Number(args?.date ?? order.created_at ?? Date.now());
+						const { error: txError } = await supabase
+							.schema("pos")
+							.from("financial_transactions")
+							.insert({
+								source_id: makeSourceId("fin"),
+								tx_type: "income",
+								amount: Number(order.total_amount ?? 0),
+								category: "Penjualan",
+								description: `Penjualan Pesanan #${order.order_number ?? "-"}`,
+								tx_date: txDate,
+								payment_method: order.payment_method ?? null,
+								status: "completed",
+								order_source_id: id,
+								creation_time: Date.now(),
+								metadata: {
+									dailyReceiptNo: (order as any).daily_receipt_no ?? undefined,
+									orderNumber: order.order_number ?? undefined,
+									source: "pos",
+								},
+								raw: {
+									kind: "order_settlement_update_order",
+									orderId: id,
+								},
+							});
+						if (txError) throw txError;
+					}
 				}
 
 				const { error } = await supabase
@@ -2932,7 +2969,33 @@ export function useHybridUpdateOrderStatus() {
 				const wasPaid =
 					order.status === "paid" || order.status === "completed";
 				if (isNowPaid && !wasPaid) {
-					throw new Error("Pembayaran harus diselesaikan melalui settlement pembayaran, bukan perubahan status manual");
+					const transactionDate = Number(
+						args?.transactionDate ?? order.created_at ?? Date.now()
+					);
+					const { error: txError } = await pos
+						.from("financial_transactions")
+						.insert({
+							source_id: makeSourceId("fin"),
+							tx_type: "income",
+							amount: Number(order.total_amount ?? 0),
+							category: "Penjualan",
+							description: `Penjualan Pesanan #${order.order_number ?? "-"}`,
+							tx_date: transactionDate,
+							payment_method: order.payment_method ?? null,
+							status: "completed",
+							order_source_id: id,
+							creation_time: Date.now(),
+							metadata: {
+								dailyReceiptNo: (order as any).daily_receipt_no ?? undefined,
+								orderNumber: order.order_number ?? undefined,
+								source: "pos",
+							},
+							raw: {
+								kind: "order_settlement_status_update",
+								orderId: id,
+							},
+						});
+					if (txError) throw txError;
 				}
 
 				const { error: updateError } = await pos
@@ -2997,7 +3060,7 @@ export function useHybridUpdateOrderPaymentGateway() {
 				const { data: order, error: getError } = await pos
 					.from("orders")
 					.select(
-						"source_id, status, order_number, total_amount, payment_method, payment_receipt_kind, created_at, daily_receipt_no, source, source_app, business_unit, brand_slug, order_type, platform"
+						"source_id, status, order_number, total_amount, payment_method, payment_receipt_kind, daily_receipt_no"
 					)
 					.eq("source_id", id)
 					.maybeSingle();
@@ -3021,7 +3084,7 @@ export function useHybridUpdateOrderPaymentGateway() {
 							tx_type: "income",
 							amount: Number(order.total_amount ?? 0),
 							category: "Penjualan",
-							description: `Penjualan Pesanan #${getDisplayOrderNumber(order.order_number, { sequence: (order as any).daily_receipt_no, createdAt: (order as any).created_at, source: (order as any).source, sourceApp: (order as any).source_app, businessUnit: (order as any).business_unit, brandSlug: (order as any).brand_slug, orderType: (order as any).order_type, platform: (order as any).platform })}`,
+							description: `Penjualan Pesanan #${order.order_number ?? "-"}`,
 							tx_date: settledAt,
 							payment_method: order.payment_method ?? null,
 							status: "completed",
@@ -3030,12 +3093,7 @@ export function useHybridUpdateOrderPaymentGateway() {
 							metadata: {
 								dailyReceiptNo: (order as any).daily_receipt_no ?? undefined,
 								orderNumber: order.order_number ?? undefined,
-								source: (order as any).source,
-								sourceApp: (order as any).source_app,
-								businessUnit: (order as any).business_unit,
-								brandSlug: (order as any).brand_slug,
-								orderType: (order as any).order_type,
-								platform: (order as any).platform,
+								source: "pos",
 							},
 							raw: {
 								kind: "order_gateway_paid",
@@ -4537,11 +4595,13 @@ export function useHybridEndShift() {
 					}
 				}
 
-				const rows = await adminProtectedRead("finance", {
-					select: "type, amount, category, paymentMethod, status",
-					gte: { date: Number(shift.startTime) },
-					lte: { date: endTime },
-				});
+				const { data: txRows, error: txError } = await supabase
+					.from("pos_financial_transactions")
+					.select("type, amount, category, paymentMethod, status")
+					.gte("date", Number(shift.startTime))
+					.lte("date", endTime);
+				if (txError) throw txError;
+				const rows = txRows ?? [];
 				const completed = rows.filter(
 					(row: any) => String(row.status ?? "completed") === "completed"
 				);

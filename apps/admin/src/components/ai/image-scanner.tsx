@@ -1,5 +1,4 @@
 ﻿import { compressFileToLimit, isOversized } from "@/lib/image-compress";
-import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import {
 	useHybridBatchGenerateTransactions,
 	useHybridBatchProcessReceipts,
@@ -227,12 +226,9 @@ export function ImageScanner({
 
 		// Single image generate
 		if (index !== undefined) {
-			const shouldSave = await requestAdminConfirm({
-				title: "Simpan hasil scan?",
-				message: "Simpan hasil scan ke data aplikasi sekarang?",
-				confirmText: "Simpan",
-				variant: "info",
-			});
+			const shouldSave = window.confirm(
+				"Simpan hasil scan ke data aplikasi sekarang?"
+			);
 			if (!shouldSave) {
 				return;
 			}
@@ -240,7 +236,9 @@ export function ImageScanner({
 			let syncMode: "auto" | "finance_only" | "finance_plus_inventory" =
 				"auto";
 			if (type === "expense" || type === "auto") {
-				const shouldSyncInventory = await requestAdminConfirm({ title: "Konfirmasi penyimpanan", message: "Simpan ke Keuangan + sinkron item per baris ke Inventaris? Pilih Batal jika hanya ingin simpan ke Keuangan.", confirmText: "Ya" });
+				const shouldSyncInventory = window.confirm(
+					"Simpan ke Keuangan + sinkron item per baris ke Inventaris? Pilih Batal jika hanya ingin simpan ke Keuangan."
+				);
 				syncMode = shouldSyncInventory
 					? "finance_plus_inventory"
 					: "finance_only";
@@ -274,7 +272,9 @@ export function ImageScanner({
 		}
 
 		// Batch generate
-		const shouldSaveBatch = await requestAdminConfirm({ title: "Konfirmasi penyimpanan", message: "Simpan semua hasil scan batch ke data aplikasi sekarang?", confirmText: "Ya" });
+		const shouldSaveBatch = window.confirm(
+			"Simpan semua hasil scan batch ke data aplikasi sekarang?"
+		);
 		if (!shouldSaveBatch) {
 			return;
 		}
@@ -282,7 +282,9 @@ export function ImageScanner({
 		let batchSyncMode: "auto" | "finance_only" | "finance_plus_inventory" =
 			"auto";
 		if (type === "expense" || type === "auto") {
-			const shouldSyncBatchInventory = await requestAdminConfirm({ title: "Konfirmasi penyimpanan", message: "Untuk batch ini, sinkronkan item per baris ke Inventaris juga? Pilih Batal jika hanya ingin simpan ke Keuangan.", confirmText: "Ya" });
+			const shouldSyncBatchInventory = window.confirm(
+				"Untuk batch ini, sinkronkan item per baris ke Inventaris juga? Pilih Batal jika hanya ingin simpan ke Keuangan."
+			);
 			batchSyncMode = shouldSyncBatchInventory
 				? "finance_plus_inventory"
 				: "finance_only";

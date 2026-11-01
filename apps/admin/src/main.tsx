@@ -29,6 +29,7 @@ declare module "@tanstack/react-router" {
 	}
 }
 
+// Hermes: trigger Vercel rebuild — contract+payslip live
 const rootElement = document.getElementById("root")!;
 
 // Register service worker in prompt mode so users see the update dialog first.

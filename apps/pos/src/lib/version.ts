@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.555",
+	semantic: "0.2.557",
 	// Git/deploy commit hash (short)
-	commitHash: "9ed9104",
-	message: "fix(pos): recover legacy paid checkout retries",
+	commitHash: "7701e09",
+	message: "fix(customer): normalize legacy product image URLs",
 	// Commit subject for the update prompt
-	commitMessage: "fix(pos): recover legacy paid checkout retries",
+	commitMessage: "fix(customer): normalize legacy product image URLs",
 	// Build timestamp
 	buildDate: "2026-10-26",
 	// Full version string for display

@@ -492,7 +492,6 @@ export function OneTimeCode({
 						}
 					}}
 					inputMode="numeric"
-					enterKeyHint="done"
 					autoComplete="one-time-code"
 					maxLength={n}
 					disabled={disabled}

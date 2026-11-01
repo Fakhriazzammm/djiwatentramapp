@@ -1,5 +1,4 @@
 import { createLazyFileRoute, Outlet, useLocation, useMatches, useNavigate } from "@tanstack/react-router";
-import { openDjiwaPay } from "@/lib/djiwapay";
 import { useEffect, useState } from "react";
 import { LogIn, LogOut } from "lucide-react";
 import { Djiwa3DIcon } from "@yumipos/web-shared";
@@ -225,10 +224,10 @@ function MemberHomePage() {
 					<main className="flex-1 space-y-5 px-4 py-4 pb-32">
 						<CustomerGreeting name={displayName} />
 						<MerchandisePromoBanner />
-						<CustomerWalletSummary customer={customer} onTopup={() => openDjiwaPay(username)} />
+						<CustomerWalletSummary customer={customer} onTopup={() => window.location.assign(`https://djiwatentram.web.id/${username}/saldo`)} />
 						{customerOrders.filter((order) => !["completed", "cancelled"].includes(order.trackingStatus || order.status)).slice(0, 1).map((order) => <CustomerLiveOrderCard key={order.id} order={order} onOpen={() => navigate({ to: "/$username/order", params: { username }, search: { step: "receipt", orderId: order.id } })} />)}
 						<CustomerHomeDiscovery onMenu={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } })} />
-						<DjiwaPayOfferCard isMember onAction={() => openDjiwaPay(username)} />
+						<DjiwaPayOfferCard isMember onAction={() => window.location.assign(`https://djiwatentram.web.id/${username}/saldo`)} />
 						<CustomerHomeActions onHistory={() => window.location.assign(djiwaHistoryHref)} onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "menu" } })} />
 					</main>
 				</div>

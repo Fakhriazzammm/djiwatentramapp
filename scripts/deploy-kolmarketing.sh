@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Deploy public KOL creator intake to kolmarketing.djiwatentram.web.id.
+# Deploy public KOL creator intake to kol.djiwatentram.web.id.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
-DOMAIN="kolmarketing.djiwatentram.web.id"
+DOMAIN="kol.djiwatentram.web.id"
 WEBROOT="/var/www/$DOMAIN"
 SITE="/etc/nginx/sites-available/kolmarketing"
 ENABLED="/etc/nginx/sites-enabled/kolmarketing"

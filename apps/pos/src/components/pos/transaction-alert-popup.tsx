@@ -1,7 +1,6 @@
 import { useEffect } from "react";
-import { isDeliveryNotification, type PosNotification } from "@/hooks/use-pos-notifications";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { CheckCircle2, ChevronRight, CreditCard, MapPin, X } from "lucide-react";
+import { isDeliveryNotification, type PosNotification } from "@/hooks/use-pos-notifications";
 
 type TransactionAlertStackProps = {
   notifications: PosNotification[];
@@ -104,7 +103,7 @@ function TransactionAlert({ item, onOpenOrder, onDismiss, onMarkCashierPaid }: {
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-black leading-tight">{copy.title}</span>
             <span className="mt-0.5 block text-xs font-bold opacity-80">{copy.subtitle}</span>
-            {item.order_number ? <span className="mt-2 block text-xs font-black">#{getDisplayOrderNumber(item.order_number, { sequence: (item as any).daily_receipt_no, createdAt: (item as any).created_at, source: (item as any).source, orderType: (item as any).order_type })}</span> : null}
+            {item.order_number ? <span className="mt-2 block text-xs font-black">#{item.order_number}</span> : null}
             {summary ? <span className="mt-0.5 block text-xs opacity-80">{summary}</span> : null}
             <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-white/70 px-2 py-1 text-[9px] font-black tracking-wide">{copy.label} <ChevronRight className="h-3 w-3" /></span>
           </span>

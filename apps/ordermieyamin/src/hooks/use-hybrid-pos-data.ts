@@ -336,7 +336,7 @@ function useSupabaseValue<T>(
 	key: string,
 	load: () => Promise<T | null>,
 	deps: readonly unknown[],
-	options?: { refreshTrigger?: number; refreshMs?: number; cacheKey?: string; cacheTtlMs?: number }
+	options?: { refreshTrigger?: number; refreshMs?: number }
 ) {
 	const globalTick = useGlobalRefreshTrigger();
 	const mergedTrigger = options?.refreshTrigger !== undefined
@@ -1739,7 +1739,7 @@ export async function fetchShiftStatus() {
 	} as ShiftStatusRecord;
 }
 
-import { DAY_MS, getWibDayRange as _getWibDayRange, formatDayLabelWIB } from "@/lib/wib-utils";
+import { getWibDayRange as _getWibDayRange, formatDayLabelWIB } from "@/lib/wib-utils";
 const getWibDayRange = _getWibDayRange;
 
 function formatWibDayLabel(referenceTime: number) {

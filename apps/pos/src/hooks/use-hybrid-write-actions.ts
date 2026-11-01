@@ -1,13 +1,11 @@
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { formatOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { allocateDailyReceiptNo } from "@yumipos/web-shared/lib/daily-receipt";
 import { createClient } from "@/lib/client";
-import { assertOrderRetryAcknowledgement } from "@/lib/order-retry-acknowledgement";
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useCallback, useState } from "react";
 import { invokeBookingAdmin, invokeEdgeFunction } from "@/lib/api-helper";
 import { calculateShiftPaymentBreakdown, EMPTY_SHIFT_PAYMENT_BREAKDOWN } from "@/lib/shift-payment-breakdown";
-import { formatOrderNumber } from "@yumipos/web-shared/lib/order-number";
 
 type FunctionReference<_Kind extends "mutation" | "action"> = unknown;
 const api = new Proxy(
@@ -41,18 +39,13 @@ function makeSourceId(prefix: string) {
 	return `${prefix}_${random.slice(0, 24)}`;
 }
 
-function getOrderSourcePrefix(source?: "pos" | "customer_self_service" | "booking") {
-	if (source === "customer_self_service") return "SO";
-	if (source === "booking") return "BKO";
-	return "ORD";
-}
-
 function generateOrderNumber(args: {
 	source?: "pos" | "customer_self_service" | "booking";
 	orderType?: string;
 	platform?: string;
 	createdAt: number;
-	receiptNo?: number;
+	customerName?: string;
+	receiptNo: number;
 }) {
 	return formatOrderNumber({
 		sequence: args.receiptNo,
@@ -639,22 +632,6 @@ type MenuRecipeIngredient = {
 	inventoryId: string;
 	amount: number;
 };
-
-// Toolbar quantities represent ready-to-sell portions, not ingredient receipts.
-// The RPC locks the row and marks zero stock SOLD in the same transaction.
-export function useHybridAdjustReadyMenuStock() {
-	return useCallback(async (args: { productId: string; delta: number; currentQuantity: number }) => {
-		const { data, error } = await createClient().schema("pos").rpc("adjust_ready_menu_stock", {
-			p_product_source_id: args.productId,
-			p_delta: args.delta,
-			p_expected_quantity: args.currentQuantity,
-		});
-		if (error) throw error;
-		const result = Array.isArray(data) ? data[0] : data;
-		if (!result) throw new Error("Perubahan stok tidak dikonfirmasi server");
-		return { quantity: Number(result.quantity), isAvailable: Boolean(result.is_available) };
-	}, []);
-}
 
 type MenuRecipeSnapshot = {
 	_id?: string;
@@ -2544,25 +2521,11 @@ export function useHybridCreateOrder() {
 			if (idempotencyKey) {
 				const { data: existingOrder, error: existingError } = await pos
 					.from("orders")
-					.select("source_id,status,total_amount")
+					.select("source_id")
 					.eq("idempotency_key", idempotencyKey)
 					.maybeSingle();
 				if (existingError) throw existingError;
-				if (existingOrder?.source_id) {
-					await assertOrderRetryAcknowledgement(pos, existingOrder, {
-						...args,
-						...(args?.source === "pos" ? { repairMissingSettlement: async () => {
-							const { error } = await pos.rpc("repair_pos_order_settlement", {
-								p_order_id: existingOrder.source_id,
-							});
-							if (error) throw error;
-						} } : {}),
-					});
-					return existingOrder.source_id;
-				}
-			}
-			if (args?.reconcileOnly) {
-				throw new Error("Pesanan belum ditemukan di server. Periksa riwayat pesanan sebelum melanjutkan.");
+				if (existingOrder?.source_id) return existingOrder.source_id;
 			}
 			const autoComplete = Boolean(args?.autoComplete);
 			const nextStatus = isOpenBill
@@ -2582,7 +2545,8 @@ export function useHybridCreateOrder() {
 				orderType: args?.orderType,
 				platform: args?.platform,
 				createdAt: orderCreatedAt,
-				receiptNo: dailyReceiptNo ?? undefined,
+				receiptNo: dailyReceiptNo,
+				customerName: args?.customerName || undefined,
 			});
 				const orderId = makeSourceId("order");
 
@@ -2659,27 +2623,15 @@ const orderRow = {
 					if (idempotencyKey && orderError.code === "23505") {
 						const { data: concurrentOrder, error: concurrentError } = await pos
 							.from("orders")
-							.select("source_id,status,total_amount")
+							.select("source_id")
 							.eq("idempotency_key", idempotencyKey)
 							.maybeSingle();
 						if (concurrentError) throw concurrentError;
-						if (concurrentOrder?.source_id) {
-							await assertOrderRetryAcknowledgement(pos, concurrentOrder, {
-								...args,
-								...(args?.source === "pos" ? { repairMissingSettlement: async () => {
-									const { error } = await pos.rpc("repair_pos_order_settlement", {
-										p_order_id: concurrentOrder.source_id,
-									});
-									if (error) throw error;
-								} } : {}),
-							});
-							return concurrentOrder.source_id;
-						}
+						if (concurrentOrder?.source_id) return concurrentOrder.source_id;
 					}
 					throw orderError;
 				}
 
-				try {
 				const orderItems = Array.isArray(args?.items)
 					? args.items.map((item: any, index: number) => ({
 							order_source_id: orderId,
@@ -2705,53 +2657,32 @@ const orderRow = {
 				}
 
 				if (!isOpenBill) {
-					if (args?.source === "pos") {
-						const { error: settlementError } = await pos.rpc("repair_pos_order_settlement", {
-							p_order_id: orderId,
-						});
-						if (settlementError) throw settlementError;
-					} else {
-						const financialRow = {
-							source_id: makeSourceId("fin"),
-							tx_type: "income",
-							amount: orderRow.total_amount,
-							category: "Penjualan",
-							description: `Penjualan Pesanan #${orderNumber}`,
-							merchant: args?.customerName ?? null,
-							tx_date: orderCreatedAt,
-							payment_method: args?.paymentMethod ?? null,
-							status: "completed",
-							order_source_id: orderId,
-							creation_time: Date.now(),
-							metadata: { dailyReceiptNo, orderNumber, source: args?.source ?? null },
-							raw: { kind: "order_settlement", orderId },
-						};
-						const { error: financialError } = await pos.from("financial_transactions").insert(financialRow);
-						if (financialError) throw financialError;
-					}
-				}
-				} catch (writeError) {
-					// The order header/items may already be durable when the settlement
-					// response is lost. Verify that same idempotent order and repair only
-					// its missing settlement before returning it as successful.
-					try {
-						await assertOrderRetryAcknowledgement(
-							pos,
-							{ source_id: orderId, status: nextStatus, total_amount: orderRow.total_amount },
-							{
-								...args,
-								...(args?.source === "pos" ? { repairMissingSettlement: async () => {
-									const { error } = await pos.rpc("repair_pos_order_settlement", {
-										p_order_id: orderId,
-									});
-									if (error) throw error;
-								} } : {}),
-							},
-						);
-						return orderId;
-					} catch {
-						throw writeError;
-					}
+					const financialRow = {
+						source_id: makeSourceId("fin"),
+						tx_type: "income",
+						amount: Number(args?.totalAmount ?? 0),
+						category: "Penjualan",
+						description: `Penjualan Pesanan #${orderNumber}`,
+						merchant: args?.customerName ?? null,
+						tx_date: orderCreatedAt,
+						payment_method: args?.paymentMethod ?? null,
+						status: "completed",
+						order_source_id: orderId,
+						creation_time: Date.now(),
+						metadata: {
+							dailyReceiptNo,
+							orderNumber,
+							source: "pos",
+						},
+						raw: {
+							kind: "order_settlement",
+							orderId,
+						},
+					};
+					const { error: financialError } = await pos
+						.from("financial_transactions")
+						.insert(financialRow);
+					if (financialError) throw financialError;
 				}
 
 				// Auto-deduct inventory untuk order completed (direct create)
@@ -2863,7 +2794,55 @@ export function useHybridUpdateOrder() {
 					return;
 				}
 				if (newStatus === "paid" || newStatus === "completed") {
-					throw new Error("Pembayaran harus diselesaikan melalui settlement pembayaran, bukan perubahan status manual");
+					const { data: order, error: getError } = await supabase
+						.schema("pos")
+						.from("orders")
+						.select("source_id, status, order_number, total_amount, payment_method, created_at, daily_receipt_no")
+						.eq("source_id", id)
+						.maybeSingle();
+					if (getError) throw getError;
+					if (!order) throw new Error("Order not found");
+
+					const wasPaid =
+						order.status === "paid" || order.status === "completed";
+					if (!wasPaid) {
+						const { data: existingTransaction, error: existingTransactionError } = await supabase
+							.schema("pos")
+							.from("financial_transactions")
+							.select("source_id")
+							.eq("order_source_id", id)
+							.limit(1)
+							.maybeSingle();
+						if (existingTransactionError) throw existingTransactionError;
+						if (!existingTransaction) {
+							const txDate = Number(args?.date ?? order.created_at ?? Date.now());
+							const { error: txError } = await supabase
+								.schema("pos")
+								.from("financial_transactions")
+								.insert({
+								source_id: makeSourceId("fin"),
+								tx_type: "income",
+								amount: Number(order.total_amount ?? 0),
+								category: "Penjualan",
+								description: `Penjualan Pesanan #${order.order_number ?? "-"}`,
+								tx_date: txDate,
+								payment_method: args?.paymentMethod ?? order.payment_method ?? null,
+								status: "completed",
+								order_source_id: id,
+								creation_time: Date.now(),
+								metadata: {
+									dailyReceiptNo: (order as any).daily_receipt_no ?? undefined,
+									orderNumber: order.order_number ?? undefined,
+									source: "pos",
+								},
+								raw: {
+									kind: "order_settlement_update_order",
+									orderId: id,
+								},
+							});
+							if (txError) throw txError;
+						}
+					}
 				}
 
 				const { error } = await supabase
@@ -3002,7 +2981,33 @@ export function useHybridUpdateOrderStatus() {
 				const wasPaid =
 					order.status === "paid" || order.status === "completed";
 				if (isNowPaid && !wasPaid) {
-					throw new Error("Pembayaran harus diselesaikan melalui settlement pembayaran, bukan perubahan status manual");
+					const transactionDate = Number(
+						args?.transactionDate ?? order.created_at ?? Date.now()
+					);
+					const { error: txError } = await pos
+						.from("financial_transactions")
+						.insert({
+							source_id: makeSourceId("fin"),
+							tx_type: "income",
+							amount: Number(order.total_amount ?? 0),
+							category: "Penjualan",
+							description: `Penjualan Pesanan #${order.order_number ?? "-"}`,
+							tx_date: transactionDate,
+							payment_method: order.payment_method ?? null,
+							status: "completed",
+							order_source_id: id,
+							creation_time: Date.now(),
+							metadata: {
+								dailyReceiptNo: (order as any).daily_receipt_no ?? undefined,
+								orderNumber: order.order_number ?? undefined,
+								source: "pos",
+							},
+							raw: {
+								kind: "order_settlement_status_update",
+								orderId: id,
+							},
+						});
+					if (txError) throw txError;
 				}
 
 				const { error: updateError } = await pos
@@ -3067,7 +3072,7 @@ export function useHybridUpdateOrderPaymentGateway() {
 				const { data: order, error: getError } = await pos
 					.from("orders")
 					.select(
-						"source_id, status, order_number, total_amount, payment_method, payment_receipt_kind, created_at, daily_receipt_no, source, source_app, business_unit, brand_slug, order_type, platform"
+						"source_id, status, order_number, total_amount, payment_method, payment_receipt_kind, daily_receipt_no"
 					)
 					.eq("source_id", id)
 					.maybeSingle();
@@ -3091,7 +3096,7 @@ export function useHybridUpdateOrderPaymentGateway() {
 							tx_type: "income",
 							amount: Number(order.total_amount ?? 0),
 							category: "Penjualan",
-							description: `Penjualan Pesanan #${getDisplayOrderNumber(order.order_number, { sequence: (order as any).daily_receipt_no, createdAt: (order as any).created_at, source: (order as any).source, sourceApp: (order as any).source_app, businessUnit: (order as any).business_unit, brandSlug: (order as any).brand_slug, orderType: (order as any).order_type, platform: (order as any).platform })}`,
+							description: `Penjualan Pesanan #${order.order_number ?? "-"}`,
 							tx_date: settledAt,
 							payment_method: order.payment_method ?? null,
 							status: "completed",
@@ -3100,12 +3105,7 @@ export function useHybridUpdateOrderPaymentGateway() {
 							metadata: {
 								dailyReceiptNo: (order as any).daily_receipt_no ?? undefined,
 								orderNumber: order.order_number ?? undefined,
-								source: (order as any).source,
-								sourceApp: (order as any).source_app,
-								businessUnit: (order as any).business_unit,
-								brandSlug: (order as any).brand_slug,
-								orderType: (order as any).order_type,
-								platform: (order as any).platform,
+								source: "pos",
 							},
 							raw: {
 								kind: "order_gateway_paid",

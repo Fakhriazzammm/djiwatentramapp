@@ -157,7 +157,7 @@ type PwaSettings = {
 │ Logo header, favicon, dan icon PWA                      │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
-│ ┌── POS PWA (pos.djiwatentram.web.id) ──────────────────────────┐ │
+│ ┌── POS PWA (pos.yumme.id) ──────────────────────────┐ │
 │ │  Nama Aplikasi:  [Djiwa Tentram POS          ]     │ │
 │ │  Short Name:     [Djiwa POS                  ]     │ │
 │ │  Deskripsi:      [Aplikasi kasir Djiwa Tentram]     │ │
@@ -168,7 +168,7 @@ type PwaSettings = {
 │ │  Icon 512x512:   [📤 upload] [preview]              │ │
 │ └────────────────────────────────────────────────────┘ │
 │                                                         │
-│ ┌── Customer PWA (djiwatentram.web.id) ────────────┐ │
+│ ┌── Customer PWA (djiwatentram.yumme.id) ────────────┐ │
 │ │  Nama Aplikasi:  [Djiwa Tentram App          ]     │ │
 │ │  Short Name:     [Djiwa App                  ]     │ │
 │ │  Deskripsi:      [Pesan menu favorit dari meja]     │ │

@@ -6,12 +6,9 @@ import { useEffect, useState } from "react";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import { createClient } from "@/lib/client";
 import { invokeEdgeFunction } from "@/lib/api-helper";
-import { adminProtectedRead } from "@/lib/admin-protected-read";
-import { loadAllRows, loadCustomerRows } from "@/lib/customers-data";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
@@ -332,51 +329,25 @@ function AdminCustomers() {
 		"admin-customers",
 		async () => {
 			const supabase = createClient();
-			return loadCustomerRows(
-				async () => {
-					const data = await loadAllRows(async ([from, to]) => {
-						const { data: page, error } = await supabase
-							.from("pos_customers_view")
-							.select("*")
-							.order("total_spent", { ascending: false })
-							.order("source_id", { ascending: true })
-							.range(from, to);
-						if (error) throw error;
-						return (page ?? []) as Customer[];
-					});
-					return { data, error: null };
-				},
-				async () => {
-					const data = await loadAllRows(
-						(range) => adminProtectedRead("orders", {
-							select: "_id,orderNumber,status,source,createdAt,totalAmount,customerSourceId,authUserId,customerEmail,customerName",
-							in: {
-								source: ["customer_self_service", "ordermieyamin_b2b"],
-								status: ["paid", "completed"],
-							},
-							order: [{ column: "createdAt", ascending: false }, { column: "_id", ascending: false }],
-							range,
-						}),
-						1000,
-					);
-					return { data, error: null };
-				},
-				(customerRows, orderRows) => {
-					const settledOrders = orderRows.filter(isSettledOrder);
-					return customerRows.map((customer) => {
-						const orders = settledOrders.filter((order) => customerMatchesOrder(customer, order));
-						if (orders.length === 0) return customer;
-						const totalSpent = orders.reduce((sum, order) => sum + Number(order.totalAmount ?? order.total_amount ?? 0), 0);
-						const lastOrderAt = orders.reduce((latest, order) => Math.max(latest, Number(order.createdAt ?? order.created_at ?? 0)), 0);
-						return {
-							...customer,
-							total_orders: orders.length,
-							total_spent: totalSpent,
-							last_order_at: lastOrderAt > 0 ? new Date(lastOrderAt).toISOString() : customer.last_order_at,
-						};
-					});
-				},
-			);
+			const [{ data: customerRows, error: customerError }, { data: orderRows, error: orderError }] = await Promise.all([
+				supabase.from("pos_customers_view").select("*").order("total_spent", { ascending: false }),
+				supabase.from("pos_orders").select("*").in("source", ["customer_self_service", "ordermieyamin_b2b"]).order("createdAt", { ascending: false }).limit(2000),
+			]);
+			if (customerError) throw customerError;
+			if (orderError) throw orderError;
+			const settledOrders = (orderRows ?? []).filter(isSettledOrder);
+			return ((customerRows ?? []) as Customer[]).map((customer) => {
+				const orders = settledOrders.filter((order) => customerMatchesOrder(customer, order));
+				if (orders.length === 0) return customer;
+				const totalSpent = orders.reduce((sum, order) => sum + Number(order.totalAmount ?? order.total_amount ?? 0), 0);
+				const lastOrderAt = orders.reduce((latest, order) => Math.max(latest, Number(order.createdAt ?? order.created_at ?? 0)), 0);
+				return {
+					...customer,
+					total_orders: orders.length,
+					total_spent: totalSpent,
+					last_order_at: lastOrderAt > 0 ? new Date(lastOrderAt).toISOString() : customer.last_order_at,
+				};
+			});
 		},
 		[],
 		{ tables: ["customers", "customer_wallets", "orders", "order_items"] }
@@ -390,23 +361,16 @@ function AdminCustomers() {
 		if (!detailCustomer?.source_id) { setSelectedCustomerOrders([]); return; }
 		let active = true;
 		setCustomerOrdersLoading(true);
-		loadAllRows(
-			(range) => adminProtectedRead("orders", {
-				select: "*",
-				order: [{ column: "createdAt", ascending: false }, { column: "_id", ascending: false }],
-				range,
-			}),
-			1000,
-		)
-			.then((data) => {
+		createClient().from("pos_orders").select("*").order("createdAt", { ascending: false }).limit(2000)
+			.then(({ data, error }) => {
 				if (!active) return;
-				setSelectedCustomerOrders(data.filter((order: any) => customerMatchesOrder(detailCustomer, order)).slice(0, 50));
-				setCustomerOrdersLoading(false);
-			})
-			.catch((error) => {
-				if (!active) return;
-				console.warn("[customers] order detail error:", error);
-				setSelectedCustomerOrders([]);
+				if (error) {
+					console.warn("[customers] order detail error:", error);
+					setSelectedCustomerOrders([]);
+					setCustomerOrdersLoading(false);
+					return;
+				}
+				setSelectedCustomerOrders((data || []).filter((order: any) => customerMatchesOrder(detailCustomer, order)).slice(0, 50));
 				setCustomerOrdersLoading(false);
 			});
 		return () => { active = false; };
@@ -857,7 +821,7 @@ function AdminCustomers() {
 						</div>
 						<div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-3"><p className="text-xs font-black">Membership</p><div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end"><label className="flex-1 text-[11px] font-semibold text-muted-foreground">Exp Member<input type="date" value={membershipExpiryValue} onChange={(event) => setMembershipExpiryValue(event.target.value)} className="mt-1 h-10 w-full rounded-lg border border-border bg-background px-2 text-xs text-foreground" /></label><button type="button" disabled={membershipExpiryBusy} onClick={() => void handleMembershipExpirySave()} className="h-10 rounded-lg bg-primary px-4 text-xs font-black text-primary-foreground disabled:opacity-50">{membershipExpiryBusy ? "Menyimpan..." : "Simpan Exp Member"}</button></div><p className="mt-2 text-[10px] text-muted-foreground">Kosongkan tanggal lalu simpan untuk menghapus masa berlaku.</p></div>
 						<div className="mt-4 rounded-xl border border-border bg-muted/20 p-3"><p className="text-xs font-black">Adjustment Djiwa Pay admin</p><div className="mt-2 grid grid-cols-2 gap-2"><input type="number" min="1" value={walletAdjustmentAmount} onChange={(event) => setWalletAdjustmentAmount(event.target.value)} placeholder="Nominal" className="h-10 rounded-lg border border-border bg-background px-2 text-xs" /><input value={walletAdjustmentNote} onChange={(event) => setWalletAdjustmentNote(event.target.value)} placeholder="Alasan wajib" className="h-10 rounded-lg border border-border bg-background px-2 text-xs" /></div><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" disabled={walletAdjustmentBusy} onClick={() => void handleWalletAdjustment("credit")} className="h-10 rounded-lg bg-emerald-600 text-xs font-black text-white disabled:opacity-50">Tambah Saldo</button><button type="button" disabled={walletAdjustmentBusy} onClick={() => void handleWalletAdjustment("debit")} className="h-10 rounded-lg bg-rose-600 text-xs font-black text-white disabled:opacity-50">Kurangi Saldo</button></div></div>
-						<div className="mt-4 rounded-xl border border-border p-3"><p className="text-xs font-black">Riwayat pembelian</p>{customerOrdersLoading ? <p className="mt-2 text-xs text-muted-foreground">Memuat riwayat order...</p> : selectedCustomerOrders.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">Belum ada order yang terhubung.</p> : <div className="mt-2 max-h-52 space-y-2 overflow-y-auto">{selectedCustomerOrders.map((order: any) => <div key={order._id} className="rounded-lg bg-muted/30 p-2 text-[11px]"><div className="flex justify-between gap-2"><span className="font-bold">#{getDisplayOrderNumber(order.orderNumber, { sequence: order.dailyReceiptNo ?? order.daily_receipt_no, createdAt: order.createdAt, source: order.source, sourceApp: order.sourceApp, businessUnit: order.businessUnit, orderType: order.orderType, platform: order.platform, brandSlug: order.brandSlug ?? order.brand_slug })}</span><span className="font-bold">{formatRupiah(Number(order.totalAmount || 0))}</span></div><div className="mt-1 text-muted-foreground">{order.status || "-"} · {formatDate(order.createdAt ? new Date(Number(order.createdAt)).toISOString() : null, true)}</div>{Array.isArray(order.items) && order.items.length > 0 ? <div className="mt-1 text-muted-foreground">{order.items.map((item: any) => `${item.quantity || 0}× ${item.productName || item.name || "Item"}`).join(", ")}</div> : null}</div>)}</div>}</div><div className="mt-4 rounded-xl border border-border p-3"><p className="text-xs font-black">Riwayat Djiwa Pay</p>{walletLedgerLoading ? <p className="mt-2 text-xs text-muted-foreground">Memuat ledger...</p> : walletLedger.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">Belum ada transaksi Djiwa Pay.</p> : <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">{walletLedger.slice(0, 20).map((entry) => <div key={entry.id} className="flex justify-between gap-2 border-b border-border/60 pb-1.5 text-[11px] last:border-0"><span className="min-w-0 truncate">{entry.note || entry.transaction_type}</span><span className={entry.direction === "credit" ? "font-bold text-emerald-700" : "font-bold text-rose-700"}>{entry.direction === "credit" ? "+" : "-"}{formatRupiah(entry.amount)}</span></div>)}</div>}</div>
+						<div className="mt-4 rounded-xl border border-border p-3"><p className="text-xs font-black">Riwayat pembelian</p>{customerOrdersLoading ? <p className="mt-2 text-xs text-muted-foreground">Memuat riwayat order...</p> : selectedCustomerOrders.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">Belum ada order yang terhubung.</p> : <div className="mt-2 max-h-52 space-y-2 overflow-y-auto">{selectedCustomerOrders.map((order: any) => <div key={order._id} className="rounded-lg bg-muted/30 p-2 text-[11px]"><div className="flex justify-between gap-2"><span className="font-bold">#{order.orderNumber || "-"}</span><span className="font-bold">{formatRupiah(Number(order.totalAmount || 0))}</span></div><div className="mt-1 text-muted-foreground">{order.status || "-"} · {formatDate(order.createdAt ? new Date(Number(order.createdAt)).toISOString() : null, true)}</div>{Array.isArray(order.items) && order.items.length > 0 ? <div className="mt-1 text-muted-foreground">{order.items.map((item: any) => `${item.quantity || 0}× ${item.productName || item.name || "Item"}`).join(", ")}</div> : null}</div>)}</div>}</div><div className="mt-4 rounded-xl border border-border p-3"><p className="text-xs font-black">Riwayat Djiwa Pay</p>{walletLedgerLoading ? <p className="mt-2 text-xs text-muted-foreground">Memuat ledger...</p> : walletLedger.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">Belum ada transaksi Djiwa Pay.</p> : <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">{walletLedger.slice(0, 20).map((entry) => <div key={entry.id} className="flex justify-between gap-2 border-b border-border/60 pb-1.5 text-[11px] last:border-0"><span className="min-w-0 truncate">{entry.note || entry.transaction_type}</span><span className={entry.direction === "credit" ? "font-bold text-emerald-700" : "font-bold text-rose-700"}>{entry.direction === "credit" ? "+" : "-"}{formatRupiah(entry.amount)}</span></div>)}</div>}</div>
 						</div>
 					</div>
 				</div>

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Minus, Plus, Search } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Minus, Plus, Search, X } from "lucide-react";
 import { useCart } from "@/context/cart-context";
 import { useAppData } from "@/context/app-data-context";
 import { Button } from "@/components/ui/button";
@@ -25,16 +25,12 @@ import {
 import { CheckoutResult, formatCheckoutAmount as fmt } from "./checkout-result";
 import { CheckoutRecoveryNotice } from "./checkout-recovery-notice";
 import { CustomerSearchModal } from "./customer-search-modal";
-import { CheckoutStepHeader } from "./checkout-stepper";
-import { CheckoutCartItem } from "./checkout-cart-item";
-
-let autoRecoveryRequestKey: string | null = null;
 
 export interface CheckoutSidebarProps {
 	onConfirmPayment?: ConfirmCheckoutPayment;
 	isSubmitting?: boolean;
 	onClose?: () => void;
-	/** Legacy route entry hints. Pending payment recovery takes precedence. */
+	/** Legacy route entry hints. A recovered draft takes precedence. */
 	initialStep?: "customer" | "menu" | "payment" | "receipt" | "assign";
 	lastOrderId?: string | null;
 	onPrintLastOrder?: () => void;
@@ -45,6 +41,8 @@ export interface CheckoutSidebarProps {
 	onPrintOrder?: (orderId: string, mode?: "kitchen") => void;
 	pendingPayment?: { customerName: string; total: number };
 	onRecoverPayment?: () => Promise<CheckoutSubmissionResult>;
+	/** Explicit escape hatch for an abandoned recovery draft. */
+	onDiscardPendingPayment?: () => void;
 }
 
 export function CheckoutSidebar({
@@ -59,6 +57,7 @@ export function CheckoutSidebar({
 	onPrintOrder,
 	pendingPayment,
 	onRecoverPayment,
+	onDiscardPendingPayment,
 }: CheckoutSidebarProps) {
 	const {
 		items,
@@ -281,14 +280,14 @@ export function CheckoutSidebar({
 			setSubmitError(
 				error instanceof Error
 					? error.message
-					: "Pesanan belum terkirim. Coba lagi dari checkout ini.",
+					: "Pesanan gagal disimpan. Draft tetap tersedia; coba lagi.",
 			);
 		} finally {
 			inFlight.current = false;
 			setSubmitting(false);
 		}
 	};
-	const recover = useCallback(async () => {
+	const recover = async () => {
 		if (inFlight.current || busy || !onRecoverPayment) return;
 		inFlight.current = true;
 		setSubmitting(true);
@@ -313,27 +312,17 @@ export function CheckoutSidebar({
 			inFlight.current = false;
 			setSubmitting(false);
 		}
-	}, [busy, onRecoverPayment]);
-	useEffect(() => {
-		if (!pendingPayment) {
-		autoRecoveryRequestKey = null;
-			return;
-		}
-		const requestKey = `${pendingPayment.customerName}:${pendingPayment.total}`;
-		if (autoRecoveryRequestKey === requestKey || busy || !onRecoverPayment) return;
-		autoRecoveryRequestKey = requestKey;
-		void recover();
-	}, [busy, onRecoverPayment, pendingPayment, recover]);
+	};
 	const customerFields = (
-		<div className="space-y-1.5 rounded-lg border border-border/70 bg-card p-2 shadow-sm">
-			<div className="flex items-end gap-1.5">
-				<label className="flex-1 space-y-1 text-xs font-semibold">
-					<span className="text-foreground">
+		<div className="space-y-3">
+			<div className="flex items-end gap-2">
+				<label className="flex-1 space-y-1">
+					<span>
 						Nama pelanggan
 						{draft.paymentMethod === "qris_mayar" ? " (wajib)" : " (opsional)"}
 					</span>
 					<Input
-						className="min-h-11 text-sm"
+						className="h-11 text-sm"
 						value={customerInfo.name}
 						onChange={(e) => updateCustomerInfo({ name: e.target.value })}
 						autoComplete="name"
@@ -342,17 +331,17 @@ export function CheckoutSidebar({
 				<Button
 					aria-label="Cari pelanggan"
 					variant="outline"
-					className="min-h-11 min-w-11 shrink-0 rounded-lg px-0 shadow-sm"
+					className="h-11 w-11 shrink-0 px-0"
 					onClick={() => setCustomerSearchOpen(true)}
 				>
 					<Search className="h-4 w-4" />
 				</Button>
 			</div>
 			{selectedOrderType?.requiresTableNumber && (
-				<label className="block space-y-1 text-xs font-semibold">
+				<label className="block space-y-1">
 					<span>Nomor meja (opsional)</span>
 					<Input
-						className="min-h-11 text-sm"
+						className="h-11 text-sm"
 						value={customerInfo.tableNumber}
 						onChange={(e) =>
 							updateCustomerInfo({ tableNumber: e.target.value })
@@ -360,10 +349,10 @@ export function CheckoutSidebar({
 					/>
 				</label>
 			)}
-			<label className="block space-y-1 text-xs font-semibold">
+			<label className="block space-y-1">
 				<span>Catatan pesanan (opsional)</span>
 				<Input
-					className="min-h-11 text-sm"
+					className="h-11 text-sm"
 					value={customerInfo.notes}
 					onChange={(e) => updateCustomerInfo({ notes: e.target.value })}
 				/>
@@ -371,14 +360,43 @@ export function CheckoutSidebar({
 		</div>
 	);
 	return (
-		<div className="relative flex h-full min-h-0 flex-col bg-[#F2F2F7] text-sm text-slate-900 dark:bg-[#1C1C1E] dark:text-slate-100 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base">
-			<CheckoutStepHeader
-				activeStep={activeStep}
-				disabled={busy || hasPendingPayment}
-				onStepChange={(step) => patch({ step })}
-				onClose={onClose}
-			/>
-			<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#F2F2F7] dark:bg-[#1C1C1E]">
+		<div className="relative flex h-full min-h-0 flex-col bg-background text-sm [&_input]:text-base [&_select]:text-base [&_textarea]:text-base">
+			<header className="flex shrink-0 items-center gap-2 border-b border-border p-3">
+				<nav
+					aria-label="Tahapan checkout"
+					className="flex flex-1 items-center justify-between gap-2 text-[13px]"
+				>
+					{(
+						[
+							["order", "Pesanan"],
+							["payment", "Pembayaran"],
+							["result", "Hasil"],
+						] as const
+					).map(([step, label], index) => (
+						<span
+							key={step}
+							aria-current={activeStep === step ? "step" : undefined}
+							className={cn(
+								"font-medium",
+								activeStep === step ? "text-primary" : "text-muted-foreground",
+							)}
+						>
+							{index + 1}. {label}
+						</span>
+					))}
+				</nav>
+				{onClose && (
+					<Button
+						variant="ghost"
+						aria-label="Tutup checkout"
+						className="h-11 w-11 shrink-0 px-0"
+						onClick={onClose}
+					>
+						<X className="h-5 w-5" />
+					</Button>
+				)}
+			</header>
+			<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
 				{result ? (
 					<CheckoutResult
 						result={result}
@@ -404,7 +422,7 @@ export function CheckoutSidebar({
 						}
 					/>
 				) : (
-					<div className="space-y-3 p-3 sm:space-y-4 sm:p-4">
+					<div className="space-y-4 p-4">
 						{hasPendingPayment && pendingPayment && (
 							<CheckoutRecoveryNotice
 								customerName={pendingPayment.customerName}
@@ -415,27 +433,12 @@ export function CheckoutSidebar({
 						)}
 						<fieldset
 							disabled={busy || hasPendingPayment}
-							className="min-w-0 space-y-3 disabled:opacity-60 sm:space-y-4"
+							className="min-w-0 space-y-4 disabled:opacity-70"
 						>
 						{activeStep === "order" ? (
 							<>
-								<div className="flex items-center justify-between gap-2">
-									<div>
-										<p className="text-xs font-medium text-slate-500 dark:text-slate-400">Langkah 1 dari 3</p>
-										<h2 className="mt-0.5 text-xl font-bold tracking-tight text-slate-900">Pesanan ({totalItems})</h2>
-									</div>
-										<Button
-											variant="ghost"
-											className="min-h-11 rounded-full px-4 text-sm font-semibold text-slate-500 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-800"
-											disabled={!items.length || busy}
-											onClick={clearCart}
-										>
-										Kosongkan
-									</Button>
-								</div>
-								<div className="rounded-2xl border border-black/[0.06] bg-white p-3 shadow-sm dark:border-white/10 dark:bg-[#2C2C2E]">
-									<p className="mb-2 text-sm font-semibold text-slate-500 dark:text-slate-400">Jenis pesanan</p>
-									<div className="flex flex-wrap gap-1.5" aria-label="Tipe pesanan">
+								<h2 className="font-bold">Pesanan ({totalItems})</h2>
+								<div className="flex flex-wrap gap-2" aria-label="Tipe pesanan">
 									{orderTypes.map((type) => (
 										<Button
 											key={type.id}
@@ -444,7 +447,7 @@ export function CheckoutSidebar({
 													? "default"
 													: "outline"
 											}
-											className="min-h-11 rounded-lg px-3 text-xs font-bold shadow-sm"
+											className="min-h-11 text-sm"
 											aria-pressed={customerInfo.orderType === type.id}
 											onClick={() =>
 												updateCustomerInfo({
@@ -461,12 +464,11 @@ export function CheckoutSidebar({
 											{type.label}
 										</Button>
 									))}
-									</div>
 								</div>
 								{selectedOrderType?.id === "online" && (
-									<div className="space-y-2 rounded-2xl border border-black/[0.06] bg-white p-3 shadow-sm dark:border-white/10 dark:bg-[#2C2C2E]">
-										<p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Platform pesanan</p>
-										<div className="flex flex-wrap gap-1.5">
+									<div className="space-y-2">
+										<p>Platform pesanan</p>
+										<div className="flex flex-wrap gap-2">
 											{platforms.map((platform) => (
 												<Button
 													key={platform.id}
@@ -475,7 +477,7 @@ export function CheckoutSidebar({
 															? "default"
 															: "outline"
 													}
-													className="min-h-11 rounded-lg px-3 text-xs font-bold shadow-sm"
+													className="min-h-11 text-sm"
 													aria-pressed={customerInfo.platform === platform.id}
 													onClick={() =>
 														updateCustomerInfo({
@@ -495,28 +497,17 @@ export function CheckoutSidebar({
 										Belum ada menu. Tambahkan menu untuk mulai memesan.
 									</p>
 								)}
-			<div className="overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-sm divide-y divide-black/[0.06] dark:divide-white/10 dark:border-white/10 dark:bg-[#2C2C2E]">
+								<div className="space-y-3">
 									{items.map((item) => (
-										<div key={`${item.productId}-${item.variant || "default"}`}>
-											<CheckoutCartItem
-												item={item}
-												onQuantityChange={(delta) =>
-													updateQuantity(item.productId, item.variant, delta)
-												}
-												onPriceChange={(price) =>
-													updateItemPrice(item.productId, item.variant, price)
-												}
-												showPlatformPrice={customerInfo.orderType === "online"}
-											/>
-											<article
-												className="hidden space-y-2 rounded-xl border border-border/80 bg-card p-2.5 shadow-sm transition-shadow hover:shadow-md"
+										<article
+											className="space-y-2 rounded-xl border border-border p-3"
 											key={`${item.productId}-${item.variant || "default"}`}
 										>
 											<div className="flex justify-between gap-2">
 												<div className="min-w-0">
-															<p className="text-sm font-bold text-foreground">{item.name}</p>
+													<p className="font-medium">{item.name}</p>
 													{item.variant && (
-																<p className="text-[11px] text-muted-foreground">
+														<p className="text-[13px] text-muted-foreground">
 															{item.variant}
 														</p>
 													)}
@@ -532,7 +523,7 @@ export function CheckoutSidebar({
 														type="number"
 														inputMode="numeric"
 														min="0"
-														className="min-h-12 text-base"
+														className="h-11"
 														value={item.platformPrice ?? item.price}
 														onChange={(e) => {
 															const price = Number(e.target.value);
@@ -549,7 +540,7 @@ export function CheckoutSidebar({
 											<div className="flex items-center justify-end gap-3">
 												<Button
 													aria-label={`Kurangi ${item.name}${item.variant ? ` ${item.variant}` : ""}`}
-																className="h-9 w-9 rounded-lg px-0 shadow-sm"
+													className="h-11 w-11 px-0"
 													variant="outline"
 													onClick={() =>
 														updateQuantity(item.productId, item.variant, -1)
@@ -565,7 +556,7 @@ export function CheckoutSidebar({
 												</span>
 												<Button
 													aria-label={`Tambah ${item.name}${item.variant ? ` ${item.variant}` : ""}`}
-															className="h-9 w-9 rounded-lg px-0 shadow-sm"
+													className="h-11 w-11 px-0"
 													variant="outline"
 													onClick={() =>
 														updateQuantity(item.productId, item.variant, 1)
@@ -574,33 +565,40 @@ export function CheckoutSidebar({
 													<Plus className="h-4 w-4" />
 												</Button>
 											</div>
-											</article>
-										</div>
+										</article>
 									))}
 								</div>
-								<details className="rounded-xl border border-border/70 bg-card p-2 shadow-sm">
-									<summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold">
-										Detail & promo (opsional)
-									</summary>
-									<div className="mt-2 space-y-3">
-										{customerFields}
-										<label className="flex min-h-11 items-center gap-3 rounded-2xl border border-black/[0.06] bg-white px-4 py-2 text-sm font-medium shadow-sm dark:border-white/10 dark:bg-[#2C2C2E]">
-											<input type="checkbox" className="h-5 w-5 accent-primary" checked={customerInfo.isFreeRefill} onChange={(e) => updateCustomerInfo({ isFreeRefill: e.target.checked })} />
-											<span>Free refill minuman (sesuai promo aktif)</span>
-										</label>
-									</div>
-								</details>
+								{customerFields}
+								<label className="flex min-h-11 items-center gap-3">
+									<input
+										type="checkbox"
+										className="h-5 w-5 accent-primary"
+										checked={customerInfo.isFreeRefill}
+										onChange={(e) =>
+											updateCustomerInfo({ isFreeRefill: e.target.checked })
+										}
+									/>
+									<span>Free refill minuman (sesuai promo aktif)</span>
+								</label>
 							</>
 						) : (
 							<>
-								<div className="flex items-end justify-between gap-3">
-									<div>
-										<p className="text-[9px] font-black uppercase tracking-[0.14em] text-primary">Langkah 2 dari 3</p>
-										<h2 className="mt-0.5 text-base font-black tracking-tight text-foreground">Pembayaran</h2>
-									</div>
+								<div className="flex items-center justify-between gap-2">
+									<h2 className="font-bold">Pembayaran</h2>
+									<Button
+										variant="outline"
+										className="min-h-11 text-sm"
+										onClick={() => patch({ step: "order" })}
+									>
+										Ubah pesanan
+									</Button>
 								</div>
+								<p className="text-muted-foreground">
+									Periksa total dan metode sebelum konfirmasi. Pesanan belum
+									dibayar.
+								</p>
 								<div
-									className="grid grid-cols-2 gap-1.5"
+									className="grid grid-cols-2 gap-2"
 									aria-label="Metode pembayaran"
 								>
 									{paymentOptions.map((option) => (
@@ -611,7 +609,7 @@ export function CheckoutSidebar({
 													: "outline"
 											}
 											key={option.id}
-											className="min-h-12 rounded-xl whitespace-normal px-3 text-sm font-bold shadow-sm"
+											className="min-h-11 whitespace-normal text-sm"
 											aria-pressed={draft.paymentMethod === option.id}
 											onClick={() => patch({ paymentMethod: option.id })}
 										>
@@ -625,14 +623,14 @@ export function CheckoutSidebar({
 									</p>
 								)}
 								{draft.paymentMethod === "tunai" && (
-										<div className="space-y-3 rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#2C2C2E]">
-										<label className="block space-y-1 text-xs font-semibold">
+									<div className="space-y-3 rounded-xl border border-border p-3">
+										<label className="block space-y-1">
 											<span>Uang diterima (wajib)</span>
 											<Input
 												type="number"
 												min="0"
 												inputMode="numeric"
-															className="h-9 text-sm"
+												className="h-11 text-base"
 												placeholder="Masukkan nominal"
 												value={draft.cashReceived}
 												aria-describedby="checkout-payment-help"
@@ -650,12 +648,12 @@ export function CheckoutSidebar({
 												}
 											/>
 										</label>
-										<div className="grid grid-cols-3 gap-1.5">
+										<div className="grid grid-cols-3 gap-2">
 											{[50000, 100000].map((amount) => (
 												<Button
 													key={amount}
 													variant="outline"
-													className="min-h-11 px-1 text-xs"
+													className="min-h-11 px-1 text-sm"
 													onClick={() => patch({ cashReceived: amount })}
 												>
 													{fmt(amount)}
@@ -663,7 +661,7 @@ export function CheckoutSidebar({
 											))}
 											<Button
 												variant="secondary"
-												className="min-h-11 px-1 text-xs"
+												className="min-h-11 px-1 text-sm"
 												onClick={() => patch({ cashReceived: total })}
 											>
 												Uang pas
@@ -676,15 +674,15 @@ export function CheckoutSidebar({
 									</div>
 								)}
 								{draft.paymentMethod === "qris_mayar" && (
-									<div className="space-y-3 rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#2C2C2E]">
-										<p className="text-xs font-medium">
+									<div className="space-y-3 rounded-xl border border-border p-3">
+										<p className="font-medium">
 											QRIS dinamis memerlukan koneksi internet. Nama, email dan
 											telepon wajib diisi sebelum membuat pembayaran.
 										</p>
-										<label className="block space-y-1 text-xs font-semibold">
+										<label className="block space-y-1">
 											<span>Nama pelanggan (wajib)</span>
 											<Input
-															className="h-9"
+												className="h-11"
 												required
 												value={customerInfo.name}
 												autoComplete="name"
@@ -693,10 +691,10 @@ export function CheckoutSidebar({
 												}
 											/>
 										</label>
-										<label className="block space-y-1 text-xs font-semibold">
+										<label className="block space-y-1">
 											<span>Email (wajib)</span>
 											<Input
-															className="h-9"
+												className="h-11"
 												type="email"
 												inputMode="email"
 												required
@@ -707,10 +705,10 @@ export function CheckoutSidebar({
 												}
 											/>
 										</label>
-										<label className="block space-y-1 text-xs font-semibold">
+										<label className="block space-y-1">
 											<span>Telepon (wajib)</span>
 											<Input
-															className="h-9"
+												className="h-11"
 												type="tel"
 												inputMode="tel"
 												required
@@ -734,17 +732,11 @@ export function CheckoutSidebar({
 										Pastikan transfer bank sudah diterima sebelum konfirmasi.
 									</p>
 								)}
-								<details className="rounded-2xl border border-black/[0.06] bg-white px-4 py-1 shadow-sm dark:border-white/10 dark:bg-[#2C2C2E]">
-									<summary className="flex min-h-12 cursor-pointer items-center justify-between gap-3 text-sm font-semibold">
-										<span>Diskon & opsi pesanan</span>
-										{appliedVoucher ? <span className="truncate text-xs font-medium text-primary">{appliedVoucher.name}</span> : null}
-									</summary>
-									<div className="space-y-3 pb-3">
 								{(validDiscounts.length > 0 || appliedVoucher) && (
 									<label className="block space-y-1">
 										<span>Voucher / diskon</span>
 										<select
-															className="h-9 w-full rounded-lg border border-border bg-background px-2 text-xs"
+											className="h-11 w-full rounded-lg border border-border bg-background px-3 text-sm"
 											value={appliedVoucher?._id || ""}
 											onChange={(e) => {
 												const voucher = validDiscounts.find(
@@ -781,7 +773,7 @@ export function CheckoutSidebar({
 										</select>
 									</label>
 								)}
-									<label className="flex min-h-9 items-center gap-2 text-xs">
+								<label className="flex min-h-11 items-center gap-3">
 									<input
 										className="h-5 w-5 accent-primary"
 										type="checkbox"
@@ -790,21 +782,21 @@ export function CheckoutSidebar({
 									/>
 									<span>Otomatis selesaikan pesanan</span>
 								</label>
-									<details className="rounded-xl border border-border p-2.5">
-										<summary className="flex min-h-8 cursor-pointer items-center text-xs font-semibold">
+								<details className="rounded-xl border border-border p-3">
+									<summary className="flex min-h-11 cursor-pointer items-center font-medium">
 										Atur tim (opsional)
 									</summary>
-										<p className="mb-2 text-[11px] text-muted-foreground">
+									<p className="mb-3 text-muted-foreground">
 										Pesanan dapat dikirim tanpa penugasan khusus.
 									</p>
 									{assignments.map((group) => (
 										<div key={group.groupType} className="mb-4 space-y-2">
-											<label className="block space-y-1 text-xs font-semibold">
+											<label className="block space-y-1">
 												<span>
 													{group.groupType === "barista" ? "Barista" : "Dapur"}
 												</span>
 												<select
-																className="h-9 w-full rounded-lg border border-border bg-background px-2 text-xs"
+													className="h-11 w-full rounded-lg border border-border bg-background px-2"
 													value={group.assignedTo}
 													onChange={(e) =>
 														patch({
@@ -837,8 +829,8 @@ export function CheckoutSidebar({
 												</select>
 											</label>
 											{group.items.map((item, index) => (
-															<label
-																className="block space-y-1 text-xs font-semibold"
+												<label
+													className="block space-y-1"
 													key={`${item.productId}-${item.variant}`}
 												>
 													<span>
@@ -846,7 +838,7 @@ export function CheckoutSidebar({
 														{item.variant ? ` (${item.variant})` : ""}
 													</span>
 													<select
-																	className="h-9 w-full rounded-lg border border-border bg-background px-2 text-xs"
+														className="h-11 w-full rounded-lg border border-border bg-background px-2"
 														value={item.assignedTo}
 														onChange={(e) =>
 															patch({
@@ -885,18 +877,9 @@ export function CheckoutSidebar({
 										</div>
 									))}
 								</details>
-									</div>
-								</details>
 							</>
 						)}
-						<section className="rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#2C2C2E]">
-							<div className="flex items-center justify-between gap-3">
-								<span className="text-sm font-medium text-slate-500 dark:text-slate-300">Total</span>
-								<strong className="text-xl font-bold tracking-tight tabular-nums text-slate-900 dark:text-white">{fmt(total)}</strong>
-							</div>
-							<details className="mt-3 border-t border-black/[0.06] pt-1">
-								<summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium text-slate-500 dark:text-slate-400">Rincian biaya</summary>
-								<dl className="space-y-2 pb-2 text-sm">
+						<dl className="space-y-2 rounded-xl bg-muted/40 p-3 text-[13px]">
 							<div className="flex justify-between">
 								<dt>Subtotal</dt>
 								<dd>{fmt(grossAmount)}</dd>
@@ -929,7 +912,7 @@ export function CheckoutSidebar({
 							) : (
 								<div>
 									<dt className="sr-only">Pajak</dt>
-									<dd className="text-[9px] leading-tight text-muted-foreground">
+									<dd className="text-muted-foreground">
 										Harga menu sudah termasuk PBJT atas makanan dan/atau minuman
 										sesuai ketentuan yang berlaku di Kota Tasikmalaya.
 									</dd>
@@ -947,6 +930,10 @@ export function CheckoutSidebar({
 									<dd>{fmt(tax.roundingAdjustment)}</dd>
 								</div>
 							)}
+							<div className="flex justify-between border-t border-border pt-2 text-base font-bold">
+								<dt>Total</dt>
+								<dd>{fmt(total)}</dd>
+							</div>
 							{customerInfo.orderType === "online" && (
 								<>
 									<div className="flex justify-between">
@@ -963,17 +950,15 @@ export function CheckoutSidebar({
 									</div>
 								</>
 							)}
-								</dl>
-							</details>
-						</section>
+						</dl>
 						</fieldset>
 					</div>
 				)}
 			</div>
 			{result ? (
-				<footer className="shrink-0 border-t border-black/[0.06] bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur-xl pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-white/10 dark:bg-[#1C1C1E]/95">
+				<footer className="shrink-0 border-t border-border bg-background p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
 					<Button
-						className="min-h-12 w-full rounded-2xl text-sm font-semibold shadow-sm"
+						className="min-h-11 w-full text-sm"
 						onClick={() => {
 							clearCart();
 							setSubmitError(null);
@@ -983,11 +968,29 @@ export function CheckoutSidebar({
 					</Button>
 				</footer>
 			) : hasPendingPayment ? (
-				<footer className="shrink-0 space-y-2 border-t border-black/[0.06] bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur-xl pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-white/10 dark:bg-[#1C1C1E]/95">
+				<footer className="shrink-0 space-y-2 border-t border-border bg-background p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
 					{submitError && <p className="text-[13px] text-destructive" role="alert">{submitError}</p>}
+					<p className="text-center text-[13px] text-muted-foreground">Ada draft checkout yang belum selesai. Pulihkan untuk mencegah transaksi ganda, atau batalkan draft jika pesanan tersebut memang sudah tidak dilanjutkan.</p>
+					<div className="grid grid-cols-2 gap-2">
+						<Button
+							className="min-h-11 w-full text-sm"
+							disabled={busy || !onRecoverPayment}
+							onClick={() => void recover()}
+						>
+							{busy ? "Memulihkan…" : "Pulihkan draft"}
+						</Button>
+						<Button
+							variant="outline"
+							className="min-h-11 w-full text-sm"
+							disabled={busy || !onDiscardPendingPayment}
+							onClick={onDiscardPendingPayment}
+						>
+							Batalkan draft
+						</Button>
+					</div>
 				</footer>
 			) : (
-				<footer className="shrink-0 space-y-2 border-t border-black/[0.06] bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur-xl pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-white/10 dark:bg-[#1C1C1E]/95">
+				<footer className="shrink-0 space-y-2 border-t border-border bg-background p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
 					{submitError && (
 						<p className="text-[13px] text-destructive" role="alert">
 							{submitError}
@@ -998,7 +1001,7 @@ export function CheckoutSidebar({
 							<p
 								id="checkout-payment-help"
 								className={cn(
-									"text-xs",
+									"text-[13px]",
 									validation || paymentUnavailable
 										? "text-destructive"
 										: "text-muted-foreground",
@@ -1006,21 +1009,12 @@ export function CheckoutSidebar({
 								aria-live="polite"
 							>
 								{paymentUnavailable
-									? "Pilih metode pembayaran yang tersedia."
+									? "Metode tersimpan tidak tersedia. Pilih metode lain."
 									: validation ||
 										"Periksa nominal sebelum mengonfirmasi pembayaran."}
 							</p>
 							<Button
-								variant="ghost"
-								className="min-h-11 w-full justify-center gap-1.5 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-								disabled={busy}
-								onClick={() => patch({ step: "order" })}
-							>
-								<ArrowLeft className="size-4" aria-hidden="true" />
-								Kembali ke pesanan
-							</Button>
-							<Button
-								className="min-h-12 w-full rounded-xl text-sm font-bold shadow-sm"
+								className="min-h-11 w-full text-sm"
 								disabled={
 									busy ||
 									Boolean(validation) ||
@@ -1045,7 +1039,7 @@ export function CheckoutSidebar({
 								</p>
 							)}
 							<Button
-								className="min-h-12 w-full rounded-xl text-sm font-bold shadow-sm"
+								className="min-h-11 w-full text-sm"
 								disabled={!items.length || busy}
 								onClick={() => patch({ step: "payment" })}
 							>
@@ -1054,7 +1048,7 @@ export function CheckoutSidebar({
 							<div className="flex gap-2">
 								<Button
 									variant="secondary"
-									className="min-h-11 flex-1 rounded-2xl text-sm font-semibold shadow-sm"
+									className="min-h-11 flex-1 text-sm"
 									disabled={
 										!items.length || busy || !isShiftOpen || !onConfirmPayment
 									}
@@ -1065,7 +1059,7 @@ export function CheckoutSidebar({
 								{canPrintOpenBill && onPrintOpenBill && (
 									<Button
 										variant="outline"
-									className="min-h-11 flex-1 rounded-2xl text-sm font-semibold shadow-sm"
+										className="min-h-11 flex-1 text-sm"
 										disabled={!items.length || busy}
 										onClick={onPrintOpenBill}
 									>

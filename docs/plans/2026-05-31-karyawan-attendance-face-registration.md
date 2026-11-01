@@ -4,7 +4,7 @@
 >
 > **Architecture:** Copy proven flow dari POS app (`apps/pos`) ke karyawan app. Flow: Pilih Staff → Cek hasFace → (PIN-only / Face-only / PIN+Face Enroll) → Clock In/Out.
 >
-> **Route:** `apps/karyawan` sebagai PWA mandiri di domain karyawan.djiwatentram.web.id
+> **Route:** `apps/karyawan` sebagai PWA mandiri di domain karyawan.yumme.id
 
 **Tech Stack:** React 19, TanStack Router, face-api.js, react-webcam, Supabase, @yumipos/web-shared
 
@@ -927,12 +927,12 @@ git commit -m "feat: add PIN-OR-Face attendance flow to karyawan app"
 git push origin main
 ```
 
-Deployment VPS untuk karyawan app akan build dari `apps/karyawan`. Jangan debug Cloudflare Pages build failures jika deployment yang dipakai adalah VPS.
+Vercel auto-deploy untuk karyawan app akan build dari `apps/karyawan`. Jangan debug CF Pages build failures — Vercel yang handle.
 
 ### Task 5.3: Manual verification scenarios
 
 **Skenario A — Face-only absen (user punya wajah):**
-1. Buka karyawan.djiwatentram.web.id → `/attendance`
+1. Buka karyawan.yumme.id → `/attendance`
 2. Pilih staff yang **sudah punya wajah**
 3. Kamera muncul → deteksi wajah → "Berhasil Absen Masuk"
 4. Cek log kehadiran di profil — muncul check_in hari ini

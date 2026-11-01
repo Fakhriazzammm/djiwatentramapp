@@ -4,7 +4,6 @@ import {
 	BarChart3,
 	Bell,
 	Bot,
-	Check,
 	Clock,
 	Coffee,
 	FileText,
@@ -40,7 +39,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { MenuSidebar } from "@/components/pos/menu-sidebar";
 import { CartDrawer } from "@/components/pos/cart-drawer";
 import { CheckoutSidebar } from "@/components/pos/checkout-sidebar";
@@ -68,6 +67,7 @@ import {
 	useHybridMayarCreateInvoice,
 	useHybridUpdateOrder,
 } from "@/hooks/use-hybrid-write-actions";
+import { useMenuKeyboardNav, type FocusZone } from "@/hooks/use-menu-keyboard-nav";
 import { useCart } from "@/context/cart-context";
 import { calculateEffectivePrice } from "@/lib/utils/pricing";
 import {
@@ -551,6 +551,7 @@ function MenuPage() {
 	// Local state
 	const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
 	const [searchQuery, setSearchQuery] = useState("");
+	const [isSearchFocused, setIsSearchFocused] = useState(false);
 	const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = useState(false);
 	const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
 	const isCartOpen = panel === "cart";
@@ -580,6 +581,8 @@ function MenuPage() {
 const notificationSeedTimerRef = useRef<number | undefined>(undefined);
 const notificationSeedCompletedAtRef = useRef<number | null>(null);
 	const activeSidebarTab = isSidebarOpen ? panel! : "dashboard";
+	const [keyboardFocusZone, setKeyboardFocusZone] = useState<FocusZone>("header");
+	const [focusedCategoryIndex, setFocusedCategoryIndex] = useState(0);
 	const [lastOrderId, setLastOrderId] = useState<Id<"orders"> | null>(null);
 	const djiwaAppOrderStatusRef = useRef<Map<string, string>>(new Map());
 	const djiwaAppOrderSeedTimerRef = useRef<number | undefined>(undefined);
@@ -815,8 +818,10 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		shiftReminderMinutes,
 	]);
 
+	// Responsive grid columns
+	const [gridColumns, setGridColumns] = useState(4);
 	const [isTargetExpanded, setIsTargetExpanded] = useState(false);
-
+	const [isSearchActive, setIsSearchActive] = useState(false);
 	const progress = useHybridCurrentMonthProgress();
 
 	const shiftPct = useMemo(
@@ -926,10 +931,27 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		[dailyBonusSummary]
 	);
 
+	useEffect(() => {
+		const updateColumns = () => {
+			const width = window.innerWidth;
+			if (width >= 1536) setGridColumns(5); // 2xl
+			else if (width >= 1280) setGridColumns(4); // xl
+			else if (width >= 1024) setGridColumns(3); // lg
+			else if (width >= 768) setGridColumns(2); // md
+			else if (width >= 640) setGridColumns(3); // sm
+			else setGridColumns(2); // mobile — 2 col for readability
+		};
+		updateColumns();
+		window.addEventListener("resize", updateColumns);
+		return () => window.removeEventListener("resize", updateColumns);
+	}, []);
+
 	// Checkout opens only on intent; landing and restored URL panels must stay visible.
 
 	// Refs for scrolling
+	const categoryScrollRef = useRef<HTMLDivElement>(null);
 	const productGridRef = useRef<HTMLDivElement>(null);
+	const headerRef = useRef<HTMLDivElement>(null);
 	const mainScrollRef = useRef<HTMLElement>(null);
 	const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
 	const isLoadingMoreRef = useRef(false);
@@ -1016,6 +1038,72 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		return { categoryTabs: tabs, activeSubcategories: subs, activeParentName: parentName };
 	}, [categories, activeParentId]);
 
+	// Scroll category into view
+	const scrollCategoryIntoView = useCallback((index: number) => {
+		if (categoryScrollRef.current) {
+			const buttons = categoryScrollRef.current.querySelectorAll("button");
+			if (buttons[index]) {
+				buttons[index].scrollIntoView({ behavior: "smooth", inline: "center" });
+			}
+		}
+	}, []);
+
+	// Scroll product into view
+	const scrollProductIntoView = useCallback((index: number) => {
+		if (productGridRef.current) {
+			const productElements = productGridRef.current.querySelectorAll("[data-product-index]");
+			if (productElements[index]) {
+				(productElements[index] as HTMLElement).scrollIntoView({
+					behavior: "smooth",
+					block: "nearest",
+				});
+			}
+		}
+	}, []);
+
+	// Keyboard navigation handlers
+	const handleProductSelect = useCallback(
+		(index: number) => {
+			scrollProductIntoView(index);
+		},
+		[scrollProductIntoView]
+	);
+
+	const handleProductActivate = useCallback(
+		(index: number) => {
+			if (filteredProducts && filteredProducts[index]) {
+				const product = filteredProducts[index];
+				const hasVariations = product.variations && product.variations.length > 0;
+				if (hasVariations) {
+					setSelectedProduct(product);
+				} else {
+					// Quick add to cart
+					const pricing = calculateEffectivePrice(
+						{
+							_id: product._id,
+							price: product.price,
+							categoryId: product.categoryId,
+						},
+						activeDiscounts,
+						{ allowHappyHour: false }
+					);
+					if (customerInfo.orderType === "online") { setPriceDialogProduct({ product, defaultPrice: pricing.finalPrice }); setPriceDialogValue(String(pricing.finalPrice)); return; }
+					addToCart({
+						productId: product._id,
+						name: product.name,
+						price: pricing.finalPrice,
+						originalPrice: pricing.originalPrice,
+						quantity: 1,
+						image: product.image,
+						category: product.categoryId,
+					});
+					toast.success(`${product.name} ditambahkan ke keranjang`);
+				}
+			}
+		},
+		[filteredProducts, activeDiscounts, addToCart, customerInfo.orderType]
+	);
+
 	const handleBarcodeDetected = useCallback(
 		async (code: string) => {
 			const normalizedCode = code.trim().toLowerCase();
@@ -1085,6 +1173,8 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 	const handleCategorySelect = useCallback(
 		(index: number) => {
+			setFocusedCategoryIndex(index);
+			scrollCategoryIntoView(index);
 			mainScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
 			if (index === 0) {
 				setActiveCategoryId(null);
@@ -1095,7 +1185,18 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				}
 			}
 		},
-		[categoryTabs]
+		[categoryTabs, scrollCategoryIntoView]
+	);
+
+	const handleCategoryChange = useCallback(
+		(direction: "left" | "right") => {
+			scrollCategoryIntoView(
+				direction === "right"
+					? Math.min(focusedCategoryIndex + 1, categoryTabs.length - 1)
+					: Math.max(focusedCategoryIndex - 1, 0)
+			);
+		},
+		[focusedCategoryIndex, categoryTabs.length, scrollCategoryIntoView]
 	);
 
 	useEffect(() => {
@@ -1147,6 +1248,71 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			}
 		};
 	}, [filteredProductsLength, hasMoreProducts, isLoading]);
+
+	const handleHeaderAction = useCallback(
+		(action: "menu" | "back" | "search" | string) => {
+			switch (action) {
+				case "back":
+					// Back button is removed
+					break;
+				case "menu":
+					openPanel("more");
+					break;
+				case "search":
+					const searchInput = document.querySelector(
+						'input[placeholder*="Cari"]'
+					) as HTMLInputElement;
+					if (searchInput) {
+						searchInput.focus();
+					}
+					break;
+				default:
+					// Check if it's one of the sidebar menu tabs
+					if (SIDEBAR_MENU_ITEMS.some(item => item.id === action)) {
+						handleOpenSidebar(action);
+					}
+			}
+		},
+		[openPanel]
+	);
+
+	const handleFocusZoneChange = useCallback((zone: FocusZone) => {
+		setKeyboardFocusZone(zone);
+	}, []);
+
+	// Initialize keyboard navigation
+	const { focusZone, focusedIndex, focusedHeaderIndex, setFocusZone, setFocusedIndex, isZoneFocused, isKeyboardActive } =
+		useMenuKeyboardNav({
+			productCount: filteredProducts?.length || 0,
+			gridColumns,
+			onProductSelect: handleProductSelect,
+			onProductActivate: handleProductActivate,
+			categoryCount: categoryTabs.length,
+			onCategorySelect: handleCategorySelect,
+			onCategoryChange: handleCategoryChange,
+			onHeaderAction: (action) => {
+				// If action is a number string, it's a sidebar menu index
+				const index = parseInt(action);
+				if (!isNaN(index) && SIDEBAR_MENU_ITEMS[index]) {
+					handleOpenSidebar(SIDEBAR_MENU_ITEMS[index].id);
+				} else {
+					handleHeaderAction(action);
+				}
+			},
+			headerItemCount: 1 + SIDEBAR_MENU_ITEMS.length, // 1 for logo + menu buttons
+			cartItemCount: totalItems,
+			onCartOpen: () => setIsCartOpen(true),
+			onCartClose: () => setIsCartOpen(false),
+			onCartItemRemove: (index) => {
+				if (cartItems[index]) {
+					removeFromCart(cartItems[index].productId, cartItems[index].variant);
+				}
+			},
+			onFocusZoneChange: handleFocusZoneChange,
+			// Sheets/dialogs own focus while open. POS shortcuts must not consume
+			// Tab/Enter or activate products behind the modal surface.
+			enabled: !panel && !isSearchFocused && !selectedProduct && !isCartOpen && !isPaymentOpen,
+		});
 
 	// Get cart quantity for a product
 	const getCartQty = (productId: string) =>
@@ -1509,7 +1675,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			if (pendingCheckoutRequest && !recoverySnapshot) {
 				throw new Error("Pulihkan pesanan awal terlebih dahulu agar tidak membuat transaksi ganda.");
 			}
-			if (!isShiftOpen && !recoverySnapshot) {
+			if (!isShiftOpen) {
 				throw new Error("Buka shift terlebih dahulu melalui menu Shift.");
 			}
 			if (cartItems.length === 0) throw new Error("Pilih menu terlebih dahulu.");
@@ -1606,9 +1772,8 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								status: "created" as const,
 						  }
 						: undefined,
-					paymentReceiptKind: mayarInvoice ? "gateway_pending" as const : undefined,
+					paymentReceiptKind: mayarInvoice ? "cashier_pending" as const : undefined,
 					idempotencyKey,
-					reconcileOnly: Boolean(recoverySnapshot && !isShiftOpen),
 					isOpenBill: shouldOpenBill,
 					autoComplete: shouldOpenBill ? false : orderData?.autoComplete,
 					assignments: orderData?.assignments,
@@ -1838,6 +2003,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					className="flex-1 overflow-y-auto scroll-smooth bg-muted/10 relative pb-[calc(11rem+env(safe-area-inset-bottom))] md:pb-0"
 				>
 					<header
+						ref={headerRef}
 						className={cn(
 							"bg-background shrink-0"
 						)}
@@ -1847,6 +2013,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						<div 
 							className={cn(
 								"flex items-center justify-between min-w-0 transition-all",
+								isKeyboardActive && isZoneFocused("header") && focusedHeaderIndex === 0 && "ring-2 ring-primary ring-offset-4 rounded-lg"
 							)}
 						>
 							<div className="flex items-center gap-2.5 min-w-0">
@@ -2170,6 +2337,8 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								placeholder="Cari produk..."
 								value={searchQuery}
 								onChange={(e) => setSearchQuery(e.target.value)}
+								onFocus={() => setIsSearchFocused(true)}
+								onBlur={() => setIsSearchFocused(false)}
 								className="h-9 pl-8 pr-8 bg-background border-border/60 focus:border-primary shadow-sm rounded-xl transition-all text-sm"
 							/>
 							{searchQuery && (
@@ -2196,12 +2365,15 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 					{/* Category Tabs - Top Header (Main Categories Only) */}
 					<div
+						ref={categoryScrollRef}
 						className={cn(
 							"flex gap-1 overflow-x-auto px-3 pb-1.5 scrollbar-none mask-fade-edges"
 						)}
 					>
 						{categoryTabs.map((cat, index) => {
 							const isActive = activeParentId === cat._id || (cat._id === "all" && !activeParentId);
+							const isFocused = isKeyboardActive && isZoneFocused("categories") && focusedCategoryIndex === index;
+							
 							return (
 								<button
 									key={cat._id}
@@ -2212,6 +2384,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 										isActive
 											? "bg-primary text-primary-foreground shadow-md ring-1 ring-primary"
 											: "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50",
+										isFocused && "ring-2 ring-primary ring-offset-2 transition-shadow"
 									)}
 								>
 									{cat.name}
@@ -2293,10 +2466,12 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								);
 								const cartQty = getCartQty(product._id);
 				const isSold = product.isAvailable === false || Number(product.quantity ?? 0) <= 0;
+								const isFocused = isKeyboardActive && isZoneFocused("products") && focusedIndex === index;
 
 								return (
 								  <motion.button
 								    key={product._id}
+								    data-product-index={index}
 								    type="button"
 								    onClick={() => handleProductClick(product)}
 								    layout
@@ -2313,6 +2488,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								    className={cn(
 								      "group relative flex flex-col overflow-hidden rounded-2xl border bg-card shadow-sm text-left",
 								      "transition-shadow",
+								      isFocused && "ring-2 ring-primary ring-offset-2 shadow-lg"
 								    )}
 									>
 										{/* Image */}
@@ -2362,6 +2538,10 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 												</div>
 											)}
 
+											{/* Keyboard focus indicator */}
+											{isFocused && (
+												<div className="absolute inset-0 border-2 border-primary rounded-t-2xl pointer-events-none" />
+											)}
 										</div>
 
 										{/* Info */}
@@ -2476,6 +2656,11 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					canPrintOpenBill={siteSettings?.allowOpenBillPrint !== false}
 					pendingPayment={pendingCheckoutRequest ? { customerName: pendingCheckoutRequest.snapshot.customerInfo.name, total: pendingCheckoutRequest.finalAmount } : undefined}
 					onRecoverPayment={handleRecoverCheckout}
+					onDiscardPendingPayment={() => {
+						clearOrderRequestKey();
+						setPendingCheckoutRequest(null);
+						toast.info("Draft checkout dibatalkan. Pesanan baru siap dibuat.");
+					}}
 				/>
 			</div>
 
@@ -2512,7 +2697,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 			{/* === PRODUCT DETAIL SHEET === */}
 			<Sheet open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
-				<SheetContent side="bottom" showCloseButton={false} className="max-h-[92dvh] overflow-hidden rounded-t-[28px] border-border/70 bg-background p-0 shadow-2xl">
+				<SheetContent side="bottom" className="p-0 rounded-t-2xl max-h-[90vh] overflow-y-auto">
 					<ProductDetailSheet
 						product={selectedProduct}
 						activeDiscounts={activeDiscounts}
@@ -2540,11 +2725,16 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				canPrintOpenBill={siteSettings?.allowOpenBillPrint !== false}
 				pendingPayment={pendingCheckoutRequest ? { customerName: pendingCheckoutRequest.snapshot.customerInfo.name, total: pendingCheckoutRequest.finalAmount } : undefined}
 				onRecoverPayment={handleRecoverCheckout}
+				onDiscardPendingPayment={() => {
+					clearOrderRequestKey();
+					setPendingCheckoutRequest(null);
+					toast.info("Draft checkout dibatalkan. Pesanan baru siap dibuat.");
+				}}
 			/>
 			<PosWorkspaceMenu open={panel === "more"} onOpenChange={open => openPanel(open ? "more" : null)} onAction={handleWorkspaceAction} userName={currentUser?.name || "Kasir"} canAdmin={canOpenAdmin} canReport={canViewReports} hasProfile={Boolean(currentUser?.slug || currentUser?.username)} pendingCount={offlinePendingCount}/>
 			<PosReadinessSheet open={panel === "readiness"} onOpenChange={open => openPanel(open ? "readiness" : null)} shiftOpen={isShiftOpen} shiftKnown={shiftStatus !== undefined} cashierName={shiftStatus?.shiftInfo?.cashierName || ""} online={isOnline} pendingCount={offlinePendingCount} unpaidCount={closingTasks.unpaid} onAction={handleWorkspaceAction}/>
 			<OfflineSyncCenter open={panel === "sync"} onOpenChange={open => openPanel(open ? "sync" : null)}/>
-			<Dialog open={logoutConfirmOpen} onOpenChange={setLogoutConfirmOpen}><DialogContent className="max-w-sm rounded-3xl p-5"><DialogHeader><DialogTitle>Keluar akun kasir?</DialogTitle><DialogDescription>{cartItems.length ? "Pesanan yang belum dikirim akan dihapus saat keluar." : "Pesanan offline yang sudah masuk antrean tetap tersimpan."}</DialogDescription></DialogHeader><div className="grid grid-cols-2 gap-3"><button type="button" onClick={() => setLogoutConfirmOpen(false)} className="min-h-12 rounded-xl border text-sm font-semibold">Tetap di sini</button><button type="button" onClick={async () => { await logout(); clearCart(); void navigate({to:"/kasir/login",replace:true} as any); }} className="min-h-12 rounded-xl bg-destructive text-sm font-semibold text-white">{cartItems.length ? "Keluar & hapus" : "Keluar akun"}</button></div></DialogContent></Dialog>
+			<Dialog open={logoutConfirmOpen} onOpenChange={setLogoutConfirmOpen}><DialogContent className="max-w-sm rounded-3xl p-5"><DialogHeader><DialogTitle>Keluar akun kasir?</DialogTitle><DialogDescription>{cartItems.length ? "Pesanan yang belum dikirim akan tetap tersimpan sebagai draft di terminal ini. Pastikan kasir berikutnya memeriksanya." : "Pesanan offline yang belum terkirim tetap tersimpan di terminal ini."}</DialogDescription></DialogHeader><div className="grid grid-cols-2 gap-3"><button type="button" onClick={() => setLogoutConfirmOpen(false)} className="min-h-12 rounded-xl border text-sm font-semibold">Tetap di sini</button><button type="button" onClick={async () => { await logout(); void navigate({to:"/kasir/login",replace:true} as any); }} className="min-h-12 rounded-xl bg-destructive text-sm font-semibold text-white">Keluar akun</button></div></DialogContent></Dialog>
 
 			{/* === PAYMENT MODAL === */}
 			<PaymentConfirmationModal
@@ -2619,6 +2809,17 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				</DialogContent>
 			</Dialog>
 
+			{/* === KEYBOARD SHORTCUT HINTS === */}
+			<div className="fixed bottom-1 right-2 z-10 hidden md:block">
+				<div className="flex items-center gap-2 text-[10px] text-muted-foreground/60">
+					<span>F1: Header</span>
+					<span>F2: Kategori</span>
+					<span>F3: Produk</span>
+					<span>F4: Keranjang</span>
+					<span>Enter: Pilih</span>
+					<span>Esc: Kembali</span>
+				</div>
+			</div>
 			{priceDialogProduct && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setPriceDialogProduct(null)}>
 					<div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -2673,23 +2874,18 @@ function ProductDetailSheet({
 }) {
 	const [quantity, setQuantity] = useState(1);
 	const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
-	const rawVariationGroups = Array.isArray(product?.variations) ? product.variations : [];
-	const variationGroups = rawVariationGroups
-		.map((group: any, index: number) => ({
-			key: "variation-" + index,
-			label: String(group?.name ?? group?.type ?? "").trim() || "Pilihan " + (index + 1),
-			options: Array.isArray(group?.options) ? group.options : [],
-		}))
-		.filter((group: any) => group.options.length > 0);
 
+	// Reset state when product changes
 	useEffect(() => {
-		if (!product) return;
-		setQuantity(1);
-		const defaults: [string, string][] = rawVariationGroups.flatMap((group: any, index: number) => {
-			const firstOption = Array.isArray(group?.options) ? group.options[0] : undefined;
-			return firstOption?.name ? [["variation-" + index, firstOption.name]] : [];
-		});
-		setSelectedVariants(Object.fromEntries(defaults));
+		if (product) {
+			setQuantity(1);
+			const defaultVariants = Object.fromEntries(
+				(product.variations ?? [])
+					.map((group: any) => [group.type, group.options?.[0]?.name])
+					.filter((entry: [string | undefined, string | undefined]): entry is [string, string] => Boolean(entry[0] && entry[1]))
+			);
+			setSelectedVariants(defaultVariants);
+		}
 	}, [product]);
 
 	if (!product) return null;
@@ -2704,17 +2900,24 @@ function ProductDetailSheet({
 		{ allowHappyHour: false }
 	);
 
-	const variantPrice = variationGroups.reduce((sum: number, group: any) => {
-		const option = group.options.find((item: any) => item.name === selectedVariants[group.key]);
-		return sum + (Number(option?.price) || 0);
+	// Calculate variant price
+	const variantPrice = Object.entries(selectedVariants).reduce((sum, [groupType, optionName]) => {
+		const group = product.variations?.find((g: any) => g.type === groupType);
+		const opt = group?.options.find((o: any) => o.name === optionName);
+		return sum + (opt?.price ?? 0);
 	}, 0);
+
 	const unitPrice = pricing.finalPrice + variantPrice;
 	const totalPrice = unitPrice * quantity;
-	const isSelectionComplete = variationGroups.every((group: any) => Boolean(selectedVariants[group.key]));
-	const variantLabel = variationGroups
-		.map((group: any) => selectedVariants[group.key])
-		.filter(Boolean)
-		.join(" · ");
+	const variationGroups = product.variations ?? [];
+	const hasVariations = variationGroups.length > 0;
+	const isSelectionComplete = variationGroups.every(
+		(group: any) => !group.options?.length || Boolean(selectedVariants[group.type])
+	);
+
+	const variantLabel = Object.entries(selectedVariants)
+		.map(([, v]) => v)
+		.join(", ");
 
 	const handleAdd = () => {
 		onAddToCart({
@@ -2730,125 +2933,168 @@ function ProductDetailSheet({
 	};
 
 	return (
-		<div className="flex max-h-[84dvh] min-h-0 flex-col bg-background">
-			<header className="shrink-0 px-4 pb-2 pt-2">
-				<div className="mx-auto mb-2 h-1 w-8 rounded-full bg-muted-foreground/25" aria-hidden="true" />
+		<div className="flex flex-col bg-background">
+			<div className="sticky top-0 z-10 border-b border-border/60 bg-background/95 px-3 pb-3 pt-3 backdrop-blur">
 				<div className="flex items-start justify-between gap-3">
 					<div className="min-w-0">
-						<SheetTitle className="text-lg leading-tight tracking-tight text-foreground">{product.name}</SheetTitle>
-						{product.description && <p className="mt-1 line-clamp-2 text-xs leading-snug text-muted-foreground">{product.description}</p>}
+						<p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary/80">
+							Pilih Variasi
+						</p>
+						<h2 className="mt-1 text-base font-black leading-tight text-foreground">
+							{product.name}
+						</h2>
+						{product.description && (
+							<p className="mt-1 line-clamp-2 text-sm leading-snug text-muted-foreground">
+								{product.description}
+							</p>
+						)}
 					</div>
 					<button
 						type="button"
 						onClick={onClose}
-						className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/70 text-muted-foreground transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-						aria-label="Tutup detail produk"
+						className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:bg-muted"
+						aria-label="Tutup"
 					>
-						<X className="h-5 w-5" />
+						<X className="h-3.5 w-3.5" />
 					</button>
 				</div>
-				<div className="mt-2 flex min-h-9 items-center justify-between gap-3 rounded-xl bg-muted/45 px-3 py-1.5">
-					<div className="flex min-w-0 items-center gap-2">
-						{pricing.isPromo && <span className="truncate text-xs font-medium text-muted-foreground line-through">{fmt(pricing.originalPrice)}</span>}
-						<span className="truncate text-base font-bold tabular-nums text-foreground">{fmt(pricing.finalPrice)}</span>
-					</div>
-					{pricing.isPromo && pricing.discountName && <span className="shrink-0 rounded-full bg-red-500/10 px-2.5 py-1 text-[11px] font-semibold text-red-600">{pricing.discountName}</span>}
-				</div>
-			</header>
 
-			<div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain border-t border-border/60 px-3 py-3">
-				{variationGroups.length > 0 && (
-					<div className="space-y-2.5">
+				<div className="mt-3 flex flex-wrap items-center gap-2">
+					<div className="rounded-2xl bg-primary/10 px-3 py-2">
+						<div className="flex items-center gap-2">
+							{pricing.isPromo && (
+								<span className="text-xs font-semibold text-muted-foreground line-through">
+									{fmt(pricing.originalPrice)}
+								</span>
+							)}
+							<span className="text-sm font-black text-primary">
+								{fmt(pricing.finalPrice)}
+							</span>
+						</div>
+					</div>
+					{pricing.isPromo && pricing.discountName && (
+						<span className="rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-600">
+							{pricing.discountName}
+						</span>
+					)}
+					{variantLabel && (
+						<span className="rounded-full bg-muted px-3 py-1 text-[11px] font-medium text-muted-foreground">
+							{variantLabel}
+						</span>
+					)}
+				</div>
+			</div>
+
+			<div className="flex flex-col gap-4 px-4 py-4">
+				{hasVariations && (
+					<div className="space-y-4">
 						{variationGroups.map((group: any) => (
-							<section key={group.key} className="rounded-2xl border border-border/60 bg-muted/20 p-2.5" aria-labelledby={group.key + "-title"}>
+							<div key={group.type} className="rounded-2xl border border-border/70 bg-card p-2.5">
 								<div className="mb-2 flex items-center justify-between gap-3">
-									<div className="min-w-0">
-										<h3 id={group.key + "-title"} className="truncate text-sm font-semibold text-foreground">{group.label}</h3>
-									</div>
-									<span className="shrink-0 text-[11px] font-medium text-muted-foreground" aria-live="polite">
-										{selectedVariants[group.key] ? "Dipilih" : "Belum dipilih"}
+									<p className="text-sm font-bold text-foreground">{group.type}</p>
+									<span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+										{selectedVariants[group.type] ? "Dipilih" : "Pilih"}
 									</span>
 								</div>
-								<div className="flex gap-2 overflow-x-auto overscroll-x-contain pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="radiogroup" aria-labelledby={group.key + "-title"}>
-									{group.options.map((option: any) => {
-										const selected = selectedVariants[group.key] === option.name;
-										const optionPrice = Number(option.price) || 0;
+								<div className="grid grid-cols-2 gap-2">
+									{group.options.map((opt: any) => {
+										const selected = selectedVariants[group.type] === opt.name;
 										return (
 											<button
-												key={option.name}
+												key={opt.name}
 												type="button"
-												role="radio"
-												aria-checked={selected}
-												tabIndex={selected ? 0 : -1}
-												onKeyDown={(event) => {
-													const direction = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 0;
-													if (!direction) return;
-													event.preventDefault();
-													const options = Array.from(event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="radio"]') ?? []);
-													const currentIndex = options.indexOf(event.currentTarget);
-													const nextIndex = (currentIndex + direction + options.length) % options.length;
-													options[nextIndex]?.focus();
-													options[nextIndex]?.click();
-												}}
-												onClick={() => setSelectedVariants((previous) => ({ ...previous, [group.key]: option.name }))}
+												onClick={() =>
+													setSelectedVariants((prev) => ({
+														...prev,
+														[group.type]: opt.name,
+													}))
+												}
 												className={cn(
-												"flex h-10 min-w-[9.5rem] flex-1 items-center justify-between gap-1.5 rounded-xl border px-2.5 text-left transition-colors active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+													"rounded-2xl border px-2.5 py-2.5 text-left transition-all",
 													selected
-														? "border-primary bg-primary text-primary-foreground shadow-sm"
-														: "border-border/80 bg-background text-foreground hover:border-primary/40"
+														? "border-primary bg-primary text-primary-foreground shadow-md"
+														: "border-border bg-background text-foreground hover:border-primary/40 hover:bg-muted/50"
 												)}
 											>
-												<span className="min-w-0 truncate whitespace-nowrap text-[13px] font-semibold leading-tight">{option.name}</span>
-												<span className="flex shrink-0 items-center gap-1 text-[11px] font-medium tabular-nums">
-													{optionPrice > 0 ? "+" + fmt(optionPrice) : "Gratis"}
-													{selected ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}
-												</span>
+												<div className="flex items-center justify-between gap-2">
+													<span className="text-xs font-bold leading-tight">{opt.name}</span>
+													<span
+														className={cn(
+															"text-[11px] font-semibold",
+															selected ? "text-primary-foreground/85" : "text-muted-foreground"
+														)}
+													>
+														{opt.price > 0 ? `+${fmt(opt.price)}` : "Default"}
+													</span>
+												</div>
 											</button>
 										);
 									})}
 								</div>
-							</section>
+							</div>
 						))}
 					</div>
 				)}
 
-				<section className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-muted/20 p-2.5" aria-label="Jumlah pesanan">
-					<div className="min-w-0">
-						<h3 className="text-sm font-semibold text-foreground">Jumlah</h3>
-						<p className="mt-0.5 text-xs text-muted-foreground">Atur porsi</p>
+				<div className="rounded-2xl border border-border/70 bg-card p-3">
+					<div className="flex items-center justify-between gap-3">
+						<div>
+							<p className="text-sm font-bold text-foreground">Jumlah</p>
+							<p className="text-xs text-muted-foreground">
+								Atur porsi sebelum tambah ke keranjang
+							</p>
+						</div>
+						<div className="flex items-center gap-2 rounded-2xl bg-muted/50 p-1">
+							<button
+								type="button"
+								onClick={() => setQuantity(Math.max(1, quantity - 1))}
+								className="flex h-8 w-8 items-center justify-center rounded-lg bg-background text-foreground shadow-sm transition-colors hover:bg-muted"
+								aria-label="Kurangi"
+							>
+								<Minus className="h-3.5 w-3.5" />
+							</button>
+							<span className="min-w-[2rem] text-center text-base font-black text-foreground">
+								{quantity}
+							</span>
+							<button
+								type="button"
+								onClick={() => setQuantity(quantity + 1)}
+								className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-opacity hover:opacity-90"
+								aria-label="Tambah"
+							>
+								<Plus className="h-3.5 w-3.5" />
+							</button>
+						</div>
 					</div>
-					<div className="flex h-10 shrink-0 items-center gap-1 rounded-full bg-muted/60 p-1">
-						<button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="flex h-8 w-8 items-center justify-center rounded-full bg-background text-foreground shadow-sm transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label="Kurangi jumlah">
-							<Minus className="h-4 w-4" />
-						</button>
-						<span className="min-w-7 text-center text-sm font-bold tabular-nums text-foreground" aria-live="polite">{quantity}</span>
-						<button type="button" onClick={() => setQuantity((value) => value + 1)} className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" aria-label="Tambah jumlah">
-							<Plus className="h-4 w-4" />
-						</button>
-					</div>
-				</section>
+				</div>
 			</div>
 
-			<footer className="shrink-0 border-t border-border/70 bg-background px-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2">
-				<div className="mb-2 flex items-center justify-between gap-3 rounded-xl bg-muted/45 px-3 py-2">
-					<div className="min-w-0">
-						<p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Total · {quantity} item</p>
-						<p className="mt-0.5 truncate text-base font-bold tabular-nums text-foreground">{fmt(totalPrice)}</p>
+			<div className="sticky bottom-0 z-10 border-t border-border/60 bg-background/95 px-3 pb-4 pt-2 backdrop-blur">
+				<div className="mb-3 flex items-center justify-between rounded-2xl bg-muted/40 px-3 py-2">
+					<div>
+						<p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+							Total
+						</p>
+						<p className="text-sm font-black text-foreground">{fmt(totalPrice)}</p>
 					</div>
-					<p className="max-w-[48%] truncate text-right text-xs font-medium text-muted-foreground" aria-live="polite">
-						{variantLabel || "Tanpa variasi"}
-					</p>
+					<div className="text-right text-[11px] text-muted-foreground">
+						<p>{quantity} item</p>
+						<p>{variantLabel || "Tanpa variasi tambahan"}</p>
+					</div>
 				</div>
+
 				<button
 					type="button"
 					onClick={handleAdd}
 					disabled={!isSelectionComplete}
-					className="flex min-h-12 w-full items-center justify-between rounded-xl bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-transform active:scale-[.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+					className="flex w-full items-center justify-between rounded-2xl bg-primary px-3 py-2.5 font-bold text-primary-foreground shadow-md transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
 				>
-					<span>Tambah ke keranjang</span>
-					<span className="tabular-nums">{fmt(totalPrice)}</span>
+					<span>Tambah ke Keranjang</span>
+					<span>{fmt(totalPrice)}</span>
 				</button>
-			</footer>
+			</div>
 		</div>
 	);
 }
+
+

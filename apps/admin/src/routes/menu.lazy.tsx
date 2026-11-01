@@ -74,7 +74,7 @@ import {
 	buildReceiptMetaFromOrder,
 } from "@/lib/receipt-data";
 import { playSuccessSound } from "@/lib/play-success-sound";
-import { adminProtectedRead } from "@/lib/admin-protected-read";
+import { createClient } from "@/lib/client";
 import { QueueHorizontalBar } from "@/components/pos/queue-horizontal-bar";
 
 const fmt = (n: number) =>
@@ -1014,12 +1014,13 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 			// ⚡ Fallback: order mungkin belum masuk cache (race condition setelah auto-print)
 			if (!order) {
-				const rows = await adminProtectedRead("orders", {
-					select: "*",
-					eq: { _id: orderId },
-					limit: 1,
-				});
-				order = rows[0] as any;
+				const supabase = createClient();
+				const { data: freshOrder } = await supabase
+					.from("pos_orders")
+					.select("*")
+					.eq("_id", orderId)
+					.maybeSingle();
+				order = freshOrder as any;
 			}
 
 			if (!order) {
@@ -1295,7 +1296,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 								status: "created" as const,
 						  }
 						: undefined,
-					paymentReceiptKind: mayarInvoice ? "gateway_pending" as const : undefined,
+					paymentReceiptKind: mayarInvoice ? "cashier_pending" as const : undefined,
 					isOpenBill: shouldOpenBill,
 					autoComplete: shouldOpenBill ? false : orderData?.autoComplete,
 					assignments: orderData?.assignments,

@@ -60,8 +60,6 @@ import { AuthModal } from "@/components/customer/auth-modal";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields, hasValidCustomerPhone } from "@/lib/customer-profile-completeness";
 import { reserveDjiwaRunCheckoutReward, releaseDjiwaRunCheckoutReward, finalizeDjiwaRunCheckoutReward } from "@/lib/djiwa-run-client";
-import { getCustomerHiddenCategoryIds } from "@/lib/customer-catalog-visibility";
-import { shouldShowPaymentProcessing } from "@/lib/payment-processing";
 
 export const Route = createLazyFileRoute("/$username/order")({
 	component: OrderPage,
@@ -76,7 +74,6 @@ function OrderPage() {
 	const brandSlug = import.meta.env.VITE_BRAND_SLUG || "djiwatentram";
 	const [menuRefreshTrigger, setMenuRefreshTrigger] = useState(0);
 	const menuScrollRef = useRef<HTMLElement | null>(null);
-	const categorySelectionLockRef = useRef(0);
 	const checkoutRequestKeyRef = useRef<string | null>(null);
 	const activityProductAppliedRef = useRef<string | null>(null);
 
@@ -469,15 +466,9 @@ function OrderPage() {
 		|| ["cash", "cashier", "tunai", "wallet", "djiwa_pay"].includes(backendPaymentMethod);
 	const processingCurrentOrder = Boolean(processingOrderId && String(receipt?.orderId) === processingOrderId
 		&& backendPayment && String(backendPayment._id ?? backendPayment.id ?? backendPayment.source_id ?? receipt?.orderId) === processingOrderId);
+	const showPaymentProcessing = Boolean(processingOrderId && (!processingCurrentOrder || (!backendSettled && !isExistingNonMayarReceipt)));
 	const paymentReceived = processingCurrentOrder && (providerPaidOrderId === processingOrderId
 		|| String(backendPayment?.paymentGateway?.status ?? backendPayment?.payment_gateway?.status).toLowerCase() === "paid");
-	const showPaymentProcessing = shouldShowPaymentProcessing({
-		processingOrderId,
-		processingCurrentOrder,
-		backendSettled,
-		existingNonMayarReceipt: isExistingNonMayarReceipt,
-		providerPaid: paymentReceived,
-	});
 
 	useEffect(() => {
 		if (search.step === "receipt" && search.orderId && String(receipt?.orderId) !== String(search.orderId)) {
@@ -528,14 +519,6 @@ function OrderPage() {
 		() => (categories ? [...categories].sort((a, b) => a.order - b.order) : []),
 		[categories]
 	);
-	const hiddenCustomerCategoryIds = useMemo(
-		() => getCustomerHiddenCategoryIds(orderedCategories),
-		[orderedCategories],
-	);
-	const customerVisibleCategories = useMemo(
-		() => orderedCategories.filter((category) => !hiddenCustomerCategoryIds.has(String(category._id))),
-		[hiddenCustomerCategoryIds, orderedCategories],
-	);
 	const orderedProducts = useMemo(
 		() =>
 			products
@@ -545,28 +528,32 @@ function OrderPage() {
 				: [],
 		[products]
 	);
-	const customerVisibleProducts = useMemo(
-		() => orderedProducts.filter((product) => !hiddenCustomerCategoryIds.has(String(product.categoryId))),
-		[hiddenCustomerCategoryIds, orderedProducts],
-	);
 	const filteredProducts = useMemo(() => {
 		const query = catalogQuery.trim().toLowerCase();
+		const categoryById = new Map(orderedCategories.map((category) => [String(category._id), category]));
+		const selectedCategory = activeCategoryId ? categoryById.get(String(activeCategoryId)) : null;
+		const matchesCategory = (product: (typeof orderedProducts)[number]) => {
+			if (!selectedCategory) return true;
+			const productCategory = categoryById.get(String(product.categoryId));
+			return String(productCategory?._id ?? "") === String(selectedCategory._id) || String(productCategory?.parentId ?? "") === String(selectedCategory._id) || String(selectedCategory.parentId ?? "") === String(productCategory?._id ?? "");
+		};
 		// Customer catalog follows the reference anchor pattern: category chips
-		// scroll to sections while the visible customer catalog remains one
-		// vertical flow.
-		return customerVisibleProducts.filter((product) => !query || product.name.toLowerCase().includes(query) || String(product.menuNumber ?? "").includes(query));
-	}, [catalogQuery, customerVisibleProducts]);
+		// scroll to sections while the full catalog remains one vertical flow.
+		// Category filtering remains scoped to POS; customer should not hit a
+		// dead-end after the selected section.
+		return orderedProducts.filter((product) => (!query || product.name.toLowerCase().includes(query) || String(product.menuNumber ?? "").includes(query)));
+	}, [activeCategoryId, catalogQuery, orderedCategories, orderedProducts]);
 	const menuNumberIndex = useMemo(() => {
-		const lookup = new Map<string, (typeof customerVisibleProducts)[number]>();
+		const lookup = new Map<string, (typeof orderedProducts)[number]>();
 		const duplicates = new Set<string>();
-		for (const product of customerVisibleProducts) {
+		for (const product of orderedProducts) {
 			if (product.menuNumber == null) continue;
 			const code = normalizeMenuCode(product.menuNumber);
 			if (lookup.has(code)) duplicates.add(code);
 			else lookup.set(code, product);
 		}
 		return { lookup, duplicates };
-	}, [customerVisibleProducts]);
+	}, [orderedProducts]);
 	const productByMenuNumber = menuNumberIndex.lookup;
 	const activeFreeRefillPromo = useMemo(() => {
 		if (!discounts) return null;
@@ -1128,7 +1115,7 @@ function OrderPage() {
 						djiwaPayDiscountPaymentMethod: "wallet",
 						...(activeDjiwaPayCampaign ? {
 							djiwaPayCampaignCode: "DJIWA-PAY-50-SEPTEMBER-2026",
-							djiwaPayCampaignLabel: `Djiwa Pay ${djiwaPayDiscountPercent}%`,
+							djiwaPayCampaignLabel: "Djiwa Pay 50%",
 						} : {}),
 					} : {}),
 				},
@@ -1452,7 +1439,7 @@ function OrderPage() {
 								}}>Simpan alamat</button></div></div> : <button type="button" className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs font-black text-primary" onClick={() => { setDeliveryAddressPickerOpen(true); }}><Pencil className="h-3.5 w-3.5" />{deliveryAddress ? "Ubah alamat tujuan" : "Tambah alamat tujuan"}</button>}</div>
 									<button type="button" disabled={!deliveryAddress} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40" style={{ background: themeColor }} onClick={() => setStep("menu")}>Lanjut ke menu <ChevronRight className="h-4 w-4" /></button>
 								</> : <>
-									<div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Table2 className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Langkah 1 dari 6</p><h2 className="text-base font-black">Pilih meja</h2></div></div>
+									<div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Table2 className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 1</p><h2 className="text-base font-black">Pilih meja</h2></div></div>
 									<p className="mt-2 text-xs leading-relaxed text-muted-foreground">Masukkan nomor meja tempat kamu duduk. Data ini akan dicatat bersama pesanan.</p>
 									<label className="mt-3 block text-xs font-bold" htmlFor="customer-table-number">Nomor meja</label>
 									<input id="customer-table-number" inputMode="numeric" pattern="[0-9]*" minLength={1} maxLength={8} value={tableNumber} onChange={(event) => setTableNumber(event.target.value.replace(/[^0-9]/g, "").slice(0, 8))} placeholder="Contoh: 4" className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-3 text-center text-lg font-black outline-none focus:border-primary" />
@@ -1468,7 +1455,7 @@ function OrderPage() {
 							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 								<div className="flex items-center gap-2.5">
 									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Djiwa3DIcon name="party-size" size="micro" alt="" className="h-6 w-6 object-contain" /></div>
-									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Langkah 2 dari 6</p><h2 className="text-base font-black">Berapa orang yang memesan?</h2></div>
+									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 2</p><h2 className="text-base font-black">Berapa orang yang memesan?</h2></div>
 								</div>
 								<div className="mt-2.5 grid grid-cols-3 gap-1.5">
 									{[1,2,3,4,5,6,7,8].map((value) => (
@@ -1504,7 +1491,7 @@ function OrderPage() {
 							<div className="rounded-xl border border-border bg-card p-3 shadow-sm">
 								<div className="flex items-center gap-2.5">
 									<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Bell className="h-5 w-5" /></div>
-									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Langkah 2 dari 6</p><h2 className="text-base font-black">Tambahkan free refill?</h2></div>
+									<div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 2</p><h2 className="text-base font-black">Tambahkan free refill?</h2></div>
 								</div>
 								<div className="mt-2.5 rounded-xl border border-primary/15 bg-primary/5 p-2.5">
 									<p className="text-xs font-black">{activeFreeRefillPromo?.name || "Free refill minuman tersedia"}</p>
@@ -1517,16 +1504,16 @@ function OrderPage() {
 
 					{/* ── Menu section ────────────────────────────── */}
 					{step === "menu"
-						? renderMenuSection({ onProductIntent: (_product, origin) => setPendingProductOrigin(origin), onProductAdded: (_product, origin) => { setRecommendationFlight({ image: _product.image, name: _product.name, left: origin.left + origin.width / 2 - 22, top: origin.top + origin.height / 2 - 22 }); window.setTimeout(() => setRecommendationFlight(null), 700); }, activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, showDineInSummary: orderMode === "dine_in", discounts: memberDiscounts, filteredProducts, freeRefillCharge, bestSellers, recentProductIds, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories: customerVisibleCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId: selectMenuCategory, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
+						? renderMenuSection({ onProductIntent: (_product, origin) => setPendingProductOrigin(origin), onProductAdded: (_product, origin) => { setRecommendationFlight({ image: _product.image, name: _product.name, left: origin.left + origin.width / 2 - 22, top: origin.top + origin.height / 2 - 22 }); window.setTimeout(() => setRecommendationFlight(null), 700); }, activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, showDineInSummary: orderMode === "dine_in", discounts: memberDiscounts, filteredProducts, freeRefillCharge, bestSellers, recentProductIds, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId: selectMenuCategory, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
 						: null}
 					{step === "menu" ? <div className="grid grid-cols-2 gap-2 px-2 pb-4"><button type="button" onClick={() => setStep(orderMode === "delivery" ? "address" : "party")} className="min-h-11 rounded-[14px] border border-border bg-card px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button><button type="button" disabled={!cart.length} onClick={() => setStep(orderMode === "delivery" ? "shipping" : "review")} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke {orderMode === "delivery" ? "pengantaran" : "review"} →</button></div> : null}
 
 					{step === "shipping" && orderMode === "delivery" ? (
-						<section className="space-y-2 px-2 py-2"><div className="rounded-xl border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Langkah 3 dari 6</p><h2 className="text-base font-black">Pilih kurir pengantaran</h2></div></div><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Pilih layanan yang tersedia untuk mengantar pesananmu.</p><div className="mt-3 grid grid-cols-2 gap-2">{([{ key: "gojek", label: "Gojek", detail: "Delivery tersedia" }, { key: "grab", label: "Grab", detail: "Delivery tersedia" }] as const).filter((option) => deliveryConfig?.active && deliveryConfig.couriers.includes(option.key)).map((option) => <button key={option.key} type="button" onClick={() => setDeliveryProvider(option.key)} aria-pressed={deliveryProvider === option.key} className={cn("min-h-24 rounded-xl border p-3 text-left transition-all", deliveryProvider === option.key ? "border-primary bg-primary/10 shadow-sm" : "border-border bg-background")}><span className="flex items-center justify-between gap-2"><span className="text-sm font-black">{option.label}</span><span className={cn("h-4 w-4 rounded-full border-2", deliveryProvider === option.key ? "border-primary bg-primary ring-2 ring-primary/20" : "border-muted-foreground/40")} /></span><span className="mt-1 block text-[11px] text-muted-foreground">{option.detail}</span></button>)}</div><p className="mt-3 rounded-xl bg-primary/5 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">{shippingQuoteLoading ? <span className="inline-flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" />Memuat tarif pengantaran…</span> : shippingQuote ? `Biaya pengantaran ${currency(shippingQuote.fee)} · berlaku 5 menit.` : shippingQuoteError || "Lengkapi lokasi dengan kode pos agar tarif pengantaran dapat dihitung."}</p><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => setStep("menu")} className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black">← Kembali</button><button type="button" disabled={shippingPaymentBlocked} onClick={() => { if (!shippingPaymentBlocked) setStep("review"); }} className="min-h-11 rounded-xl bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke review →</button></div></div></section>
+						<section className="space-y-2 px-2 py-2"><div className="rounded-xl border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Step 3</p><h2 className="text-base font-black">Pilih kurir pengantaran</h2></div></div><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Pilih layanan yang tersedia untuk mengantar pesananmu.</p><div className="mt-3 grid grid-cols-2 gap-2">{([{ key: "gojek", label: "Gojek", detail: "Delivery tersedia" }, { key: "grab", label: "Grab", detail: "Delivery tersedia" }] as const).filter((option) => deliveryConfig?.active && deliveryConfig.couriers.includes(option.key)).map((option) => <button key={option.key} type="button" onClick={() => setDeliveryProvider(option.key)} aria-pressed={deliveryProvider === option.key} className={cn("min-h-24 rounded-xl border p-3 text-left transition-all", deliveryProvider === option.key ? "border-primary bg-primary/10 shadow-sm" : "border-border bg-background")}><span className="flex items-center justify-between gap-2"><span className="text-sm font-black">{option.label}</span><span className={cn("h-4 w-4 rounded-full border-2", deliveryProvider === option.key ? "border-primary bg-primary ring-2 ring-primary/20" : "border-muted-foreground/40")} /></span><span className="mt-1 block text-[11px] text-muted-foreground">{option.detail}</span></button>)}</div><p className="mt-3 rounded-xl bg-primary/5 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">{shippingQuoteLoading ? <span className="inline-flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" />Memuat tarif pengantaran…</span> : shippingQuote ? `Biaya pengantaran ${currency(shippingQuote.fee)} · berlaku 5 menit.` : shippingQuoteError || "Lengkapi lokasi dengan kode pos agar tarif pengantaran dapat dihitung."}</p><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => setStep("menu")} className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black">← Kembali</button><button type="button" disabled={shippingPaymentBlocked} onClick={() => { if (!shippingPaymentBlocked) setStep("review"); }} className="min-h-11 rounded-xl bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke review →</button></div></div></section>
 					) : null}
 
 					{/* ── Review and payment sections ───────────────── */}
-					{(step === "review" || step === "payment") ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, djiwaPayDiscountRate: djiwaPayDiscountPercent, freeRefillCharge, shippingFee, shippingQuotePending: orderMode === "delivery" && shippingQuoteLoading, shippingQuoteError: orderMode === "delivery" && shippingPaymentBlocked ? shippingBlockerMessage : null, canPay: orderMode !== "delivery" && !shippingPaymentBlocked ? true : !shippingPaymentBlocked, hasDessertInCart, isSubmitting: isSubmitting || qrisRedirectProcessing, notes, mode: step === "review" ? "review" : "payment", updateCartQuantity, onRemoveItem: (productId, variant) => setCart((current) => current.filter((entry) => entry.productId !== productId || entry.variant !== variant)), onEditMenu: () => setStep("menu"), onContinueToPayment: () => setStep("payment"), onBackToMenu: () => setStep(step === "payment" ? "review" : "menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
+					{(step === "review" || step === "payment") ? renderCheckoutSection({ cart, checkout, config, currency, customerName, customerDescription, guestEmail, guestPhone, isAuthenticated, dessertLater, djiwaPayDiscount, freeRefillCharge, shippingFee, shippingQuotePending: orderMode === "delivery" && shippingQuoteLoading, shippingQuoteError: orderMode === "delivery" && shippingPaymentBlocked ? shippingBlockerMessage : null, canPay: orderMode !== "delivery" && !shippingPaymentBlocked ? true : !shippingPaymentBlocked, hasDessertInCart, isSubmitting: isSubmitting || qrisRedirectProcessing, notes, mode: step === "review" ? "review" : "payment", updateCartQuantity, onRemoveItem: (productId, variant) => setCart((current) => current.filter((entry) => entry.productId !== productId || entry.variant !== variant)), onEditMenu: () => setStep("menu"), onContinueToPayment: () => setStep("payment"), onBackToMenu: () => setStep(step === "payment" ? "review" : "menu"), paymentChoice, paymentOptions, productGrossSubtotal, promoDiscount, serviceChargeAmount, serviceChargeRate, setCustomerName, setCustomerDescription, setGuestEmail, setGuestPhone, setDessertLater: (value) => setDessertLater(typeof value === "function" ? value(dessertLater) : value), setNotes, setPaymentChoice, setTableNumber, tableNumber, taxAmount, taxEnabled, taxRate, total, walletBalance: customer?.walletBalance ?? 0, onTopup: () => navigate({ to: "/$username/saldo", params: { username } }), checkoutError }) : null}
 
 					{/* ── Receipt section ─────────────────────────── */}
 					{step === "receipt" && showPaymentProcessing ? (
@@ -1550,7 +1537,7 @@ function OrderPage() {
 						if (!receipt?.orderId) return;
 						void updateOrderStatus({ id: receipt.orderId, status: "cancelled" }).catch(() => undefined);
 						setReceipt((previous) => previous ? { ...previous, mode: "cashier_expired" } : previous);
-					}, onOpenService: () => setServiceOpen(true), receipt: paymentReceived && receipt.mode === "mayar_pending" ? { ...receipt, mode: "paid" } : receipt, storeName, total }) : null}
+					}, onOpenService: () => setServiceOpen(true), receipt, storeName, total }) : null}
 				</main>
 
 				<AnimatePresence>

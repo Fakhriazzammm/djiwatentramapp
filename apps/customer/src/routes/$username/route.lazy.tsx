@@ -13,7 +13,6 @@ import { MemberOnboarding, ProfileCompletionOnboarding } from "@/components/cust
 import { CustomerBottomNav, CustomerLiveShiftIndicator } from "@/components/customer/customer-shell";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { CustomerSplash } from "@/components/customer/customer-entry";
-import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
 import { CustomerHomeHeader, CustomerHomeServiceGrid, CustomerWalletSummary, DjiwaPayOfferCard } from "@/components/customer/customer-home-sections";
 import { CustomerStoryRail } from "@/features/stories/customer-story-rail";
@@ -21,7 +20,6 @@ import { RecentOrdersCarousel } from "@/components/customer/recent-orders-carous
 import { CustomerHomeDiscovery } from "@/components/customer/customer-home-discovery";
 import { B2BPromoBanner } from "@/components/customer/b2b-promo-banner";
 import { CustomerLiveOrderCard } from "@/components/customer/customer-live-order-card";
-import { getCustomerPayPath } from "@/lib/customer-pay-navigation";
 
 type GuestData = {
 	name: string;
@@ -106,15 +104,11 @@ function MemberHomePage() {
 	const goCustomerPath = (path: string) => {
 		if (typeof window !== "undefined") window.location.assign(path);
 	};
-	const goDjiwaPay = () => {
-		if (typeof window === "undefined") return;
-		window.location.assign(isAuthenticated && customer ? getCustomerPayPath(username) : `/${encodeURIComponent(username)}/saldo`);
-	};
 	const customerNav = [
 		{ label: "Home", icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname === `/${username}`, onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}`) },
 		{ label: "Pesan", icon: <Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/order"), onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}/order?step=table`) },
 		{ label: "Komunitas", icon: <Djiwa3DIcon name="navigation-community" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/komunitas"), onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}/komunitas`) },
-		{ label: "Saldo", icon: <Djiwa3DIcon name="navigation-wallet" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/saldo"), onSelect: goDjiwaPay },
+		{ label: "Saldo", icon: <Djiwa3DIcon name="navigation-wallet" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/saldo"), onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}/saldo`) },
 		{ label: "Profil", icon: <Djiwa3DIcon name="navigation-profile" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/profile"), onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}/profile`) },
 	];
 
@@ -295,7 +289,7 @@ function MemberHomePage() {
 						<CustomerHomeServiceGrid
 							onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })}
 							onPromo={() => navigate({ to: "/$username/promo", params: { username } })}
-							onWallet={goDjiwaPay}
+							onWallet={() => navigate({ to: "/$username/saldo", params: { username } })}
 							onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })}
 							onCommunity={() => navigate({ to: "/$username/komunitas", params: { username } })}
 							onMerchandise={() => window.location.assign(merchandiseChannelHref)}
@@ -312,9 +306,7 @@ function MemberHomePage() {
 	}
 
 	// ── Member view (authenticated) ────────────────
-	// Auth/username redirects can briefly render this route before customer
-	// profile state is ready. Keep a visible loading surface instead of blanking.
-	if (!customer) return <CustomerPageSkeleton label="Menyiapkan akun" />;
+	if (!customer) return null;
 
 	const displayName = customer.name || customer.username || "Member";
 	const missingContactFields = getMissingCustomerFields(customer);
@@ -359,12 +351,12 @@ function MemberHomePage() {
 					{!isContactComplete && missingContactFields.length > 0 ? <div className="mx-3 mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-amber-950 shadow-sm" role="alert"><div className="flex items-start gap-2.5"><span className="mt-0.5 text-base">!</span><div className="min-w-0 flex-1"><p className="text-xs font-black">Lengkapi data akun</p><p className="mt-0.5 text-[11px] leading-relaxed text-amber-900/80">{getCustomerContactMessage(missingContactFields)}</p></div><button className="min-h-11 shrink-0 rounded-xl bg-amber-600 px-3 py-2 text-[11px] font-black text-white active:scale-[.97]" onClick={() => navigate({ to: "/$username/profile", params: { username } })} type="button">Lengkapi</button></div></div> : null}
 					<main className="flex-1 space-y-3 px-3 py-3 pb-32">
 						<CustomerStoryRail />
-						<CustomerWalletSummary customer={customer} onTopup={goDjiwaPay} />
+						<CustomerWalletSummary customer={customer} onTopup={() => navigate({ to: "/$username/saldo", params: { username } })} />
 						{customerOrders.filter((order) => !["completed", "cancelled"].includes(order.trackingStatus || order.status)).slice(0, 1).map((order) => <CustomerLiveOrderCard key={order.id} order={order} onOpen={() => navigate({ to: "/$username/order", params: { username }, search: { step: "receipt", orderId: order.id } })} />)}
 						<CustomerHomeServiceGrid
 							onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })}
 							onPromo={() => navigate({ to: "/$username/promo", params: { username } })}
-							onWallet={goDjiwaPay}
+							onWallet={() => navigate({ to: "/$username/saldo", params: { username } })}
 							onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })}
 							onCommunity={() => navigate({ to: "/$username/komunitas", params: { username } })}
 							onMerchandise={() => window.location.assign(merchandiseChannelHref)}
@@ -372,7 +364,7 @@ function MemberHomePage() {
 							onDjiwaRun={() => navigate({ to: "/$username/run", params: { username } })}
 						/>
 						<RecentOrdersCarousel username={username} />
-						<DjiwaPayOfferCard isMember onAction={goDjiwaPay} />
+						<DjiwaPayOfferCard isMember onAction={() => navigate({ to: "/$username/saldo", params: { username } })} />
 						<CustomerHomeDiscovery onMenu={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })} b2bHref={b2bChannelHref} />
 					</main>
 				</div>

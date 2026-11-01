@@ -1,7 +1,5 @@
 import { createElement, useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { toast } from "sonner";
-import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { createClient } from "@/lib/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -179,7 +177,7 @@ export function AccountingManager() {
 		} catch (e: unknown) {
 			const err = e as { message?: string };
 			console.error("Failed to save account:", err);
-			toast.error(`Gagal menyimpan: ${err.message || "Unknown"}`);
+			alert(`Gagal menyimpan: ${err.message || "Unknown"}`);
 		} finally {
 			setSaving(false);
 		}
@@ -196,12 +194,9 @@ export function AccountingManager() {
 			if (countError) throw countError;
 
 			if (count && count > 0) {
-				const ok = await requestAdminConfirm({
-					title: "Akun memiliki entri",
-					message: `Akun ini memiliki ${count} entri akuntansi. Nonaktifkan saja? (Nonaktifkan = akun tetap tersimpan, Batal = tidak ada perubahan)`,
-					confirmText: "Nonaktifkan",
-					variant: "warning",
-				});
+				const ok = confirm(
+					`Akun ini memiliki ${count} entri akuntansi. Nonaktifkan saja? (OK = nonaktifkan, Batal = batalkan)`
+				);
 				if (!ok) return;
 				// Deactivate instead of delete
 				const { error } = await supabase
@@ -221,7 +216,7 @@ export function AccountingManager() {
 		} catch (e: unknown) {
 			const err = e as { message?: string };
 			console.error("Failed to delete account:", err);
-			toast.error(`Gagal menghapus: ${err.message || "Unknown"}`);
+			alert(`Gagal menghapus: ${err.message || "Unknown"}`);
 		}
 	}
 

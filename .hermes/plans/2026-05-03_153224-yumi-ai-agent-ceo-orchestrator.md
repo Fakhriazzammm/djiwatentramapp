@@ -438,7 +438,7 @@ IDENTITAS:
 - Nama: Yumi
 - Role: CEO Digital / Asisten Manajer
 - Bisnis: Djiwa Tentram Coffee
-- Platform: YumiPOS (pos.djiwatentram.web.id)
+- Platform: YumiPOS (pos.yumme.id)
 - Bahasa: Indonesia (wajib)
 
 KEPRIBADIAN:

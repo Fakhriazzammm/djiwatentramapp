@@ -3,17 +3,8 @@ import {
 	type ReactNode,
 	useContext,
 	useEffect,
-	type Dispatch,
-	type SetStateAction,
 	useState,
 } from "react";
-import {
-	createCheckoutDraft,
-	createCustomerInfo,
-	POS_CHECKOUT_STORAGE_KEY,
-	type CheckoutDraft,
-	type CheckoutCustomerInfo,
-} from "@/lib/pos-checkout";
 import { useAppData } from "@/context/app-data-context";
 import { isDiscountApplicable, isFreeRefillActive } from "@/lib/utils/pricing";
 import { calculateOrderTax } from "@yumipos/web-shared/lib/tax-calculator";
@@ -46,12 +37,12 @@ interface CartContextType {
 	updateQuantity: (
 		productId: string,
 		variant: string | undefined,
-		delta: number,
+		delta: number
 	) => void;
 	updateItemPrice: (
 		productId: string,
 		variant: string | undefined,
-		newPrice: number,
+		newPrice: number
 	) => void;
 	clearCart: () => void;
 	totalAmount: number;
@@ -71,9 +62,19 @@ interface CartContextType {
 	platformTotal: number;
 	commissionAmount: number;
 	netRevenue: number;
-	checkoutDraft: CheckoutDraft;
-	setCheckoutDraft: Dispatch<SetStateAction<CheckoutDraft>>;
-	customerInfo: CheckoutCustomerInfo;
+	customerInfo: {
+		name: string;
+		email?: string;
+		phone?: string;
+		orderType: string;
+		tableNumber: string;
+		notes: string;
+		isFreeRefill: boolean;
+		isSubmitted: boolean;
+		platform?: string;
+		platformCommission?: number;
+		customer_source_id?: string;
+	};
 	updateCustomerInfo: (info: Partial<CartContextType["customerInfo"]>) => void;
 }
 
@@ -83,27 +84,79 @@ const POS_CART_STORAGE_KEY = "pos_cart_regular_pricing_v1";
 export function CartProvider({ children }: { children: ReactNode }) {
 	const { siteSettings, activeDiscounts } = useAppData();
 
-	const [items, setItems] = useState<CartItem[]>([]);
-	const [appliedVoucher, setAppliedVoucher] = useState<AppliedVoucher | null>(null);
-	const [customerInfo, setCustomerInfo] = useState<CheckoutCustomerInfo>(
-		createCustomerInfo,
-	);
-	const [checkoutDraft, setCheckoutDraft] = useState<CheckoutDraft>(
-		createCheckoutDraft,
+	const [items, setItems] = useState<CartItem[]>(() => {
+		// Load cart from localStorage on mount
+		if (typeof window !== "undefined") {
+			const savedCart = localStorage.getItem(POS_CART_STORAGE_KEY);
+			if (savedCart) {
+				try {
+					return JSON.parse(savedCart);
+				} catch {
+					return [];
+				}
+			}
+		}
+		return [];
+	});
+
+	const [appliedVoucher, setAppliedVoucher] = useState<AppliedVoucher | null>(
+		() => {
+			if (typeof window !== "undefined") {
+				const savedVoucher = localStorage.getItem("pos_voucher");
+				if (savedVoucher) {
+					try {
+						return JSON.parse(savedVoucher);
+					} catch {
+						return null;
+					}
+				}
+			}
+			return null;
+		}
 	);
 
-	useEffect(() => {
-		try {
-			window.localStorage.removeItem(POS_CART_STORAGE_KEY);
-			window.localStorage.removeItem(POS_CHECKOUT_STORAGE_KEY);
-		} catch {
-			/* Storage can be unavailable; current-session state remains usable. */
-		}
-	}, []);
+	const [customerInfo, setCustomerInfo] = useState<{
+		name: string;
+		email?: string;
+		phone?: string;
+		orderType: string;
+		tableNumber: string;
+		notes: string;
+		isFreeRefill: boolean;
+		isSubmitted: boolean;
+		platform?: string;
+		platformCommission?: number;
+		customer_source_id?: string;
+	}>({
+			name: "",
+			orderType: "dine_in",
+			tableNumber: "",
+			notes: "",
+			isFreeRefill: false,
+			isSubmitted: false,
+		});
 
 	const updateCustomerInfo = (info: Partial<typeof customerInfo>) => {
 		setCustomerInfo((prev) => ({ ...prev, ...info }));
 	};
+
+	// Save cart to localStorage whenever it changes
+	useEffect(() => {
+		if (typeof window !== "undefined") {
+			localStorage.setItem(POS_CART_STORAGE_KEY, JSON.stringify(items));
+		}
+	}, [items]);
+
+	// Save voucher to localStorage
+	useEffect(() => {
+		if (typeof window !== "undefined") {
+			if (appliedVoucher) {
+				localStorage.setItem("pos_voucher", JSON.stringify(appliedVoucher));
+			} else {
+				localStorage.removeItem("pos_voucher");
+			}
+		}
+	}, [appliedVoucher]);
 
 	// Automatic Free Refill Logic
 	useEffect(() => {
@@ -118,25 +171,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 		// Find if any Free Refill promo is currently active
 		const activeRefillPromo = activeDiscounts.find((d: any) =>
-			isFreeRefillActive(d, context),
+			isFreeRefillActive(d, context)
 		);
 
 		const refillId = "promo-free-refill";
 		const hasRefillInCart = items.some((i) => i.productId === refillId);
-		const otherItemsCount = items.filter(
-			(i) => i.productId !== refillId,
-		).length;
+		const otherItemsCount = items.filter((i) => i.productId !== refillId).length;
 
 		if (activeRefillPromo && otherItemsCount > 0 && customerInfo.isFreeRefill) {
 			// Add if not present or price/quantity changed
 			const refillPrice = activeRefillPromo.refillPrice || 20000;
 			const currentRefill = items.find((i) => i.productId === refillId);
 
-			if (
-				!currentRefill ||
-				currentRefill.price !== refillPrice ||
-				currentRefill.quantity !== 1
-			) {
+			if (!currentRefill || currentRefill.price !== refillPrice || currentRefill.quantity !== 1) {
 				const refillItem: CartItem = {
 					productId: refillId,
 					name: "Add-on: Free Refill Minuman",
@@ -154,20 +201,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
 			// Remove if no active promo, no other items, or customerInfo.isFreeRefill is false
 			setItems((prev) => prev.filter((i) => i.productId !== refillId));
 		}
-	}, [activeDiscounts, items.length, customerInfo.isFreeRefill]);
+		}, [activeDiscounts, items.length, customerInfo.isFreeRefill]);
 
 	const addToCart = (newItem: CartItem) => {
-		setCheckoutDraft((previous) => previous.result ? createCheckoutDraft() : previous);
 		setItems((prev) => {
 			const existing = prev.find(
 				(i) =>
-					i.productId === newItem.productId && i.variant === newItem.variant,
+					i.productId === newItem.productId && i.variant === newItem.variant
 			);
 			if (existing) {
 				return prev.map((i) =>
 					i.productId === newItem.productId && i.variant === newItem.variant
 						? { ...i, quantity: i.quantity + newItem.quantity }
-						: i,
+						: i
 				);
 			}
 			return [...prev, newItem];
@@ -176,14 +222,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 	const removeFromCart = (productId: string, variant?: string) => {
 		setItems((prev) =>
-			prev.filter((i) => !(i.productId === productId && i.variant === variant)),
+			prev.filter((i) => !(i.productId === productId && i.variant === variant))
 		);
 	};
 
 	const updateQuantity = (
 		productId: string,
 		variant: string | undefined,
-		delta: number,
+		delta: number
 	) => {
 		setItems((prev) =>
 			prev
@@ -193,14 +239,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
 					}
 					return i;
 				})
-				.filter((i) => i.quantity > 0),
+				.filter((i) => i.quantity > 0)
 		);
 	};
 
 	const updateItemPrice = (
 		productId: string,
 		variant: string | undefined,
-		newPrice: number,
+		newPrice: number
 	) => {
 		setItems((prev) =>
 			prev.map((i) => {
@@ -208,22 +254,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
 					return { ...i, price: newPrice, platformPrice: newPrice };
 				}
 				return i;
-			}),
+			})
 		);
 	};
 
 	const clearCart = () => {
 		setItems([]);
 		setAppliedVoucher(null);
-		setCustomerInfo(createCustomerInfo());
-		setCheckoutDraft(createCheckoutDraft());
+		setCustomerInfo({
+			name: "",
+			orderType: "dine_in",
+			tableNumber: "",
+			notes: "",
+			isFreeRefill: false,
+			isSubmitted: false,
+		});
 	};
 
-	const setCart = (
-		newItems: CartItem[],
-		voucher: AppliedVoucher | null = null,
-	) => {
-		setCheckoutDraft(createCheckoutDraft());
+	const setCart = (newItems: CartItem[], voucher: AppliedVoucher | null = null) => {
 		setItems(newItems);
 		setAppliedVoucher(voucher);
 	};
@@ -234,7 +282,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 	const grossAmount = items.reduce(
 		(sum, i) => sum + (i.originalPrice ?? i.price) * i.quantity,
-		0,
+		0
 	);
 	const totalAmount = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 	const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
@@ -283,6 +331,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 		taxRate: Number(siteSettings?.taxRate ?? 0),
 		serviceChargeRate: siteSettings?.serviceChargeRate ?? 0,
 		source: "pos",
+
 	});
 
 	const taxRate = taxCalculation.taxRate;
@@ -292,13 +341,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 	const finalTotal = taxCalculation.finalTotal;
 
 	// Platform-specific calculations (for online orders)
-	const platformTotal = items.reduce(
-		(sum, i) => sum + (i.platformPrice ?? i.price) * i.quantity,
-		0,
-	);
-	const commissionAmount = Math.round(
-		platformTotal * (customerInfo.platformCommission ?? 0),
-	);
+	const platformTotal = items.reduce((sum, i) => sum + (i.platformPrice ?? i.price) * i.quantity, 0);
+	const commissionAmount = Math.round(platformTotal * (customerInfo.platformCommission ?? 0));
 	const netRevenue = platformTotal - commissionAmount;
 
 	return (
@@ -317,8 +361,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 				applyVoucher,
 				setCart,
 				customerInfo,
-				checkoutDraft,
-				setCheckoutDraft,
 				updateCustomerInfo,
 				discountAmount,
 				promoDiscountAmount,

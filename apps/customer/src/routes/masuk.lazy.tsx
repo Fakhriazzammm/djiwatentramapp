@@ -3,7 +3,6 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
-import { getSafeCustomerReturnUrl } from "@/lib/customer-auth-return";
 
 export const Route = createLazyFileRoute("/masuk")({
   component: CustomerAuthPage,
@@ -20,6 +19,33 @@ function GoogleMark() {
   );
 }
 
+function getSafeCustomerReturnUrl() {
+  const search = new URLSearchParams(window.location.search);
+  if (search.get("sso") !== "1") return null;
+  const raw = search.get("returnTo");
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    const allowedOrigins = new Set([
+      "https://merchandise.djiwatentram.web.id",
+      "https://ordermieyamin.djiwatentram.web.id",
+      "https://booking.djiwatentram.web.id",
+      "http://localhost:3010",
+      "http://localhost:5174",
+    ]);
+    const isAllowedPath = /^\/[^/]+\/order$/.test(url.pathname) || url.pathname === "/";
+    const step = url.searchParams.get("step");
+    const stage = url.searchParams.get("stage");
+    const isAllowedStep = step === null || step === "checkout" || step === "shipping" || step === "payment";
+    const isAllowedStage = stage === null || stage === "order";
+    const hasOnlySafeParams = [...url.searchParams.keys()].every((key) => key === "step" || key === "stage");
+    if (!allowedOrigins.has(url.origin) || !isAllowedPath || !isAllowedStep || !isAllowedStage || !hasOnlySafeParams || url.hash) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 function CustomerAuthPage() {
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
@@ -28,13 +54,9 @@ function CustomerAuthPage() {
 
   useEffect(() => {
     if (isAuthenticated && customer) {
-      const returnTo = getSafeCustomerReturnUrl(window.location.search);
+      const returnTo = getSafeCustomerReturnUrl();
       if (returnTo) {
         window.location.assign(returnTo);
-        return;
-      }
-      if (new URLSearchParams(window.location.search).get("next") === "saldo") {
-        navigate({ to: "/$username/saldo", params: { username: customer.username } });
         return;
       }
       navigate({ to: `/${customer.username}` });

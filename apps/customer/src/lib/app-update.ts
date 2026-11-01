@@ -70,12 +70,16 @@ export async function checkForAppUpdate() {
 		// Skip jika versi di version.json sudah pernah diapply sebelumnya.
 		// Payload harus dibaca setelah fetch; membaca payload sebelum deklarasi
 		// akan mematikan polling update pada browser yang menyimpan flag ini.
-		const storedAppliedBuild = localStorage.getItem(APPLIED_VERSION_KEY);
 		const latestVersion = normalizeVersionValue(payload?.version);
 		const latestCommit = normalizeVersionValue(payload?.commitHash ?? payload?.commit);
 		const latestBuildKey = `${latestVersion}:${latestCommit}`;
-		if (storedAppliedBuild) {
-			if (latestBuildKey === storedAppliedBuild) return null;
+		const currentBuildKey = `${APP_VERSION.semantic}:${APP_VERSION.commitHash}`;
+		const storedAppliedBuild = localStorage.getItem(APPLIED_VERSION_KEY);
+
+		// A stale tab must still prompt even if an earlier tab stored this build
+		// as applied. Suppression is valid only when this bundle is current too.
+		if (storedAppliedBuild === latestBuildKey && currentBuildKey === latestBuildKey) return null;
+		if (storedAppliedBuild && storedAppliedBuild !== latestBuildKey) {
 			localStorage.removeItem(APPLIED_VERSION_KEY);
 		}
 		if (!isNewerBuild(payload)) return null;

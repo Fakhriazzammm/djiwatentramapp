@@ -66,7 +66,7 @@ Supabase
     └─ accounting_reconciliation_logs (NEW)
     │
     ▼
-Web Admin (pos.djiwatentram.web.id)
+Web Admin (pos.yumme.id)
     ├─ Simple View (existing — UNCHANGED)
     └─ Accounting View (NEW — DEBIT | KREDIT | AKUN columns)
 ```

@@ -19,7 +19,7 @@ const supabaseUrl = Deno.env.get("YUMI_SUPABASE_URL") ?? Deno.env.get("SUPABASE_
 /**
  * Base URL yang bisa dibuka browser. `SUPABASE_URL` di dalam container adalah
  * http://kong:8000 (hanya valid antar-container), dan `SUPABASE_PUBLIC_URL` di
- * server ini salah konfigurasi — menunjuk ke https://pos.djiwatentram.web.id (app POS),
+	 * server ini salah konfigurasi — menunjuk ke https://pos.djiwatentram.web.id (app POS),
  * bukan ke API gateway. Jadi URL publik diambil dari env khusus, dengan default
  * ke domain API yang dipakai semua app (lihat VITE_SUPABASE_URL di apps/*).
  */
