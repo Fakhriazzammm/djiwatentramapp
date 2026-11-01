@@ -1,0 +1,87 @@
+/*
+ * Header and bottom navigation must look identical to the customer app
+ * (apps/customer CustomerHeader / CustomerBottomNav) so entering Djiwa Pay from
+ * the "Saldo" tab feels like staying in the same app. Values mirror the customer
+ * Tailwind classes; colours come from the shared theme tokens.
+ */
+.pay-page .pay-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+  min-height: 0;
+  margin: 0 -12px 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  background: color-mix(in srgb, var(--background) 90%, transparent);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.02);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  text-align: center;
+}
+.pay-page .pay-header > div:not(.pay-header-actions) { min-width: 0; }
+.pay-page .pay-header h1 {
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font-display, inherit);
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--foreground);
+}
+.pay-page .pay-header small {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+}
+.pay-page .pay-header .round-control {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: var(--background);
+  color: var(--muted-foreground);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+}
+.pay-page .pay-header .pay-header-spacer { width: 44px; height: 44px; }
+.pay-page .pay-header .pay-header-actions { justify-self: end; width: max-content; gap: 6px; }
+
+.bottom-nav {
+  z-index: 40;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px max(8px, calc((100% - 448px) / 2 + 8px)) max(20px, env(safe-area-inset-bottom));
+  border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--background) 95%, transparent);
+  box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.06);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.bottom-nav a,
+.bottom-nav button {
+  flex: 1 1 0;
+  max-width: none;
+  min-height: 56px;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--foreground) 70%, transparent);
+}
+.bottom-nav .active {
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  color: var(--primary);
+  font-weight: 700;
+}
+.bottom-nav img { transition: transform 0.2s ease; }
+.bottom-nav .active img { transform: translateY(-1px) scale(1.08); }
+@media (prefers-reduced-motion: reduce) { .bottom-nav img { transition: none; } }
