@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { AlertCircle, ArrowLeft, CheckCircle2, Clock3, CloudUpload, MapPin, RefreshCw, ShieldCheck, Trophy, Upload, XCircle } from "lucide-react";
 import { CustomerHeader } from "@/components/customer/customer-shell";
 import { CustomerSectionSkeleton } from "@/components/customer/customer-states";
+import { RunProgressHero } from "@/components/customer/run-progress-hero";
 import { RunSocialPanel } from "@/components/customer/run-social-panel";
 import { RunTrackerPanel } from "@/components/customer/run-tracker-panel";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
@@ -179,20 +180,8 @@ function DjiwaRunPage() {
       <main className="space-y-4 px-3 py-4 pb-32">
         {overviewError ? <motion.div {...revealProps} className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs leading-relaxed text-amber-950" role="status"><p className="font-black">Data campaign belum tersedia</p><p className="mt-0.5">{overviewError} Tampilan progres akan muncul setelah backend Djiwa Run aktif.</p></motion.div> : null}
 
-        <motion.section {...revealProps} className="relative overflow-hidden rounded-[28px] bg-[#0d2d54] p-5 text-white shadow-[0_12px_30px_rgba(13,45,84,0.18)]" aria-labelledby="run-progress-title">
-          <img src="/djiwa-run-hero.webp" alt="" aria-hidden="true" loading="lazy" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-75" />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#0d2d54]/95 via-[#0d2d54]/78 to-[#0d2d54]/35" />
-          <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full bg-cyan-300/15 blur-2xl" />
-          <div className="relative z-10 flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-100">{overview.campaignName}</p><h2 id="run-progress-title" className="mt-1 text-[22px] font-black tracking-tight">Buktikan langkahmu.</h2><p className="mt-1 max-w-[240px] text-xs leading-relaxed text-blue-100">Setiap kilometer mendekatkanmu ke reward Djiwa Pay.</p></div><motion.div animate={reduceMotion ? undefined : { y: [0, -4, 0], rotate: [0, 4, 0] }} transition={reduceMotion ? undefined : { duration: 3.2, repeat: Infinity, ease: "easeInOut" }}><Trophy className="h-8 w-8 text-[#f4d27a]" aria-hidden="true" /></motion.div></div>
-          <div className="relative z-10 mt-5 flex items-end justify-between gap-2"><p className="text-4xl font-black tracking-tight">{formatKm(overview.monthlyDistanceKm)} <span className="text-sm font-bold text-blue-100">/ {monthlyTargetLabel}</span></p><span className="rounded-full bg-white/10 px-2.5 py-1 text-sm font-black text-[#f4d27a]">{monthlyPercent}%</span></div>
-          <div className="relative z-10 mt-3 h-2 overflow-hidden rounded-full bg-white/15"><motion.div className="h-full rounded-full bg-[#f4d27a]" initial={{ width: 0 }} animate={{ width: `${monthlyPercent}%` }} transition={reduceMotion ? { duration: 0 } : { duration: 0.8, ease: [0.32, 0.72, 0, 1] }} /></div><p className="relative mt-2 text-[11px] text-blue-100">Progress dihitung dari aktivitas yang lolos validasi server.</p>
-        </motion.section>
+        <RunProgressHero overview={overview} />
         <RunTrackerPanel customerSourceId={customer.sourceId} customerEmail={customer.email} campaignId={overview.campaignId ?? null} onFinished={handleRunFinished} onShare={handleShare} />
-
-        <motion.section {...revealProps} transition={reduceMotion ? undefined : { ...runSpring, delay: 0.04 }} className="rounded-[24px] border border-border bg-card p-3 shadow-sm" aria-label="Langkah Djiwa Run">
-          <div className="flex items-center justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Mulai perjalanan</p><h2 className="mt-1 text-sm font-black">Ikuti 3 langkah sederhana</h2></div><span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-black text-primary">Langkah {journeyStep}/3</span></div>
-          <div className="mt-4 grid grid-cols-3 gap-2">{[[1, "Lokasi", locationReady], [2, "Bukti", Boolean(selectedFile)], [3, "Reward", submissionState === "accepted"]].map(([step, label, done]) => <div key={String(step)} className="relative text-center">{step !== 1 ? <span className="absolute -left-1/2 top-3 h-px w-full bg-border" aria-hidden="true" /> : null}<span className={`relative z-10 mx-auto flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-black ${done ? "bg-emerald-500 text-white" : journeyStep === step ? "bg-primary text-primary-foreground ring-4 ring-primary/10" : "bg-muted text-muted-foreground"}`}>{done ? <CheckCircle2 className="h-3.5 w-3.5" /> : step}</span><span className={`mt-1.5 block text-[10px] font-bold ${journeyStep === step ? "text-primary" : "text-muted-foreground"}`}>{label}</span></div>)}</div>
-        </motion.section>
 
         <motion.section {...revealProps} transition={reduceMotion ? undefined : { ...runSpring, delay: 0.06 }} className="grid grid-cols-3 gap-2" aria-label="Ringkasan progres">
           <div className="rounded-2xl border border-border bg-card p-3 shadow-sm"><p className="text-[10px] font-bold text-muted-foreground">Bulan ini</p><p className="mt-1 text-lg font-black tracking-tight">{formatKm(overview.monthlyDistanceKm)}</p><p className="text-[10px] font-bold text-primary">{monthlyPercent}%</p></div>
