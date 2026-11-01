@@ -172,13 +172,15 @@ function CommunityPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState(() => {
+    try { const draft = sessionStorage.getItem("djiwa-community-draft"); if (draft) sessionStorage.removeItem("djiwa-community-draft"); return draft ?? ""; } catch { return ""; }
+  });
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [durationSeconds, setDurationSeconds] = useState<number | undefined>();
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [composerOpen, setComposerOpen] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(() => { try { return !!body; } catch { return false; } });
   const [products, setProducts] = useState<import("@/features/community/community-types").CommunityProductSummary[]>([]);
   const [selectedProductId, setSelectedProductId] = useState("");
   const [productsLoading, setProductsLoading] = useState(false);

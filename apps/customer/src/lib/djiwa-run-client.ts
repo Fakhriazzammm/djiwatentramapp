@@ -227,3 +227,36 @@ export async function confirmDjiwaRunActivity(input: { customerSourceId: string;
     throw error;
   }
 }
+
+// ---- Djiwa Run v2: GPS sessions, social, teams ----
+export type RunTrackPoint = { lat: number; lng: number; accuracy: number | null; t: number };
+export type RunSessionVerdict = {
+  status: "accepted" | "review" | "rejected";
+  reason: string | null;
+  flags: string[];
+  stats: { distance_km: number; duration_seconds: number; pace_seconds_per_km: number | null };
+  rewards: { credited?: Array<{ amount: number; tier: string }> } | null;
+};
+export type RunLeaderboardRow = { rank: number; name: string; distanceKm: number; isMe: boolean };
+export type RunTeamRow = { rank: number; team_id: string; team_name: string; members: number; distance_km: number };
+export type RunSocial = { streak: number; leaderboard: RunLeaderboardRow[]; teams: RunTeamRow[]; myTeamId: string | null };
+type Identity = { customerSourceId: string; customerEmail: string | null };
+const who = (i: Identity) => ({ customer_source_id: i.customerSourceId, customer_email: i.customerEmail });
+
+export async function startRunSession(input: Identity & { campaignId: string; activityType: "running" | "walking"; idempotencyKey: string }) {
+  const r = await invokeEdgeFunction<{ session: { id: string; started_at: string }; server_time?: string }>("djiwa-run", { action: "start_session", ...who(input), campaign_id: input.campaignId, activity_type: input.activityType, idempotency_key: input.idempotencyKey });
+  return r.session;
+}
+export async function finishRunSession(input: Identity & { sessionId: string; points: RunTrackPoint[] }): Promise<RunSessionVerdict> {
+  return invokeEdgeFunction<RunSessionVerdict>("djiwa-run", { action: "finish_session", ...who(input), session_id: input.sessionId, points: input.points });
+}
+export async function abandonRunSession(input: Identity & { sessionId: string }) {
+  return invokeEdgeFunction("djiwa-run", { action: "abandon_session", ...who(input), session_id: input.sessionId });
+}
+export async function getRunSocial(input: Identity & { campaignId: string; scope: "week" | "month" }): Promise<RunSocial> {
+  const r = await invokeEdgeFunction<Partial<RunSocial>>("djiwa-run", { action: "get_social", ...who(input), campaign_id: input.campaignId, scope: input.scope });
+  return { streak: Number(r.streak ?? 0), leaderboard: r.leaderboard ?? [], teams: r.teams ?? [], myTeamId: r.myTeamId ?? null };
+}
+export async function runTeamAction(input: Identity & { campaignId: string; action: "create_team" | "join_team" | "leave_team"; name?: string; teamId?: string }) {
+  return invokeEdgeFunction("djiwa-run", { action: input.action, ...who(input), campaign_id: input.campaignId, name: input.name, team_id: input.teamId });
+}

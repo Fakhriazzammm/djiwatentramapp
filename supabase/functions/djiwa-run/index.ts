@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { validateGpsSession, dailyCapVerdict, type RunPoint } from "./gps-validation.ts";
 
 const url = Deno.env.get("SUPABASE_URL") ?? "";
 const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -150,6 +151,7 @@ async function campaign(campaignId: string) {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+function validUuidOrNull(v: string) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v); }
 function requiredText(value: unknown, field: string, max = 160) {
   const text = typeof value === "string" ? value.trim() : "";
   if (!text || text.length > max) throw new Error(`${field} wajib diisi dan maksimal ${max} karakter`);
@@ -367,8 +369,95 @@ Deno.serve(async (req) => {
       const current = await admin.schema("pos").from("run_activities").select("*").eq("id",id).single(); if (current.error) throw new Error(current.error.message);
       const upd = await admin.schema("pos").from("run_activities").update({ status, reviewed_by: body.reviewed_by ?? "admin", reviewed_at: new Date().toISOString(), review_note: body.review_note ?? null }).eq("id",id).select().single(); if (upd.error) throw new Error(upd.error.message);
       await admin.schema("pos").rpc("run_rebuild_progress", { p_customer_source_id: current.data.customer_source_id, p_campaign_id: current.data.campaign_id });
+      if (status === "accepted") await admin.schema("pos").rpc("run_grant_wallet_rewards", { p_customer_source_id: current.data.customer_source_id, p_campaign_id: current.data.campaign_id });
       await admin.schema("pos").from("run_audit_logs").insert({ actor_type:"admin", actor_id:body.reviewed_by ?? null, entity_type:"run_activity", entity_id:id, action:`review_${status}`, old_values:{status:current.data.status}, new_values:{status}, reason:body.review_note ?? null });
       return ok({ activity: upd.data });
+    }
+
+    if (action === "start_session") {
+      if (isAdmin) return fail("FORBIDDEN", "Customer session required", 403);
+      const campaignId = String(body.campaign_id ?? ""), idem = String(body.idempotency_key ?? "");
+      if (!campaignId || !idem) return fail("INVALID_INPUT", "campaign_id dan idempotency_key wajib diisi");
+      if (!(await campaign(campaignId))) return fail("CAMPAIGN_NOT_ACTIVE", "Campaign tidak aktif", 422);
+      const prior = await admin.schema("pos").from("run_sessions").select("id,status,started_at").eq("idempotency_key", idem).maybeSingle();
+      if (prior.data) return ok({ session: prior.data, deduplicated: true });
+      const type = body.activity_type === "walking" ? "walking" : "running";
+      const ins = await admin.schema("pos").from("run_sessions").insert({ customer_source_id: customerIdentity, campaign_id: campaignId, activity_type: type, idempotency_key: idem }).select("id,status,started_at").single();
+      if (ins.error) return fail("SESSION_ACTIVE", "Masih ada sesi lari aktif. Selesaikan atau batalkan dulu.", 409);
+      return ok({ session: ins.data, server_time: new Date().toISOString() });
+    }
+    if (action === "abandon_session") {
+      const sid = String(body.session_id ?? ""); if (!validUuidOrNull(sid)) return fail("INVALID_INPUT", "session_id tidak valid");
+      await admin.schema("pos").from("run_sessions").update({ status: "abandoned", finished_at: new Date().toISOString() }).eq("id", sid).eq("customer_source_id", customerIdentity).eq("status", "active");
+      return ok({ status: "abandoned" });
+    }
+    if (action === "finish_session") {
+      const sid = String(body.session_id ?? ""); if (!validUuidOrNull(sid)) return fail("INVALID_INPUT", "session_id tidak valid");
+      const rawPoints = Array.isArray(body.points) ? body.points as Array<Record<string, any>> : null;
+      if (!rawPoints || rawPoints.length > 20000) return fail("INVALID_INPUT", "points wajib berupa array (maks 20000)");
+      const sess = await admin.schema("pos").from("run_sessions").select("*").eq("id", sid).eq("customer_source_id", customerIdentity).maybeSingle();
+      if (sess.error) throw new Error(sess.error.message);
+      if (!sess.data) return fail("NOT_FOUND", "Sesi tidak ditemukan", 404);
+      if (sess.data.status !== "active") return ok({ session: sess.data, deduplicated: true });
+      const camp = await campaign(sess.data.campaign_id); if (!camp) return fail("CAMPAIGN_NOT_ACTIVE", "Campaign tidak aktif", 422);
+      const points: RunPoint[] = rawPoints.map(p => ({ lat: Number(p.lat), lng: Number(p.lng), accuracy: p.accuracy == null ? null : Number(p.accuracy), t: Number(p.t) }));
+      const startedMs = Date.parse(sess.data.started_at), nowMs = Date.now();
+      const verdict = validateGpsSession({ points, activityType: sess.data.activity_type, startedAtMs: startedMs, nowMs });
+      const day = new Date(nowMs + 7 * 3600_000).toISOString().slice(0, 10); // Asia/Jakarta calendar day
+      const today = await admin.schema("pos").from("run_activities").select("distance_km,status").eq("customer_source_id", customerIdentity).eq("source", "gps").eq("activity_date", day).neq("status", "rejected");
+      if (today.error) throw new Error(today.error.message);
+      const cap = dailyCapVerdict({ sessionsToday: today.data?.length ?? 0, kmToday: (today.data ?? []).reduce((n: number, r: any) => n + Number(r.distance_km), 0), newKm: verdict.distanceKm });
+      let status = verdict.status, reason = verdict.reason;
+      if (!cap.ok) { status = "rejected"; reason = cap.reason; }
+      const overlap = await admin.schema("pos").from("run_sessions").select("id").eq("customer_source_id", customerIdentity).neq("id", sid).in("status", ["accepted", "review"]).lt("started_at", new Date(nowMs).toISOString()).gt("finished_at", sess.data.started_at).limit(1);
+      if (overlap.data && overlap.data.length > 0) { status = "rejected"; reason = "Sesi tumpang tindih dengan sesi lain"; }
+      const stats = { distance_km: verdict.distanceKm, duration_seconds: verdict.durationSeconds, pace_seconds_per_km: verdict.paceSecondsPerKm, valid_points: verdict.validPoints, total_points: verdict.totalPoints };
+      let activityId: string | null = null;
+      if (status !== "rejected") {
+        const row = { customer_source_id: customerIdentity, campaign_id: sess.data.campaign_id, activity_date: day, distance_km: verdict.distanceKm, activity_type: sess.data.activity_type, duration_seconds: verdict.durationSeconds, pace_seconds_per_km: verdict.paceSecondsPerKm, source: "gps", source_app: "customer-web", geofence_status: "not_required", status, idempotency_key: `gps:${sid}`, metadata: { session_id: sid, flags: verdict.flags } };
+        const ins = await admin.schema("pos").from("run_activities").insert(row).select("id").single();
+        if (ins.error) throw new Error(ins.error.message);
+        activityId = ins.data.id;
+      }
+      await admin.schema("pos").from("run_sessions").update({ status, finished_at: new Date(nowMs).toISOString(), points, stats, flags: verdict.flags, activity_id: activityId }).eq("id", sid);
+      let rewards: unknown = null;
+      if (status === "accepted") {
+        await admin.schema("pos").rpc("run_rebuild_progress", { p_customer_source_id: customerIdentity, p_campaign_id: sess.data.campaign_id });
+        const granted = await admin.schema("pos").rpc("run_grant_wallet_rewards", { p_customer_source_id: customerIdentity, p_campaign_id: sess.data.campaign_id });
+        rewards = granted.data ?? null;
+      }
+      await admin.schema("pos").from("run_audit_logs").insert({ actor_type: "customer", actor_id: customerIdentity, entity_type: "run_session", entity_id: sid, action: `gps_${status}`, new_values: { stats, flags: verdict.flags }, reason: reason ?? null });
+      return ok({ status, reason: reason ?? null, flags: verdict.flags, stats, activity_id: activityId, rewards });
+    }
+    if (action === "get_social") {
+      const campaignId = String(body.campaign_id ?? ""); if (!validUuidOrNull(campaignId)) return fail("INVALID_INPUT", "campaign_id tidak valid");
+      const scope = body.scope === "week" ? "week" : "month";
+      const [lb, tlb, streak, mine] = await Promise.all([
+        admin.schema("pos").rpc("run_leaderboard", { p_campaign_id: campaignId, p_scope: scope, p_limit: 20 }),
+        admin.schema("pos").rpc("run_team_leaderboard", { p_campaign_id: campaignId, p_limit: 20 }),
+        admin.schema("pos").rpc("run_streak", { p_customer_source_id: customerIdentity }),
+        admin.schema("pos").from("run_team_members").select("team_id").eq("campaign_id", campaignId).eq("customer_source_id", customerIdentity).maybeSingle(),
+      ]);
+      const err = [lb.error, tlb.error, streak.error, mine.error].find(Boolean); if (err) throw new Error(err!.message);
+      const rows = (lb.data ?? []) as Array<Record<string, any>>;
+      return ok({ streak: streak.data ?? 0, leaderboard: rows.map(r => ({ rank: Number(r.rank), name: r.display_name, distanceKm: Number(r.distance_km), isMe: r.customer_source_id === customerIdentity })), teams: tlb.data ?? [], myTeamId: mine.data?.team_id ?? null });
+    }
+    if (action === "create_team" || action === "join_team" || action === "leave_team") {
+      const campaignId = String(body.campaign_id ?? ""); if (!validUuidOrNull(campaignId) || !(await campaign(campaignId))) return fail("CAMPAIGN_NOT_ACTIVE", "Campaign tidak aktif", 422);
+      if (action === "leave_team") { await admin.schema("pos").from("run_team_members").delete().eq("campaign_id", campaignId).eq("customer_source_id", customerIdentity); return ok({ left: true }); }
+      let teamId = String(body.team_id ?? "");
+      if (action === "create_team") {
+        const name = requiredText(body.name, "name", 40); if (name.length < 2) return fail("INVALID_INPUT", "Nama tim minimal 2 karakter");
+        const t = await admin.schema("pos").from("run_teams").insert({ campaign_id: campaignId, name, created_by: customerIdentity }).select("id").single();
+        if (t.error) return fail("TEAM_EXISTS", "Nama tim sudah dipakai", 409);
+        teamId = t.data.id;
+      } else if (!validUuidOrNull(teamId)) return fail("INVALID_INPUT", "team_id tidak valid");
+      const exists = await admin.schema("pos").from("run_teams").select("id").eq("id", teamId).eq("campaign_id", campaignId).maybeSingle();
+      if (!exists.data) return fail("NOT_FOUND", "Tim tidak ditemukan", 404);
+      await admin.schema("pos").from("run_team_members").delete().eq("campaign_id", campaignId).eq("customer_source_id", customerIdentity);
+      const m = await admin.schema("pos").from("run_team_members").insert({ team_id: teamId, campaign_id: campaignId, customer_source_id: customerIdentity });
+      if (m.error) throw new Error(m.error.message);
+      return ok({ team_id: teamId });
     }
     return fail("UNKNOWN_ACTION", "Action tidak dikenal");
   } catch (e) { return fail("SERVER_ERROR", e instanceof Error ? e.message : String(e), 500); }
