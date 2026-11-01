@@ -1,12 +1,15 @@
+import { useEffect } from "react";
 import { Loader2, MapPinOff } from "lucide-react";
 import type { RunLeaderboardRow, RunOverview, RunSessionVerdict, RunSocial, RunTier, RunTrackPoint } from "@/lib/djiwa-run-client";
 import { formatClock, formatPace } from "@/lib/run-track-utils";
 
 const fmt = (value: number, digits = 1) => new Intl.NumberFormat("id-ID", { maximumFractionDigits: digits }).format(Math.max(0, value));
 const pct = (done: number, target: number) => (target > 0 ? Math.min(100, Math.round((done / target) * 100)) : 0);
-const btnPrimary = "inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[18px] bg-primary px-4 text-base font-black text-primary-foreground shadow-sm active:scale-[0.99] disabled:opacity-50";
-const btnOutline = "inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[18px] border border-primary/20 bg-card px-4 text-base font-black text-primary active:scale-[0.99]";
-const card = "rounded-[22px] bg-card p-4 shadow-[0_1px_2px_rgba(16,32,63,0.06)]";
+const press = "touch-manipulation select-none transition-[transform,opacity] duration-150 active:scale-[0.97] active:opacity-90 motion-reduce:transition-none motion-reduce:active:scale-100 [-webkit-tap-highlight-color:transparent]";
+const btnPrimary = `inline-flex min-h-[50px] w-full items-center justify-center gap-2 rounded-[14px] bg-primary px-4 text-[17px] font-semibold text-primary-foreground disabled:opacity-40 ${press}`;
+const btnTinted = `inline-flex min-h-[50px] w-full items-center justify-center gap-2 rounded-[14px] bg-primary/10 px-4 text-[17px] font-semibold text-primary ${press}`;
+const card = "rounded-[20px] bg-card p-4 shadow-[0_0_0_0.5px_rgba(60,60,67,0.12)]";
+const groupRow = "flex min-h-[44px] items-center";
 
 export function daysLeft(periodLabel: string) {
   const end = periodLabel.split("–").pop()?.trim() ?? "";
@@ -28,22 +31,22 @@ export function RunHomeView({ overview, streak, canStart, starting, error, onSta
   return (
     <div className="space-y-3">
       <section className="rounded-[24px] bg-gradient-to-b from-[#1b2d52] to-[#0f1b36] px-5 pb-5 pt-5 text-white shadow-[0_12px_30px_rgba(13,27,54,0.22)]" aria-labelledby="run-hero-title">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/60">Target bulan ini</p>
-        <h2 id="run-hero-title" className="mt-1.5 text-[26px] font-black leading-tight">{headline}</h2>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/60">Target bulan ini</p>
+        <h2 id="run-hero-title" className="mt-1.5 text-[26px] font-bold leading-tight">{headline}</h2>
         <div className="relative mx-auto mt-4 h-[168px] w-[168px]" role="img" aria-label={hasTarget ? `Progres ${percent} persen, ${fmt(done)} dari ${fmt(target)} kilometer` : "Belum ada target"}>
-          <svg viewBox="0 0 168 168" className="-rotate-90"><circle cx="84" cy="84" r={radius} fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="18" /><circle cx="84" cy="84" r={radius} fill="none" stroke="#e8c050" strokeWidth="18" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={circ * (1 - percent / 100)} style={{ transition: "stroke-dashoffset 600ms ease" }} /></svg>
-          <div className="absolute inset-0 grid place-items-center text-center"><div><p className="text-4xl font-black tabular-nums leading-none">{fmt(done)}</p><p className="mt-1 text-sm text-white/70">{hasTarget ? `/ ${fmt(target, 0)} km` : "km bulan ini"}</p></div></div>
+          <svg viewBox="0 0 168 168" className="-rotate-90"><circle cx="84" cy="84" r={radius} fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="18" /><circle cx="84" cy="84" r={radius} fill="none" stroke="#e8c050" strokeWidth="18" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={circ * (1 - percent / 100)} className="motion-reduce:[transition:none]" style={{ transition: "stroke-dashoffset 600ms ease" }} /></svg>
+          <div className="absolute inset-0 grid place-items-center text-center"><div><p className="text-4xl font-bold tabular-nums leading-none">{fmt(done)}</p><p className="mt-1 text-sm text-white/70">{hasTarget ? `/ ${fmt(target, 0)} km` : "km bulan ini"}</p></div></div>
         </div>
         <p className="mt-3 text-center text-sm text-white/75">{next?.rewardName ? `Reward ${next.rewardName}` : "Reward saldo Djiwa Pay"}</p>
       </section>
       <button type="button" className={btnPrimary} disabled={!canStart || starting} onClick={() => onStart("running")}>{starting ? <Loader2 className="h-5 w-5 animate-spin" /> : null}Mulai Lari</button>
-      <button type="button" className={btnOutline} onClick={onManual}>Catat manual dengan bukti</button>
-      {!canStart ? <p className="text-center text-xs text-muted-foreground">Campaign belum aktif, tracking GPS tersedia saat campaign dibuka.</p> : <button type="button" onClick={() => onStart("walking")} disabled={starting} className="mx-auto block min-h-10 text-xs font-bold text-muted-foreground underline">Jalan santai? Mulai sebagai jalan</button>}
+      <button type="button" className={btnTinted} onClick={onManual}>Catat manual dengan bukti</button>
+      {!canStart ? <p className="text-center text-xs text-muted-foreground">Campaign belum aktif, tracking GPS tersedia saat campaign dibuka.</p> : <button type="button" onClick={() => onStart("walking")} disabled={starting} className={`mx-auto flex min-h-11 items-center text-[15px] font-medium text-primary ${press}`}>Jalan santai? Mulai sebagai jalan</button>}
       {error ? <p className="rounded-2xl bg-red-50 px-3 py-2 text-xs text-red-950" role="alert">{error}</p> : null}
       <div className="grid grid-cols-3 gap-2.5">
-        {[["Streak", `${streak} hari`], ["Sprint", `${pct(overview.weeklyDistanceKm, overview.weeklyTargetKm)}%`], ["Tier", tierName]].map(([label, value]) => <div key={label} className="rounded-[18px] bg-card px-3.5 py-3 shadow-[0_1px_2px_rgba(16,32,63,0.06)]"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 truncate text-lg font-black">{value}</p></div>)}
+        {[["Streak", `${streak} hari`], ["Sprint", `${pct(overview.weeklyDistanceKm, overview.weeklyTargetKm)}%`], ["Tier", tierName]].map(([label, value]) => <div key={label} className="rounded-[16px] bg-card px-3.5 py-3 shadow-[0_0_0_0.5px_rgba(60,60,67,0.12)]"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 truncate text-lg font-semibold">{value}</p></div>)}
       </div>
-      <button type="button" onClick={onRanking} className="flex min-h-12 w-full items-center justify-between rounded-[18px] bg-card px-4 text-sm font-black shadow-[0_1px_2px_rgba(16,32,63,0.06)]">Peringkat & reward<span className="text-primary" aria-hidden="true">›</span></button>
+      <button type="button" onClick={onRanking} className={`flex min-h-[50px] w-full items-center justify-between rounded-[16px] bg-card px-4 text-[17px] font-medium shadow-[0_0_0_0.5px_rgba(60,60,67,0.12)] ${press}`}>Peringkat & reward<span className="text-primary" aria-hidden="true">›</span></button>
     </div>
   );
 }
@@ -72,15 +75,19 @@ export function RunLiveView({ phase, points, distanceKm, paceSecondsPerKm, elaps
     <div className="space-y-3">
       <div className="relative h-[250px] overflow-hidden rounded-[24px] bg-gradient-to-br from-[#dfe9f7] to-[#eef3fb]"><RouteMap points={points} />
         <div className="absolute inset-x-3 bottom-3 grid grid-cols-3 rounded-[18px] bg-card px-2 py-3 text-center shadow-[0_6px_18px_rgba(16,32,63,0.15)]" aria-live="off">
-          {[[distanceKm.toFixed(2).replace(".", ","), "km"], [formatPace(paceSecondsPerKm), "/km"], [formatClock(elapsedSeconds), "waktu"]].map(([v, l]) => <div key={l}><p className="text-2xl font-black tabular-nums">{v}</p><p className="text-xs text-muted-foreground">{l}</p></div>)}
+          {[[distanceKm.toFixed(2).replace(".", ","), "km"], [formatPace(paceSecondsPerKm), "/km"], [formatClock(elapsedSeconds), "waktu"]].map(([v, l]) => <div key={l}><p className="text-2xl font-bold tabular-nums">{v}</p><p className="text-xs text-muted-foreground">{l}</p></div>)}
         </div>
       </div>
       <p className="text-center text-xs text-muted-foreground">{phase === "paused" ? "Dijeda" : `GPS aktif · ${quality}`}</p>
-      {targetKm > 0 ? <section className={card}><div className="flex items-center justify-between"><p className="text-base font-black">Target {fmt(targetKm, 0)} km</p><span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-black text-primary">{percent}%</span></div><div className="mt-2.5 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} /></div><p className="mt-2 text-sm text-muted-foreground">Validasi server berjalan otomatis</p></section> : <section className={card}><p className="text-sm text-muted-foreground">Validasi server berjalan otomatis</p></section>}
-      {message ? <p className="rounded-2xl bg-red-50 px-3 py-2 text-xs text-red-950" role="alert">{message}</p> : null}
-      {phase === "error" ? <button type="button" onClick={onRetry} className="inline-flex min-h-[52px] w-full items-center justify-center rounded-[18px] bg-red-700 px-4 text-base font-black text-white">Kirim ulang hasil</button>
-        : <button type="button" onClick={onFinish} disabled={phase === "finishing"} className="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-[18px] bg-red-700 px-4 text-base font-black text-white disabled:opacity-60">{phase === "finishing" ? <Loader2 className="h-5 w-5 animate-spin" /> : null}Selesai</button>}
-      <button type="button" className={btnOutline} disabled={phase === "finishing"} onClick={phase === "paused" ? onResume : onPause}>{phase === "paused" ? "Lanjutkan" : "Jeda"}</button>
+      {targetKm > 0 ? <section className={card}><div className="flex items-center justify-between"><p className="text-base font-semibold">Target {fmt(targetKm, 0)} km</p><span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">{percent}%</span></div><div className="mt-2.5 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} /></div><p className="mt-2 text-sm text-muted-foreground">Validasi server berjalan otomatis</p></section> : <section className={card}><p className="text-sm text-muted-foreground">Validasi server berjalan otomatis</p></section>}
+      <p className="px-2 text-center text-xs leading-relaxed text-muted-foreground">Biarkan layar menyala dan halaman tetap terbuka. iPhone menghentikan GPS saat layar terkunci atau pindah aplikasi.</p>
+      {message ? <p className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-950" role="alert">{message}</p> : null}
+      <div className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md space-y-2 border-t border-black/5 bg-background/80 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
+        {phase === "error"
+          ? <button type="button" onClick={onRetry} className={`inline-flex min-h-[50px] w-full items-center justify-center rounded-[14px] bg-red-600 px-4 text-[17px] font-semibold text-white ${press}`}>Kirim ulang hasil</button>
+          : <button type="button" onClick={onFinish} disabled={phase === "finishing"} className={`inline-flex min-h-[50px] w-full items-center justify-center gap-2 rounded-[14px] bg-red-600 px-4 text-[17px] font-semibold text-white disabled:opacity-60 ${press}`}>{phase === "finishing" ? <Loader2 className="h-5 w-5 animate-spin" /> : null}Selesai</button>}
+        <button type="button" className={btnTinted} disabled={phase === "finishing"} onClick={phase === "paused" ? onResume : onPause}>{phase === "paused" ? "Lanjutkan" : "Jeda"}</button>
+      </div>
     </div>
   );
 }
@@ -93,18 +100,18 @@ export function RunResultView({ verdict, activityType, streak, onShare, onAgain 
   const chip = ok ? ["Lolos validasi", "bg-primary/10 text-primary"] : review ? ["Menunggu tinjauan", "bg-amber-100 text-amber-800"] : ["Tidak dapat dicatat", "bg-red-100 text-red-800"];
   return (
     <div className="space-y-3">
-      <section className={`${card} text-center`}><span className={`inline-block rounded-full px-3.5 py-1 text-sm font-black ${chip[1]}`}>{chip[0]}</span>
-        <p className="mt-3 text-[44px] font-black leading-none tabular-nums">{km.toFixed(2).replace(".", ",")} km</p>
+      <section className={`${card} text-center`}><span className={`inline-block rounded-full px-3.5 py-1 text-sm font-semibold ${chip[1]}`}>{chip[0]}</span>
+        <p className="mt-3 text-[44px] font-bold leading-none tabular-nums">{km.toFixed(2).replace(".", ",")} km</p>
         <p className="mt-2.5 text-sm text-muted-foreground">{formatClock(verdict.stats.duration_seconds)} · {formatPace(verdict.stats.pace_seconds_per_km)}/km · ≈{kcal} kkal</p>
         {verdict.reason ? <p className="mt-2 text-xs text-muted-foreground">{verdict.reason}</p> : null}</section>
-      {ok || review ? <section className={card}><h2 className="text-base font-black">Reward diperoleh</h2><ul className="mt-2 divide-y divide-border/60">
-        {ok ? <li className="flex items-center gap-3 py-3"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-[#e8c050] bg-[#fff6dc] text-sm font-black text-[#a57800]">+1</span><div><p className="font-black">Streak {streak} hari</p><p className="text-sm text-muted-foreground">Lari lagi besok untuk menjaganya</p></div></li> : null}
-        {credited > 0 ? <li className="flex items-center gap-3 py-3"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-[#e8c050] bg-[#fff6dc] text-sm font-black text-[#a57800]">Rp</span><div><p className="font-black">Rp{credited.toLocaleString("id-ID")} saldo</p><p className="text-sm text-muted-foreground">Sudah masuk saldo Djiwa Pay</p></div></li> : null}
-        {review ? <li className="flex items-center gap-3 py-3"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-[#e8c050] bg-[#fff6dc] text-sm font-black text-[#a57800]">Rp</span><div><p className="font-black">Reward menunggu</p><p className="text-sm text-muted-foreground">Masuk setelah ditinjau admin</p></div></li> : null}
+      {ok || review ? <section className={card}><h2 className="text-base font-semibold">Reward diperoleh</h2><ul className="mt-2 divide-y divide-border/60">
+        {ok ? <li className="flex items-center gap-3 py-3"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-[#e8c050] bg-[#fff6dc] text-sm font-semibold text-[#a57800]">+1</span><div><p className="font-semibold">Streak {streak} hari</p><p className="text-sm text-muted-foreground">Lari lagi besok untuk menjaganya</p></div></li> : null}
+        {credited > 0 ? <li className="flex items-center gap-3 py-3"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-[#e8c050] bg-[#fff6dc] text-sm font-semibold text-[#a57800]">Rp</span><div><p className="font-semibold">Rp{credited.toLocaleString("id-ID")} saldo</p><p className="text-sm text-muted-foreground">Sudah masuk saldo Djiwa Pay</p></div></li> : null}
+        {review ? <li className="flex items-center gap-3 py-3"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-[#e8c050] bg-[#fff6dc] text-sm font-semibold text-[#a57800]">Rp</span><div><p className="font-semibold">Reward menunggu</p><p className="text-sm text-muted-foreground">Masuk setelah ditinjau admin</p></div></li> : null}
       </ul></section> : null}
-      <section className={card}><h2 className="text-base font-black">Bukti</h2><p className="mt-1 text-sm leading-relaxed text-muted-foreground">Rute GPS tersimpan dan divalidasi server.</p></section>
+      <section className={card}><h2 className="text-base font-semibold">Bukti</h2><p className="mt-1 text-sm leading-relaxed text-muted-foreground">Rute GPS tersimpan dan divalidasi server.</p></section>
       {ok ? <button type="button" className={btnPrimary} onClick={onShare}>Bagikan ke Komunitas</button> : null}
-      <button type="button" className={btnOutline} onClick={onAgain}>{ok ? "Selesai" : "Kembali"}</button>
+      <button type="button" className={btnTinted} onClick={onAgain}>{ok ? "Selesai" : "Kembali"}</button>
     </div>
   );
 }
@@ -117,30 +124,52 @@ export function RunRankingView({ social, loading, error, tab, setTab, scope, set
 }) {
   const next = overview.tiers.find((t) => t.status === "in_progress") ?? null;
   const topTeam = social?.teams[0] ?? null;
-  const chip = (active: boolean) => `min-h-10 rounded-full px-4 text-sm font-black ${active ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`;
   const rows: RunLeaderboardRow[] = social?.leaderboard ?? [];
   return (
     <div className="space-y-3">
       <section className={card}>
-        <div className="flex flex-wrap gap-2" role="tablist">
-          <button type="button" role="tab" aria-selected={tab === "people" && scope === "week"} className={chip(tab === "people" && scope === "week")} onClick={() => { setTab("people"); setScope("week"); }}>Minggu</button>
-          <button type="button" role="tab" aria-selected={tab === "people" && scope === "month"} className={chip(tab === "people" && scope === "month")} onClick={() => { setTab("people"); setScope("month"); }}>Bulan</button>
-          <button type="button" role="tab" aria-selected={tab === "teams"} className={chip(tab === "teams")} onClick={() => setTab("teams")}>Tim</button>
+        <div className="grid grid-cols-3 rounded-[10px] bg-muted p-0.5" role="tablist" aria-label="Periode peringkat">
+          {([["Minggu", tab === "people" && scope === "week", () => { setTab("people"); setScope("week"); }], ["Bulan", tab === "people" && scope === "month", () => { setTab("people"); setScope("month"); }], ["Tim", tab === "teams", () => setTab("teams")]] as const).map(([label, active, onSelect]) => (
+            <button key={label} type="button" role="tab" aria-selected={active} onClick={onSelect} className={`min-h-[34px] rounded-[8px] text-[15px] font-semibold transition-colors motion-reduce:transition-none ${active ? "bg-card text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.12)]" : "text-muted-foreground"} touch-manipulation [-webkit-tap-highlight-color:transparent]`}>{label}</button>
+          ))}
         </div>
         {loading ? <div className="mt-4 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : null}
         {error ? <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-950" role="alert">{error}</p> : null}
-        {!loading && tab === "people" ? (rows.length ? <ol className="mt-3">{rows.map((r) => <li key={`${r.rank}-${r.name}`} className={`flex items-center gap-3 border-b border-border/60 py-2.5 last:border-0 ${r.isMe ? "-mx-2 rounded-2xl bg-primary/10 px-2" : ""}`}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-black text-primary">{r.rank}</span><span className="min-w-0 flex-1 truncate text-base font-black">{r.name}{r.isMe ? " (kamu)" : ""}</span><span className="tabular-nums text-base">{fmt(r.distanceKm)} km</span></li>)}</ol> : <p className="mt-3 rounded-2xl bg-muted/40 px-3 py-3 text-sm text-muted-foreground">Belum ada aktivitas yang lolos validasi. Jadilah yang pertama!</p>) : null}
-        {!loading && tab === "teams" ? <div className="mt-3 space-y-2">{social?.teams.length ? social.teams.map((t) => <div key={t.team_id} className="flex items-center gap-3 rounded-2xl bg-muted/40 px-3 py-2.5"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-card text-sm font-black">{t.rank}</span><div className="min-w-0 flex-1"><p className="truncate font-black">{t.team_name}</p><p className="text-xs text-muted-foreground">{t.members} anggota · {fmt(Number(t.distance_km))} km</p></div>{social.myTeamId === t.team_id ? <button type="button" disabled={busy} onClick={() => onTeam("leave_team")} className="min-h-10 rounded-full border border-border px-3 text-xs font-black">Keluar</button> : <button type="button" disabled={busy} onClick={() => onTeam("join_team", t.team_id)} className="min-h-10 rounded-full bg-primary px-3 text-xs font-black text-primary-foreground">Gabung</button>}</div>) : <p className="rounded-2xl bg-muted/40 px-3 py-3 text-sm text-muted-foreground">Belum ada tim. Buat tim pertama dan ajak teman.</p>}
-          {!social?.myTeamId ? <div className="flex gap-2"><label className="sr-only" htmlFor="run-team-name">Nama tim</label><input id="run-team-name" value={teamName} onChange={(e) => setTeamName(e.target.value)} maxLength={40} placeholder="Nama tim baru" className="min-h-11 flex-1 rounded-2xl border border-border bg-background px-3 text-sm" /><button type="button" disabled={busy || teamName.trim().length < 2} onClick={() => onTeam("create_team")} className="min-h-11 rounded-2xl bg-primary px-4 text-sm font-black text-primary-foreground disabled:opacity-50">Buat</button></div> : null}</div> : null}
+        {!loading && tab === "people" ? (rows.length ? <ol className="mt-3">{rows.map((r) => <li key={`${r.rank}-${r.name}`} className={`flex items-center gap-3 border-b border-border/60 py-2.5 last:border-0 ${r.isMe ? "-mx-2 rounded-2xl bg-primary/10 px-2" : ""}`}><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary">{r.rank}</span><span className="min-w-0 flex-1 truncate text-base font-semibold">{r.name}{r.isMe ? " (kamu)" : ""}</span><span className="tabular-nums text-base">{fmt(r.distanceKm)} km</span></li>)}</ol> : <p className="mt-3 rounded-2xl bg-muted/40 px-3 py-3 text-sm text-muted-foreground">Belum ada aktivitas yang lolos validasi. Jadilah yang pertama!</p>) : null}
+        {!loading && tab === "teams" ? <div className="mt-3 space-y-2">{social?.teams.length ? social.teams.map((t) => <div key={t.team_id} className="flex items-center gap-3 rounded-2xl bg-muted/40 px-3 py-2.5"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-card text-sm font-semibold">{t.rank}</span><div className="min-w-0 flex-1"><p className="truncate font-semibold">{t.team_name}</p><p className="text-xs text-muted-foreground">{t.members} anggota · {fmt(Number(t.distance_km))} km</p></div>{social.myTeamId === t.team_id ? <button type="button" disabled={busy} onClick={() => onTeam("leave_team")} className="min-h-10 rounded-full border border-border px-3 text-xs font-semibold">Keluar</button> : <button type="button" disabled={busy} onClick={() => onTeam("join_team", t.team_id)} className="min-h-10 rounded-full bg-primary px-3 text-xs font-semibold text-primary-foreground">Gabung</button>}</div>) : <p className="rounded-2xl bg-muted/40 px-3 py-3 text-sm text-muted-foreground">Belum ada tim. Buat tim pertama dan ajak teman.</p>}
+          {!social?.myTeamId ? <div className="flex gap-2"><label className="sr-only" htmlFor="run-team-name">Nama tim</label><input id="run-team-name" value={teamName} onChange={(e) => setTeamName(e.target.value)} maxLength={40} placeholder="Nama tim baru" className="min-h-11 flex-1 rounded-[12px] border border-border bg-background px-3 text-base" /><button type="button" disabled={busy || teamName.trim().length < 2} onClick={() => onTeam("create_team")} className="min-h-11 rounded-2xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">Buat</button></div> : null}</div> : null}
       </section>
-      <section className={card}><h2 className="text-base font-black">Milestone berikutnya</h2>
-        {next ? <div className="mt-3 flex items-center gap-3"><span className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-2 border-[#e8c050] bg-[#fff6dc] text-xs font-black text-[#a57800]">{fmt(next.targetKm, 0)}K</span><div className="min-w-0 flex-1"><p className="font-black">{next.name}</p><div className="mt-2 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${pct(next.distanceKm, next.targetKm)}%` }} /></div><p className="mt-1 text-xs text-muted-foreground">{fmt(next.distanceKm)} / {fmt(next.targetKm)} km{next.rewardName ? ` · ${next.rewardName}` : ""}</p></div></div> : <p className="mt-2 text-sm text-muted-foreground">Tier dan reward akan muncul saat campaign aktif.</p>}</section>
-      <section className={card}><h2 className="text-base font-black">Tantangan tim</h2><p className="mt-1 text-sm leading-relaxed text-muted-foreground">{topTeam ? `${topTeam.team_name} memimpin dengan ${fmt(Number(topTeam.distance_km))} km — gabung dan kumpulkan km bersama.` : "Buat tim dan kumpulkan kilometer bersama teman."}</p>{tab !== "teams" ? <button type="button" onClick={() => setTab("teams")} className="mt-2 min-h-10 text-sm font-black text-primary">Lihat tim ›</button> : null}</section>
+      <section className={card}><h2 className="text-base font-semibold">Milestone berikutnya</h2>
+        {next ? <div className="mt-3 flex items-center gap-3"><span className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-2 border-[#e8c050] bg-[#fff6dc] text-xs font-semibold text-[#a57800]">{fmt(next.targetKm, 0)}K</span><div className="min-w-0 flex-1"><p className="font-semibold">{next.name}</p><div className="mt-2 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${pct(next.distanceKm, next.targetKm)}%` }} /></div><p className="mt-1 text-xs text-muted-foreground">{fmt(next.distanceKm)} / {fmt(next.targetKm)} km{next.rewardName ? ` · ${next.rewardName}` : ""}</p></div></div> : <p className="mt-2 text-sm text-muted-foreground">Tier dan reward akan muncul saat campaign aktif.</p>}</section>
+      <section className={card}><h2 className="text-base font-semibold">Tantangan tim</h2><p className="mt-1 text-sm leading-relaxed text-muted-foreground">{topTeam ? `${topTeam.team_name} memimpin dengan ${fmt(Number(topTeam.distance_km))} km — gabung dan kumpulkan km bersama.` : "Buat tim dan kumpulkan kilometer bersama teman."}</p>{tab !== "teams" ? <button type="button" onClick={() => setTab("teams")} className="mt-2 min-h-10 text-sm font-semibold text-primary">Lihat tim ›</button> : null}</section>
     </div>
   );
 }
 
 export function NoGpsNotice({ message, onManual }: { message: string | null; onManual: () => void }) {
-  return <div className="rounded-[22px] bg-amber-50 p-4 text-sm leading-relaxed text-amber-950" role="alert"><div className="flex items-center gap-2 font-black"><MapPinOff className="h-5 w-5" />GPS tidak tersedia</div><p className="mt-1">{message ?? "Perangkat atau browser tidak mendukung lokasi."} Kamu tetap bisa mencatat lari dengan screenshot dari aplikasi olahraga.</p><button type="button" onClick={onManual} className="mt-2 min-h-11 font-black underline">Catat manual</button></div>;
+  return <div className="rounded-[22px] bg-amber-50 p-4 text-sm leading-relaxed text-amber-950" role="alert"><div className="flex items-center gap-2 font-semibold"><MapPinOff className="h-5 w-5" />GPS tidak tersedia</div><p className="mt-1">{message ?? "Perangkat atau browser tidak mendukung lokasi."} Kamu tetap bisa mencatat lari dengan screenshot dari aplikasi olahraga.</p><button type="button" onClick={onManual} className="mt-2 min-h-11 font-semibold underline">Catat manual</button></div>;
 }
 
+
+/* ---------- iOS action sheet ---------- */
+export function ActionSheet({ open, title, message, destructiveLabel, cancelLabel = "Batal", onDestructive, onCancel }: { open: boolean; title: string; message?: string; destructiveLabel: string; cancelLabel?: string; onDestructive: () => void; onCancel: () => void }) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onCancel]);
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center" role="presentation">
+      <button type="button" aria-label="Tutup" tabIndex={-1} className="absolute inset-0 bg-black/40" onClick={onCancel} />
+      <div role="alertdialog" aria-modal="true" aria-labelledby="run-sheet-title" className="relative w-full max-w-md space-y-2 px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] animate-in slide-in-from-bottom-4 duration-200 motion-reduce:animate-none">
+        <div className="overflow-hidden rounded-[14px] bg-card/95 backdrop-blur-xl">
+          <div className="px-4 py-3 text-center"><p id="run-sheet-title" className="text-[13px] font-semibold text-muted-foreground">{title}</p>{message ? <p className="mt-0.5 text-[13px] text-muted-foreground">{message}</p> : null}</div>
+          <button type="button" onClick={onDestructive} className={`min-h-[57px] w-full border-t border-border/60 text-[20px] text-red-600 ${press}`}>{destructiveLabel}</button>
+        </div>
+        <button type="button" autoFocus onClick={onCancel} className={`min-h-[57px] w-full rounded-[14px] bg-card text-[20px] font-semibold text-primary ${press}`}>{cancelLabel}</button>
+      </div>
+    </div>
+  );
+}

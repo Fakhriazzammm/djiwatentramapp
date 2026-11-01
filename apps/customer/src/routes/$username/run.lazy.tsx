@@ -5,7 +5,7 @@ import { AlertCircle, ArrowLeft, CheckCircle2, Clock3, CloudUpload, MapPin, Refr
 import { Djiwa3DIcon } from "@yumipos/web-shared";
 import { CustomerBottomNav, CustomerHeader } from "@/components/customer/customer-shell";
 import { CustomerSectionSkeleton } from "@/components/customer/customer-states";
-import { NoGpsNotice, RunHomeView, RunLiveView, RunRankingView, RunResultView, daysLeft } from "@/components/customer/run-views";
+import { ActionSheet, NoGpsNotice, RunHomeView, RunLiveView, RunRankingView, RunResultView, daysLeft } from "@/components/customer/run-views";
 import { useRunTracker } from "@/hooks/use-run-tracker";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { DjiwaRunUnavailableError, confirmDjiwaRunActivity, getDjiwaRunOverview, getRunSocial, runTeamAction, submitDjiwaRunActivity, type RunActivity, type RunLocation, type RunOcrResult, type RunOverview, type RunSessionVerdict, type RunSocial, type RunSubmissionResult } from "@/lib/djiwa-run-client";
@@ -75,6 +75,7 @@ function DjiwaRunPage() {
   const [rankScope, setRankScope] = useState<"week" | "month">("week");
   const [teamName, setTeamName] = useState("");
   const [teamBusy, setTeamBusy] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [socialKey, setSocialKey] = useState(0);
 
   useEffect(() => {
@@ -211,7 +212,7 @@ function DjiwaRunPage() {
     ranking: ["Peringkat", overview.campaignName],
     manual: ["Catat manual", "Upload bukti dari aplikasi olahraga"],
   };
-  const onBack = effectiveView === "live" ? () => { if (window.confirm("Batalkan sesi lari ini? Data lari tidak akan disimpan.")) void tracker.cancel(); } : effectiveView === "home" ? goHome : () => setView("home");
+  const onBack = effectiveView === "live" ? () => setConfirmCancel(true) : effectiveView === "home" ? goHome : () => setView("home");
   const navItems = [
     { label: "Home", active: false, onSelect: goHome, icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" /> },
     { label: "Pesan", active: false, onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }), icon: <Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" /> },
@@ -259,6 +260,7 @@ function DjiwaRunPage() {
         </> : null}
       </main>
       {effectiveView === "home" || effectiveView === "ranking" ? <CustomerBottomNav items={navItems} /> : null}
+      <ActionSheet open={confirmCancel} title="Batalkan sesi lari?" message="Data lari yang sedang direkam tidak akan disimpan." destructiveLabel="Batalkan Sesi" onCancel={() => setConfirmCancel(false)} onDestructive={() => { setConfirmCancel(false); void tracker.cancel(); }} />
     </div></div>
   );
 }

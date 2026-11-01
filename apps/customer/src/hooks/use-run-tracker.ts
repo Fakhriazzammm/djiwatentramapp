@@ -39,6 +39,18 @@ export function useRunTracker({ customerSourceId, customerEmail, campaignId, onF
     void wakeRef.current?.release().catch(() => undefined); wakeRef.current = null;
   }, []);
 
+  useEffect(() => {
+    if (phase !== "tracking") return;
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      void wakeRef.current?.release().catch(() => undefined); // iOS drops the lock when the page was hidden
+      const nav = navigator as Navigator & { wakeLock?: { request: (t: "screen") => Promise<WakeLockLike> } };
+      void nav.wakeLock?.request("screen").then((lock) => { wakeRef.current = lock; }).catch(() => undefined);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [phase]);
+
   const beginWatching = useCallback(() => {
     if (!("geolocation" in navigator)) { setPhase("no_gps"); return; }
     const nav = navigator as Navigator & { wakeLock?: { request: (t: "screen") => Promise<WakeLockLike> } };
