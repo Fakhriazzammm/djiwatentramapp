@@ -3298,7 +3298,7 @@ async def _handle_save_report(request):
             f.write(html_content)
 
         # Use supabase.yumme.id for public access
-        public_url = f"https://supabase.yumme.id/reports/{filename}"
+        public_url = f"https://supabase.djiwatentram.web.id/reports/{filename}"
         logger.info("Report saved: %s -> %s", filepath, public_url)
 
         return web.json_response({

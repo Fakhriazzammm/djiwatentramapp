@@ -66,7 +66,7 @@ export function CustomerHomeDiscovery({ onMenu, b2bHref }: CustomerHomeDiscovery
   return (
     <div className="space-y-4">
       <motion.a
-        href="https://booking.yumme.id/"
+        href="https://booking.djiwatentram.web.id/"
         target="_blank"
         rel="noreferrer"
         aria-label="Booking acara dan kolaborasi bersama Djiwa Tentram"

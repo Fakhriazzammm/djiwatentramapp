@@ -27,9 +27,9 @@ function getSafeCustomerReturnUrl() {
   try {
     const url = new URL(raw);
     const allowedOrigins = new Set([
-      "https://merchandise.yumme.id",
-      "https://ordermieyamin.yumme.id",
-      "https://booking.yumme.id",
+      "https://merchandise.djiwatentram.web.id",
+      "https://ordermieyamin.djiwatentram.web.id",
+      "https://booking.djiwatentram.web.id",
       "http://localhost:3010",
       "http://localhost:5174",
     ]);

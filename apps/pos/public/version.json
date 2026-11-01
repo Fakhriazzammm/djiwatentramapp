@@ -1,7 +1,7 @@
 {
-  "version": "0.2.514",
-  "commitHash": "8d43640",
-  "message": "fix(admin): paginate dashboard order analytics",
-  "buildDate": "2026-10-11",
-  "generatedAt": "2026-10-11T13:08:30.134Z"
+  "version": "0.2.557",
+  "commitHash": "7701e09",
+  "message": "fix(customer): normalize legacy product image URLs",
+  "buildDate": "2026-10-26",
+  "generatedAt": "2026-10-26T17:01:17.982Z"
 }

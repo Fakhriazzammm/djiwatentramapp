@@ -1,5 +1,5 @@
 export const BOOKING_SLUG = import.meta.env.VITE_BOOKING_SLUG?.trim() || "booking";
-export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim() || "https://supabase.yumme.id";
+export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim() || "https://supabase.djiwatentram.web.id";
 export const BOOKING_API_URL = import.meta.env.VITE_BOOKING_API_URL?.trim() || `${SUPABASE_URL}/functions/v1/public-booking`;
 export const DEV_FALLBACK = import.meta.env.VITE_BOOKING_DEV_FALLBACK === "true";
 

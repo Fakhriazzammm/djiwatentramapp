@@ -1,9 +1,9 @@
 import { createAuthClient } from "better-auth/react";
 import { sentinelClient } from "@better-auth/infra/client";
 
-const AUTH_SERVER_URL = "https://api.yumme.id/v1/auth";
-const DJIWA_APP_LOGIN_URL = "https://djiwatentram.yumme.id/masuk";
-const ORDERMIEYAMIN_ORIGIN = "https://ordermieyamin.yumme.id";
+const AUTH_SERVER_URL = "https://api.djiwatentram.web.id/v1/auth";
+const DJIWA_APP_LOGIN_URL = "https://djiwatentram.web.id/masuk";
+const ORDERMIEYAMIN_ORIGIN = "https://ordermieyamin.djiwatentram.web.id";
 
 function isSafeOrderMieYaminReturnUrl(value: string) {
   try {

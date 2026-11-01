@@ -177,7 +177,7 @@ export function KolPortalAdminPage() {
 
 function SharedVisitLinkPanel() {
   const [copiedLink, setCopiedLink] = useState(false);
-  const visitUrl = "https://kolmarketing.yumme.id/";
+  const visitUrl = "https://kol.djiwatentram.web.id/";
   const copy = async () => {
     try { await navigator.clipboard.writeText(visitUrl); setCopiedLink(true); window.setTimeout(() => setCopiedLink(false), 2200); }
     catch { setCopiedLink(false); }

@@ -12,7 +12,7 @@ ExecStart=/usr/local/bin/bun src/index.ts
 Restart=always
 RestartSec=5
 
-Environment=BETTER_AUTH_URL=https://djiwatentram.yumme.id
+Environment=BETTER_AUTH_URL=https://api.djiwatentram.web.id
 Environment=BETTER_AUTH_PORT=3001
 
 

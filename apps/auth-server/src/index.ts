@@ -9,25 +9,15 @@ import { buildCoffeePassportStickerPrompt, generateCoffeePassportPng, stickerMod
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createHmac } from "node:crypto";
+import { createTravelWalletPaymentEndpoint } from "./travel-wallet-payment.js";
+import { customerTrustedOrigins } from "./customer-auth-config.js";
 
 const app = new Hono();
 const MAYAR_PROXY_URL = process.env.MAYAR_PROXY_URL || "https://supabase.djiwatentram.web.id/functions/v1/mayar-proxy";
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
 const MAYAR_DEFAULT_MOBILE = process.env.MAYAR_DEFAULT_MOBILE || "";
-const customerOrigins = [
-  "https://djiwatentram.web.id",
-  "https://pay.djiwatentram.web.id",
-  "https://investor.djiwatentram.web.id",
-  "https://merchandise.djiwatentram.web.id",
-  "https://booking.djiwatentram.web.id",
-  "https://b2b.djiwatentram.web.id",
-  "https://ordermieyamin.djiwatentram.web.id",
-  "https://kopitasik.djiwatentram.web.id",
-  "https://kol.djiwatentram.web.id",
-  "https://rekrutmen.djiwatentram.web.id",
-  "http://localhost:5173",
-  "http://localhost:3010",
-];
+const IAK_PPOB_URL = process.env.IAK_PPOB_URL || "https://api.djiwatentram.web.id/api/ppob/iak/";
+const customerOrigins = [...customerTrustedOrigins];
 const stickerRateLimit = new Map<string, number[]>();
 
 function allowStickerRequest(key: string) {
@@ -706,7 +696,8 @@ function privateJson(body: Record<string, unknown>, status = 200) {
 
 const payBridgeTickets = new Map<string, { userId: string; expiresAt: number }>();
 const payBridgeSessions = new Map<string, { userId: string; expiresAt: number }>();
-const PAY_BRIDGE_ORIGIN = "https://pay.djiwatentram.web.id";
+const PAY_BRIDGE_ORIGIN = "https://djiwapay.web.id";
+const PAY_BRIDGE_ORIGINS = new Set([PAY_BRIDGE_ORIGIN, "https://pay.djiwatentram.web.id"]);
 const PAY_BRIDGE_TTL_MS = 90_000;
 const PAY_SESSION_TTL_SECONDS = 900;
 
@@ -744,7 +735,7 @@ app.get("/api/customer/pay-bridge/start", async (c) => {
   let target: URL;
   try {
     target = new URL(returnTo);
-    if (target.origin !== PAY_BRIDGE_ORIGIN || target.protocol !== "https:") throw new Error("invalid target");
+    if (!PAY_BRIDGE_ORIGINS.has(target.origin) || target.protocol !== "https:") throw new Error("invalid target");
   } catch {
     target = new URL("/wallet", PAY_BRIDGE_ORIGIN);
   }
@@ -766,7 +757,7 @@ app.post("/api/pay-bridge/exchange", async (c) => {
   if (!customer) return privateJson({ success: false, error: "CUSTOMER_NOT_FOUND" }, 403);
   const sessionId = crypto.randomUUID().replace(/-/g, "");
   payBridgeSessions.set(sessionId, { userId: record.userId, expiresAt: Date.now() + PAY_SESSION_TTL_SECONDS * 1000 });
-  return new Response(JSON.stringify({ success: true, customer }), { status: 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "Set-Cookie": `djiwa_pay_session=${sessionId}; Max-Age=${PAY_SESSION_TTL_SECONDS}; Path=/; HttpOnly; Secure; SameSite=Lax` } });
+  return new Response(JSON.stringify({ success: true, customer }), { status: 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "Set-Cookie": `djiwa_pay_session=${sessionId}; Max-Age=${PAY_SESSION_TTL_SECONDS}; Path=/; HttpOnly; Secure; SameSite=None; Partitioned` } });
 });
 
 app.get("/api/pay-bridge/profile", async (c) => {
@@ -775,6 +766,211 @@ app.get("/api/pay-bridge/profile", async (c) => {
   return privateJson({ success: true, customer: session.customer });
 });
 
+const postpaidBridgeServices = new Set(["pln", "pdam"]);
+function postpaidInput(body: Record<string, unknown>) {
+  const serviceType = typeof body.serviceType === "string" ? body.serviceType.trim().toLowerCase() : "";
+  const productCode = typeof body.productCode === "string" ? body.productCode.trim() : "";
+  const customerNumber = typeof body.customerNumber === "string" ? body.customerNumber.trim() : "";
+  return { serviceType, productCode, customerNumber };
+}
+function safePostpaidRecord(row: Record<string, any>) {
+  return {
+    refId: row.ref_id,
+    serviceType: row.service_type,
+    productCode: row.product_code,
+    customerNumber: row.customer_number || row.customer_id,
+    customerName: row.payload?.customer_name || null,
+    period: row.payload?.period || null,
+    billAmount: Number(row.bill_amount || 0),
+    adminFee: Number(row.admin_fee || 0),
+    totalAmount: Number(row.total_amount || row.price || 0),
+    status: row.provider_status === "success" || row.status === "0" ? "success" : row.provider_status === "failed" || row.status === "2" ? "failed" : "pending",
+    paymentStatus: row.payment_status || "pending",
+    message: row.message || null,
+    serialNumber: row.serial_number || null,
+  };
+}
+async function callIakPpob(body: Record<string, unknown>) {
+  const response = await fetch(IAK_PPOB_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const payload = await response.json().catch(() => ({})) as Record<string, any>;
+  if (!response.ok || !payload.success) throw new Error(String(payload.error?.code || "IAK_PROVIDER_ERROR"));
+  return payload.data && typeof payload.data === "object" ? payload.data as Record<string, any> : {};
+}
+
+app.post("/api/pay-bridge/ppob/postpaid/catalog", async (c) => {
+  const session = await requirePaySession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+  const serviceType = typeof body.service_type === "string" ? body.service_type.trim().toLowerCase() : "";
+  if (!postpaidBridgeServices.has(serviceType)) return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+  try {
+    const data = await callIakPpob({ action: "price-list", kind: "postpaid", service_type: serviceType });
+    return privateJson({ success: true, data: { products: Array.isArray(data.products) ? data.products : [] } });
+  } catch {
+    return privateJson({ success: false, error: "PPOB_PROVIDER_UNAVAILABLE" }, 502);
+  }
+});
+
+app.post("/api/pay-bridge/ppob/postpaid/inquiry", async (c) => {
+  const session = await requirePaySession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const input = postpaidInput(await c.req.json().catch(() => ({})) as Record<string, unknown>);
+  const sourceId = String(session.customer.source_id || "");
+  if (!sourceId || !postpaidBridgeServices.has(input.serviceType) || !input.productCode || !/^[0-9]{8,20}$/.test(input.customerNumber)) return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+  const refId = `ppob_postpaid_${sourceId.slice(0, 12)}_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+  let inquiry: Record<string, any>;
+  try {
+    inquiry = await callIakPpob({ action: "inquiry", kind: "postpaid", service_type: input.serviceType, product_code: input.productCode, customer_number: input.customerNumber, ref_id: refId });
+  } catch {
+    return privateJson({ success: false, error: "PPOB_PROVIDER_UNAVAILABLE" }, 502);
+  }
+  const billAmount = Math.round(Number(inquiry.billAmount)); const adminFee = Math.round(Number(inquiry.adminFee)); const totalAmount = Math.round(Number(inquiry.totalAmount || billAmount + adminFee));
+  if (!Number.isSafeInteger(totalAmount) || totalAmount <= 0 || !Number.isSafeInteger(billAmount) || billAmount < 0) return privateJson({ success: false, error: "INVALID_INQUIRY" }, 422);
+  await pool.query(
+    `INSERT INTO pos.ppob_transactions(ref_id,status,product_code,customer_id,price,service_kind,service_type,customer_source_id,customer_number,inquiry_payload,bill_amount,admin_fee,total_amount,payment_status,provider_status,message,payload)
+     VALUES($1,'1',$2,$3,$4,'postpaid',$5,$6,$3,$7,$8,$9,$10,'pending',$11,$12,$13)
+     ON CONFLICT (ref_id) DO UPDATE SET inquiry_payload=EXCLUDED.inquiry_payload,bill_amount=EXCLUDED.bill_amount,admin_fee=EXCLUDED.admin_fee,total_amount=EXCLUDED.total_amount,updated_at=now()`,
+    [refId, input.productCode, input.customerNumber, totalAmount, input.serviceType, sourceId, JSON.stringify(inquiry), billAmount, adminFee, totalAmount, inquiry.status === "success" ? "success" : "pending", inquiry.message || "Inquiry tagihan berhasil", JSON.stringify({ customer_name: inquiry.customerName || null, period: inquiry.period || null })],
+  );
+  return privateJson({ success: true, data: { refId, serviceType: input.serviceType, productCode: input.productCode, customerNumber: input.customerNumber, customerName: inquiry.customerName || null, period: inquiry.period || null, billAmount, adminFee, totalAmount, status: inquiry.status || "success" } });
+});
+
+app.post("/api/pay-bridge/ppob/postpaid/payment", async (c) => {
+  const session = await requirePaySession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const body = await c.req.json().catch(() => ({})) as { refId?: unknown; paymentMethod?: unknown };
+  const refId = typeof body.refId === "string" ? body.refId.trim() : ""; const sourceId = String(session.customer.source_id || "");
+  if (!refId || body.paymentMethod !== "wallet" || !sourceId) return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+  const found = await pool.query<Record<string, any>>(`SELECT * FROM pos.ppob_transactions WHERE ref_id=$1 AND customer_source_id=$2 LIMIT 1`, [refId, sourceId]);
+  const row = found.rows[0];
+  if (!row) return privateJson({ success: false, error: "PPOB_TRANSACTION_NOT_FOUND" }, 404);
+  if (row.payment_status === "paid" && row.provider_status === "success") return privateJson({ success: true, status: "success", data: safePostpaidRecord(row) });
+  const amount = Math.round(Number(row.total_amount || row.price));
+  const hold = await pool.query("SELECT pos.wallet_create_hold($1,$2,$3,$4) AS result", [sourceId, refId, amount, `ppob_postpaid_${refId}`]);
+  const holdResult = hold.rows[0]?.result;
+  if (!holdResult?.ok && !row.wallet_hold_id) return privateJson({ success: false, error: holdResult?.error || "INSUFFICIENT_BALANCE", availableBalance: holdResult?.available_balance }, 422);
+  const holdId = row.wallet_hold_id || holdResult?.hold_id;
+  await pool.query("UPDATE pos.ppob_transactions SET wallet_hold_id=$1,payment_status='pending',status='1',updated_at=now() WHERE ref_id=$2", [holdId, refId]);
+  let result: Record<string, any>;
+  try {
+    result = await callIakPpob({ action: "payment", kind: "postpaid", service_type: row.service_type, product_code: row.product_code, customer_number: row.customer_number || row.customer_id, ref_id: refId });
+  } catch {
+    return privateJson({ success: true, status: "pending", data: { refId, message: "Provider belum merespons. Saldo masih ditahan sementara." } }, 202);
+  }
+  if (result.status === "success") {
+    await pool.query("SELECT pos.wallet_capture_hold($1,$2)", [holdId, `ppob_postpaid_capture_${refId}`]);
+    await pool.query("UPDATE pos.ppob_transactions SET status='0',payment_status='paid',provider_status='success',message=$1,serial_number=$2,updated_at=now() WHERE ref_id=$3", [result.message || "Pembayaran berhasil", result.serialNumber || null, refId]);
+    return privateJson({ success: true, status: "success", data: { ...safePostpaidRecord({ ...row, status: "0", payment_status: "paid", provider_status: "success", message: result.message, serial_number: result.serialNumber }) } });
+  }
+  if (result.status === "failed") {
+    await pool.query("SELECT pos.wallet_release_hold($1,$2,$3)", [holdId, `ppob_postpaid_release_${refId}`, result.message || "Pembayaran PPOB gagal"]);
+    await pool.query("UPDATE pos.ppob_transactions SET status='2',payment_status='failed',provider_status='failed',message=$1,updated_at=now() WHERE ref_id=$2", [result.message || "Pembayaran PPOB gagal", refId]);
+    return privateJson({ success: false, status: "failed", data: { refId, message: result.message || "Pembayaran PPOB gagal" } }, 200);
+  }
+  return privateJson({ success: true, status: "pending", data: { refId, message: result.message || "Pembayaran sedang diproses" } }, 202);
+});
+
+app.post("/api/pay-bridge/ppob/postpaid/status", async (c) => {
+  const session = await requirePaySession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const body = await c.req.json().catch(() => ({})) as { refId?: unknown };
+  const refId = typeof body.refId === "string" ? body.refId.trim() : ""; const sourceId = String(session.customer.source_id || "");
+  if (!refId || !sourceId) return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+  const found = await pool.query<Record<string, any>>(`SELECT * FROM pos.ppob_transactions WHERE ref_id=$1 AND customer_source_id=$2 LIMIT 1`, [refId, sourceId]);
+  if (!found.rows[0]) return privateJson({ success: false, error: "PPOB_TRANSACTION_NOT_FOUND" }, 404);
+  const row = found.rows[0];
+  return privateJson({ success: true, status: safePostpaidRecord(row).status, data: safePostpaidRecord(row) });
+});
+
+app.post("/api/pay-bridge/ppob/invoice", async (c) => {
+  const session = await requirePaySession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const body = await c.req.json().catch(() => ({})) as { productCode?: unknown; customerNumber?: unknown };
+  const productCode = typeof body.productCode === "string" ? body.productCode.trim() : "";
+  const customerNumber = typeof body.customerNumber === "string" ? body.customerNumber.trim() : "";
+  const sourceId = String(session.customer.source_id || "");
+  const email = String(session.customer.email || "");
+  if (!sourceId || !email || !productCode || !/^[0-9]{8,20}$/.test(customerNumber)) return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+  const iakUrl = "https://api.djiwatentram.web.id/api/ppob/iak/";
+  const catalogResponse = await fetch(iakUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "price-list" }) });
+  const catalogPayload = await catalogResponse.json().catch(() => ({})) as any;
+  const products = catalogPayload?.data?.data?.pricelist;
+  const product = Array.isArray(products) ? products.find((item: any) => item?.product_code === productCode && item?.status === "active") : null;
+  const amount = Math.round(Number(product?.product_price));
+  if (!Number.isSafeInteger(amount) || amount <= 0) return privateJson({ success: false, error: "PRODUCT_UNAVAILABLE" }, 422);
+  const refId = `ppob_qris_${sourceId.slice(0, 12)}_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+  await pool.query(
+    "INSERT INTO pos.ppob_transactions(ref_id,status,product_code,customer_id,price,message,payload) VALUES($1,$2,$3,$4,$5,$6,$7)",
+    [refId, "1", productCode, customerNumber, amount, "Menunggu pembayaran QRIS", JSON.stringify({ source_id: sourceId, payment_status: "pending" })],
+  );
+  try {
+    const invoice = await fetch(MAYAR_PROXY_URL, { method: "POST", headers: { "Content-Type": "application/json", ...(SUPABASE_ANON_KEY ? { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } : {}) }, body: JSON.stringify({ action: "create-invoice", name: session.customer.name || "Customer Djiwa", email, mobile: session.customer.phone || MAYAR_DEFAULT_MOBILE, redirectUrl: `${PAY_BRIDGE_ORIGIN}/wallet?ppob=success`, description: `Pembelian PPOB ${productCode}`, items: [{ quantity: 1, rate: amount, description: `PPOB ${productCode} · ${customerNumber}` }], extraData: { ppob: true, ppobRefId: refId, productCode, customerNumber, sourceId } }) });
+    const payload = await invoice.json().catch(() => ({})) as any;
+    const data = payload?.data || {};
+    const link = data.link || data.paymentUrl || data.url;
+    if (!invoice.ok || !payload.success || !data.id || !link) throw new Error("INVOICE_FAILED");
+    const invoiceId = String(data.id);
+    await pool.query("UPDATE pos.ppob_transactions SET payload = payload || $1::jsonb, message=$2, updated_at=now() WHERE ref_id=$3", [JSON.stringify({ invoice_id: invoiceId, invoice_url: String(link) }), "Menunggu pembayaran QRIS", refId]);
+    return privateJson({ success: true, invoiceId, invoiceUrl: String(link), refId, amount, productCode, customerNumber });
+  } catch {
+    await pool.query("UPDATE pos.ppob_transactions SET status=$1,message=$2,updated_at=now() WHERE ref_id=$3", ["2", "Invoice QRIS tidak dapat dibuat", refId]).catch(() => undefined);
+    return privateJson({ success: false, error: "INVOICE_FAILED" }, 502);
+  }
+});
+
+app.post("/api/pay-bridge/ppob/status", async (c) => {
+  const session = await requirePaySession(c.req.raw.headers);
+  if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
+  const body = await c.req.json().catch(() => ({})) as { invoiceId?: unknown };
+  const invoiceId = typeof body.invoiceId === "string" ? body.invoiceId.trim() : "";
+  const sourceId = String(session.customer.source_id || "");
+  if (!sourceId || !invoiceId) return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+  const transaction = await pool.query<{ ref_id: string; status: string; product_code: string; customer_id: string; price: number; message: string | null; serial_number: string | null; payload: Record<string, unknown> }>(
+    "SELECT ref_id,status,product_code,customer_id,price,message,serial_number,payload FROM pos.ppob_transactions WHERE payload->>'source_id' = $1 AND payload->>'invoice_id' = $2 ORDER BY created_at DESC LIMIT 1",
+    [sourceId, invoiceId],
+  );
+  const record = transaction.rows[0];
+  if (!record) return privateJson({ success: false, error: "PPOB_TRANSACTION_NOT_FOUND" }, 404);
+  if (record.status === "0") return privateJson({ success: true, status: "success", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), message: record.message, serialNumber: record.serial_number });
+  if (record.status === "2") return privateJson({ success: false, status: "failed", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), error: record.message || "Transaksi PPOB gagal" }, 200);
+  const invoiceResponse = await fetch(MAYAR_PROXY_URL, { method: "POST", headers: { "Content-Type": "application/json", ...(SUPABASE_ANON_KEY ? { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } : {}) }, body: JSON.stringify({ action: "get-invoice-detail", invoiceId }) });
+  const invoicePayload = await invoiceResponse.json().catch(() => ({})) as any;
+  const invoiceData = invoicePayload?.data || {};
+  const paymentStatus = String(invoiceData.status || "").toLowerCase();
+  if (!invoiceResponse.ok || !invoicePayload.success) return privateJson({ success: true, status: "pending", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), message: "Status pembayaran belum dapat diperbarui." });
+  if (!["paid", "success", "completed"].includes(paymentStatus)) {
+    if (["expired", "closed", "cancelled", "canceled", "void"].includes(paymentStatus)) {
+      await pool.query("UPDATE pos.ppob_transactions SET status=$1,message=$2,updated_at=now() WHERE ref_id=$3", ["2", `Invoice QRIS ${paymentStatus}`, record.ref_id]);
+      return privateJson({ success: false, status: "failed", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), error: `Invoice QRIS ${paymentStatus}` }, 200);
+    }
+    return privateJson({ success: true, status: "pending", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), message: "Pembayaran QRIS belum terkonfirmasi." });
+  }
+  const claim = await pool.query(
+    "UPDATE pos.ppob_transactions SET payload = payload || $1::jsonb, updated_at=now() WHERE ref_id=$2 AND status='1' AND COALESCE(payload->>'iak_requested','false') <> 'true' RETURNING ref_id",
+    [JSON.stringify({ payment_status: "paid", iak_requested: true }), record.ref_id],
+  );
+  if (claim.rowCount === 0) return privateJson({ success: true, status: "pending", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), message: "Pembayaran sudah diteruskan ke provider." });
+  let iakResponse: Response;
+  try {
+    iakResponse = await fetch("https://api.djiwatentram.web.id/api/ppob/iak/", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "top-up", ref_id: record.ref_id, customer_id: record.customer_id, product_code: record.product_code }) });
+  } catch {
+    await pool.query("UPDATE pos.ppob_transactions SET payload = payload || $1::jsonb, message=$2,updated_at=now() WHERE ref_id=$3", [JSON.stringify({ iak_requested: false }), "Provider PPOB belum dapat dihubungi", record.ref_id]);
+    return privateJson({ success: true, status: "pending", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), message: "Provider PPOB belum dapat dihubungi. Coba periksa status lagi." });
+  }
+  const iakPayload = await iakResponse.json().catch(() => ({})) as any;
+  const result = iakPayload?.data?.data ?? iakPayload?.data ?? {};
+  const providerStatus = String(result.status ?? "2");
+  if (providerStatus === "0") {
+    await pool.query("UPDATE pos.ppob_transactions SET status=$1,message=$2,serial_number=$3,response_code=$4,payload = payload || $5::jsonb,updated_at=now() WHERE ref_id=$6", ["0", result.message || "Transaksi PPOB berhasil", result.sn || null, result.rc || null, JSON.stringify({ payment_status: "paid" }), record.ref_id]);
+    return privateJson({ success: true, status: "success", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), message: result.message || "Transaksi PPOB berhasil", serialNumber: result.sn || null });
+  }
+  if (providerStatus === "1") {
+    await pool.query("UPDATE pos.ppob_transactions SET message=$1,payload = payload || $2::jsonb,updated_at=now() WHERE ref_id=$3", [result.message || "Transaksi sedang diproses", JSON.stringify({ payment_status: "paid" }), record.ref_id]);
+    return privateJson({ success: true, status: "pending", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), message: result.message || "Transaksi sedang diproses" });
+  }
+  await pool.query("UPDATE pos.ppob_transactions SET status=$1,message=$2,response_code=$3,payload = payload || $4::jsonb,updated_at=now() WHERE ref_id=$5", ["2", result.message || "Transaksi PPOB gagal", result.rc || null, JSON.stringify({ payment_status: "paid" }), record.ref_id]);
+  return privateJson({ success: false, status: "failed", refId: record.ref_id, productCode: record.product_code, amount: Number(record.price), error: result.message || "Transaksi PPOB gagal" }, 200);
+});
 
 app.post("/api/pay-bridge/ppob/purchase", async (c) => {
   const session = await requirePaySession(c.req.raw.headers);
@@ -817,11 +1013,10 @@ app.post("/api/pay-bridge/ppob/purchase", async (c) => {
     return privateJson({ success: false, error: "PPOB_PROVIDER_UNAVAILABLE" }, 502);
   }
 });
-
 app.post("/api/pay-bridge/wallet", async (c) => {
   const session = await requirePaySession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
-  const body = await c.req.json().catch(() => ({})) as { action?: unknown; amount?: unknown };
+  const body = await c.req.json().catch(() => ({})) as { action?: unknown; amount?: unknown; invoiceId?: unknown; recipient?: unknown; phone?: unknown; note?: unknown; idempotencyKey?: unknown; bankName?: unknown; accountNumber?: unknown; accountName?: unknown; notificationId?: unknown };
   const action = typeof body.action === "string" ? body.action : "get";
   const sourceId = String(session.customer.source_id || "");
   const email = String(session.customer.email || "");
@@ -829,18 +1024,182 @@ app.post("/api/pay-bridge/wallet", async (c) => {
   if (action === "get") {
     const wallet = await pool.query("SELECT * FROM pos.customer_wallets WHERE customer_id = $1 LIMIT 1", [sourceId]);
     const ledger = await pool.query("SELECT * FROM pos.customer_wallet_ledger WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 100", [sourceId]);
-    return privateJson({ success: true, wallet: wallet.rows[0] ?? null, ledger: ledger.rows });
+    const transactions = await pool.query("SELECT * FROM pos.wallet_transactions_for_customer($1, $2, $3)", [sourceId, 100, 0]);
+    return privateJson({ success: true, wallet: wallet.rows[0] ?? null, ledger: ledger.rows, transactions: transactions.rows });
+  }
+  if (action === "notifications") {
+    const rows = await pool.query(
+      `SELECT n.*, r.read_at, r.acknowledged_at
+         FROM public.pos_notifications n
+         LEFT JOIN public.pos_notification_reads r
+           ON r.notification_id = n.id AND r.user_id = $1
+        WHERE n.is_active = true
+          AND n.target_user_id = $1
+          AND n.notification_type IN ('wallet_transfer_sent', 'wallet_transfer_received')
+          AND (n.expires_at IS NULL OR n.expires_at > now())
+        ORDER BY n.created_at DESC
+        LIMIT 100`,
+      [sourceId],
+    );
+    return privateJson({ success: true, notifications: rows.rows.map((row) => ({ ...row, unread: !row.read_at })) });
+  }
+  if (action === "mark-notification-read") {
+    const notificationId = typeof body.notificationId === "string" ? body.notificationId.trim() : "";
+    if (!notificationId) return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+    const visible = await pool.query("SELECT id FROM public.pos_notifications WHERE id = $1::uuid AND target_user_id = $2 AND is_active = true LIMIT 1", [notificationId, sourceId]);
+    if (!visible.rows[0]) return privateJson({ success: false, error: "NOTIFICATION_NOT_FOUND" }, 404);
+    await pool.query(
+      `INSERT INTO public.pos_notification_reads(notification_id, user_id, read_at)
+       VALUES ($1::uuid, $2, now())
+       ON CONFLICT (notification_id, user_id) DO UPDATE SET read_at = now()`,
+      [notificationId, sourceId],
+    );
+    return privateJson({ success: true });
+  }
+  if (action === "mark-all-notifications-read") {
+    await pool.query(
+      `INSERT INTO public.pos_notification_reads(notification_id, user_id, read_at)
+       SELECT n.id, $1, now()
+       FROM public.pos_notifications n
+       WHERE n.target_user_id = $1 AND n.is_active = true
+         AND n.notification_type IN ('wallet_transfer_sent', 'wallet_transfer_received')
+       ON CONFLICT (notification_id, user_id) DO UPDATE SET read_at = now()`,
+      [sourceId],
+    );
+    return privateJson({ success: true });
+  }
+  if (action === "resolve-recipient") {
+    const rawPhone = typeof body.phone === "string" ? body.phone : "";
+    const phone = rawPhone.replace(/\D/g, "");
+    const normalizedPhone = phone.startsWith("0") ? `62${phone.slice(1)}` : phone;
+    if (!/^628\d{8,11}$/.test(normalizedPhone)) return privateJson({ success: false, error: "INVALID_PHONE" }, 400);
+    const recipientResult = await pool.query<{ name: string | null; phone: string | null }>(
+      `WITH customer_phones AS (
+         SELECT name, phone,
+           CASE
+             WHEN regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') LIKE '0%'
+               THEN '62' || substring(regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') from 2)
+             ELSE regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g')
+           END AS normalized_phone
+         FROM pos.customers
+         WHERE is_active = true
+       )
+       SELECT name, phone FROM customer_phones
+       WHERE normalized_phone = $1
+       LIMIT 2`,
+      [normalizedPhone],
+    );
+    if (recipientResult.rows.length > 1) return privateJson({ success: false, error: "RECIPIENT_AMBIGUOUS" }, 409);
+    const target = recipientResult.rows[0];
+    if (!target) return privateJson({ success: false, error: "RECIPIENT_NOT_FOUND" }, 404);
+    return privateJson({ success: true, recipient: { name: target.name || "Customer Djiwa", phone: normalizedPhone } });
+  }
+  if (action === "transfer") {
+    const rawPhone = typeof body.phone === "string" ? body.phone : typeof body.recipient === "string" ? body.recipient : "";
+    const digits = rawPhone.replace(/\D/g, "");
+    const recipient = digits.startsWith("0") ? `62${digits.slice(1)}` : digits;
+    const amount = Number(body.amount);
+    const note = typeof body.note === "string" ? body.note.trim().slice(0, 120) : "";
+    if (!/^628\d{8,11}$/.test(recipient) || !Number.isSafeInteger(amount) || amount < 1000 || amount > 10_000_000) {
+      return privateJson({ success: false, error: "INVALID_TRANSFER" }, 400);
+    }
+    const recipientResult = await pool.query<{ source_id: string; name: string | null }>(
+      `WITH customer_phones AS (
+         SELECT source_id, name,
+           CASE
+             WHEN regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') LIKE '0%'
+               THEN '62' || substring(regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') from 2)
+             ELSE regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g')
+           END AS normalized_phone
+         FROM pos.customers
+         WHERE is_active = true
+       )
+       SELECT source_id, name FROM customer_phones
+       WHERE normalized_phone = $1
+       LIMIT 2`,
+      [recipient],
+    );
+    if (recipientResult.rows.length > 1) return privateJson({ success: false, error: "RECIPIENT_AMBIGUOUS" }, 409);
+    const target = recipientResult.rows[0];
+    if (!target) return privateJson({ success: false, error: "RECIPIENT_NOT_FOUND" }, 404);
+    if (target.source_id === sourceId) return privateJson({ success: false, error: "SELF_TRANSFER" }, 400);
+    const idempotencyKey = typeof body.idempotencyKey === "string" && body.idempotencyKey.trim()
+      ? body.idempotencyKey.trim().slice(0, 180)
+      : `djiwapay-transfer-${sourceId}-${crypto.randomUUID()}`;
+    const transfer = await pool.query<{ result: Record<string, unknown> }>(
+      "SELECT pos.wallet_transfer($1,$2,$3,$4,$5) AS result",
+      [sourceId, target.source_id, amount, idempotencyKey, note || null],
+    );
+    const result = transfer.rows[0]?.result ?? {};
+    if (result.error === "INSUFFICIENT_BALANCE") return privateJson({ success: false, error: "INSUFFICIENT_BALANCE", availableBalance: result.available_balance, required: result.required }, 422);
+    return privateJson({ success: true, transfer: result, recipient: { sourceId: target.source_id, name: target.name || "Customer Djiwa" } });
+  }
+  if (action === "withdrawal-request") {
+    const amount = Number(body.amount);
+    const bankName = typeof body.bankName === "string" ? body.bankName.trim().slice(0, 80) : "";
+    const accountNumber = typeof body.accountNumber === "string" ? body.accountNumber.trim() : "";
+    const accountName = typeof body.accountName === "string" ? body.accountName.trim().slice(0, 120) : "";
+    const note = typeof body.note === "string" ? body.note.trim().slice(0, 120) : "";
+    if (!Number.isSafeInteger(amount) || amount < 10000 || amount > 10000000 || bankName.length < 2 || accountName.length < 2 || !/^\d{6,30}$/.test(accountNumber)) {
+      return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+    }
+    const idempotencyKey = typeof body.idempotencyKey === "string" && body.idempotencyKey.trim()
+      ? body.idempotencyKey.trim().slice(0, 180)
+      : `djiwapay-withdrawal-${sourceId}-${crypto.randomUUID()}`;
+    try {
+      const withdrawal = await pool.query<{ result: Record<string, unknown> }>(
+        "SELECT pos.wallet_create_withdrawal_request($1,$2,$3,$4,$5,$6,$7) AS result",
+        [sourceId, amount, bankName, accountNumber, accountName, note || null, idempotencyKey],
+      );
+      const result = withdrawal.rows[0]?.result ?? {};
+      if (result.error === "INSUFFICIENT_BALANCE") return privateJson({ success: false, error: "INSUFFICIENT_BALANCE", availableBalance: result.available_balance, required: result.required }, 422);
+      return privateJson({ success: true, request: result, message: "Permintaan penarikan masuk review. Saldo belum dipotong." });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (/Wallet customer sedang diblokir/i.test(message)) return privateJson({ success: false, error: "WALLET_BLOCKED" }, 403);
+      if (/Nominal withdrawal|Data rekening|idempotency/i.test(message)) return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+      console.error("Wallet withdrawal request failed", message);
+      return privateJson({ success: false, error: "REQUEST_FAILED" }, 500);
+    }
+  }
+  if (action === "topup-status") {
+    const invoiceId = typeof body.invoiceId === "string" ? body.invoiceId.trim() : "";
+    if (!invoiceId) return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+    const invoiceResponse = await fetch(MAYAR_PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(SUPABASE_ANON_KEY ? { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } : {}) },
+      body: JSON.stringify({ action: "get-invoice-detail", invoiceId }),
+    });
+    const invoicePayload = await invoiceResponse.json().catch(() => ({})) as any;
+    const invoiceData = invoicePayload?.data || {};
+    const providerStatus = String(invoiceData.status || "").toLowerCase();
+    if (!invoiceResponse.ok || !invoicePayload.success) return privateJson({ success: true, status: "pending", message: "Status top up belum dapat diperbarui." });
+    if (["expired", "closed", "cancelled", "canceled", "void"].includes(providerStatus)) return privateJson({ success: true, status: "expired", message: `Invoice top up ${providerStatus}.` });
+    if (!["paid", "success", "completed"].includes(providerStatus)) return privateJson({ success: true, status: "pending", message: "Pembayaran QRIS belum terkonfirmasi." });
+    const wallet = await pool.query("SELECT * FROM pos.customer_wallets WHERE customer_id = $1 LIMIT 1", [sourceId]);
+    const ledger = await pool.query("SELECT * FROM pos.customer_wallet_ledger WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 100", [sourceId]);
+    return privateJson({ success: true, status: "success", wallet: wallet.rows[0] ?? null, ledger: ledger.rows, message: "Top up berhasil terkonfirmasi." });
   }
   if (action !== "topup") return privateJson({ success: false, error: "UNKNOWN_ACTION" }, 400);
   const amount = Number(body.amount);
   if (!Number.isSafeInteger(amount) || amount < 1000) return privateJson({ success: false, error: "INVALID_AMOUNT" }, 400);
   const supabaseUrl = MAYAR_PROXY_URL.replace(/\/functions\/v1\/mayar-proxy\/?$/, "");
   const response = await fetch(`${supabaseUrl}/functions/v1/customer-wallet`, { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }, body: JSON.stringify({ action: "topup", sourceId, email, amount, sourceApp: "djiwapay", origin: PAY_BRIDGE_ORIGIN, idempotencyKey: `djiwapay-${sourceId}-${crypto.randomUUID()}` }) });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || !payload?.result?.invoice_url) return privateJson({ success: false, error: "TOPUP_FAILED" }, 502);
-  return privateJson({ success: true, result: payload.result });
+  const payload = await response.json().catch(() => ({})) as { result?: { invoice_url?: unknown; invoice_id?: unknown; invoiceId?: unknown; id?: unknown }; error?: unknown; message?: unknown };
+  if (!response.ok || typeof payload?.result?.invoice_url !== "string") {
+    const upstreamMessage = payload?.error && typeof payload.error === "object" && "message" in payload.error
+      ? String((payload.error as { message?: unknown }).message || "")
+      : typeof payload?.message === "string" ? payload.message : "";
+    const safeMessage = /nomor whatsapp|kontak|profil/i.test(upstreamMessage)
+      ? "Nomor WhatsApp belum lengkap atau tidak valid. Lengkapi profil lalu coba lagi."
+      : /mayar|invoice|pembayaran|top up/i.test(upstreamMessage)
+        ? upstreamMessage.slice(0, 240)
+        : "Top up gagal disiapkan. Silakan coba lagi.";
+    return privateJson({ success: false, error: safeMessage }, 502);
+  }
+  const invoiceId = payload.result?.invoice_id ?? payload.result?.invoiceId ?? payload.result?.id;
+  return privateJson({ success: true, result: { ...payload.result, ...(invoiceId ? { invoice_id: String(invoiceId) } : {}) } });
 });
-
 
 const CUSTOMER_REVIEW_ORDER_STATUSES = new Set(["paid", "completed", "settled"]);
 
@@ -936,6 +1295,30 @@ function trustedProfileImage(value: unknown): string | null {
     return null;
   }
 }
+
+const travelWalletPaymentEndpoint = createTravelWalletPaymentEndpoint({
+  secret: () => process.env.DJIWA_TRAVEL_WALLET_PAYMENT_SECRET || "",
+  resolveCustomerId: async (headers) => {
+    const session = await requireCustomerSession(headers);
+    return session?.user?.id ?? null;
+  },
+  isActiveCustomer: async (customerId) => {
+    const result = await pool.query(
+      "SELECT 1 FROM pos.customers WHERE source_id = $1 AND is_active = true LIMIT 1",
+      [customerId],
+    );
+    return result.rowCount === 1;
+  },
+  charge: async ({ customerId, orderId, amount }) => {
+    const result = await pool.query(
+      "SELECT pos.wallet_charge_travel_order($1, $2, $3) AS result",
+      [customerId, orderId, amount],
+    );
+    return result.rows[0]?.result ?? null;
+  },
+});
+
+app.post("/api/customer/travel-wallet-payment", (c) => travelWalletPaymentEndpoint(c.req.raw));
 
 app.get("/api/customer/profile", async (c) => {
   const session = await requireCustomerSession(c.req.raw.headers);

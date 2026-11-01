@@ -21,7 +21,7 @@ from datetime import datetime, timezone, timedelta
 
 # ─── Config ────────────────────────────────────────────────────
 ENV_PATH = "/opt/djiwatentramapp/yumi-ai-bot/.env"
-SUPABASE_URL = "https://supabase.yumme.id"
+SUPABASE_URL = "https://supabase.djiwatentram.web.id"
 WIB = timezone(timedelta(hours=7))
 
 def load_env():

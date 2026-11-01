@@ -3,7 +3,7 @@ import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import { readGuestOrderReferences } from "@/components/customer/types";
 
-const CUSTOMER_ORDER_API = "https://api.yumme.id/v1/customer";
+const CUSTOMER_ORDER_API = "https://api.djiwatentram.web.id/v1/customer";
 
 function useSupabaseValue<T>(
 	key: string,

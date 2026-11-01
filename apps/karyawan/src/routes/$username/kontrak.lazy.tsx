@@ -87,7 +87,7 @@ function KontrakPage() {
 									</a>
 								</div>
 							) : isAwaitingSignature && registrationNumber ? (
-								<a href={`https://pos.yumme.id/register/selesai/${registrationNumber}`} className="karyawan-control mt-4 inline-flex h-10 w-full items-center justify-center rounded-md bg-emerald-600 px-3 text-xs font-bold text-white">
+								<a href={`https://pos.djiwatentram.web.id/register/selesai/${registrationNumber}`} className="karyawan-control mt-4 inline-flex h-10 w-full items-center justify-center rounded-md bg-emerald-600 px-3 text-xs font-bold text-white">
 									<ExternalLink className="mr-1.5 h-3 w-3" />
 									Buka & Tanda Tangani Kontrak
 								</a>

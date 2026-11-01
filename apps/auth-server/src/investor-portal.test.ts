@@ -141,7 +141,7 @@ describe("investor portal server boundary", () => {
   });
 
   test("investor portal reuses the central Better Auth session path", async () => {
-    const session = await investorAuth.handler(new Request("https://djiwatentram.yumme.id/api/auth/get-session"));
+    const session = await investorAuth.handler(new Request("https://djiwatentram.web.id/api/auth/get-session"));
     expect(session.status).toBe(200);
   });
 });

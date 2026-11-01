@@ -417,7 +417,7 @@ export async function submitClosingViaEdge(params: {
   linkTimestamp?: string | number;
   linkSignature?: string;
 }): Promise<ClosingEdgeResponse> {
-  const supabaseUrl = "https://supabase.yumme.id";
+  const supabaseUrl = "https://supabase.djiwatentram.web.id";
   const response = await fetch(`${supabaseUrl}/functions/v1/process-closing`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

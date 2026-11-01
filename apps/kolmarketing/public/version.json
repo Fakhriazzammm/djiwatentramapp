@@ -1,7 +1,7 @@
 {
-  "version": "0.2.500",
-  "commitHash": "f5d274f",
-  "message": "fix(pos): persist availability RPC execute grants",
-  "buildDate": "2026-10-09",
-  "generatedAt": "2026-10-09T06:20:38.765Z"
+  "version": "0.2.68",
+  "commitHash": "4592e26",
+  "message": "fix(db): resync order item identity sequence",
+  "buildDate": "2026-10-24",
+  "generatedAt": "2026-10-24T06:12:39.018Z"
 }

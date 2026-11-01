@@ -5,10 +5,10 @@ import { pool } from "./auth.js";
 export const staffAuth = betterAuth({
   database: pool,
   basePath: '/api/staff-auth',
-  baseURL: "https://djiwatentram.yumme.id",
+  baseURL: "https://djiwatentram.web.id",
   trustedOrigins: [
-    "https://karyawan.yumme.id",
-    "https://rekrutmen.yumme.id",
+    "https://karyawan.djiwatentram.web.id",
+    "https://rekrutmen.djiwatentram.web.id",
     "http://localhost:5173",
     "http://localhost:5174",
   ],

@@ -5,28 +5,28 @@ import { OwnerFooter } from "@yumipos/web-shared";
 
 const links = [
   {
-    href: "https://djiwatentram.yumme.id",
+    href: "https://djiwatentram.web.id",
     label: "Djiwa Tentram App",
     description: "Pesan menu favorit dengan mudah",
     icon: Globe2,
     tone: "bg-[#eaf2ff] text-[#1a5dc6]",
   },
   {
-    href: "https://booking.yumme.id",
+    href: "https://booking.djiwatentram.web.id",
     label: "Booking Djiwa Tentram",
     description: "Rencanakan momen spesialmu",
     icon: MapPin,
     tone: "bg-[#eef7f4] text-[#19745d]",
   },
   {
-    href: "https://rekrutmen.yumme.id",
+    href: "https://rekrutmen.djiwatentram.web.id",
     label: "Karier bersama kami",
     description: "Temukan kesempatan untuk bertumbuh",
     icon: HeartHandshake,
     tone: "bg-[#fff4e8] text-[#b56715]",
   },
   {
-    href: "https://ordermieyamin.yumme.id",
+    href: "https://ordermieyamin.djiwatentram.web.id",
     label: "Order Mie Yamin Mentah",
     description: "Mulai 1 kg untuk reseller, warung, dan katering",
     icon: ShoppingBag,

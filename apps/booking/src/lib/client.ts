@@ -1,5 +1,6 @@
 import { createClient as createSharedClient } from "@yumipos/web-shared/lib/client";
 import { BOOKING_API_URL, BOOKING_SLUG, DEV_FALLBACK, SUPABASE_URL, type BookingOption } from "./booking-constants";
+import { resolveBookingAssetUrl } from "./asset-url";
 
 export type BookingCustomField = { id: string; label: string; type: string; options: string[]; placeholder: string; required: boolean; isBookingEventOption?: boolean };
 export type BookingSettings = {
@@ -136,7 +137,7 @@ export async function loadBookingData() {
       displayOrder: Number(row.displayOrder ?? 0),
     })).filter((category) => category.id && category.name),
     products: (() => {
-      const mapped = (products.data ?? []).map((row: any) => ({ id: String(row._id ?? row.id ?? row.sourceId), name: row.name ?? "", description: row.description ?? null, imageUrl: row.imageUrl ?? row.imagePath ?? row.image ?? null, price: Number(row.price ?? 0), promoPrice: row.promoPrice == null ? null : Number(row.promoPrice), categoryId: row.categoryId == null ? null : String(row.categoryId), category: row.categoryName ?? row.category ?? null, menuNumber: row.menuNumber ?? null }));
+      const mapped = (products.data ?? []).map((row: any) => ({ id: String(row._id ?? row.id ?? row.sourceId), name: row.name ?? "", description: row.description ?? null, imageUrl: resolveBookingAssetUrl(row.imageUrl ?? row.imagePath ?? row.image_url ?? row.image_path ?? row.image), price: Number(row.price ?? 0), promoPrice: row.promoPrice == null ? null : Number(row.promoPrice), categoryId: row.categoryId == null ? null : String(row.categoryId), category: row.categoryName ?? row.category ?? null, menuNumber: row.menuNumber ?? null }));
       const featuredIds = settingsValue?.featuredProductIds ?? [];
       if (featuredIds.length === 0) return mapped;
       const byId = new Map(mapped.map((product) => [product.id, product]));
@@ -175,20 +176,12 @@ function getPublishableKey() {
   return import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 }
 
-async function callBookingApi(action: "create" | "status" | "attach-payment", body: Record<string, unknown>) {
+async function callBookingApi(action: "create" | "status" | "create-payment" | "attach-payment", body: Record<string, unknown>) {
   const key = getPublishableKey();
   const response = await fetch(BOOKING_API_URL, { method: "POST", headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ action, ...body }) });
   const result = await response.json().catch(() => null) as { success?: boolean; data?: unknown; error?: { message?: string } } | null;
   if (!response.ok || !result?.success) throw new Error(result?.error?.message || "Booking gagal diproses.");
   return result.data as BookingResult & { bookingDate?: string; bookingStatus?: string; paymentStatus?: string; guestCount?: number; tableCount?: number; totalAmount?: number };
-}
-
-async function callMayar(body: Record<string, unknown>) {
-  const key = getPublishableKey();
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/mayar-proxy`, { method: "POST", headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify(body) });
-  const result = await response.json().catch(() => null) as { success?: boolean; data?: any; error?: { message?: string } } | null;
-  if (!response.ok || !result?.success) throw new Error(result?.error?.message || "Pembayaran belum berhasil disiapkan.");
-  return result.data;
 }
 
 function normalizeResult(raw: BookingResult & { bookingId?: string; bookingDate?: string; bookingStatus?: string; paymentStatus?: string; guestCount?: number; tableCount?: number; totalAmount?: number }): BookingResult {
@@ -198,7 +191,7 @@ function normalizeResult(raw: BookingResult & { bookingId?: string; bookingDate?
 export async function createBooking(draft: BookingDraft): Promise<BookingResult> {
   if (BOOKING_API_URL) {
     const credentials = getGuestCredentials();
-    let result = normalizeResult(await callBookingApi("create", { slug: BOOKING_SLUG, bookingDate: draft.date, arrivalTime: draft.arrivalTime, guestCount: draft.guests, customerName: draft.customer.name, customerPhone: draft.customer.phone, customerEmail: draft.customer.email, customerSourceId: draft.customerSourceId, notes: draft.customer.notes, customAnswers: draft.customAnswers, items: draft.items.map((item) => ({ productId: item.productId, quantity: item.quantity })), guestSessionId: credentials.guestSessionId, accessToken: credentials.accessToken, idempotencyKey: credentials.idempotencyKey }));
+    let result = normalizeResult(await callBookingApi("create", { slug: BOOKING_SLUG, bookingDate: draft.date, arrivalTime: draft.arrivalTime, guestCount: draft.guests, customerName: draft.customer.name, customerPhone: draft.customer.phone, customerEmail: draft.customer.email, customerSourceId: draft.customerSourceId, notes: draft.customer.notes, customAnswers: draft.customAnswers, items: draft.items.map((item) => ({ productId: item.productId, quantity: item.quantity })), paymentMethod: "qris", guestSessionId: credentials.guestSessionId, accessToken: credentials.accessToken, idempotencyKey: credentials.idempotencyKey }));
     if (result.bookingId && result.bookingCode && result.items.length === 0) {
       try {
         const recovered = await lookupBooking(result.bookingCode);
@@ -216,7 +209,7 @@ export async function createBooking(draft: BookingDraft): Promise<BookingResult>
   throw new Error("Endpoint booking publik belum dikonfigurasi.");
 }
 
-export async function createBookingPayment(booking: BookingResult, draft: BookingDraft) {
+export async function createBookingPayment(booking: BookingResult, _draft: BookingDraft) {
   if (!booking.bookingId || !booking.bookingCode || !booking.totalAmount || booking.totalAmount <= 0 || !booking.items.length) throw new Error("Pilih minimal satu menu agar booking dapat dibayar.");
   const credentials = getGuestCredentials();
   const storageKey = `booking-payment-${booking.bookingCode}`;
@@ -225,25 +218,23 @@ export async function createBookingPayment(booking: BookingResult, draft: Bookin
     try {
       const existing = JSON.parse(stored) as { invoiceId?: string; invoiceUrl?: string };
       if (existing.invoiceId && existing.invoiceUrl) {
-        await callBookingApi("attach-payment", { slug: BOOKING_SLUG, bookingCode: booking.bookingCode, accessToken: credentials.accessToken, paymentGateway: { provider: "mayar", invoiceId: existing.invoiceId, invoiceUrl: existing.invoiceUrl, status: "pending" } });
+        await callBookingApi("create-payment", { slug: BOOKING_SLUG, bookingCode: booking.bookingCode, accessToken: credentials.accessToken, redirectUrl: `${window.location.origin}/status?code=${encodeURIComponent(booking.bookingCode)}`, paymentGateway: { provider: "mayar", invoiceId: existing.invoiceId, invoiceUrl: existing.invoiceUrl, status: "pending" } });
         return existing;
       }
     } catch { sessionStorage.removeItem(storageKey); }
   }
   const pending = getPendingPayment(booking.bookingCode);
   if (pending?.invoiceId && pending.invoiceUrl) {
-    await callBookingApi("attach-payment", { slug: BOOKING_SLUG, bookingCode: booking.bookingCode, accessToken: credentials.accessToken, paymentGateway: { provider: "mayar", invoiceId: pending.invoiceId, invoiceUrl: pending.invoiceUrl, status: "pending" } });
+    await callBookingApi("create-payment", { slug: BOOKING_SLUG, bookingCode: booking.bookingCode, accessToken: credentials.accessToken, redirectUrl: `${window.location.origin}/status?code=${encodeURIComponent(booking.bookingCode)}`, paymentGateway: { provider: "mayar", invoiceId: pending.invoiceId, invoiceUrl: pending.invoiceUrl, status: "pending" } });
     return pending;
   }
   const redirectUrl = `${window.location.origin}/status?code=${encodeURIComponent(booking.bookingCode)}`;
-  const invoiceResponse = await callMayar({ action: "create-invoice", name: draft.customer.name, email: draft.customer.email || undefined, mobile: draft.customer.phone, redirectUrl, description: `Booking ${BOOKING_SLUG} ${booking.bookingCode} untuk ${draft.date}`, expiredAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), extraData: { bookingId: booking.bookingId, bookingCode: booking.bookingCode, slug: BOOKING_SLUG }, items: booking.items.map((item) => ({ quantity: item.quantity, rate: item.price, description: item.name })) });
-  const payment = invoiceResponse?.data || invoiceResponse;
-  const invoiceId = String(payment?.id || "");
-  const invoiceUrl = String(payment?.link || payment?.paymentUrl || payment?.url || "");
+  const payment = await callBookingApi("create-payment", { slug: BOOKING_SLUG, bookingCode: booking.bookingCode, accessToken: credentials.accessToken, redirectUrl });
+  const invoiceId = String(payment?.invoiceId || "");
+  const invoiceUrl = String(payment?.invoiceUrl || "");
   if (!invoiceId || !invoiceUrl) throw new Error("Link pembayaran belum tersedia.");
   sessionStorage.setItem(storageKey, JSON.stringify({ invoiceId, invoiceUrl }));
   sessionStorage.setItem(`booking-pending-payment-${booking.bookingCode}`, JSON.stringify({ invoiceId, invoiceUrl }));
-  await callBookingApi("attach-payment", { slug: BOOKING_SLUG, bookingCode: booking.bookingCode, accessToken: credentials.accessToken, paymentGateway: { provider: "mayar", invoiceId, invoiceUrl, transactionId: payment?.transactionId || null, status: "pending" } });
   return { invoiceId, invoiceUrl };
 }
 

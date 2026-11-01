@@ -2,7 +2,7 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 
-/* pos.yumme.id is a till, not a brochure. "/" no longer introduces the product:
+/* pos.djiwatentram.web.id is a till, not a brochure. "/" no longer introduces the product:
    it sends whoever arrived to the right door — the back-office login when there
    is no session, their own home when there is one. The marketing page that used
    to live here is still in git history if it is ever wanted as a public page. */

@@ -12,7 +12,7 @@ from datetime import datetime, timezone, timedelta
 WIB = timezone(timedelta(hours=7))
 
 # Config
-SUPABASE_URL = "https://supabase.yumme.id"
+SUPABASE_URL = "https://supabase.djiwatentram.web.id"
 SUPABASE_KEY = None
 
 # Telegram config — read from yumi-ai-bot .env

@@ -1,6 +1,5 @@
 import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
-import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { defineConfig } from "vite";
@@ -9,8 +8,7 @@ import { adminPwaSettings } from "./src/pwa-settings";
 export default defineConfig({
 	plugins: [
 		react(),
-		TanStackRouterVite(),
-		tailwindcss(),
+				tailwindcss(),
 		VitePWA({
 			registerType: "prompt",
 			includeAssets: ["logo.png", "vite.svg"],

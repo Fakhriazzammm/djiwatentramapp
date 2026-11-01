@@ -12,7 +12,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 CLOUD_BASE = "https://xaemykhjpkgypqqpfdcb.supabase.co"
-VPS_STORAGE = "https://supabase.yumme.id"  # works for upload
+VPS_STORAGE = "https://supabase.djiwatentram.web.id"  # works for upload
 STORAGE_JPG_QUALITY = 95
 MAX_SIZE = 2400
 

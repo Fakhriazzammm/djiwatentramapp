@@ -490,7 +490,7 @@ const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
  * server ini menunjuk ke app POS, bukan API gateway.
  */
 const publicSupabaseUrl = (
-  Deno.env.get("YUMI_PUBLIC_SUPABASE_URL") ?? "https://supabase.yumme.id"
+  Deno.env.get("YUMI_PUBLIC_SUPABASE_URL") ?? "https://supabase.djiwatentram.web.id"
 ).replace(/\/+$/, "");
 
 /**

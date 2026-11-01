@@ -1,7 +1,7 @@
 {
-  "version": "0.2.69",
-  "commitHash": "4592e26",
-  "message": "fix(db): resync order item identity sequence",
-  "buildDate": "2026-10-24",
-  "generatedAt": "2026-10-24T06:13:07.937Z"
+  "version": "0.2.545",
+  "commitHash": "7701e09",
+  "message": "fix(customer): normalize legacy product image URLs",
+  "buildDate": "2026-10-26",
+  "generatedAt": "2026-10-26T16:57:33.166Z"
 }
