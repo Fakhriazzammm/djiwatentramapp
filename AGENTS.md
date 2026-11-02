@@ -1,4 +1,4 @@
-﻿# Supabase-first project guidance
+# Supabase-first project guidance
 
 This project uses Supabase as its backend.
 
@@ -40,10 +40,21 @@ Do not run broad build scripts casually: several update generated version or PWA
 
 ## Canonical deployment target
 
-For this `djiwatentramapp` repository, all app deployments use the SSH host `vps-djiwa-tentram` (HostName 43.173.20.62, `~/.ssh/config`) only. Do not use the unrelated Dalang/Zantara VPS for this project.
+Single source of truth untuk deploy: [`docs/DEPLOYMENT_VPS_WORKFLOW.md`](docs/DEPLOYMENT_VPS_WORKFLOW.md). Baca sebelum deploy apa pun.
+
+For this `djiwatentramapp` repository, all app deployments use the VPS **`vps-djiwa-tentram`** (SSH alias in `~/.ssh/config`, user `ubuntu`, HostName 43.173.20.62) only. The old alias `djiwa-vps` is stale. Do not use the unrelated Dalang/Zantara VPS for this project.
 
 - Production checkout: `/opt/djiwatentramapp`
 - Canonical domain family: `*.djiwatentram.web.id`
-- Customer webroot: `/opt/djiwatentramapp/apps/customer/dist`
-- Other app webroots follow `/opt/djiwatentramapp/apps/<app>/dist`
+- Webroot per app: `/opt/djiwatentramapp/apps/<app>/dist` (customer: `apps/customer/dist`)
+- Deploy script (run on the VPS, from the canonical checkout): `scripts/deploy-vps.sh [pos|karyawan|customer|admin|djiwapay|all]`
 - Verify the VPS host, checkout path, domain, and deployed `version.json` before declaring a deployment complete.
+
+### Helipod MCP
+
+Helipod MCP (`https://api.helipod.io/mcp`) may be used to inspect and operate the VPS **that belongs to this project** (power, firewall, snapshots, status). Rules:
+
+- Use the `helipod` / `helipod-vps` skill. Authorize via `/mcp` in an interactive session; non-interactive sessions cannot authorize.
+- Match the Helipod VPS to `vps-djiwa-tentram` (IP 43.173.20.62) before any action. Never act on another project's VPS found in the same Helipod account.
+- Paid or destructive actions (reinstall, delete, resize, renew, firewall changes) require explicit user confirmation.
+- App deploys still go through SSH + `scripts/deploy-vps.sh`; Helipod MCP does not replace the runbook.

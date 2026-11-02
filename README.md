@@ -1,8 +1,8 @@
-﻿# yumipos
+# Djiwa Tentram App (yumipos monorepo)
 
 A modern TypeScript monorepo for POS operations, admin analytics, booking, inventory, and AI-assisted workflows.
 
-Refer to [TECHSTACK.md](TECHSTACK.md) for architecture details.
+Refer to [docs/TECHSTACK.md](docs/TECHSTACK.md) for architecture details.
 
 ## Features
 
@@ -30,7 +30,7 @@ Open [http://localhost:3001](http://localhost:3001).
 Supabase cutover is active and legacy backend dependencies have been removed from runtime paths.
 
 Detailed status:
-- [SUPABASE_MIGRATION_STATUS.md](SUPABASE_MIGRATION_STATUS.md)
+- [docs/SUPABASE_MIGRATION_STATUS.md](docs/SUPABASE_MIGRATION_STATUS.md)
 - [packages/backend/supabase/README.md](packages/backend/supabase/README.md)
 
 ## Project Structure
@@ -51,3 +51,7 @@ yumipos/
 - `bun run dev:setup`
 - `bun run check-types`
 - `bun run check`
+
+## Deploy
+
+Production berjalan di VPS `vps-djiwa-tentram`. Lihat [AGENTS.md](AGENTS.md) dan [docs/DEPLOYMENT_VPS_WORKFLOW.md](docs/DEPLOYMENT_VPS_WORKFLOW.md); jangan deploy dari runbook lain.

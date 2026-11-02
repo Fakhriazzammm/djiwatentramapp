@@ -7,6 +7,8 @@
 > - `/tmp/edge-functions-audit.md` (532 lines) — semua Edge Functions detail
 > - `/tmp/hooks-audit.md` (502 lines) — hooks, data flow, table mapping
 
+> **Deploy:** target, checkout, domain, dan aturan Helipod MCP ada di `AGENTS.md` dan `docs/DEPLOYMENT_VPS_WORKFLOW.md` (VPS `vps-djiwa-tentram`).
+
 ---
 
 ## Tech Stack

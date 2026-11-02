@@ -4,7 +4,7 @@ Dokumen ini adalah konteks operasional untuk agent dan developer yang mengubah a
 
 ## Topologi runtime
 
-Untuk deployment saat ini, frontend Djiwa Pay disajikan dari VPS frontend/Helipod. Auth, backend, dan database berada pada runtime/VPS terpisah. Browser tetap memakai pay bridge same-origin yang diproxy Nginx.
+Untuk deployment saat ini, semua frontend (termasuk Djiwa Pay) disajikan dari VPS `vps-djiwa-tentram` (SSH alias di `~/.ssh/config`; host `ubuntu`). Verifikasi kecocokan VPS Helipod dengan host ini sebelum memakai MCP (lihat bagian Helipod MCP). Auth, backend, dan database berada pada runtime/VPS terpisah. Browser tetap memakai pay bridge same-origin yang diproxy Nginx.
 
 | Komponen | Runtime | Lokasi / endpoint |
 | --- | --- | --- |
@@ -16,6 +16,72 @@ Untuk deployment saat ini, frontend Djiwa Pay disajikan dari VPS frontend/Helipo
 | Pay bridge API | Nginx proxy ke auth-server | `/api/pay-bridge/*` |
 
 Jangan menaruh IP private/public, password, API key, connection string, atau token di repository. Detail akses harus berasal dari environment file/service manager di server.
+
+## Peta app dan domain
+
+| App | Domain | Webroot di VPS |
+| --- | --- | --- |
+| pos | pos.djiwatentram.web.id | `/opt/djiwatentramapp/apps/pos/dist` |
+| karyawan | karyawan.djiwatentram.web.id | `/opt/djiwatentramapp/apps/karyawan/dist` |
+| customer | djiwatentram.web.id | `/opt/djiwatentramapp/apps/customer/dist` |
+| admin | admin.djiwatentram.web.id | `/opt/djiwatentramapp/apps/admin/dist` |
+| djiwapay | pay.djiwatentram.web.id (utama) dan djiwapay.web.id (alias; konten identik, sertifikat TLS terpisah) | `/opt/djiwatentramapp/apps/djiwapay/dist` |
+
+### Inventaris app lain (live-probe 2026-11-02, dari luar; belum diverifikasi di Nginx karena SSH mati)
+
+| App (`apps/`) | Domain live (HTTP 200) | Catatan |
+| --- | --- | --- |
+| merchandise | merchandise.djiwatentram.web.id | v0.2.550 |
+| b2b | b2b.djiwatentram.web.id | v0.2.548 |
+| ordermieyamin | ordermieyamin.djiwatentram.web.id | v0.2.551 |
+| investor | investor.djiwatentram.web.id | tanpa version.json |
+| booking | booking.djiwatentram.web.id | dipakai di kode (CORS, link) |
+| rekrutmen | rekrutmen.djiwatentram.web.id | |
+| linkbio | linkbio.djiwatentram.web.id | |
+| kol | **kol.djiwatentram.web.id** | lihat ketidaksesuaian di bawah |
+| 500kopitasik | **kopitasik.djiwatentram.web.id** | lihat ketidaksesuaian di bawah |
+| yumme | belum ada domain live | `yumme.djiwatentram.web.id` tidak punya vhost/TLS |
+| auth-server | api.djiwatentram.web.id, supabase.djiwatentram.web.id | root 404 itu normal (API) |
+
+Versi live berbeda per app (pos 0.2.570, customer 0.2.576, admin 0.2.556, karyawan 0.2.554); wajar bila tiap app di-deploy terpisah, tetapi cek `version.json` sebelum menganggap sebuah app sudah ter-update.
+
+### Ketidaksesuaian kode vs domain live (perlu keputusan pemilik)
+
+1. **KOL**: kode (`scripts/deploy-kolmarketing.sh`, CORS di `apps/auth-server/.env.example` dan `src/kol-portal.ts`, link undangan di Edge Function `kol-portal-admin`, `apps/admin` KolPortalAdmin) memakai `kolmarketing.djiwatentram.web.id`, tetapi domain itu **tidak bisa dibuka** (tidak ada vhost/sertifikat; sertifikat hanya mencakup `kol.djiwatentram.web.id`). App KOL live ada di `kol.djiwatentram.web.id`. Akibatnya link undangan creator mengarah ke domain mati, dan Origin `kol.` bisa ditolak CORS. Pilih satu: buat vhost+sertifikat `kolmarketing`, atau ganti semua referensi ke `kol`.
+2. **500kopitasik**: canonical/og di `apps/500kopitasik/index.html` dan CORS memakai `500kopitasik.djiwatentram.web.id` (tidak bisa dibuka), sedangkan app live di `kopitasik.djiwatentram.web.id`.
+3. **Djiwa Pay**: dua domain valid (lihat tabel utama).
+4. `deploy-vps.sh` hanya menangani pos, karyawan, customer, admin, djiwapay. App lain di-deploy lewat script/prosedur masing-masing (mis. `deploy-kolmarketing.sh` ke `/var/www/<domain>`), bukan dari `apps/<app>/dist`.
+
+Status terverifikasi 2026-11-02 dari luar (HTTP 200 untuk pos, karyawan, admin, customer, pay, djiwapay.web.id; `pos/version.json` = 0.2.570, commit 8e271d6). Port 22 di 43.173.20.62 menolak koneksi (Connection refused) pada waktu itu, sehingga SSH ke `vps-djiwa-tentram` gagal dan isi Nginx belum terverifikasi; periksa `sshd`/firewall lewat konsol atau Helipod.
+
+Edge Function `customer-auth` dan `djiwa-run` ikut ter-deploy bersama `customer`/`all`.
+
+## Jalur cepat deploy (satu app)
+
+```bash
+# 1. dari lokal: pastikan commit sudah di origin/main
+ssh vps-djiwa-tentram
+cd /opt/djiwatentramapp && git status --short   # jika kotor: STOP, minta persetujuan
+# 2. setelah checkout bersih & terbaru (lihat aturan keamanan):
+./scripts/deploy-vps.sh pos        # pos|karyawan|customer|admin|djiwapay|all
+# 3. verifikasi
+curl -fsS https://pos.djiwatentram.web.id/version.json
+curl -sS -o /dev/null -w '%{http_code}\n' https://pos.djiwatentram.web.id/
+```
+
+Script harus dijalankan dari `/opt/djiwatentramapp`; ia menolak lokasi lain.
+
+## Helipod MCP
+
+Endpoint: `https://api.helipod.io/mcp`. Otorisasi lewat `/mcp` di sesi interaktif (sesi non-interaktif tidak bisa OAuth). Gunakan skill `helipod` / `helipod-vps`.
+
+1. List VPS di akun Helipod, lalu cocokkan dengan project ini: IP `43.173.20.62` / alias `vps-djiwa-tentram`. VPS lain di akun yang sama milik project lain; jangan disentuh.
+2. Gunakan MCP untuk status, power, snapshot (ambil snapshot sebelum perubahan besar), dan firewall (pastikan 22, 80, 443 tetap terbuka).
+3. Aksi berbayar atau destruktif (reinstall, hapus, resize, renew, ubah firewall) wajib konfirmasi eksplisit pengguna.
+4. Deploy kode tetap lewat SSH + `scripts/deploy-vps.sh`. Helipod MCP tidak menggantikan runbook ini.
+5. Jangan menulis token/API key Helipod ke repository.
+
+Troubleshooting situs tidak terbuka: cek DNS -> status VPS (Helipod) -> `systemctl status nginx` -> `sudo nginx -t` -> sertifikat TLS -> `dist/index.html` ada -> aset JS/CSS 200 -> `version.json`.
 
 ## Source of truth
 

@@ -11,7 +11,7 @@ APP="${1:-all}"
 CANONICAL_CHECKOUT="/opt/djiwatentramapp"
 
 if [ "$SCRIPT_DIR" != "$CANONICAL_CHECKOUT" ]; then
-	echo "❌ Deploy wajib dijalankan dari checkout canonical $CANONICAL_CHECKOUT pada host djiwa-vps."
+	echo "❌ Deploy wajib dijalankan dari checkout canonical $CANONICAL_CHECKOUT pada host vps-djiwa-tentram."
 	exit 1
 fi
 
