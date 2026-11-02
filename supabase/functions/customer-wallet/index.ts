@@ -26,6 +26,23 @@ async function ownedCustomer(sourceId: string, email: string) {
   return data;
 }
 
+/**
+ * Orders the customer paid straight through the gateway (QRIS/VA/cash at the till). They never move
+ * the wallet balance, so the ledger has no row for them. Balance-paid orders are excluded because
+ * the ledger already records them; listing both would count one order twice.
+ */
+async function directPayments(sourceId: string, sourceApp: string | null) {
+  let query = admin.schema("pos").from("orders")
+    .select("source_id,order_number,total_amount,created_at,payment_method,status,brand_slug,business_unit,source_app")
+    .eq("customer_source_id", sourceId)
+    .in("status", ["paid", "completed"])
+    .neq("payment_method", "wallet");
+  if (sourceApp) query = query.eq("source_app", sourceApp);
+  const { data, error } = await query.order("created_at", { ascending: false }).limit(50);
+  if (error) throw error;
+  return data ?? [];
+}
+
 async function getWallet(payload: Json) {
   const sourceId = text(payload.sourceId);
   const email = text(payload.email);
@@ -36,7 +53,7 @@ async function getWallet(payload: Json) {
   if (!data) {
     const { data: ensured, error: ensureError } = await admin.schema("pos").rpc("wallet_ensure", { p_customer_id: sourceId });
     if (ensureError) throw ensureError;
-    return { wallet: ensured, ledger: [], transactions: [] };
+    return { wallet: ensured, ledger: [], transactions: [], direct_payments: await directPayments(sourceId, sourceApp) };
   }
   let ledgerQuery = admin.schema("pos").from("customer_wallet_ledger").select("*").eq("customer_id", sourceId);
   if (sourceApp) ledgerQuery = ledgerQuery.eq("source_app", sourceApp);
@@ -44,7 +61,7 @@ async function getWallet(payload: Json) {
   if (ledgerError) throw ledgerError;
   const { data: transactions, error: transactionError } = await admin.schema("pos").rpc("wallet_transactions_for_customer", { p_customer_id: sourceId, p_limit: 100, p_offset: 0 });
   if (transactionError) throw transactionError;
-  return { wallet: data, ledger: ledger ?? [], transactions: transactions ?? [] };
+  return { wallet: data, ledger: ledger ?? [], transactions: transactions ?? [], direct_payments: await directPayments(sourceId, sourceApp) };
 }
 
 async function walletNotifications(sourceId: string) {
