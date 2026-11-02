@@ -52,7 +52,15 @@ Versi live berbeda per app (pos 0.2.570, customer 0.2.576, admin 0.2.556, karyaw
 3. **Djiwa Pay**: dua domain valid (lihat tabel utama).
 4. `deploy-vps.sh` hanya menangani pos, karyawan, customer, admin, djiwapay. App lain di-deploy lewat script/prosedur masing-masing (mis. `deploy-kolmarketing.sh` ke `/var/www/<domain>`), bukan dari `apps/<app>/dist`.
 
-Status terverifikasi 2026-11-02 dari luar (HTTP 200 untuk pos, karyawan, admin, customer, pay, djiwapay.web.id; `pos/version.json` = 0.2.570, commit 8e271d6). Port 22 di 43.173.20.62 menolak koneksi (Connection refused) pada waktu itu, sehingga SSH ke `vps-djiwa-tentram` gagal dan isi Nginx belum terverifikasi; periksa `sshd`/firewall lewat konsol atau Helipod.
+Status terverifikasi 2026-11-02 (probe luar + SSH + `nginx -T`): semua domain di atas HTTP 200 kecuali `kolmarketing`, `500kopitasik`, `yumme` (tidak ada vhost). Nginx server: `kol.djiwatentram.web.id` -> `/opt/djiwatentramapp/apps/kolmarketing/dist`; `kopitasik.djiwatentram.web.id` -> `apps/500kopitasik/dist`; `pay.djiwatentram.web.id` dan `djiwapay.web.id` -> `apps/djiwapay/dist`; `rekrutmen` -> `apps/booking/dist`; `api`/`auth.djiwatentram.web.id` -> auth-server.
+
+### Kondisi checkout produksi (2026-11-02) - JANGAN `git pull`/`reset`
+
+`/opt/djiwatentramapp` ada di commit snapshot `76fd922b3`, **473 commit di belakang dan 3 di depan `origin/main`** (sudah diverge), dengan 12 file tracked termodifikasi (admin/customer djiwa-run, saldo, run, komunitas, `supabase/functions/djiwa-run`) dan ~119 entri untracked (backup dist, `.worktrees`, dll). Sebelum deploy dari `main`: audit `git diff`, putuskan commit/stash perubahan tersebut, lalu pakai worktree rilis bersih (lihat Workflow release).
+
+### Akses SSH dan fail2ban
+
+Gejala "Connection refused" pada port 22 sementara web hidup = IP klien di-ban `fail2ban` (jail `sshd`), bukan firewall Helipod. Dari konsol web Helipod: `sudo fail2ban-client status sshd` lalu `sudo fail2ban-client set sshd unbanip <IP>`. IP kerja yang diizinkan permanen ada di `ignoreip` pada `/etc/fail2ban/jail.local` (IP publik Mac bisa berubah; tambahkan bila perlu, backup `jail.local.bak-*` dibuat sebelum edit).
 
 Edge Function `customer-auth` dan `djiwa-run` ikut ter-deploy bersama `customer`/`all`.
 
