@@ -40,7 +40,7 @@ Do not run broad build scripts casually: several update generated version or PWA
 
 ## Canonical deployment target
 
-For this `djiwatentramapp` repository, all app deployments use the T3-connected SSH host `djiwa-vps` only. Do not use the unrelated Dalang/Zantara VPS for this project.
+For this `djiwatentramapp` repository, all app deployments use the SSH host `vps-djiwa-tentram` (HostName 43.173.20.62, `~/.ssh/config`) only. Do not use the unrelated Dalang/Zantara VPS for this project.
 
 - Production checkout: `/opt/djiwatentramapp`
 - Canonical domain family: `*.djiwatentram.web.id`

@@ -77,11 +77,7 @@ export function IdentityPicker({
 	return (
 		<div className="mt-6 flex min-h-0 flex-1 flex-col">
 			<label
-				className={`flex h-14 items-center gap-3 rounded-[16px] border bg-card px-4 shadow-sm transition-[border-color,box-shadow] focus-within:ring-4 ${
-					accent === "amber"
-						? "border-border focus-within:border-amber-500 focus-within:ring-amber-500/10"
-						: "border-border focus-within:border-primary focus-within:ring-primary/10"
-				}`}
+				className="flex h-14 items-center gap-3 rounded-[16px] border border-border bg-card px-4 shadow-sm transition-[border-color,box-shadow] focus-within:border-foreground/30 focus-within:ring-4 focus-within:ring-foreground/10"
 			>
 				<Search className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
 				<input

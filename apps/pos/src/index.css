@@ -2,6 +2,46 @@
 @import "tw-animate-css";
 @import "@yumipos/web-shared/theme.css";
 
+/*
+ * POS form fields: no yellow or blue on focus, text, browser autofill, or
+ * native checkbox/radio/range. Unlayered rules here win over Tailwind's
+ * layered focus:* utilities. Focus stays visible via a neutral ring.
+ */
+input,
+textarea,
+select {
+	color: var(--foreground);
+	caret-color: var(--foreground);
+}
+
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible {
+	border-color: var(--border);
+	outline: none;
+	box-shadow: 0 0 0 3px color-mix(in oklab, var(--foreground) 12%, transparent);
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+	-webkit-box-shadow: 0 0 0 1000px var(--background) inset;
+	-webkit-text-fill-color: var(--foreground);
+	caret-color: var(--foreground);
+	transition: background-color 9999s ease-out 0s;
+}
+
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] {
+	accent-color: var(--foreground);
+}
+
 body.admin-shell[data-admin-density="compact"] [data-slot="dialog-content"],
 body.admin-shell[data-admin-density="compact"] [data-slot="sheet-content"],
 body.admin-shell[data-admin-density="compact"] [data-slot="confirmation-modal-card"],
