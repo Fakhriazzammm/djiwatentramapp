@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { forwardPaymentToTravel } from "./travel-forward.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,9 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const WEBHOOK_TOKEN = Deno.env.get("MAYAR_WEBHOOK_TOKEN") || "";
 const MAYAR_API_BASE = Deno.env.get("MAYAR_API_BASE") || "https://api.mayar.id/hl/v2";
 const MAYAR_API_KEY = Deno.env.get("MAYAR_API_KEY") || "";
+const TRAVEL_CALLBACK_URL = Deno.env.get("DJIWA_TRAVEL_CALLBACK_URL") || "";
+const TRAVEL_CALLBACK_SECRET = Deno.env.get("DJIWA_TRAVEL_CALLBACK_SECRET") || "";
+const TRAVEL_CALLBACK_TIMEOUT_MS = 5_000;
 const FUNCTION_REQUEST_TIMEOUT_MS = 12_000;
 
 async function fetchWithTimeout(input: string, init: RequestInit = {}) {
@@ -357,7 +361,20 @@ Deno.serve(async (req) => {
       body: JSON.stringify({ p_provider_event_key: eventKey, p_event_type: event, p_provider_transaction_id: transactionId, p_payload: payload }),
     });
     if (!response.ok) throw new Error(`Mayar event enqueue failed (${response.status})`);
-    return json({ ok: true, queued: true, ...(await response.json()) });
+    const queued = await response.json().catch(() => ({}));
+    const invoiceId = String(data.paymentLinkId || data.invoiceId || data.productId || "");
+    // Answer Mayar immediately and let the edge runtime finish the hint: Travel settles from
+    // Mayar's own record, so this call must never turn a delivered event into a 500.
+    const forward = forwardPaymentToTravel(
+      { url: TRAVEL_CALLBACK_URL, secret: TRAVEL_CALLBACK_SECRET, timeoutMs: TRAVEL_CALLBACK_TIMEOUT_MS },
+      { transactionId, invoiceId },
+    );
+    const edgeRuntime = (globalThis as {
+      EdgeRuntime?: { waitUntil?: (task: Promise<unknown>) => void };
+    }).EdgeRuntime;
+    if (typeof edgeRuntime?.waitUntil === "function") edgeRuntime.waitUntil(forward);
+    else await forward;
+    return json({ ok: true, queued: true, ...queued });
   } catch (error) {
     console.error("mayar-webhook enqueue failed", error);
     return json({ error: "Webhook storage failed" }, 500);
