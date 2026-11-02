@@ -56,7 +56,9 @@ export function useSupabaseLiveValue<T>(
 				if (active) setData(next);
 			} catch (error) {
 				console.warn(`[supabase-hybrid:${key}]`, error);
-				if (active) setData(null);
+				// Keep the last good value on transient failures; only fall back to null
+				// when nothing was ever loaded (otherwise e.g. an open shift flips to "closed").
+				if (active) setData((prev) => (prev === undefined ? null : prev));
 			} finally {
 				inFlight = false;
 				if (pendingReload && active) await reload();
