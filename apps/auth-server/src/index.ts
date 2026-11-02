@@ -1018,6 +1018,47 @@ app.post("/api/pay-bridge/ppob/purchase", async (c) => {
     return privateJson({ success: false, error: "PPOB_PROVIDER_UNAVAILABLE" }, 502);
   }
 });
+const BRAND_LABELS: Record<string, string> = { djiwatentram: "Djiwa Tentram", "djiwa-tentram": "Djiwa Tentram", ordermieyamin: "Order Mie Yamin", b2b: "B2B" };
+const TRAVEL_PURCHASES_URL = process.env.DJIWA_TRAVEL_PURCHASES_URL || "";
+const TRAVEL_CALLBACK_SECRET = process.env.DJIWA_TRAVEL_CALLBACK_SECRET || "";
+
+type DirectPayment = { id: string; app: string; title: string; amount: number; created_at: string; payment_method: string; status: string };
+
+// Orders the customer paid straight through the gateway (QRIS/VA/cash). They never move the wallet
+// balance, so the ledger has no row for them; wallet-paid orders are excluded because the ledger
+// already records those.
+async function gatewayPaidOrders(sourceId: string): Promise<DirectPayment[]> {
+  const rows = await pool.query(
+    `SELECT source_id, order_number, total_amount, created_at, payment_method, brand_slug
+       FROM pos.orders
+      WHERE customer_source_id = $1 AND status IN ('paid', 'completed') AND payment_method IS DISTINCT FROM 'wallet'
+      ORDER BY created_at DESC LIMIT 50`,
+    [sourceId],
+  );
+  return rows.rows.map((row) => {
+    const brand = String(row.brand_slug ?? "").trim().toLowerCase();
+    const app = BRAND_LABELS[brand] ?? (brand || "Djiwa Tentram");
+    return { id: `order-${row.source_id}`, app, title: `Pesanan ${app}${row.order_number ? ` #${row.order_number}` : ""}`, amount: Number(row.total_amount) || 0, created_at: new Date(Number(row.created_at)).toISOString(), payment_method: String(row.payment_method ?? ""), status: "completed" };
+  });
+}
+
+// Djiwa Travel keeps its own orders on the Travel VPS. Ask it, signed, at view time; a failure only
+// hides those rows and never breaks the wallet.
+async function travelPurchases(sourceId: string): Promise<DirectPayment[]> {
+  if (!TRAVEL_PURCHASES_URL || !TRAVEL_CALLBACK_SECRET) return [];
+  try {
+    const body = JSON.stringify({ sourceId });
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const signature = createHmac("sha256", TRAVEL_CALLBACK_SECRET).update(`${timestamp}.${body}`).digest("hex");
+    const response = await fetch(TRAVEL_PURCHASES_URL, { method: "POST", headers: { "content-type": "application/json", "x-djiwa-source": "djiwa-tentram", "x-djiwa-timestamp": timestamp, "x-djiwa-signature": signature }, body, signal: AbortSignal.timeout(4000) });
+    if (!response.ok) return [];
+    const payload = await response.json() as { purchases?: Array<{ orderId: string; orderCode?: string; title: string; amount: number; paidAt: number; method: string }> };
+    return (payload.purchases ?? []).map((item) => ({ id: `travel-${item.orderId}`, app: "Djiwa Travel", title: item.title, amount: Number(item.amount) || 0, created_at: new Date(Number(item.paidAt)).toISOString(), payment_method: String(item.method ?? ""), status: "completed" }));
+  } catch {
+    return [];
+  }
+}
+
 app.post("/api/pay-bridge/wallet", async (c) => {
   const session = await requirePaySession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
@@ -1030,7 +1071,8 @@ app.post("/api/pay-bridge/wallet", async (c) => {
     const wallet = await pool.query("SELECT * FROM pos.customer_wallets WHERE customer_id = $1 LIMIT 1", [sourceId]);
     const ledger = await pool.query("SELECT * FROM pos.customer_wallet_ledger WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 100", [sourceId]);
     const transactions = await pool.query("SELECT * FROM pos.wallet_transactions_for_customer($1, $2, $3)", [sourceId, 100, 0]);
-    return privateJson({ success: true, wallet: wallet.rows[0] ?? null, ledger: ledger.rows, transactions: transactions.rows });
+    const [gateway, travel] = await Promise.all([gatewayPaidOrders(sourceId).catch(() => []), travelPurchases(sourceId)]);
+    return privateJson({ success: true, wallet: wallet.rows[0] ?? null, ledger: ledger.rows, transactions: transactions.rows, direct_payments: [...gateway, ...travel] });
   }
   if (action === "notifications") {
     const rows = await pool.query(

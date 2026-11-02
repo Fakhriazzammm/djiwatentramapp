@@ -3,7 +3,7 @@ import type { WalletWithdrawalDraft } from "./djiwa-pay-withdrawal";
 import { normalizeWalletPhone } from "./djiwa-pay-transfer";
 export type WalletResponse = { wallet: WalletSummary; ledger: WalletLedgerEntry[]; transactions?: WalletTransaction[] };
 export type WalletTransaction = {
-  id: number;
+  id: number | string;
   transfer_id: string | null;
   direction: "credit" | "debit";
   category: "transfer" | "topup" | "payment" | "refund" | "hold" | "release" | "adjustment" | string;
@@ -17,7 +17,13 @@ export type WalletTransaction = {
   reference_id: string | null;
   note: string | null;
   created_at: string;
+  /** Gateway-paid orders from any Djiwa app. Read-only history: they never move the balance. */
+  direct?: boolean;
+  title?: string;
+  app?: string | null;
+  payment_method?: string | null;
 };
+export type DirectPayment = { id: string; app: string; title: string; amount: number; created_at: string; payment_method: string; status: string };
 export type WalletNotification = { id: string; title: string; message: string; notification_type: string; action_payload?: { transferId?: string }; created_at: string; unread: boolean };
 export type TopupStatusResponse = { status: "pending" | "success" | "expired"; message?: string; wallet?: WalletSummary; ledger?: WalletLedgerEntry[] };
 export type WalletTransferResult = { success: boolean; error?: string; transfer?: { transfer_id?: string; amount?: number; sender_balance?: number }; recipient?: { sourceId: string; name: string } };
@@ -52,16 +58,65 @@ function normalizeTransactions(entries: WalletTransaction[]): WalletTransaction[
   }));
 }
 
+const DIRECT_METHOD_LABELS: Record<string, string> = { qris: "QRIS", va: "Virtual account", cash: "Tunai", djiwaapp: "Djiwa App", wallet: "Saldo Djiwa Pay" };
+
+/** How the transaction was paid, so every row says where the money came from. */
+export function paymentMethodLabel(entry: WalletTransaction): string {
+  if (entry.direct) {
+    const key = (entry.payment_method ?? "").trim().toLowerCase();
+    return DIRECT_METHOD_LABELS[key] ?? (key ? key.toUpperCase() : "Pembayaran langsung");
+  }
+  switch (entry.type) {
+    case "topup_completed":
+    case "topup_pending": return "Mayar";
+    case "transaction_reward": return "Reward Djiwa Pay";
+    case "manual_credit":
+    case "manual_debit":
+    case "adjustment": return "Penyesuaian admin";
+    default: return "Saldo Djiwa Pay";
+  }
+}
+
+/** One-line source + method for list rows. */
+export function transactionMethodLine(entry: WalletTransaction): string {
+  const method = `Metode: ${paymentMethodLabel(entry)}`;
+  return entry.direct && entry.app ? `${entry.app} · ${method}` : method;
+}
+
+function directToTransactions(payments: DirectPayment[]): WalletTransaction[] {
+  return payments.map((payment) => ({
+    id: payment.id,
+    transfer_id: null,
+    direction: "debit" as const,
+    category: "direct",
+    type: "direct_payment",
+    amount: walletAmount(payment.amount),
+    balance_after: 0,
+    status: payment.status,
+    counterparty_name: null,
+    counterparty_phone: null,
+    reference_type: null,
+    reference_id: null,
+    note: null,
+    created_at: payment.created_at,
+    direct: true,
+    title: payment.title,
+    app: payment.app,
+    payment_method: payment.payment_method,
+  }));
+}
+
 export async function readWallet(_profile: { source_id: string }): Promise<WalletResponse & { transactions: WalletTransaction[] }> {
   const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "get" }) });
   if (response.status === 401) throw new Error("Sesi Djiwa Pay kedaluwarsa");
   if (!response.ok) throw new Error("Wallet customer tidak dapat dimuat");
-  const payload = await response.json() as { wallet?: WalletSummary; ledger?: WalletLedgerEntry[]; transactions?: WalletTransaction[] };
+  const payload = await response.json() as { wallet?: WalletSummary; ledger?: WalletLedgerEntry[]; transactions?: WalletTransaction[]; direct_payments?: DirectPayment[] };
   if (!payload.wallet) throw new Error("Wallet customer tidak ditemukan");
   return {
     wallet: normalizeWalletSummary(payload.wallet),
     ledger: normalizeLedger(payload.ledger ?? []),
-    transactions: normalizeTransactions(payload.transactions ?? []),
+    transactions: [...normalizeTransactions(payload.transactions ?? []), ...directToTransactions(payload.direct_payments ?? [])]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
   };
 }
 
