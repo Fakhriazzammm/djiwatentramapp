@@ -1,0 +1,190 @@
+#!/usr/bin/env bash
+# djiwa — CLI developer untuk monorepo Djiwa Tentram (semua app, auth, DB, edge function, VPS).
+# Pakai: scripts/djiwa <perintah>   atau   bun run djiwa <perintah>
+set -uo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+VPS="${DJIWA_VPS:-vps-djiwa-tentram}"
+CI_KEY="${DJIWA_CI_KEY:-$HOME/.ssh/djiwa_ci_deploy}"
+CI_HOST="${DJIWA_CI_HOST:-ubuntu@43.173.20.62}"
+DEPLOYABLE="pos karyawan customer admin djiwapay"
+
+# app|package|domain  (bash 3.2 / macOS compatible: tabel teks, bukan array asosiatif)
+APPS_TABLE="
+pos|@yumipos/pos|pos.djiwatentram.web.id
+karyawan|@yumipos/karyawan|karyawan.djiwatentram.web.id
+customer|@yumipos/customer|djiwatentram.web.id
+admin|@yumipos/admin|admin.djiwatentram.web.id
+djiwapay|@yumipos/djiwapay|djiwapay.web.id
+merchandise|@yumipos/merchandise|merchandise.djiwatentram.web.id
+b2b|@yumipos/b2b|b2b.djiwatentram.web.id
+ordermieyamin|@yumipos/ordermieyamin|ordermieyamin.djiwatentram.web.id
+investor|@yumipos/investor|investor.djiwatentram.web.id
+booking|@yumipos/booking|booking.djiwatentram.web.id
+rekrutmen|rekrutmen|rekrutmen.djiwatentram.web.id
+linkbio|@yumipos/linkbio|linkbio.djiwatentram.web.id
+kol|@yumipos/kol|kol.djiwatentram.web.id
+500kopitasik|@yumipos/500kopitasik|kopitasik.djiwatentram.web.id
+yumme|@yumme/group-landing|-
+auth-server|auth-server|api.djiwatentram.web.id
+"
+app_names() { echo "$APPS_TABLE" | awk -F'|' 'NF{print $1}' | sort; }
+app_field() { echo "$APPS_TABLE" | awk -F'|' -v a="$1" -v f="$2" '$1==a{print $f}'; }
+die() { echo "✗ $*" >&2; exit 1; }
+pkg()    { local v; v="$(app_field "$1" 2)"; [ -n "$v" ] || die "app tidak dikenal: $1 (lihat: djiwa apps)"; echo "$v"; }
+domain() { app_field "$1" 3; }
+need_app() { [ -n "${1:-}" ] || die "sebutkan app (lihat: djiwa apps)"; pkg "$1" >/dev/null; }
+vps() { ssh -o BatchMode=yes -o ConnectTimeout=10 "$VPS" "$@"; }
+
+usage() { cat <<'U'
+djiwa — CLI developer Djiwa Tentram
+
+Eksplorasi
+  apps                       daftar app, package, domain, dan apakah bisa auto-deploy
+  find <kata> [path]         cari di kode (tanpa node_modules/dist)
+  where <kata>               cari definisi route/komponen/fungsi (file + baris)
+  fn list                    daftar Edge Function
+  migrations [n]             n migrasi terakhir (default 10)
+
+Develop
+  dev <app>                  jalankan dev server app
+  build <app|all>            build produksi lokal
+  check <app|all>            typecheck (turbo check-types)
+  test [app]                 jalankan test (bun test); tanpa app = seluruh repo
+  verify <app>               check + build (gerbang sebelum commit)
+  auth dev                   jalankan auth-server lokal (bun --watch)
+
+Database / backend
+  db new <nama>              buat file migrasi baru bertimestamp di supabase/migrations
+  db sql "<query>"           jalankan SQL READ-ONLY di DB produksi (transaksi read-only)
+  db tables [pola]           daftar tabel produksi
+  db describe <tabel>        kolom sebuah tabel produksi
+  fn new <nama>              buat kerangka Edge Function
+  fn logs <nama> [n]         log edge function di VPS
+
+Produksi / VPS
+  status                     cek kesehatan semua domain, auth, supabase, versi live
+  deploy <app[,app]|all>     deploy commit HEAD (harus sudah di-push) lewat key CI
+  logs <nginx|auth|edge|db> [n]   log di VPS
+  vps <perintah...>          jalankan perintah di VPS
+
+Env opsional: DJIWA_VPS, DJIWA_CI_KEY, DJIWA_CI_HOST
+U
+}
+
+cmd_apps() {
+	printf "%-14s %-26s %-40s %s\n" APP PACKAGE DOMAIN AUTO-DEPLOY
+	for a in $(app_names); do
+		local dep="-"; [[ " $DEPLOYABLE " == *" $a "* ]] && dep="ya"
+		printf "%-14s %-26s %-40s %s\n" "$a" "$(pkg $a)" "$(domain $a)" "$dep"
+	done
+}
+
+cmd_find() { [ -n "${1:-}" ] || die "pakai: djiwa find <kata> [path...]"; local q="$1"; shift; grep -rn --color=never -I -E "$q" "${@:-.}" \
+	--exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.turbo --exclude-dir=.git --exclude='*.lock' --exclude='bun.lock' | head -${DJIWA_MAX:-80}; }
+cmd_where() { [ -n "${1:-}" ] || die "pakai: djiwa where <nama>"
+	cmd_find "(function|const|class|interface|type|export default function) +$1\\b|createLazyFileRoute\\(.*$1|path: *['\"].*$1" apps packages supabase; }
+
+cmd_dev()   { need_app "${1:-}"; [ "$1" = auth-server ] && exec bun --cwd apps/auth-server run dev; exec bunx turbo dev --filter="$(pkg $1)"; }
+cmd_build() {
+	local t="${1:-}"; [ -n "$t" ] || die "pakai: djiwa build <app|all>"
+	if [ "$t" = all ]; then exec bun run build; fi; need_app "$t"
+	if [[ " $DEPLOYABLE " == *" $t "* ]] || grep -q "\"build:$t\"" package.json; then exec bun run "build:$t"; fi
+	exec bunx turbo build --filter="$(pkg $t)"
+}
+cmd_check() { local t="${1:-all}"; if [ "$t" = all ]; then exec bunx turbo check-types; fi; need_app "$t"; exec bunx turbo check-types --filter="$(pkg $t)"; }
+cmd_test()  { if [ -n "${1:-}" ]; then need_app "$1"; exec bun test "apps/$1"; fi; exec bun test; }
+cmd_verify(){ need_app "${1:-}"; echo "→ typecheck $1"; cmd_check_run "$1" && echo "→ build $1" && ( cmd_build_run "$1" ) && echo "✓ $1 lolos"; }
+cmd_check_run(){ bunx turbo check-types --filter="$(pkg $1)"; }
+cmd_build_run(){ if grep -q "\"build:$1\"" package.json; then bun run "build:$1"; else bunx turbo build --filter="$(pkg $1)"; fi; }
+
+cmd_migrations() { ls supabase/migrations | tail -"${1:-10}"; }
+
+pg() { # jalankan psql di container supabase-db (user postgres), SQL dari stdin
+	vps "docker exec -i supabase-db psql -U postgres -d postgres -X -P pager=off" ; }
+sql_ro() {
+	# Tolak kata kunci yang bisa keluar dari transaksi read-only atau meta-command psql.
+	if printf '%s' "$1" | grep -qiE '(^|[^a-z_])(commit|rollback|end|abort|begin|set +transaction|prepare +transaction)([^a-z_]|$)|\\\\'; then die "SQL ditolak: perintah transaksi/meta-command tidak diizinkan"; fi
+	printf 'BEGIN READ ONLY;\n%s\n;\nROLLBACK;\n' "$1" | pg; }
+
+cmd_db() {
+	local sub="${1:-}"; shift || true
+	case "$sub" in
+		new) [ -n "${1:-}" ] || die "pakai: djiwa db new <nama_snake_case>"
+			[[ "$1" =~ ^[a-z0-9_]+$ ]] || die "nama harus snake_case"
+			local f="supabase/migrations/$(date +%Y%m%d%H%M%S)_$1.sql"
+			printf -- "-- %s\n-- Idempoten bila mungkin; tinjau sebelum diterapkan ke produksi.\n\n" "$1" > "$f"; echo "$f";;
+		sql) [ -n "${1:-}" ] || die 'pakai: djiwa db sql "SELECT ..."'; sql_ro "$1";;
+		tables) sql_ro "select table_schema, table_name from information_schema.tables where table_schema not in ('pg_catalog','information_schema') and table_name ilike '%${1:-}%' order by 1,2";;
+		describe) [ -n "${1:-}" ] || die "pakai: djiwa db describe <tabel>"
+			[[ "$1" =~ ^[a-zA-Z0-9_.]+$ ]] || die "nama tabel tidak valid"
+			sql_ro "select column_name, data_type, is_nullable, column_default from information_schema.columns where table_name='${1##*.}' order by ordinal_position";;
+		*) die "db: new|sql|tables|describe";;
+	esac
+}
+
+cmd_fn() {
+	local sub="${1:-}"; shift || true
+	case "$sub" in
+		list) ls supabase/functions;;
+		new) [ -n "${1:-}" ] || die "pakai: djiwa fn new <nama-kebab>"; [[ "$1" =~ ^[a-z0-9-]+$ ]] || die "nama harus kebab-case"
+			local d="supabase/functions/$1"; [ -e "$d" ] && die "sudah ada: $d"; mkdir -p "$d"
+			cat > "$d/index.ts" <<T
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok");
+  return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
+});
+T
+			echo "$d/index.ts";;
+		logs) [ -n "${1:-}" ] || die "pakai: djiwa fn logs <nama> [n]"; vps "docker logs --tail ${2:-100} supabase-edge-functions 2>&1 | grep -i -- '$1' | tail -${2:-100}";;
+		*) die "fn: list|new|logs";;
+	esac
+}
+
+cmd_status() {
+	echo "== situs"; local a d code
+	for a in $(app_names); do d="$(domain $a)"; [ "$d" = "-" ] && continue
+		code=$(curl -s -o /dev/null -m 10 -w '%{http_code}' "https://$d/"); 
+		ver=$(curl -s -m 8 "https://$d/version.json" 2>/dev/null | grep -o '"version": *"[^"]*"' | head -1 | cut -d'"' -f4)
+		printf "  %-14s %-40s %s %s\n" "$a" "$d" "$code" "${ver:+v$ver}"
+	done
+	echo "== backend"
+	for u in https://djiwatentram.web.id/api/auth/ok https://auth.djiwatentram.web.id/api/auth/ok https://supabase.djiwatentram.web.id/auth/v1/health https://supabase.djiwatentram.web.id/rest/v1/; do
+		printf "  %-62s %s\n" "$u" "$(curl -s -o /dev/null -m 10 -w '%{http_code}' $u)"
+	done
+	echo "== www redirect"; printf "  www -> %s\n" "$(curl -sI -m 10 https://www.djiwatentram.web.id/ | grep -i '^location' | tr -d '\r')"
+	echo "== VPS"; vps 'uptime; df -h / | tail -1; free -m | sed -n 2p; systemctl is-active nginx better-auth; docker ps --format "{{.Names}} {{.Status}}" | grep -v "Up" || echo "docker: semua Up"' 2>&1 | sed 's/^/  /'
+}
+
+cmd_deploy() {
+	local apps="${1:-}"; [ -n "$apps" ] || die "pakai: djiwa deploy <app[,app]|all>"
+	[ "$apps" = all ] && apps="${DEPLOYABLE// /,}"
+	local a; for a in ${apps//,/ }; do [[ " $DEPLOYABLE " == *" $a "* ]] || die "app tidak bisa auto-deploy: $a (boleh: $DEPLOYABLE)"; done
+	[ -f "$CI_KEY" ] || die "key CI tidak ada: $CI_KEY"
+	git fetch -q origin main; local sha; sha=$(git rev-parse HEAD)
+	git merge-base --is-ancestor "$sha" origin/main || die "HEAD belum di-push ke origin/main (git push dulu)"
+	echo "→ deploy $apps @ ${sha:0:7}"
+	ssh -i "$CI_KEY" -o IdentitiesOnly=yes -o BatchMode=yes "$CI_HOST" "$sha $apps"
+}
+
+cmd_logs() {
+	local n="${2:-100}"; [[ "$n" =~ ^[0-9]+$ ]] || die "n harus angka"
+	case "${1:-}" in
+		nginx) vps "sudo tail -n $n /var/log/nginx/error.log";;
+		auth) vps "sudo journalctl -u better-auth -n $n --no-pager";;
+		edge) vps "docker logs --tail $n supabase-edge-functions 2>&1";;
+		db) vps "docker logs --tail $n supabase-db 2>&1";;
+		*) die "logs: nginx|auth|edge|db";;
+	esac
+}
+
+c="${1:-help}"; shift || true
+case "$c" in
+	apps) cmd_apps;; find) cmd_find "$@";; where) cmd_where "$@";; dev) cmd_dev "$@";; build) cmd_build "$@";;
+	check) cmd_check "$@";; test) cmd_test "$@";; verify) cmd_verify "$@";; migrations) cmd_migrations "$@";;
+	db) cmd_db "$@";; fn) cmd_fn "$@";; status) cmd_status;; deploy) cmd_deploy "$@";; logs) cmd_logs "$@";;
+	auth) [ "${1:-}" = dev ] && exec bun --cwd apps/auth-server run dev || die "auth: dev";;
+	vps) vps "$@";; help|-h|--help) usage;; *) usage; exit 1;;
+esac

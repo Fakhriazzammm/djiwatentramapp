@@ -260,3 +260,16 @@ Mekanisme di VPS:
 
 GitHub secrets yang diperlukan: `VPS_SSH_KEY` (private key `~/.ssh/djiwa_ci_deploy` di Mac), `VPS_HOST` (`43.173.20.62`), `VPS_KNOWN_HOSTS` (output `ssh-keyscan -t ed25519 43.173.20.62`).
 Wrapper (`/usr/local/sbin/djiwa-ci-deploy`) dipasang manual sekali; bila perlu diubah, edit lewat SSH admin.
+
+## CLI developer `djiwa`
+
+`scripts/djiwa <perintah>` (atau `bun run djiwa <perintah>`) — satu pintu untuk semua app, auth, DB, edge function, dan VPS. Jalan di macOS (bash 3.2) dan Linux. Jalankan `scripts/djiwa help` untuk daftar lengkap.
+
+| Kelompok | Perintah |
+| --- | --- |
+| Eksplorasi | `apps`, `find <regex> [path...]`, `where <nama>`, `fn list`, `migrations [n]` |
+| Develop | `dev <app>`, `build <app\|all>`, `check <app\|all>`, `test [app]`, `verify <app>`, `auth dev` |
+| Database | `db new <nama>`, `db sql "<SELECT>"` (read-only), `db tables [pola]`, `db describe <tabel>`, `fn new <nama>`, `fn logs <nama>` |
+| Produksi | `status`, `deploy <app[,app]\|all>`, `logs <nginx\|auth\|edge\|db> [n]`, `vps <perintah>` |
+
+Catatan keamanan: `db sql` berjalan dalam transaksi `READ ONLY` dan menolak `commit/rollback/begin/\meta`; perubahan skema selalu lewat file migrasi (`db new`) yang ditinjau dulu. `deploy` memakai key CI terbatas dan hanya men-deploy commit HEAD yang sudah ada di `origin/main`.
