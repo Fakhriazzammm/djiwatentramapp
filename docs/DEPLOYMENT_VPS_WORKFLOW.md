@@ -284,3 +284,5 @@ Pencegahan:
 - Migrasi `20261104000000_betterauth_adopt_existing_customer.sql`: trigger BEFORE INSERT pada `public."user"` memakai ulang `source_id` pelanggan yang emailnya sama (hanya email terverifikasi) sehingga pelanggan yang daftar setelah 27 Okt tinggal login ulang dan datanya kembali.
 - Backup harian 03:15: `/usr/local/sbin/djiwa-auth-backup` (sumber `scripts/backup-auth-tables.sh`, cron `/etc/cron.d/djiwa-auth-backup`, retensi 14 hari, tidak memangkas bila user < 50% pelanggan).
 - `scripts/djiwa status` memperingatkan bila jumlah user jauh di bawah pelanggan.
+
+Tambahan 2026-11-04 (saldo Rp 0): `pos.customer_wallets` ikut kosong (tinggal 1 baris) dan `pos.customer_wallet_topups` kosong, sehingga Saldo di admin/customer 0 walau `customer_wallet_ledger` utuh. Dipulihkan dari dump 27 Okt: 394 dompet + 137 top-up, lalu mutasi ledger setelah dump diterapkan (hanya 1 pelanggan). Hasil: 351 pelanggan bersaldo, total Rp 852.160, 0 selisih terhadap `balance_after` ledger. Backup sebelum pemulihan: `/opt/backups/auth-restore-*/pre-wallet-restore.dump`. Backup harian kini juga mencakup tabel dompet.

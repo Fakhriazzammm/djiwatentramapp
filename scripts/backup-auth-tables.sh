@@ -1,5 +1,5 @@
 #!/bin/bash
-# Backup harian tabel auth + pelanggan (user/account/investor/customers). Dipasang di /usr/local/sbin
+# Backup harian tabel auth + pelanggan + dompet (user/account/investor/customers/wallet*). Dipasang di /usr/local/sbin
 # dan dijalankan root via /etc/cron.d/djiwa-auth-backup. Retensi 14 hari.
 # Tidak memangkas backup lama bila jumlah user mencurigakan (< 50% pelanggan), supaya backup
 # sehat tidak tergantikan oleh backup kosong.
@@ -11,7 +11,8 @@ users=$($P -c 'select count(*) from public."user"'); cust=$($P -c 'select count(
 out="$DIR/auth-$(date +%Y%m%d-%H%M%S)-u${users}-c${cust}.dump"
 docker exec supabase-db pg_dump -U supabase_admin -d postgres -Fc \
 	-t public.user -t public.account -t public.investor_leads -t public.investor_memberships \
-	-t public.customer_google_calendar_connections -t pos.customers > "$out"
+	-t public.customer_google_calendar_connections -t pos.customers \
+	-t pos.customer_wallets -t pos.customer_wallet_topups -t pos.customer_wallet_ledger -t pos.customer_wallet_holds > "$out"
 chmod 600 "$out"
 if [ "$users" -lt $((cust / 2)) ]; then
 	echo "$(date -Is) PERINGATAN: user=$users jauh di bawah customers=$cust; backup lama TIDAK dipangkas ($out)" | tee -a /var/log/djiwa-auth-backup.log >&2
