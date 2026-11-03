@@ -2,10 +2,73 @@ name: Deploy to VPS
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      apps:
+        description: "Daftar app dipisah koma (pos,karyawan,customer,admin,djiwapay) atau 'all'"
+        required: true
+        default: all
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  detect:
     runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.pick.outputs.apps }}
     steps:
-      - name: Deploy to VPS
-        run: echo "Deploy handled by VPS cron — push only triggers notifications"
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: pick
+        env:
+          BEFORE: ${{ github.event.before }}
+          MANUAL: ${{ github.event.inputs.apps }}
+        run: |
+          ALL="pos karyawan customer admin djiwapay"
+          if [ -n "$MANUAL" ]; then
+            if [ "$MANUAL" = all ]; then sel="$ALL"; else sel="${MANUAL//,/ }"; fi
+          else
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = 0000000000000000000000000000000000000000 ] || ! git cat-file -e "$BEFORE" 2>/dev/null; then
+              files=$(git diff --name-only HEAD~1 HEAD)
+            else
+              files=$(git diff --name-only "$BEFORE" HEAD)
+            fi
+            sel=""
+            add() { [[ " $sel " == *" $1 "* ]] || sel="$sel $1"; }
+            while read -r f; do
+              case "$f" in
+                apps/pos/*) add pos ;;
+                apps/karyawan/*) add karyawan ;;
+                apps/customer/*|supabase/functions/customer-auth/*|supabase/functions/djiwa-run/*) add customer ;;
+                apps/admin/*) add admin ;;
+                apps/djiwapay/*|packages/djiwapay-*) add djiwapay ;;
+                packages/*|package.json|bun.lock|turbo.json|scripts/ci-deploy.sh)
+                  for a in $ALL; do add $a; done ;;
+              esac
+            done <<< "$files"
+          fi
+          sel=$(echo $sel | xargs -n1 | sort -u | paste -sd, -)
+          echo "apps=$sel" >> "$GITHUB_OUTPUT"
+          echo "Apps to deploy: ${sel:-<none>}"
+
+  deploy:
+    needs: detect
+    if: needs.detect.outputs.apps != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Deploy via SSH
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          SSH_HOST: ${{ secrets.VPS_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          APPS: ${{ needs.detect.outputs.apps }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # Forced command di VPS menjalankan scripts/ci-deploy.sh <sha> <apps>
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 \
+            "ubuntu@$SSH_HOST" "$GITHUB_SHA $APPS"

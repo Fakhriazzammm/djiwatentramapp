@@ -239,3 +239,24 @@ Gejala: Google login di `djiwatentram.web.id/masuk` menampilkan "Load failed" (S
 Perbaikan: di `/etc/nginx/sites-available/djiwatentram.conf` (server block customer, 443) ada `if ($host = www.djiwatentram.web.id) { return 301 https://djiwatentram.web.id$request_uri; }`. Jangan hapus saat edit/regenerasi vhost. Verifikasi: `curl -sI https://www.djiwatentram.web.id/masuk` harus 301 ke apex.
 
 Catatan terpisah: proxy ke `*.workers.dev` (customer-community/stories) sesekali mencatat `connect() ... [IPv6] Network is unreachable` di error.log karena VPS tanpa IPv6; nginx jatuh ke IPv4 sehingga hanya menambah latency.
+
+## Auto-deploy GitHub Actions (2026-11-03)
+
+Push ke `main` -> `.github/workflows/deploy-vps.yml` menentukan app yang berubah dari path file lalu SSH ke VPS.
+
+| Path berubah | App yang di-deploy |
+| --- | --- |
+| `apps/pos/**`, `apps/karyawan/**`, `apps/admin/**` | app terkait |
+| `apps/customer/**`, `supabase/functions/{customer-auth,djiwa-run}/**` | `customer` (+ edge function) |
+| `apps/djiwapay/**`, `packages/djiwapay-*` | `djiwapay` |
+| `packages/**` lain, `package.json`, `bun.lock`, `turbo.json` | semua (5 app) |
+
+Manual: Actions -> "Deploy to VPS" -> Run workflow, isi `apps` (`all` atau `pos,admin`). Migrasi SQL TIDAK ikut auto-deploy.
+
+Mekanisme di VPS:
+- Key SSH khusus (`github-actions-djiwa-deploy`) di `~ubuntu/.ssh/authorized_keys` dengan `restrict,command="/usr/local/sbin/djiwa-ci-deploy"`; ia hanya bisa menjalankan `<sha> <apps>`.
+- Wrapper mengambil `scripts/ci-deploy.sh` dari commit `<sha>` (tidak perlu update manual), memakai `flock`, cek disk >= 3G.
+- Build di worktree bersih `/opt/djiwa-release` (`.env` disalin dari checkout produksi), bukan di checkout produksi yang kotor. Setelah build sukses, `apps/<app>/dist` ditukar atomik; bila verifikasi HTTP gagal, dist lama dikembalikan.
+
+GitHub secrets yang diperlukan: `VPS_SSH_KEY` (private key `~/.ssh/djiwa_ci_deploy` di Mac), `VPS_HOST` (`43.173.20.62`), `VPS_KNOWN_HOSTS` (output `ssh-keyscan -t ed25519 43.173.20.62`).
+Wrapper (`/usr/local/sbin/djiwa-ci-deploy`) dipasang manual sekali; bila perlu diubah, edit lewat SSH admin.
