@@ -1,7 +1,7 @@
 {
-  "version": "0.2.531",
-  "commitHash": "7851ab0",
-  "message": "feat(pos): complete mobile-first workflow polish",
-  "buildDate": "2026-10-23",
-  "generatedAt": "2026-10-23T15:37:15.682Z"
+  "version": "0.2.569",
+  "commitHash": "d0cf1b5",
+  "message": "fix(pos): refresh shift status after opening",
+  "buildDate": "2026-10-29",
+  "generatedAt": "2026-10-29T05:18:26.485Z"
 }

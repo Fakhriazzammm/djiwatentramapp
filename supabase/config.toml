@@ -82,6 +82,10 @@ verify_jwt = false
 [functions.biteship-rates]
 enabled = true
 verify_jwt = false
+
+[functions.admin-protected-read]
+enabled = true
+verify_jwt = false
 [functions.product-reviews]
 enabled = true
 verify_jwt = false

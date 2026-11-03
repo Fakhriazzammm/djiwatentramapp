@@ -127,6 +127,8 @@ async function fetchPublicUsersViaRestApi() {
 const YUMI_USERS_CACHE_KEY = "yumi_users_cache";
 const YUMI_USERS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+const PUBLIC_USERS_TIMEOUT_MS = 10_000;
+
 const inFlightPromises = new Map<string, Promise<YumiPublicUser[]>>();
 
 export async function listPublicYumiUsers({ forceRefresh }: { forceRefresh?: boolean } = {}) {
@@ -203,7 +205,15 @@ export async function listPublicYumiUsers({ forceRefresh }: { forceRefresh?: boo
 	inFlightPromises.set(dedupKey, promise);
 
 	try {
-		const result = await promise;
+		// A hung backend must surface as an error instead of an endless skeleton.
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const timeout = new Promise<never>((_, reject) => {
+			timer = setTimeout(
+				() => reject(new Error("Server tidak menjawab")),
+				PUBLIC_USERS_TIMEOUT_MS
+			);
+		});
+		const result = await Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 
 		// Cache result in localStorage
 		if (typeof window !== "undefined") {

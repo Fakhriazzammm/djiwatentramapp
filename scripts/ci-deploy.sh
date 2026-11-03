@@ -50,15 +50,27 @@ for app in "${LIST[@]}"; do
 		echo "BUILD GAGAL: $app (dist produksi tidak diubah)"; FAILED=1; continue
 	fi
 	dest="$CANONICAL/apps/$app/dist"
-	rm -rf "$dest.new" "$dest.prev"
-	cp -a "apps/$app/dist" "$dest.new"
-	[ -e "$dest" ] && mv "$dest" "$dest.prev"
-	mv "$dest.new" "$dest"
+	prev=""
+	if [ -L "$dest" ]; then
+		# Konvensi djiwapay: release dir + symlink; swap = ganti symlink secara atomik.
+		prev="$(readlink "$dest")"
+		rel="/opt/djiwapay-releases/$app-$(date +%Y%m%d-%H%M%S)-${SHA:0:7}"
+		sudo mkdir -p "$rel" && sudo cp -a "apps/$app/dist/." "$rel/"
+		sudo ln -sfn "$rel" "$dest.tmp" && sudo mv -T "$dest.tmp" "$dest"
+	else
+		sudo rm -rf "$dest.new" "$dest.prev"
+		sudo cp -a "apps/$app/dist" "$dest.new"
+		[ -e "$dest" ] && sudo mv "$dest" "$dest.prev"
+		sudo mv "$dest.new" "$dest"
+	fi
 	if curl -fsS -m 20 -o /dev/null "https://${DOMAIN[$app]}/"; then
 		echo "OK $app -> https://${DOMAIN[$app]}/ ($(curl -fsS -m 10 "https://${DOMAIN[$app]}/version.json" 2>/dev/null | tr -d '\n ' | cut -c1-120))"
-		rm -rf "$dest.prev"
+		[ -z "$prev" ] && sudo rm -rf "$dest.prev"
+		if [ -L "$dest" ]; then ls -dt /opt/djiwapay-releases/$app-* 2>/dev/null | tail -n +4 | xargs -r sudo rm -rf; fi
 	else
-		echo "VERIFIKASI GAGAL $app -> rollback"; rm -rf "$dest"; [ -e "$dest.prev" ] && mv "$dest.prev" "$dest"; FAILED=1
+		echo "VERIFIKASI GAGAL $app -> rollback"; FAILED=1
+		if [ -n "$prev" ]; then sudo ln -sfn "$prev" "$dest.tmp" && sudo mv -T "$dest.tmp" "$dest"
+		else sudo rm -rf "$dest"; [ -e "$dest.prev" ] && sudo mv "$dest.prev" "$dest"; fi
 	fi
 done
 
