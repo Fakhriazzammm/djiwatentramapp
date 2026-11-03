@@ -1,4 +1,3 @@
-import path from "node:path";
 import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
@@ -7,7 +6,8 @@ import { VitePWA } from "vite-plugin-pwa";
 import { defineConfig } from "vite";
 import { customerPwaSettings } from "./src/pwa-settings";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Hindari nama `__dirname`: bentrok dengan injeksi Vite dan gagal di Node 18 (VPS).
+const srcDir = fileURLToPath(new URL("./src", import.meta.url));
 
 export default defineConfig({
 	plugins: [
@@ -82,7 +82,7 @@ export default defineConfig({
 	],
 	resolve: {
 		alias: {
-			"@": path.resolve(__dirname, "./src"),
+			"@": srcDir,
 		},
 	},
 	server: {
