@@ -231,3 +231,11 @@ Untuk backend, hentikan perubahan hanya setelah melihat status service dan log. 
 - [ ] Frontend dibackup sebelum `rsync --delete`.
 - [ ] `nginx -t`, service status, HTTP 200 frontend, dan HTTP 401 tanpa session sudah diverifikasi.
 - [ ] Commit release dan lokasi backup dicatat pada handoff.
+
+### Canonical host `www` -> apex (2026-11-03)
+
+Gejala: Google login di `djiwatentram.web.id/masuk` menampilkan "Load failed" (Safari iOS), kadang `state_mismatch`. Penyebab: `www.djiwatentram.web.id` menyajikan app langsung, sedangkan CORS/cookie/state OAuth Better Auth hanya memercayai origin apex, sehingga preflight `OPTIONS /api/auth/sign-in/social` dari origin `www` tidak punya `Access-Control-Allow-Origin`.
+
+Perbaikan: di `/etc/nginx/sites-available/djiwatentram.conf` (server block customer, 443) ada `if ($host = www.djiwatentram.web.id) { return 301 https://djiwatentram.web.id$request_uri; }`. Jangan hapus saat edit/regenerasi vhost. Verifikasi: `curl -sI https://www.djiwatentram.web.id/masuk` harus 301 ke apex.
+
+Catatan terpisah: proxy ke `*.workers.dev` (customer-community/stories) sesekali mencatat `connect() ... [IPv6] Network is unreachable` di error.log karena VPS tanpa IPv6; nginx jatuh ke IPv4 sehingga hanya menambah latency.
