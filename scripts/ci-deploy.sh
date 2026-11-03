@@ -36,6 +36,13 @@ for f in .env $(cd "$CANONICAL" && find apps packages -maxdepth 3 -name '.env' -
 	[ -f "$CANONICAL/$f" ] && install -D -m 600 "$CANONICAL/$f" "$RELEASE/$f"
 done
 
+# VPS memakai Node 18, sedangkan dependensi build (unplugin 3) butuh Node >= 20.11
+# (import.meta.dirname). Jalankan semua skrip "node" selama build lewat runtime Bun.
+NODE_SHIM="$RELEASE/.node-shim"
+mkdir -p "$NODE_SHIM"
+ln -sfn "$(command -v bun)" "$NODE_SHIM/node"
+export PATH="$NODE_SHIM:$PATH"
+
 echo "== bun install ($SHA)"
 bun install --frozen-lockfile
 
