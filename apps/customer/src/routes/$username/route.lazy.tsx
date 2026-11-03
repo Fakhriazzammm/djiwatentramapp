@@ -42,14 +42,6 @@ function loadGuestData(): GuestData | null {
 	}
 }
 
-function greetingWord(): string {
-	const hour = new Date().getHours();
-	if (hour < 11) return "Selamat pagi";
-	if (hour < 15) return "Selamat siang";
-	if (hour < 18) return "Selamat sore";
-	return "Selamat malam";
-}
-
 export const Route = createLazyFileRoute("/$username")({
 	component: MemberHomePage,
 });
@@ -284,8 +276,7 @@ function MemberHomePage() {
 		return (
 			<div className="app-page min-h-app">
 				<div className="app-shell mx-auto flex min-h-app max-w-md flex-col bg-background">
-					<CustomerHomeHeader logoUrl={logoUrl} storeName={storeName} eyebrow={greetingWord()} title={guestData.name} />
-					<CustomerLiveShiftIndicator />
+					<CustomerHomeHeader logoUrl={logoUrl} storeName={storeName} title={guestData.name} />
 					<main className="flex-1 space-y-3 px-3 py-3 pb-32">
 						<B2BPromoBanner href={b2bChannelHref} />
 						<section className="rounded-3xl border border-border bg-card p-4 shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Mulai dari sini</p><p className="mt-1 text-sm font-black">Pesan menu favoritmu dengan mudah.</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Masuk sebagai member untuk memakai Djiwa Pay dan mendapatkan benefit.</p></section>
@@ -327,7 +318,6 @@ function MemberHomePage() {
 					<CustomerHomeHeader
 						logoUrl={logoUrl}
 						storeName={storeName}
-						eyebrow={greetingWord()}
 						title={displayName}
 						action={
 						<div className="flex items-center gap-1.5">
@@ -347,7 +337,7 @@ function MemberHomePage() {
 									type="button"
 									onClick={() => navigate({ to: "/$username/notifikasi", params: { username } })}
 									aria-label="Buka notifikasi"
-									className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-sm transition-transform duration-[180ms] active:scale-[.97] ${unreadNotificationCount > 0 ? "animate-djiwa-notification-bell" : ""}`}
+									className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/35 bg-white/20 text-white shadow-[0_2px_12px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-transform duration-[180ms] active:scale-[.97] ${unreadNotificationCount > 0 ? "animate-djiwa-notification-bell" : ""}`}
 								>
 									<Djiwa3DIcon name="notifications-alerts" size="micro" alt="" className="h-5 w-5 object-contain" />
 									{unreadNotificationCount > 0 ? <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-background bg-red-500 px-1 text-[9px] font-black leading-none text-white" aria-label={`${unreadNotificationCount} notifikasi belum dibaca`}>{unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}</span> : null}
@@ -355,7 +345,6 @@ function MemberHomePage() {
 							</div>
 						}
 					/>
-					<CustomerLiveShiftIndicator />
 					{!isContactComplete && missingContactFields.length > 0 ? <div className="mx-3 mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-amber-950 shadow-sm" role="alert"><div className="flex items-start gap-2.5"><span className="mt-0.5 text-base">!</span><div className="min-w-0 flex-1"><p className="text-xs font-black">Lengkapi data akun</p><p className="mt-0.5 text-[11px] leading-relaxed text-amber-900/80">{getCustomerContactMessage(missingContactFields)}</p></div><button className="min-h-11 shrink-0 rounded-xl bg-amber-600 px-3 py-2 text-[11px] font-black text-white active:scale-[.97]" onClick={() => navigate({ to: "/$username/profile", params: { username } })} type="button">Lengkapi</button></div></div> : null}
 					<main className="flex-1 space-y-3 px-3 py-3 pb-32">
 						<CustomerStoryRail />

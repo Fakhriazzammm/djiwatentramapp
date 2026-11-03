@@ -4,7 +4,7 @@ import { Radio } from "lucide-react";
 import { useHybridShiftStatus } from "@/hooks/use-hybrid-pos-data";
 import { cn } from "@/lib/utils";
 
-export function CustomerLiveShiftIndicator() {
+export function CustomerLiveShiftIndicator({ variant = "bar" }: { variant?: "bar" | "hero" } = {}) {
 	const shiftStatus = useHybridShiftStatus();
 	const ongoingShift = shiftStatus?.ongoingShift;
 	const isLive = Boolean(shiftStatus?.isOpen && ongoingShift);
@@ -21,6 +21,18 @@ export function CustomerLiveShiftIndicator() {
 		: shiftStatus === null
 			? "border-amber-200/70 bg-amber-50/80 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-100"
 			: "border-border/70 bg-muted/40 text-muted-foreground";
+
+	if (variant === "hero") {
+		return (
+			<div className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/35 bg-white/20 px-3 py-1.5 text-[12px] font-semibold text-white shadow-[0_2px_12px_rgba(0,0,0,0.12)] backdrop-blur-xl" role="status" aria-live="polite">
+				<span className={cn("h-2 w-2 shrink-0 rounded-full", isLive ? "bg-emerald-400" : shiftStatus === null ? "bg-amber-300" : "bg-white/70")} aria-hidden="true" />
+				<span className="min-w-0 truncate">
+					{label}
+					{isLive ? <><span className="mx-1 opacity-70">•</span>{shiftName}</> : null}
+				</span>
+			</div>
+		);
+	}
 
 	return (
 		<div className={cn("mx-auto flex w-full max-w-md items-center gap-1.5 border-b px-3 py-1.5 text-[11px]", tone)} role="status" aria-live="polite">

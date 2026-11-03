@@ -3,6 +3,9 @@ import type { ReactNode } from "react";
 import type { CustomerUser } from "@/hooks/use-customer-auth";
 import { currency } from "@/components/customer/types";
 import { CUSTOMER_LOGO_FALLBACK } from "@/lib/asset-url";
+import { getDayPeriod, greetingForPeriod, useDayPeriod } from "@/lib/day-period";
+import { CustomerHeroBackdrop } from "@/components/customer/customer-home-hero";
+import { CustomerLiveShiftIndicator } from "@/components/customer/customer-shell";
 
 export function CustomerHomeHeader({
   logoUrl,
@@ -13,31 +16,39 @@ export function CustomerHomeHeader({
 }: {
   logoUrl: string;
   storeName: string;
-  eyebrow: string;
+  /** Default: sapaan sesuai waktu hari, mis. "Selamat pagi". */
+  eyebrow?: string;
   title: string;
   action?: ReactNode;
 }) {
+  const period = useDayPeriod();
+  const greeting = eyebrow ?? greetingForPeriod(period);
   return (
-    <header className="sticky top-0 z-30 border-b border-black/[0.04] bg-background/90 px-4 py-3 shadow-[0_1px_0_rgba(15,23,42,0.02)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
-      <div className="flex min-h-11 items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 p-1.5 shadow-[0_4px_16px_rgba(15,23,42,0.06)] ring-1 ring-black/[0.04]">
-            <img alt={storeName} className="h-full w-full rounded-full object-contain" src={logoUrl || CUSTOMER_LOGO_FALLBACK} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = CUSTOMER_LOGO_FALLBACK; }} />
+    <div className="relative isolate min-h-[290px]">
+      <CustomerHeroBackdrop period={period} />
+      <header className="px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)] text-white">
+        <div className="flex min-h-11 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white p-1.5 shadow-[0_4px_16px_rgba(15,23,42,0.18)]">
+              <img alt={storeName} className="h-full w-full rounded-full object-contain" src={logoUrl || CUSTOMER_LOGO_FALLBACK} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = CUSTOMER_LOGO_FALLBACK; }} />
+            </div>
+            <div className="min-w-0 [text-shadow:0_1px_10px_rgba(0,0,0,0.5)]">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/90">{greeting}</p>
+              <p className="truncate font-display text-[24px] font-black leading-tight tracking-[-0.02em]">{title}</p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">{eyebrow}</p>
-            <p className="truncate font-display text-[17px] font-black leading-tight tracking-[-0.02em] text-foreground">{title}</p>
-          </div>
+          {action ? <div className="flex min-h-11 shrink-0 items-center">{action}</div> : <span className="h-11 w-11" aria-hidden="true" />}
         </div>
-        {action ? <div className="flex min-h-11 shrink-0 items-center">{action}</div> : <span className="h-11 w-11" aria-hidden="true" />}
+      </header>
+      <div className="px-4 pt-2">
+        <CustomerLiveShiftIndicator variant="hero" />
       </div>
-    </header>
+    </div>
   );
 }
 
 export function CustomerGreeting({ name }: { name: string }) {
-  const hour = new Date().getHours();
-  const greeting = hour < 11 ? "Selamat pagi" : hour < 15 ? "Selamat siang" : hour < 18 ? "Selamat sore" : "Selamat malam";
+  const greeting = greetingForPeriod(getDayPeriod());
   return <section className="px-0.5 pt-1" aria-labelledby="customer-greeting-title"><p className="text-[11px] font-semibold text-muted-foreground">{greeting}</p><h1 id="customer-greeting-title" className="mt-0.5 font-display text-[27px] font-black leading-tight tracking-tight">{name}</h1></section>;
 }
 
