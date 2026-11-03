@@ -286,3 +286,15 @@ Pencegahan:
 - `scripts/djiwa status` memperingatkan bila jumlah user jauh di bawah pelanggan.
 
 Tambahan 2026-11-04 (saldo Rp 0): `pos.customer_wallets` ikut kosong (tinggal 1 baris) dan `pos.customer_wallet_topups` kosong, sehingga Saldo di admin/customer 0 walau `customer_wallet_ledger` utuh. Dipulihkan dari dump 27 Okt: 394 dompet + 137 top-up, lalu mutasi ledger setelah dump diterapkan (hanya 1 pelanggan). Hasil: 351 pelanggan bersaldo, total Rp 852.160, 0 selisih terhadap `balance_after` ledger. Backup sebelum pemulihan: `/opt/backups/auth-restore-*/pre-wallet-restore.dump`. Backup harian kini juga mencakup tabel dompet.
+
+### Pengguna lama di `www` terjebak "Load failed" (2026-11-04)
+
+Setelah `www` di-redirect ke apex, pengguna yang sebelumnya memakai `www.djiwatentram.web.id` (PWA/tab lama) tetap memegang service worker dan build lama. Build lama memanggil `api.djiwatentram.web.id/v1/auth` lintas origin dari origin `www` (diblok CORS), dan `sw.js` di `www` ikut ter-redirect sehingga browser tidak bisa memperbaruinya (redirect pada skrip service worker dilarang).
+
+Perbaikan di `/etc/nginx/sites-available/djiwatentram.conf`:
+- `map "$host$uri" $djiwa_www_redirect`: redirect 301 www -> apex untuk semua path **kecuali** `/sw.js`.
+- `location = /sw.js`: bila host `www`, sajikan service worker pembersih (hapus semua cache, daftar keluar, arahkan klien ke `https://djiwatentram.web.id/`); host apex tetap menyajikan `sw.js` Workbox.
+
+Verifikasi: `curl -s https://www.djiwatentram.web.id/sw.js` harus berisi kode pembersih (200), `curl -sI https://www.djiwatentram.web.id/masuk` harus 301 ke apex. Setelah semua pengguna lama berpindah (lihat log nginx: tidak ada lagi request ber-Referer `www`), kode pembersih boleh dipertahankan; jangan dihapus tanpa memastikan itu.
+
+Catatan deploy: CI membangun lewat runtime Bun (shim `node` di `/opt/djiwa-release/.node-shim`) karena Node 18 di VPS terlalu lama untuk `unplugin@3`.
