@@ -155,6 +155,8 @@ cmd_status() {
 		printf "  %-62s %s\n" "$u" "$(curl -s -o /dev/null -m 10 -w '%{http_code}' $u)"
 	done
 	echo "== www redirect"; printf "  www -> %s\n" "$(curl -sI -m 10 https://www.djiwatentram.web.id/ | grep -i '^location' | tr -d '\r')"
+	echo "== auth vs pelanggan"; local au cu; au=$(vps "docker exec supabase-db psql -U postgres -At -c 'select count(*) from public.\"user\"'" 2>/dev/null); cu=$(vps "docker exec supabase-db psql -U postgres -At -c 'select count(*) from pos.customers'" 2>/dev/null)
+	if [ -n "$au" ] && [ -n "$cu" ]; then printf "  user=%s customers=%s %s\n" "$au" "$cu" "$([ "$au" -lt $((cu / 2)) ] && echo '⚠ PERINGATAN: data auth jauh di bawah pelanggan (cek backup /opt/backups/auth-daily)' || echo OK)"; fi
 	echo "== VPS"; vps 'uptime; df -h / | tail -1; free -m | sed -n 2p; systemctl is-active nginx better-auth; docker ps --format "{{.Names}} {{.Status}}" | grep -v "Up" || echo "docker: semua Up"' 2>&1 | sed 's/^/  /'
 }
 

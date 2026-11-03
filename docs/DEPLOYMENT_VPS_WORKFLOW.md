@@ -273,3 +273,14 @@ Wrapper (`/usr/local/sbin/djiwa-ci-deploy`) dipasang manual sekali; bila perlu d
 | Produksi | `status`, `deploy <app[,app]\|all>`, `logs <nginx\|auth\|edge\|db> [n]`, `vps <perintah>` |
 
 Catatan keamanan: `db sql` berjalan dalam transaksi `READ ONLY` dan menolak `commit/rollback/begin/\meta`; perubahan skema selalu lewat file migrasi (`db new`) yang ditinjau dulu. `deploy` memakai key CI terbatas dan hanya men-deploy commit HEAD yang sudah ada di `origin/main`.
+
+## Insiden hilangnya data login (2026-11-04)
+
+Gejala: admin/customer menampilkan pelanggan tanpa riwayat; login Google membuat pelanggan baru yang kosong. Penyebab: `public."user"` terhapus massal (~790 baris) antara 2026-11-02 dan 2026-11-03; `account`, `session`, `investor_*`, `customer_google_calendar_*` ikut terhapus lewat `ON DELETE CASCADE`. `pos.customers` (data bisnis) tidak terdampak. Pelaku penghapusan belum teridentifikasi.
+
+Pemulihan: dari `/opt/backups/db-20261027-0040/postgres.dump` dipulihkan 730 user, 737 akun, 1 investor lead, 1 membership (hanya menambah baris yang belum ada). Backup sebelum pemulihan: `/opt/backups/auth-restore-*/pre-restore.dump`. Tabel staging: schema `recon_stage` (`dump_*`).
+
+Pencegahan:
+- Migrasi `20261104000000_betterauth_adopt_existing_customer.sql`: trigger BEFORE INSERT pada `public."user"` memakai ulang `source_id` pelanggan yang emailnya sama (hanya email terverifikasi) sehingga pelanggan yang daftar setelah 27 Okt tinggal login ulang dan datanya kembali.
+- Backup harian 03:15: `/usr/local/sbin/djiwa-auth-backup` (sumber `scripts/backup-auth-tables.sh`, cron `/etc/cron.d/djiwa-auth-backup`, retensi 14 hari, tidak memangkas bila user < 50% pelanggan).
+- `scripts/djiwa status` memperingatkan bila jumlah user jauh di bawah pelanggan.
