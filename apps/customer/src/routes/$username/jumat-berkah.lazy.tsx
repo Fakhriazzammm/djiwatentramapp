@@ -259,7 +259,7 @@ function DonateForm({ overview, username, fullName, sourceId, email }: { overvie
 
       <div className="fixed inset-x-0 bottom-[calc(62px+max(1rem,var(--safe-area-bottom,0px)))] z-40 mx-auto w-full max-w-md bg-gradient-to-t from-background via-background/95 to-transparent px-3 pb-5 pt-6">
         <button type="button" onClick={() => void submit()} disabled={!canSubmit} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-[#0F6B58] text-base font-extrabold text-white shadow-lg transition active:scale-[.98] disabled:bg-muted disabled:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60">
-          {submitting ? <><Loader2 className="h-5 w-5 animate-spin" /> Menyiapkan pembayaran…</> : `Bayar ${formatRupiah(amount)} dengan Mayar`}
+          {submitting ? <><Loader2 className="h-5 w-5 animate-spin" /> Menyiapkan pembayaran…</> : `Bayar ${formatRupiah(amount)}`}
         </button>
       </div>
     </div>
