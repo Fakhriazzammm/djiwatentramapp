@@ -273,6 +273,17 @@ Deno.serve(async (req) => {
     if (action === "hold") return response({ success: true, result: await createHold(body) });
     if (action === "capture") return response({ success: true, result: await mutateHold(body, "capture") });
     if (action === "release") return response({ success: true, result: await mutateHold(body, "release") });
+    if (action === "find-order") {
+      const sourceId = text(body.sourceId);
+      await ownedCustomer(sourceId, text(body.email));
+      const key = text(body.idempotencyKey);
+      if (!key) return fail("INVALID_INPUT", "idempotencyKey wajib diisi");
+      const { data, error } = await admin.schema("pos").from("orders")
+        .select("source_id").eq("customer_source_id", sourceId)
+        .eq("payment_method", "wallet").eq("idempotency_key", key).maybeSingle();
+      if (error) throw error;
+      return response({ success: true, orderId: data?.source_id ?? null });
+    }
     if (action === "settle-order") return response({ success: true, result: await settleOrder(body) });
     if (action === "admin-adjustment") return response({ success: true, result: await adminAdjust(body) });
     if (action === "admin-update-customer") return response({ success: true, result: await adminUpdateCustomer(body) });
