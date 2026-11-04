@@ -12,7 +12,7 @@ type StoryGroup = { ownerSourceId: string; ownerLabel: string; stories: Customer
 
 const sortNewest = (a: CustomerStory, b: CustomerStory) => Date.parse(b.createdAt) - Date.parse(a.createdAt);
 
-export function CustomerStoryRail() {
+export function CustomerStoryRail({ variant = "rail", onOpenCommunity }: { variant?: "rail" | "tile"; onOpenCommunity?: () => void } = {}) {
   const { customer } = useCustomerAuth();
   const { stories, state, error, refresh } = useCustomerStories(Boolean(customer));
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -69,6 +69,65 @@ export function CustomerStoryRail() {
   if (!customer) return null;
 
   const allGroupSeen = (group: StoryGroup) => group.stories.every((story) => viewedIds.has(story.storyId));
+
+  if (variant === "tile") {
+    const shown = [ownGroup, ...otherGroups].filter((group): group is StoryGroup => Boolean(group)).slice(0, 3);
+    return (
+      <section className="flex h-[196px] min-w-0 flex-col justify-between rounded-[26px] bg-[#FCE9F2] p-3.5" aria-labelledby="customer-stories-title">
+        <div>
+          <p className="text-[9.5px] font-bold uppercase tracking-[0.16em] text-[#9A3F6F]">Komunitas</p>
+          <h2 id="customer-stories-title" className="mt-1 font-display text-[19px] font-black leading-[1.15] text-[#5A2A44]">Cerita hari ini</h2>
+          {state === "ready" && shown.length === 0 ? <p className="mt-1.5 text-[11px] leading-[1.4] text-[#7A3A5C]">Bagikan cerita pertamamu ke komunitas Djiwa.</p> : null}
+          {state === "disabled" ? <p className="mt-1.5 text-[11px] leading-[1.4] text-[#7A3A5C]" role="status">Story sedang disiapkan untuk akun ini.</p> : null}
+          {state === "error" ? <p className="mt-1.5 text-[11px] leading-[1.4] text-destructive" role="alert">{error}</p> : null}
+        </div>
+        <div className="flex items-center gap-2">
+          {state === "loading" ? <span className="h-11 w-24 animate-pulse rounded-full bg-white/60" aria-label="Memuat story" role="status" /> : null}
+          {state === "error" ? (
+            <button type="button" onClick={() => void refresh()} className="flex min-h-11 items-center gap-1 rounded-full bg-white/70 px-3 text-[11px] font-bold text-[#9A3F6F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Coba lagi
+            </button>
+          ) : null}
+          {state === "ready" ? (
+            <>
+              {shown.map((group) => {
+                const own = group.ownerSourceId === customer.sourceId;
+                const seen = allGroupSeen(group);
+                const first = group.stories[0];
+                return (
+                  <button
+                    key={group.ownerSourceId}
+                    type="button"
+                    onClick={() => openGroup(group, own)}
+                    aria-label={own ? "Buka cerita Anda" : `Buka story ${group.ownerLabel}`}
+                    className="relative h-11 w-11 shrink-0 rounded-full p-[2px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    style={seen ? { background: "#D9C2CF" } : { background: "conic-gradient(from 210deg, #1a5dc6, #7c5ce0, #3aa6e0, #1a5dc6)" }}
+                  >
+                    <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-[#FCE9F2] bg-white text-sm font-black text-primary">
+                      {first?.ownerPhotoUrl ? <img src={first.ownerPhotoUrl} alt="" className="h-full w-full object-cover" /> : group.ownerLabel.slice(0, 1).toUpperCase()}
+                    </span>
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setUploadOpen(true)}
+                aria-label="Bagikan cerita"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-[#C9769F] text-[#C9769F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Plus className="h-5 w-5" aria-hidden="true" />
+              </button>
+              {onOpenCommunity ? (
+                <button type="button" onClick={onOpenCommunity} className="ml-auto min-h-11 text-[11px] font-extrabold text-[#9A3F6F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Buka →</button>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+        <StoryUploadSheet open={uploadOpen} onOpenChange={setUploadOpen} onSuccess={() => void refresh()} />
+        <StoryViewer story={viewerStory} stories={orderedStories} ownSourceId={customer.sourceId} onNavigate={handleNavigate} onClose={() => setViewerStory(null)} onChanged={() => void refresh()} />
+      </section>
+    );
+  }
 
   return (
     <section className="min-w-0" aria-labelledby="customer-stories-title">

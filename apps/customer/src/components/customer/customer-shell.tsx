@@ -149,6 +149,7 @@ export function CustomerPrimaryCta({
 
 export function CustomerBottomNav({
 	items,
+	primaryLabel = "Pesan",
 }: {
 	items: Array<{
 		active?: boolean;
@@ -157,41 +158,60 @@ export function CustomerBottomNav({
 		label: string;
 		onSelect?: () => void;
 	}>;
+	/** Item dengan label ini tampil sebagai tombol aksi bulat terpisah (pola tab bar iOS 26). */
+	primaryLabel?: string;
 }) {
 	const shouldReduceMotion = useReducedMotion();
 	const spring = { type: "spring" as const, stiffness: 420, damping: 28, mass: 0.7 };
+	const shiftStatus = useHybridShiftStatus();
+	const isLive = Boolean(shiftStatus?.isOpen && shiftStatus?.ongoingShift);
+	const primary = items.find((item) => item.label === primaryLabel);
+	const tabs = items.filter((item) => item.label !== primaryLabel);
 
 	return (
-		<nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-background/95 px-2 pb-[max(1.25rem,var(--safe-area-bottom))] pt-2.5 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-background/85" aria-label="Navigasi utama">
-			<div className="mx-auto grid max-w-md gap-1" style={{ gridTemplateColumns: `repeat(${Math.max(items.length, 1)}, minmax(0, 1fr))` }}>
-				{items.map((item) => (
+		<nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3.5 pb-[max(1rem,var(--safe-area-bottom))]" aria-label="Navigasi utama">
+			<div className="pointer-events-auto mx-auto flex max-w-md items-center gap-2.5">
+				<div
+					className="flex h-[62px] min-w-0 flex-1 items-center gap-0.5 rounded-full border border-white/80 bg-background/75 p-1.5 shadow-[0_8px_28px_rgba(20,32,63,0.18)] backdrop-blur-2xl backdrop-saturate-[1.8] [@media(prefers-reduced-transparency:reduce)]:bg-background [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none"
+					style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(tabs.length, 1)}, minmax(0, 1fr))` }}
+				>
+					{tabs.map((item) => (
+						<motion.button
+							key={item.label}
+							type="button"
+							whileTap={shouldReduceMotion ? undefined : { scale: 0.92 }}
+							transition={spring}
+							className={cn(
+								"relative flex h-[50px] min-w-11 flex-col items-center justify-center gap-0.5 rounded-full px-1 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+								item.active ? "text-primary" : "text-foreground/70 hover:text-foreground"
+							)}
+							onClick={item.onSelect}
+							aria-current={item.active ? "page" : undefined}
+						>
+							{item.active ? <motion.span layoutId="customer-bottom-nav-active" transition={spring} className="absolute inset-0 rounded-full bg-primary/12" aria-hidden="true" /> : null}
+							{item.badge ? <span className="absolute right-1/4 top-0.5 z-[1]">{item.badge}</span> : null}
+							<span className="relative z-[1] flex h-5 items-center justify-center">{item.icon}</span>
+							<span className="relative z-[1] max-w-full truncate">{item.label}</span>
+						</motion.button>
+					))}
+				</div>
+				{primary ? (
 					<motion.button
-						key={item.label}
 						type="button"
 						whileTap={shouldReduceMotion ? undefined : { scale: 0.92 }}
-						whileHover={shouldReduceMotion ? undefined : { y: -1 }}
 						transition={spring}
+						onClick={primary.onSelect}
+						aria-current={primary.active ? "page" : undefined}
+						aria-label={isLive ? primary.label : `${primary.label} (layanan sedang offline, lihat menu)`}
 						className={cn(
-							"relative flex min-h-14 min-w-11 flex-col items-center justify-center gap-1 rounded-[14px] px-1 text-[11px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-							item.active ? "text-primary" : "text-foreground/70 hover:text-foreground"
+							"relative flex h-[62px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-full border border-white/60 text-[10px] font-extrabold text-white shadow-[0_8px_24px_rgba(11,99,184,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+							isLive ? "bg-primary" : "bg-[#7C8CA3] shadow-[0_8px_24px_rgba(85,101,125,0.3)]"
 						)}
-						onClick={item.onSelect}
-						aria-current={item.active ? "page" : undefined}
 					>
-						{item.active ? <motion.span layoutId="customer-bottom-nav-active" transition={spring} className="absolute inset-0 rounded-[14px] bg-primary/10" aria-hidden="true" /> : null}
-						{item.badge ? <span className="absolute right-1/4 top-0.5 z-[1]">{item.badge}</span> : null}
-						<motion.span
-							animate={item.active && !shouldReduceMotion ? { scale: 1.08, y: -1 } : { scale: 1, y: 0 }}
-							transition={spring}
-							className="relative z-[1] flex h-6 items-center justify-center"
-						>
-							{item.icon}
-						</motion.span>
-						<motion.span animate={item.active && !shouldReduceMotion ? { opacity: 1 } : { opacity: 0.86 }} transition={{ duration: 0.16, ease: "easeOut" }} className="relative z-[1] max-w-full truncate">
-							{item.label}
-						</motion.span>
+						<span className="flex h-5 items-center justify-center rounded-md bg-white/90 px-0.5">{primary.icon}</span>
+						<span>{primary.label}</span>
 					</motion.button>
-				))}
+				) : null}
 			</div>
 		</nav>
 	);

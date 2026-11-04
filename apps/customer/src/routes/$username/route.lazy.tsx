@@ -15,11 +15,8 @@ import { invokeEdgeFunction } from "@/lib/api-helper";
 import { CustomerSplash } from "@/components/customer/customer-entry";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
-import { CustomerHomeHeader, CustomerHomeServiceGrid, CustomerWalletSummary, DjiwaPayOfferCard } from "@/components/customer/customer-home-sections";
-import { CustomerStoryRail } from "@/features/stories/customer-story-rail";
-import { RecentOrdersCarousel } from "@/components/customer/recent-orders-carousel";
-import { CustomerHomeDiscovery } from "@/components/customer/customer-home-discovery";
-import { B2BPromoBanner } from "@/components/customer/b2b-promo-banner";
+import { CustomerHomeHeader } from "@/components/customer/customer-home-sections";
+import { HomeEditorialCard, HomePayAndCommunity, HomeReorderCard, HomeRestaurantInfo, HomeServiceShelf, HomeTopSellers, HomeWholesaleRow } from "@/components/customer/customer-home-editorial";
 import { CustomerLiveOrderCard } from "@/components/customer/customer-live-order-card";
 import { getCustomerPayPath } from "@/lib/customer-pay-navigation";
 
@@ -109,6 +106,23 @@ function MemberHomePage() {
 		{ label: "Saldo", icon: <Djiwa3DIcon name="navigation-wallet" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/saldo"), onSelect: goDjiwaPay },
 		{ label: "Profil", icon: <Djiwa3DIcon name="navigation-profile" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/profile"), onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}/profile`) },
 	];
+
+	const goMenu = () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } });
+	const goCommunity = () => navigate({ to: "/$username/komunitas", params: { username } });
+	const serviceHandlers = {
+		onOrder: goMenu,
+		onPromo: () => navigate({ to: "/$username/promo", params: { username } }),
+		onWallet: goDjiwaPay,
+		onHistory: () => navigate({ to: "/$username/riwayat", params: { username } }),
+		onCommunity: goCommunity,
+		onMerchandise: () => window.location.assign(merchandiseChannelHref),
+		onBooking: () => window.location.assign("https://booking.djiwatentram.web.id/"),
+		onDjiwaRun: () => navigate({ to: "/$username/run", params: { username } }),
+	};
+	const activeOrderCards = customerOrders
+		.filter((order) => !["completed", "cancelled"].includes(order.trackingStatus || order.status))
+		.slice(0, 1)
+		.map((order) => <CustomerLiveOrderCard key={order.id} order={order} onOpen={() => navigate({ to: "/$username/order", params: { username }, search: { step: "receipt", orderId: order.id } })} />);
 
 	// ── Guest data dari localStorage (synchronous, no network) ──
 	// Langsung resolve kalau guest match — tanpa nunggu auth check
@@ -277,23 +291,18 @@ function MemberHomePage() {
 			<div className="app-page min-h-app">
 				<div className="app-shell mx-auto flex min-h-app max-w-md flex-col bg-background">
 					<CustomerHomeHeader logoUrl={logoUrl} storeName={storeName} title={guestData.name} />
-					<main className="flex-1 space-y-3 px-3 py-3 pb-32">
-						<B2BPromoBanner href={b2bChannelHref} />
-						<section className="rounded-3xl border border-border bg-card p-4 shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Mulai dari sini</p><p className="mt-1 text-sm font-black">Pesan menu favoritmu dengan mudah.</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Masuk sebagai member untuk memakai Djiwa Pay dan mendapatkan benefit.</p></section>
-						{customerOrders.filter((order) => !["completed", "cancelled"].includes(order.trackingStatus || order.status)).slice(0, 1).map((order) => <CustomerLiveOrderCard key={order.id} order={order} onOpen={() => navigate({ to: "/$username/order", params: { username }, search: { step: "receipt", orderId: order.id } })} />)}
-						<RecentOrdersCarousel username={username} />
-						<DjiwaPayOfferCard isMember={false} onAction={() => navigate({ to: "/masuk" })} />
-						<CustomerHomeServiceGrid
-							onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })}
-							onPromo={() => navigate({ to: "/$username/promo", params: { username } })}
-							onWallet={goDjiwaPay}
-							onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })}
-							onCommunity={() => navigate({ to: "/$username/komunitas", params: { username } })}
-							onMerchandise={() => window.location.assign(merchandiseChannelHref)}
-							onBooking={() => window.location.assign("https://booking.djiwatentram.web.id/")}
-							onDjiwaRun={() => navigate({ to: "/$username/run", params: { username } })}
-						/>
-						{!isCurrentGuest ? <p className="text-center text-[10px] text-muted-foreground">Halaman ini milik {guestData.name}. <button type="button" className="font-bold underline" onClick={() => navigate({ to: "/daftar" })}>Mulai sebagai dirimu</button></p> : null}
+					<main className="flex-1 px-3 pb-32">
+						<div className="relative -mt-6 space-y-[18px]">
+							{activeOrderCards}
+							<HomeEditorialCard username={username} />
+							<HomePayAndCommunity customer={null} onWallet={goDjiwaPay} onLogin={() => navigate({ to: "/masuk" })} onCommunity={goCommunity} />
+							<HomeServiceShelf {...serviceHandlers} />
+							<HomeTopSellers username={username} />
+							<HomeReorderCard username={username} />
+							<HomeWholesaleRow href={b2bChannelHref} />
+							<HomeRestaurantInfo />
+							{!isCurrentGuest ? <p className="text-center text-[10px] text-muted-foreground">Halaman ini milik {guestData.name}. <button type="button" className="font-bold underline" onClick={() => navigate({ to: "/daftar" })}>Mulai sebagai dirimu</button></p> : null}
+						</div>
 					</main>
 				</div>
 				<CustomerBottomNav items={customerNav} />
@@ -346,23 +355,17 @@ function MemberHomePage() {
 						}
 					/>
 					{!isContactComplete && missingContactFields.length > 0 ? <div className="mx-3 mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-amber-950 shadow-sm" role="alert"><div className="flex items-start gap-2.5"><span className="mt-0.5 text-base">!</span><div className="min-w-0 flex-1"><p className="text-xs font-black">Lengkapi data akun</p><p className="mt-0.5 text-[11px] leading-relaxed text-amber-900/80">{getCustomerContactMessage(missingContactFields)}</p></div><button className="min-h-11 shrink-0 rounded-xl bg-amber-600 px-3 py-2 text-[11px] font-black text-white active:scale-[.97]" onClick={() => navigate({ to: "/$username/profile", params: { username } })} type="button">Lengkapi</button></div></div> : null}
-					<main className="flex-1 space-y-3 px-3 py-3 pb-32">
-						<CustomerStoryRail />
-						<CustomerWalletSummary customer={customer} onTopup={goDjiwaPay} />
-						{customerOrders.filter((order) => !["completed", "cancelled"].includes(order.trackingStatus || order.status)).slice(0, 1).map((order) => <CustomerLiveOrderCard key={order.id} order={order} onOpen={() => navigate({ to: "/$username/order", params: { username }, search: { step: "receipt", orderId: order.id } })} />)}
-						<CustomerHomeServiceGrid
-							onOrder={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })}
-							onPromo={() => navigate({ to: "/$username/promo", params: { username } })}
-							onWallet={goDjiwaPay}
-							onHistory={() => navigate({ to: "/$username/riwayat", params: { username } })}
-							onCommunity={() => navigate({ to: "/$username/komunitas", params: { username } })}
-							onMerchandise={() => window.location.assign(merchandiseChannelHref)}
-							onBooking={() => window.location.assign("https://booking.djiwatentram.web.id/")}
-							onDjiwaRun={() => navigate({ to: "/$username/run", params: { username } })}
-						/>
-						<RecentOrdersCarousel username={username} />
-						<DjiwaPayOfferCard isMember onAction={goDjiwaPay} />
-						<CustomerHomeDiscovery onMenu={() => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } })} b2bHref={b2bChannelHref} />
+					<main className="flex-1 px-3 pb-32">
+						<div className="relative -mt-6 space-y-[18px]">
+							{activeOrderCards}
+							<HomeEditorialCard username={username} />
+							<HomePayAndCommunity customer={customer} onWallet={goDjiwaPay} onLogin={() => navigate({ to: "/masuk" })} onCommunity={goCommunity} />
+							<HomeServiceShelf {...serviceHandlers} />
+							<HomeTopSellers username={username} />
+							<HomeReorderCard username={username} />
+							<HomeWholesaleRow href={b2bChannelHref} />
+							<HomeRestaurantInfo />
+						</div>
 					</main>
 				</div>
 			</div>
