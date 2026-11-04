@@ -73,10 +73,10 @@ function JumatBerkahPage() {
         </main>
       );
     }
-    return <main className="app-page min-h-app bg-background pb-32">{header}<DonateForm overview={overview} username={username} fullName={customer.name ?? ""} sourceId={customer.sourceId} email={customer.email ?? ""} /></main>;
+    return <main className="app-page min-h-app bg-background pb-[calc(11rem+max(1rem,var(--safe-area-bottom,0px)))]">{header}<DonateForm overview={overview} username={username} fullName={customer.name ?? ""} sourceId={customer.sourceId} email={customer.email ?? ""} /></main>;
   }
 
-  return <main className="app-page min-h-app bg-background pb-32">{header}<ProgramView overview={overview} authed={isAuthenticated && Boolean(customer)} sourceId={customer?.sourceId ?? ""} email={customer?.email ?? ""} onPatch={jb.patchPrayer} onDonate={goForm} /></main>;
+  return <main className="app-page min-h-app bg-background pb-[calc(11rem+max(1rem,var(--safe-area-bottom,0px)))]">{header}<ProgramView overview={overview} authed={isAuthenticated && Boolean(customer)} sourceId={customer?.sourceId ?? ""} email={customer?.email ?? ""} onPatch={jb.patchPrayer} onDonate={goForm} /></main>;
 }
 
 // ───────────────────────── program ─────────────────────────
@@ -162,7 +162,7 @@ function ProgramView({ overview, authed, sourceId, email, onPatch, onDonate }: {
         </ul>
       </section>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-md bg-gradient-to-t from-background via-background/95 to-transparent px-3 pb-5 pt-6">
+      <div className="fixed inset-x-0 bottom-[calc(62px+max(1rem,var(--safe-area-bottom,0px)))] z-40 mx-auto w-full max-w-md bg-gradient-to-t from-background via-background/95 to-transparent px-3 pb-5 pt-6">
         <button type="button" onClick={onDonate} disabled={closed} className="min-h-14 w-full rounded-full bg-[#0F6B58] text-base font-extrabold text-white shadow-lg transition active:scale-[.98] disabled:bg-muted disabled:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60">
           {closed ? "Pesanan Jumat ini sudah ditutup" : `Sedekah mulai ${formatRupiah(campaign.pricePerPortion)}`}
         </button>
@@ -257,7 +257,7 @@ function DonateForm({ overview, username, fullName, sourceId, email }: { overvie
       </section>
       {error ? <p role="alert" className="rounded-2xl bg-destructive/10 p-3 text-sm font-semibold text-destructive">{error}</p> : null}
 
-      <div className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-md bg-gradient-to-t from-background via-background/95 to-transparent px-3 pb-5 pt-6">
+      <div className="fixed inset-x-0 bottom-[calc(62px+max(1rem,var(--safe-area-bottom,0px)))] z-40 mx-auto w-full max-w-md bg-gradient-to-t from-background via-background/95 to-transparent px-3 pb-5 pt-6">
         <button type="button" onClick={() => void submit()} disabled={!canSubmit} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-[#0F6B58] text-base font-extrabold text-white shadow-lg transition active:scale-[.98] disabled:bg-muted disabled:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60">
           {submitting ? <><Loader2 className="h-5 w-5 animate-spin" /> Menyiapkan pembayaran…</> : `Bayar ${formatRupiah(amount)} dengan Mayar`}
         </button>
