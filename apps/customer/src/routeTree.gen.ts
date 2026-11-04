@@ -24,6 +24,7 @@ import { Route as UsernameOrderRouteImport } from './routes/$username/order'
 import { Route as UsernameNotifikasiRouteImport } from './routes/$username/notifikasi'
 import { Route as UsernameMinigamesRouteImport } from './routes/$username/minigames'
 import { Route as UsernameKomunitasRouteImport } from './routes/$username/komunitas'
+import { Route as UsernameJumatBerkahRouteImport } from './routes/$username/jumat-berkah'
 import { Route as UsernameFavoritRouteImport } from './routes/$username/favorit'
 import { Route as UsernameKomunitasPostIdRouteImport } from './routes/$username/komunitas/$postId'
 
@@ -119,6 +120,13 @@ const UsernameKomunitasRoute = UsernameKomunitasRouteImport.update({
 } as any).lazy(() =>
   import('./routes/$username/komunitas.lazy').then((d) => d.Route),
 )
+const UsernameJumatBerkahRoute = UsernameJumatBerkahRouteImport.update({
+  id: '/jumat-berkah',
+  path: '/jumat-berkah',
+  getParentRoute: () => UsernameRouteRoute,
+} as any).lazy(() =>
+  import('./routes/$username/jumat-berkah.lazy').then((d) => d.Route),
+)
 const UsernameFavoritRoute = UsernameFavoritRouteImport.update({
   id: '/favorit',
   path: '/favorit',
@@ -140,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/daftar': typeof DaftarRoute
   '/masuk': typeof MasukLazyRoute
   '/$username/favorit': typeof UsernameFavoritRoute
+  '/$username/jumat-berkah': typeof UsernameJumatBerkahRoute
   '/$username/komunitas': typeof UsernameKomunitasRouteWithChildren
   '/$username/minigames': typeof UsernameMinigamesRoute
   '/$username/notifikasi': typeof UsernameNotifikasiRoute
@@ -158,6 +167,7 @@ export interface FileRoutesByTo {
   '/daftar': typeof DaftarRoute
   '/masuk': typeof MasukLazyRoute
   '/$username/favorit': typeof UsernameFavoritRoute
+  '/$username/jumat-berkah': typeof UsernameJumatBerkahRoute
   '/$username/komunitas': typeof UsernameKomunitasRouteWithChildren
   '/$username/minigames': typeof UsernameMinigamesRoute
   '/$username/notifikasi': typeof UsernameNotifikasiRoute
@@ -177,6 +187,7 @@ export interface FileRoutesById {
   '/daftar': typeof DaftarRoute
   '/masuk': typeof MasukLazyRoute
   '/$username/favorit': typeof UsernameFavoritRoute
+  '/$username/jumat-berkah': typeof UsernameJumatBerkahRoute
   '/$username/komunitas': typeof UsernameKomunitasRouteWithChildren
   '/$username/minigames': typeof UsernameMinigamesRoute
   '/$username/notifikasi': typeof UsernameNotifikasiRoute
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/daftar'
     | '/masuk'
     | '/$username/favorit'
+    | '/$username/jumat-berkah'
     | '/$username/komunitas'
     | '/$username/minigames'
     | '/$username/notifikasi'
@@ -215,6 +227,7 @@ export interface FileRouteTypes {
     | '/daftar'
     | '/masuk'
     | '/$username/favorit'
+    | '/$username/jumat-berkah'
     | '/$username/komunitas'
     | '/$username/minigames'
     | '/$username/notifikasi'
@@ -233,6 +246,7 @@ export interface FileRouteTypes {
     | '/daftar'
     | '/masuk'
     | '/$username/favorit'
+    | '/$username/jumat-berkah'
     | '/$username/komunitas'
     | '/$username/minigames'
     | '/$username/notifikasi'
@@ -353,6 +367,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsernameKomunitasRouteImport
       parentRoute: typeof UsernameRouteRoute
     }
+    '/$username/jumat-berkah': {
+      id: '/$username/jumat-berkah'
+      path: '/jumat-berkah'
+      fullPath: '/$username/jumat-berkah'
+      preLoaderRoute: typeof UsernameJumatBerkahRouteImport
+      parentRoute: typeof UsernameRouteRoute
+    }
     '/$username/favorit': {
       id: '/$username/favorit'
       path: '/favorit'
@@ -383,6 +404,7 @@ const UsernameKomunitasRouteWithChildren =
 
 interface UsernameRouteRouteChildren {
   UsernameFavoritRoute: typeof UsernameFavoritRoute
+  UsernameJumatBerkahRoute: typeof UsernameJumatBerkahRoute
   UsernameKomunitasRoute: typeof UsernameKomunitasRouteWithChildren
   UsernameMinigamesRoute: typeof UsernameMinigamesRoute
   UsernameNotifikasiRoute: typeof UsernameNotifikasiRoute
@@ -397,6 +419,7 @@ interface UsernameRouteRouteChildren {
 
 const UsernameRouteRouteChildren: UsernameRouteRouteChildren = {
   UsernameFavoritRoute: UsernameFavoritRoute,
+  UsernameJumatBerkahRoute: UsernameJumatBerkahRoute,
   UsernameKomunitasRoute: UsernameKomunitasRouteWithChildren,
   UsernameMinigamesRoute: UsernameMinigamesRoute,
   UsernameNotifikasiRoute: UsernameNotifikasiRoute,

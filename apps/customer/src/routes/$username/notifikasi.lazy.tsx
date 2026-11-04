@@ -120,6 +120,7 @@ function NotifikasiPage() {
 			unread: item.unread,
 			isGreeting: false,
 			walletNotificationId: item.id,
+			notificationType: item.notification_type,
 		}));
 		return memberGreeting ? [memberGreeting, ...walletItems, ...orderNotifications] : [...walletItems, ...orderNotifications];
 	}, [memberGreeting, orders, lastSeen, walletNotifications]);
@@ -171,7 +172,7 @@ function NotifikasiPage() {
 								<button
 									type="button"
 									key={notif.id}
-								onClick={() => { const walletNotificationId = "walletNotificationId" in notif && typeof notif.walletNotificationId === "string" ? notif.walletNotificationId : undefined; void markNotificationRead(notif.createdAt, walletNotificationId); if (notif.isGreeting) goHome(); else if (walletNotificationId) navigate({ to: "/$username/saldo", params: { username } }); else navigate({ to: "/$username/riwayat", params: { username } }); }}
+								onClick={() => { const walletNotificationId = "walletNotificationId" in notif && typeof notif.walletNotificationId === "string" ? notif.walletNotificationId : undefined; void markNotificationRead(notif.createdAt, walletNotificationId); if (notif.isGreeting) goHome(); else if ("notificationType" in notif && typeof notif.notificationType === "string" && notif.notificationType.startsWith("jumat_berkah")) navigate({ to: "/$username/jumat-berkah", params: { username }, search: {} }); else if (walletNotificationId) navigate({ to: "/$username/saldo", params: { username } }); else navigate({ to: "/$username/riwayat", params: { username } }); }}
 									className={`flex w-full gap-3 rounded-[20px] border px-3 py-3 text-left shadow-sm transition-all duration-[180ms] active:scale-[.98] ${notif.unread ? "border-primary/30 bg-primary/5" : "border-border bg-card"}`}
 								>
 									<div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${notif.unread ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>

@@ -395,6 +395,55 @@ async function completeEvent(id: string, status: string, error?: string) {
   return response.json();
 }
 
+async function settleJumatBerkahDonation(donationId: string, transaction: Record<string, unknown>) {
+  const transactionId = String(transaction.id || "");
+  const providerAmount = Number(transaction.amount ?? transaction.totalAmount ?? transaction.grossAmount ?? transaction.paidAmount ?? NaN);
+  if (!donationId || !transactionId || !Number.isFinite(providerAmount) || providerAmount <= 0) return null;
+  const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/jumat_berkah_settle_donation`, {
+    method: "POST",
+    headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json", "Content-Profile": "pos" },
+    body: JSON.stringify({ p_donation_id: donationId, p_transaction_id: transactionId, p_provider_amount: Math.round(providerAmount), p_paid_at: new Date(Number(transaction.updatedAt || transaction.createdAt || Date.now())).toISOString() }),
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    console.error("Jumat Berkah settlement rejected", response.status, detail.slice(0, 200));
+    throw new Error(`Jumat Berkah settlement failed (${response.status})`);
+  }
+  return await response.json();
+}
+
+// Webhook yang terlewat: cocokkan invoice Mayar yang masih pending dengan status bayar sebenarnya.
+async function reconcilePendingJumatBerkah() {
+  const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/jumat_berkah_pending_payments`, {
+    method: "POST",
+    headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json", "Content-Profile": "pos" },
+    body: "{}",
+  });
+  if (!response.ok) throw new Error(`Pending Jumat Berkah lookup failed (${response.status})`);
+  const pending = await response.json() as Array<Record<string, unknown>>;
+  const settled: Array<Record<string, unknown>> = [];
+  for (const donation of pending) {
+    let transactionId = String(donation.transaction_id || "").trim();
+    if (!transactionId) {
+      const invoiceId = String(donation.invoice_id || "").trim();
+      if (!invoiceId) continue;
+      const invoiceResponse = await fetchWithTimeout(`${MAYAR_API_BASE}/invoices/${encodeURIComponent(invoiceId)}`, { headers: { Authorization: `Bearer ${MAYAR_API_KEY}` } });
+      const invoiceBody = await invoiceResponse.json().catch(() => ({})) as Record<string, unknown>;
+      const invoice = invoiceBody.data && typeof invoiceBody.data === "object" && !Array.isArray(invoiceBody.data) ? invoiceBody.data as Record<string, unknown> : null;
+      if (!invoiceResponse.ok || !invoice) continue;
+      transactionId = String(invoice.transactionId || invoice.transaction_id || "").trim();
+      if (!transactionId) continue;
+    }
+    const transaction = await fetchVerifiedTransaction(transactionId).catch(() => null);
+    if (!transaction || String(transaction.status || "").trim().toLowerCase() !== "paid") continue;
+    const providerAmount = Number(transaction.amount ?? transaction.totalAmount ?? transaction.grossAmount ?? transaction.paidAmount ?? NaN);
+    if (!Number.isFinite(providerAmount) || providerAmount !== Number(donation.amount)) continue;
+    const result = await settleJumatBerkahDonation(String(donation.donation_id || ""), transaction);
+    settled.push({ donationId: donation.donation_id, ...((result && typeof result === "object") ? result : {}) });
+  }
+  return { scanned: pending.length, settled };
+}
+
 async function processEvent(payload: Record<string, unknown>) {
   const data = (payload.data || {}) as Record<string, unknown>;
   const transactionId = String(data.transactionId || "");
@@ -420,6 +469,8 @@ async function processEvent(payload: Record<string, unknown>) {
   }
   const walletTopupId = String(extraData.walletTopupId || transactionExtraData.walletTopupId || "");
   if (walletTopupId) return { walletTopup: await settleWalletTopup(walletTopupId, transaction) };
+  const jumatBerkahDonationId = String(extraData.jumatBerkahDonationId || transactionExtraData.jumatBerkahDonationId || "");
+  if (jumatBerkahDonationId) return { jumatBerkah: await settleJumatBerkahDonation(jumatBerkahDonationId, transaction) };
   const listingId = String(extraData.coffeePassportListingPaymentId || transactionExtraData.coffeePassportListingPaymentId || "");
   if (listingId) return { coffeePassportListing: await settleCoffeePassportListing(listingId, String(data.id || ""), transaction) };
   const bidId = String(extraData.coffeePassportBidEntryId || transactionExtraData.coffeePassportBidEntryId || "");
@@ -467,7 +518,11 @@ Deno.serve(async (req) => {
       console.error("wallet topup reconciliation failed", { error: String((error as Error).message).slice(0, 160) });
       return { scanned: 0, settled: [], error: "wallet_reconcile_failed" };
     });
-    return json({ ok: true, claimed: events.length, results, walletReconciliation });
+    const jumatBerkahReconciliation = await reconcilePendingJumatBerkah().catch((error) => {
+      console.error("jumat berkah reconciliation failed", { error: String((error as Error).message).slice(0, 160) });
+      return { scanned: 0, settled: [], error: "jumat_berkah_reconcile_failed" };
+    });
+    return json({ ok: true, claimed: events.length, results, walletReconciliation, jumatBerkahReconciliation });
   } catch (error) {
     console.error("mayar-payment-processor failed", error);
     return json({ error: "Processor failed" }, 500);

@@ -16,6 +16,7 @@ import { CustomerSplash } from "@/components/customer/customer-entry";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
 import { CustomerHomeHeader } from "@/components/customer/customer-home-sections";
+import { JumatBerkahBanner } from "@/components/customer/jumat-berkah";
 import { HomeEditorialCard, HomePayAndCommunity, HomeReorderCard, HomeRestaurantInfo, HomeServiceShelf, HomeTopSellers, HomeWholesaleRow } from "@/components/customer/customer-home-editorial";
 import { CustomerLiveOrderCard } from "@/components/customer/customer-live-order-card";
 import { getCustomerPayPath } from "@/lib/customer-pay-navigation";
@@ -109,6 +110,12 @@ function MemberHomePage() {
 
 	const goMenu = () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } });
 	const goCommunity = () => navigate({ to: "/$username/komunitas", params: { username } });
+	const openJumatBerkah = () => navigate({ to: "/$username/jumat-berkah", params: { username }, search: {} });
+	const donateJumatBerkah = () => navigate({ to: "/$username/jumat-berkah", params: { username }, search: { step: "sedekah" } });
+	const donateJumatBerkahAsGuest = () => {
+		try { window.sessionStorage.setItem("djiwa.jumatBerkah.intent", "1"); } catch { /* mode privat */ }
+		navigate({ to: "/masuk", search: { next: "jumat-berkah" } as never });
+	};
 	const serviceHandlers = {
 		onOrder: goMenu,
 		onPromo: () => navigate({ to: "/$username/promo", params: { username } }),
@@ -118,6 +125,7 @@ function MemberHomePage() {
 		onMerchandise: () => window.location.assign(merchandiseChannelHref),
 		onBooking: () => window.location.assign("https://booking.djiwatentram.web.id/"),
 		onDjiwaRun: () => navigate({ to: "/$username/run", params: { username } }),
+		onJumatBerkah: () => navigate({ to: "/$username/jumat-berkah", params: { username }, search: {} }),
 	};
 	const activeOrderCards = customerOrders
 		.filter((order) => !["completed", "cancelled"].includes(order.trackingStatus || order.status))
@@ -296,6 +304,7 @@ function MemberHomePage() {
 							{activeOrderCards}
 							<HomeEditorialCard username={username} />
 							<HomePayAndCommunity customer={null} onWallet={goDjiwaPay} onLogin={() => navigate({ to: "/masuk" })} onCommunity={goCommunity} />
+							<JumatBerkahBanner onOpen={openJumatBerkah} onDonate={donateJumatBerkahAsGuest} />
 							<HomeServiceShelf {...serviceHandlers} />
 							<HomeTopSellers username={username} />
 							<HomeReorderCard username={username} />
@@ -360,6 +369,7 @@ function MemberHomePage() {
 							{activeOrderCards}
 							<HomeEditorialCard username={username} />
 							<HomePayAndCommunity customer={customer} onWallet={goDjiwaPay} onLogin={() => navigate({ to: "/masuk" })} onCommunity={goCommunity} />
+							<JumatBerkahBanner onOpen={openJumatBerkah} onDonate={donateJumatBerkah} />
 							<HomeServiceShelf {...serviceHandlers} />
 							<HomeTopSellers username={username} />
 							<HomeReorderCard username={username} />

@@ -37,6 +37,15 @@ function CustomerAuthPage() {
         navigate({ to: "/$username/saldo", params: { username: customer.username } });
         return;
       }
+      // Jumat Berkah: tamu yang menekan Sedekah kembali ke formulir setelah masuk (param bisa hilang saat redirect Google, jadi ada penanda sesi).
+      let jumatBerkahIntent = new URLSearchParams(window.location.search).get("next") === "jumat-berkah";
+      try {
+        if (window.sessionStorage.getItem("djiwa.jumatBerkah.intent") === "1") { jumatBerkahIntent = true; window.sessionStorage.removeItem("djiwa.jumatBerkah.intent"); }
+      } catch { /* sessionStorage bisa ditolak di mode privat */ }
+      if (jumatBerkahIntent) {
+        navigate({ to: "/$username/jumat-berkah", params: { username: customer.username }, search: { step: "sedekah" } });
+        return;
+      }
       navigate({ to: `/${customer.username}` });
     }
   }, [customer, isAuthenticated, navigate]);

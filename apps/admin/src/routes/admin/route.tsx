@@ -48,8 +48,7 @@ import {
 	BarChart3,
 	CalendarDays,
 	CheckCircle2,
-	Search,
-} from "lucide-react";
+	Search, HeartHandshake } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { filterCommandItems, type AdminCommandItem } from "@/lib/admin-command-search";
 import { AdminDialogHost } from "@/components/admin/admin-dialog-host";
@@ -133,6 +132,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/bar": "Bar",
 	"/admin/customer-service": "Layanan Customer",
 	"/admin/minigames": "Mini Games",
+	"/admin/jumat-berkah": "Jumat Berkah",
 	"/admin/customers": "Pelanggan",
 	"/admin/djiwa-app": "Dashboard",
 	"/admin/kol": "KOL Marketing · Dashboard",
@@ -183,6 +183,7 @@ const MORE_MENU_PATHS = [
 	"/admin/bar",
 	"/admin/customer-service",
 	"/admin/minigames",
+	"/admin/jumat-berkah",
 	"/admin/customers",
 	"/admin/djiwa-app",
 	"/admin/kol",
@@ -301,6 +302,7 @@ const QUICK_MENU_SECTIONS = [
 		items: [
 			{ to: "/admin/discounts", icon: Percent, label: "Promosi", permission: "products:manage" },
 			{ to: "/admin/minigames", icon: Gamepad2, label: "Mini Games", permission: "products:manage" },
+			{ to: "/admin/jumat-berkah", icon: HeartHandshake, label: "Jumat Berkah", permission: "orders:view" },
 		],
 	},
 	{
@@ -1153,6 +1155,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 					<SidebarSection isCollapsed={isCollapsed} label="Marketing" />
 					<DesktopNavLink icon={<Percent />} isCollapsed={isCollapsed} label="Promosi" to="/admin/discounts" permission="products:manage" />
 					<DesktopNavLink icon={<Gamepad2 />} isCollapsed={isCollapsed} label="Mini Games" to="/admin/minigames" permission="products:manage" />
+					<DesktopNavLink icon={<HeartHandshake />} isCollapsed={isCollapsed} label="Jumat Berkah" to="/admin/jumat-berkah" permission="orders:view" />
 				</nav>
 
 				{/* Footer: User Profile + Pengaturan + Keluar */}

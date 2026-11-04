@@ -70,7 +70,7 @@ async function walletNotifications(sourceId: string) {
     .select("*,pos_notification_reads(read_at,acknowledged_at)")
     .eq("target_user_id", sourceId)
     .eq("is_active", true)
-    .in("notification_type", ["wallet_transfer_sent", "wallet_transfer_received"])
+    .in("notification_type", ["wallet_transfer_sent", "wallet_transfer_received", "jumat_berkah_paid", "jumat_berkah_report"])
     .order("created_at", { ascending: false })
     .limit(100);
   if (error) throw error;
@@ -81,7 +81,7 @@ async function markWalletNotification(payload: Json, markAll = false) {
   const sourceId = text(payload.sourceId); const email = text(payload.email);
   await ownedCustomer(sourceId, email);
   if (markAll) {
-    const { data: rows, error } = await admin.from("pos_notifications").select("id").eq("target_user_id", sourceId).eq("is_active", true).in("notification_type", ["wallet_transfer_sent", "wallet_transfer_received"]);
+    const { data: rows, error } = await admin.from("pos_notifications").select("id").eq("target_user_id", sourceId).eq("is_active", true).in("notification_type", ["wallet_transfer_sent", "wallet_transfer_received", "jumat_berkah_paid", "jumat_berkah_report"]);
     if (error) throw error;
     for (const row of rows ?? []) {
       const { error: writeError } = await admin.from("pos_notification_reads").upsert({ notification_id: row.id, user_id: sourceId, read_at: new Date().toISOString() }, { onConflict: "notification_id,user_id" });

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronRight, Clock, MapPin, Phone } from "lucide-react";
+import { ChevronRight, Clock, HeartHandshake, MapPin, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { CustomerSectionSkeleton } from "@/components/customer/customer-states";
 import { currency, type CartItem } from "@/components/customer/types";
@@ -8,6 +8,7 @@ import type { CustomerUser } from "@/hooks/use-customer-auth";
 import { useCustomerOrders } from "@/hooks/use-customer-data";
 import { useHybridAllProducts, useHybridBestSellers, useHybridShiftStatus, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { useOrderContext } from "@/hooks/use-order-context";
+import { useJumatBerkah } from "@/hooks/use-jumat-berkah";
 import { useDayPeriod, type DayPeriod } from "@/lib/day-period";
 import {
   buildReorderCart,
@@ -21,6 +22,10 @@ import {
 } from "@/lib/home-feed";
 import { CustomerStoryRail } from "@/features/stories/customer-story-rail";
 import { cn } from "@/lib/utils";
+
+function isFridayInJakarta(now: Date = new Date()): boolean {
+  try { return new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "Asia/Jakarta" }).format(now) === "Fri"; } catch { return false; }
+}
 
 const CARD = "rounded-[26px] bg-card shadow-[0_1px_2px_rgba(20,32,63,0.06),0_8px_24px_rgba(20,32,63,0.06)]";
 const SECTION_TITLE = "font-display text-[19px] font-black leading-tight tracking-tight text-foreground";
@@ -193,10 +198,12 @@ export type HomeServiceHandlers = {
   onMerchandise: () => void;
   onBooking: () => void;
   onDjiwaRun: () => void;
+  onJumatBerkah: () => void;
 };
 
 export function HomeServiceShelf(handlers: HomeServiceHandlers) {
-  const items: Array<{ label: string; badge?: string; badgeClass: string; tint: string; assetSrc: string; onClick: () => void }> = [
+  const jumatBerkah = useJumatBerkah().overview;
+  const items: Array<{ label: string; badge?: string; badgeClass: string; tint: string; assetSrc?: string; icon?: ReactNode; onClick: () => void }> = [
     { label: "Pesan Menu", badge: "Favorit", badgeClass: "bg-emerald-500", tint: "bg-[#DDF1E6]", assetSrc: "/assets/djiwa-services/menu.webp", onClick: handlers.onOrder },
     { label: "Promo", badge: "50%", badgeClass: "bg-rose-500", tint: "bg-[#FBDDE3]", assetSrc: "/assets/djiwa-services/promo.webp", onClick: handlers.onPromo },
     { label: "Djiwa Pay", badge: "+Rp1.000", badgeClass: "bg-violet-500", tint: "bg-[#E3DEFA]", assetSrc: "/assets/djiwa-services/pay.webp", onClick: handlers.onWallet },
@@ -206,6 +213,16 @@ export function HomeServiceShelf(handlers: HomeServiceHandlers) {
     { label: "Booking", badge: "Acara", badgeClass: "bg-orange-500", tint: "bg-[#FDEBD5]", assetSrc: "/assets/djiwa-services/booking.webp", onClick: handlers.onBooking },
     { label: "Djiwa Run", badge: "Baru", badgeClass: "bg-lime-600", tint: "bg-[#E0F4D8]", assetSrc: "/assets/djiwa-services/run.webp", onClick: handlers.onDjiwaRun },
   ];
+  if (jumatBerkah && jumatBerkah.enabled) {
+    items.splice(2, 0, {
+      label: "Jumat Berkah",
+      badge: isFridayInJakarta() ? "Hari ini" : "Sedekah",
+      badgeClass: "bg-rose-600",
+      tint: "bg-gradient-to-br from-[#F3D58A] to-[#D9962E]",
+      icon: <HeartHandshake className="h-7 w-7 text-white" strokeWidth={2.2} aria-hidden="true" />,
+      onClick: handlers.onJumatBerkah,
+    });
+  }
 
   return (
     <section aria-labelledby="home-services-title">
@@ -221,7 +238,7 @@ export function HomeServiceShelf(handlers: HomeServiceHandlers) {
           >
             {item.badge ? <span className={cn("absolute left-1/2 top-[-7px] z-10 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-px text-[8.5px] font-black leading-tight text-white shadow-sm", item.badgeClass)}>{item.badge}</span> : null}
             <span className={cn("flex h-[58px] w-[58px] items-center justify-center rounded-[19px] transition-transform duration-[180ms] group-active:scale-95", item.tint)}>
-              <img src={item.assetSrc} alt="" className="h-11 w-11 object-contain" loading="lazy" />
+              {item.icon ?? <img src={item.assetSrc} alt="" className="h-11 w-11 object-contain" loading="lazy" />}
             </span>
             <span className="max-w-full truncate text-center text-[11px] font-medium leading-tight text-foreground">{item.label}</span>
           </button>

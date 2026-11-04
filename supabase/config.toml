@@ -89,3 +89,6 @@ verify_jwt = false
 [functions.product-reviews]
 enabled = true
 verify_jwt = false
+
+[functions.jumat-berkah]
+verify_jwt = false

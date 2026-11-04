@@ -46,6 +46,7 @@ import { Route as AdminKolCollaborationsRouteImport } from './routes/admin/kol-c
 import { Route as AdminKolRouteImport } from './routes/admin/kol'
 import { Route as AdminKitchenRouteImport } from './routes/admin/kitchen'
 import { Route as AdminKaryawanRouteImport } from './routes/admin/karyawan'
+import { Route as AdminJumatBerkahRouteImport } from './routes/admin/jumat-berkah'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
 import { Route as AdminForecastingRouteImport } from './routes/admin/forecasting'
 import { Route as AdminDjiwaRunRouteImport } from './routes/admin/djiwa-run'
@@ -348,6 +349,13 @@ const AdminKaryawanRoute = AdminKaryawanRouteImport.update({
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() =>
   import('./routes/admin/karyawan.lazy').then((d) => d.Route),
+)
+const AdminJumatBerkahRoute = AdminJumatBerkahRouteImport.update({
+  id: '/jumat-berkah',
+  path: '/jumat-berkah',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/jumat-berkah.lazy').then((d) => d.Route),
 )
 const AdminInventoryRoute = AdminInventoryRouteImport.update({
   id: '/inventory',
@@ -982,6 +990,7 @@ export interface FileRoutesByFullPath {
   '/admin/djiwa-run': typeof AdminDjiwaRunRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/jumat-berkah': typeof AdminJumatBerkahRoute
   '/admin/karyawan': typeof AdminKaryawanRouteWithChildren
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/kol': typeof AdminKolRoute
@@ -1094,6 +1103,7 @@ export interface FileRoutesByTo {
   '/admin/djiwa-run': typeof AdminDjiwaRunRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/jumat-berkah': typeof AdminJumatBerkahRoute
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/kol': typeof AdminKolRoute
   '/admin/kol-collaborations': typeof AdminKolCollaborationsRoute
@@ -1200,6 +1210,7 @@ export interface FileRoutesById {
   '/admin/djiwa-run': typeof AdminDjiwaRunRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/jumat-berkah': typeof AdminJumatBerkahRoute
   '/admin/karyawan': typeof AdminKaryawanRouteWithChildren
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/kol': typeof AdminKolRoute
@@ -1318,6 +1329,7 @@ export interface FileRouteTypes {
     | '/admin/djiwa-run'
     | '/admin/forecasting'
     | '/admin/inventory'
+    | '/admin/jumat-berkah'
     | '/admin/karyawan'
     | '/admin/kitchen'
     | '/admin/kol'
@@ -1430,6 +1442,7 @@ export interface FileRouteTypes {
     | '/admin/djiwa-run'
     | '/admin/forecasting'
     | '/admin/inventory'
+    | '/admin/jumat-berkah'
     | '/admin/kitchen'
     | '/admin/kol'
     | '/admin/kol-collaborations'
@@ -1535,6 +1548,7 @@ export interface FileRouteTypes {
     | '/admin/djiwa-run'
     | '/admin/forecasting'
     | '/admin/inventory'
+    | '/admin/jumat-berkah'
     | '/admin/karyawan'
     | '/admin/kitchen'
     | '/admin/kol'
@@ -1896,6 +1910,13 @@ declare module '@tanstack/react-router' {
       path: '/karyawan'
       fullPath: '/admin/karyawan'
       preLoaderRoute: typeof AdminKaryawanRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/jumat-berkah': {
+      id: '/admin/jumat-berkah'
+      path: '/jumat-berkah'
+      fullPath: '/admin/jumat-berkah'
+      preLoaderRoute: typeof AdminJumatBerkahRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/inventory': {
@@ -2796,6 +2817,7 @@ interface AdminRouteRouteChildren {
   AdminDjiwaRunRoute: typeof AdminDjiwaRunRoute
   AdminForecastingRoute: typeof AdminForecastingRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
+  AdminJumatBerkahRoute: typeof AdminJumatBerkahRoute
   AdminKaryawanRoute: typeof AdminKaryawanRouteWithChildren
   AdminKitchenRoute: typeof AdminKitchenRoute
   AdminKolRoute: typeof AdminKolRoute
@@ -2834,6 +2856,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminDjiwaRunRoute: AdminDjiwaRunRoute,
   AdminForecastingRoute: AdminForecastingRoute,
   AdminInventoryRoute: AdminInventoryRoute,
+  AdminJumatBerkahRoute: AdminJumatBerkahRoute,
   AdminKaryawanRoute: AdminKaryawanRouteWithChildren,
   AdminKitchenRoute: AdminKitchenRoute,
   AdminKolRoute: AdminKolRoute,
