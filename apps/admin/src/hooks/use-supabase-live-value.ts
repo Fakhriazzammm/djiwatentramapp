@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/client";
+import { pollWhenVisible } from "@yumipos/web-shared/lib/visible-polling";
 
 export type UseSupabaseLiveValueOptions = {
 	realtimeSchemas?: string[];
@@ -94,13 +95,11 @@ export function useSupabaseLiveValue<T>(
 			}
 		});
 
-		const timer = window.setInterval(() => {
-			void reload();
-		}, refreshMs);
+		const stopPolling = pollWhenVisible(() => { void reload(); }, refreshMs);
 
 		return () => {
 			active = false;
-			window.clearInterval(timer);
+			stopPolling();
 			void supabase.removeChannel(channel);
 		};
 	}, [key, ...deps, options?.refreshTrigger]);
@@ -155,10 +154,10 @@ export function useSupabaseLiveValueState<T>(
 		};
 		reloadRef.current = reload;
 		void reload();
-		const timer = window.setInterval(() => void reload(), Math.max(5000, options?.refreshMs ?? 30000));
+		const stopPolling = pollWhenVisible(() => { void reload(); }, Math.max(5000, options?.refreshMs ?? 30000));
 		return () => {
 			active = false;
-			window.clearInterval(timer);
+			stopPolling();
 		};
 	}, [key, ...deps, refreshTrigger]);
 

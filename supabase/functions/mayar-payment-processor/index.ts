@@ -273,8 +273,8 @@ async function settleWalletTopup(topupId: string, transaction: Record<string, un
 
 async function reconcilePendingWalletTopups() {
   const response = await fetchWithTimeout(
-    `${SUPABASE_URL}/rest/v1/customer_wallet_topups?select=topup_id,transaction_id,invoice_id,status,amount&status=eq.pending&invoice_id=not.is.null&order=created_at.asc&limit=100`,
-    { headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Accept-Profile": "pos" } },
+    `${SUPABASE_URL}/rest/v1/rpc/wallet_topups_due_for_reconciliation`,
+    { method: "POST", headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json", "Content-Profile": "pos" }, body: "{}" },
   );
   if (!response.ok) throw new Error(`Pending wallet topup lookup failed (${response.status})`);
   const topups = await response.json() as Array<Record<string, unknown>>;

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "../lib/client";
+import { pollWhenVisible } from "../lib/visible-polling";
 
 export type UseSupabaseLiveValueOptions = {
 	realtimeSchemas?: string[];
@@ -77,13 +78,11 @@ export function useSupabaseLiveValue<T>(
 			}
 		});
 
-		const timer = window.setInterval(() => {
-			void reload();
-		}, refreshMs);
+		const stopPolling = pollWhenVisible(() => { void reload(); }, refreshMs);
 
 		return () => {
 			active = false;
-			window.clearInterval(timer);
+			stopPolling();
 			void supabase.removeChannel(channel);
 		};
 	}, [key, ...deps, options?.refreshTrigger]);

@@ -16,11 +16,13 @@
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { assertBuildHost } from "./build-host-guard.mjs";
 
 const BYPASS = String(process.env.SKIP_BUILD_ENV_CHECK ?? "").trim() === "1";
 const appDir = process.cwd();
 const distArgIndex = process.argv.indexOf("--dist");
 const distDir = distArgIndex >= 0 ? resolve(appDir, process.argv[distArgIndex + 1] ?? "dist") : null;
+if (distDir === null) assertBuildHost();
 
 const URL_KEY = "VITE_SUPABASE_URL";
 const KEY_NAMES = ["VITE_SUPABASE_PUBLISHABLE_KEY", "VITE_SUPABASE_ANON_KEY"];

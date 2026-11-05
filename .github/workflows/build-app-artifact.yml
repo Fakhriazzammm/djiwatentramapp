@@ -1,0 +1,52 @@
+name: Build app artifact off production
+on:
+  workflow_call:
+    inputs:
+      app:
+        type: string
+        required: true
+    secrets:
+      LEGACY_ADMIN_BUILD_SECRET:
+        required: false
+  workflow_dispatch:
+    inputs:
+      app:
+        type: choice
+        required: true
+        options: [admin, customer, pos, karyawan, djiwapay]
+permissions:
+  contents: read
+jobs:
+  artifact:
+    runs-on: ubuntu-latest
+    env:
+      APP: ${{ inputs.app }}
+      PUBLIC_BUILD_ENV: ${{ vars[format('BUILD_ENV_{0}', inputs.app)] }}
+      LEGACY_ADMIN_BUILD_SECRET: ${{ secrets.LEGACY_ADMIN_BUILD_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Configure public app environment
+        run: |
+          node --input-type=module -e 'import {writeFileSync} from "node:fs"; const env=JSON.parse(process.env.PUBLIC_BUILD_ENV || "{}"); for (const key of Object.keys(env)) {if(!/^VITE_[A-Z0-9_]+$/.test(key) || /SECRET|PASSWORD|SERVICE_ROLE|PRIVATE_KEY/.test(key)) throw Error("Non-public build config rejected");} if(process.env.APP==="admin") {if(!process.env.LEGACY_ADMIN_BUILD_SECRET) throw Error("Missing existing Admin build configuration"); env.VITE_ADMIN_SECRET=process.env.LEGACY_ADMIN_BUILD_SECRET;} writeFileSync(`apps/${process.env.APP}/.env.production.local`,Object.entries(env).map(([k,v])=>`${k}=${JSON.stringify(String(v))}`).join("\n"));'
+      - run: bun install --frozen-lockfile
+      - name: Check Admin push configuration
+        run: |
+          node --input-type=module -e 'if(process.env.APP === "admin" && !JSON.parse(process.env.PUBLIC_BUILD_ENV || "{}").VITE_VAPID_PUBLIC_KEY) throw Error("Missing public VAPID key");'
+      - run: bun run "build:$APP"
+      - name: Stamp artifact provenance
+        run: |
+          node --input-type=module -e 'import {writeFileSync,readFileSync} from "node:fs"; const dir=`apps/${process.env.APP}/dist`; const v=JSON.parse(readFileSync(`${dir}/version.json`)); if(!v.commitHash || !process.env.GITHUB_SHA.startsWith(v.commitHash)) throw Error("Version mismatch"); writeFileSync(`${dir}/.djiwa-artifact.json`,JSON.stringify({app:process.env.APP,commit:process.env.GITHUB_SHA}));'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.app }}-${{ github.sha }}
+          path: apps/${{ inputs.app }}/dist/
+          include-hidden-files: true
+          retention-days: 14

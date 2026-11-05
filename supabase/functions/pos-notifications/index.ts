@@ -247,6 +247,7 @@ async function syncRecentOrders() {
   const orders = await dbGetPaged("pos_orders", {
     select: "_id,orderNumber,status,totalAmount,subtotalAmount,shippingFeeAmount,paymentMethod,paymentReceiptKind,paymentGateway,customerName,tableNumber,orderType,daily_receipt_no,receipt_kind,source,sourceApp,brandSlug,businessUnit,createdAt,items,deliveryProvider,deliveryContactName,deliveryContactPhone,deliveryAddress,deliveryNotes",
     order: "createdAt.desc",
+    createdAt: `gte.${Date.parse(since)}`,
   });
   let created = 0;
   for (const order of orders ?? []) {

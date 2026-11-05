@@ -5,8 +5,11 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { defineConfig } from "vite";
 import { adminPwaSettings } from "./src/pwa-settings";
+import { assertBuildHost } from "../../scripts/build-host-guard.mjs";
 
-export default defineConfig({
+export default defineConfig(({ command }) => {
+ if (command === "build") assertBuildHost();
+ return {
 	plugins: [
 		react(),
 		TanStackRouterVite(),
@@ -87,4 +90,5 @@ export default defineConfig({
 	server: {
 		port: 3001,
 	},
+};
 });
