@@ -22,7 +22,7 @@ import { useHybridTransactionDetailReport } from "@/hooks/use-hybrid-finance-ana
 import { useHybridUpdateTransaction } from "@/hooks/use-hybrid-write-actions";
 import { ExpenseDetailModal } from "./expense-detail-modal";
 import { useTheme } from "next-themes";
-import { format } from "date-fns";
+import { endOfDay, format, parseISO, startOfYear } from "date-fns";
 import { id as localeID } from "date-fns/locale";
 import Papa from "papaparse";
 import { createClient } from "@/lib/client";
@@ -30,11 +30,13 @@ import { createClient } from "@/lib/client";
 // ─── Constants ────────────────────────────────────
 const PAGE_SIZE = 20;
 
-const PERIOD_BUTTONS: Array<{ value: PeriodOption; label: string }> = [
+type ExpensePeriodOption = PeriodOption | "year_to_date";
+
+const PERIOD_BUTTONS: Array<{ value: ExpensePeriodOption; label: string }> = [
 	{ value: "today", label: "Hari Ini" },
 	{ value: "this_week", label: "Minggu Ini" },
 	{ value: "this_month", label: "Bulan Ini" },
-	{ value: "this_year", label: "Tahun Ini" },
+	{ value: "year_to_date", label: "Tahun Berjalan" },
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -90,7 +92,8 @@ function exportExpensesCSV(transactions: TransactionRow[], period: string) {
 	const url = URL.createObjectURL(blob);
 	const a = document.createElement("a");
 	a.href = url;
-	a.download = `pengeluaran-${Date.now()}.csv`;
+	const periodSlug = period.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+	a.download = `pengeluaran-${periodSlug || "filtered"}-${Date.now()}.csv`;
 	a.click();
 	URL.revokeObjectURL(url);
 }
@@ -98,8 +101,10 @@ function exportExpensesCSV(transactions: TransactionRow[], period: string) {
 // ─── Component ────────────────────────────────────
 export function ExpensesTable() {
 	const { setTheme } = useTheme();
-	const [period, setPeriod] = useState<PeriodOption>("this_month");
+	const [period, setPeriod] = useState<ExpensePeriodOption>("this_month");
 	const [dateRange, setDateRange] = useState<DateRange>(getRangeFromPeriod("this_month"));
+	const [customStart, setCustomStart] = useState("");
+	const [customEnd, setCustomEnd] = useState("");
 	const [searchQuery, setSearchQuery] = useState("");
 	const [filterCategory, setFilterCategory] = useState<string>("");
 	const [sortBy, setSortBy] = useState<"date" | "amount" | "category">("date");
@@ -188,9 +193,37 @@ export function ExpensesTable() {
 		setPage(1);
 	}, [dateRange, searchQuery, filterCategory]);
 
-	const handlePeriodChange = (p: PeriodOption) => {
+	const handlePeriodChange = (p: ExpensePeriodOption) => {
 		setPeriod(p);
+		if (p === "year_to_date") {
+			const now = new Date();
+			setDateRange({
+				startDate: startOfYear(now).getTime(),
+				endDate: endOfDay(now).getTime(),
+				label: `Tahun Berjalan (YTD) ${now.getFullYear()}`,
+			});
+			return;
+		}
 		setDateRange(getRangeFromPeriod(p));
+	};
+
+	const handleOtherPeriodChange = (value: string) => {
+		if (value === "yesterday" || value === "last_month" || value === "this_year") {
+			handlePeriodChange(value);
+			return;
+		}
+		if (value === "custom") {
+			setPeriod("custom");
+			setCustomStart(format(new Date(dateRange.startDate), "yyyy-MM-dd"));
+			setCustomEnd(format(new Date(dateRange.endDate), "yyyy-MM-dd"));
+		}
+	};
+
+	const customRangeInvalid = Boolean(customStart && customEnd && customStart > customEnd);
+
+	const applyCustomRange = () => {
+		if (!customStart || !customEnd || customRangeInvalid) return;
+		setDateRange(getRangeFromPeriod("custom", parseISO(customStart), parseISO(customEnd)));
 	};
 
 	const scanReceiptWithAi = async (tx: TransactionRow) => {
@@ -285,9 +318,7 @@ export function ExpensesTable() {
 					</div>
 					<button
 						className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200/80 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors duration-200 hover:bg-slate-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-						onClick={() =>
-							exportExpensesCSV(filtered.length > 0 ? filtered : allTransactions, dateRange.label)
-						}
+						onClick={() => exportExpensesCSV(filtered, dateRange.label)}
 					>
 						<Download className="h-4 w-4" />
 						Export CSV
@@ -337,6 +368,22 @@ export function ExpensesTable() {
 								{btn.label}
 							</button>
 						))}
+						<select
+							aria-label="Periode lainnya"
+							className="min-h-11 rounded-lg border border-slate-200/80 bg-white px-3 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
+							value={
+								period === "yesterday" || period === "last_month" || period === "this_year" || period === "custom"
+									? period
+									: ""
+							}
+							onChange={(e) => handleOtherPeriodChange(e.target.value)}
+						>
+							<option value="" disabled>Periode lainnya</option>
+							<option value="yesterday">Kemarin</option>
+							<option value="last_month">Bulan Lalu</option>
+							<option value="this_year">Tahun Kalender</option>
+							<option value="custom">Rentang Tanggal</option>
+						</select>
 					</div>
 
 					<div className="flex-1" />
@@ -376,6 +423,40 @@ export function ExpensesTable() {
 						)}
 					</div>
 				</div>
+
+				{period === "custom" && (
+					<div className="mb-5 flex flex-wrap items-end gap-2 rounded-xl border border-slate-200/80 bg-slate-50/60 p-3">
+						<label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+							<span>Dari tanggal</span>
+							<input
+								aria-label="Tanggal awal"
+								className="min-h-11 rounded-lg border border-slate-200/80 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
+								type="date"
+								value={customStart}
+								onChange={(e) => setCustomStart(e.target.value)}
+							/>
+						</label>
+						<label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+							<span>Sampai tanggal</span>
+							<input
+								aria-label="Tanggal akhir"
+								className="min-h-11 rounded-lg border border-slate-200/80 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
+								type="date"
+								value={customEnd}
+								onChange={(e) => setCustomEnd(e.target.value)}
+							/>
+						</label>
+						<button
+							type="button"
+							disabled={!customStart || !customEnd || customRangeInvalid}
+							onClick={applyCustomRange}
+							className="min-h-11 rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+						>
+							Terapkan
+						</button>
+						{customRangeInvalid && <p role="alert" className="basis-full text-xs text-red-600">Tanggal awal harus sebelum atau sama dengan tanggal akhir.</p>}
+					</div>
+				)}
 
 				{/* ── Empty state ── */}
 				{isEmpty && (

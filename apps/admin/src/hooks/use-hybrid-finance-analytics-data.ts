@@ -85,10 +85,10 @@ async function fetchFinancialTransactions(args?: {
 	type?: "income" | "expense";
 	startDate?: number;
 	endDate?: number;
-}): Promise<any[]> {
+}, limit?: number): Promise<any[]> {
 	const supabase = createClient();
 	const { startDate, endDate } = getRange(args);
-	const data = await adminProtectedRead("finance", { select: "*", gte: { date: startDate }, lte: { date: endDate }, order: [{ column: "date", ascending: false }], ...(args?.type ? { eq: { type: args.type } } : {}) });
+	const data = await adminProtectedRead("finance", { select: "*", gte: { date: startDate }, lte: { date: endDate }, order: [{ column: "date", ascending: false }], ...(args?.type ? { eq: { type: args.type } } : {}), ...(limit !== undefined ? { limit } : {}) });
 	const mapped = (data ?? []).map((row: any) => ({
 		_id: row._id,
 		type: row.type ?? "expense",
@@ -823,7 +823,7 @@ export function useHybridTransactionDetailReport(
 				startDate: args.startDate,
 				endDate: args.endDate,
 				type: args.type,
-			});
+			}, 2000);
 			if (args.category) txs = txs.filter((tx: any) => tx.category === args.category);
 			const rows = mapTransactionRows(txs, args.viewMode ?? "transaction");
 			const pageSize = Math.max(1, Math.min(2000, Math.floor(args.pageSize ?? 50)));
