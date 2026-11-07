@@ -64,20 +64,17 @@ Gejala "Connection refused" pada port 22 sementara web hidup = IP klien di-ban `
 
 Edge Function `customer-auth` dan `djiwa-run` ikut ter-deploy bersama `customer`/`all`.
 
-## Jalur cepat deploy (satu app)
+## Jalur cepat deploy (standar: build di mesin lain, VPS hanya publish)
 
 ```bash
-# 1. dari lokal: pastikan commit sudah di origin/main
-ssh vps-djiwa-tentram
-cd /opt/djiwatentramapp && git status --short   # jika kotor: STOP, minta persetujuan
-# 2. setelah checkout bersih & terbaru (lihat aturan keamanan):
-./scripts/deploy-vps.sh pos        # pos|karyawan|customer|admin|djiwapay|all
-# 3. verifikasi
-curl -fsS https://pos.djiwatentram.web.id/version.json
-curl -sS -o /dev/null -w '%{http_code}\n' https://pos.djiwatentram.web.id/
+# di mesin build (bukan VPS), dari repo ini, setelah commit ada di origin/main:
+scripts/ship-artifacts.sh customer        # atau: scripts/djiwa deploy customer
+# VPS mem-publish sendiri dalam <=3 menit; verifikasi:
+curl -fsS https://djiwatentram.web.id/version.json    # commitHash harus = sha origin/main
+ssh vps-djiwa-tentram 'journalctl -u djiwa-artifact-deploy -n 20 --no-pager'
 ```
 
-Script harus dijalankan dari `/opt/djiwatentramapp`; ia menolak lokasi lain.
+Aturan tetap: jangan build di VPS, jangan `git pull`/`reset` di `/opt/djiwatentramapp`, `scripts/deploy-vps.sh <app> <artifact-dir>` hanya fallback manual untuk artifact jadi. Detail sistemnya di bagian "Auto deploy artifact" di bawah.
 
 ## Helipod MCP
 
@@ -86,7 +83,7 @@ Endpoint: `https://api.helipod.io/mcp`. Otorisasi lewat `/mcp` di sesi interakti
 1. List VPS di akun Helipod, lalu cocokkan dengan project ini: IP `43.173.20.62` / alias `vps-djiwa-tentram`. VPS lain di akun yang sama milik project lain; jangan disentuh.
 2. Gunakan MCP untuk status, power, snapshot (ambil snapshot sebelum perubahan besar), dan firewall (pastikan 22, 80, 443 tetap terbuka).
 3. Aksi berbayar atau destruktif (reinstall, hapus, resize, renew, ubah firewall) wajib konfirmasi eksplisit pengguna.
-4. Deploy kode tetap lewat SSH + `scripts/deploy-vps.sh`. Helipod MCP tidak menggantikan runbook ini.
+4. Deploy kode lewat alur artifact (lihat Jalur cepat deploy). Helipod MCP tidak menggantikan runbook ini dan tidak bisa menjalankan perintah di VPS.
 5. Jangan menulis token/API key Helipod ke repository.
 
 Troubleshooting situs tidak terbuka: cek DNS -> status VPS (Helipod) -> `systemctl status nginx` -> `sudo nginx -t` -> sertifikat TLS -> `dist/index.html` ada -> aset JS/CSS 200 -> `version.json`.
@@ -112,6 +109,8 @@ Troubleshooting situs tidak terbuka: cek DNS -> status VPS (Helipod) -> `systemc
 - Untuk release, gunakan worktree bersih berbasis `origin/main`.
 
 ## Workflow release standar
+
+> Untuk frontend (admin, customer, pos, karyawan, djiwapay) gunakan **Jalur cepat deploy** di atas: build dilakukan di mesin lain, bukan di worktree VPS. Langkah build/rsync di bawah ini hanya berlaku untuk auth-server, migrasi, dan fallback manual dengan artifact jadi.
 
 ### 1. Audit dan branch release
 
@@ -240,7 +239,9 @@ Perbaikan: di `/etc/nginx/sites-available/djiwatentram.conf` (server block custo
 
 Catatan terpisah: proxy ke `*.workers.dev` (customer-community/stories) sesekali mencatat `connect() ... [IPv6] Network is unreachable` di error.log karena VPS tanpa IPv6; nginx jatuh ke IPv4 sehingga hanya menambah latency.
 
-## Auto-deploy GitHub Actions (2026-11-03)
+## [USANG] Auto-deploy GitHub Actions + build di VPS (2026-11-03)
+
+> **Digantikan** oleh "Auto deploy artifact" di bawah. Jalur ini (`djiwa-ci-deploy` / `scripts/ci-deploy.sh`) membangun di `/opt/djiwa-release` pada VPS dan pernah menghabiskan RAM. Jangan dipakai; workflow `deploy-vps.yml` sekarang hanya membangun artifact. Key SSH CI dan wrapper di VPS sebaiknya dinonaktifkan (butuh persetujuan pemilik).
 
 Push ke `main` -> `.github/workflows/deploy-vps.yml` menentukan app yang berubah dari path file lalu SSH ke VPS.
 
@@ -297,7 +298,7 @@ Perbaikan di `/etc/nginx/sites-available/djiwatentram.conf`:
 
 Verifikasi: `curl -s https://www.djiwatentram.web.id/sw.js` harus berisi kode pembersih (200), `curl -sI https://www.djiwatentram.web.id/masuk` harus 301 ke apex. Setelah semua pengguna lama berpindah (lihat log nginx: tidak ada lagi request ber-Referer `www`), kode pembersih boleh dipertahankan; jangan dihapus tanpa memastikan itu.
 
-Catatan deploy: CI membangun lewat runtime Bun (shim `node` di `/opt/djiwa-release/.node-shim`) karena Node 18 di VPS terlalu lama untuk `unplugin@3`.
+[Usang] Catatan jalur lama: CI membangun lewat runtime Bun (shim `node` di `/opt/djiwa-release/.node-shim`) karena Node 18 di VPS terlalu lama untuk `unplugin@3`.
 
 ## Auto deploy artifact (build di mesin lain, VPS hanya publish)
 

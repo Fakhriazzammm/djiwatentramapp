@@ -64,7 +64,7 @@ Database / backend
 
 Produksi / VPS
   status                     cek kesehatan semua domain, auth, supabase, versi live
-  deploy <app[,app]|all>     deploy commit HEAD (harus sudah di-push) lewat key CI
+  deploy <app[,app]|all>     build origin/main di mesin ini lalu unggah; VPS publish otomatis (<=3 mnt)
   logs <nginx|auth|edge|db> [n]   log di VPS
   vps <perintah...>          jalankan perintah di VPS
 
@@ -164,11 +164,11 @@ cmd_deploy() {
 	local apps="${1:-}"; [ -n "$apps" ] || die "pakai: djiwa deploy <app[,app]|all>"
 	[ "$apps" = all ] && apps="${DEPLOYABLE// /,}"
 	local a; for a in ${apps//,/ }; do [[ " $DEPLOYABLE " == *" $a "* ]] || die "app tidak bisa auto-deploy: $a (boleh: $DEPLOYABLE)"; done
-	[ -f "$CI_KEY" ] || die "key CI tidak ada: $CI_KEY"
-	git fetch -q origin main; local sha; sha=$(git rev-parse HEAD)
-	git merge-base --is-ancestor "$sha" origin/main || die "HEAD belum di-push ke origin/main (git push dulu)"
-	echo "→ deploy $apps @ ${sha:0:7}"
-	ssh -i "$CI_KEY" -o IdentitiesOnly=yes -o BatchMode=yes "$CI_HOST" "$sha $apps"
+	git fetch -q origin main
+	git merge-base --is-ancestor "$(git rev-parse HEAD)" origin/main || die "HEAD belum di-push ke origin/main (git push dulu)"
+	# Build di mesin ini (bukan VPS); timer djiwa-artifact-deploy di VPS yang mem-publish.
+	echo "→ build origin/main di mesin ini, unggah ke VPS: $apps"
+	exec "$(git rev-parse --show-toplevel)/scripts/ship-artifacts.sh" ${apps//,/ }
 }
 
 cmd_logs() {

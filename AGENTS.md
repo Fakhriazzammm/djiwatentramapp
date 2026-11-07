@@ -47,7 +47,9 @@ For this `djiwatentramapp` repository, all app deployments use the VPS **`vps-dj
 - Production checkout: `/opt/djiwatentramapp`
 - Canonical domain family: `*.djiwatentram.web.id`
 - Webroot per app: `/opt/djiwatentramapp/apps/<app>/dist` (customer: `apps/customer/dist`)
-- Deploy script (run on the VPS, from the canonical checkout): `scripts/deploy-vps.sh [pos|karyawan|customer|admin|djiwapay|all]`
+- Deploy flow (**build off the VPS, VPS only publishes**): on a build machine run `scripts/ship-artifacts.sh [app...]` (or `scripts/djiwa deploy <app>`); it builds `origin/main` and uploads `<app>-<sha>` to the VPS inbox. `djiwa-artifact-deploy.timer` on the VPS publishes it within ~3 minutes only if the sha is still the head of `origin/main`, verifies `version.json`, and rolls back on failure. Apps: `admin customer pos karyawan djiwapay`.
+- Hard rules: never run `bun`/`npm`/`vite` builds on the VPS (a Vite build once exhausted its RAM; build scripts refuse on this host); never `git pull`/`reset`/`clean` the production checkout `/opt/djiwatentramapp` (diverged and dirty); never commit build env or secrets (public build config lives in `~/.djiwa-build/<app>.env` on the build machine). The legacy forced-command `djiwa-ci-deploy` / `scripts/ci-deploy.sh` path builds on the VPS and is deprecated.
+- `scripts/deploy-vps.sh <app> <artifact-dir>` is the manual fallback and accepts prebuilt artifacts only.
 - Verify the VPS host, checkout path, domain, and deployed `version.json` before declaring a deployment complete.
 
 ### Helipod MCP
@@ -57,4 +59,4 @@ Helipod MCP (`https://api.helipod.io/mcp`) may be used to inspect and operate th
 - Use the `helipod` / `helipod-vps` skill. Authorize via `/mcp` in an interactive session; non-interactive sessions cannot authorize.
 - Match the Helipod VPS to `vps-djiwa-tentram` (IP 43.173.20.62) before any action. Never act on another project's VPS found in the same Helipod account.
 - Paid or destructive actions (reinstall, delete, resize, renew, firewall changes) require explicit user confirmation.
-- App deploys still go through SSH + `scripts/deploy-vps.sh`; Helipod MCP does not replace the runbook.
+- App deploys go through the artifact flow above (`scripts/ship-artifacts.sh` + the VPS timer); Helipod MCP does not replace the runbook and cannot run commands on the VPS.

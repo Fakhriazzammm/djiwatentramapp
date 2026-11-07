@@ -1,5 +1,7 @@
 # VPS resource remediation — 6 November 2026
 
+> Update 7 Nov 2026: alur deploy standar kini `scripts/ship-artifacts.sh` + timer `djiwa-artifact-deploy` (lihat `docs/DEPLOYMENT_VPS_WORKFLOW.md`). Instruksi manual di bawah tetap berlaku sebagai fallback.
+
 Production host: `VM-4-244-ubuntu`, canonical checkout `/opt/djiwatentramapp`.
 Nginx webroots were checked against the canonical Djiwa domain family.
 
