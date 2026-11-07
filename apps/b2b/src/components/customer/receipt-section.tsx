@@ -54,7 +54,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 		orderType: currentOrder?.orderType,
 		platform: currentOrder?.platform,
 		brandSlug: currentOrder?.brandSlug ?? currentOrder?.brand_slug ?? "b2b",
-	}) || props.receipt.fallbackReference;
+	}).replace(/^-$/, "") || props.receipt.fallbackReference;
 	const currentOrderData = props.currentOrder as any;
 	const orderStatus = String(currentOrderData?.status ?? currentOrderData?.raw?.status ?? "").trim().toLowerCase();
 	const paymentReceiptKind = String(currentOrderData?.paymentReceiptKind ?? currentOrderData?.payment_receipt_kind ?? currentOrderData?.raw?.paymentReceiptKind ?? "").trim().toLowerCase();

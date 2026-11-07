@@ -113,7 +113,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 		businessUnit: currentOrder?.businessUnit,
 		orderType: currentOrder?.orderType,
 		platform: currentOrder?.platform,
-	}) || props.receipt.fallbackReference;
+	}).replace(/^-$/, "") || props.receipt.fallbackReference;
 	const orderStatus = props.currentOrder?.status;
 	const mode = orderStatus === "paid" || orderStatus === "completed" ? "paid" : props.receipt.mode;
 	const receiptStatus = resolveReceiptStatus(mode, orderStatus);

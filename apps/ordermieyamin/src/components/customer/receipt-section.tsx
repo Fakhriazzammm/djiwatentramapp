@@ -42,7 +42,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 		source: props.currentOrder?.source,
 		businessUnit: "ordermieyamin",
 		orderType: props.currentOrder?.orderType,
-	}) || props.receipt.fallbackReference;
+	}).replace(/^-$/, "") || props.receipt.fallbackReference;
 	const orderStatus = props.currentOrder?.status;
 	const mode = orderStatus === "paid" || orderStatus === "completed" ? "paid" : props.receipt.mode;
 	const cartSnapshotItems = (props.cartSnapshot ?? []).map((item: CartItem) => ({
