@@ -1,74 +1,53 @@
 #!/usr/bin/env node
-// Pull-only auto deploy for the Djiwa Tentram VPS. NEVER builds: CI builds the artifact
-// (.github/workflows/deploy-vps.yml), this script only downloads, verifies and publishes it.
+// Pull-only auto deploy for the Djiwa Tentram VPS. NEVER builds and needs no token.
 //
-// Run by djiwa-artifact-deploy.timer. One cheap API call per tick; work only happens when the
-// newest commit on <branch> has a finished artifact that is not live yet.
+// A separate build machine runs scripts/ship-artifacts.sh, which builds origin/main and uploads
+// <app>-<sha>/ into the incoming directory. This script (run by djiwa-artifact-deploy.timer)
+// asks GitHub which commit main points at (public `git ls-remote`, no credentials) and publishes
+// the matching artifact when it is not live yet. An artifact for any other commit is never used,
+// so unpushed or stale builds cannot reach production.
 //
 //   node scripts/artifact-autodeploy.mjs            # deploy what is new
 //   node scripts/artifact-autodeploy.mjs --check    # print state, change nothing
-//   node scripts/artifact-autodeploy.mjs --force    # redeploy current commit
+//   node scripts/artifact-autodeploy.mjs --force    # republish the current commit
 //
-// Config (env, normally from /etc/djiwatentramapp/artifact-autodeploy.env, mode 600):
-//   GITHUB_TOKEN   fine-grained PAT, read-only "Actions" + "Contents" on this repo (required)
-//   GITHUB_REPO    default Fakhriazzammm/djiwatentramapp
-//   DEPLOY_BRANCH  default main
-//   DEPLOY_APPS    default admin,customer,pos,karyawan,djiwapay
-//   DEPLOY_ROOT    default /opt/djiwatentramapp
-//   DEPLOY_STATE   default /var/lib/djiwa-autodeploy
-import { chownSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+// Env (optional, /etc/djiwatentramapp/artifact-autodeploy.env):
+//   GITHUB_REPO default Fakhriazzammm/djiwatentramapp   DEPLOY_BRANCH default main
+//   DEPLOY_APPS default admin,customer,pos,karyawan,djiwapay
+//   DEPLOY_ROOT default /opt/djiwatentramapp            DEPLOY_STATE default /var/lib/djiwa-autodeploy
+import { chownSync, cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { domains, publishArtifact } from "./publish-artifact.mjs";
 
 export const artifactName = (app, sha) => `${app}-${sha}`;
 
 /** Pure decision: should this app be deployed now? */
-export function decide({ sha, deployedSha, artifact, force = false }) {
-  if (!artifact) return { deploy: false, reason: "artifact belum ada (CI belum selesai atau gagal)" };
-  if (artifact.expired) return { deploy: false, reason: "artifact kedaluwarsa" };
+export function decide({ sha, deployedSha, ready, force = false }) {
+  if (!ready) return { deploy: false, reason: "artifact untuk commit ini belum diunggah" };
   if (sha === deployedSha && !force) return { deploy: false, reason: "sudah live" };
-  return { deploy: true, reason: `${deployedSha ?? "none"} -> ${sha}` };
+  return { deploy: true, reason: `${deployedSha ? deployedSha.slice(0, 7) : "none"} -> ${sha.slice(0, 7)}` };
 }
 
 function config(env = process.env) {
+  const state = env.DEPLOY_STATE ?? "/var/lib/djiwa-autodeploy";
   const cfg = {
-    token: env.GITHUB_TOKEN ?? "",
     repo: env.GITHUB_REPO ?? "Fakhriazzammm/djiwatentramapp",
     branch: env.DEPLOY_BRANCH ?? "main",
     apps: (env.DEPLOY_APPS ?? "admin,customer,pos,karyawan,djiwapay").split(",").map(s => s.trim()).filter(Boolean),
     root: env.DEPLOY_ROOT ?? "/opt/djiwatentramapp",
-    state: env.DEPLOY_STATE ?? "/var/lib/djiwa-autodeploy",
+    state,
+    incoming: join(state, "incoming"),
   };
   for (const app of cfg.apps) if (!Object.hasOwn(domains, app)) throw new Error(`Unknown app: ${app}`);
   return cfg;
 }
 
-async function gh(cfg, path, init = {}) {
-  const res = await fetch(`https://api.github.com/repos/${cfg.repo}${path}`, {
-    ...init,
-    headers: { Authorization: `Bearer ${cfg.token}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "djiwa-artifact-autodeploy" },
-  });
-  if (!res.ok) throw new Error(`GitHub ${path} -> HTTP ${res.status}`);
-  return res;
-}
-
-async function findArtifact(cfg, app, sha) {
-  const data = await (await gh(cfg, `/actions/artifacts?name=${encodeURIComponent(artifactName(app, sha))}&per_page=1`)).json();
-  return data.artifacts?.[0] ?? null;
-}
-
-async function download(cfg, artifact, dest) {
-  const res = await gh(cfg, `/actions/artifacts/${artifact.id}/zip`);
-  const zip = join(dest, "artifact.zip");
-  writeFileSync(zip, Buffer.from(await res.arrayBuffer()));
-  const out = join(dest, "out");
-  mkdirSync(out);
-  const unzip = spawnSync("unzip", ["-q", zip, "-d", out], { encoding: "utf8" });
-  if (unzip.status !== 0) throw new Error(`unzip gagal: ${unzip.stderr}`);
-  rmSync(zip);
-  return out;
+function remoteHead(cfg) {
+  const out = spawnSync("git", ["ls-remote", `https://github.com/${cfg.repo}.git`, `refs/heads/${cfg.branch}`], { encoding: "utf8", timeout: 30000 });
+  const sha = out.stdout?.split(/\s+/)[0] ?? "";
+  if (out.status !== 0 || !/^[a-f0-9]{40}$/.test(sha)) throw new Error(`git ls-remote gagal: ${out.stderr || "sha tidak valid"}`);
+  return sha;
 }
 
 function chownTree(path, uid, gid) {
@@ -83,13 +62,11 @@ async function liveCommit(app) {
   return (await res.json()).commitHash ?? "";
 }
 
-async function deployApp(cfg, app, sha, artifact) {
-  const work = mkdtempSync(join(tmpdir(), `djiwa-${app}-`));
+async function deployApp(cfg, app, sha, dir) {
   const live = join(cfg.root, "apps", app, "dist");
   const owner = existsSync(live) ? statSync(live) : null;
   let backup = null;
   try {
-    const dir = await download(cfg, artifact, work);
     backup = publishArtifact(cfg.root, app, dir);
     if (owner) chownTree(live, owner.uid, owner.gid);
     const served = await liveCommit(app);
@@ -101,29 +78,36 @@ async function deployApp(cfg, app, sha, artifact) {
       console.error(`ROLLBACK ${app} ke ${backup}`);
     }
     throw error;
-  } finally {
-    rmSync(work, { recursive: true, force: true });
+  }
+}
+
+/** Keep the incoming dir small: drop this app's artifacts for other commits and abandoned uploads. */
+function cleanup(cfg, app, keepSha) {
+  if (!existsSync(cfg.incoming)) return;
+  for (const name of readdirSync(cfg.incoming)) {
+    if (!name.startsWith(`${app}-`) || name === artifactName(app, keepSha)) continue;
+    rmSync(join(cfg.incoming, name), { recursive: true, force: true });
   }
 }
 
 export async function main(argv = process.argv.slice(2), env = process.env) {
   const cfg = config(env);
-  if (!cfg.token) throw new Error("GITHUB_TOKEN belum diatur");
   const check = argv.includes("--check");
   const force = argv.includes("--force");
-  const sha = (await (await gh(cfg, `/commits/${cfg.branch}`)).json()).sha;
-  mkdirSync(cfg.state, { recursive: true });
+  const sha = remoteHead(cfg);
+  mkdirSync(cfg.incoming, { recursive: true });
   let failed = 0;
   for (const app of cfg.apps) {
     const stateFile = join(cfg.state, `${app}.sha`);
     const deployedSha = existsSync(stateFile) ? readFileSync(stateFile, "utf8").trim() : null;
-    const artifact = await findArtifact(cfg, app, sha);
-    const verdict = decide({ sha, deployedSha, artifact, force });
+    const dir = join(cfg.incoming, artifactName(app, sha));
+    const verdict = decide({ sha, deployedSha, ready: existsSync(join(dir, ".djiwa-artifact.json")), force });
     console.log(`${app}: ${verdict.deploy ? "DEPLOY" : "skip"} (${verdict.reason})`);
     if (check || !verdict.deploy) continue;
     try {
-      await deployApp(cfg, app, sha, artifact);
+      await deployApp(cfg, app, sha, dir);
       writeFileSync(stateFile, sha);
+      cleanup(cfg, app, sha);
       console.log(`${app}: OK ${sha.slice(0, 7)}`);
     } catch (error) {
       failed += 1;

@@ -299,22 +299,13 @@ Verifikasi: `curl -s https://www.djiwatentram.web.id/sw.js` harus berisi kode pe
 
 Catatan deploy: CI membangun lewat runtime Bun (shim `node` di `/opt/djiwa-release/.node-shim`) karena Node 18 di VPS terlalu lama untuk `unplugin@3`.
 
-## Auto deploy artifact (build di CI, VPS hanya publish)
+## Auto deploy artifact (build di mesin lain, VPS hanya publish)
 
-Pola mengikuti `djiwa-autodeploy` di VPS Djiwa Travel, tetapi **VPS tidak pernah build**:
+Mengikuti pola timer `djiwa-autodeploy` di VPS Djiwa Travel (tanpa GitHub Actions, tanpa token), tetapi **VPS tidak pernah build** karena build Vite pernah menghabiskan RAM host ini.
 
-1. Push ke `main` memicu `.github/workflows/deploy-vps.yml`, yang membangun `admin`, `customer`, `pos`, `karyawan`, `djiwapay` di GitHub Actions dan mengunggah artifact `<app>-<sha>`.
-2. `djiwa-artifact-deploy.timer` di VPS (tiap 3 menit, `Nice=19`, IO idle, `MemoryMax=300M`) menjalankan `scripts/artifact-autodeploy.mjs`. Satu panggilan API per tick; kerja nyata hanya bila commit terbaru `main` punya artifact yang belum live.
-3. Artifact diunduh, diverifikasi dan di-publish oleh `scripts/publish-artifact.mjs` (backup di `apps/<app>/.release-backups`, `index.html` terakhir), lalu `https://<domain>/version.json` harus menyajikan commit yang sama. Gagal = rollback dari backup; state `/var/lib/djiwa-autodeploy/<app>.sha` tidak maju.
+1. Di mesin build (Mac/server lain; butuh git, bun 1.3.4, node 22, rsync, SSH ke VPS) jalankan `scripts/ship-artifacts.sh [app...]`. Skrip membangun `origin/main` di worktree bersih, memakai config publik dari `~/.djiwa-build/<app>.env` (di luar repo; admin juga butuh `VITE_ADMIN_SECRET`), memberi stempel commit, lalu rsync ke `/var/lib/djiwa-autodeploy/incoming/<app>-<sha>` lewat `.partial` + rename.
+2. `djiwa-artifact-deploy.timer` di VPS (tiap 3 menit, `Nice=19`, IO idle, `MemoryMax=300M`) menjalankan `scripts/artifact-autodeploy.mjs`: `git ls-remote` ke GitHub (publik, tanpa kredensial) untuk tahu head `main`, lalu hanya mem-publish artifact yang commit-nya sama dengan head itu. Build yang basi atau belum di-push tidak pernah dipakai.
+3. Publish lewat `scripts/publish-artifact.mjs` (backup di `apps/<app>/.release-backups`), kepemilikan `dist` dipertahankan, lalu `https://<domain>/version.json` harus menyajikan commit yang sama. Gagal = rollback dari backup dan state `/var/lib/djiwa-autodeploy/<app>.sha` tidak maju.
 
-Pasang sekali di VPS:
-
-```bash
-sudo install -d -m 755 /etc/djiwatentramapp
-sudo sh -c 'umask 077; printf "GITHUB_TOKEN=%s\n" "<fine-grained PAT, Actions: read-only, repo ini>" > /etc/djiwatentramapp/artifact-autodeploy.env'
-sudo bash /opt/djiwatentramapp/scripts/install-artifact-autodeploy.sh
-```
-
-Operasi: `node scripts/artifact-autodeploy.mjs --check` (lihat status), `--force` (publish ulang commit saat ini), `journalctl -u djiwa-artifact-deploy -n 50`. Matikan: `sudo systemctl disable --now djiwa-artifact-deploy.timer`.
-
-Prasyarat CI: variabel repo `BUILD_ENV_<app>` untuk tiap app (`VITE_*` publik saja) dan secret `LEGACY_ADMIN_BUILD_SECRET` untuk admin. Artifact admin berisi secret itu, jadi **jangan** dipublikasikan sebagai release publik; token VPS harus read-only.
+Pasang sekali di VPS: `sudo bash /opt/djiwatentramapp/scripts/install-artifact-autodeploy.sh`.
+Operasi: `node scripts/artifact-autodeploy.mjs --check` (status), `--force` (publish ulang), `journalctl -u djiwa-artifact-deploy -n 50`. Matikan: `sudo systemctl disable --now djiwa-artifact-deploy.timer`.
