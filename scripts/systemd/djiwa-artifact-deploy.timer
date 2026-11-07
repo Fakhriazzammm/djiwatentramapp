@@ -1,0 +1,11 @@
+[Unit]
+Description=Check GitHub for a new Djiwa Tentram CI artifact every 3 minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=3min
+AccuracySec=30s
+Unit=djiwa-artifact-deploy.service
+
+[Install]
+WantedBy=timers.target
