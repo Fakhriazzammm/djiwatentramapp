@@ -7,7 +7,7 @@ Wants=network-online.target
 Type=oneshot
 EnvironmentFile=-/etc/djiwatentramapp/artifact-autodeploy.env
 WorkingDirectory=/opt/djiwatentramapp
-ExecStart=/usr/bin/flock -n /run/djiwa-artifact-deploy.lock /usr/bin/node /opt/djiwatentramapp/scripts/artifact-autodeploy.mjs
+ExecStart=/usr/bin/flock -n /var/lib/djiwa-autodeploy/.lock /usr/bin/node /opt/djiwatentramapp/scripts/artifact-autodeploy.mjs
 # Keep the box light: this must never compete with the apps.
 Nice=19
 IOSchedulingClass=idle
