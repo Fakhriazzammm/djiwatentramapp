@@ -26,10 +26,10 @@ import {
 	useHybridShiftStatus,
 } from "@/hooks/use-hybrid-pos-data";
 
-import OperationalDecisionDashboard from "./-OperationalDecisionDashboard";
+import CommandCenter from "./-dashboard/CommandCenter";
 
 export const Route = createLazyFileRoute("/admin/")({
-	component: OperationalDecisionDashboard,
+	component: CommandCenter,
 });
 
 // The domain root (/) must use the same current decision dashboard as /admin/.

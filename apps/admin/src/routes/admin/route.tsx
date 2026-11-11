@@ -1792,7 +1792,7 @@ function SidebarSection({
 			{isCollapsed ? (
 				<div className="mx-auto h-px w-6 rounded-full bg-border" />
 			) : (
-				<span className="px-3 font-semibold text-[10px] text-muted-foreground/70 uppercase tracking-widest">
+				<span className="px-3 font-mono font-semibold text-[10px] text-muted-foreground/70 uppercase tracking-[0.1em]">
 					{label}
 				</span>
 			)}
@@ -1825,12 +1825,12 @@ function DesktopNavLink({
 		<Link
 			activeOptions={activeOptions}
 			activeProps={{
-				className: "bg-primary text-primary-foreground shadow-sm",
+				className: "bg-[#eaf1ff] text-[#2f6fdf] dark:bg-primary/15 dark:text-primary",
 			}}
-			className={`flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-sm transition-all ${isCollapsed ? "justify-center px-0" : ""
+			className={`flex items-center gap-3 rounded-xl px-3 py-2.5 font-medium text-sm transition-[background-color,color,transform] duration-200 ease-out active:scale-[0.98] motion-reduce:transition-none ${isCollapsed ? "justify-center px-0" : ""
 				}`}
 			inactiveProps={{
-				className: "text-muted-foreground hover:bg-muted hover:text-foreground",
+				className: "text-muted-foreground hover:translate-x-0.5 hover:bg-[#f2f2f5] hover:text-foreground dark:hover:bg-muted",
 			}}
 			title={isCollapsed ? label : undefined}
 			to={to}

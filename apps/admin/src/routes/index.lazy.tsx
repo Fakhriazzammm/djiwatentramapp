@@ -1,6 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { AdminLayout } from "./admin/route";
-import OperationalDecisionDashboard from "./admin/-OperationalDecisionDashboard";
+import CommandCenter from "./admin/-dashboard/CommandCenter";
 
 export const Route = createLazyFileRoute("/")({
   component: AdminRootPage,
@@ -9,7 +9,7 @@ export const Route = createLazyFileRoute("/")({
 function AdminRootPage() {
   return (
     <AdminLayout>
-      <OperationalDecisionDashboard />
+      <CommandCenter />
     </AdminLayout>
   );
 }

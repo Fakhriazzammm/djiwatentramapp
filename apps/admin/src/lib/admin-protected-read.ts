@@ -35,7 +35,19 @@ export async function adminProtectedRead<T = any>(
 	action: ProtectedReadAction,
 	query: ProtectedReadQuery = {},
 ): Promise<T[]> {
-	if (typeof window === "undefined") return [];
+	const body = await postAdminProtected({ action, query });
+	if (!Array.isArray(body.data)) throw new Error("Protected read returned an invalid response");
+	return body.data as T[];
+}
+
+/** Memanggil fungsi agregasi admin_* yang di-allowlist di Edge Function (lihat RPC_ACTIONS). */
+export async function adminProtectedRpc<T = any>(rpc: string, args: Record<string, unknown> = {}): Promise<T> {
+	const body = await postAdminProtected({ action: "rpc", rpc, args });
+	return body.data as T;
+}
+
+async function postAdminProtected(payload: Record<string, unknown>): Promise<any> {
+	if (typeof window === "undefined") return { success: true, data: [] };
 	const token = window.localStorage.getItem("yumi_session_token")?.trim();
 	if (!token) throw new Error("Sesi admin tidak ditemukan");
 
@@ -46,7 +58,7 @@ export async function adminProtectedRead<T = any>(
 	await acquireProtectedReadSlot();
 	try {
 		const endpoint = `${supabaseUrl}/functions/v1/admin-protected-read`;
-		const requestBody = JSON.stringify({ action, query });
+		const requestBody = JSON.stringify(payload);
 		let response: Response | undefined;
 		let lastError: unknown;
 
@@ -85,8 +97,8 @@ export async function adminProtectedRead<T = any>(
 		let body: any;
 		try { body = responseText ? JSON.parse(responseText) : null; } catch { body = null; }
 		if (!response.ok) throw new Error(body?.error?.message ?? body?.error ?? `Protected read failed (${response.status})`);
-		if (!body || body.success !== true || !Array.isArray(body.data)) throw new Error("Protected read returned an invalid response");
-		return body.data as T[];
+		if (!body || body.success !== true) throw new Error("Protected read returned an invalid response");
+		return body;
 	} finally {
 		releaseProtectedReadSlot();
 	}
