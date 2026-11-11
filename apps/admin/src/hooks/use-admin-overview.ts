@@ -160,9 +160,13 @@ export function useAdminOverview(period: DashboardPeriodKey) {
 	const [state, setState] = useState<AdminOverviewState>({ data: null, status: "loading", error: null, updatedAt: null });
 	const [nonce, setNonce] = useState(0);
 	const requestRef = useRef(0);
+	const inFlightRef = useRef<{ period: DashboardPeriodKey; id: number } | null>(null);
 
 	const load = useCallback(async () => {
+		// Polling and realtime must not invalidate a slower request for the same period.
+		if (inFlightRef.current?.period === period) return;
 		const requestId = ++requestRef.current;
+		inFlightRef.current = { period, id: requestId };
 		try {
 			const data = await loadAdminOverview(period, Date.now());
 			if (requestId !== requestRef.current) return;
@@ -171,6 +175,8 @@ export function useAdminOverview(period: DashboardPeriodKey) {
 			if (requestId !== requestRef.current) return;
 			const message = error instanceof Error ? error.message : "Gagal memuat dashboard";
 			setState((current) => ({ ...current, status: current.data ? "ready" : "error", error: message }));
+		} finally {
+			if (inFlightRef.current?.id === requestId) inFlightRef.current = null;
 		}
 	}, [period]);
 
