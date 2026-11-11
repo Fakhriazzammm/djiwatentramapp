@@ -56,6 +56,7 @@ export type DjiwaPayPayload = {
 
 export type AttendanceStatus = "working" | "done" | "leave" | "absent";
 export type AttendancePayload = {
+	activeCashierShift?: { id: string; shiftName: string | null; cashierName: string | null; startTime: number | null } | null;
 	total: number;
 	present: number;
 	staff: Array<{

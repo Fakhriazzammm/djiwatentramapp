@@ -5,23 +5,14 @@ import { adminProtectedRead } from "@/lib/admin-protected-read";
 import { CheckCircle2, ChevronRight } from "lucide-react";
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import type { AdminOverview, Source } from "@/hooks/use-admin-overview";
-import type { AttendancePayload, AttendanceStatus, FeedEvent, RecentOrderRow } from "@/lib/dashboard-analytics";
-import { GrowBar, LiveDot } from "./motion";
+import type { AttendancePayload, FeedEvent, RecentOrderRow } from "@/lib/dashboard-analytics";
+import { LiveDot } from "./motion";
 import { APP_COLOR, Card, Empty, formatAgo, formatClockWIB, Label, Masked, SectionTitle, SourceError, Skeleton, useRupiah } from "./ui";
 import { labelChannel } from "./PaymentsSection";
 
 function valueOf<T>(source: Source<T>): T | null {
 	return source.ok ? source.value : null;
 }
-
-const STATUS_STYLE: Record<AttendanceStatus, { label: string; text: string; bg: string }> = {
-	working: { label: "Bekerja", text: "#166534", bg: "#e8f5ee" },
-	done: { label: "Sudah pulang", text: "#2f5d9e", bg: "#eaf3ff" },
-	leave: { label: "Izin / cuti", text: "#7a4b00", bg: "#fff8e6" },
-	absent: { label: "Belum hadir", text: "#b42318", bg: "#fdecea" },
-};
-
-const LEAVE_LABEL: Record<string, string> = { izin: "Izin", cuti: "Cuti", sakit: "Sakit", other: "Lainnya" };
 
 export function OpsSection({ overview, periodLabel }: { overview: AdminOverview; periodLabel: string }) {
 	return (
@@ -49,51 +40,42 @@ export function AttendanceCard({ overview }: { overview: AdminOverview }) {
 }
 
 function AttendanceBody({ payload }: { payload: AttendancePayload }) {
-	const ratio = payload.total ? payload.present / payload.total : 0;
-	const order: Record<AttendanceStatus, number> = { working: 0, done: 1, leave: 2, absent: 3 };
-	const staff = [...payload.staff].sort((left, right) => order[left.status] - order[right.status] || (left.name ?? "").localeCompare(right.name ?? "", "id"));
+	const staff = payload.staff.filter((person) => person.status === "working")
+		.sort((left, right) => (left.name ?? "").localeCompare(right.name ?? "", "id"));
+	const shift = payload.activeCashierShift;
 	return (
 		<div>
 			<div className="flex items-baseline gap-2">
-				<span className="font-display text-[30px] font-semibold leading-none tabular-nums text-[#111114]"><Masked>{payload.present}</Masked></span>
-				<span className="font-mono text-[11px] text-[#666672]">dari <Masked>{payload.total}</Masked> staf aktif hadir</span>
-			</div>
-			<div className="mt-3 h-1.5 overflow-hidden bg-[#ececf0]">
-				<GrowBar ratio={ratio} className="h-full bg-[#16a34a]" />
+				<span className="font-display text-[30px] font-semibold leading-none tabular-nums text-[#111114]"><Masked>{staff.length}</Masked></span>
+				<span className="font-mono text-[11px] text-[#666672]">staf sedang bekerja · hari ini</span>
 			</div>
 			{staff.length === 0 ? (
-				<div className="mt-4"><Empty>Belum ada data staf aktif.</Empty></div>
+				<div className="mt-4"><Empty>Tidak ada staf yang sedang bekerja.</Empty></div>
 			) : (
-				<ul className="mt-4 max-h-[320px] divide-y divide-[#efeff2] overflow-y-auto pr-1" aria-label="Daftar staf dan status kehadiran">
-					{staff.map((person) => {
-						const style = STATUS_STYLE[person.status];
-						const detail =
-							person.status === "working" && person.checkInAt
-								? `masuk ${formatClockWIB(person.checkInAt)}`
-								: person.status === "done" && person.checkInAt && person.checkOutAt
-									? `${formatClockWIB(person.checkInAt)} – ${formatClockWIB(person.checkOutAt)}`
-									: person.status === "leave"
-										? LEAVE_LABEL[person.leaveType ?? ""] ?? "Izin"
-										: "";
-						return (
-							<li key={person.userId} className="flex items-center gap-3 py-2.5">
-								<span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center bg-[#111114] font-mono text-[12px] font-semibold text-white">
-									{(person.name ?? "").trim().charAt(0).toUpperCase() || "?"}
-								</span>
-								<div className="min-w-0 flex-1">
-									<div className="truncate text-[13px] font-semibold text-[#111114]"><Masked>{person.name || "Tanpa nama"}</Masked></div>
-									<div className="truncate font-mono text-[10px] text-[#666672]">
-										{person.role ?? "Staf"}{detail ? ` · ${detail}` : ""}
-									</div>
-								</div>
-								<span className="shrink-0 px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.05em]" style={{ color: style.text, background: style.bg }}>
-									{style.label}
-								</span>
-							</li>
-						);
-					})}
+				<ul className="mt-4 max-h-[240px] divide-y divide-[#efeff2] overflow-y-auto pr-1" aria-label="Staf sedang bekerja">
+					{staff.map((person) => (
+						<li key={person.userId} className="flex items-center gap-3 py-2.5">
+							<span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center bg-[#111114] font-mono text-[12px] font-semibold text-white">{(person.name ?? "").trim().charAt(0).toUpperCase() || "?"}</span>
+							<div className="min-w-0 flex-1">
+								<div className="truncate text-[13px] font-semibold text-[#111114]"><Masked>{person.name || "Tanpa nama"}</Masked></div>
+								<div className="truncate font-mono text-[10px] text-[#666672]">{person.role ?? "Staf"}</div>
+							</div>
+							<span className="shrink-0 bg-[#e8f5ee] px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.05em] text-[#166534]">Bekerja</span>
+						</li>
+					))}
 				</ul>
 			)}
+			<div className="mt-4 border-t border-[#efeff2] pt-4">
+				<Label tone="green">Shift kasir aktif</Label>
+				{shift === undefined ? <div className="mt-2"><SourceError message="Status shift kasir belum tersedia." /></div> : shift === null ? (
+					<div className="mt-2"><Empty>Tidak ada shift kasir aktif.</Empty></div>
+				) : (
+					<div className="mt-2 text-[12px] text-[#111114]">
+						<div className="font-semibold"><Masked>{shift.cashierName || "Kasir"}</Masked></div>
+						<div className="mt-1 font-mono text-[10px] text-[#666672]">{shift.shiftName || "Shift kasir"}{shift.startTime ? ` · mulai ${formatClockWIB(shift.startTime)}` : ""}</div>
+					</div>
+				)}
+			</div>
 		</div>
 	);
 }
