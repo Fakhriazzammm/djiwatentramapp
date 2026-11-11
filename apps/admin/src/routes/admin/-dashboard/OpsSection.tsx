@@ -27,10 +27,10 @@ export function OpsSection({ overview, periodLabel }: { overview: AdminOverview;
 			<SectionTitle color="#16a34a" right={<span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#666672]">hari ini · WIB</span>}>
 				Tim, stok &amp; tindakan
 			</SectionTitle>
-			<div className="grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+			<div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+				<RecentOrdersCard overview={overview} periodLabel={periodLabel} />
 				<AttendanceCard overview={overview} />
 				<ActionsCard overview={overview} />
-				<RecentOrdersCard overview={overview} periodLabel={periodLabel} />
 			</div>
 		</div>
 	);
@@ -186,7 +186,7 @@ function RecentOrdersCard({ overview, periodLabel }: { overview: AdminOverview; 
 			) : breakdown.recentOrders.length === 0 ? (
 				<Empty>Belum ada pesanan pada periode ini.</Empty>
 			) : (
-				<ul className="divide-y divide-[#efeff2]">
+				<ul className="max-h-[260px] overflow-y-auto divide-y divide-[#efeff2]">
 					{breakdown.recentOrders.map((order) => {
 						const status = ORDER_STATUS[order.status] ?? { label: order.status, color: "#666672" };
 						return (

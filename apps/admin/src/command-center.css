@@ -40,3 +40,8 @@ body.admin-shell .admin-command button { border-radius: 0; }
 
 body.admin-shell [data-admin-shell] > main > header button[aria-label="Buka menu akun"] { background: #111114; color: #fff; width: 40px; height: 40px; }
 body.admin-shell [data-admin-shell] > aside nav a[data-active="true"]:hover { background: #111114; color: #fff; }
+
+.command-payment-summary { min-width: 0; background: #fff; }
+.command-payment-summary > section:first-child { border-bottom: 0; padding-bottom: 8px; }
+.command-payment-summary > section:last-child { padding-top: 8px; }
+.command-payment-summary > section:last-child > div:first-child { margin-bottom: 6px; }

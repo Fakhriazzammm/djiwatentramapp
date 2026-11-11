@@ -10,7 +10,7 @@ import {
 	isDashboardPeriodKey,
 	type DashboardPeriodKey,
 } from "@/lib/dashboard-periods";
-import { CONFIDENCE_LABEL, confidenceForSampleDays, type FeedEvent } from "@/lib/dashboard-analytics";
+import { type FeedEvent } from "@/lib/dashboard-analytics";
 import { Reveal, Segmented, LiveDot } from "./motion";
 import { SalesSection } from "./SalesSection";
 import { HourlySection } from "./HourlySection";
@@ -73,7 +73,7 @@ export default function CommandCenter() {
 	const updatedText = state.updatedAt ? formatAgo(state.updatedAt, now) : "memuat…";
 
 	const breakdown = data?.breakdown.ok ? data.breakdown.value : null;
-	const attendance = data?.attendance.ok ? data.attendance.value : null;
+
 	const pendingCount = breakdown?.statusCounts.pending ?? 0;
 	const sampleDays = data?.heatmap.ok ? data.heatmap.value.sampleDays : null;
 
@@ -81,7 +81,7 @@ export default function CommandCenter() {
 		<MaskContext.Provider value={masked}>
 			<MotionConfig reducedMotion="user">
 				<main aria-label="Pusat Pantau Operasional" className="admin-command min-h-full bg-[#f4f4f6] pb-12 pt-1 font-sans text-[#111114]">
-					<div className="mx-auto max-w-[1380px] space-y-[14px] px-3 sm:px-7">
+					<div className="w-full max-w-[1380px] space-y-[14px] px-3 sm:px-7">
 						<div className="flex flex-wrap items-center gap-3">
 							<Segmented id="period" label="Periode data" value={period} onChange={changePeriod} options={PERIOD_OPTIONS} />
 							<div className="ml-auto flex flex-wrap items-center gap-3 font-mono text-[10px] text-[#666672]">
@@ -122,14 +122,11 @@ export default function CommandCenter() {
 						<Reveal>
 							<ActivityRow
 								pendingCount={pendingCount}
-								presentCount={attendance?.present ?? null}
-								totalStaff={attendance?.total ?? null}
 								feed={data?.feed.ok ? data.feed.value : null}
 								feedError={data && !data.feed.ok ? data.feed.error : null}
 								now={now}
 								updatedText={updatedText}
 								periodLabel={periodLabel}
-								sampleDays={sampleDays}
 							/>
 						</Reveal>
 
@@ -138,23 +135,23 @@ export default function CommandCenter() {
 								<Reveal delay={0.05}>
 									<SalesBlock overview={data} period={period} onPeriodChange={changePeriod} periodLabel={periodLabel} />
 								</Reveal>
-								<Reveal delay={0.1}>
-									<HourlyBlock overview={data} periodLabel={periodLabel} />
-								</Reveal>
-								<Reveal delay={0.12}>
+								<Reveal delay={0.08}>
 									<EcosystemBlock overview={data} periodLabel={periodLabel} />
 								</Reveal>
-								<Reveal delay={0.14}>
+								<Reveal delay={0.10}>
 									<DjiwaPayBlock overview={data} periodLabel={periodLabel} />
+								</Reveal>
+								<Reveal delay={0.12}>
+									<WebBlock overview={data} periodLabel={periodLabel} />
+								</Reveal>
+								<Reveal delay={0.14}>
+									<HourlyBlock overview={data} periodLabel={periodLabel} />
 								</Reveal>
 								<Reveal delay={0.16}>
 									<OpsBlock overview={data} periodLabel={periodLabel} />
 								</Reveal>
 								<Reveal delay={0.18}>
 									<BreakdownBlock overview={data} periodLabel={periodLabel} />
-								</Reveal>
-								<Reveal delay={0.2}>
-									<WebBlock overview={data} periodLabel={periodLabel} />
 								</Reveal>
 							</>
 						) : (
@@ -219,34 +216,24 @@ function Header({
 
 function ActivityRow({
 	pendingCount,
-	presentCount,
-	totalStaff,
 	feed,
 	feedError,
 	now,
 	updatedText,
 	periodLabel,
-	sampleDays,
 }: {
 	pendingCount: number;
-	presentCount: number | null;
-	totalStaff: number | null;
 	feed: FeedEvent[] | null;
 	feedError: string | null;
 	now: number;
 	updatedText: string;
 	periodLabel: string;
-	sampleDays: number | null;
 }) {
 	return (
 		<section aria-label="Aktivitas sekarang" className="grid gap-px border border-[#e4e4e8] bg-[#e4e4e8] sm:grid-cols-[190px_minmax(0,1fr)]">
 			<div className="bg-white px-5 py-[18px]">
 				<div className="font-display text-[40px] font-semibold leading-none tabular-nums">{pendingCount}</div>
 				<div className="mt-2.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#666672]">Menunggu bayar<br />{periodLabel}</div>
-				<div className="mt-4 border-t border-[#e4e4e8] pt-2 font-mono text-[10px] leading-relaxed text-[#666672]">
-					{presentCount ?? "—"}/{totalStaff ?? "—"} staf hadir hari ini<br />
-					{sampleDays === null ? "—" : CONFIDENCE_LABEL[confidenceForSampleDays(sampleDays)]}
-				</div>
 			</div>
 			<div className="bg-white p-4">
 				<LiveHeader updatedLabel={`diperbarui ${updatedText}`} count={feed?.length ?? 0} />

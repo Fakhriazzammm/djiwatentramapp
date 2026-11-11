@@ -39,7 +39,7 @@ export function EcosystemSection({ overview, periodLabel }: { overview: AdminOve
 			{error ? (
 				<SourceError message={error} />
 			) : !cards ? (
-				<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+				<div className="grid gap-[14px] sm:grid-cols-[repeat(auto-fit,minmax(250px,1fr))]">
 					{Array.from({ length: 6 }).map((_, index) => (
 						<Skeleton key={index} className="h-[120px] w-full" />
 					))}
@@ -47,7 +47,7 @@ export function EcosystemSection({ overview, periodLabel }: { overview: AdminOve
 			) : cards.length === 0 ? (
 				<Empty>Belum ada aplikasi dengan data terverifikasi.</Empty>
 			) : (
-				<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+				<div className="grid gap-[14px] sm:grid-cols-[repeat(auto-fit,minmax(250px,1fr))]">
 					{cards.map((card, index) => (
 						<EcosystemTile key={card.key} card={card} index={index} periodLabel={periodLabel} />
 					))}
@@ -74,7 +74,7 @@ function EcosystemTile({ card, index, periodLabel }: { card: EcosystemCard; inde
 			animate={{ opacity: 1, y: 0 }}
 			transition={{ duration: 0.5, delay: 0.05 * index, ease: [0.2, 0.7, 0.2, 1] }}
 			whileHover={reduceMotion ? undefined : { y: -3 }}
-			className="group relative flex min-w-0 flex-col border border-[#e4e4e8] bg-white p-4 transition-[border-color,box-shadow] duration-300 hover:border-[#cfcfd6] hover:shadow-[0_10px_26px_rgba(17,17,20,0.07)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#111114]"
+			className="group relative flex min-w-0 flex-col border border-[#e4e4e8] bg-white px-4 py-3.5 transition-[border-color,box-shadow] duration-300 hover:border-[#cfcfd6] hover:shadow-[0_10px_26px_rgba(17,17,20,0.07)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#111114]"
 		>
 			<span aria-hidden="true" className="absolute inset-x-0 top-0 h-[3px] origin-left scale-x-0 transition-transform duration-500 group-hover:scale-x-100" style={{ background: color }} />
 			<div className="flex items-start justify-between gap-2">
@@ -87,9 +87,9 @@ function EcosystemTile({ card, index, periodLabel }: { card: EcosystemCard; inde
 					{isWarn ? "perhatian" : "normal"}
 				</span>
 			</div>
-			<div className="mt-4 flex items-end justify-between gap-3">
+			<div className="mt-3 flex items-end justify-between gap-3">
 				<div className="min-w-0">
-					<div className="font-display text-[24px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-[#111114]">
+					<div className="font-display text-[22px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-[#111114]">
 						<Masked>
 							<AnimatedNumber value={card.value} format={formatted} />
 						</Masked>

@@ -38,7 +38,7 @@ function WebBody({ web }: { web: WebTrafficPayload }) {
 
 	return (
 		<div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
-			<Card ariaLabel="Kunjungan web" label={<Label tone="blue">Halaman dibaca</Label>}>
+			<Card className="lg:col-span-3" ariaLabel="Kunjungan web" label={<Label tone="blue">Halaman dibaca</Label>}>
 				<div className="flex flex-wrap items-baseline gap-3">
 					<span className="font-display text-[34px] font-semibold leading-none tabular-nums text-[#111114]"><AnimatedNumber value={web.views} /></span>
 					<span className="font-mono text-[11px] text-[#666672]"><Masked>{web.visitors} pengunjung unik</Masked></span>
@@ -72,14 +72,6 @@ function WebBody({ web }: { web: WebTrafficPayload }) {
 						);
 					})}
 				</ul>
-				<Label className="mb-2 mt-5">Perangkat</Label>
-				<div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] text-[#444450]">
-					{Object.entries(web.devices).map(([key, value]) => (
-						<span key={key}>
-							{DEVICE_LABEL[key] ?? key}: <Masked>{value}{deviceTotal ? ` (${Math.round((value / deviceTotal) * 100)}%)` : ""}</Masked>
-						</span>
-					))}
-				</div>
 			</Card>
 
 			<Card ariaLabel="Halaman terbanyak dibaca" label={<Label tone="ink">Halaman paling banyak dibaca</Label>}>
@@ -101,6 +93,17 @@ function WebBody({ web }: { web: WebTrafficPayload }) {
 						))}
 					</ol>
 				)}
+			</Card>
+			<Card label={<Label tone="ink">Perangkat pengunjung</Label>}>
+
+
+				<div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] text-[#444450]">
+					{Object.entries(web.devices).map(([key, value]) => (
+						<span key={key}>
+							{DEVICE_LABEL[key] ?? key}: <Masked>{value}{deviceTotal ? ` (${Math.round((value / deviceTotal) * 100)}%)` : ""}</Masked>
+						</span>
+					))}
+				</div>
 			</Card>
 		</div>
 	);

@@ -67,8 +67,7 @@ export function DjiwaPaySection({ overview, periodLabel }: { overview: AdminOver
 				</div>
 			) : (
 				<div className="grid gap-3 lg:grid-cols-3">
-					<VolumeCard payload={payload} />
-					<WalletCard payload={payload} />
+					<div className="command-payment-summary"><VolumeCard payload={payload} /><WalletCard payload={payload} /></div>
 					<SourceCard payload={payload} />
 					<LedgerCard payload={payload} />
 				</div>

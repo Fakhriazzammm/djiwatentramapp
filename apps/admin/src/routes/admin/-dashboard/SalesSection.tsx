@@ -42,9 +42,10 @@ export function SalesSection({ overview, period, onPeriodChange, periodLabel }: 
 	return (
 		<div className="space-y-3">
 			<SectionTitle color={RED} right={<span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#666672]">{periodLabel}</span>}>
-				Penjualan · settled (paid/completed)
+				Penjualan
 			</SectionTitle>
 
+			<div>
 			<div className="grid grid-cols-2 gap-px border border-[#e4e4e8] bg-[#e4e4e8] lg:grid-cols-4">
 				<KpiTile
 					label="Pendapatan settled"
@@ -70,6 +71,7 @@ export function SalesSection({ overview, period, onPeriodChange, periodLabel }: 
 			</div>
 
 			<ComparisonStrip overview={overview} period={period} onPeriodChange={onPeriodChange} />
+			</div>
 
 			<div className="grid gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
 				<TrendCard overview={overview} period={period} />
@@ -98,7 +100,7 @@ function ComparisonStrip({ overview, period, onPeriodChange }: { overview: Admin
 	const summary = valueOf(overview.summary);
 	if (!summary) {
 		return (
-			<div className="grid grid-cols-2 gap-px border border-[#e4e4e8] bg-[#e4e4e8] sm:grid-cols-3 lg:grid-cols-6">
+			<div className="grid grid-cols-2 gap-px border border-t-0 border-[#e4e4e8] bg-[#e4e4e8] sm:grid-cols-3 lg:grid-cols-6">
 				{Array.from({ length: 6 }).map((_, index) => (
 					<div key={index} className="bg-white p-3">
 						<Skeleton className="h-3 w-20" />
@@ -110,7 +112,7 @@ function ComparisonStrip({ overview, period, onPeriodChange }: { overview: Admin
 	}
 	return (
 		<div>
-			<div className="grid grid-cols-2 gap-px border border-[#e4e4e8] bg-[#e4e4e8] sm:grid-cols-3 lg:grid-cols-6" role="list" aria-label="Perbandingan periode. Klik untuk membuka periode tersebut.">
+			<div className="grid grid-cols-2 gap-px border border-t-0 border-[#e4e4e8] bg-[#e4e4e8] sm:grid-cols-3 lg:grid-cols-6" role="list" aria-label="Perbandingan periode. Klik untuk membuka periode tersebut.">
 				{summary.comparison.map((item, index) => {
 					const active = item.key === period;
 					return (
@@ -131,7 +133,7 @@ function ComparisonStrip({ overview, period, onPeriodChange }: { overview: Admin
 					);
 				})}
 			</div>
-			<p className="mt-1 font-mono text-[10px] text-[#666672]">Perbandingan selalu memakai periode kalender WIB. Klik kartu untuk membuka periodenya.</p>
+
 		</div>
 	);
 }
