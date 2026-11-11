@@ -153,7 +153,7 @@ export function ActionsCard({ overview }: { overview: AdminOverview }) {
 }
 
 function displayNumber(order: RecentOrderRow) {
-	return getDisplayOrderNumber(order.orderNumber, {
+	const number = getDisplayOrderNumber(order.orderNumber, {
 		sequence: order.dailyReceiptNo,
 		createdAt: order.createdAt,
 		source: order.source,
@@ -162,6 +162,7 @@ function displayNumber(order: RecentOrderRow) {
 		orderType: order.orderType,
 		brandSlug: order.brandSlug,
 	});
+	return number && number !== "-" ? number : order.id;
 }
 
 const ORDER_STATUS: Record<string, { label: string; color: string }> = {
