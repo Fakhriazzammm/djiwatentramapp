@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { MotionConfig, motion, useReducedMotion } from "framer-motion";
 import { Eye, EyeOff, RefreshCw } from "lucide-react";
@@ -45,6 +46,8 @@ function readPeriodFromUrl(): DashboardPeriodKey {
 export default function CommandCenter() {
 	const [period, setPeriod] = useState<DashboardPeriodKey>(readPeriodFromUrl);
 	const [masked, setMasked] = useState(false);
+	const [statusTarget, setStatusTarget] = useState<HTMLElement | null>(null);
+	useEffect(() => setStatusTarget(document.getElementById("admin-dashboard-live-status")), []);
 	const [refreshing, setRefreshing] = useState(false);
 	const { state, reload } = useAdminOverview(period);
 	const now = useNow(1000);
@@ -80,6 +83,7 @@ export default function CommandCenter() {
 	return (
 		<MaskContext.Provider value={masked}>
 			<MotionConfig reducedMotion="user">
+				{statusTarget && createPortal(<span className="command-live-badge"><LiveDot />Live · diperbarui {updatedText}</span>, statusTarget)}
 				<main aria-label="Pusat Pantau Operasional" className="admin-command min-h-full bg-[#f4f4f6] pb-12 pt-1 font-sans text-[#111114]">
 					<div className="w-full max-w-[1380px] space-y-[14px] px-3 sm:px-7">
 						<div className="flex flex-wrap items-center gap-3">

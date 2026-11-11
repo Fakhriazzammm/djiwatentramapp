@@ -1276,6 +1276,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 							</p>
 						</div>
 					</div>
+					<div id="admin-dashboard-live-status" className="hidden lg:block" />
 					<div className="flex items-center gap-2">
 						<button
 							aria-keyshortcuts="Control+K Meta+K"
@@ -1334,6 +1335,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 								</DropdownMenuItem>
 							</DropdownMenuContent>
 						</DropdownMenu>
+						<button type="button" className="hidden h-10 rounded-full border border-[#e4e4e8] bg-white px-4 text-xs font-medium md:block" onClick={() => { logout(); navigate({ to: "/" }); }}>Logout</button>
 					</div>
 				</header>
 
@@ -1349,7 +1351,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 				</div>
 
 				{/* Footer - visible on both desktop and mobile */}
-				{!isAIChat && (
+				{!isAIChat && location.pathname.replace(/\/$/, "") !== "/admin" && (
 					<Footer compact className="border-t bg-muted/20" />
 				)}
 			</main>

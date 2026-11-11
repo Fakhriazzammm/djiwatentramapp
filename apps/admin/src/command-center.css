@@ -45,3 +45,5 @@ body.admin-shell [data-admin-shell] > aside nav a[data-active="true"]:hover { ba
 .command-payment-summary > section:first-child { border-bottom: 0; padding-bottom: 8px; }
 .command-payment-summary > section:last-child { padding-top: 8px; }
 .command-payment-summary > section:last-child > div:first-child { margin-bottom: 6px; }
+
+.command-live-badge { display: inline-flex; align-items: center; gap: 8px; background: #e8f5ee; color: #166534; padding: 6px 10px; font: 600 10px "Command Mono", monospace; text-transform: uppercase; letter-spacing: .06em; }
