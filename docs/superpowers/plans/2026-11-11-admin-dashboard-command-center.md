@@ -115,7 +115,7 @@ supabase/migrations/<timestamp>_admin_dashboard_overview.sql
 | 6. Web pelanggan (tracking) | Selesai (perlu deploy migrasi + app customer) | `supabase/migrations/20261111100000_admin_command_center.sql` (`web_page_views`), `apps/customer/src/lib/web-analytics.ts`, `apps/customer/src/routes/__root.tsx` |
 | 7. Pemolesan | Sebagian: bagian berat dibungkus `memo`; dashboard lama (`-OperationalDecisionDashboard.tsx`) belum dihapus sebagai jalur rollback | — |
 
-Yang belum dilakukan (butuh persetujuan operator):
+Yang belum dilakukan saat itu (sudah diselesaikan 2026-11-12, lihat bagian Deploy di bawah):
 
 1. **Migrasi** `supabase/migrations/20261111100000_admin_command_center.sql` belum diterapkan ke database produksi. Ikuti langkah di `docs/DEPLOYMENT_VPS_WORKFLOW.md` (backup, review, `psql`).
 2. **Edge Function** `supabase/functions/admin-protected-read/index.ts` (aksi `rpc` baru) harus di-deploy ulang; sebelum itu dashboard baru tidak bisa memuat data.
@@ -127,3 +127,14 @@ Catatan teknis:
 - Tes: `bun test src/lib/dashboard-periods.test.ts src/lib/dashboard-analytics.test.ts` lulus (19 tes). Dua tes `employee onboarding schema` gagal, tetapi berkas itu tidak diubah.
 - `vite build` berhasil; `tsc` tidak menunjukkan galat di berkas baru.
 - Bagian yang tidak memiliki sumber data terverifikasi (B2B, KOL, Investor) tidak ditampilkan.
+
+
+## Deploy (2026-11-12)
+
+- **Migrasi** `20261111100000_admin_command_center.sql` diterapkan ke database produksi (container `supabase-db`, database `postgres`) dalam satu transaksi. Backup sebelum migrasi: `/opt/backups/admin-command-center/pre-migration-20261111T170432Z.dump` di VPS (25 MB).
+- **Uji sebelum apply** dilakukan dalam transaksi yang di-`ROLLBACK`. Dari uji itu ditemukan dan diperbaiki empat masalah: kolom `pos.inventory` memakai snake_case, `jsonb_to_recordset ... WITH ORDINALITY` tidak valid, kanal `pos.orders.order_channel` kosong untuk pesanan baru (sekarang diturunkan oleh `public.admin_order_channel`), dan regex `{0,299}` melewati batas PostgreSQL.
+- **Verifikasi produksi:** 13 fungsi ada. Fungsi `admin_*` hanya bisa dipanggil `service_role`. `record_web_page_view` bisa dipanggil `anon`. Tabel `web_page_views` memakai RLS, dan saat ini kosong. Semua fungsi `admin_*` sudah dijalankan dan mengembalikan data nyata.
+- **Edge Function** `admin-protected-read` diganti dengan versi repo (checksum cocok). Versi lama dicadangkan di `/opt/supabase-selfhost/volumes/functions/admin-protected-read.before-20261112T010000Z`. Container `supabase-edge-functions` di-restart. Probe dengan token palsu: `rpc` mengembalikan 401 dari pemeriksaan sesi, nama RPC di luar allowlist mengembalikan 400, dan jalur lama `orders` tetap berfungsi.
+- **Artefak:** admin live di `f897a5d`. Customer live di `231b33c`.
+
+**Catatan data:** `pos.orders.order_channel` kosong untuk pesanan baru sejak migrasi 2026-08-31. Ini gejala sisi aplikasi/backend (insert pesanan tidak mengisi kanal). Dashboard sekarang menurunkan kanal sendiri, tetapi kolom itu sebaiknya diisi di sumbernya dalam pekerjaan terpisah.
