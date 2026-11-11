@@ -3,13 +3,6 @@ import { createClient } from "@/lib/client";
 import { adminProtectedRead } from "@/lib/admin-protected-read";
 import { getCriticalDashboardReadFailure } from "@/lib/dashboard-data-integrity";
 import { useSupabaseLiveValue, useSupabaseLiveValueState } from "@/hooks/use-supabase-live-value";
-import {
-	aggregateHourlySales,
-	getHourlyAnalysisDateRange,
-	getHourlyAnalysisRange,
-	type HourlyPeriod,
-	type HourlySalesInsight,
-} from "@/lib/hourly-transaction-analysis";
 
 // Global refresh — call triggerHybridRefresh() after any write to
 // instantly refresh ALL hybrid data hooks across the entire app.
@@ -882,15 +875,6 @@ async function fetchOrders(options?: {
 	})) as OrderRecord[];
 }
 
-async function fetchHourlyTransactions(range: { start: number; end: number }) {
-	const supabase = createClient();
-	const data = await adminProtectedRead("orders", { select: "_id,createdAt,status,totalAmount", gte: { createdAt: range.start }, lte: { createdAt: range.end }, order: [{ column: "createdAt", ascending: true }] });
-	return (data ?? []).map((row: any) => ({
-		createdAt: Number(row.createdAt ?? 0),
-		status: row.status ?? null,
-		totalAmount: Number(row.totalAmount ?? 0),
-	}));
-}
 
 async function fetchInventory() {
 	const supabase = createClient();
@@ -2211,34 +2195,6 @@ export function useHybridOrders(options?: { status?: string; limit?: number; ref
 			: { tables: ['orders', 'order_items'] }
 	);
 	return supabaseData as OrderRecord[] | undefined;
-}
-
-export function useHybridHourlySales(
-	period: HourlyPeriod = "7d",
-	refreshTrigger?: number,
-	dateKey?: string,
-	dates?: { startDate: string; endDate: string },
-): HourlySalesInsight | null | undefined {
-	const customRange = dates
-		? getHourlyAnalysisDateRange(dates.startDate, dates.endDate)
-		: dateKey
-			? getHourlyAnalysisDateRange(dateKey)
-			: null;
-	const range = customRange ?? getHourlyAnalysisRange(period);
-	const scopeKey = dates
-		? `range:${dates.startDate}:${dates.endDate}`
-		: dateKey
-			? `date:${dateKey}`
-			: `period:${period}`;
-	const supabaseData = useSupabaseValue(
-		`hourly-transactions:${scopeKey}:${range.start}:${range.end}`,
-		async () => aggregateHourlySales(await fetchHourlyTransactions(range), range),
-		[scopeKey, range.start, range.end],
-		refreshTrigger !== undefined
-			? { refreshTrigger, tables: ["orders"] }
-			: { tables: ["orders"] },
-	);
-	return supabaseData as HourlySalesInsight | null | undefined;
 }
 
 

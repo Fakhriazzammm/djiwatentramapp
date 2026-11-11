@@ -53,13 +53,12 @@ export type AdminOverviewState = {
 	updatedAt: number | null;
 };
 
+// Realtime hanya untuk tabel yang ada di publikasi supabase_realtime dan bisa dibaca
+// sesi admin (role authenticated). Sumber lain (dompet, donasi, booking, web, absensi)
+// belum dipublikasikan ke realtime, jadi diperbarui lewat polling POLL_MS.
 const REALTIME_TABLES: ReadonlyArray<{ schema: string; table: string }> = [
 	{ schema: "pos", table: "orders" },
-	{ schema: "pos", table: "customer_wallet_ledger" },
-	{ schema: "pos", table: "booking_orders" },
-	{ schema: "pos", table: "jumat_berkah_donations" },
 	{ schema: "pos", table: "financial_transactions" },
-	{ schema: "public", table: "web_page_views" },
 ];
 const POLL_MS = 15_000;
 const REALTIME_DEBOUNCE_MS = 1_200;
