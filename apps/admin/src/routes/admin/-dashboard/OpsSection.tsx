@@ -1,5 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { adminProtectedRead } from "@/lib/admin-protected-read";
 import { CheckCircle2, ChevronRight } from "lucide-react";
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import type { AdminOverview, Source } from "@/hooks/use-admin-overview";
@@ -28,7 +30,7 @@ export function OpsSection({ overview, periodLabel }: { overview: AdminOverview;
 				Tim, stok &amp; tindakan
 			</SectionTitle>
 			<div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
-				<RecentOrdersCard overview={overview} periodLabel={periodLabel} />
+				<RecentOrdersCard key={overview.range.key} overview={overview} periodLabel={periodLabel} pending={overview.range.label !== periodLabel} />
 				<AttendanceCard overview={overview} />
 				<ActionsCard overview={overview} />
 			</div>
@@ -169,43 +171,92 @@ const ORDER_STATUS: Record<string, { label: string; color: string }> = {
 	cancelled: { label: "Batal", color: "#666672" },
 };
 
-function RecentOrdersCard({ overview, periodLabel }: { overview: AdminOverview; periodLabel: string }) {
-	const breakdown = valueOf(overview.breakdown);
-	const error = overview.breakdown.ok ? null : overview.breakdown.error;
-	const rupiah = useRupiah();
-	return (
-		<Card
-			ariaLabel="Pesanan terbaru"
-			label={<Label tone="ink">Pesanan terbaru · {periodLabel.toLowerCase()}</Label>}
-			action={<Link to="/admin/orders" className="font-mono text-[10px] font-semibold text-[#2f5d9e] hover:underline">Buka order</Link>}
-		>
-			{error ? (
-				<SourceError message={error} />
-			) : !breakdown ? (
-				<Skeleton className="h-64 w-full" />
-			) : breakdown.recentOrders.length === 0 ? (
-				<Empty>Belum ada pesanan pada periode ini.</Empty>
-			) : (
-				<ul className="max-h-[260px] overflow-y-auto divide-y divide-[#efeff2]">
-					{breakdown.recentOrders.map((order) => {
-						const status = ORDER_STATUS[order.status] ?? { label: order.status, color: "#666672" };
-						return (
-							<li key={order.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 py-2.5 text-[12px]">
-								<span className="font-mono text-[10px] text-[#8e8e93]">{formatClockWIB(order.createdAt)}</span>
-								<div className="min-w-0">
-									<div className="truncate font-mono text-[12px] font-semibold text-[#111114]"><Masked>{displayNumber(order)}</Masked></div>
-									<div className="truncate font-mono text-[10px] text-[#666672]">
-										{labelChannel(order.orderChannel ?? "unknown")} · {order.itemCount} item · <span style={{ color: status.color }}>{status.label}</span>
-									</div>
-								</div>
-								<span className="font-mono text-[11px] font-semibold tabular-nums"><Masked>{rupiah(order.totalAmount)}</Masked></span>
-							</li>
-						);
-					})}
-				</ul>
-			)}
-		</Card>
-	);
+
+const ORDERS_PAGE_SIZE = 30;
+const orderDateFormatter = new Intl.DateTimeFormat("id-ID", {
+  timeZone: "Asia/Jakarta", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+});
+type ProtectedOrder = {
+  _id: string; orderNumber: string | null; daily_receipt_no: number | null;
+  status: string; totalAmount: number; createdAt: number; orderChannel: string | null;
+  paymentMethod: string | null; orderType: string | null; brandSlug: string | null;
+  businessUnit: string | null; sourceApp: string | null; source: string | null;
+  items: unknown[] | null;
+};
+function orderChannel(row: ProtectedOrder): string {
+  if (row.orderChannel) return row.orderChannel;
+  const source = (row.source ?? "").toLowerCase();
+  const app = (row.sourceApp ?? "").toLowerCase();
+  const unit = (row.businessUnit ?? "").toLowerCase();
+  if (source === "booking") return "booking";
+  if (unit === "ordermieyamin" || unit === "mieyamin" || source === "customer_self_service" || source === "djiwaapp") return "app";
+  if (source === "gofood" || source === "go_food" || app.includes("gofood")) return "gofood";
+  if (source === "grabfood" || source === "grab_food" || app.includes("grabfood")) return "grabfood";
+  if (source === "shopeefood" || source === "shopee_food" || app.includes("shopeefood")) return "shopeefood";
+  if (source.includes("telegram") || app.includes("telegram")) return "telegram";
+  return !source || ["pos", "kasir", "internal"].includes(source) ? "pos" : "unknown";
+}
+function RecentOrdersCard({ overview, periodLabel, pending }: { overview: AdminOverview; periodLabel: string; pending: boolean }) {
+  const rupiah = useRupiah();
+  const [page, setPage] = useState(0);
+  const [rows, setRows] = useState<ProtectedOrder[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
+  const { start, end } = overview.range;
+  const total = overview.breakdown.ok ? Object.values(overview.breakdown.value.statusCounts).reduce((sum, count) => sum + count, 0) : null;
+  useEffect(() => { setPage(0); }, [start]);
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true); setError(null);
+    const offset = page * ORDERS_PAGE_SIZE;
+    void adminProtectedRead<ProtectedOrder>("orders", {
+      select: "_id,orderNumber,daily_receipt_no,status,totalAmount,createdAt,orderChannel,paymentMethod,orderType,brandSlug,businessUnit,sourceApp,source,items",
+      gte: { createdAt: start }, lt: { createdAt: end },
+      order: [{ column: "createdAt", ascending: false }, { column: "_id", ascending: false }],
+      range: [offset, offset + ORDERS_PAGE_SIZE],
+    }).then((result) => {
+      if (cancelled) return;
+      setRows(result.slice(0, ORDERS_PAGE_SIZE)); setHasMore(result.length > ORDERS_PAGE_SIZE);
+    }).catch((reason) => {
+      if (!cancelled) setError(reason instanceof Error ? reason.message : "Gagal memuat pesanan");
+    }).finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [start, end, page, retry, overview.breakdown]);
+  return (
+    <Card ariaLabel="Pesanan terbaru" label={<Label tone="ink">Pesanan terbaru · {periodLabel.toLowerCase()}</Label>}
+      action={<Link to="/admin/orders" className="font-mono text-[10px] font-semibold text-[#2f5d9e] hover:underline">Buka order</Link>}>
+      {pending || (loading && rows.length === 0) ? <Skeleton className="h-64 w-full" /> : error ? (
+        <div><SourceError message={error} /><button type="button" onClick={() => setRetry((n) => n + 1)} className="mt-2 text-xs underline">Coba lagi</button></div>
+      ) : rows.length === 0 ? <Empty>Belum ada pesanan pada periode ini.</Empty> : (
+        <ul className="max-h-[420px] overflow-y-auto divide-y divide-[#efeff2]">
+          {rows.map((row) => {
+            const status = ORDER_STATUS[row.status] ?? { label: row.status, color: "#666672" };
+            const channel = orderChannel(row);
+            const order: RecentOrderRow = { id: row._id, orderNumber: row.orderNumber, dailyReceiptNo: row.daily_receipt_no, status: row.status, totalAmount: Number(row.totalAmount), createdAt: Number(row.createdAt), orderChannel: channel, paymentMethod: row.paymentMethod, orderType: row.orderType, brandSlug: row.brandSlug, businessUnit: row.businessUnit, sourceApp: row.sourceApp, source: row.source, itemCount: Array.isArray(row.items) ? row.items.length : 0 };
+            return <li key={row._id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 py-2.5 text-[12px]">
+              <span className="font-mono text-[10px] text-[#8e8e93]">{orderDateFormatter.format(order.createdAt)}</span>
+              <div className="min-w-0"><div className="truncate font-mono text-[12px] font-semibold text-[#111114]"><Masked>{displayNumber(order)}</Masked></div>
+              <div className="truncate font-mono text-[10px] text-[#666672]">{labelChannel(channel)} · {order.itemCount} item · <span style={{ color: status.color }}>{status.label}</span></div></div>
+              <span className="font-mono text-[11px] font-semibold tabular-nums"><Masked>{rupiah(order.totalAmount)}</Masked></span>
+            </li>;
+          })}
+        </ul>
+      )}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[#efeff2] pt-3 font-mono text-[10px]">
+        <div className="flex gap-1">
+          <button type="button" disabled={page === 0 || loading || pending} onClick={() => { setRows([]); setPage(0); }} className="border px-2 py-2 disabled:opacity-40" aria-label="Halaman pertama">Awal</button>
+          <button type="button" disabled={page === 0 || loading || pending} onClick={() => { setRows([]); setPage((n) => n - 1); }} className="border px-2 py-2 disabled:opacity-40">Sebelumnya</button>
+        </div>
+        <span aria-live="polite">Halaman {page + 1}{total !== null && <> / <Masked>{Math.max(1, Math.ceil(total / ORDERS_PAGE_SIZE))}</Masked> · <Masked>{total}</Masked> pesanan</>}</span>
+        <div className="flex gap-1">
+          <button type="button" disabled={!hasMore || loading || pending || !!error} onClick={() => { setRows([]); setPage((n) => n + 1); }} className="border px-2 py-2 disabled:opacity-40">Selanjutnya</button>
+          <button type="button" disabled={total === null || page >= Math.ceil(total / ORDERS_PAGE_SIZE) - 1 || loading || pending || !!error} onClick={() => { if (total !== null) { setRows([]); setPage(Math.max(0, Math.ceil(total / ORDERS_PAGE_SIZE) - 1)); } }} className="border px-2 py-2 disabled:opacity-40" aria-label="Halaman terakhir">Akhir</button>
+        </div>
+      </div>
+    </Card>
+  );
 }
 
 export function describeEvent(event: FeedEvent, rupiah: (value: number) => string) {

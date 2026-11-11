@@ -78,11 +78,13 @@ async function restRead(table: string, query: Query) {
 		if (!Array.isArray(values) || values.length > 200) throw new Error("Invalid in filter");
 		params.set(safeColumn(column), `in.(${values.map((item) => String(item).replace(/[(),]/g, "")).join(",")})`);
 	}
+	const orderParts: string[] = [];
 	for (const item of query.order ?? []) {
 		const direction = item.ascending === false ? "desc" : "asc";
 		const nulls = item.nullsFirst === true ? ".nullsfirst" : item.nullsFirst === false ? ".nullslast" : "";
-		params.append("order", `${safeColumn(item.column)}.${direction}${nulls}`);
+		orderParts.push(safeColumn(item.column) + "." + direction + nulls);
 	}
+	if (orderParts.length) params.set("order", orderParts.join(","));
 	if (query.range) {
 		const [from, to] = query.range;
 		if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to < from || to - from > 1000) throw new Error("Invalid range");
