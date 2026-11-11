@@ -49,7 +49,7 @@ export function AttendanceCard({ overview }: { overview: AdminOverview }) {
 function AttendanceBody({ payload }: { payload: AttendancePayload }) {
 	const ratio = payload.total ? payload.present / payload.total : 0;
 	const order: Record<AttendanceStatus, number> = { working: 0, done: 1, leave: 2, absent: 3 };
-	const staff = [...payload.staff].sort((left, right) => order[left.status] - order[right.status] || left.name.localeCompare(right.name, "id"));
+	const staff = [...payload.staff].sort((left, right) => order[left.status] - order[right.status] || (left.name ?? "").localeCompare(right.name ?? "", "id"));
 	return (
 		<div>
 			<div className="flex items-baseline gap-2">
@@ -76,10 +76,10 @@ function AttendanceBody({ payload }: { payload: AttendancePayload }) {
 						return (
 							<li key={person.userId} className="flex items-center gap-3 py-2.5">
 								<span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center bg-[#111114] font-mono text-[12px] font-semibold text-white">
-									{person.name.trim().charAt(0).toUpperCase() || "?"}
+									{(person.name ?? "").trim().charAt(0).toUpperCase() || "?"}
 								</span>
 								<div className="min-w-0 flex-1">
-									<div className="truncate text-[13px] font-semibold text-[#111114]"><Masked>{person.name}</Masked></div>
+									<div className="truncate text-[13px] font-semibold text-[#111114]"><Masked>{person.name || "Tanpa nama"}</Masked></div>
 									<div className="truncate font-mono text-[10px] text-[#666672]">
 										{person.role ?? "Staf"}{detail ? ` · ${detail}` : ""}
 									</div>
