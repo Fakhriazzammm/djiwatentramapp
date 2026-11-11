@@ -9,6 +9,34 @@
 -- kunjungan web pelanggan) dan fungsi baca/tulis baru.
 
 -- ---------------------------------------------------------------------------
+-- 0. Kanal order: pos.orders.order_channel kosong untuk pesanan baru (hanya diisi
+--    backfill 20260831000002). Fungsi ini memakai aturan backfill yang sama.
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.admin_order_channel(
+  p_order_channel text,
+  p_source text,
+  p_source_app text,
+  p_business_unit text
+) RETURNS text
+LANGUAGE sql
+IMMUTABLE
+SET search_path = pg_catalog
+AS $$
+  SELECT COALESCE(NULLIF(p_order_channel, ''), CASE
+    WHEN lower(coalesce(p_source, '')) = 'booking' THEN 'booking'
+    WHEN lower(coalesce(p_business_unit, '')) IN ('ordermieyamin', 'mieyamin') THEN 'app'
+    WHEN lower(coalesce(p_source, '')) IN ('customer_self_service', 'djiwaapp') THEN 'app'
+    WHEN lower(coalesce(p_source, '')) IN ('gofood', 'go_food') OR lower(coalesce(p_source_app, '')) LIKE '%gofood%' THEN 'gofood'
+    WHEN lower(coalesce(p_source, '')) IN ('grabfood', 'grab_food') OR lower(coalesce(p_source_app, '')) LIKE '%grabfood%' THEN 'grabfood'
+    WHEN lower(coalesce(p_source, '')) IN ('shopeefood', 'shopee_food') OR lower(coalesce(p_source_app, '')) LIKE '%shopeefood%' THEN 'shopeefood'
+    WHEN lower(coalesce(p_source, '')) LIKE '%telegram%' OR lower(coalesce(p_source_app, '')) LIKE '%telegram%' THEN 'telegram'
+    WHEN p_source IS NULL OR lower(p_source) IN ('', 'pos', 'kasir', 'internal') THEN 'pos'
+    ELSE 'unknown'
+  END);
+$$;
+
+-- ---------------------------------------------------------------------------
 -- 1. Tracking kunjungan web pelanggan
 -- ---------------------------------------------------------------------------
 
@@ -92,8 +120,13 @@ AS $$
     jsonb_build_object('key', r.key, 'orders', COALESCE(s.orders, 0), 'revenue', COALESCE(s.revenue, 0))
     ORDER BY r.ord
   ), '[]'::jsonb)
-  FROM jsonb_to_recordset(p_ranges) WITH ORDINALITY
-    AS r(key text, start_ms double precision, end_ms double precision, ord bigint)
+  FROM (
+    SELECT e.ord,
+           e.elem->>'key' AS key,
+           (e.elem->>'start_ms')::double precision AS start_ms,
+           (e.elem->>'end_ms')::double precision AS end_ms
+    FROM jsonb_array_elements(p_ranges) WITH ORDINALITY AS e(elem, ord)
+  ) r
   LEFT JOIN LATERAL (
     SELECT count(*)::bigint AS orders, COALESCE(sum(o.total_amount), 0) AS revenue
     FROM pos.orders o
@@ -190,7 +223,7 @@ AS $$
            o.status,
            o.total_amount,
            o.created_at,
-           o.order_channel,
+           public.admin_order_channel(o.order_channel, o.source, o.source_app, o.business_unit) AS channel,
            o.order_type,
            o.brand_slug,
            o.business_unit,
@@ -216,7 +249,7 @@ AS $$
     'channels', (
       SELECT COALESCE(jsonb_agg(jsonb_build_object('key', c.channel, 'orders', c.n, 'revenue', c.rev) ORDER BY c.rev DESC), '[]'::jsonb)
       FROM (
-        SELECT COALESCE(order_channel, 'unknown') AS channel, count(*)::bigint AS n, COALESCE(sum(total_amount), 0) AS rev
+        SELECT COALESCE(channel, 'unknown') AS channel, count(*)::bigint AS n, COALESCE(sum(total_amount), 0) AS rev
         FROM settled
         GROUP BY 1
       ) c
@@ -243,7 +276,7 @@ AS $$
         'status', r.status,
         'totalAmount', r.total_amount,
         'createdAt', round(r.created_at),
-        'orderChannel', r.order_channel,
+        'orderChannel', r.channel,
         'paymentMethod', r.method,
         'orderType', r.order_type,
         'brandSlug', r.brand_slug,
@@ -291,7 +324,8 @@ SECURITY DEFINER
 SET search_path = pos, public, pg_catalog
 AS $$
   WITH pay AS (
-    SELECT o.status, o.total_amount, o.order_channel
+    SELECT o.status, o.total_amount,
+           public.admin_order_channel(o.order_channel, o.source, o.source_app, o.business_unit) AS channel
     FROM pos.orders o
     WHERE o.created_at >= p_start
       AND o.created_at < p_end
@@ -321,7 +355,7 @@ AS $$
     'channels', (
       SELECT COALESCE(jsonb_agg(jsonb_build_object('key', c.channel, 'orders', c.n, 'revenue', c.rev) ORDER BY c.rev DESC), '[]'::jsonb)
       FROM (
-        SELECT COALESCE(order_channel, 'unknown') AS channel, count(*)::bigint AS n, COALESCE(sum(total_amount), 0) AS rev
+        SELECT COALESCE(channel, 'unknown') AS channel, count(*)::bigint AS n, COALESCE(sum(total_amount), 0) AS rev
         FROM pay
         WHERE status IN ('paid', 'completed')
         GROUP BY 1
@@ -442,7 +476,7 @@ AS $$
   WITH events AS (
     (SELECT round(o.created_at)::double precision AS at_ms,
             'order'::text AS kind,
-            CASE COALESCE(o.order_channel, '')
+            CASE public.admin_order_channel(o.order_channel, o.source, o.source_app, o.business_unit)
               WHEN 'pos' THEN 'POS'
               WHEN 'app' THEN 'DJIWAAPP'
               WHEN 'booking' THEN 'BOOKING'
@@ -550,7 +584,7 @@ AS $$
     SELECT o.created_at AS at_ms
     FROM pos.orders o
     WHERE o.status IN ('paid', 'completed')
-      AND o.order_channel = 'pos'
+      AND public.admin_order_channel(o.order_channel, o.source, o.source_app, o.business_unit) = 'pos'
       AND o.created_at >= p_start AND o.created_at < p_end
   ),
   djiwapay_sales AS (
@@ -601,7 +635,7 @@ AS $$
   stock AS (
     SELECT count(*)::bigint AS critical
     FROM pos.inventory i
-    WHERE i.quantity <= i."lowStockThreshold"
+    WHERE i.quantity <= i.low_stock_threshold
   )
   SELECT jsonb_build_array(
     jsonb_build_object(
@@ -691,14 +725,14 @@ SECURITY DEFINER
 SET search_path = pos, public, pg_catalog
 AS $$
   SELECT jsonb_build_object(
-    'stockCritical', (SELECT count(*) FROM pos.inventory i WHERE i.quantity <= i."lowStockThreshold"),
+    'stockCritical', (SELECT count(*) FROM pos.inventory i WHERE i.quantity <= i.low_stock_threshold),
     'stockItems', (
       SELECT COALESCE(jsonb_agg(jsonb_build_object('name', x.name, 'quantity', x.quantity, 'threshold', x.threshold)), '[]'::jsonb)
       FROM (
-        SELECT i."ingredientName" AS name, i.quantity, i."lowStockThreshold" AS threshold
+        SELECT i.ingredient_name AS name, i.quantity, i.low_stock_threshold AS threshold
         FROM pos.inventory i
-        WHERE i.quantity <= i."lowStockThreshold"
-        ORDER BY (i.quantity - i."lowStockThreshold")
+        WHERE i.quantity <= i.low_stock_threshold
+        ORDER BY (i.quantity - i.low_stock_threshold)
         LIMIT 4
       ) x
     ),
@@ -712,6 +746,9 @@ $$;
 -- ---------------------------------------------------------------------------
 -- 8. Hak akses: hanya service_role (Edge Function admin-protected-read)
 -- ---------------------------------------------------------------------------
+
+REVOKE ALL ON FUNCTION public.admin_order_channel(text, text, text, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_order_channel(text, text, text, text) TO service_role;
 
 REVOKE ALL ON FUNCTION public.admin_sales_summary(jsonb) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.admin_sales_trend(double precision, double precision, text) FROM PUBLIC, anon, authenticated;
