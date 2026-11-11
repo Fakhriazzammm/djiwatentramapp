@@ -77,7 +77,7 @@ DECLARE
   v_source text;
   v_device text := CASE WHEN p_device IN ('mobile', 'tablet', 'desktop') THEN p_device ELSE 'unknown' END;
 BEGIN
-  IF v_path !~ '^/[A-Za-z0-9_./%-]{0,299}$' THEN
+  IF v_path !~ '^/[A-Za-z0-9_./%-]*$' THEN  -- panjang sudah dibatasi left(..., 300) di atas
     RETURN;
   END IF;
   IF nullif(trim(coalesce(p_visitor, '')), '') IS NULL OR char_length(p_visitor) > 200 THEN
