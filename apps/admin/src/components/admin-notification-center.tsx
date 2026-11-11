@@ -77,7 +77,6 @@ export function AdminNotificationCenter({ onNavigate }: { onNavigate: (path: str
 	const { supported: pushSupported, isSubscribed: pushSubscribed, isBusy: pushBusy, enable: enablePush } = useAdminPush();
 	const [isOpen, setIsOpen] = useState(false);
 	const [isMobile, setIsMobile] = useState(false);
-	const [iconFailed, setIconFailed] = useState(false);
 	useEffect(() => {
 		if (popupNotification) playSuccessSound();
 	}, [popupNotification?.id]);
@@ -112,14 +111,14 @@ export function AdminNotificationCenter({ onNavigate }: { onNavigate: (path: str
 					setIsOpen((current) => !current);
 				}}
 				whileTap={reduceMotion ? undefined : { scale: 0.94 }}
-				className="relative flex h-10 w-10 items-center justify-center rounded-full bg-primary/5 transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+				className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[#e4e4e8] bg-white transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 			>
 				<motion.span
 					animate={unreadCount > 0 && !reduceMotion ? { rotate: [0, -7, 7, -4, 0] } : { rotate: 0 }}
 					transition={unreadCount > 0 && !reduceMotion ? { duration: 0.7, delay: 0.15 } : spring}
 					className="flex h-7 w-7 items-center justify-center"
 				>
-					{iconFailed ? <Bell aria-hidden="true" className="h-5 w-5 text-primary" /> : <Djiwa3DIcon name="notifications-alerts" size="micro" alt="" onError={() => setIconFailed(true)} className="h-6 w-6 object-contain" />}
+					<Bell aria-hidden="true" className="h-4 w-4 text-[#111114]" strokeWidth={1.8} />
 				</motion.span>
 				{unreadCount > 0 && <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[9px] font-black leading-none text-white ring-2 ring-card">{unreadCount > 9 ? "9+" : unreadCount}</span>}
 			</motion.button>

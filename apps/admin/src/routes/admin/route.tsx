@@ -25,6 +25,7 @@ import {
 	Gauge,
 	Gamepad2,
 	Grid3X3,
+	PanelLeft,
 	LayoutDashboard,
 	List,
 	LogOut,
@@ -420,7 +421,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 		if (!permId) return true;
 		return role?.permissions?.includes(permId) || false;
 	};
-	const [isCollapsed, setIsCollapsed] = useState(false);
+	const [isCollapsed, setIsCollapsed] = useState(() => typeof window === "undefined" || localStorage.getItem("admin-sidebar-collapsed") !== "false");
 	const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false);
 	const [isCommandOpen, setIsCommandOpen] = useState(false);
 
@@ -680,6 +681,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 			className="flex h-app w-full overflow-hidden bg-background"
 			data-admin-density={adminPopupDensity}
 			data-admin-shell="true"
+			data-command-dashboard={location.pathname.replace(/\/$/, "") === "/admin" ? "true" : undefined}
 		>
 			{/* === DESKTOP SIDEBAR (hidden on mobile) === */}
 			<aside
@@ -687,15 +689,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 					}`}
 			>
 				<div className="flex h-14 items-center gap-2 border-border border-b px-4">
-					{headerLogoUrl ? (
-						<div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-background p-1">
-							<img alt={`${storeName} logo`} className="h-full w-full object-contain" src={headerLogoUrl}/>
-						</div>
-					) : (
-						<div className="shrink-0 rounded-md bg-primary p-1.5">
-							<img alt="Djiwa Tentram" className="h-full w-full object-contain" src="/logo-djiwa.png"/>
-						</div>
-					)}
+					<span className="command-brand" aria-label="Djiwa Tentram">D</span>
 					<AnimatePresence>
 						{!isCollapsed && (
 							<motion.span
@@ -1262,6 +1256,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 			<main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
 				{/* Mobile Header */}
 				<header className={isAIChat ? "hidden" : "flex h-14 shrink-0 items-center justify-between border-border border-b bg-card/95 px-4 backdrop-blur-sm md:px-4"}>
+					<button type="button" className="command-menu-toggle" aria-label={isCollapsed ? "Perluas menu" : "Ciutkan menu"} onClick={() => setIsCollapsed(!isCollapsed)}><PanelLeft size={16} /></button>
 					{/* Mobile: Show page title + store brand */}
 					<div className="flex items-center gap-3">
 						<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary md:hidden">
@@ -1272,6 +1267,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 							)}
 						</div>
 						<div>
+							<p className="command-breadcrumb">Admin / Ringkasan / {currentPageTitle}</p>
 							<h1 className="font-bold text-base leading-tight md:text-lg">
 								{currentPageTitle}
 							</h1>
@@ -1817,12 +1813,19 @@ function DesktopNavLink({
 	permission?: string;
 }) {
 	const { isAdmin, role } = useYumiAuth();
+	const pathname = useLocation().pathname.replace(/\/$/, "");
+	const target = to.replace(/\/$/, "");
+	const selected = activeOptions?.exact ? pathname === target : pathname === target || pathname.startsWith(`${target}/`);
 	const hasPermission = !permission || isAdmin || role?.permissions?.includes(permission);
 
 	if (!hasPermission) return null;
 
 	return (
 		<Link
+			data-command-nav="true"
+			data-active={selected}
+			aria-label={label}
+			aria-current={selected ? "page" : undefined}
 			activeOptions={activeOptions}
 			activeProps={{
 				className: "bg-[#eaf1ff] text-[#2f6fdf] dark:bg-primary/15 dark:text-primary",
@@ -1835,7 +1838,7 @@ function DesktopNavLink({
 			title={isCollapsed ? label : undefined}
 			to={to}
 		>
-			<span className="shrink-0 [&>svg]:h-5 [&>svg]:w-5">{icon}</span>
+			<span className="shrink-0 [&>svg]:h-5 [&>svg]:w-5">{commandNavIcon(to) ?? icon}</span>
 			<AnimatePresence>
 				{!isCollapsed && (
 					<motion.span
@@ -1887,4 +1890,18 @@ function DesktopSubNavLink({
 			<span className="truncate">{label}</span>
 		</Link>
 	);
+}
+
+// The prototype uses compact outline glyphs with square, monochrome selection.
+function commandNavIcon(to: string) {
+ const paths: Record<string, string> = {
+  "/admin": "M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z",
+  "/admin/orders": "M9 4h6v3H9z M7 5H6a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1",
+  "/admin/products": "M21 8l-9-5-9 5v8l9 5 9-5z M3 8l9 5 9-5 M12 13v8",
+  "/admin/inventory": "M21 8l-9-5-9 5v8l9 5 9-5z M3 8l9 5 9-5 M12 13v8",
+  "/admin/finance": "M3 7h18v12H3z M3 11h18 M7 15h3",
+  "/admin/settings": "M4 6h10 M18 6h2 M4 12h4 M12 12h8 M4 18h12",
+ };
+ const d = paths[to];
+ return d ? <svg data-prototype-icon="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg> : null;
 }

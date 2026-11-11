@@ -1,0 +1,42 @@
+/* App-only fidelity layer for the approved Command Center prototype. */
+@font-face { font-family: "Command Inter"; src: url('/fonts/command-center/inter.ttf') format('truetype'); font-weight: 400 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Command Mono"; src: url('/fonts/command-center/jetbrains-mono.ttf') format('truetype'); font-weight: 400 600; font-style: normal; font-display: swap; }
+body.admin-shell { --font-body: "Command Inter", Inter, system-ui, sans-serif; --font-display: "Command Inter", Inter, system-ui, sans-serif; --font-mono: "Command Mono", "JetBrains Mono", monospace; color: #111114; }
+body.admin-shell [data-admin-shell] > aside { background: #fff; border-color: #e4e4e8; box-shadow: none; }
+body.admin-shell [data-admin-shell] > aside.w-16 { width: 60px; }
+body.admin-shell [data-admin-shell] > aside > div:first-child { height: 68px; padding: 14px; border: 0; }
+.command-brand { display: flex; flex: 0 0 32px; height: 32px; align-items: center; justify-content: center; background: #111114; color: white; font: 700 14px "Command Inter", sans-serif; }
+body.admin-shell [data-admin-shell] > aside nav { padding: 0 10px 14px; }
+body.admin-shell [data-admin-shell] > aside nav a,
+body.admin-shell [data-admin-shell] > aside nav button { border-radius: 0; min-height: 40px; font: 500 11px "Command Mono", monospace; color: #444450; }
+body.admin-shell [data-admin-shell] > aside nav a[data-active="true"],
+body.admin-shell [data-admin-shell] > aside nav a[aria-current="page"] { background: #111114; color: #fff; }
+body.admin-shell [data-admin-shell] > aside nav a:hover,
+body.admin-shell [data-admin-shell] > aside nav button:hover { background: #ececf0; color: #111114; }
+body.admin-shell [data-admin-shell] > aside nav svg { width: 18px; height: 18px; stroke-width: 1.8; }
+body.admin-shell [data-admin-shell] > aside.w-16 nav > div:has(> .h-px) { margin: 6px 0; opacity: .5; }
+body.admin-shell [data-admin-shell] > aside.w-16 nav a { width: 40px; padding: 0; margin-bottom: 6px; }
+body.admin-shell [data-admin-shell] > aside > button { display: none; }
+body.admin-shell [data-admin-shell] > main > header { height: 74px; min-height: 74px; background: #f4f4f6; border: 0; padding: 14px 28px; gap: 14px; }
+body.admin-shell [data-admin-shell] > main > header > div:first-of-type { flex: 1; }
+body.admin-shell [data-admin-shell] > main > header h1 { font: 600 18px/1.3 "Command Inter", sans-serif; letter-spacing: -.01em; }
+.command-breadcrumb { font: 400 10px/1.5 "Command Mono", monospace; color: #666672; letter-spacing: .02em; }
+.command-menu-toggle { display: flex; width: 40px; height: 40px; align-items: center; justify-content: center; border: 1px solid #e4e4e8; border-radius: 50%; background: #fff; }
+body.admin-shell [data-command-dashboard="true"] > main { background: #f4f4f6; }
+body.admin-shell [data-command-dashboard="true"] > main > div { padding: 0 0 28px; }
+.admin-command, .admin-command .font-sans, .admin-command .font-display { font-family: "Command Inter", Inter, system-ui, sans-serif; }
+.admin-command .font-mono { font-family: "Command Mono", "JetBrains Mono", monospace; }
+.admin-command .command-toolbar-actions { flex-shrink: 0; }
+.admin-command [aria-label="Aktivitas sekarang"] { min-height: 190px; }
+.admin-command [aria-label="Aktivitas langsung dari semua aplikasi"] { scrollbar-width: thin; }
+body.admin-shell .admin-command button { border-radius: 0; }
+@media (max-width: 767px) {
+ body.admin-shell [data-admin-shell] > main > header { padding: 10px 12px; height: 66px; min-height: 66px; gap: 8px; }
+ .command-menu-toggle { display: none; }
+ body.admin-shell [data-command-dashboard="true"] > main > div { padding-bottom: 80px; }
+ .command-breadcrumb { font-size: 8px; }
+ .admin-command [aria-label="Aktivitas sekarang"] { min-height: 0; }
+}
+
+body.admin-shell [data-admin-shell] > main > header button[aria-label="Buka menu akun"] { background: #111114; color: #fff; width: 40px; height: 40px; }
+body.admin-shell [data-admin-shell] > aside nav a[data-active="true"]:hover { background: #111114; color: #fff; }

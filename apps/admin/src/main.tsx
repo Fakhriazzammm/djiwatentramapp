@@ -11,6 +11,7 @@ import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { startAppUpdatePolling, checkForAppUpdate, setPwaUpdateHandler } from "@/lib/app-update";
 import { registerSW } from "virtual:pwa-register";
 import "./index.css";
+import "./command-center.css";
 import { installNumberInputBehavior } from "@yumipos/web-shared";
 
 // Set up Router instance

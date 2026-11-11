@@ -241,7 +241,7 @@ export function LiveFeed({ events, now }: { events: FeedEvent[]; now: number }) 
 	const reduceMotion = useReducedMotion();
 	if (events.length === 0) return <Empty>Belum ada aktivitas terbaru.</Empty>;
 	return (
-		<ul aria-live="polite" aria-label="Aktivitas langsung dari semua aplikasi" className="mt-1">
+		<ul aria-live="polite" aria-label="Aktivitas langsung dari semua aplikasi" className="mt-1 max-h-[170px] overflow-y-auto overscroll-contain">
 			<AnimatePresence initial={false}>
 				{events.map((event, index) => (
 					<motion.li

@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { MotionConfig, motion, useReducedMotion } from "framer-motion";
-import { BarChart3, Eye, EyeOff, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, RefreshCw } from "lucide-react";
 import { useAdminOverview } from "@/hooks/use-admin-overview";
 import {
 	buildDashboardRange,
@@ -18,7 +18,7 @@ import { EcosystemSection } from "./EcosystemSection";
 import { DjiwaPaySection, BreakdownSection } from "./PaymentsSection";
 import { LiveFeed, LiveHeader, OpsSection } from "./OpsSection";
 import { WebSection } from "./WebSection";
-import { formatAgo, MaskContext, SourceError, Tag, useNow } from "./ui";
+import { formatAgo, MaskContext, SourceError, useNow } from "./ui";
 
 const PERIOD_PARAM = "periode";
 
@@ -80,16 +80,8 @@ export default function CommandCenter() {
 	return (
 		<MaskContext.Provider value={masked}>
 			<MotionConfig reducedMotion="user">
-				<main className="admin-command min-h-full bg-[#f4f4f6] pb-12 pt-1 font-sans text-[#111114]">
-					<div className="mx-auto max-w-[1440px] space-y-4 px-3 sm:px-5">
-						<Header
-							masked={masked}
-							onToggleMask={() => setMasked((value) => !value)}
-							onRefresh={handleRefresh}
-							refreshing={refreshing}
-							reduceMotion={Boolean(reduceMotion)}
-						/>
-
+				<main aria-label="Pusat Pantau Operasional" className="admin-command min-h-full bg-[#f4f4f6] pb-12 pt-1 font-sans text-[#111114]">
+					<div className="mx-auto max-w-[1380px] space-y-[14px] px-3 sm:px-7">
 						<div className="flex flex-wrap items-center gap-3">
 							<Segmented id="period" label="Periode data" value={period} onChange={changePeriod} options={PERIOD_OPTIONS} />
 							<div className="ml-auto flex flex-wrap items-center gap-3 font-mono text-[10px] text-[#666672]">
@@ -99,6 +91,13 @@ export default function CommandCenter() {
 								</span>
 								<span aria-live="polite">Diperbarui {updatedText}</span>
 							</div>
+						<Header
+							masked={masked}
+							onToggleMask={() => setMasked((value) => !value)}
+							onRefresh={handleRefresh}
+							refreshing={refreshing}
+							reduceMotion={Boolean(reduceMotion)}
+						/>
 						</div>
 						<div className="relative h-[2px] overflow-hidden bg-[#e4e4e8]" aria-hidden="true">
 							{loadingPeriod && !reduceMotion && (
@@ -189,20 +188,7 @@ function Header({
 	reduceMotion: boolean;
 }) {
 	return (
-		<header className="flex flex-wrap items-center justify-between gap-3 pt-2">
-			<div className="flex min-w-0 items-center gap-3">
-				<span className="flex h-10 w-10 shrink-0 items-center justify-center bg-[#111114] text-white">
-					<BarChart3 className="h-4 w-4" aria-hidden="true" />
-				</span>
-				<div className="min-w-0">
-					<div className="flex flex-wrap items-center gap-2">
-						<h1 className="font-display text-lg font-bold tracking-[-0.02em] sm:text-xl">Pusat Pantau Operasional</h1>
-						<Tag color="#166534">Live</Tag>
-					</div>
-					<p className="truncate font-mono text-[11px] text-[#666672]">Djiwa Tentram Cafe &amp; Resto · keputusan berbasis data · WIB</p>
-				</div>
-			</div>
-			<div className="flex items-center gap-2">
+		<div className="command-toolbar-actions flex items-center gap-2">
 				<button
 					type="button"
 					onClick={onToggleMask}
@@ -216,7 +202,7 @@ function Header({
 				<button
 					type="button"
 					onClick={onRefresh}
-					className="flex h-10 items-center gap-2 border border-[#d8d8de] bg-white px-3 text-[12px] font-medium text-[#111114] transition-colors duration-200 hover:bg-[#f5f5f7] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#111114]"
+					aria-label="Refresh data" title="Refresh data" className="flex h-10 w-10 items-center justify-center border border-[#d8d8de] bg-white text-[12px] font-medium text-[#111114] transition-colors duration-200 hover:bg-[#f5f5f7] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#111114]"
 				>
 					<motion.span
 						aria-hidden="true"
@@ -226,10 +212,8 @@ function Header({
 					>
 						<RefreshCw className="h-3.5 w-3.5" />
 					</motion.span>
-					Refresh
 				</button>
-			</div>
-		</header>
+		</div>
 	);
 }
 
@@ -255,25 +239,13 @@ function ActivityRow({
 	sampleDays: number | null;
 }) {
 	return (
-		<section aria-label="Aktivitas sekarang" className="grid gap-px border border-[#e4e4e8] bg-[#e4e4e8] lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
-			<div className="grid grid-cols-3 gap-px bg-[#e4e4e8] lg:grid-cols-1 lg:grid-rows-3">
-				<div className="bg-white p-4">
-					<div className="font-display text-[34px] font-semibold leading-none tabular-nums">{pendingCount}</div>
-					<div className="mt-2 font-mono text-[10px] uppercase tracking-[0.08em] text-[#666672]">Menunggu bayar · {periodLabel.toLowerCase()}</div>
-				</div>
-				<div className="bg-white p-4">
-					<div className="font-display text-[34px] font-semibold leading-none tabular-nums">{presentCount ?? "—"}</div>
-					<div className="mt-2 font-mono text-[10px] uppercase tracking-[0.08em] text-[#666672]">
-						Staf hadir{totalStaff !== null ? ` dari ${totalStaff}` : ""} · hari ini
-					</div>
-				</div>
-				<div className="bg-white p-4">
-					<div className="font-mono text-[13px] font-semibold text-[#111114]">
-						{sampleDays === null ? "—" : CONFIDENCE_LABEL[confidenceForSampleDays(sampleDays)]}
-					</div>
-					<div className="mt-2 font-mono text-[10px] uppercase tracking-[0.08em] text-[#666672]">
-						Keyakinan pola jam{sampleDays !== null ? ` · ${sampleDays} hari` : ""}
-					</div>
+		<section aria-label="Aktivitas sekarang" className="grid gap-px border border-[#e4e4e8] bg-[#e4e4e8] sm:grid-cols-[190px_minmax(0,1fr)]">
+			<div className="bg-white px-5 py-[18px]">
+				<div className="font-display text-[40px] font-semibold leading-none tabular-nums">{pendingCount}</div>
+				<div className="mt-2.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#666672]">Menunggu bayar<br />{periodLabel}</div>
+				<div className="mt-4 border-t border-[#e4e4e8] pt-2 font-mono text-[10px] leading-relaxed text-[#666672]">
+					{presentCount ?? "—"}/{totalStaff ?? "—"} staf hadir hari ini<br />
+					{sampleDays === null ? "—" : CONFIDENCE_LABEL[confidenceForSampleDays(sampleDays)]}
 				</div>
 			</div>
 			<div className="bg-white p-4">

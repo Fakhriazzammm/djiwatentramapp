@@ -4,7 +4,7 @@ import type { AdminOverview, Source } from "@/hooks/use-admin-overview";
 import { formatCompactRupiah, formatDelta, percentChange, type Metric, type TrendSeriesPoint } from "@/lib/dashboard-analytics";
 import type { DashboardPeriodKey } from "@/lib/dashboard-periods";
 import { AnimatedNumber, DrawPath, Reveal, Segmented } from "./motion";
-import { BLUE, Card, Delta, Empty, Label, Masked, MUTED, RED, SourceError, SectionTitle, Skeleton, useMasked, useRupiah } from "./ui";
+import { Card, Delta, Empty, Label, Masked, MUTED, RED, SourceError, SectionTitle, Skeleton, useMasked, useRupiah } from "./ui";
 
 type Props = {
 	overview: AdminOverview;
@@ -86,7 +86,7 @@ function overviewError(source: Source<unknown>): string | null {
 function KpiTile({ label, value, sub, error }: { label: string; value: ReactNode; sub: ReactNode; error?: string | null }) {
 	return (
 		<div className="min-w-0 bg-white p-4">
-			<div className="font-display text-[22px] font-semibold leading-tight tracking-[-0.02em] tabular-nums text-[#111114] sm:text-[26px]">{error ? <span className="text-[14px] font-medium text-[#9b1c12]">Gagal memuat</span> : value}</div>
+			<div className="font-display text-[26px] font-semibold leading-tight tracking-[-0.02em] tabular-nums text-[#111114] sm:text-[26px]">{error ? <span className="text-[14px] font-medium text-[#9b1c12]">Gagal memuat</span> : value}</div>
 			<Label className="mt-2">{label}</Label>
 			<div className="mt-1.5 font-mono text-[10px] text-[#666672]">{sub}</div>
 		</div>
@@ -126,7 +126,7 @@ function ComparisonStrip({ overview, period, onPeriodChange }: { overview: Admin
 							data-index={index}
 						>
 							<Label>{item.label} · {item.orders} order</Label>
-							<div className="mt-1.5 truncate font-mono text-[13px] font-semibold tabular-nums text-[#111114]">{rupiah(item.revenue)}</div>
+							<div className="mt-1.5 truncate font-display text-[15px] font-semibold tabular-nums text-[#111114]">{rupiah(item.revenue)}</div>
 						</motion.button>
 					);
 				})}
@@ -209,14 +209,14 @@ export function TrendChart({ points, metric, redrawKey }: { points: TrendSeriesP
 				<motion.path
 					key={`area-${redrawKey}`}
 					d={area}
-					fill={`${BLUE}1f`}
+					fill={`${RED}1f`}
 					initial={reduceMotion ? false : { opacity: 0 }}
 					animate={{ opacity: 1 }}
 					transition={{ duration: 0.9, delay: 0.6 }}
 				/>
-				<DrawPath d={line} stroke={BLUE} strokeWidth={2.2} redrawKey={`line-${redrawKey}`} delay={0.1} />
+				<DrawPath d={line} stroke={RED} strokeWidth={2.2} redrawKey={`line-${redrawKey}`} delay={0.1} />
 				<line x1={xAt(active)} x2={xAt(active)} y1={padTop} y2={height - padBottom} stroke="#111114" strokeOpacity={0.25} strokeDasharray="3 4" vectorEffect="non-scaling-stroke" />
-				<circle cx={xAt(active)} cy={yAt(activeValue)} r={5} fill="#fff" stroke={BLUE} strokeWidth={2.5} vectorEffect="non-scaling-stroke" />
+				<circle cx={xAt(active)} cy={yAt(activeValue)} r={5} fill="#fff" stroke={RED} strokeWidth={2.5} vectorEffect="non-scaling-stroke" />
 				{points.map((point, index) => (
 					<text key={`${point.bucket}-${index}`} x={xAt(index)} y={height - 8} textAnchor="middle" fontSize={11} fill={MUTED} fontFamily="ui-monospace, monospace" style={{ display: count > 16 && index % Math.ceil(count / 8) !== 0 ? "none" : undefined }}>
 						{point.label}
