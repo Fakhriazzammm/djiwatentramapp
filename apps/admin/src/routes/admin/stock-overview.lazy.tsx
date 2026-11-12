@@ -1,658 +1,354 @@
-import { ManualStockGate } from "@yumipos/web-shared/components/inventory/manual-stock-page";
 import { createLazyFileRoute, Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import {
-	Package,
-	AlertCircle,
-	ChefHat,
-	Beer,
-	Archive,
-	ShoppingCart,
-	ArrowRight,
-	TrendingDown,
-	TrendingUp,
-	Store,
-	ClipboardList,
 	AlertTriangle,
-	Plus,
+	ArrowDownLeft,
+	ArrowUpRight,
+	ClipboardList,
+	RefreshCw,
+	Boxes,
 } from "lucide-react";
+import {
+	Bar,
+	BarChart,
+	CartesianGrid,
+	ResponsiveContainer,
+	Tooltip,
+	XAxis,
+	YAxis,
+} from "recharts";
+import { Djiwa3DIcon } from "@yumipos/web-shared/components/ui/djiwa-3d-icon";
+import { useHybridStockOverview } from "@/hooks/use-hybrid-inventory-admin-data";
 import { cn } from "@/lib/utils";
 import {
-	useHybridInventory,
-	useHybridAllProducts,
-	useHybridLowStockItems,
-	useHybridCategories,
-} from "@/hooks/use-hybrid-pos-data";
-import { useHybridRecipes } from "@/hooks/use-hybrid-inventory-admin-data";
-import {
-	useHybridAdjustMenuStockWithRecipe,
-	useHybridUpdateProduct,
-} from "@/hooks/use-hybrid-write-actions";
-import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
-import { toast } from "sonner";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+	buildStockOverviewAnalytics,
+	getMovementDirection,
+	getMovementLabel,
+} from "./stock-overview-model";
 
 export const Route = createLazyFileRoute("/admin/stock-overview")({
-	component: () => <ManualStockGate><StockOverviewPage /></ManualStockGate>,
+	component: StockOverviewPage,
 });
 
+const periods = [7, 30, 90] as const;
+
+const numberFormat = new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 });
+
+function formatQuantity(value: number) {
+	return numberFormat.format(value);
+}
+
+function movementQuantity(movement: {
+	type: string;
+	quantity: number;
+	unit: string;
+}) {
+	const direction = getMovementDirection(movement.type);
+	const quantity = Math.abs(movement.quantity);
+	const formatted = formatQuantity(quantity);
+	const signed =
+		direction === "incoming"
+			? `+${formatted}`
+			: direction === "outgoing"
+				? `−${formatted}`
+				: direction === "adjustment"
+					? `${movement.quantity > 0 ? "+" : movement.quantity < 0 ? "−" : ""}${formatted}`
+					: formatted;
+	return `${signed}${movement.unit ? ` ${movement.unit}` : ""}`;
+}
+
+function directionTone(direction: ReturnType<typeof getMovementDirection>) {
+	if (direction === "incoming") return "bg-emerald-50 text-emerald-700";
+	if (direction === "outgoing") return "bg-rose-50 text-rose-700";
+	if (direction === "adjustment") return "bg-sky-50 text-sky-700";
+	return "bg-muted text-muted-foreground";
+}
+
+function StatusMetric({
+	label,
+	value,
+	tone,
+}: {
+	label: string;
+	value: number;
+	tone: "neutral" | "green" | "red" | "amber";
+}) {
+	const toneClass = {
+		neutral: "bg-card",
+		green: "bg-emerald-50/70",
+		red: "bg-rose-50/70",
+		amber: "bg-amber-50/70",
+	}[tone];
+	return (
+		<div className={cn("rounded-2xl border border-border/70 p-4 shadow-sm", toneClass)}>
+			<p className="text-xs font-medium text-muted-foreground">{label}</p>
+			<p className="mt-2 text-2xl font-semibold tracking-tight">{numberFormat.format(value)}</p>
+		</div>
+	);
+}
+
+function MovementMetric({
+	label,
+	value,
+	icon: Icon,
+	tone,
+}: {
+	label: string;
+	value: number;
+	icon: typeof ArrowDownLeft;
+	tone: "green" | "red" | "blue" | "neutral";
+}) {
+	const toneClass = {
+		green: "bg-emerald-100 text-emerald-700",
+		red: "bg-rose-100 text-rose-700",
+		blue: "bg-sky-100 text-sky-700",
+		neutral: "bg-muted text-muted-foreground",
+	}[tone];
+	return (
+		<div className="flex items-center gap-3 rounded-xl border border-border/70 bg-background p-3">
+			<div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", toneClass)}>
+				<Icon className="h-5 w-5" aria-hidden="true" />
+			</div>
+			<div className="min-w-0">
+				<p className="text-xs text-muted-foreground">{label}</p>
+				<p className="text-lg font-semibold tabular-nums">{numberFormat.format(value)}</p>
+			</div>
+		</div>
+	);
+}
+
+function FrequentItems({
+	title,
+	items,
+	emptyText,
+}: {
+	title: string;
+	items: Array<{ inventoryId: string; name: string; records: number }>;
+	emptyText: string;
+}) {
+	return (
+		<section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
+			<h2 className="text-sm font-semibold">{title}</h2>
+			{items.length === 0 ? (
+				<p className="mt-4 rounded-xl bg-muted/40 px-3 py-5 text-center text-sm text-muted-foreground">
+					{emptyText}
+				</p>
+			) : (
+				<ol className="mt-3 divide-y divide-border/70">
+					{items.map((item, index) => (
+						<li className="flex items-center gap-3 py-3 first:pt-1 last:pb-0" key={item.inventoryId}>
+							<span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold tabular-nums text-muted-foreground">
+								{index + 1}
+							</span>
+							<span className="min-w-0 flex-1 truncate text-sm font-medium">{item.name}</span>
+							<span className="shrink-0 text-xs text-muted-foreground">{item.records} catatan</span>
+						</li>
+					))}
+				</ol>
+			)}
+		</section>
+	);
+}
+
 function StockOverviewPage() {
-	const inventory = useHybridInventory();
-	const allProducts = useHybridAllProducts();
-	const lowStockItems = useHybridLowStockItems();
-	const categories = useHybridCategories();
+	const [daysWindow, setDaysWindow] = useState<(typeof periods)[number]>(30);
+	const data = useHybridStockOverview(daysWindow);
+	const analytics = useMemo(
+		() => data ? buildStockOverviewAnalytics(data.items, data.movements, daysWindow) : null,
+		[data, daysWindow],
+	);
 
-	const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
-	const recipes = useHybridRecipes();
-	const adjustMenuStock = useHybridAdjustMenuStockWithRecipe();
-	const updateProduct = useHybridUpdateProduct();
-
-	// Restock dialog state
-	const [restockTarget, setRestockTarget] = useState<any | null>(null);
-	const [restockQty, setRestockQty] = useState("");
-	const [restockPrice, setRestockPrice] = useState("");
-	const [restockOpen, setRestockOpen] = useState(false);
-	const [restocking, setRestocking] = useState(false);
-
-	const handleRestock = async () => {
-		const product = restockTarget;
-		if (!product) return;
-		const qty = Number(restockQty);
-		if (!Number.isFinite(qty) || qty <= 0) {
-			toast.error("Quantity harus lebih dari 0");
-			return;
-		}
-		const price = restockPrice.trim() ? Number(restockPrice) : undefined;
-		if (price !== undefined && (!Number.isFinite(price) || price < 0)) {
-			toast.error("Harga beli tidak valid");
-			return;
-		}
-		setRestocking(true);
-		try {
-			// Try recipe-based stock adjustment first
-			const recipe = (recipes ?? []).find(
-				(r: any) => String(r.productId) === String(product._id) && !r.variantName
-			);
-			if (recipe) {
-				await adjustMenuStock({
-					productId: String(product._id),
-					deltaMenu: qty,
-					currentQuantity: Number(product.quantity ?? 0),
-					notes:
-						"Quick restock dari Stock Overview" +
-						(price !== undefined ? ` (harga beli: Rp${price.toLocaleString("id-ID")})` : ""),
-					recipe,
-				});
-			} else {
-				// Fallback: update product quantity directly
-				await updateProduct({
-					id: product._id,
-					quantity: Number(product.quantity ?? 0) + qty,
-				});
-			}
-			triggerHybridRefresh();
-			toast.success(`Berhasil restock ${product.name} +${qty}`);
-			setRestockOpen(false);
-			setRestockTarget(null);
-			setRestockQty("");
-			setRestockPrice("");
-		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : "Gagal restock";
-			toast.error(message);
-		} finally {
-			setRestocking(false);
-		}
-	};
-
-	// Total inventory count
-	const totalInventoryCount = useMemo(() => {
-		if (!inventory) return 0;
-		return inventory.length;
-	}, [inventory]);
-
-	// Low stock count
-	const lowStockCount = useMemo(() => {
-		if (!lowStockItems) return 0;
-		return lowStockItems.length;
-	}, [lowStockItems]);
-
-	// Menu tersedia: quantity > 0 dan isAvailable true
-	const availableMenuCount = useMemo(() => {
-		if (!allProducts) return 0;
-		return allProducts.filter(
-			(p: any) => Number(p.quantity ?? 0) > 0 && p.isAvailable === true
-		).length;
-	}, [allProducts]);
-
-	// Menu habis: quantity = 0 atau isAvailable false
-	const unavailableMenuCount = useMemo(() => {
-		if (!allProducts) return 0;
-		return allProducts.filter(
-			(p: any) => Number(p.quantity ?? 0) === 0 || p.isAvailable === false
-		).length;
-	}, [allProducts]);
-
-	// Category filter options
-	const categoryOptions = useMemo(() => {
-		if (!categories) return [];
-		return categories.map((c: any) => ({
-			_id: c._id,
-			name: c.name,
-		}));
-	}, [categories]);
-
-	// Filtered products for the table
-	const filteredProducts = useMemo(() => {
-		if (!allProducts) return [];
-		let products = allProducts;
-		if (selectedCategoryId !== "all") {
-			products = products.filter(
-				(p: any) => p.categoryId === selectedCategoryId
-			);
-		}
-		return products;
-	}, [allProducts, selectedCategoryId]);
-
-	// Get status info for a product
-	const getProductStatus = (product: any) => {
-		const qty = Number(product.quantity ?? 0);
-		if (qty === 0 || !product.isAvailable) return { label: "Habis", color: "text-red-600 bg-red-50 border-red-200", level: "empty" };
-		// Estimate max stock as 50 if no other benchmark
-		const maxStock = 50;
-		const pct = Math.min(qty / maxStock, 1);
-		if (pct <= 0.2) return { label: "Kritis", color: "text-red-600 bg-red-50 border-red-200", level: "low" };
-		if (pct <= 0.5) return { label: "Menipis", color: "text-yellow-600 bg-yellow-50 border-yellow-200", level: "medium" };
-		return { label: "Tersedia", color: "text-green-600 bg-green-50 border-green-200", level: "high" };
-	};
-
-	// Get category name
-	const getCategoryName = (categoryId: string) => {
-		if (!categories) return "Uncategorized";
-		const cat = categories.find((c: any) => c._id === categoryId);
-		return cat?.name || "Uncategorized";
-	};
-
-	const isLoading = !inventory || !allProducts || !categories;
-
-	// Empty state: data berhasil di-fetch tapi kosong
-	const isDataEmpty =
-		!isLoading &&
-		totalInventoryCount === 0 &&
-		availableMenuCount === 0;
-
-	if (isLoading) {
+	if (data === undefined) {
 		return (
-			<div className="flex h-full flex-col bg-slate-50">
-				<div className="sticky top-0 z-30 border-b bg-background/80 px-3 py-2 backdrop-blur-md md:px-4 md:py-3">
-					<div className="flex items-center gap-2">
-						<div className="h-9 w-9 animate-pulse rounded-lg bg-slate-200" />
-						<div className="space-y-1">
-							<div className="h-5 w-40 animate-pulse rounded bg-slate-200" />
-							<div className="h-3 w-24 animate-pulse rounded bg-slate-100" />
-						</div>
-					</div>
+			<div className="space-y-4 p-4 md:p-6" aria-busy="true">
+				<div className="h-20 animate-pulse rounded-2xl bg-muted/60" />
+				<div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+					{periods.slice(0, 2).map((period) => <div className="h-24 animate-pulse rounded-2xl bg-muted/60" key={period} />)}
+					<div className="hidden h-24 animate-pulse rounded-2xl bg-muted/60 md:block" />
+					<div className="hidden h-24 animate-pulse rounded-2xl bg-muted/60 md:block" />
 				</div>
-				<div className="flex-1 space-y-4 p-3 md:p-4">
-					<div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-						{Array.from({ length: 4 }).map((_, i) => (
-							<div className="h-28 animate-pulse rounded-2xl bg-slate-100" key={i} />
-						))}
-					</div>
-				</div>
+				<p className="text-sm text-muted-foreground" role="status">Memuat analitik stok…</p>
 			</div>
 		);
 	}
 
-	// Empty state banner — ketika inventory/menu benar-benar kosong
-	if (isDataEmpty) {
+	if (!data || !analytics) {
 		return (
-			<div className="flex h-full flex-col bg-slate-50">
-				<div className="sticky top-0 z-30 border-b bg-background/80 px-3 py-2 backdrop-blur-md md:px-4 md:py-3">
-					<div className="flex items-center gap-2">
-						<div className="rounded-lg bg-emerald-600 p-1.5 text-white shadow-lg shadow-emerald-200 md:rounded-xl md:p-2">
-							<Package className="h-4 w-4 md:h-5 md:w-5" />
-						</div>
-						<div>
-							<h1 className="font-black text-lg tracking-tight md:text-xl">Stock Overview</h1>
-							<p className="text-[10px] font-medium text-muted-foreground md:text-xs">
-								Command center stok
-							</p>
+			<div className="m-4 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-800" role="alert">
+				<h1 className="font-semibold">Ringkasan stok belum bisa dimuat</h1>
+				<p className="mt-1 text-sm">Periksa koneksi, lalu muat ulang halaman. Data stok tidak diubah.</p>
+				<button className="mt-3 min-h-11 rounded-lg border border-rose-300 px-3 text-sm font-medium hover:bg-rose-100" onClick={() => window.location.reload()} type="button">
+					Muat ulang
+				</button>
+			</div>
+		);
+	}
+
+	const statusRows = [
+		{ label: "Tersedia", count: analytics.stock.available, color: "bg-emerald-500" },
+		{ label: "Habis", count: analytics.stock.out, color: "bg-rose-500" },
+		{ label: "Belum dicek", count: analytics.stock.unknown, color: "bg-amber-400" },
+	];
+
+	return (
+		<div className="min-h-full bg-slate-50/70">
+			<header className="border-b border-border/70 bg-background px-4 py-4 md:px-6 md:py-5">
+				<div className="flex flex-wrap items-center justify-between gap-3">
+					<div className="flex min-w-0 items-center gap-3">
+						<Djiwa3DIcon alt="" className="h-12 w-12" name="sales-report" size="sm" />
+						<div className="min-w-0">
+							<p className="text-xs text-muted-foreground">Admin / Ringkasan Stok</p>
+							<h1 className="truncate text-xl font-semibold tracking-tight md:text-2xl">Ringkasan Stok</h1>
+							<p className="mt-0.5 text-sm text-muted-foreground">Analitik posisi stok dan pergerakan bahan.</p>
 						</div>
 					</div>
-				</div>
-				<div className="flex flex-1 items-center justify-center p-8">
-					<div className="flex max-w-sm flex-col items-center gap-4 text-center">
-						<div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100">
-							<Package className="h-10 w-10 text-slate-300" />
-						</div>
-						<div>
-							<h2 className="font-black text-lg text-slate-700">Belum Ada Data Stok</h2>
-							<p className="mt-1 text-sm text-muted-foreground">
-								Data inventory masih kosong. Tambahkan bahan baku dan menu terlebih dahulu agar dashboard stok dapat menampilkan informasi.
-							</p>
-						</div>
-						<Link
-							className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-emerald-700"
-							to="/admin/inventory"
+					<div className="flex items-center gap-2">
+						<label className="sr-only" htmlFor="stock-summary-period">Rentang analitik</label>
+						<select
+							className="h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+							id="stock-summary-period"
+							onChange={(event) => setDaysWindow(Number(event.target.value) as (typeof periods)[number])}
+							value={daysWindow}
 						>
-							<Package className="h-4 w-4" />
-							Kelola Inventory
+							<option value={7}>7 hari</option>
+							<option value={30}>30 hari</option>
+							<option value={90}>90 hari</option>
+						</select>
+						<Link className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-foreground px-4 text-sm font-medium text-background transition-opacity hover:opacity-85" to="/admin/inventory">
+							<ClipboardList className="h-4 w-4" aria-hidden="true" />
+							Kelola inventaris
 						</Link>
 					</div>
 				</div>
-			</div>
-		);
-	}
+			</header>
 
-	return (
-		<div className="flex h-full flex-col bg-slate-50">
-			{/* Header */}
-			<div className="sticky top-0 z-30 flex flex-col gap-2 border-b bg-background/80 px-3 py-2 backdrop-blur-md md:gap-3 md:px-4 md:py-3">
-				<div className="flex items-center gap-2">
-					<div className="rounded-lg bg-emerald-600 p-1.5 text-white shadow-lg shadow-emerald-200 md:rounded-xl md:p-2">
-						<Package className="h-4 w-4 md:h-5 md:w-5" />
-					</div>
-					<div>
-						<h1 className="font-black text-lg tracking-tight md:text-xl">Stock Overview</h1>
-						<p className="text-[10px] font-medium text-muted-foreground md:text-xs">
-							Command center stok
-						</p>
-					</div>
-				</div>
-			</div>
+			<main className="space-y-5 p-4 pb-10 md:p-6">
+				<section aria-label="Status stok saat ini" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+					<StatusMetric label="Bahan dipantau" value={analytics.stock.total} tone="neutral" />
+					<StatusMetric label="Tersedia" value={analytics.stock.available} tone="green" />
+					<StatusMetric label="Habis" value={analytics.stock.out} tone="red" />
+					<StatusMetric label="Belum dicek" value={analytics.stock.unknown} tone="amber" />
+				</section>
 
-			<div className="flex-1 overflow-auto">
-				<div className="space-y-4 p-3 pb-28 md:p-4 md:pb-32">
-					{/* Summary Cards */}
-					<motion.div
-						animate={{ opacity: 1, y: 0 }}
-						className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4"
-						initial={{ opacity: 0, y: 10 }}
-						transition={{ duration: 0.3 }}
-					>
-						{/* Total Bahan Baku */}
-						<motion.div
-							animate={{ opacity: 1, scale: 1 }}
-							className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-all hover:shadow-md"
-							initial={{ opacity: 0, scale: 0.95 }}
-							transition={{ delay: 0.05, duration: 0.2 }}
-						>
-							<div className="flex items-center justify-between">
-								<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
-									<Archive className="h-5 w-5" />
-								</div>
-								<span className="text-2xl font-black tracking-tight">
-									{totalInventoryCount}
-								</span>
-							</div>
-							<p className="mt-2 font-semibold text-muted-foreground text-xs">Total Bahan Baku</p>
-						</motion.div>
-
-						{/* Low Stock */}
-						<motion.div
-							animate={{ opacity: 1, scale: 1 }}
-							className={cn(
-								"rounded-2xl border p-4 shadow-sm transition-all hover:shadow-md",
-								lowStockCount > 0
-									? "border-red-200 bg-red-50"
-									: "border-border/70 bg-card"
-							)}
-							initial={{ opacity: 0, scale: 0.95 }}
-							transition={{ delay: 0.1, duration: 0.2 }}
-						>
-							<div className="flex items-center justify-between">
-								<div
-									className={cn(
-										"flex h-10 w-10 items-center justify-center rounded-xl",
-										lowStockCount > 0
-											? "bg-red-200 text-red-700"
-											: "bg-green-100 text-green-600"
-									)}
-								>
-									<AlertCircle className="h-5 w-5" />
-								</div>
-								<span
-									className={cn(
-										"text-2xl font-black tracking-tight",
-										lowStockCount > 0 ? "text-red-700" : "text-green-600"
-									)}
-								>
-									{lowStockCount}
-								</span>
-							</div>
-							<p
-								className={cn(
-									"mt-2 font-semibold text-xs",
-									lowStockCount > 0
-										? "text-red-600"
-										: "text-muted-foreground"
-								)}
-							>
-								Low Stock
-							</p>
-						</motion.div>
-
-						{/* Menu Tersedia */}
-						<motion.div
-							animate={{ opacity: 1, scale: 1 }}
-							className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-all hover:shadow-md"
-							initial={{ opacity: 0, scale: 0.95 }}
-							transition={{ delay: 0.15, duration: 0.2 }}
-						>
-							<div className="flex items-center justify-between">
-								<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
-									<TrendingUp className="h-5 w-5" />
-								</div>
-								<span className="text-2xl font-black tracking-tight text-emerald-600">
-									{availableMenuCount}
-								</span>
-							</div>
-							<p className="mt-2 font-semibold text-muted-foreground text-xs">Menu Tersedia</p>
-						</motion.div>
-
-						{/* Menu Habis */}
-						<motion.div
-							animate={{ opacity: 1, scale: 1 }}
-							className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-all hover:shadow-md"
-							initial={{ opacity: 0, scale: 0.95 }}
-							transition={{ delay: 0.2, duration: 0.2 }}
-						>
-							<div className="flex items-center justify-between">
-								<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
-									<TrendingDown className="h-5 w-5" />
-								</div>
-								<span className="text-2xl font-black tracking-tight text-orange-600">
-									{unavailableMenuCount}
-								</span>
-							</div>
-							<p className="mt-2 font-semibold text-muted-foreground text-xs">Menu Habis</p>
-						</motion.div>
-					</motion.div>
-
-					{/* Quick Actions */}
-					<motion.div
-						animate={{ opacity: 1, y: 0 }}
-						className="rounded-2xl border border-border/70 bg-card p-3 shadow-sm md:p-4"
-						initial={{ opacity: 0, y: 10 }}
-						transition={{ delay: 0.25, duration: 0.3 }}
-					>
-						<h3 className="mb-3 font-bold text-sm tracking-tight">Quick Actions</h3>
-						<div className="flex flex-wrap gap-2">
-							<Link
-								className="inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap rounded-lg border border-border bg-background px-3.5 py-2 font-semibold text-xs shadow-sm outline-none transition-all hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25 h-9 gap-1"
-								to="/admin/inventory"
-							>
-								<Package className="mr-1.5 h-3.5 w-3.5" />
-								Update Stock
-							</Link>
-							<Link
-								className="inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap rounded-lg border border-border bg-background px-3.5 py-2 font-semibold text-xs shadow-sm outline-none transition-all hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25 h-9 gap-1"
-								to="/attendance/stock-opname"
-								search={{} as any}
-							>
-								<ClipboardList className="mr-1.5 h-3.5 w-3.5" />
-								Stock Opname
-							</Link>
-							<Link
-								className="inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap rounded-lg border border-border bg-background px-3.5 py-2 font-semibold text-xs shadow-sm outline-none transition-all hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25 h-9 gap-1"
-								to={"/admin/kitchen" as any}
-								search={{ tab: "stock" } as any}
-							>
-								<ChefHat className="mr-1.5 h-3.5 w-3.5" />
-								Kitchen Stock
-							</Link>
-							<Link
-								className="inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap rounded-lg border border-border bg-background px-3.5 py-2 font-semibold text-xs shadow-sm outline-none transition-all hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25 h-9 gap-1"
-								to={"/admin/bar" as any}
-								search={{ tab: "stock" } as any}
-							>
-								<Beer className="mr-1.5 h-3.5 w-3.5" />
-								Bar Stock
-							</Link>
+				<section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm md:p-5">
+					<div className="flex flex-wrap items-start justify-between gap-3">
+						<div>
+							<h2 className="text-base font-semibold">Pergerakan barang</h2>
+							<p className="mt-1 text-sm text-muted-foreground">Jumlah catatan masuk, keluar, dan penyesuaian per {daysWindow > 30 ? "pekan" : "hari"}.</p>
 						</div>
-					</motion.div>
+						<span className="rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground">{daysWindow} hari terakhir</span>
+					</div>
 
-					{/* Low Stock Alert List */}
-					{lowStockItems && lowStockItems.length > 0 && (
-						<motion.div
-							animate={{ opacity: 1, y: 0 }}
-							className="rounded-2xl border border-red-200 bg-red-50 p-3 shadow-sm md:p-4"
-							initial={{ opacity: 0, y: 10 }}
-							transition={{ delay: 0.3, duration: 0.3 }}
-						>
-							<div className="mb-3 flex items-center gap-2">
-								<div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-200 text-red-700">
-									<AlertTriangle className="h-4 w-4" />
-								</div>
-								<h3 className="font-bold text-red-800 text-sm tracking-tight">
-									Low Stock Alert
-								</h3>
-								<span className="ml-auto rounded-full bg-red-200 px-2 py-0.5 text-[10px] font-bold text-red-700">
-									{lowStockItems.length} item
-								</span>
-							</div>
-							<div className="space-y-1.5">
-								{lowStockItems.map((item: any) => (
-									<div
-										className="flex items-center justify-between rounded-xl border border-red-100 bg-white p-2.5 transition-all hover:border-red-200 hover:shadow-sm md:p-3"
-										key={item._id}
-									>
-										<div className="flex items-center gap-2.5">
-											<div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-100 text-red-600 shrink-0">
-												<Archive className="h-3.5 w-3.5" />
-											</div>
-											<div>
-												<p className="font-semibold text-slate-800 text-sm leading-tight">
-													{item.ingredientName}
-												</p>
-												<p className="text-[10px] font-medium text-red-600">
-													Stok: {item.quantity} {item.unit} · Threshold: {item.lowStockThreshold} {item.unit}
-												</p>
-											</div>
-										</div>
-										<div className="flex items-center gap-1.5 shrink-0">
-											<div
-												className={cn(
-													"h-2 w-2 rounded-full",
-													item.quantity <= 0
-														? "bg-red-500"
-														: item.quantity <= item.lowStockThreshold / 2
-														? "bg-orange-500"
-														: "bg-yellow-500"
-												)}
-											/>
-											<span className="text-[10px] font-bold text-slate-500">
-												{item.quantity}/{item.lowStockThreshold}
-											</span>
-										</div>
-									</div>
-								))}
-							</div>
-						</motion.div>
-					)}
+					<div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+						<MovementMetric icon={ArrowDownLeft} label="Transaksi masuk" tone="green" value={analytics.transactions.incoming} />
+						<MovementMetric icon={ArrowUpRight} label="Transaksi keluar" tone="red" value={analytics.transactions.outgoing} />
+						<MovementMetric icon={RefreshCw} label="Penyesuaian" tone="blue" value={analytics.transactions.adjustments} />
+						<MovementMetric icon={Boxes} label="Lainnya" tone="neutral" value={analytics.transactions.other} />
+					</div>
 
-					{/* Stock Overview Table */}
-					<motion.div
-						animate={{ opacity: 1, y: 0 }}
-						className="rounded-2xl border border-border/70 bg-card p-3 shadow-sm md:p-4"
-						initial={{ opacity: 0, y: 10 }}
-						transition={{ delay: 0.35, duration: 0.3 }}
-					>
-						<div className="mb-3 flex items-center justify-between">
-							<div className="flex items-center gap-2">
-								<div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-									<Store className="h-4 w-4" />
-								</div>
-								<h3 className="font-bold text-sm tracking-tight">Menu Stock</h3>
-							</div>
-							{/* Category Filter */}
-							<select
-								className="rounded-lg border border-border/70 bg-background px-2.5 py-1.5 text-xs font-medium shadow-sm outline-none transition-all focus:border-primary focus:ring-1 focus:ring-primary"
-								onChange={(e) => setSelectedCategoryId(e.target.value)}
-								value={selectedCategoryId}
-							>
-								<option value="all">Semua Kategori</option>
-								{categoryOptions.map((cat: any) => (
-									<option key={cat._id} value={cat._id}>
-										{cat.name}
-									</option>
-								))}
-							</select>
-						</div>
-
-						{filteredProducts.length === 0 ? (
-							<div className="flex flex-col items-center justify-center py-10 text-center">
-								<div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-300">
-									<ShoppingCart className="h-6 w-6" />
-								</div>
-								<p className="font-medium text-muted-foreground text-sm">
-									Tidak ada produk
-								</p>
+					<div className="mt-5 h-64 w-full" aria-label="Grafik jumlah transaksi stok" role="img">
+						{analytics.transactions.incoming + analytics.transactions.outgoing + analytics.transactions.adjustments + analytics.transactions.other === 0 ? (
+							<div className="grid h-full place-items-center rounded-xl bg-muted/30 px-5 text-center text-sm text-muted-foreground">
+								Belum ada transaksi masuk, keluar, atau penyesuaian pada rentang ini.
 							</div>
 						) : (
-							<div className="overflow-x-auto">
-								<table className="w-full text-left text-xs">
-									<thead>
-										<tr className="border-b border-border/50">
-											<th className="pb-2 pr-2 font-bold text-muted-foreground text-[10px] uppercase tracking-wider">
-												Produk
-											</th>
-											<th className="pb-2 px-2 font-bold text-muted-foreground text-[10px] uppercase tracking-wider">
-												Kategori
-											</th>
-											<th className="pb-2 px-2 font-bold text-muted-foreground text-[10px] uppercase tracking-wider text-right">
-												Stok
-											</th>
-											<th className="pb-2 pl-2 font-bold text-muted-foreground text-[10px] uppercase tracking-wider text-right">
-												Status
-											</th>
-											<th className="pb-2 pl-2 font-bold text-muted-foreground text-[10px] uppercase tracking-wider text-right">
-												Aksi
-											</th>
+							<ResponsiveContainer height="100%" width="100%">
+								<BarChart data={analytics.trend} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
+									<CartesianGrid stroke="hsl(var(--border))" strokeDasharray="4 4" vertical={false} />
+									<XAxis axisLine={false} dataKey="label" minTickGap={18} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} />
+									<YAxis allowDecimals={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} />
+									<Tooltip formatter={(value, name) => [`${value} catatan`, name]} />
+									<Bar dataKey="incoming" fill="#16a34a" name="Masuk" radius={[4, 4, 0, 0]} />
+									<Bar dataKey="outgoing" fill="#e11d48" name="Keluar" radius={[4, 4, 0, 0]} />
+									<Bar dataKey="adjustments" fill="#0284c7" name="Penyesuaian" radius={[4, 4, 0, 0]} />
+									<Bar dataKey="other" fill="#64748b" name="Lainnya" radius={[4, 4, 0, 0]} />
+								</BarChart>
+							</ResponsiveContainer>
+						)}
+					</div>
+
+					<p className="mt-2 rounded-xl bg-muted/35 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+						Masuk merangkum restock, penambahan, dan produksi; keluar merangkum penggunaan. Jenis lain tetap muncul terpisah. Perubahan jumlah langsung pada Inventaris adalah pengecekan atau koreksi saldo, jadi tidak dihitung sebagai transaksi masuk/keluar.
+					</p>
+				</section>
+
+				<div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)]">
+					<section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm md:p-5">
+						<div className="flex items-center justify-between gap-3">
+							<div>
+								<h2 className="text-base font-semibold">Catatan pergerakan terbaru</h2>
+								<p className="mt-1 text-sm text-muted-foreground">Detail barang masuk, keluar, dan perubahan lain.</p>
+							</div>
+							<span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">{analytics.recent.length} catatan</span>
+						</div>
+						{analytics.recent.length === 0 ? (
+							<p className="mt-4 rounded-xl bg-muted/35 px-3 py-8 text-center text-sm text-muted-foreground">
+								Riwayat transaksi stok belum tersedia untuk rentang ini.
+							</p>
+						) : (
+							<div className="mt-4 overflow-x-auto rounded-xl border border-border/70">
+								<table className="w-full min-w-[650px] border-collapse text-left text-sm">
+									<thead className="bg-muted/40 text-xs text-muted-foreground">
+										<tr>
+											<th className="px-3 py-3 font-medium">Waktu</th>
+											<th className="px-3 py-3 font-medium">Bahan</th>
+											<th className="px-3 py-3 font-medium">Jenis</th>
+											<th className="px-3 py-3 text-right font-medium">Jumlah</th>
+											<th className="px-3 py-3 font-medium">Catatan</th>
 										</tr>
 									</thead>
-									<tbody>
-										{filteredProducts.map((product: any) => {
-											const status = getProductStatus(product);
-											const qty = Number(product.quantity ?? 0);
+									<tbody className="divide-y divide-border/70">
+										{analytics.recent.map((movement) => {
+											const direction = getMovementDirection(movement.type);
 											return (
-												<tr
-													className="border-b border-border/30 transition-colors hover:bg-muted/30"
-													key={product._id}
-												>
-													<td className="py-2.5 pr-2 font-medium text-slate-800">
-														<div className="flex items-center gap-2">
-															<div
-																className={cn(
-																	"h-1.5 w-1.5 rounded-full shrink-0",
-																	status.level === "high"
-																		? "bg-green-500"
-																		: status.level === "medium"
-																		? "bg-yellow-500"
-																		: "bg-red-500"
-																)}
-															/>
-															<span className="truncate max-w-[180px]">
-																{product.name}
-															</span>
-														</div>
+												<tr className="hover:bg-muted/20" key={movement._id}>
+													<td className="whitespace-nowrap px-3 py-3 text-xs text-muted-foreground">
+														{Number.isFinite(movement.timestamp) ? new Date(movement.timestamp).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" }) : "—"}
 													</td>
-													<td className="px-2 py-2.5 text-muted-foreground">
-														{getCategoryName(product.categoryId)}
+													<td className="max-w-56 truncate px-3 py-3 font-medium" title={movement.name}>{movement.name}</td>
+													<td className="px-3 py-3">
+														<span className={cn("inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium", directionTone(direction))}>{getMovementLabel(movement.type)}</span>
 													</td>
-													<td className="px-2 py-2.5 text-right font-semibold">
-														{qty}
-													</td>
-													<td className="pl-2 py-2.5 text-right">
-												<span
-													className={cn(
-														"inline-block rounded-md border px-2 py-0.5 text-[10px] font-bold",
-														status.color
-													)}
-												>
-													{status.label}
-												</span>
-											</td>
-											<td className="pl-2 py-2.5 text-right">
-												<button
-													className="inline-flex items-center gap-0.5 rounded-lg bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-95"
-													onClick={() => {
-														setRestockTarget(product);
-														setRestockQty("");
-														setRestockPrice("");
-														setRestockOpen(true);
-													}}
-													type="button"
-												>
-													<Plus className="h-3 w-3" />
-													Restock
-												</button>
-											</td>
+													<td className="whitespace-nowrap px-3 py-3 text-right font-medium tabular-nums">{movementQuantity(movement)}</td>
+													<td className="max-w-48 truncate px-3 py-3 text-xs text-muted-foreground" title={movement.notes || ""}>{movement.notes || "—"}</td>
 												</tr>
 											);
 										})}
-							</tbody>
-						</table>
-					</div>
-				)}
-			</motion.div>
-		</div>
-	</div>
+									</tbody>
+								</table>
+							</div>
+						)}
+					</section>
 
-	{/* Restock Dialog */}
-	<Dialog onOpenChange={(open) => { setRestockOpen(open); if (!open) setRestockTarget(null); }} open={restockOpen}>
-		<DialogContent className="sm:max-w-[360px]">
-			<DialogHeader>
-				<DialogTitle>Restock Menu</DialogTitle>
-				<DialogDescription>
-					Tambah stok untuk <strong>{restockTarget?.name ?? "—"}</strong>
-				</DialogDescription>
-			</DialogHeader>
-			<div className="space-y-3">
-				<div className="space-y-1.5">
-					<Label htmlFor="restock-qty">Quantity</Label>
-					<Input
-						autoFocus
-						id="restock-qty"
-						min="1"
-						onChange={(e) => setRestockQty(e.target.value)}
-						placeholder="Masukkan jumlah"
-						type="number"
-						value={restockQty}
-					/>
+					<section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm md:p-5">
+						<div className="flex items-center gap-2">
+							<AlertTriangle className="h-4 w-4 text-amber-600" aria-hidden="true" />
+							<h2 className="text-base font-semibold">Posisi stok saat ini</h2>
+						</div>
+						<p className="mt-1 text-sm text-muted-foreground">Status terkini dari pencatatan manual.</p>
+						<div className="mt-5 space-y-4">
+							{statusRows.map((row) => {
+								const percent = analytics.stock.total ? (row.count / analytics.stock.total) * 100 : 0;
+								return (
+									<div key={row.label}>
+										<div className="mb-1.5 flex items-center justify-between text-sm">
+											<span className="text-muted-foreground">{row.label}</span>
+											<strong className="font-semibold tabular-nums">{row.count}</strong>
+										</div>
+										<div className="h-2 overflow-hidden rounded-full bg-muted">
+											<div className={cn("h-full rounded-full transition-[width]", row.color)} style={{ width: `${percent}%` }} />
+										</div>
+									</div>
+								);
+							})}
+						</div>
+						<div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+							<FrequentItems emptyText="Belum ada catatan barang masuk." items={analytics.incomingItems} title="Sering masuk" />
+							<FrequentItems emptyText="Belum ada catatan barang keluar." items={analytics.outgoingItems} title="Sering keluar" />
+						</div>
+					</section>
 				</div>
-				<div className="space-y-1.5">
-					<Label htmlFor="restock-price">Harga Beli (opsional)</Label>
-					<Input
-						id="restock-price"
-						min="0"
-						onChange={(e) => setRestockPrice(e.target.value)}
-						placeholder="Rp 0"
-						type="number"
-						value={restockPrice}
-					/>
-				</div>
-			</div>
-			<DialogFooter>
-				<Button disabled={restocking} onClick={handleRestock} variant="default">
-					{restocking ? "Menyimpan..." : "Restock"}
-				</Button>
-			</DialogFooter>
-		</DialogContent>
-	</Dialog>
-</div>
-);
+			</main>
+		</div>
+	);
 }

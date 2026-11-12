@@ -2,6 +2,7 @@
 import { createClient } from "@/lib/client";
 import { adminProtectedRead } from "@/lib/admin-protected-read";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
+import { fetchManualStock, type ManualStockItem } from "@yumipos/web-shared/lib/manual-stock";
 
 type InventoryStoreType = "store" | "supplier" | "market" | "other";
 
@@ -100,6 +101,16 @@ type InventoryTransactionRecord = {
 	sourceTransactionId?: string | null;
 	sourceLabel?: string | null;
 	sourceFingerprint?: string | null;
+};
+
+export type StockOverviewMovement = InventoryTransactionRecord & {
+	name: string;
+	unit: string;
+};
+
+export type StockOverviewData = {
+	items: ManualStockItem[];
+	movements: StockOverviewMovement[];
 };
 
 type FinancialTransactionRecord = {
@@ -530,6 +541,30 @@ async function fetchInventoryTransactionsAll(cutoff?: number) {
 		sourceLabel: row.sourceLabel ?? null,
 		sourceFingerprint: row.sourceFingerprint ?? null,
 	})) as InventoryTransactionRecord[];
+}
+
+async function loadStockOverview(daysWindow: number): Promise<StockOverviewData> {
+	const cutoff = Date.now() - daysWindow * 24 * 60 * 60 * 1000;
+	const [manualStock, inventory, transactions] = await Promise.all([
+		fetchManualStock(),
+		fetchInventoryRows(),
+		fetchInventoryTransactionsAll(cutoff),
+	]);
+	const inventoryById = new Map(inventory.map((item) => [String(item._id), item]));
+
+	return {
+		items: manualStock.items,
+		movements: transactions
+			.filter((transaction) => transaction.type !== "costing_reference")
+			.map((transaction) => {
+				const item = inventoryById.get(String(transaction.inventoryId));
+				return {
+					...transaction,
+					name: item?.ingredientName || "Bahan tidak dikenal",
+					unit: item?.unit || "",
+				};
+			}),
+	};
 }
 
 async function fetchInventoryTransactionsByInventoryId(inventoryId: string) {
@@ -1636,6 +1671,17 @@ export function useHybridInventoryWorkspace(options?: { daysWindow?: number }) {
 		{ refreshMs: 60_000, tables: ["inventory", "inventory_transactions", "products", "recipes"] }
 	);
 	return supabaseData as any;
+}
+
+export function useHybridStockOverview(daysWindow = 30) {
+	const boundedDays = Math.max(1, Math.min(90, Math.floor(daysWindow)));
+	const supabaseData = useSupabaseLiveValue(
+		`stock-overview:${boundedDays}`,
+		() => loadStockOverview(boundedDays),
+		[boundedDays],
+		{ refreshMs: 60_000, tables: ["inventory", "inventory_transactions"] }
+	);
+	return supabaseData as StockOverviewData | null | undefined;
 }
 
 export function useHybridRealtimePriceMonitor(options?: {
