@@ -463,6 +463,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 	
 	const isAIChat = location.pathname === "/admin/ai-chat";
 	const isOperational = OPERATIONAL_PATHS.some(p => location.pathname.startsWith(p));
+	const isStockPage = ["/admin/inventory", "/admin/stock-overview"].includes(location.pathname.replace(/\/$/, ""));
 	const currentPageTitle = PAGE_TITLES[location.pathname] || "Admin";
 
 	// Route Guard
@@ -1341,7 +1342,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 
 				{/* Page Content - AI Chat and Operational views use internal scroll, others use page scroll */}
 				<div
-					className={(isAIChat || isOperational) ? "min-w-0 flex-1 overflow-hidden" : "min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 pb-20 md:p-4 md:pb-4"}
+					className={(isAIChat || isOperational) ? "min-w-0 flex-1 overflow-hidden" : isStockPage ? "min-w-0 flex-1 overflow-x-hidden overflow-y-auto bg-[#f2f2f5] pb-20 md:pb-0" : "min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 pb-20 md:p-4 md:pb-4"}
 				>
 					{isAccessDenied ? (
 						<PermissionDenied onBack={() => navigate({ to: "/admin" })} />

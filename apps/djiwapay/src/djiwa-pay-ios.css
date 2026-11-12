@@ -221,8 +221,8 @@ button:disabled { cursor: default; }
 .wallet-action-field > input:focus,
 .wallet-action-field .wallet-action-recipient > input:focus,
 .wallet-action-field .wallet-action-amount:focus-within {
-  border-color: #0a84ff !important;
-  box-shadow: 0 0 0 4px rgba(10,132,255,.1);
+  border-color: #d4d4d8 !important;
+  box-shadow: none;
 }
 .wallet-action-field > small { margin: 0 2px; color: #8e8e93; font-size: 11px; font-weight: 400; line-height: 1.4; }
 .wallet-action-recipient { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; }

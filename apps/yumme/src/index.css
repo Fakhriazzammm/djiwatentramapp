@@ -13,3 +13,20 @@
 @media(max-width:680px){.package-hero{padding:42px 0 54px}.package-hero h1{font-size:clamp(42px,12vw,60px)}.package-promise{font-size:16px;line-height:1.55}.package-price-card{padding:22px}.package-price-card>strong{font-size:36px}.package-overview h2,.package-results h2{font-size:35px}.package-problem{padding:20px}.package-problem p{font-size:14px}.package-step-grid{grid-template-columns:1fr;gap:10px}.package-step{padding:20px}.package-step h3{margin-top:25px}.package-metrics{padding:20px}.package-final-cta{padding-top:64px}}
 
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}
+
+/* Neutral field focus; keyboard users retain a visible focus indicator. */
+:is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select):focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #d4d4d8 !important;
+}
+:is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select):focus-visible {
+  outline: 2px solid currentColor !important;
+  outline-offset: 2px !important;
+}
+:is(input, textarea, select)[aria-invalid="true"]:focus {
+  border-color: #b91c1c !important;
+}
+:is(input, textarea, select)[aria-invalid="true"]:focus-visible {
+  outline-color: #b91c1c !important;
+}

@@ -260,7 +260,7 @@ export function SearchBar({
 			<div
 				className={cn(
 					"flex items-center gap-2 rounded-full border border-border bg-card pr-2 shadow-sm transition-shadow",
-					"focus-within:border-primary focus-within:ring-2 focus-within:ring-ring/20",
+					"focus-within:border-foreground/30",
 					sizeClasses[size],
 					isFocused && "shadow-md"
 				)}

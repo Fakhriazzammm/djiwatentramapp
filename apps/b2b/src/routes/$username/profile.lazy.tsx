@@ -222,7 +222,7 @@ function ProfilePage() {
 								</div>
 								<div>
 									<p className="mb-1 text-[10px] font-semibold text-muted-foreground">Username</p>
-									<div className="flex items-center rounded-[14px] border border-border bg-background px-3 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20"><span className="text-sm font-bold text-muted-foreground">@</span><input type="text" value={editUsername} onChange={(e) => setEditUsername(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 32))} className="min-h-11 w-full bg-transparent px-1.5 py-2 text-xs font-medium outline-none" placeholder="username" maxLength={32} autoCapitalize="none" autoComplete="username" /><span className="sr-only">Username 3 sampai 32 karakter, huruf kecil, angka, dan tanda hubung</span></div>
+									<div className="flex items-center rounded-[14px] border border-border bg-background px-3 focus-within:border-foreground/30"><span className="text-sm font-bold text-muted-foreground">@</span><input type="text" value={editUsername} onChange={(e) => setEditUsername(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 32))} className="min-h-11 w-full bg-transparent px-1.5 py-2 text-xs font-medium outline-none" placeholder="username" maxLength={32} autoCapitalize="none" autoComplete="username" /><span className="sr-only">Username 3 sampai 32 karakter, huruf kecil, angka, dan tanda hubung</span></div>
 									<p className="mt-1 text-[10px] text-muted-foreground">Dipakai pada alamat profil kamu.</p>
 								</div>
 								<div className="grid grid-cols-2 gap-2">

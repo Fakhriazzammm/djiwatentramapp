@@ -220,3 +220,20 @@ main { padding-top: max(20px, env(safe-area-inset-top)); }
 .journey-copy { margin: 16px 0 0; color: #6e6e73; font-size: 12px; line-height: 1.45; }
 .journey-action { display: inline-flex; min-height: 38px; align-items: center; gap: 7px; margin-top: 12px; border: 0; border-radius: 11px; padding: 0 12px; color: #007aff; background: #eaf3ff; font-size: 12px; font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { .status-chip.processing svg, .generation-track span, .generation-dots i, .button-spinner { animation: none; } }
+
+/* Neutral field focus; keyboard users retain a visible focus indicator. */
+:is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select):focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #d4d4d8 !important;
+}
+:is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select):focus-visible {
+  outline: 2px solid currentColor !important;
+  outline-offset: 2px !important;
+}
+:is(input, textarea, select)[aria-invalid="true"]:focus {
+  border-color: #b91c1c !important;
+}
+:is(input, textarea, select)[aria-invalid="true"]:focus-visible {
+  outline-color: #b91c1c !important;
+}

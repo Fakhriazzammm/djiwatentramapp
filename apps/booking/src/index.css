@@ -133,7 +133,7 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 .arrival-time-field .field-label { display: flex; align-items: center; gap: 7px; }
 .arrival-time-field .field-label svg { color: var(--booking-accent); }
 .time-input-shell { min-height: 56px; margin-top: 8px; padding: 0 13px; display: flex; align-items: center; gap: 10px; border: 1px solid #cfd9e8; border-radius: 16px; color: var(--booking-accent); background: var(--surface); box-shadow: 0 4px 12px rgba(15,23,42,.04); transition: border-color 180ms var(--ease-ios), box-shadow 180ms var(--ease-ios), background 180ms var(--ease-ios); }
-.time-input-shell:focus-within { border-color: var(--booking-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--booking-accent) 13%, transparent); }
+.time-input-shell:focus-within { border-color: #a1a1aa; box-shadow: none; }
 .time-input-icon { flex: 0 0 auto; }
 .arrival-time-field .time-input { min-width: 0; flex: 1; width: 100%; min-height: 52px; padding: 0; border: 0; color: var(--ink); background: transparent; outline: 0; font-family: var(--font-display); font-size: 20px; font-weight: 800; letter-spacing: -.025em; text-align: left; }
 .arrival-time-field .time-input:disabled { color: #98a2b3; background: transparent; }
@@ -414,5 +414,6 @@ h1 em { color: var(--booking-accent); font-style: normal; }
 @keyframes app-update-rise { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 /* Booking controls use a quiet focus state; the shared shell's global focus ring is intentionally overridden here. */
-.app-shell input:focus-visible, .app-shell textarea:focus-visible, .app-shell select:focus-visible { outline: 0 !important; outline-offset: 0 !important; border-color: var(--booking-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--booking-accent) 13%, transparent) !important; }
+.app-shell input:focus-visible, .app-shell textarea:focus-visible, .app-shell select:focus-visible { outline: 2px solid currentColor !important; outline-offset: 2px !important; border-color: var(--border, #d4d4d8) !important; box-shadow: none !important; }
+.app-shell :is(input, textarea, select)[aria-invalid="true"]:focus-visible { outline-color: var(--destructive, #b91c1c) !important; }
 .app-shell .choice-card:focus-visible { outline: 0 !important; outline-offset: 0 !important; box-shadow: none !important; }

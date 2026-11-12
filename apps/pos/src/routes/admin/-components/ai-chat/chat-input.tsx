@@ -97,7 +97,7 @@ export const ChatInput = ({
 
 			<div className={`overflow-hidden rounded-[1.35rem] border bg-background/98 shadow-[0_8px_30px_rgba(15,23,42,0.08)] transition-all md:rounded-[1.75rem] md:shadow-[0_20px_48px_rgba(15,23,42,0.08)] ${
 				isScanMode ? "border-emerald-300 shadow-emerald-100/70" : "border-border/70"
-			} focus-within:shadow-xl focus-within:border-primary/20`}>
+			} focus-within:shadow-xl focus-within:border-foreground/20`}>
 				{isScanMode && (
 					<div className="border-b border-emerald-200 bg-emerald-50 px-4 py-1.5 flex items-center gap-2">
 						<ScanLine className="h-3.5 w-3.5 text-emerald-600" />

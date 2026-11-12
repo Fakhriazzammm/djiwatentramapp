@@ -608,13 +608,19 @@
 	border-radius: var(--radius-md, 0.5rem);
 }
 
-/* Form controls own their border/ring. Keeping them out of the generic rule
-   prevents a dark browser-like outline from stacking with component styles. */
-:where(input, textarea, select):focus-visible {
-	outline: none;
-	outline-offset: 0;
-	border-color: color-mix(in srgb, var(--primary) 68%, var(--border) 32%);
-	box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent 84%);
+/* Text fields use a neutral focus indicator across apps. Keep a visible
+   keyboard focus without stacking browser and component-specific rings. */
+:is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select):focus {
+	outline: none !important;
+	box-shadow: none !important;
+	border-color: var(--border, #d4d4d8) !important;
+}
+:is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select):focus-visible {
+	outline: 2px solid currentColor !important;
+	outline-offset: 2px !important;
+}
+:is(input, textarea, select)[aria-invalid="true"]:focus-visible {
+	outline-color: var(--destructive, #b91c1c) !important;
 }
 
 *:focus:not(:focus-visible) { outline: none; }

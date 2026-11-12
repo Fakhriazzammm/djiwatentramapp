@@ -20,3 +20,20 @@
 .kol-portal .bg-violet-50{background:#f5f3ff}
 .kol-portal .bg-emerald-50{background:#ecfdf5}
 @media(max-width:640px){.kol-portal{padding-left:16px;padding-right:16px}.kol-portal section{border-radius:24px}.kol-portal h1{letter-spacing:-.035em}.kol-portal nav button{min-height:52px}.kol-portal article{box-shadow:0 5px 18px rgba(15,23,42,.04)}}
+
+/* Neutral field focus; keyboard users retain a visible focus indicator. */
+:is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select):focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #d4d4d8 !important;
+}
+:is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select):focus-visible {
+  outline: 2px solid currentColor !important;
+  outline-offset: 2px !important;
+}
+:is(input, textarea, select)[aria-invalid="true"]:focus {
+  border-color: #b91c1c !important;
+}
+:is(input, textarea, select)[aria-invalid="true"]:focus-visible {
+  outline-color: #b91c1c !important;
+}
