@@ -46,6 +46,27 @@ class ReceiptPersistenceInput:
     items: tuple[ReceiptItemCandidate, ...] = ()
 
 
+async def classify_receipt_items(items: list[dict[str, Any]], matcher: Any, inventory: list[dict[str, Any]]) -> tuple[ReceiptItemCandidate, ...]:
+    """Retain the original OCR text and store matches only as review candidates."""
+    candidates = []
+    for index, item in enumerate(items):
+        raw_name = str(item.get("raw_name") or item.get("name") or "").strip()
+        match, score = await matcher.fuzzy_match_item(raw_name, inventory) if raw_name else (None, 0)
+        candidates.append(ReceiptItemCandidate(
+            item_key=str(item.get("ocr_item_id") or index),
+            raw_name=raw_name,
+            normalized_name=item.get("name") or None,
+            quantity=float(item.get("qty") or 0),
+            unit=item.get("unit") or None,
+            unit_price=float(item.get("price") or 0),
+            line_total=float(item.get("subtotal") or ((item.get("qty") or 1) * (item.get("price") or 0))),
+            inventory_source_id=match.get("_id") if match and score >= 45 else None,
+            confidence=score if match and score >= 45 else None,
+            raw=item,
+        ))
+    return tuple(candidates)
+
+
 def stable_id(prefix: str, *parts: str) -> str:
     """Create a deterministic, non-secret source id for safe retries."""
     value = "\x1f".join((part or "").strip() for part in parts)
@@ -110,7 +131,7 @@ def build_item_payloads(data: ReceiptPersistenceInput) -> list[dict[str, Any]]:
                 "status": (
                     "legacy_applied"
                     if item.review_status == "legacy_applied"
-                    else "approved" if item.inventory_source_id and (item.confidence or 0) >= 90 else "pending"
+                    else "pending"
                 ),
                 "idempotency_key": link_id,
                 "raw": item.raw,
@@ -137,14 +158,17 @@ class ReceiptInventoryAdapter:
             "Prefer": "resolution=merge-duplicates,return=representation",
         }
 
-    async def _post(self, table: str, payload: dict[str, Any]) -> Any:
+    async def _post(self, table: str, payload: dict[str, Any], *, preserve_existing: bool = False) -> Any:
+        headers = self._headers()
+        if preserve_existing:
+            headers["Prefer"] = "resolution=ignore-duplicates,return=representation"
         if self._post_override:
-            return await self._post_override(table, payload, self._headers())
+            return await self._post_override(table, payload, headers)
         import httpx
         async with httpx.AsyncClient(timeout=20) as client:
             response = await client.post(
                 f"{self.supabase_url}/rest/v1/{table}?on_conflict=source_id",
-                headers=self._headers(),
+                headers=headers,
                 json=payload,
             )
             response.raise_for_status()
@@ -155,8 +179,8 @@ class ReceiptInventoryAdapter:
         item_results = []
         link_results = []
         for payload in build_item_payloads(data):
-            item_results.append(await self._post("expense_receipt_items", payload["receipt"]))
-            link_results.append(await self._post("expense_inventory_links", payload["link"]))
+            item_results.append(await self._post("expense_receipt_items", payload["receipt"], preserve_existing=True))
+            link_results.append(await self._post("expense_inventory_links", payload["link"], preserve_existing=True))
         return {
             "receipt_id": stable_id("receipt", data.financial_transaction_source_id),
             "receipt": receipt,

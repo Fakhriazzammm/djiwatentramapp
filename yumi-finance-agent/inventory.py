@@ -12,7 +12,8 @@ from datetime import datetime, timezone, timedelta
 from rapidfuzz import fuzz, process
 
 # Import alias resolver untuk matching berbasis nama kanonik
-from item_normalization import expand_item_alias, normalize_unit
+from item_normalization import expand_item_alias, normalize_unit, exact_inventory_alias, ambiguous_inventory_alias
+from item_identity import variant_signature
 
 logger = logging.getLogger(__name__)
 WIB = timezone(timedelta(hours=7))
@@ -287,6 +288,21 @@ class InventoryManager:
             "select=_id,ingredientName,quantity,lowStockThreshold,unit,lastPurchasePrice,preferredStoreId,preferredPurchaseUnit,preferredPurchaseQuantity,conversionFactor,displayUnit",
         )
 
+    async def integrated_stock_enabled(self) -> bool:
+        """Fail closed: an unavailable or unknown mode must never change stock."""
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.post(
+                    f"{self.supabase_url}/rest/v1/rpc/inventory_stock_mode",
+                    headers=self._headers(), json={},
+                )
+                response.raise_for_status()
+                result = response.json()
+                return isinstance(result, dict) and result.get("mode") == "integrated"
+        except Exception as exc:
+            logger.warning("Unable to verify stock mode; automatic stock writes disabled: %s", exc)
+            return False
+
     async def get_all_inventory_aliases(self) -> list[dict]:
         """Ambil inventory aliases dari DB untuk alias resolution cache.
         
@@ -397,6 +413,11 @@ class InventoryManager:
             if not inv_name:
                 continue
 
+            receipt_variant = variant_signature(receipt_name)
+            inventory_variant = variant_signature(inv_name)
+            if receipt_variant and inventory_variant and receipt_variant != inventory_variant:
+                continue
+
             inv_clean = _clean_name(inv_name)
             inv_tokens = set(inv_clean.split())
 
@@ -477,6 +498,14 @@ class InventoryManager:
 
             # Ensure combined >= 0
             combined = max(combined, 0)
+
+            canonical = exact_inventory_alias(receipt_name)
+            exact = receipt_name.casefold() == inv_name.casefold()
+            trusted = (exact or (canonical and canonical.casefold() == inv_name.casefold()))
+            duplicate_name = sum(1 for row in inventory_list if (row.get("ingredientName") or "").strip().casefold() == inv_name.casefold()) > 1
+            if (not trusted or duplicate_name or ambiguous_inventory_alias(receipt_name)
+                    or receipt_variant != inventory_variant):
+                combined = min(combined, MIN_SCORE_AUTO - 1)
 
             if combined > best_score:
                 best_score = combined
@@ -883,6 +912,11 @@ def _find_inventory_match(
         if not inv_name:
             continue
 
+        receipt_variant = variant_signature(receipt_name)
+        inventory_variant = variant_signature(inv_name)
+        if receipt_variant and inventory_variant and receipt_variant != inventory_variant:
+            continue
+
         inv_clean = _clean_name(inv_name)
         inv_tokens = set(inv_clean.split())
 
@@ -929,6 +963,14 @@ def _find_inventory_match(
                     combined = min(combined + 5, 100)
 
         combined = max(combined, 0)
+
+        canonical = exact_inventory_alias(receipt_name)
+        exact = receipt_name.casefold() == inv_name.casefold()
+        trusted = (exact or (canonical and canonical.casefold() == inv_name.casefold()))
+        duplicate_name = sum(1 for row in inventory_list if (row.get("ingredientName") or "").strip().casefold() == inv_name.casefold()) > 1
+        if (not trusted or duplicate_name or ambiguous_inventory_alias(receipt_name)
+                or receipt_variant != inventory_variant):
+            combined = min(combined, MIN_SCORE_AUTO - 1)
 
         if combined > best_score:
             best_score = combined

@@ -78,7 +78,7 @@ from item_normalization import expand_item_alias, normalize_unit, load_aliases_f
 from db_categories import build_resolver
 from analyzer import TransactionAnalyzer
 from local_ocr import local_vision_json
-from receipt_inventory_adapter import ReceiptInventoryAdapter, ReceiptItemCandidate, ReceiptPersistenceInput
+from receipt_inventory_adapter import ReceiptInventoryAdapter, ReceiptItemCandidate, ReceiptPersistenceInput, classify_receipt_items
 from receipt_inventory_adapter import stable_id
 from rescan_receipts_with_ai import compact_prompt, image_uri, missing_fields
 # (no supplier import needed — moved to Yumi Purchasing)
@@ -1663,6 +1663,12 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
                 )
                 for index, item in enumerate(items)
             )
+            if tx_type == "expense":
+                try:
+                    load_aliases_from_db(await inventory.get_all_inventory_aliases())
+                    receipt_items = await classify_receipt_items(items, inventory, await inventory.get_all_inventory())
+                except Exception as exc:
+                    logger.warning("Receipt matching unavailable; saving raw items for review: %s", exc)
             await receipt_inventory.persist(ReceiptPersistenceInput(
                 financial_transaction_source_id=source_id,
                 receipt_image_url=receipt.get("receipt_image_url") or None,
@@ -1714,9 +1720,10 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
     # ── Restok inventory ────────────────────────────────────────
     if items and tx_type == "expense":
         inventory_list = await inventory.get_all_inventory()
+        integrated_stock = await inventory.integrated_stock_enabled()
         restok_lines = []
         for item in items:
-            item_name = item.get("name", "").strip()
+            item_name = str(item.get("raw_name") or item.get("name") or "").strip()
             if not item_name:
                 continue
             item_qty = float(item.get("qty") or 1)
@@ -1729,11 +1736,15 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
             if approved:
                 approved_id = approved.get("proposed_inventory_source_id")
                 matched = next((inv for inv in inventory_list if inv.get("_id") == approved_id), None)
-                score = 100 if matched else 0
+                from item_identity import variant_signature
+                score = 100 if matched and variant_signature(item_name) == variant_signature(matched.get("ingredientName", "")) else 0
             else:
                 matched, score = await inventory.fuzzy_match_item(item_name, inventory_list, item_price=item_price, merchant=merchant)
             if matched and score >= MIN_SCORE_AUTO:
                 inv_name = matched["ingredientName"]
+                if not integrated_stock:
+                    restok_lines.append(f"  🔎 {item_name} → {inv_name} (stok manual tidak diubah)")
+                    continue
                 inv_qty = float(matched.get("quantity", 0))
                 try:
                     await inventory.restock_item(
@@ -1765,10 +1776,11 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
             lines.extend(restok_lines)
 
         # Sinkronisasi stok menu setelah restock
-        try:
-            await inventory.sync_all_menu_stocks()
-        except Exception as e:
-            logger.warning("Menu stock sync failed after OCR restock: %s", e)
+        if integrated_stock:
+            try:
+                await inventory.sync_all_menu_stocks()
+            except Exception as e:
+                logger.warning("Menu stock sync failed after OCR restock: %s", e)
 
     await query.edit_message_text("\n".join(lines), reply_markup=_finance_keyboard())
     _save_pending()
@@ -1875,6 +1887,8 @@ def _save_learning_entries(items: list[dict], inventory_list: list[dict], mercha
 async def _manual_restock(result):
     """Restok inventory dari input pengeluaran manual (sama seperti OCR)."""
     try:
+        if not await inventory.integrated_stock_enabled():
+            return
         items_to_restock = []
 
         # Cek apakah orchestrator sudah parse items
@@ -1945,7 +1959,7 @@ async def _manual_restock(result):
         restok_lines = []
 
         for item in items_to_restock:
-            item_name = item.get("name", "").strip()
+            item_name = str(item.get("raw_name") or item.get("name") or "").strip()
             if not item_name:
                 continue
             item_qty = float(item.get("qty") or 1)
@@ -1958,7 +1972,8 @@ async def _manual_restock(result):
             if approved:
                 approved_id = approved.get("proposed_inventory_source_id")
                 matched = next((inv for inv in inventory_list if inv.get("_id") == approved_id), None)
-                score = 100 if matched else 0
+                from item_identity import variant_signature
+                score = 100 if matched and variant_signature(item_name) == variant_signature(matched.get("ingredientName", "")) else 0
             else:
                 matched, score = await inventory.fuzzy_match_item(item_name, inventory_list, item_price=item_price, merchant=merchant)
             if matched and score >= MIN_SCORE_AUTO:
@@ -3681,10 +3696,13 @@ async def _restok_bulk_items(receipt: dict):
     if not items:
         return
 
+    if not await inventory.integrated_stock_enabled():
+        return
+
     try:
         inventory_list = await inventory.get_all_inventory()
         for item in items:
-            item_name = item.get("name", "").strip()
+            item_name = str(item.get("raw_name") or item.get("name") or "").strip()
             if not item_name:
                 continue
             item_price = float(item.get("price", 0) or 0)

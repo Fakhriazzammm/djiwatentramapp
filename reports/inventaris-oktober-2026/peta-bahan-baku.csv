@@ -1,0 +1,173 @@
+nama_ocr,keputusan,bahan,jumlah_baris,jumlah_struk,satuan
+ABC KECAP ASIN,ALIAS,Kecap Asin ABC,1,1,pcs
+Air Galon,EXACT,Air Galon,4,4,pcs
+Air Mineral,EXACT,Air Mineral,1,1,pcs
+ANGKAK/KG,ALIAS,Angkak,1,1,pcs
+Aquaproof,EXCLUDE,,1,1,pcs
+Arabica Fullwash Halu,REVIEW,,1,1,pcs
+Arabika Bali kintamani,REVIEW,,1,1,pcs
+B-putih kupas,ALIAS,Bawang Putih,1,1,pcs
+B. Bmbai,ALIAS,Bawang Bombai,1,1,kg
+B. Daun,ALIAS,Bawang Daun,3,3,"ikat,kg,pcs"
+B. Jain,ALIAS,Bawang Daun,1,1,pcs
+B. puar,REVIEW,,1,1,pcs
+B. putih kupas,ALIAS,Bawang Putih,1,1,pcs
+B.goreng,ALIAS,Bawang Goreng,1,1,pcs
+B.Jmn,ALIAS,Bawang Daun,1,1,pcs
+baso,ALIAS,Bakso,1,1,pcs
+Bawang Merah,EXACT,Bawang Merah,2,1,"kg,pcs"
+Bcp. gram,REVIEW,,1,1,pcs
+Beras DT,ALIAS,Beras,6,6,kg
+Beras OT,ALIAS,Beras,1,1,kg
+BERNARDI HORECA SOSIS SAPI,ALIAS,Bernardi Horeca Sosis,5,5,pcs
+Biji wijen,ALIAS,Biji Wijen,1,1,kg
+biji wijen,ALIAS,Biji Wijen,1,1,pcs
+Bikin Yamin,EXACT,Bikin Yamin,3,3,pcs
+BIMOLI,NEW,Minyak Bimoli,1,1,pcs
+bj wijen,ALIAS,Biji Wijen,1,1,pcs
+BLP,REVIEW,,1,1,pcs
+Blp.,REVIEW,,1,1,pcs
+Bowl,EXCLUDE,,2,2,pcs
+Bowl 500,EXCLUDE,,1,1,pcs
+c. domba,ALIAS,Cabe Domba,2,2,kg
+C1000 Apple,EXACT,C1000 Apple,1,1,pcs
+Cabe Kering,EXACT,Cabe Kering,1,1,pcs
+Cementea,REVIEW,,1,1,pak
+Cengek,ALIAS,Cabe Rawit,1,1,kg
+Cincang Ayam,ALIAS,Ayam Cincang,9,9,"pack,pcs"
+CLEAR PKC LVNDR 400,EXCLUDE,,1,1,pcs
+CLING PK UNGU R400,EXCLUDE,,1,1,pcs
+Coklat,ALIAS,Coklat Powder,1,1,pcs
+Cream,EXACT,Cream,4,4,pcs
+Cup,EXCLUDE,,1,1,pcs
+Cup saus,EXCLUDE,,1,1,pcs
+Daging Sapi Cincang,ALIAS,Sapi Cincang,9,9,"pack,pcs"
+DAHLIA TCB 3S,EXCLUDE,,1,1,pcs
+Del bbq,REVIEW,,2,2,pcs
+Del hot,ALIAS,Delmonte Saus Cabe,2,2,pcs
+DEL MONTE EXTRA HOT CHILLI SAUCE,ALIAS,Delmonte Saus Cabe,1,1,pcs
+Del tomat,ALIAS,Saus Tomat (Del Monte),1,1,pcs
+DESAKUBWGPTI HBBK,REVIEW,,1,1,pcs
+DESAKUBWGPTIHBK100G,REVIEW,,1,1,pcs
+Drip Matcha,ALIAS,Matcha Powder,2,2,pcs
+Dripp Powder coklat,ALIAS,Coklat Powder,1,1,pcs
+Ebi (500gr),EXACT,Ebi (500gr),1,1,ons
+EKONOMI PP JNP R1550,EXCLUDE,,1,1,pcs
+Es Batu,EXACT,Es Batu,4,4,pcs
+ETERNA SKB NYLON 414,EXCLUDE,,1,1,pcs
+fm D.,ALIAS,Freshmilk Diamond,1,1,pcs
+FM Diamond,ALIAS,Freshmilk Diamond,1,1,karton
+Fm Ef,REVIEW,,2,2,karton
+Freshmilk Greenfield,EXACT,Freshmilk Greenfield,2,2,"karton,pcs"
+Frisianflag Coconut Delight,EXACT,Frisianflag Coconut Delight,1,1,karton
+Gas,ALIAS,Gas 3 Kg,2,2,pcs
+GOLD FARM MIX VEG500,ALIAS,Mix Vegetable,1,1,pcs
+Gold label,ALIAS,Cream,4,4,pcs
+Gold Label,ALIAS,Cream,1,1,pcs
+GOLDEN FARM MIXED VEGETABLES,ALIAS,Mix Vegetable,2,2,pcs
+Goldlabel,ALIAS,Cream,5,5,pcs
+Gula aren,EXACT,Gula Aren,3,3,pcs
+Gula merah,ALIAS,Gula Aren,1,1,pcs
+Gula putih,ALIAS,Gula Pasir Putih,2,2,pcs
+HH1015,REVIEW,,1,1,pcs
+HIT AE LAVENDER600ML,EXCLUDE,,1,1,pcs
+Hot,REVIEW,,1,1,pcs
+IDAHO SHOESTRING,ALIAS,Kentang Shoestring,1,1,pcs
+Idola 15,REVIEW,,1,1,pcs
+Idola 26,REVIEW,,1,1,pcs
+j. lamo,ALIAS,Jeruk Limau,1,1,kg
+J. limo,ALIAS,Jeruk Limau,1,1,kg
+J. lmo,ALIAS,Jeruk Limau,1,1,kg
+Jcho,REVIEW,,1,1,pcs
+Jeruk Lemo,ALIAS,Jeruk Limau,1,1,kg
+Jeruk Limo,ALIAS,Jeruk Limau,1,1,kg
+Juho,REVIEW,,1,1,pcs
+Jungle apel,ALIAS,Apple Juice,1,1,pcs
+JUNGLE JC APPLE,ALIAS,Apple Juice,1,1,pcs
+KANTONG PLASTIK BESAR U35,EXCLUDE,,1,1,pcs
+KANTONG PLASTIK SEDANG U24,EXCLUDE,,5,5,pcs
+Kecap Anggur,NEW,Kecap Anggur,1,1,pcs
+kecap anggur manis,ALIAS,Kecap Anggur,1,1,pcs
+Kecap anggur manis,ALIAS,Kecap Anggur,2,2,pcs
+Kecap Anggur Manis,ALIAS,Kecap Anggur,1,1,pcs
+kecap asin abc,ALIAS,Kecap Asin ABC,1,1,pcs
+Kecap Bango,ALIAS,Kecap Manis,1,1,pcs
+Kecap Manis,EXACT,Kecap Manis,1,1,pcs
+Kemangi,NEW,Kemangi Segar,3,3,"kg,pcs"
+kemangi,NEW,Kemangi Segar,1,1,pcs
+Kemiri,EXACT,Kemiri,1,1,kg
+Kentang,EXACT,Kentang,5,5,pcs
+kentang,EXACT,Kentang,2,2,pcs
+Kentang 2.sky,REVIEW,,1,1,pcs
+KRESEK HD 22 POLOS,EXCLUDE,,2,2,pcs
+KRESEK HD 28 POLOS,EXCLUDE,,1,1,pcs
+KRESEK HD28,EXCLUDE,,1,1,pcs
+KRESEK HD28 0.25,EXCLUDE,,5,5,pcs
+Kriting M,ALIAS,Cabe Keriting Merah,1,1,kg
+Krupuk Oren,ALIAS,Kerupuk,1,1,pcs
+LADA HTM BBK35GR,ALIAS,Lada Hitam Bubuk,1,1,pcs
+LADAKU GROUND W100,ALIAS,Lada Bubuk,1,1,pcs
+Listrik Dapina,EXCLUDE,,1,1,pcs
+MAIZENAKU,ALIAS,Tepung Jagung,1,1,pcs
+Mangandri,EXACT,Mangandri,1,1,pcs
+Margarine (Filma),EXACT,Margarine (Filma),2,2,pcs
+Max tea Peach tea,ALIAS,Peach Tea Max Tea,1,1,pcs
+Mayones,ALIAS,Mayonaise,2,2,"kg,pcs"
+MBTFD,REVIEW,,1,1,pcs
+Minyak Wijen,EXACT,Minyak Wijen,1,1,pcs
+MULTI MP08,EXCLUDE,,3,3,pcs
+NICE FAC TISSUE 1000,EXCLUDE,,1,1,pcs
+Ongkir,EXACT,Ongkir,3,3,pcs
+ORCHID BTR UNSALT200,ALIAS,Butter,1,1,pcs
+Paket baskom,EXCLUDE,,1,1,pcs
+Paket lap,EXCLUDE,,1,1,pcs
+Pangsit,ALIAS,Kulit Pangsit (Cap Jempol),1,1,pcs
+pangsit,ALIAS,Kulit Pangsit (Cap Jempol),1,1,pcs
+pangst,ALIAS,Kulit Pangsit (Cap Jempol),1,1,pcs
+Panir Mix,NEW,Panir Mix,1,1,kg
+Panir mix,NEW,Panir Mix,2,2,kg
+PAPRIKA POWDER/KG,ALIAS,Paprika Powder,1,1,pcs
+PH FAC TISSUE 1000S,EXCLUDE,,1,1,pcs
+Robusta Beans,EXACT,Robusta Beans,1,1,pcs
+Robusta Temanggung,REVIEW,,1,1,pcs
+ROSE BRAND,REVIEW,,3,3,pcs
+SAMONO WPUMP SW_CQ04,EXCLUDE,,1,1,pcs
+Sampah,EXACT,Sampah,2,2,pcs
+Saos tiram Panda,NEW,Saus Tiram Panda,2,2,pcs
+Saos Tomet,ALIAS,Saus Tomat (Del Monte),1,1,pack
+Saus Tiram (Mahsuri),EXACT,Saus Tiram (Mahsuri),1,1,pcs
+Saus tiram Panda,NEW,Saus Tiram Panda,1,1,pcs
+SCHWEPPES SDWATER250,ALIAS,Soda Water Schweppes,3,3,pcs
+Schweppes Soda,EXACT,Schweppes Soda,1,1,pcs
+SCHWEPPES SOWATER250,ALIAS,Soda Water Schweppes,1,1,pcs
+Selada,ALIAS,Selada (Ibu Teti Pasar),4,4,"ikat,pcs"
+Selada (Ibu Teti Pasar),EXACT,Selada (Ibu Teti Pasar),3,3,"ikat,pcs"
+SH1008 DISC 10%,EXCLUDE,,1,1,pcs
+Simas,REVIEW,,2,2,pcs
+Sinas,REVIEW,,1,1,pcs
+Spork bening,EXCLUDE,,1,1,pcs
+Sprite kosong,EXCLUDE,,1,1,pcs
+Sq Lemon,ALIAS,Sunquick Lemon,1,1,pcs
+STELLA AE SAKURA 350,EXCLUDE,,1,1,pcs
+Telor Omega,ALIAS,Telor Omega (Happy Egg),4,4,"butir,pcs"
+Telor Omega 30 butir,ALIAS,Telor Omega (Happy Egg),1,1,pcs
+Thermal Silver,EXCLUDE,,1,1,pak
+THYME,NEW,Thyme,1,1,pcs
+timun,EXACT,Timun,5,5,pcs
+Timun,EXACT,Timun,3,3,kg
+Tofico Green Apel,ALIAS,Sirup Green Apple,1,1,pcs
+Tomat 12 x 25,REVIEW,,1,1,pcs
+Tomat 12x25,REVIEW,,1,1,pcs
+TONG CAI CLJ,ALIAS,Tongcai,1,1,pcs
+Trashbag go,EXCLUDE,,1,1,pcs
+TTL GRNLTDMSHROOM400,REVIEW,,2,2,pcs
+Tutup Bowl,EXCLUDE,,2,2,pcs
+Tutup bowl 500,EXCLUDE,,1,1,pcs
+Ubi,ALIAS,Ubi Cilembu,2,2,pcs
+UBI,ALIAS,Ubi Cilembu,1,1,pcs
+VIPCO,REVIEW,,1,1,pcs
+WIPOL KRBL CMRA R720,EXCLUDE,,1,1,pcs
+Wraping kecil,EXCLUDE,,1,1,pcs
+YB TAWAR GANDUM,ALIAS,Roti Tawar Gandum,8,8,pcs
+YOASABUTSPON3S,EXCLUDE,,1,1,pcs
+YOU C1000 APPLE 140,ALIAS,C1000 Apple,1,1,pcs

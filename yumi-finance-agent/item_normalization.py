@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 import logging
+from item_identity import variant_signature
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ UNIT_ALIASES: dict[str, str] = {
 # { alias_key: canonical_name }
 # alias_key = str(alias).lower().strip()
 _DB_ALIAS_MAP: dict[str, str] = {}
+_DB_AMBIGUOUS_ALIASES: set[str] = set()
 
 # Reverse map: canonical_name → list of DB aliases
 _DB_REVERSE_MAP: dict[str, list[str]] = {}
@@ -51,32 +53,39 @@ def load_aliases_from_db(aliases_data: list[dict]) -> None:
     """
     _DB_ALIAS_MAP.clear()
     _DB_REVERSE_MAP.clear()
-    
-    for row in aliases_data:
+    _DB_AMBIGUOUS_ALIASES.clear()
+    owners: dict[str, dict[int, str]] = {}
+    for row_index, row in enumerate(aliases_data):
         name = (row.get("ingredient_name") or "").strip()
-        aliases = row.get("aliases") or []
         if not name:
             continue
-        
-        canon_key = name.lower()
-        known_aliases = []
-        for alias in aliases:
-            a = (alias or "").strip()
-            if not a:
-                continue
-            ak = a.lower()
-            if ak == canon_key:
-                continue  # skip self-alias
-            _DB_ALIAS_MAP[ak] = name
-            known_aliases.append(a)
-        
-        if known_aliases:
-            _DB_REVERSE_MAP[canon_key] = known_aliases
-    
+        aliases = [a.strip() for a in (row.get("aliases") or []) if isinstance(a, str) and a.strip()]
+        _DB_REVERSE_MAP[name.casefold()] = aliases
+        for alias in [name, *aliases]:
+            owners.setdefault(alias.casefold(), {})[row_index] = name
+    for key, rows in owners.items():
+        if len(rows) == 1:
+            _DB_ALIAS_MAP[key] = next(iter(rows.values()))
+        else:
+            _DB_AMBIGUOUS_ALIASES.add(key)
+
     logger.info(
         "Loaded %d alias entries for %d inventory items",
         len(_DB_ALIAS_MAP), len(aliases_data),
     )
+
+
+def exact_inventory_alias(name: str) -> str | None:
+    """Return only a unique, explicitly recorded alias with the same variant."""
+    key = (name or "").strip().casefold()
+    canonical = _DB_ALIAS_MAP.get(key)
+    if key in _DB_AMBIGUOUS_ALIASES or not canonical:
+        return None
+    return canonical if variant_signature(name) == variant_signature(canonical) else None
+
+
+def ambiguous_inventory_alias(name: str) -> bool:
+    return (name or "").strip().casefold() in _DB_AMBIGUOUS_ALIASES
 
 
 def _db_resolve(name: str) -> tuple[str, str] | None:
@@ -184,10 +193,14 @@ def expand_item_alias(name: str) -> tuple[str, str]:
     if not raw:
         return "", ""
 
-    # Phase 1: DB alias resolution
+    # Ambiguous aliases and variant changes must remain available for review.
+    if raw.casefold() in _DB_AMBIGUOUS_ALIASES:
+        return raw, ""
     db_result = _db_resolve(raw)
-    if db_result:
+    if db_result and variant_signature(raw) == variant_signature(db_result[0]):
         return db_result
+    if variant_signature(raw):
+        return raw, ""
     
     # Phase 2: Programmatic fallback
     prog_canon, prog_alias = _programmatic_resolve(raw)
