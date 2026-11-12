@@ -9,6 +9,7 @@ import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { redirectToCustomerLogin } from "@/lib/auth-client";
+import { repackCountForKg } from "@/lib/repack-count";
 
 export const Route = createLazyFileRoute("/")({ component: OrderMieYaminPage });
 
@@ -398,7 +399,7 @@ function OrderForm() {
   const [pendingPaymentOrderId, setPendingPaymentOrderId] = useState<string | null>(() => readPendingPayment()?.orderId ?? null);
   const [draftHydrated, setDraftHydrated] = useState(false);
   const [promoRemainingMs, setPromoRemainingMs] = useState(() => Math.max(0, PROMO_END_AT - Date.now()));
-  const repackCount = productType === "noodle" && repack ? kg * 10 : 0;
+  const repackCount = productType === "noodle" ? repackCountForKg(kg) : 0;
   const noodleTotal = productType === "noodle" ? kg * Number(mieYaminSettings.noodlePricePerKg) : 0;
   const readyPackTotal = productType === "ready_pack" ? readyPackCount * Number(mieYaminSettings.readyPackPrice) : 0;
   const repackTotal = productType === "noodle" && repack ? repackCount * Number(mieYaminSettings.repackFeePer100g) : 0;
