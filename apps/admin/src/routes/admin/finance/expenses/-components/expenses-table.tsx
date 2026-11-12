@@ -1,3 +1,5 @@
+import { NewTransactionDialog } from "../../-components/new-transaction-dialog";
+import { expenseReceiptUrl } from "@/lib/expense-receipt";
 import { useState, useMemo, useEffect } from "react";
 import {
 	Search,
@@ -18,7 +20,7 @@ import {
 	type PeriodOption,
 	type DateRange,
 } from "../../reports/-components/period-selector";
-import { useHybridTransactionDetailReport } from "@/hooks/use-hybrid-finance-analytics-data";
+import { useHybridAllTransactions } from "@/hooks/use-hybrid-finance-analytics-data";
 import { useHybridUpdateTransaction } from "@/hooks/use-hybrid-write-actions";
 import { ExpenseDetailModal } from "./expense-detail-modal";
 import { useTheme } from "next-themes";
@@ -87,7 +89,7 @@ function exportExpensesCSV(transactions: TransactionRow[], period: string) {
 		"Metode Bayar": t.paymentMethod || "-",
 		Status: t.status,
 	}));
-	const csv = Papa.unparse(data);
+	const csv = Papa.unparse(data, { escapeFormulae: true });
 	const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
 	const url = URL.createObjectURL(blob);
 	const a = document.createElement("a");
@@ -106,11 +108,15 @@ export function ExpensesTable() {
 	const [customStart, setCustomStart] = useState("");
 	const [customEnd, setCustomEnd] = useState("");
 	const [searchQuery, setSearchQuery] = useState("");
+	const [filterStatus,setFilterStatus]=useState("");
 	const [filterCategory, setFilterCategory] = useState<string>("");
 	const [sortBy, setSortBy] = useState<"date" | "amount" | "category">("date");
 	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 	const [page, setPage] = useState(1);
+	const [newExpenseOpen,setNewExpenseOpen] = useState(false);
 	const [selectedTx, setSelectedTx] = useState<TransactionRow | null>(null);
+	const [receiptDocuments,setReceiptDocuments] = useState<Record<string,string>>({});
+	const [receiptError,setReceiptError] = useState(false);
 	const [reconciliationRows, setReconciliationRows] = useState<any[]>([]);
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [editDraft, setEditDraft] = useState<any>({});
@@ -126,7 +132,7 @@ export function ExpensesTable() {
 	useEffect(() => {
 		let cancelled = false;
 		const supabase = createClient();
-		supabase.from("pos_expense_inventory_reconciliation").select("_id,rawName,reconciliationStatus,transactionId").limit(1000).then(({ data }) => {
+		Promise.resolve(supabase.from("pos_expense_inventory_reconciliation").select("_id,rawName,reconciliationStatus,transactionId").limit(1000)).then(({ data }) => {
 			if (!cancelled) setReconciliationRows(data ?? []);
 		}).catch(() => {
 			if (!cancelled) setReconciliationRows([]);
@@ -134,17 +140,22 @@ export function ExpensesTable() {
 		return () => { cancelled = true; };
 	}, []);
 
-	const txData = useHybridTransactionDetailReport({
+	const txData = useHybridAllTransactions({
 		startDate: dateRange.startDate,
 		endDate: dateRange.endDate,
 		type: "expense",
-		viewMode: "transaction",
-		page: 1,
-		pageSize: 2000,
 	});
 
-	const allTransactions: TransactionRow[] = (txData?.transactions || []) as TransactionRow[];
+	const allTransactions: TransactionRow[] = (txData || []) as TransactionRow[];
 
+ useEffect(() => {
+  let cancelled=false;
+  const ids=allTransactions.map(t=>String(t._id));
+  setReceiptDocuments({});setReceiptError(false);
+  if(!ids.length)return;
+  void (async()=>{const found:Record<string,string>={};for(let i=0;i<ids.length;i+=50){const {data,error}=await createClient().from("pos_expense_receipt_documents").select("transactionId,receiptImageUrl").in("transactionId",ids.slice(i,i+50));if(error)throw error;for(const row of data??[])if(row.receiptImageUrl)found[String(row.transactionId)]=row.receiptImageUrl;}if(!cancelled)setReceiptDocuments(found)})().catch(()=>{if(!cancelled)setReceiptError(true)});
+  return ()=>{cancelled=true};
+ },[txData]);
 	// ── Extract unique categories ──
 	const categories = useMemo(() => {
 		const set = new Set<string>();
@@ -157,6 +168,7 @@ export function ExpensesTable() {
 	// ── Filter + Search + Sort ──
 	const filtered = useMemo(() => {
 		let rows = [...allTransactions];
+		if(filterStatus)rows=rows.filter(row=>row.status===filterStatus);
 
 		if (filterCategory) {
 			rows = rows.filter((t) => t.category === filterCategory);
@@ -181,7 +193,7 @@ export function ExpensesTable() {
 		});
 
 		return rows;
-	}, [allTransactions, filterCategory, searchQuery, sortBy, sortOrder]);
+	}, [allTransactions, filterCategory, filterStatus, searchQuery, sortBy, sortOrder]);
 
 	// ── Pagination ──
 	const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -191,7 +203,7 @@ export function ExpensesTable() {
 	// Reset page when filters change
 	useEffect(() => {
 		setPage(1);
-	}, [dateRange, searchQuery, filterCategory]);
+	}, [dateRange, searchQuery, filterCategory, filterStatus]);
 
 	const handlePeriodChange = (p: ExpensePeriodOption) => {
 		setPeriod(p);
@@ -283,6 +295,7 @@ export function ExpensesTable() {
 	const pendingReviewRows = reconciliationRows.filter((row) => row.reconciliationStatus === "pending").slice(0, 8);
 
 	// ── Loading state ──
+	if (txData === null) return <p role="alert" className="p-4">Data pengeluaran gagal dimuat. Muat ulang halaman untuk mencoba lagi.</p>;
 	if (!txData) {
 		return (
 			<div className="bg-white min-h-screen p-4">
@@ -306,16 +319,18 @@ export function ExpensesTable() {
 	return (
 		<div className="bg-white min-h-screen">
 			<div className="p-4 md:p-4">
+				<NewTransactionDialog isOpen={newExpenseOpen} onClose={()=>setNewExpenseOpen(false)} />
 				{/* ── Header ── */}
 				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
 					<div>
 						<h1 className="font-display text-xl font-bold tracking-tight text-slate-900 sm:text-2xl"><Receipt className="mr-2 inline h-5 w-5 text-primary" />Pengeluaran</h1>
 						<p className="text-sm text-slate-500 mt-0.5">
 							{filtered.length > 0
-								? `${filtered.length} transaksi • Total Rp ${formatCurrencyIDR(totalAmount)}`
+								? `${filtered.length} transaksi • Total ${formatCurrencyIDR(totalAmount)}`
 								: "Tidak ada data"}
 						</p>
 					</div>
+					<button type="button" onClick={()=>setNewExpenseOpen(true)} className="border bg-black px-4 py-2 text-xs text-white">+ Pengeluaran</button>
 					<button
 						className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200/80 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors duration-200 hover:bg-slate-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 						onClick={() => exportExpensesCSV(filtered, dateRange.label)}
@@ -402,6 +417,7 @@ export function ExpensesTable() {
 						))}
 					</select>
 
+					<select aria-label="Filter status pengeluaran" className="border bg-white px-3 py-2 text-xs" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">Semua status</option><option value="completed">Selesai</option><option value="pending">Menunggu</option><option value="cancelled">Dibatalkan</option></select>
 					{/* Search */}
 					<div className="relative">
 						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -519,18 +535,18 @@ export function ExpensesTable() {
 										</th>
 										<th className="px-4 py-3">Metode</th>
 										<th className="px-4 py-3">Status</th>
-										<th className="px-4 py-3 text-center">Struk</th><th className="px-4 py-3 text-center">AI</th><th className="px-4 py-3 text-center">Edit</th>
+										<th className="px-4 py-3 text-center">Bukti gambar struk</th><th className="px-4 py-3 text-center">AI</th><th className="px-4 py-3 text-center">Edit</th>
 									</tr>
 								</thead>
 								<tbody className="divide-y divide-slate-100">
 									{paged.map((tx, idx) => {
 												const row = rowOverrides[tx._id] ? { ...tx, ...rowOverrides[tx._id] } : tx;
-										const hasReceipt = (row as any).metadata?.receipt_image_url;
+										const hasReceipt = expenseReceiptUrl(row,receiptDocuments[String(row._id)]);
 										return (
 											<tr
 												key={row._id}
 												className="hover:bg-slate-50/70 cursor-pointer transition-colors"
-												onClick={() => setSelectedTx(row)}
+												onClick={() => setSelectedTx({ ...row, attachmentUrl: hasReceipt ?? row.attachmentUrl })}
 											>
 												<td className="px-4 py-3 text-xs text-slate-400">
 													{(safePage - 1) * PAGE_SIZE + idx + 1}
@@ -552,7 +568,7 @@ export function ExpensesTable() {
 													{row.merchant || "-"}
 												</td>
 												<td className="px-4 py-3 text-right font-medium text-red-600">
-													Rp {formatCurrencyIDR(row.amount)}
+													{formatCurrencyIDR(row.amount)}
 												</td>
 												<td className="px-4 py-3 text-slate-500 text-xs capitalize">
 													{row.paymentMethod || "-"}
@@ -568,22 +584,24 @@ export function ExpensesTable() {
 														}`}
 													>
 														{row.status === "completed"
-															? "✅"
+															? "Selesai"
 															: row.status === "pending"
-																? "⏳"
+																? "Menunggu"
 																: row.status}
 													</span>
 												</td>
 												<td className="px-4 py-3 text-center">
 													{hasReceipt ? (
-														<img
-															alt="Struk"
+														<button type="button" aria-label={`Buka bukti struk ${row.description || row._id}`} onClick={(e)=>{e.stopPropagation();setSelectedTx({...row,attachmentUrl:hasReceipt});}}><img
+															alt={`Bukti struk ${row.description || row._id}`}
+ loading="lazy"
+ onError={(event) => { event.currentTarget.alt = "Gambar struk gagal dimuat"; }}
 															className="h-9 w-9 rounded object-cover border border-slate-200/80 cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all"
-															onClick={(e) => { e.stopPropagation(); setSelectedTx(row); }}
-															src={(row as any).metadata.receipt_image_url}
-														/>
+															onClick={(e) => { e.stopPropagation(); setSelectedTx({ ...row, attachmentUrl: hasReceipt ?? row.attachmentUrl }); }}
+															src={hasReceipt ?? undefined}
+														/></button>
 													) : (
-														<span className="text-xs text-slate-300">—</span>
+														<span className="text-xs text-slate-500">{receiptError ? "Bukti gagal dimuat" : "Belum ada bukti"}</span>
 													)}
 												</td>
 												<td className="px-4 py-3 text-center">

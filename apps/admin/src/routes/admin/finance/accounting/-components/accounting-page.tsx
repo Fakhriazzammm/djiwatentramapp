@@ -1,13 +1,15 @@
+import { GeneralLedger } from "@/components/finance/accounting-ledger-tables";
 import { useState } from "react";
 import { AccountingEntriesView } from "./accounting-entries-view";
 import { AccountingManager } from "./accounting-manager";
 import { BookOpen, ListOrdered } from "lucide-react";
 
-type Tab = "entries" | "coa";
+type Tab = "entries" | "ledger" | "coa";
 
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
-	{ key: "entries", label: "Akuntansi", icon: <BookOpen className="h-3.5 w-3.5" /> },
-	{ key: "coa", label: "COA", icon: <ListOrdered className="h-3.5 w-3.5" /> },
+	{ key: "entries", label: "Jurnal umum", icon: <BookOpen className="h-3.5 w-3.5" /> },
+	{ key: "ledger", label: "Buku besar", icon: <BookOpen className="h-3.5 w-3.5" /> },
+	{ key: "coa", label: "Daftar akun", icon: <ListOrdered className="h-3.5 w-3.5" /> },
 ];
 
 export function AccountingPage() {
@@ -40,6 +42,7 @@ export function AccountingPage() {
 			{/* Content */}
 			<div className="flex-1 overflow-y-auto">
 				{activeTab === "entries" && <AccountingEntriesView />}
+				{activeTab === "ledger" && <GeneralLedger />}
 				{activeTab === "coa" && <AccountingManager />}
 			</div>
 		</div>

@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { HppProductTable } from "@/components/finance/hpp-product-table";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { Doc, Id } from "@/types/backend-compat";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1726,7 +1727,8 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 
 	const hasUnsavedChanges = useRef(false);
 
-	const handleSelectProduct = useCallback((productId: string, isBaseRecipe = false) => {
+	const handleSelectProduct = useCallback((productId: string, isBaseRecipe = false, forceProduct = false) => {
+		if (forceProduct) setHppType("product");
 		setSelectedProductId(productId);
 		if (!isBaseRecipe) {
 			setProductDropdownOpen(false);
@@ -1736,7 +1738,7 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 			setBaseRecipeSearch("");
 		}
 
-		if (hppType === "base_recipe" && baseRecipes) {
+		if (!forceProduct && hppType === "base_recipe" && baseRecipes) {
 			const baseRecipe = (baseRecipes as any[]).find((br: any) => br._id === productId);
 			if (!baseRecipe) return;
 
@@ -2113,7 +2115,9 @@ const [baseRecipeDropdownOpen, setBaseRecipeDropdownOpen] = useState(false);
 	const hasSelection = selectedProduct || selectedBaseRecipe;
 
 	return (
-		<div className="mx-auto flex max-w-5xl flex-col gap-4 p-4 md:p-6">
+		<div className="flex min-w-0 flex-col gap-4">
+<HppProductTable onSelect={(id) => { handleSelectProduct(id, false, true); requestAnimationFrame(() => document.getElementById("hpp-editor")?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" })); }} />
+<div id="hpp-editor" />
 
 		{/* ── Product Selector ── */}
 		<div className="mb-4">

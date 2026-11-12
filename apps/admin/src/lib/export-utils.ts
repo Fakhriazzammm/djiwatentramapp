@@ -555,6 +555,8 @@ export interface TransactionRow {
 	date: number;
 	paymentMethod?: string;
 	status: string;
+	attachmentUrl?: string | null;
+	metadata?: Record<string, unknown>;
 }
 
 // ─────────────────────────────────────────────

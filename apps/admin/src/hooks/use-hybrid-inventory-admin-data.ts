@@ -443,7 +443,8 @@ async function fetchRecipes() {
 async function fetchRecipeProducts() {
 	const supabase = createClient();
 	const { data, error } = await supabase
-		.from("pos.recipe_products_view")
+		.schema("pos")
+		.from("recipe_products_view")
 		.select("*");
 	if (error) throw error;
 	return data ?? [];

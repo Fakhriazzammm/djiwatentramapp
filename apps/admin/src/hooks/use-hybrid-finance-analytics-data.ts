@@ -1,6 +1,7 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { isCashExpense } from "@/lib/finance-cash-flow";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
-import { adminProtectedRead } from "@/lib/admin-protected-read";
+import { adminProtectedRead, type ProtectedReadAction, type ProtectedReadQuery } from "@/lib/admin-protected-read";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 
 function safeNum(value: unknown) {
@@ -81,14 +82,23 @@ async function fetchOrderRowsInBatches(
 	return rows;
 }
 
+async function readFinancePages(action: ProtectedReadAction, query: ProtectedReadQuery): Promise<any[]> {
+ const rows:any[]=[];
+ for(let offset=0;;offset+=500){
+  const batch=await adminProtectedRead(action,{...query,range:[offset,offset+499]});
+  rows.push(...batch);
+  if(batch.length<500)return rows;
+ }
+}
+
 async function fetchFinancialTransactions(args?: {
 	type?: "income" | "expense";
 	startDate?: number;
 	endDate?: number;
-}, limit?: number): Promise<any[]> {
+}): Promise<any[]> {
 	const supabase = createClient();
 	const { startDate, endDate } = getRange(args);
-	const data = await adminProtectedRead("finance", { select: "*", gte: { date: startDate }, lte: { date: endDate }, order: [{ column: "date", ascending: false }], ...(args?.type ? { eq: { type: args.type } } : {}), ...(limit !== undefined ? { limit } : {}) });
+	const data = await readFinancePages("finance", { select: "*", gte: { date: startDate }, lte: { date: endDate }, order: [{ column: "date", ascending: false }, { column: "_id", ascending: false }], ...(args?.type ? { eq: { type: args.type } } : {}),  });
 	const mapped = (data ?? []).map((row: any) => ({
 		_id: row._id,
 		type: row.type ?? "expense",
@@ -122,7 +132,7 @@ async function fetchFinancialTransactions(args?: {
 	// Tidak semua order POS/DjiwaApp memiliki baris financial_transactions.
 	// Tambahkan order paid/completed sebagai fallback immutable agar laporan
 	// menggabungkan semua sumber penjualan tanpa menggandakan ledger yang sudah ada.
-	const orderRows = await fetchOrders(args);
+	const orderRows = args?.type === "expense" ? [] : await fetchOrders(args);
 	const linkedOrderIds = new Set(mapped.filter((tx: any) => tx.type === "income" && tx.orderId).map((tx: any) => String(tx.orderId)));
 	const linkedOrderNumbers = new Set(mapped.filter((tx: any) => tx.type === "income" && tx.metadata?.orderNumber).map((tx: any) => String(tx.metadata.orderNumber)));
 	for (const order of orderRows) {
@@ -260,13 +270,13 @@ async function fetchFinancialTransactions(args?: {
 			deduped.push(tx);
 		}
 	}
-	return deduped;
+	return args?.type ? deduped.filter(tx => tx.type === args.type) : deduped;
 }
 
 async function fetchOrders(args?: { startDate?: number; endDate?: number }) {
 	const supabase = createClient();
 	const { startDate, endDate } = getRange(args);
-	return await adminProtectedRead("orders", { select: "*", gte: { createdAt: startDate }, lte: { createdAt: endDate }, order: [{ column: "createdAt", ascending: false }] }) as any[];
+	return await readFinancePages("orders", { select: "*", gte: { createdAt: startDate }, lte: { createdAt: endDate }, order: [{ column: "createdAt", ascending: false }, { column: "_id", ascending: false }] }) as any[];
 }
 
 function summarizeTransactions(transactions: any[]) {
@@ -773,7 +783,7 @@ export function useHybridCashFlowReport(args?: {
 						.filter((tx: any) => tx.type === "income")
 						.reduce((sum: number, tx: any) => sum + safeNum(tx.amount), 0);
 					const outflow = items
-						.filter((tx: any) => tx.type === "expense")
+						.filter(isCashExpense)
 						.reduce((sum: number, tx: any) => sum + safeNum(tx.amount), 0);
 					const net = inflow - outflow;
 					runningBalance += net;
@@ -786,7 +796,7 @@ export function useHybridCashFlowReport(args?: {
 					byPaymentMethod[method] = { inflow: 0, outflow: 0 };
 				}
 				if (tx.type === "income") byPaymentMethod[method].inflow += safeNum(tx.amount);
-				else byPaymentMethod[method].outflow += safeNum(tx.amount);
+				else if (isCashExpense(tx)) byPaymentMethod[method].outflow += safeNum(tx.amount);
 			}
 			return {
 				totalInflow,
@@ -823,7 +833,7 @@ export function useHybridTransactionDetailReport(
 				startDate: args.startDate,
 				endDate: args.endDate,
 				type: args.type,
-			}, 2000);
+			});
 			if (args.category) txs = txs.filter((tx: any) => tx.category === args.category);
 			const rows = mapTransactionRows(txs, args.viewMode ?? "transaction");
 			const pageSize = Math.max(1, Math.min(2000, Math.floor(args.pageSize ?? 50)));
@@ -1221,7 +1231,7 @@ async function fetchAccountingEntries(args?: {
 }): Promise<any[]> {
 	const supabase = createClient();
 	const { startDate, endDate } = getRange(args);
-	const txDates = await adminProtectedRead("finance", { select: "_id, description, metadata, type, orderId, bookingOrderId", gte: { date: startDate }, lte: { date: endDate } });
+	const txDates = await readFinancePages("finance", { select: "_id, description, metadata, type, orderId, bookingOrderId", gte: { date: startDate }, lte: { date: endDate }, order: [{ column: "date", ascending: false },{ column: "_id", ascending: false }] });
 	const ids = (txDates ?? []).map((r: any) => r._id);
 	if (ids.length === 0) return [];
 
@@ -1260,7 +1270,7 @@ async function fetchAccountingEntries(args?: {
 	const itemsByOrder = new Map<string, any[]>();
 	if (incomeTxIds.length > 0) {
 		// items ada di view public.pos_orders (kolom JSONB `items`)
-		const orders = await adminProtectedRead("orders", { select: "_id, items", in: { _id: incomeTxIds } });
+		const orders = await fetchOrderRowsInBatches("_id", incomeTxIds, "_id, items");
 		if (orders) {
 			for (const order of orders) {
 				const orderItems = Array.isArray(order.items) ? order.items : [];
@@ -1335,6 +1345,7 @@ export function useHybridAccountingReport(args?: {
 	entries: any[];
 	summary: { totalDebit: number; totalKredit: number; selisih: number; balance: boolean; count: number };
 	loading: boolean;
+	error: boolean;
 } {
 	const key = args
 		? `accounting:${args.startDate ?? ""}:${args.endDate ?? ""}`
@@ -1349,26 +1360,18 @@ export function useHybridAccountingReport(args?: {
 		[args?.startDate, args?.endDate]
 	) as any[];
 
-	const summary = useSupabaseValue(
-		`${key}:summary`,
-		() => {
-			if (!args)
-				return Promise.resolve({
-					totalDebit: 0,
-					totalKredit: 0,
-					selisih: 0,
-					balance: true,
-					count: 0,
-				});
-			return fetchAccountingSummary(args);
-		},
-		[args?.startDate, args?.endDate]
-	) as any;
+ const summary=useMemo(()=>{
+  if(!entries)return undefined;
+  let totalDebit=0,totalKredit=0;
+  for(const entry of entries){if(entry.entry_type==="debit")totalDebit+=safeNum(entry.amount);else totalKredit+=safeNum(entry.amount)}
+  return {totalDebit,totalKredit,selisih:totalDebit-totalKredit,balance:Math.abs(totalDebit-totalKredit)<0.01,count:entries.length};
+ },[entries]);
 
 	return {
 		entries: entries ?? [],
 		summary: summary ?? { totalDebit: 0, totalKredit: 0, selisih: 0, balance: true, count: 0 },
 		loading: entries === undefined,
+		error: entries === null,
 	};
 }
 

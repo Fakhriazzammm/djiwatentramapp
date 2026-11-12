@@ -1,8 +1,9 @@
+import { TrialBalanceTable } from "@/components/finance/accounting-ledger-tables";
 import { useState } from "react";
 import { FileSpreadsheet, FileText, Printer, TrendingUp, ArrowLeftRight, Users, Image as ImageIcon, Mail, Focus } from "lucide-react";
 import { PeriodSelector, getRangeFromPeriod, type PeriodOption, type DateRange } from "./period-selector";
-import { ProfitLossReport } from "./profit-loss-report";
-import { CashFlowReport } from "./cash-flow-report";
+import { ProfitLossTable, CashFlowTable } from "@/components/finance/report-tables";
+
 import { ShiftReport } from "./shift-report";
 import { toast } from "sonner";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
@@ -21,11 +22,12 @@ import {
 	type CashFlowData,
 } from "@/lib/export-utils";
 
-type ReportTab = "profit_loss" | "cash_flow" | "shift";
+type ReportTab = "profit_loss" | "cash_flow" | "balance" | "shift";
 
 const TABS: { value: ReportTab; label: string; icon: React.ReactNode }[] = [
 	{ value: "profit_loss", label: "Laba Rugi", icon: <TrendingUp className="h-4 w-4" /> },
 	{ value: "cash_flow", label: "Arus Kas", icon: <ArrowLeftRight className="h-4 w-4" /> },
+	{ value: "balance", label: "Neraca saldo", icon: <FileSpreadsheet className="h-4 w-4" /> },
 	{ value: "shift", label: "Laporan Shift", icon: <Users className="h-4 w-4" /> },
 ];
 
@@ -213,8 +215,9 @@ export function FinancialReports() {
 			</div>
 
 			<div id="report-content">
-				{activeTab === "profit_loss" && <ProfitLossReport range={dateRange} />}
-				{activeTab === "cash_flow" && <CashFlowReport range={dateRange} />}
+				{activeTab === "profit_loss" && <ProfitLossTable range={dateRange} />}
+				{activeTab === "cash_flow" && <CashFlowTable range={dateRange} />}
+				{activeTab === "balance" && <TrialBalanceTable range={dateRange} />}
 				{activeTab === "shift" && <ShiftReport range={dateRange} />}
 			</div>
 		</div>

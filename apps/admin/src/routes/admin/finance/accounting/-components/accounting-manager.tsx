@@ -1,3 +1,5 @@
+import {FinanceDataTable} from "@/components/finance/finance-data-table";
+import {formatCurrencyIDR} from "@/lib/export-utils";
 import { createElement, useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -332,94 +334,15 @@ export function AccountingManager() {
 						)}
 					</div>
 				) : (
-					<div className="space-y-4">
-						{groupedTypes.map((group) => (
-							<Card key={group.value}>
-								<CardHeader className="py-2.5 px-4">
-									<CardTitle className="flex items-center gap-2 text-sm font-medium">
-										{createElement(group.icon, { className: "h-4 w-4", "aria-hidden": true })}
-										{group.label}
-										<Badge className="ml-auto text-[10px]" variant="outline">
-											{group.accounts.length}
-										</Badge>
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="px-0 pb-0">
-									<div className="divide-y">
-										{group.accounts.map((acct) => {
-											const balance = getBalance(acct);
-											const absBalance = Math.abs(balance);
-											return (
-												<div
-													className={`flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/30 ${
-														!acct.is_active ? "opacity-50" : ""
-													}`}
-													key={acct.id}
-												>
-													<div className="min-w-0 flex-1">
-														<div className="flex items-center gap-2">
-															<code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-																{acct.code}
-															</code>
-															<span className="truncate font-medium text-sm">
-																{acct.name}
-															</span>
-															{!acct.is_active && (
-																<Badge className="text-[11px]" variant="secondary">
-																	Nonaktif
-																</Badge>
-															)}
-														</div>
-														{acct.description && (
-															<p className="mt-0.5 truncate text-muted-foreground text-[11px]">
-																{acct.description}
-															</p>
-														)}
-													</div>
-													<div className="shrink-0 text-right">
-														<p
-															className={`font-medium text-xs ${
-																balance >= 0
-																	? "text-emerald-600"
-																	: "text-red-600"
-															}`}
-														>
-															{balance >= 0 ? "" : "-"}Rp
-															{absBalance.toLocaleString("id-ID")}
-														</p>
-														<p className="text-[10px] text-muted-foreground">
-															Debit: {acct.balance_debit?.toLocaleString("id-ID") || "0"}{" "}
-															Kredit: {acct.balance_kredit?.toLocaleString("id-ID") || "0"}
-														</p>
-													</div>
-													<div className="flex shrink-0 gap-0.5">
-														<button
-															className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-															onClick={() => openEdit(acct)}
-															aria-label="Edit akun"
-								title="Edit"
-															type="button"
-														>
-															<Pencil className="h-3.5 w-3.5" />
-														</button>
-														<button
-															className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30"
-															onClick={() => setConfirmDelete(acct.id)}
-															aria-label="Hapus akun"
-								title="Hapus"
-															type="button"
-														>
-															<Trash2 className="h-3.5 w-3.5" />
-														</button>
-													</div>
-												</div>
-											);
-										})}
-									</div>
-								</CardContent>
-							</Card>
-						))}
-					</div>
+					<FinanceDataTable label="Daftar akun" rows={filtered} rowKey={a=>a.id} onSelect={openEdit} columns={[
+{key:"code",label:"Kode akun",value:a=>a.code},{key:"name",label:"Nama akun",value:a=>a.name},{key:"type",label:"Kelompok",value:a=>a.type},
+{key:"normal",label:"Saldo normal",value:a=>a.type==="asset"||a.type==="expense"?"Debit":"Kredit"},
+{key:"debit",label:"Total debit",value:a=>a.balance_debit??"",render:a=>a.balance_debit===undefined?"Belum tersedia":formatCurrencyIDR(a.balance_debit)},
+{key:"credit",label:"Total kredit",value:a=>a.balance_kredit??"",render:a=>a.balance_kredit===undefined?"Belum tersedia":formatCurrencyIDR(a.balance_kredit)},
+{key:"balance",label:"Saldo buku",value:a=>a.balance_debit===undefined?"":getBalance(a),render:a=>a.balance_debit===undefined?"Belum tersedia":formatCurrencyIDR(getBalance(a))},
+{key:"status",label:"Status",value:a=>a.is_active?"Aktif":"Nonaktif"},{key:"description",label:"Deskripsi",value:a=>a.description??"—"},
+{key:"actions",label:"Aksi",value:()=>"",render:a=><div className="flex gap-3"><button type="button" onClick={()=>openEdit(a)}>Edit</button><button type="button" onClick={()=>setConfirmDelete(a.id)}>Hapus</button></div>}
+]}/>
 				)}
 			</div>
 

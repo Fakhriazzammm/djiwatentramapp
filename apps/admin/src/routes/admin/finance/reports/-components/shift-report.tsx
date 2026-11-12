@@ -1,3 +1,4 @@
+import { FinanceDataTable } from "@/components/finance/finance-data-table";
 import { useEffect, useMemo, useState } from "react";
 import {
 	BadgeDollarSign,
@@ -84,7 +85,7 @@ type ShiftRow = {
 	totalItemsSold: number;
 	orderCount: number;
 	bookingCount: number;
-	endingCashExpected: number;
+	endingCashExpected?: number;
 	endingCashPhysical?: number;
 	nonCashExpected: number;
 	nonCashConfirmed?: number;
@@ -590,21 +591,27 @@ export function ShiftReport({ range, preferredSelectedStartTime }: Props) {
 				<div className="flex items-center gap-2"><span className="text-[11px] font-semibold text-muted-foreground">{visibleRows.length} shift</span>{someSelected && <button type="button" onClick={() => setConfirmDeleteIds(Array.from(selectedIds))} className="inline-flex h-8 items-center gap-1 rounded-lg bg-destructive/10 px-2.5 text-[11px] font-bold text-destructive hover:bg-destructive/20"><Trash2 className="h-3 w-3" /> Hapus {selectedIds.size}</button>}</div>
 			</div>
 
-			{/* Mobile list */}
-			<div className="space-y-2 lg:hidden">
-				{visibleRows.map((shift) => { const isSelected = shift.startTime === selectedShift?.startTime; return <article key={shift.shiftId} onClick={() => { setSelectedShiftStart(shift.startTime); setMobileDetailOpen(true); }} className={`rounded-2xl border bg-card p-3 transition-all active:scale-[.99] ${isSelected ? "border-primary ring-2 ring-primary/10" : "border-border"}`} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedShiftStart(shift.startTime); setMobileDetailOpen(true); } }}>
-					<div className="flex items-start gap-2"><input type="checkbox" checked={selectedIds.has(shift.shiftId)} onChange={() => {}} onClick={(event) => toggleRow(shift.shiftId, event as unknown as React.MouseEvent)} className="mt-1 h-4 w-4 accent-primary" aria-label={`Pilih ${shift.shiftName}`} /><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${shift.status === "AKTIF" ? "bg-emerald-500" : "bg-slate-300"}`} /><h4 className="truncate text-sm font-bold">{shift.shiftName}</h4><span className="ml-auto text-[10px] font-bold text-muted-foreground">{shift.status}</span></div><p className="mt-1 truncate text-[11px] text-muted-foreground">{shift.cashierName || "Kasir belum diisi"} · {formatCompactRange(shift.startTime, shift.endTime)}</p></div><ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /></div>
-					<div className="mt-3 grid grid-cols-3 gap-2 border-t border-border pt-2"><div><p className="text-[10px] text-muted-foreground">Net</p><p className="text-xs font-bold">{formatCurrencyIDR(shift.totalRevenue, true)}</p></div><div><p className="text-[10px] text-muted-foreground">Produk</p><p className="text-xs font-bold">{shift.totalItemsSold}</p></div><div><p className="text-[10px] text-muted-foreground">Pengeluaran</p><p className="text-xs font-bold text-rose-700">{formatCurrencyIDR(shift.totalExpenses, true)}</p></div></div>
-				</article>; })}
-			</div>
-
 			{/* Desktop monitor table + selected detail */}
-			<div className="hidden gap-3 lg:grid lg:grid-cols-[minmax(0,1.7fr)_minmax(290px,.8fr)]">
+			<div className="grid min-w-0 gap-3">
 				<div className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card">
 					<div className="flex items-center justify-between border-b border-border px-3 py-2.5"><div className="flex items-center gap-2"><input type="checkbox" checked={allSelected} onChange={toggleAll} className="h-3.5 w-3.5 accent-primary" aria-label="Pilih semua shift" /><span className="text-xs font-bold">Pilih semua</span></div></div>
-					<div className="overflow-x-auto"><table className="w-full min-w-[760px] border-collapse text-xs"><thead className="bg-muted/50 text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="px-3 py-2 text-left">Shift</th><th className="px-3 py-2 text-left">Kasir</th><th className="px-3 py-2 text-right">Net</th><th className="px-3 py-2 text-center">Target</th><th className="px-3 py-2 text-right">Produk</th><th className="px-3 py-2 text-right">Pengeluaran</th><th className="px-3 py-2 text-right">Aksi</th></tr></thead><tbody>
-						{visibleRows.map((shift) => { const isSelected = shift.startTime === selectedShift?.startTime; return <tr key={shift.shiftId} onClick={() => setSelectedShiftStart(shift.startTime)} className={`cursor-pointer border-t border-border transition-colors ${isSelected ? "bg-primary/5" : "hover:bg-muted/30"}`}><td className="px-3 py-2.5"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${shift.status === "AKTIF" ? "bg-emerald-500" : "bg-slate-300"}`} /><div><div className="font-semibold">{shift.shiftName}</div><div className="text-[10px] text-muted-foreground">{formatCompactRange(shift.startTime, shift.endTime)}</div></div></div></td><td className="max-w-[130px] truncate px-3 py-2.5" title={shift.cashierName}>{shift.cashierName || "—"}</td><td className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-primary">{formatCurrencyIDR(shift.totalRevenue, true)}</td><td className="px-3 py-2.5 text-center"><TargetStatusCell label="" hasTarget={!!shift.hasTarget} met={!!shift.isShiftTargetMet} current={shift.shiftCollected ?? shift.totalRevenue} target={shift.shiftTarget ?? 0} /></td><td className="px-3 py-2.5 text-right tabular-nums">{shift.totalItemsSold}</td><td className="whitespace-nowrap px-3 py-2.5 text-right text-rose-700">{formatCurrencyIDR(shift.totalExpenses, true)}</td><td className="px-3 py-2.5" onClick={(event) => event.stopPropagation()}><div className="flex justify-end gap-1"><button type="button" onClick={(event) => openEdit(shift, event)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted" aria-label="Edit shift"><Pencil className="h-3.5 w-3.5" /></button><button type="button" onClick={() => setConfirmDeleteIds([shift.shiftId])} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-destructive/20 text-destructive hover:bg-destructive/10" aria-label="Hapus shift"><Trash2 className="h-3.5 w-3.5" /></button></div></td></tr>; })}
-					</tbody></table></div>
+					<FinanceDataTable label="Laporan shift" rows={visibleRows} rowKey={s=>s.shiftId} onSelect={s=>setSelectedShiftStart(s.startTime)} columns={[
+{key:"selection",label:"Pilih",value:s=>selectedIds.has(s.shiftId)?"Dipilih":"",render:s=><input type="checkbox" checked={selectedIds.has(s.shiftId)} onChange={()=>setSelectedIds(previous=>{const next=new Set(previous);if(next.has(s.shiftId))next.delete(s.shiftId);else next.add(s.shiftId);return next})} aria-label={`Pilih shift ${s.shiftName}`} />},
+{key:"shift",label:"Shift",value:s=>s.shiftName,render:s=><button type="button" className="underline" onClick={()=>setSelectedShiftStart(s.startTime)}>{s.shiftName}</button>},
+{key:"cashier",label:"Kasir",value:s=>s.cashierName||"—"},
+{key:"start",label:"Dibuka",value:s=>s.startTime,render:s=>formatDateTime(s.startTime,true)},
+{key:"end",label:"Ditutup",value:s=>s.endTime??"",render:s=>s.endTime?formatDateTime(s.endTime,true):"Masih aktif"},
+{key:"status",label:"Status",value:s=>s.status},
+{key:"initial",label:"Kas awal",value:s=>s.startingCash,render:s=>formatCurrencyIDR(s.startingCash)},
+{key:"cash",label:"Penjualan tunai",value:s=>s.cashRevenue,render:s=>formatCurrencyIDR(s.cashRevenue)},
+{key:"qris",label:"QRIS",value:s=>s.qrisRevenue,render:s=>formatCurrencyIDR(s.qrisRevenue)},
+{key:"expense",label:"Pengeluaran",value:s=>s.totalExpenses,render:s=>formatCurrencyIDR(s.totalExpenses)},
+{key:"expected",label:"Kas seharusnya",value:s=>s.endingCashExpected??"",render:s=>s.endingCashExpected==null?"Belum tersedia":formatCurrencyIDR(s.endingCashExpected)},
+{key:"actual",label:"Kas aktual",value:s=>s.endingCashPhysical??"",render:s=>s.endingCashPhysical==null?"Belum dicatat":formatCurrencyIDR(s.endingCashPhysical)},
+{key:"difference",label:"Selisih",value:s=>s.endingCashPhysical==null||s.endingCashExpected==null?"":s.endingCashPhysical-s.endingCashExpected,render:s=>s.endingCashPhysical==null||s.endingCashExpected==null?"—":formatCurrencyIDR(s.endingCashPhysical-s.endingCashExpected)},
+{key:"orders",label:"Transaksi",value:s=>s.orderCount},
+{key:"actions",label:"Aksi",value:()=>"",render:s=><div className="flex gap-2"><button type="button" onClick={event=>openEdit(s,event)}>Edit</button><button type="button" onClick={()=>setConfirmDeleteIds([s.shiftId])}>Hapus</button></div>}
+]}/>
 				</div>
 
 				<div className="min-w-0 rounded-2xl border border-border bg-card"><div className="flex items-start justify-between border-b border-border px-3 py-2"><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-wider text-primary">Detail terpilih</p><h3 className="truncate text-sm font-bold">{selectedShift?.shiftName || "Pilih shift"}</h3><p className="truncate text-[11px] text-muted-foreground">{selectedShift?.cashierName || "Kasir belum diisi"} · {selectedShift ? formatDateTime(selectedShift.startTime) : "—"}</p></div><button type="button" onClick={async () => { if (summaryText) { await navigator.clipboard.writeText(summaryText); toast.success("Ringkasan shift disalin"); } }} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-border px-2 text-[11px] font-semibold text-muted-foreground hover:bg-muted"><Copy className="h-3 w-3" /> Salin</button></div>

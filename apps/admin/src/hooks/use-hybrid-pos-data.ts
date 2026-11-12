@@ -40,6 +40,8 @@ type ShiftReportRecord = {
 	endTime?: number;
 	status: "SELESAI" | "AKTIF";
 	startingCash: number;
+	endingCashExpected?: number;
+	endingCashPhysical?: number;
 	cashRevenue: number;
 	qrisRevenue: number;
 	otherRevenue: number;
@@ -1144,7 +1146,7 @@ export async function fetchShiftReports() {
 	const { data: shifts, error: shiftsError } = await supabase
 		.schema("pos")
 		.from("shifts")
-		.select("source_id,shift_name,cashier_name,team_members,start_time,end_time,starting_cash,summary,notes")
+		.select("source_id,shift_name,cashier_name,team_members,start_time,end_time,starting_cash,ending_cash_expected,ending_cash_physical,summary,notes")
 		.not("start_time", "is", null)
 		.order("start_time", { ascending: false, nullsFirst: false })
 		.limit(200);
@@ -1343,6 +1345,8 @@ export async function fetchShiftReports() {
 			endTime,
 			status: isActive ? "AKTIF" : "SELESAI",
 			startingCash: Number(s.starting_cash ?? 0),
+			endingCashExpected: s.ending_cash_expected == null ? undefined : Number(s.ending_cash_expected),
+			endingCashPhysical: s.ending_cash_physical == null ? undefined : Number(s.ending_cash_physical),
 			...financial,
 			memberBonuses: computeMemberBonuses(
 				s.team_members ?? "",

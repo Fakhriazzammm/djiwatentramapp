@@ -17,6 +17,7 @@ const PERIOD_BUTTONS: { value: PeriodOption; label: string }[] = [
 ];
 
 export function AccountingEntriesView() {
+	const [query,setQuery] = useState("");
 	const [period, setPeriod] = useState<PeriodOption>("this_month");
 	const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 	const range = useMemo(() => getRangeFromPeriod(period), [period]);
@@ -27,6 +28,7 @@ export function AccountingEntriesView() {
 	});
 
 	const summary = accData.summary;
+ const filteredEntries=accData.entries.filter((entry:any)=>[entry.transaction_source_id,entry.coaCode,entry.coaName,entry.tx_description,entry.description,entry.source_label].join(" ").toLocaleLowerCase("id").includes(query.toLocaleLowerCase("id")));
 
 	function toggleExpand(id: string) {
 		setExpandedRows((prev) => {
@@ -37,6 +39,7 @@ export function AccountingEntriesView() {
 		});
 	}
 
+	if (accData.error) return <p role="alert" className="p-4">Data jurnal gagal dimuat. Muat ulang halaman untuk mencoba lagi.</p>;
 	return (
 		<div className="space-y-3 p-3">
 			{/* Period filter */}
@@ -57,16 +60,17 @@ export function AccountingEntriesView() {
 				))}
 			</div>
 
+			<div className="finance-table-tools"><input aria-label="Cari jurnal atau akun" placeholder="Cari jurnal, referensi, akun, atau uraian…" value={query} onChange={e=>setQuery(e.target.value)}/></div>
 			{/* Summary cards */}
 			{!accData.loading && (
-				<div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-					<div className="rounded-xl border border-sky-100 bg-sky-50/60 p-3">
+				<div className="flex flex-wrap gap-6 border-y border-border py-2">
+					<div className="px-2">
 						<div className="text-[10px] font-medium text-sky-700">Total Debit</div>
 						<div className="mt-1 font-bold text-sky-800 text-sm">
 							{formatCurrencyIDR(summary.totalDebit)}
 						</div>
 					</div>
-					<div className="rounded-xl border border-violet-100 bg-violet-50/60 p-3">
+					<div className="px-2">
 						<div className="text-[10px] font-medium text-violet-700">Total Kredit</div>
 						<div className="mt-1 font-bold text-violet-800 text-sm">
 							{formatCurrencyIDR(summary.totalKredit)}
@@ -122,14 +126,14 @@ export function AccountingEntriesView() {
 									<td colSpan={8} className="px-2 py-1.5"><Skeleton className="h-3 w-full" /></td>
 								</tr>
 							))
-						) : accData.entries.length === 0 ? (
+						) : filteredEntries.length === 0 ? (
 							<tr>
 								<td colSpan={8} className="px-3 py-6 text-center text-[10px] text-slate-400">
 									Belum ada entry akuntansi untuk periode ini.
 								</td>
 							</tr>
 						) : (
-							accData.entries.map((e: any, i: number) => {
+							filteredEntries.map((e: any, i: number) => {
 								const isDebit = e.entry_type === "debit";
 								const rowId = e.id || `row-${i}`;
 								const hasItems = Array.isArray(e.scanItems) && e.scanItems.length > 0;

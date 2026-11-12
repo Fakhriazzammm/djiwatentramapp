@@ -1,3 +1,4 @@
+import { expenseReceiptUrl } from "@/lib/expense-receipt";
 import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { X, Receipt, Image, ExternalLink } from "lucide-react";
 import { formatCurrencyIDR } from "@/lib/export-utils";
@@ -38,13 +39,13 @@ interface Props {
 }
 
 export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
-	const [showReceipt, setShowReceipt] = useState(false);
+	const [showReceipt, setShowReceipt] = useState(true);
 	const [projection, setProjection] = useState<{ document: any | null; links: any[] }>({ document: null, links: [] });
 	const [approvingId, setApprovingId] = useState<string | null>(null);
 	const [inventoryOptions, setInventoryOptions] = useState<any[]>([]);
 	const [postingId, setPostingId] = useState<string | null>(null);
 	const [aiRescan, setAiRescan] = useState<{ loading: boolean; error?: string; result?: any }>({ loading: false });
-	const receiptUrl = (tx as any).metadata?.receipt_image_url as string | undefined;
+	const receiptUrl = expenseReceiptUrl(tx, projection.document?.receiptImageUrl);
 	const transactionId = String((tx as any)._id || (tx as any).id || "");
 
 	useEffect(() => {
