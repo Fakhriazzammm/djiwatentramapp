@@ -1,3 +1,4 @@
+import { useManualStockMode } from "@yumipos/web-shared/lib/manual-stock";
 ﻿import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import type { Id } from "@/types/backend-compat";
 import {
@@ -385,6 +386,8 @@ function PrinterStatusBadge() {
 }
 
 function MenuPage() {
+	const { mode: stockMode } = useManualStockMode();
+	const integratedStock = stockMode === "integrated";
 	const navigate = useNavigate();
 	// Queries
 	const siteSettings = useHybridSiteSettings();
@@ -1891,7 +1894,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 											)}
 
 											{/* Stock Badge Overlay — only shown for critical stock */}
-											{(product.quantity ?? 0) <= 5 && (
+											{integratedStock && (product.quantity ?? 0) <= 5 && (
 												<span className={cn(
 													"absolute right-2 bottom-2 rounded px-1.5 py-0.5 font-bold text-[10px] shadow-sm transition-all",
 													(product.quantity ?? 0) <= 0
@@ -1916,6 +1919,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 						{/* Visual Stock Indicator — bar only for low stock (<=30), healthy stock shows count */}
 						{(() => {
+							if (!integratedStock) return null;
 							const qty = product.quantity ?? 0;
 							const isLow = qty <= 30;
 							const barColor = qty <= 0 ? "bg-red-500" : qty <= 5 ? "bg-amber-500" : "bg-emerald-500";

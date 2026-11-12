@@ -1,3 +1,4 @@
+import { useManualStockMode } from "@yumipos/web-shared/lib/manual-stock";
 import {
 	Bell,
 	ChevronRight,
@@ -68,6 +69,8 @@ export const Route = createLazyFileRoute("/$username/order")({
 });
 
 function OrderPage() {
+	const { mode: stockMode } = useManualStockMode();
+	const integratedStock = stockMode === "integrated";
 	const shouldReduceMotion = useReducedMotion();
 	const popupTransition = { type: "spring" as const, stiffness: 320, damping: 30, mass: 0.8 };
 	const navigate = useNavigate();
@@ -422,7 +425,7 @@ function OrderPage() {
 		const sourceId = search.productSourceId;
 		if (!sourceId || !products || !memberDiscounts || activityProductAppliedRef.current === sourceId) return;
 		const product = products.find((entry) => entry._id === sourceId);
-		const unavailable = !product || product.isAvailable === false || (product.quantity !== null && product.quantity !== undefined && product.quantity <= 0);
+		const unavailable = !product || product.isAvailable === false || (integratedStock && product.quantity !== null && product.quantity !== undefined && product.quantity <= 0);
 		if (unavailable) return;
 		if (cart.some((item) => item.productId === sourceId)) {
 			activityProductAppliedRef.current = sourceId;
@@ -444,7 +447,7 @@ function OrderPage() {
 			menuNumber: product.menuNumber,
 		});
 		activityProductAppliedRef.current = sourceId;
-	}, [addToCart, cart, memberDiscounts, paymentChoice, products, search.productSourceId]);
+	}, [addToCart, cart, integratedStock, memberDiscounts, paymentChoice, products, search.productSourceId]);
 
 	const [refreshTrigger, setRefreshTrigger] = useState(0);
 	const currentOrder = useHybridOrderById(receipt?.orderId, refreshTrigger);
@@ -881,7 +884,7 @@ function OrderPage() {
 	};
 
 	const handleProductSelect = (product: (typeof orderedProducts)[number]): boolean => {
-		if (product.isAvailable === false || (product.quantity != null && Number(product.quantity) <= 0)) {
+		if (product.isAvailable === false || (integratedStock && product.quantity != null && Number(product.quantity) <= 0)) {
 			toast.info(`${product.name} sedang SOLD`);
 			return false;
 		}
@@ -1517,7 +1520,7 @@ function OrderPage() {
 
 					{/* ── Menu section ────────────────────────────── */}
 					{step === "menu"
-						? renderMenuSection({ onProductIntent: (_product, origin) => setPendingProductOrigin(origin), onProductAdded: (_product, origin) => { setRecommendationFlight({ image: _product.image, name: _product.name, left: origin.left + origin.width / 2 - 22, top: origin.top + origin.height / 2 - 22 }); window.setTimeout(() => setRecommendationFlight(null), 700); }, activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, showDineInSummary: orderMode === "dine_in", discounts: memberDiscounts, filteredProducts, freeRefillCharge, bestSellers, recentProductIds, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories: customerVisibleCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId: selectMenuCategory, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
+						? renderMenuSection({ integratedStock, onProductIntent: (_product, origin) => setPendingProductOrigin(origin), onProductAdded: (_product, origin) => { setRecommendationFlight({ image: _product.image, name: _product.name, left: origin.left + origin.width / 2 - 22, top: origin.top + origin.height / 2 - 22 }); window.setTimeout(() => setRecommendationFlight(null), 700); }, activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, showDineInSummary: orderMode === "dine_in", discounts: memberDiscounts, filteredProducts, freeRefillCharge, bestSellers, recentProductIds, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories: customerVisibleCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId: selectMenuCategory, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, tableNumber, themeColor, total, totalItems, updateCartQuantity })
 						: null}
 					{step === "menu" ? <div className="grid grid-cols-2 gap-2 px-2 pb-4"><button type="button" onClick={() => setStep(orderMode === "delivery" ? "address" : "party")} className="min-h-11 rounded-[14px] border border-border bg-card px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button><button type="button" disabled={!cart.length} onClick={() => setStep(orderMode === "delivery" ? "shipping" : "review")} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke {orderMode === "delivery" ? "pengantaran" : "review"} →</button></div> : null}
 

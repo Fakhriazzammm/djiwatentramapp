@@ -124,7 +124,7 @@ export function ActionsCard({ overview }: { overview: AdminOverview }) {
 						{payload.stockItems.map((row) => (
 							<li key={row.name} className="flex justify-between gap-2">
 								<span className="truncate">{row.name}</span>
-								<span className="shrink-0 tabular-nums">{row.quantity} / min {row.threshold}</span>
+								<span className="shrink-0 tabular-nums">{row.threshold > 0 ? `${row.quantity} / min ${row.threshold}` : "Habis"}</span>
 							</li>
 						))}
 					</ul>

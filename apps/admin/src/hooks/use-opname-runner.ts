@@ -1,3 +1,4 @@
+import { shouldRunIntegratedStock } from "@yumipos/web-shared/lib/manual-stock";
 import { useState, useCallback } from "react";
 import type { OpnameItem, OpnameRole } from "@/components/attendance/stock-opname-panel";
 
@@ -29,6 +30,10 @@ export function useOpnameRunner() {
   ): Promise<OpnameCheckResult> => {
     setLoading(true);
     try {
+      if (!await shouldRunIntegratedStock()) {
+        const res = { needsOpname: false, role, shiftName, shiftSourceId, items: [], totalStaffInRole: 1, alreadyClockedOut: 0, isLastPerson: true };
+        setResult(res); return res;
+      }
       // Use hardcoded ingredients per role (avoids extra API round-trips)
       const barNames = [
         "Air Galon","Apple Juice","Arabica Beans","Beans Robusta","C1000 Apple",
@@ -106,6 +111,7 @@ export function useOpnameRunner() {
     opnameResult: OpnameCheckResult,
     staffName: string,
   ) => {
+    if (!await shouldRunIntegratedStock()) throw new Error("Stok manual dikelola di halaman Material, bukan opname shift.");
     const { createClient } = await import("@/lib/client");
     const supabase = createClient();
     const pos = supabase.schema("pos");

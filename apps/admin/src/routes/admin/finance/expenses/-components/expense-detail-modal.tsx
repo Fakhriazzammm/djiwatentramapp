@@ -1,3 +1,4 @@
+import { shouldRunIntegratedStock, useManualStockMode } from "@yumipos/web-shared/lib/manual-stock";
 import { expenseReceiptUrl } from "@/lib/expense-receipt";
 import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { X, Receipt, Image, ExternalLink } from "lucide-react";
@@ -39,6 +40,8 @@ interface Props {
 }
 
 export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
+	const { mode: stockMode } = useManualStockMode();
+	const integratedStock = stockMode === "integrated";
 	const [showReceipt, setShowReceipt] = useState(true);
 	const [projection, setProjection] = useState<{ document: any | null; links: any[] }>({ document: null, links: [] });
 	const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -75,6 +78,7 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 	};
 
 	const approveLink = async (link: any) => {
+		if (!(await shouldRunIntegratedStock())) return;
 		if (!link?.inventoryId || approvingId) return;
 		setApprovingId(link._id);
 		try {
@@ -121,6 +125,7 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 	};
 
 	const postLink = async (link: any) => {
+		if (!(await shouldRunIntegratedStock())) return;
 		if (link?.status !== "approved" || postingId) return;
 		if (!(await requestAdminConfirm({ title: "Posting ke stok?", message: `Posting ${link.rawName} ke stok bahan baku?`, confirmText: "Posting" }))) return;
 		setPostingId(link._id);
@@ -243,7 +248,7 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 										<div key={link._id} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-xs">
 											<div className="min-w-0"><p className="truncate font-medium text-slate-800">{link.rawName}</p><p className="text-slate-500">{link.quantity ?? "-"} {link.unit || ""}</p></div>
 											<div className="flex shrink-0 items-center gap-2">
-												{link.status === "pending" && !link.inventoryId && (
+												{integratedStock && link.status === "pending" && !link.inventoryId && (
 													<select className="max-w-[150px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700" value="" onChange={(event) => selectInventory(link._id, event.target.value)}>
 														<option value="">Pilih bahan</option>
 														{inventoryOptions.map((option) => <option key={option._id} value={option._id}>{option.ingredientName} ({option.unit})</option>)}
@@ -251,12 +256,12 @@ export function ExpenseDetailModal({ transaction: tx, onClose }: Props) {
 												)}
 												<span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">{link.status}</span>
 												{link.status === "pending" && link.inventoryId && (
-													<button type="button" className="rounded-lg bg-blue-600 px-2 py-1 font-medium text-white disabled:opacity-50" disabled={approvingId === link._id} onClick={() => approveLink(link)}>
+													<button type="button" className="rounded-lg bg-blue-600 px-2 py-1 font-medium text-white disabled:opacity-50" disabled={!integratedStock || approvingId === link._id} onClick={() => approveLink(link)}>
 														{approvingId === link._id ? "..." : "Setujui"}
 													</button>
 												)}
 												{link.status === "approved" && (
-													<button type="button" className="rounded-lg bg-emerald-600 px-2 py-1 font-medium text-white disabled:opacity-50" disabled={postingId === link._id} onClick={() => postLink(link)}>
+													<button type="button" className="rounded-lg bg-emerald-600 px-2 py-1 font-medium text-white disabled:opacity-50" disabled={!integratedStock || postingId === link._id} onClick={() => postLink(link)}>
 														{postingId === link._id ? "..." : "Post stok"}
 													</button>
 												)}

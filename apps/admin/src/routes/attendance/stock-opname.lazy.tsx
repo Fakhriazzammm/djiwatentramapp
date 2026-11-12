@@ -1,3 +1,4 @@
+import { useManualStockMode } from "@yumipos/web-shared/lib/manual-stock";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
@@ -12,6 +13,7 @@ export const Route = createLazyFileRoute("/attendance/stock-opname")({
 });
 
 function StockOpnamePage() {
+  const { mode: stockMode, loading: stockModeLoading, error: stockModeError } = useManualStockMode();
   const navigate = useNavigate();
   const search = useSearch({ from: "/attendance/stock-opname" });
   const clockOut = useHybridClockOut();
@@ -101,7 +103,11 @@ function StockOpnamePage() {
     }
   }, [isSubmitting, items, submitOpname, clockOut, navigate, search]);
 
-  if (isInitializing) {
+  if (!stockModeLoading && stockMode !== "integrated") {
+    return <div className="p-6 space-y-3"><h1 className="text-lg font-bold">Opname shift tidak diperlukan</h1><p className="text-sm text-muted-foreground">{stockModeError ? "Mode stok belum dapat dimuat. Coba kembali melalui halaman absensi." : "Stok bahan dikelola terpisah di halaman Material. Lanjutkan absen keluar melalui halaman absensi."}</p><Button onClick={() => navigate({ to: "/attendance" } as any)}>Kembali ke absensi</Button></div>;
+  }
+
+  if (isInitializing || stockModeLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">

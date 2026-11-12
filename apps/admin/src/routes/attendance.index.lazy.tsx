@@ -1,3 +1,4 @@
+import { shouldRunIntegratedStock } from "@yumipos/web-shared/lib/manual-stock";
 ﻿import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { FaceRecognition, preloadFaceModels } from "@/components/auth/FaceRecognition";
@@ -335,7 +336,7 @@ function AttendancePage() {
 			if (user.isCurrentlyIn) {
 				// Check if this role needs stock opname before clock out
 				const roleName = (user.roleName || "").toLowerCase();
-				const needsOpname = roleName.includes("bar") || roleName.includes("kitchen");
+				const needsOpname = (roleName.includes("bar") || roleName.includes("kitchen")) && await shouldRunIntegratedStock();
 				
 				if (needsOpname) {
 					// Save clock-out payload for opname page to complete

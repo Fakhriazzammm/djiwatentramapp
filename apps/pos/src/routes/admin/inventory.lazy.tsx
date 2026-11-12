@@ -1,3 +1,4 @@
+import { ManualStockGate } from "@yumipos/web-shared/components/inventory/manual-stock-page";
 import { createLazyFileRoute, Link } from "@tanstack/react-router";
 import type { Doc, Id } from "@/types/backend-compat";
 import {
@@ -834,7 +835,7 @@ function getUsageInsight(row: Pick<
 
 
 export const Route = createLazyFileRoute("/admin/inventory")({
-	component: InventoryPage,
+	component: () => <ManualStockGate><InventoryPage /></ManualStockGate>,
 });
 
 function InventoryPage() {

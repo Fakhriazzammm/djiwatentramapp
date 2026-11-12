@@ -1,3 +1,4 @@
+import { shouldRunIntegratedStock } from "@yumipos/web-shared/lib/manual-stock";
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { allocateDailyReceiptNo } from "@yumipos/web-shared/lib/daily-receipt";
 import { createClient } from "@/lib/client";
@@ -637,6 +638,7 @@ export function useHybridAdjustMenuStockWithRecipe() {
 			notes?: string;
 			recipe?: MenuRecipeSnapshot | null;
 		}) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Fitur stok terintegrasi dan resep/HPP dinonaktifkan selama mode stok manual.");
 			const productId = String(args?.productId ?? "").trim();
 			const deltaMenu = Number(args?.deltaMenu ?? 0);
 			if (!productId) throw new Error("productId wajib diisi");
@@ -899,6 +901,7 @@ export function useHybridCreateBaseRecipe() {
 	const fallback = useMutation(api.inventory.createBaseRecipe);
 	return useCallback(
 		async (args: any) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Fitur stok terintegrasi dan resep/HPP dinonaktifkan selama mode stok manual.");
 			if (!hasSupabaseConfig) return fallback(args);
 			const id = makeSourceId("baser");
 			const row = {
@@ -924,6 +927,7 @@ export function useHybridUpdateBaseRecipe() {
 	const fallback = useMutation(api.inventory.updateBaseRecipe);
 	return useCallback(
 		async (args: any) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Fitur stok terintegrasi dan resep/HPP dinonaktifkan selama mode stok manual.");
 			if (!hasSupabaseConfig) return fallback(args);
 			const id = String(args?.id ?? "");
 			if (!id) throw new Error("id base recipe wajib diisi");
@@ -951,6 +955,7 @@ export function useHybridDeleteBaseRecipe() {
 	const fallback = useMutation(api.inventory.deleteBaseRecipe);
 	return useCallback(
 		async (args: any) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Fitur stok terintegrasi dan resep/HPP dinonaktifkan selama mode stok manual.");
 			if (!hasSupabaseConfig) return fallback(args);
 			const id = String(args?.id ?? "");
 			if (!id) throw new Error("id base recipe wajib diisi");
@@ -967,6 +972,7 @@ export function useHybridSaveRecipe() {
 	const fallback = useMutation(api.inventory.saveRecipe);
 	return useCallback(
 		async (args: any) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Fitur stok terintegrasi dan resep/HPP dinonaktifkan selama mode stok manual.");
 			if (!hasSupabaseConfig) return fallback(args);
 			const productId = String(args?.productId ?? "");
 			if (!productId) throw new Error("productId wajib diisi");
@@ -1006,6 +1012,7 @@ export function useHybridDeleteRecipe() {
 	const fallback = useMutation(api.inventory.deleteRecipe);
 	return useCallback(
 		async (args: any) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Fitur stok terintegrasi dan resep/HPP dinonaktifkan selama mode stok manual.");
 			if (!hasSupabaseConfig) return fallback(args);
 			const id = String(args?.id ?? "");
 			if (!id) throw new Error("id recipe wajib diisi");
@@ -1020,6 +1027,7 @@ export function useHybridEnsureInventoryItemForBaseRecipe() {
 	const fallback = useMutation(api.inventory.ensureInventoryItemForBaseRecipe);
 	return useCallback(
 		async (args: any) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Fitur stok terintegrasi dan resep/HPP dinonaktifkan selama mode stok manual.");
 			if (!hasSupabaseConfig) return fallback(args);
 			const baseRecipeId = String(args?.baseRecipeId ?? "");
 			if (!baseRecipeId) throw new Error("baseRecipeId wajib diisi");
@@ -1079,6 +1087,7 @@ export function useHybridCreateInventoryItem() {
 	const fallback = useMutation(api.inventory.createInventoryItem);
 	return useCallback(
 		async (args: any) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Gunakan Stok Manual untuk mencatat perubahan bahan; stok terintegrasi sedang dinonaktifkan.");
 			if (!hasSupabaseConfig) return fallback(args);
 			// #2: Duplicate check — before INSERT, verify ingredientName doesn't already exist
 			const ingredientName = String(args?.ingredientName ?? "").trim() || "Bahan";
@@ -1142,6 +1151,7 @@ export function useHybridUpdateInventoryItem() {
 	const fallback = useMutation(api.inventory.updateInventoryItem);
 	return useCallback(
 		async (args: any) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Gunakan Stok Manual untuk mencatat perubahan bahan; stok terintegrasi sedang dinonaktifkan.");
 			if (!hasSupabaseConfig) return fallback(args);
 			const id = String(args?.id ?? "");
 			if (!id) throw new Error("id inventory wajib diisi");
@@ -1195,6 +1205,7 @@ export function useHybridDeleteInventoryItem() {
 	const fallback = useMutation(api.inventory.deleteInventoryItem);
 	return useCallback(
 		async (args: any) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Gunakan Stok Manual untuk mencatat perubahan bahan; stok terintegrasi sedang dinonaktifkan.");
 			if (!hasSupabaseConfig) return fallback(args);
 			const id = String(args?.id ?? "");
 			if (!id) throw new Error("id inventory wajib diisi");
@@ -1236,6 +1247,7 @@ export function useHybridSetInventoryReferencePrice() {
 	const fallback = useMutation(api.inventory.setInventoryReferencePrice);
 	return useCallback(
 		async (args: any) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Gunakan Stok Manual untuk mencatat perubahan bahan; stok terintegrasi sedang dinonaktifkan.");
 			if (!hasSupabaseConfig) return fallback(args);
 			const inventoryId = String(args?.inventoryId ?? "");
 			const price = Number(args?.price ?? 0);
@@ -1285,6 +1297,7 @@ export function useHybridAddStock() {
 	const applyInventoryStockAction = useHybridApplyInventoryStockAction();
 	return useCallback(
 		async (args: any) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Gunakan Stok Manual untuk mencatat perubahan bahan; stok terintegrasi sedang dinonaktifkan.");
 			if (!hasSupabaseConfig) return fallback(args);
 			return applyInventoryStockAction({
 				inventoryId: args?.inventoryId,
@@ -1485,6 +1498,7 @@ export function useHybridCreateHppCalculation() {
 	const fallback = useMutation(api.hpp.createHppCalculation);
 	return useCallback(
 		async (args: any) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Fitur stok terintegrasi dan resep/HPP dinonaktifkan selama mode stok manual.");
 			if (!hasSupabaseConfig) return fallback(args);
 			const id = makeSourceId("hpp");
 			await insertMirrorDocument({
@@ -1515,6 +1529,7 @@ export function useHybridUpdateHppCalculation() {
 	const fallback = useMutation(api.hpp.updateHppCalculation);
 	return useCallback(
 		async (args: any) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Fitur stok terintegrasi dan resep/HPP dinonaktifkan selama mode stok manual.");
 			if (!hasSupabaseConfig) return fallback(args);
 			const id = String(args?.id ?? "");
 			if (!id) throw new Error("id HPP wajib diisi");
@@ -1538,6 +1553,7 @@ export function useHybridDeleteHppCalculation() {
 	const fallback = useMutation(api.hpp.deleteHppCalculation);
 	return useCallback(
 		async (args: any) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Fitur stok terintegrasi dan resep/HPP dinonaktifkan selama mode stok manual.");
 			if (!hasSupabaseConfig) return fallback(args);
 			const id = String(args?.id ?? "");
 			if (!id) throw new Error("id HPP wajib diisi");
@@ -1557,6 +1573,7 @@ export function useHybridSyncHppWithInventoryPrices() {
 	const fallback = useMutation(api.hpp.syncHppWithInventoryPrices);
 	return useCallback(
 		async (args: any) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Fitur stok terintegrasi dan resep/HPP dinonaktifkan selama mode stok manual.");
 			if (!hasSupabaseConfig) return fallback(args);
 			const id = String(args?.id ?? "");
 			if (!id) throw new Error("id HPP wajib diisi");
@@ -1609,6 +1626,7 @@ export function useHybridUpsertHppFromRecipe() {
 	const fallback = useMutation(api.hpp.upsertHppFromRecipe);
 	return useCallback(
 		async (args: any) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Fitur stok terintegrasi dan resep/HPP dinonaktifkan selama mode stok manual.");
 			if (!hasSupabaseConfig) return fallback(args);
 			const productId = String(args?.productId ?? "");
 			if (!productId) throw new Error("productId wajib diisi");
@@ -2058,7 +2076,7 @@ export function useHybridProcessImageAndGenerate() {
 				});
 			}
 
-			if (args?.syncMode === "finance_plus_inventory" && normalizedType === "expense") {
+			if ((await shouldRunIntegratedStock()) && args?.syncMode === "finance_plus_inventory" && normalizedType === "expense") {
 				const items = Array.isArray(scan?.data?.items) ? scan.data.items : [];
 				for (const item of items) {
 					const ingredientName = String(item?.name ?? "").trim();
@@ -2423,7 +2441,8 @@ export function useHybridRecordStockPurchase() {
 	return useCallback(
 		async (args: any) => {
 			if (!hasSupabaseConfig) return fallback(args);
-			await addStock({
+			const integratedStock = await shouldRunIntegratedStock();
+			if (integratedStock) await addStock({
 				inventoryId: args?.inventoryId,
 				quantity: Number(args?.quantity ?? 0),
 				costPerUnit: args?.costPerUnit,
@@ -2454,7 +2473,7 @@ export function useHybridRecordStockPurchase() {
 					},
 				});
 			}
-			return { ok: true };
+			return { ok: true, syncOutcome: integratedStock ? "finance_plus_inventory" : "finance_only" };
 		},
 		[addStock, createTransaction, fallback]
 	);
@@ -3961,6 +3980,8 @@ export function useHybridRecordExpenseIntake() {
 	const syncMenuStock = useHybridSyncMenuStockFromInventory();
 	return useCallback(
 		async (args: any) => {
+			const integratedStock = await shouldRunIntegratedStock();
+			if (!integratedStock) args = { ...args, syncMode: "finance_only", allowCreateInventoryItem: false };
 			if (!hasSupabaseConfig) return fallback(args);
 			try {
 				const tx = args?.transaction ?? {};
@@ -4011,6 +4032,8 @@ export function useHybridRecordExpenseIntake() {
 						effectiveSyncMode = "finance_plus_inventory";
 					}
 				}
+
+				if (!integratedStock) effectiveSyncMode = "finance_only";
 
 				// #10: Tag description as template when isRecurring=true
 				const isRecurringTx = tx?.isRecurring === undefined ? false : Boolean(tx.isRecurring);
@@ -5802,6 +5825,7 @@ export function useHybridApplyInventoryStockAction() {
 	const fallback = useMutation(api.inventory.applyInventoryStockAction);
 	return useCallback(
 		async (args: any) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Gunakan Stok Manual untuk mencatat perubahan bahan; stok terintegrasi sedang dinonaktifkan.");
 			if (!hasSupabaseConfig) return fallback(args);
 			try {
 				const inventoryId = String(args?.inventoryId ?? "");
@@ -5896,6 +5920,7 @@ export function useHybridProduceBaseRecipeBatch() {
 	const fallback = useMutation(api.inventory.produceBaseRecipeBatch);
 	return useCallback(
 		async (args: any) => {
+			if (!(await shouldRunIntegratedStock())) throw new Error("Fitur stok terintegrasi dan resep/HPP dinonaktifkan selama mode stok manual.");
 			if (!hasSupabaseConfig) return fallback(args);
 			try {
 				const baseRecipeId = String(args?.baseRecipeId ?? "");
@@ -6071,6 +6096,7 @@ export function useHybridDeductOrderInventory() {
 
 	return useCallback(
 		async (args: { orderId: string; orderNumber?: string }) => {
+			if (!(await shouldRunIntegratedStock())) return { deductedCount: 0, skippedCount: 0, lowStockWarnings: [], inventoryWarnings: [] };
 			if (!hasSupabaseConfig) return { deductedCount: 0, skippedCount: 0, lowStockWarnings: [], inventoryWarnings: [] };
 
 			const orderId = String(args?.orderId ?? "");
@@ -6194,6 +6220,7 @@ export function useHybridDeductOrderInventory() {
 export function useHybridSyncMenuStockFromInventory() {
 	return useCallback(
 		async () => {
+			if (!(await shouldRunIntegratedStock())) return { updatedCount: 0 };
 			if (!hasSupabaseConfig) return { updatedCount: 0 };
 
 			const supabase = createClient();

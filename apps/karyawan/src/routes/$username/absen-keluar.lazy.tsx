@@ -1,3 +1,4 @@
+import { useManualStockMode } from "@yumipos/web-shared/lib/manual-stock";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useStaffProfile } from "../$username.lazy";
 import { useState, useEffect, useCallback, useMemo, useRef, forwardRef, useImperativeHandle } from "react";
@@ -123,7 +124,9 @@ function ClosingPage() {
     return null;
   }, [staff]);
 
-  const needsOpname = role !== null;
+  const { mode: stockMode } = useManualStockMode();
+  const needsOpname = role !== null && stockMode === "integrated";
+  useEffect(() => { if (!needsOpname) setActiveTab("kebersihan"); }, [needsOpname]);
 
   // Refs to child sections for data extraction
   const opnameRef = useRef<{ getItems: () => OpnameItem[] }>(null);
@@ -164,7 +167,7 @@ function ClosingPage() {
             </div>
             <p className="font-bold text-emerald-800 text-sm">Laporan Closing Terkirim!</p>
             <p className="text-xs text-emerald-600 mt-1">
-              Stock opname & kebersihan tersimpan. Absen keluar berhasil.
+              Laporan closing tersimpan. Absen keluar berhasil.
             </p>
             <button
               onClick={() => navigate({ to: `/${username}/beranda` })}
@@ -195,6 +198,7 @@ function ClosingPage() {
 
       {!submitDone && (
         <>
+          {stockMode === "manual" && <p className="mb-3 text-xs text-muted-foreground">Stok bahan dikelola terpisah di halaman Material. Closing tidak memerlukan opname.</p>}
           {/* Tabs */}
           <div className="flex gap-1 rounded-xl bg-muted/50 p-1 mb-4 shrink-0">
             {needsOpname && (
@@ -279,7 +283,7 @@ function ClosingPage() {
     setIsSubmitting(true);
     try {
       // 1. Get opname items
-      const opnameItems = opnameRef.current?.getItems() ?? [];
+      const opnameItems = needsOpname ? opnameRef.current?.getItems() ?? [] : [];
       const markedChanged = opnameItems.filter(
         (i) => Math.abs(i.qtyAfter - i.qtyBefore) > 0.01
       );

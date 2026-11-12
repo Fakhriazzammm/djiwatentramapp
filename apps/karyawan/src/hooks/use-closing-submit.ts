@@ -1,3 +1,4 @@
+import { shouldRunIntegratedStock } from "@yumipos/web-shared/lib/manual-stock";
 import { createClient } from "@yumipos/web-shared";
 
 // ─── Types ──────────────────────────────────────────────────
@@ -115,6 +116,7 @@ function getTodayStartMs(): number {
 export async function fetchOpnameItems(
   role: "bar" | "kitchen",
 ): Promise<OpnameItem[]> {
+  if (!await shouldRunIntegratedStock()) return [];
   const supabase = createClient().schema("pos");
   const ingredients = getIngredientSet(role);
   const factorFor = (item: any) => Number(item.content_to_base_factor ?? item.conversion_factor ?? 1) || 1;
@@ -157,6 +159,7 @@ export async function submitOpnamePerPerson(
   },
 ): Promise<string> {
   const supabase = createClient().schema("pos");
+  if (!await shouldRunIntegratedStock()) throw new ClosingSubmitError("Stok manual dikelola melalui halaman Material", "MANUAL_STOCK_MODE");
   const sourceId = makeSourceId("opn");
   const now = Date.now();
 

@@ -78,6 +78,7 @@ function ProductImageButton({ src, alt, isSold }: { src?: string | null; alt: st
 	);
 }
 export interface MenuSectionProps {
+	integratedStock?: boolean;
 	activeCategoryId: Id<"categories"> | null;
 	cart: CartItem[];
 	codeFeedback: string;
@@ -328,7 +329,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 								const pricing = calculateEffectivePrice({ _id: product._id, price: product.price, categoryId: product.categoryId }, props.discounts);
 								const isDjiwaPayEligible = djiwaPayCampaignActive && Number(product.price) === 30000;
 								const quantity = props.cart.filter((item) => item.productId === product._id).reduce((sum, item) => sum + item.quantity, 0);
-								const isSold = product.isAvailable === false || (product.quantity != null && Number(product.quantity) <= 0);
+								const isSold = product.isAvailable === false || (props.integratedStock && product.quantity != null && Number(product.quantity) <= 0);
 								const hasVariations = Array.isArray(product.variations) && product.variations.length > 0;
 								const nutrition = product.nutrition && typeof product.nutrition === "object" && product.nutrition.status !== "rejected" ? product.nutrition : null;
 								const hasNutritionValues = nutrition && [nutrition.caloriesKcal, nutrition.proteinG, nutrition.carbohydratesG, nutrition.fatG].every((value: unknown) => Number.isFinite(Number(value)) && Number(value) >= 0);

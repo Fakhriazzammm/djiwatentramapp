@@ -139,8 +139,13 @@ async function restRpc(fn: string, args: Json) {
 		await new Promise((resolve) => setTimeout(resolve, 250));
 	}
 	if (!result) throw lastError instanceof Error ? lastError : new Error("Protected RPC failed");
-	if (!result.ok) throw new Error(`Protected RPC failed (${result.status})`);
-	return await result.json();
+	const rawText = await result.text();
+	const parsed = rawText ? (() => { try { return JSON.parse(rawText); } catch { return null; } })() : null;
+	if (!result.ok) {
+		const message = parsed && typeof parsed === "object" && "message" in parsed && parsed.message ? String(parsed.message) : `Protected RPC failed (${result.status})`;
+		throw Object.assign(new Error(message), { status: result.status >= 400 && result.status < 500 ? result.status : 500 });
+	}
+	return parsed;
 }
 function sanitizeRpcArgs(value: unknown): Json {
 	if (value === undefined || value === null) return {};
@@ -153,7 +158,7 @@ async function requireAdmin(token: string, permission: string) {
 	const sessions = await restRead("yumi_sessions", { select: "user_source_id,expires_at", eq: { token }, limit: 1 });
 	const session = sessions?.[0];
 	if (!session || !session.expires_at || Date.now() >= new Date(session.expires_at).getTime()) throw Object.assign(new Error("Session expired or invalid"), { status: 401 });
-	const users = await restRead("yumi_users", { select: "source_id,is_active,role_source_id", eq: { source_id: session.user_source_id }, limit: 1 });
+	const users = await restRead("yumi_users", { select: "source_id,name,username,is_active,role_source_id", eq: { source_id: session.user_source_id }, limit: 1 });
 	const user = users?.[0];
 	if (!user?.is_active) throw Object.assign(new Error("Inactive user"), { status: 403 });
 	const roles = await restRead("yumi_roles", { select: "name,permissions", eq: { source_id: user.role_source_id }, limit: 1 });
@@ -161,6 +166,11 @@ async function requireAdmin(token: string, permission: string) {
 	const roleName = String(role?.name ?? "").trim().toLowerCase();
 	const permissions = Array.isArray(role?.permissions) ? role.permissions.map(String) : [];
 	if (!ADMIN_ROLES.has(roleName) && !permissions.includes(permission)) throw Object.assign(new Error("Admin permission required"), { status: 403 });
+	return {
+		userId: String(user.source_id),
+		userName: String(user.name || user.username || user.source_id).trim() || "Petugas",
+		roleName,
+	};
 }
 
 Deno.serve(async (req) => {
@@ -176,6 +186,34 @@ Deno.serve(async (req) => {
 			const rpcConfig = RPC_ACTIONS[rpcName as keyof typeof RPC_ACTIONS];
 			await requireAdmin(token, rpcConfig.permission);
 			const data = await restRpc(rpcConfig.fn, sanitizeRpcArgs(body.args));
+			return response({ success: true, data });
+		}
+		if (body.action === "manual_stock_save") {
+			const actor = await requireAdmin(token, "inventory:manage");
+			const data = await restRpc("manual_stock_save", {
+				p_input: sanitizeRpcArgs(body.input),
+				p_actor_id: actor.userId,
+				p_actor_name: actor.userName,
+			});
+			return response({ success: true, data });
+		}
+		if (body.action === "manual_stock_history") {
+			await requireAdmin(token, "inventory:manage");
+			const inventoryId = String(body.inventoryId ?? "").trim();
+			if (!inventoryId || inventoryId.length > 128) return fail("INVALID_ARGUMENT", "Bahan belum dipilih", 400);
+			const data = await restRpc("manual_stock_history", { p_inventory_id: inventoryId });
+			return response({ success: true, data: Array.isArray(data) ? data : [] });
+		}
+		if (body.action === "manual_stock_create") {
+			const actor = await requireAdmin(token, "inventory:manage");
+			const name = String(body.name ?? "").trim();
+			const unit = String(body.unit ?? "pcs").trim().toLowerCase();
+			const data = await restRpc("manual_stock_create", {
+				p_name: name,
+				p_unit: unit,
+				p_actor_id: actor.userId,
+				p_actor_name: actor.userName,
+			});
 			return response({ success: true, data });
 		}
 		const action = body.action as keyof typeof ACTIONS;

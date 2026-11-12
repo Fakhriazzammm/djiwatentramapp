@@ -1,3 +1,4 @@
+import { useManualStockMode } from "@yumipos/web-shared/lib/manual-stock";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState, useEffect, useCallback, useMemo, useRef, forwardRef, useImperativeHandle } from "react";
 import { createClient } from "@yumipos/web-shared/lib/client";
@@ -443,7 +444,9 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, lin
 
   const opnameRef = useRef<{ getItems: () => OpnameItem[] }>(null);
   const kebersihanRef = useRef<{ getAreas: () => KebersihanArea[] }>(null);
-  const needsOpname = role !== null;
+  const { mode: stockMode } = useManualStockMode();
+  const needsOpname = role !== null && stockMode === "integrated";
+  useEffect(() => { if (!needsOpname) setActiveTab("kebersihan"); }, [needsOpname]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setClockTick(Date.now()), 30_000);
@@ -520,7 +523,7 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, lin
 
     setIsSubmitting(true);
     try {
-      const opnameItems = opnameRef.current?.getItems() ?? [];
+      const opnameItems = needsOpname ? opnameRef.current?.getItems() ?? [] : [];
       const markedChanged = opnameItems.filter(
         (i) => Math.abs(i.qtyAfter - i.qtyBefore) > 0.01
       );
@@ -672,6 +675,7 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, lin
       {/* Tabs */}
       {!submitDone && (
         <div className="shrink-0 px-4 pt-3">
+          {stockMode === "manual" && <p className="text-xs text-muted-foreground">Stok bahan dikelola terpisah di halaman Material. Closing tidak memerlukan opname.</p>}
           <div className="flex gap-1 rounded-xl bg-muted/50 p-1">
             {needsOpname && (
               <button

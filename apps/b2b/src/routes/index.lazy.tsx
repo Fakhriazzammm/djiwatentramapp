@@ -1,3 +1,4 @@
+import { useManualStockMode } from "@yumipos/web-shared/lib/manual-stock";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, CheckCircle2, Package, ShieldCheck } from "lucide-react";
 import { useEffect } from "react";
@@ -19,12 +20,13 @@ const FALLBACK_PRODUCT = {
 };
 
 function B2BLandingPage() {
+	const { mode: stockMode } = useManualStockMode();
 	const navigate = useNavigate();
 	const { customer, isAuthenticated, isLoading } = useCustomerAuth();
 	const products = useHybridProducts();
 	const product = products?.find((item) => Number(item.menuNumber) === 3013);
 	const productIsLoading = products == null;
-	const isAvailable = product ? product.isAvailable !== false && (product.quantity == null || Number(product.quantity) > 0) : false;
+	const isAvailable = product ? product.isAvailable !== false && (stockMode !== "integrated" || product.quantity == null || Number(product.quantity) > 0) : false;
 
 	useEffect(() => {
 		if (!isLoading && isAuthenticated && customer) {

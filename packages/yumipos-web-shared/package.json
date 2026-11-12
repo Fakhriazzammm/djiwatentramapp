@@ -18,6 +18,7 @@
     "./components/ui/*": "./src/components/ui/*.tsx",
     "./components/layout/*": "./src/components/layout/*.tsx",
     "./components/attendance/*": "./src/components/attendance/*.tsx",
+    "./components/inventory/*": "./src/components/inventory/*.tsx",
     "./components/admin/*": "./src/components/admin/*.tsx",
     "./components/home/*": "./src/components/home/*.tsx"
   },

@@ -1,3 +1,4 @@
+import { shouldRunIntegratedStock } from "@yumipos/web-shared/lib/manual-stock";
 import { useState, useCallback } from "react";
 import type { OpnameItem, OpnameRole } from "@/components/attendance/stock-opname-panel";
 
@@ -31,6 +32,10 @@ export function useOpnameRunner() {
   const checkAndLoad = useCallback(async (role: OpnameRole, shiftSourceId: string, shiftName: string, _staffSourceId: string): Promise<OpnameCheckResult> => {
     setLoading(true);
     try {
+      if (!await shouldRunIntegratedStock()) {
+        const res = { needsOpname: false, role, shiftName, shiftSourceId, items: [], totalStaffInRole: 1, alreadyClockedOut: 0, isLastPerson: true };
+        setResult(res); return res;
+      }
       const { createClient } = await import("@/lib/client");
       const pos = createClient().schema("pos");
       let inventory: any[] = [];

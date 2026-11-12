@@ -1,3 +1,4 @@
+import { useManualStockMode } from "@yumipos/web-shared/lib/manual-stock";
 import { B2B_BRAND_SLUG } from "@/lib/marketplace-config";
 import {
 	Bell,
@@ -62,6 +63,8 @@ export const Route = createLazyFileRoute("/$username/order")({
 });
 
 function OrderPage() {
+	const { mode: stockMode } = useManualStockMode();
+	const integratedStock = stockMode === "integrated";
 	const shouldReduceMotion = useReducedMotion();
 	const popupTransition = { type: "spring" as const, stiffness: 320, damping: 30, mass: 0.8 };
 	const navigate = useNavigate();
@@ -537,7 +540,7 @@ function OrderPage() {
 	};
 
 	const handleProductSelect = (product: (typeof orderedProducts)[number]) => {
-		if (product.isAvailable === false || (product.quantity != null && Number(product.quantity) <= 0)) {
+		if (product.isAvailable === false || (integratedStock && product.quantity != null && Number(product.quantity) <= 0)) {
 			toast.info(`${product.name} sedang SOLD`);
 			return;
 		}
@@ -1026,7 +1029,7 @@ function OrderPage() {
 
 					{/* ── Menu section ────────────────────────────── */}
 					{step === "menu"
-						? renderMenuSection({ activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, themeColor, total, totalItems, updateCartQuantity })
+						? renderMenuSection({ integratedStock, activeCategoryId, approvePendingNumberProduct, cancelPendingNumberProduct, cart, catalogQuery, codeFeedback, config, discounts: memberDiscounts, filteredProducts, freeRefillCharge, handleProductSelect, isMenuError, isMenuLoading, onRetryMenu: () => setMenuRefreshTrigger((value) => value + 1), logoUrl, manualCode, menuMode, orderedCategories, partySize, pendingNumberProduct, pendingNumberQuantity, setActiveCategoryId, setCartOpen, setCatalogQuery, setManualCode, setMenuMode, setPendingNumberQuantity, setScannerOpen, storeName, themeColor, total, totalItems, updateCartQuantity })
 						: null}
 
 					{/* ── Delivery section ─────────────────────────── */}

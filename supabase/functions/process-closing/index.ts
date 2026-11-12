@@ -1,3 +1,4 @@
+import { resolveClosingStockPolicy } from "./stock-policy.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -660,7 +661,11 @@ Deno.serve(async (req: Request) => {
     }
 
     const now = Date.now();
-    const needsOpname = role === "bar" || role === "kitchen";
+    // Resolve authoritative stock policy before any historical stock write. A failed
+    // policy read still permits attendance/cleaning closing, never stock updates.
+    const { data: stockPolicy, error: stockPolicyError } = await supabase.rpc("inventory_stock_mode");
+    const { mode: stockMode, needsOpname } = resolveClosingStockPolicy(stockPolicy, stockPolicyError, role);
+    if (stockPolicyError) console.error("[process-closing] stock policy unavailable; skipping stock", stockPolicyError);
     const changedItems = items.filter(
       (i) => Math.abs(i.qtyAfter - i.qtyBefore) > 0.01,
     );
@@ -1088,7 +1093,7 @@ Deno.serve(async (req: Request) => {
         shiftName,
         source,
         timestamp: now,
-        items,
+        items: needsOpname ? items : [],
         kebersihan: kebersihanResult,
         isLastPerson,
       });
@@ -1104,6 +1109,7 @@ Deno.serve(async (req: Request) => {
 
       return jsonResponse({
         success: true,
+        stockMode,
         isLastPerson,
         staffName: userName,
         shiftName,

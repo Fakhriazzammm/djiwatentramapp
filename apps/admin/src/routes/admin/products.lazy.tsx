@@ -1,4 +1,5 @@
-﻿import { createLazyFileRoute, Link } from "@tanstack/react-router";
+﻿import { shouldRunIntegratedStock } from "@yumipos/web-shared/lib/manual-stock";
+import { createLazyFileRoute, Link } from "@tanstack/react-router";
 import type { Doc, Id } from "@/types/backend-compat";
 import {
 	useHybridAddProduct,
@@ -643,6 +644,10 @@ const searchInputRef = useRef<HTMLInputElement | null>(null);
 			return;
 		}
 		if (parsed === currentValue) {
+			return;
+		}
+		if (field === "quantity" && !(await shouldRunIntegratedStock())) {
+			toast.info("Stok porsi menu dinonaktifkan selama mode stok manual.");
 			return;
 		}
 		const label =

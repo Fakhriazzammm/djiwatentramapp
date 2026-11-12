@@ -1,3 +1,4 @@
+import { shouldRunIntegratedStock } from "@yumipos/web-shared/lib/manual-stock";
 ﻿import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, Banknote, BarChart3, Bot, Calendar, Camera, ClipboardList, Sparkles, Bell, Telescope, TrendingUp, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -825,10 +826,14 @@ export default function AIChatContainer({ mode = "admin", onClose, contextHint }
 				await sendMessage(`Lakukan saran ini: ${s.title}`);
 				return;
 			}
+			if (["create_inventory_item", "add_stock"].includes(actionType) && !(await shouldRunIntegratedStock())) {
+				toast.info("Stok terintegrasi dinonaktifkan. Gunakan halaman Stok Manual.");
+				return;
+			}
 			switch (actionType) {
 				case "record_stock_purchase":
-					await recordStockPurchaseMutation(actionArgs as any);
-					toast.success("Stok berhasil dicatat!");
+					const purchaseResult = await recordStockPurchaseMutation(actionArgs as any);
+					toast.success(purchaseResult?.syncOutcome === "finance_only" ? "Pengeluaran dicatat; stok terintegrasi dinonaktifkan." : "Stok berhasil dicatat!");
 					break;
 				case "create_product":
 					await createProductMutation(actionArgs as any);

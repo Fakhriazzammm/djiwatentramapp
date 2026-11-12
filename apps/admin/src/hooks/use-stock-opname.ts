@@ -1,3 +1,4 @@
+import { shouldRunIntegratedStock } from "@yumipos/web-shared/lib/manual-stock";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/client";
 import { makeSourceId } from "@/lib/id-utils";
@@ -22,6 +23,7 @@ export function useStockOpname() {
 
   /** Fetch all inventory items for a given role with current stock */
   const fetchOpnameItems = useCallback(async (role: OpnameRole): Promise<OpnameItem[]> => {
+    if (!await shouldRunIntegratedStock()) return [];
     const supabase = createClient();
     const pos = supabase.schema("pos");
 
@@ -150,6 +152,7 @@ export function useStockOpname() {
   const submitOpname = useCallback(async (input: OpnameInput) => {
     setIsLoading(true);
     try {
+      if (!await shouldRunIntegratedStock()) throw new Error("Stok manual dikelola di halaman Material, bukan opname shift.");
       const supabase = createClient();
       const id = makeSourceId("opname");
       const timestamp = Date.now();

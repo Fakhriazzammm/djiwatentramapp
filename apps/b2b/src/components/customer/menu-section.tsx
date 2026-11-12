@@ -36,6 +36,7 @@ function ProductImage({ src, alt }: { src?: string | null; alt: string }) {
 	);
 }
 export interface MenuSectionProps {
+	integratedStock?: boolean;
 	activeCategoryId: Id<"categories"> | null;
 	cart: CartItem[];
 	codeFeedback: string;
@@ -146,7 +147,7 @@ export function renderMenuSection(props: MenuSectionProps) {
 							{props.filteredProducts.map((product) => {
 								const pricing = calculateEffectivePrice({ _id: product._id, price: product.price, categoryId: product.categoryId }, props.discounts);
 								const quantity = props.cart.filter((item) => item.productId === product._id).reduce((sum, item) => sum + item.quantity, 0);
-								const isSold = product.isAvailable === false || (product.quantity != null && Number(product.quantity) <= 0);
+								const isSold = product.isAvailable === false || (props.integratedStock && product.quantity != null && Number(product.quantity) <= 0);
 								const hasVariations = Array.isArray(product.variations) && product.variations.length > 0;
 								return (
 									<article key={product._id} className="flex items-center gap-3 rounded-[24px] border border-border/80 bg-card p-2.5 shadow-[0_4px_20px_rgba(9,9,11,0.05)] transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)]">
