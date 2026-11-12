@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ManualStockItem } from "../../lib/manual-stock";
-import { buildManualStockSaveInput, createManualStockDraft, isManualStockDraftDirty } from "./manual-stock-draft";
+import { buildManualStockSaveInput, createManualStockDraft, isManualStockDraftDirty, saveManualStockDrafts } from "./manual-stock-draft";
 
 const item = (overrides: Partial<ManualStockItem> = {}): ManualStockItem => ({
 	inventoryId: "inventory-1",
@@ -86,4 +86,22 @@ describe("manual stock inline drafts", () => {
 		expect(isManualStockDraftDirty(row, { ...original, status: "available" })).toBe(true);
 		expect(isManualStockDraftDirty(row, { ...original, note: "checked" })).toBe(true);
 	});
+	test("rejects counts above the database integer limit", () => {
+		const row = item();
+		const draft = { ...createManualStockDraft(row), mode: "count" as const, quantity: "2147483648" };
+		expect(buildManualStockSaveInput(row, draft).input).toBeNull();
+	});
+
+	test("keeps failed rows separate from successful saves", async () => {
+		const first = item({ inventoryId: "first" });
+		const second = item({ inventoryId: "second" });
+		const drafts = Object.fromEntries([first, second].map(row => [row.inventoryId, { ...createManualStockDraft(row), status: "available" as const }]));
+		const result = await saveManualStockDrafts([first, second], drafts, async input => {
+			if (input.inventoryId === "second") throw new Error("Stok berubah oleh petugas lain");
+			return { ...first, status: "available", updatedAt: 123 };
+		});
+		expect(result.saved.map(row => row.inventoryId)).toEqual(["first"]);
+		expect(result.errors).toEqual({ second: "Stok berubah oleh petugas lain" });
+	});
+
 });
