@@ -92,6 +92,7 @@ type InventoryWorkspaceRow = {
 	displayUnit?: string;
 	conversionFactor?: number;
 	imagePath?: string | null;
+	ingredientGroup?: string | null;
 	unitConversions?: Array<{
 		unit: string;
 		factor: number;
@@ -1628,6 +1629,8 @@ function InventoryPage() {
 					onSelectedItemChange={setSelectedItem}
 				/>
 			) : (
+			<>
+			<IngredientGroupComparison rows={filteredRows} />
 			<InventoryTable
 				filteredRows={filteredRows}
 				inventoryMap={inventoryMap}
@@ -1642,6 +1645,7 @@ function InventoryPage() {
 				unitOptions={unitOptions}
 				viewPreset={viewPreset}
 			/>
+			</>
 			)}
 
 			<InventoryActionModal
@@ -3965,6 +3969,150 @@ function YumiAiInventoryPanel({
 					)}
 				</div>
 			</div>
+		</div>
+	);
+}
+
+function IngredientGroupComparison({ rows }: { rows: InventoryWorkspaceRow[] }) {
+	const [open, setOpen] = useState(true);
+	const groups = useMemo(() => {
+		const map = new Map<string, InventoryWorkspaceRow[]>();
+		for (const row of rows) {
+			const group = (row.ingredientGroup || "").trim();
+			if (!group) continue;
+			const list = map.get(group);
+			if (list) list.push(row);
+			else map.set(group, [row]);
+		}
+		return [...map.entries()]
+			.filter(([, list]) => list.length >= 2)
+			.map(([group, list]) => {
+				const options = [...list];
+				// Bandingkan harga per satuan isi bila semua baris punya isi bersih;
+				// kalau tidak, pakai harga beli terakhir apa adanya.
+				const comparableByContent = options.every(
+					(option) => (option.packNetQuantity ?? 0) > 0,
+				);
+				const sortValue = (option: InventoryWorkspaceRow) => {
+					const price = option.lastPurchasePrice;
+					if (price == null || price <= 0) return Number.POSITIVE_INFINITY;
+					return comparableByContent && option.packNetQuantity
+						? price / option.packNetQuantity
+						: price;
+				};
+				options.sort((a, b) => {
+					const diff = sortValue(a) - sortValue(b);
+					if (Number.isFinite(diff) && diff !== 0) return diff;
+					return a.ingredientName.localeCompare(b.ingredientName, "id-ID");
+				});
+				const cheapest = sortValue(options[0]);
+				return { group, options, cheapest, comparableByContent };
+			})
+			.sort((a, b) => a.group.localeCompare(b.group, "id-ID"));
+	}, [rows]);
+	if (groups.length === 0) return null;
+
+	const formatNumber = (value: number) =>
+		value.toLocaleString("id-ID", { maximumFractionDigits: 2 });
+
+	return (
+		<div className="rounded-xl border border-border/80 bg-card shadow-sm">
+			<button
+				className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
+				onClick={() => setOpen((value) => !value)}
+				type="button"
+			>
+				<div className="flex min-w-0 items-center gap-2">
+					<BarChart3 className="h-3.5 w-3.5 shrink-0 text-primary" />
+					<span className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-foreground">
+						Perbandingan Harga per Kategori Bahan
+					</span>
+					<span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+						{groups.length} kategori
+					</span>
+				</div>
+				{open ? (
+					<ChevronUp className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+				) : (
+					<ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+				)}
+			</button>
+			{open && (
+				<div className="grid gap-2 px-3 pb-3 md:grid-cols-2 xl:grid-cols-3">
+					{groups.map(({ group, options, cheapest, comparableByContent }) => (
+						<div
+							className="rounded-lg border border-border/70 bg-muted/20 p-2"
+							key={group}
+						>
+							<div className="mb-1.5 flex items-baseline justify-between gap-2">
+								<p className="truncate text-xs font-bold text-foreground" title={group}>
+									{group}
+								</p>
+								<span className="shrink-0 text-[10px] text-muted-foreground">
+									{options.length} pilihan
+								</span>
+							</div>
+							<div className="space-y-1">
+								{options.map((option) => {
+									const price =
+										option.lastPurchasePrice != null && option.lastPurchasePrice > 0
+											? option.lastPurchasePrice
+											: null;
+									const value = price == null ? Number.POSITIVE_INFINITY : (comparableByContent && option.packNetQuantity ? price / option.packNetQuantity : price);
+									const isCheapest = Number.isFinite(cheapest) && value === cheapest;
+									const deltaPct =
+										price != null && Number.isFinite(cheapest) && cheapest > 0 && !isCheapest
+											? ((value - cheapest) / cheapest) * 100
+											: null;
+									return (
+										<div
+											className={`flex items-center justify-between gap-2 rounded-md border px-1.5 py-1 ${
+												isCheapest
+													? "border-emerald-200 bg-emerald-50/70"
+													: "border-transparent bg-background/60"
+											}`}
+											key={option.inventoryId}
+										>
+											<div className="min-w-0">
+												<p className="truncate text-[11px] font-semibold text-foreground" title={option.ingredientName}>
+													{option.ingredientName}
+												</p>
+												<p className="truncate text-[10px] text-muted-foreground">
+													{option.defaultBrandName ? `Merek: ${option.defaultBrandName}` : "Tanpa merek / generik"}
+													{(option.packNetQuantity ?? 0) > 0
+														? ` · ${formatNumber(option.packNetQuantity as number)} ${option.packNetUnit ?? ""}`
+														: ""}
+												</p>
+											</div>
+											<div className="shrink-0 text-right">
+												<p className="whitespace-nowrap font-mono text-[11px] font-semibold text-foreground">
+													{price != null ? formatCurrencyIDR(price) : "-"}
+												</p>
+												{isCheapest ? (
+													<span className="inline-flex rounded-full bg-emerald-100 px-1.5 text-[9px] font-bold text-emerald-700">
+														Termurah
+													</span>
+												) : deltaPct != null && deltaPct > 0.5 ? (
+													<span className="text-[9px] font-semibold text-rose-600">
+														+{deltaPct.toFixed(0)}%
+													</span>
+												) : (
+													<span className="text-[9px] text-muted-foreground">-</span>
+												)}
+											</div>
+										</div>
+									);
+								})}
+							</div>
+							<p className="mt-1 text-[9px] leading-tight text-muted-foreground/80">
+								{comparableByContent
+									? "Harga dibandingkan per satuan isi."
+									: "Harga beli terakhir; perhatikan ukuran kemasan."}
+							</p>
+						</div>
+					))}
+				</div>
+			)}
 		</div>
 	);
 }

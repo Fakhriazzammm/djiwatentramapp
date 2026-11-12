@@ -36,6 +36,7 @@ type InventoryRecord = {
 	netWeight?: string | null;
 	imagePath?: string | null;
 	category?: string | null;
+	ingredientGroup?: string | null;
 	packNetQuantity?: number | null;
 	packNetUnit?: string | null;
 	contentToBaseFactor?: number | null;
@@ -416,6 +417,7 @@ async function fetchInventoryRows() {
 		imagePath: row.imagePath ?? row.image_path ?? null,
 		netWeight: row.net_weight ?? row.netWeight ?? row.berat ?? null,
 		category: row.category ?? null,
+		ingredientGroup: row.ingredientGroup ?? row.ingredient_group ?? null,
 		packNetQuantity:
 			(row.packNetQuantity ?? row.pack_net_quantity) === null ||
 			(row.packNetQuantity ?? row.pack_net_quantity) === undefined
@@ -770,6 +772,7 @@ async function loadWorkspace(daysWindow: number) {
 				unitConversions: item.unitConversions ?? null,
 				imagePath: item.imagePath ?? null,
 				defaultBrandName: item.defaultBrandName ?? null,
+				ingredientGroup: item.ingredientGroup ?? null,
 				preferredStoreId: item.preferredStoreId ?? null,
 				preferredStoreName:
 					item.preferredStoreId != null

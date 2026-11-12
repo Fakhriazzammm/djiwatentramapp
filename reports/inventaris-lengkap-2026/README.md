@@ -72,15 +72,76 @@ sebelumnya) dan tersebar ke **115 bahan** yang sudah ada.
 Semua dibuat dengan `quantity = 0` dan `unit_status = 'AMBIGUOUS'` sehingga tidak
 menambah stok fisik dan tidak mengubah perhitungan apa pun.
 
-## 5. Keputusan alias yang perlu diketahui
+## 5. Model baris per merek (revisi 13 Nov 2026)
 
-Merek → bahan generik (agar satu baris stok, bukan banyak baris kembar):
+Keputusan produk: **kategori = bahan dasar, baris = merek + ukuran, alias = ejaan
+merek yang sama.** Jadi beberapa merek untuk bahan yang sama tidak dilebur ke satu
+baris; masing-masing menjadi baris sendiri di bawah kategori yang sama supaya harga
+bisa dibandingkan dan merek bisa diganti saat salah satu naik harga.
+
+- Kolom baru `pos.inventory.ingredient_group` menyimpan kategori bahan
+  (mis. `Minyak Goreng`). Kolom `category` tetap departemen (`kitchen`, `bar`,
+  `packaging`, `cleaning`, `other`).
+- Merek disimpan di `default_brand_name`; ukuran di `pack_net_quantity` /
+  `pack_net_unit`. Pola nama baris: `<Kategori> <Merek> <Ukuran>`, contoh
+  `Minyak Goreng Rose Brand 2L`.
+- Baris generik tanpa merek **tetap dipertahankan** untuk pembelian yang tidak
+  menyebut merek (mis. `Minyak`, `Cooking Oil`, `Gula pasir`).
+- Alias hanya dipakai untuk varian ejaan/OCR dari merek yang sama, mis.
+  `ROSE BRAND POUCH 2L` → `Minyak Goreng Rose Brand 2L`.
+
+Baris merek baru yang dibuat (15 baris, `quantity = 0`,
+`unit_status = 'AMBIGUOUS'`, harga terakhir = median bukti struk):
+
+| Kategori | Baris merek baru |
+| --- | --- |
+| Minyak Goreng | Rose Brand 2L, Sania 2L, VIPCO 2L, Kunci Mas 2L, Minyak Kita 2L |
+| Margarin | Simas 200g (`Sinas`/`Cimas`/`Sinar` = varian OCR merek yang sama) |
+| Gula Pasir | Raja Gula 1kg, Gula Vit 1kg, GKP 1kg |
+| Bawang Putih Bubuk | Desaku 100g |
+| Sirup Green Apple | Tofico, Top 100 |
+| Kecap Ikan | Djoe Hoa 620ml |
+| Kecap Inggris | SNW 600ml, Asia Harum |
+
+Baris lama yang sudah berupa satu merek tidak di-rename; hanya `ingredient_group`
+dan `default_brand_name`-nya diisi (mis. `Margarine (Filma)` → grup `Margarin`,
+merek `Filma`; `Cream` → `Krim Masak`, `Gold Label`). Alias merek yang tadinya
+menempel di baris generik dipindahkan ke baris merek yang benar.
+
+View `pos.inventory_group_options` menyediakan pilihan merek per kategori, urut
+harga terakhir termurah. Halaman inventaris admin menampilkan panel
+**Perbandingan Harga per Kategori Bahan** dengan penanda `Termurah` dan selisih
+persen terhadap opsi termurah.
+
+Contoh hasil grup Minyak Goreng (10 baris):
+
+| Baris | Merek | Ukuran | Harga terakhir |
+| --- | --- | ---: | ---: |
+| Minyak Tropical 1L | Tropical | 1 L | 18.500 |
+| Minyak Goreng | Rizki (generik) | 1 botol | 20.000 |
+| Minyak Rizki | Rizki | 1 botol | 21.000 |
+| Minyak Sunco | Sunco | 1 L | 39.000 |
+| Minyak Goreng Minyak Kita 2L | Minyak Kita | 2 L | 40.000 |
+| Minyak Goreng Rose Brand 2L | Rose Brand | 2 L | 41.950 |
+| Minyak Goreng VIPCO 2L | VIPCO | 2 L | 41.950 |
+| Minyak Goreng Sania 2L | Sania | 2 L | 43.450 |
+| Minyak Goreng Kunci Mas 2L | Kunci Mas | 2 L | 44.500 |
+| Minyak Bimoli | Bimoli | — | (belum ada harga) |
+
+Sengaja **tidak** digabung (masih kandidat duplikat sejati, perlu keputusan):
+`Beans Robusta`/`Robusta Beans`, `Schweppes Soda`/`Soda Water Schweppes`,
+`Basil`/`Basil Leaves`, `Mayonaise`/`Mayones Maestro 1L`,
+`Sapi Cincang`/`Sapi Cincang 200gr`, `Susu Kental Manis`/`SKM Carnation`.
+
+## 5b. Keputusan alias sebelum revisi
+
+Catatan lama dipertahankan sebagai riwayat. Sebelum revisi, merek-merek berikut
+dilebur sebagai alias ke satu baris generik:
 
 - **Minyak goreng**: Rose Brand, VIPCO, Sania, Minyak Kita, Kunci Mas, "2 LT",
   "Cooking Oil" → alias `Minyak Goreng`.
 - **Margarin**: Simas / Sinas / Cimas / Sinar / Filma → alias `Margarine (Filma)`.
-  Simas dkk. adalah **margarin** (Rp12.500/pcs), bukan minyak goreng; baris
-  `Margarine (Filma)` kini menjadi baris generik margarin.
+  Simas dkk. adalah **margarin** (Rp12.500/pcs), bukan minyak goreng.
 - **Krim masak**: Rich Gold / Richgold / Gold Label → alias `Cream` (harga sama,
   Rp57.500–58.500).
 - **Saus Del Monte**: "Hot"/"Del bbq" dkk. → `Delmonte Saus Cabe` / `Barbeque Sauce`.
@@ -90,14 +151,8 @@ Merek → bahan generik (agar satu baris stok, bukan banyak baris kembar):
   `Freshmilk Greenfield`; Cimory → baris baru.
 - **Kentang beku**: `Kentang 2.5kg` (Rp79.000) → `Kentang Shoestring`.
 
-Sengaja **tidak** digabung:
-
-- `Minyak Bimoli` tetap baris sendiri (riwayatnya terpisah, qty 0). Bisa
-  dijadikan alias `Minyak Goreng` nanti bila disetujui.
-- Pasangan yang sudah ada dan dibiarkan: Beans Robusta/Robusta Beans,
-  Schweppes Soda/Soda Water Schweppes, Basil/Basil Leaves,
-  Mayonaise/Mayones Maestro 1L, Sapi Cincang/Sapi Cincang 200gr,
-  Ayam Cincang/Ayam Giling, Minyak Sunco/Tropical/Rizki/Goreng.
+Penggabungan merek-merek di atas sekarang dibalik: masing-masing merek menjadi
+baris sendiri di grup yang sama (lihat bagian 5).
 
 ## 6. Penerapan ke produksi
 
@@ -132,6 +187,40 @@ Hasil verifikasi di produksi:
 
 Bot `yumi-finance-agent.service` di-restart dan memuat ulang:
 `Loaded 1029 alias entries for 172 inventory items`.
+
+### 6b. Migrasi grup bahan + baris merek
+
+Migrasi: `packages/backend/supabase/migrations/20261113170000_inventory_brand_groups.sql`
+dan `20261113173000_inventory_group_view.sql`.
+
+Sifat: **aditif** — tidak menghapus baris, tidak mengubah `quantity`, tidak
+menyentuh riwayat stok/resep/pesanan. Yang dilakukan:
+
+1. Snapshot `pos.inventory` → `pos.inventory_brandgroup_snapshot`.
+2. Tambah kolom `ingredient_group` + indeks.
+3. Isi `ingredient_group` dan `default_brand_name` untuk 187 baris.
+4. Buat 15 baris merek baru (`quantity = 0`, `unit_status = 'AMBIGUOUS'`).
+5. Pindahkan 52 alias merek dari baris generik ke baris merek yang benar.
+6. Catat audit `brand_row_created`, `brand_group_set`, `alias_moved`.
+7. Buat view `pos.inventory_group_options` (opsi per grup, urut termurah).
+8. Tambah `ingredientGroup` di view publik `public.pos_inventory`.
+
+Backup sebelum eksekusi:
+`~/backups/inventory-catalog-20261113/pre-brandgroups-20261113-073005.sql.gz`.
+
+Hasil verifikasi di produksi:
+
+| Pemeriksaan | Sebelum | Sesudah | Harus |
+| --- | ---: | ---: | --- |
+| Baris inventaris | 172 | **187** | +15 |
+| Baris merek baru | 0 | **15** | 15 |
+| Baris tanpa grup | — | **0** | 0 |
+| Nama bahan duplikat | 0 | **0** | 0 |
+| Baris lama hilang | — | **0** | 0 |
+| `quantity` berubah | — | **0** | 0 |
+| Alias dimiliki 2 bahan | 1 | **1** | tetap (pasangan disengaja) |
+
+Bot dimuat ulang: `Loaded 1044 alias entries for 187 inventory items`.
 
 ## 7. Yang masih perlu konfirmasi
 
