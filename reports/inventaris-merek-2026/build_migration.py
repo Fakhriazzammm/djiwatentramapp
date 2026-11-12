@@ -222,7 +222,7 @@ NEW_ROWS = [
         "display_unit": "gram",
         "pack_qty": 100,
         "pack_unit": "gram",
-        "price": 7000,
+        "price": 23800,
         "aliases": ["Desaku Bubuk", "Desaku Seasoning", "DESAKUBWGPTI HBBK",
                     "DESAKUBWGPTI HBBK 100G", "DESAKUBWGPTIBBK100G",
                     "DESAKUBWGPTIHB8K100G", "DESAKUBWGPTIHBBK",
