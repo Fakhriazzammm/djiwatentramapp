@@ -1,0 +1,1489 @@
+nama,kunci,jumlah,sumber,satuan,keputusan,bahan,skor,alasan
+YB TAWAR GANDUM,yb tawar gandum,233,ai/items/tx,pcs,ALIAS,Roti Tawar Gandum,100,alias persis
+Kemangi,kemangi,204,ai/items/tx,"pcs,ikat",ALIAS,Kemangi Segar,100,alias persis
+Gold label,gold label,194,ai/items/tx,"pcs,ltr",ALIAS,Cream,100,alias persis
+Es Batu,es batu,188,items/tx,"pcs,ball,gram",EXACT,Es Batu,100,nama sama
+Selada,selada,184,ai/items/tx,"pcs,ikat",ALIAS,Selada (Ibu Teti Pasar),100,alias persis
+KRESEK HD28 0.25,kresek hd28 0 25,180,ai/items/tx,pcs,EXCLUDE,,57,kemasan
+timun,timun,178,ai/items/tx,"pcs,kg",EXACT,Timun,100,nama sama
+Beras DT,beras dt,167,ai/items/tx,kg,ALIAS,Beras,100,alias persis
+UBI,ubi,154,ai/items/tx,"pcs,butir,kg",ALIAS,Ubi Cilembu,100,alias persis
+Air Galon,air galon,135,items/tx,"pcs,galon,ml",EXACT,Air Galon,100,nama sama
+Ongkir,ongkir,123,ai/items/tx,"pcs,gram",EXACT,Ongkir,100,nama sama
+Bikin Yamin,bikin yamin,121,ai/items/tx,"pcs,pack,box",EXACT,Bikin Yamin,100,nama sama
+Daging Sapi Cincang 200g,daging sapi cincang 200g,121,ai/items/tx,"pack,pcs,200g",ALIAS,Sapi Cincang,100,fuzzy 100 (kedua 92)
+Cincang Ayam 200g,cincang ayam 200g,118,ai/items/tx,"pack,pcs,200g",ALIAS,Ayam Cincang,100,fuzzy 100 (kedua 80)
+Goldlabel,goldlabel,102,ai/items/tx,"pcs,ltr",ALIAS,Cream,100,alias persis
+Simas,simas,102,ai/items/tx,pcs,ALIAS,Margarine (Filma),100,keputusan manual
+PH FAC TISSUE 1000S,ph fac tissue 1000s,100,ai/items/tx,pcs,EXCLUDE,,57,kemasan
+KANTONG PLASTIK SEDANG U24,kantong plastik sedang u24,100,ai/items/tx,pcs,EXCLUDE,,68,kemasan
+Gula aren,gula aren,100,ai/items/tx,"pcs,kg",EXACT,Gula Aren,100,nama sama
+Daging Sapi Cincang,daging sapi cincang,99,ai/items/tx,"pack,pcs,200g",ALIAS,Sapi Cincang,100,alias persis
+Sq lemon,sq lemon,99,ai/items/tx,pcs,ALIAS,Sunquick Lemon,100,alias persis
+BERNARDI HORECA PACK SOSIS SAPI 1KG VP,bernardi horeca pack sosis sapi 1kg vp,98,ai/items/tx,"pcs,pack",ALIAS,Bernardi Horeca Sosis,100,fuzzy 100 (kedua 76)
+Cincang Ayam,cincang ayam,96,ai/items/tx,"pack,pcs,200g",ALIAS,Ayam Cincang,100,alias persis
+Telor Omega,telor omega,96,ai/items/tx,"pcs,butir",ALIAS,Telor Omega (Happy Egg),100,keputusan manual
+SCHWEPPES SDWATER250,schweppes sdwater250,88,ai/items/tx,"pcs,250ml",ALIAS,Soda Water Schweppes,100,alias persis
+KRESEK SEMI JMBCETAK,kresek semi jmbcetak,77,ai/items/tx,pcs,EXCLUDE,,63,kemasan
+B. daun,b daun,75,ai/items/tx,"pcs,ikat",ALIAS,Bawang Daun,100,alias persis
+Air Mineral,air mineral,74,items/tx,"dus,pcs,ml",EXACT,Air Mineral,100,nama sama
+Sampah,sampah,71,ai/items/tx,"pcs,karung",EXACT,Sampah,100,nama sama
+Drip Matcha,drip matcha,68,ai/items/tx,pcs,ALIAS,Matcha Powder,100,alias persis
+Ubi Cilembu,ubi cilembu,67,items/tx,"pcs,kg",EXACT,Ubi Cilembu,100,nama sama
+Kecap anggur manis,kecap anggur manis,67,ai/items/tx,pcs,ALIAS,Kecap Anggur,100,alias persis
+Kentang,kentang,65,ai/items/tx,"pcs,2.5kg",EXACT,Kentang,100,nama sama
+BERNARDI HORECA SOSIS SAPI,bernardi horeca sosis sapi,64,items/tx,pcs,ALIAS,Bernardi Horeca Sosis,100,alias persis
+pangsit,pangsit,63,ai/items/tx,pcs,ALIAS,Kulit Pangsit (Cap Jempol),100,alias persis
+KRESEK HD 22 POLOS,kresek hd 22 polos,60,ai/items/tx,pcs,EXCLUDE,,57,kemasan
+Plastic Bag,plastic bag,57,ai,"pak,pcs",EXCLUDE,,66,kemasan
+ROSE BRAND POUCH 2L,rose brand pouch 2l,56,ai/items/tx,"pcs,2l",ALIAS,Minyak Goreng,100,keputusan manual
+B. putih kupas,b putih kupas,52,ai/items/tx,pcs,ALIAS,Bawang Putih,100,alias persis
+ORCHID BTR UNSALT200,orchid btr unsalt200,49,ai/items/tx,pcs,ALIAS,Butter,100,alias persis
+Kentang 2.5kg,kentang 2 5kg,49,ai/items/tx,"pcs,2.5kg,kg",ALIAS,Kentang Shoestring,100,keputusan manual
+Selada (Ibu Teti Pasar),selada ibu teti pasar,46,items/tx,"pcs,ikat",EXACT,Selada (Ibu Teti Pasar),100,nama sama
+Kecap Bango,kecap bango,46,ai/items/tx,pcs,ALIAS,Kecap Manis,100,alias persis
+Blp,blp,46,ai/items/tx,pcs,ALIAS,Bawang Putih,100,keputusan manual
+FM GF,fm gf,45,ai/items/tx,"karton,ctn,pcs",ALIAS,Freshmilk Greenfield,100,alias persis
+YOU C1000 APPLE 140,you c1000 apple 140,45,ai/items/tx,pcs,SUDAH_ALIAS,C1000 Apple,62,sudah terdaftar sebagai alias
+Del bbq,del bbq,45,ai/items/tx,"pcs,kg",ALIAS,Barbeque Sauce,100,keputusan manual
+Baso,baso,43,ai/items/tx,pcs,ALIAS,Bakso,100,alias persis
+B. putih,b putih,43,ai/items/tx,"pcs,kg",ALIAS,Bawang Putih,100,keputusan manual
+Kecap Asin ABC,kecap asin abc,43,ai/items/tx,pcs,EXACT,Kecap Asin ABC,100,nama sama
+FF Coconut,ff coconut,42,ai/items/tx,"karton,ctn,pcs",ALIAS,Frisianflag Coconut Delight,100,alias persis
+Gas,gas,42,ai/items/tx,pcs,ALIAS,Gas 3 Kg,100,alias persis
+Kecap Anggur,kecap anggur,42,ai/items/tx,pcs,EXACT,Kecap Anggur,100,nama sama
+Ebi,ebi,40,ai/items/tx,"pcs,kg,ons",ALIAS,Ebi (500gr),100,alias persis
+MULTI MP08 1000G,multi mp08 1000g,39,ai/items/tx,"pcs,1000g",REVIEW,,71,fuzzy 71 (kedua 57)
+B. goreng,b goreng,39,ai/items/tx,pcs,ALIAS,Bawang Goreng,100,alias persis
+Thermal Silver,thermal silver,39,ai/items/tx,"pak,pcs",EXCLUDE,,71,kemasan
+c. domba,c domba,39,ai/items/tx,"kg,pcs",ALIAS,Cabe Domba,100,alias persis
+ROSE BRAND,rose brand,38,items/tx,pcs,ALIAS,Minyak Goreng,100,keputusan manual
+FM D,fm d,37,ai/items/tx,"karton,pcs,ctn",ALIAS,Freshmilk Diamond,100,keputusan manual
+IDAHO SHOESTRING 2KG,idaho shoestring 2kg,36,ai/items/tx,"pcs,pack",ALIAS,Kentang Shoestring,90,alias tertanam: idaho shoestring
+Rich Gold,rich gold,35,ai/items/tx,pcs,ALIAS,Cream,100,keputusan manual
+TELUR AYM NEGERI TBG,telur aym negeri tbg,35,items/tx,"kg,pcs",ALIAS,Telur Ayam,90,fuzzy 90 (kedua 57)
+TTL GRNLTDMSHROOM400,ttl grnltdmshroom400,34,ai/items/tx,"pcs,400 g",REVIEW,,52,fuzzy 52 (kedua 48)
+Cleo,cleo,34,ai/items/tx,"pcs,dus",EXACT,Cleo,100,nama sama
+Panir mix,panir mix,33,ai/items/tx,kg,EXACT,Panir Mix,100,nama sama
+Juho,juho,33,ai/items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 48)
+DESAKUBWGPTIHBK100G,desakubwgptihbk100g,33,ai/items/tx,"pcs,100g",ALIAS,Bawang Putih Bubuk (YOA),100,keputusan manual
+Gas 3 Kg,gas 3 kg,32,items/tx,pcs,EXACT,Gas 3 Kg,100,nama sama
+Bowl 500,bowl 500,32,ai/items/tx,pcs,EXCLUDE,,54,kemasan
+FILMA MRGARINSALT200,filma mrgarinsalt200,32,ai/items/tx,"pcs,200g",ALIAS,Margarine (Filma),88,alias tertanam: filma
+Max lemon,max lemon,32,ai/items/tx,pak,ALIAS,Lemon Tea Max Tea,100,keputusan manual
+Roko Mang Andre,roko mang andre,32,items/tx,pcs,EXACT,Roko Mang Andre,100,nama sama
+Schweppes Soda,schweppes soda,31,items/tx,"pcs,kaleng",EXACT,Schweppes Soda,100,nama sama
+Listrik,listrik,31,ai/items/tx,pcs,EXCLUDE,,68,operasional
+MULTI MP08,multi mp08,30,items/tx,pcs,REVIEW,,71,fuzzy 71 (kedua 57)
+YOA OREGANO 20GR,yoa oregano 20gr,29,ai/items/tx,"pcs,20gr",ALIAS,Oregano,100,fuzzy 100 (kedua 63)
+Jungle apel,jungle apel,29,ai/items/tx,pcs,ALIAS,Apple Juice,100,keputusan manual
+GOLD'FARM MIX VEG500,gold farm mix veg500,29,ai/items/tx,pcs,ALIAS,Mix Vegetable,100,alias persis
+Cream,cream,28,items/tx,pcs,EXACT,Cream,100,nama sama
+J. limo,j limo,28,ai/items/tx,"kg,pcs",ALIAS,Jeruk Limau,100,alias persis
+Kentang Shoestring,kentang shoestring,28,ai/items/tx,"pcs,pack",EXACT,Kentang Shoestring,100,nama sama
+Bawang Daun,bawang daun,28,ai/items/tx,"gram,pcs",EXACT,Bawang Daun,100,nama sama
+YOA LADA HTM BBK35GR,yoa lada htm bbk35gr,28,ai/items/tx,"pcs,35gr",ALIAS,Lada Hitam Bubuk,90,alias tertanam: lada htm bbk35gr
+biji wijen,biji wijen,27,ai/items/tx,"pcs,kg",EXACT,Biji Wijen,100,nama sama
+Minyak wijen,minyak wijen,27,ai/items/tx,pcs,EXACT,Minyak Wijen,100,nama sama
+Blp. gram,blp gram,26,ai/items/tx,"pcs,gram",ALIAS,Bawang Putih,100,keputusan manual
+Tutup Bowl,tutup bowl,26,ai/items/tx,pcs,EXCLUDE,,76,kemasan
+DESAKUBWGPTIHBBK100G,desakubwgptihbbk100g,26,ai/items/tx,"pcs,100g",ALIAS,Bawang Putih Bubuk (YOA),100,keputusan manual
+FM 6F,fm 6f,26,ai/items/tx,"ctn,karton,lctn",ALIAS,Freshmilk Diamond,100,keputusan manual
+Idola 15,idola 15,25,ai/items/tx,pcs,EXCLUDE,,58,kemasan
+KANTONG PLASTIK BESAR U35,kantong plastik besar u35,25,ai/items/tx,pcs,EXCLUDE,,68,kemasan
+B. merah,b merah,25,ai/items/tx,"pcs,kg",ALIAS,Bawang Merah,88,alias tertanam: merah
+Fm Ef,fm ef,24,ai/items/tx,"karton,pcs,ctn",ALIAS,Freshmilk Diamond,100,keputusan manual
+Mahsuri Saus Tiram 510 G,mahsuri saus tiram 510 g,24,ai/items/tx,pcs,ALIAS,Saus Tiram (Mahsuri),100,fuzzy 100 (kedua 77)
+OREGANO,oregano,23,ai/items/tx,"pcs,20gr",EXACT,Oregano,100,nama sama
+Sinas,sinas,23,ai/items/tx,pcs,ALIAS,Margarine (Filma),100,keputusan manual
+Del hot,del hot,23,ai/items/tx,"pcs,pack",ALIAS,Delmonte Saus Cabe,100,alias persis
+Sprite,sprite,23,ai/items/tx,"pcs,liter",EXACT,Sprite,100,nama sama
+CIMORY FM FULLCRM950,cimory fm fullcrm950,23,ai/items/tx,pcs,NEW,Freshmilk Cimory 950ml,100,keputusan manual
+ANGKAK/KG,angkak kg,23,ai/items/tx,"pcs,kg",ALIAS,Angkak,100,alias persis
+Coklat,coklat,23,ai/items/tx,pcs,ALIAS,Coklat Powder,100,alias persis
+Gula putih,gula putih,23,ai/items/tx,pcs,ALIAS,Gula Pasir Putih,100,alias persis
+Angkak,angkak,22,ai/items/tx,"pcs,gram,kg",EXACT,Angkak,100,nama sama
+Bawang Putih,bawang putih,22,ai/items/tx,"pcs,gram",EXACT,Bawang Putih,100,nama sama
+Fn GF,fn gf,22,ai/items/tx,"pcs,l,karton",ALIAS,Freshmilk Greenfield,100,keputusan manual
+Bakso,bakso,22,ai/items/tx,"pcs,pack",EXACT,Bakso,100,nama sama
+Gula pasir,gula pasir,22,ai/items/tx,"pcs,kg",ALIAS,Gula Pasir Putih,100,alias persis
+Cabe Rawit,cabe rawit,21,ai/items/tx,"pcs,kg",EXACT,Cabe Rawit,100,nama sama
+FILLET PAHA 1KG,fillet paha 1kg,21,ai/items/tx,"pcs,kg",ALIAS,Paha Filet,100,keputusan manual
+Omega Eggs,omega eggs,21,ai,"pcs,butir",ALIAS,Telor Omega (Happy Egg),100,keputusan manual
+Beras,beras,20,ai/items/tx,"kg,pcs",EXACT,Beras,100,nama sama
+Del tomat,del tomat,20,ai/items/tx,pcs,ALIAS,Saus Tomat (Del Monte),100,keputusan manual
+Bowl 500ml,bowl 500ml,20,ai/items/tx,pcs,EXCLUDE,,54,kemasan
+Byp,byp,20,ai/items/tx,pcs,ALIAS,Bawang Putih,100,keputusan manual
+Kecap Anggur Bantal,kecap anggur bantal,20,ai/items/tx,pcs,ALIAS,Kecap Anggur,100,fuzzy 100 (kedua 84)
+Jungle Aple,jungle aple,20,ai/items/tx,pcs,ALIAS,Apple Juice,100,keputusan manual
+Tutup bowl 500,tutup bowl 500,19,ai/items/tx,pcs,EXCLUDE,,76,kemasan
+Hot sachet,hot sachet,19,ai/items/tx,pcs,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+Bawang Goreng,bawang goreng,19,ai/items/tx,"gram,pcs",EXACT,Bawang Goreng,100,nama sama
+Kemiri,kemiri,19,ai/items/tx,"kg,pcs",EXACT,Kemiri,100,nama sama
+KRESEK HD 28 POLOS,kresek hd 28 polos,19,ai/items/tx,pcs,EXCLUDE,,67,kemasan
+Frisianflag Coconut Delight,frisianflag coconut delight,19,items/tx,"pcs,karton",EXACT,Frisianflag Coconut Delight,100,nama sama
+KOEPOE2 P VANILI 25,koepoe2 p vanili 25,19,ai/items/tx,pcs,ALIAS,Vanili Bubuk (Koepoe),100,keputusan manual
+lemon tea,lemon tea,19,ai/items/tx,pak,ALIAS,Lemon Tea Max Tea,100,keputusan manual
+PROMO 1: PRICE,promo 1 price,19,ai/items/tx,pcs,EXCLUDE,,69,kemasan
+Cabe Domba,cabe domba,19,ai/items/tx,"kg,pcs",EXACT,Cabe Domba,100,nama sama
+Roti Tawar Gandum,roti tawar gandum,19,ai/items/tx,"pack,bungkus",EXACT,Roti Tawar Gandum,100,nama sama
+Schweppes Soda Water,schweppes soda water,19,ai,"250ml,250",ALIAS,Soda Water Schweppes,100,keputusan manual
+Tomat 12x25,tomat 12x25,18,ai/items/tx,pcs,REVIEW,,62,fuzzy 62 (kedua 52)
+SPRITE PET 1000ML,sprite pet 1000ml,18,ai/items/tx,"pcs,1000ml",ALIAS,Sprite,100,keputusan manual
+Daging Ayam,daging ayam,18,items/tx,"pcs,pack",EXACT,Daging Ayam,100,nama sama
+Bawang Merah,bawang merah,18,ai/items/tx,"kg,pcs",EXACT,Bawang Merah,100,nama sama
+FILLET PAHA,fillet paha,18,ai/items/tx,"pcs,kg",ALIAS,Paha Filet,95,fuzzy 95 (kedua 57)
+Margarine (Filma),margarine filma,18,items/tx,pcs,EXACT,Margarine (Filma),100,nama sama
+LADAKU GROUND W100,ladaku ground w100,18,ai/items/tx,"pcs,100 g",ALIAS,Lada Bubuk,100,alias persis
+Saus Tiram (Mahsuri),saus tiram mahsuri,17,items/tx,pcs,EXACT,Saus Tiram (Mahsuri),100,nama sama
+Mangandri,mangandri,17,items/tx,"pcs,bungkus",EXACT,Mangandri,100,nama sama
+Fn gr,fn gr,17,ai/items/tx,"pcs,karton,ctn",ALIAS,Freshmilk Greenfield,100,keputusan manual
+MAIZENAKU 300 GR,maizenaku 300 gr,17,ai/items/tx,"pcs,300 gr",ALIAS,Tepung Jagung,89,alias tertanam: maizenaku
+Jeruk Limo,jeruk limo,17,ai/items/tx,kg,ALIAS,Jeruk Limau,100,alias persis
+Le Mineral,le mineral,17,ai/items/tx,"pcs,dus,pack",EXACT,Le Mineral,100,nama sama
+Kantong Plastik,kantong plastik,17,ai,pcs,EXCLUDE,,68,kemasan
+IDAHO SHOESTRING,idaho shoestring,16,items/tx,"pcs,kg",ALIAS,Kentang Shoestring,100,alias persis
+GOLDEN FARM MIXED VEGETABLES,golden farm mixed vegetables,16,ai/items/tx,"pcs,kg",ALIAS,Mix Vegetable,100,alias persis
+WINGS PORS BIRU 700,wings pors biru 700,16,ai/items/tx,"pcs,700",REVIEW,,63,fuzzy 63 (kedua 63)
+Argopuro fw,argopuro fw,16,ai/items/tx,pcs,ALIAS,Arabica Beans,100,keputusan manual
+Rokok mang andri,rokok mang andri,16,ai/items/tx,pcs,ALIAS,Roko Mang Andre,90,fuzzy 90 (kedua 84)
+B. Bombay,b bombay,16,items/tx,"pcs,kg",ALIAS,Bawang Bombai,100,keputusan manual
+LADA HTM BBK35GR,lada htm bbk35gr,16,items/tx,pcs,ALIAS,Lada Hitam Bubuk,100,alias persis
+Telur Omega,telur omega,16,ai/items/tx,"butir,pcs",ALIAS,Telor Omega (Happy Egg),100,keputusan manual
+Tiram panda,tiram panda,16,ai/items/tx,pcs,ALIAS,Saus Tiram Panda,100,fuzzy 100 (kedua 63)
+ABC KECAP ASIN,abc kecap asin,15,ai/items/tx,pcs,ALIAS,Kecap Asin ABC,100,alias persis
+SCHWEPPES SOWATER250,schweppes sowater250,15,ai/items/tx,pcs,ALIAS,Soda Water Schweppes,100,alias persis
+YOA THYME 24G,yoa thyme 24g,15,ai/items/tx,"pcs,24g",ALIAS,Thyme,100,fuzzy 100 (kedua 48)
+MAMALMN PP LEMON 610,mamalmn pp lemon 610,15,ai/items/tx,pcs,REVIEW,,71,fuzzy 71 (kedua 57)
+Tofico Green Aple,tofico green aple,15,ai/items/tx,pcs,ALIAS,Sirup Green Apple,100,keputusan manual
+B. Bombai,b bombai,15,ai/items/tx,"kg,pcs",ALIAS,Bawang Bombai,89,fuzzy+varian 89
+Parkir,parkir,15,items/tx,kali,EXCLUDE,,76,operasional
+MRGARINSALT200,mrgarinsalt200,14,items/tx,pcs,ALIAS,Margarine (Filma),100,keputusan manual
+Trashbag go,trashbag go,14,ai/items/tx,pcs,EXCLUDE,,63,kemasan
+EKONOMI PP JNP R1550,ekonomi pp jnp r1550,14,ai/items/tx,pcs,ALIAS,Ekonomi Pencuci Piring,89,alias tertanam: ekonomi
+J. Lemo,j lemo,14,ai/items/tx,"pcs,kg",REVIEW,,79,fuzzy 79 (kedua 76)
+Trashbag 90,trashbag 90,14,ai/items/tx,pcs,EXCLUDE,,63,kemasan
+Mahsuri Saus Tiram,mahsuri saus tiram,14,items/tx,pcs,ALIAS,Saus Tiram (Mahsuri),100,fuzzy 100 (kedua 77)
+Bowl,bowl,14,items/tx,pcs,ALIAS,Paperbowl 650ml,95,fuzzy 95 (kedua 63)
+Tutup Bowl 500ml,tutup bowl 500ml,14,ai/items/tx,pcs,EXCLUDE,,76,kemasan
+VIPCO POUCH 2L,vipco pouch 2l,14,ai/items/tx,pcs,ALIAS,Minyak Goreng,100,keputusan manual
+CLING PK UNGU R400,cling pk ungu r400,14,ai/items/tx,pcs,ALIAS,Cling,100,fuzzy 100 (kedua 69)
+PAPRIKA POWDER/KG,paprika powder kg,14,ai/items/tx,"kg,pcs",ALIAS,Paprika Powder,100,alias persis
+Del Hot sct,del hot sct,14,ai/items/tx,pcs,ALIAS,Delmonte Saus Cabe,89,alias tertanam: del hot
+Mayones,mayones,14,ai/items/tx,"kg,pcs",ALIAS,Mayonaise,100,alias persis
+Ground Beef,ground beef,14,ai,"pack,200 g",ALIAS,Sapi Cincang 200gr,100,keputusan manual
+THYME,thyme,13,ai/items/tx,pcs,EXACT,Thyme,100,nama sama
+C. merah B.,c merah b,13,ai/items/tx,"kg,pcs",ALIAS,Cabe Besar,100,keputusan manual
+SUNQUICK LMNSTD300ML,sunquick lmnstd300ml,13,ai/items/tx,pcs,ALIAS,Sunquick Lemon,100,keputusan manual
+Bonteng,bonteng,13,ai/items/tx,pcs,ALIAS,Timun,100,keputusan manual
+EKONOMI PP NANAS 630,ekonomi pp nanas 630,13,ai/items/tx,pcs,ALIAS,Ekonomi Pencuci Piring,89,alias tertanam: ekonomi
+Salada,salada,13,ai/items/tx,pcs,ALIAS,Selada (Ibu Teti Pasar),100,keputusan manual
+Diamond 1 Cup,diamond 1 cup,13,ai/items/tx,"pcs,cup",EXCLUDE,,70,kemasan
+Cimas,cimas,13,ai/items/tx,pcs,ALIAS,Margarine (Filma),100,keputusan manual
+kecap Ikan,kecap ikan,13,ai/items/tx,"pcs,bottle",EXACT,Kecap Ikan,100,nama sama
+maizena,maizena,13,ai/items/tx,"pcs,kg",ALIAS,Tepung Jagung,100,keputusan manual
+LIFEBUOY PP LIME 660,lifebuoy pp lime 660,13,items/tx,pcs,ALIAS,Lifebuoy Pencuci Piring,89,alias tertanam: lifebuoy
+Ground Chicken,ground chicken,13,ai,"pack,200 g",ALIAS,Ayam Giling,100,keputusan manual
+Bernardi Sosis Sapi,bernardi sosis sapi,13,ai,"pack,kg",ALIAS,Bernardi Horeca Sosis,89,alias tertanam: bernardi sosis
+Hot,hot,12,items/tx,pcs,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+GOLDEN FARM MIXED VEGETABLES 1KG,golden farm mixed vegetables 1kg,12,ai/items/tx,"pcs,kg",ALIAS,Mix Vegetable,91,alias tertanam: golden farm mixed vegetables
+Jungle-J Aple,jungle j aple,12,items/tx,pcs,ALIAS,Apple Juice,100,keputusan manual
+pangsit Besar,pangsit besar,12,ai/items/tx,pcs,ALIAS,Kulit Pangsit (Cap Jempol),89,alias tertanam: pangsit
+Djuho,djuho,12,ai/items/tx,pcs,REVIEW,,57,fuzzy 57 (kedua 57)
+Richgold Label,richgold label,12,items/tx,pcs,ALIAS,Cream,100,keputusan manual
+SANIA POUCH 2 LT,sania pouch 2 lt,12,ai/items/tx,"pcs,lt",ALIAS,Minyak Goreng,100,keputusan manual
+Telor,telor,12,ai/items/tx,pcs,ALIAS,Telur Ayam,100,keputusan manual
+robusta kerinci,robusta kerinci,12,ai/items/tx,pcs,ALIAS,Robusta Beans,89,alias tertanam: robusta
+C. rawit,c rawit,12,ai/items/tx,"kg,pcs",ALIAS,Cabe Rawit,88,alias tertanam: rawit
+Fm 6P,fm 6p,12,ai/items/tx,"pcs,karton",ALIAS,Freshmilk Diamond,100,keputusan manual
+Dev BBQ,dev bbq,12,ai/items/tx,"kg,pcs,ky",ALIAS,Barbeque Sauce,100,keputusan manual
+KRESEK HD28,kresek hd28,12,ai/items/tx,pcs,EXCLUDE,,74,kemasan
+Jungle Apple,jungle apple,12,ai/items/tx,pcs,ALIAS,Apple Juice,100,keputusan manual
+Tmn- u,tmn u,12,items/tx,pcs,REVIEW,,71,fuzzy 71 (kedua 57)
+Belagu,belagu,12,items/tx,kg,REVIEW,,63,fuzzy 63 (kedua 63)
+Jmimay,jmimay,12,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+Simas Margarine,simas margarine,12,ai,pcs,ALIAS,Margarine (Filma),100,keputusan manual
+SPRITE PET,sprite pet,11,ai/items/tx,"pcs,1000ml",ALIAS,Sprite,100,fuzzy 100 (kedua 57)
+ABC KECAP ASIN 131ML,abc kecap asin 131ml,11,ai/items/tx,"pcs,131ml,ml",ALIAS,Kecap Asin ABC,100,fuzzy 100 (kedua 76)
+Telor Omega 30 butir,telor omega 30 butir,11,ai/items/tx,"pcs,butir",ALIAS,Telor Omega (Happy Egg),100,alias persis
+Air,air,11,items/tx,"pcs,dus",EXACT,Air,100,nama sama
+SENDOK MAKAN SUAPI BENINGPAK@100,sendok makan suapi beningpak 100,11,ai/items/tx,"pcs,pak",EXCLUDE,,72,kemasan
+POLARIS SODAWTR330ML,polaris sodawtr330ml,11,ai/items/tx,"pcs,ml",REVIEW,,63,fuzzy 63 (kedua 53)
+Kecap Manis,kecap manis,11,ai/items/tx,pcs,EXACT,Kecap Manis,100,nama sama
+Tomat 12 x 25,tomat 12 x 25,11,ai/items/tx,pcs,EXCLUDE,,56,kemasan
+Tiram panda kaleng,tiram panda kaleng,11,ai/items/tx,pcs,ALIAS,Saus Tiram Panda,100,keputusan manual
+Gula merah,gula merah,11,ai/items/tx,"pcs,tms",ALIAS,Gula Aren,100,alias persis
+Dripp Powder Coklat,dripp powder coklat,11,ai/items/tx,pcs,ALIAS,Coklat Powder,100,alias persis
+Kecap Asin ABC kosong,kecap asin abc kosong,11,ai/items/tx,pcs,EXCLUDE,botol kosong (harga 0),100,keputusan manual
+Sendok Garpu,sendok garpu,11,ai/items/tx,"pack,pcs",EXACT,Sendok Garpu,100,nama sama
+B. Jain,b jain,11,ai/items/tx,pcs,ALIAS,Bawang Daun,100,alias persis
+Filma Margarine,filma margarine,11,ai/items/tx,"pcs,200 g",ALIAS,Margarine (Filma),100,alias persis
+Max Tea Lemon,max tea lemon,11,items/tx,"pcs,pak",ALIAS,Lemon Tea Max Tea,100,alias persis
+Telur Ayam,telur ayam,11,items/tx,"gram,kg,pcs",EXACT,Telur Ayam,100,nama sama
+Kentang 2.5,kentang 2 5,11,ai/items/tx,pcs,ALIAS,Kentang Shoestring,100,keputusan manual
+Facial Tissue,facial tissue,11,ai,,EXCLUDE,,63,kemasan
+Sunquick Lemon,sunquick lemon,10,ai/items/tx,pcs,EXACT,Sunquick Lemon,100,nama sama
+Telur,telur,10,ai/items/tx,"pcs,kg",ALIAS,Telur Ayam,100,fuzzy 100 (kedua 76)
+Aquaproof,aquaproof,10,ai/items/tx,"pcs,kg",EXCLUDE,,63,kemasan
+FM,fm,10,ai/items/tx,"karton,pcs,ctn",ALIAS,Freshmilk Diamond,100,keputusan manual
+Starindo Gelas 12 Oz,starindo gelas 12 oz,10,ai/items/tx,pak,EXCLUDE,,63,kemasan
+Starindo Tutup Gelas Strawless,starindo tutup gelas strawless,10,ai/items/tx,pak,EXCLUDE,,71,kemasan
+CLING PKBIRUPCH400,cling pkbirupch400,10,ai/items/tx,"pcs,400 ml",ALIAS,Cling,100,fuzzy 100 (kedua 69)
+Kentang 2.5 kg,kentang 2 5 kg,10,ai/items/tx,"pcs,2.5 kg,kg",ALIAS,Kentang Shoestring,100,keputusan manual
+Bikin Mie,bikin mie,10,ai/items/tx,pcs,REVIEW,,80,fuzzy 80 (kedua 63)
+Shoestring,shoestring,10,ai/items/tx,pcs,ALIAS,Kentang Shoestring,100,keputusan manual
+Beans Arabika Flores Bajawa FW,beans arabika flores bajawa fw,10,items/tx,"pcs,kg",EXACT,Beans Arabika Flores Bajawa FW,100,nama sama
+Robusta Beans,robusta beans,10,items/tx,pcs,EXACT,Robusta Beans,100,nama sama
+Sealtape,sealtape,10,ai/items/tx,pcs,EXCLUDE,,63,kemasan
+Piala 28,piala 28,10,ai/items/tx,pcs,ALIAS,Kresek Piala Uk 28 Putih,100,fuzzy 100 (kedua 77)
+Cabe Kering,cabe kering,10,ai/items/tx,pcs,EXACT,Cabe Kering,100,nama sama
+Saladah,saladah,10,ai/items/tx,pcs,ALIAS,Selada (Ibu Teti Pasar),100,keputusan manual
+Gula vit,gula vit,10,ai/items/tx,"pcs,kg",ALIAS,Gula Pasir Putih,100,keputusan manual
+DAHLIA AER TEHKRT350,dahlia aer tehkrt350,10,ai/items/tx,"pcs,350",EXCLUDE,,63,kemasan
+TONG CAI CLJ 250G,tong cai clj 250g,10,ai/items/tx,"pcs,250g",ALIAS,Tongcai,89,alias tertanam: tong cai clj
+kecap Asin dark soy,kecap asin dark soy,10,ai/items/tx,pcs,ALIAS,Dark Soy Sauce,100,keputusan manual
+Wrapping,wrapping,10,ai/items/tx,pcs,EXCLUDE,,76,kemasan
+Bawang,bawang,10,ai/items/tx,pcs,REVIEW,,100,fuzzy 100 (kedua 100)
+Dell BBQ,dell bbq,10,ai/items/tx,"kg,pcs",ALIAS,Barbeque Sauce,100,keputusan manual
+Idola Uk 15,idola uk 15,10,ai/items/tx,pcs,EXCLUDE,,58,kemasan
+DESAKUBWGPTIHB8K100G,desakubwgptihb8k100g,10,ai/items/tx,pcs,ALIAS,Bawang Putih Bubuk (YOA),100,keputusan manual
+Spork bening,spork bening,10,ai/items/tx,pcs,EXCLUDE,,71,kemasan
+Sprite (liter kosong),sprite liter kosong,10,ai/items/tx,pcs,EXCLUDE,botol kosong (harga 0),100,keputusan manual
+Telor Omega (Happy Egg),telor omega happy egg,10,items/tx,"pcs,butir",EXACT,Telor Omega (Happy Egg),100,nama sama
+Tiram kaleng,tiram kaleng,10,ai/items/tx,pcs,ALIAS,Saus Tiram Panda,100,keputusan manual
+CARNATIONKNTLMNS488G,carnationkntlmns488g,10,ai/items/tx,pcs,ALIAS,SKM Carnation,100,keputusan manual
+HAPPY EGG TLROMEGA10,happy egg tlromega10,10,ai/items/tx,pcs,ALIAS,Telor Omega (Happy Egg),89,alias tertanam: happy egg
+Promo Discount,promo discount,10,ai,,EXCLUDE,,53,kemasan
+YOR KAYUMANISBTG50GR,yor kayumanisbtg50gr,9,ai/items/tx,pcs,ALIAS,Kayu Manis,100,keputusan manual
+Freshmilk Greenfield,freshmilk greenfield,9,items/tx,"pcs,karton",EXACT,Freshmilk Greenfield,100,nama sama
+Saos tiram Panda,saos tiram panda,9,ai/items/tx,pcs,ALIAS,Saus Tiram Panda,100,alias persis
+Fm Gp.,fm gp,9,ai/items/tx,ktn,ALIAS,Freshmilk Diamond,100,keputusan manual
+Minyak,minyak,9,ai/items/tx,"l,ltr",ALIAS,Minyak Goreng,100,keputusan manual
+SO KLIN PL APL R770,so klin pl apl r770,9,ai/items/tx,pcs,ALIAS,Soklin Lantai,100,keputusan manual
+Paha Filet,paha filet,9,items/tx,kg,EXACT,Paha Filet,100,nama sama
+CLING KACA UNGU REF,cling kaca ungu ref,9,ai/items/tx,pcs,EXCLUDE,pembersih kaca,100,keputusan manual
+KRESEK ASIA 35,kresek asia 35,9,ai/items/tx,pcs,EXCLUDE,,63,kemasan
+Nestle Carnation 2 KG,nestle carnation 2 kg,9,ai/items/tx,pcs,ALIAS,SKM Carnation,100,keputusan manual
+BM TLR OMEGA 3 10S,bm tlr omega 3 10s,9,ai/items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 60)
+Rokok,rokok,9,ai/items/tx,pcs,ALIAS,Roko Mang Andre,84,fuzzy+varian 84
+KUNCI MAS POUCH 2L,kunci mas pouch 2l,9,ai/items/tx,"pcs,l",ALIAS,Minyak Goreng,100,keputusan manual
+SH0910 RP 32900,sh0910 rp 32900,9,ai/items/tx,pcs,REVIEW,,54,fuzzy 54 (kedua 48)
+Cengek,cengek,9,ai/items/tx,kg,ALIAS,Cabe Rawit,100,alias persis
+Beans Robusta,beans robusta,9,items/tx,"kg,pcs",EXACT,Beans Robusta,100,nama sama
+FILMA POUCH 2000 ML,filma pouch 2000 ml,9,ai/items/tx,pcs,ALIAS,Margarine (Filma),88,alias tertanam: filma
+LKK PANDA OYSTR 770G,lkk panda oystr 770g,9,items/tx,,ALIAS,Oyster Sauce (Lee Kum Kee),100,keputusan manual
+Tongcai,tongcai,9,items/tx,"pcs,gram",EXACT,Tongcai,100,nama sama
+Max Tea Peach,max tea peach,9,items/tx,pcs,ALIAS,Peach Tea Max Tea,100,alias persis
+Hot Sacht,hot sacht,9,ai/items/tx,pcs,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+chicken thigh fillet,chicken thigh fillet,9,ai,kg,ALIAS,Paha Filet,100,keputusan manual
+Bawang putih kupas,bawang putih kupas,9,ai,,ALIAS,Bawang Putih,100,fuzzy 100 (kedua 81)
+sweet potato,sweet potato,9,ai,pcs,ALIAS,Ubi Cilembu,100,keputusan manual
+Chicken Mince,chicken mince,9,ai,pack,ALIAS,Ayam Giling,100,keputusan manual
+Beef Mince,beef mince,9,ai,pack,ALIAS,Sapi Cincang 200gr,100,keputusan manual
+JJ Apple,jj apple,8,ai/items/tx,pcs,ALIAS,Apple Juice,100,alias persis
+YOR KAYUMANISBBK40GR,yor kayumanisbbk40gr,8,ai/items/tx,pcs,ALIAS,Kayu Manis,100,keputusan manual
+Saus tiram Panda kaleng,saus tiram panda kaleng,8,ai/items/tx,pcs,ALIAS,Saus Tiram Panda,100,fuzzy 100 (kedua 74)
+B. merah kupas,b merah kupas,8,ai/items/tx,"kg,pcs",ALIAS,Bawang Merah,88,alias tertanam: merah
+Ekonomi Pencuci Piring,ekonomi pencuci piring,8,ai/items/tx,pcs,EXACT,Ekonomi Pencuci Piring,100,nama sama
+KRESEK PARTY UK 10 (JGELAPAK@100,kresek party uk 10 jgelapak 100,8,items/tx,pcs,EXCLUDE,,63,kemasan
+C. Lomba,c lomba,8,items/tx,pcs,REVIEW,,73,fuzzy 73 (kedua 71)
+gas elpiji,gas elpiji,8,items/tx,pcs,EXCLUDE,,63,operasional
+Usuk 2,usuk 2,8,ai/items/tx,pcs,EXCLUDE,,69,operasional
+"Usuk 2,5",usuk 2 5,8,items/tx,pcs,EXCLUDE,,58,operasional
+MAIZENAKU,maizenaku,8,items/tx,pcs,ALIAS,Tepung Jagung,100,alias persis
+Carnation,carnation,8,items/tx,pcs,ALIAS,SKM Carnation,100,fuzzy 100 (kedua 63)
+VIPCO,vipco,8,items/tx,pcs,ALIAS,Minyak Goreng,100,keputusan manual
+tangt,tangt,8,items/tx,pcs,REVIEW,,84,fuzzy 84 (kedua 84)
+Del Hot Sachet,del hot sachet,8,ai/items/tx,"pcs,pack",ALIAS,Delmonte Saus Cabe,89,alias tertanam: del hot
+HQ0930,hq0930,8,items/tx,pcs,REVIEW,,32,fuzzy 32 (kedua 32)
+Dev Hot,dev hot,8,ai/items/tx,"kg,pcs",ALIAS,Delmonte Saus Cabe,100,keputusan manual
+C1000 Apple,c1000 apple,8,items/tx,pcs,EXACT,C1000 Apple,100,nama sama
+Saustiram Panda,saustiram panda,8,items/tx,pcs,ALIAS,Saus Tiram Panda,97,fuzzy 97 (kedua 75)
+STELLA AE SAKURA 350,stella ae sakura 350,8,ai/items/tx,pcs,EXCLUDE,,63,kemasan
+susu kental manis,susu kental manis,8,ai/items/tx,"kg,pcs",EXACT,Susu Kental Manis,100,nama sama
+Pasir,pasir,8,items/tx,pcs,REVIEW,,100,keputusan manual
+X,x,8,items/tx,pcs,REVIEW,,95,fuzzy 95 (kedua 95)
+B gorg,b gorg,8,items/tx,kg,ALIAS,Bawang Goreng,100,keputusan manual
+MAMALM PP CHARC 690,mamalm pp charc 690,8,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 57)
+Tiram,tiram,8,items/tx,pcs,REVIEW,,100,fuzzy 100 (kedua 100)
+Deli BBQ,deli bbq,8,items/tx,"kg,pcs",ALIAS,Barbeque Sauce,100,keputusan manual
+Ayam,ayam,8,items/tx,pcs,REVIEW,,100,fuzzy 100 (kedua 100)
+pel,pel,8,items/tx,zak,REVIEW,,100,keputusan manual
+Cenger,cenger,8,ai/items/tx,pcs,ALIAS,Cabe Rawit,100,keputusan manual
+Hp.0812 2287,hp 0812 2287,8,items/tx,pcs,REVIEW,,32,fuzzy 32 (kedua 32)
+Dfamonl,dfamonl,8,items/tx,pcs,REVIEW,,68,fuzzy 68 (kedua 58)
+kikil putih,kikil putih,8,items/tx,kg,NEW,Kikil Sapi,100,keputusan manual
+Multi Tissue,multi tissue,8,ai,1000g,ALIAS,Multi Tisu,91,fuzzy 91 (kedua 57)
+Ekonomi Dishwashing Liquid,ekonomi dishwashing liquid,8,ai,,ALIAS,Ekonomi Pencuci Piring,89,alias tertanam: ekonomi
+Barbeque Sauce,barbeque sauce,7,items/tx,"pcs,kg",EXACT,Barbeque Sauce,100,nama sama
+Le Minerale,le minerale,7,ai/items/tx,pcs,ALIAS,Le Mineral,100,alias persis
+Dripp matcha,dripp matcha,7,ai/items/tx,pcs,ALIAS,Matcha Powder,100,keputusan manual
+Tang,tang,7,ai/items/tx,"pcs,bh",EXCLUDE,,95,operasional
+Cup,cup,7,ai/items/tx,pcs,EXCLUDE,,100,kemasan
+Bowl 500 ml,bowl 500 ml,7,ai/items/tx,pcs,EXCLUDE,,54,kemasan
+Kasin ferster Caramel dan stroberi,kasin ferster caramel dan stroberi,7,ai/items/tx,pcs,REVIEW,,76,fuzzy 76 (kedua 76)
+Fm bf,fm bf,7,items/tx,karton,ALIAS,Freshmilk Diamond,100,keputusan manual
+Mang andri,mang andri,7,items/tx,"pcs,kali",ALIAS,Roko Mang Andre,100,keputusan manual
+Dripp Powder Coklat 760g,dripp powder coklat 760g,7,ai/items/tx,pcs,ALIAS,Coklat Powder,100,fuzzy 100 (kedua 66)
+Tofico green Apple,tofico green apple,7,ai/items/tx,pcs,ALIAS,Sirup Green Apple,100,keputusan manual
+Ongkos Kirim,ongkos kirim,7,ai/items/tx,kali,ALIAS,Ongkir,100,keputusan manual
+Lifebuoy Pencuci Piring,lifebuoy pencuci piring,7,items/tx,pcs,EXACT,Lifebuoy Pencuci Piring,100,nama sama
+Idaho Shoestring Fries,idaho shoestring fries,7,ai,"kg,pack,2kg",ALIAS,Kentang Shoestring,90,alias tertanam: idaho shoestring
+You C1000 Apple,you c1000 apple,7,ai,,ALIAS,C1000 Apple,100,fuzzy 100 (kedua 63)
+Yoa Oregano,yoa oregano,7,ai,"20 gr,20gr",ALIAS,Oregano,100,fuzzy 100 (kedua 63)
+Max tea Peach tea,max tea peach tea,6,ai/items/tx,pcs,ALIAS,Peach Tea Max Tea,100,alias persis
+Idola 26,idola 26,6,ai/items/tx,pcs,EXCLUDE,,58,kemasan
+Paket lap,paket lap,6,ai/items/tx,pcs,EXCLUDE,,59,kemasan
+Bkp,bkp,6,items/tx,pcs,ALIAS,Bawang Putih,100,keputusan manual
+DESAKUBWGPTIHBBK 100G,desakubwgptihbbk 100g,6,items/tx,pcs,ALIAS,Bawang Putih Bubuk (YOA),100,keputusan manual
+DESAKUBWGPTIHBBK,desakubwgptihbbk,6,items/tx,pcs,ALIAS,Bawang Putih Bubuk (YOA),100,keputusan manual
+Bento Tupai 4 Sekat,bento tupai 4 sekat,6,items/tx,"pack,pak",EXACT,Bento Tupai 4 Sekat,100,nama sama
+200203/BP JETSTREAM SXN-101 HT ECER,200203 bp jetstream sxn 101 ht ecer,6,ai/items/tx,pcs,REVIEW,,76,fuzzy 76 (kedua 57)
+DEL MONTE BARBEQUE SAUCE 1KG,del monte barbeque sauce 1kg,6,ai/items/tx,"pcs,pack,kg",ALIAS,Barbeque Sauce,100,fuzzy 100 (kedua 70)
+Dus Sekat 4,dus sekat 4,6,ai/items/tx,pak,EXCLUDE,,78,kemasan
+Ongkos becak,ongkos becak,6,ai/items/tx,pcs,ALIAS,Ongkir,100,keputusan manual
+1 Cup,1 cup,6,items/tx,pcs,ALIAS,Kresek Piala 1 Cup,100,fuzzy 100 (kedua 84)
+Argopuro fw 1kg,argopuro fw 1kg,6,ai/items/tx,"pcs,kg",ALIAS,Arabica Beans,100,keputusan manual
+Tangit,tangit,6,ai/items/tx,pcs,REVIEW,,79,fuzzy 79 (kedua 76)
+2 LT,2 lt,6,items/tx,pcs,ALIAS,Minyak Goreng,100,keputusan manual
+sprok Bening,sprok bening,6,ai/items/tx,pcs,EXCLUDE,,71,kemasan
+Mahsuri Saus Tiram 255 GR,mahsuri saus tiram 255 gr,6,ai/items/tx,pcs,ALIAS,Saus Tiram (Mahsuri),100,fuzzy 100 (kedua 77)
+Wrap kecil,wrap kecil,6,ai/items/tx,pcs,REVIEW,,56,fuzzy 56 (kedua 56)
+Max Lemon tea,max lemon tea,6,ai/items/tx,pak,ALIAS,Lemon Tea Max Tea,100,fuzzy 100 (kedua 71)
+AC 260 1 SISI A3,ac 260 1 sisi a3,6,ai/items/tx,pcs,REVIEW,,53,fuzzy 53 (kedua 53)
+Delhot,delhot,6,ai/items/tx,pcs,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+Tutup PET,tutup pet,6,ai/items/tx,pcs,EXCLUDE,,83,kemasan
+Dark soy,dark soy,6,ai/items/tx,pcs,ALIAS,Dark Soy Sauce,100,fuzzy 100 (kedua 63)
+Cup PET,cup pet,6,ai/items/tx,pcs,ALIAS,Cup 12 PET,100,fuzzy 100 (kedua 68)
+TONG CAI CLJ,tong cai clj,6,items/tx,pcs,ALIAS,Tongcai,100,alias persis
+UB1,ub1,6,ai/items/tx,pcs,ALIAS,Ubi Cilembu,100,keputusan manual
+You c1000,you c1000,6,ai/items/tx,pcs,ALIAS,C1000 Apple,88,alias tertanam: c1000
+Robusta kerinci 1kg,robusta kerinci 1kg,6,ai/items/tx,"pcs,kg",ALIAS,Robusta Beans,89,alias tertanam: robusta
+Coconut,coconut,6,ai/items/tx,"karton,ctn",ALIAS,Susu Coconut,100,keputusan manual
+ES KRISTAL,es kristal,6,ai/items/tx,pcs,ALIAS,Es Batu,100,keputusan manual
+ES SERUT,es serut,6,ai/items/tx,pcs,ALIAS,Es Batu,100,keputusan manual
+ES BALOK,es balok,6,ai/items/tx,pcs,ALIAS,Es Batu,100,keputusan manual
+Impeller K8,impeller k8,6,ai/items/tx,pcs,EXCLUDE,,60,operasional
+Seal Smz,seal smz,6,ai/items/tx,pcs,EXCLUDE,,59,operasional
+Knie 3/6,knie 3 6,6,ai/items/tx,pcs,EXCLUDE,,48,operasional
+SDL Pipa,sdl pipa,6,ai/items/tx,pcs,EXCLUDE,,59,operasional
+Jasa Tukang Sanyo,jasa tukang sanyo,6,ai/items/tx,pcs,EXCLUDE,,79,operasional
+Prala 24,prala 24,6,ai/items/tx,pcs,EXCLUDE,,58,kemasan
+ALEO,aleo,6,ai/items/tx,pcs,REVIEW,,81,fuzzy 81 (kedua 71)
+EKONOMI PENCUCI PIRI,ekonomi pencuci piri,6,ai/items/tx,pcs,ALIAS,Ekonomi Pencuci Piring,95,fuzzy 95 (kedua 72)
+Sendok,sendok,6,ai/items/tx,pcs,REVIEW,,100,keputusan manual
+Seatape,seatape,6,ai/items/tx,pcs,EXCLUDE,,68,kemasan
+Tutup Bowl 500 ml,tutup bowl 500 ml,6,ai/items/tx,pcs,EXCLUDE,,76,kemasan
+Sendok plastik,sendok plastik,6,ai/items/tx,pax,EXCLUDE,,76,kemasan
+Termal silver,termal silver,6,ai/items/tx,pax,EXCLUDE,,63,kemasan
+Sq Conen,sq conen,6,ai/items/tx,pcs,REVIEW,,59,fuzzy 59 (kedua 59)
+ELE-MINERAL,ele mineral,6,ai/items/tx,pcs,ALIAS,Le Mineral,95,fuzzy 95 (kedua 80)
+Sq Cener,sq cener,6,ai/items/tx,pcs,REVIEW,,54,fuzzy 54 (kedua 54)
+Apple Juice,apple juice,6,ai/items/tx,pcs,EXACT,Apple Juice,100,nama sama
+Cementea,cementea,6,ai/items/tx,pak,REVIEW,,71,fuzzy 71 (kedua 71)
+Cengel,cengel,6,ai/items/tx,pcs,REVIEW,,76,fuzzy 76 (kedua 63)
+Kriting M,kriting m,6,ai/items/tx,kg,ALIAS,Cabe Keriting Merah,100,alias persis
+Diamond Cup,diamond cup,6,ai/items/tx,"pcs,cup",EXCLUDE,,78,kemasan
+B. puar,b puar,6,ai/items/tx,pcs,REVIEW,,76,fuzzy 76 (kedua 63)
+Mixed vegetables,mixed vegetables,6,ai/items/tx,kg,ALIAS,Mix Vegetable,90,fuzzy+varian 90
+Dripp Powder Matcha 760g,dripp powder matcha 760g,6,items/tx,pcs,ALIAS,Matcha Powder,100,fuzzy 100 (kedua 66)
+Dripp Powder Matcha,dripp powder matcha,6,items/tx,pcs,ALIAS,Matcha Powder,100,fuzzy 100 (kedua 66)
+YOA SMART CELOTAPE,yoa smart celotape,6,items/tx,,REVIEW,,71,fuzzy 71 (kedua 63)
+YOA BWG PTH BBK 40GR,yoa bwg pth bbk 40gr,6,items/tx,,ALIAS,Bawang Putih Bubuk (YOA),100,keputusan manual
+Minyak Rizki,minyak rizki,6,items/tx,bottle,EXACT,Minyak Rizki,100,nama sama
+Cup 12 PET,cup 12 pet,6,items/tx,toros,EXACT,Cup 12 PET,100,nama sama
+Tutup Cup,tutup cup,6,items/tx,"pack,toros",EXACT,Tutup Cup,100,nama sama
+CIRENG RUJAK KUMIS,cireng rujak kumis,6,items/tx,,ALIAS,Cireng,100,fuzzy 100 (kedua 63)
+KULIT PANGSIT KCL,kulit pangsit kcl,6,items/tx,,ALIAS,Kulit Pangsit (Cap Jempol),89,alias tertanam: kulit pangsit
+BAKSO TUNAS 20 BIJI,bakso tunas 20 biji,6,items/tx,,ALIAS,Bakso,100,fuzzy 100 (kedua 63)
+SKM Carnation 488gr,skm carnation 488gr,6,items/tx,kaleng,ALIAS,SKM Carnation,100,alias persis
+Paperbowl 650ml,paperbowl 650ml,6,items/tx,toros,EXACT,Paperbowl 650ml,100,nama sama
+Bensin,bensin,6,items/tx,liter,EXCLUDE,,69,operasional
+SNW KECAP ING 600ML,snw kecap ing 600ml,6,items/tx,,ALIAS,Kecap Inggis,100,keputusan manual
+B. gery,b gery,6,items/tx,,REVIEW,,69,fuzzy 69 (kedua 63)
+SG TLR OMG 10S,sg tlr omg 10s,6,items/tx,,REVIEW,,61,fuzzy 61 (kedua 58)
+SB MIDI REG L,sb midi reg l,6,items/tx,,REVIEW,,63,fuzzy 63 (kedua 63)
+Beras PT,beras pt,6,items/tx,kg,ALIAS,Beras,100,fuzzy 100 (kedua 68)
+Multi Tisu,multi tisu,6,items/tx,pack,EXACT,Multi Tisu,100,nama sama
+Botol 1 Liter,botol 1 liter,6,items/tx,pcs,EXACT,Botol 1 Liter,100,nama sama
+Bernardi Horeca Sosis,bernardi horeca sosis,6,items/tx,kg,EXACT,Bernardi Horeca Sosis,100,nama sama
+Peach Tea Max Tea,peach tea max tea,6,items/tx,"pcs,bh",EXACT,Peach Tea Max Tea,100,nama sama
+Mie,mie,6,ai/items/tx,pcs,REVIEW,,76,fuzzy 76 (kedua 76)
+Belagu v,belagu v,6,items/tx,kg,REVIEW,,63,fuzzy 63 (kedua 54)
+B- Janu v,b janu v,6,items/tx,pcs,REVIEW,,54,fuzzy 54 (kedua 54)
+Kemazi. v,kemazi v,6,items/tx,pcs,REVIEW,,71,fuzzy 71 (kedua 71)
+B_purir. v,b purir v,6,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+J. Temo. v,j temo v,6,items/tx,kg,REVIEW,,59,fuzzy 59 (kedua 54)
+Jimay - v,jimay v,6,items/tx,kg,REVIEW,,57,fuzzy 57 (kedua 57)
+B. merah v,b merah v,6,items/tx,kg,ALIAS,Bawang Merah,88,alias tertanam: merah
+C.m. Besar v,c m besar v,6,items/tx,kg,REVIEW,,63,fuzzy 63 (kedua 57)
+Cengek - v,cengek v,6,items/tx,kg,ALIAS,Cabe Rawit,89,alias tertanam: cengek
+Tempe,tempe,6,items/tx,pcs,NEW,Tempe,100,keputusan manual
+B. Jambu,b jambu,6,items/tx,pcs,REVIEW,,73,fuzzy 73 (kedua 68)
+J. Emo,j emo,6,items/tx,pcs,REVIEW,,76,fuzzy 76 (kedua 76)
+Bumbu Merah,bumbu merah,6,items/tx,pcs,REVIEW,,100,keputusan manual
+Cabe Besar,cabe besar,6,items/tx,pcs,NEW,Cabe Besar,100,keputusan manual
+Caisim,caisim,6,items/tx,pcs,NEW,Caisim,100,keputusan manual
+B-Jamin,b jamin,6,items/tx,pcs,REVIEW,,73,fuzzy 73 (kedua 71)
+Kemazi,kemazi,6,items/tx,pcs,REVIEW,,76,fuzzy 76 (kedua 76)
+J.Jemo,j jemo,6,items/tx,pcs,REVIEW,,79,fuzzy 79 (kedua 63)
+C.m. Besar,c m besar,6,items/tx,pcs,REVIEW,,76,fuzzy 76 (kedua 59)
+Wrapping K,wrapping k,6,ai/items/tx,pcs,EXCLUDE,,63,kemasan
+Patty Hamburg,patty hamburg,6,items/tx,gram,EXACT,Patty Hamburg,100,nama sama
+Kemangi Instant,kemangi instant,6,items/tx,pcs,EXACT,Kemangi Instant,100,nama sama
+Pelastik Piala,pelastik piala,6,items/tx,"buah,pcs",EXACT,Pelastik Piala,100,nama sama
+Jeho,jeho,6,ai/items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+Richgold,richgold,6,ai/items/tx,pcs,ALIAS,Cream,100,keputusan manual
+Kecap manis anggur,kecap manis anggur,6,ai/items/tx,pcs,ALIAS,Kecap Anggur,100,keputusan manual
+Fillet Paha Bawah,fillet paha bawah,6,ai/items/tx,kg,ALIAS,Paha Filet,100,keputusan manual
+Drip Chocolate,drip chocolate,6,ai/items/tx,pcs,ALIAS,Coklat Powder,100,keputusan manual
+Peach tea,peach tea,6,ai/items/tx,pcs,ALIAS,Peach Tea Max Tea,100,fuzzy 100 (kedua 71)
+Cooking Oil,cooking oil,6,ai,2l,ALIAS,Minyak Goreng,100,keputusan manual
+Desaku Seasoning,desaku seasoning,6,ai,100g,ALIAS,Bawang Putih Bubuk (YOA),100,keputusan manual
+Bawang Bombay,bawang bombay,6,ai,,ALIAS,Bawang Bombai,92,fuzzy 92 (kedua 74)
+Yogya Tawar Gandum,yogya tawar gandum,6,ai,,REVIEW,,83,fuzzy 83 (kedua 63)
+cassava,cassava,6,ai,pcs,REVIEW,,57,fuzzy 57 (kedua 54)
+Mahsuri Oyster Sauce,mahsuri oyster sauce,6,ai,pcs,ALIAS,Saus Tiram (Mahsuri),100,keputusan manual
+FF COCONUT UHT 946ML,ff coconut uht 946ml,5,items/tx,pcs,ALIAS,Frisianflag Coconut Delight,89,alias tertanam: ff coconut
+B gors,b gors,5,ai/items/tx,pcs,ALIAS,Bawang Goreng,100,keputusan manual
+Arabika Bali kintamani,arabika bali kintamani,5,ai/items/tx,pcs,REVIEW,,76,fuzzy 76 (kedua 74)
+Krupuk Oren,krupuk oren,5,ai/items/tx,pcs,ALIAS,Kerupuk,100,alias persis
+B.Jmn,b jmn,5,ai/items/tx,pcs,ALIAS,Bawang Daun,100,alias persis
+Saos tiram panda kaleng,saos tiram panda kaleng,5,ai/items/tx,pcs,ALIAS,Saus Tiram Panda,90,alias tertanam: saos tiram panda
+Sprite 1 liter,sprite 1 liter,5,ai/items/tx,"pcs,liter",ALIAS,Sprite,100,keputusan manual
+Batre,batre,5,ai/items/tx,pcs,ALIAS,Baterai ABC,84,fuzzy+varian 84
+680104/GOLDTP HJ #X72 [12] @24SLP,680104 goldtp hj x72 12 24slp,5,ai/items/tx,pcs,REVIEW,,48,fuzzy 48 (kedua 42)
+431112/LABEL HARGA NO.112 KOA/BAM,431112 label harga no 112 koa bam,5,ai/items/tx,pcs,EXCLUDE,,68,kemasan
+SCHWEPPES BNICAL 250,schweppes bnical 250,5,ai/items/tx,pcs,ALIAS,Schweppes Soda,89,alias tertanam: schweppes
+Wrap cling,wrap cling,5,ai/items/tx,pcs,ALIAS,Cling,100,fuzzy 100 (kedua 69)
+ubi brulee,ubi brulee,5,ai/items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 54)
+Triplek 3 mm,triplek 3 mm,5,ai/items/tx,lbr,EXCLUDE,,55,operasional
+Paku beton 10cm,paku beton 10cm,5,ai/items/tx,bh,EXCLUDE,,54,operasional
+Baso kecil,baso kecil,5,ai/items/tx,pcs,ALIAS,Bakso,88,alias tertanam: baso
+KRESEK HD 15 POLOS,kresek hd 15 polos,5,ai/items/tx,pcs,EXCLUDE,,57,kemasan
+SO KLIN PL CIT R700,so klin pl cit r700,5,ai/items/tx,pcs,ALIAS,Soklin Lantai,100,keputusan manual
+ABC LR03-AAA/4S MPUR,abc lr03 aaa 4s mpur,5,ai/items/tx,pcs,ALIAS,Baterai ABC,100,keputusan manual
+Depan->DTF Logo(6cm x 8cm),depan dtf logo 6cm x 8cm,5,ai/items/tx,pcs,REVIEW,,54,fuzzy 54 (kedua 52)
+"Soket 1""",soket 1,5,ai/items/tx,pcs,EXCLUDE,,57,operasional
+Ladaku 100gr,ladaku 100gr,5,ai/items/tx,"pcs,100gr",ALIAS,Lada Bubuk,89,alias tertanam: ladaku
+Dripp coklat prem,dripp coklat prem,5,ai/items/tx,pcs,ALIAS,Coklat Powder,89,alias tertanam: coklat
+BIOKUL ST STRAW 80,biokul st straw 80,5,ai/items/tx,pcs,REVIEW,,54,fuzzy 54 (kedua 54)
+Tofico Green Apl,tofico green apl,5,ai/items/tx,pcs,ALIAS,Sirup Green Apple,100,keputusan manual
+TTL GRNLTOMSHROOM400,ttl grnltomshroom400,5,ai/items/tx,pcs,REVIEW,,52,fuzzy 52 (kedua 48)
+Plastik Tomat 15x35,plastik tomat 15x35,5,ai/items/tx,pcs,EXCLUDE,,69,kemasan
+Hot sct,hot sct,5,ai/items/tx,pcs,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+Gula kiloan,gula kiloan,5,ai/items/tx,kg,ALIAS,Gula Pasir Putih,100,keputusan manual
+Listrik opik,listrik opik,5,ai/items/tx,pcs,EXCLUDE,,66,operasional
+1224948-MAXTEA PEACH BD10,1224948 maxtea peach bd10,5,ai/items/tx,pcs,ALIAS,Peach Tea Max Tea,100,keputusan manual
+Aquaproof Putih,aquaproof putih,5,ai/items/tx,pcs,EXCLUDE,,71,kemasan
+Kuas 4 pk,kuas 4 pk,5,ai/items/tx,pcs,EXCLUDE,,53,operasional
+Refill Ae Biru,refill ae biru,5,ai/items/tx,pcs,EXCLUDE,,63,kemasan
+Filet Paha,filet paha,5,ai/items/tx,kg,ALIAS,Paha Filet,100,fuzzy 100 (kedua 60)
+FILMA MRGARINSAL T200,filma mrgarinsal t200,5,ai/items/tx,pcs,ALIAS,Margarine (Filma),88,alias tertanam: filma
+Kecap inggris,kecap inggris,5,ai/items/tx,pcs,ALIAS,Kecap Inggis,100,alias persis
+D. bawang,d bawang,5,ai/items/tx,pcs,REVIEW,,86,fuzzy 86 (kedua 86)
+J. kemangi,j kemangi,5,ai/items/tx,pcs,ALIAS,Kemangi Segar,89,alias tertanam: kemangi
+BAYGON AE FLOWER 600,baygon ae flower 600,5,ai/items/tx,"pcs,600",EXCLUDE,,63,operasional
+ROBOT BATOK ROBOT RT K4,robot batok robot rt k4,5,ai/items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 58)
+Kecap Asin Drak soy,kecap asin drak soy,5,ai/items/tx,pcs,ALIAS,Dark Soy Sauce,100,keputusan manual
+Shamu Lampu Bohlam LED 9 Watt,shamu lampu bohlam led 9 watt,5,ai/items/tx,pcs,EXCLUDE,,57,operasional
+Timur,timur,5,ai/items/tx,pcs,ALIAS,Timun,84,fuzzy+varian 84
+Wraping K,wraping k,5,ai/items/tx,pcs,EXCLUDE,,63,kemasan
+rawit ijo,rawit ijo,5,ai/items/tx,kg,ALIAS,Cabe Rawit,88,alias tertanam: rawit
+Kerupuk Seblak,kerupuk seblak,5,ai/items/tx,pcs,ALIAS,Kerupuk,100,fuzzy 100 (kedua 63)
+BAGUS TCB LUWAKCF 5S,bagus tcb luwakcf 5s,5,ai/items/tx,pcs,REVIEW,,57,fuzzy 57 (kedua 57)
+Dripp mattha,dripp mattha,5,ai/items/tx,pcs,ALIAS,Matcha Powder,100,keputusan manual
+Sendok bening,sendok bening,5,ai/items/tx,pcs,EXCLUDE,,71,kemasan
+MAESTROMAYOPREM P1KG,maestromayoprem p1kg,5,ai/items/tx,pcs,ALIAS,Mayones Maestro 1L,100,keputusan manual
+Prala 35 pth,prala 35 pth,5,ai/items/tx,pcs,EXCLUDE,,54,kemasan
+Paralon belokan,paralon belokan,5,ai/items/tx,pcs,EXCLUDE,,71,operasional
+SOKLIN PL DEGRE JASM,soklin pl degre jasm,5,ai/items/tx,pcs,ALIAS,Soklin Lantai,89,alias tertanam: soklin
+SOKLIN PL DEGRE NANA,soklin pl degre nana,5,ai/items/tx,pcs,ALIAS,Soklin Lantai,89,alias tertanam: soklin
+Cup 25ml,cup 25ml,5,ai/items/tx,pcs,EXCLUDE,,55,kemasan
+Den tomat,den tomat,5,ai/items/tx,kg,ALIAS,Saus Tomat (Del Monte),100,keputusan manual
+Soket 3/4,soket 3 4,5,ai/items/tx,"pcs,bh",EXCLUDE,,54,operasional
+Stop kran 3/4,stop kran 3 4,5,ai/items/tx,"pcs,bh",EXCLUDE,,54,operasional
+Karet plenes,karet plenes,5,ai/items/tx,"pcs,bh",REVIEW,,63,fuzzy 63 (kedua 55)
+Garam ref,garam ref,5,ai/items/tx,pcs,ALIAS,Garam,100,fuzzy 100 (kedua 63)
+Sasa,sasa,5,ai/items/tx,kg,ALIAS,Micin,100,alias persis
+Kentang kringkle,kentang kringkle,5,ai/items/tx,pcs,REVIEW,,100,keputusan manual
+PWP ROSEBRN 39950,pwp rosebrn 39950,5,ai/items/tx,pcs,ALIAS,Minyak Goreng,100,keputusan manual
+Ayam paha pilet,ayam paha pilet,5,ai/items/tx,kg,ALIAS,Paha Filet,100,keputusan manual
+c. keris merah,c keris merah,5,ai/items/tx,kg,ALIAS,Cabe Keriting Merah,100,keputusan manual
+Cup PET 12oz (plastic),cup pet 12oz plastic,5,ai/items/tx,pax,EXCLUDE,,82,kemasan
+Tutup cup 12oz,tutup cup 12oz,5,ai/items/tx,pax,ALIAS,Tutup Cup,100,fuzzy 100 (kedua 67)
+Arabica Fullwash,arabica fullwash,5,ai/items/tx,pcs,ALIAS,Arabica Beans,100,keputusan manual
+Saos Tian Panda Kareng,saos tian panda kareng,5,ai/items/tx,pcs,ALIAS,Saus Tiram Panda,100,keputusan manual
+regulator,regulator,5,ai/items/tx,pcs,EXCLUDE,,67,operasional
+Saos Tomet,saos tomet,5,ai/items/tx,pack,ALIAS,Saus Tomat (Del Monte),100,alias persis
+Bup,bup,5,ai/items/tx,pcs,ALIAS,Bawang Putih,100,keputusan manual
+Drip Macha Pw,drip macha pw,5,ai/items/tx,pcs,ALIAS,Matcha Powder,100,keputusan manual
+Tiram Parda,tiram parda,5,ai/items/tx,pcs,ALIAS,Saus Tiram Panda,86,fuzzy+varian 86
+Del Hot Saset,del hot saset,5,ai/items/tx,pcs,ALIAS,Delmonte Saus Cabe,89,alias tertanam: del hot
+POLYTEXPKTSPON5S,polytexpktspon5s,5,ai/items/tx,pcs,REVIEW,,57,fuzzy 57 (kedua 48)
+Tofico Green Apel,tofico green apel,5,ai/items/tx,pcs,ALIAS,Sirup Green Apple,100,alias persis
+J. lmo,j lmo,5,ai/items/tx,kg,ALIAS,Jeruk Limau,100,alias persis
+Listrik Dapina,listrik dapina,5,ai/items/tx,pcs,EXCLUDE,,66,operasional
+NICE FAC TISSUE 1000,nice fac tissue 1000,5,ai/items/tx,pcs,EXCLUDE,,57,kemasan
+ETERNA SKB NYLON 414,eterna skb nylon 414,5,ai/items/tx,pcs,EXCLUDE,,57,kemasan
+Wraping kecil,wraping kecil,5,ai/items/tx,pcs,EXCLUDE,,63,kemasan
+Jeruk Lemo,jeruk lemo,5,ai/items/tx,kg,ALIAS,Jeruk Limau,100,alias persis
+Kentang 2.sky,kentang 2 sky,5,ai/items/tx,pcs,ALIAS,Kentang Shoestring,100,keputusan manual
+BIMOLI POUCH 2000 ML,bimoli pouch 2000 ml,5,ai/items/tx,"pcs,ml",ALIAS,Minyak Bimoli,89,alias tertanam: bimoli
+SH1022 DISC 10%,sh1022 disc 10,5,ai/items/tx,pcs,EXCLUDE,,54,kemasan
+SH1022 RP 32900,sh1022 rp 32900,5,ai/items/tx,pcs,REVIEW,,54,fuzzy 54 (kedua 48)
+Deu BBQ,deu bbq,5,ai/items/tx,pcs,ALIAS,Barbeque Sauce,100,keputusan manual
+Idola Uk 26,idola uk 26,5,ai/items/tx,pcs,EXCLUDE,,58,kemasan
+Juno,juno,5,ai/items/tx,pcs,REVIEW,,71,fuzzy 71 (kedua 63)
+FM Diamond,fm diamond,5,ai/items/tx,"karton,ctn",ALIAS,Freshmilk Diamond,100,alias persis
+CLEAR PKC LVNDR 400,clear pkc lvndr 400,5,ai/items/tx,pcs,EXCLUDE,,81,kemasan
+B. Bmbai,b bmbai,5,ai/items/tx,kg,ALIAS,Bawang Bombai,100,alias persis
+Lemontea,lemontea,5,ai/items/tx,pcs,ALIAS,Lemon Tea Max Tea,100,keputusan manual
+Trashbag 80x120,trashbag 80x120,5,ai/items/tx,pcs,EXCLUDE,,63,kemasan
+WIPOL KRBL CMRA R720,wipol krbl cmra r720,5,ai/items/tx,pcs,EXCLUDE,,63,kemasan
+DAHLIA TCB 3S,dahlia tcb 3s,5,ai/items/tx,pcs,EXCLUDE,,53,kemasan
+HIT AE LAVENDER600ML,hit ae lavender600ml,5,ai/items/tx,pcs,EXCLUDE,,53,kemasan
+YOASABUTSPON3S,yoasabutspon3s,5,ai/items/tx,pcs,REVIEW,,58,fuzzy 58 (kedua 48)
+Sosis,sosis,5,ai/items/tx,pack,ALIAS,Bernardi Horeca Sosis,100,keputusan manual
+j. lamo,j lamo,5,ai/items/tx,kg,ALIAS,Jeruk Limau,100,alias persis
+pangst,pangst,5,ai/items/tx,pcs,ALIAS,Kulit Pangsit (Cap Jempol),100,alias persis
+bj wijen,bj wijen,5,ai/items/tx,pcs,ALIAS,Biji Wijen,100,alias persis
+Bcp. gram,bcp gram,5,ai/items/tx,pcs,REVIEW,,84,fuzzy 84 (kedua 71)
+Muncang,muncang,5,ai/items/tx,kg,ALIAS,Kemiri,100,keputusan manual
+Elp.,elp,5,ai/items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+Paku 10,paku 10,5,ai/items/tx,gr,EXCLUDE,,48,operasional
+Kulit Pangsit,kulit pangsit,5,items/tx,"pack,pcs",ALIAS,Kulit Pangsit (Cap Jempol),100,alias persis
+PH Krpk UDG KCG 250G,ph krpk udg kcg 250g,5,items/tx,pcs,REVIEW,,54,fuzzy 54 (kedua 48)
+Kecap Anggu Manis,kecap anggu manis,5,ai/items/tx,pcs,ALIAS,Kecap Anggur,100,keputusan manual
+Bawang Bombai,bawang bombai,5,items/tx,pcs,EXACT,Bawang Bombai,100,nama sama
+TP Roti Mix,tp roti mix,5,ai/items/tx,kg,ALIAS,Panir Mix,100,keputusan manual
+BAYGON AE LAV 600,baygon ae lav 600,5,ai/items/tx,pcs,EXCLUDE,,63,operasional
+BAGUS KRBOL PINE 575,bagus krbol pine 575,5,ai/items/tx,pcs,REVIEW,,57,fuzzy 57 (kedua 57)
+EKONOMI PP SEREH 650,ekonomi pp sereh 650,5,ai/items/tx,pcs,ALIAS,Ekonomi Pencuci Piring,100,keputusan manual
+Daging sapi cincang 200 g,daging sapi cincang 200 g,5,items/tx,"pack,pcs",ALIAS,Sapi Cincang,100,fuzzy 100 (kedua 90)
+Cincang ayam 200 g,cincang ayam 200 g,5,items/tx,"pack,pcs",ALIAS,Ayam Cincang,100,fuzzy 100 (kedua 74)
+Jolly Pop Up Tissue 160s,jolly pop up tissue 160s,5,ai/items/tx,pak,EXCLUDE,,57,kemasan
+Melati Sendok Set Hitam,melati sendok set hitam,5,ai/items/tx,pak,EXCLUDE,,67,kemasan
+Kresek Piala Putih 24,kresek piala putih 24,5,ai/items/tx,pak,EXCLUDE,,67,kemasan
+Kresek Piala 2 Gelas,kresek piala 2 gelas,5,ai/items/tx,pak,EXCLUDE,,66,kemasan
+Kresek 10 Gelas Putih,kresek 10 gelas putih,5,ai/items/tx,pak,EXCLUDE,,84,kemasan
+Plastik OPP Seal 8x15,plastik opp seal 8x15,5,ai/items/tx,pak,EXCLUDE,,71,kemasan
+C. merah besar,c merah besar,5,ai/items/tx,kg,ALIAS,Cabe Besar,100,keputusan manual
+Dripp coklat,dripp coklat,5,ai/items/tx,pcs,ALIAS,Coklat Powder,89,alias tertanam: coklat
+Fillet Paha (BLP ATAS),fillet paha blp atas,5,ai/items/tx,kg,ALIAS,Paha Filet,100,keputusan manual
+Sendok garpu Bening,sendok garpu bening,5,ai/items/tx,pcs,ALIAS,Sendok Garpu,100,fuzzy 100 (kedua 71)
+Minyak Wijen B,minyak wijen b,5,ai/items/tx,pcs,ALIAS,Minyak Wijen,100,fuzzy 100 (kedua 72)
+Minyak Ikan,minyak ikan,5,ai/items/tx,pcs,REVIEW,,78,fuzzy 78 (kedua 78)
+Jungle juice apel,jungle juice apel,5,ai/items/tx,pcs,ALIAS,Apple Juice,100,keputusan manual
+Kecap anggui bantal,kecap anggui bantal,5,ai/items/tx,pcs,ALIAS,Kecap Anggur,91,fuzzy 91 (kedua 84)
+Kecap inggris asia harum sedep,kecap inggris asia harum sedep,5,ai/items/tx,pcs,ALIAS,Kecap Inggis,89,alias tertanam: kecap inggris
+Djoe Hoa kecap ikan,djoe hoa kecap ikan,5,ai/items/tx,pcs,ALIAS,Kecap Ikan,100,keputusan manual
+OH Guan Hing wijen,oh guan hing wijen,5,ai/items/tx,pcs,REVIEW,,72,fuzzy 72 (kedua 71)
+Ember + gayung,ember gayung,5,ai/items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 57)
+Paper bowl kotak,paper bowl kotak,5,ai/items/tx,pcs,EXCLUDE,,58,kemasan
+Pembersih mesin,pembersih mesin,5,ai/items/tx,pcs,EXCLUDE,,76,operasional
+FMD,fmd,5,ai/items/tx,"karton,ctn",ALIAS,Freshmilk Diamond,100,keputusan manual
+Squash Lemon,squash lemon,5,ai,,ALIAS,Sunquick Lemon,100,keputusan manual
+Rose Brand Cooking Oil,rose brand cooking oil,5,ai,2l,ALIAS,Minyak Goreng,100,keputusan manual
+cucumber,cucumber,5,ai,kg,ALIAS,Timun,100,keputusan manual
+Electricity,electricity,5,ai,,EXCLUDE,,63,operasional
+ABC Soy Sauce,abc soy sauce,5,ai,"pcs,131ml,ml",ALIAS,Kecap Asin ABC,100,keputusan manual
+Yoa Black Pepper Powder,yoa black pepper powder,5,ai,"35gr,35 gr",REVIEW,,76,fuzzy 76 (kedua 66)
+Nasi putih,nasi putih,4,items/tx,pcs,EXACT,Nasi putih,100,nama sama
+DESAKUBWGPTIBBK100G,desakubwgptibbk100g,4,items/tx,pcs,ALIAS,Bawang Putih Bubuk (YOA),100,keputusan manual
+Robusta Temanggung,robusta temanggung,4,items/tx,pcs,ALIAS,Robusta Beans,89,alias tertanam: robusta
+Beras OT,beras ot,4,items/tx,kg,ALIAS,Beras,100,alias persis
+Bngs,bngs,4,items/tx,pcs,REVIEW,,71,fuzzy 71 (kedua 71)
+DOLLAR PP 15X30-03 1/4KG PAK,dollar pp 15x30 03 1 4kg pak,4,items/tx,"pcs,pak",EXCLUDE,,63,kemasan
+DOLLAR PP 15X30-03 1/ PAK,dollar pp 15x30 03 1 pak,4,items/tx,"pcs,pak",EXCLUDE,,63,kemasan
+Rokok Marlboro Andri,rokok marlboro andri,4,items/tx,pcs,EXCLUDE,,69,operasional
+poto piller,poto piller,4,items/tx,kg,REVIEW,,57,fuzzy 57 (kedua 54)
+gas elpiji 3kg,gas elpiji 3kg,4,ai/items/tx,pcs,EXCLUDE,,64,operasional
+Lambriz,lambriz,4,items/tx,pcs,REVIEW,,58,fuzzy 58 (kedua 57)
+Bombay,bombay,4,items/tx,pcs,ALIAS,Bawang Bombai,100,keputusan manual
+B. Jorz,b jorz,4,items/tx,pcs,REVIEW,,48,fuzzy 48 (kedua 48)
+Ember Ice Baccat 36t,ember ice baccat 36t,4,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 60)
+Capitan Stls 1PT3-12,capitan stls 1pt3 12,4,items/tx,pcs,REVIEW,,67,fuzzy 67 (kedua 63)
+Usuk 2m,usuk 2m,4,items/tx,pcs,EXCLUDE,,63,operasional
+New States Apparel Premium Cotton T-shirt 7200 White Size L,new states apparel premium cotton t shirt 7200 white size l,4,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+New States Apparel Premium Cotton T-shirt 7200 White Size M,new states apparel premium cotton t shirt 7200 white size m,4,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+"Klep banjir 1""",klep banjir 1,4,items/tx,pcs,EXCLUDE,,63,operasional
+Lada Bubuk,lada bubuk,4,items/tx,pcs,EXACT,Lada Bubuk,100,nama sama
+Triplek 3 1/2,triplek 3 1 2,4,items/tx,lbr,EXCLUDE,,51,operasional
+Paku beton 10,paku beton 10,4,items/tx,bh,EXCLUDE,,53,operasional
+Klem kayu 1 1/2,klem kayu 1 1 2,4,items/tx,bh,EXCLUDE,,57,operasional
+DISCOUNT BIOKUL ST STRAW 80,discount biokul st straw 80,4,items/tx,pcs,REVIEW,,48,fuzzy 48 (kedua 48)
+DISCOUNT PH FAC TISSUE 1000S,discount ph fac tissue 1000s,4,items/tx,pcs,EXCLUDE,,57,kemasan
+KRESEK H028 0.25,kresek h028 0 25,4,items/tx,pcs,EXCLUDE,,57,kemasan
+Transfer ke Dnid Endxxx Perxxxx DANA 085220884682,transfer ke dnid endxxx perxxxx dana 085220884682,4,items/tx,pcs,REVIEW,,57,fuzzy 57 (kedua 57)
+MAXTEA PEACH BD10,maxtea peach bd10,4,items/tx,pcs,ALIAS,Peach Tea Max Tea,100,keputusan manual
+GENTLE GEN LIQ PARIS,gentle gen liq paris,4,items/tx,pcs,EXCLUDE,,63,operasional
+PRM/SOKLIN FL REF 1.,prm soklin fl ref 1,4,items/tx,pcs,ALIAS,Soklin Lantai,89,alias tertanam: soklin
+GOLDEN FARM MIXED VE,golden farm mixed ve,4,items/tx,pcs,ALIAS,Mix Vegetable,100,keputusan manual
+Rei,rei,4,items/tx,pcs,REVIEW,,76,fuzzy 76 (kedua 76)
+2035402-MULTI MP-08,2035402 multi mp 08,4,items/tx,pcs,REVIEW,,67,fuzzy 67 (kedua 57)
+2333526-EKONOMI DISHWASH NAH,2333526 ekonomi dishwash nah,4,items/tx,pcs,ALIAS,Ekonomi Pencuci Piring,89,alias tertanam: ekonomi
+2288609-EKONOMI PENCUCI PIRI,2288609 ekonomi pencuci piri,4,items/tx,pcs,ALIAS,Ekonomi Pencuci Piring,90,fuzzy 90 (kedua 72)
+2299156-BAYGON AE 600 JAPAME,2299156 baygon ae 600 japame,4,items/tx,pcs,EXCLUDE,,63,operasional
+2328219-DAHLIA AE HERITAGE T,2328219 dahlia ae heritage t,4,items/tx,pcs,EXCLUDE,,63,kemasan
+2009352-POLYTEX MULTI PURPOS,2009352 polytex multi purpos,4,items/tx,pcs,EXCLUDE,,67,kemasan
+2319761-POLYTEX HTP SPON EXT,2319761 polytex htp spon ext,4,items/tx,pcs,EXCLUDE,,50,kemasan
+1230006-FRM/AMAGO REF 2LT,1230006 frm amago ref 2lt,4,items/tx,pcs,REVIEW,,57,fuzzy 57 (kedua 57)
+2090409-KRESEK ASIA 35,2090409 kresek asia 35,4,items/tx,pcs,EXCLUDE,,63,kemasan
+MRGARINSAL T200,mrgarinsal t200,4,items/tx,pcs,ALIAS,Margarine (Filma),100,keputusan manual
+c. kerig merah,c kerig merah,4,items/tx,kg,ALIAS,Cabe Keriting Merah,100,keputusan manual
+c. keriting,c keriting,4,items/tx,pcs,ALIAS,Cabe Keriting Merah,89,fuzzy+varian 89
+Tepung Jagung,tepung jagung,4,items/tx,pcs,EXACT,Tepung Jagung,100,nama sama
+Kev Paha,kev paha,4,items/tx,kg,ALIAS,Paha Filet,100,keputusan manual
+Jungle / Apie,jungle apie,4,items/tx,pcs,ALIAS,Apple Juice,100,keputusan manual
+Bayam,bayam,4,items/tx,pcs,REVIEW,,84,fuzzy 84 (kedua 84)
+B. Iren,b iren,4,items/tx,pcs,REVIEW,,76,fuzzy 76 (kedua 69)
+EKONOMI PP JNP,ekonomi pp jnp,4,items/tx,pcs,ALIAS,Ekonomi Pencuci Piring,89,alias tertanam: ekonomi
+WINGS PORS BIRU,wings pors biru,4,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+PWP SANIA,pwp sania,4,items/tx,pcs,ALIAS,Minyak Goreng,100,keputusan manual
+sty PVC 3/4,sty pvc 3 4,4,items/tx,pcs,EXCLUDE,,48,operasional
+socket 3/4,socket 3 4,4,items/tx,pcs,EXCLUDE,,54,operasional
+socket 1,socket 1,4,items/tx,pcs,EXCLUDE,,54,operasional
+semen,semen,4,items/tx,kg,EXCLUDE,,71,operasional
+Den Hot Sachet,den hot sachet,4,ai/items/tx,pcs,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+KUNCI MAS,kunci mas,4,items/tx,pcs,ALIAS,Bumbu Kunci Mas,100,alias persis
+Soked 3/4,soked 3 4,4,items/tx,pcs,REVIEW,,54,fuzzy 54 (kedua 54)
+MULTI MP08 100G,multi mp08 100g,4,ai/items/tx,pcs,REVIEW,,71,fuzzy 71 (kedua 57)
+Del sachet saos,del sachet saos,4,ai/items/tx,pax,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+Limo,limo,4,items/tx,kg,REVIEW,,71,fuzzy 71 (kedua 71)
+SH0925,sh0925,4,items/tx,pcs,REVIEW,,54,fuzzy 54 (kedua 48)
+DESAKUBWGTIHBBK100G,desakubwgtihbbk100g,4,items/tx,pcs,ALIAS,Bawang Putih Bubuk (YOA),100,keputusan manual
+Dev Hot Sachet,dev hot sachet,4,ai/items/tx,pcs,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+SAMONO WPUMP SW_CQ04,samono wpump sw cq04,4,items/tx,pcs,EXCLUDE,,63,kemasan
+BIMOLI,bimoli,4,items/tx,pcs,ALIAS,Minyak Bimoli,100,alias persis
+EKONOMI PP NANAS,ekonomi pp nanas,4,items/tx,pcs,ALIAS,Ekonomi Pencuci Piring,89,alias tertanam: ekonomi
+Sprite Liter,sprite liter,4,items/tx,pcs,ALIAS,Sprite,100,keputusan manual
+Cup saus 25ml,cup saus 25ml,4,ai/items/tx,pcs,EXCLUDE,,60,kemasan
+Jcho,jcho,4,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+Arabica Fullwash Halu,arabica fullwash halu,4,items/tx,pcs,ALIAS,Arabica Beans,100,keputusan manual
+Trash bag 90,trash bag 90,4,ai/items/tx,pcs,EXCLUDE,,63,kemasan
+Dev Hot Sadd,dev hot sadd,4,items/tx,pcs,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+Kasih ferster (caramel dan stroberi),kasih ferster caramel dan stroberi,4,items/tx,pcs,REVIEW,,76,fuzzy 76 (kedua 76)
+CLEO 500,cleo 500,4,items/tx,pcs,ALIAS,Cleo,100,fuzzy 100 (kedua 54)
+AMINIS,aminis,4,items/tx,pcs,REVIEW,,76,fuzzy 76 (kedua 76)
+Top100 green apel,top100 green apel,4,items/tx,pcs,ALIAS,Sirup Green Apple,100,keputusan manual
+J.imo,j imo,4,items/tx,kg,REVIEW,,76,fuzzy 76 (kedua 76)
+Pembayaran ke Mang Andri,pembayaran ke mang andri,4,items/tx,pcs,ALIAS,Mangandri,84,fuzzy+varian 84
+Arabica Kintamani Bali,arabica kintamani bali,4,items/tx,kg,ALIAS,Arabica Beans,100,keputusan manual
+Pelada,pelada,4,items/tx,pcs,REVIEW,,79,fuzzy 79 (kedua 76)
+Lima,lima,4,items/tx,kg,REVIEW,,100,keputusan manual
+B. Dan,b dan,4,items/tx,pcs,REVIEW,,76,fuzzy 76 (kedua 63)
+Kecap Inggris asra harum sedap,kecap inggris asra harum sedap,4,items/tx,pcs,ALIAS,Kecap Inggis,89,alias tertanam: kecap inggris
+Telor 30 butir,telor 30 butir,4,items/tx,pcs,ALIAS,Telur Ayam,100,keputusan manual
+Gas Portebel,gas portebel,4,items/tx,pcs,EXCLUDE,,63,operasional
+kaki,kaki,4,items/tx,pcs,REVIEW,,81,fuzzy 81 (kedua 63)
+LIFEBUOY PP LIME 1500,lifebuoy pp lime 1500,4,items/tx,pcs,ALIAS,Lifebuoy Pencuci Piring,89,alias tertanam: lifebuoy
+Powder Matcha Dripp,powder matcha dripp,4,items/tx,pcs,ALIAS,Matcha Powder,100,fuzzy 100 (kedua 63)
+Powder Coklat Dripp,powder coklat dripp,4,items/tx,pcs,ALIAS,Coklat Powder,100,fuzzy 100 (kedua 63)
+Tepung Roti Mix,tepung roti mix,4,items/tx,kg,ALIAS,Panir Mix,100,keputusan manual
+UHT coconut,uht coconut,4,items/tx,pcs,ALIAS,Susu Coconut,100,keputusan manual
+Paket baskom,paket baskom,4,items/tx,pcs,EXCLUDE,,76,kemasan
+Beras DT (IR),beras dt ir,4,items/tx,kg,ALIAS,Beras,100,fuzzy 100 (kedua 76)
+Paket peach tea,paket peach tea,4,items/tx,pcs,ALIAS,Peach Tea Max Tea,100,keputusan manual
+Laundry,laundry,4,items/tx,pcs,EXCLUDE,,63,operasional
+Nasi,nasi,4,items/tx,pcs,REVIEW,,100,fuzzy 100 (kedua 100)
+SH1105 RP 32900,sh1105 rp 32900,4,items/tx,pcs,REVIEW,,54,fuzzy 54 (kedua 48)
+SH1105 RP 3600,sh1105 rp 3600,4,items/tx,pcs,REVIEW,,54,fuzzy 54 (kedua 48)
+SOS KARBOL PINE R700,sos karbol pine r700,4,items/tx,pcs,EXCLUDE,,63,operasional
+SH1105 DISC 30% ( X 1.0 30500,sh1105 disc 30 x 1 0 30500,4,items/tx,pcs,EXCLUDE,,54,kemasan
+KLEANERSIKATOILETBLT,kleanersikatoiletblt,4,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+Semen Pasangan,semen pasangan,4,items/tx,pcs,EXCLUDE,,79,operasional
+Semen Pasawan,semen pasawan,4,items/tx,pcs,EXCLUDE,,63,operasional
+Gilingan mie Vicenza,gilingan mie vicenza,4,items/tx,bh,REVIEW,,76,fuzzy 76 (kedua 67)
+Donatku 7307 Green Leaf,donatku 7307 green leaf,4,items/tx,bh,REVIEW,,61,fuzzy 61 (kedua 52)
+MBTFD,mbtfd,4,items/tx,pcs,REVIEW,,57,fuzzy 57 (kedua 48)
+HH1015,hh1015,4,items/tx,pcs,REVIEW,,32,fuzzy 32 (kedua 32)
+SH1008 DISC 10%,sh1008 disc 10,4,items/tx,pcs,EXCLUDE,,54,kemasan
+Sproo So flores bajwa fw,sproo so flores bajwa fw,4,items/tx,pcs,ALIAS,Beans Arabika Flores Bajawa FW,100,keputusan manual
+B. gores,b gores,4,items/tx,pcs,ALIAS,Bawang Goreng,100,keputusan manual
+C. Somba,c somba,4,items/tx,pcs,REVIEW,,73,fuzzy 73 (kedua 68)
+Bowl 500 + tutup,bowl 500 tutup,4,items/tx,pcs,EXCLUDE,,71,kemasan
+DELMONTEBARBEQUE250G,delmontebarbeque250g,4,items/tx,pcs,ALIAS,Barbeque Sauce,100,keputusan manual
+B mrh,b mrh,4,items/tx,pcs,ALIAS,Bawang Merah,100,keputusan manual
+Reg Win tas w 900 m,reg win tas w 900 m,4,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 57)
+SENDOK MAKAN BENING TRIFI PAK@25,sendok makan bening trifi pak 25,4,items/tx,pcs,EXCLUDE,,72,kemasan
+KRESEK PIALA PUTIH UK 10,kresek piala putih uk 10,4,items/tx,pak,EXCLUDE,,67,kemasan
+kerupuk orange,kerupuk orange,4,items/tx,kg,ALIAS,Kerupuk,100,fuzzy 100 (kedua 78)
+Dey Hod,dey hod,4,items/tx,kg,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+RESEK HD28 0.25,resek hd28 0 25,4,items/tx,pcs,REVIEW,,57,fuzzy 57 (kedua 54)
+SO KLIN PL EUC R700,so klin pl euc r700,4,items/tx,pcs,ALIAS,Soklin Lantai,100,keputusan manual
+SH0521 RP 28950,sh0521 rp 28950,4,items/tx,pcs,REVIEW,,54,fuzzy 54 (kedua 48)
+Triplek,triplek,4,items/tx,pcs,EXCLUDE,,68,operasional
+Calcifer | Ghibli | Lampu Estetik | USB + Switch,calcifer ghibli lampu estetik usb switch,4,items/tx,pcs,EXCLUDE,,59,operasional
+Proteksi Kerusakan +,proteksi kerusakan,4,items/tx,pcs,REVIEW,,69,fuzzy 69 (kedua 68)
+Matcha Powder Premium Halal Flavorl...,matcha powder premium halal flavorl,4,items/tx,pcs,ALIAS,Matcha Powder,100,fuzzy 100 (kedua 66)
+Frn Greenfield,frn greenfield,4,items/tx,pcs,ALIAS,Freshmilk Greenfield,100,keputusan manual
+Jungle Juice Apple,jungle juice apple,4,ai/items/tx,bottle,ALIAS,Apple Juice,100,alias persis
+J. nipis,j nipis,4,items/tx,kg,REVIEW,,63,fuzzy 63 (kedua 58)
+LID PAPERCUP DOUBLE WALL 8OZ Putih,lid papercup double wall 8oz putih,4,items/tx,pcs,EXCLUDE,,71,kemasan
+SB,sb,4,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+Cincang,cincang,4,items/tx,pcs,REVIEW,,100,fuzzy 100 (kedua 100)
+BG,bg,4,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+J.,j,4,items/tx,pcs,REVIEW,,95,fuzzy 95 (kedua 95)
+K. orange,k orange,4,items/tx,pcs,REVIEW,,100,keputusan manual
+Minyak Kita,minyak kita,4,items/tx,pcs,ALIAS,Minyak Goreng,100,keputusan manual
+Moyenes,moyenes,4,items/tx,pcs,ALIAS,Mayonaise,100,keputusan manual
+Sinar,sinar,4,items/tx,pcs,ALIAS,Margarine (Filma),100,keputusan manual
+elpiji,elpiji,4,items/tx,pcs,EXCLUDE,,57,operasional
+Deli Hot,deli hot,4,items/tx,kg,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+Deli Tomat,deli tomat,4,items/tx,kg,ALIAS,Saus Tomat (Del Monte),100,keputusan manual
+Panir Mld,panir mld,4,items/tx,kg,ALIAS,Panir Mix,100,keputusan manual
+Jolly Besar,jolly besar,4,items/tx,pak,REVIEW,,76,fuzzy 76 (kedua 57)
+Batok Robot RT-K4,batok robot rt k4,4,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 57)
+BAYGON AE CITRUS 600,baygon ae citrus 600,4,items/tx,pcs,EXCLUDE,,63,operasional
+WIPOL KRBL SRH R720,wipol krbl srh r720,4,items/tx,pcs,EXCLUDE,,57,kemasan
+PROMO RP 6.150,promo rp 6 150,4,items/tx,pcs,EXCLUDE,,51,kemasan
+Topico green apple,topico green apple,4,items/tx,pcs,ALIAS,Sirup Green Apple,100,keputusan manual
+Dramond 1cup,dramond 1cup,4,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+Idola 1s,idola 1s,4,items/tx,pcs,EXCLUDE,,59,kemasan
+Ipak Max Lemon,ipak max lemon,4,items/tx,pcs,ALIAS,Lemon Tea Max Tea,100,keputusan manual
+Fn D,fn d,4,items/tx,pcs,ALIAS,Freshmilk Diamond,100,keputusan manual
+Teh,teh,4,items/tx,pcs,REVIEW,,76,fuzzy 76 (kedua 76)
+PH FAC TISSUE 10003,ph fac tissue 10003,4,items/tx,pcs,EXCLUDE,,57,kemasan
+HT0470 RP 22800,ht0470 rp 22800,4,items/tx,pcs,REVIEW,,33,fuzzy 33 (kedua 32)
+ITEM # 610502266,item 610502266,4,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 48)
+KRESEK SEMI JMCETA1X,kresek semi jmceta1x,4,items/tx,pcs,EXCLUDE,,63,kemasan
+HOGO RP 39950,hogo rp 39950,4,items/tx,pcs,REVIEW,,52,fuzzy 52 (kedua 48)
+SHOYO RP 6150,shoyo rp 6150,4,items/tx,pcs,REVIEW,,54,fuzzy 54 (kedua 48)
+Raso,raso,4,items/tx,pcs,REVIEW,,81,fuzzy 81 (kedua 71)
+Sproo Argopuro fine,sproo argopuro fine,4,items/tx,pcs,ALIAS,Arabica Beans,100,keputusan manual
+H40702 RP 29000 X 1.0,h40702 rp 29000 x 1 0,4,items/tx,pcs,REVIEW,,32,fuzzy 32 (kedua 32)
+KRESEK SEMI JMBPOLOS,kresek semi jmbpolos,4,items/tx,pcs,EXCLUDE,,63,kemasan
+KOEPEDZ VANILI 25,koepedz vanili 25,4,items/tx,pcs,ALIAS,Vanili Bubuk (Koepoe),100,keputusan manual
+Bontx,bontx,4,items/tx,pcs,REVIEW,,71,fuzzy 71 (kedua 63)
+Smas,smas,4,items/tx,pcs,REVIEW,,100,keputusan manual
+J. Lemon,j lemon,4,items/tx,pcs,REVIEW,,88,fuzzy 88 (kedua 83)
+Beras KT,beras kt,4,items/tx,kg,ALIAS,Beras,100,fuzzy 100 (kedua 68)
+paha fillet,paha fillet,4,items/tx,kg,ALIAS,Paha Filet,95,fuzzy 95 (kedua 63)
+Guarose B,guarose b,4,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+Deli Hot Saos,deli hot saos,4,items/tx,pcs,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+LED meval 5w,led meval 5w,4,items/tx,pcs,REVIEW,,70,fuzzy 70 (kedua 63)
+Keranjang Sampah,keranjang sampah,4,items/tx,pcs,REVIEW,,100,keputusan manual
+Cabe Keriting Merah,cabe keriting merah,4,ai/items/tx,gram,EXACT,Cabe Keriting Merah,100,nama sama
+Dell Hot,dell hot,4,items/tx,kg,REVIEW,,71,fuzzy 71 (kedua 71)
+Filei Paha,filei paha,4,items/tx,kg,ALIAS,Paha Filet,90,fuzzy 90 (kedua 60)
+Delmonte Extra Hot,delmonte extra hot,4,items/tx,"pcs,pak",ALIAS,Delmonte Saus Cabe,100,keputusan manual
+Jungley Aple,jungley aple,4,items/tx,pcs,ALIAS,Apple Juice,100,keputusan manual
+Roll cat kcl,roll cat kcl,4,items/tx,bh,EXCLUDE,,63,operasional
+Sapi Cincang,sapi cincang,4,items/tx,pack,EXACT,Sapi Cincang,100,nama sama
+Bernardi Beef Sausage,bernardi beef sausage,4,ai,"kg,pack",ALIAS,Bernardi Horeca Sosis,100,keputusan manual
+Bernardi Horeca Pack Sosis Sapi,bernardi horeca pack sosis sapi,4,ai,kg,ALIAS,Bernardi Horeca Sosis,100,fuzzy 100 (kedua 76)
+Wheat Bread,wheat bread,4,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+Shoestring fries,shoestring fries,4,ai,pack,ALIAS,"French Fries Shoestring 2,5 Kg",100,fuzzy 100 (kedua 77)
+Rose Brand Cooking Oil Pouch 2L,rose brand cooking oil pouch 2l,4,ai,,ALIAS,Minyak Goreng,100,keputusan manual
+Orchid Butter Unsalted 200g,orchid butter unsalted 200g,4,ai,,ALIAS,Butter,100,fuzzy 100 (kedua 52)
+Tong Cai,tong cai,4,ai,"pcs,250g",REVIEW,,81,fuzzy 81 (kedua 76)
+Cigarettes,cigarettes,4,ai,,EXCLUDE,,71,operasional
+Filma Margarine Salted,filma margarine salted,4,ai,,ALIAS,Margarine (Filma),100,fuzzy 100 (kedua 63)
+Bowl Lid 500ml,bowl lid 500ml,4,ai,,EXCLUDE,,54,kemasan
+Eggs,eggs,4,ai,pcs,ALIAS,Telur Ayam,100,keputusan manual
+Potato,potato,4,ai,"kg,2.5kg",ALIAS,Kentang,100,keputusan manual
+lettuce,lettuce,4,ai,,ALIAS,Selada (Ibu Teti Pasar),100,keputusan manual
+Maizenaku Corn Starch,maizenaku corn starch,4,ai,300 gr,ALIAS,Tepung Jagung,89,alias tertanam: maizenaku
+Schweppes Soda Water 250ml,schweppes soda water 250ml,4,ai,,ALIAS,Soda Water Schweppes,100,keputusan manual
+Plastic Bag HD28,plastic bag hd28,4,ai,,EXCLUDE,,63,kemasan
+Lampu Sorot,lampu sorot,3,items/tx,pcs,EXCLUDE,,57,operasional
+GG PGARDEN SCH6X80ML,gg pgarden sch6x80ml,3,items/tx,,REVIEW,,63,fuzzy 63 (kedua 63)
+CLING PKKNGPCH400,cling pkkngpch400,3,items/tx,,ALIAS,Cling,100,fuzzy 100 (kedua 69)
+BAGUS CW BOX 30X30,bagus cw box 30x30,3,items/tx,,REVIEW,,57,fuzzy 57 (kedua 57)
+SUNQUICK LMNS/O300ML,sunquick lmns o300ml,3,items/tx,,ALIAS,Sunquick Lemon,89,alias tertanam: sunquick
+BREX RJK CIRENG 20S,brex rjk cireng 20s,3,items/tx,,ALIAS,Cireng,100,fuzzy 100 (kedua 63)
+JEMPOL KLTPGST GR615,jempol kltpgst gr615,3,items/tx,,REVIEW,,68,fuzzy 68 (kedua 48)
+1kg bawang goreng,1kg bawang goreng,3,ai/items/tx,kg,ALIAS,Bawang Goreng,100,fuzzy 100 (kedua 76)
+Sprite 1ltr kosong,sprite 1ltr kosong,3,ai/items/tx,pcs,EXCLUDE,botol kosong (harga 0),100,keputusan manual
+DEL MONTE EXTRA HOT CHILLI SAUCE 9G,del monte extra hot chilli sauce 9g,3,ai/items/tx,pcs,ALIAS,Delmonte Saus Cabe,91,alias tertanam: del monte extra hot chilli sauce
+DEL MONTE EXTRA HOT CHILLI SAUCE,del monte extra hot chilli sauce,3,ai/items/tx,pcs,ALIAS,Delmonte Saus Cabe,100,alias persis
+SO KLIN PL LMN 1.5KG,so klin pl lmn 1 5kg,3,ai/items/tx,pcs,ALIAS,Soklin Lantai,100,keputusan manual
+C. kering,c kering,3,items/tx,,ALIAS,Cabe Kering,89,fuzzy+varian 89
+C. kuning mentah,c kuning mentah,3,items/tx,,REVIEW,,65,fuzzy 65 (kedua 63)
+Pungsit,pungsit,3,items/tx,,ALIAS,Kulit Pangsit (Cap Jempol),100,keputusan manual
+Cueng,cueng,3,items/tx,,REVIEW,,73,fuzzy 73 (kedua 71)
+Fillet Dada Ayam Giling 200g,fillet dada ayam giling 200g,3,ai/items/tx,pack,ALIAS,Ayam Giling,100,fuzzy 100 (kedua 76)
+Dollar PP,dollar pp,3,items/tx,pcs,EXCLUDE,,63,kemasan
+Kresek Party,kresek party,3,items/tx,pcs,EXCLUDE,,78,kemasan
+Sendok Makan Suapi,sendok makan suapi,3,items/tx,pcs,EXCLUDE,,72,kemasan
+Paper Cup 4 oz,paper cup 4 oz,3,items/tx,pcs,EXCLUDE,,55,kemasan
+Sirup Lemon,sirup lemon,3,items/tx,pcs,ALIAS,Sunquick Lemon,100,keputusan manual
+Flores bajawa Fw 1kg,flores bajawa fw 1kg,3,ai/items/tx,"pcs,kg",ALIAS,Beans Arabika Flores Bajawa FW,89,alias tertanam: flores bajawa
+Robusta Argopuro 1kg,robusta argopuro 1kg,3,ai/items/tx,"pcs,kg",ALIAS,Robusta Beans,89,alias tertanam: robusta
+Palmsuiker Palm Sugar 250g,palmsuiker palm sugar 250g,3,ai/items/tx,pcs,ALIAS,Palm Sugar,100,fuzzy 100 (kedua 63)
+KARTU NAMA 1 BOX 1 SISI TAI,kartu nama 1 box 1 sisi tai,3,ai/items/tx,box,EXCLUDE,,76,kemasan
+Deli BB,deli bb,3,items/tx,pcs,ALIAS,Barbeque Sauce,100,keputusan manual
+Cup 25 ml,cup 25 ml,3,items/tx,pcs,EXCLUDE,,50,kemasan
+Robusta argopuro fine 1kg,robusta argopuro fine 1kg,3,ai/items/tx,"pcs,kg",ALIAS,Robusta Beans,89,alias tertanam: robusta
+"Paper Bag 10,5x11+3 CM Brown Dragon",paper bag 10 5x11 3 cm brown dragon,3,ai/items/tx,pak,EXCLUDE,,58,kemasan
+Rich Gold Label 907 GR,rich gold label 907 gr,3,ai/items/tx,pcs,ALIAS,Cream,89,alias tertanam: gold label
+SO KLIN PL EUC 1.4KG,so klin pl euc 1 4kg,3,ai/items/tx,"pcs,1.4kg",ALIAS,Soklin Lantai,100,keputusan manual
+Hi-Cook Tabung Gas Mini Portabel 230 g,hi cook tabung gas mini portabel 230 g,3,ai/items/tx,pcs,EXCLUDE,,63,operasional
+Beras 10 kg,beras 10 kg,3,ai/items/tx,"pcs,kg",ALIAS,Beras,100,fuzzy 100 (kedua 63)
+"LEEKUMKE SAUS TIRAM 2,2KG",leekumke saus tiram 2 2kg,3,ai/items/tx,pcs,ALIAS,Oyster Sauce (Lee Kum Kee),100,keputusan manual
+Saus Tiran Panda Kaleng,saus tiran panda kaleng,3,ai/items/tx,pcs,ALIAS,Saus Tiram Panda,89,fuzzy+varian 89
+LKK PANDA OYSTR 510G,lkk panda oystr 510g,3,ai/items/tx,pcs,ALIAS,Oyster Sauce (Lee Kum Kee),100,keputusan manual
+NGOHIONG/PACK 600G,ngohiong pack 600g,3,ai/items/tx,"pcs,pack",ALIAS,Ngohion,95,fuzzy 95 (kedua 57)
+NGOHIONG,ngohiong,3,ai/items/tx,"pcs,pack",ALIAS,Ngohion,95,fuzzy 95 (kedua 63)
+Gula Pasir 1kg,gula pasir 1kg,3,ai/items/tx,"pcs,kg",ALIAS,Gula Pasir Putih,89,alias tertanam: gula pasir
+Saus tiram Panda,saus tiram panda,3,ai/items/tx,pcs,EXACT,Saus Tiram Panda,100,nama sama
+Del hot 1kg,del hot 1kg,3,ai/items/tx,"pcs,kg",ALIAS,Delmonte Saus Cabe,89,alias tertanam: del hot
+Sosis Salam,sosis salam,3,items/tx,pack,EXACT,Sosis (Salam),100,nama sama
+JUNGLE JC APPLE 1L,jungle jc apple 1l,3,ai/items/tx,pcs,ALIAS,Apple Juice,90,alias tertanam: jungle jc apple
+Tofico Sirup Peach,tofico sirup peach,3,items/tx,bottle,ALIAS,Sirup Peach,100,fuzzy 100 (kedua 63)
+Kresek Piala 1 Cup,kresek piala 1 cup,3,items/tx,pack,EXACT,Kresek Piala 1 Cup,100,nama sama
+Kresek Piala Uk 28 Putih,kresek piala uk 28 putih,3,items/tx,pack,EXACT,Kresek Piala Uk 28 Putih,100,nama sama
+Terigu Kompas Kemas,terigu kompas kemas,3,items/tx,,ALIAS,Tepung Terigu,89,alias tertanam: terigu
+Gula GKP Los,gula gkp los,3,items/tx,,ALIAS,Gula Pasir Putih,100,keputusan manual
+Delmonte Tomat,delmonte tomat,3,items/tx,,ALIAS,Saus Tomat (Del Monte),100,keputusan manual
+Delmonte Cabe,delmonte cabe,3,items/tx,,ALIAS,Delmonte Saus Cabe,100,alias persis
+Cireng,cireng,3,items/tx,pack,EXACT,Cireng,100,nama sama
+Triplek 3m/m,triplek 3m m,3,items/tx,lembar,EXCLUDE,,55,operasional
+Paku 7,paku 7,3,items/tx,gr,EXCLUDE,,52,operasional
+Paku Triplek,paku triplek,3,items/tx,gr,EXCLUDE,,57,operasional
+Paku Beton,paku beton,3,items/tx,pcs,EXCLUDE,,57,operasional
+Cat Avian,cat avian,3,items/tx,kg,EXCLUDE,,67,operasional
+Kuas,kuas,3,items/tx,pcs,EXCLUDE,,63,operasional
+Tiner,tiner,3,items/tx,botol,EXCLUDE,,76,operasional
+Cling,cling,3,items/tx,pcs,EXACT,Cling,100,nama sama
+Koepoe Garlic Powder,koepoe garlic powder,3,items/tx,pcs,ALIAS,Garlic Powder (Koepoe),100,alias persis
+Yoa Basil Leaves,yoa basil leaves,3,items/tx,pcs,ALIAS,Basil Leaves,100,alias persis
+Parkir Toko Merpati,parkir toko merpati,3,items/tx,kali,EXCLUDE,,63,operasional
+Baterai ABC,baterai abc,3,items/tx,pcs,EXACT,Baterai ABC,100,nama sama
+DEL MONTE EXTHOTSACH,del monte exthotsach,3,items/tx,,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+YOA KAMPER PDCB 5S,yoa kamper pdcb 5s,3,items/tx,,REVIEW,,77,fuzzy 77 (kedua 57)
+Mahsuri Saus Tiram 510gr,mahsuri saus tiram 510gr,3,items/tx,bottle,ALIAS,Saus Tiram (Mahsuri),100,fuzzy 100 (kedua 77)
+GAS ISI 3KG,gas isi 3kg,3,items/tx,,EXCLUDE,,74,operasional
+FORMULA SGCONFIDENT3S,formula sgconfident3s,3,items/tx,,REVIEW,,63,fuzzy 63 (kedua 53)
+PM 6F,pm 6f,3,items/tx,,ALIAS,Freshmilk Diamond,100,keputusan manual
+Saus Inggris 620ML,saus inggris 620ml,3,items/tx,bottle,EXACT,Saus Inggris 620ML,100,nama sama
+Kecap Asin ABC 620ML,kecap asin abc 620ml,3,items/tx,bottle,ALIAS,Kecap Asin ABC,100,alias persis
+Gas 3Kg,gas 3kg,3,items/tx,tabung,ALIAS,Gas 3 Kg,100,alias persis
+Minyak Sunco,minyak sunco,3,items/tx,liter,EXACT,Minyak Sunco,100,nama sama
+Piala 1 cup,piala 1 cup,3,items/tx,,ALIAS,Kresek Piala 1 Cup,100,fuzzy 100 (kedua 63)
+Piala 2 cup,piala 2 cup,3,items/tx,,EXCLUDE,,63,kemasan
+"French Fries Shoestring 2,5 Kg",french fries shoestring 2 5 kg,3,items/tx,pack,EXACT,"French Fries Shoestring 2,5 Kg",100,nama sama
+Sapi Cincang 200gr,sapi cincang 200gr,3,items/tx,pack,EXACT,Sapi Cincang 200gr,100,nama sama
+Ayam Giling 200gr,ayam giling 200gr,3,items/tx,pack,ALIAS,Ayam Giling,100,alias persis
+Soklin Lantai,soklin lantai,3,items/tx,pcs,EXACT,Soklin Lantai,100,nama sama
+Bensin Rian,bensin rian,3,items/tx,liter,EXCLUDE,,66,operasional
+ANGKAK 100 GR,angkak 100 gr,3,items/tx,,ALIAS,Angkak,100,fuzzy 100 (kedua 63)
+TONG CAI CLO 250G,tong cai clo 250g,3,items/tx,,REVIEW,,81,fuzzy 81 (kedua 71)
+NGOHIONG 250,ngohiong 250,3,items/tx,,ALIAS,Ngohion,95,fuzzy 95 (kedua 57)
+Terigu Kompas 1 KG,terigu kompas 1 kg,3,items/tx,,ALIAS,Tepung Terigu,89,alias tertanam: terigu
+Tm gf,tm gf,3,items/tx,,ALIAS,Freshmilk Greenfield,100,keputusan manual
+Saus tiram Panda Botol,saus tiram panda botol,3,items/tx,,ALIAS,Saus Tiram Panda,100,fuzzy 100 (kedua 74)
+Jeruk limau,jeruk limau,3,items/tx,,EXACT,Jeruk Limau,100,nama sama
+Mang Andri Rokok,mang andri rokok,3,items/tx,kali,ALIAS,Roko Mang Andre,90,fuzzy 90 (kedua 84)
+Tapioka Garpu 1 Merah 1 KG Repack,tapioka garpu 1 merah 1 kg repack,3,items/tx,,REVIEW,,100,keputusan manual
+Elmer African Black 500 GR Repack,elmer african black 500 gr repack,3,items/tx,,REVIEW,,63,fuzzy 63 (kedua 63)
+Almond Alinga Frams 250 GR Repack,almond alinga frams 250 gr repack,3,items/tx,,REVIEW,,76,fuzzy 76 (kedua 63)
+Greenfields Fresh Milk 1 L,greenfields fresh milk 1 l,3,items/tx,,ALIAS,Freshmilk Greenfield,100,keputusan manual
+Sedotan Steril Tekuk Hitam,sedotan steril tekuk hitam,3,items/tx,pack,EXACT,Sedotan Steril Tekuk Hitam,100,nama sama
+Gula Pasir Putih,gula pasir putih,3,items/tx,kg,EXACT,Gula Pasir Putih,100,nama sama
+PH GULA LOKAL 1KG,ph gula lokal 1kg,3,items/tx,,ALIAS,Gula Pasir Putih,100,keputusan manual
+Sialaduh,sialaduh,3,items/tx,,ALIAS,Selada (Ibu Teti Pasar),100,keputusan manual
+B. Daw,b daw,3,items/tx,,REVIEW,,71,fuzzy 71 (kedua 71)
+DIAMOND PLAIN946,diamond plain946,3,items/tx,,ALIAS,Freshmilk Diamond,100,keputusan manual
+SPRITE PET 1.5 LT,sprite pet 1 5 lt,3,items/tx,,ALIAS,Sprite,100,fuzzy 100 (kedua 51)
+Per Pan,per pan,3,items/tx,,REVIEW,,68,fuzzy 68 (kedua 68)
+duwang,duwang,3,items/tx,,REVIEW,,69,fuzzy 69 (kedua 63)
+SURAWUNG,surawung,3,items/tx,,ALIAS,Daun Surawung,100,fuzzy 100 (kedua 63)
+Siladuhr.,siladuhr,3,items/tx,,ALIAS,Selada (Ibu Teti Pasar),100,keputusan manual
+B. Dur,b dur,3,items/tx,,REVIEW,,63,fuzzy 63 (kedua 57)
+10kg,10kg,3,items/tx,kg,REVIEW,,48,fuzzy 48 (kedua 48)
+Rumput Gajah,rumput gajah,3,items/tx,,REVIEW,,63,fuzzy 63 (kedua 57)
+Tanah,tanah,3,items/tx,,REVIEW,,76,fuzzy 76 (kedua 63)
+Bata,bata,3,items/tx,,EXCLUDE,,81,operasional
+Ongkos Pasang,ongkos pasang,3,items/tx,,EXCLUDE,,79,operasional
+Peler Paha,peler paha,3,items/tx,,ALIAS,Paha Filet,100,keputusan manual
+kerinci robusta,kerinci robusta,3,items/tx,,ALIAS,Robusta Beans,89,alias tertanam: robusta
+flores bajawa fw,flores bajawa fw,3,items/tx,,ALIAS,Beans Arabika Flores Bajawa FW,100,fuzzy 100 (kedua 68)
+HappyEgg Telor Omega,happyegg telor omega,3,items/tx,pack,ALIAS,Telor Omega (Happy Egg),89,alias tertanam: telor omega
+Matcha Powder,matcha powder,3,items/tx,pcs,EXACT,Matcha Powder,100,nama sama
+Ongkos Maxim,ongkos maxim,3,items/tx,kali,ALIAS,Ongkir,100,keputusan manual
+Beans Arabika,beans arabika,3,items/tx,kg,ALIAS,Beans Arabika Flores Bajawa FW,100,alias persis
+Tutup Paperbowl 650ml,tutup paperbowl 650ml,3,items/tx,pack,ALIAS,Paperbowl 650ml,100,alias persis
+Parkir Yogya MB,parkir yogya mb,3,items/tx,kali,EXCLUDE,,63,operasional
+Usuk 2 Meter,usuk 2 meter,3,items/tx,pcs,EXCLUDE,,63,operasional
+"Usuk 2,5 Meter",usuk 2 5 meter,3,items/tx,pcs,EXCLUDE,,63,operasional
+Minyak Tropical 1L,minyak tropical 1l,3,items/tx,bottle,EXACT,Minyak Tropical 1L,100,nama sama
+Delmonte Saus Cabe,delmonte saus cabe,3,items/tx,kg,EXACT,Delmonte Saus Cabe,100,nama sama
+Baso Sapi,baso sapi,3,items/tx,pcs,EXACT,Baso Sapi,100,nama sama
+SO KLIN PL LAV 1.5KG,so klin pl lav 1 5kg,3,ai/items/tx,pcs,ALIAS,Soklin Lantai,100,keputusan manual
+Nasi Goreng Sauce,nasi goreng sauce,3,items/tx,pcs,EXACT,Nasi Goreng Sauce,100,nama sama
+Lee Kum Kee Saus Tiram 2.2 KG,lee kum kee saus tiram 2 2 kg,3,ai/items/tx,pcs,ALIAS,Oyster Sauce (Lee Kum Kee),100,keputusan manual
+Arabica Beans,arabica beans,3,items/tx,kg,EXACT,Arabica Beans,100,nama sama
+Delmonte Extra Hot Pouch 1 KG,delmonte extra hot pouch 1 kg,3,ai/items/tx,pcs,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+Delmonte Extra Hot Sachet 8 GR,delmonte extra hot sachet 8 gr,3,ai/items/tx,pak,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+Filma Margarine Salted 200 GR,filma margarine salted 200 gr,3,ai/items/tx,pcs,ALIAS,Margarine (Filma),100,fuzzy 100 (kedua 63)
+Golden Farm Mix Vegetable 1 KG,golden farm mix vegetable 1 kg,3,ai/items/tx,pcs,ALIAS,Mix Vegetable,100,fuzzy 100 (kedua 63)
+Djoe Hoa Cap Ikan Merah 620 ML,djoe hoa cap ikan merah 620 ml,3,ai/items/tx,pcs,ALIAS,Kecap Ikan,100,keputusan manual
+Cap Anggur Kecap Manis Botol 600 ML,cap anggur kecap manis botol 600 ml,3,ai/items/tx,pcs,ALIAS,Kecap Anggur,100,keputusan manual
+ABC Kecap Asin Botol 620 ML,abc kecap asin botol 620 ml,3,ai/items/tx,pcs,ALIAS,Kecap Asin ABC,100,fuzzy 100 (kedua 76)
+Sunquick Lemon 300 ML,sunquick lemon 300 ml,3,ai/items/tx,pcs,ALIAS,Sunquick Lemon,100,fuzzy 100 (kedua 71)
+Cabe keriting,cabe keriting,3,items/tx,kg,ALIAS,Cabe Keriting Merah,100,alias persis
+Kaos,kaos,3,items/tx,pcs,EXCLUDE,,63,kemasan
+Front DTF Logo,front dtf logo,3,items/tx,pcs,REVIEW,,57,fuzzy 57 (kedua 53)
+Sprite 1L,sprite 1l,3,ai/items/tx,pcs,ALIAS,Sprite,100,fuzzy 100 (kedua 59)
+SUNCO POUCH 2LT,sunco pouch 2lt,3,ai/items/tx,"pcs,lt",ALIAS,Minyak Sunco,88,alias tertanam: sunco
+IDAHO SHOESTRING 2KG x2,idaho shoestring 2kg x2,3,ai,kg,ALIAS,Kentang Shoestring,90,alias tertanam: idaho shoestring
+DOLLAR PP 15X30-03 1/4KG,dollar pp 15x30 03 1 4kg,3,ai,pak,EXCLUDE,,63,kemasan
+KRESEK PARTY UK 10 (1GELAPAK@100,kresek party uk 10 1gelapak 100,3,ai,pak,EXCLUDE,,63,kemasan
+Plastic bag party size 10,plastic bag party size 10,3,ai,pak,EXCLUDE,,63,kemasan
+Clear plastic spoons,clear plastic spoons,3,ai,pak,EXCLUDE,,81,kemasan
+jeruk lemon,jeruk lemon,3,ai,,REVIEW,,76,fuzzy 76 (kedua 74)
+Reng,reng,3,ai,,REVIEW,,95,fuzzy 95 (kedua 95)
+Gold'farm Mixed Vegetables,gold farm mixed vegetables,3,ai,,ALIAS,Mix Vegetable,100,keputusan manual
+Sania Cooking Oil Pouch,sania cooking oil pouch,3,ai,lt,ALIAS,Minyak Goreng,100,keputusan manual
+Mayonnaise,mayonnaise,3,ai,kg,ALIAS,Mayonaise,95,fuzzy 95 (kedua 71)
+Lemon Basil,lemon basil,3,ai,,ALIAS,Basil,100,fuzzy 100 (kedua 71)
+Cling Glass Cleaner,cling glass cleaner,3,ai,400 ml,EXCLUDE,pembersih kaca,100,keputusan manual
+PROMO 1: FIX,promo 1 fix,3,ai,,EXCLUDE,,50,kemasan
+Tomat,tomat,3,ai,kg,REVIEW,,100,keputusan manual
+Desaku Bubuk,desaku bubuk,3,ai,,ALIAS,Bawang Putih Bubuk (YOA),100,keputusan manual
+Del Monte BBQ Sauce,del monte bbq sauce,3,ai,"kg,pack",ALIAS,Barbeque Sauce,100,keputusan manual
+Telor Omega 30 pcs,telor omega 30 pcs,3,ai,pcs,ALIAS,Telor Omega (Happy Egg),89,alias tertanam: telor omega
+Hod Sacht,hod sacht,3,ai,,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+Lee Kum Kee Oyster Sauce,lee kum kee oyster sauce,3,ai,pcs,ALIAS,Oyster Sauce (Lee Kum Kee),100,fuzzy 100 (kedua 63)
+Saustiran Panda,saustiran panda,3,ai,,ALIAS,Saus Tiram Panda,90,fuzzy 90 (kedua 68)
+SOSIS SAPI 1KG VP,sosis sapi 1kg vp,2,items/tx,pcs,ALIAS,Bernardi Horeca Sosis,100,keputusan manual
+SOSIS SAPI,sosis sapi,2,items/tx,pcs,ALIAS,Bernardi Horeca Sosis,100,keputusan manual
+DESAKUBWGPTI HBBK 100G,desakubwgpti hbbk 100g,2,items/tx,pcs,ALIAS,Bawang Putih Bubuk (YOA),100,keputusan manual
+DESAKUBWGPTI HBBK,desakubwgpti hbbk,2,items/tx,pcs,ALIAS,Bawang Putih Bubuk (YOA),100,keputusan manual
+Ebi (500gr),ebi 500gr,2,items/tx,ons,EXACT,Ebi (500gr),100,nama sama
+BKP 115-120gr/pcs,bkp 115 120gr pcs,2,items/tx,pcs,REVIEW,,54,fuzzy 54 (kedua 48)
+BKP 115,bkp 115,2,items/tx,pcs,REVIEW,,54,fuzzy 54 (kedua 44)
+Sprite kosong,sprite kosong,2,items/tx,pcs,EXCLUDE,botol kosong (harga 0),100,keputusan manual
+Bkp 120gr/pcs,bkp 120gr pcs,2,items/tx,pcs,REVIEW,,54,fuzzy 54 (kedua 48)
+SO KLIN PL LMN,so klin pl lmn,2,items/tx,pcs,ALIAS,Soklin Lantai,100,keputusan manual
+Saus tiram kaleng,saus tiram kaleng,2,items/tx,pcs,ALIAS,Saus Tiram Panda,100,keputusan manual
+Fillet Dada Ayam Giling,fillet dada ayam giling,2,items/tx,pack,ALIAS,Ayam Giling,100,fuzzy 100 (kedua 84)
+Palmsuiker Palm Sugar,palmsuiker palm sugar,2,items/tx,pcs,ALIAS,Palm Sugar,100,fuzzy 100 (kedua 76)
+gas elpiji 3 kg,gas elpiji 3 kg,2,items/tx,pcs,ALIAS,Gas 3 Kg,100,fuzzy 100 (kedua 57)
+KARTU NAMA 1 1 SISI TAI,kartu nama 1 1 sisi tai,2,items/tx,box,EXCLUDE,,76,kemasan
+TONG CAI GLJ 250G,tong cai glj 250g,2,items/tx,pcs,REVIEW,,81,fuzzy 81 (kedua 63)
+TONG CAI GLJ,tong cai glj,2,items/tx,pcs,REVIEW,,81,fuzzy 81 (kedua 67)
+Robusta argopuro fine,robusta argopuro fine,2,items/tx,pcs,ALIAS,Robusta Beans,89,alias tertanam: robusta
+"Paper 10,5x11+3 CM Brown Dragon",paper 10 5x11 3 cm brown dragon,2,items/tx,pak,REVIEW,,58,fuzzy 58 (kedua 57)
+B. Daun (1 kg),b daun 1 kg,2,items/tx,ikat,ALIAS,Bawang Daun,89,alias tertanam: b daun
+Kecap Inggis,kecap inggis,2,items/tx,pcs,EXACT,Kecap Inggis,100,nama sama
+YOA KAYUMANISBTG50GR,yoa kayumanisbtg50gr,2,items/tx,pcs,REVIEW,,86,fuzzy 86 (kedua 63)
+KAYUMANISBTG50GR,kayumanisbtg50gr,2,items/tx,pcs,ALIAS,Kayu Manis,90,fuzzy 90 (kedua 66)
+SO KLIN PL EUC,so klin pl euc,2,items/tx,pcs,ALIAS,Soklin Lantai,100,keputusan manual
+Hi-Cook Tabung Gas Mini Portabel,hi cook tabung gas mini portabel,2,items/tx,pcs,EXCLUDE,,63,operasional
+10kg cumi,10kg cumi,2,items/tx,kg,NEW,Cumi,100,keputusan manual
+cumi,cumi,2,items/tx,kg,NEW,Cumi,100,keputusan manual
+LEEKUMKE SAUS TIRAM,leekumke saus tiram,2,items/tx,pcs,ALIAS,Oyster Sauce (Lee Kum Kee),100,keputusan manual
+Den Hot,den hot,2,items/tx,pcs,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+Del saos,del saos,2,items/tx,pax,REVIEW,,59,fuzzy 59 (kedua 59)
+Saus Tiran Panda,saus tiran panda,2,items/tx,pcs,ALIAS,Saus Tiram Panda,94,fuzzy 94 (kedua 72)
+LKK PANDA OYSTR,lkk panda oystr,2,items/tx,pcs,ALIAS,Oyster Sauce (Lee Kum Kee),100,keputusan manual
+PALMIA SACHET 200 GR,palmia sachet 200 gr,2,items/tx,pcs,REVIEW,,70,fuzzy 70 (kedua 54)
+PALMIA,palmia,2,items/tx,pcs,REVIEW,,76,fuzzy 76 (kedua 69)
+FILMA MPGARINSALT200,filma mpgarinsalt200,2,items/tx,pcs,ALIAS,Margarine (Filma),88,alias tertanam: filma
+MPGARINSALT200,mpgarinsalt200,2,items/tx,pcs,ALIAS,Margarine (Filma),100,keputusan manual
+Cup saus,cup saus,2,items/tx,pcs,EXCLUDE,,67,kemasan
+Trash 90,trash 90,2,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 52)
+SKM Carnation,skm carnation,2,tx,pcs,EXACT,SKM Carnation,100,nama sama
+Nestle Carnation 1 KG,nestle carnation 1 kg,2,items/tx,pcs,ALIAS,SKM Carnation,100,keputusan manual
+JUNGLE JC APPLE,jungle jc apple,2,items/tx,pcs,ALIAS,Apple Juice,100,alias persis
+Sproo robusta kerinci,sproo robusta kerinci,2,items/tx,pcs,ALIAS,Robusta Beans,89,alias tertanam: robusta
+Cabe Domba 250 gr,cabe domba 250 gr,2,items/tx,pcs,ALIAS,Cabe Domba,100,fuzzy 100 (kedua 63)
+Bawang 500 gr,bawang 500 gr,2,items/tx,pcs,REVIEW,,74,fuzzy 74 (kedua 74)
+Gula Aren 500 gr,gula aren 500 gr,2,items/tx,pcs,ALIAS,Gula Aren,100,fuzzy 100 (kedua 74)
+Sproo Flores bajawa fw 1kg,sproo flores bajawa fw 1kg,2,items/tx,pcs,ALIAS,Beans Arabika Flores Bajawa FW,89,alias tertanam: flores bajawa
+Sproo Robusta full 1kg,sproo robusta full 1kg,2,items/tx,pcs,ALIAS,Robusta Beans,89,alias tertanam: robusta
+FF COCONUT UHT,ff coconut uht,2,items/tx,pcs,ALIAS,Frisianflag Coconut Delight,89,alias tertanam: ff coconut
+Hod Sachet,hod sachet,2,items/tx,pcs,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+Hod,hod,2,items/tx,pcs,ALIAS,Delmonte Saus Cabe,100,keputusan manual
+BP,bp,2,items/tx,pcs,ALIAS,Bawang Putih,100,alias persis
+Wincheez Gold 2 KG,wincheez gold 2 kg,2,items/tx,pcs,REVIEW,,49,fuzzy 49 (kedua 48)
+Wincheez Gold,wincheez gold,2,items/tx,pcs,REVIEW,,51,fuzzy 51 (kedua 48)
+Raja Gula 1 KG Repack,raja gula 1 kg repack,2,items/tx,pcs,ALIAS,Gula Pasir Putih,100,keputusan manual
+Raja Gula,raja gula,2,items/tx,pcs,ALIAS,Gula Pasir Putih,100,keputusan manual
+Van Houten Chocolate Button Dark 1 KG,van houten chocolate button dark 1 kg,2,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+Van Houten Chocolate Button Dark,van houten chocolate button dark,2,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+Elmer African Red 500 GR Repack,elmer african red 500 gr repack,2,items/tx,pcs,REVIEW,,74,fuzzy 74 (kedua 63)
+Elmer African Red,elmer african red,2,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+Buttersub Milky 500 GR Repack,buttersub milky 500 gr repack,2,items/tx,pcs,REVIEW,,100,keputusan manual
+Buttersub Milky,buttersub milky,2,items/tx,pcs,REVIEW,,100,keputusan manual
+Garam Dolpin Besar 500 GR,garam dolpin besar 500 gr,2,items/tx,pcs,ALIAS,Garam,100,fuzzy 100 (kedua 71)
+Garam Dolpin Besar,garam dolpin besar,2,items/tx,pcs,ALIAS,Garam,100,fuzzy 100 (kedua 76)
+Lahangtua Palmsuiker Biru 1 KG,lahangtua palmsuiker biru 1 kg,2,items/tx,pcs,ALIAS,Palm Sugar,100,keputusan manual
+Lahangtua Palmsuiker Biru,lahangtua palmsuiker biru,2,items/tx,pcs,ALIAS,Palm Sugar,100,keputusan manual
+PH KRPK UDG KCG,ph krpk udg kcg,2,items/tx,pcs,REVIEW,,58,fuzzy 58 (kedua 54)
+Freshmilk Greendfields,freshmilk greendfields,2,items/tx,pcs,ALIAS,Freshmilk Greenfield,100,keputusan manual
+Lemon Tea Max Tea,lemon tea max tea,2,items/tx,pak,EXACT,Lemon Tea Max Tea,100,nama sama
+ROSE BRAND POUCH 2J,rose brand pouch 2j,2,items/tx,pcs,ALIAS,Minyak Goreng,100,keputusan manual
+ROSE BRAND 2J,rose brand 2j,2,items/tx,pcs,ALIAS,Minyak Goreng,100,keputusan manual
+FILMA MARGARIN1200,filma margarin1200,2,items/tx,pcs,ALIAS,Margarine (Filma),88,alias tertanam: filma
+SCHWEPPES SDANITER250,schweppes sdaniter250,2,items/tx,pcs,ALIAS,Schweppes Soda,91,fuzzy 91 (kedua 78)
+Kulit Pangsit (Cap Jempol),kulit pangsit cap jempol,2,items/tx,pcs,EXACT,Kulit Pangsit (Cap Jempol),100,nama sama
+GOLDEN FARM MIXED VEGETABLES 500G,golden farm mixed vegetables 500g,2,items/tx,pcs,ALIAS,Mix Vegetable,91,alias tertanam: golden farm mixed vegetables
+TELUR AYAM NEGERI TBG,telur ayam negeri tbg,2,items/tx,pcs,ALIAS,Telur Ayam,100,fuzzy 100 (kedua 60)
+C. Merah Kering,c merah kering,2,items/tx,kg,ALIAS,Cabe Kering,100,keputusan manual
+Kentang Shoestring 2.5kg,kentang shoestring 2 5kg,2,items/tx,pcs,REVIEW,,100,fuzzy 100 (kedua 100)
+Ikan Panda Kaleng,ikan panda kaleng,2,items/tx,pcs,ALIAS,Saus Tiram Panda,100,keputusan manual
+Ikan Panda,ikan panda,2,items/tx,pcs,ALIAS,Saus Tiram Panda,100,keputusan manual
+Roti Gandum,roti gandum,2,items/tx,pcs,ALIAS,Roti Tawar Gandum,100,alias persis
+FILMA MRAGARINSALT200,filma mragarinsalt200,2,items/tx,pcs,ALIAS,Margarine (Filma),88,alias tertanam: filma
+SO KLIN PL LAV,so klin pl lav,2,items/tx,pcs,ALIAS,Soklin Lantai,100,keputusan manual
+Margarine Salted,margarine salted,2,items/tx,pcs,ALIAS,Margarine (Filma),100,keputusan manual
+Golden Farm Mix Vegetable,golden farm mix vegetable,2,items/tx,pcs,ALIAS,Mix Vegetable,100,fuzzy 100 (kedua 63)
+Djoe Hoa Cap Ikan Merah,djoe hoa cap ikan merah,2,items/tx,pcs,ALIAS,Kecap Ikan,100,keputusan manual
+Cap Anggur Kecap Manis,cap anggur kecap manis,2,items/tx,pcs,ALIAS,Kecap Anggur,100,keputusan manual
+2LT,2lt,2,items/tx,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+BP JETSTREAM SXN-101,bp jetstream sxn 101,2,ai,,REVIEW,,76,fuzzy 76 (kedua 57)
+Del Monte Barbeque Sauce,del monte barbeque sauce,2,ai,"pack,kg",ALIAS,Barbeque Sauce,100,fuzzy 100 (kedua 76)
+sky berry,sky berry,2,ai,,REVIEW,,68,fuzzy 68 (kedua 57)
+Plastic bag PP 15x30,plastic bag pp 15x30,2,ai,pak,EXCLUDE,,63,kemasan
+Carnation Condensed Milk,carnation condensed milk,2,ai,,ALIAS,SKM Carnation,100,keputusan manual
+Dishwashing Liquid,dishwashing liquid,2,ai,,REVIEW,,57,fuzzy 57 (kedua 57)
+30 pcs telor omega,30 pcs telor omega,2,ai,pcs,ALIAS,Telor Omega (Happy Egg),89,alias tertanam: telor omega
+paper cup 4oz,paper cup 4oz,2,ai,,EXCLUDE,,58,kemasan
+coconut milk,coconut milk,2,ai,ctn,REVIEW,,74,fuzzy 74 (kedua 74)
+LPG gas 3kg,lpg gas 3kg,2,ai,pcs,ALIAS,Gas 3 Kg,89,alias tertanam: gas 3kg
+15 pcs ubi,15 pcs ubi,2,ai,pcs,REVIEW,,54,fuzzy 54 (kedua 51)
+Usuk,usuk,2,ai,,EXCLUDE,,71,operasional
+Lamb Siring,lamb siring,2,ai,,REVIEW,,71,fuzzy 71 (kedua 69)
+Bernardi Sosis Sapi Horeca Pack,bernardi sosis sapi horeca pack,2,ai,"pack,kg",ALIAS,Bernardi Horeca Sosis,100,fuzzy 100 (kedua 76)
+Palm Sugar,palm sugar,2,ai,"pcs,kg",EXACT,Palm Sugar,100,nama sama
+Usuk 2x,usuk 2x,2,ai,,EXCLUDE,,63,operasional
+Paku,paku,2,ai,,EXCLUDE,,63,operasional
+Engsel,engsel,2,ai,,EXCLUDE,,63,operasional
+Polaris Soda Water,polaris soda water,2,ai,ml,REVIEW,,71,fuzzy 71 (kedua 63)
+Dripp Chocolate Syrup,dripp chocolate syrup,2,ai,,ALIAS,Coklat Powder,100,keputusan manual
+Idola,idola,2,ai,,EXCLUDE,,71,kemasan
+B. puis,b puis,2,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+c. tanig merah,c tanig merah,2,ai,,REVIEW,,100,keputusan manual
+Jumlah,jumlah,2,ai,,REVIEW,,57,fuzzy 57 (kedua 57)
+Biaya admin,biaya admin,2,ai,,REVIEW,,71,fuzzy 71 (kedua 60)
+BBQ sauce,bbq sauce,2,ai,kg,ALIAS,Barbeque Sauce,100,keputusan manual
+New States Apparel Premium Cotton 7200 T-shirt,new states apparel premium cotton 7200 t shirt,2,ai,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+lemon,lemon,2,ai,,REVIEW,,100,fuzzy 100 (kedua 100)
+Cabai Merah Besar,cabai merah besar,2,ai,,ALIAS,Cabe Besar,100,keputusan manual
+Mahsuri Oyster Sauce 510g,mahsuri oyster sauce 510g,2,ai,pcs,ALIAS,Saus Tiram (Mahsuri),100,keputusan manual
+Mahsuri Oyster Sauce 255g,mahsuri oyster sauce 255g,2,ai,pcs,ALIAS,Saus Tiram (Mahsuri),100,keputusan manual
+Pet,pet,2,ai,pcs,REVIEW,,100,keputusan manual
+Den Hod,den hod,2,ai,kg,REVIEW,,54,fuzzy 54 (kedua 54)
+Den BBQ,den bbq,2,ai,kg,REVIEW,,54,fuzzy 54 (kedua 54)
+Canned Mushrooms,canned mushrooms,2,ai,,REVIEW,,54,fuzzy 54 (kedua 53)
+Sesame Oil,sesame oil,2,ai,,REVIEW,,57,fuzzy 57 (kedua 57)
+Idela 4.15,idela 4 15,2,ai,,REVIEW,,48,fuzzy 48 (kedua 48)
+Vipco Pouch,vipco pouch,2,ai,,REVIEW,,55,fuzzy 55 (kedua 50)
+B-daun (1kg),b daun 1kg,2,ai,ikat,ALIAS,Bawang Daun,89,alias tertanam: b daun
+Mama Lemon Dishwashing Liquid,mama lemon dishwashing liquid,2,ai,,REVIEW,,71,fuzzy 71 (kedua 57)
+MULTI HP-08,multi hp 08,2,ai,,REVIEW,,71,fuzzy 71 (kedua 54)
+30 butir telor OMEGA,30 butir telor omega,2,ai,butir,ALIAS,Telor Omega (Happy Egg),89,alias tertanam: telor omega
+Cisnik,cisnik,2,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+Facial Tissue 1000s,facial tissue 1000s,2,ai,,EXCLUDE,,63,kemasan
+Nestle Carnation Condensed Milk,nestle carnation condensed milk,2,ai,pcs,REVIEW,,82,fuzzy 82 (kedua 63)
+Delmonte Chili Sauce,delmonte chili sauce,2,ai,"pcs,pak",REVIEW,,78,fuzzy 78 (kedua 74)
+Dripp Chocolate Powder,dripp chocolate powder,2,ai,pcs,ALIAS,Coklat Powder,88,fuzzy+varian 88
+Djoe Hoa Fish Sauce,djoe hoa fish sauce,2,ai,pcs,REVIEW,,72,fuzzy 72 (kedua 66)
+Robusta coffee beans,robusta coffee beans,2,ai,kg,REVIEW,,100,fuzzy 100 (kedua 100)
+10kg tym plet,10kg tym plet,2,ai,kg,REVIEW,,57,fuzzy 57 (kedua 54)
+Lemon squash,lemon squash,2,ai,,REVIEW,,71,fuzzy 71 (kedua 69)
+Wings Porcelain Cleaner Blue,wings porcelain cleaner blue,2,ai,,REVIEW,,71,fuzzy 71 (kedua 63)
+Del BBQ Sauce,del bbq sauce,2,ai,,REVIEW,,74,fuzzy 74 (kedua 63)
+Dark Soy Sauce,dark soy sauce,2,ai,,EXACT,Dark Soy Sauce,100,nama sama
+Fish Sauce,fish sauce,2,ai,,REVIEW,,78,fuzzy 78 (kedua 76)
+Lemon Juice,lemon juice,2,ai,,REVIEW,,80,fuzzy 80 (kedua 72)
+Gold Label Sauce,gold label sauce,2,ai,,ALIAS,Cream,100,keputusan manual
+Bawang merah kupas,bawang merah kupas,2,ai,,ALIAS,Bawang Merah,100,fuzzy 100 (kedua 74)
+Cabe merah besar,cabe merah besar,2,ai,,ALIAS,Cabe Besar,100,keputusan manual
+Potato 2.5kg,potato 2 5kg,2,ai,"pack,kg",REVIEW,,60,fuzzy 60 (kedua 44)
+Paprika Powder,paprika powder,2,ai,kg,EXACT,Paprika Powder,100,nama sama
+Breadcrumbs Mix,breadcrumbs mix,2,ai,kg,REVIEW,,63,fuzzy 63 (kedua 63)
+Ladaku Ground Pepper,ladaku ground pepper,2,ai,,ALIAS,Lada Bubuk,89,alias tertanam: ladaku
+Tofico Green Apple Syrup,tofico green apple syrup,2,ai,,REVIEW,,79,fuzzy 79 (kedua 62)
+Total Granulated Mushroom,total granulated mushroom,2,ai,,REVIEW,,57,fuzzy 57 (kedua 54)
+Soked 2/4,soked 2 4,2,ai,,REVIEW,,54,fuzzy 54 (kedua 54)
+forgt,forgt,2,ai,,REVIEW,,63,fuzzy 63 (kedua 57)
+Desaku Bubuk Ketumbar 100g,desaku bubuk ketumbar 100g,2,ai,,REVIEW,,67,fuzzy 67 (kedua 63)
+Desaku Bubuk Putih,desaku bubuk putih,2,ai,,REVIEW,,76,fuzzy 76 (kedua 71)
+Gold Label Product,gold label product,2,ai,,REVIEW,,100,keputusan manual
+Rose Brand Cooking Oil Pouch,rose brand cooking oil pouch,2,ai,,REVIEW,,73,fuzzy 73 (kedua 63)
+Del Hot set,del hot set,2,ai,,ALIAS,Delmonte Saus Cabe,89,alias tertanam: del hot
+Cengkeh,cengkeh,2,ai,kg,REVIEW,,76,fuzzy 76 (kedua 63)
+Tissue,tissue,2,ai,1000g,EXCLUDE,,76,kemasan
+Den Hot Sadd,den hot sadd,2,ai,pcs,REVIEW,,58,fuzzy 58 (kedua 50)
+Yoa Thyme,yoa thyme,2,ai,24g,ALIAS,Thyme,100,alias persis
+tinco,tinco,2,ai,,REVIEW,,71,fuzzy 71 (kedua 71)
+Item,item,2,ai,,REVIEW,,81,fuzzy 81 (kedua 71)
+Ayam Cincang,ayam cincang,1,tx,pcs,EXACT,Ayam Cincang,100,nama sama
+GOLDTP HJ X72,goldtp hj x72,1,ai,,REVIEW,,52,fuzzy 52 (kedua 42)
+LABEL HARGA NO.112,label harga no 112,1,ai,,EXCLUDE,,68,kemasan
+Bms,bms,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+Cimory Fresh Milk,cimory fresh milk,1,ai,,REVIEW,,76,fuzzy 76 (kedua 66)
+Schweppes,schweppes,1,ai,,ALIAS,Schweppes Soda,100,alias persis
+Greenfields Fresh Milk,greenfields fresh milk,1,ai,ctn,REVIEW,,76,fuzzy 76 (kedua 63)
+Cling wrap,cling wrap,1,ai,,ALIAS,Cling,100,alias persis
+BERNARDI HORECA PACK SOSIS SAPI 1KG VP x2,bernardi horeca pack sosis sapi 1kg vp x2,1,ai,kg,ALIAS,Bernardi Horeca Sosis,100,fuzzy 100 (kedua 76)
+Bebek daun,bebek daun,1,ai,,REVIEW,,63,fuzzy 63 (kedua 60)
+Bebek goreng,bebek goreng,1,ai,,REVIEW,,76,fuzzy 76 (kedua 76)
+Bebek putih,bebek putih,1,ai,,REVIEW,,71,fuzzy 71 (kedua 67)
+j. iris,j iris,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+jeruk iris,jeruk iris,1,ai,,REVIEW,,74,fuzzy 74 (kedua 63)
+Ground Chicken Breast Fillet,ground chicken breast fillet,1,ai,pack,REVIEW,,76,fuzzy 76 (kedua 67)
+Plastic bag PP 15x30 1/4kg,plastic bag pp 15x30 1 4kg,1,ai,pak,EXCLUDE,,63,kemasan
+Cimory Milk,cimory milk,1,ai,,REVIEW,,58,fuzzy 58 (kedua 57)
+Glass Cleaner,glass cleaner,1,ai,,REVIEW,,71,fuzzy 71 (kedua 59)
+Rokok mary Andri,rokok mary andri,1,ai,,EXCLUDE,,77,operasional
+poto pillet,poto pillet,1,ai,kg,REVIEW,,59,fuzzy 59 (kedua 54)
+photo pellet,photo pellet,1,ai,kg,REVIEW,,55,fuzzy 55 (kedua 54)
+lemon syrup,lemon syrup,1,ai,,REVIEW,,71,fuzzy 71 (kedua 67)
+tea,tea,1,ai,,REVIEW,,100,fuzzy 100 (kedua 100)
+ubi brulle,ubi brulle,1,ai,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+B. Jam,b jam,1,ai,,REVIEW,,76,fuzzy 76 (kedua 57)
+Bawang Jam,bawang jam,1,ai,,REVIEW,,84,fuzzy 84 (kedua 80)
+Bmtz,bmtz,1,ai,,REVIEW,,54,fuzzy 54 (kedua 54)
+B. jorg,b jorg,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+Bawang Jagung,bawang jagung,1,ai,,REVIEW,,83,fuzzy 83 (kedua 78)
+bakso kecil,bakso kecil,1,ai,,ALIAS,Bakso,100,fuzzy 100 (kedua 63)
+Reng 10,reng 10,1,ai,,REVIEW,,76,fuzzy 76 (kedua 69)
+Cimory Full Cream Milk,cimory full cream milk,1,ai,,ALIAS,Freshmilk Cimory 950ml,100,keputusan manual
+So Klin Liquid Detergent 700ml,so klin liquid detergent 700ml,1,ai,,REVIEW,,74,fuzzy 74 (kedua 57)
+1 lbr Triplek 3 mm,1 lbr triplek 3 mm,1,ai,lbr,EXCLUDE,,48,operasional
+10 bh paku beton 10cm,10 bh paku beton 10cm,1,ai,bh,EXCLUDE,,54,operasional
+Argopuro coffee beans,argopuro coffee beans,1,ai,kg,REVIEW,,76,fuzzy 76 (kedua 76)
+Flores Bajawa coffee beans,flores bajawa coffee beans,1,ai,kg,ALIAS,Beans Arabika Flores Bajawa FW,89,alias tertanam: flores bajawa
+Robusta Argopuro coffee beans,robusta argopuro coffee beans,1,ai,kg,REVIEW,,100,fuzzy 100 (kedua 100)
+So Klin Detergent,so klin detergent,1,ai,,REVIEW,,63,fuzzy 63 (kedua 57)
+Ladaku Pepper,ladaku pepper,1,ai,100gr,ALIAS,Lada Bubuk,89,alias tertanam: ladaku
+Thermal paper,thermal paper,1,ai,pak,EXCLUDE,,71,kemasan
+ABC AAA Batteries 4 Pack,abc aaa batteries 4 pack,1,ai,,REVIEW,,79,fuzzy 79 (kedua 60)
+ANGNAK/KG,angnak kg,1,ai,kg,REVIEW,,79,fuzzy 79 (kedua 63)
+Angnak,angnak,1,ai,kg,REVIEW,,83,fuzzy 83 (kedua 69)
+1 lbr triplek 3mm,1 lbr triplek 3mm,1,ai,lbr,EXCLUDE,,48,operasional
+triplek 3mm,triplek 3mm,1,ai,lbr,EXCLUDE,,52,operasional
+5 bh paku beton 1-1/2,5 bh paku beton 1 1 2,1,ai,bh,EXCLUDE,,48,operasional
+paku beton 1-1/2,paku beton 1 1 2,1,ai,bh,EXCLUDE,,53,operasional
+1 bh kp kayu 1-1/2,1 bh kp kayu 1 1 2,1,ai,bh,REVIEW,,57,fuzzy 57 (kedua 48)
+kp kayu 1-1/2,kp kayu 1 1 2,1,ai,bh,REVIEW,,63,fuzzy 63 (kedua 57)
+"Kop banjir 1""",kop banjir 1,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+Kop banjir 1 inch,kop banjir 1 inch,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+Seoltape,seoltape,1,ai,,REVIEW,,68,fuzzy 68 (kedua 63)
+Seal tape,seal tape,1,ai,,REVIEW,,63,fuzzy 63 (kedua 58)
+Soket 1 inch,soket 1 inch,1,ai,,EXCLUDE,,54,operasional
+1 bh ember Ice Bacat 36t,1 bh ember ice bacat 36t,1,ai,bh,REVIEW,,68,fuzzy 68 (kedua 63)
+ember ice bucket,ember ice bucket,1,ai,bh,REVIEW,,63,fuzzy 63 (kedua 60)
+1 bh capitan stls 1pt3-12,1 bh capitan stls 1pt3 12,1,ai,bh,REVIEW,,63,fuzzy 63 (kedua 63)
+stainless steel tongs,stainless steel tongs,1,ai,bh,REVIEW,,63,fuzzy 63 (kedua 63)
+Maizena corn starch,maizena corn starch,1,ai,,REVIEW,,63,fuzzy 63 (kedua 61)
+Yogurt,yogurt,1,ai,,REVIEW,,63,fuzzy 63 (kedua 57)
+SH0716 RP 7650,sh0716 rp 7650,1,ai,,REVIEW,,54,fuzzy 54 (kedua 48)
+Vanilla powder,vanilla powder,1,ai,,REVIEW,,78,fuzzy 78 (kedua 72)
+HH0723 RP 29800,hh0723 rp 29800,1,ai,,REVIEW,,32,fuzzy 32 (kedua 32)
+KRESEK H028,kresek h028,1,ai,,EXCLUDE,,57,kemasan
+Yogya Bakery Tawar Gandum,yogya bakery tawar gandum,1,ai,,REVIEW,,83,fuzzy 83 (kedua 63)
+Kartu Nama,kartu nama,1,ai,box,EXCLUDE,,67,kemasan
+Trash bag,trash bag,1,ai,,EXCLUDE,,67,kemasan
+New States Apparel Premium Cotton 7200 White Size L,new states apparel premium cotton 7200 white size l,1,ai,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+New States Apparel Premium Cotton 7200 White Size M,new states apparel premium cotton 7200 white size m,1,ai,pcs,REVIEW,,63,fuzzy 63 (kedua 63)
+DTF Logo Printing,dtf logo printing,1,ai,pcs,REVIEW,,71,fuzzy 71 (kedua 63)
+B. puis kupas,b puis kupas,1,ai,,REVIEW,,57,fuzzy 57 (kedua 57)
+matcha,matcha,1,ai,,ALIAS,Matcha Powder,100,fuzzy 100 (kedua 63)
+Maxtea Peach,maxtea peach,1,ai,,ALIAS,Peach Tea Max Tea,96,fuzzy 96 (kedua 67)
+2315452-GENTLE GEN LIQ PARIS,2315452 gentle gen liq paris,1,ai,,EXCLUDE,,63,operasional
+Gentle Gen Liquid Paris,gentle gen liquid paris,1,ai,,EXCLUDE,,63,operasional
+2290636-CLING KACA UNGU REF,2290636 cling kaca ungu ref,1,ai,,EXCLUDE,pembersih kaca,100,keputusan manual
+Cling Glass Cleaner Purple Refill,cling glass cleaner purple refill,1,ai,,EXCLUDE,pembersih kaca,100,keputusan manual
+2292219-PRM/SOKLIN FL REF 1.,2292219 prm soklin fl ref 1,1,ai,,ALIAS,Soklin Lantai,89,alias tertanam: soklin
+So Klin Floor Cleaner Refill,so klin floor cleaner refill,1,ai,,REVIEW,,71,fuzzy 71 (kedua 66)
+1001891-GOLDEN FARM MIXED VE,1001891 golden farm mixed ve,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+2080409-KRESEK ASIA 35,2080409 kresek asia 35,1,ai,,EXCLUDE,,63,kemasan
+Plastic Bag Asia 35,plastic bag asia 35,1,ai,,EXCLUDE,,63,kemasan
+Cabai Domba,cabai domba,1,ai,,ALIAS,Cabe Domba,86,fuzzy+varian 86
+Cabai Rawit,cabai rawit,1,ai,,ALIAS,Cabe Rawit,88,alias tertanam: rawit
+HH0730 RP 29800 X 2.0 X 6100,hh0730 rp 29800 x 2 0 x 6100,1,ai,,REVIEW,,32,fuzzy 32 (kedua 32)
+SCHWEPPES SDWATER250 2.0 X 41950,schweppes sdwater250 2 0 x 41950,1,ai,,ALIAS,Soda Water Schweppes,90,alias tertanam: schweppes sdwater250
+ROSE BRAND POUCH 2L PROMO RP 40.950 X 2.0,rose brand pouch 2l promo rp 40 950 x 2 0,1,ai,2l,EXCLUDE,,66,kemasan
+PWP Rose Brand,pwp rose brand,1,ai,,REVIEW,,59,fuzzy 59 (kedua 59)
+Grape Soy Sauce,grape soy sauce,1,ai,,REVIEW,,79,fuzzy 79 (kedua 71)
+Bagus Karbol Pine,bagus karbol pine,1,ai,,EXCLUDE,,63,operasional
+Argopuro Full Wash Coffee,argopuro full wash coffee,1,ai,kg,REVIEW,,76,fuzzy 76 (kedua 58)
+Robusta Argopuro Fine Coffee,robusta argopuro fine coffee,1,ai,kg,ALIAS,Robusta Beans,89,alias tertanam: robusta
+Plastic Bag 15x35,plastic bag 15x35,1,ai,pcs,EXCLUDE,,63,kemasan
+Nestle Carnation Condensed Milk 2kg,nestle carnation condensed milk 2kg,1,ai,pcs,REVIEW,,82,fuzzy 82 (kedua 63)
+Beros DT,beros dt,1,ai,kg,REVIEW,,76,fuzzy 76 (kedua 63)
+Rich gdd,rich gdd,1,ai,,REVIEW,,63,fuzzy 63 (kedua 51)
+Mayenes,mayenes,1,ai,kg,REVIEW,,81,fuzzy 81 (kedua 63)
+FF Cocenut,ff cocenut,1,ai,,REVIEW,,74,fuzzy 74 (kedua 66)
+Filma Salted Margarine,filma salted margarine,1,ai,,ALIAS,Margarine (Filma),100,fuzzy 100 (kedua 63)
+B. Bambai,b bambai,1,ai,,REVIEW,,76,fuzzy 76 (kedua 76)
+B. Dwn,b dwn,1,ai,,REVIEW,,57,fuzzy 57 (kedua 57)
+Diamond UHT,diamond uht,1,ai,,REVIEW,,78,fuzzy 78 (kedua 57)
+Diamond UHT Milk,diamond uht milk,1,ai,,REVIEW,,73,fuzzy 73 (kedua 57)
+Fish Oil,fish oil,1,ai,,REVIEW,,59,fuzzy 59 (kedua 59)
+Paper Bag,paper bag,1,ai,pak,EXCLUDE,,76,kemasan
+sesame seeds,sesame seeds,1,ai,,REVIEW,,57,fuzzy 57 (kedua 57)
+VOA LADA HTM BBK35GR,voa lada htm bbk35gr,1,ai,,ALIAS,Lada Hitam Bubuk,90,alias tertanam: lada htm bbk35gr
+Black Pepper Powder,black pepper powder,1,ai,,REVIEW,,76,fuzzy 76 (kedua 67)
+VOA OREGANO 20GR,voa oregano 20gr,1,ai,,ALIAS,Oregano,100,fuzzy 100 (kedua 57)
+Jeruk Lime,jeruk lime,1,ai,,ALIAS,Jeruk Limau,90,fuzzy 90 (kedua 63)
+Jeruk nipis,jeruk nipis,1,ai,,REVIEW,,70,fuzzy 70 (kedua 63)
+B. punir,b punir,1,ai,,REVIEW,,76,fuzzy 76 (kedua 63)
+Beras putih,beras putih,1,ai,,ALIAS,Beras,100,fuzzy 100 (kedua 84)
+B. gorey,b gorey,1,ai,,REVIEW,,68,fuzzy 68 (kedua 68)
+Beras goreng,beras goreng,1,ai,,REVIEW,,100,keputusan manual
+gula punir,gula punir,1,ai,,REVIEW,,76,fuzzy 76 (kedua 76)
+EKONOMI DISHWASH NAH,ekonomi dishwash nah,1,ai,,ALIAS,Ekonomi Pencuci Piring,89,alias tertanam: ekonomi
+Ekonomi Dishwash,ekonomi dishwash,1,ai,,ALIAS,Ekonomi Pencuci Piring,89,alias tertanam: ekonomi
+BAYGON AE 600 JAPANE,baygon ae 600 japane,1,ai,,EXCLUDE,,63,operasional
+Baygon AE 600,baygon ae 600,1,ai,,EXCLUDE,,63,operasional
+DAHLIA AE HERITAGE T,dahlia ae heritage t,1,ai,,EXCLUDE,,63,kemasan
+Dahlia AE Heritage,dahlia ae heritage,1,ai,,EXCLUDE,,63,kemasan
+POLYTEX MULTI PURPOS,polytex multi purpos,1,ai,,EXCLUDE,,67,kemasan
+Polytex Multi Purpose,polytex multi purpose,1,ai,,EXCLUDE,,67,kemasan
+POLYTEX HTP SPON EXT,polytex htp spon ext,1,ai,,EXCLUDE,,50,kemasan
+Polytex HTP Spon,polytex htp spon,1,ai,,EXCLUDE,,48,kemasan
+PRM/AKAGO REF 2LT,prm akago ref 2lt,1,ai,,REVIEW,,57,fuzzy 57 (kedua 53)
+Prm/Akago Refill 2LT,prm akago refill 2lt,1,ai,,REVIEW,,57,fuzzy 57 (kedua 53)
+HAXTEA PEACH B010,haxtea peach b010,1,ai,,REVIEW,,73,fuzzy 73 (kedua 62)
+Haxtea Peach,haxtea peach,1,ai,,ALIAS,Peach Tea Max Tea,88,fuzzy+varian 88
+Kresek Asia,kresek asia,1,ai,,EXCLUDE,,81,kemasan
+c. kerij merah,c kerij merah,1,ai,,ALIAS,Cabe Keriting Merah,100,keputusan manual
+cabai keriting merah,cabai keriting merah,1,ai,,ALIAS,Cabe Keriting Merah,92,fuzzy 92 (kedua 76)
+frozen mixed vegetables,frozen mixed vegetables,1,ai,,REVIEW,,80,fuzzy 80 (kedua 63)
+margarine,margarine,1,ai,,ALIAS,Margarine (Filma),100,fuzzy 100 (kedua 71)
+Filei Raha,filei raha,1,ai,kg,REVIEW,,80,fuzzy 80 (kedua 63)
+Rich Gold Label,rich gold label,1,ai,pcs,ALIAS,Cream,89,alias tertanam: gold label
+j-lemio,j lemio,1,ai,,REVIEW,,73,fuzzy 73 (kedua 69)
+daun bawang,daun bawang,1,ai,,ALIAS,Bawang Daun,100,fuzzy 100 (kedua 75)
+CINNAMON STICK,cinnamon stick,1,ai,,REVIEW,,71,fuzzy 71 (kedua 71)
+Jungle apple syrup,jungle apple syrup,1,ai,,REVIEW,,74,fuzzy 74 (kedua 62)
+Onion,onion,1,ai,,REVIEW,,76,fuzzy 76 (kedua 71)
+Wonton wrappers,wonton wrappers,1,ai,,REVIEW,,71,fuzzy 71 (kedua 54)
+Peeled garlic,peeled garlic,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+Aquaproof White,aquaproof white,1,ai,,EXCLUDE,,63,kemasan
+Paint brush 4 inch,paint brush 4 inch,1,ai,,REVIEW,,63,fuzzy 63 (kedua 57)
+Refill Roller Blue,refill roller blue,1,ai,,REVIEW,,57,fuzzy 57 (kedua 54)
+cincang ayem,cincang ayem,1,ai,200 g,ALIAS,Ayam Cincang,92,fuzzy 92 (kedua 75)
+UBI 10 pcs,ubi 10 pcs,1,ai,pcs,REVIEW,,63,fuzzy 63 (kedua 48)
+Jugley Aple,jugley aple,1,ai,,REVIEW,,73,fuzzy 73 (kedua 63)
+Sendek garpu Bening,sendek garpu bening,1,ai,,ALIAS,Sendok Garpu,87,fuzzy+varian 87
+Bowl 500 lid,bowl 500 lid,1,ai,,EXCLUDE,,54,kemasan
+Sweet soy sauce,sweet soy sauce,1,ai,,REVIEW,,79,fuzzy 79 (kedua 66)
+Kec Paha,kec paha,1,ai,,REVIEW,,67,fuzzy 67 (kedua 63)
+Kecap Paha,kecap paha,1,ai,,REVIEW,,78,fuzzy 78 (kedua 78)
+c-Keriing,c keriing,1,ai,,REVIEW,,84,fuzzy 84 (kedua 83)
+Kemang,kemang,1,ai,,REVIEW,,95,fuzzy 95 (kedua 95)
+Robot RT-K4 Charger,robot rt k4 charger,1,ai,pcs,REVIEW,,63,fuzzy 63 (kedua 54)
+Jeruk kemangi,jeruk kemangi,1,ai,,ALIAS,Kemangi Segar,89,alias tertanam: kemangi
+1 kg Agraprup,1 kg agraprup,1,ai,kg,REVIEW,,63,fuzzy 63 (kedua 57)
+Agraprup,agraprup,1,ai,kg,REVIEW,,63,fuzzy 63 (kedua 63)
+1 bh Poll cat fel,1 bh poll cat fel,1,ai,bh,EXCLUDE,,48,operasional
+Poll cat fel,poll cat fel,1,ai,bh,EXCLUDE,,50,operasional
+Orchid Butter Unsalted,orchid butter unsalted,1,ai,,ALIAS,Butter,100,fuzzy 100 (kedua 52)
+SH0813 RP 49650,sh0813 rp 49650,1,ai,,REVIEW,,54,fuzzy 54 (kedua 48)
+So Klin Liquid Detergent,so klin liquid detergent,1,ai,1.4kg,REVIEW,,74,fuzzy 74 (kedua 57)
+Wings Porcelain Cleaner,wings porcelain cleaner,1,ai,700,REVIEW,,71,fuzzy 71 (kedua 63)
+Dahlia Air Freshener,dahlia air freshener,1,ai,350,EXCLUDE,pengharum ruangan,100,keputusan manual
+Baygon Aerosol,baygon aerosol,1,ai,600,EXCLUDE,,63,operasional
+Jolly Pop Up Tissue,jolly pop up tissue,1,ai,pak,EXCLUDE,,60,kemasan
+Melati Spoon Set,melati spoon set,1,ai,pak,REVIEW,,63,fuzzy 63 (kedua 63)
+Plastic Seal Bag,plastic seal bag,1,ai,pak,EXCLUDE,,66,kemasan
+Cap Anggur Sweet Soy Sauce,cap anggur sweet soy sauce,1,ai,pcs,REVIEW,,86,fuzzy 86 (kedua 79)
+Sunquick Lemon Syrup,sunquick lemon syrup,1,ai,pcs,ALIAS,Sunquick Lemon,100,fuzzy 100 (kedua 71)
+Kecap Asin,kecap asin,1,ai,,ALIAS,Kecap Asin ABC,100,alias persis
+Shamu LED Bulb 9 Watt,shamu led bulb 9 watt,1,ai,pcs,REVIEW,,57,fuzzy 57 (kedua 57)
+Hi-Cook Portable Gas Canister 230g,hi cook portable gas canister 230g,1,ai,pcs,EXCLUDE,,63,operasional
+Trashbag,trashbag,1,ai,,EXCLUDE,,63,kemasan
+Goldiabel,goldiabel,1,ai,,REVIEW,,54,fuzzy 54 (kedua 51)
+Jungle-1 Apie,jungle 1 apie,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+Jungle Pie,jungle pie,1,ai,,REVIEW,,63,fuzzy 63 (kedua 59)
+Bernardi Horeca Pack Beef Sausage,bernardi horeca pack beef sausage,1,ai,kg,REVIEW,,83,fuzzy 83 (kedua 76)
+Plastic Bag Large,plastic bag large,1,ai,,EXCLUDE,,68,kemasan
+Pasta tomat,pasta tomat,1,ai,,REVIEW,,72,fuzzy 72 (kedua 67)
+B dam,b dam,1,ai,,REVIEW,,76,fuzzy 76 (kedua 57)
+cabai rawit hijau,cabai rawit hijau,1,ai,,ALIAS,Cabe Rawit,88,alias tertanam: rawit
+Wrapping Film,wrapping film,1,ai,,EXCLUDE,,66,kemasan
+Rice,rice,1,ai,kg,REVIEW,,81,fuzzy 81 (kedua 71)
+Desaku Bubuk Putih 100g,desaku bubuk putih 100g,1,ai,,REVIEW,,67,fuzzy 67 (kedua 67)
+Total Granulated Mushroom 400g,total granulated mushroom 400g,1,ai,,REVIEW,,57,fuzzy 57 (kedua 54)
+Omega 3 supplement,omega 3 supplement,1,ai,,REVIEW,,63,fuzzy 63 (kedua 57)
+b. merh,b merh,1,ai,,REVIEW,,79,fuzzy 79 (kedua 79)
+Sunquick Lemon Drink,sunquick lemon drink,1,ai,,ALIAS,Sunquick Lemon,100,fuzzy 100 (kedua 71)
+Roti Mix,roti mix,1,ai,kg,REVIEW,,73,fuzzy 73 (kedua 73)
+Lid for Bowl 500ml,lid for bowl 500ml,1,ai,,EXCLUDE,,54,kemasan
+Bagus Coffee Filter,bagus coffee filter,1,ai,,REVIEW,,63,fuzzy 63 (kedua 59)
+Paseo Facial Tissue,paseo facial tissue,1,ai,,EXCLUDE,,63,kemasan
+PWP SANIA 40.950,pwp sania 40 950,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+PWP Sania Discount,pwp sania discount,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+B. Inen,b inen,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+Kurupuk seblak,kurupuk seblak,1,ai,,REVIEW,,81,fuzzy 81 (kedua 63)
+kecap Anggu Bantal,kecap anggu bantal,1,ai,,ALIAS,Kecap Anggur,91,fuzzy 91 (kedua 84)
+Sq lemen,sq lemen,1,ai,,REVIEW,,68,fuzzy 68 (kedua 58)
+Clear spoon,clear spoon,1,ai,,REVIEW,,81,fuzzy 81 (kedua 63)
+Anggur Bantal Soy Sauce,anggur bantal soy sauce,1,ai,,REVIEW,,80,fuzzy 80 (kedua 67)
+Orchid butter,orchid butter,1,ai,,ALIAS,Butter,100,alias persis
+Bucket + dipper,bucket dipper,1,ai,,REVIEW,,55,fuzzy 55 (kedua 54)
+Sunco Cooking Oil Pouch,sunco cooking oil pouch,1,ai,lt,ALIAS,Minyak Sunco,88,alias tertanam: sunco
+1 sty PVC 3/4,1 sty pvc 3 4,1,ai,sty,EXCLUDE,,44,operasional
+PVC pipe 3/4 inch,pvc pipe 3 4 inch,1,ai,sty,REVIEW,,48,fuzzy 48 (kedua 48)
+1 bh tangt,1 bh tangt,1,ai,bh,REVIEW,,69,fuzzy 69 (kedua 63)
+1 rd soket 3/4,1 rd soket 3 4,1,ai,rd,EXCLUDE,,48,operasional
+socket 3/4 inch,socket 3 4 inch,1,ai,rd,EXCLUDE,,54,operasional
+1 bh soket 1,1 bh soket 1,1,ai,bh,EXCLUDE,,57,operasional
+socket 1 inch,socket 1 inch,1,ai,bh,EXCLUDE,,54,operasional
+3 kg semen,3 kg semen,1,ai,kg,EXCLUDE,,67,operasional
+cement,cement,1,ai,kg,REVIEW,,71,fuzzy 71 (kedua 63)
+Maestro Mayonnaise Premium,maestro mayonnaise premium,1,ai,,ALIAS,Mayonaise,84,fuzzy+varian 84
+Anggur Sauce,anggur sauce,1,ai,,REVIEW,,78,fuzzy 78 (kedua 76)
+So Klin Liquid Detergent Jasmine,so klin liquid detergent jasmine,1,ai,,REVIEW,,74,fuzzy 74 (kedua 63)
+So Klin Liquid Detergent Nana,so klin liquid detergent nana,1,ai,,REVIEW,,74,fuzzy 74 (kedua 68)
+Cling Glass Cleaner Refill,cling glass cleaner refill,1,ai,,EXCLUDE,pembersih kaca,100,keputusan manual
+KREBEK ASIA 35,krebek asia 35,1,ai,,REVIEW,,63,fuzzy 63 (kedua 57)
+B. Ikan,b ikan,1,ai,,REVIEW,,100,keputusan manual
+Bumbu Ikan,bumbu ikan,1,ai,,REVIEW,,80,fuzzy 80 (kedua 63)
+1 bh soket 3/4,1 bh soket 3 4,1,ai,bh,EXCLUDE,,57,operasional
+1 bh stop kran 3/4,1 bh stop kran 3 4,1,ai,bh,EXCLUDE,,54,operasional
+2 bh karet plenes,2 bh karet plenes,1,ai,bh,REVIEW,,63,fuzzy 63 (kedua 54)
+Kunci Mas Cooking Oil Pouch,kunci mas cooking oil pouch,1,ai,,ALIAS,Minyak Goreng,100,keputusan manual
+MULTI MPOB 1000G,multi mpob 1000g,1,ai,1000g,REVIEW,,71,fuzzy 71 (kedua 57)
+Multi MPOB,multi mpob,1,ai,1000g,REVIEW,,71,fuzzy 71 (kedua 57)
+kerap bango,kerap bango,1,ai,,ALIAS,Kecap Manis,88,alias tertanam: bango
+Del Monte Hot Sauce Sachet,del monte hot sauce sachet,1,ai,,REVIEW,,72,fuzzy 72 (kedua 69)
+FF Coconut Milk,ff coconut milk,1,ai,ctn,ALIAS,Frisianflag Coconut Delight,89,alias tertanam: ff coconut
+Garam Refill,garam refill,1,ai,,ALIAS,Garam,100,fuzzy 100 (kedua 63)
+Sasa MSG,sasa msg,1,ai,kg,ALIAS,Micin,88,alias tertanam: sasa
+Kentang Crinkle Cut,kentang crinkle cut,1,ai,,REVIEW,,100,keputusan manual
+SH0910,sh0910,1,ai,,REVIEW,,54,fuzzy 54 (kedua 48)
+PVC elbow,pvc elbow,1,ai,,REVIEW,,56,fuzzy 56 (kedua 48)
+Jungle-y Aple,jungle y aple,1,ai,,REVIEW,,67,fuzzy 67 (kedua 63)
+Lee Kum Kee Panda Brand Sauce,lee kum kee panda brand sauce,1,ai,,REVIEW,,83,fuzzy 83 (kedua 66)
+ketapanggur manis,ketapanggur manis,1,ai,,REVIEW,,83,fuzzy 83 (kedua 74)
+Cup PET 12oz,cup pet 12oz,1,ai,pax,ALIAS,Cup 12 PET,91,fuzzy 91 (kedua 56)
+Tutup cup 12 oz,tutup cup 12 oz,1,ai,pax,ALIAS,Tutup Cup,100,fuzzy 100 (kedua 75)
+Bernardi Horeca Pack Sosis Sapi 1kg,bernardi horeca pack sosis sapi 1kg,1,ai,pack,ALIAS,Bernardi Horeca Sosis,100,fuzzy 100 (kedua 76)
+Kantong Plastik Sedang,kantong plastik sedang,1,ai,pcs,EXCLUDE,,68,kemasan
+Arabica Fullwash coffee beans,arabica fullwash coffee beans,1,ai,,ALIAS,Arabica Beans,100,fuzzy 100 (kedua 76)
+gas regulator,gas regulator,1,ai,,EXCLUDE,,64,operasional
+canned oysters,canned oysters,1,ai,,REVIEW,,71,fuzzy 71 (kedua 60)
+Wonton,wonton,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+Meatball,meatball,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+Bowl Lid 500 ml,bowl lid 500 ml,1,ai,,EXCLUDE,,54,kemasan
+Plastic Bag 12x25,plastic bag 12x25,1,ai,,EXCLUDE,,63,kemasan
+Gold Label Margarine,gold label margarine,1,ai,,REVIEW,,100,keputusan manual
+Potato 2.5 kg,potato 2 5 kg,1,ai,kg,REVIEW,,66,fuzzy 66 (kedua 44)
+Kunci Mas Cooking Oil Pouch 2L,kunci mas cooking oil pouch 2l,1,ai,l,ALIAS,Minyak Goreng,100,keputusan manual
+Kecap Anggui,kecap anggui,1,ai,pcs,ALIAS,Kecap Anggur,92,fuzzy 92 (kedua 84)
+Oh Guan Hing Sesame Oil,oh guan hing sesame oil,1,ai,,REVIEW,,57,fuzzy 57 (kedua 57)
+B. puni kupas,b puni kupas,1,ai,,REVIEW,,63,fuzzy 63 (kedua 57)
+UBI 15 pcs,ubi 15 pcs,1,ai,pcs,REVIEW,,63,fuzzy 63 (kedua 48)
+Wings Porcelain Blue 700,wings porcelain blue 700,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+Plastic Bag HD 28 Plain,plastic bag hd 28 plain,1,ai,,EXCLUDE,,63,kemasan
+Cinnamon Powder 40g,cinnamon powder 40g,1,ai,,REVIEW,,71,fuzzy 71 (kedua 71)
+Cinnamon Stick 50g,cinnamon stick 50g,1,ai,,REVIEW,,71,fuzzy 71 (kedua 71)
+Gold'Farm Mixed Vegetables 500g,gold farm mixed vegetables 500g,1,ai,,REVIEW,,80,fuzzy 80 (kedua 71)
+Desaku Garlic Powder 100g,desaku garlic powder 100g,1,ai,,REVIEW,,79,fuzzy 79 (kedua 68)
+Cleo Water,cleo water,1,ai,,ALIAS,Cleo,100,fuzzy 100 (kedua 67)
+Telur Omega 30 butir,telur omega 30 butir,1,ai,butir,REVIEW,,76,fuzzy 76 (kedua 74)
+Paper bowl,paper bowl,1,ai,,ALIAS,Paperbowl 650ml,90,fuzzy 90 (kedua 57)
+Machine cleaner,machine cleaner,1,ai,,REVIEW,,71,fuzzy 71 (kedua 59)
+Tiramisu,tiramisu,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+Frisian Flag coconut,frisian flag coconut,1,ai,ctn,ALIAS,Susu Coconut,100,alias persis
+UBI 15 buhr,ubi 15 buhr,1,ai,buhr,REVIEW,,57,fuzzy 57 (kedua 57)
+Tepung maizena,tepung maizena,1,ai,,ALIAS,Tepung Jagung,100,alias persis
+Multi Tissue 1000g,multi tissue 1000g,1,ai,,ALIAS,Multi Tisu,90,fuzzy 90 (kedua 57)
+Filma Margarine Salted 200g,filma margarine salted 200g,1,ai,,ALIAS,Margarine (Filma),100,fuzzy 100 (kedua 63)
+Koepoe Koepoe Vanilla Powder 25g,koepoe koepoe vanilla powder 25g,1,ai,,REVIEW,,79,fuzzy 79 (kedua 68)
+Polytex Sponge 5s,polytex sponge 5s,1,ai,,EXCLUDE,,55,kemasan
+So Klin Liquid Lavender 1.5kg,so klin liquid lavender 1 5kg,1,ai,,REVIEW,,74,fuzzy 74 (kedua 57)
+Baygon Aerosol Lavender 600ml,baygon aerosol lavender 600ml,1,ai,,EXCLUDE,,63,operasional
+Dahlia Air Freshener Teh Keraton 350ml,dahlia air freshener teh keraton 350ml,1,ai,,EXCLUDE,pengharum ruangan,100,keputusan manual
+SH0925 RP 32900 2.0 X 13650,sh0925 rp 32900 2 0 x 13650,1,ai,,REVIEW,,54,fuzzy 54 (kedua 48)
+Desaku Turmeric Powder,desaku turmeric powder,1,ai,100 g,REVIEW,,79,fuzzy 79 (kedua 72)
+PALMIA SACHET 200 GR HQ0930 RP 5950 1.0,palmia sachet 200 gr hq0930 rp 5950 1 0,1,ai,200 gr,REVIEW,,70,fuzzy 70 (kedua 54)
+Palmia Margarine,palmia margarine,1,ai,200 gr,REVIEW,,84,fuzzy 84 (kedua 66)
+FILMA MPGARINSALT200 HQ0930 RP 6150 1.0,filma mpgarinsalt200 hq0930 rp 6150 1 0,1,ai,200 g,ALIAS,Margarine (Filma),88,alias tertanam: filma
+Total Granulated Mushroom Seasoning,total granulated mushroom seasoning,1,ai,400 g,REVIEW,,71,fuzzy 71 (kedua 63)
+Ladaku Pepper Powder,ladaku pepper powder,1,ai,100 g,ALIAS,Lada Bubuk,89,alias tertanam: ladaku
+Plastic Wrap Small,plastic wrap small,1,ai,,EXCLUDE,,62,kemasan
+Oyster Sauce Panda Can,oyster sauce panda can,1,ai,,REVIEW,,71,fuzzy 71 (kedua 63)
+Tawar Gandum,tawar gandum,1,ai,,ALIAS,Roti Tawar Gandum,100,fuzzy 100 (kedua 63)
+Frozen Potatoes,frozen potatoes,1,ai,,REVIEW,,54,fuzzy 54 (kedua 54)
+Saos tiran Panda Kaleng,saos tiran panda kaleng,1,ai,,REVIEW,,83,fuzzy 83 (kedua 63)
+Oyster Sauce Panda,oyster sauce panda,1,ai,,REVIEW,,80,fuzzy 80 (kedua 63)
+BBQ,bbq,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+Bimoli Cooking Oil,bimoli cooking oil,1,ai,ml,ALIAS,Minyak Bimoli,89,alias tertanam: bimoli
+B. Dawn,b dawn,1,ai,kg,REVIEW,,69,fuzzy 69 (kedua 69)
+Jho,jho,1,ai,,REVIEW,,76,fuzzy 76 (kedua 63)
+Matcha Drip Coffee,matcha drip coffee,1,ai,,REVIEW,,78,fuzzy 78 (kedua 54)
+Diamond Tep,diamond tep,1,ai,,REVIEW,,78,fuzzy 78 (kedua 60)
+Saus Tomat,saus tomat,1,ai,pack,ALIAS,Saus Tomat (Del Monte),100,fuzzy 100 (kedua 71)
+SAMOND WPUMP SW_CQ04,samond wpump sw cq04,1,ai,,REVIEW,,63,fuzzy 63 (kedua 52)
+Samono Water Pump,samono water pump,1,ai,,EXCLUDE,,63,kemasan
+Nice Facial Tissue,nice facial tissue,1,ai,,EXCLUDE,,63,kemasan
+Eterna Nylon Cable,eterna nylon cable,1,ai,,EXCLUDE,,63,kemasan
+Arabica Bulumash Halu,arabica bulumash halu,1,ai,,REVIEW,,78,fuzzy 78 (kedua 76)
+Arabica Bulumash Halu coffee beans,arabica bulumash halu coffee beans,1,ai,,ALIAS,Arabica Beans,100,fuzzy 100 (kedua 76)
+telir,telir,1,ai,,REVIEW,,76,fuzzy 76 (kedua 76)
+Tomato,tomato,1,ai,,REVIEW,,79,fuzzy 79 (kedua 63)
+Matcha Drip,matcha drip,1,ai,,REVIEW,,80,fuzzy 80 (kedua 54)
+Chocolate,chocolate,1,ai,,REVIEW,,63,fuzzy 63 (kedua 59)
+LPG,lpg,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+Panda Oyster Sauce,panda oyster sauce,1,ai,,REVIEW,,80,fuzzy 80 (kedua 68)
+Kerupuk oren,kerupuk oren,1,ai,,ALIAS,Kerupuk,100,fuzzy 100 (kedua 69)
+Tepung panir mix,tepung panir mix,1,ai,kg,ALIAS,Panir Mix,100,fuzzy 100 (kedua 74)
+Bango Soy Sauce,bango soy sauce,1,ai,,ALIAS,Kecap Manis,88,alias tertanam: bango
+Del Monte Hot Sauce,del monte hot sauce,1,ai,kg,REVIEW,,72,fuzzy 72 (kedua 70)
+Jungle-1 Aple,jungle 1 aple,1,ai,,REVIEW,,67,fuzzy 67 (kedua 63)
+Saus tiran Panda faleng,saus tiran panda faleng,1,ai,,ALIAS,Saus Tiram Panda,89,fuzzy+varian 89
+Lee Kum Kee Panda Brand Oyster Sauce,lee kum kee panda brand oyster sauce,1,ai,,ALIAS,Oyster Sauce (Lee Kum Kee),100,fuzzy 100 (kedua 68)
+So Klin Liquid Detergent Lemon,so klin liquid detergent lemon,1,ai,,REVIEW,,74,fuzzy 74 (kedua 71)
+ALP,alp,1,ai,,REVIEW,,76,fuzzy 76 (kedua 76)
+Sprite 1ltr,sprite 1ltr,1,ai,,ALIAS,Sprite,100,fuzzy 100 (kedua 54)
+Clear Shampoo Lavender,clear shampoo lavender,1,ai,,REVIEW,,81,fuzzy 81 (kedua 63)
+MR MUSCLE B2G1,mr muscle b2g1,1,ai,,REVIEW,,71,fuzzy 71 (kedua 48)
+Mr Muscle,mr muscle,1,ai,,REVIEW,,81,fuzzy 81 (kedua 53)
+Total Grnltd Mushroom 400g,total grnltd mushroom 400g,1,ai,,REVIEW,,57,fuzzy 57 (kedua 53)
+Jungle Juice Apple 1L,jungle juice apple 1l,1,ai,,ALIAS,Apple Juice,100,fuzzy 100 (kedua 57)
+Yoa Black Pepper Powder 35g,yoa black pepper powder 35g,1,ai,,REVIEW,,68,fuzzy 68 (kedua 63)
+Bernardi Sosis Sapi 1kg,bernardi sosis sapi 1kg,1,ai,pack,ALIAS,Bernardi Horeca Sosis,89,alias tertanam: bernardi sosis
+Byp 115-120gr/pcs,byp 115 120gr pcs,1,ai,pcs,REVIEW,,48,fuzzy 48 (kedua 42)
+Ayam 115-120gr/pcs,ayam 115 120gr pcs,1,ai,pcs,REVIEW,,63,fuzzy 63 (kedua 59)
+sweetened condensed milk,sweetened condensed milk,1,ai,kg,REVIEW,,63,fuzzy 63 (kedua 56)
+Sprite 1 liter kosong,sprite 1 liter kosong,1,ai,,EXCLUDE,botol kosong (harga 0),100,keputusan manual
+meatballs,meatballs,1,ai,,REVIEW,,63,fuzzy 63 (kedua 57)
+Soda Water,soda water,1,ai,330ml,ALIAS,Soda Water Schweppes,100,fuzzy 100 (kedua 63)
+Desaku Bumbu,desaku bumbu,1,ai,100g,REVIEW,,64,fuzzy 64 (kedua 60)
+Bowl lid 500,bowl lid 500,1,ai,,EXCLUDE,,54,kemasan
+Tomatoes,tomatoes,1,ai,,REVIEW,,71,fuzzy 71 (kedua 63)
+Kasin ferster,kasin ferster,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+Gula merar,gula merar,1,ai,tms,REVIEW,,76,fuzzy 76 (kedua 74)
+Wipol Floor Cleaner,wipol floor cleaner,1,ai,,EXCLUDE,,71,kemasan
+Dahlia Toilet Deodorizer,dahlia toilet deodorizer,1,ai,,EXCLUDE,,57,kemasan
+Stella Air Freshener,stella air freshener,1,ai,,EXCLUDE,pengharum ruangan,100,keputusan manual
+Hit Insecticide,hit insecticide,1,ai,,EXCLUDE,,57,kemasan
+Sponge,sponge,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+Yummy Bites Tawar Gandum,yummy bites tawar gandum,1,ai,,REVIEW,,83,fuzzy 83 (kedua 63)
+Robustal Temanggung,robustal temanggung,1,ai,,REVIEW,,73,fuzzy 73 (kedua 66)
+Robusta Temanggung Coffee,robusta temanggung coffee,1,ai,,ALIAS,Robusta Beans,89,alias tertanam: robusta
+Arabica Bali Kintamani Coffee,arabica bali kintamani coffee,1,ai,,REVIEW,,83,fuzzy 83 (kedua 76)
+Del Monte Chili Sauce,del monte chili sauce,1,ai,,REVIEW,,78,fuzzy 78 (kedua 72)
+Del Monte Tomato Sauce,del monte tomato sauce,1,ai,,ALIAS,Saus Tomat (Del Monte),90,fuzzy 90 (kedua 70)
+Jungle Apple Juice,jungle apple juice,1,ai,,ALIAS,Apple Juice,100,fuzzy 100 (kedua 63)
+Daging Domba,daging domba,1,ai,,REVIEW,,74,fuzzy 74 (kedua 71)
+Mie Yamin,mie yamin,1,ai,,REVIEW,,78,fuzzy 78 (kedua 74)
+Oyster sauce,oyster sauce,1,ai,,ALIAS,Oyster Sauce (Lee Kum Kee),100,fuzzy 100 (kedua 76)
+Blp 120gr/pcs.,blp 120gr pcs,1,ai,pcs,REVIEW,,54,fuzzy 54 (kedua 48)
+Blp 120gr,blp 120gr,1,ai,pcs,REVIEW,,54,fuzzy 54 (kedua 54)
+Battery,battery,1,ai,,REVIEW,,79,fuzzy 79 (kedua 79)
+Trash bag/service,trash bag service,1,ai,,EXCLUDE,,63,kemasan
+Square Lemon,square lemon,1,ai,,REVIEW,,71,fuzzy 71 (kedua 69)
+Sausage,sausage,1,ai,pack,REVIEW,,69,fuzzy 69 (kedua 69)
+bumbu jaman,bumbu jaman,1,ai,,REVIEW,,67,fuzzy 67 (kedua 67)
+bumbu goreng,bumbu goreng,1,ai,,REVIEW,,76,fuzzy 76 (kedua 70)
+Spoon and fork,spoon and fork,1,ai,,REVIEW,,54,fuzzy 54 (kedua 54)
+Max lemen,max lemen,1,ai,pak,REVIEW,,73,fuzzy 73 (kedua 63)
+Trash bag 80x120,trash bag 80x120,1,ai,,EXCLUDE,,63,kemasan
+f. limo.,f limo,1,ai,,REVIEW,,63,fuzzy 63 (kedua 63)
+EKONOMI PP NANAS1500,ekonomi pp nanas1500,1,ai,,ALIAS,Ekonomi Pencuci Piring,89,alias tertanam: ekonomi
+Ekonomi Dishwashing Liquid Pineapple,ekonomi dishwashing liquid pineapple,1,ai,,ALIAS,Ekonomi Pencuci Piring,89,alias tertanam: ekonomi
+Discount,discount,1,ai,,REVIEW,,58,fuzzy 58 (kedua 52)
+5.0 X 6250,5 0 x 6250,1,ai,,REVIEW,,38,fuzzy 38 (kedua 38)
+Minyak goreng,minyak goreng,1,ai,ltr,EXACT,Minyak Goreng,100,nama sama
