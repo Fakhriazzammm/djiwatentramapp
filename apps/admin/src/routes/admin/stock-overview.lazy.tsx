@@ -24,7 +24,7 @@ import {
 	buildStockOverviewAnalytics,
 	getMovementDirection,
 	getMovementLabel,
-} from "./stock-overview-model";
+} from "./-stock-overview-model";
 
 export const Route = createLazyFileRoute("/admin/stock-overview")({
 	component: StockOverviewPage,
