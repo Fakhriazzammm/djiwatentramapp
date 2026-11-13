@@ -2,24 +2,24 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(new URL("./menu-sidebar.tsx", import.meta.url), "utf8");
+const flow = readFileSync(new URL("../pos-ios/open-shift-flow.tsx", import.meta.url), "utf8");
 
 describe("POS opening shift UX contract", () => {
 	it("keeps the four-step flow and one active opening state", () => {
-		expect(source).toContain("Data Shift");
-		expect(source).toContain("Review");
-		expect(source).toContain("Checklist");
-		expect(source).toContain("Selesai");
+		expect(flow).toContain('"Data"');
+		expect(flow).toContain('"Review"');
+		expect(flow).toContain('"Checklist"');
+		expect(flow).toContain("Shift siap digunakan");
 		expect(source).toContain("const [startStep, setStartStep]");
 	});
 
 	it("supports fast input, team search, draft recovery, and a success handoff", () => {
 		expect(source).toContain("SHIFT_OPENING_DRAFT_KEY");
-		expect(source).toContain("Cari anggota tim");
-		expect(source).toContain("Pilih semua");
-		expect(source).toContain("Kesiapan operasional");
-		expect(source).toContain("Tandai semua");
-		expect(source).toContain("formatShiftOpeningCurrency");
-		expect(source).toContain("Masuk ke Kasir");
+		expect(flow).toContain("Cari anggota tim");
+		expect(flow).toContain("Pilih semua");
+		expect(flow).toContain("Kesiapan operasional");
+		expect(flow).toContain("Centang semua");
+		expect(flow).toContain("Masuk ke kasir");
 	});
 
 	it("refreshes shared shift status after opening a shift", () => {

@@ -90,7 +90,10 @@ import { PosOrderDetailSheet } from "@/components/pos/pos-order-detail-sheet";
 import { DeliveryCustomerQueue } from "@/components/pos/delivery-customer-queue";
 import { usePosNotifications } from "@/hooks/use-pos-notifications";
 import { createClient } from "@/lib/client";
-import { QueueHorizontalBar } from "@/components/pos/queue-horizontal-bar";
+import { MenuScreen, type MenuProductVM } from "@/components/pos-ios/menu-screen";
+import { QueueSheet, useProductionQueue } from "@/components/pos-ios/queue-sheet";
+import { BonusSheet, type BonusVM } from "@/components/pos-ios/bonus-sheet";
+import { ProductOptionsSheet } from "@/components/pos-ios/product-options-sheet";
 import { MarketingInfoStrip } from "@/components/pos/marketing-info-strip";
 import { StockToolbarPanel } from "@/components/pos/stock-toolbar-panel";
 import { StockTutorial, shouldShowStockTutorial } from "@/components/pos/stock-tutorial";
@@ -818,7 +821,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		shiftReminderMinutes,
 	]);
 
-	const [isTargetExpanded, setIsTargetExpanded] = useState(false);
 
 	const progress = useHybridCurrentMonthProgress();
 
@@ -933,7 +935,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 
 	// Refs for scrolling
 	const productGridRef = useRef<HTMLDivElement>(null);
-	const mainScrollRef = useRef<HTMLElement>(null);
+	const mainScrollRef = useRef<HTMLDivElement>(null);
 	const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
 	const isLoadingMoreRef = useRef(false);
 
@@ -1719,6 +1721,61 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 		openPanel(tabId as PosPanel);
 	};
 
+	// ── View-model untuk layar Menu baru (logika tetap, hanya bentuk datanya) ──
+	const productionQueue = useProductionQueue();
+	const [queueOpen, setQueueOpen] = useState(false);
+	const [queueTab, setQueueTab] = useState<"active" | "done">("active");
+	const [bonusOpen, setBonusOpen] = useState(false);
+
+	const productVMs = useMemo<MenuProductVM[]>(() => {
+		const categoryNameById = new Map<string, string>((categories ?? []).map((category: any) => [String(category._id), String(category.name)]));
+		return displayedProducts.map((product: any) => {
+			const pricing = calculateEffectivePrice({ _id: product._id, price: product.price, categoryId: product.categoryId }, activeDiscounts, { allowHappyHour: false });
+			const quantity = Number(product.quantity ?? 0);
+			return {
+				id: String(product._id),
+				raw: product,
+				name: String(product.name ?? ""),
+				image: product.image,
+				menuNumber: product.menuNumber,
+				price: pricing.finalPrice,
+				originalPrice: pricing.originalPrice,
+				promoLabel: pricing.isPromo ? (pricing.isHappyHour ? "HAPPY HOUR" : "PROMO") : null,
+				cartQty: cartItems.filter((item) => item.productId === product._id).reduce((sum, item) => sum + item.quantity, 0),
+				sold: product.isAvailable === false || (integratedStock && quantity <= 0),
+				stock: integratedStock ? quantity : null,
+				categoryName: categoryNameById.get(String(product.categoryId)) ?? "Lainnya",
+			};
+		});
+	}, [displayedProducts, activeDiscounts, cartItems, categories, integratedStock]);
+
+	const handleDecrementProduct = useCallback(
+		(vm: MenuProductVM) => {
+			const line = [...cartItems].reverse().find((item) => item.productId === vm.id);
+			if (line) updateQuantity(line.productId, line.variant, -1);
+		},
+		[cartItems, updateQuantity],
+	);
+
+	const bonusVM = useMemo<BonusVM | null>(
+		() =>
+			progress && progress.hasTarget
+				? {
+						shiftPct,
+						dailyPct,
+						shiftCollected: progress.shiftCollected,
+						shiftTarget: progress.shiftTarget,
+						dailyCollected: progress.dailyCollected,
+						dailyTarget: progress.dailyTarget,
+						shiftBonusTotal: totalShiftBonusNow,
+						dailyBonusTotal: totalDailyBonusNow,
+						shiftMembers: shiftBonusSummary,
+						dailyMembers: dailyBonusSummary,
+					}
+				: null,
+		[progress, shiftPct, dailyPct, totalShiftBonusNow, totalDailyBonusNow, shiftBonusSummary, dailyBonusSummary],
+	);
+
 	return (
 		<div className="flex h-app flex-row bg-background overflow-hidden relative">
 			<Dialog open={happyHourNoticeOpen} onOpenChange={setHappyHourNoticeOpen}>
@@ -1763,67 +1820,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			</Dialog>
 			{/* LEFT CONTENT: Menu Area */}
 			<div className="flex flex-1 flex-col overflow-hidden relative">
-				{/* Shift Closed Overlay — only show when shift status is known AND closed */}
-				{shiftStatus !== undefined && !isShiftOpen && (
-					<div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
-						<div className="flex flex-col items-center justify-center p-6 text-center max-w-md bg-card rounded-2xl shadow-xl border border-border/50">
-							<div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600 mb-3">
-								<Wallet className="h-6 w-6" />
-							</div>
-							<h2 className="text-lg font-black tracking-tight mb-1.5">Shift Kasir Tertutup</h2>
-							<p className="text-muted-foreground text-xs mb-5 leading-relaxed">
-								Anda belum bisa menggunakan aplikasi kasir. Silakan buka shift terlebih dahulu untuk mulai melayani pelanggan dan mencatat transaksi.
-							</p>
-							<button
-								onClick={() => {
-									openPanel("kas");
-								}}
-								className="flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground text-xs transition-all hover:opacity-90 active:scale-95 w-full shadow-lg shadow-primary/20"
-								type="button"
-							>
-								<BarChart3 className="h-4 w-4" /> Buka Shift Sekarang
-							</button>
-						</div>
-					</div>
-				)}
-
-				{/* Shift & Printer Status Header */}
-				<div className="border-b border-border bg-muted/40 px-2 sm:px-3 py-1.5 shadow-sm z-40 shrink-0 w-full overflow-hidden">
-					<div className="flex flex-nowrap items-center justify-between w-full text-[10px] sm:text-xs font-medium text-muted-foreground/80 overflow-hidden">
-						<div className="flex flex-nowrap items-center gap-1.5 sm:gap-2.5 shrink-0 min-w-0">
-							<div className="hidden sm:flex items-center gap-1 grayscale opacity-60">
-								<Coffee className="h-3 w-3" />
-								<span className="whitespace-nowrap leading-none">Workspace Kasir</span>
-							</div>
-							<div className={cn("flex flex-nowrap items-center gap-1 px-1.5 py-0.5 rounded-md", isShiftOpen ? "bg-emerald-50 text-emerald-600 shadow-[0_0_8px_rgba(16,185,129,0.1)]" : "bg-rose-50 text-rose-600")}>
-								<span className={cn("h-1.5 w-1.5 rounded-full shrink-0", isShiftOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
-								<span className="whitespace-nowrap leading-none font-semibold text-[10px] sm:text-xs uppercase tracking-wider">{isShiftOpen ? "Shift Aktif" : "Shift Tutup"}</span>
-							</div>
-							{isShiftOpen && shiftStatus?.shiftInfo?.cashierName && (
-								<div className="flex flex-nowrap items-center gap-1 opacity-75 shrink-0">
-									<User className="h-3 w-3 shrink-0" />
-									<span className="whitespace-nowrap leading-none">
-										{shiftStatus.shiftInfo.cashierName}
-										{shiftStatus.shiftInfo.shiftName ? ` • ${shiftStatus.shiftInfo.shiftName}` : ""}
-									</span>
-								</div>
-							)}
-						</div>
-						<div className="flex flex-nowrap items-center gap-1.5 sm:gap-2.5 shrink-0">
-							<div className="flex flex-nowrap items-center gap-1 opacity-75">
-								<Clock className="h-3 w-3 shrink-0" />
-								<HeaderClock />
-							</div>
-							<PrinterStatusBadge />
-							{offlinePendingCount > 0 && (
-								<button type="button" onClick={() => openPanel("sync")} className="min-h-11 bg-amber-50 text-amber-700 px-2 rounded-xl whitespace-nowrap font-semibold text-xs">
-									Sync {offlinePendingCount}
-								</button>
-							)}
-						</div>
-					</div>
-				</div>
-
 				<Sheet open={isStockPanelOpen} onOpenChange={setIsStockPanelOpen}>
 					<SheetContent side="bottom" showCloseButton={false} className="h-[min(92dvh,760px)] max-h-[calc(100dvh-0.5rem)] overflow-hidden rounded-t-3xl p-0 sm:mx-auto sm:max-w-xl">
 						<StockToolbarPanel
@@ -1834,258 +1830,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						/>
 					</SheetContent>
 				</Sheet>
-
-				{/* MAIN Y-SCROLL CONTAINER */}
-				<main
-					ref={mainScrollRef}
-					className="flex-1 overflow-y-auto scroll-smooth bg-muted/10 relative pb-[calc(11rem+env(safe-area-inset-bottom))] md:pb-0"
-				>
-					<header
-						className={cn(
-							"bg-background shrink-0"
-						)}
-					>
-					<div className="flex flex-col px-3 py-1.5 gap-1">
-						{/* ROW 1: Logo & Store name */}
-						<div 
-							className={cn(
-								"flex items-center justify-between min-w-0 transition-all",
-							)}
-						>
-							<div className="flex items-center gap-2.5 min-w-0">
-								<div
-									className="flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-lg font-bold text-white shadow-sm ring-1 ring-black/5"
-									style={{ background: themeColor ?? "var(--color-primary)" }}
-								>
-									{logoUrl ? (
-										<img
-											src={logoUrl}
-											alt={storeName}
-											className="h-full w-full rounded-lg object-contain"
-										/>
-									) : (
-										<Coffee className="h-3 w-3" />
-									)}
-								</div>
-								<div className="min-w-0">
-									<h1 className="truncate font-black text-foreground text-[11px] uppercase tracking-tight leading-none">
-										{storeName}
-									</h1>
-									<p className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest mt-0.5 opacity-60">POS Kasir & Inventory</p>
-								</div>
-							</div>
-							<div className="flex items-center gap-1 shrink-0">
-								<button type="button" onClick={() => openPanel("readiness")} aria-label="Kesiapan kasir" className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><ShieldCheck className="h-5 w-5"/></button>
-								<button
-									type="button"
-									onClick={() => {
-										navigate({ to: "/notifications" });
-									}}
-									className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-muted-foreground transition-colors hover:bg-muted/80 shrink-0"
-									aria-label={unreadCount > 0 ? `${unreadCount} notifikasi belum dibaca` : "Buka notifikasi"}
-								>
-									<Bell className="h-4 w-4" />
-									{unreadCount > 0 && (
-										<span className="absolute -right-1 -top-1 flex min-w-4 h-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black leading-none text-white ring-2 ring-background">
-											{unreadCount > 99 ? "99+" : unreadCount}
-										</span>
-									)}
-								</button>
-								<button type="button" onClick={() => openPanel("more")} aria-label="Semua menu kasir" className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><MoreHorizontal className="h-5 w-5"/></button>
-							</div>
-						</div>
-					</div>
-
-					{/* MARKETING INFO — directly below the header identity */}
-					<MarketingInfoStrip />
-
-					{/* TARGET PERFORMANCE PANEL (Below Logo) */}
-					{progress && progress.hasTarget && (
-						<div className="border-t border-border/50 bg-muted/10 px-3 py-2 transition-all">
-							<div className="flex items-center justify-between mb-1.5">
-								<div className="flex items-center gap-1.5">
-									<TrendingUp className="h-3.5 w-3.5 text-primary" strokeWidth={2.5} />
-									<span className="text-[10px] font-black uppercase tracking-widest text-foreground/80">Target Bonus</span>
-								</div>
-								<button 
-									onClick={() => setIsTargetExpanded(!isTargetExpanded)}
-									className="flex items-center gap-1.5 rounded-full border-2 border-primary/20 px-2 py-0.5 hover:bg-primary/5 text-primary transition-all active:scale-95"
-									type="button"
-								>
-									<span className="text-[10px] font-bold uppercase tracking-widest">Detail</span>
-									{isTargetExpanded ? <ChevronUp className="h-3 w-3" strokeWidth={3} /> : <ChevronDown className="h-3 w-3" strokeWidth={3} />}
-								</button>
-							</div>
-
-							<div className="grid grid-cols-2 gap-4">
-								{/* Shift Progress */}
-								<div className="space-y-1">
-									<div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80 mb-0.5">
-										<span>Shift</span>
-										<span>{Math.round(shiftPct)}%</span>
-									</div>
-									<div className="h-1 w-full bg-muted/40 rounded-full overflow-hidden" role="progressbar" aria-label="Progress shift" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(shiftPct)}>
-										<motion.div 
-											className="h-full bg-primary"
-											initial={{ width: 0 }}
-											animate={{ width: `${Math.min(100, shiftPct)}%` }}
-										/>
-									</div>
-									{shiftBonusSummary.length > 0 && (
-										<p className="text-[10px] font-black text-primary/80 leading-none pt-0.5">
-											Bonus Shift: {fmt(totalShiftBonusNow)}
-										</p>
-									)}
-									<AnimatePresence>
-										{isTargetExpanded && (
-											<motion.div 
-												initial={{ opacity: 0, height: 0 }}
-												animate={{ opacity: 1, height: "auto" }}
-												exit={{ opacity: 0, height: 0 }}
-												className="space-y-1 pt-1"
-											>
-												<p className="text-[10px] font-bold text-muted-foreground/60 leading-none">
-													{fmt(progress.shiftCollected)} / {fmt(progress.shiftTarget)}
-												</p>
-												{shiftBonusSummary.length > 0 && (
-													<div className="space-y-1.5">
-														{shiftBonusSummary.map((item) => (
-															<div key={`shift-${item.memberName}`} className="rounded-md bg-primary/5 px-1.5 py-1 text-[10px] leading-tight">
-																<div className="flex items-center justify-between mb-1">
-																	<p className="font-black uppercase tracking-wide text-primary">{item.memberName}</p>
-																	<p className="font-bold text-muted-foreground/60 uppercase text-[11px]">{item.roleName}</p>
-																</div>
-																<div className="flex flex-wrap gap-1 mb-0.5">
-																	{item.allTiers.map((tier) => {
-																		const achieved = item.reachedThresholds.includes(tier.thresholdPct);
-																		return (
-																			<span
-																				key={tier.thresholdPct}
-																				className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-bold border transition-all ${achieved ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
-																			>
-																				{achieved ? "Tercapai" : "Belum"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
-																			</span>
-																		);
-																	})}
-																</div>
-																{item.achievedBonus > 0 && (
-																	<p className="font-black text-primary text-[11px]">Total: {fmt(item.achievedBonus)}</p>
-																)}
-															</div>
-														))}
-													</div>
-												)}
-											</motion.div>
-										)}
-									</AnimatePresence>
-								</div>
-
-								{/* Daily Progress */}
-								<div className="space-y-1">
-									<div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80 mb-0.5">
-										<span>Harian</span>
-										<span>{Math.round(dailyPct)}%</span>
-									</div>
-									<div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden" role="progressbar" aria-label="Progress harian" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(dailyPct)}>
-										<motion.div 
-											className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.2)]"
-											initial={{ width: 0 }}
-											animate={{ width: `${Math.min(100, dailyPct)}%` }}
-										/>
-									</div>
-									{dailyBonusSummary.length > 0 && (
-										<p className="text-[10px] font-black text-blue-600/80 leading-none pt-0.5">
-											Bonus Harian: {fmt(totalDailyBonusNow)}
-										</p>
-									)}
-									<AnimatePresence>
-										{isTargetExpanded && (
-											<motion.div 
-												initial={{ opacity: 0, height: 0 }}
-												animate={{ opacity: 1, height: "auto" }}
-												exit={{ opacity: 0, height: 0 }}
-												className="space-y-1 pt-1"
-											>
-												<p className="text-[10px] font-bold text-muted-foreground/60 leading-none">
-													{fmt(progress.dailyCollected)} / {fmt(progress.dailyTarget)}
-												</p>
-												{dailyBonusSummary.length > 0 && (
-													<div className="space-y-1.5">
-														{dailyBonusSummary.map((item) => (
-															<div key={`daily-${item.memberName}`} className="rounded-md bg-blue-500/5 px-1.5 py-1 text-[10px] leading-tight">
-																<div className="flex items-center justify-between mb-1">
-																	<p className="font-black uppercase tracking-wide text-blue-700 dark:text-blue-400">{item.memberName}</p>
-																	<p className="font-bold text-muted-foreground/60 uppercase text-[11px]">{item.roleName}</p>
-																</div>
-																<div className="flex flex-wrap gap-1 mb-0.5">
-																	{item.allTiers.map((tier) => {
-																		const achieved = item.reachedThresholds.includes(tier.thresholdPct);
-																		return (
-																			<span
-																				key={tier.thresholdPct}
-																				className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-bold border transition-all ${achieved ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
-																			>
-																				{achieved ? "Tercapai" : "Belum"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
-																			</span>
-																		);
-																	})}
-																</div>
-																{item.achievedBonus > 0 && (
-																	<p className="font-black text-blue-700 dark:text-blue-400 text-[11px]">Total: {fmt(item.achievedBonus)}</p>
-																)}
-															</div>
-														))}
-													</div>
-												)}
-											</motion.div>
-										)}
-									</AnimatePresence>
-								</div>
-							</div>
-
-							<AnimatePresence>
-								{isTargetExpanded && monthlyBonusSummary.length > 0 && (
-									<motion.div
-										initial={{ opacity: 0, height: 0 }}
-										animate={{ opacity: 1, height: "auto" }}
-										exit={{ opacity: 0, height: 0 }}
-										className="mt-2 rounded-md border border-emerald-200/60 bg-emerald-50/70 px-2 py-1.5 dark:border-emerald-400/20 dark:bg-emerald-500/10"
-									>
-										<p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
-											Bonus Bulanan ({Math.round(monthlyPct)}%)
-										</p>
-										<div className="mt-1 space-y-1.5">
-											{monthlyBonusSummary.map((item) => (
-												<div key={`monthly-${item.memberName}`} className="rounded-md bg-emerald-100/50 dark:bg-emerald-500/10 px-1.5 py-1 text-[10px] leading-tight">
-													<div className="flex items-center justify-between mb-1">
-														<p className="font-black text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">{item.memberName}</p>
-														<p className="font-bold text-emerald-700/60 dark:text-emerald-300/60 uppercase text-[11px]">{item.roleName}</p>
-													</div>
-													<div className="flex flex-wrap gap-1 mb-0.5">
-														{item.allTiers.map((tier) => {
-															const achieved = item.reachedThresholds.includes(tier.thresholdPct);
-															return (
-																<span
-																	key={tier.thresholdPct}
-																	className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-bold border transition-all ${achieved ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-muted/40 text-muted-foreground/50 border-border/30"}`}
-																>
-																	{achieved ? "Tercapai" : "Belum"} {tier.thresholdPct}% → {fmt(tier.bonusAmount)}
-																</span>
-															);
-														})}
-													</div>
-													{item.achievedBonus > 0 && (
-														<p className="font-black text-emerald-700 dark:text-emerald-300 text-[11px]">Total: {fmt(item.achievedBonus)}</p>
-													)}
-												</div>
-											))}
-										</div>
-									</motion.div>
-								)}
-							</AnimatePresence>
-						</div>
-					)}
-				</header>
 
 			<DeliveryCustomerQueue
 				notifications={notifications}
@@ -2150,296 +1894,50 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					transactionSuggestions={transactionSuggestions}
 				/>
 
-				{/* HORIZONTAL QUEUE BAR */}
-				<QueueHorizontalBar />
-
-				{/* STICKY CONTROL AREA (Search, Categories, Subcategories) */}
-				<div className="sticky top-0 z-30 flex flex-col gap-0 border-b border-border/20 bg-background/95 backdrop-blur-md shadow-sm transition-all pb-1">
-					<div className="flex items-center gap-2 px-4 py-2 sm:py-2.5">
-						<button
-							type="button"
-							onClick={() => setIsBarcodeScannerOpen(true)}
-							className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-primary/20 bg-primary/10 px-3 text-[11px] font-black text-primary shadow-sm transition-transform active:scale-[0.97]"
-							aria-label="Scan barcode untuk transaksi"
-						>
-							<ScanLine className="h-4 w-4" />
-							<span className="hidden sm:inline">Scan Barcode</span>
-							<span className="sm:hidden">Scan</span>
-						</button>
-						<div className="relative flex-1 group">
-							<Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground transition-colors group-focus-within:text-primary" />
-							<Input
-								type="text"
-								placeholder="Cari produk..."
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
-								className="h-9 pl-8 pr-8 bg-background border-border/60 focus:border-primary shadow-sm rounded-xl transition-all text-sm"
-							/>
-							{searchQuery && (
-								<button
-									type="button"
-									onClick={() => setSearchQuery("")}
-									className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center hover:bg-muted p-0.5 rounded-full"
-								>
-									<X className="h-3.5 w-3.5 text-muted-foreground" />
-								</button>
-							)}
-						</div>
-						<button
-							type="button"
-							onClick={() => setIsStockPanelOpen(true)}
-							className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-primary px-3 text-[11px] font-black text-primary-foreground shadow-sm transition-transform active:scale-[0.97]"
-							data-stock-tutorial-target="stock-button"
-							aria-label="Buka pengaturan stok"
-						>
-							<Package className="h-3.5 w-3.5" />
-							Stok
-						</button>
-					</div>
-
-					{/* Category Tabs - Top Header (Main Categories Only) */}
-					<div
-						className={cn(
-							"flex gap-1 overflow-x-auto px-3 pb-1.5 scrollbar-none mask-fade-edges"
-						)}
-					>
-						{categoryTabs.map((cat, index) => {
-							const isActive = activeParentId === cat._id || (cat._id === "all" && !activeParentId);
-							return (
-								<button
-									key={cat._id}
-									type="button"
-									onClick={() => handleCategorySelect(index)}
-									className={cn(
-										"shrink-0 rounded-lg py-1.5 px-3 text-[10px] font-bold uppercase tracking-wide whitespace-nowrap inline-flex items-center justify-center transition-all",
-										isActive
-											? "bg-primary text-primary-foreground shadow-md ring-1 ring-primary"
-											: "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50",
-									)}
-								>
-									{cat.name}
-								</button>
-							);
-						})}
-					</div>
-
-					{/* Local Subcategory Chips */}
-					{activeSubcategories.length > 0 && (
-						<div className="bg-muted/40 border-t border-border/40 px-2 pt-2 pb-2">
-							<div className="flex items-center gap-2 overflow-x-auto scrollbar-none mask-fade-edges">
-								<button
-									type="button"
-									onClick={() => setActiveCategoryId(activeParentId)}
-									className={cn(
-										"shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold whitespace-nowrap transition-all shadow-sm border",
-										activeCategoryId === activeParentId
-											? "bg-white text-foreground border-border/60 scale-100 ring-1 ring-border/50"
-											: "bg-background/60 text-muted-foreground hover:bg-white/80 border-transparent hover:text-foreground scale-[0.98]"
-									)}
-								>
-									Semua {activeParentName}
-								</button>
-								{activeSubcategories.map((sub: any) => (
-									<button
-										key={sub._id}
-										type="button"
-										onClick={() => setActiveCategoryId(sub._id)}
-										className={cn(
-											"shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold whitespace-nowrap transition-all shadow-sm border",
-											activeCategoryId === sub._id
-												? "bg-white text-foreground border-border/60 scale-100 ring-1 ring-border/50"
-												: "bg-background/60 text-muted-foreground hover:bg-white/80 border-transparent hover:text-foreground scale-[0.98]"
-										)}
-									>
-										{sub.name}
-									</button>
-								))}
-							</div>
-						</div>
-					)}
-				</div>
-
-				<div className="pb-[calc(14rem+env(safe-area-inset-bottom))] md:pb-28">
-					<div
-						ref={productGridRef}
-						className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-1.5 p-2"
-					>
-						{isLoading ? (
-							// Loading skeletons
-							Array.from({ length: INITIAL_PRODUCTS_BATCH }).map((_, i) => (
-								<MenuProductCardSkeleton key={i} />
-							))
-						) : filteredProducts?.length === 0 ? (
-							// Empty state
-							<div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
-								<ShoppingBag className="mb-3 h-12 w-12 text-muted-foreground/30" />
-								<p className="font-medium text-muted-foreground">
-									{searchQuery ? "Produk tidak ditemukan" : "Menu kosong"}
-								</p>
-								<p className="text-muted-foreground/60 text-sm">
-									{searchQuery
-										? "Coba kata kunci lain"
-										: "Belum ada produk tersedia"}
-								</p>
-							</div>
-						) : (
-							// Product cards
-							displayedProducts.map((product: any, index: number) => {
-								const pricing = calculateEffectivePrice(
-									{
-										_id: product._id,
-										price: product.price,
-										categoryId: product.categoryId,
-									},
-									activeDiscounts,
-									{ allowHappyHour: false }
-								);
-								const cartQty = getCartQty(product._id);
-				const isSold = product.isAvailable === false || (integratedStock && Number(product.quantity ?? 0) <= 0);
-
-								return (
-								  <motion.button
-								    key={product._id}
-								    type="button"
-								    onClick={() => handleProductClick(product)}
-								    layout
-								    initial={{ opacity: 0, scale: 0.92, y: 12 }}
-								    animate={{ opacity: 1, scale: 1, y: 0 }}
-								    transition={{
-								      delay: Math.min(index * 0.025, 0.4),
-								      duration: 0.3,
-								      ease: [0.25, 0.1, 0.25, 1],
-								      layout: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] },
-								    }}
-								    whileHover={{ y: -2, transition: { duration: 0.2 } }}
-								    whileTap={{ scale: 0.97 }}
-								    className={cn(
-								      "group relative flex flex-col overflow-hidden rounded-2xl border bg-card shadow-sm text-left",
-								      "transition-shadow",
-								    )}
-									>
-										{/* Image */}
-										<div className="relative h-28 sm:h-32 w-full bg-muted shrink-0">
-											<MenuImageWithSkeleton
-												src={product.image}
-												alt={product.name}
-												loading="lazy"
-											/>
-
-											{/* Promo badge */}
-											{pricing.isPromo && (
-												<span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-0.5 font-bold text-white text-[10px] shadow">
-													{pricing.isHappyHour ? "HAPPY HOUR" : "PROMO"}
-												</span>
-											)}
-
-											{/* Cart quantity badge */}
-											{cartQty > 0 && (
-												<span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary font-bold text-[11px] text-primary-foreground shadow">
-													{cartQty}
-												</span>
-											)}
-
-											{/* Menu Number Overlay */}
-											{product.menuNumber != null && (
-												<span className="absolute left-2 bottom-2 rounded px-1.5 py-0.5 bg-black/60 backdrop-blur-sm font-bold text-[10px] text-white shadow-sm">
-													#{product.menuNumber}
-												</span>
-											)}
-
-											{/* Stock Badge Overlay — only shown for critical stock */}
-											{integratedStock && (product.quantity ?? 0) <= 5 && (
-												<span className={cn(
-													"absolute right-2 bottom-2 rounded px-1.5 py-0.5 font-bold text-[10px] shadow-sm transition-all",
-													(product.quantity ?? 0) <= 0
-														? "bg-slate-500 text-white"
-														: "bg-rose-600 text-white animate-pulse"
-												)}>
-													{(product.quantity ?? 0) <= 0 ? "Habis" : `Stok: ${product.quantity}`}
-												</span>
-											)}
-
-											{isSold && (
-												<div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/55">
-													<span className="rounded-full bg-white px-3 py-1 text-[10px] font-black tracking-[0.18em] text-slate-900">SOLD</span>
-												</div>
-											)}
-
-										</div>
-
-										{/* Info */}
-										<div className="flex flex-1 flex-col justify-between p-2 pt-1.5">
-											<p className="line-clamp-2 font-bold text-foreground text-[11px] leading-tight">
-												{product.name}
-											</p>
-
-						{/* Visual Stock Indicator — bar only for low stock (<=30), healthy stock shows count */}
-						{(() => {
-							if (!integratedStock) return null;
-							const qty = product.quantity ?? 0;
-							const isLow = qty <= 30;
-							const barColor = qty <= 0 ? "bg-red-500" : qty <= 5 ? "bg-amber-500" : "bg-emerald-500";
-							const numColor = qty <= 0 ? "text-red-500" : qty <= 5 ? "text-amber-600" : "text-emerald-600";
-							return (
-								<div className="mt-1.5 flex items-center gap-1.5">
-									{isLow && (
-										<div className="flex-1 h-1 rounded-full bg-muted/50 overflow-hidden min-w-[20px]">
-											<motion.div
-												className={cn("h-full rounded-full", barColor)}
-												initial={{ width: 0 }}
-												animate={{ width: Math.min(100, (qty / 30) * 100) + "%" }}
-												transition={{ duration: 0.5, ease: "easeOut" }}
-											/>
-										</div>
-									)}
-									<span className={cn("text-[11px] font-bold shrink-0 whitespace-nowrap", numColor)}>
-										{qty > 30 ? `Stok ${qty}` : qty}
-									</span>
-								</div>
-							);
-						})()}
-
-						<div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-												<p
-													className="font-black text-[12px] leading-none"
-													style={{ color: themeColor ?? "var(--color-primary)" }}
-												>
-													{fmt(pricing.finalPrice)}
-												</p>
-												{pricing.isPromo && (
-													<p className="text-muted-foreground/70 text-[10px] font-semibold line-through leading-none">
-														{fmt(pricing.originalPrice)}
-													</p>
-												)}
-											</div>
-										</div>
-									</motion.button>
-								);
-							})
-						)}
-						{!isLoading && hasMoreProducts && (
-							<div className="col-span-full py-1">
-								<div
-									ref={loadMoreTriggerRef}
-									className="h-6 w-full"
-									aria-hidden="true"
-								/>
-							</div>
-						)}
-						{!isLoading && isLoadingMoreProducts && (
-							Array.from({ length: 4 }).map((_, index) => (
-								<MenuProductCardSkeleton key={`load-more-${index}`} />
-							))
-						)}
-						{!isLoading && filteredProductsLength > 0 && !hasMoreProducts && (
-							<div className="col-span-full px-3 py-4 text-center text-[11px] font-semibold text-muted-foreground/70">
-								Semua menu di kategori ini sudah ditampilkan
-							</div>
-						)}
-					</div>
-				</div>
-
-				</main>
+				<MenuScreen
+					shiftOpen={shiftStatus === undefined ? undefined : isShiftOpen}
+					cashierName={shiftStatus?.shiftInfo?.cashierName}
+					shiftName={shiftStatus?.shiftInfo?.shiftName}
+					statusSlot={<><HeaderClock /><PrinterStatusBadge /></>}
+					offlinePending={offlinePendingCount}
+					onOpenSync={() => openPanel("sync")}
+					unread={unreadCount}
+					categoryTabs={categoryTabs}
+					activeCategoryId={activeCategoryId}
+					activeParentId={activeParentId}
+					subcategories={activeSubcategories}
+					activeParentName={activeParentName}
+					onSelectCategory={handleCategorySelect}
+					onSelectSubcategory={(id) => setActiveCategoryId(id ?? activeParentId)}
+					search={searchQuery}
+					onSearch={setSearchQuery}
+					products={productVMs}
+					loading={isLoading}
+					hasMore={hasMoreProducts}
+					loadingMore={isLoadingMoreProducts}
+					sentinelRef={loadMoreTriggerRef}
+					scrollRef={mainScrollRef}
+					onTapProduct={(vm) => handleProductClick(vm.raw)}
+					onDecrement={handleDecrementProduct}
+					cartCount={totalItems}
+					cartTotal={finalTotal}
+					hasCheckoutResult={Boolean(checkoutDraft.result)}
+					onOpenCart={() => setIsCartOpen(true)}
+					queueActive={productionQueue.active.length}
+					queueDone={productionQueue.done.length}
+					onOpenQueue={(tab) => { setQueueTab(tab); setQueueOpen(true); }}
+					bonusPct={progress?.hasTarget ? dailyPct : null}
+					onOpenBonus={() => setBonusOpen(true)}
+					onScan={() => setIsBarcodeScannerOpen(true)}
+					onOpenStock={() => setIsStockPanelOpen(true)}
+					onOpenNotifications={() => { void navigate({ to: "/notifications" }); }}
+					activePanel={panel}
+					onNavigate={(id) => openPanel(id as PosPanel | null)}
+					onOpenShift={() => openPanel("kas")}
+					stockButtonProps={{ "data-stock-tutorial-target": "stock-button" }}
+				/>
+				<QueueSheet open={queueOpen} onClose={() => setQueueOpen(false)} initialTab={queueTab} queue={productionQueue} />
+				<BonusSheet open={bonusOpen} onClose={() => setBonusOpen(false)} data={bonusVM} />
 				<StockTutorial
 					open={stockTutorialOpen}
 					onOpenStock={() => setIsStockPanelOpen(true)}
@@ -2451,20 +1949,6 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 						setStockTutorialOpen(false);
 					}}
 				/>
-				{/* Primary mobile navigation stays within thumb reach. */}
-				<nav aria-label="Navigasi kasir" className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/95 px-2 pt-1.5 pb-[calc(.5rem+env(safe-area-inset-bottom))] backdrop-blur-xl md:hidden">
-					<div className="mx-auto grid max-w-xl grid-cols-4 gap-1">
-						{[
-							{id: null, label:"Kasir", icon:ShoppingBag},
-							{id:"transaksi", label:"Pesanan", icon:Receipt},
-							{id:"kas", label:"Shift", icon:Wallet},
-							{id:"more", label:"Lainnya", icon:MoreHorizontal},
-						].map(item => <button key={item.label} type="button" aria-current={panel === item.id ? "page" : undefined} onClick={() => openPanel(item.id as PosPanel | null)} className={cn("flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-xs font-semibold transition", panel === item.id ? "bg-primary/8 text-primary" : "text-muted-foreground active:bg-muted")}>
-							<span className="relative"><item.icon className="h-5 w-5"/>{item.id === "kas" && !isShiftOpen ? <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-amber-500"/> : null}</span>
-							{item.label}
-						</button>)}
-					</div>
-				</nav>
 			</div>
 
 			{/* RIGHT CONTENT: Checkout Sidebar (Desktop/Tablet) */}
@@ -2483,52 +1967,16 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				/>
 			</div>
 
-			{/* === CART BUTTON (Floating Mobile) === */}
-			{(totalItems > 0 || checkoutDraft.result) && (
-				<div className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] left-3 right-3 z-40 md:hidden">
-					<button
-						type="button"
-						onClick={() => setIsCartOpen(true)}
-						className={cn(
-							"flex min-h-14 w-full items-center justify-between rounded-2xl px-4 py-3 font-semibold text-white shadow-lg",
-							"transition-all active:opacity-90 active:scale-[0.98]",
-						)}
-						style={{ background: themeColor ?? "var(--color-primary)" }}
-					>
-						{totalItems > 0 ? (
-							<>
-								<div className="flex items-center gap-2.5">
-									<span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/25 text-xs">
-										{totalItems}
-									</span>
-								<span className="text-sm">Lihat keranjang</span>
-								</div>
-								<span className="text-sm">{fmt(finalTotal)}</span>
-							</>
-						) : (
-							<div className="flex w-full items-center justify-center gap-2">
-								<span className="text-sm font-semibold">Lihat hasil transaksi</span>
-							</div>
-						)}
-					</button>
-				</div>
-			)}
-
-			{/* === PRODUCT DETAIL SHEET === */}
-			<Sheet open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
-				<SheetContent side="bottom" showCloseButton={false} className="max-h-[92dvh] overflow-hidden rounded-t-[28px] border-border/70 bg-background p-0 shadow-2xl">
-					<ProductDetailSheet
-						product={selectedProduct}
-						activeDiscounts={activeDiscounts}
-						onClose={() => setSelectedProduct(null)}
-						onAddToCart={(item) => {
-							addToCart(item);
-							setSelectedProduct(null);
-							toast.success(`${item.name} ditambahkan ke keranjang`);
-						}}
-					/>
-				</SheetContent>
-			</Sheet>
+			<ProductOptionsSheet
+				product={selectedProduct}
+				activeDiscounts={activeDiscounts}
+				onClose={() => setSelectedProduct(null)}
+				onAdd={(line) => {
+					addToCart(line);
+					setSelectedProduct(null);
+					toast.success(`${line.name} ditambahkan ke keranjang`);
+				}}
+			/>
 
 			{/* === CART DRAWER === */}
 			<CartDrawer

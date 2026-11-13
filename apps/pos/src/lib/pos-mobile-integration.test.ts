@@ -18,7 +18,7 @@ it("restored and new carts cannot remain on the preceding order result", () => {
 it("acknowledged shift expenses are locked and skipped on close retries", () => {
 	const sidebar = source("components/pos/menu-sidebar.tsx");
 	expect(sidebar).toContain("if (exp.savedId) continue;");
-	expect(sidebar).toContain("disabled={isSubmitting || Boolean(exp.savedId)}");
+	expect(source("components/pos-ios/end-shift-screen.tsx")).toContain("!exp.savedId");
 	expect(sidebar).toContain("sourceFingerprint: `shift-close:");
 });
 

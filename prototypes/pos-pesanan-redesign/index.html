@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>POS Pesanan — 3 Alternatif</title>
+<style>
+:root{--bg:#fefefe;--fg:#1d1d1f;--mut:#6e6e73;--line:#e8e8ed;--soft:#f5f5f7;--pri:#1a5dc6;--pri-soft:#e8f0fc;--ok:#1f9d55;--ok-soft:#e9f7ef;--warn:#c77700;--warn-soft:#fdf3e0;--bad:#d92d4a;--spring:cubic-bezier(.34,1.56,.64,1);--out:cubic-bezier(.22,1,.36,1)}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,"SF Pro Text",Inter,system-ui,sans-serif;background:#ececf0;color:var(--fg)}
+.top{padding:20px 16px 8px;text-align:center}.top h1{font-size:18px}.top p{font-size:13px;color:var(--mut);margin-top:4px}
+.tabs{display:none;gap:8px;justify-content:center;padding:8px}
+.tabs button{border:0;background:#fff;padding:8px 14px;border-radius:99px;font-weight:600;font-size:13px;color:var(--mut)}.tabs button.on{background:var(--pri);color:#fff}
+.stage{display:flex;gap:28px;justify-content:center;flex-wrap:wrap;padding:16px 16px 48px}
+.col{width:390px;max-width:100%}.col>h2{font-size:14px;margin:0 4px 2px}.col>p{font-size:12px;color:var(--mut);margin:0 4px 10px;line-height:1.4}
+.phone{position:relative;height:800px;background:var(--bg);border-radius:38px;border:8px solid #1d1d1f;overflow:hidden;display:flex;flex-direction:column}
+.stat{display:flex;justify-content:space-between;align-items:center;padding:10px 18px 4px;font-size:12px;color:var(--mut)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:11px;letter-spacing:.06em;color:var(--ok);background:var(--ok-soft);padding:4px 10px;border-radius:99px}.pill i{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.ico{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.hd{display:flex;align-items:center;gap:10px;padding:8px 16px}
+.logo{width:40px;height:40px;border-radius:12px;background:var(--pri-soft);color:var(--pri);display:grid;place-items:center}
+.hd h3{flex:1;font-size:18px;font-weight:800;letter-spacing:.02em}
+.ib{width:40px;height:40px;border-radius:12px;background:var(--soft);display:grid;place-items:center;border:0;color:var(--fg)}
+button{font-family:inherit;transition:transform .18s var(--out),background-color .2s,color .2s,box-shadow .2s}button:active{transform:scale(.94)}
+.scroll{flex:1;overflow-y:auto;scrollbar-width:none;min-height:0}.scroll::-webkit-scrollbar{display:none}
+.seg{position:relative;display:flex;background:var(--soft);border-radius:14px;padding:3px;margin:4px 16px}
+.seg button{flex:1;position:relative;z-index:1;height:38px;border:0;background:none;font-weight:700;font-size:13px;color:var(--mut)}.seg button.on{color:var(--fg)}
+.seg i{position:absolute;top:3px;bottom:3px;left:3px;width:calc(50% - 3px);background:#fff;border-radius:11px;box-shadow:0 1px 4px rgba(0,0,0,.12);transition:transform .4s var(--spring)}.seg.r i{transform:translateX(100%)}
+.cnt{display:inline-grid;place-items:center;min-width:20px;height:20px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-size:11px;margin-left:6px}
+.stats{display:flex;gap:8px;padding:10px 16px 4px}
+.sc{flex:1;background:var(--soft);border-radius:16px;padding:10px 12px}.sc small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:var(--mut)}.sc b{font-size:15px}.sc.big{flex:1.5;background:var(--pri);color:#fff}.sc.big small{color:rgba(255,255,255,.75)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:8px 16px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:0;height:34px;padding:0 14px;border-radius:99px;background:var(--soft);font-weight:600;font-size:13px;color:var(--fg);display:inline-flex;align-items:center;gap:6px}
+.chip.on{background:var(--pri);color:#fff;box-shadow:0 4px 12px rgba(26,93,198,.3)}.chip .ico{width:14px;height:14px}
+.chip.f{background:#fff;border:1px solid var(--line)}
+.grp{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--mut);padding:12px 16px 6px}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes out{to{opacity:0;transform:translateX(50px);max-height:0;padding:0;margin:0;border:0}}
+.anim{animation:rise .45s var(--out) both;animation-delay:calc(var(--i,0)*45ms)}.gone{animation:out .35s var(--out) forwards!important;overflow:hidden}
+.st{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}.st.l{background:var(--ok-soft);color:var(--ok)}.st.o{background:var(--warn-soft);color:var(--warn)}
+.src{font-size:10px;padding:2px 6px;border-radius:5px;background:var(--fg);color:#fff;margin-right:6px;font-weight:700}.src.app{background:var(--warn)}
+.mut{color:var(--mut)}.price{font-weight:800}
+.empty{text-align:center;color:var(--mut);padding:60px 20px;font-size:14px;animation:rise .4s var(--out)}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .3s;z-index:4}.dim.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:24px 24px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.2);padding:10px 16px 26px;transform:translateY(105%);transition:transform .45s var(--out);z-index:5;max-height:82%;overflow:auto}.sheet.open{transform:none}
+.sheet.drag{transition:none}
+.grab{width:40px;height:5px;background:var(--line);border-radius:3px;margin:0 auto 12px}
+.sheet h4{font-size:18px;font-weight:800;margin-bottom:8px}
+.ln{display:flex;justify-content:space-between;padding:9px 0;font-size:14px;border-bottom:1px solid var(--line)}.ln.t{border:0;font-size:16px;font-weight:800}
+.sheet.open .ln,.sheet.open .opt{animation:rise .4s var(--out) both;animation-delay:calc(var(--i,0)*40ms + 120ms)}
+.btns{display:flex;gap:8px;margin-top:14px}.btns button{flex:1;height:48px;border:0;border-radius:14px;font-weight:700;font-size:15px;background:var(--soft);color:var(--fg)}.btns .p{background:var(--pri);color:#fff;flex:1.4}.btns .d{background:#fdeaee;color:var(--bad)}
+.opt{display:flex;justify-content:space-between;align-items:center;height:48px;border:0;background:none;width:100%;border-bottom:1px solid var(--line);font-size:15px;font-weight:600;color:var(--fg)}.opt .ck{color:var(--pri);opacity:0;transform:scale(.4);transition:.3s var(--spring)}.opt.on .ck{opacity:1;transform:none}
+.toast{position:absolute;left:50%;bottom:30px;transform:translate(-50%,40px);opacity:0;background:var(--fg);color:#fff;padding:12px 18px;border-radius:14px;font-size:13px;font-weight:600;z-index:20;transition:.4s var(--spring);white-space:nowrap}.toast.on{transform:translate(-50%,0);opacity:1}
+.nav{display:flex;border-top:1px solid var(--line);padding:8px 8px 18px}.nav div{flex:1;display:flex;flex-direction:column;align-items:center;font-size:11px;font-weight:600;color:var(--mut);padding:8px 0;border-radius:14px}.nav .on{color:var(--pri);background:var(--pri-soft)}
+/* A */
+.swp{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+.swp .acts{position:absolute;right:0;top:0;bottom:0;display:flex}.acts button{border:0;width:76px;color:#fff;font-weight:700;font-size:12px}.acts .a1{background:var(--pri)}.acts .a2{background:var(--ok)}
+.rowA{position:relative;background:var(--bg);display:flex;align-items:center;gap:12px;padding:12px 16px;transition:transform .35s var(--out);touch-action:pan-y}.rowA.drag{transition:none}
+.rowA .mid{flex:1;min-width:0}.rowA .id{font-size:13px;font-weight:700}.rowA .it{font-size:12.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}.rowA .r{text-align:right}
+.mdot{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none}.mdot.l{background:var(--ok-soft);color:var(--ok)}.mdot.o{background:var(--warn-soft);color:var(--warn)}
+/* B */
+.card{margin:0 16px 10px;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#fff}
+.card .hd2{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer}
+.card .hd2 .mid{flex:1;min-width:0}.card .chev{transition:transform .35s var(--spring);color:var(--mut)}.card.open .chev{transform:rotate(180deg)}
+.more{display:grid;grid-template-rows:0fr;transition:grid-template-rows .4s var(--out)}.card.open .more{grid-template-rows:1fr}.more>div{overflow:hidden}.more .in{padding:0 14px 14px}
+.mini{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;color:var(--mut)}
+.bar2{display:flex;gap:8px;margin-top:10px}.bar2 button{flex:1;height:42px;border:0;border-radius:12px;font-weight:700;font-size:13px;background:var(--soft)}.bar2 .p{background:var(--pri);color:#fff}.bar2 .d{background:#fdeaee;color:var(--bad)}
+.flash{animation:flash .8s}@keyframes flash{0%{background:var(--ok-soft)}100%{background:#fff}}
+/* C */
+.cbar{display:flex;gap:8px;padding:6px 16px}.cbar .search{flex:1;display:flex;align-items:center;gap:8px;height:42px;border-radius:13px;background:var(--soft);padding:0 12px;color:var(--mut);transition:.2s}.cbar .search:focus-within{background:#fff;box-shadow:0 0 0 1px var(--line),0 6px 18px rgba(0,0,0,.08)}.cbar input{border:0;background:none;outline:none;font:inherit;font-size:15px;flex:1;min-width:0;color:var(--fg)}
+.rowC{display:flex;align-items:center;gap:0;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--bg);transition:background-color .2s}.rowC.sel{background:var(--pri-soft)}
+.rowC .cb{width:0;overflow:hidden;opacity:0;transition:width .35s var(--out),opacity .25s,margin .35s;flex:none}.sm .rowC .cb{width:24px;opacity:1;margin-right:12px}
+.cb i{display:block;width:22px;height:22px;border-radius:50%;border:2px solid var(--line);transition:.25s var(--spring)}.rowC.sel .cb i{background:var(--pri);border-color:var(--pri);box-shadow:inset 0 0 0 4px #fff}
+.rowC .mid{flex:1;min-width:0}.rowC .t1{display:flex;justify-content:space-between;font-size:14px;font-weight:700}.rowC .t2{display:flex;justify-content:space-between;font-size:12.5px;color:var(--mut);margin-top:3px;align-items:center}
+.selbar{position:absolute;left:12px;right:12px;bottom:84px;background:var(--fg);color:#fff;border-radius:18px;padding:10px 10px 10px 18px;display:flex;align-items:center;gap:8px;transform:translateY(400%);opacity:0;pointer-events:none;transition:transform .5s var(--spring),opacity .25s;z-index:6}.selbar.on{transform:none;opacity:1;pointer-events:auto}
+.selbar span{flex:1;font-weight:700;font-size:14px}.selbar button{border:0;height:38px;padding:0 14px;border-radius:11px;font-weight:700;font-size:13px;background:rgba(255,255,255,.14);color:#fff}.selbar .d{background:var(--bad)}
+.page{position:absolute;inset:0;background:var(--bg);transform:translateX(100%);transition:transform .45s var(--out);z-index:8;display:flex;flex-direction:column}.page.open{transform:none}
+.tl{display:flex;align-items:center;margin:14px 0 6px}.tl .s{width:14px;height:14px;border-radius:50%;background:var(--line);transition:.4s var(--spring);flex:none}.tl .s.on{background:var(--ok);transform:scale(1.2)}.tl .l{flex:1;height:3px;background:var(--line);margin:0 4px;position:relative;overflow:hidden;border-radius:2px}.tl .l u{position:absolute;inset:0;background:var(--ok);transform:scaleX(0);transform-origin:left;transition:transform .7s .2s var(--out)}.tl .l.on u{transform:none}
+.tlb{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--mut)}
+.big{font-size:32px;font-weight:800;letter-spacing:-.02em}
+@media(max-width:1230px){.tabs{display:flex}.col{display:none}.col.on{display:block}.stage{padding-top:0}}
+@media(max-width:430px){.phone{height:760px;border-width:0;border-radius:0}.col{width:100%}.stage{padding:8px 0 24px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style></head><body>
+<div class="top"><h1>POS /pesanan — 3 alternatif (lanjutan dari Rail)</h1><p>Interaktif: filter, ganti tab, geser baris, tap untuk detail, bayar / hapus / cetak.</p></div>
+<div class="tabs"><button class="on" data-t="A">A · Ringkasan</button><button data-t="B">B · Kartu</button><button data-t="C">C · Master-detail</button></div>
+<div class="stage">
+<div class="col on" id="colA"><h2>A · Ringkasan + daftar swipe</h2><p>Ringkasan omzet di atas, tab Riwayat/Open Bill satu segmen, filter jadi chip yang membuka sheet. Geser baris untuk Cetak/Bayar.</p><div class="phone" id="pA"></div></div>
+<div class="col" id="colB"><h2>B · Kartu status + accordion</h2><p>Open Bill digabung jadi filter status (bukan tab terpisah). Kartu dibuka inline: item, cetak, bayar, hapus tanpa pindah layar.</p><div class="phone" id="pB"></div></div>
+<div class="col" id="colC"><h2>C · Master-detail + mode pilih</h2><p>Daftar rapat + pencarian. Tap membuka halaman detail dengan timeline; tahan/“Pilih” untuk aksi massal (cetak/hapus Open Bill).</p><div class="phone" id="pC"></div></div>
+</div>
+<script>
+const rp=n=>"Rp "+n.toLocaleString("id-ID");
+const O=[
+ {id:"ORD-POS-D-0016",src:"POS",time:"22.41",who:"Meja 4",it:[["Bubur Ayam Western",2,25000],["Es Teh Tarik",1,15000]],m:"QRIS",st:"l"},
+ {id:"ORD-APP-D-0015",src:"APP",time:"22.30",who:"Rina · Meja 7",it:[["Tentrem Koffie Premium",1,30000]],m:"—",st:"o"},
+ {id:"ORD-POS-D-0014",src:"POS",time:"22.12",who:"Take away",it:[["Bubur Ayam Tasik",3,20000]],m:"Tunai",st:"l"},
+ {id:"ORD-APP-D-0013",src:"APP",time:"21.58",who:"Dimas · Meja 2",it:[["Latte Art",1,28000],["Roti Bakar Cokelat",1,18000]],m:"—",st:"o"},
+ {id:"ORD-POS-D-0012",src:"POS",time:"21.40",who:"Meja 1",it:[["Kentang Goreng",2,17000]],m:"Tunai",st:"l"},
+ {id:"ORD-APP-D-0011",src:"APP",time:"21.05",who:"Sari · Meja 5",it:[["Bubur Ayam Chinese",2,25000],["Tentrem Koffie Classic",2,30000]],m:"—",st:"o"},
+ {id:"ORD-POS-D-0010",src:"POS",time:"20.47",who:"Take away",it:[["Bubur Ayam Polos",1,15000]],m:"QRIS",st:"l"}
+];
+const tot=o=>o.it.reduce((a,x)=>a+x[1]*x[2],0);
+const items=o=>o.it.map(x=>x[1]+"× "+x[0]).join(", ");
+const F={shift:"Shift test",range:"Hari ini",sort:"Terbaru"};
+const OPTS={shift:["Shift test","Semua shift"],range:["Hari ini","Kemarin","7 hari"],sort:["Terbaru","Terlama","Total terbesar"]};
+const NAME={shift:"Shift",range:"Rentang",sort:"Urutan"};
+const sorted=l=>{l=[...l];if(F.sort==="Terlama")l.reverse();if(F.sort==="Total terbesar")l.sort((a,b)=>tot(b)-tot(a));return l};
+const I={x:'<svg class="ico" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>',chev:'<svg class="ico" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>',chk:'<svg class="ico" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>',back:'<svg class="ico" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg>',srch:'<svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',fil:'<svg class="ico" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>',clip:'<svg class="ico" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="3"/><path d="m9 12 2 2 4-4"/></svg>'};
+const head=`<div class="stat"><span class="pill"><i></i>SHIFT AKTIF</span><span>Fakhri · 22.53</span></div><div class="hd"><div class="logo">${I.clip}</div><h3>TRANSAKSI</h3><button class="ib">${I.x}</button></div>`;
+const nav=`<div class="nav"><div>Kasir</div><div class="on">Pesanan</div><div>Shift</div><div>Lainnya</div></div>`;
+const shell=(ph,body)=>{ph.innerHTML=head+body+nav+`<div class="dim"></div><div class="sheet" id="${ph.id}s"></div><div class="toast"></div>`;};
+const toast=(ph,t)=>{const e=ph.querySelector(".toast");e.textContent=t;e.classList.add("on");clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove("on"),1800)};
+const sh=ph=>ph.querySelector(".sheet");
+function openSheet(ph,html){const s=sh(ph);s.innerHTML=`<div class="grab"></div>`+html;s.style.transform="";s.classList.add("open");ph.querySelector(".dim").classList.add("on")}
+function closeSheet(ph){const s=sh(ph);s.classList.remove("open");s.style.transform="";ph.querySelector(".dim").classList.remove("on")}
+function optionSheet(ph,key,cb){openSheet(ph,`<h4>${NAME[key]}</h4>`+OPTS[key].map((o,i)=>`<button class="opt ${F[key]===o?"on":""}" style="--i:${i}" data-opt="${o}">${o}<span class="ck">${I.chk}</span></button>`).join(""));
+ sh(ph).querySelectorAll("[data-opt]").forEach(b=>b.onclick=()=>{F[key]=b.dataset.opt;setTimeout(()=>{closeSheet(ph);cb()},180);sh(ph).querySelectorAll(".opt").forEach(x=>x.classList.toggle("on",x===b))})}
+function detail(ph,o,onAct){
+ openSheet(ph,`<h4 style="display:flex;justify-content:space-between;align-items:center">${o.id.slice(4)}<span class="st ${o.st}">${o.st==="l"?"Lunas":"Bayar di Kasir"}</span></h4><div class="mut" style="font-size:13px;margin-bottom:6px"><span class="src ${o.src==="APP"?"app":""}">${o.src}</span>${o.who} · ${o.time}</div>`+o.it.map((x,i)=>`<div class="ln" style="--i:${i}"><span>${x[1]}× ${x[0]}</span><b>${rp(x[1]*x[2])}</b></div>`).join("")+`<div class="ln"><span class="mut">Pembayaran</span><span>${o.m}</span></div><div class="ln t"><span>Total</span><span>${rp(tot(o))}</span></div><div class="btns">${o.st==="o"?`<button data-a="print">Cetak</button><button class="p" data-a="pay">Bayar ${rp(tot(o))}</button>`:`<button data-a="kitchen">Tiket kitchen</button><button class="p" data-a="print">Cetak struk</button>`}</div>`);
+ sh(ph).querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{closeSheet(ph);onAct(b.dataset.a,o)})}
+function payOrder(o){o.st="l";o.m="Tunai"}
+/* ===== A ===== */
+(function(){const ph=document.getElementById("pA");let tab="r";
+ shell(ph,`<div class="seg" id="sg"><i></i><button class="on" data-tab="r">Riwayat</button><button data-tab="o">Open Bill<span class="cnt" id="oc"></span></button></div><div class="stats"><div class="sc big"><small>OMZET SHIFT</small><b id="sOm">0</b></div><div class="sc"><small>ORDER</small><b id="sN">0</b></div></div><div class="chips"><button class="chip f" data-f="shift">Shift test ${I.chev}</button><button class="chip f" data-f="range">Hari ini ${I.chev}</button><button class="chip f" data-f="sort">Terbaru ${I.chev}</button></div><div class="scroll" id="lA" style="padding-bottom:20px"></div>`);
+ const cu=(el,to)=>{const f=+el.dataset.v||0;el.dataset.v=to;const t0=performance.now();(function g(t){const p=Math.min(1,(t-t0)/500),e=1-Math.pow(1-p,3);el.textContent=rp(Math.round(f+(to-f)*e));if(p<1)requestAnimationFrame(g)})(t0)};
+ function render(){const L=sorted(O.filter(o=>tab==="r"?o.st==="l":o.st==="o"));
+  ph.querySelector("#oc").textContent=O.filter(o=>o.st==="o").length;
+  cu(ph.querySelector("#sOm"),O.filter(o=>o.st==="l").reduce((a,o)=>a+tot(o),0));ph.querySelector("#sN").textContent=O.filter(o=>o.st==="l").length;
+  ph.querySelectorAll("[data-f]").forEach(c=>c.firstChild.textContent=F[c.dataset.f]+" ");
+  const el=ph.querySelector("#lA");
+  el.innerHTML=L.length?L.map((o,i)=>`<div class="swp anim" style="--i:${i}" data-id="${o.id}"><div class="acts"><button class="a1" data-sw="print">Cetak</button>${o.st==="o"?'<button class="a2" data-sw="pay">Bayar</button>':''}</div><div class="rowA"><div class="mdot ${o.st}">${o.src}</div><div class="mid"><div class="id">${o.id.slice(4)}</div><div class="it">${items(o)}</div><div class="it">${o.who} · ${o.time}</div></div><div class="r"><div class="price">${rp(tot(o))}</div><span class="st ${o.st}">${o.st==="l"?o.m:"Open"}</span></div></div></div>`).join(""):`<div class="empty">${tab==="o"?"Tidak ada Open Bill":"Belum ada transaksi"}</div>`;
+  el.querySelectorAll(".swp").forEach(w=>{const o=O.find(x=>x.id===w.dataset.id),r=w.querySelector(".rowA"),W=w.querySelectorAll(".acts button").length*76;let x0=null,dx=0,moved=0;
+   r.addEventListener("pointerdown",e=>{x0=e.clientX;moved=0;r.classList.add("drag")});
+   window.addEventListener("pointermove",e=>{if(x0===null)return;dx=e.clientX-x0;if(Math.abs(dx)>4)moved=1;r.style.transform=`translateX(${Math.max(-W,Math.min(0,dx+(r._o?-W:0)))}px)`});
+   window.addEventListener("pointerup",()=>{if(x0===null)return;x0=null;r.classList.remove("drag");const cur=dx+(r._o?-W:0);r._o=cur<-W/2;r.style.transform=r._o?`translateX(${-W}px)`:"";if(!moved&&!r._o)detail(ph,o,act);else if(!moved&&r._o){r._o=false;r.style.transform=""}dx=0});
+   w.querySelectorAll("[data-sw]").forEach(b=>b.onclick=()=>{r._o=false;r.style.transform="";act(b.dataset.sw,o)})})}
+ function act(a,o){if(a==="pay"){payOrder(o);toast(ph,"Pembayaran berhasil · "+o.id.slice(4));render()}else toast(ph,"Mengirim ke printer…")}
+ ph.querySelector("#sg").onclick=e=>{const b=e.target.closest("[data-tab]");if(!b)return;tab=b.dataset.tab;ph.querySelector("#sg").classList.toggle("r",tab==="o");ph.querySelectorAll("#sg button").forEach(x=>x.classList.toggle("on",x===b));render()};
+ ph.querySelectorAll("[data-f]").forEach(c=>c.onclick=()=>optionSheet(ph,c.dataset.f,render));
+ ph.querySelector(".dim").onclick=()=>closeSheet(ph);render()})();
+/* ===== B ===== */
+(function(){const ph=document.getElementById("pB");let f="all";
+ shell(ph,`<div style="display:flex;gap:8px;align-items:center;padding:4px 16px 0"><div class="chips" id="cB" style="padding:8px 0;flex:1"></div><button class="ib" id="fB" aria-label="Filter">${I.fil}</button></div><div class="mut" style="font-size:12px;padding:0 16px 6px" id="subB"></div><div class="scroll" id="lB" style="padding-bottom:20px"></div>`);
+ function render(){const all=sorted(O),n={all:O.length,o:O.filter(o=>o.st==="o").length,l:O.filter(o=>o.st==="l").length};
+  ph.querySelector("#cB").innerHTML=[["all","Semua"],["o","Bayar di Kasir"],["l","Lunas"]].map(([k,t])=>`<button class="chip ${f===k?"on":""}" data-k="${k}">${t} <b>${n[k]}</b></button>`).join("");
+  ph.querySelector("#subB").textContent=`${F.shift} · ${F.range} · ${F.sort}`;
+  const L=all.filter(o=>f==="all"||o.st===f);
+  ph.querySelector("#lB").innerHTML=L.length?L.map((o,i)=>`<div class="card anim" style="--i:${i}" data-id="${o.id}"><div class="hd2"><div class="mdot ${o.st}">${o.src}</div><div class="mid"><div style="font-weight:700;font-size:14px">${o.who}</div><div class="mut" style="font-size:12px">${o.id.slice(4)} · ${o.time}</div></div><div style="text-align:right"><div class="price">${rp(tot(o))}</div><span class="st ${o.st}">${o.st==="l"?o.m:"Bayar di Kasir"}</span></div><span class="chev">${I.chev}</span></div><div class="more"><div><div class="in">${o.it.map(x=>`<div class="mini"><span>${x[1]}× ${x[0]}</span><span>${rp(x[1]*x[2])}</span></div>`).join("")}<div class="bar2"><button data-a="print">Cetak</button>${o.st==="o"?`<button class="d" data-a="del">Hapus</button><button class="p" data-a="pay">Bayar</button>`:`<button data-a="kitchen">Kitchen</button>`}</div></div></div></div></div>`).join(""):`<div class="empty">Tidak ada pesanan</div>`;
+  ph.querySelectorAll(".card").forEach(c=>{const o=O.find(x=>x.id===c.dataset.id);c.querySelector(".hd2").onclick=()=>{const w=c.classList.contains("open");ph.querySelectorAll(".card.open").forEach(x=>x.classList.remove("open"));if(!w)c.classList.add("open")};
+   c.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{const a=b.dataset.a;if(a==="pay"){payOrder(o);toast(ph,"Lunas · "+rp(tot(o)));render();ph.querySelector(`[data-id="${o.id}"]`)?.classList.add("flash")}else if(a==="del"){c.classList.add("gone");setTimeout(()=>{O.splice(O.indexOf(o),1);render();toast(ph,"Open Bill dihapus")},340)}else toast(ph,"Mengirim ke printer…")})});
+  ph.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{f=b.dataset.k;render()})}
+ ph.querySelector("#fB").onclick=()=>openSheet(ph,`<h4>Filter</h4>`+Object.keys(OPTS).map(k=>`<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--mut);margin:12px 0 6px">${NAME[k].toUpperCase()}</div><div class="chips" style="padding:0;flex-wrap:wrap">${OPTS[k].map(v=>`<button class="chip ${F[k]===v?"on":""}" data-k2="${k}" data-v="${v}">${v}</button>`).join("")}</div>`).join("")+`<div class="btns"><button class="p" id="ok">Terapkan</button></div>`)||0;
+ sh(ph).addEventListener("click",e=>{const b=e.target.closest("[data-k2]");if(b){F[b.dataset.k2]=b.dataset.v;b.parentNode.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c===b))}if(e.target.id==="ok"){closeSheet(ph);render()}});
+ ph.querySelector(".dim").onclick=()=>closeSheet(ph);render()})();
+/* ===== C ===== */
+(function(){const ph=document.getElementById("pC");let q="",selMode=false,S=new Set(),tab="all";
+ shell(ph,`<div class="cbar"><div class="search">${I.srch}<input id="qC" placeholder="Cari ID, meja, nama…"></div><button class="ib" id="fC">${I.fil}</button><button class="chip" id="pick" style="height:42px;border-radius:13px">Pilih</button></div><div class="chips" id="cC"></div><div class="scroll" id="lC"></div><div class="selbar" id="sb"><span id="sn"></span><button id="bp">Cetak</button><button class="d" id="bd">Hapus</button></div><div class="page" id="pg"></div>`);
+ function render(){
+  ph.querySelector("#cC").innerHTML=[["all","Semua"],["o","Open Bill"],["l","Lunas"]].map(([k,t])=>`<button class="chip ${tab===k?"on":""}" data-k="${k}">${t}</button>`).join("");
+  const L=sorted(O).filter(o=>(tab==="all"||o.st===tab)&&(o.id+o.who+items(o)).toLowerCase().includes(q.toLowerCase()));
+  ph.querySelector("#lC").className="scroll"+(selMode?" sm":"");
+  ph.querySelector("#lC").innerHTML=L.length?L.map((o,i)=>`<div class="rowC anim ${S.has(o.id)?"sel":""}" style="--i:${i}" data-id="${o.id}"><span class="cb"><i></i></span><div class="mid"><div class="t1"><span>${o.who}</span><span>${rp(tot(o))}</span></div><div class="t2"><span><span class="src ${o.src==="APP"?"app":""}">${o.src}</span>${o.id.slice(4)} · ${o.time}</span><span class="st ${o.st}">${o.st==="l"?o.m:"Open"}</span></div></div></div>`).join(""):`<div class="empty">Tidak ditemukan</div>`;
+  ph.querySelector("#pick").textContent=selMode?"Batal":"Pilih";ph.querySelector("#pick").classList.toggle("on",selMode);
+  const sb=ph.querySelector("#sb");sb.classList.toggle("on",selMode&&S.size>0);ph.querySelector("#sn").textContent=S.size+" dipilih";
+  ph.querySelectorAll(".rowC").forEach(r=>{const o=O.find(x=>x.id===r.dataset.id);let t;
+   const lp=()=>{selMode=true;S.add(o.id);render()};
+   r.onpointerdown=()=>{t=setTimeout(()=>{t=null;lp();r._lp=1},520)};r.onpointerup=r.onpointerleave=()=>clearTimeout(t);
+   r.onclick=()=>{if(r._lp){r._lp=0;return}if(selMode){S.has(o.id)?S.delete(o.id):S.add(o.id);render()}else openPage(o)}});
+  ph.querySelectorAll("#cC [data-k]").forEach(b=>b.onclick=()=>{tab=b.dataset.k;render()})}
+ function openPage(o){const pg=ph.querySelector("#pg"),st=o.st==="l"?3:2;
+  pg.innerHTML=`<div class="stat" style="visibility:hidden"><span>.</span></div><div class="hd"><button class="ib" id="bk">${I.back}</button><h3 style="font-size:16px">${o.id.slice(4)}</h3><span class="st ${o.st}">${o.st==="l"?"Lunas":"Bayar di Kasir"}</span></div><div class="scroll" style="padding:8px 16px"><div class="mut" style="font-size:13px"><span class="src ${o.src==="APP"?"app":""}">${o.src}</span>${o.who} · ${o.time}</div><div class="big" style="margin:6px 0">${rp(tot(o))}</div><div class="tl"><span class="s" data-s="1"></span><span class="l" data-l="1"><u></u></span><span class="s" data-s="2"></span><span class="l" data-l="2"><u></u></span><span class="s" data-s="3"></span></div><div class="tlb"><span>Dibuat</span><span>Diproses</span><span>Lunas</span></div><div style="margin-top:18px">${o.it.map(x=>`<div class="ln"><span>${x[1]}× ${x[0]}</span><b>${rp(x[1]*x[2])}</b></div>`).join("")}<div class="ln"><span class="mut">Pembayaran</span><span>${o.m}</span></div></div></div><div class="btns" style="padding:0 16px 22px;margin:0"><button data-a="print">Cetak</button>${o.st==="o"?`<button class="p" data-a="pay">Bayar</button>`:`<button class="p" data-a="kitchen">Tiket kitchen</button>`}</div>`;
+  pg.classList.add("open");[1,2,3].forEach(n=>setTimeout(()=>{if(n<=st){pg.querySelector(`[data-s="${n}"]`).classList.add("on");if(n>1)pg.querySelector(`[data-l="${n-1}"]`).classList.add("on")}},250+n*250));
+  pg.querySelector("#bk").onclick=()=>pg.classList.remove("open");
+  pg.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{if(b.dataset.a==="pay"){payOrder(o);pg.classList.remove("open");toast(ph,"Pembayaran berhasil");render()}else toast(ph,"Mengirim ke printer…")})}
+ ph.querySelector("#qC").oninput=e=>{q=e.target.value;render()};
+ ph.querySelector("#pick").onclick=()=>{selMode=!selMode;S.clear();render()};
+ ph.querySelector("#fC").onclick=()=>openSheet(ph,`<h4>Urutan</h4>`+OPTS.sort.map((o,i)=>`<button class="opt ${F.sort===o?"on":""}" style="--i:${i}" data-opt="${o}">${o}<span class="ck">${I.chk}</span></button>`).join(""))||0;
+ sh(ph).addEventListener("click",e=>{const b=e.target.closest("[data-opt]");if(b){F.sort=b.dataset.opt;setTimeout(()=>{closeSheet(ph);render()},180)}});
+ ph.querySelector("#bp").onclick=()=>{toast(ph,`Mencetak ${S.size} struk…`);selMode=false;S.clear();render()};
+ ph.querySelector("#bd").onclick=()=>{const del=[...S].map(id=>O.find(o=>o.id===id)).filter(o=>o.st==="o");if(!del.length){toast(ph,"Hanya Open Bill yang bisa dihapus");return}
+  del.forEach(o=>ph.querySelector(`[data-id="${o.id}"]`)?.classList.add("gone"));setTimeout(()=>{del.forEach(o=>O.splice(O.indexOf(o),1));selMode=false;S.clear();render();toast(ph,`${del.length} Open Bill dihapus`)},350)};
+ ph.querySelector(".dim").onclick=()=>closeSheet(ph);render()})();
+// shared: drag sheet down to close, tabs
+document.querySelectorAll(".sheet").forEach(s=>{let y=null;s.addEventListener("pointerdown",e=>{if(e.target.closest("button,.chip"))return;y=e.clientY;s.classList.add("drag")});
+ window.addEventListener("pointermove",e=>{if(y===null)return;s.style.transform=`translateY(${Math.max(0,e.clientY-y)}px)`});
+ window.addEventListener("pointerup",e=>{if(y===null)return;const d=e.clientY-y;y=null;s.classList.remove("drag");if(d>90){s.classList.remove("open");s.parentNode.querySelector(".dim").classList.remove("on")}s.style.transform=""})});
+document.querySelector(".tabs").onclick=e=>{const b=e.target.closest("[data-t]");if(!b)return;document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on",x===b));["A","B","C"].forEach(k=>document.getElementById("col"+k).classList.toggle("on",k===b.dataset.t))};
+</script></body></html>

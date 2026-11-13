@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>POS Menu — 3 Alternatif</title>
+<style>
+:root{--bg:#fefefe;--fg:#1d1d1f;--mut:#6e6e73;--line:#e8e8ed;--card:#fff;--soft:#f5f5f7;--pri:#1a5dc6;--pri-soft:#e8f0fc;--ok:#1f9d55;--warn:#c77700;--bad:#d92d4a;--r:16px}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,"SF Pro Text",Inter,system-ui,sans-serif;background:#ececf0;color:var(--fg)}
+.top{padding:20px 16px 8px;text-align:center}
+.top h1{font-size:18px}.top p{font-size:13px;color:var(--mut);margin-top:4px}
+.tabs{display:none;gap:8px;justify-content:center;padding:8px}
+.tabs button{border:0;background:#fff;padding:8px 14px;border-radius:99px;font-weight:600;font-size:13px;color:var(--mut)}
+.tabs button.on{background:var(--pri);color:#fff}
+.stage{display:flex;gap:28px;justify-content:center;flex-wrap:wrap;padding:16px 16px 48px}
+.col{width:390px;max-width:100%}
+.col>h2{font-size:14px;margin:0 4px 2px}.col>p{font-size:12px;color:var(--mut);margin:0 4px 10px;line-height:1.4}
+.phone{position:relative;height:800px;background:var(--bg);border-radius:38px;border:8px solid #1d1d1f;overflow:hidden;display:flex;flex-direction:column}
+.scroll{flex:1;overflow-y:auto;scrollbar-width:none}.scroll::-webkit-scrollbar{display:none}
+.stat{display:flex;justify-content:space-between;align-items:center;padding:10px 18px 4px;font-size:12px;color:var(--mut)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:11px;letter-spacing:.06em;color:var(--ok);background:#e9f7ef;padding:4px 10px;border-radius:99px}
+.pill i{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.ico{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ib{width:40px;height:40px;border-radius:12px;background:var(--soft);display:grid;place-items:center;border:0;color:var(--fg);position:relative}
+.badge{position:absolute;top:-4px;right:-4px;background:var(--bad);color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:grid;place-items:center}
+.search{display:flex;align-items:center;gap:10px;height:44px;border-radius:14px;background:var(--soft);padding:0 14px;color:var(--mut);font-size:15px;flex:1}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:8px 16px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:0;height:36px;padding:0 16px;border-radius:99px;background:var(--soft);font-weight:600;font-size:13px;color:var(--mut)}
+.chip.on{background:var(--pri);color:#fff}
+.img{background:linear-gradient(135deg,var(--a),var(--b));display:grid;place-items:center;color:rgba(255,255,255,.9);font-weight:800;font-size:22px;letter-spacing:.02em}
+.name{font-weight:600;font-size:14px;line-height:1.25}.price{font-weight:700;color:var(--pri);font-size:14px}
+.add{border:0;background:var(--pri);color:#fff;width:34px;height:34px;border-radius:50%;font-size:20px;line-height:1;font-weight:500;display:grid;place-items:center}
+.step{display:none;align-items:center;gap:2px;background:var(--pri-soft);border-radius:99px;color:var(--pri);font-weight:700}
+.step button{border:0;background:none;color:var(--pri);width:32px;height:34px;font-size:18px;font-weight:600}
+.step span{min-width:18px;text-align:center;font-size:14px}
+.item.has .add{display:none}.item.has .step{display:inline-flex}
+.cartbar{position:absolute;left:12px;right:12px;bottom:84px;height:56px;border-radius:18px;background:var(--fg);color:#fff;display:none;align-items:center;justify-content:space-between;padding:0 8px 0 18px;box-shadow:0 10px 24px rgba(0,0,0,.22);border:0;text-align:left}
+.cartbar.show{display:flex}
+.cartbar small{display:block;font-size:11px;opacity:.7}.cartbar b{font-size:16px}
+.cartbar .go{background:var(--pri);padding:10px 16px;border-radius:12px;font-weight:700;font-size:14px}
+.nav{display:flex;border-top:1px solid var(--line);background:rgba(254,254,254,.95);padding:8px 8px 18px}
+.nav div{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--mut);padding:6px 0;border-radius:14px}
+.nav .on{color:var(--pri);background:var(--pri-soft)}
+.queue{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--pri);background:var(--pri-soft);padding:6px 12px;border-radius:99px}
+.tag{font-size:10px;font-weight:700;color:var(--mut);background:var(--soft);padding:2px 7px;border-radius:6px}
+.low{color:var(--warn);background:#fdf3e0}
+/* A: list */
+.A .row{display:flex;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.A .row .img{width:64px;height:64px;border-radius:14px;flex:none}
+.A .row .mid{flex:1;min-width:0}
+.A .meta{display:flex;gap:6px;margin-top:4px;align-items:center}
+/* B: grid */
+.B .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:4px 16px 120px}
+.B .card{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;position:relative}
+.B .card .img{height:118px}
+.B .card .bd{padding:10px 12px 12px}
+.B .card .ft{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.B .card .num{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px}
+.B .sold .img{filter:grayscale(1);opacity:.5}
+/* C: rail */
+.C .body{flex:1;display:flex;min-height:0}
+.C .rail{width:76px;border-right:1px solid var(--line);overflow-y:auto;padding:8px 6px;display:flex;flex-direction:column;gap:6px;scrollbar-width:none}
+.C .rail div{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;font-weight:700;color:var(--mut);padding:10px 2px;border-radius:14px;text-align:center}
+.C .rail .dot{width:34px;height:34px;border-radius:11px;background:var(--soft)}
+.C .rail .on{background:var(--pri-soft);color:var(--pri)}.C .rail .on .dot{background:var(--pri)}
+.C .lst{flex:1;overflow-y:auto;padding:4px 12px 130px;scrollbar-width:none}
+.C .sec{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--mut);padding:12px 4px 6px}
+.C .it{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;background:var(--soft);margin-bottom:8px}
+.C .it .img{width:48px;height:48px;border-radius:12px;font-size:16px;flex:none}
+.C .it .mid{flex:1;min-width:0}
+.sheet{position:absolute;inset:auto 0 0 0;background:#fff;border-radius:24px 24px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.2);padding:10px 16px 28px;transform:translateY(105%);transition:.3s;z-index:5}
+.sheet.open{transform:none}
+.grab{width:40px;height:5px;background:var(--line);border-radius:3px;margin:0 auto 12px}
+.sl{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.pay{margin-top:14px;width:100%;height:50px;border:0;border-radius:15px;background:var(--pri);color:#fff;font-weight:700;font-size:16px}
+.note{max-width:820px;margin:0 auto;padding:0 20px 40px;font-size:13px;color:var(--mut);line-height:1.6}
+.note b{color:var(--fg)}
+@media(max-width:1230px){.tabs{display:flex}.col{display:none}.col.on{display:block}.stage{padding-top:0}}
+@media(max-width:430px){.phone{height:760px;border-width:0;border-radius:0}.col{width:100%}.stage{padding:8px 0 24px}}
+
+/* ===== motion ===== */
+:root{--spring:cubic-bezier(.34,1.56,.64,1);--out:cubic-bezier(.22,1,.36,1)}
+button,.chip,.nav div,.item{transition:transform .18s var(--out),background-color .2s,color .2s,box-shadow .2s}
+button:active,.chip:active{transform:scale(.93)}
+.item:active{transform:scale(.985)}
+.chip.on{box-shadow:0 4px 12px rgba(26,93,198,.3);transform:scale(1.04)}
+.search input{border:0;background:none;outline:none;font:inherit;color:var(--fg);flex:1;min-width:0;height:100%}
+.search{transition:box-shadow .2s,background-color .2s}.search:focus-within{background:#fff;box-shadow:0 0 0 1px var(--line),0 6px 18px rgba(0,0,0,.08)}
+.stat{transition:max-height .3s var(--out),opacity .25s,padding .3s;max-height:40px;overflow:hidden}
+.phone.compact .stat{max-height:0;opacity:0;padding-top:0;padding-bottom:0}
+@keyframes rise{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+.item{animation:rise .45s var(--out) both;animation-delay:calc(var(--i,0)*45ms)}
+.step,.add{transform-origin:center}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
+.pop{animation:pop .35s var(--spring)}
+@keyframes stepin{from{opacity:0;transform:scale(.6) translateX(10px)}to{opacity:1;transform:none}}
+.item.has .step{animation:stepin .3s var(--spring)}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+.shake{animation:shake .4s}
+.cartbar{display:flex!important;transform:translateY(160%) scale(.96);opacity:0;pointer-events:none;transition:transform .5s var(--spring),opacity .25s}
+.cartbar.show{transform:none;opacity:1;pointer-events:auto}
+.cartbar.bump{animation:pop .35s var(--spring)}
+.cartbar .go{transition:transform .2s}.cartbar:hover .go{transform:translateX(3px)}
+.fly{position:fixed;z-index:99;width:18px;height:18px;border-radius:50%;background:var(--pri);box-shadow:0 0 0 4px rgba(26,93,198,.25);pointer-events:none}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .3s;z-index:4}
+.dim.on{opacity:1;pointer-events:auto}
+.sheet{transition:transform .45s var(--out);max-height:78%;overflow:auto;touch-action:none}
+.sheet.drag{transition:none}
+.sheet .sl{opacity:0;transform:translateY(10px)}
+.sheet.open .sl{animation:rise .4s var(--out) both;animation-delay:calc(var(--i,0)*50ms + 150ms)}
+.sl .q{display:inline-flex;align-items:center;gap:4px;margin-right:8px;background:var(--soft);border-radius:99px}
+.sl .q button{border:0;background:none;width:26px;height:26px;font-size:16px;color:var(--pri);font-weight:700}
+.sl.out{animation:out .3s var(--out) forwards!important}
+@keyframes out{to{opacity:0;transform:translateX(40px);max-height:0;padding:0}}
+.empty{text-align:center;color:var(--mut);padding:50px 20px;font-size:14px;animation:rise .4s var(--out)}
+.pay{position:relative;overflow:hidden;transition:background-color .3s,transform .18s}
+.pay.load{background:#5a8de0;pointer-events:none}
+.pay.load::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);animation:sh 1s infinite}
+@keyframes sh{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.done{position:absolute;inset:0;background:#fff;z-index:9;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center}
+.done.on{display:flex;animation:rise .35s var(--out)}
+.done svg{width:96px;height:96px}
+.done circle{stroke:var(--ok);stroke-width:4;fill:none;stroke-dasharray:252;stroke-dashoffset:252;animation:dr .6s .1s var(--out) forwards}
+.done path{stroke:var(--ok);stroke-width:5;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:60;stroke-dashoffset:60;animation:dr .4s .55s var(--out) forwards}
+@keyframes dr{to{stroke-dashoffset:0}}
+.done b{font-size:20px}.done span{color:var(--mut);font-size:14px}
+.wig{animation:wig .7s}
+@keyframes wig{0%,100%{transform:rotate(0)}20%{transform:rotate(-14deg)}40%{transform:rotate(12deg)}60%{transform:rotate(-8deg)}80%{transform:rotate(5deg)}}
+.C .rail div{position:relative}.C .rail .on .dot{animation:pop .4s var(--spring)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.strip{display:flex;gap:8px;overflow-x:auto;padding:2px 16px 10px;scrollbar-width:none}.strip::-webkit-scrollbar{display:none}
+.qc{flex:none;border:0;height:34px;padding:0 14px;border-radius:99px;background:var(--pri-soft);color:var(--pri);font-weight:700;font-size:12.5px;display:inline-flex;align-items:center;gap:6px}
+.qc b{background:#fff;border-radius:99px;min-width:22px;height:22px;display:inline-grid;place-items:center;font-size:12px}
+.qc.ok{background:#e9f7ef;color:var(--ok)}.qc:last-child{background:var(--soft);color:var(--mut)}
+.qc.bn{background:#fff;border:1px solid var(--line);color:var(--fg)}.qc.bn b{background:none;min-width:0;color:var(--pri)}
+.mini-ring{width:14px;height:14px;border-radius:50%;background:conic-gradient(var(--pri) 55%,var(--line) 0)}
+.mini-ring::after{content:"";display:block;margin:3px;width:8px;height:8px;border-radius:50%;background:#fff}
+.ringbtn{background:none!important}.ringbtn .rg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.rg circle{fill:none;stroke-width:3.5}.rg .t{stroke:var(--line)}.rg .v{stroke:var(--pri);stroke-linecap:round;stroke-dasharray:88;stroke-dashoffset:40;animation:ringin 1.2s .3s var(--out) backwards}
+@keyframes ringin{from{stroke-dashoffset:88}}
+.rn{font-size:11px;font-weight:800;color:var(--pri)}
+.cbonus{display:flex;align-items:center;gap:8px;padding:0 14px 6px;font-size:11px;font-weight:700;color:var(--mut);letter-spacing:.04em;cursor:pointer}
+.cbonus b{color:var(--pri)}.cbonus .bar{flex:1}
+.bar{display:block;height:6px;background:var(--soft);border-radius:99px;overflow:hidden}
+.bar u{display:block;height:100%;width:0;background:linear-gradient(90deg,#5a8de0,var(--pri));border-radius:99px;transition:width 1s .15s var(--out)}
+.phone .bar u{width:var(--w)}
+.sheet.bonus:not(.open) .bar u{width:0}
+.sheet.orders{height:72%;display:flex;flex-direction:column;overflow:hidden}
+.seg{position:relative;display:flex;background:var(--soft);border-radius:12px;padding:3px;margin:6px 0 10px}
+.seg button{flex:1;position:relative;z-index:1;height:34px;border:0;background:none;font-weight:700;font-size:13px;color:var(--mut)}
+.seg button.on{color:var(--fg)}.seg i{position:absolute;top:3px;bottom:3px;left:3px;width:calc(50% - 3px);background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.12);transition:transform .35s var(--spring)}
+.seg.d i{transform:translateX(100%)}
+.olist{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;touch-action:pan-y;scrollbar-width:none}
+.oc{border:1px solid var(--line);border-radius:16px;padding:12px;animation:rise .4s var(--out) both;animation-delay:calc(var(--i,0)*50ms)}
+.oc.gone{animation:out .35s var(--out) forwards}
+.oc .h{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700}
+.oc .h small{color:var(--mut);font-weight:600}
+.oc p{font-size:13px;color:var(--mut);margin:6px 0 10px}
+.oc .f{display:flex;justify-content:space-between;align-items:center}
+.st{font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--soft);color:var(--mut)}
+.st.p{background:#fdf3e0;color:var(--warn)}.st.r{background:var(--pri-soft);color:var(--pri)}.st.d{background:#e9f7ef;color:var(--ok)}
+.oc .go2{border:0;background:var(--pri);color:#fff;font-weight:700;font-size:13px;height:34px;padding:0 16px;border-radius:11px}
+.src{font-size:10px;padding:2px 6px;border-radius:5px;background:var(--fg);color:#fff;margin-right:6px}
+.src.app{background:var(--warn)}
+.bsr{margin:14px 0}.bsr .l{display:flex;justify-content:space-between;font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--mut);margin-bottom:6px}
+.bsr .l b{color:var(--fg)}
+.bnote{background:var(--soft);border-radius:14px;padding:12px;font-size:13px;color:var(--mut);line-height:1.5}
+.bnote b{color:var(--fg)}
+.nbadge{position:absolute;top:0;right:calc(50% - 38px);background:var(--bad);color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:grid;place-items:center}
+.nav div{position:relative}
+</style></head><body>
+<div class="top"><h1>POS /menu — 3 alternatif UI (mobile first)</h1><p>Interaktif: filter kategori & cari berfungsi, + terbang ke keranjang, tap bar untuk sheet (geser turun untuk tutup), Bayar untuk animasi sukses.</p></div>
+<div class="tabs"><button class="on" data-t="A">A · Cepat</button><button data-t="B">B · Visual</button><button data-t="C">C · Rail</button></div>
+
+<div class="stage">
+
+<!-- ============ A ============ -->
+<div class="col on" id="colA"><h2>A · Cepat (daftar padat)</h2><p>Antrian, Selesai & Bonus jadi strip chip satu baris; detail di bottom sheet. Daftar baris: 10+ produk terlihat tanpa scroll. Stepper langsung di baris.</p>
+<div class="phone A">
+ <div class="stat"><span class="pill"><i></i>SHIFT AKTIF</span><span>Fakhri · 22.53</span></div>
+ <div style="display:flex;align-items:center;gap:10px;padding:8px 16px 4px">
+  <div class="search"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Cari produk…</div>
+  <button class="ib"><svg class="ico" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/></svg></button>
+  <button class="ib"><svg class="ico" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0"/></svg><span class="badge">7</span></button>
+ </div>
+ <div class="chips"><button class="chip on">Semua</button><button class="chip">Makanan</button><button class="chip">Minuman</button><button class="chip">Event</button><button class="chip">Promo</button><button class="chip">Merch</button><button class="chip">B2B</button></div>
+ <div class="strip"><button class="qc" data-orders>Antrian <b data-qn>5</b></button><button class="qc ok" data-orders="done">Selesai <b data-dn>2</b></button><button class="qc bn" data-bonus><span class="mini-ring"></span>Bonus <b>55%</b></button><button class="qc">Stok ›</button></div>
+ <div class="scroll" id="listA" style="padding-bottom:140px"></div>
+ <button class="cartbar" data-open="sA"><span><small data-cnt></small><b data-tot></b></span><span class="go">Lihat pesanan</span></button>
+ <div class="nav"><div class="on">Kasir</div><div>Pesanan</div><div>Shift</div><div>Lainnya</div></div>
+ <div class="sheet" id="sA"></div>
+</div></div>
+
+<!-- ============ B ============ -->
+<div class="col" id="colB"><h2>B · Visual (grid foto, header menyusut)</h2><p>Antrian lewat badge di tab Pesanan + subjudul, Bonus lewat ring di header. Kartu lebih ringkas, nomor menu & status stok jelas, kategori sticky, keranjang pill melayang.</p>
+<div class="phone B">
+ <div class="stat"><span class="pill"><i></i>SHIFT AKTIF</span><span>Fakhri · 22.53</span></div>
+ <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px">
+  <div><div style="font-weight:800;font-size:17px">Djiwa Tentram</div><div style="font-size:12px;color:var(--mut)">Kasir · <b data-orders style="color:var(--pri);cursor:pointer">Antrian <span data-qn>5</span> ›</b></div></div>
+  <div style="display:flex;gap:8px"><button class="ib ringbtn" data-bonus aria-label="Target bonus"><svg class="rg" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" class="t"/><circle cx="18" cy="18" r="14" class="v"/></svg><b class="rn">55</b></button><button class="ib"><svg class="ico" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0"/></svg><span class="badge">7</span></button><button class="ib"><svg class="ico" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></div>
+ </div>
+ <div style="padding:0 16px"><div class="search" style="width:100%"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Cari produk atau scan barcode…</div></div>
+ <div class="chips"><button class="chip on">Semua</button><button class="chip">Makanan</button><button class="chip">Minuman</button><button class="chip">Event</button><button class="chip">Promo</button><button class="chip">Merch</button></div>
+ <div class="scroll"><div class="grid" id="gridB"></div></div>
+ <button class="cartbar" data-open="sB"><span><small data-cnt></small><b data-tot></b></span><span class="go">Bayar</span></button>
+ <div class="nav"><div class="on">Kasir</div><div>Pesanan</div><div>Shift</div><div>Lainnya</div></div>
+ <div class="sheet" id="sB"></div>
+</div></div>
+
+<!-- ============ C ============ -->
+<div class="col" id="colC"><h2>C · Rail kategori (gaya terminal)</h2><p>Antrian = chip di atas, Bonus = progress tipis. Rail kategori vertikal di kiri, daftar terkelompok di kanan. Cocok untuk kasir yang hafal menu & ingin navigasi satu jempol tanpa chip horizontal.</p>
+<div class="phone C">
+ <div class="stat"><span class="pill"><i></i>SHIFT AKTIF</span><span>Fakhri · 22.53</span></div>
+ <div style="display:flex;align-items:center;gap:8px;padding:8px 12px">
+  <div class="search"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Cari…</div>
+  <button class="queue" data-orders style="border:0;height:40px;padding:0 10px;font-size:11px;flex:none">Antrian <span data-qn>5</span></button>
+  <button class="ib"><svg class="ico" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0"/></svg><span class="badge">7</span></button>
+ </div>
+ <div class="cbonus" data-bonus><span>Bonus harian</span><i class="bar"><u style="--w:55%"></u></i><b>55%</b></div>
+ <div class="body">
+  <div class="rail"><div class="on"><span class="dot"></span>Semua</div><div><span class="dot"></span>Makanan</div><div><span class="dot"></span>Minuman</div><div><span class="dot"></span>Event</div><div><span class="dot"></span>Promo</div><div><span class="dot"></span>Merch</div><div><span class="dot"></span>B2B</div></div>
+  <div class="lst" id="listC"></div>
+ </div>
+ <button class="cartbar" data-open="sC"><span><small data-cnt></small><b data-tot></b></span><span class="go">Pesanan</span></button>
+ <div class="nav"><div class="on">Kasir</div><div>Pesanan</div><div>Shift</div><div>Lainnya</div></div>
+ <div class="sheet" id="sC"></div>
+</div></div>
+</div>
+
+<div class="note"><b>Catatan bersama</b> — Masalah di layar sekarang: header memakan ±230px sebelum produk pertama (status, brand, antrian, scan/cari/stok, kategori). Semua alternatif memadatkan jadi ±140px, memindah "Stok" & "Scan" ke aksi sekunder, dan memberi keranjang bar permanen (kasir saat ini tidak melihat total saat memilih). Ikon di prototipe memakai garis Lucide untuk kontrol; implementasi final memakai <code>Djiwa3DIcon</code> untuk ilustrasi/kategori sesuai DESIGN.md. Foto produk diganti blok warna.</div>
+
+<script>
+const P=[
+ [1011,"Bubur Ayam Western",25000,"#c8742c","#8a4a16","Makanan"],
+ [1012,"Bubur Ayam Tasik",20000,"#d9a441","#8d6a1c","Makanan"],
+ [1013,"Bubur Ayam Polos",15000,"#c9c2b4","#8f8776","Makanan",1],
+ [1014,"Bubur Ayam Chinese",25000,"#b8472f","#7a2415","Makanan"],
+ [1021,"Tentrem Koffie Premium",30000,"#8c6a52","#4e3526","Minuman"],
+ [1022,"Tentrem Koffie Classic",30000,"#a98a6e","#5f4631","Minuman"],
+ [1023,"Latte Art",28000,"#c9a27a","#7a5a3a","Minuman"],
+ [1024,"Es Teh Tarik",15000,"#9b6b3f","#5a3a1b","Minuman",1],
+ [1031,"Roti Bakar Cokelat",18000,"#7b4a2b","#3e2312","Makanan"],
+ [1032,"Kentang Goreng",17000,"#e0b22e","#9a7410","Makanan"],
+ [1041,"Kaos Djiwa",85000,"#4a6fa5","#24406b","Merch"],
+ [1051,"Paket Hemat Event",60000,"#7a5ac8","#472a8c","Event"]
+];
+const q={};const rp=n=>"Rp "+n.toLocaleString("id-ID");
+const ini=n=>n.split(" ").slice(0,2).map(w=>w[0]).join("");
+const find=id=>P.find(p=>p[0]==id);
+const stepper=id=>`<span class="step"><button data-m="${id}" aria-label="Kurangi">−</button><span data-q="${id}">0</span><button data-p="${id}" aria-label="Tambah">+</button></span><button class="add" data-p="${id}" aria-label="Tambah">+</button>`;
+const style=p=>`style="--a:${p[3]};--b:${p[4]}"`;
+const tpl={
+ A:(p,i)=>`<div class="row item ${p[6]?'sold':''}" data-id="${p[0]}" style="--i:${i}"><div class="img" ${style(p)}>${ini(p[1])}</div><div class="mid"><div class="name">${p[1]}</div><div class="meta"><span class="tag">#${p[0]}</span>${p[6]?'<span class="tag low">Sisa 2</span>':''}</div><div class="price" style="margin-top:4px">${rp(p[2])}</div></div>${stepper(p[0])}</div>`,
+ B:(p,i)=>`<div class="card item ${p[6]?'sold':''}" data-id="${p[0]}" style="--i:${i}"><span class="num">#${p[0]}</span><div class="img" ${style(p)}>${ini(p[1])}</div><div class="bd"><div class="name">${p[1]}</div><div class="ft"><span class="price">${rp(p[2])}</span>${stepper(p[0])}</div></div></div>`,
+ C:(p,i)=>`<div class="it item ${p[6]?'sold':''}" data-id="${p[0]}" style="--i:${i}"><div class="img" ${style(p)}>${ini(p[1])}</div><div class="mid"><div class="name">${p[1]}</div><div class="price">${rp(p[2])}</div></div>${stepper(p[0])}</div>`
+};
+const state={A:{cat:"Semua",q:""},B:{cat:"Semua",q:""},C:{cat:"Semua",q:""}};
+const host={A:"listA",B:"gridB",C:"listC"};
+function build(k){
+ const {cat,q:qq}=state[k];
+ let L=P.filter(p=>(cat==="Semua"||p[5]===cat)&&p[1].toLowerCase().includes(qq.toLowerCase()));
+ const el=document.getElementById(host[k]);
+ if(!L.length){el.innerHTML=`<div class="empty" style="grid-column:1/-1">Tidak ada produk “${qq||cat}”</div>`;return}
+ let c="";
+ el.innerHTML=L.map((p,i)=>{let h="";if(k==="C"&&cat==="Semua"&&p[5]!==c)h=`<div class="sec">${p[5].toUpperCase()}</div>`;c=p[5];return h+tpl[k](p,i)}).join("");
+ render();
+}
+["A","B","C"].forEach(build);
+// sheets + dim + done overlays
+document.querySelectorAll(".phone").forEach(ph=>{
+ const k=ph.classList.contains("A")?"A":ph.classList.contains("B")?"B":"C";
+ ph.dataset.k=k;
+ const sh=ph.querySelector(".sheet");
+ sh.insertAdjacentHTML("beforebegin",`<div class="dim" data-close></div>`);
+ ph.insertAdjacentHTML("beforeend",`<div class="done"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"/><path d="M32 52l13 13 24-28"/></svg><b>Pembayaran berhasil</b><span>Pesanan dikirim ke dapur</span></div>`);
+ // search inputs
+ const se=ph.querySelector(".search");
+ se.lastChild.textContent="";
+ se.insertAdjacentHTML("beforeend",`<input placeholder="${k==="C"?"Cari…":"Cari produk…"}" aria-label="Cari produk">`);
+ se.querySelector("input").addEventListener("input",e=>{state[k].q=e.target.value;build(k)});
+ // compact header on scroll
+ const sc=ph.querySelector(k==="A"?"#listA":k==="B"?".scroll":"#listC");
+ let last=0;sc.addEventListener("scroll",()=>{const y=sc.scrollTop;if(y>last+6&&y>40)ph.classList.add("compact");else if(y<last-6||y<20)ph.classList.remove("compact");last=y},{passive:true});
+});
+function countUp(el,to){const from=+el.dataset.v||0;el.dataset.v=to;const t0=performance.now();(function f(t){const p=Math.min(1,(t-t0)/450),e=1-Math.pow(1-p,3);el.textContent=rp(Math.round(from+(to-from)*e));if(p<1)requestAnimationFrame(f)})(t0)}
+function render(){
+ const ids=Object.keys(q).filter(k=>q[k]>0);const cnt=ids.reduce((a,k)=>a+q[k],0);
+ const tot=ids.reduce((a,k)=>a+q[k]*find(k)[2],0);
+ document.querySelectorAll("[data-q]").forEach(e=>e.textContent=q[e.dataset.q]||0);
+ document.querySelectorAll(".item").forEach(e=>e.classList.toggle("has",(q[e.dataset.id]||0)>0));
+ document.querySelectorAll(".cartbar").forEach(b=>{b.classList.toggle("show",cnt>0);b.querySelector("[data-cnt]").textContent=cnt+" item";countUp(b.querySelector("[data-tot]"),tot)});
+ document.querySelectorAll(".sheet[id^=s]").forEach(s=>{
+  const fresh=s.dataset.fresh;
+  s.innerHTML=`<div class="grab" data-close></div><div style="font-weight:800;font-size:18px;margin-bottom:6px">Pesanan baru</div>`+ids.map((k,i)=>{const p=find(k);return `<div class="sl" data-line="${k}" style="--i:${i}"><span style="display:flex;align-items:center"><span class="q"><button data-m="${k}">−</button><b>${q[k]}</b><button data-p="${k}">+</button></span>${p[1]}</span><b>${rp(q[k]*p[2])}</b></div>`}).join("")+`<div class="sl" style="border:0;font-size:16px;--i:${ids.length}"><b>Total</b><b>${rp(tot)}</b></div><button class="pay" data-pay>Bayar ${rp(tot)}</button>`;
+  if(!fresh)s.querySelectorAll(".sl").forEach(l=>{l.style.opacity=1;l.style.transform="none";l.style.animation="none"});
+  if(!cnt&&s.classList.contains("open"))closeSheets();
+ });
+}
+function closeSheets(){document.querySelectorAll(".sheet").forEach(s=>{s.classList.remove("open");s.style.transform=""});document.querySelectorAll(".dim").forEach(d=>d.classList.remove("on"))}
+function openSheet(ph){const s=ph.querySelector(".sheet");s.dataset.fresh=1;render();s.classList.add("open");ph.querySelector(".dim").classList.add("on");setTimeout(()=>{delete s.dataset.fresh},900)}
+function fly(from,ph){
+ const bar=ph.querySelector(".cartbar").getBoundingClientRect(),pr=ph.getBoundingClientRect(),fr=from.getBoundingClientRect();
+ const d=document.createElement("div");d.className="fly";document.body.appendChild(d);
+ const x0=fr.left+fr.width/2-9,y0=fr.top+fr.height/2-9,x1=pr.left+60,y1=pr.bottom-120;
+ const a=d.animate([{transform:`translate(${x0}px,${y0}px) scale(1)`,left:0,top:0},{transform:`translate(${(x0+x1)/2}px,${Math.min(y0,y1)-60}px) scale(1.2)`,offset:.5},{transform:`translate(${x1}px,${y1}px) scale(.4)`,opacity:.4}],{duration:600,easing:"cubic-bezier(.5,0,.3,1)"});
+ d.style.left=0;d.style.top=0;
+ a.onfinish=()=>{d.remove();const b=ph.querySelector(".cartbar");b.classList.remove("bump");void b.offsetWidth;b.classList.add("bump")};
+}
+function popEl(e){e.classList.remove("pop");void e.offsetWidth;e.classList.add("pop")}
+document.addEventListener("click",e=>{
+ const t=e.target.closest("button,.cartbar,[data-close],.rail>div,[data-orders],[data-bonus]");if(!t)return;
+ const ph=t.closest(".phone");
+ if(t.hasAttribute("data-orders")){oTab[ph.dataset.k]=t.dataset.orders==="done"?"d":"a";openPanel(ph,"orders");return}
+ if(t.hasAttribute("data-bonus")){openPanel(ph,"bonus");return}
+ if(t.dataset.otab){oTab[ph.dataset.k]=t.dataset.otab;renderOrders();return}
+ if(t.dataset.adv){const o=O.find(x=>x.id===t.dataset.adv);const ln=t.closest(".oc");if(o.s==="n")o.s="p";else if(o.s==="p")o.s="r";else{o.s="d";ln.classList.add("gone");setTimeout(renderOrders,320);return}renderOrders();return}
+ if(t.dataset.p){
+  const it=t.closest(".item");
+  if(it&&it.classList.contains("sold")){it.classList.remove("shake");void it.offsetWidth;it.classList.add("shake");return}
+  const wasZero=!(q[t.dataset.p]>0);
+  q[t.dataset.p]=(q[t.dataset.p]||0)+1;
+  if(ph&&it)fly(t,ph);
+  render();
+  document.querySelectorAll(`[data-q="${t.dataset.p}"]`).forEach(popEl);
+ }
+ else if(t.dataset.m){q[t.dataset.m]=Math.max(0,(q[t.dataset.m]||0)-1);
+  const ln=t.closest(".sl");
+  if(ln&&q[t.dataset.m]===0){ln.classList.add("out");setTimeout(render,280)}else{render();document.querySelectorAll(`[data-q="${t.dataset.m}"]`).forEach(popEl)}}
+ else if(t.classList.contains("cartbar")){openSheet(ph)}
+ else if(t.hasAttribute("data-close")){closeSheets()}
+ else if(t.dataset.pay!==undefined){
+  t.classList.add("load");t.textContent="Memproses…";
+  setTimeout(()=>{closeSheets();const d=ph.querySelector(".done");d.classList.add("on");
+   for(const k in q)delete q[k];setTimeout(()=>{d.classList.remove("on");render();["A","B","C"].forEach(build)},1900)},1100)}
+ else if(t.dataset.t){document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b===t));["A","B","C"].forEach(k=>document.getElementById("col"+k).classList.toggle("on",k===t.dataset.t))}
+ else if(t.classList.contains("chip")){t.parentNode.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c===t));state[ph.dataset.k].cat=t.textContent.trim().replace("Merch","Merch");build(ph.dataset.k)}
+ else if(t.matches(".rail>div")){t.parentNode.querySelectorAll("div").forEach(c=>c.classList.toggle("on",c===t));state.C.cat=t.textContent.trim();build("C")}
+ else if(t.classList.contains("ib")&&t.querySelector(".badge")){t.querySelector("svg").classList.remove("wig");void t.offsetWidth;t.querySelector("svg").classList.add("wig")}
+});
+
+// ===== orders & bonus =====
+const O=[
+ {id:"ORD-POS-D-0016",src:"POS",t:"2m",s:"n",it:"2× Bubur Ayam Western, 1× Es Teh"},
+ {id:"ORD-APP-D-0015",src:"APP",t:"7m",s:"p",it:"1× Tentrem Koffie Premium"},
+ {id:"ORD-POS-D-0014",src:"POS",t:"12m",s:"p",it:"3× Bubur Ayam Tasik"},
+ {id:"ORD-APP-D-0013",src:"APP",t:"18m",s:"r",it:"1× Latte Art, 1× Roti Bakar"},
+ {id:"ORD-POS-D-0012",src:"POS",t:"25m",s:"r",it:"2× Kentang Goreng"},
+ {id:"ORD-POS-D-0011",src:"POS",t:"2j 17m",s:"d",it:"1× Bubur Ayam Chinese"},
+ {id:"ORD-APP-D-0010",src:"APP",t:"2j 33m",s:"d",it:"2× Tentrem Koffie Classic"}
+];
+const oTab={A:"a",B:"a",C:"a"};const SL={n:["Baru","","Proses"],p:["Diproses","p","Tandai siap"],r:["Siap","r","Selesai"],d:["Selesai","d",""]};
+function renderOrders(){
+ const a=O.filter(o=>o.s!=="d"),d=O.filter(o=>o.s==="d");
+ document.querySelectorAll("[data-qn]").forEach(e=>{if(e.textContent!=a.length){e.textContent=a.length;popEl(e)}});
+ document.querySelectorAll("[data-dn]").forEach(e=>e.textContent=d.length);
+ document.querySelectorAll(".sheet.orders").forEach(sh=>{
+  const k=sh.closest(".phone").dataset.k,tab=oTab[k],L=tab==="a"?a:d;
+  sh.innerHTML=`<div class="grab" data-close></div><div style="font-weight:800;font-size:18px">Pesanan</div><div class="seg ${tab==="d"?"d":""}"><i></i><button data-otab="a" class="${tab==="a"?"on":""}">Antrian ${a.length}</button><button data-otab="d" class="${tab==="d"?"on":""}">Selesai ${d.length}</button></div><div class="olist">`+(L.length?L.map((o,i)=>`<div class="oc" style="--i:${i}"><div class="h"><span><span class="src ${o.src==="APP"?"app":""}">${o.src}</span>${o.id}</span><small>${o.t}</small></div><p>${o.it}</p><div class="f"><span class="st ${SL[o.s][1]}">${SL[o.s][0]}</span>${SL[o.s][2]?`<button class="go2" data-adv="${o.id}">${SL[o.s][2]}</button>`:""}</div></div>`).join(""):`<div class="empty">Semua pesanan beres</div>`)+`</div>`;
+ });
+}
+function openPanel(ph,kind){
+ closeSheets();const s=ph.querySelector(".sheet."+kind);
+ if(kind==="orders")renderOrders();
+ requestAnimationFrame(()=>{s.classList.add("open");ph.querySelector(".dim").classList.add("on")});
+}
+document.querySelectorAll(".phone").forEach(ph=>{
+ ph.insertAdjacentHTML("beforeend",`<div class="sheet orders"></div><div class="sheet bonus"><div class="grab" data-close></div><div style="font-weight:800;font-size:18px">Target Bonus</div>
+  <div class="bsr"><div class="l"><span>SHIFT</span><b>0%</b></div><i class="bar"><u style="--w:0%"></u></i></div>
+  <div class="bsr"><div class="l"><span>HARIAN</span><b>55%</b></div><i class="bar"><u style="--w:55%"></u></i></div>
+  <div class="bnote"><b>Rp 275.000</b> dari target <b>Rp 500.000</b>.<br>Tinggal <b>Rp 225.000</b> lagi untuk bonus harian.</div></div>`);
+ if(ph.classList.contains("B")){const n=ph.querySelectorAll(".nav div")[1];n.setAttribute("data-orders","");n.insertAdjacentHTML("beforeend",`<span class="nbadge" data-qn>5</span>`)}
+});
+renderOrders();
+// drag-to-dismiss sheets
+document.querySelectorAll(".sheet").forEach(s=>{let y0=null;
+ s.addEventListener("pointerdown",e=>{if(e.target.closest("button"))return;y0=e.clientY;s.classList.add("drag")});
+ window.addEventListener("pointermove",e=>{if(y0===null)return;const d=Math.max(0,e.clientY-y0);s.style.transform=`translateY(${d}px)`});
+ window.addEventListener("pointerup",e=>{if(y0===null)return;const d=e.clientY-y0;y0=null;s.classList.remove("drag");if(d>90)closeSheets();else s.style.transform=""});
+});
+// idle: notification bell wiggle
+setInterval(()=>{document.querySelectorAll(".ib .badge").forEach(b=>{const v=b.previousElementSibling;v.classList.remove("wig");void v.offsetWidth;v.classList.add("wig")})},7000);
+</script></body></html>
