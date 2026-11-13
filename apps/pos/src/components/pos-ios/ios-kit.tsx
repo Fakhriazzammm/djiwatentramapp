@@ -1,5 +1,5 @@
 import { animate, AnimatePresence, motion, useMotionValue, useReducedMotion } from "framer-motion";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
@@ -67,6 +67,14 @@ export function IosSheet({
 	bare?: boolean;
 }) {
 	const y = useMotionValue(0);
+	// Bila sheet dibuka dari dalam dialog Radix (mis. panel Pesanan/Shift), pasang di dalam dialog itu.
+	// Di luar DOM dialog, Radix memblokir klik/fokus dan menganggap klik sebagai "klik di luar" yang menutup panel.
+	const [host, setHost] = useState<HTMLElement | null>(null);
+	useLayoutEffect(() => {
+		if (!open) return;
+		const dialogs = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"][data-state="open"]')).filter((el) => !el.hasAttribute("data-ios-sheet"));
+		setHost(dialogs[dialogs.length - 1] ?? document.body);
+	}, [open]);
 	useEffect(() => {
 		if (!open) return;
 		const onKey = (event: KeyboardEvent) => {
@@ -91,6 +99,7 @@ export function IosSheet({
 					/>
 					<motion.div
 						role="dialog"
+						data-ios-sheet=""
 						aria-modal="true"
 						aria-label={label ?? (typeof title === "string" ? title : "Panel")}
 						className={cn("relative flex w-full max-w-xl flex-col overflow-hidden rounded-t-[28px] bg-background shadow-[0_-12px_48px_rgba(0,0,0,0.22)]", heightClass)}
@@ -108,7 +117,7 @@ export function IosSheet({
 				</div>
 			) : null}
 		</AnimatePresence>,
-		document.body,
+		host ?? document.body,
 	);
 }
 
