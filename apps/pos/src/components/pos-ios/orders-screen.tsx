@@ -243,7 +243,8 @@ export function OrdersScreen({ onPrint, onRestore, onUpdate }: OrdersScreenProps
 			</div>
 
 			<AnimatePresence>
-				{selectMode && selected.size > 0 ? (
+				{selectMode && selected.size > 0 && confirmIds === null ? (
+						/* Disembunyikan saat sheet konfirmasi terbuka: bar (z-75) menutupi tombol Batal/Hapus di sheet (z-70). */
 					<motion.div key="selbar" initial={{ y: 110, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 110, opacity: 0 }} transition={IOS_SPRING} className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[75] flex items-center gap-2 rounded-[18px] bg-foreground p-2.5 pl-4 text-background shadow-[0_10px_24px_rgba(0,0,0,0.28)]">
 						<span className="flex-1 text-[14px] font-bold">{selected.size} dipilih</span>
 						<button type="button" onClick={() => setSelected(new Set(list.map((o) => String(o._id))))} className="h-10 rounded-xl bg-white/15 px-3.5 text-[13px] font-bold">Semua</button>
