@@ -84,9 +84,10 @@ import {
 } from "@/lib/receipt-data";
 import { enqueueTransactionVoice } from "@/lib/transaction-voice-queue";
 import { resolveTransactionVoice } from "@/lib/transaction-voice-resolver";
-import { NotificationCenter } from "@/components/pos/notification-center";
+import { NotificationsScreen } from "@/components/pos-ios/notifications-screen";
+import { OrderNotificationSheet } from "@/components/pos-ios/order-notification-sheet";
+import { IosSheet } from "@/components/pos-ios/ios-kit";
 import { TransactionAlertStack } from "@/components/pos/transaction-alert-popup";
-import { PosOrderDetailSheet } from "@/components/pos/pos-order-detail-sheet";
 import { DeliveryCustomerQueue } from "@/components/pos/delivery-customer-queue";
 import { usePosNotifications } from "@/hooks/use-pos-notifications";
 import { createClient } from "@/lib/client";
@@ -1853,25 +1854,26 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				}}
 			/>
 
-			<NotificationCenter
-				open={isNotificationCenterOpen}
-				onClose={() => setIsNotificationCenterOpen(false)}
-				notifications={notifications}
-				isLoading={notificationsLoading}
-				error={notificationsError}
-				onMarkRead={markNotificationRead}
-				onDismiss={(notificationId) => { void removeNotification(notificationId); setTransactionAlertIds((current) => current.filter((id) => id !== notificationId)); }}
-				onMarkCashierPaid={handleMarkCashierPaid}
-				onOpenOrder={(notification) => {
-					markNotificationRead(notification.id);
-					setTransactionAlertIds((current) => current.filter((id) => id !== notification.id));
-					setSelectedOrderNotification(notification);
-					setSelectedOrderId(String(notification.action_payload?.orderId ?? notification.order_source_id ?? ""));
-					setIsNotificationCenterOpen(false);
-				}}
-			/>
+			<IosSheet open={isNotificationCenterOpen} onClose={() => setIsNotificationCenterOpen(false)} bare heightClass="h-[92dvh]" label="Notifikasi">
+				<NotificationsScreen
+					notifications={notifications}
+					isLoading={notificationsLoading}
+					error={notificationsError}
+					onRetry={() => refreshNotifications(true)}
+					onRefresh={() => refreshNotifications(true)}
+					onMarkRead={markNotificationRead}
+					onDismiss={(notificationId) => { void removeNotification(notificationId); setTransactionAlertIds((current) => current.filter((id) => id !== notificationId)); }}
+					onOpenOrder={(notification) => {
+						markNotificationRead(notification.id);
+						setTransactionAlertIds((current) => current.filter((id) => id !== notification.id));
+						setSelectedOrderNotification(notification);
+						setSelectedOrderId(String(notification.action_payload?.orderId ?? notification.order_source_id ?? ""));
+						setIsNotificationCenterOpen(false);
+					}}
+				/>
+			</IosSheet>
 
-			<PosOrderDetailSheet
+			<OrderNotificationSheet
 				open={Boolean(selectedOrderNotification)}
 				order={(orders ?? []).find((order: any) => String(order._id ?? "") === selectedOrderId || String(order.orderNumber ?? "") === String(selectedOrderNotification?.order_number ?? "")) ?? null}
 				notification={selectedOrderNotification}

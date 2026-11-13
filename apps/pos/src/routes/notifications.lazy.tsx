@@ -1,10 +1,11 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { ArrowLeft } from "lucide-react";
-import { NotificationCenter } from "@/components/pos/notification-center";
-import { PosOrderDetailSheet } from "@/components/pos/pos-order-detail-sheet";
+import { useCallback, useRef, useState } from "react";
+import { toast } from "sonner";
+import { NotificationsScreen } from "@/components/pos-ios/notifications-screen";
+import { OrderNotificationSheet } from "@/components/pos-ios/order-notification-sheet";
 import { usePosNotifications, getNotificationOrderId, type PosNotification } from "@/hooks/use-pos-notifications";
-import { useHybridOrders } from "@/hooks/use-hybrid-pos-data";
+import { triggerHybridRefresh, useHybridOrders } from "@/hooks/use-hybrid-pos-data";
+import { useHybridUpdateOrder } from "@/hooks/use-hybrid-write-actions";
 
 export const Route = createLazyFileRoute("/notifications")({
   component: NotificationsPage,
@@ -13,75 +14,58 @@ export const Route = createLazyFileRoute("/notifications")({
 function NotificationsPage() {
   const navigate = useNavigate();
   const orders = useHybridOrders({ limit: 2000 });
-  const [selectedNotification, setSelectedNotification] = useState<PosNotification | null>(null);
-  const {
-    notifications,
-    unreadCount,
-    isLoading,
-    error,
-    refresh,
-    markRead,
-    removeNotification,
-    realtimeStatus,
-  } = usePosNotifications();
+  const updateOrder = useHybridUpdateOrder();
+  const [selected, setSelected] = useState<PosNotification | null>(null);
+  const paidInFlight = useRef<Set<string>>(new Set());
+  const { notifications, isLoading, error, refresh, markRead, removeNotification, realtimeStatus } = usePosNotifications();
+
+  // Aturan sama dengan panel notifikasi di halaman Menu: tandai lunas tunai kasir, lalu segarkan data.
+  const markCashierPaid = useCallback(async (notification: PosNotification) => {
+    const orderId = String(notification.action_payload?.orderId ?? notification.order_source_id ?? "");
+    if (!orderId) return void toast.error("Order tidak ditemukan");
+    if (paidInFlight.current.has(orderId)) return;
+    paidInFlight.current.add(orderId);
+    try {
+      await updateOrder({ id: orderId, status: "paid", paymentMethod: "cash", paymentReceiptKind: "cashier" });
+      if (!String(notification.id).startsWith("barcode:")) await removeNotification(notification.id);
+      triggerHybridRefresh();
+      window.setTimeout(() => triggerHybridRefresh(), 350);
+      window.setTimeout(() => triggerHybridRefresh(), 1_200);
+      await refresh(true);
+      setSelected(null);
+      toast.success("Pembayaran kasir berhasil dicatat");
+    } catch (failure) {
+      console.error("[cashier-paid] failed", failure);
+      toast.error(failure instanceof Error ? failure.message : "Gagal mencatat pembayaran kasir");
+    } finally {
+      paidInFlight.current.delete(orderId);
+    }
+  }, [refresh, removeNotification, updateOrder]);
 
   return (
-    <main className="min-h-screen bg-muted/10 text-foreground">
-      <div className="mx-auto w-full max-w-5xl px-3 py-3 sm:px-5 sm:py-5">
-        <header className="mb-3 flex items-center gap-2 rounded-xl border border-border/70 bg-background px-3 py-2.5 shadow-sm sm:mb-4 sm:px-4">
-          <button
-            type="button"
-            onClick={() => navigate({ to: "/menu" })}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
-            aria-label="Kembali ke POS"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Workspace POS</p>
-            <h1 className="text-base font-bold leading-tight sm:text-lg">Pusat Notifikasi</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className={`hidden rounded-full px-2 py-1 text-xs font-bold sm:inline-flex ${realtimeStatus === "connected" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-              {realtimeStatus === "connected" ? "Terhubung" : "Pembaruan berkala"}
-            </span>
-            <span className="hidden rounded-full bg-primary/10 px-2 py-1 text-xs font-bold text-primary sm:inline-flex">
-              {unreadCount} belum dibaca
-            </span>
-            <button
-              type="button"
-              onClick={() => void refresh(true)}
-              disabled={isLoading}
-              className="min-h-11 rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-50 font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground"
-            >
-              Segarkan
-            </button>
-          </div>
-        </header>
-
-        <section className="overflow-hidden rounded-xl border border-border/70 bg-background shadow-sm">
-          <NotificationCenter
-            open
-            fullPage
-            onClose={() => navigate({ to: "/menu" })}
-            notifications={notifications}
-            isLoading={isLoading}
-            error={error}
-            onRetry={() => refresh(true)}
-            onMarkRead={markRead}
-            onDismiss={removeNotification}
-            onOpenOrder={(notification) => {
-              markRead(notification.id);
-              setSelectedNotification(notification);
-            }}
-          />
-        </section>
-      </div>
-      <PosOrderDetailSheet
-        open={Boolean(selectedNotification)}
-        order={selectedNotification ? (orders ?? []).find((order: any) => String(order._id ?? "") === getNotificationOrderId(selectedNotification) || String(order.orderNumber ?? "") === String(selectedNotification.order_number ?? "")) ?? null : null}
-        notification={selectedNotification}
-        onClose={() => setSelectedNotification(null)}
+    <main className="mx-auto flex h-[100dvh] w-full max-w-xl flex-col bg-background text-foreground">
+      <NotificationsScreen
+        notifications={notifications}
+        isLoading={isLoading}
+        error={error}
+        onRetry={() => refresh(true)}
+        onRefresh={() => refresh(true)}
+        onMarkRead={markRead}
+        onDismiss={removeNotification}
+        onOpenOrder={(notification) => {
+          markRead(notification.id);
+          setSelected(notification);
+        }}
+        onBack={() => navigate({ to: "/menu" })}
+        title="Pusat Notifikasi"
+        statusLabel={realtimeStatus === "connected" ? "Terhubung · realtime" : "Pembaruan berkala"}
+      />
+      <OrderNotificationSheet
+        open={Boolean(selected)}
+        order={selected ? (orders ?? []).find((order: any) => String(order._id ?? "") === getNotificationOrderId(selected) || String(order.orderNumber ?? "") === String(selected.order_number ?? "")) ?? null : null}
+        notification={selected}
+        onClose={() => setSelected(null)}
+        onMarkCashierPaid={selected ? () => markCashierPaid(selected) : undefined}
       />
     </main>
   );

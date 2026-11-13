@@ -54,6 +54,7 @@ export function IosSheet({
 	footer,
 	heightClass = "max-h-[86dvh]",
 	label,
+	bare,
 }: {
 	open: boolean;
 	onClose: () => void;
@@ -62,6 +63,8 @@ export function IosSheet({
 	footer?: ReactNode;
 	heightClass?: string;
 	label?: string;
+	/** Tanpa padding/scroll bawaan; isi mengatur sendiri (mis. layar penuh). */
+	bare?: boolean;
 }) {
 	const y = useMotionValue(0);
 	useEffect(() => {
@@ -99,7 +102,7 @@ export function IosSheet({
 					>
 						<DragHandle y={y} onClose={onClose} />
 						{title ? <div className="px-5 pb-2 text-[19px] font-extrabold tracking-tight">{title}</div> : null}
-						<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-3">{children}</div>
+						<div className={bare ? "flex min-h-0 flex-1 flex-col" : "min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-3"}>{children}</div>
 						{footer ? <div className="px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-1">{footer}</div> : <div className="pb-[env(safe-area-inset-bottom)]" />}
 					</motion.div>
 				</div>
