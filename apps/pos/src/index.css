@@ -5,7 +5,7 @@
 /*
  * POS form fields: no yellow or blue on focus, text, browser autofill, or
  * native checkbox/radio/range. Unlayered rules here win over Tailwind's
- * layered focus:* utilities. Focus stays visible via a neutral ring.
+ * layered focus:* utilities. No focus outline or ring on inputs.
  */
 input,
 textarea,
@@ -20,9 +20,8 @@ textarea:focus,
 textarea:focus-visible,
 select:focus,
 select:focus-visible {
-	border-color: var(--border);
-	outline: none;
-	box-shadow: 0 0 0 3px color-mix(in oklab, var(--foreground) 12%, transparent);
+	outline: none !important;
+	box-shadow: none !important;
 }
 
 input:-webkit-autofill,
