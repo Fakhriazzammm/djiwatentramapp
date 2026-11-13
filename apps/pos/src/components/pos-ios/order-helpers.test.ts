@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { isCashierPending, orderTypeLabel, statusGroup, timeRange } from "./order-helpers";
+import { isCashierPending, isDeliveryOrder, orderTypeLabel, statusGroup, timeRange } from "./order-helpers";
 
 describe("order helpers", () => {
 	it("groups statuses for the order list chips", () => {
@@ -27,5 +27,11 @@ describe("order helpers", () => {
 		expect(orderTypeLabel("dine_in")).toBe("Makan di tempat");
 		expect(orderTypeLabel("takeaway")).toBe("Bungkus");
 		expect(orderTypeLabel(undefined)).toBe("—");
+	});
+	it("mengenali pesanan delivery (tidak bisa dihapus permanen)", () => {
+		expect(isDeliveryOrder({ orderType: "delivery" })).toBe(true);
+		expect(isDeliveryOrder({ orderType: " Delivery " })).toBe(true);
+		expect(isDeliveryOrder({ orderType: "dine_in" })).toBe(false);
+		expect(isDeliveryOrder(undefined)).toBe(false);
 	});
 });

@@ -58,3 +58,7 @@ export function isCashierPending(order: any): boolean {
 export function orderTypeLabel(type?: string | null): string {
 	return type === "dine_in" ? "Makan di tempat" : type === "takeaway" ? "Bungkus" : type === "online" ? "Online" : type ?? "—";
 }
+/** Pesanan delivery tidak bisa dihapus permanen (dijaga trigger database); yang tersedia adalah pembatalan. */
+export function isDeliveryOrder(order: { orderType?: string | null } | null | undefined): boolean {
+	return String(order?.orderType ?? "").trim().toLowerCase() === "delivery";
+}

@@ -2,6 +2,7 @@ import { shouldRunIntegratedStock } from "@yumipos/web-shared/lib/manual-stock";
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { allocateDailyReceiptNo } from "@yumipos/web-shared/lib/daily-receipt";
 import { createClient } from "@/lib/client";
+import { chunk, mapWithConcurrency } from "@/lib/concurrency";
 import { assertOrderRetryAcknowledgement } from "@/lib/order-retry-acknowledgement";
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
@@ -2982,6 +2983,115 @@ export function useHybridDeleteOrder() {
 		},
 		[fallback]
 	);
+}
+
+export type BulkOrderResult = { deleted: string[]; cancelled: string[]; failed: string[] };
+
+/** Proses banyak pesanan. Pesanan delivery dibatalkan (tidak bisa dihapus: dijaga trigger database); lainnya dihapus paralel, nomor struk dikurangi berurutan dari yang tertinggi. */
+export function useHybridDeleteOrdersBulk() {
+	const deleteOne = useHybridDeleteOrder();
+	return useCallback(
+		async (
+			ids: string[],
+			options: { concurrency?: number; onProgress?: (done: number, total: number) => void } = {},
+		): Promise<BulkOrderResult> => {
+			const unique = [...new Set(ids.filter(Boolean))];
+			const deleted: string[] = [];
+			const cancelled: string[] = [];
+			const failed: string[] = [];
+			let done = 0;
+			const report = () => options.onProgress?.(++done, unique.length);
+
+			if (!hasSupabaseConfig) {
+				await mapWithConcurrency(unique, 1, async (id) => {
+					try {
+						await deleteOne({ id });
+						deleted.push(id);
+					} catch {
+						failed.push(id);
+					}
+					report();
+				});
+				return { deleted, cancelled, failed };
+			}
+
+			const pos = createClient().schema("pos") as any;
+
+			// Detail per pesanan (nomor, nomor struk, tipe) diambil per potongan. Gagal di sini tidak menghentikan proses (best-effort).
+			const details = new Map<string, { orderNumber: string | null; dailyReceiptNo: number | null; isDelivery: boolean }>();
+			for (const part of chunk(unique, 100)) {
+				try {
+					const { data } = await pos.from("orders").select("source_id,order_number,daily_receipt_no,order_type").in("source_id", part);
+					for (const row of data ?? []) {
+						details.set(String(row.source_id), {
+							orderNumber: row.order_number ?? null,
+							dailyReceiptNo: row.daily_receipt_no ?? null,
+							isDelivery: String(row.order_type ?? "").trim().toLowerCase() === "delivery",
+						});
+					}
+				} catch (_) { /* best-effort */ }
+			}
+
+			const receiptNos: number[] = [];
+			await mapWithConcurrency(unique, options.concurrency ?? 8, async (id) => {
+				const detail = details.get(id);
+				try {
+					if (detail?.isDelivery) {
+						await cancelDeliveryOrder(pos, id, detail.orderNumber);
+						cancelled.push(id);
+					} else {
+						await deleteOrderRows(pos, id, detail?.orderNumber ?? null);
+						deleted.push(id);
+						if (detail?.dailyReceiptNo != null) receiptNos.push(detail.dailyReceiptNo);
+					}
+				} catch (error) {
+					console.error("[process-orders-bulk] failed", id, error);
+					failed.push(id);
+				}
+				report();
+			});
+
+			// Nomor struk hanya dikurangi untuk pesanan yang benar-benar dihapus. Pesanan yang dibatalkan tetap menyimpan nomornya.
+			for (const no of receiptNos.sort((a, b) => b - a)) {
+				try {
+					const { error } = await pos.rpc("decrement_daily_receipt_no", { p_order_kind: "all", p_last_no: no });
+					if (error) console.warn("[process-orders-bulk] Counter decrement failed:", error.message);
+				} catch (_) { /* best-effort */ }
+			}
+			return { deleted, cancelled, failed };
+		},
+		[deleteOne],
+	);
+}
+
+async function deleteOrderRows(pos: any, id: string, orderNumber: string | null) {
+	const { error: txError } = await pos.from("financial_transactions").delete().eq("order_source_id", id);
+	if (txError) throw txError;
+
+	const { error: itemsError } = await pos.from("order_items").delete().eq("order_source_id", id);
+	if (itemsError) throw itemsError;
+
+	if (orderNumber) {
+		try {
+			const { error: statusError } = await pos.from("order_status").delete().eq("order_no", orderNumber);
+			if (statusError) console.warn("[delete-order] Failed to delete order_status:", statusError);
+		} catch (_) { /* best-effort */ }
+	}
+
+	const { error: orderError } = await pos.from("orders").delete().eq("source_id", id);
+	if (orderError) throw orderError;
+}
+
+/** Pembatalan pesanan delivery: hanya ubah status (diizinkan trigger), tiket dapur ikut dilepas. */
+async function cancelDeliveryOrder(pos: any, id: string, orderNumber: string | null) {
+	const { error } = await pos.from("orders").update({ status: "cancelled" }).eq("source_id", id);
+	if (error) throw error;
+	if (orderNumber) {
+		try {
+			const { error: statusError } = await pos.from("order_status").delete().eq("order_no", orderNumber);
+			if (statusError) console.warn("[cancel-order] Failed to clear order_status:", statusError);
+		} catch (_) { /* best-effort */ }
+	}
 }
 
 export function useHybridUpdateOrderStatus() {

@@ -1,6 +1,6 @@
 import { formatPaymentLabel } from "@yumipos/web-shared/lib/payment-label";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronDown, ChefHat, FileText, Loader2, Receipt, SlidersHorizontal, Trash2, Undo2 } from "lucide-react";
+import { Ban, Check, ChevronDown, ChefHat, FileText, Loader2, Receipt, SlidersHorizontal, Trash2, Undo2 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { Doc } from "@/types/backend-compat";
@@ -8,10 +8,10 @@ import type { ReceiptPrintMode } from "@/lib/bluetooth-printer";
 import { createClient } from "@/lib/client";
 import { cn } from "@/lib/utils";
 import { triggerHybridRefresh, useHybridOrders, useHybridShiftStatus } from "@/hooks/use-hybrid-pos-data";
-import { useHybridDeleteOrder, useHybridUpdateOrder } from "@/hooks/use-hybrid-write-actions";
+import { useHybridDeleteOrdersBulk, useHybridUpdateOrder } from "@/hooks/use-hybrid-write-actions";
 import { ConfirmSheet, formatClock, formatRp, IOS_SPRING, IOS_SPRING_SOFT, IosChip, IosSheet, StatusPill, listItemMotion } from "./ios-kit";
 import { OrderDetailSheet, statusMeta } from "./order-detail-sheet";
-import { displayOrderNumber, isCashierPending, orderTypeLabel, statusGroup, timeRange, TIME_LABELS, type TimeFilter } from "./order-helpers";
+import { displayOrderNumber, isCashierPending, isDeliveryOrder, orderTypeLabel, statusGroup, timeRange, TIME_LABELS, type TimeFilter } from "./order-helpers";
 
 type Chip = "all" | "open" | "paid" | "cancelled";
 type Sort = "desc" | "asc";
@@ -32,7 +32,7 @@ export function OrdersScreen({ onPrint, onRestore, onUpdate }: OrdersScreenProps
 	const openBills = useHybridOrders({ status: "pending" });
 	const shiftStatus = useHybridShiftStatus();
 	const updateOrder = useHybridUpdateOrder();
-	const deleteOrder = useHybridDeleteOrder();
+	const deleteOrders = useHybridDeleteOrdersBulk();
 
 	const [chip, setChip] = useState<Chip>("all");
 	const [time, setTime] = useState<TimeFilter>("today");
@@ -44,7 +44,8 @@ export function OrdersScreen({ onPrint, onRestore, onUpdate }: OrdersScreenProps
 	const [selectMode, setSelectMode] = useState(false);
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const [confirmIds, setConfirmIds] = useState<string[] | null>(null);
-	const [deleting, setDeleting] = useState(false);
+	const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
+	const [cancelledLocal, setCancelledLocal] = useState<Set<string>>(new Set());
 	const [delivered, setDelivered] = useState<Set<string>>(new Set());
 	const [paidLocal, setPaidLocal] = useState<Set<string>>(new Set());
 	const [paying, setPaying] = useState<string | null>(null);
@@ -68,24 +69,56 @@ export function OrdersScreen({ onPrint, onRestore, onUpdate }: OrdersScreenProps
 		return list;
 	}, [orders, time, shiftFilter, activeShift, shifts]);
 
-	const effectiveStatus = useCallback((order: any) => (paidLocal.has(String(order._id)) ? "paid" : order.status), [paidLocal]);
+	const effectiveStatus = useCallback((order: any) => (paidLocal.has(String(order._id)) ? "paid" : cancelledLocal.has(String(order._id)) ? "cancelled" : order.status), [paidLocal, cancelledLocal]);
+
+		// Baris yang sedang/sudah dihapus disembunyikan dulu (optimistis); dikembalikan bila penghapusannya gagal.
+		const visibleHistory = useMemo(() => (history ? history.filter((o: any) => !hiddenIds.has(String(o._id))) : null), [history, hiddenIds]);
+		const visibleOpen = useMemo(() => (openBills ? (openBills as any[]).filter((o) => !hiddenIds.has(String(o._id)) && !cancelledLocal.has(String(o._id))) : undefined), [openBills, hiddenIds, cancelledLocal]);
+const orderById = useMemo(() => new Map(((orders as any[]) ?? []).map((o) => [String(o._id), o] as const)), [orders]);
+const isDeliveryId = (id: string) => isDeliveryOrder(orderById.get(id));
+// Judul & teks konfirmasi mengikuti jenis pesanan yang dipilih (delivery = dibatalkan, lainnya = dihapus).
+const confirmCopy = useMemo(() => {
+	const ids = confirmIds ?? [];
+	const total = ids.length;
+	if (total === 0) return { title: "Hapus pesanan?", message: "", confirmLabel: "Hapus" };
+	const delivery = ids.filter(isDeliveryId).length;
+	if (delivery === total) {
+		return {
+			title: total > 1 ? `Batalkan ${total} pesanan delivery?` : "Batalkan pesanan delivery?",
+			message: "Pesanan delivery tidak dapat dihapus permanen. Pesanan akan dibatalkan dan tetap tercatat di riwayat Batal.",
+			confirmLabel: "Batalkan",
+		};
+	}
+	if (delivery === 0) {
+		return {
+			title: total > 1 ? `Hapus ${total} Open Bill?` : "Hapus pesanan?",
+			message: "Pesanan beserta item dan catatan transaksinya akan dihapus. Tindakan ini tidak dapat dibatalkan.",
+			confirmLabel: "Hapus",
+		};
+	}
+	return {
+		title: `Hapus atau batalkan ${total} pesanan?`,
+		message: `${delivery} pesanan delivery tidak dapat dihapus permanen, jadi akan dibatalkan dan tetap tercatat di riwayat Batal. ${total - delivery} pesanan lain akan dihapus.`,
+		confirmLabel: "Lanjutkan",
+	};
+}, [confirmIds, orderById]);
 
 	const counts = useMemo(() => {
-		const base = history ?? [];
+		const base = visibleHistory ?? [];
 		return {
 			all: base.length,
-			open: (openBills ?? []).length,
+			open: (visibleOpen ?? []).length,
 			paid: base.filter((o) => statusGroup(effectiveStatus(o)) === "paid").length,
 			cancelled: base.filter((o) => statusGroup(effectiveStatus(o)) === "cancelled").length,
 		};
-	}, [history, openBills, effectiveStatus]);
+	}, [visibleHistory, visibleOpen, effectiveStatus]);
 
 	const list = useMemo(() => {
-		const source: any[] = chip === "open" ? [...((openBills as any[]) ?? [])] : [...(history ?? [])];
+		const source: any[] = chip === "open" ? [...(visibleOpen ?? [])] : [...(visibleHistory ?? [])];
 		const filtered = chip === "paid" ? source.filter((o) => statusGroup(effectiveStatus(o)) === "paid") : chip === "cancelled" ? source.filter((o) => statusGroup(effectiveStatus(o)) === "cancelled") : source;
 		filtered.sort((a, b) => (sort === "asc" ? a.createdAt - b.createdAt : b.createdAt - a.createdAt));
 		return filtered;
-	}, [chip, history, openBills, sort, effectiveStatus]);
+	}, [chip, visibleHistory, visibleOpen, sort, effectiveStatus]);
 
 	const loading = orders === undefined || (chip === "open" && openBills === undefined);
 
@@ -117,23 +150,51 @@ export function OrdersScreen({ onPrint, onRestore, onUpdate }: OrdersScreenProps
 		}
 	}, [delivered]);
 
-	const confirmDelete = useCallback(async () => {
-		if (!confirmIds) return;
-		setDeleting(true);
-		try {
-			for (const id of confirmIds) await deleteOrder({ id });
-			toast.success(confirmIds.length > 1 ? `${confirmIds.length} Open Bill berhasil dihapus` : "Pesanan berhasil dihapus");
+	const confirmDelete = useCallback(() => {
+			if (!confirmIds) return;
+			const ids = confirmIds;
+			// Sheet langsung tertutup dan baris langsung hilang; prosesnya berjalan di latar belakang dan progresnya tampil di toast.
+			setConfirmIds(null);
 			setSelected(new Set());
 			setSelectMode(false);
-			setDetail(null);
-		} catch (error) {
-			console.error("[orders] delete failed", error);
-			toast.error("Sebagian pesanan gagal dihapus. Coba lagi.");
-		} finally {
-			setDeleting(false);
-			setConfirmIds(null);
-		}
-	}, [confirmIds, deleteOrder]);
+			setExpanded((current) => (current && ids.includes(current) ? null : current));
+			setDetail((current: Doc<"orders"> | null) => (current && ids.includes(String(current._id)) ? null : current));
+			setHiddenIds((prev) => new Set([...prev, ...ids]));
+			const toastId = toast.loading(ids.length > 1 ? `Memproses ${ids.length} pesanan…` : "Memproses pesanan…");
+			const setHidden = (targets: string[], on: boolean) =>
+				setHiddenIds((prev) => {
+					const next = new Set(prev);
+					targets.forEach((id) => (on ? next.add(id) : next.delete(id)));
+					return next;
+				});
+			void (async () => {
+				try {
+					const result = await deleteOrders(ids, {
+						onProgress: (done, total) => {
+							if (total > 1) toast.loading(`Memproses ${done} dari ${total}…`, { id: toastId });
+						},
+					});
+					// Yang dibatalkan tetap tampil di riwayat (chip Batal); yang gagal kembali ke daftar.
+					setHidden([...result.cancelled, ...result.failed], false);
+					setCancelledLocal((prev) => new Set([...prev, ...result.cancelled]));
+					const parts = [
+						result.deleted.length ? `${result.deleted.length} dihapus` : "",
+						result.cancelled.length ? `${result.cancelled.length} dibatalkan` : "",
+					].filter(Boolean);
+					if (result.failed.length > 0) {
+						toast.error(`${result.failed.length} dari ${ids.length} pesanan gagal diproses. ${parts.length ? `${parts.join(" · ")}. ` : ""}Coba lagi.`, { id: toastId });
+					} else {
+						toast.success(parts.join(" · ") || "Selesai", { id: toastId });
+					}
+				} catch (error) {
+					console.error("[orders] process failed", error);
+					setHidden(ids, false);
+					toast.error("Proses gagal. Coba lagi.", { id: toastId });
+				} finally {
+					triggerHybridRefresh();
+				}
+			})();
+		}, [confirmIds, deleteOrders]);
 
 	const chips: Array<{ id: Chip; label: string; count: number }> = [
 		{ id: "all", label: "Semua", count: counts.all },
@@ -230,7 +291,7 @@ export function OrdersScreen({ onPrint, onRestore, onUpdate }: OrdersScreenProps
 														</>
 													) : null}
 													<ActionButton onClick={() => setDetail(order)}>Detail</ActionButton>
-													{group === "pending" ? <ActionButton tone="bad" onClick={() => setConfirmIds([id])} icon={<Trash2 className="h-4 w-4" />}>Hapus</ActionButton> : null}
+													{group === "pending" ? <ActionButton tone="bad" onClick={() => setConfirmIds([id])} icon={isDeliveryOrder(order) ? <Ban className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}>{isDeliveryOrder(order) ? "Batalkan" : "Hapus"}</ActionButton> : null}
 												</div>
 											</div>
 										</motion.div>
@@ -248,7 +309,7 @@ export function OrdersScreen({ onPrint, onRestore, onUpdate }: OrdersScreenProps
 					<motion.div key="selbar" initial={{ y: 110, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 110, opacity: 0 }} transition={IOS_SPRING} className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[75] flex items-center gap-2 rounded-[18px] bg-foreground p-2.5 pl-4 text-background shadow-[0_10px_24px_rgba(0,0,0,0.28)]">
 						<span className="flex-1 text-[14px] font-bold">{selected.size} dipilih</span>
 						<button type="button" onClick={() => setSelected(new Set(list.map((o) => String(o._id))))} className="h-10 rounded-xl bg-white/15 px-3.5 text-[13px] font-bold">Semua</button>
-						<button type="button" onClick={() => setConfirmIds([...selected])} className="flex h-10 items-center gap-1.5 rounded-xl bg-rose-600 px-3.5 text-[13px] font-bold text-white"><Trash2 className="h-4 w-4" />Hapus</button>
+						<button type="button" onClick={() => setConfirmIds([...selected])} className="flex h-10 items-center gap-1.5 rounded-xl bg-rose-600 px-3.5 text-[13px] font-bold text-white">{[...selected].every(isDeliveryId) ? <Ban className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}{[...selected].every(isDeliveryId) ? "Batalkan" : "Hapus"}</button>
 					</motion.div>
 				) : null}
 			</AnimatePresence>
@@ -269,7 +330,7 @@ export function OrdersScreen({ onPrint, onRestore, onUpdate }: OrdersScreenProps
 			</IosSheet>
 
 			<OrderDetailSheet order={detail} onClose={() => setDetail(null)} onPrint={onPrint} onDelete={(order) => setConfirmIds([String(order._id)])} onSave={async (id, data) => { await onUpdate(id, data); setDetail((current: Doc<"orders"> | null) => (current ? ({ ...current, ...data } as Doc<"orders">) : current)); }} />
-			<ConfirmSheet open={confirmIds !== null} title={confirmIds && confirmIds.length > 1 ? `Hapus ${confirmIds.length} Open Bill?` : "Hapus pesanan?"} message="Pesanan beserta item dan catatan transaksinya akan dihapus. Tindakan ini tidak dapat dibatalkan." confirmLabel="Hapus" destructive busy={deleting} onConfirm={() => void confirmDelete()} onClose={() => setConfirmIds(null)} />
+			<ConfirmSheet open={confirmIds !== null} title={confirmCopy.title} message={confirmCopy.message} confirmLabel={confirmCopy.confirmLabel} destructive={confirmCopy.confirmLabel !== "Batalkan"} onConfirm={() => void confirmDelete()} onClose={() => setConfirmIds(null)} />
 		</div>
 	);
 }
