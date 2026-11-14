@@ -6,6 +6,7 @@ import { Empty, Ic, hm, rp } from "../ui";
 
 type Data = {
   days: number;
+  hourly?: boolean;
   cash: { income: number; expense: number; net: number };
   sales: { key: string; orders: number; revenue: number }[];
   transactions: { source_id: string; tx_type: string; amount: string; category: string | null; description: string | null; merchant: string | null; tx_date: number; payment_method: string | null }[];
@@ -18,18 +19,18 @@ const CHAN: Record<string, string> = { pos: "POS", app: "Djiwa App", booking: "B
 const sgn = (v: number) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1).replace(".", ",")}%`;
 
 export function FinanceView() {
-  const [days, setDays] = useState(7);
+  const [period, setPeriod] = useState<"today" | "yesterday" | "7" | "30">("today");
   const [data, setData] = useState<Data | null>(null);
   const [trend, setTrend] = useState<"both" | "in" | "out">("both");
 
   useEffect(() => {
     setData(null);
-    api<Data>(`/api/manager/finance?days=${days}`).then(setData).catch(() => toast.error("Keuangan belum bisa dimuat"));
-  }, [days]);
+    api<Data>(`/api/manager/finance?${period === "today" || period === "yesterday" ? `period=${period}` : `days=${period}`}`).then(setData).catch(() => toast.error("Keuangan belum bisa dimuat"));
+  }, [period]);
 
   const v = useMemo(() => {
     if (!data) return null;
-    const labels = data.sales.map((s) => s.key.slice(5).replace("-", "/"));
+    const labels = data.sales.map((s) => (data.hourly ? s.key : s.key.slice(5).replace("-", "/")));
     const sum = (type: string, day: string) => data.daily.filter((d) => d.type === type && d.day === day).reduce((a, b) => a + b.total, 0);
     const inSeries = data.sales.map((s) => s.revenue);
     const outSeries = data.sales.map((s) => sum("expense", s.key));
@@ -54,7 +55,7 @@ export function FinanceView() {
   return (
     <div className="fin">
       <div className="fh">
-        <div className="tabs" style={{ margin: 0 }}>{[[1, "Kemarin"], [7, "7 hari"], [30, "30 hari"]].map(([d, l]) => <button key={d} className={days === d ? "on" : ""} onClick={() => setDays(Number(d))}>{l}</button>)}</div>
+        <div className="tabs" style={{ margin: 0 }}>{[["today", "Hari ini"], ["yesterday", "Kemarin"], ["7", "7 hari"], ["30", "30 hari"]].map(([d, l]) => <button key={d} className={period === d ? "on" : ""} onClick={() => setPeriod(d as typeof period)}>{l}</button>)}</div>
         <span className="meta">data nyata · pos.orders &amp; pos.financial_transactions</span>
       </div>
       {!data && <div className="empty">Memuat…</div>}
@@ -67,7 +68,7 @@ export function FinanceView() {
         </div>
         <div className="fgrid">
           <div className="panel s8">
-            <div className="ph"><span className="lab">Tren pemasukan dan pengeluaran</span>
+            <div className="ph"><span className="lab">{data?.hourly ? "Tren per jam" : "Tren pemasukan dan pengeluaran"}</span>
               <div className="tabs" style={{ margin: 0 }}>{[["both", "Keduanya"], ["in", "Pemasukan"], ["out", "Pengeluaran"]].map(([t, l]) => <button key={t} className={trend === t ? "on" : ""} onClick={() => setTrend(t as typeof trend)}>{l}</button>)}</div></div>
             <div className="pad" dangerouslySetInnerHTML={{ __html: svgArea(v.labels, series) }} />
           </div>
@@ -82,7 +83,7 @@ export function FinanceView() {
             <div className="pad">{data.byCategory.length ? <div dangerouslySetInnerHTML={{ __html: svgHBars(data.byCategory.map((c) => [c.category.replace(/_/g, " "), c.total]), { fmtVal: fmtRp, colors: [CH.red, CH.amber, CH.purple, CH.gray] }) }} /> : <Empty>BELUM ADA PENGELUARAN</Empty>}</div>
           </div>
           <div className="panel s6">
-            <div className="ph"><span className="lab">Ringkasan kas</span><span className="meta">{days} hari</span></div>
+            <div className="ph"><span className="lab">Ringkasan kas</span><span className="meta">{period === "today" ? "hari ini" : period === "yesterday" ? "kemarin" : `${period} hari`}</span></div>
             <div className="mr"><span>Pemasukan (transaksi tercatat)</span><b className="up">{rp(data.cash.income)}</b></div>
             <div className="mr"><span>Pengeluaran</span><b style={{ color: "var(--red)" }}>{rp(data.cash.expense)}</b></div>
             <div className="mr"><span>Selisih kas</span><b>{rp(data.cash.net)}</b></div>

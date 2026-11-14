@@ -100,30 +100,36 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
     const m = await member(c);
     if ("res" in m) return m.res;
     if (m.role !== "manager") return json({ success: false, error: "FORBIDDEN" }, 403);
-    const days = Math.min(90, Math.max(1, Number(c.req.query("days") ?? 7) || 7));
+    const period = text(c.req.query("period"), 12);
+    const hourly = period === "today" || period === "yesterday";
+    const days = hourly ? 1 : Math.min(90, Math.max(1, Number(c.req.query("days") ?? 7) || 7));
     const now = Date.now();
-    const start = now - days * 86_400_000;
-    const series = Array.from({ length: days }, (_, i) => {
-      const d = wibDay(i - days + 1);
-      return { key: d.date, start_ms: d.start, end_ms: d.end };
-    });
-    const wibDate = `to_char(to_timestamp(tx_date / 1000.0) AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD')`;
+    const dayWin = wibDay(period === "yesterday" ? -1 : 0);
+    const start = hourly ? dayWin.start : now - days * 86_400_000;
+    const end = hourly ? (period === "today" ? now : dayWin.end) : now;
+    const series = hourly
+      ? Array.from({ length: 24 }, (_, h) => ({ key: String(h).padStart(2, "0") + ":00", start_ms: dayWin.start + h * 3_600_000, end_ms: dayWin.start + (h + 1) * 3_600_000 }))
+      : Array.from({ length: days }, (_, i) => {
+          const d = wibDay(i - days + 1);
+          return { key: d.date, start_ms: d.start, end_ms: d.end };
+        });
+    const wibDate = `to_char(to_timestamp(tx_date / 1000.0) AT TIME ZONE 'Asia/Jakarta', '${hourly ? 'HH24":00"' : 'YYYY-MM-DD'}')`;
     const [cash, sales, txs, byCategory, daily, channels, methods] = await Promise.all([
-      pool.query(`SELECT public.admin_cashflow_summary($1,$2) AS r`, [start, now]),
+      pool.query(`SELECT public.admin_cashflow_summary($1,$2) AS r`, [start, end]),
       pool.query(`SELECT public.admin_sales_summary($1::jsonb) AS r`, [JSON.stringify(series)]),
       pool.query(
         `SELECT source_id, tx_type, amount::text, category, description, merchant, tx_date, payment_method, status
            FROM pos.financial_transactions
           WHERE tx_date >= $1 AND tx_date < $2 AND COALESCE(category,'') <> 'HPP'
           ORDER BY tx_date DESC LIMIT 200`,
-        [start, now],
+        [start, end],
       ),
       pool.query(
         `SELECT COALESCE(NULLIF(category,''),'lainnya') AS category, COALESCE(sum(amount),0)::text AS total
            FROM pos.financial_transactions
           WHERE tx_type = 'expense' AND tx_date >= $1 AND tx_date < $2 AND COALESCE(category,'') <> 'HPP'
           GROUP BY 1 ORDER BY sum(amount) DESC`,
-        [start, now],
+        [start, end],
       ),
       pool.query(
         `SELECT ${wibDate} AS day, tx_type,
@@ -131,23 +137,24 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
            FROM pos.financial_transactions
           WHERE status = 'completed' AND tx_date >= $1 AND tx_date < $2 AND COALESCE(category,'') <> 'HPP'
           GROUP BY 1, 2`,
-        [start, now],
+        [start, end],
       ).catch(() => ({ rows: [] as { day: string; tx_type: string; total: string }[] })),
       pool.query(
         `SELECT public.admin_order_channel(o.order_channel, o.source, o.source_app, o.business_unit) AS name, COALESCE(sum(o.total_amount),0)::text AS total
            FROM pos.orders o WHERE o.status IN ('paid','completed') AND o.created_at >= $1 AND o.created_at < $2 GROUP BY 1 ORDER BY sum(o.total_amount) DESC`,
-        [start, now],
+        [start, end],
       ).catch(() => ({ rows: [] as { name: string; total: string }[] })),
       pool.query(
         `SELECT COALESCE(NULLIF(o.payment_method,''),'lainnya') AS name, COALESCE(sum(o.total_amount),0)::text AS total
            FROM pos.orders o WHERE o.status IN ('paid','completed') AND o.created_at >= $1 AND o.created_at < $2 GROUP BY 1 ORDER BY sum(o.total_amount) DESC`,
-        [start, now],
+        [start, end],
       ).catch(() => ({ rows: [] as { name: string; total: string }[] })),
     ]);
     const c0 = (cash.rows[0]?.r ?? { income: 0, expense: 0, net: 0 }) as Record<string, number>;
     return json({
       success: true,
       days,
+      hourly,
       cash: { income: Number(c0.income ?? 0), expense: Number(c0.expense ?? 0), net: Number(c0.net ?? 0) },
       sales: (sales.rows[0]?.r ?? []) as { key: string; orders: number; revenue: number }[],
       transactions: txs.rows,
