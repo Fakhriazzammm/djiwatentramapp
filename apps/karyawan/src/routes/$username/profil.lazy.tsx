@@ -9,6 +9,7 @@ import {
 	useHybridSiteSettings,
 	createClient,
 } from "@yumipos/web-shared";
+import { DsAvatar, DsBar, DsButton, DsGroup, DsGroupLabel, DsIcon, DsNote, DsPageTitle, DsRow, DsTag } from "@yumipos/web-shared/components/ds";
 import { Button } from "@yumipos/web-shared/components/ui/button";
 import { Input } from "@yumipos/web-shared/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,6 +19,7 @@ import {
 	LogIn, ClipboardList, ArrowRight
 } from "lucide-react";
 import { toast } from "sonner";
+import "./profil-detail.css";
 
 export const Route = createLazyFileRoute("/$username/profil")({
 	component: ProfilPage,
@@ -41,6 +43,26 @@ function ProfilPage() {
 	const { staff, username, isUnlocked, isAdmin, authUser, isAuthenticated, token, navigate, refreshKey } = useStaffProfile();
 	const { logout: logoutYumi } = useYumiAuth();
 	const now = new Date();
+	const [section, setSection] = useState<"overview" | "data" | "pin" | "telegram">("overview");
+	const detailRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		if (section === "overview") return;
+		const previous = document.activeElement as HTMLElement | null;
+		const detail = detailRef.current;
+		const focusable = () => Array.from(detail?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]):not([type="hidden"]), a[href]') ?? []).filter((element) => element.getClientRects().length > 0);
+		focusable()[0]?.focus();
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") { event.preventDefault(); setSection("overview"); return; }
+			if (event.key !== "Tab") return;
+			const items = focusable();
+			if (!items.length) return;
+			const first = items[0], last = items[items.length - 1];
+			if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+			else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => { document.removeEventListener("keydown", onKeyDown); previous?.focus(); };
+	}, [section]);
 
 	// Auth
 	// PIN state
@@ -168,6 +190,7 @@ function ProfilPage() {
 		localStorage.setItem(ONBOARDING_DISMISS_KEY, "true");
 		setShowOnboarding(false);
 		setIsEditMode(true);
+		setSection("data");
 		setShowEditTooltip(true);
 		setTimeout(() => setShowEditTooltip(false), 4000);
 	}, []);
@@ -183,27 +206,44 @@ function ProfilPage() {
 
 	return (
 		<div className="space-y-4">
-			{/* Incomplete data badge */}
-			{privateData?.raw && (() => {
-				const r = privateData.raw as any;
-				const missingFields = [r.phone, r.identityNumber, r.address, r.birthDate, r.emergencyContactName].filter(f => !f);
-				if (missingFields.length === 0) return null;
-				return (
-					<div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
-						<div className="flex items-start gap-3">
-							<AlertTriangle aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0" />
-							<div className="flex-1 min-w-0">
-								<p className="text-[10px] font-black uppercase tracking-wide">Lengkapi Data Diri</p>
-								<p className="mt-0.5 text-[11px] font-medium">Isi No HP, Alamat, dan data lainnya untuk memudahkan administrasi.</p>
-							</div>
-							<Button variant="outline" size="sm" className="shrink-0 rounded-lg font-bold text-[10px] h-8 px-3 border-amber-300 text-amber-800 hover:bg-amber-100" onClick={() => setIsEditMode(true)}>EDIT NOW</Button>
-						</div>
+			{(() => {
+				const raw = privateData?.raw as any;
+				const fields = raw ? [raw.phone, raw.identityNumber, raw.address, raw.birthDate, raw.placeOfBirth, raw.emergencyContactName, raw.bankName, raw.bankAccount] : [];
+				const completed = fields.filter(Boolean).length;
+				return <>
+					<div style={{display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center", paddingTop:14}}>
+						<DsAvatar name={staff.name} size={84} />
+						<h1 style={{margin:"12px 0 2px", fontSize:26, fontWeight:700, letterSpacing:"-.03em"}}>{staff.name}</h1>
+						<div style={{fontSize:13, color:"var(--ds-mute)"}}>@{staff.slug}{privateData?.email ? ` · ${privateData.email}` : ""}</div>
+						<div style={{marginTop:8}}><DsTag tone="info">{isAdmin ? "Admin" : "Karyawan"}</DsTag></div>
 					</div>
-				);
+					{requiresPinChange && <DsNote icon={<KeyRound size={20} />} action={<DsButton size="sm" onClick={() => { setSection("pin"); setShowChangePin(true); }}>Ganti</DsButton>}><b>PIN default masih aktif</b>Ganti agar tidak ada yang absen atas namamu.</DsNote>}
+					<DsGroup style={{marginTop:18}}>
+						<div style={{display:"flex", justifyContent:"space-between"}}><b>Kelengkapan data</b><span style={{color:"var(--ds-mute)",fontSize:13}}>{raw ? `${completed} dari ${fields.length}` : "Memuat data"}</span></div>
+						<div style={{marginTop:10}}><DsBar value={raw ? completed / fields.length * 100 : 0} /></div>
+						<p style={{fontSize:13,color:"var(--ds-mute)",margin:"8px 0 0"}}>No HP, bank, rekening, dan kontak darurat dipakai untuk kontrak dan gaji.</p>
+						<DsButton variant="ghost" block onClick={() => { setSection("data"); setIsEditMode(true); }}>Lengkapi data</DsButton>
+					</DsGroup>
+					<DsGroupLabel>Keamanan</DsGroupLabel><DsGroup flush>
+						<DsRow icon={<DsIcon name="employee-profile" />} title="PIN absen" sub={requiresPinChange ? "Masih PIN default" : "Gunakan PIN untuk absensi"} trail={requiresPinChange ? <DsTag tone="warn">Ganti</DsTag> : undefined} onClick={() => { setSection("pin"); setShowChangePin(true); }} chevron />
+						<DsRow icon={<DsIcon name="employee-attendance-check-in" />} title="Scan wajah" sub="Daftar atau perbarui untuk absen" onClick={() => navigate({to:`/${username}/absensi`,search:{enroll:1}} as any)} chevron />
+					</DsGroup>
+					<DsGroupLabel>Pekerjaan</DsGroupLabel><DsGroup flush>
+						<DsRow title="Status" trail={raw?.employmentType || "—"} />
+						<DsRow title="Lokasi" trail={raw?.location || storeName} />
+					</DsGroup>
+					<DsGroupLabel>Lainnya</DsGroupLabel><DsGroup flush>
+						<DsRow icon={<DsIcon name="employee-profile" />} title="Data pribadi" onClick={() => {setSection("data");setIsEditMode(false);}} chevron />
+						<DsRow icon={<DsIcon name="employee-contract" />} title="Kontrak kerja" onClick={() => navigate({to:`/${username}/kontrak`} as any)} chevron />
+						<DsRow icon={<DsIcon name="employee-telegram" />} title="Bot & grup Telegram" onClick={() => setSection("telegram")} chevron />
+					</DsGroup>
+					<DsButton variant="ghost" block style={{color:"var(--ds-danger)"}} onClick={async () => {await logoutYumi(); window.location.replace("/login");}}><LogOut size={18}/> Keluar</DsButton>
+				</>;
 			})()}
+			{section !== "overview" && <div className="karyawan-profile-overlay"><button className="karyawan-profile-backdrop" type="button" aria-label="Tutup detail profil" onClick={() => setSection("overview")} /><div ref={detailRef} className="karyawan-profile-detail" role="dialog" aria-modal="true" aria-label={section === "data" ? "Data pribadi" : section === "pin" ? "PIN absen" : "Telegram"}><div className="karyawan-profile-grab" aria-hidden="true" /><DsPageTitle left={<button type="button" aria-label="Kembali ke profil" onClick={() => setSection("overview")} className="ds-iconbtn">‹</button>}>{section === "data" ? "Data pribadi" : section === "pin" ? "PIN absen" : "Telegram"}</DsPageTitle>
 
 			{/* Data Pribadi */}
-			<div className="space-y-2">
+			<div hidden={section !== "data"} className="space-y-2">
 				<div className="flex items-center justify-between px-2">
 					<h3 className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[10px]">
 						<User className="h-3 w-3 text-primary" />
@@ -446,7 +486,7 @@ function ProfilPage() {
 			</div>
 
 			{/* Pengaturan Akun */}
-			<div className="space-y-2">
+			<div hidden={section !== "pin"} className="space-y-2">
 				<h3 className="flex items-center gap-1.5 px-2 font-bold uppercase tracking-wider text-[10px]">
 					<ShieldCheck className="h-3 w-3 text-primary" />
 					Pengaturan Akun
@@ -491,7 +531,7 @@ function ProfilPage() {
 										toast.error((err as any).message || "Gagal memperbarui PIN");
 									} finally { setIsUpdatingPin(false); }
 								}}>
-									<div className="grid grid-cols-2 gap-3">
+									<div className="grid grid-cols-1 gap-3">
 										<div className="space-y-1">
 											<label className="text-[11px] font-black text-muted-foreground uppercase ml-1">PIN Lama</label>
 											<Input type="password" maxLength={6} value={oldPin} onChange={(e) => setOldPin(e.target.value.replace(/\D/g, ""))} className="h-10 rounded-xl text-center font-bold tracking-widest text-xs" placeholder="••••••" />
@@ -512,7 +552,7 @@ function ProfilPage() {
 			</div>
 
 			{/* Scan Wajah */}
-			<div className="space-y-2">
+			<div hidden className="space-y-2">
 				<h3 className="flex items-center gap-1.5 px-2 font-bold uppercase tracking-wider text-[10px]">
 					<Camera className="h-3 w-3 text-violet-500" />
 					Data Biometrik
@@ -542,7 +582,7 @@ function ProfilPage() {
 			</div>
 
 			{/* Grup Telegram */}
-			<div className="space-y-2">
+			<div hidden={section !== "telegram"} className="space-y-2">
 				<h3 className="flex items-center gap-1.5 px-2 font-bold uppercase tracking-wider text-[10px]">
 					<Bell className="h-3 w-3 text-sky-500" />
 					Grup Telegram
@@ -562,7 +602,7 @@ function ProfilPage() {
 			</div>
 
 			{/* Telegram Bot */}
-			<div className="space-y-2">
+			<div hidden={section !== "telegram"} className="space-y-2">
 				<h3 className="flex items-center gap-1.5 px-2 font-bold uppercase tracking-wider text-[10px]">
 					<Send className="h-3 w-3 text-sky-500" />
 					Telegram Bot
@@ -683,8 +723,10 @@ function ProfilPage() {
 				</div>
 			</div>
 
+			</div></div>}
+
 			{/* Logout */}
-			<div className="space-y-2 pb-8">
+			<div hidden className="space-y-2 pb-8">
 				<div className="rounded-xl border border-destructive/20 bg-destructive/[0.03] p-3">
 					<Button
 						variant="destructive"

@@ -2,7 +2,7 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useHybridStaffLogs } from "@yumipos/web-shared";
 import { createClient } from "@yumipos/web-shared/lib/client";
-import { DsAvatar, DsGroup, DsGroupLabel, DsIcon, DsPageTitle, DsRow, DsSegmented, DsTag } from "@yumipos/web-shared/components/ds";
+import { DsAvatar, DsGroup, DsGroupLabel, DsIcon, DsRow, DsSegmented, DsTag } from "@yumipos/web-shared/components/ds";
 import { useStaffProfile } from "../$username.lazy";
 import { hhmm, isOffShift, todayWib, useMonthSchedules } from "@/components/karyawan/use-staff-data";
 
@@ -37,7 +37,7 @@ function JadwalPage() {
 	const first = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
 	const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
 	const selSched = byDate.get(sel);
-	const teamRows = (all ?? []).filter((s) => s.date === sel && !isOffShift(s));
+	const teamRows = (all ?? []).filter((s) => s.date === sel);
 
 	// Attendance history grouped by WIB date: first check-in, last check-out, late vs schedule.
 	const history = useMemo(() => {
@@ -59,19 +59,30 @@ function JadwalPage() {
 		const start = Date.UTC(+date.slice(0, 4), +date.slice(5, 7) - 1, +date.slice(8, 10), h - 7, m);
 		return Math.max(0, Math.round((ts - start) / 60000));
 	};
-	const shift = (d: number) => { const m = month + d; if (m < 1) { setMonth(12); setYear(year - 1); } else if (m > 12) { setMonth(1); setYear(year + 1); } else setMonth(m); };
+	const shift = (d: number) => {
+		const next = new Date(Date.UTC(year, month - 1 + d, 1));
+		const nextYear = next.getUTCFullYear(), nextMonth = next.getUTCMonth() + 1;
+		setYear(nextYear);
+		setMonth(nextMonth);
+		setSel(`${nextYear}-${pad(nextMonth)}-01`);
+	};
 
 	return (
 		<div>
-			<DsPageTitle>Jadwal</DsPageTitle>
+			<div className="ds-header" style={{ padding: "8px 0 14px" }}><h1 className="ds-grow" style={{ fontSize: 32, letterSpacing: "-.035em" }}>Jadwal</h1></div>
 			<DsSegmented value={tab} onChange={setTab} items={[["pribadi", "Pribadi"], ["tim", "Tim"]]} />
 
 			<div style={{ marginTop: 14 }}>
 				<DsGroup white>
-					<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-						<button type="button" onClick={() => shift(-1)} aria-label="Bulan sebelumnya" style={{ minHeight: 36, minWidth: 36, background: "none", border: 0, fontSize: 18 }}>‹</button>
-						<b style={{ fontSize: 17 }}>{MONTHS[month - 1]} {year}</b>
-						<button type="button" onClick={() => shift(1)} aria-label="Bulan berikutnya" style={{ minHeight: 36, minWidth: 36, background: "none", border: 0, fontSize: 18 }}>›</button>
+					<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4, marginBottom: 8 }}>
+						<div style={{ display: "flex", alignItems: "center" }}>
+							<button type="button" onClick={() => shift(-1)} aria-label="Bulan sebelumnya" style={{ minHeight: 44, minWidth: 30, background: "none", border: 0, fontSize: 20 }}>‹</button>
+							<b style={{ fontSize: 17, whiteSpace: "nowrap" }}>{MONTHS[month - 1]} {year}</b>
+							<button type="button" onClick={() => shift(1)} aria-label="Bulan berikutnya" style={{ minHeight: 44, minWidth: 30, background: "none", border: 0, fontSize: 20 }}>›</button>
+						</div>
+						<div className="ds-sub" style={{ display: "flex", gap: 7, flexWrap: "wrap", justifyContent: "flex-end", fontSize: 11 }}>
+							{[["#2fa66a", "Pagi"], ["#e6890e", "Sore"], ["#aab0bf", "Off"]].map(([color, label]) => <span key={label} style={{ whiteSpace: "nowrap" }}><i style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: color, marginRight: 3 }} />{label}</span>)}
+						</div>
 					</div>
 					<div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2, textAlign: "center" }}>
 						{DAYS.map((d) => <div key={d} style={{ font: "600 11px var(--ds-font)", color: "var(--ds-faint)", padding: "6px 0" }}>{d}</div>)}
@@ -101,7 +112,7 @@ function JadwalPage() {
 					<DsGroupLabel>Tim · {new Date(sel).toLocaleDateString("id-ID", { day: "numeric", month: "long", timeZone: "UTC" })}</DsGroupLabel>
 					<DsGroup flush>
 						{teamRows.length === 0 && <div className="ds-sub" style={{ padding: "14px 0" }}>Belum ada jadwal tim untuk tanggal ini.</div>}
-						{teamRows.map((s) => <DsRow key={`${s.user_id}-${s.shift_name}`} icon={<DsAvatar name={names[s.user_id ?? ""] ?? "?"} size={40} />} title={names[s.user_id ?? ""] ?? "Karyawan"} trail={<DsTag tone="ok">{s.shift_name}</DsTag>} />)}
+						{teamRows.map((s) => <DsRow key={`${s.user_id}-${s.shift_name}`} icon={<DsAvatar name={names[s.user_id ?? ""] ?? "?"} size={40} />} title={names[s.user_id ?? ""] ?? "Karyawan"} trail={<DsTag tone={isOffShift(s) ? undefined : "ok"}>{s.shift_name}</DsTag>} />)}
 					</DsGroup>
 				</>
 			)}
@@ -111,7 +122,7 @@ function JadwalPage() {
 				{history.length === 0 && <div className="ds-sub" style={{ padding: "14px 0" }}>Belum ada riwayat bulan ini.</div>}
 				{history.map(([date, e]) => {
 					const late = lateMin(date, e.in);
-					return <DsRow key={date} icon={<DsIcon name="employee-attendance-check-in" />} title={new Date(date).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "short", timeZone: "UTC" })} sub={`${clock(e.in)} – ${clock(e.out)}`} trail={late > 5 ? <DsTag tone="warn">Telat {late} mnt</DsTag> : <DsTag tone="ok">Tepat waktu</DsTag>} />;
+					return <DsRow key={date} icon={<DsIcon name="employee-attendance-check-in" />} title={new Date(date).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "short", timeZone: "UTC" })} sub={`${clock(e.in)} – ${clock(e.out)}`} trail={!e.in ? <DsTag>Tanpa absen masuk</DsTag> : late > 5 ? <DsTag tone="warn">Telat {late} mnt</DsTag> : <DsTag tone="ok">Tepat waktu</DsTag>} />;
 				})}
 			</DsGroup>
 		</div>

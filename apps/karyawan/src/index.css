@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./lib/tw-animate.css";
 @import "@yumipos/web-shared/theme.css";
+@import "@yumipos/web-shared/ds.css";
 
 /* Karyawan mobile field-operation layer. Tokens remain sourced from web-shared. */
 @layer base {
@@ -94,7 +95,6 @@
 }
 
 /* ===== Djiwa Soft iOS ===== */
-@import "@yumipos/web-shared/ds.css";
 @layer components {
 	/* Halaman lama (profil, izin, rekap, slip, kontrak, leaderboard, closing) ikut tampilan DS tanpa ditulis ulang. */
 	.ds-legacy .karyawan-card,

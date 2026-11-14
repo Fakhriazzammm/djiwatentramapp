@@ -1,6 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
-import { DsButton, DsEmpty, DsGroup, DsGroupLabel, DsIcon, DsPageTitle, DsPills, DsRow, DsTag, ds3d } from "@yumipos/web-shared/components/ds";
+import { DsButton, DsEmpty, DsGroupLabel, DsIcon, DsPageTitle, DsPills, DsTag, ds3d } from "@yumipos/web-shared/components/ds";
 import { X } from "lucide-react";
 import { createClient } from "@yumipos/web-shared/lib/client";
 import { useStaffProfile } from "../$username.lazy";
@@ -29,8 +29,8 @@ interface NotificationSource {
 
 const SOURCES: NotificationSource[] = [
   { label: "Semua", icon: null, key: "all" },
-  { label: "Pengumuman", icon: null, key: "announcement" },
-  { label: "Penggajian", icon: null, key: "payslip" },
+  { label: "Info", icon: null, key: "announcement" },
+  { label: "Gaji", icon: null, key: "payslip" },
   { label: "Izin", icon: null, key: "leave" },
 ];
 
@@ -234,7 +234,7 @@ function NotifikasiPage() {
 
   return (
     <div>
-      <DsPageTitle right={visible.length > 0 ? <DsButton size="sm" variant="ghost" onClick={markAllRead}>Tandai dibaca</DsButton> : undefined}>Notifikasi</DsPageTitle>
+      <DsPageTitle left={<button type="button" className="ds-iconbtn" aria-label="Kembali ke beranda" onClick={() => navigate({ to: `/${username}/beranda` as any })}>‹</button>} right={visible.length > 0 ? <DsButton size="sm" variant="ghost" onClick={markAllRead}>Tandai dibaca</DsButton> : undefined}>Notifikasi</DsPageTitle>
       <DsPills
         value={filterType}
         onChange={(v) => setFilterType(v as NotifType | "all")}
@@ -245,23 +245,17 @@ function NotifikasiPage() {
       {!isLoading && dates.map((d) => (
         <div key={d}>
           <DsGroupLabel>{d}</DsGroupLabel>
-          <DsGroup flush>
-            {filtered.filter((n) => n.date === d).map((n) => (
-              <DsRow
-                key={n.id}
-                icon={<DsIcon name={iconName(n.type)} />}
-                title={n.title}
-                sub={n.message}
-                trail={
-                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    {n.actionLabel && n.actionUrl && <DsTag tone="info">{n.actionLabel}</DsTag>}
-                    <button type="button" aria-label="Tutup notifikasi" onClick={(e) => { e.stopPropagation(); dismissOne(n.id); }} style={{ background: "none", border: 0, minHeight: 32, minWidth: 32, color: "var(--ds-faint)" }}><X size={16} /></button>
-                  </span>
-                }
-                onClick={n.actionUrl ? () => navigate({ to: n.actionUrl as any }) : undefined}
-              />
-            ))}
-          </DsGroup>
+          {filtered.filter((n) => n.date === d).map((n) => (
+            <div key={n.id} style={{display:"flex", alignItems:"flex-start", gap:14, padding:"14px 16px", borderRadius:26, background:"var(--ds-group)", marginBottom:10, position:"relative"}}>
+              <span aria-label="Belum dibaca" style={{position:"absolute", left:5, top:"50%", width:6, height:6, borderRadius:"50%", background:"var(--ds-blue)"}} />
+              {n.actionUrl ? <button type="button" onClick={() => navigate({ to: n.actionUrl as any })} style={{flex:1, display:"flex", gap:14, minWidth:0, alignSelf:"stretch", textAlign:"left", background:"none", border:0, padding:0, cursor:"pointer"}}>
+                <DsIcon name={iconName(n.type)} /><span style={{flex:1,minWidth:0}}><strong style={{display:"block", fontSize:15}}>{n.title}</strong>
+                <span style={{display:"block", fontSize:13, color:"var(--ds-mute)"}}>{n.message}</span>
+                {n.actionLabel && <span style={{display:"block", paddingTop:8}}><DsTag tone="info">{n.actionLabel}</DsTag></span>}</span>
+              </button> : <div style={{flex:1, minWidth:0, display:"flex", gap:14}}><DsIcon name={iconName(n.type)} /><div><strong style={{display:"block", fontSize:15}}>{n.title}</strong><span style={{display:"block", fontSize:13, color:"var(--ds-mute)"}}>{n.message}</span></div></div>}
+              <button type="button" aria-label={`Tutup notifikasi ${n.title}`} onClick={() => dismissOne(n.id)} style={{background:"none", border:0, minHeight:44, minWidth:44, color:"var(--ds-faint)", cursor:"pointer"}}><X size={16} /></button>
+            </div>
+          ))}
         </div>
       ))}
     </div>
