@@ -93,6 +93,7 @@ import { Route as AdminKaryawanKehadiranRouteImport } from './routes/admin/karya
 import { Route as AdminKaryawanDataRouteImport } from './routes/admin/karyawan/data'
 import { Route as AdminKaryawanCutiIzinRouteImport } from './routes/admin/karyawan/cuti-izin'
 import { Route as AdminFinanceShiftReportsRouteImport } from './routes/admin/finance/shift-reports'
+import { Route as AdminFinanceFlowRouteImport } from './routes/admin/finance/flow'
 import { Route as AdminBookingSettingsRouteImport } from './routes/admin/booking/settings'
 import { Route as AdminBookingOrdersRouteImport } from './routes/admin/booking/orders'
 import { Route as AdminBookingCapacityRouteImport } from './routes/admin/booking/capacity'
@@ -696,6 +697,11 @@ const AdminFinanceShiftReportsRoute =
     path: '/shift-reports',
     getParentRoute: () => AdminFinanceRouteRoute,
   } as any)
+const AdminFinanceFlowRoute = AdminFinanceFlowRouteImport.update({
+  id: '/flow',
+  path: '/flow',
+  getParentRoute: () => AdminFinanceRouteRoute,
+} as any)
 const AdminBookingSettingsRoute = AdminBookingSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -1033,6 +1039,7 @@ export interface FileRoutesByFullPath {
   '/admin/booking/capacity': typeof AdminBookingCapacityRoute
   '/admin/booking/orders': typeof AdminBookingOrdersRoute
   '/admin/booking/settings': typeof AdminBookingSettingsRouteWithChildren
+  '/admin/finance/flow': typeof AdminFinanceFlowRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
   '/admin/karyawan/cuti-izin': typeof AdminKaryawanCutiIzinRoute
   '/admin/karyawan/data': typeof AdminKaryawanDataRoute
@@ -1142,6 +1149,7 @@ export interface FileRoutesByTo {
   '/admin/booking/capacity': typeof AdminBookingCapacityRoute
   '/admin/booking/orders': typeof AdminBookingOrdersRoute
   '/admin/booking/settings': typeof AdminBookingSettingsRouteWithChildren
+  '/admin/finance/flow': typeof AdminFinanceFlowRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
   '/admin/karyawan/cuti-izin': typeof AdminKaryawanCutiIzinRoute
   '/admin/karyawan/data': typeof AdminKaryawanDataRoute
@@ -1255,6 +1263,7 @@ export interface FileRoutesById {
   '/admin/booking/capacity': typeof AdminBookingCapacityRoute
   '/admin/booking/orders': typeof AdminBookingOrdersRoute
   '/admin/booking/settings': typeof AdminBookingSettingsRouteWithChildren
+  '/admin/finance/flow': typeof AdminFinanceFlowRoute
   '/admin/finance/shift-reports': typeof AdminFinanceShiftReportsRoute
   '/admin/karyawan/cuti-izin': typeof AdminKaryawanCutiIzinRoute
   '/admin/karyawan/data': typeof AdminKaryawanDataRoute
@@ -1375,6 +1384,7 @@ export interface FileRouteTypes {
     | '/admin/booking/capacity'
     | '/admin/booking/orders'
     | '/admin/booking/settings'
+    | '/admin/finance/flow'
     | '/admin/finance/shift-reports'
     | '/admin/karyawan/cuti-izin'
     | '/admin/karyawan/data'
@@ -1484,6 +1494,7 @@ export interface FileRouteTypes {
     | '/admin/booking/capacity'
     | '/admin/booking/orders'
     | '/admin/booking/settings'
+    | '/admin/finance/flow'
     | '/admin/finance/shift-reports'
     | '/admin/karyawan/cuti-izin'
     | '/admin/karyawan/data'
@@ -1596,6 +1607,7 @@ export interface FileRouteTypes {
     | '/admin/booking/capacity'
     | '/admin/booking/orders'
     | '/admin/booking/settings'
+    | '/admin/finance/flow'
     | '/admin/finance/shift-reports'
     | '/admin/karyawan/cuti-izin'
     | '/admin/karyawan/data'
@@ -2260,6 +2272,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFinanceShiftReportsRouteImport
       parentRoute: typeof AdminFinanceRouteRoute
     }
+    '/admin/finance/flow': {
+      id: '/admin/finance/flow'
+      path: '/flow'
+      fullPath: '/admin/finance/flow'
+      preLoaderRoute: typeof AdminFinanceFlowRouteImport
+      parentRoute: typeof AdminFinanceRouteRoute
+    }
     '/admin/booking/settings': {
       id: '/admin/booking/settings'
       path: '/settings'
@@ -2492,6 +2511,7 @@ interface AdminFinanceRouteRouteChildren {
   AdminFinanceExpensesRouteRoute: typeof AdminFinanceExpensesRouteRoute
   AdminFinanceReportsRouteRoute: typeof AdminFinanceReportsRouteRoute
   AdminFinanceTransactionsRouteRoute: typeof AdminFinanceTransactionsRouteRoute
+  AdminFinanceFlowRoute: typeof AdminFinanceFlowRoute
   AdminFinanceShiftReportsRoute: typeof AdminFinanceShiftReportsRoute
   AdminFinanceIndexRoute: typeof AdminFinanceIndexRoute
 }
@@ -2501,6 +2521,7 @@ const AdminFinanceRouteRouteChildren: AdminFinanceRouteRouteChildren = {
   AdminFinanceExpensesRouteRoute: AdminFinanceExpensesRouteRoute,
   AdminFinanceReportsRouteRoute: AdminFinanceReportsRouteRoute,
   AdminFinanceTransactionsRouteRoute: AdminFinanceTransactionsRouteRoute,
+  AdminFinanceFlowRoute: AdminFinanceFlowRoute,
   AdminFinanceShiftReportsRoute: AdminFinanceShiftReportsRoute,
   AdminFinanceIndexRoute: AdminFinanceIndexRoute,
 }

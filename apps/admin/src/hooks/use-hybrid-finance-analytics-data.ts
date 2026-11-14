@@ -1375,3 +1375,85 @@ export function useHybridAccountingReport(args?: {
 	};
 }
 
+
+export type MoneyFlowNode = { id: string; col: 0 | 1 | 2 | 3; label: string; value: number; delta: number | null; kind: "in" | "out" | "net" | "total" };
+export type MoneyFlow = {
+	nodes: MoneyFlowNode[];
+	links: { source: string; target: string; value: number }[];
+	totalInflow: number;
+	totalOutflow: number;
+	net: number;
+	rows: { label: string; group: string; value: number; delta: number | null }[];
+	startDate: number;
+	endDate: number;
+};
+
+/** Where money comes from and where it goes: source → payment method → total → expense category / net. Same filters as the cash-flow report. */
+export function useHybridMoneyFlow(args?: { startDate?: number; endDate?: number }) {
+	return useSupabaseValue(
+		`money-flow:${args?.startDate ?? ""}:${args?.endDate ?? ""}`,
+		async (): Promise<MoneyFlow> => {
+			const { startDate, endDate } = getRange(args);
+			const span = Math.max(86_400_000, endDate - startDate);
+			const [cur, prev] = await Promise.all([
+				fetchFinancialTransactions({ startDate, endDate }),
+				fetchFinancialTransactions({ startDate: startDate - span, endDate: startDate - 1 }).catch(() => [] as any[]),
+			]);
+			const summarize = (txs: any[]) => {
+				const done = txs.filter((tx: any) => (tx.status ?? "completed") === "completed");
+				const src = new Map<string, number>(), meth = new Map<string, number>(), cat = new Map<string, number>();
+				const pair = new Map<string, number>();
+				let inflow = 0, outflow = 0;
+				for (const tx of done) {
+					const amount = safeNum(tx.amount);
+					if (tx.type === "income") {
+						const s = paymentSourceLabel(tx), m = normalizePaymentMethod(tx.paymentMethod);
+						src.set(s, (src.get(s) ?? 0) + amount);
+						meth.set(m, (meth.get(m) ?? 0) + amount);
+						pair.set(`${s}\u0000${m}`, (pair.get(`${s}\u0000${m}`) ?? 0) + amount);
+						inflow += amount;
+					} else if (isCashExpense(tx)) {
+						const c = String(tx.category || "lainnya").replace(/[_-]+/g, " ").replace(/^\w/, (ch: string) => ch.toUpperCase());
+						cat.set(c, (cat.get(c) ?? 0) + amount);
+						outflow += amount;
+					}
+				}
+				return { src, meth, cat, pair, inflow, outflow };
+			};
+			const a = summarize(cur), b = summarize(prev);
+			const pct = (now: number, before: number | undefined) => (before && before > 0 ? ((now - before) / before) * 100 : null);
+
+			// Expense categories: keep the 7 biggest, group the rest.
+			const cats = [...a.cat.entries()].sort((x, y) => y[1] - x[1]);
+			const topCats = cats.slice(0, 7);
+			const restCats = cats.slice(7).reduce((s, [, v]) => s + v, 0);
+			if (restCats > 0) topCats.push(["Lainnya", restCats]);
+			const prevCat = (label: string) => (label === "Lainnya" ? undefined : b.cat.get(label));
+
+			const nodes: MoneyFlowNode[] = [];
+			const links: MoneyFlow["links"] = [];
+			const net = a.inflow - a.outflow;
+			for (const [label, value] of [...a.src.entries()].sort((x, y) => y[1] - x[1])) nodes.push({ id: `s:${label}`, col: 0, label, value, delta: pct(value, b.src.get(label)), kind: "in" });
+			if (net < 0) nodes.push({ id: "s:deficit", col: 0, label: "Ditutup dari kas sebelumnya", value: -net, delta: null, kind: "in" });
+			for (const [label, value] of [...a.meth.entries()].sort((x, y) => y[1] - x[1])) nodes.push({ id: `m:${label}`, col: 1, label, value, delta: pct(value, b.meth.get(label)), kind: "in" });
+			const total = Math.max(a.inflow, a.outflow);
+			nodes.push({ id: "total", col: 2, label: "Total dana masuk", value: total, delta: pct(a.inflow, b.inflow), kind: "total" });
+			for (const [label, value] of topCats) nodes.push({ id: `c:${label}`, col: 3, label, value, delta: pct(value, prevCat(label)), kind: "out" });
+			if (net > 0) nodes.push({ id: "net", col: 3, label: "Kas bersih", value: net, delta: pct(net, b.inflow - b.outflow), kind: "net" });
+
+			for (const [k, value] of a.pair) { const [s, m] = k.split("\u0000"); links.push({ source: `s:${s}`, target: `m:${m}`, value }); }
+			if (net < 0) links.push({ source: "s:deficit", target: "total", value: -net });
+			for (const [label, value] of a.meth) links.push({ source: `m:${label}`, target: "total", value });
+			for (const [label, value] of topCats) links.push({ source: "total", target: `c:${label}`, value });
+			if (net > 0) links.push({ source: "total", target: "net", value: net });
+
+			const rows = [
+				...[...a.src.entries()].map(([label, value]) => ({ group: "Sumber", label, value, delta: pct(value, b.src.get(label)) })),
+				...[...a.meth.entries()].map(([label, value]) => ({ group: "Metode bayar", label, value, delta: pct(value, b.meth.get(label)) })),
+				...cats.map(([label, value]) => ({ group: "Pengeluaran", label, value, delta: pct(value, b.cat.get(label)) })),
+			];
+			return { nodes, links, totalInflow: a.inflow, totalOutflow: a.outflow, net, rows, startDate, endDate };
+		},
+		[args?.startDate, args?.endDate],
+	) as any;
+}

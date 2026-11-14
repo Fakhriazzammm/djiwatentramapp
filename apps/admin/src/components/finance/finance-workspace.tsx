@@ -4,6 +4,7 @@ import "./finance-workspace.css";
 
 const pages = [
   ["/admin/finance", "Overview"],
+  ["/admin/finance/flow", "Arus Dana"],
   ["/admin/finance/transactions", "Transaksi"],
   ["/admin/finance/accounting", "Akuntansi"],
   ["/admin/finance/expenses", "Pengeluaran"],

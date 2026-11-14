@@ -9,6 +9,7 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	Archive,
+	Workflow,
 	BookOpen,
 	Bell,
 	Calculator,
@@ -81,6 +82,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/inventory": "Inventaris",
 	"/admin/stock-overview": "Ringkasan Stok",
 	"/admin/finance": "Keuangan",
+	"/admin/finance/flow": "Arus Dana",
 	"/admin/finance/reports": "Laporan Keuangan",
 	"/admin/finance/shift-reports": "Laporan Shift",
 	"/admin/finance/transactions": "Riwayat Transaksi",
@@ -238,6 +240,7 @@ const QUICK_MENU_SECTIONS = [
 		label: "Keuangan",
 		items: [
 			{ to: "/admin/finance", icon: Wallet, label: "Keuangan", permission: "finance:view" },
+			{ to: "/admin/finance/flow", icon: Workflow, label: "Arus Dana", permission: "finance:view" },
 			{ to: "/admin/finance/transactions", icon: ClipboardList, label: "Transaksi", permission: "finance:view" },
 			{ to: "/admin/finance/accounting", icon: BookOpen, label: "Akuntansi", permission: "finance:view" },
 			{ to: "/admin/finance/expenses", icon: Receipt, label: "Pengeluaran", permission: "finance:view" },
@@ -344,6 +347,7 @@ const COMMAND_ITEMS: AdminCommandItem[] = [
 // Finance sub-routes for auto-expanding the submenu
 const FINANCE_PATHS = [
 	"/admin/finance",
+	"/admin/finance/flow",
 	"/admin/finance/reports",
 	"/admin/finance/shift-reports",
 	"/admin/finance/transactions",
@@ -876,6 +880,13 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 								isCollapsed={isCollapsed}
 								label="Keuangan"
 								to="/admin/finance"
+								permission="finance:view"
+							/>
+							<DesktopNavLink
+								icon={<Workflow />}
+								isCollapsed={isCollapsed}
+								label="Arus Dana"
+								to="/admin/finance/flow"
 								permission="finance:view"
 							/>
 							<DesktopNavLink

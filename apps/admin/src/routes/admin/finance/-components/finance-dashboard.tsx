@@ -1,5 +1,6 @@
 import { FinanceDataTable } from "@/components/finance/finance-data-table";
-import { useHybridCashFlowReport } from "@/hooks/use-hybrid-finance-analytics-data";
+import { useHybridCashFlowReport, useHybridMoneyFlow } from "@/hooks/use-hybrid-finance-analytics-data";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 const PERIODS = [
@@ -67,6 +68,8 @@ export function FinanceDashboard() {
   const [selectedRange, setSelectedRange] = useState("month");
   const range = getRange(selectedRange);
   const report = useHybridCashFlowReport(range);
+  const flow = useHybridMoneyFlow(range) as { nodes: { id: string; col: number; label: string; value: number }[]; totalInflow: number } | null | undefined;
+  const topSources = (flow?.nodes ?? []).filter((n) => n.col === 0 && n.id !== "s:deficit").slice(0, 3);
   const rows = Object.entries(report?.byPaymentMethod ?? {}).map(
     ([method, value]) => ({
       method,
@@ -107,6 +110,19 @@ export function FinanceDashboard() {
             Masuk {fmt(report.totalInflow)} · Keluar {fmt(report.totalOutflow)}{" "}
             · Bersih periode {fmt(report.netCashFlow)}
           </p>
+          <Link
+            to="/admin/finance/flow"
+            className="block border bg-white p-3 text-sm hover:bg-muted/30"
+            aria-label="Buka halaman Arus Dana"
+          >
+            <span className="font-mono text-xs uppercase">Arus dana</span>
+            <span className="mt-1 block text-muted-foreground">
+              {topSources.length > 0 && flow
+                ? `Sumber terbesar: ${topSources.map((n) => `${n.label} ${Math.round((n.value / Math.max(1, flow.totalInflow)) * 100)}%`).join(" · ")}`
+                : "Lihat dari mana uang masuk dan ke mana keluar."}
+              {" "}Lihat diagram lengkap →
+            </span>
+          </Link>
           <FinanceDataTable
             label="Arus kas per metode"
             rows={rows}
