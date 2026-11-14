@@ -1,9 +1,10 @@
-import { createLazyFileRoute, Outlet, useNavigate, useParams } from "@tanstack/react-router";
+import { createLazyFileRoute, Outlet, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 /* HERMES: rebuild trigger — live payslip + bonus target + attendance reminder */
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
-import { useYumiAuth, useHybridStaffBySlug } from "@yumipos/web-shared";
+import { useYumiAuth, useHybridStaffBySlug, useHybridCurrentlyInStore } from "@yumipos/web-shared";
+import { DsRoot, DsTabBar, ds3d } from "@yumipos/web-shared/components/ds";
+import { AbsenSheet } from "@/components/karyawan/AbsenSheet";
 import { createClient } from "@yumipos/web-shared/lib/client";
-import { BottomNavbar } from "@yumipos/web-shared/components/layout/BottomNavbar";
 import { HomeClockOutBanner } from "@yumipos/web-shared/components/home/home-clockout-banner";
 import { Button } from "@yumipos/web-shared/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,6 +24,8 @@ export interface StaffProfileContext {
 	token: string | null;
 	navigate: ReturnType<typeof useNavigate>;
 	refreshKey: number;
+	notifCount: number;
+	openAbsen: () => void;
 }
 
 export const StaffProfileCtx = createContext<StaffProfileContext | null>(null);
@@ -202,6 +205,9 @@ function StaffProfileLayout() {
 
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [notifCount, setNotifCount] = useState(0);
+	const [absenOpen, setAbsenOpen] = useState(false);
+	const location = useLocation();
+	const currentlyIn = useHybridCurrentlyInStore();
 
 	// Auto-unlock if current user is the owner or an admin
 	const isUnlocked = useMemo(() => {
@@ -300,6 +306,7 @@ function StaffProfileLayout() {
 		);
 	}
 
+	const isIn = currentlyIn?.some((x: any) => x._id === staff?._id) ?? false;
 	// Context shared with child routes
 	const outletContext: StaffProfileContext = {
 		username,
@@ -311,57 +318,51 @@ function StaffProfileLayout() {
 		token,
 		navigate,
 		refreshKey,
+		notifCount,
+		openAbsen: () => setAbsenOpen(true),
 	};
+
+	const path = location.pathname;
+	const base = `/${username}`;
+	const active = path.startsWith(`${base}/jadwal`) ? "jadwal" : path.startsWith(`${base}/gaji`) || path.startsWith(`${base}/slip-gaji`) ? "gaji" : path.startsWith(`${base}/profil`) ? "profil" : "beranda";
+	const go = (to: string) => navigate({ to: `/$username/${to}` as any, params: { username } });
 
 	return (
 		<StaffProfileCtx.Provider value={outletContext}>
-			<div className="karyawan-shell fixed inset-0 flex min-w-0 flex-col bg-background">
-				{/* Navigation Header */}
-				<header className="shrink-0 z-10 border-b bg-background/80 px-4 py-2 backdrop-blur-md">
-					<div className="mx-auto flex max-w-2xl items-center justify-between">
-						{/* Logo + brand */}
-						<div className="flex items-center gap-2">
-							<img
-								src="/logo-djiwa.png"
-								alt="Djiwa Tentram"
-								className="h-7 w-7 shrink-0 rounded-lg object-cover shadow-sm"
-							/>
-							<span className="text-[11px] font-black uppercase tracking-[0.15em] text-muted-foreground">
-								Djiwa Tentram
-							</span>
-						</div>
-						<div className="flex items-center gap-2">
-							<ShieldCheck className={`h-4 w-4 ${isUnlocked ? "text-emerald-500" : "text-muted-foreground"}`} />
-							<span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-								{isUnlocked ? "Private Access" : "Data Restricted"}
-							</span>
-						</div>
-					</div>
-				</header>
-
-				{/* Clock-out reminder */}
-				<div className="shrink-0 mx-auto w-full max-w-2xl px-4 pt-4">
-					<HomeClockOutBanner userId={authUser?._id} />
-				</div>
-
-				{/* Attendance check-in reminder */}
-				<AttendanceReminder userId={staff?._id ?? authUser?._id} userName={staff?.name ?? authUser?.name} username={username} />
-
-				{/* Scrollable content */}
-				<main id="main-content" className="min-w-0 flex-1 overflow-y-auto overscroll-contain">
-					<div className="mx-auto w-full max-w-2xl px-4 py-3">
+			<DsRoot className="karyawan-shell ds-legacy fixed inset-0 flex min-w-0 flex-col" >
+				<main id="main-content" className="ds-screen min-w-0 flex-1 overflow-y-auto overscroll-contain">
+					<div className="mx-auto w-full max-w-[560px]">
+						<div className="pt-2"><HomeClockOutBanner userId={authUser?._id} /></div>
+						<AttendanceReminder userId={staff?._id ?? authUser?._id} userName={staff?.name ?? authUser?.name} username={username} />
 						<Outlet />
 					</div>
 				</main>
-
-				{/* Bottom Navbar */}
-				<nav aria-label="Navigasi utama karyawan" className="karyawan-safe-bottom shrink-0 border-t bg-background">
-					<BottomNavbar
-						baseRoute={`/${username}`}
-						unreadCounts={{ notifikasi: notifCount }}
+				<DsTabBar
+					active={active}
+					onSelect={go}
+					tabs={[
+						{ id: "beranda", label: "Beranda", icon: ds3d("employee-home") },
+						{ id: "jadwal", label: "Jadwal", icon: ds3d("employee-schedule") },
+						{ id: "gaji", label: "Gaji", icon: ds3d("employee-salary") },
+						{ id: "profil", label: "Profil", icon: ds3d("employee-nav-profile") },
+					]}
+					center={
+						<button type="button" className="ds-fab" data-state={isIn ? "in" : undefined} aria-label={isIn ? "Absen keluar" : "Absen masuk"} onClick={() => setAbsenOpen(true)}>
+							{isIn
+								? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /></svg>
+								: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 11v4" /><path d="M8 15a4 4 0 0 1 8 0" /><path d="M5 12a7 7 0 0 1 14 0" /><path d="M12 3a9 9 0 0 1 9 9" /></svg>}
+						</button>
+					}
+				/>
+				{absenOpen && (
+					<AbsenSheet
+						isIn={isIn}
+						onClose={() => setAbsenOpen(false)}
+						onClosing={() => { setAbsenOpen(false); go("absen-keluar"); }}
+						onHistory={() => { setAbsenOpen(false); go("jadwal"); }}
 					/>
-				</nav>
-			</div>
+				)}
+			</DsRoot>
 		</StaffProfileCtx.Provider>
 	);
 }

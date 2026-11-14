@@ -1,10 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Bell, FileText, Calendar, Info, X, Megaphone,
-  CheckCheck, ExternalLink, Clock, AlertCircle,
-} from "lucide-react";
+import { DsButton, DsEmpty, DsGroup, DsGroupLabel, DsIcon, DsPageTitle, DsPills, DsRow, DsTag, ds3d } from "@yumipos/web-shared/components/ds";
+import { X } from "lucide-react";
 import { createClient } from "@yumipos/web-shared/lib/client";
 import { useStaffProfile } from "../$username.lazy";
 
@@ -31,10 +28,10 @@ interface NotificationSource {
 }
 
 const SOURCES: NotificationSource[] = [
-  { label: "Semua", icon: <Bell className="h-3 w-3" />, key: "all" },
-  { label: "Pengumuman", icon: <Megaphone className="h-3 w-3" />, key: "announcement" },
-  { label: "Penggajian", icon: <FileText className="h-3 w-3" />, key: "payslip" },
-  { label: "Izin", icon: <Calendar className="h-3 w-3" />, key: "leave" },
+  { label: "Semua", icon: null, key: "all" },
+  { label: "Pengumuman", icon: null, key: "announcement" },
+  { label: "Penggajian", icon: null, key: "payslip" },
+  { label: "Izin", icon: null, key: "leave" },
 ];
 
 export const Route = createLazyFileRoute("/$username/notifikasi")({
@@ -231,171 +228,42 @@ function NotifikasiPage() {
     [visible, filterType],
   );
 
-  const iconMap: Record<string, React.ReactNode> = {
-    announcement: <Megaphone className="h-4 w-4 text-blue-500" />,
-    payslip: <FileText className="h-4 w-4 text-emerald-500" />,
-    contract: <FileText className="h-4 w-4 text-orange-500" />,
-    leave: <Calendar className="h-4 w-4 text-purple-500" />,
-    info: <Info className="h-4 w-4 text-muted-foreground" />,
-  };
-
-  const typeBadge: Record<string, string> = {
-    announcement: "bg-blue-100 text-blue-700",
-    payslip: "bg-emerald-100 text-emerald-700",
-    contract: "bg-orange-100 text-orange-700",
-    leave: "bg-purple-100 text-purple-700",
-    info: "bg-gray-100 text-gray-600",
-  };
+  const iconName = (t: NotifType) => (t === "payslip" ? "employee-payslip" : t === "leave" ? "employee-leave" : t === "contract" ? "employee-contract" : "notifications-alerts") as Parameters<typeof DsIcon>[0]["name"];
+  const dates = [...new Set(filtered.map((n) => n.date))];
+  const { navigate } = useStaffProfile();
 
   return (
-    <div className="space-y-4">
-      {/* ─── Header ─── */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Bell className="h-4 w-4 text-blue-600" />
-          <h1 className="text-lg font-bold tracking-tight">Notifikasi</h1>
-          {visible.length > 0 && (
-            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700">
-              {visible.length}
-            </span>
-          )}
-        </div>
-        {visible.length > 1 && (
-          <button
-            onClick={markAllRead}
-            className="karyawan-control flex items-center gap-1 bg-muted px-3 text-xs font-bold text-muted-foreground transition-colors hover:bg-muted/80"
-          >
-            <CheckCheck className="h-3 w-3" />
-            Tandai Semua Dibaca
-          </button>
-        )}
-      </div>
-
-      {/* ─── Filter Tabs ─── */}
-      <div className="flex gap-1 overflow-x-auto -mx-1 px-1 scrollbar-none">
-        {SOURCES.map((s) => {
-          const isActive = filterType === s.key;
-          const count = s.key === "all"
-            ? visible.length
-            : visible.filter((n) => n.type === s.key).length;
-          return (
-            <button
-              key={s.key}
-              onClick={() => setFilterType(s.key)}
-              aria-pressed={isActive}
-              className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
-                isActive
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "bg-muted text-muted-foreground hover:bg-muted/70"
-              }`}
-            >
-              {s.icon}
-              <span>{s.label}</span>
-              {count > 0 && (
-                <span className={`ml-0.5 rounded-full px-1.5 py-0 text-[10px] font-black ${
-                  isActive ? "bg-white/20 text-white" : "bg-blue-100 text-blue-700"
-                }`}>
-                  {count}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ─── Content ─── */}
-      {isLoading ? (
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse rounded-xl border bg-card p-3 flex items-start gap-3">
-              <div className="h-8 w-8 rounded-lg bg-muted" />
-              <div className="space-y-1.5 flex-1">
-                <div className="h-3 w-32 rounded bg-muted" />
-                <div className="h-2.5 w-48 rounded bg-muted" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="karyawan-card border bg-card p-8 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-            {filterType === "all" ? (
-              <CheckCheck className="h-6 w-6 text-emerald-500" />
-            ) : (
-              <Bell className="h-6 w-6 text-muted-foreground/40" />
-            )}
-          </div>
-          <p className="font-bold text-sm">
-            {filterType === "all"
-              ? "Semua sudah dibaca"
-              : `Tidak ada notifikasi ${SOURCES.find((s) => s.key === filterType)?.label.toLowerCase() || ""}`}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {filterType === "all"
-              ? "Kamu sudah membaca semua notifikasi."
-              : "Belum ada notifikasi jenis ini."}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <AnimatePresence initial={false}>
-            {filtered.map((n) => (
-              <motion.div
+    <div>
+      <DsPageTitle right={visible.length > 0 ? <DsButton size="sm" variant="ghost" onClick={markAllRead}>Tandai dibaca</DsButton> : undefined}>Notifikasi</DsPageTitle>
+      <DsPills
+        value={filterType}
+        onChange={(v) => setFilterType(v as NotifType | "all")}
+        items={SOURCES.map((s): [string, string] => [s.key, s.label])}
+      />
+      {isLoading && <div className="ds-skeleton" style={{ height: 120, marginTop: 16, borderRadius: 30 }} role="status" aria-label="Memuat notifikasi" />}
+      {!isLoading && filtered.length === 0 && <DsEmpty icon={ds3d("notifications-alerts")}>Tidak ada notifikasi</DsEmpty>}
+      {!isLoading && dates.map((d) => (
+        <div key={d}>
+          <DsGroupLabel>{d}</DsGroupLabel>
+          <DsGroup flush>
+            {filtered.filter((n) => n.date === d).map((n) => (
+              <DsRow
                 key={n.id}
-                layout
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                transition={{ type: "spring", stiffness: 300, damping: 25, mass: 0.8 }}
-                className="karyawan-card group relative overflow-hidden border bg-card p-4"
-              >
-                <button
-                  onClick={() => dismissOne(n.id)}
-                  aria-label={`Tandai ${n.title} sudah dibaca`}
-                  className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground opacity-100 transition-opacity hover:bg-muted"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-                <div className="flex items-start gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                    {iconMap[n.type]}
-                  </div>
-                  <div className="min-w-0 flex-1 pr-4">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <p className="font-bold text-xs">{n.title}</p>
-                      <span className={`rounded px-1.5 py-0 text-[7px] font-bold uppercase tracking-wider ${typeBadge[n.type] || "bg-gray-100 text-gray-600"}`}>
-                        {n.type === "announcement" ? "Info" :
-                         n.type === "payslip" ? "Gaji" :
-                         n.type === "leave" ? "Izin" : ""}
-                      </span>
-                    </div>
-                    {n.message && (
-                      <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{n.message}</p>
-                    )}
-                    <div className="flex items-center gap-2 mt-1.5">
-                      {n.date && (
-                        <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1">
-                          <Clock className="h-2.5 w-2.5" />
-                          {n.date}
-                        </span>
-                      )}
-                      {n.actionUrl && n.actionLabel && (
-                        <a
-                          href={n.actionUrl}
-                          className="inline-flex min-h-11 items-center gap-1 rounded-[14px] bg-primary/10 px-3 text-xs font-bold text-primary transition-colors hover:bg-primary/20"
-                        >
-                          {n.actionLabel}
-                          <ExternalLink className="h-2.5 w-2.5" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
+                icon={<DsIcon name={iconName(n.type)} />}
+                title={n.title}
+                sub={n.message}
+                trail={
+                  <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    {n.actionLabel && n.actionUrl && <DsTag tone="info">{n.actionLabel}</DsTag>}
+                    <button type="button" aria-label="Tutup notifikasi" onClick={(e) => { e.stopPropagation(); dismissOne(n.id); }} style={{ background: "none", border: 0, minHeight: 32, minWidth: 32, color: "var(--ds-faint)" }}><X size={16} /></button>
+                  </span>
+                }
+                onClick={n.actionUrl ? () => navigate({ to: n.actionUrl as any }) : undefined}
+              />
             ))}
-          </AnimatePresence>
+          </DsGroup>
         </div>
-      )}
+      ))}
     </div>
   );
 }

@@ -2,6 +2,8 @@
 
 > Standar untuk seluruh aplikasi Djiwa Tentram. Arah visual: pengalaman produk Apple yang tenang, presisi, mudah disentuh, dan terasa premium, dengan identitas Djiwa Tentram sendiri. Gunakan aset ikon 3D Djiwa sebagai ikon ilustratif utama.
 
+> **Design system terbaru (wajib untuk UI baru dan rombakan): [Djiwa Soft iOS](docs/design-system/DJIWA_DESIGN_SYSTEM.md).** Token dan komponen: `packages/yumipos-web-shared/src/ds.css`; panduan visual: `docs/design-system/index.html`. Bila ada pertentangan tampilan, dokumen itu yang dipakai; aturan ikon 3D di bawah tetap berlaku.
+
 ## 1. Prinsip pengalaman
 
 - Pengguna harus paham konteks, informasi terpenting, dan tindakan berikutnya dalam beberapa detik.

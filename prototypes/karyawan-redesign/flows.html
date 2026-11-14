@@ -1,0 +1,75 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Karyawan v2 — alur pengguna</title>
+<style>
+:root{--ink:#14161c;--mute:#6b7080;--line:#e3e6ee;--bg:#f4f5f8;--blue:#1a5dc6;--bls:#e8f0fc;--ok:#13804a;--oks:#e5f5ec;--warn:#a05d00;--ws:#fff3dc;--red:#d23a2a;--reds:#fdecea}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 -apple-system,"SF Pro Text",Inter,system-ui,sans-serif;color:var(--ink);background:var(--bg)}
+main{max-width:1080px;margin:0 auto;padding:32px 20px 80px}h1{font:700 32px/1.15 inherit;letter-spacing:-.025em;margin:0 0 6px}h2{font:700 22px inherit;letter-spacing:-.02em;margin:44px 0 6px}h3{font:700 15px inherit;margin:0 0 6px}
+.lead{color:var(--mute);max-width:720px;margin:0 0 8px}a{color:var(--blue)}
+.card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 1px 2px rgba(20,22,28,.05),0 8px 24px rgba(20,22,28,.05)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.flow{display:flex;align-items:stretch;gap:0;overflow-x:auto;padding:14px 4px 18px}
+.n{flex:none;width:168px;background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:12px;font-size:13px;position:relative}.n b{display:block;font-size:14px;margin-bottom:2px}.n small{color:var(--mute)}
+.n.s{background:var(--ink);color:#fff;border-color:var(--ink)}.n.s small{color:#c5c9d6}.n.d{border-style:dashed;background:var(--ws);border-color:#e6c57a}.n.e{background:var(--oks);border-color:#9fd5b6}.n.x{background:var(--reds);border-color:#efb4ad}.n.p{background:var(--bls);border-color:#b9d0f3}
+.ar{flex:none;width:34px;display:grid;place-items:center;color:#a9aebb;font-size:20px}
+.br{display:flex;flex-direction:column;gap:10px}
+.tag{display:inline-block;padding:2px 9px;border-radius:99px;font:600 11px inherit;background:#eef0f5;color:var(--mute);margin-right:4px}.tag.b{background:var(--bls);color:var(--blue)}.tag.o{background:var(--oks);color:var(--ok)}.tag.r{background:var(--reds);color:var(--red)}
+table{width:100%;border-collapse:collapse;font-size:14px}th{text-align:left;font:600 12px inherit;color:var(--mute);text-transform:uppercase;letter-spacing:.06em;padding:8px 10px;border-bottom:1px solid var(--line)}td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}tr:last-child td{border:0}
+.ia{display:grid;grid-template-columns:1fr 60px 1fr;gap:12px;align-items:start}.ia ul{margin:0;padding-left:18px}.ia li{margin:3px 0}
+.shots{display:flex;gap:14px;flex-wrap:wrap}.shots a{display:block;background:#fff;border-radius:14px;padding:10px 14px;box-shadow:0 1px 2px rgba(20,22,28,.08);text-decoration:none;color:var(--ink);font-weight:600}
+@media(max-width:800px){.grid2,.grid3,.ia{grid-template-columns:1fr}}
+</style></head><body><main>
+<h1>Karyawan v2 — rombak total</h1>
+<p class="lead">Prototipe interaktif: <a href="v4.html">v4.html</a>. Dokumen ini memuat masalah yang ditemukan, prinsip desain, peta navigasi, dan alur pengguna tiap tugas utama. Semua angka pada prototipe adalah data contoh.</p>
+<div class="shots"><a href="v4.html#home">Beranda</a><a href="v4.html#absen">Absen masuk</a><a href="v4.html#closing">Closing shift</a><a href="v4.html#gaji">Gaji</a><a href="v4.html#izin">Izin</a><a href="v4.html#profil">Profil</a></div>
+
+<h2>1. Apa yang salah di aplikasi sekarang</h2>
+<div class="grid2">
+<div class="card"><h3>Kebutuhan inti terkubur</h3><ul><li>Tugas nomor satu karyawan (absen masuk/keluar) tidak ada di Beranda; menu Absensi hanya mengarahkan ke Telegram.</li><li>Status shift, jam masuk, dan durasi kerja tidak terlihat sekilas.</li><li>Gaji, tunjangan, bonus tampil sebagai tiga ikon dengan bintang tersembunyi, tanpa rincian atau progres bonus.</li></ul></div>
+<div class="card"><h3>Struktur dan tampilan</h3><ul><li>8 kotak menu besar dengan ikon 3D yang sama bobotnya; sulit tahu mana yang penting.</li><li>Teks kapital berspasi lebar di mana-mana (header, label, tab) melelahkan dibaca.</li><li>Notifikasi memakai satu tab bawah padahal jarang dibuka; Gaji (sering dibuka) justru tak punya tab.</li><li>Peringatan PIN default muncul hanya di Profil, bagian paling bawah.</li></ul></div>
+</div>
+
+<h2>2. Prinsip rombakan</h2>
+<div class="grid3">
+<div class="card"><h3>Satu layar, satu aksi utama</h3>Beranda berpusat pada kartu shift hari ini. Aksi terbesar selalu "Absen masuk" atau "Absen keluar".</div>
+<div class="card"><h3>Gaji terasa hidup</h3>Gaji berjalan, rincian, dan progres bonus per tier terlihat tanpa membuka slip. Angka bisa disembunyikan.</div>
+<div class="card"><h3>Sekali sentuh dengan satu tangan</h3>Tab bawah dengan tombol Absen di tengah, sheet dari bawah, target sentuh ≥ 44 pt, bahasa kalimat biasa (bukan huruf kapital berspasi).</div>
+</div>
+
+<h2>3. Peta navigasi</h2>
+<div class="card"><div class="ia">
+<div><h3>Sekarang</h3><ul><li><b>Beranda</b>: sapaan, banner, saldo (3 ikon), statistik, 8 kotak menu</li><li><b>Jadwal</b>: kalender + riwayat</li><li><b>Absensi</b>: tombol ke Telegram</li><li><b>Notifikasi</b></li><li><b>Profil</b></li><li>Halaman terpisah: Rekap, Izin, Slip Gaji, Kontrak, Leaderboard, Absen Keluar (Closing)</li></ul></div>
+<div style="text-align:center;font-size:28px;color:#a9aebb;padding-top:40px">→</div>
+<div><h3>Baru</h3><ul><li><b>Beranda</b>: shift hari ini (aksi absen), gaji berjalan, hari ini, akses cepat</li><li><b>Jadwal</b>: minggu/bulan, Pribadi/Tim, riwayat kehadiran → Rekap</li><li><b>Absen</b> (tombol tengah): sheet verifikasi → Closing shift bila keluar</li><li><b>Gaji</b> (tab baru): bulan, rincian live, progres bonus, slip, leaderboard</li><li><b>Profil</b>: akun, keamanan (PIN, wajah), kontrak, Telegram</li><li>Notifikasi pindah ke ikon lonceng di header Beranda</li><li>Sub-halaman: Izin, Rekap, Slip, Leaderboard, Kontrak, Telegram, Closing</li></ul></div>
+</div></div>
+
+<h2>4. Alur pengguna</h2>
+<h3 style="margin-top:20px">A. Absen masuk</h3>
+<div class="flow"><div class="n s"><b>Buka app</b><small>Beranda menampilkan "Belum absen masuk"</small></div><div class="ar">→</div><div class="n"><b>Ketuk Absen masuk</b><small>kartu shift atau tombol tengah</small></div><div class="ar">→</div><div class="n d"><b>Cek lokasi</b><small>otomatis, harus di area toko</small></div><div class="ar">→</div><div class="br"><div class="n x"><b>Di luar area</b><small>pesan jelas + coba lagi / absen lewat Telegram</small></div><div class="n"><b>Dalam area</b><small>lanjut</small></div></div><div class="ar">→</div><div class="n d"><b>Verifikasi</b><small>Wajah (utama) atau PIN</small></div><div class="ar">→</div><div class="n e"><b>Tercatat</b><small>waktu, status tepat waktu / telat, timer mulai</small></div></div>
+
+<h3>B. Absen keluar + closing shift</h3>
+<div class="flow"><div class="n s"><b>Sedang bekerja</b><small>timer berjalan di Beranda</small></div><div class="ar">→</div><div class="n"><b>Ketuk Absen keluar</b></div><div class="ar">→</div><div class="n d"><b>Closing sudah dikirim?</b></div><div class="ar">→</div><div class="br"><div class="n p"><b>Belum</b><small>Sheet: "Closing shift dulu" → halaman Closing</small></div><div class="n"><b>Sudah</b><small>langsung verifikasi</small></div></div><div class="ar">→</div><div class="n p"><b>Closing</b><small>1 Opname (hitung buta, isi kemasan) · 2 Kebersihan (checklist + foto)</small></div><div class="ar">→</div><div class="n"><b>Kirim closing</b><small>tombol aktif setelah dua langkah selesai</small></div><div class="ar">→</div><div class="n d"><b>Verifikasi</b><small>wajah / PIN</small></div><div class="ar">→</div><div class="n e"><b>Selesai</b><small>durasi kerja; laporan ke grup Telegram; gaji berjalan bertambah</small></div></div>
+
+<h3>C. Izin / cuti / sakit</h3>
+<div class="flow"><div class="n s"><b>Beranda → Akses cepat</b></div><div class="ar">→</div><div class="n"><b>Pilih jenis</b><small>Izin · Cuti · Sakit</small></div><div class="ar">→</div><div class="n"><b>Isi tanggal & alasan</b><small>Sakit: lampirkan surat dokter</small></div><div class="ar">→</div><div class="n"><b>Kirim</b></div><div class="ar">→</div><div class="n p"><b>Manager meninjau</b><small>di aplikasi Manager (Tim & Gaji)</small></div><div class="ar">→</div><div class="br"><div class="n e"><b>Disetujui</b><small>jadwal ditandai izin, notifikasi</small></div><div class="n x"><b>Ditolak</b><small>alasan ditampilkan, boleh ajukan ulang</small></div></div></div>
+
+<h3>D. Gaji dan slip</h3>
+<div class="flow"><div class="n s"><b>Tab Gaji</b><small>bulan berjalan</small></div><div class="ar">→</div><div class="n"><b>Gaji berjalan</b><small>rincian: pokok, shift, tunjangan, lembur, bonus, potongan</small></div><div class="ar">→</div><div class="n"><b>Progres bonus</b><small>tier target + tips naik tier</small></div><div class="ar">→</div><div class="n"><b>Pilih bulan lalu</b></div><div class="ar">→</div><div class="br"><div class="n e"><b>Slip tersedia</b><small>buka, unduh PDF</small></div><div class="n"><b>Belum dikirim</b><small>diberi tahu saat terbit</small></div></div><div class="ar">→</div><div class="n d"><b>Ada yang salah?</b><small>Ajukan koreksi ke Manager (dispute)</small></div></div>
+
+<h3>E. Pertama kali masuk</h3>
+<div class="flow"><div class="n s"><b>Login pertama</b></div><div class="ar">→</div><div class="n x"><b>PIN default?</b><small>kartu peringatan di Beranda + badge di Profil</small></div><div class="ar">→</div><div class="n"><b>Ganti PIN</b><small>sheet, 3 isian</small></div><div class="ar">→</div><div class="n"><b>Daftarkan wajah</b><small>sheet panduan + pindai</small></div><div class="ar">→</div><div class="n"><b>Lengkapi data</b><small>no HP, bank, rekening, kontak darurat</small></div><div class="ar">→</div><div class="n e"><b>Siap absen</b></div></div>
+
+<h2>5. Perubahan per layar</h2>
+<div class="card"><table><thead><tr><th>Layar</th><th>Sekarang</th><th>Baru</th></tr></thead><tbody>
+<tr><td>Beranda</td><td>Sapaan, banner, 3 ikon saldo tersembunyi, 3 statistik, 8 kotak menu</td><td>Kartu shift (3 keadaan + libur), gaji berjalan dengan progres bonus, ringkasan hari ini, daftar akses cepat 6 baris, peringatan PIN</td></tr>
+<tr><td>Absensi</td><td>Hanya tombol buka bot Telegram</td><td>Absen asli di dalam app (lokasi + wajah/PIN), Telegram tetap tersedia sebagai cara kedua</td></tr>
+<tr><td>Jadwal</td><td>Kalender bulan, tab Pribadi/Tim, periode</td><td>Strip minggu + bulan, detail hari terpilih, tim, riwayat kehadiran ringkas</td></tr>
+<tr><td>Gaji</td><td>Tidak ada tab; slip di menu terpisah</td><td>Tab sendiri: gaji berjalan, rincian, bonus tier, slip per bulan</td></tr>
+<tr><td>Notifikasi</td><td>Tab bawah</td><td>Lonceng di header; filter Semua/Gaji/Info/Izin</td></tr>
+<tr><td>Profil</td><td>Daftar panjang field kosong "---"</td><td>Kartu identitas, kelengkapan data, grup Keamanan, Lainnya</td></tr>
+</tbody></table></div>
+
+<h2>6. Keputusan yang perlu dikonfirmasi</h2>
+<div class="card"><ol><li><b>Absen langsung di app:</b> prototipe mengasumsikan app bisa mencatat absen (lokasi + PIN/wajah). Backend absensi sudah ada (<code>record-attendance</code>, komponen wajah); perlu dipastikan aturan geofence.</li><li><b>Closing sebelum absen keluar:</b> sekarang sudah wajib; prototipe mempertahankan dan menaruhnya sebagai langkah jelas.</li><li><b>Gaji berjalan di Beranda:</b> memakai perhitungan live yang sama dengan aplikasi Manager (<code>/api/manager/payroll</code>); perlu endpoint untuk karyawan melihat gajinya sendiri.</li><li><b>Leaderboard:</b> tetap tampil bonus semua orang, atau hanya peringkat sendiri?</li><li><b>Tab Notifikasi menjadi lonceng:</b> setuju?</li></ol></div>
+
+<h2>7. Rencana implementasi (setelah prototipe disetujui)</h2>
+<div class="card"><ol><li>Token & komponen bersama: kartu shift, kartu gaji, sheet verifikasi, daftar baris (shared package).</li><li>Beranda + tab bar baru, tombol Absen tengah.</li><li>Sheet Absen (lokasi, wajah, PIN) memakai <code>record-attendance</code>.</li><li>Tab Gaji + endpoint gaji pribadi; slip memakai data yang sama.</li><li>Jadwal, Notifikasi, Profil, sub-halaman (Izin, Rekap, Kontrak, Leaderboard).</li><li>Uji di perangkat nyata (PWA, safe area, satu tangan) lalu deploy per runbook.</li></ol></div>
+</main></body></html>

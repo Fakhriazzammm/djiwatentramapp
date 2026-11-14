@@ -92,3 +92,22 @@
 	filter: blur(6px);
 	user-select: none;
 }
+
+/* ===== Djiwa Soft iOS ===== */
+@import "@yumipos/web-shared/ds.css";
+@layer components {
+	/* Halaman lama (profil, izin, rekap, slip, kontrak, leaderboard, closing) ikut tampilan DS tanpa ditulis ulang. */
+	.ds-legacy .karyawan-card,
+	.ds-legacy [class*="rounded-xl"][class*="border"][class*="bg-card"],
+	.ds-legacy [class*="rounded-2xl"][class*="border"][class*="bg-card"] {
+		border: 0 !important;
+		background: var(--ds-group) !important;
+		border-radius: var(--ds-r-lg) !important;
+		box-shadow: none !important;
+	}
+	.ds-legacy h1 { font-size: 26px; letter-spacing: -0.03em; }
+	.ds-legacy h2, .ds-legacy h3 { text-transform: none; letter-spacing: -0.01em; }
+	.ds-legacy h3[class*="uppercase"], .ds-legacy p[class*="uppercase"], .ds-legacy span[class*="uppercase"] { text-transform: none; letter-spacing: 0; }
+	.ds-legacy button[class*="bg-primary"], .ds-legacy [data-slot="button"][class*="bg-primary"] { background: var(--ds-navy); border-radius: 999px; }
+	.ds-legacy input, .ds-legacy select, .ds-legacy textarea { border-radius: 16px; }
+}

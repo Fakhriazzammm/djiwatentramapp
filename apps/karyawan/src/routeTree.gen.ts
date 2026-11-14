@@ -24,6 +24,7 @@ import { Route as UsernameLeaderboardRouteImport } from './routes/$username/lead
 import { Route as UsernameKontrakRouteImport } from './routes/$username/kontrak'
 import { Route as UsernameJadwalRouteImport } from './routes/$username/jadwal'
 import { Route as UsernameIzinRouteImport } from './routes/$username/izin'
+import { Route as UsernameGajiRouteImport } from './routes/$username/gaji'
 import { Route as UsernameBerandaRouteImport } from './routes/$username/beranda'
 import { Route as UsernameAbsensiRouteImport } from './routes/$username/absensi'
 import { Route as UsernameAbsenKeluarRouteImport } from './routes/$username/absen-keluar'
@@ -120,6 +121,13 @@ const UsernameIzinRoute = UsernameIzinRouteImport.update({
 } as any).lazy(() =>
   import('./routes/$username/izin.lazy').then((d) => d.Route),
 )
+const UsernameGajiRoute = UsernameGajiRouteImport.update({
+  id: '/gaji',
+  path: '/gaji',
+  getParentRoute: () => UsernameRoute,
+} as any).lazy(() =>
+  import('./routes/$username/gaji.lazy').then((d) => d.Route),
+)
 const UsernameBerandaRoute = UsernameBerandaRouteImport.update({
   id: '/beranda',
   path: '/beranda',
@@ -151,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/$username/absen-keluar': typeof UsernameAbsenKeluarRoute
   '/$username/absensi': typeof UsernameAbsensiRoute
   '/$username/beranda': typeof UsernameBerandaRoute
+  '/$username/gaji': typeof UsernameGajiRoute
   '/$username/izin': typeof UsernameIzinRoute
   '/$username/jadwal': typeof UsernameJadwalRoute
   '/$username/kontrak': typeof UsernameKontrakRoute
@@ -169,6 +178,7 @@ export interface FileRoutesByTo {
   '/$username/absen-keluar': typeof UsernameAbsenKeluarRoute
   '/$username/absensi': typeof UsernameAbsensiRoute
   '/$username/beranda': typeof UsernameBerandaRoute
+  '/$username/gaji': typeof UsernameGajiRoute
   '/$username/izin': typeof UsernameIzinRoute
   '/$username/jadwal': typeof UsernameJadwalRoute
   '/$username/kontrak': typeof UsernameKontrakRoute
@@ -189,6 +199,7 @@ export interface FileRoutesById {
   '/$username/absen-keluar': typeof UsernameAbsenKeluarRoute
   '/$username/absensi': typeof UsernameAbsensiRoute
   '/$username/beranda': typeof UsernameBerandaRoute
+  '/$username/gaji': typeof UsernameGajiRoute
   '/$username/izin': typeof UsernameIzinRoute
   '/$username/jadwal': typeof UsernameJadwalRoute
   '/$username/kontrak': typeof UsernameKontrakRoute
@@ -210,6 +221,7 @@ export interface FileRouteTypes {
     | '/$username/absen-keluar'
     | '/$username/absensi'
     | '/$username/beranda'
+    | '/$username/gaji'
     | '/$username/izin'
     | '/$username/jadwal'
     | '/$username/kontrak'
@@ -228,6 +240,7 @@ export interface FileRouteTypes {
     | '/$username/absen-keluar'
     | '/$username/absensi'
     | '/$username/beranda'
+    | '/$username/gaji'
     | '/$username/izin'
     | '/$username/jadwal'
     | '/$username/kontrak'
@@ -247,6 +260,7 @@ export interface FileRouteTypes {
     | '/$username/absen-keluar'
     | '/$username/absensi'
     | '/$username/beranda'
+    | '/$username/gaji'
     | '/$username/izin'
     | '/$username/jadwal'
     | '/$username/kontrak'
@@ -366,6 +380,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsernameIzinRouteImport
       parentRoute: typeof UsernameRoute
     }
+    '/$username/gaji': {
+      id: '/$username/gaji'
+      path: '/gaji'
+      fullPath: '/$username/gaji'
+      preLoaderRoute: typeof UsernameGajiRouteImport
+      parentRoute: typeof UsernameRoute
+    }
     '/$username/beranda': {
       id: '/$username/beranda'
       path: '/beranda'
@@ -394,6 +415,7 @@ interface UsernameRouteChildren {
   UsernameAbsenKeluarRoute: typeof UsernameAbsenKeluarRoute
   UsernameAbsensiRoute: typeof UsernameAbsensiRoute
   UsernameBerandaRoute: typeof UsernameBerandaRoute
+  UsernameGajiRoute: typeof UsernameGajiRoute
   UsernameIzinRoute: typeof UsernameIzinRoute
   UsernameJadwalRoute: typeof UsernameJadwalRoute
   UsernameKontrakRoute: typeof UsernameKontrakRoute
@@ -409,6 +431,7 @@ const UsernameRouteChildren: UsernameRouteChildren = {
   UsernameAbsenKeluarRoute: UsernameAbsenKeluarRoute,
   UsernameAbsensiRoute: UsernameAbsensiRoute,
   UsernameBerandaRoute: UsernameBerandaRoute,
+  UsernameGajiRoute: UsernameGajiRoute,
   UsernameIzinRoute: UsernameIzinRoute,
   UsernameJadwalRoute: UsernameJadwalRoute,
   UsernameKontrakRoute: UsernameKontrakRoute,
