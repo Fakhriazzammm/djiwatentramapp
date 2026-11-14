@@ -38,10 +38,11 @@ export function ReceiptSheet({ fin, notify, onClose, balances }: { fin: Finance;
   if (stage.s === "pick" || stage.s === "error") return <Sheet title="Scan struk" onClose={onClose}>
     {inputs}
     {stage.s === "error" ? <div className="dpx-note dpx-danger" role="alert" style={{ marginTop: 0, marginBottom: 12 }}><Ic n="warn" /><div>{stage.text}</div></div> : <p className="dpx-hint" style={{ marginTop: 0 }}>Total, tanggal, dan item terisi otomatis. Anda tinggal memeriksa.</p>}
-    <div className="dpx-group dpx-flush">
-      <Btn type="button" className="dpx-row" onClick={() => camera.current?.click()}><span className="dpx-ico"><Ic n="scan" /></span><span className="dpx-main"><b>Foto struk</b><span>Buka kamera, satu struk per foto</span></span><Ic n="chev" size="sm" /></Btn>
-      <Btn type="button" className="dpx-row" onClick={() => gallery.current?.click()}><span className="dpx-ico"><Ic n="receipt" /></span><span className="dpx-main"><b>Pilih dari galeri</b><span>Foto atau tangkapan layar struk</span></span><Ic n="chev" size="sm" /></Btn>
+    <div className="dpx-scanpick">
+      <Btn type="button" className="dpx-sp-a" onClick={() => camera.current?.click()}><span className="dpx-sp-ico"><Ic n="scan" size="lg" /></span><span>Foto struk<small>Buka kamera</small></span></Btn>
+      <Btn type="button" className="dpx-sp-b" onClick={() => gallery.current?.click()}><span className="dpx-sp-ico"><Ic n="receipt" size="lg" /></span><span>Dari galeri<small>Foto atau tangkapan layar</small></span></Btn>
     </div>
+    <ul className="dpx-hint" style={{ margin: "12px 4px 0", paddingLeft: 18 }}><li>Satu struk per foto, permukaan rata</li><li>Cahaya cukup, seluruh struk masuk bingkai</li></ul>
     <div className="dpx-note dpx-info"><Ic n="shield" /><div>Foto dikirim terenkripsi hanya untuk dibaca, disimpan privat sebagai lampiran, dan tidak dipakai melatih AI.</div></div>
   </Sheet>;
 
