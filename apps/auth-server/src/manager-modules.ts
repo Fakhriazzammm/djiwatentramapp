@@ -462,7 +462,7 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
     const items = periodId
       ? await q<Record<string, unknown>>(
           `SELECT i.user_id, i.user_name, i.role_name, i.total_shifts, i.total_hours::text, i.gross_pay::text, i.deductions::text, i.net_pay::text,
-                  r.period_name, p.status AS period_status
+                  p.period_name, p.status AS period_status
              FROM pos.payroll_run_items i
              JOIN pos.payroll_runs r ON r.id = i.payroll_run_id
              JOIN pos.payroll_periods p ON p.id = r.payroll_period_id
