@@ -45,7 +45,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { MenuSidebar } from "@/components/pos/menu-sidebar";
 import { CartDrawer } from "@/components/pos/cart-drawer";
 import { CheckoutSidebar } from "@/components/pos/checkout-sidebar";
-import { BarcodeTransactionScanner } from "@/components/pos/barcode-transaction-scanner";
+import { ScanScreen } from "@/components/pos-ios/scan-screen";
 import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
 import { PaymentConfirmationModal } from "@/components/pos/payment-modal";
 import {
@@ -87,7 +87,7 @@ import { resolveTransactionVoice } from "@/lib/transaction-voice-resolver";
 import { NotificationsScreen } from "@/components/pos-ios/notifications-screen";
 import { OrderNotificationSheet } from "@/components/pos-ios/order-notification-sheet";
 import { IosSheet } from "@/components/pos-ios/ios-kit";
-import { TransactionAlertStack } from "@/components/pos/transaction-alert-popup";
+import { TransactionBanner } from "@/components/pos-ios/transaction-banner";
 import { DeliveryCustomerQueue } from "@/components/pos/delivery-customer-queue";
 import { usePosNotifications } from "@/hooks/use-pos-notifications";
 import { createClient } from "@/lib/client";
@@ -96,7 +96,7 @@ import { QueueSheet, useProductionQueue } from "@/components/pos-ios/queue-sheet
 import { BonusSheet, type BonusVM } from "@/components/pos-ios/bonus-sheet";
 import { ProductOptionsSheet } from "@/components/pos-ios/product-options-sheet";
 import { MarketingInfoStrip } from "@/components/pos/marketing-info-strip";
-import { StockToolbarPanel } from "@/components/pos/stock-toolbar-panel";
+import { StockSheet } from "@/components/pos-ios/stock-sheet";
 import { StockTutorial, shouldShowStockTutorial } from "@/components/pos/stock-tutorial";
 import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
 import { getAdditionalOrderDiscount } from "@yumipos/web-shared/lib/order-pricing";
@@ -1821,16 +1821,14 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 			</Dialog>
 			{/* LEFT CONTENT: Menu Area */}
 			<div className="flex flex-1 flex-col overflow-hidden relative">
-				<Sheet open={isStockPanelOpen} onOpenChange={setIsStockPanelOpen}>
-					<SheetContent side="bottom" showCloseButton={false} className="h-[min(92dvh,760px)] max-h-[calc(100dvh-0.5rem)] overflow-hidden rounded-t-3xl p-0 sm:mx-auto sm:max-w-xl">
-						<StockToolbarPanel
-							products={(allProducts ?? products ?? []) as any[]}
-							categories={(categories ?? []) as any[]}
-							onClose={() => setIsStockPanelOpen(false)}
-							onRefresh={() => { triggerHybridRefresh(); setProductRefreshTick((value) => value + 1); }}
-						/>
-					</SheetContent>
-				</Sheet>
+				<IosSheet bare open={isStockPanelOpen} onClose={() => setIsStockPanelOpen(false)} heightClass="h-[92dvh]" label="Pengaturan stok">
+					<StockSheet
+						products={(allProducts ?? products ?? []) as any[]}
+						categories={(categories ?? []) as any[]}
+						onClose={() => setIsStockPanelOpen(false)}
+						onRefresh={() => { triggerHybridRefresh(); setProductRefreshTick((value) => value + 1); }}
+					/>
+				</IosSheet>
 
 			<DeliveryCustomerQueue
 				notifications={notifications}
@@ -1842,7 +1840,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 				}}
 			/>
 
-			<TransactionAlertStack
+			<TransactionBanner
 				notifications={notifications.filter((item) => transactionAlertIds.includes(item.id))}
 				onDismiss={(notificationId) => { void removeNotification(notificationId); setTransactionAlertIds((current) => current.filter((id) => id !== notificationId)); }}
 				onMarkCashierPaid={handleMarkCashierPaid}
@@ -1889,7 +1887,7 @@ const [priceDialogValue, setPriceDialogValue] = useState("");
 					initialTab={activeSidebarTab}
 					onTabChange={tab => openPanel(tab as PosPanel)}
 				/>
-				<BarcodeTransactionScanner
+				<ScanScreen
 					open={isBarcodeScannerOpen}
 					onOpenChange={setIsBarcodeScannerOpen}
 					onDetected={handleBarcodeDetected}

@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>POS · Scan, Stok, Popup Notifikasi</title>
+<style>
+:root{--blue:#0a66c2;--bl:#e8f1fb;--bg:#f2f2f7;--card:#fff;--tx:#111;--mu:#8a8a8e;--ln:#e5e5ea;--gr:#34c759;--rd:#ff3b30;--or:#ff9500;--sp:cubic-bezier(.32,1.2,.4,1)}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+body{font:14px -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,sans-serif;background:#d9dbe0;color:var(--tx);display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px}
+.bar{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.seg{display:inline-flex;background:#c9cbd1;border-radius:10px;padding:2px}
+.seg button{border:0;background:none;padding:7px 14px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;color:#333;transition:.25s}
+.seg button.on{background:#fff;box-shadow:0 1px 3px #0003}
+.note{font-size:12px;color:#555;max-width:390px;text-align:center;min-height:32px}
+.phone{width:390px;height:760px;background:var(--bg);border-radius:38px;position:relative;overflow:hidden;box-shadow:0 20px 50px #0004,0 0 0 8px #111}
+.view{position:absolute;inset:0;display:none}.view.on{display:block}
+/* fake app behind */
+.app{position:absolute;inset:0;padding:48px 14px 0;background:#fff}
+.app .row{height:62px;border-radius:16px;background:var(--bg);margin-bottom:10px}
+.app .h{height:40px;border-radius:12px;background:var(--bg);margin-bottom:12px}
+button{font:inherit;cursor:pointer}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px}
+.ok{background:#e3f7e8;color:#1d8a3a}.lo{background:#fff1da;color:#b36b00}.out{background:#ffe5e3;color:#c4271c}
+.ib{width:34px;height:34px;border-radius:50%;border:0;background:#0001;display:grid;place-items:center;font-size:15px}
+/* ===== SCAN ===== */
+.cam{background:radial-gradient(circle at 50% 40%,#2b3340,#0a0c10);position:absolute;inset:0}
+.vf{position:absolute;border-radius:22px;border:0}
+.vf i{position:absolute;width:30px;height:30px;border:4px solid #fff;border-radius:8px}
+.vf i:nth-child(1){left:0;top:0;border-right:0;border-bottom:0}.vf i:nth-child(2){right:0;top:0;border-left:0;border-bottom:0}
+.vf i:nth-child(3){left:0;bottom:0;border-right:0;border-top:0}.vf i:nth-child(4){right:0;bottom:0;border-left:0;border-top:0}
+.laser{position:absolute;left:8%;right:8%;height:2px;background:linear-gradient(90deg,transparent,#5ac8fa,transparent);box-shadow:0 0 12px #5ac8fa;animation:ls 2s ease-in-out infinite alternate}
+@keyframes ls{from{top:8%}to{top:90%}}
+.glass{background:#ffffffd9;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--bg);border-radius:26px 26px 0 0;padding:10px 16px 18px;box-shadow:0 -10px 40px #0003}
+.grab{width:38px;height:5px;border-radius:3px;background:#c4c4c8;margin:0 auto 10px}
+.field{display:flex;align-items:center;gap:8px;background:#fff;border-radius:14px;padding:0 12px;height:44px;border:1px solid var(--ln)}
+.field input{flex:1;border:0;outline:0;font:inherit;background:none}
+.btn{border:0;background:var(--blue);color:#fff;font-weight:700;border-radius:12px;padding:0 16px;height:36px}
+.rc{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:10px 12px;margin-top:8px}
+.rc b{display:block}.rc small{color:var(--mu)}
+.ico{width:36px;height:36px;border-radius:10px;background:var(--bl);display:grid;place-items:center}
+.result{position:absolute;left:14px;right:14px;bottom:14px;background:#fff;border-radius:22px;padding:14px;transform:translateY(130%);transition:.5s var(--sp);box-shadow:0 10px 40px #0005}
+.result.show{transform:none}
+/* ===== STOK ===== */
+.top{padding:50px 16px 8px;background:var(--bg)}
+.top h2{font-size:22px;letter-spacing:-.4px;display:flex;justify-content:space-between;align-items:center}
+.top p{color:var(--mu);font-size:12px;margin-top:2px}
+.sum{display:flex;gap:8px;margin:10px 0}
+.sum div{flex:1;background:#fff;border-radius:14px;padding:8px 10px}
+.sum b{font-size:18px;display:block}.sum small{color:var(--mu);font-size:11px}
+.scroll{overflow:auto;position:absolute;left:0;right:0;bottom:0}
+.grp{margin:0 16px 14px}.grp h4{font-size:11px;letter-spacing:.8px;color:var(--mu);margin:8px 4px 6px;text-transform:uppercase}
+.list{background:#fff;border-radius:16px;overflow:hidden}
+.it{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--ln);transition:.3s}
+.it:last-child{border:0}.it .n{flex:1;font-weight:600}.it small{color:var(--mu);display:block;font-weight:400;font-size:11px}
+.sw{width:50px;height:30px;border-radius:99px;background:#d1d1d6;position:relative;transition:.3s;border:0;flex:none}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 2px 4px #0004;transition:.35s var(--sp)}
+.sw.on{background:var(--gr)}.sw.on::after{transform:translateX(20px)}
+.chips{display:flex;gap:6px;overflow:auto;padding:0 16px 8px}.chips button{border:0;background:#fff;padding:6px 12px;border-radius:99px;font-weight:600;font-size:12px;white-space:nowrap;transition:.25s}
+.chips button.on{background:var(--blue);color:#fff}
+.it.off{opacity:.55}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px 120px}
+.tile{background:#fff;border-radius:16px;padding:10px;border:2px solid transparent;transition:.3s var(--sp);text-align:left;position:relative}
+.tile.on{border-color:var(--gr)}.tile.off{background:#ececf0;color:#999;transform:scale(.97)}
+.tile b{display:block;font-size:13px;margin:6px 0 4px}
+.tile .im{height:54px;border-radius:10px;background:linear-gradient(135deg,#ffe0b3,#ffb878)}
+.bulk{position:absolute;left:16px;right:16px;bottom:18px;background:#111d;color:#fff;border-radius:20px;padding:8px 8px 8px 16px;display:flex;align-items:center;gap:8px;backdrop-filter:blur(20px);transition:.4s var(--sp)}
+.bulk span{flex:1;font-weight:600}.bulk button{border:0;border-radius:12px;padding:9px 12px;font-weight:700}
+/* ===== NOTIF ===== */
+.ban{position:absolute;left:10px;right:10px;top:10px;transform:translateY(-140%);transition:.55s var(--sp);z-index:9}
+.ban.show{transform:none}
+.ncard{background:#fff;border-radius:22px;padding:12px;display:flex;gap:10px;align-items:center;box-shadow:0 12px 40px #0004;position:relative;overflow:hidden}
+.nic{width:40px;height:40px;border-radius:12px;background:var(--gr);color:#fff;display:grid;place-items:center;font-size:20px;flex:none}
+.ncard b{display:block}.ncard small{color:var(--mu)}
+.prog{position:absolute;left:0;bottom:0;height:3px;background:var(--gr);width:100%;transform-origin:left}
+.show .prog{animation:pg 5s linear forwards}@keyframes pg{to{transform:scaleX(0)}}
+.isl{position:absolute;left:50%;top:10px;transform:translateX(-50%) scale(.3);width:120px;height:34px;border-radius:20px;background:#000;color:#fff;opacity:0;transition:.55s var(--sp);overflow:hidden;z-index:9;display:flex;align-items:center;padding:0 12px;gap:8px;white-space:nowrap}
+.isl.show{width:360px;height:76px;border-radius:38px;opacity:1;transform:translateX(-50%) scale(1)}
+.isl .nic{width:34px;height:34px;border-radius:50%}.isl small{color:#aaa}
+.snk{position:absolute;left:14px;right:14px;bottom:86px;background:#1c1c1ee6;color:#fff;border-radius:18px;padding:10px 10px 10px 14px;display:flex;align-items:center;gap:10px;transform:translateY(200%);transition:.5s var(--sp);backdrop-filter:blur(20px);z-index:9}
+.snk.show{transform:none}.snk small{color:#bbb;display:block}.snk .btn{height:34px;background:var(--gr)}
+.stackw{position:absolute;left:10px;right:10px;top:10px;z-index:9;pointer-events:none}
+.stackw .ncard{position:absolute;left:0;right:0;transition:.5s var(--sp);pointer-events:auto}
+.nav{position:absolute;left:0;right:0;bottom:0;height:70px;background:#fff;border-top:1px solid var(--ln);display:flex;justify-content:space-around;align-items:center;color:var(--mu);font-size:11px}
+.trig{margin-top:6px}
+</style></head><body>
+<div class="bar"><div class="seg" id="screens"><button class="on" data-s="scan">1 · Scan</button><button data-s="stok">2 · Pengaturan Stok</button><button data-s="notif">3 · Popup Notifikasi</button></div></div>
+<div class="bar"><div class="seg" id="alts"><button class="on" data-a="A">A</button><button data-a="B">B</button><button data-a="C">C</button></div></div>
+<div class="note" id="note"></div>
+<div class="phone" id="phone"></div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s);
+const notes={
+scan:{A:'A · Kamera layar penuh. Bingkai fokus + laser, panel kaca di bawah untuk ketik manual. Paling cepat untuk scan berulang.',B:'B · Kartu kamera ringkas dengan segmen "Scan | Ketik" dan riwayat scan terakhir. Kasir tetap melihat menu di belakang.',C:'C · Strip scanner tipis di atas, hasil muncul sebagai kartu geser dengan tombol "Buka". Klik kamera untuk simulasi scan.'},
+stok:{A:'A · Daftar grup ala Pengaturan iOS: ringkasan, filter, toggle langsung. Paling familiar.',B:'B · Daftar + bar aksi massal melayang (Tandai habis / Tersedia) untuk pilih banyak sekaligus.',C:'C · Grid ubin: ketuk ubin untuk ganti tersedia/habis. Paling cepat dipakai satu tangan.'},
+notif:{A:'A · Banner iOS dari atas dengan progress auto-tutup. Geser ke atas / ketuk untuk menutup.',B:'B · Dynamic-Island: pil kecil yang memuai jadi kartu. Tidak menutupi header lama-lama.',C:'C · Snackbar kaca di atas bottom-nav dengan aksi "Buka", tidak menutup header.'}};
+let S='scan',A='A',timers=[];
+const fake=`<div class="app"><div class="h"></div><div class="h" style="width:60%"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div></div>`;
+const items={Makanan:[['Bubur Ayam Western','#1011','ok'],['Bubur Ayam Tasik','#1012','ok'],['Bubur Ayam Polos','#1013','lo'],['Bubur Ayam Chinese','#1014','ok']],Minuman:[['Tentrem Koffie Premium','#1021','ok'],['Tentrem Koffie Classic','#1022','out'],['Es Teh Manis','#1023','ok']]};
+const pillOf=s=>s==='ok'?'<span class="pill ok">Tersedia</span>':s==='lo'?'<span class="pill lo">Menipis</span>':'<span class="pill out">Habis</span>';
+
+function render(){
+ $('#note').textContent=notes[S][A];
+ timers.forEach(clearTimeout);timers=[];
+ const p=$('#phone');
+ p.innerHTML=({scan:scan,stok:stok,notif:notif})[S]();
+ ({scan:bindScan,stok:bindStok,notif:bindNotif})[S]();
+}
+/* ---------- SCAN ---------- */
+function scan(){
+ if(A==='A')return `<div class="cam"><div class="vf" style="left:34px;right:34px;top:150px;height:260px"><i></i><i></i><i></i><i></i><div class="laser"></div></div>
+ <div style="position:absolute;top:50px;left:16px;right:16px;display:flex;justify-content:space-between"><button class="ib" style="background:#fff3;color:#fff" id="x">✕</button><button class="ib" style="background:#fff3;color:#fff" id="torch">🔦</button></div>
+ <div style="position:absolute;top:430px;width:100%;text-align:center;color:#fff;font-weight:600">Arahkan ke barcode transaksi</div>
+ <div class="sheet glass" style="background:#ffffffe6"><div class="grab"></div><div style="display:flex;gap:8px"><div class="field" style="flex:1"><span>⌨️</span><input placeholder="Urutan, tanggal, nama customer"></div><button class="btn" style="height:44px">Cari</button></div></div></div>`;
+ if(A==='B')return fake+`<div style="position:absolute;inset:0;background:#0006"></div><div class="sheet" style="top:110px;border-radius:26px 26px 0 0"><div class="grab"></div>
+ <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3 style="font-size:20px">Scan Transaksi</h3><button class="ib" id="x">✕</button></div>
+ <div class="seg" style="width:100%;margin-bottom:10px" id="sm"><button class="on" style="flex:1" data-m="0">📷 Scan</button><button style="flex:1" data-m="1">⌨️ Ketik</button></div>
+ <div id="pane"><div class="cam" style="position:relative;height:220px;border-radius:18px;overflow:hidden"><div class="vf" style="left:30px;right:30px;top:36px;bottom:36px"><i></i><i></i><i></i><i></i><div class="laser"></div></div></div></div>
+ <h4 style="font-size:11px;letter-spacing:.8px;color:var(--mu);margin:14px 4px 4px">TERAKHIR DISCAN</h4>
+ <div class="rc"><div class="ico">🧾</div><div style="flex:1"><b>#0003 · Pelanggan</b><small>3 item · Rp 90.000</small></div><span class="pill ok">Lunas</span></div>
+ <div class="rc"><div class="ico">🧾</div><div style="flex:1"><b>#0002 · Budi</b><small>1 item · Rp 30.000</small></div><span class="pill lo">Pending</span></div></div>`;
+ return fake+`<div style="position:absolute;inset:0;background:#0005"></div>
+ <div class="cam" style="inset:auto 14px auto 14px;top:52px;height:150px;border-radius:24px;overflow:hidden;cursor:pointer" id="cam"><div class="vf" style="left:40px;right:40px;top:26px;bottom:26px"><i></i><i></i><i></i><i></i><div class="laser"></div></div>
+ <button class="ib" id="x" style="position:absolute;right:10px;top:10px;background:#fff3;color:#fff">✕</button><div style="position:absolute;bottom:8px;width:100%;text-align:center;color:#fff;font-size:12px">Ketuk kamera untuk simulasi scan</div></div>
+ <div style="position:absolute;top:214px;left:14px;right:14px"><div class="field"><span>🔎</span><input placeholder="Atau ketik urutan / nama"></div></div>
+ <div class="result" id="res"><div style="display:flex;gap:10px;align-items:center"><div class="nic">✓</div><div style="flex:1"><b>#ORD-POS-D-0003</b><small style="color:var(--mu)">Pelanggan · 3 item · Rp 90.000</small></div><span class="pill ok">Lunas</span></div><div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="flex:1;height:42px;background:var(--bl);color:var(--blue)" id="again">Scan lagi</button><button class="btn" style="flex:1;height:42px">Buka detail</button></div></div>`;
+}
+function bindScan(){
+ const c=$('#cam');if(c)c.onclick=()=>{$('#res').classList.add('show')};
+ const a=$('#again');if(a)a.onclick=()=>$('#res').classList.remove('show');
+ const sm=$('#sm');if(sm)sm.onclick=e=>{const b=e.target.closest('button');if(!b)return;[...sm.children].forEach(x=>x.classList.toggle('on',x===b));
+  $('#pane').innerHTML=b.dataset.m==='0'?'<div class="cam" style="position:relative;height:220px;border-radius:18px;overflow:hidden"><div class="vf" style="left:30px;right:30px;top:36px;bottom:36px"><i></i><i></i><i></i><i></i><div class="laser"></div></div></div>':'<div class="field" style="height:52px"><span>🔎</span><input autofocus placeholder="Urutan, tanggal, atau nama customer"></div><button class="btn" style="width:100%;height:46px;margin-top:10px">Cari transaksi</button>'};
+}
+/* ---------- STOK ---------- */
+function rowsHTML(){return Object.entries(items).map(([g,l])=>`<div class="grp"><h4>${g}</h4><div class="list">${l.map(([n,id,s],i)=>`<div class="it ${s==='out'?'off':''}" data-k="${id}"><div class="n">${n}<small>${id} · ${pillOf(s)}</small></div><button class="sw ${s!=='out'?'on':''}"></button></div>`).join('')}</div></div>`).join('')}
+function stok(){
+ const head=`<div class="top"><h2>Pengaturan Stok <button class="ib" id="x">✕</button></h2><p>Atur menu yang siap dijual dengan cepat.</p>`;
+ if(A==='A')return head+`<div class="sum"><div><b>5</b><small>Tersedia</small></div><div><b>1</b><small>Menipis</small></div><div><b style="color:var(--rd)">1</b><small>Habis</small></div></div><div class="field" style="margin-bottom:8px"><span>🔎</span><input placeholder="Cari produk"></div></div><div class="chips"><button class="on">Semua</button><button>Makanan</button><button>Minuman</button><button>Menipis</button><button>Habis</button></div><div class="scroll" style="top:262px">${rowsHTML()}</div>`;
+ if(A==='B')return head+`<div class="field" style="margin:8px 0"><span>🔎</span><input placeholder="Cari produk"></div></div><div class="chips"><button class="on">Semua</button><button>Makanan</button><button>Minuman</button></div><div class="scroll" style="top:200px;padding-bottom:100px">${rowsHTML().replace(/<button class="sw[^>]*><\/button>/g,'<button class="chk"></button>')}</div>
+ <div class="bulk" id="bulk" style="transform:translateY(160%)"><span id="bc">0 dipilih</span><button style="background:#ff3b30;color:#fff" id="bOut">Tandai habis</button><button style="background:#34c759;color:#fff" id="bOk">Tersedia</button></div>
+ <style>.chk{width:26px;height:26px;border-radius:50%;border:2px solid #c7c7cc;background:#fff;flex:none;transition:.3s var(--sp)}.chk.on{background:var(--blue);border-color:var(--blue);box-shadow:inset 0 0 0 5px #fff;transform:scale(1.1)}</style>`;
+ return head+`<div class="sum"><div><b>5</b><small>Tersedia</small></div><div><b>1</b><small>Menipis</small></div><div><b style="color:var(--rd)">1</b><small>Habis</small></div></div></div><div class="chips"><button class="on">Semua</button><button>Makanan</button><button>Minuman</button></div><div class="scroll" style="top:210px"><div class="grid">${Object.values(items).flat().map(([n,id,s])=>`<button class="tile ${s==='out'?'off':'on'}" data-k="${id}"><div class="im"></div><b>${n}</b>${pillOf(s)}</button>`).join('')}</div></div>`;
+}
+function bindStok(){
+ if(A==='A'){document.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{b.classList.toggle('on');b.closest('.it').classList.toggle('off',!b.classList.contains('on'));const sm=b.closest('.n,.it').querySelector('small .pill');if(sm){const on=b.classList.contains('on');sm.className='pill '+(on?'ok':'out');sm.textContent=on?'Tersedia':'Habis'}})}
+ if(A==='B'){const sel=new Set();const upd=()=>{$('#bc').textContent=sel.size+' dipilih';$('#bulk').style.transform=sel.size?'none':'translateY(160%)'};
+  document.querySelectorAll('.it').forEach(it=>it.onclick=()=>{const c=it.querySelector('.chk');c.classList.toggle('on');c.classList.contains('on')?sel.add(it.dataset.k):sel.delete(it.dataset.k);upd()});
+  const set=ok=>{sel.forEach(k=>{const it=document.querySelector(`.it[data-k="${k}"]`);it.classList.toggle('off',!ok);const p=it.querySelector('.pill');p.className='pill '+(ok?'ok':'out');p.textContent=ok?'Tersedia':'Habis';it.querySelector('.chk').classList.remove('on')});sel.clear();upd()};
+  $('#bOut').onclick=()=>set(false);$('#bOk').onclick=()=>set(true)}
+ if(A==='C'){document.querySelectorAll('.tile').forEach(t=>t.onclick=()=>{const off=t.classList.toggle('off');t.classList.toggle('on',!off);const p=t.querySelector('.pill');p.className='pill '+(off?'out':'ok');p.textContent=off?'Habis':'Tersedia'})}
+}
+/* ---------- NOTIF ---------- */
+const nbody=`<div class="nic">✓</div><div style="flex:1"><b>Pembayaran QRIS Berhasil</b><small>#ORD-POS-D-0003 · 3 item · Rp 90.000</small></div>`;
+function notif(){
+ const head=fake+`<div class="nav"><span>Kasir</span><span>Pesanan</span><span>Shift</span><span>Lainnya</span></div><div style="position:absolute;top:300px;width:100%;text-align:center"><button class="btn trig" id="fire" style="height:42px">🔔 Simulasi notifikasi masuk</button></div>`;
+ if(A==='A')return head+`<div class="ban" id="n"><div class="ncard" id="nc">${nbody}<button class="ib" id="cl">✕</button><div class="prog"></div></div></div>`;
+ if(A==='B')return head+`<div class="isl" id="n"><div class="nic">✓</div><div style="flex:1;overflow:hidden"><b style="display:block;font-size:13px">QRIS Berhasil · Rp 90.000</b><small>#ORD-POS-D-0003</small></div><button class="btn" style="height:30px;padding:0 12px;background:#fff;color:#000">Buka</button></div>`;
+ return head+`<div class="snk" id="n"><div class="nic" style="width:34px;height:34px">✓</div><div style="flex:1"><b>QRIS Berhasil · Rp 90.000</b><small>#ORD-POS-D-0003 · Lunas</small></div><button class="btn" id="open">Buka</button></div>`;
+}
+function bindNotif(){
+ const n=$('#n');const show=()=>{timers.forEach(clearTimeout);n.classList.remove('show');void n.offsetWidth;n.classList.add('show');timers.push(setTimeout(()=>n.classList.remove('show'),A==='A'?5000:4500))};
+ $('#fire').onclick=show;setTimeout(show,500);
+ const cl=$('#cl');if(cl)cl.onclick=e=>{e.stopPropagation();n.classList.remove('show')};
+ const nc=$('#nc');if(nc){let y0=null;nc.onpointerdown=e=>y0=e.clientY;nc.onpointerup=e=>{if(y0!==null&&e.clientY-y0<-20||Math.abs(e.clientY-y0)<5)n.classList.remove('show');y0=null}}
+ if(A==='B')n.onclick=()=>n.classList.toggle('show');
+}
+document.addEventListener('click',e=>{const x=e.target.closest('#x');if(x)render()});
+$('#screens').onclick=e=>{const b=e.target.closest('button');if(!b)return;S=b.dataset.s;[...$('#screens').children].forEach(x=>x.classList.toggle('on',x===b));render()};
+$('#alts').onclick=e=>{const b=e.target.closest('button');if(!b)return;A=b.dataset.a;[...$('#alts').children].forEach(x=>x.classList.toggle('on',x===b));render()};
+render();
+</script></body></html>
