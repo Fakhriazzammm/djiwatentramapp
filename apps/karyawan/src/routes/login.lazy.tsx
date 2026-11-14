@@ -3,7 +3,8 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
-import { Fingerprint, UserCheck, ShieldCheck, AlertCircle, ChevronDown, Search } from "lucide-react";
+import { AlertCircle, ChevronDown, Search } from "lucide-react";
+import { DsAvatar, DsButton, DsRoot, ds3d } from "@yumipos/web-shared/components/ds";
 import { useYumiAuth, listPublicYumiUsers, loginWithYumiPin, type YumiPublicUser } from "@yumipos/web-shared";
 import { toast } from "sonner";
 
@@ -216,177 +217,117 @@ function KaryawanLoginPage() {
   const isPinComplete = pin.every((d) => d);
   const canInputPin = resolvedUser && !resolveError;
 
+  const heroIcon = ds3d("employee-attendance-menu");
   return (
-    <main className="karyawan-shell karyawan-safe-bottom flex min-h-dvh items-center justify-center bg-background p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 }}
-        className="w-full max-w-sm"
-      >
-        <section aria-labelledby="login-title" className="karyawan-card border border-border/60 bg-card p-6">
-          {/* Header */}
-          <div className="mb-5 text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-              <Fingerprint className="h-6 w-6 text-primary" />
-            </div>
-            <h1 id="login-title" className="text-xl font-bold text-foreground">Portal Karyawan</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Pilih nama kamu, lalu masukkan PIN
-            </p>
-          </div>
-
-          {loadError && (
-            <div className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive mb-3">
-              <p className="font-medium">Gagal memuat data karyawan</p>
-              <p className="text-xs mt-1 opacity-80">{loadError}</p>
-            </div>
-          )}
-
-          {/* Name/Username Input with Dropdown */}
-          <div className="relative mb-3" ref={dropdownRef}>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                ref={nameRef}
-                type="text"
-                placeholder={isLoading ? "Memuat daftar karyawan..." : "Cari nama karyawan..."}
-                value={nameQuery}
-                onChange={handleNameChange}
-                onFocus={handleNameFocus}
-                onKeyDown={handleNameKeyDown}
-                disabled={isLoading}
-                className={`w-full rounded-xl border bg-background py-2.5 pl-10 pr-10 text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:ring-1 ${
-                  resolveError
-                    ? "border-red-300 focus:border-red-400 focus:ring-red-200"
-                    : resolvedUser
-                      ? "border-emerald-300 focus:border-emerald-400 focus:ring-emerald-200"
-                      : "border-border/60 focus:border-primary/50 focus:ring-primary/20"
-                }`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowDropdown(!showDropdown)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
-                tabIndex={-1}
-              >
-                <ChevronDown className={`h-4 w-4 transition-transform ${showDropdown ? "rotate-180" : ""}`} />
-              </button>
+    <DsRoot className="karyawan-shell">
+      <main className="ds-screen flex min-h-dvh w-full flex-col items-center justify-center" style={{ paddingTop: 24, paddingBottom: 32 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 }}
+          className="w-full max-w-[420px]"
+        >
+          <section aria-labelledby="login-title">
+            <div style={{ textAlign: "center", marginBottom: 22 }}>
+              <img src={heroIcon} alt="" style={{ width: 96, height: 96, objectFit: "contain", margin: "0 auto 4px", display: "block" }} />
+              <p className="ds-sub" style={{ margin: 0 }}>Djiwa Tentram</p>
+              <h1 id="login-title" className="ds-page-title" style={{ marginTop: 2 }}>Masuk ke Karyawan</h1>
+              <p className="ds-sub" style={{ margin: "6px 0 0", fontSize: 15 }}>Pilih nama kamu, lalu masukkan PIN</p>
             </div>
 
-            {/* Status indicator when user resolved */}
-            {resolvedUser && !resolveError && (
-              <div className="mt-1.5 flex items-center gap-1.5">
-                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100">
-                  <UserCheck className="h-3 w-3 text-emerald-600" />
+            {loadError && (
+              <div className="ds-note" style={{ background: "var(--ds-danger-soft)", color: "var(--ds-danger)", marginBottom: 12 }}>
+                <div><b>Gagal memuat data karyawan</b><span style={{ fontSize: 12.5 }}>{loadError}</span></div>
+              </div>
+            )}
+
+            <div className="ds-group" style={{ padding: 14 }}>
+              <div className="relative" ref={dropdownRef}>
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--ds-faint)" }} />
+                  <input
+                    ref={nameRef}
+                    type="text"
+                    autoComplete="off"
+                    placeholder={isLoading ? "Memuat daftar karyawan..." : "Cari nama karyawan"}
+                    value={nameQuery}
+                    onChange={handleNameChange}
+                    onFocus={handleNameFocus}
+                    onKeyDown={handleNameKeyDown}
+                    disabled={isLoading}
+                    className="ds-input"
+                    style={{ paddingLeft: 42, paddingRight: 44, background: "#fff", outline: "none", boxShadow: "none", borderColor: resolveError ? "var(--ds-danger)" : resolvedUser ? "var(--ds-ok)" : "transparent" }}
+                  />
+                  <button type="button" onClick={() => setShowDropdown(!showDropdown)} aria-label="Buka daftar karyawan" tabIndex={-1} className="absolute right-3 top-1/2 -translate-y-1/2 p-1" style={{ color: "var(--ds-mute)", minHeight: 32 }}>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${showDropdown ? "rotate-180" : ""}`} />
+                  </button>
                 </div>
-                <span className="text-xs font-medium text-emerald-600">{resolvedUser.name}</span>
-              </div>
-            )}
-            {resolveError && (
-              <div className="mt-1.5 flex items-center gap-1.5">
-                <AlertCircle className="h-3.5 w-3.5 text-red-500" />
-                <span className="text-xs font-medium text-red-500">{resolveError}</span>
-              </div>
-            )}
 
-            {/* Dropdown list */}
-            {showDropdown && !isLoading && (
-              <div className="absolute z-50 mt-1 w-full rounded-xl border border-border/60 bg-card shadow-lg max-h-60 overflow-y-auto">
-                {filteredUsers.length === 0 ? (
-                  <div className="px-4 py-3 text-sm text-muted-foreground text-center">
-                    {nameQuery.trim() ? "Karyawan tidak ditemukan" : "Tidak ada data karyawan"}
+                {resolvedUser && !resolveError && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 4px 0" }}>
+                    <DsAvatar name={resolvedUser.name} size={32} />
+                    <b style={{ fontSize: 14 }}>{resolvedUser.name}</b>
+                    <span className="ds-tag ds-tag--ok" style={{ marginLeft: "auto" }}>Dipilih</span>
                   </div>
-                ) : (
-                  filteredUsers.map((user) => (
-                    <button
-                      key={user._id}
-                      type="button"
-                      onClick={() => selectUser(user)}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-accent ${
-                        resolvedUser?._id === user._id ? "bg-accent/50 font-medium" : ""
-                      }`}
-                    >
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary shrink-0">
-                        {user.initial}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-foreground truncate">{user.name}</p>
-                        {user.username && (
-                          <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
-                        )}
-                      </div>
-                      {resolvedUser?._id === user._id && (
-                        <UserCheck className="h-4 w-4 text-emerald-500 shrink-0" />
-                      )}
-                    </button>
-                  ))
+                )}
+                {resolveError && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 4px 0", color: "var(--ds-danger)", fontSize: 13 }}>
+                    <AlertCircle className="h-4 w-4" />{resolveError}
+                  </div>
+                )}
+
+                {showDropdown && !isLoading && (
+                  <div className="absolute z-50 mt-2 w-full overflow-y-auto" style={{ background: "#fff", borderRadius: 24, boxShadow: "var(--ds-float)", maxHeight: 260, padding: "6px 14px" }}>
+                    {filteredUsers.length === 0 ? (
+                      <div className="ds-sub" style={{ padding: "16px 0", textAlign: "center" }}>{nameQuery.trim() ? "Karyawan tidak ditemukan" : "Tidak ada data karyawan"}</div>
+                    ) : (
+                      filteredUsers.map((user) => (
+                        <button key={user._id} type="button" onClick={() => selectUser(user)} className="ds-row" style={{ minHeight: 56, padding: "8px 0" }}>
+                          <DsAvatar name={user.name} src={null} size={38} />
+                          <div className="ds-main"><b>{user.name}</b>{user.username && <span>@{user.username}</span>}</div>
+                          {resolvedUser?._id === user._id && <span className="ds-tag ds-tag--ok">✓</span>}
+                        </button>
+                      ))
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
 
-          {/* PIN Input */}
-          <div className="text-center">
-            <div className="mb-3 flex items-center justify-center gap-2.5">
-              {pinIndexes.map((i) => (
-                <input
-                  key={i}
-                  ref={(el) => { inputRefs.current[i] = el; }}
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={1}
-                  value={pin[i]}
-                  onChange={(e) => handlePinChange(i, e.target.value)}
-                  onKeyDown={(e) => handlePinKeyDown(i, e)}
-                  onPaste={i === 0 ? handlePinPaste : undefined}
-                  disabled={!canInputPin || isVerifying}
-                  className={`h-11 w-11 rounded-xl border text-center text-lg font-bold outline-none transition-all
-                    ${isVerifying
-                      ? "border-muted bg-muted/30 text-muted-foreground"
-                      : canInputPin
-                        ? "border-primary/40 bg-background text-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
-                        : "border-muted/60 bg-muted/20 text-muted-foreground/30"
-                    }
-                    ${pin[i] ? "border-primary/60 shadow-sm" : ""}
-                  `}
-                />
-              ))}
+              <div style={{ textAlign: "center", marginTop: 18 }}>
+                <div className="ds-label" style={{ marginBottom: 10 }}>PIN 6 digit</div>
+                <div style={{ display: "flex", justifyContent: "center", gap: 8 }} onPaste={handlePinPaste}>
+                  {pinIndexes.map((i) => (
+                    <input
+                      key={i}
+                      ref={(el) => { inputRefs.current[i] = el; }}
+                      type="password"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={1}
+                      aria-label={`Digit PIN ${i + 1}`}
+                      value={pin[i]}
+                      onChange={(e) => handlePinChange(i, e.target.value)}
+                      onKeyDown={(e) => handlePinKeyDown(i, e)}
+                      disabled={!canInputPin || isVerifying}
+                      style={{ width: 46, height: 56, borderRadius: 18, border: `1.5px solid ${pin[i] ? "var(--ds-navy)" : "transparent"}`, background: canInputPin ? "#fff" : "rgba(255,255,255,.5)", textAlign: "center", font: "700 22px var(--ds-font)", outline: "none", minHeight: 56 }}
+                    />
+                  ))}
+                </div>
+                <p className="ds-sub" style={{ margin: "12px 0 0", minHeight: 18 }}>
+                  {isLoading ? "Memuat data..." : loadError ? "Gagal terhubung ke server" : !canInputPin ? (resolveError ? "Pilih karyawan yang benar" : "Ketik atau pilih nama karyawan") : isVerifying ? "Memverifikasi..." : isPinComplete ? "" : "Masukkan PIN 6 digit"}
+                </p>
+              </div>
+
+              <DsButton block disabled={!canInputPin || !isPinComplete || isVerifying} onClick={submitPin}>{isVerifying ? "Memverifikasi…" : "Masuk"}</DsButton>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {isLoading
-                ? "Memuat data..."
-                : loadError
-                  ? "Gagal terhubung ke server"
-                  : !canInputPin
-                    ? resolveError
-                      ? "Pilih karyawan yang benar"
-                      : "Ketik atau pilih nama karyawan"
-                    : isVerifying
-                      ? "Memverifikasi..."
-                      : isPinComplete
-                        ? ""
-                        : "Masukkan PIN 6 digit"}
-            </p>
-          </div>
-        </section>
 
-        {/* Register link */}
-        <div className="mt-4 text-center">
-          <button
-            type="button"
-            onClick={() => navigate({ to: "/register" as any })}
-            className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
-          >
-            Daftar Karyawan Baru
-          </button>
-        </div>
-
-        {/* Footer */}
-        <p className="mt-4 text-center text-xs text-muted-foreground/50">
-          Djiwa Tentram — Kehadiran Karyawan
-        </p>
-      </motion.div>
-    </main>
+            <div style={{ textAlign: "center", marginTop: 18 }}>
+              <DsButton variant="ghost" size="md" onClick={() => navigate({ to: "/register" as any })}>Daftar karyawan baru</DsButton>
+            </div>
+            <p className="ds-sub" style={{ textAlign: "center", marginTop: 18, opacity: 0.7 }}>Djiwa Tentram — Kehadiran Karyawan</p>
+          </section>
+        </motion.div>
+      </main>
+    </DsRoot>
   );
 }
