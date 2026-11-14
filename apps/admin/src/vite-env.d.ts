@@ -5,6 +5,7 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL: string;
   readonly VITE_SUPABASE_PUBLISHABLE_KEY: string;
   readonly VITE_APP_BASE_URL: string;
+  readonly VITE_MANAGER_API_URL?: string;
   readonly VITE_TELEGRAM_BOT_URL?: string;
   readonly VITE_TELEGRAM_REPORT_CHAT_ID?: string;
 }
