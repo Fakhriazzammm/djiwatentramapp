@@ -101,7 +101,7 @@ export function App() {
             {cur === "dash" && <DashView role={role} onNavigate={(p) => go(p as Page)} />}
             {cur === "keuangan" && role === "manager" && <FinanceView />}
             {cur === "expense" && <ExpensesView />}
-            {cur === "opset" && <StockView />}
+            {cur === "opset" && <StockView role={role} />}
             {cur === "sdm" && role === "manager" && <TeamView role={role} />}
             {(cur === "purch" || cur === "belanja") && <PurchasingView role={role} />}
             {cur === "laporan" && <ReportsView role={role} bugKey={bug} />}

@@ -51,6 +51,30 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
     return r.rows as { slug: string; label: string; icon: string }[];
   };
 
+  const POL_LABEL: Record<string, string> = {
+    blind: "Hitung tanpa lihat stok", cycle: "Opname bertahap", perDay: "Bahan per hari", tolDefault: "Selisih wajar bahan biasa (%)", tolImportant: "Selisih wajar bahan penting (%)",
+    tolAction: "Tindakan bila melebihi toleransi", recount: "Hitung ulang oleh orang lain", recountAbove: "Batas hitung ulang (%)", photoAbove: "Batas foto wajib (Rp)",
+    finalJournal: "Jurnal otomatis saat selesai", clockoutBar: "Opname Bar wajib saat clock-out", clockoutDapur: "Opname Dapur wajib saat clock-out",
+    schedBar: "Jadwal opname Bar", schedDapur: "Jadwal opname Dapur", schedGudang: "Jadwal opname Gudang", mgrNeedsOwner: "Perubahan aturan Manager perlu persetujuan Owner", lockHigh: "Kunci isi kemasan bahan penting",
+    important: "Bahan penting (★)",
+  };
+  const logChange = async (actor: { id: string; name: string; role: string }, sourceApp: string, what: string, from: unknown, to: unknown) => {
+    try {
+      await pool.query(
+        `INSERT INTO public.mgr_change_log (actor_id, actor_name, actor_role, source_app, what, from_value, to_value) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [actor.id, actor.name, actor.role, sourceApp, what.slice(0, 200), from === undefined ? "—" : String(from).slice(0, 80), String(to).slice(0, 80)],
+      );
+    } catch { /* log failure must not block the change */ }
+  };
+  const diffPolicy = async (key: string, next: Record<string, unknown>, actor: { id: string; name: string; role: string }, sourceApp: string) => {
+    if (key !== "opname_policy") return;
+    const prev = (await pool.query(`SELECT value FROM public.mgr_settings WHERE key = $1`, [key])).rows[0]?.value as Record<string, unknown> | undefined ?? {};
+    for (const [k, v] of Object.entries(next)) {
+      if (k === "important") continue;
+      if (JSON.stringify(prev[k]) !== JSON.stringify(v)) await logChange(actor, sourceApp, POL_LABEL[k] ?? k, prev[k], v);
+    }
+  };
+
   // ---------- live activity feed (all apps), same source as admin ----------
   app.get("/api/manager/feed", async (c) => {
     const m = await member(c);
@@ -488,11 +512,42 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
         [id, text(b.baseUnit, 20), text(b.purchaseUnit, 20), factor, packQty, text(b.packNetUnit, 20)],
       );
       if (!r.rows[0]) return json({ success: false, error: "NOT_FOUND" }, 404);
+      const it = r.rows[0] as { ingredient_name: string; preferred_purchase_unit: string | null; content_to_base_factor: string | null; base_unit: string | null };
+      await logChange({ id: m.userId, name: m.name, role: m.role }, "Aplikasi Manager", `Konversi ${it.ingredient_name}: 1 ${it.preferred_purchase_unit ?? "kemasan"} = ${it.content_to_base_factor ?? "?"} ${it.base_unit ?? ""}`.trim(), "—", it.content_to_base_factor ?? "kosong");
       return json({ success: true, item: r.rows[0] });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "CONVERSION_FAILED";
       return json({ success: false, error: "CONVERSION_FAILED", message: msg }, 409);
     }
+  });
+
+  // Mark an ingredient as important (★). Manager only; stored in opname_policy.important.
+  app.post("/api/manager/stock/important", async (c) => {
+    const m = await member(c);
+    if ("res" in m) return m.res;
+    if (m.role !== "manager") return json({ success: false, error: "FORBIDDEN" }, 403);
+    const b = (await c.req.json().catch(() => ({}))) as { inventoryId?: unknown; on?: unknown };
+    const id = text(b.inventoryId, 80);
+    if (!id) return json({ success: false, error: "INVENTORY_REQUIRED" }, 400);
+    const cur = (await pool.query(`SELECT value FROM public.mgr_settings WHERE key = 'opname_policy'`)).rows[0]?.value as Record<string, unknown> | undefined ?? {};
+    const list = new Set(Array.isArray(cur.important) ? (cur.important as string[]) : []);
+    if (b.on) list.add(id); else list.delete(id);
+    const next = { ...cur, important: [...list].slice(0, 500) };
+    await pool.query(
+      `INSERT INTO public.mgr_settings (key, value, updated_by) VALUES ('opname_policy',$1::jsonb,$2)
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, updated_at = now()`,
+      [JSON.stringify(next), m.userId],
+    );
+    const name = (await pool.query(`SELECT ingredient_name FROM pos.inventory WHERE source_id = $1`, [id])).rows[0]?.ingredient_name ?? id;
+    await logChange({ id: m.userId, name: m.name, role: m.role }, "Aplikasi Manager", `Bahan penting: ${name}`, b.on ? "biasa" : "★", b.on ? "★" : "biasa");
+    return json({ success: true, important: next.important });
+  });
+
+  app.get("/api/manager/stock/log", async (c) => {
+    const m = await member(c);
+    if ("res" in m) return m.res;
+    const r = await pool.query(`SELECT id, at, actor_name, actor_role, source_app, what, from_value, to_value FROM public.mgr_change_log WHERE area = 'opname' ORDER BY at DESC LIMIT 60`);
+    return json({ success: true, log: r.rows });
   });
 
   app.get("/api/manager/stock/history", async (c) => {
@@ -639,10 +694,11 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
     if ("res" in m) return m.res;
     const key = text(c.req.param("key"), 40);
     const managerKeys = new Set(["expense_policy", "opname_policy", "payroll_policy"]);
-    if (!managerKeys.has(key)) return json({ success: false, error: "FORBIDDEN" }, 403);
+    if (!managerKeys.has(key) || m.role !== "manager") return json({ success: false, error: "FORBIDDEN" }, 403);
     const b = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
     if (!b.value || typeof b.value !== "object") return json({ success: false, error: "VALUE_REQUIRED" }, 400);
     if (JSON.stringify(b.value).length > 5000) return json({ success: false, error: "TOO_LARGE" }, 413);
+    await diffPolicy(key, b.value as Record<string, unknown>, { id: m.userId, name: m.name, role: m.role }, "Aplikasi Manager");
     const r = await pool.query(
       `INSERT INTO public.mgr_settings (key, value, updated_by) VALUES ($1,$2::jsonb,$3)
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, updated_at = now()
@@ -676,6 +732,13 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
     });
   });
 
+  app.get("/api/admin-manager/stock-log", async (c) => {
+    const o = await owner(c);
+    if ("res" in o) return o.res;
+    const r = await pool.query(`SELECT id, at, actor_name, actor_role, source_app, what, from_value, to_value FROM public.mgr_change_log WHERE area = 'opname' ORDER BY at DESC LIMIT 60`);
+    return json({ success: true, log: r.rows });
+  });
+
   // Owner may edit any setting, including AI and stock policy.
   app.put("/api/admin-manager/settings/:key", async (c) => {
     const o = await owner(c);
@@ -686,6 +749,7 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
     const value = b.value && typeof b.value === "object" ? b.value : null;
     if (!value) return json({ success: false, error: "VALUE_REQUIRED" }, 400);
     if (JSON.stringify(value).length > 20_000) return json({ success: false, error: "TOO_LARGE" }, 413);
+    await diffPolicy(key, value as Record<string, unknown>, { id: o.userId, name: o.name, role: "owner" }, "Admin");
     const r = await pool.query(
       `INSERT INTO public.mgr_settings (key, value, updated_by) VALUES ($1,$2::jsonb,$3)
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, updated_at = now()

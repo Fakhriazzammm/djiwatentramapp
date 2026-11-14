@@ -17,7 +17,7 @@ export const Route = createLazyFileRoute("/admin/manager")({ component: AdminMan
 const API = String(import.meta.env.VITE_MANAGER_API_URL?.trim() || "https://api.djiwatentram.web.id").replace(/\/$/, "");
 type Membership = { user_id: string; email: string | null; display_name: string | null; requested_role: "manager" | "supervisor"; role: string | null; status: string; requested_at: string };
 type Report = { id: string; title: string; kind: string; body: Record<string, string>; from_name: string | null; from_role: string; status: string; review_note: string | null; created_at: string };
-type Section = "ringkasan" | "akses" | "tugas" | "laporan" | "panduan" | "kebijakan";
+type Section = "ringkasan" | "akses" | "tugas" | "laporan" | "panduan" | "stok" | "format" | "kebijakan";
 const ROLE_LABEL: Record<string, string> = { manager: "Manager", supervisor: "Supervisor / Purchasing" };
 const STATUS_LABEL: Record<string, string> = { pending: "Menunggu", approved: "Aktif", rejected: "Ditolak", revoked: "Dicabut", sent: "Terkirim", read: "Dibaca", needs_revision: "Perlu revisi", acknowledged: "Diterima" };
 const SECTIONS: { id: Section; label: string }[] = [
@@ -26,7 +26,9 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: "tugas", label: "Penugasan" },
   { id: "laporan", label: "Laporan" },
   { id: "panduan", label: "Playbook & Dokumen" },
-  { id: "kebijakan", label: "Kebijakan" },
+  { id: "stok", label: "Stok & Opname" },
+  { id: "format", label: "Format & Bot" },
+  { id: "kebijakan", label: "Kebijakan & AI" },
 ];
 const EMPTY_POLICY_VALUE: Record<string, unknown> = {};
 
@@ -96,7 +98,7 @@ function AdminManager() {
 
   const pendingMembers = members.filter((m) => m.status === "pending").length;
   const navTarget = document.getElementById("manager-owner-navigation");
-  const sectionIcons = {tugas:ListTodo,akses:ShieldCheck,laporan:FileText,panduan:BookOpen,kebijakan:Settings,ringkasan:ListTodo};
+  const sectionIcons = {tugas:ListTodo,akses:ShieldCheck,laporan:FileText,panduan:BookOpen,stok:Settings,format:FileText,kebijakan:Settings,ringkasan:ListTodo};
   const counts: Partial<Record<Section, number>> = { akses: pendingMembers, laporan: reports.filter((r) => r.status === "sent").length };
   return (
     <div className="mgr-proto" style={{ padding: "0 4px 18px" }}>
@@ -111,6 +113,8 @@ function AdminManager() {
       {section === "akses" && <AccessPanel members={members} loading={loading} error={errors.members} busy={busy} onDecide={decide} onRetry={() => void load(true)} />}
       {section === "laporan" && <ReportsPanel reports={reports} loading={loading} error={errors.reports} busy={busy} onReview={review} onRetry={() => void load(true)} />}
       {section === "panduan" && <ContentSections call={call} />}
+      {section === "stok" && <OpnamePanel call={call} />}
+      {section === "format" && <FormatPanel call={call} />}
       {section === "kebijakan" && <PolicySection call={call} />}
     </div>
   );
@@ -291,8 +295,6 @@ type Field = { k: string; label: string; type: "number" | "text" | "bool" };
 const POLICY: { key: string; label: string; hint: string; fields: Field[] }[] = [
   { key: "ai_config", label: "Pengaturan AI", hint: "Model dan jadwal tugas harian dari data nyata", fields: [{ k: "enabled", label: "AI aktif", type: "bool" }, { k: "model", label: "Model utama", type: "text" }, { k: "fallbackModel", label: "Model cadangan", type: "text" }, { k: "planHourWib", label: "Jam rencana harian (WIB)", type: "number" }] },
   { key: "expense_policy", label: "Kebijakan pengeluaran", hint: "Berlaku di aplikasi dan bot Telegram", fields: [{ k: "approvalAbove", label: "Persetujuan Manager di atas (Rp)", type: "number" }, { k: "photoMin", label: "Wajib foto bukti di atas (Rp)", type: "number" }] },
-  { key: "expense_format", label: "Format pesan pengeluaran", hint: "Dipakai sama oleh aplikasi dan bot Telegram", fields: [{ k: "header", label: "Judul pesan", type: "text" }, { k: "footer", label: "Catatan kaki", type: "text" }, { k: "showNo", label: "Tampilkan nomor item", type: "bool" }, { k: "showPay", label: "Tampilkan metode bayar", type: "bool" }, { k: "showIcons", label: "Tampilkan ikon kategori", type: "bool" }] },
-  { key: "opname_policy", label: "Kebijakan opname", hint: "Ketelitian hitung stok", fields: [{ k: "tolDefault", label: "Toleransi selisih (%)", type: "number" }, { k: "tolImportant", label: "Toleransi bahan penting (%)", type: "number" }] },
   { key: "payroll_policy", label: "Kebijakan gaji", hint: "Batas penyesuaian oleh Manager", fields: [{ k: "adjustmentLimit", label: "Batas penyesuaian Manager (Rp)", type: "number" }] },
 ];
 
@@ -341,6 +343,103 @@ function PolicyEditor({ def, value, onSave }: { def: (typeof POLICY)[number]; va
         ))}
         <button className="btn r" style={{ marginTop: 14 }} disabled={saving || bad} onClick={() => void submit()}>{saving ? "Menyimpan…" : "Simpan"}</button>
       </div>
+    </div>
+  );
+}
+
+
+type LogRow = { id: number; at: string; actor_name: string | null; source_app: string; what: string; from_value: string | null; to_value: string | null };
+const OP_DEFAULTS: Record<string, unknown> = { blind: true, cycle: true, perDay: 12, tolDefault: 2, tolImportant: 1, tolAction: "review", recount: true, recountAbove: 3, photoAbove: 100000, finalJournal: false, clockoutBar: true, clockoutDapur: true, schedBar: "Harian", schedDapur: "Rabu", schedGudang: "Bulanan", mgrNeedsOwner: false, lockHigh: true };
+const SCHED = ["Harian", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Mingguan", "Bulanan", "Tidak ada"];
+
+function OpnamePanel({ call }: { call: <T,>(path: string, method?: string, body?: unknown) => Promise<T> }) {
+  const [pol, setPol] = useState<Record<string, unknown> | null>(null);
+  const [log, setLog] = useState<LogRow[]>([]);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState("");
+  const load = useCallback(async () => {
+    try {
+      const [o, l] = await Promise.all([call<{ settings: SettingRow[] }>("/api/admin-manager/overview"), call<{ log: LogRow[] }>("/api/admin-manager/stock-log")]);
+      setPol({ ...OP_DEFAULTS, ...(o.settings.find((x) => x.key === "opname_policy")?.value ?? {}) }); setLog(l.log); setError("");
+    } catch (e) { setError(errorMessage(e)); }
+  }, [call]);
+  useEffect(() => { void load(); }, [load]);
+  const set = async (patch: Record<string, unknown>) => {
+    if (!pol) return;
+    const next = { ...pol, ...patch };
+    setPol(next);
+    try { await call("/api/admin-manager/settings/opname_policy", "PUT", { value: next }); setSaved(`Tersimpan · ${new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} · Aplikasi Manager ikut diperbarui`); const l = await call<{ log: LogRow[] }>("/api/admin-manager/stock-log"); setLog(l.log); }
+    catch (e) { toast.error(`Gagal: ${(e as Error).message}`); void load(); }
+  };
+  if (error) return <div className="panel"><Err message={error} onRetry={() => void load()} /></div>;
+  if (!pol) return <div className="panel"><Empty>MEMUAT…</Empty></div>;
+  const chip = (k: string, label: string) => <button className={`chipb ${pol[k] ? "on" : ""}`} onClick={() => set({ [k]: !pol[k] })}>{pol[k] ? "✓ " : ""}{label}</button>;
+  const num = (k: string, w = 64) => <input type="text" inputMode="decimal" className="f opn" style={{ width: w }} defaultValue={String(pol[k] ?? "")} key={k + String(pol[k])} onBlur={(e) => { const n = Number(e.target.value.replace(",", ".")); if (Number.isFinite(n) && n >= 0 && n !== pol[k]) void set({ [k]: n }); else e.target.value = String(pol[k] ?? ""); }} />;
+  const tog = (k: string, label: string, hint?: string) => <div className="mr" style={{ padding: "9px 0" }}><span><b style={{ fontWeight: 550 }}>{label}</b>{hint && <><br /><span className="meta">{hint}</span></>}</span><button className={`cb ${pol[k] ? "on" : ""}`} onClick={() => set({ [k]: !pol[k] })}>{pol[k] ? "✓" : ""}</button></div>;
+  const sel = (k: string, label: string) => <div><label style={{ marginTop: 0 }}>{label}</label><select className="f" value={String(pol[k])} onChange={(e) => void set({ [k]: e.target.value })}>{SCHED.map((x) => <option key={x}>{x}</option>)}</select></div>;
+  return (
+    <div className="fin">
+      <div className="fh"><div className="meta">Aturan opname dan kunci pengisian. Perubahan langsung berlaku di aplikasi Manager, Supervisor, dan Karyawan.</div><span className="xlink flash"><i className="dotc ok" />{saved || "Sinkron dengan Aplikasi Manager"}</span></div>
+      <div className="panel pad opstrip">
+        <span className="lab n" style={{ marginRight: 4 }}>Aturan opname</span>
+        {chip("blind", "Hitung tanpa lihat stok")}{chip("cycle", "Opname bertahap")}{pol.cycle ? <span className="opi">{num("perDay")}<span className="meta">bahan / hari</span></span> : null}
+        <span className="opi"><span className="meta">Selisih wajar: bahan biasa</span>{num("tolDefault")}<span className="meta">%  penting ★</span>{num("tolImportant")}<span className="meta">%</span></span>
+        <span className="opi"><span className="meta">Bila melebihi</span><select className="sel" value={String(pol.tolAction)} onChange={(e) => void set({ tolAction: e.target.value })}><option value="review">Perlu ditinjau</option><option value="auto">Koreksi otomatis</option></select></span>
+        {chip("finalJournal", "Jurnal otomatis saat selesai")}
+      </div>
+      <div className="panel pad"><div className="row2" style={{ alignItems: "start" }}>
+        <div>{tog("recount", "Hitung ulang oleh orang lain bila selisih besar")}
+          <div className="row2"><div><label style={{ marginTop: 0 }}>Hitung ulang bila selisih lebih dari (%)</label>{num("recountAbove", 120)}</div><div><label style={{ marginTop: 0 }}>Foto wajib bila nilai selisih (Rp)</label>{num("photoAbove", 120)}</div></div>
+          {tog("clockoutBar", "Opname Bar wajib saat clock-out")}{tog("clockoutDapur", "Opname Dapur wajib saat clock-out")}</div>
+        <div><div className="row2">{sel("schedBar", "Jadwal Bar")}{sel("schedDapur", "Jadwal Dapur")}{sel("schedGudang", "Jadwal Gudang")}</div>
+          <div style={{ marginTop: 8 }}>{tog("mgrNeedsOwner", "Aturan yang diubah Manager perlu persetujuan Owner")}{tog("lockHigh", "Kunci isi kemasan bahan penting (★) untuk Supervisor")}</div></div>
+      </div></div>
+      <div className="panel"><div className="ph"><span className="lab">Riwayat perubahan</span><span className="meta">Aplikasi Manager ⇄ Admin</span></div>
+        <div className="tw2"><table><thead><tr><th>Waktu</th><th>Oleh</th><th>Dari</th><th>Perubahan</th><th>Sebelum → sesudah</th></tr></thead>
+          <tbody>{log.map((l) => <tr key={l.id}><td className="mono">{formatDate(l.at)}</td><td>{l.actor_name ?? "—"}</td><td><span className={`tg ${l.source_app === "Admin" ? "o" : ""}`}>{l.source_app}</span></td><td>{l.what}</td><td className="mono">{l.from_value} → {l.to_value}</td></tr>)}</tbody></table>
+          {log.length === 0 && <Empty>BELUM ADA PERUBAHAN</Empty>}</div></div>
+      <div className="meta">Isi kemasan per bahan dan bahan penting ★ dikelola Manager/Supervisor di aplikasi Manager (tabel Stok &amp; Opname), dan tersimpan di Inventaris Admin.</div>
+    </div>
+  );
+}
+
+const FMT_DEFAULTS: Record<string, unknown> = { header: "💸 Pengeluaran Tercatat!", footer: "", showNo: true, showPay: true, showIcons: true, showConf: false };
+
+function FormatPanel({ call }: { call: <T,>(path: string, method?: string, body?: unknown) => Promise<T> }) {
+  const [fmt, setFmt] = useState<Record<string, unknown> | null>(null);
+  const [orig, setOrig] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const load = useCallback(async () => {
+    try { const o = await call<{ settings: SettingRow[] }>("/api/admin-manager/overview"); const v = { ...FMT_DEFAULTS, ...(o.settings.find((x) => x.key === "expense_format")?.value ?? {}) }; setFmt(v); setOrig(JSON.stringify(v)); setError(""); }
+    catch (e) { setError(errorMessage(e)); }
+  }, [call]);
+  useEffect(() => { void load(); }, [load]);
+  if (error) return <div className="panel"><Err message={error} onRetry={() => void load()} /></div>;
+  if (!fmt) return <div className="panel"><Empty>MEMUAT…</Empty></div>;
+  const changed = JSON.stringify(fmt) !== orig;
+  const tog = (k: string, label: string, hint: string) => <div className="mr" style={{ padding: "9px 0" }}><span><b style={{ fontWeight: 550 }}>{label}</b><br /><span className="meta">{hint}</span></span><button className={`cb ${fmt[k] ? "on" : ""}`} onClick={() => setFmt({ ...fmt, [k]: !fmt[k] })}>{fmt[k] ? "✓" : ""}</button></div>;
+  const publish = async () => {
+    setSaving(true);
+    try { await call("/api/admin-manager/settings/expense_format", "PUT", { value: fmt }); setOrig(JSON.stringify(fmt)); toast.success("Diterbitkan · aplikasi Manager dan bot Telegram memakai format ini"); }
+    catch (e) { toast.error(`Gagal: ${(e as Error).message}`); } finally { setSaving(false); }
+  };
+  const lines = [String(fmt.header || ""), "", "🏪 UD Segar Jaya", "💰 Total: Rp432.000", ...(fmt.showPay ? ["💳 Tunai"] : []), "", `${fmt.showNo ? "1." : "•"} ${fmt.showIcons ? "☕ " : ""}Susu UHT — 2 karton · Rp432.000`, ...(fmt.footer ? ["", String(fmt.footer)] : [])];
+  return (
+    <div className="work" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1.1fr)" }}>
+      <div className="col"><div className="panel">
+        <div className="ph"><span className="lab">Format & sinkron bot</span><span className="meta">satu templat untuk aplikasi dan Telegram</span></div>
+        <div className="pad">
+          <label style={{ marginTop: 0 }}>Judul pesan</label><input className="f" value={String(fmt.header ?? "")} onChange={(e) => setFmt({ ...fmt, header: e.target.value })} />
+          <label>Catatan kaki</label><input className="f" value={String(fmt.footer ?? "")} onChange={(e) => setFmt({ ...fmt, footer: e.target.value })} />
+          {tog("showNo", "Nomor item", "1. 2. 3. di daftar item")}{tog("showPay", "Metode pembayaran", "Tampilkan Tunai / QRIS / Transfer")}{tog("showIcons", "Ikon kategori", "Emoji kategori di tiap item")}{tog("showConf", "Tingkat keyakinan AI", "Tampilkan bila bot kurang yakin")}
+          <div className="crow" style={{ marginTop: 14 }}><button className="btn r" disabled={!changed || saving} onClick={() => void publish()}>{saving ? "Menerbitkan…" : changed ? "Terbitkan perubahan" : "Sudah terbit"}</button>{changed && <button className="btn" onClick={() => setFmt(JSON.parse(orig))}>Batalkan</button>}</div>
+        </div>
+      </div></div>
+      <div className="col"><div className="tgp">
+        <div className="tgh"><div className="tgav">Y</div><div><b>Yumi Finance</b><small>pratinjau pesan di Telegram</small></div></div>
+        <div className="tgc"><div className="tgbub">{lines.join("\n")}</div></div>
+      </div></div>
     </div>
   );
 }
