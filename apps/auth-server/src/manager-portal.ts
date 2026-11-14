@@ -230,14 +230,7 @@ export function registerManagerPortalRoutes(app: Hono, auth: Auth, pool: Pool) {
     if (!["approve", "reject", "revoke"].includes(decision)) return json({ success: false, error: "DECISION_INVALID" }, 400);
     const role = text(b.role, 20);
     if (decision === "approve" && !ROLES.includes(role as Role)) return json({ success: false, error: "ROLE_REQUIRED" }, 400);
-    // One manager and one supervisor at a time: approving replaces nothing silently.
-    if (decision === "approve") {
-      const taken = await pool.query(
-        `SELECT 1 FROM public.mgr_memberships WHERE status = 'approved' AND role = $1 AND user_id <> $2`,
-        [role, c.req.param("userId")],
-      );
-      if (taken.rows[0]) return json({ success: false, error: "ROLE_TAKEN" }, 409);
-    }
+    // Any number of Managers and Supervisors may be active; tasks/reports are shared per role.
     const status = decision === "approve" ? "approved" : decision === "reject" ? "rejected" : "revoked";
     const r = await pool.query(
       `UPDATE public.mgr_memberships SET status = $1, role = CASE WHEN $1 = 'approved' THEN $2 ELSE role END,

@@ -161,7 +161,7 @@ function AccessPanel({ members, loading, error, busy, onDecide, onRetry }: { mem
         <div><b>{loading ? "—" : rest.length}</b><div className="kl">Ditolak / dicabut</div></div>
       </div>
       <div className="panel">
-        <div className="ph"><span className="lab">Persetujuan akun</span><span className="meta">Satu akun aktif per peran · berlaku langsung di aplikasi Manager</span></div>
+        <div className="ph"><span className="lab">Persetujuan akun</span><span className="meta">Banyak Manager dan Supervisor boleh aktif · berlaku langsung di aplikasi Manager</span></div>
         {loading ? <Empty>MEMUAT…</Empty> : error ? <Err message={error} onRetry={onRetry} /> : members.length === 0 ? <Empty>BELUM ADA PERMINTAAN AKSES</Empty> : <>{pending.map(row)}{active.map(row)}{rest.map(row)}</>}
       </div>
     </>
