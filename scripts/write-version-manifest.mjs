@@ -9,7 +9,7 @@ const metadata = getBuildMetadata(rootDir);
 
 // A package build runs with that app as cwd. Only update the current app so
 // one app's deploy cannot publish a newer manifest for every other app.
-const allApps = ["apps/admin", "apps/pos", "apps/customer", "apps/karyawan", "apps/ordermieyamin", "apps/booking", "apps/linkbio", "apps/merchandise", "apps/b2b", "apps/kolmarketing", "apps/manager"];
+const allApps = ["apps/admin", "apps/pos", "apps/customer", "apps/karyawan", "apps/ordermieyamin", "apps/booking", "apps/linkbio", "apps/merchandise", "apps/b2b", "apps/kolmarketing", "apps/manager", "apps/djiwapay"];
 const cwdRelative = resolve(process.cwd()).startsWith(`${rootDir}/apps/`) ? resolve(process.cwd()).slice(rootDir.length + 1) : "";
 const apps = cwdRelative && allApps.includes(cwdRelative) ? [cwdRelative] : allApps;
 

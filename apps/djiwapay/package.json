@@ -6,7 +6,7 @@
   "scripts": {
     "prebuild": "node ../../scripts/verify-checkout-standard.mjs",
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "node ../../scripts/write-version-manifest.mjs && vite build",
     "serve": "vite preview",
     "check-types": "tsc --noEmit"
   },
