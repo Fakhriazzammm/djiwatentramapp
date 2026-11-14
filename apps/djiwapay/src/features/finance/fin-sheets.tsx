@@ -7,7 +7,7 @@ import { streak } from "../../lib/finance/calc";
 import { rupiah, formatDateTime } from "../../lib/djiwa-pay-format";
 import type { Account, AccountType, Budget, Category, Debt, Entry, FinanceState, Goal } from "../../lib/finance/types";
 import type { Finance } from "../../lib/finance/use-finance";
-import { ReceiptAttachment } from "./fin-receipt";
+import { ReceiptAttachment, ReceiptFlow } from "./fin-receipt";
 
 export type Notify = (text: string, undo?: () => void) => void;
 export const catOf = (state: FinanceState, id: string): Category => state.categories.find((c) => c.id === id) ?? { id, name: id, icon: "tag", tone: "slate", income: false };
@@ -68,7 +68,7 @@ const speechCtor = (): (new () => SpeechRecognitionLike) | null => { const w = w
 
 const atDaysAgo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); if (n > 0) d.setHours(12, 0, 0, 0); return d.toISOString(); };
 
-export function CatatSheet({ fin, notify, onClose, onManual, onPay, onScan, balances }: { fin: Finance; notify: Notify; onClose: () => void; onManual: (kind: "out" | "in") => void; onPay: () => void; onScan: () => void; balances: Record<string, number> }) {
+export function CatatSheet({ fin, notify, onClose, onManual, onPay, balances }: { fin: Finance; notify: Notify; onClose: () => void; onManual: (kind: "out" | "in") => void; onPay: () => void; balances: Record<string, number> }) {
   const { state, dispatch } = fin;
   const [text, setText] = useState("");
   const [items, setItems] = useState<(ParsedItem & { key: string })[] | null>(null);
@@ -76,6 +76,9 @@ export function CatatSheet({ fin, notify, onClose, onManual, onPay, onScan, bala
   const [pick, setPick] = useState<{ key: string; kind: "cat" | "acc" } | null>(null);
   const [accountId, setAccountId] = useState(() => state.accounts.find((a) => !a.archived)?.id ?? "tunai");
   const rec = useRef<SpeechRecognitionLike | null>(null);
+  const [scanFile, setScanFile] = useState<File | null>(null);
+  const camera = useRef<HTMLInputElement>(null), gallery = useRef<HTMLInputElement>(null);
+  const choose = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) setScanFile(f); };
   const supported = typeof window !== "undefined" && speechCtor() !== null;
   useEffect(() => () => rec.current?.stop(), []);
   const listen = () => {
@@ -101,6 +104,7 @@ export function CatatSheet({ fin, notify, onClose, onManual, onPay, onScan, bala
     onClose();
     notify(`${entries.length} catatan tersimpan`, () => entries.forEach((e) => dispatch({ type: "entry/delete", id: e.id })));
   };
+  if (scanFile) return <ReceiptFlow key={scanFile.name + scanFile.size + scanFile.lastModified} file={scanFile} fin={fin} notify={notify} balances={balances} onClose={onClose} onRetry={() => setScanFile(null)} />;
   if (pick && items) {
     const item = items.find((i) => i.key === pick.key)!;
     return pick.kind === "cat"
@@ -133,8 +137,10 @@ export function CatatSheet({ fin, notify, onClose, onManual, onPay, onScan, bala
       <Btn type="button" className="dpx-btn" style={{ margin: 0, flex: 1 }} onClick={listen} aria-pressed={listening}><Ic n="mic" size="sm" /> {listening ? "Mendengarkan… ketuk selesai" : supported ? "Bicara" : "Bicara (tidak didukung)"}</Btn>
       <Btn type="button" className={`dpx-btn dpx-soft ${text.trim() ? "" : "dpx-off"}`} style={{ margin: 0, width: 96, padding: 0 }} onClick={submit} disabled={!text.trim()}><Ic n="up" size="sm" /> Kirim</Btn>
     </div>
-    <Btn type="button" className="dpx-scancta" onClick={onScan}><span className="dpx-scan-ico"><I3 name="order-receipt" px={36} /></span><span className="dpx-scan-tx"><b>Scan atau unggah struk</b><span className="dpx-scan-sub">Foto struk, item terisi otomatis</span></span><span className="dpx-scan-go"><Ic n="chev" size="sm" /></span></Btn>
+    <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={choose} /><input ref={gallery} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={choose} />
     <div className="dpx-tile3 dpx-mt" style={{ gridTemplateColumns: "repeat(2,1fr)", gap: 8 }}>
+      <Btn type="button" className="dpx-tile dpx-t-scan" style={{ minHeight: 84 }} onClick={() => camera.current?.click()}><Ic n="scan" size="lg" /><span style={{ fontSize: 13 }}>Foto struk</span></Btn>
+      <Btn type="button" className="dpx-tile dpx-t-sky" style={{ minHeight: 84 }} onClick={() => gallery.current?.click()}><Ic n="receipt" size="lg" /><span style={{ fontSize: 13 }}>Unggah struk</span></Btn>
       <Btn type="button" className="dpx-tile dpx-t-mint" style={{ minHeight: 84 }} onClick={() => onManual("out")}><Ic n="edit" size="lg" /><span style={{ fontSize: 13 }}>Catat manual</span></Btn>
       <Btn type="button" className="dpx-tile dpx-t-lav" style={{ minHeight: 84 }} onClick={() => onManual("in")}><Ic n="down" size="lg" /><span style={{ fontSize: 13 }}>Pemasukan</span></Btn>
     </div>

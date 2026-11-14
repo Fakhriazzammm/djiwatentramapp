@@ -222,16 +222,6 @@
 .dpx-textarea:focus{background:#fff;box-shadow:0 0 0 2px var(--blue)!important}
 .dpx-bigamt{max-width:100%;padding:0 6px}.dpx-bigamt input{flex:1 1 auto;min-width:0;width:auto;text-align:left}
 
-/* ---------- scan struk CTA ---------- */
-.dpx-scancta{position:relative;display:flex;align-items:center;gap:14px;width:100%;margin-top:14px;padding:16px 16px 16px 14px;border-radius:28px;text-align:left;color:#fff;background:linear-gradient(135deg,#0f2347 0%,#1a4aa0 100%);box-shadow:0 12px 28px rgba(15,35,71,.22);overflow:hidden}
-.dpx-scancta::after{content:"";position:absolute;right:-30px;top:-40px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.08);pointer-events:none}
-.dpx-scancta .dpx-scan-ico{width:52px;height:52px;border-radius:18px;background:#fff;display:grid;place-items:center;flex:none}
-.dpx-scancta .dpx-scan-ico img{width:36px;height:36px;object-fit:contain}
-.dpx-scancta .dpx-scan-tx{flex:1;min-width:0}.dpx-scancta b{display:block;font:700 16px/1.25 var(--font);letter-spacing:-.01em}.dpx-scancta span.dpx-scan-sub{display:block;margin-top:2px;font-size:13px;line-height:1.35;color:rgba(255,255,255,.78)}
-.dpx-scancta .dpx-scan-go{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.16);display:grid;place-items:center;flex:none;position:relative;z-index:1}
-.dpx-scancta:active{transform:scale(.985)}
-.dpx-scanpick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
-.dpx-scanpick button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:132px;padding:16px 10px;border-radius:26px;text-align:center;font:600 15px/1.3 var(--font);color:var(--navy)}
-.dpx-scanpick button small{display:block;margin-top:2px;font:400 12.5px/1.35 var(--font);color:var(--mute)}
-.dpx-scanpick .dpx-sp-ico{width:52px;height:52px;border-radius:18px;display:grid;place-items:center;background:#fff;box-shadow:0 2px 8px rgba(15,35,71,.08)}
-.dpx-scanpick .dpx-sp-a{background:var(--blue-soft)}.dpx-scanpick .dpx-sp-b{background:#eceafc}
+/* ---------- scan struk (Catat sheet) ---------- */
+.dpx-t-scan{background:linear-gradient(135deg,#0f2347 0%,#1a4aa0 100%);color:#fff;box-shadow:0 10px 24px rgba(15,35,71,.2)}
+.dpx-t-scan svg{color:#fff}

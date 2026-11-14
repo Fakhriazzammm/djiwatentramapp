@@ -2,7 +2,6 @@ import { useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AnimatedNumber, Bar, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
 import type { Nav } from "../shell/dpx-pages";
-import { ReceiptSheet } from "./fin-receipt";
 import { AccountEditSheet, AccountSheet, BudgetSheet, CatIcon, CategoryEditSheet, CategorySheet, DebtSheet, EntrySheet, GoalDetailSheet, GoalSheet, CatatSheet, SplitSheet, StreakSheet, MoneyInput, accName, catOf, type Notify } from "./fin-sheets";
 import { accountBalance, budgetStatuses, buildInsights, dailySpend, daysIn, debtTotals, detectSubscriptions, goalProjection, goalSaved, inMonth, monthlySeries, safeToSpend, spendByCategory, streak, toCsv, totals, uid } from "../../lib/finance/calc";
 import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
@@ -15,7 +14,7 @@ import type { CustomerProfile } from "../../lib/identity-adapter";
 import type { WalletTransaction } from "../../lib/wallet-adapter";
 
 export type FinSheet =
-  | { k: "catat" } | { k: "scan" } | { k: "entry"; id: string } | { k: "budget"; cid?: string } | { k: "goal"; id?: string } | { k: "goal-detail"; id: string }
+  | { k: "catat" } | { k: "entry"; id: string } | { k: "budget"; cid?: string } | { k: "goal"; id?: string } | { k: "goal-detail"; id: string }
   | { k: "debt"; id?: string } | { k: "split" } | { k: "streak" } | { k: "account"; id?: string } | { k: "category"; id?: string } | { k: "pay-category"; id: string };
 
 export type FinCtx = {
@@ -347,8 +346,7 @@ export function FinSheetHost({ ctx, sheet, close, goManual, openPaySheet }: { ct
   const suggested = useMemo(() => { const now = new Date(); const out: Record<string, number> = {}; for (let i = 1; i <= 3; i++) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); for (const [id, v] of spendByCategory(entries.filter((e) => inMonth(e, d.getFullYear(), d.getMonth())))) out[id] = (out[id] ?? 0) + v / 3; } for (const k of Object.keys(out)) out[k] = Math.round(out[k] / 1000) * 1000; return out; }, [entries]);
   if (!sheet) return null;
   switch (sheet.k) {
-    case "catat": return <CatatSheet key="catat" fin={fin} notify={notify} balances={balances} onClose={close} onManual={(k) => { close(); goManual(k); }} onPay={() => { close(); openPaySheet(); }} onScan={() => ctx.open({ k: "scan" })} />;
-    case "scan": return <ReceiptSheet key="scan" fin={fin} notify={notify} balances={balances} onClose={close} />;
+    case "catat": return <CatatSheet key="catat" fin={fin} notify={notify} balances={balances} onClose={close} onManual={(k) => { close(); goManual(k); }} onPay={() => { close(); openPaySheet(); }} />;
     case "entry": { const e = entries.find((x) => x.id === sheet.id); if (!e) return null; return <EntrySheet key="entry" entry={e} fin={fin} notify={notify} onClose={close} onEdit={() => { close(); goManual(e.kind, e.id); }} onPickCategory={() => ctx.open({ k: "pay-category", id: e.id })} />; }
     case "pay-category": { const e = entries.find((x) => x.id === sheet.id); if (!e) return null; return <CategorySheet key="paycat" categories={state.categories} income={e.kind === "in"} value={e.categoryId} onPick={(id) => { fin.dispatch({ type: "override/set", id: e.id, override: { categoryId: id } }); notify("Kategori diubah"); }} onClose={close} />; }
     case "budget": return <BudgetSheet key="budget" fin={fin} categoryId={sheet.cid} suggested={suggested} notify={notify} onClose={close} />;
