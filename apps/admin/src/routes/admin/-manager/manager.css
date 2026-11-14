@@ -502,13 +502,13 @@
 .manager-owner textarea {
   box-shadow: none;
 }
-body:has(.manager-owner) [data-admin-shell] > main {
+body:has(.mgr-proto) [data-admin-shell] > main {
   background: #f4f4f6;
 }
-body:has(.manager-owner) [data-admin-shell] > main > div {
+body:has(.mgr-proto) [data-admin-shell] > main > div {
   padding: 0 16px 12px;
 }
-body:has(.manager-owner) [data-admin-shell] > main > footer {
+body:has(.mgr-proto) [data-admin-shell] > main > footer {
   display: none;
 }
 @media (min-width: 1500px) {
@@ -597,7 +597,7 @@ body:has(.manager-owner) [data-admin-shell] > main > footer {
   .manager-task-scroll {
     max-height: none;
   }
-  body:has(.manager-owner) [data-admin-shell] > main > div {
+  body:has(.mgr-proto) [data-admin-shell] > main > div {
     padding: 0 10px 80px;
   }
 }
@@ -693,10 +693,10 @@ body:has(.manager-owner) [data-admin-shell] > main > footer {
 .manager-reading section > section {
   margin-left: 12px;
 }
-body:has(.manager-owner) [data-admin-shell] > aside > nav {
+body:has(.mgr-proto) [data-admin-shell] > aside > nav {
   display: none;
 }
-body:has(.manager-owner) #manager-owner-navigation {
+body:has(.mgr-proto) #manager-owner-navigation {
   flex: 1;
   overflow-y: auto;
   padding: 0 10px 14px;
@@ -731,11 +731,11 @@ body:has(.manager-owner) #manager-owner-navigation {
   background: #efeff2;
   color: #111114;
 }
-body:has(.manager-owner) aside.w-16 .manager-rail span {
+body:has(.mgr-proto) aside.w-16 .manager-rail span {
   display: none;
 }
-body:has(.manager-owner) aside.w-16 .manager-rail a,
-body:has(.manager-owner) aside.w-16 .manager-rail button {
+body:has(.mgr-proto) aside.w-16 .manager-rail a,
+body:has(.mgr-proto) aside.w-16 .manager-rail button {
   justify-content: center;
   width: 40px;
   padding: 0;
