@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 export const domains = {
   admin: "admin.djiwatentram.web.id", customer: "djiwatentram.web.id",
   pos: "pos.djiwatentram.web.id", karyawan: "karyawan.djiwatentram.web.id", djiwapay: "djiwapay.web.id",
+  manager: "manager.djiwatentram.web.id",
 };
 export function publishArtifact(root, app, source) {
   if (!Object.hasOwn(domains, app)) throw new Error("Unknown app");

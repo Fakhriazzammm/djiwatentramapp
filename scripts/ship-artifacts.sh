@@ -15,7 +15,7 @@ HOST="${DJIWA_DEPLOY_HOST:-vps-djiwa-tentram}"
 INBOX="${DJIWA_INBOX:-/var/lib/djiwa-autodeploy/incoming}"
 ENV_DIR="${DJIWA_BUILD_ENV_DIR:-$HOME/.djiwa-build}"
 BRANCH="${DJIWA_BRANCH:-main}"
-ALL=(admin customer pos karyawan djiwapay)
+ALL=(admin customer pos karyawan djiwapay manager)
 APPS=("$@"); [ ${#APPS[@]} -gt 0 ] || APPS=("${ALL[@]}")
 
 [ ! -f /opt/supabase-selfhost/docker-compose.yml ] || { echo "ERROR: jangan build di VPS production" >&2; exit 2; }

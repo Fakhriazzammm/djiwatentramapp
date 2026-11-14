@@ -1,6 +1,7 @@
-import type { Context, Hono } from "hono";
+import type { Hono } from "hono";
 import type { Pool } from "pg";
 import { auth as defaultAuth } from "./auth.js";
+import { createGuards, json, text, ROLES, type Role } from "./manager-guards.js";
 
 /**
  * manager.djiwatentram.web.id — Manager & Supervisor/Purchasing.
@@ -8,9 +9,6 @@ import { auth as defaultAuth } from "./auth.js";
  * Owner/admin endpoints (/api/admin-manager/*) authenticate with the existing Yumi staff session.
  */
 type Auth = typeof defaultAuth;
-type Role = "manager" | "supervisor";
-const ROLES: Role[] = ["manager", "supervisor"];
-const ADMIN_ROLES = new Set(["admin", "administrator", "owner", "superadmin", "super admin"]);
 const KINDS = ["general", "purchasing", "ops", "people", "finance"];
 const PRIORITIES = ["low", "normal", "high"];
 const ATTACH_TYPES = ["link", "file", "photo", "video"];
@@ -23,14 +21,6 @@ export const managerOrigins = [
   "http://localhost:5174",
 ];
 
-function json(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-  });
-}
-const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
-
 function cleanAttachments(input: unknown) {
   if (!Array.isArray(input)) return [];
   return input.slice(0, 10).flatMap((a) => {
@@ -42,37 +32,7 @@ function cleanAttachments(input: unknown) {
 }
 
 export function registerManagerPortalRoutes(app: Hono, auth: Auth, pool: Pool) {
-  async function member(c: Context) {
-    const session = await auth.api.getSession({ headers: c.req.raw.headers });
-    if (!session?.user?.id) return { res: json({ success: false, error: "UNAUTHORIZED" }, 401) } as const;
-    const r = await pool.query(
-      `SELECT status, role, requested_role FROM public.mgr_memberships WHERE user_id = $1`,
-      [session.user.id],
-    );
-    const m = r.rows[0];
-    if (!m || m.status !== "approved" || !ROLES.includes(m.role)) {
-      return { res: json({ success: false, error: "FORBIDDEN" }, 403) } as const;
-    }
-    return { userId: session.user.id as string, name: (session.user.name as string) || "", role: m.role as Role } as const;
-  }
-
-  async function owner(c: Context) {
-    const header = c.req.header("authorization") ?? "";
-    const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-    if (!token.startsWith("ys_")) return { res: json({ success: false, error: "UNAUTHORIZED" }, 401) } as const;
-    const r = await pool.query(
-      `SELECT u.source_id, u.name, lower(btrim(ro.name)) AS role_name
-         FROM public.yumi_sessions s
-         JOIN public.yumi_users u ON u.source_id = s.user_source_id AND u.is_active
-         JOIN public.yumi_roles ro ON ro.source_id = u.role_source_id
-        WHERE s.token = $1 AND s.expires_at > now()`,
-      [token],
-    );
-    const row = r.rows[0];
-    if (!row || !ADMIN_ROLES.has(row.role_name)) return { res: json({ success: false, error: "FORBIDDEN" }, 403) } as const;
-    return { userId: `yumi:${row.source_id}` as string, name: row.name as string };
-  }
-
+  const { member, owner } = createGuards(auth, pool);
   // ---------- access / onboarding ----------
   app.get("/api/manager/access", async (c) => {
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
@@ -328,4 +288,56 @@ export function registerManagerPortalRoutes(app: Hono, auth: Auth, pool: Pool) {
     if (!r.rows[0]) return json({ success: false, error: "NOT_FOUND" }, 404);
     return json({ success: true, report: r.rows[0] });
   });
+
+  // ---------- documents (templates) ----------
+  app.get("/api/manager/documents", async (c) => {
+    const m = await member(c);
+    if ("res" in m) return m.res;
+    const r = await pool.query(
+      `SELECT slug, position, category, title, body, updated_at FROM public.mgr_documents
+        WHERE $1 = ANY (roles) ORDER BY position`,
+      [m.role],
+    );
+    return json({ success: true, documents: r.rows });
+  });
+
+  // ---------- owner edits Playbook / documents without redeploy ----------
+  for (const [kind, table] of [["playbook", "mgr_playbook_chapters"], ["documents", "mgr_documents"]] as const) {
+    app.get(`/api/admin-manager/${kind}`, async (c) => {
+      const o = await owner(c);
+      if ("res" in o) return o.res;
+      const r = await pool.query(`SELECT * FROM public.${table} ORDER BY position`);
+      return json({ success: true, items: r.rows });
+    });
+    app.put(`/api/admin-manager/${kind}/:slug`, async (c) => {
+      const o = await owner(c);
+      if ("res" in o) return o.res;
+      const b = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+      const title = text(b.title, 200);
+      if (!title || !b.body || typeof b.body !== "object") return json({ success: false, error: "TITLE_BODY_REQUIRED" }, 400);
+      const roles = Array.isArray(b.roles) ? (b.roles as unknown[]).filter((x): x is Role => ROLES.includes(x as Role)) : ROLES;
+      if (JSON.stringify(b.body).length > 200_000) return json({ success: false, error: "TOO_LARGE" }, 413);
+      const slug = c.req.param("slug").replace(/[^a-z0-9-]/gi, "").slice(0, 80);
+      if (!slug) return json({ success: false, error: "SLUG_INVALID" }, 400);
+      const extra = kind === "documents" ? text(b.category, 60) || "Lainnya" : null;
+      const r = kind === "documents"
+        ? await pool.query(
+            `INSERT INTO public.mgr_documents (slug, position, category, title, roles, body, updated_by)
+             VALUES ($1, COALESCE($2,0), $3, $4, $5, $6::jsonb, $7)
+             ON CONFLICT (slug) DO UPDATE SET position = COALESCE($2, public.mgr_documents.position), category = EXCLUDED.category,
+               title = EXCLUDED.title, roles = EXCLUDED.roles, body = EXCLUDED.body, updated_by = EXCLUDED.updated_by, updated_at = now()
+             RETURNING *`,
+            [slug, Number.isInteger(b.position) ? b.position : null, extra, title, roles, JSON.stringify(b.body), o.userId],
+          )
+        : await pool.query(
+            `INSERT INTO public.mgr_playbook_chapters (slug, position, title, roles, body, updated_by)
+             VALUES ($1, COALESCE($2,0), $3, $4, $5::jsonb, $6)
+             ON CONFLICT (slug) DO UPDATE SET position = COALESCE($2, public.mgr_playbook_chapters.position),
+               title = EXCLUDED.title, roles = EXCLUDED.roles, body = EXCLUDED.body, updated_by = EXCLUDED.updated_by, updated_at = now()
+             RETURNING *`,
+            [slug, Number.isInteger(b.position) ? b.position : null, title, roles, JSON.stringify(b.body), o.userId],
+          );
+      return json({ success: true, item: r.rows[0] });
+    });
+  }
 }

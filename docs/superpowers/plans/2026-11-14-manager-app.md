@@ -18,16 +18,25 @@ Panel untuk **Manager** dan **Supervisor/Purchasing**; Owner bekerja di `apps/ad
 ## Fase
 | Fase | Isi | Status |
 |---|---|---|
-| 1 | Migrasi fondasi `mgr_*` (akses, tugas, komentar, laporan); route auth-server; scaffold apps/manager (login Google, pilih peran, menunggu persetujuan, Tugas, Laporan, Playbook dasar); persetujuan akun di apps/admin | dikerjakan sekarang |
-| 2 | Seed Playbook/Dokumen dari prototipe + editor Owner di admin; unggah lampiran (Storage) | berikut |
-| 3 | AI harian `manager-daily-plan` (Helipod `qwen3.7-flash`, validasi server) + pemicu event realtime | berikut |
-| 4 | Pengeluaran + OCR struk bersama (app + bot, migrasi draf lokal bot ke DB), kategori/templat | berikut |
-| 5 | Stok & Opname (konversi satuan, kebijakan, log), integrasi stok pos | berikut |
-| 6 | Tim & Gaji (aturan, penyesuaian, slip → karyawan), Keuangan/analitik | berikut |
-| 7 | Deploy: `ship-artifacts.sh manager`, vhost nginx, env build, auth-server redeploy | berikut |
+| 1 | Migrasi fondasi `mgr_*` (akses, tugas, komentar, laporan); route auth-server; scaffold apps/manager (login Google, pilih peran, menunggu persetujuan, Tugas, Laporan, Playbook dasar); persetujuan akun di apps/admin | selesai |
+| 2 | Seed Playbook/Dokumen dari prototipe + editor Owner di admin; unggah lampiran (Storage) | selesai |
+| 3 | AI harian `manager-daily-plan` (Helipod `qwen3.7-flash`, validasi server) + pemicu event realtime | selesai |
+| 4 | Pengeluaran + OCR struk bersama (app + bot, migrasi draf lokal bot ke DB), kategori/templat | selesai |
+| 5 | Stok & Opname (konversi satuan, kebijakan, log), integrasi stok pos | selesai |
+| 6 | Tim & Gaji (aturan, penyesuaian, slip → karyawan), Keuangan/analitik | selesai |
+| 7 | Deploy: `ship-artifacts.sh manager`, vhost nginx, env build, auth-server redeploy | dikerjakan sekarang |
+
+Catatan implementasi: migrasi `20261114100000_manager_foundation.sql`, `20261114110000_manager_playbook_seed.sql`, dan `20261114120000_manager_expense_settings.sql` sudah diterapkan ke database production (15 bab, 19 dokumen, 13 kategori, 5 pengaturan). Lihat bagian "Verifikasi" di bawah.
 
 ## Keputusan terbuka (default dipakai sampai dijawab)
 Periode gaji (bulanan vs 2-mingguan; trigger dan `generate-payroll` belum sejalan); opname Final membuat jurnal?; perubahan aturan Manager perlu persetujuan Owner?; slip perlu persetujuan Owner?; ambang pengeluaran (Rp1.000.000 / Rp100.000); toleransi opname; uji kualitas OCR dengan 20–30 struk asli sebelum mengunci model.
 
 ## Risiko
 Migrasi produksi hanya aditif (tabel baru). Fase 1 tidak mengubah payroll/order/stok. Deploy butuh `~/.djiwa-build/manager.env`, entri `manager` di `ship-artifacts.sh` dan vhost baru di VPS.
+
+## Verifikasi
+- Migrasi (aditif) diterapkan ke PostgreSQL production di VPS `vps-djiwa-tentram` lewat `psql` di container `supabase-db`, masing-masing dalam satu transaksi dengan `ON_ERROR_STOP=1`. Backup pra-migrasi (`pg_dump -Fc`) disimpan di build machine (`~/.djiwa-build/backups/`), bukan di VPS yang disknya penuh.
+- Objek terverifikasi: 10 tabel `mgr_*`, 15 bab Playbook, 19 dokumen, 13 kategori pengeluaran, 5 pengaturan awal, bucket `manager-uploads`.
+- Query dan tipe parameter yang dipakai modul (dashboard, pengeluaran, laporan, stok, payroll, fungsi admin) diuji langsung terhadap skema production.
+- `apps/manager` lolos `check-types` dan `vite build`; `apps/auth-server` tidak menambah error TypeScript baru.
+- Yang belum bisa dibuktikan dari build/HTTP 200: login Google end-to-end, OCR struk dengan kunci Helipod asli, dan penerimaan artifact oleh timer VPS. Catat hasil uji manual setelah deploy.

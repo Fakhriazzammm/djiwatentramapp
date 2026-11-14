@@ -26,6 +26,8 @@
     "build:web": "node scripts/generate-pwa-manifest.mjs && turbo build --filter=web",
     "build:admin": "node scripts/generate-pwa-manifest.mjs && turbo build --filter=@yumipos/admin",
     "build:djiwapay": "turbo build --filter=@yumipos/djiwapay",
+    "build:manager": "turbo build --filter=@yumipos/manager",
+    "dev:manager": "turbo dev --filter=@yumipos/manager",
     "build:merchandise": "node scripts/update-version.mjs && node scripts/write-version-manifest.mjs && turbo build --filter=@yumipos/merchandise",
     "build:b2b": "node scripts/update-version.mjs && node scripts/write-version-manifest.mjs && turbo build --filter=@yumipos/b2b",
     "dev:pos": "turbo dev --filter=@yumipos/pos",

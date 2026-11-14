@@ -7,6 +7,8 @@ import { staffAuth } from "./staff-auth.js";
 import { registerKolPortalRoutes } from "./kol-portal.js";
 import { investorAuth, registerInvestorPortalRoutes } from "./investor-portal.js";
 import { managerOrigins, registerManagerPortalRoutes } from "./manager-portal.js";
+import { registerManagerModules } from "./manager-modules.js";
+import { startManagerAi } from "./manager-ai.js";
 import { buildCoffeePassportStickerPrompt, generateCoffeePassportPng, stickerModel, stickerPromptVersion } from "./coffee-passport-sticker.js";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -123,12 +125,14 @@ for (const path of ["/api/manager/*", "/api/admin-manager/*"]) {
     cors({
       origin: managerOrigins,
       allowHeaders: ["Content-Type", "Authorization"],
-      allowMethods: ["POST", "GET", "PATCH", "OPTIONS"],
+      allowMethods: ["POST", "GET", "PUT", "PATCH", "OPTIONS"],
       credentials: true,
     }),
   );
 }
 registerManagerPortalRoutes(app, auth, pool);
+registerManagerModules(app, auth, pool);
+startManagerAi(pool);
 
 // CORS — authenticated KOL profile/claim requests from kolmarketing.
 app.use(

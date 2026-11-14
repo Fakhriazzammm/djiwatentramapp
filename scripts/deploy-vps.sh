@@ -7,7 +7,7 @@ if [ "$SCRIPT_DIR" != /opt/djiwatentramapp ] || [ ! -f /opt/supabase-selfhost/do
   exit 1
 fi
 if [ "$#" != 2 ]; then
-  echo "Usage: $0 <pos|admin|customer|karyawan|djiwapay> <artifact-dir> (build in CI first)" >&2
+  echo "Usage: $0 <pos|admin|customer|karyawan|djiwapay|manager> <artifact-dir> (build in CI first)" >&2
   exit 1
 fi
 node "$SCRIPT_DIR/scripts/publish-artifact.mjs" "$1" "$2"
