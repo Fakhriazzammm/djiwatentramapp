@@ -6,6 +6,7 @@ import { auth, pool } from "./auth.js";
 import { staffAuth } from "./staff-auth.js";
 import { registerKolPortalRoutes } from "./kol-portal.js";
 import { investorAuth, registerInvestorPortalRoutes } from "./investor-portal.js";
+import { managerOrigins, registerManagerPortalRoutes } from "./manager-portal.js";
 import { buildCoffeePassportStickerPrompt, generateCoffeePassportPng, stickerModel, stickerPromptVersion } from "./coffee-passport-sticker.js";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -114,6 +115,20 @@ app.use(
   }),
 );
 registerInvestorPortalRoutes(app, investorAuth, pool);
+
+// Manager & Supervisor portal (Better Auth Google session + Owner-approved membership).
+for (const path of ["/api/manager/*", "/api/admin-manager/*"]) {
+  app.use(
+    path,
+    cors({
+      origin: managerOrigins,
+      allowHeaders: ["Content-Type", "Authorization"],
+      allowMethods: ["POST", "GET", "PATCH", "OPTIONS"],
+      credentials: true,
+    }),
+  );
+}
+registerManagerPortalRoutes(app, auth, pool);
 
 // CORS — authenticated KOL profile/claim requests from kolmarketing.
 app.use(

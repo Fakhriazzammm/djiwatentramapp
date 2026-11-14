@@ -134,6 +134,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/customer-service": "Layanan Customer",
 	"/admin/minigames": "Mini Games",
 	"/admin/jumat-berkah": "Jumat Berkah",
+	"/admin/manager": "Manager & Supervisor",
 	"/admin/customers": "Pelanggan",
 	"/admin/djiwa-app": "Dashboard",
 	"/admin/kol": "KOL Marketing · Dashboard",
@@ -185,6 +186,7 @@ const MORE_MENU_PATHS = [
 	"/admin/customer-service",
 	"/admin/minigames",
 	"/admin/jumat-berkah",
+	"/admin/manager",
 	"/admin/customers",
 	"/admin/djiwa-app",
 	"/admin/kol",
@@ -304,6 +306,7 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/discounts", icon: Percent, label: "Promosi", permission: "products:manage" },
 			{ to: "/admin/minigames", icon: Gamepad2, label: "Mini Games", permission: "products:manage" },
 			{ to: "/admin/jumat-berkah", icon: HeartHandshake, label: "Jumat Berkah", permission: "orders:view" },
+			{ to: "/admin/manager", icon: BookOpen, label: "Manager & Supervisor", permission: "users:manage" },
 		],
 	},
 	{
@@ -1151,6 +1154,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 					<DesktopNavLink icon={<Percent />} isCollapsed={isCollapsed} label="Promosi" to="/admin/discounts" permission="products:manage" />
 					<DesktopNavLink icon={<Gamepad2 />} isCollapsed={isCollapsed} label="Mini Games" to="/admin/minigames" permission="products:manage" />
 					<DesktopNavLink icon={<HeartHandshake />} isCollapsed={isCollapsed} label="Jumat Berkah" to="/admin/jumat-berkah" permission="orders:view" />
+					<DesktopNavLink icon={<BookOpen />} isCollapsed={isCollapsed} label="Manager & Supervisor" to="/admin/manager" permission="users:manage" />
 				</nav>
 
 				{/* Footer: User Profile + Pengaturan + Keluar */}

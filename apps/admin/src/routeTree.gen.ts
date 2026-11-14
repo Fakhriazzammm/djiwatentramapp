@@ -39,6 +39,7 @@ import { Route as AdminOperationalTeamRouteImport } from './routes/admin/operati
 import { Route as AdminOnboardingRouteImport } from './routes/admin/onboarding'
 import { Route as AdminNotificationsRouteImport } from './routes/admin/notifications'
 import { Route as AdminMinigamesRouteImport } from './routes/admin/minigames'
+import { Route as AdminManagerRouteImport } from './routes/admin/manager'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminKolReportsRouteImport } from './routes/admin/kol-reports'
 import { Route as AdminKolDataRouteImport } from './routes/admin/kol-data'
@@ -307,6 +308,11 @@ const AdminMinigamesRoute = AdminMinigamesRouteImport.update({
 } as any).lazy(() =>
   import('./routes/admin/minigames.lazy').then((d) => d.Route),
 )
+const AdminManagerRoute = AdminManagerRouteImport.update({
+  id: '/manager',
+  path: '/manager',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() => import('./routes/admin/manager.lazy').then((d) => d.Route))
 const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -998,6 +1004,7 @@ export interface FileRoutesByFullPath {
   '/admin/kol-data': typeof AdminKolDataRoute
   '/admin/kol-reports': typeof AdminKolReportsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/manager': typeof AdminManagerRoute
   '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
@@ -1110,6 +1117,7 @@ export interface FileRoutesByTo {
   '/admin/kol-data': typeof AdminKolDataRoute
   '/admin/kol-reports': typeof AdminKolReportsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/manager': typeof AdminManagerRoute
   '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
@@ -1218,6 +1226,7 @@ export interface FileRoutesById {
   '/admin/kol-data': typeof AdminKolDataRoute
   '/admin/kol-reports': typeof AdminKolReportsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/manager': typeof AdminManagerRoute
   '/admin/minigames': typeof AdminMinigamesRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/onboarding': typeof AdminOnboardingRoute
@@ -1337,6 +1346,7 @@ export interface FileRouteTypes {
     | '/admin/kol-data'
     | '/admin/kol-reports'
     | '/admin/login'
+    | '/admin/manager'
     | '/admin/minigames'
     | '/admin/notifications'
     | '/admin/onboarding'
@@ -1449,6 +1459,7 @@ export interface FileRouteTypes {
     | '/admin/kol-data'
     | '/admin/kol-reports'
     | '/admin/login'
+    | '/admin/manager'
     | '/admin/minigames'
     | '/admin/notifications'
     | '/admin/onboarding'
@@ -1556,6 +1567,7 @@ export interface FileRouteTypes {
     | '/admin/kol-data'
     | '/admin/kol-reports'
     | '/admin/login'
+    | '/admin/manager'
     | '/admin/minigames'
     | '/admin/notifications'
     | '/admin/onboarding'
@@ -1861,6 +1873,13 @@ declare module '@tanstack/react-router' {
       path: '/minigames'
       fullPath: '/admin/minigames'
       preLoaderRoute: typeof AdminMinigamesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/manager': {
+      id: '/admin/manager'
+      path: '/manager'
+      fullPath: '/admin/manager'
+      preLoaderRoute: typeof AdminManagerRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/login': {
@@ -2825,6 +2844,7 @@ interface AdminRouteRouteChildren {
   AdminKolDataRoute: typeof AdminKolDataRoute
   AdminKolReportsRoute: typeof AdminKolReportsRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminManagerRoute: typeof AdminManagerRoute
   AdminMinigamesRoute: typeof AdminMinigamesRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminOnboardingRoute: typeof AdminOnboardingRoute
@@ -2864,6 +2884,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminKolDataRoute: AdminKolDataRoute,
   AdminKolReportsRoute: AdminKolReportsRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminManagerRoute: AdminManagerRoute,
   AdminMinigamesRoute: AdminMinigamesRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
   AdminOnboardingRoute: AdminOnboardingRoute,

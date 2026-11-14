@@ -25,6 +25,7 @@ export const defaultCustomerTrustedOrigins = [
 	"https://pay.djiwatentram.web.id",
 	"https://djiwapay.web.id",
 	"https://admin.djiwatentram.web.id",
+	"https://manager.djiwatentram.web.id",
 	"https://pos.djiwatentram.web.id",
 	"https://b2b.djiwatentram.web.id",
 	"https://merchandise.djiwatentram.web.id",
@@ -44,6 +45,7 @@ export const defaultCustomerTrustedOrigins = [
 	"https://rekrutmen.yumme.id",
 	"http://localhost:5173",
 	"http://localhost:3010",
+	"http://localhost:3012",
 ];
 
 export function resolveCustomerTrustedOrigins() {
