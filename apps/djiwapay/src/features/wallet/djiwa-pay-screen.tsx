@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowDownLeft, ArrowUpRight, Bell, Car, CheckCheck, CreditCard, Droplets, Eye, EyeOff, Gamepad2, HeartPulse, HelpCircle, House, ReceiptText, RefreshCw, ScanLine, Smartphone, Tv, UserRound, Wallet, Wifi, X, Zap } from "lucide-react";
 import { checkPpobStatus, checkTopupStatus, checkPostpaidStatus, createPpobInvoice, inquirePostpaid, markAllWalletNotificationsRead, markWalletNotificationRead, payPostpaid, ppobProductName, purchasePpob, readPpobCatalog, readPostpaidCatalog, readWalletNotifications, type PpobProduct, type PpobPurchaseResult, type PostpaidInquiry, type PostpaidProduct, type WalletNotification, type WalletResponse, type WalletTransaction, transactionMethodLine } from "../../lib/wallet-adapter";
@@ -13,9 +13,9 @@ import { parseCheckoutDraft, serializeCheckoutDraft, type CheckoutDraft } from "
 import { checkoutCustomerNumberHint, parsePpobPath, parseWalletPath, postpaidServiceForCategory } from "../../lib/djiwa-pay-routes";
 import { djiwaPaySplashLabel, isDjiwaPayPageReady } from "../../lib/djiwa-pay-splash";
 import { DjiwaPayWalletAction } from "./djiwa-pay-wallet-actions";
-import { DjiwaPayHistory } from "./djiwa-pay-history";
-import { DjiwaPayHelp } from "./djiwa-pay-help";
-import { DjiwaPayPageHeader } from "./djiwa-pay-page-header";
+import { AccountPage, AllServicesSheet, CardSheet, ComingSoonSheet, HelpPage, HistoryTab, HomeTab, NotificationsPage, PaySheet, ServicesTab, SummaryPage, TabBar, WalletTab, type Nav } from "../shell/dpx-pages";
+import { Header, I3, Ic, Sky, serviceIcon, serviceTone } from "../shell/dpx-ui";
+import { detectOperator } from "../../lib/djiwa-pay-operator";
 import { walletQuickActionState } from "../../lib/djiwa-pay-availability";
 import { postpaidTotal, validatePostpaidCustomerNumber } from "../../lib/djiwa-pay-postpaid";
 
@@ -53,7 +53,9 @@ function PpobReceipt({ product, number, serialNumber, reference, onDone }: { pro
 export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefresh, onTopup, navigationContext, onNavigate, onPageReady, transitionId, previewOnly = false }: Props) {
   // Host apps (Djiwa Travel) already draw a bottom tab bar around the iframe.
   const [frame] = useState(readPayFrameContext);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(() => { try { return window.localStorage.getItem("djiwa-pay-balance-visible") !== "0"; } catch { return true; } });
+  const toggleVisible = () => setVisible((value) => { const next = !value; try { window.localStorage.setItem("djiwa-pay-balance-visible", next ? "1" : "0"); } catch { /* best effort */ } return next; });
+  const [shell, setShell] = useState<"pay" | "all" | "card" | "soon" | null>(null);
   const [amount, setAmount] = useState("50000");
   const [soon, setSoon] = useState<string | null>(null);
   const [topupOpen, setTopupOpen] = useState(false);
@@ -93,7 +95,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   const [draftRestored, setDraftRestored] = useState(false);
   const [activityFilter, setActivityFilter] = useState<"all" | "credit" | "debit" | "transfer">("all");
   const [walletNotifications, setWalletNotifications] = useState<WalletNotification[]>([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const [notificationsLoading, setNotificationsLoading] = useState(!previewOnly);
   const [notificationsBusy, setNotificationsBusy] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const recentNumbersKey = `djiwa-pay-recent-numbers:${profile.source_id}`;
@@ -417,7 +419,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
       ? <div className="djiwa-payment-notice is-info" role="status"><strong>QRIS dipilih otomatis</strong><small>Saldo Djiwa Pay belum mencukupi, jadi pembayaran dialihkan ke QRIS.</small></div>
       : null;
   if (Boolean(ppobSuccess)) return (
-    <main className="pay-page djiwa-checkout-page">
+    <main className="dpx dpx-checkout djiwa-checkout-page">
       <DjiwaPaySuccess
         productName={ppobSuccess!.product.product_description}
         operator={operatorName(ppobSuccess!.product)}
@@ -429,53 +431,36 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
       />
     </main>
   );
+  const ppobTitle = ppobFilter === "all" ? "Layanan digital" : ppobFilter === "bpjs" ? "BPJS" : ppobFilter === "tv" ? "TV & Streaming" : ppobFilter === "multifinance" ? "Cicilan" : ppobFilter === "pln" ? "Token PLN" : ppobFilter === "data" ? "Paket Data" : ppobFilter === "game" ? "Voucher Game" : ppobFilter === "pdam" ? "PDAM" : ppobFilter === "pln-bill" ? "Tagihan PLN" : ppobFilter.charAt(0).toUpperCase() + ppobFilter.slice(1);
   if (ppobOpen && ["bpjs", "tv", "multifinance"].includes(ppobFilter)) return (
-    <main className="pay-page ppob-page djiwa-checkout-page ppob-unavailable-active">
-      <section className="ppob-unavailable-card" aria-labelledby="ppob-unavailable-title">
-        <div className="postpaid-checkout-top">
-          <button className="postpaid-back" onClick={closePpob} aria-label="Kembali ke daftar layanan">← <span>Kembali</span></button>
-          <span className="postpaid-step-label">LAYANAN DIGITAL</span>
-        </div>
-        <div className="ppob-unavailable-icon" aria-hidden="true"><HelpCircle size={24} /></div>
-        <header className="ppob-unavailable-heading">
-          <h1 id="ppob-unavailable-title">{ppobFilter === "bpjs" ? "BPJS" : ppobFilter === "tv" ? "TV & Streaming" : "Cicilan"}</h1>
-          <p>Layanan ini belum tersedia di Djiwa Pay. Silakan kembali dan pilih layanan lain.</p>
-        </header>
-        <div className="ppob-unavailable-note" role="status"><strong>Belum tersedia</strong><span>Saldo dan transaksi Anda tidak akan berubah.</span></div>
-      </section>
-    </main>
+    <div className="dpx"><Sky><div className="dpx-pad dpx-nobar">
+      <Header title={ppobTitle} onBack={closePpob} />
+      <div className="dpx-empty" role="status"><I3 name="restaurant-cafe" px={112} /><b>Belum tersedia</b><p>Layanan ini belum tersedia di Djiwa Pay. Saldo dan transaksi Anda tidak akan berubah.</p><button type="button" className="dpx-btn dpx-inline" style={{ marginTop: 14 }} onClick={closePpob}>Pilih layanan lain</button></div>
+    </div></Sky></div>
   );
   if (ppobOpen && postpaidService) return (
-    <main className="pay-page ppob-page djiwa-checkout-page ppob-postpaid-active">
-      <section className="ppob-page-card postpaid-checkout-card" aria-labelledby="postpaid-title">
-        <div className="postpaid-checkout-top">
-          <button className="postpaid-back" onClick={closePpob} aria-label="Kembali ke daftar layanan">← <span>Kembali</span></button>
-          <span className="postpaid-step-label">TAGIHAN {postpaidService === "pln" ? "PLN" : "PDAM"}</span>
-        </div>
-        <header className="postpaid-checkout-heading">
-          <h1 id="postpaid-title">Tagihan {postpaidService.toUpperCase()}</h1>
-          <p>Masukkan nomor pelanggan untuk melihat rincian tagihan sebelum membayar.</p>
-        </header>
-        {postpaidStage === "success" ? <div className="djiwa-payment-notice is-success" role="status"><strong>Pembayaran berhasil</strong><small>Tagihan {postpaidService.toUpperCase()} sudah dibayar. Ref: {postpaidInquiry?.refId}</small><button className="primary-action" onClick={closePpob}>Selesai</button></div> : <>
-          {postpaidBusy && !postpaidCatalog ? <div className="postpaid-loading" role="status"><span className="postpaid-loading-mark" aria-hidden="true" />Memuat pilihan tagihan...</div> : null}
-          {!postpaidBusy && postpaidMessage && !postpaidCatalog ? <div role="alert" className="postpaid-load-error"><div><strong>Katalog belum dapat dimuat</strong><span>Periksa koneksi lalu coba muat ulang.</span></div><button type="button" onClick={() => { setPostpaidMessage(null); setPostpaidRetry((value) => value + 1); }}>Muat ulang katalog</button></div> : null}
-          {!postpaidBusy && postpaidCatalog?.length === 0 ? <div className="postpaid-empty" role="status">Produk tagihan belum tersedia untuk layanan ini.</div> : null}
-          {postpaidCatalog?.length ? <label className="djiwa-checkout-field"><span className="djiwa-checkout-label">Jenis layanan</span><select className="ppob-customer-input" value={postpaidProductCode} onChange={(event) => { setPostpaidProductCode(event.target.value); setPostpaidInquiry(null); setPostpaidStage("detail"); setPostpaidMessage(null); }} disabled={postpaidBusy || postpaidStage === "pending"}>{postpaidCatalog.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label> : null}
-          <label className="djiwa-checkout-field"><span className="djiwa-checkout-label">Nomor pelanggan <em>*</em></span><input className="ppob-customer-input" inputMode="numeric" autoComplete="off" value={postpaidCustomerNumber} onChange={(event) => { setPostpaidCustomerNumber(event.target.value.replace(/\D/g, "").slice(0, 20)); setPostpaidInquiry(null); setPostpaidStage("detail"); setPostpaidMessage(null); }} disabled={postpaidBusy || postpaidStage === "pending"} placeholder={postpaidService === "pln" ? "11–13 digit ID pelanggan" : "Nomor pelanggan PDAM"} /></label>
-          {!postpaidNumberValidation.valid && postpaidCustomerNumber ? <small className="djiwa-checkout-hint">{postpaidNumberValidation.message}</small> : null}
-          {postpaidInquiry && postpaidStage !== "detail" ? <div className="ppob-customer-summary"><div><span>Nama pelanggan</span><strong>{postpaidInquiry.customerName || "-"}</strong></div><div><span>Periode</span><strong>{postpaidInquiry.period || "-"}</strong></div><div><span>Tagihan</span><strong>{money(postpaidInquiry.billAmount)}</strong></div><div><span>Biaya admin</span><strong>{money(postpaidInquiry.adminFee)}</strong></div><div className="is-total"><span>Total pembayaran</span><strong>{money(postpaidTotal(postpaidInquiry.billAmount, postpaidInquiry.adminFee))}</strong></div></div> : null}
-          {postpaidMessage && (postpaidCatalog !== null || postpaidStage !== "detail") ? <div className="ppob-payment-message" role="alert">{postpaidMessage}</div> : null}
-          {postpaidStage === "pending" ? <div className="djiwa-payment-notice is-warning" role="status"><strong>Pembayaran sedang diproses</strong><small>Saldo tetap ditahan sampai provider memberi hasil definitif.</small><button className="djiwa-payment-notice-action" onClick={() => void refreshPostpaidStatus()} disabled={postpaidBusy}>{postpaidBusy ? "Memeriksa..." : "Periksa status"}</button></div> : null}
-          <div className={`postpaid-actions ${postpaidStage === "confirmation" ? "has-secondary" : ""}`}>
-            {postpaidStage === "confirmation" ? <button className="postpaid-secondary-action" onClick={() => setPostpaidStage("detail")}>Ubah data</button> : null}
-            {postpaidStage === "confirmation" ? <button className="primary-action" onClick={() => void submitPostpaidPayment()} disabled={postpaidBusy}>{postpaidBusy ? "Memproses..." : `Bayar ${money(postpaidInquiry?.totalAmount || 0)}`}</button> : postpaidStage !== "pending" ? <button className="primary-action" onClick={() => void submitPostpaidInquiry()} disabled={postpaidBusy || !postpaidProductCode || !postpaidNumberValidation.valid}>{postpaidBusy ? "Memeriksa..." : "Lihat tagihan"}</button> : null}
-          </div>
+    <div className="dpx"><Sky>
+      <div className="dpx-pad dpx-nobar" style={{ paddingBottom: 150 }}>
+        <Header title={`Tagihan ${postpaidService.toUpperCase()}`} onBack={closePpob} />
+        {postpaidStage === "success" ? <div className="dpx-center" style={{ marginTop: 24 }} role="status"><div className="dpx-success-ring"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg></div><h1 className="dpx-title">Pembayaran berhasil</h1><p className="dpx-sub" style={{ margin: "8px auto 0", maxWidth: 290 }}>Tagihan {postpaidService.toUpperCase()} sudah dibayar. Ref: {postpaidInquiry?.refId}</p><div className="dpx-sticky"><button className="dpx-btn" onClick={closePpob}>Selesai</button></div></div> : <>
+          <p className="dpx-sub" style={{ margin: "0 6px 6px" }}>Masukkan nomor pelanggan untuk melihat rincian tagihan sebelum membayar.</p>
+          {postpaidBusy && !postpaidCatalog ? <div className="dpx-skel" style={{ height: 120 }} role="status" aria-label="Memuat pilihan tagihan" /> : null}
+          {!postpaidBusy && postpaidMessage && !postpaidCatalog ? <div role="alert" className="dpx-note dpx-danger"><Ic n="warn" /><div><b>Katalog belum dapat dimuat</b>Periksa koneksi lalu coba muat ulang.<br /><button type="button" className="dpx-linkbtn" style={{ marginTop: 8, fontWeight: 600 }} onClick={() => { setPostpaidMessage(null); setPostpaidRetry((value) => value + 1); }}>Muat ulang katalog</button></div></div> : null}
+          {!postpaidBusy && postpaidCatalog?.length === 0 ? <div className="dpx-note dpx-info" role="status"><Ic n="info" /><div>Produk tagihan belum tersedia untuk layanan ini.</div></div> : null}
+          {postpaidCatalog?.length ? <label className="dpx-field"><span>Jenis layanan</span><div className="dpx-input"><select value={postpaidProductCode} onChange={(event) => { setPostpaidProductCode(event.target.value); setPostpaidInquiry(null); setPostpaidStage("detail"); setPostpaidMessage(null); }} disabled={postpaidBusy || postpaidStage === "pending"}>{postpaidCatalog.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}</select></div></label> : null}
+          <label className="dpx-field"><span>Nomor pelanggan</span><div className="dpx-input"><Ic n="receipt" size="sm" /><input inputMode="numeric" autoComplete="off" value={postpaidCustomerNumber} onChange={(event) => { setPostpaidCustomerNumber(event.target.value.replace(/\D/g, "").slice(0, 20)); setPostpaidInquiry(null); setPostpaidStage("detail"); setPostpaidMessage(null); }} disabled={postpaidBusy || postpaidStage === "pending"} placeholder={postpaidService === "pln" ? "11–13 digit ID pelanggan" : "Nomor pelanggan PDAM"} /></div>{!postpaidNumberValidation.valid && postpaidCustomerNumber ? <div className="dpx-hint dpx-err">{postpaidNumberValidation.message}</div> : <div className="dpx-hint">{postpaidService === "pln" ? "Masukkan 11–13 digit nomor pelanggan." : "Masukkan nomor pelanggan PDAM."}</div>}</label>
+          {postpaidInquiry && postpaidStage !== "detail" ? <><div className="dpx-glabel">Detail tagihan</div><div className="dpx-group dpx-white"><div className="dpx-kv"><span>Nama pelanggan</span><b>{postpaidInquiry.customerName || "-"}</b></div><div className="dpx-kv"><span>Periode</span><b>{postpaidInquiry.period || "-"}</b></div><div className="dpx-kv"><span>Tagihan</span><b>{money(postpaidInquiry.billAmount)}</b></div><div className="dpx-kv"><span>Biaya admin</span><b>{money(postpaidInquiry.adminFee)}</b></div><div className="dpx-kv dpx-total"><span>Total pembayaran</span><b>{money(postpaidTotal(postpaidInquiry.billAmount, postpaidInquiry.adminFee))}</b></div></div></> : null}
+          {postpaidMessage && (postpaidCatalog !== null || postpaidStage !== "detail") ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div>{postpaidMessage}</div></div> : null}
+          {postpaidStage === "pending" ? <div className="dpx-note" role="status"><Ic n="clock" /><div><b>Pembayaran sedang diproses</b>Saldo tetap ditahan sampai provider memberi hasil definitif.<br /><button className="dpx-linkbtn" style={{ marginTop: 8, fontWeight: 600 }} onClick={() => void refreshPostpaidStatus()} disabled={postpaidBusy}>{postpaidBusy ? "Memeriksa..." : "Periksa status"}</button></div></div> : null}
         </>}
-      </section>
-    </main>
+      </div>
+      {postpaidStage !== "success" ? <div className="dpx-sticky">
+        {postpaidStage === "confirmation" ? <><button className="dpx-btn" onClick={() => void submitPostpaidPayment()} disabled={postpaidBusy}>{postpaidBusy ? "Memproses..." : `Bayar ${money(postpaidInquiry?.totalAmount || 0)}`}</button><button className="dpx-btn dpx-soft" style={{ marginTop: 10 }} onClick={() => setPostpaidStage("detail")}>Ubah data</button></> : postpaidStage !== "pending" ? <button className={`dpx-btn ${postpaidBusy || !postpaidProductCode || !postpaidNumberValidation.valid ? "dpx-off" : ""}`} onClick={() => void submitPostpaidInquiry()} disabled={postpaidBusy || !postpaidProductCode || !postpaidNumberValidation.valid}>{postpaidBusy ? "Memeriksa..." : "Lihat tagihan"}</button> : null}
+      </div> : null}
+    </Sky></div>
   );
   if (ppobOpen && selectedPpobProduct) return (
-    <main className="pay-page ppob-page djiwa-checkout-page ppob-detail-active">
+    <main className="dpx dpx-checkout djiwa-checkout-page">
       <DjiwaPayCheckout
         kind="ppob"
         stage={ppobReviewOpen ? "payment" : "detail"}
@@ -503,64 +488,28 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
       />
     </main>
   );
-  if (ppobOpen) return (<main className={`pay-page ppob-page djiwa-checkout-page ${selectedPpobProduct ? "ppob-detail-active" : ""}`}><header className="ppob-page-header"><button className="ppob-page-back" onClick={closePpob} aria-label="Kembali">←</button><div><span className="eyebrow">DJIWA PAY</span><h1>Pembayaran PPOB</h1><p>{String(ppobFilter) === "all" ? "Pilih layanan PPOB yang ingin dibayar." : `Pilih brand/operator untuk ${ppobFilter.toUpperCase()}.`}</p></div></header>{String(ppobFilter) === "all" ? <section className="ppob-page-card"><div className="ppob-page-label">1. PILIH KATEGORI</div><div className="ppob-category-row">{ppobServices.map(([key, label, description, Icon, color]) => <button key={key} className={`ppob-category ${ppobFilter === (key === "game" ? "game" : key === "pln-token" ? "pln" : key) ? "selected" : ""}`} onClick={() => { openPpob(key, label); setPpobOperator("all"); setSelectedPpobProduct(null); }}><span className={`ppob-tile-icon ${color}`}><Icon size={18} /></span><strong>{label}</strong><small>{description}</small></button>)}</div></section> : null}{String(ppobFilter) === "all" ? <div className="ppob-page-empty"><strong>Pilih kategori terlebih dahulu</strong><span>Produk tidak ditampilkan sebelum kategori dipilih.</span></div> : ppobCatalogLoading ? <div className="ppob-page-empty">Memuat brand/operator dari IAK...</div> : ppobCatalogError ? <div className="ppob-page-empty error" role="alert"><strong>Katalog belum dapat dimuat.</strong><button type="button" onClick={() => setPpobCatalogError(null)}>Coba lagi</button></div> : ppobOperator === "all" ? <section className="ppob-page-card"><div className="ppob-products-heading"><div><div className="ppob-page-label">2. PILIH BRAND / OPERATOR</div><strong>Operator {ppobFilter.toUpperCase()}</strong></div><span>{ppobOperators.length} brand</span></div><div className="ppob-operator-grid"><button className="ppob-operator-card" onClick={() => setPpobOperator("all-products")}><span className="operator-fallback">ALL</span><strong>Semua brand</strong><small>Lihat seluruh operator</small></button>{ppobOperators.map((operator) => <button key={operator} className="ppob-operator-card" onClick={() => setPpobOperator(operator)}>{operatorLogo(operator) && operatorLogo(operator) !== "-" ? <img src={operatorLogo(operator) ?? undefined} alt="" /> : <span className="operator-fallback">{operator.slice(0, 1)}</span>}<strong>{operator}</strong><small>Pilih produk</small></button>)}</div></section> : <section className="ppob-page-card"><div className="ppob-products-heading"><div><button className="ppob-change-operator" onClick={() => { setPpobOperator("all"); setSelectedPpobProduct(null); }}>← Ganti operator</button><div className="ppob-page-label">3. PILIH PRODUK</div><strong>{ppobOperator === "all-products" ? "Semua brand" : ppobOperator} · {ppobFilter.toUpperCase()}</strong></div><span>{visibleProducts.length} produk</span></div><label className="ppob-search"><span>⌕</span><input value={ppobQuery} onChange={(event) => setPpobQuery(event.target.value)} placeholder="Cari produk atau kode" /></label><div className="ppob-sort-row"><span>Daftar produk</span><select value={ppobSort} onChange={(event) => setPpobSort(event.target.value as typeof ppobSort)}><option value="default">Default</option><option value="price-asc">Harga terendah</option><option value="price-desc">Harga tertinggi</option><option value="name">Nama produk</option></select></div><div className="ppob-product-table" role="table"><div className="ppob-product-table-head" role="row"><span>PRODUK</span><span>HARGA</span></div>{visibleProducts.length ? visibleProducts.map((product) => <button className={`ppob-product-table-row ${selectedPpobProduct?.product_code === product.product_code ? "selected" : ""}`} key={product.product_code} onClick={() => { setSelectedPpobProduct(product); goPpobRoute(ppobProductRoute("detail", product)); }}><span className="ppob-product-name"><strong>{ppobProductName(product)}</strong></span><b>{money(product.product_price)}</b><span className="ppob-buy-button">Beli</span></button>) : <div className="ppob-page-empty">Produk tidak ditemukan.</div>}</div>{selectedPpobProduct ? <div className="ppob-selection ppob-step-page">
-        <button className="ppob-step-back" onClick={() => { setSelectedPpobProduct(null); setPpobReviewOpen(false); goPpobRoute(`/ppob/${encodeURIComponent(ppobFilter)}`); }} aria-label="Kembali ke daftar produk">← Produk</button>
-        {!ppobReviewOpen ? <>
-          <span className="ppob-step-label">LANGKAH 2 DARI 3</span>
-          <strong>Detail Pembelian</strong>
-          <span>{operatorName(selectedPpobProduct)} · {selectedPpobProduct.product_description.toLowerCase() === operatorName(selectedPpobProduct).toLowerCase() ? selectedPpobProduct.product_nominal : selectedPpobProduct.product_description}</span>
-          <b>{money(selectedPpobProduct.product_price)}</b>
-          <small>Nomor ini dipakai sebagai tujuan pengiriman pulsa/data.</small>
-          <input className="ppob-customer-input" inputMode="numeric" value={ppobCustomerNumber} onChange={(event) => setPpobCustomerNumber(event.target.value.replace(/\D/g, "").slice(0, 20))} placeholder="08xxxxxxxxxx" aria-label="Nomor pelanggan" autoFocus />
-          <button className="primary-action ppob-pay-button" onClick={() => { setPpobPaymentMethod("wallet"); setPpobReviewOpen(true); goPpobRoute(ppobProductRoute("konfirmasi")); }} disabled={!/^[0-9]{8,20}$/.test(ppobCustomerNumber)}>Lanjutkan</button>
-        </> : <>
-          <div className="ppob-customer-checkout-header">
-            <div className="ppob-customer-checkout-icon"><Wallet size={16} /></div>
-            <div>
-              <p>Langkah 2 dari 3 · Pembayaran</p>
-              <h2>Pilih metode pembayaran</h2>
-            </div>
-          </div>
-          <div className="ppob-checkout-card ppob-customer-checkout-card">
-            <CheckoutSection className="ppob-customer-payment-card">
-              <div className="ppob-customer-section-heading"><CreditCard size={14} /><h3>Pilih pembayaran</h3></div>
-              <div className="ppob-customer-payment-methods" role="radiogroup" aria-label="Metode pembayaran">
-                <PaymentMethodCard>
-                  <div className={ppobPaymentMethod === "wallet" && (wallet?.wallet.available_balance ?? 0) >= selectedPpobProduct.product_price ? "ppob-customer-payment-option is-selected" : (wallet?.wallet.available_balance ?? 0) < selectedPpobProduct.product_price ? "ppob-customer-payment-option is-insufficient" : "ppob-customer-payment-option"}>
-                    <button type="button" role="radio" aria-checked={ppobPaymentMethod === "wallet" && (wallet?.wallet.available_balance ?? 0) >= selectedPpobProduct.product_price} aria-disabled={(wallet?.wallet.available_balance ?? 0) < selectedPpobProduct.product_price} disabled={(wallet?.wallet.available_balance ?? 0) < selectedPpobProduct.product_price} onClick={() => setPpobPaymentMethod("wallet")}>
-                      <span><strong>Djiwa Pay</strong><small>{(wallet?.wallet.available_balance ?? 0) < selectedPpobProduct.product_price ? `Saldo tersedia ${money(wallet?.wallet.available_balance ?? 0)}, masih kurang ${money(selectedPpobProduct.product_price - (wallet?.wallet.available_balance ?? 0))}.` : "Bayar langsung dari saldo Djiwa Pay"}</small></span>
-                      <span aria-hidden="true" className={`ppob-customer-radio${ppobPaymentMethod === "wallet" && (wallet?.wallet.available_balance ?? 0) >= selectedPpobProduct.product_price ? " is-checked" : ""}`}>{ppobPaymentMethod === "wallet" && (wallet?.wallet.available_balance ?? 0) >= selectedPpobProduct.product_price ? <span className="ppob-customer-radio-dot" /> : null}</span>
-                    </button>
-                    {(wallet?.wallet.available_balance ?? 0) < selectedPpobProduct.product_price ? <div className="ppob-customer-insufficient-row"><p>Isi saldo Djiwa Pay dulu sebelum menggunakan metode ini.</p><button type="button" onClick={() => { setPpobOpen(false); setTopupOpen(true); }}>Top up</button></div> : null}
-                  </div>
-                </PaymentMethodCard>
-                <PaymentMethodCard>
-                  <div className={ppobPaymentMethod === "mayar" ? "ppob-customer-payment-option is-selected" : "ppob-customer-payment-option"}>
-                    <button type="button" role="radio" aria-checked={ppobPaymentMethod === "mayar"} onClick={() => setPpobPaymentMethod("mayar")}>
-                      <span><strong>QRIS</strong><small>Bayar cepat dan cashierless dengan QRIS</small></span>
-                      <span aria-hidden="true" className={`ppob-customer-radio${ppobPaymentMethod === "mayar" ? " is-checked" : ""}`}>{ppobPaymentMethod === "mayar" ? <span className="ppob-customer-radio-dot" /> : null}</span>
-                    </button>
-                  </div>
-                </PaymentMethodCard>
-              </div>
-            </CheckoutSection>
-            {ppobPaymentMessage ? <div className="ppob-payment-message" role="alert">{ppobPaymentMessage}</div> : null}
-            <OrderSummary className="ppob-customer-order-summary">
-              <div className="ppob-customer-summary-rows">
-                <div><span>Operator</span><strong>{operatorName(selectedPpobProduct)}</strong></div>
-                <div><span>Produk</span><strong>{ppobProductName(selectedPpobProduct)}</strong></div>
-                <div><span>Nomor tujuan</span><strong>{ppobCustomerNumber}</strong></div>
-                <div className="is-total"><span>Total pembayaran</span><strong>{money(selectedPpobProduct.product_price)}</strong></div>
-              </div>
-              <div className={`ppob-reward-note ppob-customer-reward-note ${ppobPaymentMethod === "wallet" ? "is-wallet" : ""}`}>{ppobPaymentMethod === "wallet" ? "Bayar dengan Djiwa Pay dan dapatkan saldo Djiwa Pay +Rp1.000 setelah transaksi berhasil." : "Reward +Rp1.000 saldo Djiwa Pay diberikan setelah transaksi berhasil."}</div>
-              <CheckoutActionBar className="ppob-customer-action-bar">
-                <button type="button" className="ppob-checkout-back" onClick={() => { setPpobReviewOpen(false); goPpobRoute(ppobProductRoute("detail")); }}>← Kembali</button>
-                <button type="button" className="primary-action ppob-pay-button" onClick={payPpob} disabled={ppobPaymentBusy || (ppobPaymentMethod === "wallet" && (wallet?.wallet.available_balance ?? 0) < selectedPpobProduct.product_price)}>{ppobPaymentBusy ? "Memproses..." : `Bayar ${money(selectedPpobProduct.product_price)}`}</button>
-              </CheckoutActionBar>
-            </OrderSummary>
-          </div>
-        </>}
-      </div> : null}</section>}</main>);
+  if (ppobOpen) {
+    const isPhoneCategory = ppobFilter === "pulsa" || ppobFilter === "data";
+    const detected = isPhoneCategory ? detectOperator(ppobCustomerNumber) : null;
+    const activeOperator = ppobOperator === "all" && detected && (ppobOperators as string[]).includes(detected) ? detected : ppobOperator;
+    const shownProducts = (ppobCatalog ?? []).filter((product) => product.product_type.toLowerCase() === ppobFilter && (activeOperator === "all" || operatorName(product) === activeOperator) && `${product.product_description} ${product.product_nominal} ${product.product_code}`.toLowerCase().includes(ppobQuery.toLowerCase())).sort((a, b) => ppobSort === "price-asc" ? a.product_price - b.product_price : ppobSort === "price-desc" ? b.product_price - a.product_price : ppobSort === "name" ? a.product_description.localeCompare(b.product_description) : a.product_price - b.product_price).slice(0, 60);
+    const numberLabel = isPhoneCategory ? "Nomor HP tujuan" : ppobFilter === "pln" ? "Nomor meter / ID pelanggan" : "Nomor atau ID tujuan";
+    return <div className="dpx"><Sky><div className="dpx-pad dpx-nobar" style={{ paddingBottom: 60 }}>
+      <Header title={ppobTitle} onBack={closePpob} />
+      {ppobFilter === "all" ? <><p className="dpx-sub" style={{ margin: "0 6px 12px" }}>Pilih layanan yang ingin dibayar dengan saldo Djiwa Pay.</p><div className="dpx-group dpx-white"><div className="dpx-tile3" style={{ gap: "6px 8px" }}>{ppobServices.map(([key, label]) => <button key={key} type="button" className="dpx-q" style={{ padding: "8px 0" }} onClick={() => { openPpob(key, label); setPpobOperator("all"); setSelectedPpobProduct(null); }}><span className={`dpx-qi dpx-c-${serviceTone[key]}`} style={{ width: 56, height: 56, borderRadius: 20, display: "grid", placeItems: "center" }}><Ic n={serviceIcon[key]} size="lg" /></span><span style={{ fontSize: 13, fontWeight: 600 }}>{label}</span></button>)}</div></div></> : <>
+        <label className="dpx-field" style={{ marginTop: 6 }}><span>{numberLabel}</span><div className="dpx-input"><Ic n={isPhoneCategory ? "phone" : ppobFilter === "pln" ? "flash" : "game"} size="sm" /><input id="ppob-number" inputMode="numeric" autoComplete="tel" value={ppobCustomerNumber} onChange={(event) => setPpobCustomerNumber(event.target.value.replace(/\D/g, "").slice(0, 20))} placeholder={isPhoneCategory ? "0812 3456 7890" : "Masukkan nomor"} />{detected ? <span className="dpx-tag dpx-info">{detected}</span> : null}{ppobCustomerNumber ? <button type="button" onClick={() => setPpobCustomerNumber("")} aria-label="Hapus nomor"><Ic n="close" size="sm" /></button> : null}</div>{isPhoneCategory ? <div className="dpx-hint">Operator terdeteksi otomatis dari awalan nomor.</div> : null}</label>
+        {recentCustomerNumbers.length ? <div className="dpx-chips dpx-mt8" aria-label="Nomor terakhir dipakai">{recentCustomerNumbers.map((number) => <button key={number} type="button" className="dpx-chip" onClick={() => setPpobCustomerNumber(number)}>{number}</button>)}</div> : null}
+        {ppobCatalogLoading ? <div style={{ marginTop: 18 }} role="status" aria-label="Memuat produk"><div className="dpx-skel" style={{ height: 70 }} /><div style={{ height: 10 }} /><div className="dpx-skel" style={{ height: 70 }} /></div>
+          : ppobCatalogError ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div><b>Katalog belum dapat dimuat</b>{ppobCatalogError}<br /><button type="button" className="dpx-linkbtn" style={{ marginTop: 8, fontWeight: 600 }} onClick={() => setPpobCatalogError(null)}>Coba lagi</button></div></div>
+          : <>
+            {ppobOperators.length > 1 ? <div className="dpx-chips" style={{ marginTop: 12 }} role="group" aria-label="Pilih operator"><button type="button" className={`dpx-chip ${activeOperator === "all" ? "dpx-on" : ""}`} onClick={() => setPpobOperator("all")}>Semua</button>{ppobOperators.map((operator) => <button key={operator} type="button" className={`dpx-chip ${activeOperator === operator ? "dpx-on" : ""}`} onClick={() => setPpobOperator(operator)}>{operator}</button>)}</div> : null}
+            <div className="dpx-flex" style={{ marginTop: 10 }}><label className="dpx-search" style={{ flex: 1, height: 44 }}><Ic n="search" size="sm" /><input value={ppobQuery} onChange={(event) => setPpobQuery(event.target.value)} placeholder="Cari produk atau kode" aria-label="Cari produk" /></label><select className="dpx-chip" value={ppobSort} onChange={(event) => setPpobSort(event.target.value as typeof ppobSort)} aria-label="Urutkan produk"><option value="default">Termurah</option><option value="price-asc">Harga terendah</option><option value="price-desc">Harga tertinggi</option><option value="name">Nama</option></select></div>
+            <div className="dpx-glabel">{ppobFilter === "pulsa" ? "Pilih nominal" : "Pilih produk"} <span>{shownProducts.length} produk</span></div>
+            {shownProducts.length ? <div className="dpx-prodlist">{shownProducts.map((product) => <button type="button" key={product.product_code} className={`dpx-prod ${selectedPpobProduct?.product_code === product.product_code ? "dpx-on" : ""}`} onClick={() => { setSelectedPpobProduct(product); goPpobRoute(ppobProductRoute("detail", product)); }}><span><b>{ppobProductName(product)}</b><span>{operatorName(product)}</span></span><span className="dpx-price">{money(product.product_price)}</span></button>)}</div> : <div className="dpx-empty"><I3 name="restaurant-cafe" px={96} /><b>Produk tidak ditemukan</b><p>Coba ubah operator atau kata kunci.</p></div>}
+          </>}
+      </>}
+    </div></Sky></div>;
+  }
   if (topupOpen || walletRoute?.page === "topup") return (
     <DjiwaPayTopup
       stage={topupStage}
@@ -578,52 +527,40 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
       onDone={leaveTopup}
     />
   );
-  if (!wallet && error) return (
-    <main className="pay-page">
-      <section className="surface wallet-unavailable" role="alert">
-        <span className="eyebrow">DJIWA PAY</span>
-        <h1>Saldo belum dapat dimuat</h1>
-        <p>{error}</p>
-        <button type="button" className="primary-action" onClick={onRefresh} disabled={loading}>{loading ? "Mencoba lagi…" : "Coba lagi"}</button>
-      </section>
-    </main>
-  );
+  const unreadCount = walletNotifications.filter((item) => item.unread).length;
+  const hasWallet = Boolean(wallet);
+  const balance = wallet?.wallet.available_balance ?? 0;
+  const embedded = frame.hideBottomNav;
+  const openTx = (id: string) => goPayRoute(`/wallet/history/${encodeURIComponent(id)}`);
+  const openNotifications = () => { onNavigate("Membuka Notifikasi"); setNotificationsOpen(true); };
+  const payNav: Nav = {
+    go: (path) => {
+      if (previewOnly && (path.startsWith("/wallet/topup") || path.startsWith("/wallet/transfer") || path.startsWith("/wallet/receive"))) { setSoon("Aksi transaksi dinonaktifkan pada pratinjau lokal."); return; }
+      if (path === "/wallet/topup") { actionClick("topup"); return; }
+      goPayRoute(path);
+    },
+    openService: (key, label) => { if (previewOnly && key !== "pulsa") { /* catalog calls are read-only; allow browsing */ } openPpob(key, label); },
+    openSheet: (name) => setShell(name),
+  };
+  const sheets = <>
+    {shell === "pay" ? <PaySheet nav={payNav} onClose={() => setShell(null)} withdrawSupported={withdrawAction.supported} /> : null}
+    {shell === "all" ? <AllServicesSheet nav={payNav} onClose={() => setShell(null)} /> : null}
+    {shell === "card" ? <CardSheet onClose={() => setShell(null)} /> : null}
+    {soon ? <ComingSoonSheet message={soon} onClose={() => setSoon(null)} /> : null}
+  </>;
+  const frameShell = (content: ReactNode, active: "home" | "services" | "history" | "wallet" | null) => <div className={`dpx ${embedded ? "dpx-embedded" : ""}`}>{content}{embedded || !active ? null : <TabBar active={active} go={(path) => goPayRoute(path)} openPay={() => setShell("pay")} />}{sheets}</div>;
+  if (!wallet && error && walletRoute?.page !== "help") return frameShell(
+    <Sky><div className="dpx-pad"><div className="dpx-empty" role="alert" style={{ paddingTop: 80 }}><I3 name="payment-wallet" px={112} /><b>Saldo belum dapat dimuat</b><p>{error}</p><button type="button" className="dpx-btn" style={{ maxWidth: 260 }} onClick={onRefresh} disabled={loading}>{loading ? "Mencoba lagi…" : "Coba lagi"}</button></div></div></Sky>, null);
   if (walletRoute?.page === "history") {
     const selectedTransaction = walletRoute.transactionId ? transactions.find((entry) => String(entry.id) === walletRoute.transactionId || String(entry.transfer_id ?? "") === walletRoute.transactionId) ?? null : null;
-    return <DjiwaPayHistory transactions={transactions} selectedTransaction={selectedTransaction} loading={loading} onBack={() => goPayRoute(walletRoute.transactionId ? "/wallet/history" : "/")} onOpen={(id) => goPayRoute(`/wallet/history/${encodeURIComponent(id)}`)} />;
+    return frameShell(<HistoryTab transactions={transactions} loading={loading} nav={payNav} selected={selectedTransaction} onOpenTx={openTx} onCloseTx={() => goPayRoute("/riwayat")} />, "history");
   }
-  if (walletRoute?.page === "transfer" || walletRoute?.page === "receive") return <DjiwaPayWalletAction mode={walletRoute.page === "transfer" ? "send" : "receive"} profile={profile} balance={wallet?.wallet.available_balance ?? 0} initialMode={transferInitialMode} initialRecipient={transferInitialRecipient} onClose={() => goPayRoute("/")} onSuccess={() => { goPayRoute("/"); onRefresh(); if (!previewOnly) void refreshWalletNotifications(); }} />;
-  if (walletRoute?.page === "help") return <DjiwaPayHelp onBack={() => goPayRoute("/")} onNavigate={goPayRoute} />;
-  if (notificationsOpen) {
-    const unreadCount = walletNotifications.filter((item) => item.unread).length;
-    return <main className="pay-page wallet-notifications-page">
-      <DjiwaPayPageHeader
-        title="Notifikasi"
-        subtitle={unreadCount ? `${unreadCount} belum dibaca` : "Semua aktivitas saldo"}
-        onBack={() => { onNavigate("Kembali ke Saldo Djiwa Pay"); setNotificationsOpen(false); }}
-        trailing={<button type="button" className="ios-mark-read" disabled={notificationsBusy || unreadCount === 0} onClick={async () => { setNotificationsBusy(true); try { await markAllWalletNotificationsRead(); await refreshWalletNotifications(); } finally { setNotificationsBusy(false); } }}><CheckCheck size={16} /><span>{notificationsBusy ? "Memproses" : "Baca semua"}</span></button>}
-      />
-      <section className="ios-history-group wallet-notification-card" aria-labelledby="wallet-notifications-title">
-        <div className="wallet-notifications-heading"><span className="ios-section-label">DJIWA PAY</span><h2 id="wallet-notifications-title">Aktivitas terbaru</h2></div>
-        {walletNotifications.length === 0 ? <div className="ios-history-empty"><Bell size={28} /><strong>Belum ada notifikasi</strong><p>Notifikasi transfer dan saldo akan muncul di sini.</p></div> : <div className="ios-history-list">{walletNotifications.map((notification) => <button type="button" className={`wallet-notification-row ${notification.unread ? "is-unread" : ""}`} key={notification.id} onClick={async () => { if (notification.unread) { await markWalletNotificationRead(notification.id); await refreshWalletNotifications(); } }}><span className="ios-history-icon credit"><Bell size={18} /></span><span className="ios-history-copy"><strong>{notification.title}</strong><small>{notification.message} · {date(notification.created_at)}</small></span>{notification.unread ? <span className="notification-dot" aria-label="Belum dibaca" /> : null}</button>)}</div>}
-      </section>
-    </main>;
-  }
-  return <main className={frame.hideBottomNav ? "pay-page pay-page--embedded" : "pay-page"}>
-    <header className="pay-header">{frame.hideBottomNav ? <span className="pay-header-spacer" aria-hidden="true" /> : <button className="round-control" onClick={() => window.location.assign(customerHome)} aria-label="Kembali ke Djiwa Tentram">‹</button>}<div><h1>Saldo Djiwa Pay</h1><small>Digital wallet</small></div><div className="pay-header-actions"><button type="button" className="round-control notification-bell" onClick={() => { onNavigate("Membuka Notifikasi"); setNotificationsOpen(true); }} aria-label={`Notifikasi${walletNotifications.some((item) => item.unread) ? `, ${walletNotifications.filter((item) => item.unread).length} belum dibaca` : ""}`}><Bell size={17} />{walletNotifications.some((item) => item.unread) ? <span className="notification-badge">{walletNotifications.filter((item) => item.unread).length > 9 ? "9+" : walletNotifications.filter((item) => item.unread).length}</span> : null}</button><button className="round-control" onClick={onRefresh} disabled={loading} aria-label="Segarkan saldo"><RefreshCw size={16} className={loading ? "spin" : ""} /></button></div></header>
-    {previewOnly ? <p className="local-preview-banner" role="status">Pratinjau lokal · data contoh · transaksi dinonaktifkan</p> : null}
-    <motion.section className="wallet-card" aria-label="Ringkasan saldo Djiwa Pay" initial={reduceMotion ? false : { opacity: 0, y: 8 }} animate={reduceMotion ? undefined : { opacity: 1, y: 0 }} transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}><img src="/assets/djiwa-pay-abstract-3d.png" alt="" aria-hidden="true" className="wallet-art" /><div className="wallet-overlay" />{!reduceMotion ? <motion.div className="wallet-shine" aria-hidden="true" animate={{ x: [0, 360, 720] }} transition={{ duration: 4.8, repeat: Infinity, repeatDelay: 2.4, ease: "easeInOut" }} /> : null}<div className="wallet-content"><div className="wallet-card-top"><div className="wallet-brand"><span className="wallet-brand-mark"><Wallet size={15} /></span><span>DJIWA PAY<small>Digital wallet</small></span></div><span className="wallet-status">{status}</span></div><div className="wallet-balance-label">Saldo tersedia</div><motion.strong className="wallet-balance" initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }} animate={reduceMotion ? undefined : { opacity: 1, scale: 1 }} transition={{ delay: 0.12, duration: 0.32, ease: [0.32, 0.72, 0, 1] }}>{loading ? "••••••" : visible ? money(wallet?.wallet.available_balance ?? 0) : "••••••"}</motion.strong><div className="wallet-card-bottom"><div className="wallet-identity"><b>{profile.name ?? profile.email ?? "Customer"}</b><small title={userId}><span>USER ID</span><strong>{userId}</strong></small></div><div className="wallet-controls"><button className="wallet-card-icon" onClick={() => setVisible((value) => !value)} aria-label={visible ? "Sembunyikan saldo" : "Tampilkan saldo"}>{visible ? <EyeOff size={16} /> : <Eye size={16} />}</button><button className="wallet-card-icon" onClick={onRefresh} aria-label="Segarkan saldo"><RefreshCw size={16} /></button></div></div></div></motion.section>
-    <section className="surface ppob-section" aria-labelledby="ppob-title">
-      <div className="section-heading ppob-heading"><div><span className="eyebrow">LAYANAN DIGITAL</span><h2 id="ppob-title">Pembayaran PPOB</h2><p>Bayar kebutuhan harian dari satu saldo.</p></div><button className="ppob-more" onClick={() => { setPpobOpen(true); goPpobRoute("/ppob"); }}>Lihat semua</button></div>
-      <div className="ppob-grid">{ppobServices.slice(0, 8).map(([key, label, description, Icon, color]) => <button key={key} className="ppob-tile" onClick={() => openPpob(key, label)} aria-label={`${label}, ${description}`}><span className={`ppob-tile-icon ${color}`}><Icon size={19} strokeWidth={2.2} /></span><strong>{label}</strong><small>{description}</small></button>)}</div>
-    </section>
-    {error ? <section className="inline-error" role="alert">{error}</section> : null}
-    <section className="surface quick-actions" aria-labelledby="quick-actions-title"><div className="section-heading"><div><span className="eyebrow">DJIWA PAY</span><h2 id="quick-actions-title">Aksi cepat</h2></div><Wallet size={17} /></div><div className="action-grid">{actions.map(([key, label, asset, supported, badge, color]) => <button key={key} className="action-item" onClick={() => actionClick(key)} disabled={!supported} aria-label={supported ? label : `${label}, segera hadir`}><span className={`action-badge ${color}`}>{badge}</span><span className="action-icon"><img src={`/assets/djiwa-pay-actions/${asset}`} alt="" aria-hidden="true" loading="lazy" decoding="async" /></span><span>{label}</span></button>)}</div></section>
-    <div className="summary-grid"><section className="summary-card"><span>Total masuk</span><strong className="credit-text">{money(incoming)}</strong></section><section className="summary-card"><span>Total digunakan</span><strong className="debit-text">{money(outgoing)}</strong></section></div>
-    <section id="activity" className="surface activity-card"><div className="section-heading"><div><span className="eyebrow">AKTIVITAS</span><h2>Riwayat Djiwa Pay</h2></div><select className="month-control activity-filter" value={activityFilter} onChange={(event) => setActivityFilter(event.target.value as typeof activityFilter)} aria-label="Filter riwayat transaksi"><option value="all">Semua transaksi</option><option value="credit">Saldo masuk</option><option value="debit">Saldo keluar</option><option value="transfer">Transfer saldo</option></select></div>{loading ? <div className="activity-empty">Memuat transaksi...</div> : transactions.length === 0 ? <div className="activity-empty"><strong>Belum ada transaksi</strong><span>Transaksi top up dan pembayaran akan muncul di sini.</span></div> : visibleTransactions.length === 0 ? <div className="activity-empty">Tidak ada transaksi pada filter ini.</div> : <div className="activity-list">{visibleTransactions.map((entry) => <button type="button" className="activity-row activity-row-button" key={entry.id} onClick={() => goPayRoute(`/wallet/history/${encodeURIComponent(String(entry.id))}`)}><span className={`activity-icon ${entry.direction}`} >{entry.direction === "credit" ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}</span><span className="activity-copy"><b>{entry.direct ? entry.title : labels[entry.type] ?? (entry.counterparty_name ? `${entry.direction === "credit" ? "Saldo diterima dari" : "Saldo dikirim ke"} ${entry.counterparty_name}` : "Transaksi saldo")}</b><small>{date(entry.created_at)} · {transactionMethodLine(entry)}{entry.note ? ` · ${entry.note}` : ""}</small></span>{entry.direct ? <strong>{money(entry.amount)}</strong> : <strong className={entry.direction === "credit" ? "credit-text" : "debit-text"}>{entry.direction === "credit" ? "+" : "-"}{money(entry.amount)}</strong>}</button>)}</div>}</section>
-    <section id="topup" className="topup-panel" aria-hidden="true" />
-    {ppobOpen ? <div className="ppob-backdrop" role="presentation" onClick={closePpob}><section className="ppob-sheet" role="dialog" aria-modal="true" aria-labelledby="ppob-sheet-title" onClick={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-header"><button className="sheet-close" onClick={closePpob} aria-label="Tutup daftar PPOB"><X size={18} /></button><h2 id="ppob-sheet-title">Semua layanan PPOB</h2><span className="sheet-spacer" /></div><p className="ppob-sheet-copy">Pilih layanan yang ingin dibayar dengan saldo Djiwa Pay.</p><div className="ppob-grid ppob-grid-sheet">{ppobServices.map(([key, label, description, Icon, color]) => <button key={key} className={`ppob-tile ${ppobFilter === (key === "game" ? "game" : key === "pln-token" ? "pln" : key) ? "selected" : ""}`} onClick={() => openPpob(key, label)}><span className={`ppob-tile-icon ${color}`}><Icon size={19} strokeWidth={2.2} /></span><strong>{label}</strong><small>{description}</small></button>)}</div>{String(ppobFilter) === "all" ? <div className="ppob-catalog-state">Pilih kategori terlebih dahulu untuk melihat produk.</div> : ppobCatalogLoading ? <div className="ppob-catalog-state">Memuat katalog dari IAK...</div> : ppobCatalogError ? <div className="ppob-catalog-state error">{ppobCatalogError}</div> : ppobCatalog ? <div className="ppob-products"><div className="ppob-products-heading"><strong>{String(ppobFilter) === "all" ? "Produk aktif" : `Produk ${ppobFilter.toUpperCase()}`}</strong><span>{visibleProducts.length} ditampilkan / {ppobCatalog.length} total</span></div>{visibleProducts.length ? visibleProducts.map((product) => <button className="ppob-product" key={product.product_code} onClick={() => { setSelectedPpobProduct(product); goPpobRoute(ppobProductRoute("detail", product)); }}><span className="ppob-product-name"><strong>{ppobProductName(product)}</strong></span><b>{money(product.product_price)}</b><span className="ppob-buy-button">Beli</span></button>) : <div className="ppob-catalog-state">Belum ada produk pada kategori ini.</div>}</div> : null}</section></div> : null}
-    {ppobSuccess ? <main className="pay-page djiwa-checkout-page"><DjiwaPaySuccess productName={ppobSuccess.product.product_description} operator={operatorName(ppobSuccess.product)} customerNumber={ppobSuccess.number} amount={ppobSuccess.product.product_price} serialNumber={ppobSuccess.serialNumber} reference={ppobSuccess.reference} onDone={() => { setPpobSuccess(null); setPpobOpen(false); goPpobRoute("/"); }} /></main> : null}{soon ? <div className="soon-backdrop" role="presentation" onClick={() => setSoon(null)}><section className="soon-dialog" role="dialog" aria-modal="true" aria-labelledby="soon-title" onClick={(event) => event.stopPropagation()}><button className="soon-close" onClick={() => setSoon(null)} aria-label="Tutup"><X size={16} /></button><HelpCircle size={28} /><h2 id="soon-title">Segera hadir</h2><p>{soon}</p></section></div> : null}
-    <footer className="pay-footer">Djiwa Pay · Digital wallet</footer>{frame.hideBottomNav ? null : <nav className="bottom-nav" aria-label="Navigasi utama"><a href={customerHome}><Djiwa3DIcon name="navigation-home" size="micro" alt="" /><span>Home</span></a>{navigationContext ? <><a href={customerOrder}><Djiwa3DIcon name="navigation-order" size="micro" alt="" /><span>Pesan</span></a><a href={customerCommunity}><Djiwa3DIcon name="navigation-community" size="micro" alt="" /><span>Komunitas</span></a></> : <><button onClick={() => setSoon("Pesan tersedia saat membuka Djiwa Pay dari halaman restoran.")}><Djiwa3DIcon name="navigation-order" size="micro" alt="" /><span>Pesan</span></button><button onClick={() => setSoon("Komunitas tersedia saat membuka Djiwa Pay dari halaman restoran.")}><Djiwa3DIcon name="navigation-community" size="micro" alt="" /><span>Komunitas</span></button></>}<button className="active"><Djiwa3DIcon name="navigation-wallet" size="micro" alt="" /><span>Saldo</span></button>{navigationContext ? <a href={customerProfile}><Djiwa3DIcon name="navigation-profile" size="micro" alt="" /><span>Profil</span></a> : <button onClick={() => setSoon("Profil tersedia saat membuka Djiwa Pay dari halaman restoran.")}><Djiwa3DIcon name="navigation-profile" size="micro" alt="" /><span>Profil</span></button>}</nav>}
-  </main>;
+  if (walletRoute?.page === "transfer" || walletRoute?.page === "receive") return <DjiwaPayWalletAction mode={walletRoute.page === "transfer" ? "send" : "receive"} profile={profile} balance={balance} initialMode={transferInitialMode} initialRecipient={transferInitialRecipient} onClose={() => goPayRoute("/")} onSuccess={() => { goPayRoute("/"); onRefresh(); if (!previewOnly) void refreshWalletNotifications(); }} />;
+  if (walletRoute?.page === "help") return frameShell(<HelpPage onBack={() => goPayRoute("/")} nav={payNav} />, null);
+  if (walletRoute?.page === "summary") return frameShell(<SummaryPage transactions={transactions} onBack={() => goPayRoute("/riwayat")} />, null);
+  if (walletRoute?.page === "account") return frameShell(<AccountPage profile={profile} unread={unreadCount} customerHome={customerHome} embedded={embedded} onBack={() => goPayRoute("/")} nav={payNav} onOpenNotifications={openNotifications} />, null);
+  if (notificationsOpen) return frameShell(<NotificationsPage items={walletNotifications} loading={notificationsLoading} busy={notificationsBusy} onBack={() => { onNavigate("Kembali ke Saldo Djiwa Pay"); setNotificationsOpen(false); }} onRead={async (notification) => { if (notification.unread) { await markWalletNotificationRead(notification.id); await refreshWalletNotifications(); } }} onReadAll={async () => { setNotificationsBusy(true); try { await markAllWalletNotificationsRead(); await refreshWalletNotifications(); } finally { setNotificationsBusy(false); } }} />, null);
+  if (walletRoute?.page === "services") return frameShell(<ServicesTab nav={payNav} focusSearch={paySearchParams.get("cari") === "1"} recentNumbers={recentCustomerNumbers} />, "services");
+  if (walletRoute?.page === "wallet") return frameShell(<WalletTab balance={balance} visible={visible} onToggleVisible={toggleVisible} incoming={incoming} outgoing={outgoing} transactions={transactions} nav={payNav} loading={loading} />, "wallet");
+  return frameShell(<HomeTab profile={profile} balance={balance} loading={loading} error={error} hasWallet={hasWallet} visible={visible} onToggleVisible={toggleVisible} onRefresh={onRefresh} transactions={transactions} unread={unreadCount} nav={payNav} onOpenNotifications={openNotifications} onOpenTx={openTx} previewOnly={previewOnly} />, "home");
 }

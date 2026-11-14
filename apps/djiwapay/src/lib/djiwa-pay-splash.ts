@@ -16,6 +16,11 @@ export function djiwaPaySplashLabel(path: string): string {
   if (pathname.startsWith("/wallet/history/")) return "Membuka Detail Transaksi";
   if (pathname === "/wallet/history") return "Membuka Riwayat";
   if (pathname === "/wallet/help") return "Membuka Bantuan";
+  if (pathname === "/layanan") return "Membuka Layanan";
+  if (pathname === "/riwayat") return "Membuka Riwayat";
+  if (pathname === "/dompet") return "Membuka Dompet";
+  if (pathname === "/ringkasan") return "Membuka Ringkasan";
+  if (pathname === "/akun") return "Membuka Akun";
   if (pathname.startsWith("/ppob/") && pathname.includes("/produk/")) {
     return pathname.endsWith("/struk") ? "Menyiapkan Struk" : "Menyiapkan Pembayaran";
   }
@@ -23,7 +28,7 @@ export function djiwaPaySplashLabel(path: string): string {
   return "Kembali ke Djiwa Pay";
 }
 
-export type DjiwaPayWalletPage = "topup" | "transfer" | "receive" | "history" | "help" | null;
+export type DjiwaPayWalletPage = "topup" | "transfer" | "receive" | "history" | "help" | "services" | "wallet" | "summary" | "account" | null;
 
 export type DjiwaPayPageData = {
   /** Waiting for data is pointless without a connection. */

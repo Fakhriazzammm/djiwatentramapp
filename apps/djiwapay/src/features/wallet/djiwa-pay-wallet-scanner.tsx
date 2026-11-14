@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, ScanLine } from "lucide-react";
+import { Ic } from "../shell/dpx-ui";
 
 type BarcodeDetectorLike = {
   detect: (source: CanvasImageSource) => Promise<Array<{ rawValue?: string }>>;
@@ -117,13 +117,20 @@ export function DjiwaPayWalletScanner({ onDetected, onUseManual, notice = null }
     };
   }, []);
 
-  return <div className="wallet-scanner">
-    <div className="wallet-scanner-preview">
-      <video ref={videoRef} autoPlay muted playsInline />
-      <span className="wallet-scanner-frame" aria-hidden="true" />
+  return <div className="dpx"><div className="dpx-cam" style={{ background: "#0b1020" }}>
+    <video ref={videoRef} autoPlay muted playsInline style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: error ? 0 : 0.92 }} />
+    <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 42%,transparent 30%,rgba(8,12,24,.72) 78%)" }} aria-hidden="true" />
+    <div className="dpx-hdr" style={{ position: "absolute", top: "calc(env(safe-area-inset-top,0px) + 14px)", left: 18, right: 18 }}>
+      <button type="button" className="dpx-rb" onClick={onUseManual} aria-label="Tutup pemindai"><Ic n="close" /></button>
+      <div className="dpx-grow"><h1 style={{ color: "#fff" }}>Scan QR</h1></div><span style={{ width: 44 }} />
     </div>
-    <p className={`wallet-scanner-status${error ? " is-error" : ""}`} role="status"><ScanLine size={16} />{status}</p>
-    {notice ? <p className="wallet-action-message" role="alert">{notice}</p> : null}
-    <button type="button" className="wallet-scanner-manual" onClick={onUseManual}><Camera size={16} />Gunakan nomor HP</button>
-  </div>;
+    <div className="dpx-frame" aria-hidden="true"><i /><i /><i /><i />{error ? null : <div className="dpx-scanline" />}</div>
+    <div style={{ position: "absolute", left: 24, right: 24, top: "62%" }}>
+      <p className="dpx-center" role="status" style={{ color: error ? "#ffd2cc" : "rgba(255,255,255,.88)", fontSize: 15, margin: 0 }}>{status}</p>
+      {notice ? <p className="dpx-note dpx-danger" role="alert" style={{ marginTop: 12 }}><Ic n="warn" /><span>{notice}</span></p> : null}
+    </div>
+    <div style={{ position: "absolute", left: 18, right: 18, bottom: "calc(env(safe-area-inset-bottom,0px) + 34px)" }}>
+      <button type="button" className="dpx-btn" style={{ background: "#fff", color: "var(--navy)", margin: 0 }} onClick={onUseManual}><Ic n="phone" size="sm" /> Gunakan nomor HP</button>
+    </div>
+  </div></div>;
 }

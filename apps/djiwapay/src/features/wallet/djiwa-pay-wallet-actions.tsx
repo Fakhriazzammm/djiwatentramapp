@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Copy, Download, ScanLine, Share2, WalletCards } from "lucide-react";
 import type { CustomerProfile } from "../../lib/identity-adapter";
-import { DjiwaPayPageHeader } from "./djiwa-pay-page-header";
+import { Header, Ic, Sky } from "../shell/dpx-ui";
 import { DjiwaPayWalletScanner } from "./djiwa-pay-wallet-scanner";
 import { requestWalletWithdrawal, resolveWalletRecipient, transferWallet } from "../../lib/wallet-adapter";
 import { validateWalletWithdrawal } from "../../lib/djiwa-pay-withdrawal";
@@ -150,53 +149,42 @@ export function DjiwaPayWalletAction({ mode, profile, balance, onClose, onSucces
     } finally { setBusy(false); }
   };
 
-  const title = mode === "send" ? "Kirim Saldo" : mode === "withdraw" ? "Tarik Dana" : "Terima Saldo";
-  const subtitle = mode === "send" ? "Transfer ke sesama pengguna Djiwa Pay." : mode === "withdraw" ? "Kirim permintaan pencairan ke rekening Anda." : "Bagikan QR atau nomor HP untuk menerima transfer.";
+  const title = mode === "send" ? "Kirim saldo" : mode === "withdraw" ? "Tarik dana" : "Terima saldo";
+  const amountNumber = Number(amount);
+  const phoneReady = Boolean(verifiedRecipient);
+  const wrap = (content: React.ReactNode, cta?: React.ReactNode) => <div className="dpx"><Sky><div className="dpx-pad dpx-nobar" style={{ paddingBottom: cta ? 170 : 60 }}><Header title={title} onBack={onClose} />{content}</div>{cta ? <div className="dpx-sticky">{cta}</div> : null}</Sky></div>;
+  const err = message ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div>{message}</div></div> : null;
+  const amountField = (placeholder: string, hint: string) => <><div className="dpx-bigamt"><b>Rp</b><input aria-label="Nominal" value={amount ? Number(amount).toLocaleString("id-ID") : ""} inputMode="numeric" onChange={(event) => setAmount(event.currentTarget.value.replace(/\D/g, "").slice(0, 8))} placeholder={placeholder} /></div><p className="dpx-hint dpx-center">{hint}</p></>;
 
-  return <main className="pay-page wallet-action-page">
-    <DjiwaPayPageHeader title={title} subtitle={subtitle} onBack={onClose} />
-    <section className="wallet-action-sheet" aria-label={title}>
-      {mode === "withdraw" ? <>
-        <div className="wallet-action-intro"><span className="wallet-action-icon receive"><ArrowDownLeft size={20} /></span><div><strong>Tarik saldo ke rekening</strong><small>Permintaan akan ditinjau admin. Saldo belum dipotong sampai disetujui.</small></div></div>
-        <label className="wallet-action-field"><span>Nama bank</span><input value={bankName} onChange={(event) => setBankName(event.currentTarget.value.slice(0, 80))} placeholder="Contoh: BCA" autoComplete="organization" /></label>
-        <label className="wallet-action-field"><span>Nomor rekening</span><input value={accountNumber} inputMode="numeric" onChange={(event) => setAccountNumber(event.currentTarget.value.replace(/\D/g, "").slice(0, 30))} placeholder="Minimal 6 digit" autoComplete="off" /></label>
-        <label className="wallet-action-field"><span>Nama pemilik rekening</span><input value={accountName} onChange={(event) => setAccountName(event.currentTarget.value.slice(0, 120))} placeholder="Sesuai rekening bank" autoComplete="name" /></label>
-        <label className="wallet-action-field"><span>Nominal penarikan</span><div className="wallet-action-amount"><b>Rp</b><input value={amount} inputMode="numeric" onChange={(event) => setAmount(event.currentTarget.value.replace(/\D/g, "").slice(0, 8))} placeholder="10000" /></div><small>Minimal Rp10.000 · saldo tersedia {money(balance)}</small></label>
-        <label className="wallet-action-field"><span>Catatan <em>opsional</em></span><input value={note} onChange={(event) => setNote(event.currentTarget.value.slice(0, 120))} placeholder="Catatan untuk admin" maxLength={120} /></label>
-        {message ? <p className="wallet-action-message" role="alert">{message}</p> : null}
-        <button type="button" className="primary-action" onClick={() => void submitWithdrawal()} disabled={busy}>{busy ? "Mengirim permintaan..." : `Tarik ${amount ? money(Number(amount)) : "saldo"}`}</button>
-      </> : mode === "send" ? <>
-        <div className="wallet-action-intro"><span className="wallet-action-icon send"><ArrowUpRight size={20} /></span><div><strong>Kirim ke customer Djiwa Pay</strong><small>Masukkan nomor HP atau pindai QR penerima. Nama penerima selalu dicek sebelum saldo dikirim.</small></div></div>
-        <div className="ios-segmented-control wallet-action-mode" role="group" aria-label="Metode transfer">
-          <button type="button" className={transferMode === "phone" ? "is-active" : ""} aria-pressed={transferMode === "phone"} onClick={() => selectTransferMode("phone")}>Nomor HP</button>
-          <button type="button" className={transferMode === "scan" ? "is-active" : ""} aria-pressed={transferMode === "scan"} onClick={() => selectTransferMode("scan")}>Scan QR</button>
-        </div>
-        {transferMode === "scan" ? <DjiwaPayWalletScanner onDetected={handleScan} onUseManual={() => selectTransferMode("phone")} notice={scanNotice} /> : <>
-          <label className="wallet-action-field"><span>Nomor HP penerima</span><div className="wallet-action-recipient"><input value={recipient} onChange={(event) => { setRecipient(event.currentTarget.value.replace(/[^\d+\s-]/g, "")); setVerifiedRecipient(null); }} placeholder="08xxxxxxxxxx" inputMode="tel" autoComplete="tel" /><button type="button" className="secondary-action" onClick={() => void checkRecipient()} disabled={checkingRecipient}>{checkingRecipient ? "Mengecek..." : "Cek penerima"}</button></div><small>Pastikan nama penerima sesuai sebelum mengirim saldo.</small></label>
-          {verifiedRecipient ? <div className="wallet-recipient-verified" role="status"><span>✓</span><div><small>Penerima terverifikasi</small><strong>{verifiedRecipient.name}</strong><em>{formatWalletPhone(recipient)}</em></div></div> : null}
-          <p className="wallet-action-helper wallet-action-scan-hint"><ScanLine size={14} />Punya QR Djiwa Pay? Pilih <b>Scan QR</b> di atas.</p>
-          <label className="wallet-action-field"><span>Nominal transfer</span><div className="wallet-action-amount"><b>Rp</b><input value={amount} inputMode="numeric" onChange={(event) => setAmount(event.currentTarget.value.replace(/\D/g, "").slice(0, 8))} placeholder="1000" /></div><small>Minimal Rp1.000 · saldo tersedia {money(balance)}</small></label>
-          <label className="wallet-action-field"><span>Catatan <em>opsional</em></span><input value={note} onChange={(event) => setNote(event.currentTarget.value.slice(0, 120))} placeholder="Misalnya: patungan makan" maxLength={120} /></label>
-          {message ? <p className="wallet-action-message" role="alert">{message}</p> : null}
-          <button type="button" className="primary-action" onClick={() => void submit()} disabled={busy || !verifiedRecipient}>{busy ? "Memproses transfer..." : `Kirim ${amount ? money(Number(amount)) : "saldo"}`}</button>
-        </>}
-      </> : <>
-        <div className="wallet-action-intro"><span className="wallet-action-icon receive"><ArrowDownLeft size={20} /></span><div><strong>QR penerimaan Anda</strong><small>Penerima cukup memindai QR ini dari menu Kirim → Scan QR. Nomor HP tetap bisa dibagikan manual.</small></div></div>
-        {receivePhone ? <>
-          <div className="wallet-qr-card">
-            <div className="wallet-qr-code" role="img" aria-label={`QR penerimaan Djiwa Pay untuk ${profile.name || "akun ini"}`} dangerouslySetInnerHTML={{ __html: qrSvg }} />
-            <div className="wallet-qr-identity"><small>QR PENERIMAAN</small><strong>{profile.name || "Customer Djiwa"}</strong><span>{formatWalletPhone(profile.phone || receivePhone)}</span></div>
-            <p className="wallet-qr-hint"><ScanLine size={14} />Pindai lewat menu Kirim → Scan QR.</p>
-          </div>
-          <div className="wallet-qr-actions">
-            <button type="button" className="primary-action" onClick={() => void shareQr()}><Share2 size={16} />Bagikan QR</button>
-            <button type="button" className="secondary-action" onClick={() => void downloadQr()}><Download size={16} />Unduh QR</button>
-          </div>
-          <div className="wallet-receive-card"><WalletCards size={24} /><span><small>Nomor HP penerima</small><strong>{formatWalletPhone(profile.phone || receivePhone)}</strong></span><button type="button" onClick={() => void copy(profile.phone || "")} aria-label="Salin nomor HP penerima"><Copy size={17} /></button></div>
-        </> : <div className="wallet-action-message" role="alert">Nomor HP belum tersedia. Lengkapi nomor HP di profil agar bisa menerima saldo.</div>}
-        {message ? <p className="wallet-action-message" role="alert">{message}</p> : null}
-        <p className="wallet-action-helper">QR hanya berisi nomor HP penerima. Nama akun tetap diverifikasi sebelum saldo dikirim.</p>
-      </>}
-    </section>
-  </main>;
+  if (mode === "withdraw") return wrap(<>
+    <div className="dpx-center"><div className="dpx-sub">Saldo dapat ditarik</div><div className="dpx-money" style={{ fontSize: 22 }}>{money(balance)}</div></div>
+    <div className="dpx-note dpx-info"><Ic n="info" /><div><b>Tarik saldo ke rekening</b>Permintaan akan ditinjau admin. Saldo belum dipotong sampai disetujui.</div></div>
+    <label className="dpx-field"><span>Nama bank</span><div className="dpx-input"><input value={bankName} onChange={(event) => setBankName(event.currentTarget.value.slice(0, 80))} placeholder="Contoh: BCA" autoComplete="organization" /></div></label>
+    <label className="dpx-field"><span>Nomor rekening</span><div className="dpx-input"><input value={accountNumber} inputMode="numeric" onChange={(event) => setAccountNumber(event.currentTarget.value.replace(/\D/g, "").slice(0, 30))} placeholder="Minimal 6 digit" autoComplete="off" /></div></label>
+    <label className="dpx-field"><span>Nama pemilik rekening</span><div className="dpx-input"><input value={accountName} onChange={(event) => setAccountName(event.currentTarget.value.slice(0, 120))} placeholder="Sesuai rekening bank" autoComplete="name" /></div></label>
+    <label className="dpx-field"><span>Nominal penarikan</span><div className="dpx-input"><b>Rp</b><input value={amount} inputMode="numeric" onChange={(event) => setAmount(event.currentTarget.value.replace(/\D/g, "").slice(0, 8))} placeholder="10000" /></div><div className="dpx-hint">Minimal Rp10.000 · saldo tersedia {money(balance)}</div></label>
+    <label className="dpx-field"><span>Catatan <em>opsional</em></span><div className="dpx-input"><input value={note} onChange={(event) => setNote(event.currentTarget.value.slice(0, 120))} placeholder="Catatan untuk admin" maxLength={120} /></div></label>
+    {err}
+  </>, <button type="button" className={`dpx-btn ${busy ? "dpx-off" : ""}`} onClick={() => void submitWithdrawal()} disabled={busy}>{busy ? "Mengirim permintaan..." : `Tarik ${amount ? money(amountNumber) : "saldo"}`}</button>);
+
+  if (mode === "send" && transferMode === "scan") return <DjiwaPayWalletScanner onDetected={handleScan} onUseManual={() => selectTransferMode("phone")} notice={scanNotice} />;
+
+  if (mode === "send") return wrap(<>
+    <div className="dpx-seg" role="group" aria-label="Metode transfer"><button type="button" className="dpx-on" aria-pressed="true">Nomor HP</button><button type="button" aria-pressed="false" onClick={() => selectTransferMode("scan")}>Scan QR</button></div>
+    <label className="dpx-field"><span>Nomor HP penerima</span><div className="dpx-input"><Ic n="phone" size="sm" /><input value={recipient} onChange={(event) => { setRecipient(event.currentTarget.value.replace(/[^\d+\s-]/g, "")); setVerifiedRecipient(null); }} placeholder="0857 1122 3344" inputMode="tel" autoComplete="tel" /><button type="button" className="dpx-btn dpx-sm" style={{ minHeight: 36 }} onClick={() => void checkRecipient()} disabled={checkingRecipient}>{checkingRecipient ? "Mengecek…" : "Cek"}</button></div></label>
+    {verifiedRecipient ? <div className="dpx-note dpx-ok" role="status" style={{ marginTop: 10 }}><Ic n="check" /><div><b>{verifiedRecipient.name}</b>Terverifikasi · {formatWalletPhone(recipient)}</div></div> : <div className="dpx-hint">Tekan Cek untuk memastikan nama penerima sebelum kirim.</div>}
+    {phoneReady ? <>{amountField("0", `Saldo tersedia ${money(balance)} · min. Rp1.000`)}
+    <label className="dpx-field"><span>Catatan <em>opsional</em></span><div className="dpx-input"><input value={note} onChange={(event) => setNote(event.currentTarget.value.slice(0, 120))} placeholder="Misalnya: patungan makan" maxLength={120} /></div></label></> : null}
+    {err}
+  </>, <button type="button" className={`dpx-btn ${busy || !verifiedRecipient ? "dpx-off" : ""}`} onClick={() => void submit()} disabled={busy || !verifiedRecipient}>{busy ? "Memproses transfer..." : `Kirim ${amount ? money(amountNumber) : "saldo"}`}</button>);
+
+  return wrap(<>
+    <div className="dpx-seg" role="group" aria-label="Tampilan penerimaan"><button type="button" className="dpx-on" aria-pressed="true">Kode QR</button><button type="button" aria-pressed="false" onClick={() => void copy(profile.phone || receivePhone)}>{copied ? "Nomor tersalin" : "Salin nomor HP"}</button></div>
+    {receivePhone ? <>
+      <div className="dpx-qrbox" style={{ marginTop: 22 }} role="img" aria-label={`QR penerimaan Djiwa Pay untuk ${profile.name || "akun ini"}`} dangerouslySetInnerHTML={{ __html: qrSvg }} />
+      <div className="dpx-center dpx-mt"><b style={{ fontSize: 19 }}>{profile.name || "Customer Djiwa"}</b><div className="dpx-sub">{formatWalletPhone(profile.phone || receivePhone)}</div><div className="dpx-sub">Pindai lewat menu Kirim → Scan QR</div></div>
+      <div className="dpx-note dpx-info"><Ic n="shield" /><div>QR hanya berisi nomor HP penerima. Nama akun tetap diverifikasi sebelum saldo dikirim.</div></div>
+    </> : <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div>Nomor HP belum tersedia. Lengkapi nomor HP di profil agar bisa menerima saldo.</div></div>}
+    {err}
+  </>, receivePhone ? <div className="dpx-flex"><button type="button" className="dpx-btn dpx-ghost" style={{ margin: 0 }} onClick={() => void downloadQr()}><Ic n="down" size="sm" /> Unduh</button><button type="button" className="dpx-btn" style={{ margin: 0 }} onClick={() => void shareQr()}><Ic n="share" size="sm" /> Bagikan</button></div> : undefined);
 }

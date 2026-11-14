@@ -17,9 +17,15 @@ export function parsePpobPath(pathname: string): PpobRoute | null {
 }
 
 export type WalletRoute = {
-  page: "topup" | "transfer" | "receive" | "history" | "help";
+  page: "topup" | "transfer" | "receive" | "history" | "help" | "services" | "wallet" | "summary" | "account";
   transactionId?: string;
 };
+
+/** Bottom-tab destinations and the standalone pages reachable from them. */
+const tabPaths = { "/layanan": "services", "/dompet": "wallet", "/riwayat": "history", "/ringkasan": "summary", "/akun": "account" } as const;
+const tabPathPattern = /^(\/layanan|\/dompet|\/riwayat|\/ringkasan|\/akun)\/?$/;
+export const payTabPath = { home: "/", services: "/layanan", history: "/riwayat", wallet: "/dompet" } as const;
+export type PayTab = keyof typeof payTabPath;
 
 const walletPagePattern = /^\/wallet\/(topup|transfer|receive|history|help)\/?$/;
 const walletTransactionPattern = /^\/wallet\/history\/([^/]+)\/?$/;
@@ -34,7 +40,9 @@ export function parseWalletPath(pathname: string): WalletRoute | null {
   const transactionMatch = walletTransactionPattern.exec(pathname);
   if (transactionMatch) return { page: "history", transactionId: decodeURIComponent(transactionMatch[1]) };
   const pageMatch = walletPagePattern.exec(pathname);
-  return pageMatch ? { page: pageMatch[1] as WalletRoute["page"] } : null;
+  if (pageMatch) return { page: pageMatch[1] as WalletRoute["page"] };
+  const tabMatch = tabPathPattern.exec(pathname);
+  return tabMatch ? { page: tabPaths[tabMatch[1] as keyof typeof tabPaths] } : null;
 }
 
 export function isKnownPayPath(pathname: string) {

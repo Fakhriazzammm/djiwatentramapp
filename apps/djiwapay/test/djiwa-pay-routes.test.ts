@@ -11,6 +11,12 @@ describe("Djiwa Pay route contract", () => {
     ["/wallet/history", true],
     ["/wallet/history/123", true],
     ["/wallet/help", true],
+    ["/layanan", true],
+    ["/dompet", true],
+    ["/riwayat", true],
+    ["/ringkasan", true],
+    ["/akun/", true],
+    ["/layanan/extra", false],
     ["/wallet/withdraw", false],
     ["/wallet/card", false],
     ["/ppob", true],
@@ -32,6 +38,14 @@ describe("Djiwa Pay route contract", () => {
     expect(parseWalletPath("/wallet/help")).toEqual({ page: "help" });
     expect(parseWalletPath("/wallet/history/transfer%20123")).toEqual({ page: "history", transactionId: "transfer 123" });
     expect(parseWalletPath("/wallet/topup/extra")).toBeNull();
+  });
+
+  test("maps the bottom tabs to wallet pages", () => {
+    expect(parseWalletPath("/layanan")).toEqual({ page: "services" });
+    expect(parseWalletPath("/dompet")).toEqual({ page: "wallet" });
+    expect(parseWalletPath("/riwayat")).toEqual({ page: "history" });
+    expect(parseWalletPath("/ringkasan")).toEqual({ page: "summary" });
+    expect(parseWalletPath("/akun")).toEqual({ page: "account" });
   });
 
   test("keeps unavailable categories on their own route", () => {
