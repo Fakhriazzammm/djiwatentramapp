@@ -37,6 +37,7 @@ Migrasi produksi hanya aditif (tabel baru). Fase 1 tidak mengubah payroll/order/
 ## Verifikasi
 - Migrasi (aditif) diterapkan ke PostgreSQL production di VPS `vps-djiwa-tentram` lewat `psql` di container `supabase-db`, masing-masing dalam satu transaksi dengan `ON_ERROR_STOP=1`. Backup pra-migrasi (`pg_dump -Fc`) disimpan di build machine (`~/.djiwa-build/backups/`), bukan di VPS yang disknya penuh.
 - Objek terverifikasi: 10 tabel `mgr_*`, 15 bab Playbook, 19 dokumen, 13 kategori pengeluaran, 5 pengaturan awal, bucket `manager-uploads`.
+- Ketiga migrasi manager sekarang juga tercatat di `supabase_migrations.schema_migrations` (versi `20261114100000`, `20261114110000`, `20261114120000`) supaya riwayat migrasi tidak lagi tertinggal; penerapan ulang bersifat idempoten (`create table if not exists` + `on conflict`) dan tidak mengubah data.
 - Query dan tipe parameter yang dipakai modul (dashboard, pengeluaran, laporan, stok, payroll, fungsi admin) diuji langsung terhadap skema production.
 - `apps/manager` lolos `check-types` dan `vite build`; `apps/auth-server` tidak menambah error TypeScript baru.
 - Yang belum bisa dibuktikan dari build/HTTP 200: login Google end-to-end, OCR struk dengan kunci Helipod asli, dan penerimaan artifact oleh timer VPS. Catat hasil uji manual setelah deploy.
