@@ -7,6 +7,7 @@ import type { auth as defaultAuth } from "./auth.js";
 import { createGuards, json, text, ROLES } from "./manager-guards.js";
 import { loadSnapshot, wibDay } from "./manager-data.js";
 import { runDailyPlan } from "./manager-ai.js";
+import { registerManagerPayroll } from "./manager-payroll.js";
 
 /**
  * Manager/Supervisor operational modules. All reads reuse the same tables and
@@ -758,6 +759,8 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
     );
     return json({ success: true, setting: r.rows[0] });
   });
+
+  registerManagerPayroll(app, auth, pool);
 
   // Roles are exported for the app's own gating (kept in sync with guards).
   void ROLES;
