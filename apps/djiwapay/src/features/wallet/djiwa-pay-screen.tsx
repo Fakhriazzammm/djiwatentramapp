@@ -13,7 +13,10 @@ import { parseCheckoutDraft, serializeCheckoutDraft, type CheckoutDraft } from "
 import { checkoutCustomerNumberHint, parsePpobPath, parseWalletPath, postpaidServiceForCategory } from "../../lib/djiwa-pay-routes";
 import { djiwaPaySplashLabel, isDjiwaPayPageReady } from "../../lib/djiwa-pay-splash";
 import { DjiwaPayWalletAction } from "./djiwa-pay-wallet-actions";
-import { AccountPage, AllServicesSheet, CardSheet, ComingSoonSheet, HelpPage, HistoryTab, HomeTab, NotificationsPage, PaySheet, ServicesTab, SummaryPage, TabBar, WalletTab, type Nav } from "../shell/dpx-pages";
+import { AccountPage, AllServicesSheet, CardSheet, ComingSoonSheet, HelpPage, NotificationsPage, PaySheet, ServicesTab, TabBar, TxnSheet, type Nav } from "../shell/dpx-pages";
+import { FinBudget, FinHome, FinRecords, FinReport, FinSettings, FinSheetHost, FinWallet, ManualForm, Onboarding, type FinCtx, type FinSheet } from "../finance/fin-pages";
+import type { Notify } from "../finance/fin-sheets";
+import { useFinance } from "../../lib/finance/use-finance";
 import { AnimatePresence, MotionConfig } from "framer-motion";
 import { Btn, Header, I3, Ic, Screen, Sky, SuccessMark, serviceIcon, serviceTone, spring } from "../shell/dpx-ui";
 import { detectOperator } from "../../lib/djiwa-pay-operator";
@@ -201,6 +204,10 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   const legacyTransactions: WalletTransaction[] = (wallet?.ledger ?? []).map((entry) => ({ id: Number(entry.id) || 0, transfer_id: null, direction: entry.direction, category: "adjustment", type: entry.transaction_type, amount: entry.amount, balance_after: 0, status: entry.status, counterparty_name: null, counterparty_phone: null, reference_type: null, reference_id: null, note: entry.note, created_at: entry.created_at }));
   const transactions: WalletTransaction[] = wallet?.transactions?.length ? wallet.transactions : legacyTransactions;
   const visibleTransactions = activityFilter === "all" ? transactions : activityFilter === "transfer" ? transactions.filter((entry) => entry.category === "transfer") : transactions.filter((entry) => entry.direction === activityFilter && !entry.direct);
+  const fin = useFinance(profile.source_id, transactions);
+  const [fsheet, setFsheet] = useState<FinSheet | null>(null);
+  const [snack, setSnack] = useState<{ id: number; text: string; undo?: () => void } | null>(null);
+  const notify: Notify = (text, undo) => { const id = Date.now(); setSnack({ id, text, undo }); window.setTimeout(() => setSnack((cur) => (cur && cur.id === id ? null : cur)), undo ? 5500 : 2600); };
   const entries = wallet?.ledger ?? [];
   const incoming = wallet?.wallet.total_credited ?? entries.filter((entry) => entry.direction === "credit").reduce((total, entry) => total + entry.amount, 0);
   const outgoing = wallet?.wallet.total_debited ?? entries.filter((entry) => entry.direction === "debit").reduce((total, entry) => total + entry.amount, 0);
@@ -543,25 +550,34 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     openService: (key, label) => { if (previewOnly && key !== "pulsa") { /* catalog calls are read-only; allow browsing */ } openPpob(key, label); },
     openSheet: (name) => setShell(name),
   };
+  const finCtx: FinCtx = { fin, notify, nav: payNav, profile, transactions, payBalance: balance, loading, visible, onToggleVisible: toggleVisible, unread: unreadCount, onOpenNotifications: openNotifications, open: setFsheet, onPayDetail: openTx };
+  const goManual = (kind: "out" | "in" | "tf", editId?: string) => goPayRoute(`/catat?${editId ? `edit=${encodeURIComponent(editId)}` : `kind=${kind}`}`);
   const sheets = <AnimatePresence>
     {shell === "pay" ? <PaySheet key="pay" nav={payNav} onClose={() => setShell(null)} withdrawSupported={withdrawAction.supported} /> : null}
     {shell === "all" ? <AllServicesSheet key="all" nav={payNav} onClose={() => setShell(null)} /> : null}
     {shell === "card" ? <CardSheet key="card" onClose={() => setShell(null)} /> : null}
     {soon ? <ComingSoonSheet key="soon" message={soon} onClose={() => setSoon(null)} /> : null}
+    {fsheet ? <FinSheetHost key={fsheet.k} ctx={finCtx} sheet={fsheet} close={() => setFsheet(null)} goManual={goManual} openPaySheet={() => setShell("pay")} /> : null}
   </AnimatePresence>;
-  const frameShell = (content: ReactNode, active: "home" | "services" | "history" | "wallet" | null) => <MotionConfig reducedMotion="user"><div className={`dpx ${embedded ? "dpx-embedded" : ""}`}><motion.div key={`${routePath}|${notificationsOpen ? "n" : ""}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.34, ease: [0.32, 0.72, 0, 1] }}>{content}</motion.div>{embedded || !active ? null : <TabBar active={active} go={(path) => goPayRoute(path)} openPay={() => setShell("pay")} />}{sheets}</div></MotionConfig>;
+  const snackbar = <AnimatePresence>{snack ? <motion.div key={snack.id} className="dpx-snack" role="status" initial={{ opacity: 0, y: 30, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20 }} transition={spring}><span>{snack.text}</span>{snack.undo ? <Btn type="button" onClick={() => { snack.undo?.(); setSnack(null); }}>Urungkan</Btn> : null}</motion.div> : null}</AnimatePresence>;
+  const frameShell = (content: ReactNode, active: "home" | "budget" | "history" | "wallet" | null) => <MotionConfig reducedMotion="user"><div className={`dpx ${embedded ? "dpx-embedded" : ""}`}><motion.div key={`${routePath}|${notificationsOpen ? "n" : ""}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.34, ease: [0.32, 0.72, 0, 1] }}>{content}</motion.div>{embedded || !active ? null : <TabBar active={active} go={(path) => goPayRoute(path)} openPay={() => setFsheet({ k: "catat" })} />}{sheets}{snackbar}</div></MotionConfig>;
   if (!wallet && error && walletRoute?.page !== "help") return frameShell(
     <Sky><div className="dpx-pad"><div className="dpx-empty" role="alert" style={{ paddingTop: 80 }}><I3 name="payment-wallet" px={112} /><b>Saldo belum dapat dimuat</b><p>{error}</p><Btn type="button" className="dpx-btn" style={{ maxWidth: 260 }} onClick={onRefresh} disabled={loading}>{loading ? "Mencoba lagi…" : "Coba lagi"}</Btn></div></div></Sky>, null);
   if (walletRoute?.page === "history") {
     const selectedTransaction = walletRoute.transactionId ? transactions.find((entry) => String(entry.id) === walletRoute.transactionId || String(entry.transfer_id ?? "") === walletRoute.transactionId) ?? null : null;
-    return frameShell(<HistoryTab transactions={transactions} loading={loading} nav={payNav} selected={selectedTransaction} onOpenTx={openTx} onCloseTx={() => goPayRoute("/riwayat")} />, "history");
+    const selectedNode = <AnimatePresence>{selectedTransaction ? <TxnSheet key="tx" entry={selectedTransaction} onClose={() => goPayRoute("/riwayat")} onHelp={() => goPayRoute("/wallet/help")} /> : null}</AnimatePresence>;
+    return frameShell(<FinRecords ctx={finCtx} selected={selectedNode} />, "history");
   }
   if (walletRoute?.page === "transfer" || walletRoute?.page === "receive") return <DjiwaPayWalletAction mode={walletRoute.page === "transfer" ? "send" : "receive"} profile={profile} balance={balance} initialMode={transferInitialMode} initialRecipient={transferInitialRecipient} onClose={() => goPayRoute("/")} onSuccess={() => { goPayRoute("/"); onRefresh(); if (!previewOnly) void refreshWalletNotifications(); }} />;
   if (walletRoute?.page === "help") return frameShell(<HelpPage onBack={() => goPayRoute("/")} nav={payNav} />, null);
-  if (walletRoute?.page === "summary") return frameShell(<SummaryPage transactions={transactions} onBack={() => goPayRoute("/riwayat")} />, null);
+  if (walletRoute?.page === "summary") return frameShell(<FinReport ctx={finCtx} onBack={() => goPayRoute("/")} />, null);
   if (walletRoute?.page === "account") return frameShell(<AccountPage profile={profile} unread={unreadCount} customerHome={customerHome} embedded={embedded} onBack={() => goPayRoute("/")} nav={payNav} onOpenNotifications={openNotifications} />, null);
+  if (walletRoute?.page === "settings") return frameShell(<FinSettings ctx={finCtx} onBack={() => goPayRoute("/akun")} />, null);
+  if (walletRoute?.page === "catat") { const editId = paySearchParams.get("edit") ?? undefined; const k = paySearchParams.get("kind"); return frameShell(<ManualForm key={editId ?? k ?? "new"} ctx={finCtx} editId={editId} initialKind={k === "in" || k === "tf" ? k : undefined} onDone={() => { if (window.history.length > 1) window.history.back(); else goPayRoute("/"); }} />, null); }
   if (notificationsOpen) return frameShell(<NotificationsPage items={walletNotifications} loading={notificationsLoading} busy={notificationsBusy} onBack={() => { onNavigate("Kembali ke Saldo Djiwa Pay"); setNotificationsOpen(false); }} onRead={async (notification) => { if (notification.unread) { await markWalletNotificationRead(notification.id); await refreshWalletNotifications(); } }} onReadAll={async () => { setNotificationsBusy(true); try { await markAllWalletNotificationsRead(); await refreshWalletNotifications(); } finally { setNotificationsBusy(false); } }} />, null);
-  if (walletRoute?.page === "services") return frameShell(<ServicesTab nav={payNav} focusSearch={paySearchParams.get("cari") === "1"} recentNumbers={recentCustomerNumbers} />, "services");
-  if (walletRoute?.page === "wallet") return frameShell(<WalletTab balance={balance} visible={visible} onToggleVisible={toggleVisible} incoming={incoming} outgoing={outgoing} transactions={transactions} nav={payNav} loading={loading} />, "wallet");
-  return frameShell(<HomeTab profile={profile} balance={balance} loading={loading} error={error} hasWallet={hasWallet} visible={visible} onToggleVisible={toggleVisible} onRefresh={onRefresh} transactions={transactions} unread={unreadCount} nav={payNav} onOpenNotifications={openNotifications} onOpenTx={openTx} previewOnly={previewOnly} />, "home");
+  if (walletRoute?.page === "services") return frameShell(<ServicesTab nav={payNav} focusSearch={paySearchParams.get("cari") === "1"} recentNumbers={recentCustomerNumbers} />, "wallet");
+  if (walletRoute?.page === "wallet") return frameShell(<FinWallet ctx={finCtx} />, "wallet");
+  if (walletRoute?.page === "budget") return frameShell(<FinBudget ctx={finCtx} />, "budget");
+  if (!fin.state.onboarded) return frameShell(<Onboarding ctx={finCtx} />, null);
+  return frameShell(<FinHome ctx={finCtx} />, "home");
 }

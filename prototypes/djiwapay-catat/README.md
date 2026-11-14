@@ -72,3 +72,11 @@ Metrik: pengguna aktif mingguan, catatan/pengguna/minggu, rasio catatan otomatis
 - NLU suara/teks dan OCR struk lewat layanan yang sudah ada; tiap hasil selalu ditampilkan untuk konfirmasi sebelum simpan.
 - Kebutuhan aset 3D baru: ikon kategori (makan, transport, belanja, tagihan, hiburan, kesehatan, pendidikan, rumah, gaji), streak/api, tujuan, hutang. Sementara memakai ikon garis pada lingkaran berwarna (pola yang sama dengan app sekarang).
 - Rilis bertahap: (1) catat manual + Catatan + anggaran, (2) auto-catat Djiwa Pay + laporan, (3) suara & struk, (4) Plus + paywall, (5) UMKM.
+
+## Status implementasi (`apps/djiwapay`, dirilis 2026-11-15)
+Diterapkan dan berjalan nyata (data tersimpan **lokal per akun di perangkat**, dengan cadangan/pemulihan JSON dan ekspor CSV):
+Onboarding · Beranda (aman dibelanjakan hari ini, catat cepat, insight, streak) · Catat dengan satu kalimat (parser bahasa Indonesia: “kopi 25rb dan parkir 5rb, gaji 6jt”, dompet, “kemarin”) dan suara (Web Speech API bila browser mendukung) · Catat manual dengan keypad · Catatan (bulan, pencarian, filter, detail, ubah, hapus + urungkan) · **Auto-catat Djiwa Pay** (kategori bisa diubah, nominal tidak) · Anggaran per kategori + rollover · Tujuan tabungan + proyeksi · Hutang & piutang · Patungan · Langganan terdeteksi · Dompet multi-akun + kekayaan bersih · Laporan (ringkasan, kategori, tren 6 bulan, arus uang) · Kelola kategori & dompet · semua alur Djiwa Pay lama (isi saldo, kirim, terima, scan, PPOB, tagihan, riwayat) tetap ada di Dompet / `/bayar`.
+
+Rute: `/` Beranda · `/riwayat` Catatan · `/anggaran` · `/dompet` · `/catat` · `/ringkasan` (= `/laporan`) · `/bayar` (= `/layanan`) · `/pengaturan` · `/akun`.
+
+**Belum ada (butuh backend / layanan lain):** foto struk + OCR, sinkron antar-perangkat & cadangan otomatis ke server, anggaran bersama pasangan, Djiwa Plus + penagihan (paywall), pengingat dorong, mode UMKM. Tahap berikutnya: tabel Supabase + endpoint di auth-server (RLS per pengguna) agar data tersinkron, lalu OCR struk memakai `packages/ocr-service`.

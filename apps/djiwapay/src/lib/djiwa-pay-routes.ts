@@ -17,14 +17,14 @@ export function parsePpobPath(pathname: string): PpobRoute | null {
 }
 
 export type WalletRoute = {
-  page: "topup" | "transfer" | "receive" | "history" | "help" | "services" | "wallet" | "summary" | "account";
+  page: "topup" | "transfer" | "receive" | "history" | "help" | "services" | "wallet" | "summary" | "account" | "budget" | "catat" | "settings";
   transactionId?: string;
 };
 
 /** Bottom-tab destinations and the standalone pages reachable from them. */
-const tabPaths = { "/layanan": "services", "/dompet": "wallet", "/riwayat": "history", "/ringkasan": "summary", "/akun": "account" } as const;
-const tabPathPattern = /^(\/layanan|\/dompet|\/riwayat|\/ringkasan|\/akun)\/?$/;
-export const payTabPath = { home: "/", services: "/layanan", history: "/riwayat", wallet: "/dompet" } as const;
+const tabPaths = { "/layanan": "services", "/bayar": "services", "/dompet": "wallet", "/riwayat": "history", "/ringkasan": "summary", "/laporan": "summary", "/akun": "account", "/anggaran": "budget", "/catat": "catat", "/pengaturan": "settings" } as const;
+const tabPathPattern = /^(\/layanan|\/bayar|\/dompet|\/riwayat|\/ringkasan|\/laporan|\/akun|\/anggaran|\/catat|\/pengaturan)\/?$/;
+export const payTabPath = { home: "/", history: "/riwayat", budget: "/anggaran", wallet: "/dompet" } as const;
 export type PayTab = keyof typeof payTabPath;
 
 const walletPagePattern = /^\/wallet\/(topup|transfer|receive|history|help)\/?$/;

@@ -12,6 +12,11 @@ describe("Djiwa Pay route contract", () => {
     ["/wallet/history/123", true],
     ["/wallet/help", true],
     ["/layanan", true],
+    ["/bayar", true],
+    ["/anggaran", true],
+    ["/laporan", true],
+    ["/catat", true],
+    ["/pengaturan", true],
     ["/dompet", true],
     ["/riwayat", true],
     ["/ringkasan", true],
@@ -46,6 +51,11 @@ describe("Djiwa Pay route contract", () => {
     expect(parseWalletPath("/riwayat")).toEqual({ page: "history" });
     expect(parseWalletPath("/ringkasan")).toEqual({ page: "summary" });
     expect(parseWalletPath("/akun")).toEqual({ page: "account" });
+    expect(parseWalletPath("/bayar")).toEqual({ page: "services" });
+    expect(parseWalletPath("/anggaran")).toEqual({ page: "budget" });
+    expect(parseWalletPath("/laporan")).toEqual({ page: "summary" });
+    expect(parseWalletPath("/catat")).toEqual({ page: "catat" });
+    expect(parseWalletPath("/pengaturan")).toEqual({ page: "settings" });
   });
 
   test("keeps unavailable categories on their own route", () => {

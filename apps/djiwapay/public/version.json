@@ -1,7 +1,7 @@
 {
   "version": "0.2.569",
-  "commitHash": "10be529",
-  "message": "build(djiwapay): emit version.json so ship-artifacts can deploy it",
+  "commitHash": "ae3583d",
+  "message": "docs(prototype): brand stays Djiwa Pay (drop 'Catat' as a product name)",
   "buildDate": "2026-11-14",
-  "generatedAt": "2026-11-14T17:04:13.269Z"
+  "generatedAt": "2026-11-14T17:58:43.795Z"
 }
