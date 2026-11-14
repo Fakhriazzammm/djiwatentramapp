@@ -27,6 +27,13 @@ export function extractJson(text: string): unknown {
   return JSON.parse(fenced.slice(start, end + 1));
 }
 
+/** ISO, or the Indonesian dd/mm/yyyy [hh:mm] that thermal receipts print. Local (WIB) time when no zone is given. */
+export function parseWhen(text: string): number {
+  const m = text.trim().match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})(?:[ T,]+(\d{1,2})[:.](\d{2}))?/);
+  if (m) { const y = Number(m[3]) < 100 ? 2000 + Number(m[3]) : Number(m[3]); return Date.UTC(y, Number(m[2]) - 1, Number(m[1]), Number(m[4] ?? 12) - 7, Number(m[5] ?? 0)); }
+  return Date.parse(text);
+}
+
 export function parseReceipt(text: string, model: string, now = new Date()): ReceiptRead {
   const raw = extractJson(text) as Record<string, unknown>;
   const items: ReceiptItem[] = (Array.isArray(raw.items) ? raw.items : []).slice(0, 80).map((it) => {
@@ -39,7 +46,7 @@ export function parseReceipt(text: string, model: string, now = new Date()): Rec
   let total = Math.round(num(raw.total));
   if (total <= 0) total = sum + tax;
   let purchasedAt: string | null = null;
-  if (typeof raw.purchasedAt === "string") { const t = Date.parse(raw.purchasedAt); if (!Number.isNaN(t) && t <= now.getTime() + 864e5 && t > now.getTime() - 3 * 365 * 864e5) purchasedAt = new Date(t).toISOString(); }
+  if (typeof raw.purchasedAt === "string") { const t = parseWhen(raw.purchasedAt); if (!Number.isNaN(t) && t <= now.getTime() + 864e5 && t > now.getTime() - 3 * 365 * 864e5) purchasedAt = new Date(t).toISOString(); }
   return { merchant: String(raw.merchant ?? "").trim().slice(0, 80), purchasedAt, total, tax, items, confidence: clamp01(raw.confidence), mismatch: items.length ? total - sum - tax : 0, model };
 }
 

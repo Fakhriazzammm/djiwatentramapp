@@ -31,6 +31,13 @@ describe("parseReceipt", () => {
   });
 });
 
+describe("dates", () => {
+  test("reads dd/mm/yyyy hh:mm as WIB", () => {
+    const r = parseReceipt('{"merchant":"a","purchasedAt":"14/11/2026 16:10","total":1000,"items":[{"name":"x","price":1000}],"confidence":0.9}', "m", NOW);
+    expect(r.purchasedAt).toBe("2026-11-14T09:10:00.000Z");
+  });
+});
+
 describe("auth resolver", () => {
   test("needs the pay cookie and a customer id from auth-server", async () => {
     let calls = 0;
