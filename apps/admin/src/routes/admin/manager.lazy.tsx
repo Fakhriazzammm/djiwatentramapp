@@ -1,5 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { Check, RefreshCw } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ListTodo, ShieldCheck, FileText, BookOpen, Settings, ArrowLeft, Check, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { isAdminLevelRole } from "@/lib/admin-access";
+import { ManagerWorkspace } from "./-manager/ManagerWorkspace";
+import "./-manager/manager.css";
 import { requestAdminConfirm } from "@/lib/admin-dialogs";
 
 export const Route = createLazyFileRoute("/admin/manager")({ component: AdminManager });
@@ -41,8 +44,8 @@ function AdminManager() {
   const [refreshing, setRefreshing] = useState(false);
   const [errors, setErrors] = useState<{ members?: string; reports?: string }>({});
   const [busy, setBusy] = useState<string | null>(null);
-  const [section, setSection] = useState<Section>("ringkasan");
-  const [task, setTask] = useState({ title: "", detail: "", assigneeRole: "manager", kind: "general", priority: "normal", dueAt: "" });
+  const [section, setSection] = useState<Section>("tugas");
+  useEffect(() => { window.dispatchEvent(new CustomEvent("manager-panel-title", {detail: SECTIONS.find(item => item.id === section)?.label || "Penugasan"})); }, [section]);
 
   const call = useCallback(async <T,>(path: string, method = "GET", body?: unknown): Promise<T> => {
     if (!token) throw new Error("Sesi Admin tidak tersedia. Masuk kembali lalu coba lagi.");
@@ -88,19 +91,6 @@ function AdminManager() {
     finally { setBusy(null); }
   };
 
-  const sendTask = async () => {
-    if (!task.title.trim() || busy) return;
-    setBusy("task");
-    try {
-      const dueAt = task.dueAt ? new Date(task.dueAt).toISOString() : undefined;
-      await call("/api/admin-manager/tasks", "POST", { ...task, dueAt });
-      toast.success("Tugas terkirim");
-      setTask({ ...task, title: "", detail: "", dueAt: "" });
-    }
-    catch (e) { toast.error(`Gagal: ${(e as Error).message}`); }
-    finally { setBusy(null); }
-  };
-
   const review = async (r: Report, status: "acknowledged" | "needs_revision") => {
     if (busy) return;
     setBusy(r.id);
@@ -113,29 +103,15 @@ function AdminManager() {
   const activeMembers = members.filter((m) => m.status === "approved").length;
   const reportsToReview = reports.filter((r) => r.status === "sent").length;
 
+  const navTarget = document.getElementById("manager-owner-navigation");
+  const sectionIcons = {tugas:ListTodo,akses:ShieldCheck,laporan:FileText,panduan:BookOpen,kebijakan:Settings,ringkasan:ListTodo};
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-5 p-3 sm:p-5">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Ruang kerja Owner</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">Manager & Supervisor</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Kelola akses, kirim tugas, tinjau laporan, dan atur panduan serta kebijakan tim.</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => void load(true)} disabled={loading || refreshing} loading={refreshing} aria-label="Muat ulang data">
-          <RefreshCw /> Muat ulang
-        </Button>
-      </header>
-
-      <nav aria-label="Bagian Manager & Supervisor" className="flex gap-1 overflow-x-auto rounded-2xl border border-border/70 bg-card p-1.5 shadow-sm">
-        {SECTIONS.map(({ id, label }) => (
-          <Button key={id} type="button" size="sm" variant={section === id ? "default" : "ghost"} className="min-h-10 shrink-0" aria-current={section === id ? "page" : undefined} onClick={() => setSection(id)}>
-            {label}
-            {id === "akses" && pendingMembers > 0 && <span className="ml-1 rounded-full bg-background/20 px-1.5 text-[10px]">{pendingMembers}</span>}
-            {id === "laporan" && reportsToReview > 0 && <span className="ml-1 rounded-full bg-background/20 px-1.5 text-[10px]">{reportsToReview}</span>}
-          </Button>
-        ))}
-      </nav>
-
+    <div className="manager-owner">
+      {navTarget && createPortal(<nav className="manager-rail" aria-label="Navigasi Manager"><a href="/admin" title="Kembali ke Admin"><ArrowLeft size={18}/><span>Kembali ke Admin</span></a>{SECTIONS.filter(item=>item.id !== "ringkasan").map(({id,label})=>{const Icon=sectionIcons[id];return <button title={label} key={id} aria-label={label} aria-current={section === id ? "page" : undefined} onClick={()=>setSection(id)}><Icon size={18}/><span>{label}</span></button>;})}</nav>,navTarget)}
+      <div className="manager-toolbar"><nav aria-label="Bagian Manager & Supervisor">
+        {SECTIONS.filter(({id}) => id !== "ringkasan").map(({id,label}) => <button key={id} aria-current={section === id ? "page" : undefined} onClick={() => setSection(id)}>{label}</button>)}
+      </nav><button className="manager-refresh" onClick={() => void load(true)} disabled={refreshing}><RefreshCw size={14} /> Muat ulang</button></div>
+      {section === "tugas" && <ManagerWorkspace call={call} />}
       {section === "ringkasan" && <div className="space-y-5">
         <div className="grid gap-3 sm:grid-cols-3">
           <MetricCard title="Permintaan akses" value={loading ? "…" : pendingMembers} detail="Perlu ditinjau Owner" onClick={() => setSection("akses")} />
@@ -156,40 +132,6 @@ function AdminManager() {
 
       {section === "akses" && <Panel title="Akses Manager & Supervisor" description="Satu akun aktif untuk setiap peran. Perubahan akses langsung berlaku di aplikasi Manager.">
         <MemberList members={members} loading={loading} error={errors.members} busy={busy} onDecide={decide} onRetry={() => void load(true)} />
-      </Panel>}
-
-      {section === "tugas" && <Panel title="Beri tugas" description="Tugas Owner muncul di daftar tugas peran yang dipilih.">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-          <label className="space-y-1.5 text-sm font-medium">Judul tugas
-            <Input placeholder="Contoh: Kirim evaluasi outlet bulan ini" maxLength={200} value={task.title} onChange={(e) => setTask({ ...task, title: e.target.value })} />
-          </label>
-          <label className="space-y-1.5 text-sm font-medium">Penerima
-            <select className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm" value={task.assigneeRole} onChange={(e) => setTask({ ...task, assigneeRole: e.target.value })}>
-              <option value="manager">Manager</option><option value="supervisor">Supervisor / Purchasing</option>
-            </select>
-          </label>
-        </div>
-        <label className="mt-4 block space-y-1.5 text-sm font-medium">Detail <span className="font-normal text-muted-foreground">(opsional)</span>
-          <Textarea rows={4} maxLength={2000} placeholder="Tambahkan konteks, hasil yang diharapkan, atau tenggat." value={task.detail} onChange={(e) => setTask({ ...task, detail: e.target.value })} />
-        </label>
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-wrap gap-3">
-            <label className="space-y-1 text-xs font-medium text-muted-foreground">Kategori
-              <select className="block h-10 min-w-36 rounded-xl border border-input bg-background px-3 text-sm text-foreground" value={task.kind} onChange={(e) => setTask({ ...task, kind: e.target.value })}>
-                <option value="general">Umum</option><option value="purchasing">Belanja</option><option value="ops">Operasional</option><option value="people">Tim</option><option value="finance">Keuangan</option>
-              </select>
-            </label>
-            <label className="space-y-1 text-xs font-medium text-muted-foreground">Prioritas
-              <select className="block h-10 min-w-32 rounded-xl border border-input bg-background px-3 text-sm text-foreground" value={task.priority} onChange={(e) => setTask({ ...task, priority: e.target.value })}>
-                <option value="low">Rendah</option><option value="normal">Normal</option><option value="high">Penting</option>
-              </select>
-            </label>
-            <label className="space-y-1 text-xs font-medium text-muted-foreground">Tenggat <span className="font-normal">(opsional)</span>
-              <Input className="min-w-52 text-sm" type="datetime-local" value={task.dueAt} onChange={(e) => setTask({ ...task, dueAt: e.target.value })} />
-            </label>
-          </div>
-          <Button disabled={busy !== null || !task.title.trim()} loading={busy === "task"} onClick={() => void sendTask()}><Check /> Kirim tugas</Button>
-        </div>
       </Panel>}
 
       {section === "laporan" && <Panel title="Laporan masuk" description="Tinjau laporan dari Manager dan Supervisor. Status dan catatan tinjauan tersimpan di server.">
@@ -293,6 +235,7 @@ type ContentRow = {
 function ContentSections({ call }: { call: <T,>(path: string, method?: string, body?: unknown) => Promise<T> }) {
   const [kind, setKind] = useState<"playbook" | "documents">("playbook");
   const [items, setItems] = useState<ContentRow[]>([]);
+  const [selected, setSelected] = useState<ContentRow | null>(null);
   const [draft, setDraft] = useState<ContentRow | null>(null);
   const [text, setText] = useState("");
   const [title, setTitle] = useState("");
@@ -308,6 +251,7 @@ function ContentSections({ call }: { call: <T,>(path: string, method?: string, b
     try {
       const data = await call<{ items: ContentRow[] }>(`/api/admin-manager/${next}`);
       setItems(data.items ?? []);
+      setSelected(data.items?.[0] ?? null);
       setDraft(null);
     } catch (e) { setError(errorMessage(e)); }
     finally { setLoading(false); }
@@ -341,17 +285,18 @@ function ContentSections({ call }: { call: <T,>(path: string, method?: string, b
   return (
     <Panel title="Playbook & Dokumen" description="Atur konten dan templat yang dibaca Manager dan Supervisor.">
       <div className="flex flex-wrap gap-2" role="group" aria-label="Jenis konten">
-        <Button size="sm" variant={kind === "playbook" ? "default" : "outline"} aria-pressed={kind === "playbook"} onClick={() => setKind("playbook")}>Playbook</Button>
-        <Button size="sm" variant={kind === "documents" ? "default" : "outline"} aria-pressed={kind === "documents"} onClick={() => setKind("documents")}>Dokumen</Button>
+        <Button size="sm" className={kind === "playbook" ? "manager-selected" : ""} variant="outline" aria-pressed={kind === "playbook"} onClick={() => setKind("playbook")}>Playbook</Button>
+        <Button size="sm" className={kind === "documents" ? "manager-selected" : ""} variant="outline" aria-pressed={kind === "documents"} onClick={() => setKind("documents")}>Dokumen</Button>
       </div>
       {error && <ErrorNotice message={error} onRetry={() => void load()} />}
       {loading ? <div className="space-y-2" role="status" aria-label="Memuat konten">{[1, 2, 3].map((item) => <div key={item} className="h-16 animate-pulse rounded-xl bg-muted/70" />)}</div> : !error && <div className="divide-y divide-border/70 rounded-xl border border-border/70">
         {items.map((row) => <div key={row.slug} className="flex flex-wrap items-center justify-between gap-3 p-3 text-sm sm:p-4">
           <div className="min-w-0"><div className="truncate font-semibold">{row.title}</div><div className="mt-1 truncate text-xs text-muted-foreground">{row.slug}{row.category ? ` · ${row.category}` : ""} · {row.roles?.map((r) => ROLE_LABEL[r] ?? r).join(", ") || "Tanpa penerima"}</div></div>
-          <Button size="sm" variant="outline" onClick={() => edit(row)}>Edit</Button>
+          <Button size="sm" variant="outline" onClick={() => { setSelected(row); setDraft(null); }}>Buka</Button>
         </div>)}
         {items.length === 0 && <div className="p-5"><EmptyState title="Belum ada konten" detail="Konten yang tersedia di aplikasi Manager akan tampil di sini." /></div>}
       </div>}
+      {selected && !draft && <article className="manager-reading"><p className="manager-reading-label">{kind === "playbook" ? "Playbook SOP" : selected.category || "Dokumen"}</p><div className="manager-reading-title"><h2>{selected.title}</h2><Button size="sm" variant="outline" onClick={() => edit(selected)}>Edit konten</Button></div><ContentBody value={selected.body} /></article>}
       {draft && <div className="space-y-4 rounded-xl border border-border/70 bg-muted/20 p-4">
         <div><p className="text-xs font-semibold uppercase tracking-wide text-primary">Mengedit {kind === "playbook" ? "Playbook" : "dokumen"}</p><p className="mt-1 font-semibold">{draft.slug}</p></div>
         <label className="block space-y-1.5 text-sm font-medium">Judul<Input value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} placeholder="Judul" /></label>
@@ -359,11 +304,22 @@ function ContentSections({ call }: { call: <T,>(path: string, method?: string, b
         <fieldset className="flex flex-wrap gap-x-5 gap-y-2 text-sm"><legend className="mb-2 font-medium">Tampilkan kepada</legend>
           {["manager", "supervisor"].map((r) => <label key={r} className="flex min-h-11 items-center gap-2"><input className="size-4 accent-primary" type="checkbox" checked={roles.includes(r)} onChange={(e) => setRoles(e.target.checked ? [...roles, r] : roles.filter((x) => x !== r))} />{ROLE_LABEL[r]}</label>)}
         </fieldset>
-        <label className="block space-y-1.5 text-sm font-medium">Isi dokumen <span className="font-normal text-muted-foreground">(JSON)</span><Textarea rows={14} className="font-mono text-xs" spellCheck={false} value={text} onChange={(e) => setText(e.target.value)} /></label>
+        <ContentBodyEditor value={JSON.parse(text || "{}")} onChange={(value) => setText(JSON.stringify(value))} />
         <div className="flex flex-wrap gap-2"><Button size="sm" loading={saving} disabled={saving} onClick={() => void save()}>Simpan perubahan</Button><Button size="sm" variant="outline" disabled={saving} onClick={() => setDraft(null)}>Batal</Button></div>
       </div>}
     </Panel>
   );
+}
+
+const CONTENT_LABELS: Record<string,string> = {goal:"Tujuan", purpose:"Tujuan",steps:"Langkah kerja",auto:"Otomatis oleh sistem",draft:"Catatan validasi Owner",when:"Kapan digunakan",sources:"Sumber data",issue:"Kendala & penanganan",table:"Referensi",th:"Kolom referensi",fmt:"Format",to:"Penerima",docs:"Dokumen terkait",open:"Aplikasi terkait",blocks:"Isi dokumen",example:"Contoh",fields:"Isian"};
+function ContentBody({value}: {value: unknown}) {
+  if (value == null) return null;
+  if (typeof value !== "object") return <p className="whitespace-pre-wrap">{String(value)}</p>;
+  if (Array.isArray(value)) return <ul>{value.map((item,index) => <li key={index}><ContentBody value={item} /></li>)}</ul>;
+  return <div>{Object.entries(value).filter(([key]) => !["id","ic","who","t"].includes(key)).map(([key,item]) => <section key={key}><h3>{CONTENT_LABELS[key] || key}</h3><ContentBody value={item}/></section>)}</div>;
+}
+function ContentBodyEditor({value,onChange}: {value: Record<string, unknown>;onChange:(value:Record<string,unknown>)=>void}) {
+  return <div className="space-y-4">{Object.entries(value).filter(([key,item]) => !["id","ic","who","t"].includes(key) && (typeof item === "string" || (Array.isArray(item) && item.every(v => typeof v === "string")))).map(([key,item]) => <label key={key} className="block space-y-1.5 text-sm font-medium">{CONTENT_LABELS[key] || key}{Array.isArray(item) && <span className="ml-2 text-xs font-normal text-muted-foreground">Satu butir per baris</span>}<Textarea rows={Array.isArray(item)?5:3} value={Array.isArray(item)?item.join("\n"):String(item)} onChange={e=>onChange({...value,[key]:Array.isArray(item)?e.target.value.split("\n"):e.target.value})}/></label>)}</div>;
 }
 
 type SettingRow = { key: string; value: Record<string, unknown> };

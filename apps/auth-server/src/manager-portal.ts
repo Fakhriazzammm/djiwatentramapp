@@ -249,6 +249,14 @@ export function registerManagerPortalRoutes(app: Hono, auth: Auth, pool: Pool) {
     return json({ success: true, membership: r.rows[0] });
   });
 
+  app.get("/api/admin-manager/tasks", async (c) => {
+    const o = await owner(c);
+    if ("res" in o) return o.res;
+    const r = await pool.query(`SELECT t.*, (SELECT count(*)::int FROM public.mgr_task_comments k WHERE k.task_id = t.id) AS comment_count
+      FROM public.mgr_tasks t ORDER BY (status = 'open') DESC, due_at ASC NULLS LAST, created_at DESC LIMIT 500`);
+    return json({ success: true, tasks: r.rows });
+  });
+
   app.post("/api/admin-manager/tasks", async (c) => {
     const o = await owner(c);
     if ("res" in o) return o.res;

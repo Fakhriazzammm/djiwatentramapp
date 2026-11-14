@@ -1,0 +1,747 @@
+.manager-owner {
+  --mgr-line: #e6e6ea;
+  --mgr-ink: #111114;
+  --mgr-muted: #6a6a76;
+  --mgr-red: #c73822;
+  color: var(--mgr-ink);
+  background: #f4f4f6;
+  font:
+    13px/1.5 "Command Inter",
+    Inter,
+    system-ui,
+    sans-serif;
+  min-height: 100%;
+  padding: 0 8px 18px;
+}
+.manager-owner button,
+.manager-owner input,
+.manager-owner select {
+  font: inherit;
+}
+.manager-owner button {
+  cursor: pointer;
+}
+.manager-owner button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.manager-owner button:focus-visible,
+.manager-owner input:focus-visible,
+.manager-owner select:focus-visible {
+  outline: 2px solid #111114;
+  outline-offset: 3px;
+}
+.manager-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.manager-toolbar nav {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+}
+.manager-toolbar nav button,
+.manager-refresh {
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 7px 10px;
+  font:
+    500 10px "Command Mono",
+    monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  color: #6a6a76;
+}
+.manager-toolbar nav button[aria-current="page"] {
+  background: #111114;
+  color: #fff;
+}
+.manager-refresh {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  background: #fff;
+  border-color: var(--mgr-line);
+}
+.manager-kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border: 1px solid var(--mgr-line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow:
+    0 1px 2px #1111140a,
+    0 6px 20px #1111140a;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.manager-kpis > div {
+  padding: 14px 18px;
+  border-right: 1px solid var(--mgr-line);
+}
+.manager-kpis > div:last-child {
+  border: 0;
+}
+.manager-kpis b {
+  display: block;
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+.manager-kpis span {
+  display: block;
+  margin-top: 7px;
+  color: #6a6a76;
+  font:
+    10px "Command Mono",
+    monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.manager-work {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 34%);
+  gap: 12px;
+  align-items: start;
+}
+.manager-panel {
+  background: #fff;
+  border: 1px solid var(--mgr-line);
+  border-radius: 12px;
+  box-shadow:
+    0 1px 2px #1111140a,
+    0 6px 20px #1111140a;
+  overflow: hidden;
+  min-width: 0;
+}
+.manager-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--mgr-line);
+}
+.manager-panel-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font:
+    500 11px "Command Mono",
+    monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 0;
+}
+.manager-panel-head h2:before {
+  content: "";
+  width: 3px;
+  height: 13px;
+  border-radius: 2px;
+  background: var(--mgr-red);
+  flex: none;
+}
+.manager-panel-head.green h2:before {
+  background: #16a34a;
+}
+.manager-panel-head > span,
+.manager-feed-meta {
+  font:
+    10px "Command Mono",
+    monospace;
+  color: #6a6a76;
+  letter-spacing: 0.03em;
+}
+.manager-composer {
+  margin: 12px 16px 16px;
+  padding: 12px;
+  background: #f8f8fa;
+  border: 1px solid var(--mgr-line);
+  border-radius: 12px;
+}
+.manager-compose-line {
+  display: flex;
+  gap: 8px;
+}
+.manager-compose-line input {
+  min-width: 0;
+  flex: 1;
+  background: #fff;
+  border: 1px solid var(--mgr-line);
+  border-radius: 8px;
+  padding: 9px 12px;
+  outline: none;
+}
+.manager-create {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--mgr-red);
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  padding: 9px 13px;
+  font:
+    500 11px "Command Mono",
+    monospace !important;
+  text-transform: uppercase;
+}
+.manager-compose-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 9px;
+  font:
+    10px "Command Mono",
+    monospace;
+}
+.manager-compose-row > span {
+  color: #6a6a76;
+}
+.manager-compose-row button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid var(--mgr-line);
+  border-radius: 99px;
+  padding: 4px 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font:
+    500 10px "Command Mono",
+    monospace;
+}
+.manager-compose-row button.on {
+  background: #111114;
+  color: #fff;
+  border-color: #111114;
+}
+.manager-options button,
+.manager-options select {
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid var(--mgr-line);
+  padding: 6px 10px;
+  font:
+    500 10px "Command Mono",
+    monospace;
+  text-transform: uppercase;
+}
+.manager-options > span {
+  margin-left: 5px;
+}
+.manager-filters {
+  display: flex;
+  gap: 2px;
+  margin: 0 16px 4px;
+  padding: 3px;
+  background: #efeff2;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+.manager-filters button {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font:
+    500 10px "Command Mono",
+    monospace;
+  color: #4a4a55;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.manager-filters button.on {
+  background: #111114;
+  color: #fff;
+  box-shadow: 0 2px 6px #11111433;
+}
+.manager-filters button:last-child {
+  margin-left: auto;
+}
+.manager-task-scroll {
+  max-height: calc(100dvh - 405px);
+  min-height: 220px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.manager-task {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 11px 0;
+  margin: 0 16px;
+  border-bottom: 1px solid var(--mgr-line);
+  align-items: start;
+}
+.manager-task:last-child {
+  border: 0;
+}
+.manager-checkbox {
+  width: 19px;
+  height: 19px;
+  border: 1.6px solid #a9a9b5;
+  border-radius: 6px;
+  background: #fff;
+  margin-top: 2px;
+  text-align: center;
+}
+.manager-checkbox.done {
+  background: #111114;
+  color: #fff;
+  border-color: #111114;
+}
+.manager-task-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: none;
+  text-align: left;
+  padding: 0;
+  color: #111114;
+  font-weight: 550 !important;
+  letter-spacing: -0.01em;
+}
+.manager-task-title svg {
+  opacity: 0;
+  flex: none;
+}
+.manager-task-title:hover svg,
+.manager-task-title:focus-visible svg {
+  opacity: 1;
+}
+.manager-task-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+  font:
+    10px "Command Mono",
+    monospace;
+  color: #6a6a76;
+}
+.manager-task-meta > span {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.manager-tag {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font:
+    500 9.5px "Command Mono",
+    monospace !important;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  background: #efeff2;
+  color: #4a4a55;
+  white-space: nowrap;
+}
+.manager-tag.owner {
+  background: #111114;
+  color: #fff;
+}
+.manager-tag.ai {
+  background: #eaf1fc;
+  color: #1a5dc6;
+}
+.manager-tag.high {
+  background: #fdeeec;
+  color: #c73822;
+}
+.manager-tag.medium {
+  background: #fff3dc;
+  color: #9a6200;
+}
+.manager-task-due {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font:
+    10px "Command Mono",
+    monospace;
+  color: #6a6a76;
+}
+.manager-detail {
+  border-top: 1px dashed var(--mgr-line);
+  margin-top: 10px;
+  padding-top: 10px;
+  white-space: pre-wrap;
+}
+.manager-detail a {
+  display: block;
+  color: #1a5dc6;
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+.manager-detail small {
+  display: block;
+  color: #6a6a76;
+  margin-top: 8px;
+}
+.manager-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.manager-feed-meta {
+  padding: 7px 14px;
+  margin: 0;
+  border-bottom: 1px solid var(--mgr-line);
+}
+.manager-feed-scroll {
+  height: calc(100dvh - 390px);
+  min-height: 260px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.manager-event {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 10px 0;
+  margin: 0 16px;
+  border-bottom: 1px solid var(--mgr-line);
+  align-items: baseline;
+}
+.manager-event > span {
+  font:
+    500 10px "Command Mono",
+    monospace;
+  color: #2f6b8a;
+  text-transform: uppercase;
+}
+.manager-event p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.manager-event time {
+  font:
+    10px "Command Mono",
+    monospace;
+  color: #9a9aa6;
+  white-space: nowrap;
+}
+.manager-recipient {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 16px;
+  padding: 9px 0;
+}
+.manager-recipient + .manager-recipient {
+  border-top: 1px solid var(--mgr-line);
+}
+.manager-recipient > span:last-child {
+  font:
+    10px "Command Mono",
+    monospace;
+  color: #6a6a76;
+}
+.manager-empty {
+  text-align: center;
+  padding: 28px 16px;
+  color: #6a6a76;
+  font-size: 12px;
+}
+.manager-empty button {
+  display: block;
+  margin: 12px auto 0;
+  text-decoration: underline;
+}
+/* Keep the existing Owner editors, with the same v20 panel and action treatment. */
+.manager-owner > .rounded-2xl {
+  background: white;
+  border: 1px solid var(--mgr-line);
+  border-radius: 12px;
+  box-shadow:
+    0 1px 2px #1111140a,
+    0 6px 20px #1111140a;
+}
+.manager-owner [data-slot="card-header"] {
+  padding: 13px 16px;
+  gap: 5px;
+}
+.manager-owner [data-slot="card-title"] {
+  font:
+    500 11px "Command Mono",
+    monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.manager-owner [data-slot="card-content"] {
+  padding: 16px;
+}
+.manager-owner [data-slot="button"] {
+  border-radius: 8px;
+  font:
+    500 10.5px "Command Mono",
+    monospace;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  box-shadow: none;
+  min-height: 32px;
+}
+.manager-owner [data-slot="button"][data-variant="default"] {
+  background: #111114;
+  color: #fff;
+}
+.manager-owner input,
+.manager-owner textarea {
+  box-shadow: none;
+}
+body:has(.manager-owner) [data-admin-shell] > main {
+  background: #f4f4f6;
+}
+body:has(.manager-owner) [data-admin-shell] > main > div {
+  padding: 0 16px 12px;
+}
+body:has(.manager-owner) [data-admin-shell] > main > footer {
+  display: none;
+}
+@media (min-width: 1500px) {
+  .manager-work {
+    grid-template-columns: minmax(0, 1fr) 34%;
+  }
+}
+@media (max-width: 1050px) {
+  .manager-work {
+    grid-template-columns: 1fr;
+  }
+  .manager-feed-scroll {
+    height: 300px;
+  }
+  .manager-task-scroll {
+    max-height: 550px;
+  }
+  .manager-side {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    align-items: start;
+  }
+  .manager-toolbar {
+    align-items: flex-start;
+  }
+  .manager-refresh {
+    font-size: 0;
+  }
+  .manager-refresh svg {
+    width: 16px;
+  }
+}
+@media (max-width: 640px) {
+  .manager-owner {
+    padding: 0 0 16px;
+  }
+  .manager-kpis > div {
+    padding: 12px 8px;
+  }
+  .manager-kpis b {
+    font-size: 23px;
+  }
+  .manager-kpis span {
+    font-size: 8px;
+    letter-spacing: 0.03em;
+  }
+  .manager-side {
+    display: flex;
+  }
+  .manager-composer {
+    margin: 10px;
+    padding: 10px;
+  }
+  .manager-compose-line {
+    flex-wrap: wrap;
+  }
+  .manager-compose-line input {
+    flex-basis: 200px;
+  }
+  .manager-task {
+    margin: 0 10px;
+    gap: 8px;
+    grid-template-columns: 19px minmax(0, 1fr);
+  }
+  .manager-task-due {
+    grid-column: 2;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  .manager-panel-head {
+    padding: 12px;
+  }
+  .manager-toolbar nav button {
+    padding: 7px;
+    font-size: 9px;
+  }
+  .manager-event {
+    grid-template-columns: 60px minmax(0, 1fr);
+  }
+  .manager-event time {
+    grid-column: 2;
+  }
+  .manager-panel-head h2 {
+    font-size: 10px;
+  }
+  .manager-task-scroll {
+    max-height: none;
+  }
+  body:has(.manager-owner) [data-admin-shell] > main > div {
+    padding: 0 10px 80px;
+  }
+}
+.manager-owner .manager-selected {
+  background: #111114 !important;
+  color: #fff !important;
+  border-color: #111114 !important;
+}
+.manager-owner [data-slot="card"] {
+  padding: 0;
+  gap: 0;
+}
+.manager-owner [data-slot="button"].bg-primary {
+  background: #111114;
+  color: #fff;
+}
+.manager-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #e8f5ee;
+  color: #166534;
+  padding: 6px 11px;
+  border-radius: 99px;
+  font:
+    600 10px "Command Mono",
+    monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.manager-live:before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 0 0 3px #16a34a2e;
+}
+.manager-live.failed {
+  background: #fff3dc;
+  color: #9a6200;
+}
+.manager-live.failed:before {
+  background: #9a6200;
+}
+.manager-reading {
+  max-width: 850px;
+  margin: 16px auto;
+  padding: 24px 32px;
+  border-top: 1px solid #e6e6ea;
+}
+.manager-reading-label {
+  font:
+    10px "Command Mono",
+    monospace;
+  color: #6a6a76;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.manager-reading-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin: 10px 0 24px;
+}
+.manager-reading-title h2 {
+  font-size: 24px;
+  line-height: 1.3;
+  font-weight: 600;
+}
+.manager-reading section {
+  margin: 20px 0;
+}
+.manager-reading h3 {
+  font:
+    500 11px "Command Mono",
+    monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}
+.manager-reading ul {
+  padding-left: 20px;
+  list-style: disc;
+}
+.manager-reading li {
+  margin: 8px 0;
+}
+.manager-reading p {
+  line-height: 1.8;
+}
+.manager-reading section > section {
+  margin-left: 12px;
+}
+body:has(.manager-owner) [data-admin-shell] > aside > nav {
+  display: none;
+}
+body:has(.manager-owner) #manager-owner-navigation {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 10px 14px;
+}
+.manager-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.manager-rail a,
+.manager-rail button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: none;
+  color: #4a4a55;
+  border-radius: 11px;
+  min-height: 42px;
+  padding: 10px;
+  font:
+    500 11px "Command Mono",
+    monospace;
+  text-align: left;
+}
+.manager-rail button[aria-current="page"] {
+  background: #111114;
+  color: #fff;
+}
+.manager-rail button:hover,
+.manager-rail a:hover {
+  background: #efeff2;
+  color: #111114;
+}
+body:has(.manager-owner) aside.w-16 .manager-rail span {
+  display: none;
+}
+body:has(.manager-owner) aside.w-16 .manager-rail a,
+body:has(.manager-owner) aside.w-16 .manager-rail button {
+  justify-content: center;
+  width: 40px;
+  padding: 0;
+}
+@media (min-width: 768px) {
+  .manager-toolbar {
+    display: none;
+  }
+}

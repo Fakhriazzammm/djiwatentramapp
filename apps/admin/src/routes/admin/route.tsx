@@ -457,6 +457,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 	const headerLogoUrl = settings?.headerLogoUrl || settings?.logoUrl || "";
 
 	const location = useLocation();
+	useEffect(() => { if (location.pathname === "/admin/manager") setIsCollapsed(true); }, [location.pathname]);
 	// Use non-strict search to avoid type errors during route tree generation
 	const search = useSearch({ strict: false }) as any;
 	const isFromHomeEntry = Boolean(
@@ -467,7 +468,13 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 	const isAIChat = location.pathname === "/admin/ai-chat";
 	const isOperational = OPERATIONAL_PATHS.some(p => location.pathname.startsWith(p));
 	const isStockPage = ["/admin/inventory", "/admin/stock-overview"].includes(location.pathname.replace(/\/$/, ""));
-	const currentPageTitle = PAGE_TITLES[location.pathname] || "Admin";
+	const [managerTitle, setManagerTitle] = useState("Penugasan");
+	useEffect(() => {
+		const update = (event: Event) => setManagerTitle((event as CustomEvent<string>).detail);
+		window.addEventListener("manager-panel-title", update);
+		return () => window.removeEventListener("manager-panel-title", update);
+	}, []);
+	const currentPageTitle = location.pathname === "/admin/manager" ? managerTitle : PAGE_TITLES[location.pathname] || "Admin";
 
 	// Route Guard
 	useEffect(() => {
@@ -722,6 +729,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 					)}
 				</button>
 
+				<div id="manager-owner-navigation" />
 				<nav className="flex-1 overflow-y-auto p-2">
 					{/* Djiwa Tentram AI - standalone at top */}
 					<DesktopNavLink
@@ -1272,7 +1280,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 							)}
 						</div>
 						<div>
-							<p className="command-breadcrumb">Admin / Ringkasan / {currentPageTitle}</p>
+							<p className="command-breadcrumb">Admin / {location.pathname === "/admin/manager" ? "Manager" : "Ringkasan"} / {currentPageTitle}</p>
 							<h1 className="font-bold text-base leading-tight md:text-lg">
 								{currentPageTitle}
 							</h1>
