@@ -405,9 +405,11 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
     const b = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
     const id = text(b.inventoryId, 80);
     if (!id) return json({ success: false, error: "INVENTORY_REQUIRED" }, 400);
-    const factor = b.contentToBaseFactor === null || b.contentToBaseFactor === "" ? null : Number(b.contentToBaseFactor);
+    const blank = (v: unknown) => v === null || v === undefined || v === "";
+    const factor = blank(b.contentToBaseFactor) ? null : Number(b.contentToBaseFactor);
     if (factor !== null && (!Number.isFinite(factor) || factor <= 0)) return json({ success: false, error: "FACTOR_INVALID" }, 400);
-    const packQty = b.packNetQuantity === null || b.packNetQuantity === "" ? null : Number(b.packNetQuantity);
+    const packQty = blank(b.packNetQuantity) ? null : Number(b.packNetQuantity);
+    if (packQty !== null && (!Number.isFinite(packQty) || packQty <= 0)) return json({ success: false, error: "PACK_QTY_INVALID" }, 400);
     try {
       const r = await pool.query(
         `UPDATE pos.inventory SET
