@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Landing Customer (/) — 3 alternatif lain</title>
+<style>
+:root{--navy:#0f2347;--blue:#0a67bd;--bls:#e6f0fb;--canvas:#f4f5fa;--ink:#14161c;--mute:#6b7080;--line:#e4e8f1;--amber:#f5a524;
+--sans:-apple-system,"SF Pro Text","Inter","Segoe UI",system-ui,sans-serif;--ease:cubic-bezier(.32,.72,0,1)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0}
+body{font:15px/1.45 var(--sans);color:var(--ink);background:#d9dce4;-webkit-font-smoothing:antialiased;padding:32px 20px 60px}
+h1.pt{text-align:center;font:700 22px var(--sans);margin:0 0 4px}p.ps{text-align:center;color:var(--mute);margin:0 0 28px}
+.row{display:flex;gap:40px;justify-content:center;flex-wrap:wrap}
+.col{width:390px}.col>h2{font:700 15px var(--sans);margin:0 0 2px}.col>p{margin:0 0 14px;color:var(--mute);font-size:13px;min-height:54px}
+.phone{position:relative;width:390px;height:844px;background:var(--canvas);border-radius:46px;box-shadow:0 0 0 10px #14161c,0 30px 80px rgba(20,22,28,.35);overflow:hidden;display:flex;flex-direction:column}
+.sb{height:44px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 6px;font:600 14px var(--sans);position:relative;z-index:5}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;transition:transform .16s var(--ease)}button:active{transform:scale(.97)}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:54px;border-radius:18px;font:700 16px var(--sans)}
+.btn.p{background:var(--blue);color:#fff;box-shadow:0 10px 24px rgba(10,103,189,.28)}
+.btn.s{background:#fff;color:var(--ink);box-shadow:0 0 0 1px var(--line);min-height:50px;margin-top:8px}
+.note{text-align:center;color:var(--mute);font-size:12px;margin:10px 0 0}
+img{display:block}.i3{object-fit:contain}
+.logo{width:40px;height:40px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px var(--line);padding:4px}
+.eyebrow{font:700 11px var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--blue)}
+.home{position:absolute;bottom:8px;left:50%;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:rgba(0,0,0,.35);z-index:9}
+.scr{flex:1;display:flex;flex-direction:column;padding:0 22px 26px;min-height:0}
+
+/* ===== D: Kartu member, mode gelap ===== */
+.D{background:#0b1730}.D .phone{background:radial-gradient(120% 60% at 50% 0%,#1d4a96 0%,#0b1730 62%);color:#fff}
+.D .sb{color:#fff}
+.D .top{display:flex;align-items:center;gap:10px;padding:6px 0}.D .top b{font:700 15px var(--sans)}.D .top .logo{width:34px;height:34px}
+.D .card{margin:22px -6px 0;transform:rotate(-4deg);filter:drop-shadow(0 28px 30px rgba(0,0,0,.5));animation:fl 5s ease-in-out infinite}
+.D .card img{width:100%;border-radius:22px}
+@keyframes fl{50%{transform:rotate(-2deg) translateY(-8px)}}
+.D .eyebrow{color:#7fb5ff;margin-top:28px}
+.D h1{font:800 32px/1.1 var(--sans);letter-spacing:-.03em;margin:6px 0 8px}
+.D .lead{color:rgba(255,255,255,.68);margin:0}
+.D .perks{display:flex;gap:8px;margin-top:18px}
+.D .perk{flex:1;background:rgba(255,255,255,.08);border-radius:18px;padding:10px 8px;text-align:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.D .perk img{width:40px;height:40px;margin:0 auto 4px}.D .perk b{display:block;font:600 12px/1.2 var(--sans)}.D .perk span{font-size:10.5px;color:rgba(255,255,255,.6);line-height:1.2;display:block;margin-top:2px}
+.D .cta{margin-top:auto}.D .btn.p{background:#fff;color:#0b1730;box-shadow:none}
+.D .btn.s{background:rgba(255,255,255,.12);color:#fff;box-shadow:none}.D .note{color:rgba(255,255,255,.55)}
+
+/* ===== E: Tamu dulu, langsung pesan ===== */
+.E .top{display:flex;align-items:center;gap:10px;padding:6px 0 16px}.E .top .t{flex:1;line-height:1.2}.E .top small{color:var(--mute);font-size:13px}.E .top b{font:700 17px var(--sans);display:block}
+.E .login{background:var(--bls);color:var(--blue);font:700 13px var(--sans);padding:9px 14px;border-radius:99px}
+.E .ban{position:relative;border-radius:28px;overflow:hidden;height:236px;flex:none}
+.E .ban img{width:100%;height:100%;object-fit:cover}
+.E .ban:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 35%,rgba(10,20,40,.78))}
+.E .ban div{position:absolute;left:18px;right:18px;bottom:16px;z-index:2;color:#fff}
+.E .ban h1{font:800 26px/1.1 var(--sans);letter-spacing:-.03em;margin:0 0 4px}.E .ban p{margin:0;font-size:13.5px;opacity:.9}
+.E .cta{margin:16px 0 0}
+.E .hint{font:600 13px var(--sans);margin:22px 4px 8px;color:var(--mute)}
+.E .list{background:#fff;border-radius:24px;box-shadow:0 10px 30px rgba(15,35,71,.07)}
+.E .li{display:flex;align-items:center;gap:12px;padding:12px 16px}.E .li+.li{border-top:1px solid var(--line)}
+.E .li img{width:44px;height:44px;flex:none}.E .li b{display:block;font:600 15px var(--sans)}.E .li span{font-size:13px;color:var(--mute)}
+.E .li .tg{margin-left:auto;font:700 11px var(--sans);padding:4px 9px;border-radius:99px;background:var(--bls);color:var(--blue);white-space:nowrap}
+.E .li .tg.a{background:#fff3dc;color:#a05d00}
+.E .foot{margin-top:auto;text-align:center}.E .foot .btn.p{margin-bottom:0}
+
+/* ===== F: Editorial krem, jendela lengkung ===== */
+.F .phone{background:#fbf5ea}
+.F .top{display:flex;align-items:center;gap:10px;padding:6px 0}.F .top b{font:700 15px var(--sans)}.F .top .logo{width:34px;height:34px;box-shadow:none;background:#fff}
+.F .arch{margin:12px auto 0;width:236px;height:262px;border-radius:118px 118px 28px 28px;overflow:hidden;position:relative;flex:none;box-shadow:0 18px 40px rgba(120,80,20,.2)}
+.F .arch img{width:100%;height:100%;object-fit:cover;object-position:38% 50%}
+.F .sticker{position:absolute;right:20px;top:230px;width:84px;height:84px;border-radius:50%;background:var(--amber);color:#3a2600;display:grid;place-items:center;text-align:center;font:800 12px/1.15 var(--sans);transform:rotate(10deg);box-shadow:0 8px 20px rgba(150,90,0,.3);z-index:3}
+.F .sticker b{display:block;font-size:17px}
+.F h1{font:800 33px/1.06 var(--sans);letter-spacing:-.035em;text-align:center;margin:22px 0 8px}
+.F h1 em{font-style:normal;color:#b8651a}
+.F .lead{text-align:center;color:#7a6a55;margin:0 auto;max-width:290px}
+.F .ben{display:flex;justify-content:center;gap:18px;margin-top:18px}
+.F .ben div{display:flex;align-items:center;gap:6px;font:600 13px var(--sans);color:#5a4a36}.F .ben img{width:28px;height:28px}
+.F .cta{margin-top:auto}.F .btn.p{background:#14161c;box-shadow:none}.F .btn.s{background:transparent;box-shadow:inset 0 0 0 1.5px #d9cdb8}.F .note{color:#8a7a64}
+@media(max-width:900px){.col{width:100%;max-width:390px}}
+</style></head><body>
+<h1 class="pt">Redesign halaman awal pelanggan (/) — set 2</h1>
+<p class="ps">3 alternatif lain · mobile 390×844 · semua teks &amp; aksi (Masuk/Daftar, Lanjut tamu) dipertahankan</p>
+<div class="row">
+
+<div class="col D"><h2>D — Kartu member (gelap)</h2><p>Kartu member mengambang jadi pusat perhatian, memberi rasa “eksklusif” dan mendorong daftar. Latar navy premium, benefit ringkas satu baris.</p>
+<div class="phone">
+ <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+ <div class="scr">
+  <div class="top"><img class="logo" src="assets/logo-djiwa.png" alt=""><b>Djiwa Tentram</b></div>
+  <div class="card"><img src="assets/djiwa-member-card-cafe.webp" alt=""></div>
+  <span class="eyebrow">Pesan lebih mudah</span>
+  <h1>Selamat datang di Djiwa Tentram</h1>
+  <p class="lead">Pesan favoritmu dengan lebih mudah dan dapatkan benefit khusus member.</p>
+  <div class="perks">
+   <div class="perk"><img class="i3" src="assets/customer-benefit-wallet.webp" alt=""><b>Djiwa Pay</b><span>Bayar lebih praktis</span></div>
+   <div class="perk"><img class="i3" src="assets/customer-benefit-happy-hour.webp" alt=""><b>Happy Hour</b><span>All Menu Rp 15.000</span></div>
+   <div class="perk"><img class="i3" src="assets/customer-benefit-promo.webp" alt=""><b>Promo Eksklusif</b><span>Khusus member</span></div>
+  </div>
+  <div class="cta"><button class="btn p">Masuk / Daftar Member</button><button class="btn s">Lanjut sebagai tamu</button><p class="note">Kamu tetap bisa memesan tanpa membuat akun.</p></div>
+ </div><div class="home" style="background:rgba(255,255,255,.5)"></div>
+</div></div>
+
+<div class="col E"><h2>E — Pesan dulu (tamu-first)</h2><p>Mayoritas pengunjung cuma mau pesan: “Mulai pesan” jadi CTA utama, Masuk/Daftar jadi tombol kecil di pojok. Benefit tampil sebagai daftar iOS.</p>
+<div class="phone">
+ <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+ <div class="scr">
+  <div class="top"><img class="logo" src="assets/logo-djiwa.png" alt=""><div class="t"><small>Welcome</small><b>Djiwa Tentram</b></div><button class="login">Masuk / Daftar</button></div>
+  <div class="ban"><img id="heroE" src="assets/hero-sore.webp" alt=""><div><h1>Selamat datang di Djiwa Tentram</h1><p>Pesan favoritmu dengan lebih mudah.</p></div></div>
+  <div class="cta"><button class="btn p">Lanjut sebagai tamu</button></div>
+  <div class="hint">Jadi member, dapat lebih banyak</div>
+  <div class="list">
+   <div class="li"><img class="i3" src="assets/customer-benefit-wallet.webp" alt=""><div><b>Djiwa Pay</b><span>Bayar lebih praktis</span></div></div>
+   <div class="li"><img class="i3" src="assets/customer-benefit-happy-hour.webp" alt=""><div><b>Happy Hour</b><span>All Menu Rp 15.000</span></div><span class="tg a">Hemat</span></div>
+   <div class="li"><img class="i3" src="assets/customer-benefit-promo.webp" alt=""><div><b>Promo Eksklusif</b><span>Benefit khusus member</span></div></div>
+  </div>
+  <div class="foot"><button class="btn s" style="margin-top:14px">Masuk / Daftar Member</button><p class="note">Kamu tetap bisa memesan tanpa membuat akun.</p></div>
+ </div><div class="home"></div>
+</div></div>
+
+<div class="col F"><h2>F — Editorial hangat</h2><p>Latar krem seperti menu kafe, ilustrasi dalam jendela lengkung, stiker Rp 15.000 sebagai aksen. Lebih berkarakter, tetap sederhana.</p>
+<div class="phone">
+ <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+ <div class="scr">
+  <div class="top"><img class="logo" src="assets/logo-djiwa.png" alt=""><b>Djiwa Tentram</b></div>
+  <div class="arch"><img id="heroF" src="assets/hero-sore.webp" alt=""></div>
+  <div class="sticker"><div><b>Rp 15K</b>Happy<br>Hour</div></div>
+  <h1>Selamat datang<br>di <em>Djiwa Tentram</em></h1>
+  <p class="lead">Pesan favoritmu dengan lebih mudah dan dapatkan benefit khusus member.</p>
+  <div class="ben"><div><img class="i3" src="assets/customer-benefit-wallet.webp" alt="">Djiwa Pay</div><div><img class="i3" src="assets/customer-benefit-happy-hour.webp" alt="">Happy Hour</div><div><img class="i3" src="assets/customer-benefit-promo.webp" alt="">Promo</div></div>
+  <div class="cta"><button class="btn p">Masuk / Daftar Member</button><button class="btn s">Lanjut sebagai tamu</button><p class="note">Kamu tetap bisa memesan tanpa membuat akun.</p></div>
+ </div><div class="home"></div>
+</div></div>
+
+</div>
+<script>
+const h=new Date().getHours(),s=h<11?'pagi':h<15?'siang':h<18?'sore':'malam';
+['heroE','heroF'].forEach(i=>document.getElementById(i).src='assets/hero-'+s+'.webp');
+</script>
+</body></html>

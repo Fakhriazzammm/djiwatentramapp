@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Landing Customer (/) — set 3, iOS blend</title>
+<style>
+:root{--blue:#0a67bd;--ink:#14161c;--mute:#6b7080;
+--sans:-apple-system,"SF Pro Display","SF Pro Text","Inter","Segoe UI",system-ui,sans-serif;--ease:cubic-bezier(.32,.72,0,1)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0}
+body{font:15px/1.45 var(--sans);color:var(--ink);background:#d9dce4;-webkit-font-smoothing:antialiased;padding:32px 20px 60px}
+h1.pt{text-align:center;font:700 22px var(--sans);margin:0 0 4px}p.ps{text-align:center;color:var(--mute);margin:0 0 28px}
+.row{display:flex;gap:40px;justify-content:center;flex-wrap:wrap}
+.col{width:390px}.col>h2{font:700 15px var(--sans);margin:0 0 2px}.col>p{margin:0 0 14px;color:var(--mute);font-size:13px;min-height:54px}
+.phone{position:relative;width:390px;height:844px;border-radius:46px;box-shadow:0 0 0 10px #14161c,0 30px 80px rgba(20,22,28,.35);overflow:hidden;isolation:isolate}
+.sb{position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 6px;font:600 14px var(--sans);z-index:8}
+.home{position:absolute;bottom:8px;left:50%;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:rgba(0,0,0,.4);z-index:9}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;transition:transform .16s var(--ease)}button:active{transform:scale(.97)}
+img{display:block}.i3{object-fit:contain}
+.logo{width:36px;height:36px;border-radius:11px;background:#fff;padding:4px}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:56px;border-radius:28px;font:600 17px var(--sans);letter-spacing:-.01em}
+.btn.p{background:var(--blue);color:#fff}
+.glass{background:rgba(255,255,255,.55);-webkit-backdrop-filter:blur(28px) saturate(180%);backdrop-filter:blur(28px) saturate(180%);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.7),0 8px 30px rgba(15,35,71,.12)}
+.note{text-align:center;font-size:12.5px;margin:12px 0 0}
+
+/* ===== G: Full-bleed foto + panel Liquid Glass ===== */
+.G .phone{background:#2b1d10}
+.G .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:34% 50%;transform:scale(1.04)}
+.G .bg+i{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.28),transparent 22%,transparent 46%,rgba(20,10,0,.35))}
+.G .sb{color:#fff}
+.G .brand{position:absolute;top:56px;left:20px;display:flex;align-items:center;gap:10px;color:#fff;z-index:3;font:600 16px var(--sans)}
+.G .panel{position:absolute;left:12px;right:12px;bottom:26px;border-radius:38px;padding:24px 20px 20px;z-index:3;background:rgba(255,255,255,.62)}
+.G .eyebrow{font:600 12px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:rgba(20,22,28,.55)}
+.G h1{font:800 34px/1.04 var(--sans);letter-spacing:-.04em;margin:6px 0 8px}
+.G .lead{margin:0;color:rgba(20,22,28,.7)}
+.G .perks{display:flex;gap:6px;margin:16px 0 18px}
+.G .perk{flex:1;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.55);border-radius:18px;padding:8px 8px}
+.G .perk img{width:30px;height:30px;flex:none}.G .perk b{display:block;font:600 12px/1.15 var(--sans)}.G .perk span{display:block;font-size:10px;color:var(--mute);line-height:1.15}
+.G .sec{display:block;width:100%;text-align:center;font:600 16px var(--sans);color:var(--blue);padding:14px 0 0}
+.G .note{color:rgba(20,22,28,.55);margin-top:6px}
+
+/* ===== H: Aurora mesh + ikon melayang ===== */
+.H .phone{background:#eef3fb}
+.H .mesh{position:absolute;inset:0;background:
+ radial-gradient(60% 40% at 15% 8%,#ffd9a8 0,transparent 70%),
+ radial-gradient(55% 40% at 95% 20%,#bcd7ff 0,transparent 70%),
+ radial-gradient(70% 45% at 70% 55%,#d9ccff 0,transparent 70%),
+ radial-gradient(70% 40% at 10% 70%,#c2ecf0 0,transparent 70%),#f3f6fc}
+.H .stage{position:absolute;left:0;right:0;top:92px;height:370px}
+.H .core{position:absolute;left:50%;top:70px;width:156px;height:156px;margin-left:-78px;border-radius:44px;display:grid;place-items:center;background:rgba(255,255,255,.7);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:0 24px 50px rgba(15,35,71,.16),inset 0 0 0 1px rgba(255,255,255,.9)}
+.H .core img{width:98px;height:98px}
+.H .fl{position:absolute;text-align:center;font:600 12px var(--sans);color:#2a3350;animation:fl 6s ease-in-out infinite}
+.H .fl img{width:92px;height:92px;filter:drop-shadow(0 16px 16px rgba(15,35,71,.22));margin:0 auto 2px}
+.H .fl small{display:block;font:500 11px var(--sans);color:#6b7390}
+.H .f1{left:12px;top:0}.H .f2{right:10px;top:10px;animation-delay:-2s}.H .f3{left:50%;margin-left:-54px;top:238px;animation-delay:-4s}
+@keyframes fl{50%{transform:translateY(-10px)}}
+.H .brand{position:absolute;top:54px;left:0;right:0;text-align:center;font:600 15px var(--sans);display:flex;justify-content:center;align-items:center;gap:8px;z-index:3}
+.H .txt{position:absolute;left:24px;right:24px;top:500px;text-align:center}
+.H h1{font:800 36px/1.04 var(--sans);letter-spacing:-.04em;margin:0 0 8px}
+.H h1 span{background:linear-gradient(90deg,#0a67bd,#6b4de6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.H .lead{margin:0 auto;max-width:300px;color:#5d6580}
+.H .cta{position:absolute;left:20px;right:20px;bottom:30px}
+.H .sec{display:block;width:100%;text-align:center;font:600 17px var(--sans);color:var(--blue);padding:16px 0 0}
+.H .note{color:#6b7390}
+
+/* ===== I: Hero menyatu ke canvas + grouped list kaca ===== */
+.I .phone{background:#f2f2f7}
+.I .hero{position:absolute;left:0;right:0;top:0;height:470px}
+.I .hero img{width:100%;height:100%;object-fit:cover;object-position:30% 50%;-webkit-mask-image:linear-gradient(#000 55%,transparent);mask-image:linear-gradient(#000 55%,transparent)}
+.I .nav{position:absolute;top:50px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:center;z-index:4}
+.I .nav .pill{display:flex;align-items:center;gap:8px;padding:5px 14px 5px 5px;border-radius:99px;font:600 14px var(--sans)}
+.I .nav .pill .logo{width:30px;height:30px;border-radius:50%}
+.I .nav .msk{padding:9px 16px;border-radius:99px;font:600 14px var(--sans);color:var(--blue)}
+.I .body{position:absolute;left:0;right:0;top:318px;bottom:0;padding:0 20px;z-index:3}
+.I .eyebrow{font:600 13px var(--sans);color:var(--blue)}
+.I h1{font:800 38px/1.03 var(--sans);letter-spacing:-.045em;margin:4px 0 8px}
+.I .lead{margin:0;color:#5f6270;max-width:320px}
+.I .grp{margin-top:18px;border-radius:22px;overflow:hidden;background:rgba(255,255,255,.7);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.9),0 1px 0 rgba(0,0,0,.04)}
+.I .li{display:flex;align-items:center;gap:12px;padding:9px 16px 9px 12px;position:relative}
+.I .li+.li:before{content:"";position:absolute;left:68px;right:0;top:0;height:.5px;background:rgba(60,60,67,.2)}
+.I .li img{width:42px;height:42px}.I .li b{display:block;font:600 16px var(--sans);letter-spacing:-.01em}.I .li span{font-size:13px;color:#7a7d89}
+.I .li svg{margin-left:auto;color:#c4c4cc}
+.I .bar{position:absolute;left:0;right:0;bottom:0;padding:14px 20px 30px;z-index:5;background:linear-gradient(transparent,#f2f2f7 40%)}
+.I .btn{min-height:54px;border-radius:16px}
+.I .sec{display:block;width:100%;text-align:center;font:600 16px var(--sans);color:var(--blue);padding:13px 0 0}
+.I .note{color:#8a8d99;margin-top:2px;font-size:12px}
+@media(max-width:900px){.col{width:100%;max-width:390px}}
+</style></head><body>
+<h1 class="pt">Redesign halaman awal pelanggan (/) — set 3: menyatu dengan latar, gaya iOS</h1>
+<p class="ps">Tanpa kartu kotak · material kaca (blur) · tipografi besar ala SF · tombol bergaya capsule/iOS</p>
+<div class="row">
+
+<div class="col G"><h2>G — Foto penuh + panel kaca</h2><p>Ilustrasi kafe memenuhi seluruh layar; semua konten duduk di satu panel Liquid Glass melayang di bawah. Foto tetap terlihat menembus kaca.</p>
+<div class="phone">
+ <img class="bg" id="bgG" src="assets/hero-sore.webp" alt=""><i></i>
+ <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+ <div class="brand"><img class="logo" src="assets/logo-djiwa.png" alt="">Djiwa Tentram</div>
+ <div class="panel glass">
+  <span class="eyebrow">Pesan lebih mudah</span>
+  <h1>Selamat datang di Djiwa Tentram</h1>
+  <p class="lead">Pesan favoritmu dengan lebih mudah dan dapatkan benefit khusus member.</p>
+  <div class="perks">
+   <div class="perk"><img class="i3" src="assets/customer-benefit-wallet.webp" alt=""><div><b>Djiwa Pay</b><span>Bayar praktis</span></div></div>
+   <div class="perk"><img class="i3" src="assets/customer-benefit-happy-hour.webp" alt=""><div><b>Happy Hour</b><span>Rp 15.000</span></div></div>
+   <div class="perk"><img class="i3" src="assets/customer-benefit-promo.webp" alt=""><div><b>Promo</b><span>Member</span></div></div>
+  </div>
+  <button class="btn p">Masuk / Daftar Member</button>
+  <button class="sec">Lanjut sebagai tamu</button>
+  <p class="note">Kamu tetap bisa memesan tanpa membuat akun.</p>
+ </div><div class="home"></div>
+</div></div>
+
+<div class="col H"><h2>H — Aurora + ikon melayang</h2><p>Latar mesh gradient lembut (hangat ke biru), ikon 3D melayang bebas tanpa kotak di sekeliling logo kaca. Judul besar dengan aksen gradien.</p>
+<div class="phone">
+ <div class="mesh"></div>
+ <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+ <div class="brand"><img class="logo" src="assets/logo-djiwa.png" alt="">Djiwa Tentram</div>
+ <div class="stage">
+  <div class="core"><img class="i3" src="assets/logo-djiwa.png" alt="" style="border-radius:26px"></div>
+  <div class="fl f1"><img class="i3" src="assets/customer-benefit-wallet.webp" alt="">Djiwa Pay<small>Bayar lebih praktis</small></div>
+  <div class="fl f2"><img class="i3" src="assets/customer-benefit-promo.webp" alt="">Promo Eksklusif<small>Benefit khusus member</small></div>
+  <div class="fl f3"><img class="i3" src="assets/customer-benefit-happy-hour.webp" alt="">Happy Hour<small>All Menu Rp 15.000</small></div>
+ </div>
+ <div class="txt"><h1>Selamat datang di <span>Djiwa Tentram</span></h1><p class="lead">Pesan favoritmu dengan lebih mudah dan dapatkan benefit khusus member.</p></div>
+ <div class="cta"><button class="btn p">Masuk / Daftar Member</button><button class="sec">Lanjut sebagai tamu</button><p class="note">Kamu tetap bisa memesan tanpa membuat akun.</p></div>
+ <div class="home"></div>
+</div></div>
+
+<div class="col I"><h2>I — Hero luruh + grouped list</h2><p>Ilustrasi memudar mulus ke latar abu iOS, judul raksasa menimpa batasnya. Benefit sebagai grouped list kaca; tombol di bar bawah melayang.</p>
+<div class="phone">
+ <div class="hero"><img id="heroI" src="assets/hero-sore.webp" alt=""></div>
+ <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+ <div class="nav"><div class="pill glass"><img class="logo" src="assets/logo-djiwa.png" alt="">Djiwa Tentram</div><button class="msk glass">Masuk</button></div>
+ <div class="body">
+  <span class="eyebrow">Pesan lebih mudah</span>
+  <h1>Selamat datang di Djiwa Tentram</h1>
+  <p class="lead">Pesan favoritmu dengan lebih mudah dan dapatkan benefit khusus member.</p>
+  <div class="grp">
+   <div class="li"><img class="i3" src="assets/customer-benefit-wallet.webp" alt=""><div><b>Djiwa Pay</b><span>Bayar lebih praktis</span></div><svg width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 1l6 6-6 6"/></svg></div>
+   <div class="li"><img class="i3" src="assets/customer-benefit-happy-hour.webp" alt=""><div><b>Happy Hour</b><span>All Menu Rp 15.000</span></div><svg width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 1l6 6-6 6"/></svg></div>
+   <div class="li"><img class="i3" src="assets/customer-benefit-promo.webp" alt=""><div><b>Promo Eksklusif</b><span>Benefit khusus member</span></div><svg width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 1l6 6-6 6"/></svg></div>
+  </div>
+ </div>
+ <div class="bar"><button class="btn p">Masuk / Daftar Member</button><button class="sec">Lanjut sebagai tamu</button><p class="note">Kamu tetap bisa memesan tanpa membuat akun.</p></div>
+ <div class="home"></div>
+</div></div>
+
+</div>
+<script>
+const h=new Date().getHours(),s=h<11?'pagi':h<15?'siang':h<18?'sore':'malam';
+['bgG','heroI'].forEach(i=>document.getElementById(i).src='assets/hero-'+s+'.webp');
+</script>
+</body></html>

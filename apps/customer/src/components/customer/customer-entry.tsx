@@ -1,5 +1,8 @@
 import { motion, useReducedMotion } from "framer-motion";
+import { Moon, Sun, Sunrise, Sunset, type LucideIcon } from "lucide-react";
 import { Djiwa3DIcon, type Djiwa3DIconName } from "@djiwaapps/web-shared";
+import { greetingForPeriod, useDayPeriod, type DayPeriod } from "@/lib/day-period";
+import { HERO_IMAGES } from "./customer-home-hero";
 import { CUSTOMER_LOGO_FALLBACK } from "@/lib/asset-url";
 import { LogoTraceLoader } from "./LogoTraceLoader";
 
@@ -73,6 +76,12 @@ const benefits: Array<{ illustration: Djiwa3DIconName; label: string; descriptio
   { illustration: "customer-benefit-promo", label: "Promo Eksklusif", description: "Benefit khusus member" },
 ];
 
+const PERIOD_ICON: Record<DayPeriod, LucideIcon> = { pagi: Sunrise, siang: Sun, sore: Sunset, malam: Moon };
+const HERO_PLACEHOLDER: Record<DayPeriod, string> = { pagi: "#b9b48f", siang: "#cdd9b8", sore: "#c98f52", malam: "#2a2f45" };
+const TITLE_WORDS = ["Selamat", "datang", "di", "Djiwa", "Tentram"];
+const EASE = [0.32, 0.72, 0, 1] as const;
+const glass = "bg-white/65 backdrop-blur-2xl backdrop-saturate-150 shadow-[inset_0_0_0_0.5px_rgba(255,255,255,0.85),0_8px_24px_rgba(0,0,0,0.08)]";
+
 type CustomerOnboardingProps = {
   logoUrl?: string;
   storeName: string;
@@ -80,67 +89,115 @@ type CustomerOnboardingProps = {
   onGuest: () => void;
 };
 
+/** Ilustrasi kafe sesuai waktu hari (aset home-hero, sama dengan beranda), larut ke kanvas halaman. */
+function OnboardingHero({ period }: { period: DayPeriod }) {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[480px] overflow-hidden [mask-image:linear-gradient(#000_52%,transparent_98%)]"
+      style={{ backgroundColor: HERO_PLACEHOLDER[period] }}
+    >
+      <img
+        key={period}
+        src={HERO_IMAGES[period]}
+        alt=""
+        width={1080}
+        height={810}
+        decoding="async"
+        fetchPriority="high"
+        draggable={false}
+        className="h-full w-full object-cover object-[50%_45%] animate-in fade-in duration-1000 motion-reduce:animate-none"
+      />
+      <div className="absolute inset-x-0 top-0 h-52 bg-gradient-to-b from-black/55 via-black/20 to-transparent" />
+    </div>
+  );
+}
+
 export function CustomerOnboarding({ logoUrl, storeName, onMember, onGuest }: CustomerOnboardingProps) {
   const reduceMotion = useReducedMotion();
+  const period = useDayPeriod();
+  const PeriodIcon = PERIOD_ICON[period];
   const brandLogoUrl = logoUrl || CUSTOMER_LOGO_FALLBACK;
   const spring = { type: "spring" as const, stiffness: 320, damping: 26, mass: 0.8 };
+  const rise = (delay: number) => ({
+    initial: reduceMotion ? { opacity: 1 } : { opacity: 0, y: 22, scale: 0.98 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    transition: { duration: 0.8, ease: EASE, delay },
+  });
 
   return (
-    <div className="app-page min-h-app px-3 py-4 sm:py-6">
+    <div className="app-page min-h-app">
       <motion.main
         aria-labelledby="customer-onboarding-title"
-        className="app-shell mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-md flex-col justify-between bg-background px-4 py-6 sm:min-h-[calc(100dvh-3rem)]"
-        initial={reduceMotion ? { opacity: 1 } : { opacity: 0 }}
+        className="relative isolate mx-auto flex min-h-app w-full max-w-md flex-col overflow-hidden px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]"
+        initial={{ opacity: reduceMotion ? 1 : 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.32, ease: [0.32, 0.72, 0, 1] }}
+        transition={{ duration: 0.6, ease: EASE }}
       >
-        <div className="flex items-center gap-2">
-          <img alt={storeName} className="h-10 w-10 rounded-xl object-contain" src={brandLogoUrl} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = CUSTOMER_LOGO_FALLBACK; }} />
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-primary">Welcome</p>
-            <p className="text-sm font-black tracking-tight">{storeName}</p>
-          </div>
-        </div>
+        <OnboardingHero period={period} />
 
-        <div className="py-8 text-center">
-          <motion.div
-            className="mx-auto flex h-40 w-40 items-center justify-center rounded-[36px] bg-primary/10"
-            initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 12, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ ...spring, delay: 0.05 }}
-          >
-            <img alt="" className="h-28 w-28 object-contain" src={brandLogoUrl} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = CUSTOMER_LOGO_FALLBACK; }} />
-          </motion.div>
-          <motion.p className="mt-7 text-[11px] font-black uppercase tracking-[0.22em] text-primary" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.12 }}>
-            Pesan lebih mudah
-          </motion.p>
-          <motion.h1 id="customer-onboarding-title" className="mt-2 font-display text-3xl font-black tracking-tight text-balance" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.17 }}>
-            Selamat datang di Djiwa Tentram
-          </motion.h1>
-          <motion.p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.22 }}>
+        <motion.div className="flex items-center justify-between" {...rise(0.1)}>
+          <div className={`flex items-center gap-2 rounded-full py-1 pl-1 pr-3.5 ${glass}`}>
+            <img alt={storeName} className="h-[30px] w-[30px] rounded-full bg-white object-contain p-[3px]" src={brandLogoUrl} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = CUSTOMER_LOGO_FALLBACK; }} />
+            <span className="text-sm font-semibold tracking-tight">{storeName}</span>
+          </div>
+          <div aria-live="polite" className={`flex items-center gap-1.5 rounded-full py-2 pl-2.5 pr-3.5 text-sm font-semibold ${glass}`}>
+            <PeriodIcon aria-hidden="true" className="h-[18px] w-[18px] text-amber-500" strokeWidth={2.2} />
+            <span key={period} className="animate-in fade-in slide-in-from-bottom-1 duration-500">{greetingForPeriod(period)}</span>
+          </div>
+        </motion.div>
+
+        <div className="min-h-[190px] flex-1" />
+
+        <div>
+          <motion.p className="text-[13px] font-semibold tracking-wide text-primary" {...rise(0.35)}>Pesan lebih mudah</motion.p>
+          <h1 id="customer-onboarding-title" aria-label="Selamat datang di Djiwa Tentram" className="mt-1 font-display text-[39px] font-extrabold leading-[1.02] tracking-[-0.045em]">
+            {TITLE_WORDS.map((word, index) => (
+              <span key={word} aria-hidden="true" className="mr-[0.25em] inline-block overflow-hidden pb-[3px] align-top">
+                <motion.span
+                  className="inline-block"
+                  initial={reduceMotion ? { y: 0 } : { y: "110%" }}
+                  animate={{ y: 0 }}
+                  transition={{ duration: 0.9, ease: EASE, delay: 0.45 + index * 0.09 }}
+                >
+                  {word}
+                </motion.span>
+              </span>
+            ))}
+          </h1>
+          <motion.p className="mt-2 max-w-[320px] text-[15px] leading-relaxed text-muted-foreground" {...rise(0.95)}>
             Pesan favoritmu dengan lebih mudah dan dapatkan benefit khusus member.
           </motion.p>
 
-          <motion.div className="mt-7 grid grid-cols-3 gap-2" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.26 } } }}>
-            {benefits.map((benefit) => (
-              <motion.div key={benefit.label} className="flex min-h-[118px] flex-col items-center justify-center rounded-2xl border border-border/70 bg-card px-2 py-3 text-center shadow-sm" variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: spring } }} whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }}>
-                <Djiwa3DIcon name={benefit.illustration} size="sm" alt="" className="h-12 w-12 object-contain" />
-                <p className="mt-2 text-[11px] font-black leading-tight">{benefit.label}</p>
-                <p className="mt-1 text-[10px] leading-tight text-muted-foreground">{benefit.description}</p>
+          <div className="-mx-5 mt-5 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-5 pb-3 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ scrollPaddingLeft: 20 }}>
+            {benefits.map((benefit, index) => (
+              <motion.div
+                key={benefit.label}
+                className={`w-[158px] flex-none snap-start rounded-3xl px-3.5 pb-3.5 pt-3 ${glass}`}
+                initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 22, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ ...spring, delay: 1.05 + index * 0.1 }}
+                whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+              >
+                <motion.div animate={reduceMotion ? undefined : { y: [0, -4, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: index * 1.6 }}>
+                  <Djiwa3DIcon name={benefit.illustration} size="sm" alt="" className="mb-1.5 h-[50px] w-[50px] object-contain drop-shadow-md" />
+                </motion.div>
+                <p className="text-[15px] font-semibold leading-tight tracking-tight">{benefit.label}</p>
+                <p className="mt-0.5 text-[12.5px] leading-snug text-muted-foreground">{benefit.description}</p>
               </motion.div>
             ))}
-          </motion.div>
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <motion.button type="button" className="min-h-11 w-full rounded-[14px] bg-primary px-5 py-3 text-sm font-black text-primary-foreground shadow-sm" onClick={onMember} whileHover={reduceMotion ? undefined : { y: -1 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} transition={spring}>
+        <motion.div className="pt-4" {...rise(1.2)}>
+          <motion.button type="button" className="relative flex min-h-14 w-full items-center justify-center overflow-hidden rounded-[18px] bg-primary px-5 text-[17px] font-semibold tracking-tight text-primary-foreground shadow-lg shadow-primary/30" onClick={onMember} whileTap={reduceMotion ? undefined : { scale: 0.97 }} transition={spring}>
             Masuk / Daftar Member
           </motion.button>
-          <motion.button type="button" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-5 py-3 text-sm font-bold text-muted-foreground" onClick={onGuest} whileHover={reduceMotion ? undefined : { y: -1 }} whileTap={reduceMotion ? undefined : { scale: 0.97 }} transition={spring}>
+          <motion.button type="button" className="mt-1 min-h-11 w-full text-base font-semibold text-primary" onClick={onGuest} whileTap={reduceMotion ? undefined : { opacity: 0.5 }}>
             Lanjut sebagai tamu
           </motion.button>
-          <p className="pt-1 text-center text-[11px] leading-relaxed text-muted-foreground">Kamu tetap bisa memesan tanpa membuat akun.</p>
-        </div>
+          <p className="text-center text-xs leading-relaxed text-muted-foreground">Kamu tetap bisa memesan tanpa membuat akun.</p>
+        </motion.div>
       </motion.main>
     </div>
   );
