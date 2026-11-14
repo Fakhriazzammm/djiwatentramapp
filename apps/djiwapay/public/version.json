@@ -1,0 +1,7 @@
+{
+  "version": "0.2.569",
+  "commitHash": "10be529",
+  "message": "build(djiwapay): emit version.json so ship-artifacts can deploy it",
+  "buildDate": "2026-11-14",
+  "generatedAt": "2026-11-14T17:04:13.269Z"
+}

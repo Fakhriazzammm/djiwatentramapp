@@ -1,4 +1,5 @@
-import type { CSSProperties, ReactNode } from "react";
+import { forwardRef, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { AnimatePresence, MotionConfig, animate, motion, useDragControls, useMotionValue, useReducedMotion, type HTMLMotionProps } from "framer-motion";
 import { Djiwa3DIcon, type Djiwa3DIconName } from "@djiwaapps/web-shared";
 
 const PATHS = {
@@ -31,19 +32,80 @@ export function I3({ name, px = 40, alt = "", style }: { name: Djiwa3DIconName; 
   return <Djiwa3DIcon name={name} alt={alt} size="sm" style={{ width: px, height: px, ...style }} />;
 }
 
-export function Row({ icon, tone, i3, title, sub, trail, onClick, chev = true, children }: { icon?: IconName; tone?: string; i3?: Djiwa3DIconName; title: ReactNode; sub?: ReactNode; trail?: ReactNode; onClick?: () => void; chev?: boolean; children?: ReactNode }) {
+export const spring = { type: "spring", stiffness: 420, damping: 32, mass: 0.8 } as const;
+export const ease = [0.32, 0.72, 0, 1] as const;
+
+/** Every tappable control: springy press feedback, respects reduced motion through MotionConfig. */
+export const Btn = forwardRef<HTMLButtonElement, HTMLMotionProps<"button">>(function Btn({ whileTap, ...props }, ref) {
+  return <motion.button ref={ref} whileTap={props.disabled ? undefined : whileTap ?? { scale: 0.96 }} transition={spring} {...props} />;
+});
+
+/** Staggered entrance for a block of content. */
+export function Reveal({ children, i = 0, y = 14, className, style }: { children: ReactNode; i?: number; y?: number; className?: string; style?: CSSProperties }) {
+  return <motion.div className={className} style={style} initial={{ opacity: 0, y }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: Math.min(i, 10) * 0.05 }}>{children}</motion.div>;
+}
+
+/** Counts to the new value instead of jumping. */
+export function AnimatedNumber({ value, format = (n: number) => Math.round(n).toLocaleString("id-ID") }: { value: number; format?: (n: number) => string }) {
+  const reduce = useReducedMotion();
+  const mv = useMotionValue(reduce ? value : 0);
+  const [text, setText] = useState(() => format(reduce ? value : 0));
+  const first = useRef(true);
+  useEffect(() => mv.on("change", (v) => setText(format(v))), [mv]);
+  useEffect(() => {
+    if (reduce) { mv.set(value); setText(format(value)); return; }
+    const controls = animate(mv, value, { duration: first.current ? 1 : 0.55, ease });
+    first.current = false;
+    return () => controls.stop();
+  }, [value, reduce]);
+  return <>{text}</>;
+}
+
+/** Segmented control with a sliding highlight. */
+export function Seg<T extends string>({ id, value, options, onChange, label }: { id: string; value: T; options: readonly (readonly [T, string])[]; onChange: (value: T) => void; label: string }) {
+  return <div className="dpx-seg" role="group" aria-label={label}>
+    {options.map(([key, text]) => <Btn key={key} type="button" className={value === key ? "dpx-on" : ""} aria-pressed={value === key} onClick={() => onChange(key)}>
+      {value === key ? <motion.span layoutId={`seg-${id}`} className="dpx-seg-pill" transition={spring} /> : null}
+      <span style={{ position: "relative" }}>{text}</span>
+    </Btn>)}
+  </div>;
+}
+
+export function Bar({ percent, delay = 0 }: { percent: number; delay?: number }) {
+  return <div className="dpx-bar"><motion.i initial={{ width: 0 }} animate={{ width: `${Math.max(2, Math.min(100, percent))}%` }} transition={{ duration: 0.8, ease, delay }} /></div>;
+}
+
+export function SuccessMark({ tone = "ok" }: { tone?: "ok" | "warn" | "bad" }) {
+  const d = tone === "ok" ? "M20 6L9 17l-5-5" : tone === "warn" ? "M12 6v6l4 2" : "M18 6L6 18M6 6l12 12";
+  return <motion.div className={`dpx-success-ring ${tone === "ok" ? "" : "dpx-" + tone}`} initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 240, damping: 16 }}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><motion.path d={d} initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ delay: 0.25, duration: 0.5, ease: "easeOut" }} /></svg>
+  </motion.div>;
+}
+
+/** Icon that wiggles every few seconds to draw attention (e.g. unread bell). */
+export function Wiggle({ active, children }: { active: boolean; children: ReactNode }) {
+  return <motion.span style={{ display: "grid", placeItems: "center" }} animate={active ? { rotate: [0, -16, 14, -9, 5, 0] } : { rotate: 0 }} transition={active ? { duration: 0.8, repeat: Infinity, repeatDelay: 4.5 } : undefined}>{children}</motion.span>;
+}
+
+/** Cross-fades between two icon states (e.g. eye / eye-off). */
+export function IconSwap({ k, children }: { k: string; children: ReactNode }) {
+  return <AnimatePresence mode="wait" initial={false}><motion.span key={k} style={{ display: "grid", placeItems: "center" }} initial={{ opacity: 0, scale: 0.6, rotate: -25 }} animate={{ opacity: 1, scale: 1, rotate: 0 }} exit={{ opacity: 0, scale: 0.6, rotate: 25 }} transition={{ duration: 0.16 }}>{children}</motion.span></AnimatePresence>;
+}
+
+export function Row({ icon, tone, i3, title, sub, trail, onClick, chev = true, children, i }: { i?: number; icon?: IconName; tone?: string; i3?: Djiwa3DIconName; title: ReactNode; sub?: ReactNode; trail?: ReactNode; onClick?: () => void; chev?: boolean; children?: ReactNode }) {
   const inner = <>
     <span className={`dpx-ico ${tone ? "dpx-c-" + tone : ""}`} style={tone ? { boxShadow: "none" } : undefined}>{i3 ? <I3 name={i3} px={30} /> : <Ic n={icon ?? "info"} />}</span>
     <span className="dpx-main"><b>{title}</b>{sub ? <span>{sub}</span> : null}</span>
     {trail ? <span className="dpx-trail">{trail}</span> : null}
     {onClick && chev ? <Chev /> : null}{children}
   </>;
-  return onClick ? <button type="button" className="dpx-row" onClick={onClick}>{inner}</button> : <div className="dpx-row">{inner}</div>;
+  const enter = { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { ...spring, delay: Math.min(i ?? 0, 10) * 0.04 } };
+  return onClick ? <Btn type="button" className="dpx-row" onClick={onClick} whileTap={{ scale: 0.985, backgroundColor: "rgba(15,35,71,.04)" }} {...enter}>{inner}</Btn> : <motion.div className="dpx-row" {...enter}>{inner}</motion.div>;
 }
 
 export function Header({ title, onBack, right, left }: { title?: string; onBack?: () => void; right?: ReactNode; left?: ReactNode }) {
   return <div className="dpx-hdr">
-    {left ?? (onBack ? <button type="button" className="dpx-rb" onClick={onBack} aria-label="Kembali"><Ic n="back" /></button> : <span style={{ width: 44 }} />)}
+    {left ?? (onBack ? <Btn type="button" className="dpx-rb" onClick={onBack} aria-label="Kembali" whileTap={{ scale: 0.88 }}><Ic n="back" /></Btn> : <span style={{ width: 44 }} />)}
     <div className="dpx-grow">{title ? <h1>{title}</h1> : null}</div>
     {right ?? <span style={{ width: 44 }} />}
   </div>;
@@ -54,15 +116,29 @@ export function Sky({ children, deep = false }: { children: ReactNode; deep?: bo
 }
 
 export function Sheet({ title, onClose, children, label }: { title?: string; onClose: () => void; children: ReactNode; label?: string }) {
-  return <div className="dpx dpx-sheetwrap" style={{ background: "transparent", minHeight: 0, maxWidth: "none" }}>
-    <div className="dpx-scrim" onClick={onClose} />
-    <div className="dpx-sheet" role="dialog" aria-modal="true" aria-label={label ?? title}>
-      <div className="dpx-grab" />
-      {title !== undefined ? <div className="dpx-sh-h"><h2>{title}</h2><button type="button" className="dpx-sh-x" onClick={onClose} aria-label="Tutup"><Ic n="close" size="sm" /></button></div> : null}
+  const controls = useDragControls();
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return <div className="dpx dpx-sheetwrap" style={{ background: "transparent", minHeight: 0, maxWidth: "none", overflow: "visible" }}>
+    <motion.div className="dpx-scrim" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }} />
+    <motion.div className="dpx-sheet" role="dialog" aria-modal="true" aria-label={label ?? title}
+      initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 380, damping: 36 }}
+      drag="y" dragControls={controls} dragListener={false} dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: 0.7 }}
+      onDragEnd={(_, info) => { if (info.offset.y > 110 || info.velocity.y > 650) onClose(); }}>
+      <div className="dpx-grabzone" onPointerDown={(event) => controls.start(event)}><div className="dpx-grab" /></div>
+      {title !== undefined ? <div className="dpx-sh-h"><h2>{title}</h2><Btn type="button" className="dpx-sh-x" onClick={onClose} aria-label="Tutup" whileTap={{ scale: 0.85, rotate: 90 }}><Ic n="close" size="sm" /></Btn></div> : null}
       {children}
-    </div>
+    </motion.div>
   </div>;
 }
 
 export const serviceTone: Record<string, string> = { pulsa: "blue", data: "violet", "pln-token": "amber", "pln-bill": "orange", pdam: "cyan", bpjs: "rose", tv: "indigo", game: "emerald", multifinance: "slate" };
 export const serviceIcon: Record<string, IconName> = { pulsa: "phone", data: "wifi", "pln-token": "flash", "pln-bill": "receipt", pdam: "drop", bpjs: "heart", tv: "tv", game: "game", multifinance: "car" };
+
+/** Full-screen page wrapper with an entrance animation (pages outside the tabbed shell). */
+export function Screen({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <MotionConfig reducedMotion="user"><motion.div className={`dpx ${className}`.trim()} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.34, ease }}>{children}</motion.div></MotionConfig>;
+}

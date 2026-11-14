@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Ic } from "../shell/dpx-ui";
+import { Btn, Ic } from "../shell/dpx-ui";
 
 type BarcodeDetectorLike = {
   detect: (source: CanvasImageSource) => Promise<Array<{ rawValue?: string }>>;
@@ -121,7 +121,7 @@ export function DjiwaPayWalletScanner({ onDetected, onUseManual, notice = null }
     <video ref={videoRef} autoPlay muted playsInline style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: error ? 0 : 0.92 }} />
     <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 42%,transparent 30%,rgba(8,12,24,.72) 78%)" }} aria-hidden="true" />
     <div className="dpx-hdr" style={{ position: "absolute", top: "calc(env(safe-area-inset-top,0px) + 14px)", left: 18, right: 18 }}>
-      <button type="button" className="dpx-rb" onClick={onUseManual} aria-label="Tutup pemindai"><Ic n="close" /></button>
+      <Btn type="button" className="dpx-rb" onClick={onUseManual} aria-label="Tutup pemindai"><Ic n="close" /></Btn>
       <div className="dpx-grow"><h1 style={{ color: "#fff" }}>Scan QR</h1></div><span style={{ width: 44 }} />
     </div>
     <div className="dpx-frame" aria-hidden="true"><i /><i /><i /><i />{error ? null : <div className="dpx-scanline" />}</div>
@@ -130,7 +130,7 @@ export function DjiwaPayWalletScanner({ onDetected, onUseManual, notice = null }
       {notice ? <p className="dpx-note dpx-danger" role="alert" style={{ marginTop: 12 }}><Ic n="warn" /><span>{notice}</span></p> : null}
     </div>
     <div style={{ position: "absolute", left: 18, right: 18, bottom: "calc(env(safe-area-inset-bottom,0px) + 34px)" }}>
-      <button type="button" className="dpx-btn" style={{ background: "#fff", color: "var(--navy)", margin: 0 }} onClick={onUseManual}><Ic n="phone" size="sm" /> Gunakan nomor HP</button>
+      <Btn type="button" className="dpx-btn" style={{ background: "#fff", color: "var(--navy)", margin: 0 }} onClick={onUseManual}><Ic n="phone" size="sm" /> Gunakan nomor HP</Btn>
     </div>
   </div></div>;
 }

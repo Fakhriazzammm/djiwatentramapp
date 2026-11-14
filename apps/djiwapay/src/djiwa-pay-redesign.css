@@ -126,7 +126,7 @@
 /* ---- app adaptation: real viewport instead of the prototype phone frame ---- */
 .dpx{position:relative;min-height:100dvh;max-width:480px;margin:0 auto;background:var(--canvas);font:15px/1.4 var(--font);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 .dpx *,.dpx *::before,.dpx *::after{box-sizing:border-box}
-:where(.dpx) button{cursor:pointer;border:0;background:none;padding:0;font:inherit;color:inherit;transition:transform .16s var(--ease),background .2s,opacity .2s}.dpx button:active{transform:scale(.96)}
+:where(.dpx) button{cursor:pointer;border:0;background:none;padding:0;font:inherit;color:inherit;transition:transform .16s var(--ease),background .2s,opacity .2s}
 :where(.dpx) input,:where(.dpx) select,:where(.dpx) textarea{font:inherit;color:inherit}:where(.dpx) img{display:block}:where(.dpx) a{color:inherit;text-decoration:none}
 .dpx-page{animation:dpx-vin .38s var(--ease)}
 .dpx-pad{padding-top:calc(env(safe-area-inset-top,0px) + 18px);padding-bottom:calc(132px + env(safe-area-inset-bottom,0px))}.dpx-pad.dpx-nobar{padding-bottom:150px}
@@ -163,3 +163,16 @@
 .dpx-checkout .djiwa-checkout-section,.dpx-checkout .djiwa-order-summary,.dpx-checkout .djiwa-checkout-header{border-radius:26px}
 .dpx-checkout .djiwa-checkout-back{border-radius:999px;min-height:54px}
 .dpx-checkout .djiwa-checkout-input{border-radius:20px}
+
+/* motion layer */
+.dpx-page{animation:none}.dpx-scrim,.dpx-sheet{animation:none}
+.dpx-grabzone{padding:2px 0 10px;touch-action:none;cursor:grab}.dpx-grabzone .dpx-grab{margin:0 auto}
+.dpx-seg button{position:relative;background:none!important;box-shadow:none!important}.dpx-seg button.dpx-on{color:var(--navy)}
+.dpx-seg-pill{position:absolute;inset:0;border-radius:999px;background:#fff;box-shadow:0 1px 4px rgba(15,35,71,.12)}
+.dpx-tb{position:relative}.dpx-tb.dpx-on{background:none}.dpx-tabpill{position:absolute;inset:0;border-radius:999px;background:#e3e5ea}
+.dpx-tb>*:not(.dpx-tabpill){position:relative}
+.dpx-fab::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(15,35,71,.28);animation:dpx-ping 2.8s ease-out infinite;pointer-events:none}
+@keyframes dpx-ping{0%{transform:scale(.92);opacity:.7}70%,100%{transform:scale(1.28);opacity:0}}
+.dpx-d{transition:box-shadow .2s}
+.dpx-empty{animation:dpx-vin .45s var(--ease)}.dpx-empty>img{animation:dpx-float 3.4s ease-in-out infinite}@keyframes dpx-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.dpx-checkout.djiwa-checkout-page{animation:dpx-vin .4s var(--ease)}

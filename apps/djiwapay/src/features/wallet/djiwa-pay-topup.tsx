@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Header, Ic, Sky } from "../shell/dpx-ui";
+import { AnimatedNumber, Btn, Header, Ic, Screen, Sky, SuccessMark } from "../shell/dpx-ui";
 import { MIN_TOPUP_AMOUNT, normalizeTopupAmount, normalizeTopupDigits } from "../../lib/djiwa-pay-topup";
 
 type TopupStage = "detail" | "payment";
@@ -64,12 +64,12 @@ export function DjiwaPayTopup({
 
   if (isSuccess) {
     return (
-      <div className="dpx"><Sky>
+      <Screen><Sky>
         <div className="dpx-pad dpx-nobar" aria-live="polite">
           <div className="dpx-center" style={{ marginTop: 34 }}>
-            <div className="dpx-success-ring"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg></div>
+            <SuccessMark />
             <h1 className="dpx-title">Isi saldo berhasil</h1>
-            <div className="dpx-money" style={{ marginTop: 8 }}>+{money(value)}</div>
+            <div className="dpx-money" style={{ marginTop: 8 }}>+Rp <AnimatedNumber value={value} /></div>
             <p className="dpx-sub" style={{ margin: "8px auto 0", maxWidth: 290, fontSize: 14 }}>Saldo sudah ditambahkan ke akun Djiwa Pay kamu.</p>
           </div>
           <div className="dpx-group dpx-white dpx-mt" aria-label="Detail top up">
@@ -78,8 +78,8 @@ export function DjiwaPayTopup({
             <div className="dpx-kv"><span>Status</span><b style={{ color: "var(--ok)" }}>Berhasil</b></div>
           </div>
         </div>
-        <div className="dpx-sticky"><button type="button" className="dpx-btn" onClick={onDone}>{returningToPpob ? "Kembali ke Pembayaran" : "Selesai"}</button></div>
-      </Sky></div>
+        <div className="dpx-sticky"><Btn type="button" className="dpx-btn" onClick={onDone}>{returningToPpob ? "Kembali ke Pembayaran" : "Selesai"}</Btn></div>
+      </Sky></Screen>
     );
   }
 
@@ -88,7 +88,7 @@ export function DjiwaPayTopup({
   const invalid = !normalized.valid && !!amount;
 
   return (
-    <div className="dpx"><Sky>
+    <Screen><Sky>
       <div className="dpx-pad dpx-nobar" style={{ paddingBottom: 170 }} key={stage}>
         <Header title={isDetail ? "Isi saldo" : "Pembayaran"} onBack={onBack} />
         {isDetail ? (
@@ -99,7 +99,7 @@ export function DjiwaPayTopup({
             </div>
             <p id="topup-amount-hint" className={`dpx-hint dpx-center ${invalid ? "dpx-err" : ""}`}>{invalid ? `Minimal isi saldo ${money(MIN_TOPUP_AMOUNT)}.` : `Minimal ${money(MIN_TOPUP_AMOUNT)} · saldo setelah top up ${money(projectedBalance)}`}</p>
             <div className="dpx-amt-presets" role="group" aria-label="Pilihan nominal isi saldo">
-              {PRESET_AMOUNTS.map((preset) => <button key={preset} type="button" className={`dpx-preset ${value === preset ? "dpx-on" : ""}`} aria-pressed={value === preset} onClick={() => onAmountChange(String(preset))}>{presetLabel(preset)}</button>)}
+              {PRESET_AMOUNTS.map((preset) => <Btn key={preset} type="button" className={`dpx-preset ${value === preset ? "dpx-on" : ""}`} animate={{ scale: value === preset ? 1.05 : 1 }} aria-pressed={value === preset} onClick={() => onAmountChange(String(preset))}>{presetLabel(preset)}</Btn>)}
             </div>
             <div className="dpx-glabel">Metode pembayaran</div>
             <div className="dpx-opt dpx-on" role="group" aria-label="Metode pembayaran QRIS"><span className="dpx-cat dpx-c-blue dpx-sq"><Ic n="qr" /></span><span className="dpx-main"><b>QRIS</b><span>Mayar · semua bank &amp; e-wallet</span></span><span className="dpx-radio" aria-label="Dipilih" /></div>
@@ -117,7 +117,7 @@ export function DjiwaPayTopup({
             <div className="dpx-opt dpx-on" role="group" aria-label="Metode pembayaran QRIS"><span className="dpx-cat dpx-c-blue dpx-sq"><Ic n="qr" /></span><span className="dpx-main"><b>QRIS</b><span>Mayar · semua bank &amp; e-wallet</span></span><span className="dpx-radio" aria-label="Dipilih" /></div>
             <div className="dpx-note dpx-info"><Ic n="shield" /><div><b>Pembayaran aman</b>Kamu akan diarahkan ke halaman QRIS Mayar untuk menyelesaikan pembayaran.</div></div>
             {isPending ? (
-              <div className="dpx-note" role="status" aria-live="polite"><Ic n="clock" /><div><b>Menunggu pembayaran</b>Status diperiksa otomatis setiap 5 detik. Selesaikan pembayaran QRIS sebelum batas waktu.<br /><button type="button" className="dpx-linkbtn" style={{ marginTop: 8, fontWeight: 600 }} onClick={onCheckStatus} disabled={busy}>{busy ? "Memeriksa…" : "Periksa status"}</button></div></div>
+              <div className="dpx-note" role="status" aria-live="polite"><Ic n="clock" /><div><b>Menunggu pembayaran</b>Status diperiksa otomatis setiap 5 detik. Selesaikan pembayaran QRIS sebelum batas waktu.<br /><Btn type="button" className="dpx-linkbtn" style={{ marginTop: 8, fontWeight: 600 }} onClick={onCheckStatus} disabled={busy}>{busy ? "Memeriksa…" : "Periksa status"}</Btn></div></div>
             ) : isExpired ? (
               <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div><b>Invoice kedaluwarsa</b>Batas waktu pembayaran sudah lewat. Buat invoice baru untuk mencoba lagi.</div></div>
             ) : null}
@@ -126,9 +126,9 @@ export function DjiwaPayTopup({
       </div>
       <div className="dpx-sticky">
         {isDetail ? <div className="dpx-spread" style={{ margin: "0 6px 10px" }}><span className="dpx-sub">Total bayar</span><b style={{ fontSize: 18 }}>{money(value)}</b></div> : null}
-        <button type="button" className={`dpx-btn ${primaryDisabled ? "dpx-off" : ""}`} onClick={onPrimary} disabled={primaryDisabled} aria-busy={busy}>{busy && !isPending ? "Memproses…" : primaryLabel}</button>
-        {!isDetail && !isPending ? <button type="button" className="dpx-btn dpx-soft" style={{ marginTop: 10 }} onClick={onRestart}>Ubah nominal</button> : null}
+        <Btn type="button" className={`dpx-btn ${primaryDisabled ? "dpx-off" : ""}`} onClick={onPrimary} disabled={primaryDisabled} aria-busy={busy}>{busy && !isPending ? "Memproses…" : primaryLabel}</Btn>
+        {!isDetail && !isPending ? <Btn type="button" className="dpx-btn dpx-soft" style={{ marginTop: 10 }} onClick={onRestart}>Ubah nominal</Btn> : null}
       </div>
-    </Sky></div>
+    </Sky></Screen>
   );
 }
