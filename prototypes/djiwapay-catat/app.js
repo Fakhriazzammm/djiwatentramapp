@@ -1,4 +1,4 @@
-/* Djiwa Pay — Catat (pencatatan keuangan sebagai inti, fintech sebagai lapisan kedua). Data dummy. */
+/* Djiwa Pay (pencatatan keuangan sebagai inti, fintech sebagai lapisan kedua). Data dummy. */
 (function () {
 const Q = new URLSearchParams(location.search);
 if (Q.get("embed")) document.documentElement.classList.add("embed");
@@ -205,7 +205,7 @@ const RUN = {
 };
 window.jump = (k) => { S.toast = ""; (RUN[k] || RUN.home)(); S.cur = k; render(); };
 function markPanel() { document.querySelectorAll(".panel [data-k]").forEach((b) => b.classList.toggle("on", b.dataset.k === S.cur)); }
-function buildPanel() { const p = $("#panel"); if (!p) return; p.innerHTML = `<h3>Djiwa Pay — Catat</h3><p>Prototipe pencatatan keuangan sebagai inti. Klik di ponsel atau lompat ke layar mana pun.</p>${window.SCREEN_LIST.map(([g, items]) => `<h4>${g}</h4><div class="grid">${items.map(([k, l]) => `<button data-k="${k}" onclick="jump('${k}')">${l}</button>`).join("")}</div>`).join("")}<h4>Lainnya</h4><div class="grid"><button onclick="location.href='flows.html'">Semua layar →</button><button onclick="location.href='../djiwapay-redesign/index.html'">Prototipe Djiwa Pay (lama)</button></div>`; }
+function buildPanel() { const p = $("#panel"); if (!p) return; p.innerHTML = `<h3>Djiwa Pay</h3><p>Prototipe pencatatan keuangan sebagai inti. Klik di ponsel atau lompat ke layar mana pun.</p>${window.SCREEN_LIST.map(([g, items]) => `<h4>${g}</h4><div class="grid">${items.map(([k, l]) => `<button data-k="${k}" onclick="jump('${k}')">${l}</button>`).join("")}</div>`).join("")}<h4>Lainnya</h4><div class="grid"><button onclick="location.href='flows.html'">Semua layar →</button><button onclick="location.href='../djiwapay-redesign/index.html'">Prototipe Djiwa Pay (lama)</button></div>`; }
 window.S = S; window.render = render;
 buildPanel();
 const start = Q.get("s") || "ob-welcome"; S.cur = start; (RUN[start] || RUN["ob-welcome"])(); render();

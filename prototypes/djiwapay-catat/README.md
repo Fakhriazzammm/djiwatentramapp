@@ -1,4 +1,4 @@
-# Djiwa Pay — Catat (pencatatan keuangan sebagai inti)
+# Djiwa Pay — pencatatan keuangan sebagai inti
 
 Prototipe statis end-to-end untuk mengubah arah produk: **pencatatan keuangan pribadi menjadi inti**, fintech (saldo, QRIS, PPOB) menjadi **lapisan kedua** yang memberi makan data dan pendapatan. Semua yang sudah ada di Djiwa Pay **tidak dihapus** — isi saldo, kirim, terima, scan, PPOB, tagihan, riwayat tetap ada (dibuka dari tab Dompet / "Bayar & layanan" dan dari sheet Catat; tombol "Buka alur Djiwa Pay" membuka prototipe sebelumnya `../djiwapay-redesign/`).
 
