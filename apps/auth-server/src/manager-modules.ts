@@ -51,6 +51,18 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
     return r.rows as { slug: string; label: string; icon: string }[];
   };
 
+  // ---------- live activity feed (all apps), same source as admin ----------
+  app.get("/api/manager/feed", async (c) => {
+    const m = await member(c);
+    if ("res" in m) return m.res;
+    try {
+      const r = await pool.query(`SELECT public.admin_activity_feed(30) AS feed`);
+      return json({ success: true, feed: r.rows[0]?.feed ?? [] });
+    } catch {
+      return json({ success: true, feed: [] });
+    }
+  });
+
   // ---------- dashboard ----------
   app.get("/api/manager/dashboard", async (c) => {
     const m = await member(c);
@@ -95,7 +107,8 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
       const d = wibDay(i - days + 1);
       return { key: d.date, start_ms: d.start, end_ms: d.end };
     });
-    const [cash, sales, txs, byCategory] = await Promise.all([
+    const wibDate = `to_char(to_timestamp(tx_date / 1000.0) AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM-DD')`;
+    const [cash, sales, txs, byCategory, daily, channels, methods] = await Promise.all([
       pool.query(`SELECT public.admin_cashflow_summary($1,$2) AS r`, [start, now]),
       pool.query(`SELECT public.admin_sales_summary($1::jsonb) AS r`, [JSON.stringify(series)]),
       pool.query(
@@ -112,6 +125,24 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
           GROUP BY 1 ORDER BY sum(amount) DESC`,
         [start, now],
       ),
+      pool.query(
+        `SELECT ${wibDate} AS day, tx_type,
+                COALESCE(sum(amount),0)::text AS total
+           FROM pos.financial_transactions
+          WHERE status = 'completed' AND tx_date >= $1 AND tx_date < $2 AND COALESCE(category,'') <> 'HPP'
+          GROUP BY 1, 2`,
+        [start, now],
+      ).catch(() => ({ rows: [] as { day: string; tx_type: string; total: string }[] })),
+      pool.query(
+        `SELECT public.admin_order_channel(o.order_channel, o.source, o.source_app, o.business_unit) AS name, COALESCE(sum(o.total_amount),0)::text AS total
+           FROM pos.orders o WHERE o.status IN ('paid','completed') AND o.created_at >= $1 AND o.created_at < $2 GROUP BY 1 ORDER BY sum(o.total_amount) DESC`,
+        [start, now],
+      ).catch(() => ({ rows: [] as { name: string; total: string }[] })),
+      pool.query(
+        `SELECT COALESCE(NULLIF(o.payment_method,''),'lainnya') AS name, COALESCE(sum(o.total_amount),0)::text AS total
+           FROM pos.orders o WHERE o.status IN ('paid','completed') AND o.created_at >= $1 AND o.created_at < $2 GROUP BY 1 ORDER BY sum(o.total_amount) DESC`,
+        [start, now],
+      ).catch(() => ({ rows: [] as { name: string; total: string }[] })),
     ]);
     const c0 = (cash.rows[0]?.r ?? { income: 0, expense: 0, net: 0 }) as Record<string, number>;
     return json({
@@ -121,6 +152,9 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
       sales: (sales.rows[0]?.r ?? []) as { key: string; orders: number; revenue: number }[],
       transactions: txs.rows,
       byCategory: byCategory.rows.map((r) => ({ category: r.category as string, total: Number(r.total) })),
+      daily: (daily.rows as { day: string; tx_type: string; total: string }[]).map((r) => ({ day: r.day, type: r.tx_type, total: Number(r.total) })),
+      channels: (channels.rows as { name: string; total: string }[]).map((r) => ({ name: r.name, total: Number(r.total) })),
+      methods: (methods.rows as { name: string; total: string }[]).map((r) => ({ name: r.name, total: Number(r.total) })),
     });
   });
 
@@ -332,15 +366,38 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
     }
   });
 
+  // Generic attachment upload (task files, photos, videos). Stored next to receipt images.
+  const MIME: Record<string, string> = {
+    png: "image/png", jpg: "image/jpeg", webp: "image/webp", gif: "image/gif", mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime",
+    pdf: "application/pdf", doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xls: "application/vnd.ms-excel", xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", csv: "text/csv", txt: "text/plain", zip: "application/zip",
+  };
+  app.post("/api/manager/uploads", async (c) => {
+    const m = await member(c);
+    if ("res" in m) return m.res;
+    const b = (await c.req.json().catch(() => ({}))) as { name?: unknown; data?: unknown };
+    const match = /^data:[a-z0-9.+/-]*;base64,([A-Za-z0-9+/=]+)$/i.exec(text(b.data, 25_000_000));
+    const name = text(b.name, 160) || "lampiran";
+    const ext = (name.split(".").pop() ?? "").toLowerCase();
+    if (!match || !MIME[ext]) return json({ success: false, error: "FILE_TYPE_NOT_ALLOWED" }, 400);
+    const bytes = Buffer.from(match[1], "base64");
+    if (bytes.length < 1 || bytes.length > 15 * 1024 * 1024) return json({ success: false, error: "FILE_SIZE_INVALID" }, 413);
+    const filename = `${randomUUID()}.${ext}`;
+    await mkdir(uploadRoot(), { recursive: true, mode: 0o750 });
+    await writeFile(join(uploadRoot(), filename), bytes, { mode: 0o640 });
+    const kind = ext.match(/^(png|jpg|webp|gif)$/) ? "photo" : ext.match(/^(mp4|webm|mov)$/) ? "video" : "file";
+    return json({ success: true, attachment: { type: kind, name, url: `/api/manager/uploads/${filename}` } }, 201);
+  });
+
   app.get("/api/manager/uploads/:file", async (c) => {
     const m = await member(c);
     if ("res" in m) return m.res;
     const file = c.req.param("file");
-    if (!/^[a-f0-9-]{36}\.(png|jpg|webp)$/i.test(file)) return c.text("Not found", 404);
+    const ext = (file.split(".").pop() ?? "").toLowerCase();
+    if (!/^[a-f0-9-]{36}\.[a-z0-9]{2,4}$/i.test(file) || !MIME[ext]) return c.text("Not found", 404);
     try {
       const buf = await readFile(join(uploadRoot(), file));
-      const type = file.endsWith(".png") ? "image/png" : file.endsWith(".webp") ? "image/webp" : "image/jpeg";
-      return new Response(buf, { headers: { "Content-Type": type, "Cache-Control": "private, max-age=86400" } });
+      return new Response(buf, { headers: { "Content-Type": MIME[ext], "Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff", ...(ext === "pdf" || MIME[ext].startsWith("image") || MIME[ext].startsWith("video") ? {} : { "Content-Disposition": "attachment" }) } });
     } catch {
       return c.text("Not found", 404);
     }

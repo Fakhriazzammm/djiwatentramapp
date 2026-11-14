@@ -1,114 +1,129 @@
 import { useCallback, useEffect, useState } from "react";
-import { BookOpen, CheckSquare, FileText, LayoutDashboard, Loader2, LogOut, Menu, Package, Receipt, ShoppingCart, Users, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { api, type Role } from "./lib/api";
 import { managerAuth } from "./lib/auth";
+import { Ic } from "./ui";
 import { Gate } from "./views/Gate";
-import { TasksView } from "./views/Tasks";
+import { DashView } from "./views/Dash";
 import { ReportsView } from "./views/Reports";
-import { PlaybookView } from "./views/Playbook";
-import { DashboardView } from "./views/Dashboard";
+import { GuideView } from "./views/Guide";
 import { FinanceView } from "./views/Finance";
 import { ExpensesView } from "./views/Expenses";
 import { StockView } from "./views/Stock";
 import { TeamView } from "./views/Team";
 import { PurchasingView } from "./views/Purchasing";
-import { DocumentsView } from "./views/Documents";
 
 type Access = { status: "none" | "pending" | "approved" | "rejected" | "revoked"; role: Role | null; requestedRole: Role | null };
-type Tab = "dashboard" | "guide" | "tasks" | "expenses" | "stock" | "team" | "purchasing" | "finance" | "documents" | "reports" | "more";
-
-const TABS: { id: Exclude<Tab, "more">; label: string; icon: typeof BookOpen; managerOnly?: boolean }[] = [
-  { id: "dashboard", label: "Monitor", icon: LayoutDashboard },
-  { id: "tasks", label: "Tugas", icon: CheckSquare },
-  { id: "expenses", label: "Pengeluaran", icon: Receipt },
-  { id: "stock", label: "Stok", icon: Package },
-  { id: "purchasing", label: "Belanja", icon: ShoppingCart },
-  { id: "team", label: "Tim & Gaji", icon: Users, managerOnly: true },
-  { id: "finance", label: "Keuangan", icon: Wallet, managerOnly: true },
-  { id: "documents", label: "Dokumen", icon: FileText },
-  { id: "guide", label: "Playbook", icon: BookOpen },
-  { id: "reports", label: "Laporan", icon: FileText },
-];
-const PRIMARY: Tab[] = ["dashboard", "tasks", "expenses", "stock"];
+type Page = "guide" | "dash" | "keuangan" | "expense" | "opset" | "sdm" | "purch" | "belanja" | "laporan";
+// [id, icon, title, subtitle, short label] — same as the prototype RAIL.
+const RAIL: Record<Role, [Page, string, string, string, string][]> = {
+  manager: [
+    ["guide", "book", "Playbook & Dokumen", "Panduan, templat", "Panduan"],
+    ["dash", "grid", "Dasbor Manager", "Tugas & monitor", "Dasbor"],
+    ["keuangan", "chart", "Keuangan", "Transaksi & analitik", "Keuangan"],
+    ["expense", "receipt", "Pengeluaran", "Scan struk & input", "Biaya"],
+    ["opset", "sl", "Stok & Opname", "Satuan, jadwal, toleransi", "Stok"],
+    ["sdm", "users", "Tim & Gaji", "Absensi, gaji, bonus, slip", "Tim"],
+    ["purch", "cart", "Pantau Purchasing", "Supervisor & PO", "Purchasing"],
+    ["laporan", "file", "Laporan", "Kirim & terima laporan", "Laporan"],
+  ],
+  supervisor: [
+    ["guide", "book", "Playbook & Dokumen", "Panduan, templat", "Panduan"],
+    ["dash", "grid", "Dasbor Purchasing", "Tugas & stok", "Dasbor"],
+    ["belanja", "cart", "Belanja & PO", "Purchasing", "Belanja"],
+    ["expense", "receipt", "Pengeluaran", "Scan struk & input", "Biaya"],
+    ["opset", "sl", "Stok & Opname", "Satuan, jadwal, toleransi", "Stok"],
+    ["laporan", "file", "Laporan", "Kirim & terima laporan", "Laporan"],
+  ],
+};
+const MOBP: Record<Role, Page[]> = { manager: ["dash", "keuangan", "expense", "laporan"], supervisor: ["dash", "belanja", "expense", "laporan"] };
+const ROLE_NAME: Record<Role, string> = { manager: "Manager", supervisor: "Supervisor" };
+const FIRST_KEY = "mgr_seen_guide";
 
 export function App() {
   const { data: session, isPending } = managerAuth.useSession();
   const [access, setAccess] = useState<Access | null>(null);
-  const [tab, setTab] = useState<Tab>("dashboard");
+  const [page, setPage] = useState<Page | null>(() => { const h = window.location.hash.slice(1); return (["guide", "dash", "keuangan", "expense", "opset", "sdm", "purch", "belanja", "laporan"] as string[]).includes(h) ? (h as Page) : null; });
+  const [sheet, setSheet] = useState(false);
+  const [bug, setBug] = useState(0);
 
   const loadAccess = useCallback(async () => {
-    try { setAccess(await api<Access>("/api/manager/access")); }
-    catch { setAccess(null); }
+    try { setAccess(await api<Access>("/api/manager/access")); } catch { setAccess(null); }
   }, []);
+  useEffect(() => { if (session?.user) void loadAccess(); else setAccess(null); }, [session?.user?.id, loadAccess]);
 
-  useEffect(() => {
-    if (session?.user) void loadAccess();
-    else setAccess(null);
-  }, [session?.user?.id, loadAccess]);
-
-  if (isPending) return <Center><Loader2 className="animate-spin" /></Center>;
+  if (isPending) return <div className="loading">Memuat…</div>;
   if (!session?.user) return <Gate stage="login" />;
-  if (!access) return <Center><Loader2 className="animate-spin" /></Center>;
+  if (!access) return <div className="loading">Memuat…</div>;
   if (access.status !== "approved" || !access.role) return <Gate stage={access.status} requestedRole={access.requestedRole} onChanged={loadAccess} name={session.user.name} />;
 
   const role = access.role;
-  const tabs = TABS.filter((t) => !t.managerOnly || role === "manager");
+  const pages = RAIL[role];
+  // Playbook is the first page; it is only a start page, never a gate.
+  let first = "1";
+  try { first = localStorage.getItem(FIRST_KEY) ?? ""; } catch { /* storage blocked */ }
+  const cur: Page = page ?? (first ? "dash" : "guide");
+  const go = (p: Page) => {
+    setPage(p); setSheet(false);
+    try { window.history.replaceState(null, "", `#${p}`); } catch { /* ignore */ }
+    try { localStorage.setItem(FIRST_KEY, "1"); } catch { /* ignore */ }
+  };
+  const info = pages.find((p) => p[0] === cur) ?? pages[0];
+  const showLive = ["dash", "sdm", "purch", "keuangan"].includes(cur);
+  const initials = (session.user.name || ROLE_NAME[role]).split(/\s+/).map((x) => x[0]).join("").slice(0, 2).toUpperCase();
   const signOut = async () => { try { await managerAuth.signOut(); } catch { toast.error("Gagal keluar"); } };
+  const openBug = () => { setBug((n) => n + 1); go("laporan"); };
+
+  const prim = MOBP[role].map((id) => pages.find((p) => p[0] === id)).filter(Boolean) as typeof pages;
+  const rest = pages.filter((p) => !MOBP[role].includes(p[0]));
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-5xl flex-col pb-20 md:pb-6">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-white/90 px-4 py-3 backdrop-blur">
-        <div className="flex items-center gap-2.5">
-          <span className="h-5 w-1 rounded bg-brand" />
-          <div>
-            <div className="text-sm font-bold leading-none">Panel {role === "manager" ? "Manager" : "Supervisor"}</div>
-            <div className="label mt-1">{session.user.name}</div>
+    <>
+      <div className="shell">
+        <nav className="rail">
+          <div className="logo">D</div>
+          {pages.map((p) => <button key={p[0]} className={`rb ${p[0] === cur ? "on" : ""}`} title={p[2]} onClick={() => go(p[0])}><Ic n={p[1]} /></button>)}
+          <div className="sep" />
+          <div className="avatar" title="Keluar" onClick={signOut} style={{ cursor: "pointer" }}>{initials}</div>
+        </nav>
+        <div className="main">
+          <header>
+            <span className="circ" title="Menu"><svg className="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" /><path d="M9 3v18" /></svg></span>
+            <div className="hl"><div className="crumb">{ROLE_NAME[role]} / {info[2]}</div><h1>{info[2]}</h1></div>
+            {showLive && <span className="live">LIVE · DIPERBARUI BARU SAJA</span>}
+            <button className="btn r s bugpill" title="Lapor bug, permintaan fitur, atau kendala aplikasi" onClick={openBug}><Ic n="alert" /><span>Lapor kendala</span></button>
+            <span className="circ" title="Cari"><Ic n="grid" /></span>
+            <span className="circ" title="Notifikasi"><Ic n="bell" /></span>
+            <span className="circ blk" title={session.user.name}>{initials[0]}</span>
+          </header>
+          <div className={`body ${["laporan", "keuangan", "sdm", "expense", "opset", "purch", "belanja"].includes(cur) ? "scroll" : ""}`}>
+            {cur === "guide" && <GuideView role={role} onSkip={() => go("dash")} />}
+            {cur === "dash" && <DashView role={role} onNavigate={(p) => go(p as Page)} />}
+            {cur === "keuangan" && role === "manager" && <FinanceView />}
+            {cur === "expense" && <ExpensesView />}
+            {cur === "opset" && <StockView />}
+            {cur === "sdm" && role === "manager" && <TeamView role={role} />}
+            {(cur === "purch" || cur === "belanja") && <PurchasingView role={role} />}
+            {cur === "laporan" && <ReportsView role={role} bugKey={bug} />}
           </div>
         </div>
-        <button className="btn" onClick={signOut} aria-label="Keluar"><LogOut size={15} /><span className="hidden sm:inline">Keluar</span></button>
-      </header>
+      </div>
 
-      <nav className="hidden flex-wrap gap-1 px-4 pt-3 md:flex">
-        {tabs.map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)} className={`btn ${tab === t.id ? "btn-dark" : ""}`}><t.icon size={15} />{t.label}</button>
-        ))}
+      <nav className="bnav">
+        {prim.map((p) => <button key={p[0]} className={`bi ${p[0] === cur ? "on" : ""}`} onClick={() => go(p[0])}><Ic n={p[1]} /><span>{p[4]}</span></button>)}
+        <button className={`bi ${sheet ? "on" : ""}`} onClick={() => setSheet((v) => !v)}><Ic n="more" /><span>Lainnya</span></button>
       </nav>
-
-      <main className="flex-1 px-4 pt-4">
-        {tab === "dashboard" && <DashboardView onNavigate={(t) => setTab(t as Tab)} />}
-        {tab === "guide" && <PlaybookView onSkip={() => setTab("tasks")} onOpenDocument={() => setTab("documents")} />}
-        {tab === "tasks" && <TasksView role={role} />}
-        {tab === "expenses" && <ExpensesView />}
-        {tab === "stock" && <StockView />}
-        {tab === "team" && role === "manager" && <TeamView role={role} />}
-        {tab === "purchasing" && <PurchasingView />}
-        {tab === "finance" && role === "manager" && <FinanceView />}
-        {tab === "documents" && <DocumentsView />}
-        {tab === "reports" && <ReportsView role={role} />}
-        {tab === "more" && (
-          <div className="grid grid-cols-2 gap-2">
-            {tabs.filter((t) => !PRIMARY.includes(t.id)).map((t) => (
-              <button key={t.id} className="panel flex items-center gap-2 p-4 text-left text-sm font-semibold" onClick={() => setTab(t.id)}><t.icon size={18} />{t.label}</button>
-            ))}
+      <div id="sheet">
+        {sheet && (<>
+          <div className="sbk" onClick={() => setSheet(false)} />
+          <div className="shs">
+            <div className="shh" />
+            {rest.map((p) => <button key={p[0]} className="srow" onClick={() => go(p[0])}><Ic n={p[1]} /><span><b>{p[2]}</b><small>{p[3]}</small></span></button>)}
+            <button className="srow" onClick={openBug}><Ic n="alert" /><span><b>Lapor kendala</b><small>Bug, permintaan fitur, kendala aplikasi</small></span></button>
+            <button className="srow" onClick={signOut}><Ic n="out" /><span><b>Keluar</b><small>Kembali ke halaman masuk</small></span></button>
           </div>
-        )}
-      </main>
-
-      <nav className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-5 border-t border-line bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
-        {tabs.filter((t) => PRIMARY.includes(t.id)).map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)} className={`flex flex-col items-center gap-1 py-2.5 text-[10px] font-semibold ${tab === t.id ? "text-ink" : "text-mute"}`}>
-            <t.icon size={19} />{t.label}
-          </button>
-        ))}
-        <button onClick={() => setTab("more")} className={`flex flex-col items-center gap-1 py-2.5 text-[10px] font-semibold ${tab === "more" || !PRIMARY.includes(tab) ? "text-ink" : "text-mute"}`}>
-          <Menu size={19} />Lainnya
-        </button>
-      </nav>
-    </div>
+        </>)}
+      </div>
+    </>
   );
-}
-
-function Center({ children }: { children: React.ReactNode }) {
-  return <div className="grid min-h-dvh place-items-center">{children}</div>;
 }

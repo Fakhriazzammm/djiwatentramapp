@@ -26,7 +26,7 @@ function cleanAttachments(input: unknown) {
   return input.slice(0, 10).flatMap((a) => {
     const type = text((a as { type?: unknown })?.type, 10);
     const url = text((a as { url?: unknown })?.url, 2000);
-    if (!ATTACH_TYPES.includes(type) || !/^https?:\/\//i.test(url)) return [];
+    if (!ATTACH_TYPES.includes(type) || !/^(https?:\/\/|\/api\/manager\/uploads\/[a-f0-9-]{36}\.[a-z0-9]{2,4}$)/i.test(url)) return [];
     return [{ type, url, name: text((a as { name?: unknown }).name, 200) || url }];
   });
 }

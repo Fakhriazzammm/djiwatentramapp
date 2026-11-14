@@ -1,13 +1,5 @@
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useState } from "react";
-import {
-  Send,
-  Link as LinkIcon,
-  Paperclip,
-  Image,
-  Video,
-  ChevronDown,
-} from "lucide-react";
 import { toast } from "sonner";
 import { adminProtectedRpc } from "@/lib/admin-protected-read";
 import { requestAdminPrompt } from "@/lib/admin-dialogs";
@@ -15,6 +7,17 @@ import type { FeedEvent } from "@/lib/dashboard-analytics";
 import { describeEvent } from "../-dashboard/OpsSection";
 import { formatAgo } from "../-dashboard/ui";
 
+
+const ICONS: Record<string, string> = {
+  send: '<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
+  clip: '<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  img: '<rect x="3" y="3" width="18" height="18"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+  vid: '<path d="m22 8-6 4 6 4V8z"/><rect x="2" y="6" width="14" height="12"/>',
+};
+function Ic({ n }: { n: string }) {
+  return <svg className="ic" viewBox="0 0 24 24" dangerouslySetInnerHTML={{ __html: ICONS[n] ?? "" }} />;
+}
 type Call = <T>(path: string, method?: string, body?: unknown) => Promise<T>;
 type Attachment = { type: string; url: string; name: string };
 type Task = {
@@ -199,311 +202,110 @@ export function ManagerWorkspace({ call }: { call: Call }) {
     }
   };
   const statusTarget = document.getElementById("admin-dashboard-live-status");
+  const PRI: Record<string, [string, string]> = { high: ["Tinggi", "hi"], normal: ["Sedang", "md"], low: ["Rendah", ""] };
+  const filters: [string, string][] = [["all", "Semua"], ["ai", "✦ AI"], ["manager", "Dari Manager"], ["supervisor", "Dari Supervisor"], ["owner", "Buatan saya"]];
+  const list = tasks.filter((t) => (filter === "done" ? t.status === "done" : t.status === "open" && (filter === "all" || t.source === filter)))
+    .sort((a, b) => (Number(b.source === "owner") - Number(a.source === "owner")) || ((a.priority === "high" ? 0 : a.priority === "normal" ? 1 : 2) - (b.priority === "high" ? 0 : b.priority === "normal" ? 1 : 2)));
+  const ICON: Record<string, string> = { file: "clip", link: "link", photo: "img", video: "vid" };
   return (
-    <div className="manager-workspace">
-      {statusTarget &&
-        createPortal(
-          <span
-            className={`manager-live ${error || feedError ? "failed" : ""}`}
-          >
-            {error || feedError
-              ? "Sebagian data belum terhubung"
-              : updated
-                ? "LIVE · DIPERBARUI " + formatAgo(updated, now)
-                : "Menghubungkan…"}
-          </span>,
-          statusTarget,
-        )}
-      <div className="manager-kpis">
-        {[
-          "Tugas aktif",
-          "Selesai hari ini",
-          "Terlambat",
-          "Dari AI",
-          "Dari Owner",
-        ].map((label, i) => (
-          <div key={label}>
-            <b>{loading || error ? "—" : counts[i]}</b>
-            <span>{label}</span>
-          </div>
+    <>
+      {statusTarget && createPortal(<span className="mgr-proto"><span className="live">{error || feedError ? "SEBAGIAN DATA BELUM TERHUBUNG" : updated ? "LIVE · DIPERBARUI " + formatAgo(updated, now).toUpperCase() : "MENGHUBUNGKAN…"}</span></span>, statusTarget)}
+      <div className="kpis" style={{ gridTemplateColumns: "repeat(5,1fr)" }}>
+        {["Tugas aktif", "Selesai hari ini", "Terlambat", "Dari AI", "Dari Owner"].map((label, i) => (
+          <div key={label}><b>{loading || error ? "—" : counts[i]}</b><div className="kl">{label}</div></div>
         ))}
       </div>
-      <div className="manager-work">
-        <section className="manager-panel manager-tasks">
-          <div className="manager-panel-head">
-            <h2>Semua tugas</h2>
-            <span>
-              {loading
-                ? "Memuat…"
-                : error
-                  ? "Data belum tersedia"
-                  : `${open.length} aktif · ${done.length} selesai`}
-            </span>
-          </div>
-          <div className="manager-composer">
-            <div className="manager-compose-line">
-              <input
-                aria-label="Tulis tugas"
-                value={title}
-                maxLength={200}
-                onChange={(e) => setTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void send();
-                }}
-                placeholder="Tulis tugas untuk Manager / Supervisor… ketik @ untuk memilih"
-              />
-              <button
-                className="manager-create"
-                disabled={saving || !title.trim()}
-                onClick={() => void send()}
-              >
-                <Send size={17} />
-                {saving ? "Mengirim…" : "Buat"}
-              </button>
-            </div>
-            <div className="manager-compose-row">
-              <span>Jenis</span>
-              <button
-                className={kind === "general" ? "on" : ""}
-                onClick={() => setKind("general")}
-              >
-                Tugas umum
-              </button>
-              <button
-                className={kind === "purchasing" ? "on" : ""}
-                onClick={() => setKind("purchasing")}
-              >
-                Permintaan belanja → Supervisor
-              </button>
-            </div>
-            {kind !== "purchasing" && (
-              <div className="manager-compose-row">
-                <span>Untuk</span>
-                {["manager", "supervisor"].map((r) => (
-                  <button
-                    key={r}
-                    className={roles.includes(r) ? "on" : ""}
-                    aria-pressed={roles.includes(r)}
-                    onClick={() =>
-                      setRoles((v) =>
-                        v.includes(r) ? v.filter((x) => x !== r) : [...v, r],
-                      )
-                    }
-                  >
-                    @{r}
-                  </button>
+      <div className="work" style={{ marginTop: 12 }}>
+        <div className="col">
+          <div className="panel fill">
+            <div className="ph"><span className="lab">Semua tugas</span><span className="meta">{loading ? "Memuat…" : error ? "Data belum tersedia" : `${open.length} aktif · ${done.length} selesai`}</span></div>
+            <div className="comp">
+              <div className="cin">
+                <input type="text" aria-label="Tulis tugas" value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void send(); }}
+                  placeholder={kind === "purchasing" ? "Catatan untuk Supervisor: barang, jumlah, merek, kapan dibutuhkan…" : "Tulis tugas untuk Manager / Supervisor… ketik @manager atau @supervisor"} />
+                <button className="btn r" disabled={saving || !title.trim()} onClick={() => void send()}><Ic n="send" />{saving ? "Mengirim…" : "Buat"}</button>
+              </div>
+              <div className="crow"><span className="meta">Jenis</span>
+                <button className={`chipb ${kind === "general" ? "on" : ""}`} onClick={() => setKind("general")}>Tugas umum</button>
+                <button className={`chipb ${kind === "purchasing" ? "on" : ""}`} onClick={() => setKind("purchasing")}>Permintaan belanja → Supervisor</button>
+              </div>
+              {kind !== "purchasing" && (
+                <div className="crow"><span className="meta">Untuk</span>
+                  {["manager", "supervisor"].map((r) => (
+                    <button key={r} className={`chipb ${roles.includes(r) ? "on" : ""}`} aria-pressed={roles.includes(r)} onClick={() => setRoles((v) => (v.includes(r) ? v.filter((x) => x !== r) : [...v, r]))}>@{r}</button>
+                  ))}
+                </div>
+              )}
+              <div className="crow">
+                <select className="sel" aria-label="Prioritas" value={priority} onChange={(e) => setPriority(e.target.value)}><option value="normal">Sedang</option><option value="high">Tinggi</option><option value="low">Rendah</option></select>
+                <select className="sel" aria-label="Tenggat" value={due} onChange={(e) => setDue(e.target.value)}><option value="today">Hari ini</option><option value="tomorrow">Besok</option><option value="week">Minggu ini</option></select>
+                <span className="meta" style={{ marginLeft: 6 }}>Lampiran</span>
+                {["file", "link", "photo", "video"].map((type) => (
+                  <button key={type} className="btn s" disabled={attachments.length >= 10} onClick={() => void attach(type)}><Ic n={ICON[type]} />{type === "photo" ? "foto" : type}</button>
                 ))}
               </div>
-            )}
-            <div className="manager-compose-row manager-options">
-              <select
-                aria-label="Prioritas"
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-              >
-                <option value="normal">Sedang</option>
-                <option value="high">Tinggi</option>
-                <option value="low">Rendah</option>
-              </select>
-              <select
-                aria-label="Tenggat"
-                value={due}
-                onChange={(e) => setDue(e.target.value)}
-              >
-                <option value="today">Hari ini</option>
-                <option value="tomorrow">Besok</option>
-                <option value="week">Minggu ini</option>
-              </select>
-              <span>Lampiran</span>
-              {[
-                ["file", Paperclip],
-                ["link", LinkIcon],
-                ["photo", Image],
-                ["video", Video],
-              ].map(([type, Icon]) => {
-                const I = Icon as typeof Paperclip;
-                return (
-                  <button
-                    key={String(type)}
-                    disabled={attachments.length >= 10}
-                    onClick={() => void attach(String(type))}
-                  >
-                    <I size={16} />
-                    {type === "photo" ? "Foto" : String(type)}
-                  </button>
-                );
-              })}
+              {!!attachments.length && <div className="pend">{attachments.map((a, i) => <span key={i} className="att"><Ic n={ICON[a.type] ?? "clip"} /><span>{a.name}</span><button onClick={() => setAttachments((v) => v.filter((_, n) => n !== i))}>×</button></span>)}</div>}
             </div>
-            {!!attachments.length && (
-              <div className="manager-compose-row">
-                {attachments.map((a, i) => (
-                  <button
-                    key={i}
-                    onClick={() =>
-                      setAttachments((v) => v.filter((_, n) => n !== i))
-                    }
-                  >
-                    {a.name} ×
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="manager-filters">
-            {[
-              ["all", "Semua"],
-              ["ai", "✦ AI"],
-              ["manager", "Dari Manager"],
-              ["done", `Selesai ${done.length}`],
-            ].map(([id, label]) => (
-              <button
-                key={id}
-                className={filter === id ? "on" : ""}
-                aria-pressed={filter === id}
-                onClick={() => setFilter(id)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="manager-task-scroll">
-            {loading ? (
-              <p className="manager-empty" role="status">
-                Memuat tugas…
-              </p>
-            ) : error ? (
-              <div className="manager-empty" role="alert">
-                Gagal memuat tugas: {error}
-                <button onClick={() => void load()}>Coba lagi</button>
-              </div>
-            ) : !visible.length ? (
-              <p className="manager-empty">
-                Belum ada tugas{" "}
-                {filter === "done" ? "selesai" : "pada kategori ini"}.
-              </p>
-            ) : (
-              visible.map((t) => (
-                <article key={t.id} className="manager-task">
-                  <span
-                    className={`manager-checkbox ${t.status === "done" ? "done" : ""}`}
-                    aria-label={
-                      t.status === "done" ? "Selesai" : "Belum selesai"
-                    }
-                  >
-                    {t.status === "done" ? "✓" : ""}
-                  </span>
-                  <div>
-                    <button
-                      className="manager-task-title"
-                      aria-expanded={expanded === t.id}
-                      onClick={() =>
-                        setExpanded(expanded === t.id ? null : t.id)
-                      }
-                    >
-                      {t.title}
-                      <ChevronDown size={13} />
-                    </button>
-                    <div className="manager-task-meta">
-                      <span
-                        className={`manager-tag ${t.source === "ai" ? "ai" : t.source === "owner" ? "owner" : ""}`}
-                      >
-                        {sourceLabel(t.source)}
-                      </span>
-                      <span>→ @{roleLabel(t.assignee_role)}</span>
-                      {Number(t.comment_count) > 0 && (
-                        <span>· {t.comment_count} komentar</span>
-                      )}
-                      {t.attachments?.length > 0 && (
-                        <span>
-                          <Paperclip size={13} /> {t.attachments.length}
-                        </span>
+            <div className="tabs">
+              {filters.map(([id, label]) => <button key={id} className={filter === id ? "on" : ""} onClick={() => setFilter(id)}>{label}</button>)}
+              <button className={filter === "done" ? "on" : ""} style={{ marginLeft: "auto" }} onClick={() => setFilter("done")}>Selesai {done.length}</button>
+            </div>
+            <div className="sc" style={{ maxHeight: 520, overflowY: "auto" }}>
+              {loading ? <div className="empty">MEMUAT TUGAS…</div>
+                : error ? <div className="empty">GAGAL MEMUAT TUGAS: {error} <button className="btn s" onClick={() => void load()}>Coba lagi</button></div>
+                : !list.length ? <div className="empty">{filter === "done" ? "BELUM ADA TUGAS SELESAI" : "TIDAK ADA TUGAS PADA KATEGORI INI"}</div>
+                : list.map((t) => {
+                  const pr = PRI[t.priority] ?? PRI.normal;
+                  return (
+                    <div key={t.id} className={`tr ${expanded === t.id ? "open" : ""}`} onClick={() => setExpanded(expanded === t.id ? null : t.id)}>
+                      <span className={`cb ${t.status === "done" ? "on" : ""}`}>{t.status === "done" ? "✓" : ""}</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div className={`tt ${t.status === "done" ? "dn2" : ""}`}>{t.title}</div>
+                        <div className="ts">
+                          <span className={`tg ${t.source === "ai" ? "ai" : t.source === "owner" ? "o" : ""}`}>{sourceLabel(t.source)}</span>
+                          {t.kind === "purchasing" && <span className="tg md">Belanja</span>}
+                          <span>→ @{roleLabel(t.assignee_role)}</span>
+                          {Number(t.comment_count) > 0 && <span>💬 {t.comment_count}</span>}
+                          {t.attachments?.length > 0 && <span><Ic n="clip" /> {t.attachments.length}</span>}
+                        </div>
+                      </div>
+                      <div className="tm">
+                        {late(t) ? <span className="tg hi">TERLAMBAT</span> : <span className={`tg ${pr[1]}`}>{pr[0]}</span>}
+                        <span>{dueLabel(t.due_at)}</span>
+                      </div>
+                      {expanded === t.id && (
+                        <div className="det" onClick={(e) => e.stopPropagation()}>
+                          <p>{t.detail || "Tidak ada detail tambahan."}</p>
+                          {t.attachments?.length > 0 && <div className="gal">{t.attachments.map((a, i) => <a key={i} className="lk" href={a.url} target="_blank" rel="noopener noreferrer"><Ic n={a.type === "link" ? "link" : "file"} />{a.name}</a>)}</div>}
+                          <div className="meta">Status tugas diperbarui dari aplikasi penerima.</div>
+                        </div>
                       )}
                     </div>
-                    {expanded === t.id && (
-                      <div className="manager-detail">
-                        <p>{t.detail || "Tidak ada detail tambahan."}</p>
-                        {t.attachments?.map((a, i) => (
-                          <a
-                            key={i}
-                            href={a.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {a.name} ↗
-                          </a>
-                        ))}
-                        <small>
-                          Status tugas diperbarui dari aplikasi penerima.
-                        </small>
-                      </div>
-                    )}
-                  </div>
-                  <div className="manager-task-due">
-                    <span
-                      className={`manager-tag ${late(t) || t.priority === "high" ? "high" : t.priority === "normal" ? "medium" : ""}`}
-                    >
-                      {late(t)
-                        ? "Terlambat"
-                        : t.priority === "high"
-                          ? "Tinggi"
-                          : t.priority === "low"
-                            ? "Rendah"
-                            : "Sedang"}
-                    </span>
-                    <span>{dueLabel(t.due_at)}</span>
-                  </div>
-                </article>
-              ))
-            )}
+                  );
+                })}
+            </div>
           </div>
-        </section>
-        <aside className="manager-side">
-          <section className="manager-panel manager-feed">
-            <div className="manager-panel-head green">
-              <h2>Aktivitas langsung · semua aplikasi</h2>
+        </div>
+        <div className="col">
+          <div className="panel fill" style={{ flex: 1.2 }}>
+            <div className="ph"><span className="lab g">Aktivitas langsung · semua aplikasi</span></div>
+            <div className="ph" style={{ padding: "6px 14px" }}><span className="meta">{updated ? `diperbarui ${formatAgo(updated, now)}` : "Menghubungkan…"} · {events.length} kejadian</span></div>
+            <div className="sc feed" style={{ maxHeight: 420, overflowY: "auto" }}>
+              {feedError ? <div className="empty">AKTIVITAS BELUM TERSEDIA <button className="btn s" onClick={() => void load()}>Coba lagi</button></div>
+                : !events.length ? <div className="empty">BELUM ADA AKTIVITAS TERBARU</div>
+                : events.map((e, i) => (
+                  <div className="fr" key={`${e.at}-${i}`}><span className="s">{e.app}</span><span>{describeEvent(e, money)}</span><span className="a">{formatAgo(e.at, now)}</span></div>
+                ))}
             </div>
-            <p className="manager-feed-meta">
-              {updated
-                ? `diperbarui ${formatAgo(updated, now)}`
-                : "Menghubungkan…"}{" "}
-              · {events.length} kejadian
-            </p>
-            <div className="manager-feed-scroll">
-              {feedError ? (
-                <div className="manager-empty" role="alert">
-                  Aktivitas belum tersedia.
-                  <button onClick={() => void load()}>Coba lagi</button>
-                </div>
-              ) : !events.length ? (
-                <p className="manager-empty">Belum ada aktivitas terbaru.</p>
-              ) : (
-                events.map((e, i) => (
-                  <div className="manager-event" key={`${e.at}-${i}`}>
-                    <span>{e.app}</span>
-                    <p>{describeEvent(e, money)}</p>
-                    <time>{formatAgo(e.at, now)}</time>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-          <section className="manager-panel">
-            <div className="manager-panel-head">
-              <h2>Per penerima</h2>
-            </div>
+          </div>
+          <div className="panel">
+            <div className="ph"><span className="lab">Per penerima</span></div>
             {["manager", "supervisor"].map((r) => (
-              <div className="manager-recipient" key={r}>
-                <span>{roleLabel(r)}</span>
-                <span>
-                  {error
-                    ? "Data belum tersedia"
-                    : `${done.filter((t) => t.assignee_role === r).length}/${tasks.filter((t) => t.assignee_role === r).length} selesai`}
-                </span>
-              </div>
+              <div className="mr" key={r}><span>{roleLabel(r)}</span><span className="meta">{error ? "Data belum tersedia" : `${done.filter((t) => t.assignee_role === r).length}/${tasks.filter((t) => t.assignee_role === r).length} selesai`}</span></div>
             ))}
-          </section>
-        </aside>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

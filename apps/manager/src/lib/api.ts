@@ -58,3 +58,20 @@ export type StockItem = {
   inventoryId?: string;
 };
 
+
+export type FeedItem = { at: number; kind: string; app: string; status: string; name: string; amount: number; detail: string | null };
+export type Comment = { id: string; author_name: string | null; body: string; created_at: string };
+
+export const API_ORIGIN = import.meta.env.VITE_MANAGER_API_URL?.trim() || "https://api.djiwatentram.web.id";
+export const fileUrl = (u: string) => (u.startsWith("/") ? `${API_ORIGIN}${u}` : u);
+
+export async function uploadFile(file: File): Promise<Attachment> {
+  const data: string = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(new Error("read"));
+    r.readAsDataURL(file);
+  });
+  const res = await api<{ attachment: Attachment }>("/api/manager/uploads", { method: "POST", body: { name: file.name, data } });
+  return res.attachment;
+}

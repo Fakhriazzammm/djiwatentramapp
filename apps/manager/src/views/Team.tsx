@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api, type Role } from "../lib/api";
+import { Empty, Kpis, Panel, hm, rp } from "../ui";
 
 type Attendance = {
   activeCashierShift: { shiftName?: string; cashierName?: string; startTime?: number } | null;
@@ -15,7 +16,6 @@ type Data = {
   leaves: Leave[];
   payroll: { periods: Period[]; periodId: string; items: PayrollItem[]; slips: { status: string; n: number }[] };
 };
-const money = (n: number | string) => `Rp${Math.round(Number(n)).toLocaleString("id-ID")}`;
 const LEAVE: Record<string, string> = { izin: "Izin", cuti: "Cuti", sakit: "Sakit", other: "Lainnya" };
 const STAFF: Record<string, string> = { working: "Bekerja", done: "Selesai", leave: "Izin", absent: "Belum absen" };
 
@@ -39,84 +39,65 @@ export function TeamView({ role }: { role: Role }) {
     } catch { toast.error("Keputusan belum tersimpan"); }
   };
 
-  if (!data) return <div className="label">Memuat tim…</div>;
+  if (!data) return <div className="empty">Memuat tim…</div>;
   const pending = data.leaves.filter((l) => l.status === "pending");
   const others = data.leaves.filter((l) => l.status !== "pending");
+  const items = data.payroll.items;
+  const gross = items.reduce((a, i) => a + Number(i.gross_pay), 0);
+  const net = items.reduce((a, i) => a + Number(i.net_pay), 0);
+  const slip = (st: string) => data.payroll.slips.find((x) => x.status === st)?.n ?? 0;
 
   return (
-    <div className="space-y-3">
-      <section className="panel p-3">
-        <div className="flex items-center justify-between"><div className="label">Kehadiran hari ini</div><div className="label">{data.attendance.present}/{data.attendance.total} hadir</div></div>
-        {data.attendance.activeCashierShift?.cashierName && <p className="mt-1 text-[13px] text-mute">Shift kasir aktif: {data.attendance.activeCashierShift.shiftName} · {data.attendance.activeCashierShift.cashierName}</p>}
-        <ul className="mt-2 divide-y">
-          {(data.attendance.staff ?? []).map((s) => (
-            <li key={s.userId} className="flex items-center justify-between py-1.5 text-[13px]">
-              <span className="min-w-0 truncate">{s.name}<span className="label ml-2">{s.role}</span></span>
-              <span className="shrink-0">
-                {s.checkInAt ? new Date(s.checkInAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }) : "—"}
-                {" · "}
-                <span className={s.status === "absent" ? "text-brand" : ""}>{s.leaveType ? `Izin (${s.leaveType})` : STAFF[s.status] ?? s.status}</span>
-              </span>
-            </li>
-          ))}
-          {(data.attendance.staff ?? []).length === 0 && <li className="py-2 text-sm text-mute">Belum ada data absensi hari ini.</li>}
-        </ul>
-      </section>
-
-      <section className="panel p-3">
-        <div className="label mb-2">Pengajuan izin menunggu ({pending.length})</div>
-        {pending.length === 0 && <p className="text-sm text-mute">Tidak ada pengajuan.</p>}
-        {pending.map((l) => (
-          <div key={l.id} className="mb-2 rounded-lg border border-line p-2 text-[13px]">
-            <div className="flex justify-between gap-2"><b>{l.user_name ?? "Karyawan"}</b><span className="label">{LEAVE[l.leave_type] ?? l.leave_type}</span></div>
-            <div className="label">{new Date(l.start_date).toLocaleDateString("id-ID")} – {new Date(l.end_date).toLocaleDateString("id-ID")}</div>
-            {l.reason && <p className="mt-1 text-mute">{l.reason}</p>}
-            {role === "manager" && (
-              <div className="mt-2 flex gap-2">
-                <button className="btn !min-h-8" onClick={() => decide(l, "approved")}>Setujui</button>
-                <button className="btn !min-h-8" onClick={() => decide(l, "rejected")}>Tolak</button>
-              </div>
-            )}
-          </div>
-        ))}
-        {others.length > 0 && (
-          <details className="mt-2"><summary className="label cursor-pointer">Riwayat 30 hari</summary>
-            {others.map((l) => <div key={l.id} className="flex justify-between border-t py-1 text-[12px]"><span>{l.user_name} · {LEAVE[l.leave_type] ?? l.leave_type}</span><span className="label">{l.status}</span></div>)}
-          </details>
-        )}
-      </section>
-
-      <section className="panel p-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="label">Gaji per periode</div>
-          {data.payroll.periods.length > 0 && (
-            <select className="input max-w-[220px]" value={period || data.payroll.periodId} onChange={(e) => { setPeriod(e.target.value); void load(e.target.value); }}>
+    <>
+      <Kpis items={[
+        { v: `${data.attendance.present}/${data.attendance.total}`, l: "Karyawan hadir" },
+        { v: pending.length, l: "Izin menunggu" },
+        { v: rp(gross), l: "Gaji kotor periode" },
+        { v: rp(net), l: "Gaji bersih periode" },
+        { v: `${slip("sent") + slip("acknowledged")}/${items.length}`, l: "Slip terkirim" },
+      ]} />
+      <div className="work" style={{ gridTemplateColumns: "minmax(0,1.5fr) minmax(0,1fr)" }}>
+        <div className="col">
+          <Panel fill title="Gaji per periode" action={data.payroll.periods.length > 0 ? (
+            <select className="sel" value={period || data.payroll.periodId} onChange={(e) => { setPeriod(e.target.value); void load(e.target.value); }}>
               {data.payroll.periods.map((p) => <option key={p.id} value={p.id}>{p.period_name}</option>)}
-            </select>
-          )}
-        </div>
-        {data.payroll.periods.length === 0 && <p className="mt-2 text-sm text-mute">Belum ada periode gaji. Buat di Admin → Payroll.</p>}
-        {data.payroll.items.length > 0 && (
-          <div className="mt-2 overflow-x-auto">
-            <table className="w-full text-left text-[13px]">
-              <thead><tr className="label"><th className="py-1">Nama</th><th>Shift</th><th className="text-right">Kotor</th><th className="text-right">Potongan</th><th className="text-right">Bersih</th></tr></thead>
-              <tbody>
-                {data.payroll.items.map((i) => (
-                  <tr key={i.user_id} className="border-t">
-                    <td className="py-1.5">{i.user_name}<span className="label ml-1">{i.role_name}</span></td>
-                    <td>{i.total_shifts}</td>
-                    <td className="text-right">{money(i.gross_pay)}</td>
-                    <td className="text-right">{money(i.deductions)}</td>
-                    <td className="text-right font-semibold">{money(i.net_pay)}</td>
-                  </tr>
-                ))}
+            </select>) : undefined}>
+            <div className="sc"><table>
+              <thead><tr><th>Nama</th><th>Shift</th><th>Jam</th><th style={{ textAlign: "right" }}>Kotor</th><th style={{ textAlign: "right" }}>Potongan</th><th style={{ textAlign: "right" }}>Bersih</th></tr></thead>
+              <tbody>{items.map((i) => (
+                <tr key={i.user_id}><td>{i.user_name} <span className="meta">{i.role_name}</span></td><td className="mono">{i.total_shifts}</td><td className="mono">{i.total_hours}</td>
+                  <td className="mono" style={{ textAlign: "right" }}>{rp(i.gross_pay)}</td><td className="mono" style={{ textAlign: "right" }}>{rp(i.deductions)}</td><td className="mono" style={{ textAlign: "right" }}><b>{rp(i.net_pay)}</b></td></tr>))}
               </tbody>
             </table>
-          </div>
-        )}
-        {data.payroll.slips.length > 0 && <p className="label mt-2">Slip: {data.payroll.slips.map((s) => `${s.status} ${s.n}`).join(" · ")}</p>}
-        <p className="mt-2 text-[11px] text-mute">Gaji berjalan bertambah otomatis saat karyawan absen keluar. Penyesuaian dan slip dibuat lewat Admin → Payroll.</p>
-      </section>
-    </div>
+            {data.payroll.periods.length === 0 && <Empty>BELUM ADA PERIODE GAJI · BUAT DI ADMIN → PAYROLL</Empty>}
+            {data.payroll.periods.length > 0 && items.length === 0 && <Empty>BELUM ADA DATA GAJI PERIODE INI</Empty>}</div>
+            <div className="ph" style={{ borderTop: "1px solid var(--line)", borderBottom: 0 }}><span className="meta">Gaji berjalan bertambah otomatis saat karyawan absen keluar. Penyesuaian dan slip dibuat lewat Admin → Payroll.</span></div>
+          </Panel>
+        </div>
+        <div className="col">
+          <Panel title="Kehadiran hari ini" meta={data.attendance.activeCashierShift?.cashierName ? `Kasir: ${data.attendance.activeCashierShift.cashierName}` : undefined}>
+            {(data.attendance.staff ?? []).map((s) => (
+              <div key={s.userId} className="mr">
+                <span><span className={`dotc ${s.status === "working" || s.status === "done" ? "ok" : s.leaveType || s.status === "leave" ? "wn" : "bad"}`} />{s.name} <span className="meta">{s.role}</span></span>
+                <span className="meta">{s.checkInAt ? hm(s.checkInAt) : "—"} · {s.leaveType ? `Izin (${s.leaveType})` : STAFF[s.status] ?? s.status}</span>
+              </div>
+            ))}
+            {(data.attendance.staff ?? []).length === 0 && <Empty>BELUM ADA DATA ABSENSI</Empty>}
+          </Panel>
+          <Panel title={`Izin menunggu · ${pending.length}`}>
+            {pending.length === 0 && <Empty>TIDAK ADA PENGAJUAN</Empty>}
+            {pending.map((l) => (
+              <div key={l.id} className="pad" style={{ borderBottom: "1px solid var(--line)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><b>{l.user_name ?? "Karyawan"}</b><span className="tg">{LEAVE[l.leave_type] ?? l.leave_type}</span></div>
+                <div className="meta">{new Date(l.start_date).toLocaleDateString("id-ID")} – {new Date(l.end_date).toLocaleDateString("id-ID")}</div>
+                {l.reason && <p style={{ margin: "6px 0 0" }}>{l.reason}</p>}
+                {role === "manager" && <div className="crow"><button className="btn s p" onClick={() => decide(l, "approved")}>Setujui</button><button className="btn s" onClick={() => decide(l, "rejected")}>Tolak</button></div>}
+              </div>
+            ))}
+            {others.slice(0, 6).map((l) => <div key={l.id} className="mr"><span>{l.user_name} <span className="meta">{LEAVE[l.leave_type] ?? l.leave_type}</span></span><span className={`tg ${l.status === "approved" ? "ok" : "hi"}`}>{l.status === "approved" ? "Disetujui" : "Ditolak"}</span></div>)}
+          </Panel>
+        </div>
+      </div>
+    </>
   );
 }
