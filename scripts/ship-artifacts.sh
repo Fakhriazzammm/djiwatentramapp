@@ -38,7 +38,7 @@ bun install --frozen-lockfile
 for app in "${APPS[@]}"; do
   echo "=== $app ==="
   cp "$ENV_DIR/$app.env" "apps/$app/.env.production.local"
-  bun run "build:$app"
+  TURBO_FORCE=true bun run "build:$app"
   APP="$app" SHA="$SHA" node --input-type=module -e '
     import {readFileSync,writeFileSync} from "node:fs";
     const dir=`apps/${process.env.APP}/dist`;
