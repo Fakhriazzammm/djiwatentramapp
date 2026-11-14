@@ -1,1 +1,1 @@
-export { Skeleton } from "@yumipos/web-shared";
+export { Skeleton } from "@djiwaapps/web-shared";

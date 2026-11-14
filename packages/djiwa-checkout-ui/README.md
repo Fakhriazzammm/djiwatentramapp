@@ -1,6 +1,6 @@
 # Djiwa Checkout Standard
 
-`@yumipos/djiwa-checkout-ui` is the canonical checkout flow and visual contract for all customer-facing commerce apps. The reference experience is `apps/customer`; `apps/djiwapay` is the payment-confirmation reference.
+`@djiwaapps/djiwa-checkout-ui` is the canonical checkout flow and visual contract for all customer-facing commerce apps. The reference experience is `apps/customer`; `apps/djiwapay` is the payment-confirmation reference.
 
 ## Required flow
 
@@ -22,14 +22,14 @@ The registered customer checkout apps are in `config/djiwa-checkout-apps.json`:
 - `ordermieyamin`
 - `djiwapay`
 
-Each app must declare the workspace dependency, import `@yumipos/djiwa-checkout-ui/styles.css` from its entrypoint, and use `CheckoutPage` (or the shared checkout components) in its checkout surface.
+Each app must declare the workspace dependency, import `@djiwaapps/djiwa-checkout-ui/styles.css` from its entrypoint, and use `CheckoutPage` (or the shared checkout components) in its checkout surface.
 
 ## New apps
 
 Before adding a checkout route:
 
 1. Add the app name to `customerCheckoutApps` in `config/djiwa-checkout-apps.json`.
-2. Add `@yumipos/djiwa-checkout-ui: workspace:*` to the app manifest.
+2. Add `@djiwaapps/djiwa-checkout-ui: workspace:*` to the app manifest.
 3. Import the shared stylesheet from `src/main.tsx`.
 4. Build the flow from the shared components; do not copy checkout CSS or create a parallel payment-card/summary/action-bar system.
 5. Run `bun run check:checkout-standard` and the app typecheck before review.

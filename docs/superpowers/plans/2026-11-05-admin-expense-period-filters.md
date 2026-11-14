@@ -45,4 +45,4 @@
 - [x] Make CSV export receive exactly `filtered`, including the empty array; remove the fallback to `allTransactions`.
 - [x] Run the Admin package type check and inspect the final diff/status for unrelated changes.
 
-**Verification result:** `git diff --check` passed. `npx --yes bun@1.3.4 --filter @yumipos/admin check-types` reports existing type errors across Admin; the only diagnostic in the modified expense page is its unchanged reconciliation `.then(...).catch(...)` at line 131. No diagnostics point to the new filter logic or the modified finance hook.
+**Verification result:** `git diff --check` passed. `npx --yes bun@1.3.4 --filter @djiwaapps/admin check-types` reports existing type errors across Admin; the only diagnostic in the modified expense page is its unchanged reconciliation `.then(...).catch(...)` at line 131. No diagnostics point to the new filter logic or the modified finance hook.

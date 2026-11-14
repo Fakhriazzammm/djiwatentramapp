@@ -1,5 +1,5 @@
-import { shouldRunIntegratedStock } from "@yumipos/web-shared/lib/manual-stock";
-import { createClient } from "@yumipos/web-shared";
+import { shouldRunIntegratedStock } from "@djiwaapps/web-shared/lib/manual-stock";
+import { createClient } from "@djiwaapps/web-shared";
 
 // ─── Types ──────────────────────────────────────────────────
 

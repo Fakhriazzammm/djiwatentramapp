@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "re
 import { ArrowLeft, ArrowRight, BarChart3, Building2, CheckCircle2, Clock3, LockKeyhole, LogOut, RefreshCw, ShieldCheck, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { investorAuth } from "@/lib/auth-client";
-import { AnimatedMetric } from "@yumipos/web-shared/components/ui/animated-metric";
+import { AnimatedMetric } from "@djiwaapps/web-shared/components/ui/animated-metric";
 
 export const Route = createFileRoute("/dashboard")({ component: InvestorDashboard });
 

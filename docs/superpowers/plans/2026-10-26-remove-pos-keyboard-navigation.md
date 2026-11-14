@@ -35,8 +35,8 @@
 - [ ] Remove the hook import, keyboard-only state, callback, hook invocation, focus-ring classes, and shortcut hint block.
 - [ ] Delete the now-unused hook file.
 - [ ] Run source searches confirming no dedicated keyboard-navigation references remain.
-- [ ] Run `pnpm --filter @yumipos/pos check-types`.
-- [ ] Run `pnpm --filter @yumipos/pos build`.
+- [ ] Run `pnpm --filter @djiwaapps/pos check-types`.
+- [ ] Run `pnpm --filter @djiwaapps/pos build`.
 - [ ] Commit the change.
 
 ### Task 2: Push and deploy

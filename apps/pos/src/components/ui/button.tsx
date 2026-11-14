@@ -1,1 +1,1 @@
-export * from "@yumipos/web-shared/components/ui/button";
+export * from "@djiwaapps/web-shared/components/ui/button";

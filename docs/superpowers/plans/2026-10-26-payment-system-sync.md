@@ -30,10 +30,10 @@
 ### Task 1: Shared payment contract
 
 **Files:**
-- Create: `packages/yumipos-web-shared/src/lib/payment-contract.ts`
-- Create: `packages/yumipos-web-shared/src/lib/payment-contract.test.ts`
-- Modify: `packages/yumipos-web-shared/src/lib/payment-label.ts`
-- Modify: `packages/yumipos-web-shared/src/lib/tax-calculator.ts`
+- Create: `packages/djiwaapps-web-shared/src/lib/payment-contract.ts`
+- Create: `packages/djiwaapps-web-shared/src/lib/payment-contract.test.ts`
+- Modify: `packages/djiwaapps-web-shared/src/lib/payment-label.ts`
+- Modify: `packages/djiwaapps-web-shared/src/lib/tax-calculator.ts`
 
 **Interfaces:**
 - Produces `CanonicalPaymentMethod = "cashier_cash" | "qris_mayar" | "djiwa_pay"`.

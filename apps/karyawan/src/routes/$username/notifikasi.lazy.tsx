@@ -1,8 +1,8 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
-import { DsButton, DsEmpty, DsGroupLabel, DsIcon, DsPageTitle, DsPills, DsTag, ds3d } from "@yumipos/web-shared/components/ds";
+import { DsButton, DsEmpty, DsGroupLabel, DsIcon, DsPageTitle, DsPills, DsTag, ds3d } from "@djiwaapps/web-shared/components/ds";
 import { X } from "lucide-react";
-import { createClient } from "@yumipos/web-shared/lib/client";
+import { createClient } from "@djiwaapps/web-shared/lib/client";
 import { useStaffProfile } from "../$username.lazy";
 
 const NOTIF_DISMISS_KEY = "yumi_notif_dismissed_v2_";

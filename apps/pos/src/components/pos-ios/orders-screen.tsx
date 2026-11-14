@@ -1,4 +1,4 @@
-import { formatPaymentLabel } from "@yumipos/web-shared/lib/payment-label";
+import { formatPaymentLabel } from "@djiwaapps/web-shared/lib/payment-label";
 import { AnimatePresence, motion } from "framer-motion";
 import { Ban, Check, ChevronDown, ChefHat, FileText, Loader2, Receipt, SlidersHorizontal, Trash2, Undo2 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";

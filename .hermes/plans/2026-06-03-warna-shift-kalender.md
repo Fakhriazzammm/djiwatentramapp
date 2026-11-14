@@ -1,6 +1,6 @@
 # Warna Shift & Selected State Kalender PRIBADI — UI/UX Fix
 
-> **File target:** `packages/yumipos-web-shared/src/components/attendance/PersonalSchedule.tsx`
+> **File target:** `packages/djiwaapps-web-shared/src/components/attendance/PersonalSchedule.tsx`
 
 **Goal:** Samakan tampilan kalender PRIBADI + card detail dengan referensi screenshot — tanggal shift tampil filled circle hijau/biru, tanggal terpilih tampil outline warna shift (bukan filled), card detail tanpa dot.
 
@@ -17,7 +17,7 @@
 
 **Objective:** Bedakan tampilan tanggal terpilih vs tidak terpilih sesuai referensi.
 
-**File:** `packages/yumipos-web-shared/src/components/attendance/PersonalSchedule.tsx:755-782`
+**File:** `packages/djiwaapps-web-shared/src/components/attendance/PersonalSchedule.tsx:755-782`
 
 ### Step 1: Ganti logika rendering button day cell
 
@@ -142,7 +142,7 @@ Untuk `colors.dot = "bg-sky-600"`, hasilnya `border-sky-600`. Warna border solid
 
 **Objective:** Card detail tanggal terpilih sesuai referensi — tanpa dot kecil, shift name dalam warna bold.
 
-**File:** `packages/yumipos-web-shared/src/components/attendance/PersonalSchedule.tsx:789-833`
+**File:** `packages/djiwaapps-web-shared/src/components/attendance/PersonalSchedule.tsx:789-833`
 
 ### Step 1: Ubah card detail
 
@@ -216,7 +216,7 @@ Untuk `colors.dot = "bg-sky-600"`, hasilnya `border-sky-600`. Warna border solid
 
 **Objective:** Sesuaikan padding dan layout card.
 
-**File:** `packages/yumipos-web-shared/src/components/attendance/PersonalSchedule.tsx:789-833`
+**File:** `packages/djiwaapps-web-shared/src/components/attendance/PersonalSchedule.tsx:789-833`
 
 ### Step 1: Update container
 
@@ -239,7 +239,7 @@ Hapus baris: `<div className="h-6 w-px bg-border/60" />` (sudah di task 2)
 
 **Objective:** Legend tetap sederhana, pakai circle kecil.
 
-**File:** `packages/yumipos-web-shared/src/components/attendance/PersonalSchedule.tsx:836-843`
+**File:** `packages/djiwaapps-web-shared/src/components/attendance/PersonalSchedule.tsx:836-843`
 
 Legend saat ini sudah ok — biarkan saja. Tidak perlu diubah.
 
@@ -249,7 +249,7 @@ Legend saat ini sudah ok — biarkan saja. Tidak perlu diubah.
 
 **Objective:** Pastikan 4 kartu statistik di tab TIM selalu horizontal.
 
-**File:** `packages/yumipos-web-shared/src/components/attendance/PersonalSchedule.tsx:502-525`
+**File:** `packages/djiwaapps-web-shared/src/components/attendance/PersonalSchedule.tsx:502-525`
 
 Kode saat ini sudah `grid grid-cols-4 gap-2`. Periksa apakah label bertulis:
 - Total, Bertugas, Cadangan, Libur
@@ -264,7 +264,7 @@ Jika sudah sesuai, tidak perlu perubahan.
 **Objective:** Push perubahan ke main.
 
 ```bash
-git add packages/yumipos-web-shared/src/components/attendance/PersonalSchedule.tsx
+git add packages/djiwaapps-web-shared/src/components/attendance/PersonalSchedule.tsx
 git commit -m "feat(ui): calendar selected state outline, detail card tanpa dot, HH:mm"
 git push origin main
 ```

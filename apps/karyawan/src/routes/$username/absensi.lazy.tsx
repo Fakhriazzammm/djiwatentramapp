@@ -1,6 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { Skeleton, useHybridCurrentlyInStore, useHybridPublicUsers, useYumiAuth } from "@yumipos/web-shared";
-import { DsButton, DsGroup, DsGroupLabel, DsIcon, DsPageTitle, DsRow, DsTag, ds3d } from "@yumipos/web-shared/components/ds";
+import { Skeleton, useHybridCurrentlyInStore, useHybridPublicUsers, useYumiAuth } from "@djiwaapps/web-shared";
+import { DsButton, DsGroup, DsGroupLabel, DsIcon, DsPageTitle, DsRow, DsTag, ds3d } from "@djiwaapps/web-shared/components/ds";
 import { useStaffProfile } from "../$username.lazy";
 
 export const Route = createLazyFileRoute("/$username/absensi")({

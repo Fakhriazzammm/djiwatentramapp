@@ -1,5 +1,5 @@
 {
-  "name": "@yumipos/djiwapay-ui",
+  "name": "@djiwaapps/djiwapay-ui",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "react": "^19.0.0"
   },
   "dependencies": {
-    "@yumipos/djiwapay-core": "workspace:*"
+    "@djiwaapps/djiwapay-core": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "19.2.7",

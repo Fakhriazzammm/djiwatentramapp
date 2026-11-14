@@ -36,7 +36,7 @@ Jangan memakai generated image untuk:
 
 ### Shared design system
 
-- Tokens: `packages/yumipos-web-shared/src/theme.css:12-78`
+- Tokens: `packages/djiwaapps-web-shared/src/theme.css:12-78`
 - Brand primary: `#1a5dc6`
 - Deep blue: `#0d2d54`
 - Soft blue: `#d6e2f5`
@@ -48,8 +48,8 @@ Jangan memakai generated image untuk:
 
 ### Shared illustration registry
 
-- Registry: `packages/yumipos-web-shared/src/components/ui/djiwa-3d-icon.tsx:31-60`
-- Canonical assets: `packages/yumipos-web-shared/src/assets/djiwa-icons/`
+- Registry: `packages/djiwaapps-web-shared/src/components/ui/djiwa-3d-icon.tsx:31-60`
+- Canonical assets: `packages/djiwaapps-web-shared/src/assets/djiwa-icons/`
 - Existing shared set: approximately 28 WebP illustrations, generally 1024×1024.
 - Existing categories: commerce, restaurant, wallet, voucher, tracking, HR, attendance, payroll, inventory, reporting, dashboard, notification.
 
@@ -194,7 +194,7 @@ Semua ukuran render harus diuji pada ukuran aktual; master besar tidak dianggap 
 Usulan struktur:
 
 ```text
-packages/yumipos-web-shared/src/assets/djiwa-icons-v2/
+packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/
   navigation/
     home.webp
     order.webp
@@ -234,7 +234,7 @@ Create an asset manifest before generation with:
 Proposed canonical location:
 
 ```text
-packages/yumipos-web-shared/src/assets/djiwa-marketing/
+packages/djiwaapps-web-shared/src/assets/djiwa-marketing/
 ```
 
 Do not edit or copy generated files inside `dist/` manually.
@@ -244,7 +244,7 @@ Do not edit or copy generated files inside `dist/` manually.
 Save reproducible prompt files before generation, for example:
 
 ```text
-packages/yumipos-web-shared/src/assets/djiwa-marketing/prompts/customer-home-djiwa-pay.md
+packages/djiwaapps-web-shared/src/assets/djiwa-marketing/prompts/customer-home-djiwa-pay.md
 ```
 
 Each prompt must specify:
@@ -448,9 +448,9 @@ Ini menjadi prerequisite sebelum banner lintas app agar bahasa visual tidak berc
 
 Likely audit/change scope:
 
-- `packages/yumipos-web-shared/src/components/ui/djiwa-3d-icon.tsx`
-- `packages/yumipos-web-shared/src/assets/djiwa-icons/`
-- shared bottom-navigation components di `packages/yumipos-web-shared/src/components/layout/`
+- `packages/djiwaapps-web-shared/src/components/ui/djiwa-3d-icon.tsx`
+- `packages/djiwaapps-web-shared/src/assets/djiwa-icons/`
+- shared bottom-navigation components di `packages/djiwaapps-web-shared/src/components/layout/`
 - customer navigation components di `apps/customer/src/components/customer/`
 - karyawan navigation/menu components di `apps/karyawan/src/components/karyawan/`
 - POS/Admin sidebar/navigation components di app masing-masing
@@ -629,10 +629,10 @@ Deliverables prototype:
 ### Completed
 
 - Created normalized shared fallback set at:
-  `packages/yumipos-web-shared/src/assets/djiwa-icons-v2/`
+  `packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/`
 - Normalized all 28 existing 3D assets into a consistent 1024×1024 transparent canvas with centered visible object and controlled safe margin.
 - Added `manifest.json` with source bbox, output size, and generation status.
-- Updated `packages/yumipos-web-shared/src/components/ui/djiwa-3d-icon.tsx` to consume the V2 normalized fallback set.
+- Updated `packages/djiwaapps-web-shared/src/components/ui/djiwa-3d-icon.tsx` to consume the V2 normalized fallback set.
 - Added `micro` icon size (`h-6 w-6`) for future small button/icon slots.
 - Generated and integrated 5 Customer bottom-navbar icons with OpenAI Codex `gpt-image-2-medium`: Home, Pesan, Riwayat, Saldo, Profil.
 - Generated and integrated 3 clean shared 3D replacements with OpenAI Codex: `customer-food-ordering`, `shopping-cart-order`, and `order-receipt`.

@@ -356,7 +356,7 @@ Existing historical rows must remain readable even if they predate the new const
 
 **Files likely to change:**
 
-- `packages/yumipos-web-shared/src/hooks/use-hybrid-write-actions.ts`
+- `packages/djiwaapps-web-shared/src/hooks/use-hybrid-write-actions.ts`
 - `apps/pos/src/hooks/use-hybrid-write-actions.ts`
 - `apps/admin/src/hooks/use-hybrid-write-actions.ts`
 - `apps/customer/src/hooks/use-hybrid-write-actions.ts`
@@ -410,8 +410,8 @@ Backward compatibility:
 **Create:**
 
 ```text
-packages/yumipos-web-shared/src/lib/tax-calculator.ts
-packages/yumipos-web-shared/src/lib/tax-calculator.test.ts
+packages/djiwaapps-web-shared/src/lib/tax-calculator.ts
+packages/djiwaapps-web-shared/src/lib/tax-calculator.test.ts
 ```
 
 Exports:
@@ -429,7 +429,7 @@ The function must be pure, deterministic, and independent of Supabase/React.
 **Create:**
 
 ```text
-packages/yumipos-web-shared/src/components/finance/TaxBreakdown.tsx
+packages/djiwaapps-web-shared/src/components/finance/TaxBreakdown.tsx
 ```
 
 Props:
@@ -458,7 +458,7 @@ Display rules:
 
 Update:
 
-- `packages/yumipos-web-shared/src/context/cart-context.tsx`
+- `packages/djiwaapps-web-shared/src/context/cart-context.tsx`
 - `apps/pos/src/context/cart-context.tsx` if still app-local
 - `apps/admin/src/context/cart-context.tsx` if still app-local
 - `apps/customer/src/routes/$username/order.lazy.tsx`

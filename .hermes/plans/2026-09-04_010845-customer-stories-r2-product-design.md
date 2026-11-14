@@ -74,8 +74,8 @@ Salinan serupa juga ada di:
 Existing design source of truth:
 
 - `/opt/djiwatentramapp/DESIGN.md`
-- `packages/yumipos-web-shared/src/theme.css`
-- `packages/yumipos-web-shared/src/components/ui/`
+- `packages/djiwaapps-web-shared/src/theme.css`
+- `packages/djiwaapps-web-shared/src/components/ui/`
 - `apps/customer/src/index.css`
 
 Existing deployment context:
@@ -303,7 +303,7 @@ Response shape mengikuti convention API project: `{ data?, error?, details? }`. 
 | Home greeting | Insert Story rail setelah greeting/name di `apps/customer/src/components/customer/customer-home-sections.tsx` |
 | Auth | Reuse existing customer auth/session hook; jangan membuat auth kedua |
 | Shared UI | Reuse shared Sheet/Dialog/Button/Skeleton/Toast primitives |
-| Theme | Gunakan `packages/yumipos-web-shared/src/theme.css` dan `apps/customer/src/index.css` |
+| Theme | Gunakan `packages/djiwaapps-web-shared/src/theme.css` dan `apps/customer/src/index.css` |
 | Routing | Viewer/upload cukup modal state untuk MVP; route baru hanya jika deep-link/share benar-benar dibutuhkan |
 | PWA | Audit service worker agar tidak cache signed media secara permanen |
 
@@ -371,8 +371,8 @@ Business/admin-controlled limits harus bisa diubah melalui Worker config atau ap
 - `apps/customer/src/components/customer/customer-home-sections.tsx`
 - `apps/customer/src/components/customer/customer-shell.tsx`
 - `apps/customer/src/index.css`
-- `packages/yumipos-web-shared/src/theme.css`
-- `packages/yumipos-web-shared/src/components/ui/`
+- `packages/djiwaapps-web-shared/src/theme.css`
+- `packages/djiwaapps-web-shared/src/components/ui/`
 - `wrangler.toml`
 - `package.json` / workspace configuration
 
@@ -532,7 +532,7 @@ Business/admin-controlled limits harus bisa diubah melalui Worker config atau ap
 
 ```bash
 cd /opt/djiwatentramapp
-bunx turbo build --filter=@yumipos/customer
+bunx turbo build --filter=@djiwaapps/customer
 cd apps/customer
 node ../../node_modules/vite/bin/vite.js build
 git diff --check

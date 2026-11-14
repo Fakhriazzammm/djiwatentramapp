@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Bell, Check, ChevronRight, X } from "lucide-react";
 import { toast } from "sonner";
-import { Djiwa3DIcon } from "@yumipos/web-shared";
+import { Djiwa3DIcon } from "@djiwaapps/web-shared";
 import {
 	formatNotificationTime,
 	type AdminNotification,

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { YumiAuthProvider } from "@/hooks/useYumiAuth";
 import { CustomerAuthProvider } from "@/hooks/use-customer-auth";
 import { OrderProvider } from "@/hooks/use-order-context";
-import { OwnerFooter } from "@yumipos/web-shared";
+import { OwnerFooter } from "@djiwaapps/web-shared";
 import { RouteTransitionSplash } from "@/components/customer/customer-entry";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 

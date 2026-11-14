@@ -7,7 +7,7 @@ export const ds3d = (name: Djiwa3DIconName): string => djiwa3DIconSources[name] 
 /**
  * Djiwa Soft iOS — komponen React untuk design system (docs/design-system).
  * Gaya ada di src/ds.css (kelas ds-*). Impor stylesheet sekali per app:
- *   @import "@yumipos/web-shared/ds.css";
+ *   @import "@djiwaapps/web-shared/ds.css";
  */
 const cx = (...p: (string | false | null | undefined)[]) => p.filter(Boolean).join(" ");
 

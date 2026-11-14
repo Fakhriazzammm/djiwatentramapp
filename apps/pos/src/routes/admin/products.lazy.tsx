@@ -1,4 +1,4 @@
-﻿import { shouldRunIntegratedStock } from "@yumipos/web-shared/lib/manual-stock";
+﻿import { shouldRunIntegratedStock } from "@djiwaapps/web-shared/lib/manual-stock";
 import { createLazyFileRoute, Link } from "@tanstack/react-router";
 import type { Doc, Id } from "@/types/backend-compat";
 import {

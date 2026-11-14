@@ -15,7 +15,7 @@ Pisahkan satu Vite app (`apps/web`) menjadi dua app terpisah dalam monorepo yang
 | **Internal** | `app.djiwatentram.com` | POS (`/menu`) + Admin (`/admin/*`) + Auth flow (login, register, karyawan, attendance, booking) | ✅ "Djiwa Tentram POS" |
 | **Customer** | `order.djiwatentram.com` | Customer ordering (`/$brandSlug`) + Minigames (`/$brandSlug/minigames`) | ✅ "Djiwa Tentram Order" |
 
-Backend & database tetap **satu Supabase yang sama**. Shared code dipindah ke `packages/yumipos-web-shared`.
+Backend & database tetap **satu Supabase yang sama**. Shared code dipindah ke `packages/djiwaapps-web-shared`.
 
 ---
 
@@ -43,9 +43,9 @@ djiwatentramapp/
 │       ├── vite.config.ts    ← PWA: "Djiwa Tentram POS"
 │       └── index.html
 ├── packages/
-│   ├── backend/    ← @yumipos/backend (server)
-│   ├── config/     ← @yumipos/config (tsconfig.base.json)
-│   └── env/        ← @yumipos/env
+│   ├── backend/    ← @djiwaapps/backend (server)
+│   ├── config/     ← @djiwaapps/config (tsconfig.base.json)
+│   └── env/        ← @djiwaapps/env
 └── turbo.json
 ```
 
@@ -164,12 +164,12 @@ __root.tsx (RootContent)
 
 ## [EXPANDED] 3. Daftar Lengkap File yang Dipindah ke Shared Package
 
-### 3.1 `packages/yumipos-web-shared` — Struktur
+### 3.1 `packages/djiwaapps-web-shared` — Struktur
 
 ```
-packages/yumipos-web-shared/
+packages/djiwaapps-web-shared/
 ├── package.json
-│   ├── name: "@yumipos/web-shared"
+│   ├── name: "@djiwaapps/web-shared"
 │   ├── type: "module"
 │   ├── main: "./src/index.ts"
 │   ├── types: "./src/index.ts"
@@ -185,7 +185,7 @@ packages/yumipos-web-shared/
 │   │   ├── lucide-react
 │   │   └── framer-motion
 │   └── devDependencies:
-│       ├── @yumipos/config
+│       ├── @djiwaapps/config
 │       └── typescript
 ├── tsconfig.json
 ├── src/
@@ -446,11 +446,11 @@ export const Route = createRootRoute({
 
 ## [EXPANDED] 5. Estimasi Effort Per Step
 
-### Step 1: Buat `packages/yumipos-web-shared` — ⏱️ **3-4 jam**
+### Step 1: Buat `packages/djiwaapps-web-shared` — ⏱️ **3-4 jam**
 
 | Task | Detail | Effort |
 |---|---|---|
-| Init package.json + tsconfig | Setup @yumipos/web-shared | 15 menit |
+| Init package.json + tsconfig | Setup @djiwaapps/web-shared | 15 menit |
 | Copy `lib/client.ts`, `utils.ts`, `backend-bridge.ts` | Simple copy, import relative gampang | 15 menit |
 | Copy `lib/utils/pricing.ts` | Cek dependency chain | 15 menit |
 | Copy `lib/yumi-auth-client.ts` | Cek import | 15 menit |
@@ -479,8 +479,8 @@ Ini menambah waktu estimasi 30-45 menit.
 |---|---|---|
 | Copy `apps/web` → `apps/internal` | Full copy | 5 menit |
 | Hapus `routes/$brandSlug*` (4 file) + `components/customer/` | Hapus file | 5 menit |
-| Update `package.json` | Ganti name, tambah dep @yumipos/web-shared | 10 menit |
-| Update imports dari `@/` → `@yumipos/web-shared` | Untuk hooks/lib/context | 30 menit |
+| Update `package.json` | Ganti name, tambah dep @djiwaapps/web-shared | 10 menit |
+| Update imports dari `@/` → `@djiwaapps/web-shared` | Untuk hooks/lib/context | 30 menit |
 | Update `__root.tsx` | Sederhanakan auth logic (hapus heuristic brandSlug) | 15 menit |
 | Update `vite.config.ts` | PWA tetap "Djiwa Tentram POS" | 10 menit |
 | Regenerate route tree + build test | `turbo -F internal build` | 15 menit |
@@ -496,7 +496,7 @@ Ini menambah waktu estimasi 30-45 menit.
 | Copy `components/customer/customer-ordering-page.tsx` | 1082 line | 5 menit |
 | Buat `__root.tsx` simpel tanpa auth | Langsung `<Outlet />` | 10 menit |
 | Buat `main.tsx` ringan | Tanpa PWA version check kompleks | 15 menit |
-| Import dari `@yumipos/web-shared` | Ganti semua `@/` → `@yumipos/web-shared` di route + component | 20 menit |
+| Import dari `@djiwaapps/web-shared` | Ganti semua `@/` → `@djiwaapps/web-shared` di route + component | 20 menit |
 | Setup Tailwind CSS + index.css | Copy dari apps/web | 10 menit |
 | **Build test** | `turbo -F customer build` | 15 menit |
 | **Total Step 3** | | **1.5-2 jam** |
@@ -570,31 +570,31 @@ Ini menambah waktu estimasi 30-45 menit.
 ## 7. Files Likely to Change (Lengkap)
 
 ### New Files (~40 files)
-- `packages/yumipos-web-shared/package.json`
-- `packages/yumipos-web-shared/tsconfig.json`
-- `packages/yumipos-web-shared/src/index.ts`
-- `packages/yumipos-web-shared/src/lib/client.ts`
-- `packages/yumipos-web-shared/src/lib/utils.ts`
-- `packages/yumipos-web-shared/src/lib/utils/pricing.ts`
-- `packages/yumipos-web-shared/src/lib/backend-bridge.ts`
-- `packages/yumipos-web-shared/src/lib/yumi-auth-client.ts`
-- `packages/yumipos-web-shared/src/hooks/index.ts`
-- `packages/yumipos-web-shared/src/hooks/use-supabase-live-value.ts`
-- `packages/yumipos-web-shared/src/hooks/use-hybrid-pos-data.ts`
-- `packages/yumipos-web-shared/src/hooks/use-hybrid-write-actions.ts`
-- `packages/yumipos-web-shared/src/hooks/use-hybrid-ops-data.ts`
-- `packages/yumipos-web-shared/src/hooks/use-hybrid-booking-data.ts`
-- `packages/yumipos-web-shared/src/hooks/useYumiAuth.tsx`
-- `packages/yumipos-web-shared/src/hooks/use-hybrid-minigames-data.ts`
-- `packages/yumipos-web-shared/src/types/backend-compat.ts`
-- `packages/yumipos-web-shared/src/context/index.ts`
-- `packages/yumipos-web-shared/src/context/cart-context.tsx`
-- `packages/yumipos-web-shared/src/context/app-data-context.tsx`
-- `packages/yumipos-web-shared/src/components/ui/button.tsx`
-- `packages/yumipos-web-shared/src/components/ui/input.tsx`
-- `packages/yumipos-web-shared/src/components/ui/sheet.tsx`
-- `packages/yumipos-web-shared/src/components/ui/skeleton.tsx`
-- `packages/yumipos-web-shared/src/components/ui/sonner.tsx`
+- `packages/djiwaapps-web-shared/package.json`
+- `packages/djiwaapps-web-shared/tsconfig.json`
+- `packages/djiwaapps-web-shared/src/index.ts`
+- `packages/djiwaapps-web-shared/src/lib/client.ts`
+- `packages/djiwaapps-web-shared/src/lib/utils.ts`
+- `packages/djiwaapps-web-shared/src/lib/utils/pricing.ts`
+- `packages/djiwaapps-web-shared/src/lib/backend-bridge.ts`
+- `packages/djiwaapps-web-shared/src/lib/yumi-auth-client.ts`
+- `packages/djiwaapps-web-shared/src/hooks/index.ts`
+- `packages/djiwaapps-web-shared/src/hooks/use-supabase-live-value.ts`
+- `packages/djiwaapps-web-shared/src/hooks/use-hybrid-pos-data.ts`
+- `packages/djiwaapps-web-shared/src/hooks/use-hybrid-write-actions.ts`
+- `packages/djiwaapps-web-shared/src/hooks/use-hybrid-ops-data.ts`
+- `packages/djiwaapps-web-shared/src/hooks/use-hybrid-booking-data.ts`
+- `packages/djiwaapps-web-shared/src/hooks/useYumiAuth.tsx`
+- `packages/djiwaapps-web-shared/src/hooks/use-hybrid-minigames-data.ts`
+- `packages/djiwaapps-web-shared/src/types/backend-compat.ts`
+- `packages/djiwaapps-web-shared/src/context/index.ts`
+- `packages/djiwaapps-web-shared/src/context/cart-context.tsx`
+- `packages/djiwaapps-web-shared/src/context/app-data-context.tsx`
+- `packages/djiwaapps-web-shared/src/components/ui/button.tsx`
+- `packages/djiwaapps-web-shared/src/components/ui/input.tsx`
+- `packages/djiwaapps-web-shared/src/components/ui/sheet.tsx`
+- `packages/djiwaapps-web-shared/src/components/ui/skeleton.tsx`
+- `packages/djiwaapps-web-shared/src/components/ui/sonner.tsx`
 - `apps/customer/package.json`
 - `apps/customer/tsconfig.json`
 - `apps/customer/vite.config.ts`
@@ -612,10 +612,10 @@ Ini menambah waktu estimasi 30-45 menit.
 ### Changed Files (~7 files)
 - `package.json` → tambah scripts
 - `turbo.json` → validasi dependsOn
-- `apps/internal/package.json` → name + dep @yumipos/web-shared
+- `apps/internal/package.json` → name + dep @djiwaapps/web-shared
 - `apps/internal/src/routes/__root.tsx` → sederhanakan auth logic
 - `apps/internal/vite.config.ts` → validasi PWA config
-- Semua internal route files → import dari `@yumipos/web-shared`
+- Semua internal route files → import dari `@djiwaapps/web-shared`
 
 ### Deleted Files (~4 + 1 folder)
 - `apps/web/src/routes/$brandSlug.tsx`
@@ -633,7 +633,7 @@ Ini menambah waktu estimasi 30-45 menit.
 
 | Risiko | Dampak | Mitigasi |
 |---|---|---|
-| **Shared package refactor massive** | ~30 file import paths perlu diubah dari `@/` ke `@yumipos/web-shared` | Lakukan incremental: extract satu hook dulu, test, lalu lanjut |
+| **Shared package refactor massive** | ~30 file import paths perlu diubah dari `@/` ke `@djiwaapps/web-shared` | Lakukan incremental: extract satu hook dulu, test, lalu lanjut |
 | **`use-hybrid-write-actions.ts` (6084 line)** | Campur shared + POS-specific functions | Perlu split jadi 2 file. Audit fungsi sebelum extract |
 | **Circular dependencies** | hooks saling import satu sama lain | Audit dependency graph sebelum move |
 
@@ -674,6 +674,6 @@ Setelah migration, verify:
 - [ ] ALL route files identified (`.tsx` + `.lazy.tsx`)
 - [ ] `/$brandSlug` routes tidak ada referensi di internal app
 - [ ] `/menu`, `/admin/*` routes tidak ada referensi di customer app
-- [ ] Semua shared code di import dari `@yumipos/web-shared`, bukan dari local `@/`
+- [ ] Semua shared code di import dari `@djiwaapps/web-shared`, bukan dari local `@/`
 - [ ] `apps/web` directory dihapus
 - [ ] Semua CI/CD references ke `apps/web` diupdate

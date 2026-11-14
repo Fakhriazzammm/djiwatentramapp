@@ -9,10 +9,10 @@ import {
 	fetchShiftReports,
 	createClient,
 	generatePayslipPDF,
-} from "@yumipos/web-shared";
-import type { StaffRoleBonusConfig, PayslipBreakdown } from "@yumipos/web-shared";
-import { Button } from "@yumipos/web-shared/components/ui/button";
-import { cn } from "@yumipos/web-shared/lib/utils";
+} from "@djiwaapps/web-shared";
+import type { StaffRoleBonusConfig, PayslipBreakdown } from "@djiwaapps/web-shared";
+import { Button } from "@djiwaapps/web-shared/components/ui/button";
+import { cn } from "@djiwaapps/web-shared/lib/utils";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import {
 	FileText, Download, ChevronDown, Calendar,

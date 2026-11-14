@@ -45,7 +45,7 @@
 **Wave 1 — Font System + Theme (5 files, paralel 🔥)**
 | Task | File | Perubahan |
 |------|------|-----------|
-| A1 | `packages/yumipos-web-shared/src/theme.css` | Tambah `--font-display: PJS`, `--font-body: Geist`, selection color, focus ring, entry animations |
+| A1 | `packages/djiwaapps-web-shared/src/theme.css` | Tambah `--font-display: PJS`, `--font-body: Geist`, selection color, focus ring, entry animations |
 | A2 | `apps/pos/src/index.css` | Tambah `@import url(...Geist...)` |
 | A3 | `apps/admin/src/index.css` | Tambah `@import url(...Geist...)` |
 | A4 | `apps/karyawan/src/index.css` | Tambah `@import url(...Geist...)` |
@@ -90,7 +90,7 @@
 
 **Risiko Rewrite:**
 1. **Breaking changes** — Semua halaman yang import `Button`/`AppCard`/`EmptyState`/`ErrorState` perlu diupdate
-2. **41 import** `@yumipos/web-shared` di codebase — perlu audit tiap file
+2. **41 import** `@djiwaapps/web-shared` di codebase — perlu audit tiap file
 3. **Testing** — perlu regression test di semua 4 apps
 4. **Waktu** — 2-3x lebih lama dari Approach A
 
@@ -135,7 +135,7 @@
 
 #### Task A1: Update theme.css — tambah font system, selection, focus, animations
 
-**File:** `packages/yumipos-web-shared/src/theme.css`
+**File:** `packages/djiwaapps-web-shared/src/theme.css`
 
 **Changes:**
 ```css
@@ -216,7 +216,7 @@ return (
 
 #### Task A8: Button — refine loading state + font-display
 
-**File:** `packages/yumipos-web-shared/src/components/ui/button.tsx`
+**File:** `packages/djiwaapps-web-shared/src/components/ui/button.tsx`
 
 **Changes:**
 - `font-semibold` → `font-bold` (Plastix uses bold)
@@ -225,7 +225,7 @@ return (
 
 #### Task A9: Port AsyncBoundary dari Plastix
 
-**File:** `packages/yumipos-web-shared/src/components/ui/states.tsx`
+**File:** `packages/djiwaapps-web-shared/src/components/ui/states.tsx`
 
 **Add new component:**
 ```tsx
@@ -255,7 +255,7 @@ export function AsyncBoundary<T>({
 
 #### Task A10: AppCard — simplify + elevated variant
 
-**File:** `packages/yumipos-web-shared/src/components/ui/app-card.tsx`
+**File:** `packages/djiwaapps-web-shared/src/components/ui/app-card.tsx`
 
 **Add `elevated` prop:**
 ```tsx

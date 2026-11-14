@@ -1,6 +1,6 @@
-import { shouldRunIntegratedStock } from "@yumipos/web-shared/lib/manual-stock";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
-import { allocateDailyReceiptNo } from "@yumipos/web-shared/lib/daily-receipt";
+import { shouldRunIntegratedStock } from "@djiwaapps/web-shared/lib/manual-stock";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
+import { allocateDailyReceiptNo } from "@djiwaapps/web-shared/lib/daily-receipt";
 import { createClient } from "@/lib/client";
 import { chunk, mapWithConcurrency } from "@/lib/concurrency";
 import { assertOrderRetryAcknowledgement } from "@/lib/order-retry-acknowledgement";
@@ -9,7 +9,7 @@ import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useCallback, useState } from "react";
 import { invokeBookingAdmin, invokeEdgeFunction } from "@/lib/api-helper";
 import { calculateShiftPaymentBreakdown, EMPTY_SHIFT_PAYMENT_BREAKDOWN } from "@/lib/shift-payment-breakdown";
-import { formatOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { formatOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 
 type FunctionReference<_Kind extends "mutation" | "action"> = unknown;
 const api = new Proxy(

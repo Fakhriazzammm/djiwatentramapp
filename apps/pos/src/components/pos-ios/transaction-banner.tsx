@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, CreditCard, MapPin, X } from "lucide-react";
 import { useEffect } from "react";
 import { isDeliveryNotification, type PosNotification } from "@/hooks/use-pos-notifications";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import { IOS_SPRING } from "./ios-kit";
 
 type Props = {

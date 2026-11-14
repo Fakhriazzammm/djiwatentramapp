@@ -1,1 +1,1 @@
-export * from "@yumipos/web-shared/components/ui/checkbox";
+export * from "@djiwaapps/web-shared/components/ui/checkbox";

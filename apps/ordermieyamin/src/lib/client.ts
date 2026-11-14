@@ -8,4 +8,4 @@ export function isSupabaseConfigured(): boolean {
 }
 
 // Shared components and customer routes must resolve to the same auth client.
-export { createClient } from "@yumipos/web-shared/lib/client";
+export { createClient } from "@djiwaapps/web-shared/lib/client";

@@ -1,6 +1,6 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { buildDjiwaPayBridgeUrl } from "@yumipos/djiwapay-core";
+import { buildDjiwaPayBridgeUrl } from "@djiwaapps/djiwapay-core";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 
 export const Route = createLazyFileRoute("/$username/saldo")({ component: DjiwaPayLauncher });

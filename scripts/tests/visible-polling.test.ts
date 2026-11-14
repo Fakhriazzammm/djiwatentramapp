@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { pollWhenVisible } from "../../packages/yumipos-web-shared/src/lib/visible-polling";
+import { pollWhenVisible } from "../../packages/djiwaapps-web-shared/src/lib/visible-polling";
 test("hidden tabs skip periodic queries, resume on visibility, and stop on cleanup", () => {
   const page = Object.assign(new EventTarget(), { hidden: true });
   let tick: () => void = () => {}; let calls = 0; let cleared = false;

@@ -383,7 +383,7 @@ Shift selesai. Selamat istirahat! 🎉
 
 **Files:**
 - Modify: `/opt/djiwatentramapp/apps/karyawan/src/routes/$username/profil.lazy.tsx`
-- New hook (opsional): `/opt/djiwatentramapp/packages/yumipos-web-shared/src/hooks/use-telegram-link.ts`
+- New hook (opsional): `/opt/djiwatentramapp/packages/djiwaapps-web-shared/src/hooks/use-telegram-link.ts`
 
 **UI Spec:**
 

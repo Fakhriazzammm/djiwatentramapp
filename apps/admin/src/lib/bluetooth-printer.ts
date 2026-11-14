@@ -1,6 +1,6 @@
 import EscPosEncoder from "esc-pos-encoder";
 import { formatDateTimeWIB } from "@/lib/wib-utils";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 
 const RECEIPT_LINE_WIDTH = 32;
 const RECEIPT_HEADER_WIDTH = 24;

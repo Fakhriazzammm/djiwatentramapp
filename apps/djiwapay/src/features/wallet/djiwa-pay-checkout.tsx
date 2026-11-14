@@ -5,7 +5,7 @@ import {
   CheckoutInput,
   CustomerCheckout,
   type CheckoutCartItem,
-} from "@yumipos/djiwa-checkout-ui";
+} from "@djiwaapps/djiwa-checkout-ui";
 import {
   checkoutStep,
   paymentLabel,

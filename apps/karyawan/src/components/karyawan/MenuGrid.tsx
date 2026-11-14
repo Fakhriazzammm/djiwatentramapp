@@ -1,4 +1,4 @@
-import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@djiwaapps/web-shared";
 import { motion } from "framer-motion";
 import { useNavigate } from "@tanstack/react-router";
 import {

@@ -451,7 +451,7 @@ packages/booking-shared/
 └── constants.ts
 ```
 
-Jika package baru terlalu besar untuk wave awal, mulai dari shared files di `packages/yumipos-web-shared`.
+Jika package baru terlalu besar untuk wave awal, mulai dari shared files di `packages/djiwaapps-web-shared`.
 
 ## Shared responsibilities
 
@@ -927,7 +927,7 @@ Wave 8 — release
 ## Shared
 
 - preferred: `packages/booking-shared/`
-- fallback: `packages/yumipos-web-shared/`
+- fallback: `packages/djiwaapps-web-shared/`
 
 ---
 
@@ -1125,7 +1125,7 @@ These should be confirmed before risky implementation starts:
   - Public calendar availability checks both people and table limits consistently.
   - Public status screen displays booking and payment statuses separately.
   - Additive migration `20260828000000_booking_integrity_hardening.sql` adds booking audit events and guarded admin status/update/delete RPCs.
-  - Shared booking helpers added under `packages/yumipos-web-shared/src/booking/`.
+  - Shared booking helpers added under `packages/djiwaapps-web-shared/src/booking/`.
   - Public pending booking result survives reload during payment retry.
 - Verification completed for this slice:
   - `apps/admin` production build passed.

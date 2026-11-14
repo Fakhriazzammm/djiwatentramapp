@@ -1,7 +1,7 @@
 ﻿import { createLazyFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { Id } from "@/types/backend-compat";
-import { formatPaymentLabel } from "@yumipos/web-shared/lib/payment-label";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { formatPaymentLabel } from "@djiwaapps/web-shared/lib/payment-label";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import {
 	endOfDay,
 	endOfMonth,

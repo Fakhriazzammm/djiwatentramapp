@@ -1,8 +1,8 @@
-import { useManualStockMode } from "@yumipos/web-shared/lib/manual-stock";
+import { useManualStockMode } from "@djiwaapps/web-shared/lib/manual-stock";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useStaffProfile } from "../$username.lazy";
 import { useState, useEffect, useCallback, useMemo, useRef, forwardRef, useImperativeHandle } from "react";
-import { createClient } from "@yumipos/web-shared/lib/client";
+import { createClient } from "@djiwaapps/web-shared/lib/client";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import {

@@ -1,6 +1,6 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { useYumiAuth } from "@yumipos/web-shared";
+import { useYumiAuth } from "@djiwaapps/web-shared";
 
 export const Route = createLazyFileRoute("/")({
   component: IndexRoute,

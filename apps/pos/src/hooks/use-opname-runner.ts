@@ -1,4 +1,4 @@
-import { shouldRunIntegratedStock } from "@yumipos/web-shared/lib/manual-stock";
+import { shouldRunIntegratedStock } from "@djiwaapps/web-shared/lib/manual-stock";
 import { useState, useCallback } from "react";
 import type { OpnameItem, OpnameRole } from "@/components/attendance/stock-opname-panel";
 

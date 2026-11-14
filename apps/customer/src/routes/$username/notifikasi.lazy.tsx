@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useCustomerOrders } from "@/hooks/use-customer-data";
 import { currency } from "@/components/customer/types";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import { CustomerSectionSkeleton } from "@/components/customer/customer-states";
 import { CustomerPushActivation } from "@/components/customer/customer-push-activation";
 import { markAllCustomerWalletNotificationsRead, markCustomerWalletNotificationRead, readCustomerWalletNotifications, type CustomerWalletNotification } from "@/lib/customer-wallet-adapter";

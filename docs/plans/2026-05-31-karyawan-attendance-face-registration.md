@@ -6,7 +6,7 @@
 >
 > **Route:** `apps/karyawan` sebagai PWA mandiri di domain karyawan.djiwatentram.web.id
 
-**Tech Stack:** React 19, TanStack Router, face-api.js, react-webcam, Supabase, @yumipos/web-shared
+**Tech Stack:** React 19, TanStack Router, face-api.js, react-webcam, Supabase, @djiwaapps/web-shared
 
 ---
 
@@ -65,7 +65,7 @@ Rubah line 316 dari `` `/karyawan/${user.slug}` `` jadi `` `/${user.slug}` ``.
 **Step 2: Build test**
 
 ```bash
-cd /opt/djiwatentramapp && npx turbo run build --filter=@yumipos/pos
+cd /opt/djiwatentramapp && npx turbo run build --filter=@djiwaapps/pos
 ```
 
 Expected: Build sukses tanpa error.
@@ -100,7 +100,7 @@ cd /opt/djiwatentramapp && cd apps/karyawan && bun add face-api.js react-webcam
 **Step 3: Build test**
 
 ```bash
-cd /opt/djiwatentramapp && npx turbo run build --filter=@yumipos/karyawan
+cd /opt/djiwatentramapp && npx turbo run build --filter=@djiwaapps/karyawan
 ```
 
 **Step 4: Git commit**
@@ -127,7 +127,7 @@ Isinya: `cacheFaceDescriptor`, `getCachedFaceDescriptor`, `clearFaceCache`, `cle
 **Step 2: Build test**
 
 ```bash
-cd /opt/djiwatentramapp && npx turbo run build --filter=@yumipos/karyawan
+cd /opt/djiwatentramapp && npx turbo run build --filter=@djiwaapps/karyawan
 ```
 
 **Step 3: Git commit**
@@ -173,7 +173,7 @@ Component ini memiliki:
 **Step 3: Build test**
 
 ```bash
-cd /opt/djiwatentramapp && npx turbo run build --filter=@yumipos/karyawan
+cd /opt/djiwatentramapp && npx turbo run build --filter=@djiwaapps/karyawan
 ```
 
 **Step 4: Git commit**
@@ -212,7 +212,7 @@ useEffect(() => {
 **Step 2: Build test**
 
 ```bash
-cd /opt/djiwatentramapp && npx turbo run build --filter=@yumipos/karyawan
+cd /opt/djiwatentramapp && npx turbo run build --filter=@djiwaapps/karyawan
 ```
 
 **Step 3: Git commit**
@@ -223,17 +223,17 @@ git add apps/karyawan/src/routes/__root.tsx && git commit -m "feat: preload face
 
 ---
 
-### Task 3.2: Export attendance hooks from @yumipos/web-shared
+### Task 3.2: Export attendance hooks from @djiwaapps/web-shared
 
-**Objective:** Pastikan `useHybridClockIn`, `useHybridClockOut`, `useHybridEnrollFace`, `useHybridVerifyHomePin` bisa diimpor dari `@yumipos/web-shared`.
+**Objective:** Pastikan `useHybridClockIn`, `useHybridClockOut`, `useHybridEnrollFace`, `useHybridVerifyHomePin` bisa diimpor dari `@djiwaapps/web-shared`.
 
 **Files:**
-- Modify: `packages/yumipos-web-shared/src/index.ts`
+- Modify: `packages/djiwaapps-web-shared/src/index.ts`
 
 **Step 1: Cek status**
 
 ```bash
-grep -n "ClockIn\|ClockOut\|EnrollFace\|VerifyHomePin" packages/yumipos-web-shared/src/index.ts
+grep -n "ClockIn\|ClockOut\|EnrollFace\|VerifyHomePin" packages/djiwaapps-web-shared/src/index.ts
 ```
 
 Jika belum ada:
@@ -252,7 +252,7 @@ export {
 **Step 3: Verifikasi hooks sudah ada di shared**
 
 ```bash
-grep -n "useHybridClockIn\|useHybridClockOut\|useHybridEnrollFace\|useHybridVerifyHomePin" packages/yumipos-web-shared/src/hooks/use-hybrid-write-actions.ts | head -10
+grep -n "useHybridClockIn\|useHybridClockOut\|useHybridEnrollFace\|useHybridVerifyHomePin" packages/djiwaapps-web-shared/src/hooks/use-hybrid-write-actions.ts | head -10
 ```
 
 Expected: fungsi-fungsi ini sudah ada di shared package (line ~4734+). Jika tidak ada berarti hanya di POS — copy ke shared.
@@ -262,13 +262,13 @@ Hook-hook ini sudah menggunakan `hasSupabaseConfig` + dummy `api` proxy, jadi am
 **Step 4: Build test**
 
 ```bash
-cd /opt/djiwatentramapp && npx turbo run build --filter=@yumipos/web-shared
+cd /opt/djiwatentramapp && npx turbo run build --filter=@djiwaapps/web-shared
 ```
 
 **Step 5: Git commit**
 
 ```bash
-git add packages/yumipos-web-shared/src/index.ts && git commit -m "feat: export attendance write hooks from web-shared"
+git add packages/djiwaapps-web-shared/src/index.ts && git commit -m "feat: export attendance write hooks from web-shared"
 ```
 
 ---
@@ -372,8 +372,8 @@ const handlePinSubmit = async (e: React.FormEvent) => {
 // apps/karyawan/src/routes/attendance.lazy.tsx
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { FaceRecognition, preloadFaceModels } from "@/components/auth/FaceRecognition";
-import { Button } from "@yumipos/web-shared/components/ui/button";
-import { Input } from "@yumipos/web-shared/components/ui/input";
+import { Button } from "@djiwaapps/web-shared/components/ui/button";
+import { Input } from "@djiwaapps/web-shared/components/ui/input";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -389,7 +389,7 @@ import {
   useHybridClockOut,
   useHybridEnrollFace,
   useHybridVerifyHomePin,
-} from "@yumipos/web-shared";
+} from "@djiwaapps/web-shared";
 ```
 
 **Step 2: Component structure**
@@ -506,7 +506,7 @@ const handleFaceProcessed = async (descriptor?: number[]) => {
 **Step 6: Build test**
 
 ```bash
-cd /opt/djiwatentramapp && npx turbo run build --filter=@yumipos/karyawan
+cd /opt/djiwatentramapp && npx turbo run build --filter=@djiwaapps/karyawan
 ```
 
 **Step 7: Git commit**
@@ -637,7 +637,7 @@ Copy model files ke `apps/pos/public/face-models/` dan update `FaceRecognition.t
 **Step 5: Build test**
 
 ```bash
-cd /opt/djiwatentramapp && npx turbo run build --filter=@yumipos/karyawan --filter=@yumipos/pos
+cd /opt/djiwatentramapp && npx turbo run build --filter=@djiwaapps/karyawan --filter=@djiwaapps/pos
 ```
 
 **Step 6: Git commit**
@@ -744,7 +744,7 @@ Alternatif: gunakan `new Worker(new URL("./face.worker", import.meta.url))` — 
 **Step 4: Build test**
 
 ```bash
-cd /opt/djiwatentramapp && npx turbo run build --filter=@yumipos/karyawan
+cd /opt/djiwatentramapp && npx turbo run build --filter=@djiwaapps/karyawan
 ```
 
 **Dampak:** UI thread tidak pernah terblokir — animasi, toast, dan button tetap responsif selama detection.
@@ -870,7 +870,7 @@ const det = await faceapi.detectSingleFace(vid, opts)
 **Step 5: Build test**
 
 ```bash
-cd /opt/djiwatentramapp && npx turbo run build --filter=@yumipos/karyawan
+cd /opt/djiwatentramapp && npx turbo run build --filter=@djiwaapps/karyawan
 ```
 
 **Step 6: Git commit**
@@ -904,7 +904,7 @@ git add apps/karyawan/ && git commit -m "perf: upgrade face detection with @vlad
 cd /opt/djiwatentramapp
 
 # Build all affected packages
-npx turbo run build --filter=@yumipos/karyawan --filter=@yumipos/pos --filter=@yumipos/web-shared
+npx turbo run build --filter=@djiwaapps/karyawan --filter=@djiwaapps/pos --filter=@djiwaapps/web-shared
 
 # Type check
 cd apps/karyawan && npx tsc --noEmit

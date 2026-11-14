@@ -252,8 +252,8 @@ Update Branding section:
 
 Script dipanggil di `package.json` scripts:
 ```json
-"build:pos": "node scripts/generate-pwa-manifest.mjs && turbo build --filter=@yumipos/pos",
-"build:customer": "node scripts/generate-pwa-manifest.mjs && turbo build --filter=@yumipos/customer"
+"build:pos": "node scripts/generate-pwa-manifest.mjs && turbo build --filter=@djiwaapps/pos",
+"build:customer": "node scripts/generate-pwa-manifest.mjs && turbo build --filter=@djiwaapps/customer"
 ```
 
 ### Step 4: Update vite.config.ts (15 menit per app)

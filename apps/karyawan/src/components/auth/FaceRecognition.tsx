@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import * as faceapi from "face-api.js";
 import Webcam from "react-webcam";
 import { Loader2, Camera, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
-import { Button } from "@yumipos/web-shared/components/ui/button";
+import { Button } from "@djiwaapps/web-shared/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface FaceRecognitionProps {

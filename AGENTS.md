@@ -11,7 +11,7 @@ Prefer Supabase MCP/CLI workflows for schema and data changes.
 ## Repository orientation
 
 - This is a Bun + Turbo monorepo. Read `README.md` for the quick start and `PROJECT.md` for the domain/architecture map; verify current source before relying on older route or schema inventories in that blueprint.
-- App code lives under `apps/<app>`; reusable UI and business code lives under `packages/`. Shared product UI is primarily in `packages/yumipos-web-shared`.
+- App code lives under `apps/<app>`; reusable UI and business code lives under `packages/`. Shared product UI is primarily in `packages/djiwaapps-web-shared`.
 - Before editing, inspect the target app/package `package.json`, nearby implementations, and `git status`. Preserve unrelated working-tree changes.
 - Use the package manager pinned in `package.json` (`bun@1.3.4`) and existing scripts. Keep changes scoped; do not silently change payment, order, auth, inventory, attendance, or payroll behavior during UI work.
 - For UI work, follow `DESIGN.md`, inspect existing shared tokens/components/assets first, and prefer shared components over app-local duplicates.

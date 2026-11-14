@@ -1,5 +1,5 @@
 {
-  "name": "@yumipos/booking-notification-worker",
+  "name": "@djiwaapps/booking-notification-worker",
   "private": true,
   "type": "module",
   "scripts": {

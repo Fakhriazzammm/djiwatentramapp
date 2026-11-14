@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChefHat, Coffee, Loader2 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import { useHybridOrderStatus, useHybridShiftStatus, type OrderStatusRecord } from "@/hooks/use-hybrid-pos-data";
 import { useHybridWriteOrderStatus } from "@/hooks/use-hybrid-write-actions";
 import { IOS_SPRING, IosSegmented, IosSheet, StatusPill, listItemMotion } from "./ios-kit";

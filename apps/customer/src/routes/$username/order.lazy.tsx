@@ -1,4 +1,4 @@
-import { useManualStockMode } from "@yumipos/web-shared/lib/manual-stock";
+import { useManualStockMode } from "@djiwaapps/web-shared/lib/manual-stock";
 import {
 	Bell,
 	ChevronRight,
@@ -15,9 +15,9 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { invokeEdgeFunction } from "@/lib/api-helper";
-import { deliveryApi, DeliveryApiError, type DeliveryConfig } from "@yumipos/web-shared/lib/customer-delivery";
+import { deliveryApi, DeliveryApiError, type DeliveryConfig } from "@djiwaapps/web-shared/lib/customer-delivery";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { Djiwa3DIcon } from "@yumipos/web-shared";
+import { Djiwa3DIcon } from "@djiwaapps/web-shared";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
 	useHybridActiveDiscounts,
@@ -37,8 +37,8 @@ import {
 	useHybridUpdateOrderStatus,
 } from "@/hooks/use-hybrid-write-actions";
 import { cn } from "@/lib/utils";
-import { calculateOrderTax } from "@yumipos/web-shared/lib/tax-calculator";
-import { getAdditionalOrderDiscount } from "@yumipos/web-shared/lib/order-pricing";
+import { calculateOrderTax } from "@djiwaapps/web-shared/lib/tax-calculator";
+import { getAdditionalOrderDiscount } from "@djiwaapps/web-shared/lib/order-pricing";
 import { CustomerHeader } from "@/components/customer/customer-shell";
 import { calculateEffectivePrice, isDjiwaPayCampaignActive, isFreeRefillActive } from "@/lib/utils/pricing";
 import type { Doc, Id } from "@/types/backend-compat";

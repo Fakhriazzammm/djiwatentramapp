@@ -4,8 +4,8 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { AlertCircle, ChevronDown, Search } from "lucide-react";
-import { DsAvatar, DsButton, DsRoot, ds3d } from "@yumipos/web-shared/components/ds";
-import { useYumiAuth, listPublicYumiUsers, loginWithYumiPin, type YumiPublicUser } from "@yumipos/web-shared";
+import { DsAvatar, DsButton, DsRoot, ds3d } from "@djiwaapps/web-shared/components/ds";
+import { useYumiAuth, listPublicYumiUsers, loginWithYumiPin, type YumiPublicUser } from "@djiwaapps/web-shared";
 import { toast } from "sonner";
 
 export const Route = createLazyFileRoute("/login")({

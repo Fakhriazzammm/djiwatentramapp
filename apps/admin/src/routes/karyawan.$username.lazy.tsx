@@ -1,10 +1,10 @@
 import { createLazyFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 /* HERMES: rebuild trigger — live payslip + bonus target */
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useYumiAuth } from "@yumipos/web-shared";
-import { Footer } from "@yumipos/web-shared/components/layout/Footer";
-import { Button } from "@yumipos/web-shared/components/ui/button";
-import { Input } from "@yumipos/web-shared/components/ui/input";
+import { useYumiAuth } from "@djiwaapps/web-shared";
+import { Footer } from "@djiwaapps/web-shared/components/layout/Footer";
+import { Button } from "@djiwaapps/web-shared/components/ui/button";
+import { Input } from "@djiwaapps/web-shared/components/ui/input";
 import { 
 	User, 
 	Lock, 
@@ -34,24 +34,24 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
-import { PersonalSchedule } from "@yumipos/web-shared/components/attendance/PersonalSchedule";
-import { HomeClockOutBanner } from "@yumipos/web-shared/components/home/home-clockout-banner";
+import { PersonalSchedule } from "@djiwaapps/web-shared/components/attendance/PersonalSchedule";
+import { HomeClockOutBanner } from "@djiwaapps/web-shared/components/home/home-clockout-banner";
 import {
 	useHybridPrivateStaffData,
 	useHybridStaffBySlug,
 	useHybridStaffLogs,
 	useHybridStaffStats,
-} from "@yumipos/web-shared";
+} from "@djiwaapps/web-shared";
 import {
 	useHybridUpdateUserPin,
 	useHybridUpdateUserProfile,
-} from "@yumipos/web-shared";
+} from "@djiwaapps/web-shared";
 import {
 	useHybridPayslips,
-} from "@yumipos/web-shared";
-import { generatePayslipPDF, type PayslipData, type PayslipBreakdown } from "@yumipos/web-shared";
-import { useHybridSiteSettings, fetchShiftReports, type StaffRoleBonusConfig } from "@yumipos/web-shared";
-import { createClient } from "@yumipos/web-shared";
+} from "@djiwaapps/web-shared";
+import { generatePayslipPDF, type PayslipData, type PayslipBreakdown } from "@djiwaapps/web-shared";
+import { useHybridSiteSettings, fetchShiftReports, type StaffRoleBonusConfig } from "@djiwaapps/web-shared";
+import { createClient } from "@djiwaapps/web-shared";
 
 const formatCurrency = (amount: number) => {
 	return new Intl.NumberFormat("id-ID", {

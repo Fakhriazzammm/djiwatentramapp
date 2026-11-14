@@ -1,7 +1,7 @@
 import { createLazyFileRoute, Outlet, useMatches, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, BadgeCheck, Bookmark, BookmarkCheck, Heart, ImagePlus, Loader2, MessageCircle, MoreHorizontal, Plus, RefreshCw, Send, Video, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Djiwa3DIcon } from "@yumipos/web-shared";
+import { Djiwa3DIcon } from "@djiwaapps/web-shared";
 import { CustomerBottomNav, CustomerHeader } from "@/components/customer/customer-shell";
 import { JumatBerkahCommunityStrip } from "@/components/customer/jumat-berkah";
 import { CustomerErrorState, CustomerSectionSkeleton } from "@/components/customer/customer-states";

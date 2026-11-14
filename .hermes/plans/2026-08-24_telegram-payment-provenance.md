@@ -99,7 +99,7 @@ Sebagian layar internal masih merender payment method dengan `.toUpperCase()` at
 Buat formatter pure/reusable di shared package, misalnya:
 
 ```text
-packages/yumipos-web-shared/src/lib/payment-label.ts
+packages/djiwaapps-web-shared/src/lib/payment-label.ts
 ```
 
 Untuk Python Supervisor, buat fungsi Python dengan aturan identik di module utilitas yang sudah digunakan `app.py`, atau implementasikan satu fungsi canonical di `yumi-supervisor-agent/app.py` jika struktur shared lintas bahasa belum tersedia.
@@ -679,8 +679,8 @@ Kegagalan notifikasi tidak membatalkan financial close. Target Report dan Transa
 
 - `apps/pos/src/components/pos/menu-sidebar.tsx`
 - `apps/pos/src/hooks/use-hybrid-write-actions.ts`
-- `packages/yumipos-web-shared/src/hooks/use-hybrid-write-actions.ts`
-- `packages/yumipos-web-shared/src/hooks/use-hybrid-ops-data.ts`
+- `packages/djiwaapps-web-shared/src/hooks/use-hybrid-write-actions.ts`
+- `packages/djiwaapps-web-shared/src/hooks/use-hybrid-ops-data.ts`
 - `apps/pos/src/components/pos/shift-payment-reconciliation.tsx`
 - `apps/pos/src/routes/laporan.lazy.tsx`
 - `yumi-supervisor-agent/app.py`

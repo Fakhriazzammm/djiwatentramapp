@@ -177,9 +177,9 @@ apps/booking/src/lib/booking-validation.ts
 
 ## Foundation requirements
 
-- Package name unik, misalnya `@yumipos/booking`.
+- Package name unik, misalnya `@djiwaapps/booking`.
 - Reuse dependency versions existing, jangan menambah dependency baru tanpa kebutuhan.
-- Reuse `@yumipos/web-shared` dan theme existing.
+- Reuse `@djiwaapps/web-shared` dan theme existing.
 - Dedicated PWA name, scope, manifest, cache name, and start URL.
 - Dedicated environment variables/config:
 
@@ -604,10 +604,10 @@ If not required for MVP, document `apps/karyawan` as verified unaffected rather 
 Prefer moving reusable booking data contracts and presentational primitives into an existing shared package only after measuring reuse. Likely scope:
 
 ```text
-packages/yumipos-web-shared/src/hooks/use-hybrid-booking-data.ts
-packages/yumipos-web-shared/src/hooks/use-hybrid-write-actions.ts
-packages/yumipos-web-shared/src/types/*
-packages/yumipos-web-shared/src/theme.css
+packages/djiwaapps-web-shared/src/hooks/use-hybrid-booking-data.ts
+packages/djiwaapps-web-shared/src/hooks/use-hybrid-write-actions.ts
+packages/djiwaapps-web-shared/src/types/*
+packages/djiwaapps-web-shared/src/theme.css
 ```
 
 Do not extract the entire customer app shell as part of this feature. Keep booking-specific UI in `apps/booking` and share only stable contracts/primitives.
@@ -677,7 +677,7 @@ Do not auto-deduct or auto-purchase from unconfirmed booking data without a sepa
 Add a dedicated build filter/script:
 
 ```text
-@yumipos/booking
+@djiwaapps/booking
 ```
 
 Deploy only:

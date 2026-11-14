@@ -1,7 +1,7 @@
 import { createLazyFileRoute, Outlet, useLocation, useMatches, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { LogIn, LogOut } from "lucide-react";
-import { Djiwa3DIcon } from "@yumipos/web-shared";
+import { Djiwa3DIcon } from "@djiwaapps/web-shared";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useOrderContext } from "@/hooks/use-order-context";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";

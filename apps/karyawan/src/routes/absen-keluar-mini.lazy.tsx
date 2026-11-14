@@ -1,10 +1,10 @@
-import { useManualStockMode } from "@yumipos/web-shared/lib/manual-stock";
+import { useManualStockMode } from "@djiwaapps/web-shared/lib/manual-stock";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState, useEffect, useCallback, useMemo, useRef, forwardRef, useImperativeHandle } from "react";
-import { createClient } from "@yumipos/web-shared/lib/client";
-import { useHybridStaffLogs, useHybridStaffStats, useHybridPayslips } from "@yumipos/web-shared";
-import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
-import { PersonalSchedule } from "@yumipos/web-shared/components/attendance/PersonalSchedule";
+import { createClient } from "@djiwaapps/web-shared/lib/client";
+import { useHybridStaffLogs, useHybridStaffStats, useHybridPayslips } from "@djiwaapps/web-shared";
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@djiwaapps/web-shared";
+import { PersonalSchedule } from "@djiwaapps/web-shared/components/attendance/PersonalSchedule";
 import { SmartBanner } from "@/components/karyawan/SmartBanner";
 import { SaldoCard } from "@/components/karyawan/SaldoCard";
 import { z } from "zod";

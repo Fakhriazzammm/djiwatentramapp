@@ -80,7 +80,7 @@ Bisa via admin panel registrasi yang sudah ada — pilih role `CLIENT_VIEWER`.
 ### Phase 2: Shared Package — Demo Mode Infrastructure
 
 #### Step 2.1 — `useDemoMode` hook
-**File Baru:** `packages/yumipos-web-shared/src/hooks/useDemoMode.ts`
+**File Baru:** `packages/djiwaapps-web-shared/src/hooks/useDemoMode.ts`
 
 ```ts
 // Detect dari role user — apakah CLIENT_VIEWER
@@ -94,7 +94,7 @@ export function useDemoMode() {
 Untuk `apps/customer` (pakai `useCustomerAuth`), perlu flag serupa — bisa via `raw` JSONB atau kolom spesifik di `pos.customers`.
 
 #### Step 2.2 — Centralized `fmt()` function
-**File Baru:** `packages/yumipos-web-shared/src/lib/utils/demo-mask.ts`
+**File Baru:** `packages/djiwaapps-web-shared/src/lib/utils/demo-mask.ts`
 
 ```ts
 // Hooked version — reactive, butuh context
@@ -118,7 +118,7 @@ export function maskNumbersInText(text: string): string {
 ```
 
 #### Step 2.3 — `DemoModeProvider` context
-**File Baru:** `packages/yumipos-web-shared/src/context/demo-mode-context.tsx`
+**File Baru:** `packages/djiwaapps-web-shared/src/context/demo-mode-context.tsx`
 
 ```tsx
 <DemoModeProvider>
@@ -128,7 +128,7 @@ export function maskNumbersInText(text: string): string {
 </DemoModeProvider>
 ```
 
-**Export dari barrel:** `packages/yumipos-web-shared/src/index.ts`
+**Export dari barrel:** `packages/djiwaapps-web-shared/src/index.ts`
 ```ts
 export * from "./hooks/useDemoMode";
 export * from "./context/demo-mode-context";
@@ -212,7 +212,7 @@ Sama seperti apps/pos — deteksi `CLIENT_VIEWER` → `.demo-mode` class.
 ### Phase 5: Component-Level Masking (Layer 3)
 
 #### Step 5.1 — `<MaskedValue />` component
-**File Baru:** `packages/yumipos-web-shared/src/components/ui/masked-value.tsx`
+**File Baru:** `packages/djiwaapps-web-shared/src/components/ui/masked-value.tsx`
 
 ```tsx
 <MaskedValue value={15000} prefix="Rp" />
@@ -248,11 +248,11 @@ Gunakan `MaskedValue` sebagai pengganti `fmt()` lokal di:
 ### Shared Package
 | File | Change |
 |------|--------|
-| `packages/yumipos-web-shared/src/hooks/useDemoMode.ts` | **NEW** — demo mode hook |
-| `packages/yumipos-web-shared/src/context/demo-mode-context.tsx` | **NEW** — DemoModeProvider |
-| `packages/yumipos-web-shared/src/lib/utils/demo-mask.ts` | **NEW** — fmt(), maskNumbersInText(), setDemoMode() |
-| `packages/yumipos-web-shared/src/components/ui/masked-value.tsx` | **NEW** — MaskedValue component |
-| `packages/yumipos-web-shared/src/index.ts` | **EDIT** — export baru |
+| `packages/djiwaapps-web-shared/src/hooks/useDemoMode.ts` | **NEW** — demo mode hook |
+| `packages/djiwaapps-web-shared/src/context/demo-mode-context.tsx` | **NEW** — DemoModeProvider |
+| `packages/djiwaapps-web-shared/src/lib/utils/demo-mask.ts` | **NEW** — fmt(), maskNumbersInText(), setDemoMode() |
+| `packages/djiwaapps-web-shared/src/components/ui/masked-value.tsx` | **NEW** — MaskedValue component |
+| `packages/djiwaapps-web-shared/src/index.ts` | **EDIT** — export baru |
 
 ### apps/pos
 | File | Change |
@@ -283,7 +283,7 @@ Gunakan `MaskedValue` sebagai pengganti `fmt()` lokal di:
 
 ### Build Check
 ```bash
-cd /opt/djiwatentramapp && npx turbo build --filter=@yumipos/pos --filter=@yumipos/karyawan
+cd /opt/djiwatentramapp && npx turbo build --filter=@djiwaapps/pos --filter=@djiwaapps/karyawan
 ```
 
 ### Manual Test Flow

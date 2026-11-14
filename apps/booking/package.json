@@ -1,5 +1,5 @@
 {
-  "name": "@yumipos/booking",
+  "name": "@djiwaapps/booking",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.103.3",
     "@tailwindcss/vite": "^4.0.15",
-    "@yumipos/web-shared": "workspace:*",
+    "@djiwaapps/web-shared": "workspace:*",
     "lucide-react": "^0.473.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",

@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, Loader2, Package, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useManualStockMode } from "@yumipos/web-shared/lib/manual-stock";
+import { useManualStockMode } from "@djiwaapps/web-shared/lib/manual-stock";
 import { cn } from "@/lib/utils";
 import { useHybridAdjustReadyMenuStock, useHybridBulkUpdateProducts, useHybridUpdateProduct } from "@/hooks/use-hybrid-write-actions";
 import { ConfirmSheet, IOS_SPRING } from "./ios-kit";

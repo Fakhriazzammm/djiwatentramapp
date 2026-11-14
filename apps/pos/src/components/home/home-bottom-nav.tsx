@@ -5,7 +5,7 @@ import {
 	ClipboardList,
 	Sparkles,
 } from "lucide-react";
-import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@djiwaapps/web-shared";
 
 type BottomTab = {
 	to: string;

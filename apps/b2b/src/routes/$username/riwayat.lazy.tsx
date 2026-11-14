@@ -9,7 +9,7 @@ import { useCustomerOrders } from "@/hooks/use-customer-data";
 import { useOrderContext } from "@/hooks/use-order-context";
 import { useHybridProducts } from "@/hooks/use-hybrid-pos-data";
 import { currency } from "@/components/customer/types";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import { rememberGuestOrder } from "@/components/customer/types";
 import type { CartItem } from "@/components/customer/types";
 import { CustomerErrorState, CustomerSectionSkeleton } from "@/components/customer/customer-states";

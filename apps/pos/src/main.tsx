@@ -10,7 +10,7 @@ import { AppUpdatePrompt } from "@/components/app-update-prompt";
 import { startAppUpdatePolling, checkForAppUpdate } from "@/lib/app-update";
 import { registerSW } from "virtual:pwa-register";
 import "./index.css";
-import { installNumberInputBehavior } from "@yumipos/web-shared";
+import { installNumberInputBehavior } from "@djiwaapps/web-shared";
 
 // Set up Router instance
 

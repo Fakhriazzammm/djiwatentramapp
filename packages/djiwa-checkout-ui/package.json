@@ -1,5 +1,5 @@
 {
-  "name": "@yumipos/djiwa-checkout-ui",
+  "name": "@djiwaapps/djiwa-checkout-ui",
   "version": "0.0.0",
   "private": true,
   "type": "module",

@@ -420,7 +420,7 @@ Buat file: `apps/web/src/components/openclaw/agent-chat.tsx`
 ```typescript
 import { useState } from "react";
 import { useAction } from "convex/react";
-import { api } from "@yumipos/backend/convex/_generated/api";
+import { api } from "@djiwaapps/backend/convex/_generated/api";
 import { Send, Bot, User } from "lucide-react";
 import { toast } from "sonner";
 

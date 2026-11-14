@@ -1,7 +1,7 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Heart, Loader2, MessageCircle, MoreHorizontal, Pencil, Send, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Djiwa3DIcon } from "@yumipos/web-shared";
+import { Djiwa3DIcon } from "@djiwaapps/web-shared";
 import { CustomerBottomNav, CustomerHeader } from "@/components/customer/customer-shell";
 import { CustomerErrorState, CustomerSectionSkeleton } from "@/components/customer/customer-states";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";

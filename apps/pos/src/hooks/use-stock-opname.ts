@@ -1,4 +1,4 @@
-import { shouldRunIntegratedStock } from "@yumipos/web-shared/lib/manual-stock";
+import { shouldRunIntegratedStock } from "@djiwaapps/web-shared/lib/manual-stock";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/client";
 import { makeSourceId } from "@/lib/id-utils";

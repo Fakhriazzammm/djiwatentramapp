@@ -4,7 +4,7 @@
 
 **Goal:** Remove dark/double input outlines across Djiwa Tentram apps while retaining one subtle, accessible focus indicator.
 
-**Architecture:** Fix the shared focus selector at its source in `yumipos-web-shared/theme.css`, then add explicit input focus normalization for surfaces that do not consume the shared theme. Keep component-level error and success rings intact.
+**Architecture:** Fix the shared focus selector at its source in `djiwaapps-web-shared/theme.css`, then add explicit input focus normalization for surfaces that do not consume the shared theme. Keep component-level error and success rings intact.
 
 **Tech Stack:** Tailwind CSS, shared CSS tokens, React/Vite, Bun tests.
 
@@ -27,8 +27,8 @@
 ### Task 1: Shared focus token correction
 
 **Files:**
-- Modify: `packages/yumipos-web-shared/src/theme.css`
-- Test: `packages/yumipos-web-shared/src/theme-focus.test.ts`
+- Modify: `packages/djiwaapps-web-shared/src/theme.css`
+- Test: `packages/djiwaapps-web-shared/src/theme-focus.test.ts`
 
 - [ ] Add a source-level regression test for the focus selector contract.
 - [ ] Run it red against the current global `*:focus-visible` rule.

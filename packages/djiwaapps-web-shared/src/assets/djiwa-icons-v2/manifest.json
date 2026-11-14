@@ -5,7 +5,7 @@
     {
       "name": "business-ai-assistant",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/business-ai-assistant.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/business-ai-assistant.webp",
       "source_bbox": [
         120,
         168,
@@ -29,7 +29,7 @@
     {
       "name": "cashier-terminal",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/cashier-terminal.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/cashier-terminal.webp",
       "source_bbox": [
         120,
         168,
@@ -53,7 +53,7 @@
     {
       "name": "customer-food-ordering",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/customer-food-ordering.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/customer-food-ordering.webp",
       "source_bbox": [
         120,
         168,
@@ -79,7 +79,7 @@
     {
       "name": "dashboard-overview",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/dashboard-overview.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/dashboard-overview.webp",
       "source_bbox": [
         120,
         169,
@@ -103,7 +103,7 @@
     {
       "name": "delivery-management",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/delivery-management.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/delivery-management.webp",
       "source_bbox": [
         120,
         168,
@@ -127,7 +127,7 @@
     {
       "name": "employee-attendance-check-in",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/employee-attendance-check-in.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/employee-attendance-check-in.webp",
       "source_bbox": [
         120,
         168,
@@ -151,7 +151,7 @@
     {
       "name": "employee-attendance-check-out",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/employee-attendance-check-out.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/employee-attendance-check-out.webp",
       "source_bbox": [
         120,
         169,
@@ -175,7 +175,7 @@
     {
       "name": "employee-profile",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/employee-profile.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/employee-profile.webp",
       "source_bbox": [
         120,
         168,
@@ -199,7 +199,7 @@
     {
       "name": "food-customization",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/food-customization.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/food-customization.webp",
       "source_bbox": [
         120,
         168,
@@ -223,7 +223,7 @@
     {
       "name": "inventory-stock",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/inventory-stock.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/inventory-stock.webp",
       "source_bbox": [
         120,
         169,
@@ -247,7 +247,7 @@
     {
       "name": "kitchen-display",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/kitchen-display.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/kitchen-display.webp",
       "source_bbox": [
         120,
         168,
@@ -271,7 +271,7 @@
     {
       "name": "loyalty-points",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/loyalty-points.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/loyalty-points.webp",
       "source_bbox": [
         120,
         169,
@@ -295,7 +295,7 @@
     {
       "name": "notifications-alerts",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/notifications-alerts.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/notifications-alerts.webp",
       "source_bbox": [
         120,
         169,
@@ -319,7 +319,7 @@
     {
       "name": "order-queue",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/order-queue.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/order-queue.webp",
       "source_bbox": [
         120,
         169,
@@ -343,7 +343,7 @@
     {
       "name": "order-receipt",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/order-receipt.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/order-receipt.webp",
       "source_bbox": [
         120,
         169,
@@ -369,7 +369,7 @@
     {
       "name": "order-tracking",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/order-tracking.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/order-tracking.webp",
       "source_bbox": [
         120,
         168,
@@ -393,7 +393,7 @@
     {
       "name": "order-upsell-main-dish-drink",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/order-upsell-main-dish-drink.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/order-upsell-main-dish-drink.webp",
       "source_bbox": [
         120,
         169,
@@ -417,7 +417,7 @@
     {
       "name": "payment-wallet",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/payment-wallet.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/payment-wallet.webp",
       "source_bbox": [
         120,
         168,
@@ -441,7 +441,7 @@
     {
       "name": "payroll-payslip",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/payroll-payslip.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/payroll-payslip.webp",
       "source_bbox": [
         120,
         169,
@@ -465,7 +465,7 @@
     {
       "name": "promo-voucher",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/promo-voucher.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/promo-voucher.webp",
       "source_bbox": [
         120,
         168,
@@ -489,7 +489,7 @@
     {
       "name": "restaurant-cafe",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/restaurant-cafe.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/restaurant-cafe.webp",
       "source_bbox": [
         120,
         168,
@@ -513,7 +513,7 @@
     {
       "name": "return-management",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/return-management.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/return-management.webp",
       "source_bbox": [
         120,
         168,
@@ -537,7 +537,7 @@
     {
       "name": "sales-report",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/sales-report.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/sales-report.webp",
       "source_bbox": [
         120,
         169,
@@ -561,7 +561,7 @@
     {
       "name": "shift-closing",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/shift-closing.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/shift-closing.webp",
       "source_bbox": [
         120,
         168,
@@ -585,7 +585,7 @@
     {
       "name": "shopping-cart-order",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/shopping-cart-order.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/shopping-cart-order.webp",
       "source_bbox": [
         120,
         169,
@@ -611,7 +611,7 @@
     {
       "name": "stock-opname",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/stock-opname.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/stock-opname.webp",
       "source_bbox": [
         120,
         168,
@@ -635,7 +635,7 @@
     {
       "name": "suppliers-purchase-order",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/suppliers-purchase-order.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/suppliers-purchase-order.webp",
       "source_bbox": [
         120,
         169,
@@ -659,7 +659,7 @@
     {
       "name": "work-schedule",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/work-schedule.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/work-schedule.webp",
       "source_bbox": [
         120,
         168,
@@ -683,7 +683,7 @@
     {
       "name": "navigation-home",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/home.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/home.webp",
       "canvas": [
         1024,
         1024
@@ -700,7 +700,7 @@
     {
       "name": "navigation-order",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/order.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/order.webp",
       "canvas": [
         1024,
         1024
@@ -717,7 +717,7 @@
     {
       "name": "navigation-history",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/history.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/history.webp",
       "canvas": [
         1024,
         1024
@@ -734,7 +734,7 @@
     {
       "name": "navigation-wallet",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/wallet.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/wallet.webp",
       "canvas": [
         1024,
         1024
@@ -751,7 +751,7 @@
     {
       "name": "navigation-profile",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/profile.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/profile.webp",
       "canvas": [
         1024,
         1024
@@ -768,7 +768,7 @@
     {
       "name": "navigation-employee-home",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-home.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/employee-home.webp",
       "canvas": [
         1024,
         1024
@@ -785,7 +785,7 @@
     {
       "name": "navigation-employee-schedule",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-schedule.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/employee-schedule.webp",
       "canvas": [
         1024,
         1024
@@ -802,7 +802,7 @@
     {
       "name": "navigation-employee-attendance",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-attendance.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/employee-attendance.webp",
       "canvas": [
         1024,
         1024
@@ -819,7 +819,7 @@
     {
       "name": "navigation-employee-notifications",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-notifications.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/employee-notifications.webp",
       "canvas": [
         1024,
         1024
@@ -836,7 +836,7 @@
     {
       "name": "navigation-employee-profile",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-profile.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/employee-profile.webp",
       "canvas": [
         1024,
         1024
@@ -853,7 +853,7 @@
     {
       "name": "navigation-pos-home",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/pos-home.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/pos-home.webp",
       "canvas": [
         1024,
         1024
@@ -870,7 +870,7 @@
     {
       "name": "navigation-pos-transactions",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/pos-transactions.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/pos-transactions.webp",
       "canvas": [
         1024,
         1024
@@ -887,7 +887,7 @@
     {
       "name": "navigation-pos-ai",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/pos-ai.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/pos-ai.webp",
       "canvas": [
         1024,
         1024
@@ -904,7 +904,7 @@
     {
       "name": "navigation-pos-orders",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/pos-orders.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/pos-orders.webp",
       "canvas": [
         1024,
         1024
@@ -921,7 +921,7 @@
     {
       "name": "navigation-party-size",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/party-size.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/party-size.webp",
       "canvas": [
         1024,
         1024
@@ -938,7 +938,7 @@
     {
       "name": "navigation-employee-salary",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-salary.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/employee-salary.webp",
       "canvas": [
         1024,
         1024
@@ -955,7 +955,7 @@
     {
       "name": "navigation-employee-bonus",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-bonus.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/employee-bonus.webp",
       "canvas": [
         1024,
         1024
@@ -972,7 +972,7 @@
     {
       "name": "navigation-employee-attendance-menu",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-attendance-menu.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/employee-attendance-menu.webp",
       "canvas": [
         1024,
         1024
@@ -989,7 +989,7 @@
     {
       "name": "navigation-employee-recap",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-recap.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/employee-recap.webp",
       "canvas": [
         1024,
         1024
@@ -1006,7 +1006,7 @@
     {
       "name": "navigation-employee-schedule-menu",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-schedule-menu.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/employee-schedule-menu.webp",
       "canvas": [
         1024,
         1024
@@ -1023,7 +1023,7 @@
     {
       "name": "navigation-employee-payslip",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-payslip.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/employee-payslip.webp",
       "canvas": [
         1024,
         1024
@@ -1040,7 +1040,7 @@
     {
       "name": "navigation-employee-allowance",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-allowance.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/employee-allowance.webp",
       "canvas": [
         1024,
         1024
@@ -1057,7 +1057,7 @@
     {
       "name": "navigation-employee-contract",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-contract.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/employee-contract.webp",
       "canvas": [
         1024,
         1024
@@ -1074,7 +1074,7 @@
     {
       "name": "navigation-employee-telegram",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-telegram.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/employee-telegram.webp",
       "canvas": [
         1024,
         1024
@@ -1091,7 +1091,7 @@
     {
       "name": "navigation-employee-leaderboard",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-leaderboard.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/employee-leaderboard.webp",
       "canvas": [
         1024,
         1024
@@ -1108,7 +1108,7 @@
     {
       "name": "navigation-employee-leave",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/employee-leave.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/employee-leave.webp",
       "canvas": [
         1024,
         1024
@@ -1125,7 +1125,7 @@
     {
       "name": "customer-benefit-wallet",
       "source": "generated-by-openai-codex-copy-of-approved-v2",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/customer-benefit-wallet.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/customer-benefit-wallet.webp",
       "canvas": [
         1024,
         1024
@@ -1142,7 +1142,7 @@
     {
       "name": "customer-benefit-happy-hour",
       "source": "generated-by-openai-codex-copy-of-approved-v2",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/customer-benefit-happy-hour.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/customer-benefit-happy-hour.webp",
       "canvas": [
         1024,
         1024
@@ -1159,7 +1159,7 @@
     {
       "name": "customer-benefit-promo",
       "source": "generated-by-openai-codex-copy-of-approved-v2",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/customer-benefit-promo.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/customer-benefit-promo.webp",
       "canvas": [
         1024,
         1024
@@ -1176,7 +1176,7 @@
     {
       "name": "navigation-tracking",
       "source": "generated-by-openai-codex",
-      "output": "packages/yumipos-web-shared/src/assets/djiwa-icons-v2/navigation/tracking.webp",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/tracking.webp",
       "canvas": [1254, 1254],
       "render_targets": [20, 24, 28],
       "source_type": "openai-codex-gpt-image-2-medium",

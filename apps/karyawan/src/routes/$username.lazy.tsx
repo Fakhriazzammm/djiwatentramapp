@@ -1,12 +1,12 @@
 import { createLazyFileRoute, Outlet, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 /* HERMES: rebuild trigger — live payslip + bonus target + attendance reminder */
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
-import { useYumiAuth, useHybridStaffBySlug, useHybridCurrentlyInStore } from "@yumipos/web-shared";
-import { DsRoot, DsTabBar, ds3d } from "@yumipos/web-shared/components/ds";
+import { useYumiAuth, useHybridStaffBySlug, useHybridCurrentlyInStore } from "@djiwaapps/web-shared";
+import { DsRoot, DsTabBar, ds3d } from "@djiwaapps/web-shared/components/ds";
 import { AbsenSheet } from "@/components/karyawan/AbsenSheet";
-import { createClient } from "@yumipos/web-shared/lib/client";
-import { HomeClockOutBanner } from "@yumipos/web-shared/components/home/home-clockout-banner";
-import { Button } from "@yumipos/web-shared/components/ui/button";
+import { createClient } from "@djiwaapps/web-shared/lib/client";
+import { HomeClockOutBanner } from "@djiwaapps/web-shared/components/home/home-clockout-banner";
+import { Button } from "@djiwaapps/web-shared/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, UserCircle, ShieldCheck, BellRing, X } from "lucide-react";
 

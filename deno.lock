@@ -5927,7 +5927,7 @@
           ]
         }
       },
-      "packages/yumipos-web-shared": {
+      "packages/djiwaapps-web-shared": {
         "packageJson": {
           "dependencies": [
             "npm:@supabase/ssr@~0.10.2",

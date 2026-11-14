@@ -4,7 +4,7 @@ import { useSiteBrandingMetadata } from "../hooks/useSiteBrandingMetadata";
 import { useHybridSiteSettings } from "../hooks/use-hybrid-pos-data";
 import { preloadFaceModels } from "../components/auth/FaceRecognition";
 import { useYumiAuth, YumiAuthProvider } from "../hooks/useYumiAuth";
-import { useDemoMode } from "@yumipos/web-shared";
+import { useDemoMode } from "@djiwaapps/web-shared";
 import { useEffect } from "react";
 import { clearTransactionVoiceQueue, unlockAudio } from "../lib/transaction-voice-queue";
 import { isLoginRoute, isPublicRoute, loginPathFor, RETURN_PATH_KEY, safeReturnPath } from "../lib/route-metadata";

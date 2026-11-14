@@ -811,7 +811,7 @@ apps/karyawan/src/routes/__root.tsx
 apps/linkbio/src/App.tsx
 apps/ordermieyamin/src/routes/__root.tsx
 apps/pos/* unrelated files
-packages/yumipos-web-shared/* unrelated files
+packages/djiwaapps-web-shared/* unrelated files
 scripts/generate-pwa-manifest.mjs
 ```
 

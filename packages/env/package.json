@@ -1,5 +1,5 @@
 {
-  "name": "@yumipos/env",
+  "name": "@djiwaapps/env",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@yumipos/config": "workspace:*",
+    "@djiwaapps/config": "workspace:*",
     "typescript": "catalog:",
     "vite": "catalog:"
   }

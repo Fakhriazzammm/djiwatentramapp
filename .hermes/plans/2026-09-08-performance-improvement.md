@@ -140,7 +140,7 @@ Expected: baseline memiliki timestamp, endpoint/query, sample size, p50/p95/p99,
 **Files:**
 - Inspect/modify: hook live-data yang menggunakan `useSupabaseLiveValue()`
 - Inspect: `apps/*/src/hooks/`
-- Inspect: `packages/yumipos-web-shared/src/hooks/`
+- Inspect: `packages/djiwaapps-web-shared/src/hooks/`
 - Test: unit/integration test hook realtime yang sudah ada atau test baru di lokasi konvensi repo
 
 **Langkah:**

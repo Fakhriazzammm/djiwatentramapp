@@ -4,10 +4,10 @@ import { motion } from "framer-motion";
 
 const spring = { type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 };
 import { ArrowLeft, Check, AlertCircle, Clock, ClipboardList, Plane, Stethoscope, MoreHorizontal, type LucideIcon } from "lucide-react";
-import { Button } from "@yumipos/web-shared/components/ui/button";
-import { Input } from "@yumipos/web-shared/components/ui/input";
+import { Button } from "@djiwaapps/web-shared/components/ui/button";
+import { Input } from "@djiwaapps/web-shared/components/ui/input";
 import { toast } from "sonner";
-import { createClient } from "@yumipos/web-shared/lib/client";
+import { createClient } from "@djiwaapps/web-shared/lib/client";
 import { useStaffProfile } from "../$username.lazy";
 
 const LEAVE_TYPES = [

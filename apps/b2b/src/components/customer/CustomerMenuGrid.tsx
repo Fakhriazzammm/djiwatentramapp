@@ -1,5 +1,5 @@
 import { B2B_BRAND_SLUG } from "@/lib/marketplace-config";
-import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@djiwaapps/web-shared";
 import { useHybridActiveMiniGameByBrand } from "@/hooks/use-hybrid-minigames-data";
 import { motion, useReducedMotion } from "framer-motion";
 import { useNavigate } from "@tanstack/react-router";

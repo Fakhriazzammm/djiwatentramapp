@@ -1,5 +1,5 @@
 {
-  "name": "@yumipos/investor",
+  "name": "@djiwaapps/investor",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.141.1",
-    "@yumipos/web-shared": "workspace:*",
+    "@djiwaapps/web-shared": "workspace:*",
     "better-auth": "^1.6.23",
     "lucide-react": "^0.473.0",
     "react": "19.2.3",

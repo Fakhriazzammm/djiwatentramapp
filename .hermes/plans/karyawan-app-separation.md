@@ -2,7 +2,7 @@
 
 ## Ringkasan
 
-Buat app baru `apps/karyawan` (`@yumipos/karyawan`) dengan PWA sendiri, domain `karyawan.djiwatentram.web.id`. Admin Operational Team tetap di `apps/pos`.
+Buat app baru `apps/karyawan` (`@djiwaapps/karyawan`) dengan PWA sendiri, domain `karyawan.djiwatentram.web.id`. Admin Operational Team tetap di `apps/pos`.
 
 ---
 
@@ -11,7 +11,7 @@ Buat app baru `apps/karyawan` (`@yumipos/karyawan`) dengan PWA sendiri, domain `
 Production `apps/pos` **TIDAK BOLEH error** di setiap tahap. Strategi migrasi:
 
 1. **Dual-path copy**: File dipindah ke web-shared DULU, POS tetap pakai `@/` path lama — kedua versi jalan bareng
-2. **Swap import satu per satu**: Setiap kali ganti import dari `@/` ke `@yumipos/web-shared`, **build & test** dulu
+2. **Swap import satu per satu**: Setiap kali ganti import dari `@/` ke `@djiwaapps/web-shared`, **build & test** dulu
 3. **Tahap 'no-op'**: Tidak ada file di POS yang dihapus sebelum apps/karyawan deployed & verified
 4. **Karyawan routes tetap di POS** sampai apps/karyawan live di karyawan.djiwatentram.web.id
 5. **Hapus duplikasi terakhir**: Baru setelah verified, hapus karyawan routes + hooks duplikat dari POS
@@ -24,9 +24,9 @@ web-shared hooks ready  ──►  POS ganti import  ──► apps/karyawan  �
 
 ---
 
-## Tahap 0: Prasyarat — Pindahkan Shared Hooks/Components ke `@yumipos/web-shared`
+## Tahap 0: Prasyarat — Pindahkan Shared Hooks/Components ke `@djiwaapps/web-shared`
 
-Sebelum bikin app baru, hooks yang sekarang cuma di `apps/pos/src/hooks/` perlu dipindah ke `packages/yumipos-web-shared/` biar bisa dipakai bersama tanpa duplikasi.
+Sebelum bikin app baru, hooks yang sekarang cuma di `apps/pos/src/hooks/` perlu dipindah ke `packages/djiwaapps-web-shared/` biar bisa dipakai bersama tanpa duplikasi.
 
 ### Yang SUDAH di web-shared (amankan, tinggal import)
 | File | Path di web-shared |
@@ -73,7 +73,7 @@ Tambah peerDependencies:
 Export semua hook & lib baru.
 
 #### F. Update imports di `apps/pos`
-Hooks/lib yg udah pindah ke web-shared, ganti import dari `@/` jadi `@yumipos/web-shared`.
+Hooks/lib yg udah pindah ke web-shared, ganti import dari `@/` jadi `@djiwaapps/web-shared`.
 
 ---
 
@@ -82,7 +82,7 @@ Hooks/lib yg udah pindah ke web-shared, ganti import dari `@/` jadi `@yumipos/we
 ### Struktur folder
 ```
 apps/karyawan/
-├── package.json              # @yumipos/karyawan
+├── package.json              # @djiwaapps/karyawan
 ├── vite.config.ts             # Vite + TanStack Router + VitePWA (manifest karyawan)
 ├── tsconfig.json
 ├── index.html
@@ -106,7 +106,7 @@ apps/karyawan/
 ### package.json
 ```json
 {
-  "name": "@yumipos/karyawan",
+  "name": "@djiwaapps/karyawan",
   "private": true,
   "type": "module",
   "scripts": {
@@ -116,8 +116,8 @@ apps/karyawan/
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@yumipos/web-shared": "workspace:*",
-    "@yumipos/env": "workspace:*",
+    "@djiwaapps/web-shared": "workspace:*",
+    "@djiwaapps/env": "workspace:*",
     "@tanstack/react-router": "^1.141.1",
     "@supabase/supabase-js": "^2.103.3",
     "@supabase/ssr": "^0.10.2",
@@ -168,8 +168,8 @@ Title: "Karyawan — Djiwa Tentram"
 ### 2a. Update `package.json` root
 Tambah script:
 ```
-"dev:karyawan": "turbo dev --filter=@yumipos/karyawan",
-"build:karyawan": "node scripts/generate-pwa-manifest.mjs && turbo build --filter=@yumipos/karyawan"
+"dev:karyawan": "turbo dev --filter=@djiwaapps/karyawan",
+"build:karyawan": "node scripts/generate-pwa-manifest.mjs && turbo build --filter=@djiwaapps/karyawan"
 ```
 
 ### 2b. Update root `turbo.json` — tasks untuk karyawan
@@ -214,7 +214,7 @@ Sementara masih bisa navigasi internal POS juga sebagai fallback
 | Risiko | Dampak | Mitigasi |
 |--------|--------|----------|
 | Auth state gak shared antar app | Karyawan login 2x (POS + karyawan) | Terima — memang nature PWA terpisah. Supabase auth cookie domain-based |
-| Duplikasi CSS/Tailwind | Bundle size | Shared Tailwind config dari `@yumipos/config` |
+| Duplikasi CSS/Tailwind | Bundle size | Shared Tailwind config dari `@djiwaapps/config` |
 | Hooks di POS dan web-shared divergen | Bug | Setelah pindahkan ke web-shared, import dari web-shared di POS juga (single source of truth) |
 | Payslip PDF depend on jspdf (heavy) | Bundle | Already minimal — cuma 2 halaman, gak masalah |
 | **🚨 Import berubah di POS — typo/alias salah** | **Build break — POS down** | Safety rule: setiap ubah import, `cd apps/pos && npx tsc --noEmit && npm run build`. Jangan commit sebelum build lulus |
@@ -233,7 +233,7 @@ apps/pos/                  ← monolit: admin + karyawan + menu
 Sesudah:
 apps/pos/                  ← admin operational team tetap
 apps/karyawan/             ← karyawan portal (PWA sendiri)
-packages/yumipos-web-shared/ ← hooks + lib + components shared
+packages/djiwaapps-web-shared/ ← hooks + lib + components shared
 ```
 
 **Total file baru:** ~15 file (app scaffold, 2 route pages, configs)

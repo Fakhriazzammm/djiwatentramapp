@@ -11,20 +11,20 @@ DEPLOYABLE="pos karyawan customer admin djiwapay"
 
 # app|package|domain  (bash 3.2 / macOS compatible: tabel teks, bukan array asosiatif)
 APPS_TABLE="
-pos|@yumipos/pos|pos.djiwatentram.web.id
-karyawan|@yumipos/karyawan|karyawan.djiwatentram.web.id
-customer|@yumipos/customer|djiwatentram.web.id
-admin|@yumipos/admin|admin.djiwatentram.web.id
-djiwapay|@yumipos/djiwapay|djiwapay.web.id
-merchandise|@yumipos/merchandise|merchandise.djiwatentram.web.id
-b2b|@yumipos/b2b|b2b.djiwatentram.web.id
-ordermieyamin|@yumipos/ordermieyamin|ordermieyamin.djiwatentram.web.id
-investor|@yumipos/investor|investor.djiwatentram.web.id
-booking|@yumipos/booking|booking.djiwatentram.web.id
+pos|@djiwaapps/pos|pos.djiwatentram.web.id
+karyawan|@djiwaapps/karyawan|karyawan.djiwatentram.web.id
+customer|@djiwaapps/customer|djiwatentram.web.id
+admin|@djiwaapps/admin|admin.djiwatentram.web.id
+djiwapay|@djiwaapps/djiwapay|djiwapay.web.id
+merchandise|@djiwaapps/merchandise|merchandise.djiwatentram.web.id
+b2b|@djiwaapps/b2b|b2b.djiwatentram.web.id
+ordermieyamin|@djiwaapps/ordermieyamin|ordermieyamin.djiwatentram.web.id
+investor|@djiwaapps/investor|investor.djiwatentram.web.id
+booking|@djiwaapps/booking|booking.djiwatentram.web.id
 rekrutmen|rekrutmen|rekrutmen.djiwatentram.web.id
-linkbio|@yumipos/linkbio|linkbio.djiwatentram.web.id
-kol|@yumipos/kol|kol.djiwatentram.web.id
-500kopitasik|@yumipos/500kopitasik|kopitasik.djiwatentram.web.id
+linkbio|@djiwaapps/linkbio|linkbio.djiwatentram.web.id
+kol|@djiwaapps/kol|kol.djiwatentram.web.id
+500kopitasik|@djiwaapps/500kopitasik|kopitasik.djiwatentram.web.id
 yumme|@yumme/group-landing|-
 auth-server|auth-server|api.djiwatentram.web.id
 "

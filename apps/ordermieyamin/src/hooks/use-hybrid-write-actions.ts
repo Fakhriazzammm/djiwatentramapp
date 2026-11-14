@@ -1,7 +1,7 @@
-import { shouldRunIntegratedStock } from "@yumipos/web-shared/lib/manual-stock";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
-import { formatOrderNumber } from "@yumipos/web-shared/lib/order-number";
-import { allocateDailyReceiptNo } from "@yumipos/web-shared/lib/daily-receipt";
+import { shouldRunIntegratedStock } from "@djiwaapps/web-shared/lib/manual-stock";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
+import { formatOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
+import { allocateDailyReceiptNo } from "@djiwaapps/web-shared/lib/daily-receipt";
 import { createClient } from "@/lib/client";
 import { useAction, useMutation } from "@/lib/backend-bridge";
 import { useYumiAuth } from "@/hooks/useYumiAuth";

@@ -1,4 +1,4 @@
-import { shouldRunIntegratedStock } from "@yumipos/web-shared/lib/manual-stock";
+import { shouldRunIntegratedStock } from "@djiwaapps/web-shared/lib/manual-stock";
 ﻿import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { FaceRecognition, preloadFaceModels } from "@/components/auth/FaceRecognition";

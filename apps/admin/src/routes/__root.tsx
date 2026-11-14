@@ -3,7 +3,7 @@ import { useGlobalKeyboardNavigation } from "../hooks/useGlobalKeyboardNavigatio
 import { useSiteBrandingMetadata } from "../hooks/useSiteBrandingMetadata";
 import { useHybridSiteSettings } from "../hooks/use-hybrid-pos-data";
 import { useYumiAuth, YumiAuthProvider } from "../hooks/useYumiAuth";
-import { useDemoMode } from "@yumipos/web-shared";
+import { useDemoMode } from "@djiwaapps/web-shared";
 import { useEffect } from "react";
 import { AdminSplash } from "../components/admin/admin-splash";
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createClient } from "@yumipos/web-shared/lib/client";
+import { createClient } from "@djiwaapps/web-shared/lib/client";
 
 export type RunItem = { shift_pay: number; daily_allowance_total: number; overtime_pay: number; bonus_pay: number; fixed_salary: number; gross_pay: number; deductions: number; net_pay: number; total_shifts: number; attendance_days: number; overtime_hours: number };
 export type Schedule = { date: string; shift_name: string; start_time: string | null; end_time: string | null; status: string; user_id?: string };

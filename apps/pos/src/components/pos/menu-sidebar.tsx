@@ -1,6 +1,6 @@
-import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
-import { formatPaymentLabel } from "@yumipos/web-shared/lib/payment-label";
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@djiwaapps/web-shared";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
+import { formatPaymentLabel } from "@djiwaapps/web-shared/lib/payment-label";
 import type { Doc, Id } from "@/types/backend-compat";
 import {
 	AlertCircle,

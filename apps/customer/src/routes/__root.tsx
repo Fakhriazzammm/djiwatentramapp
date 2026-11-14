@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { YumiAuthProvider } from "@/hooks/useYumiAuth";
 import { CustomerAuthProvider } from "@/hooks/use-customer-auth";
 import { OrderProvider } from "@/hooks/use-order-context";
-import { OwnerFooter } from "@yumipos/web-shared";
+import { OwnerFooter } from "@djiwaapps/web-shared";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { trackPageView } from "@/lib/web-analytics";
 

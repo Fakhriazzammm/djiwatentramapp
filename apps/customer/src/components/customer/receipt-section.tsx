@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import type { Doc } from "@/types/backend-compat";
 import type { CartItem, ReceiptState } from "./types";
 import { currency } from "./types";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import { BarcodeLines, ReceiptTotalsBreakdown } from "./shared-components";
 import { ReceiptActions } from "./split-bill-sheet";
 import { PaymentDocumentAnimation } from "./payment-document-animation";

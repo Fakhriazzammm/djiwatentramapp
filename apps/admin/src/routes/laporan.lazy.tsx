@@ -21,7 +21,7 @@ import {
 import {
 	useHybridAllTransactions,
 } from "@/hooks/use-hybrid-finance-analytics-data";
-import { normalizePaymentMethod } from "@yumipos/web-shared/lib/payment-contract";
+import { normalizePaymentMethod } from "@djiwaapps/web-shared/lib/payment-contract";
 
 export const Route = createLazyFileRoute("/laporan")({
 	component: LaporanPage,

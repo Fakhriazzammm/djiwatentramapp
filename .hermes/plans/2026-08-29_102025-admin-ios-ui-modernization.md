@@ -26,7 +26,7 @@ Targetnya bukan mengubah Admin menjadi Customer App, melainkan membuat **operati
 1. `apps/customer` memakai `CustomerHeader`, `CustomerBottomNav`, dan `menu-section.tsx` dengan mobile-first design.
 2. `apps/admin` memakai `AdminLayout` di `apps/admin/src/routes/admin/route.tsx` serta banyak JSX styling lokal di tiap route.
 3. Admin memiliki halaman yang dikembangkan lintas generasi sehingga spacing, radius, typography, shadow, dan density belum seragam.
-4. Shared package saat ini belum menjadi design system lengkap; perubahan di `packages/yumipos-web-shared` tidak otomatis mengubah semua JSX lokal di Admin.
+4. Shared package saat ini belum menjadi design system lengkap; perubahan di `packages/djiwaapps-web-shared` tidak otomatis mengubah semua JSX lokal di Admin.
 5. `apps/admin` memiliki kebutuhan desktop/data-dense yang tetap harus dipertahankan.
 
 ## Scope Boundary
@@ -73,7 +73,7 @@ Targetnya bukan mengubah Admin menjadi Customer App, melainkan membuat **operati
 Gunakan kombinasi berikut:
 
 ```text
-packages/yumipos-web-shared
+packages/djiwaapps-web-shared
 ├── design-tokens
 └── components/admin
 
@@ -104,8 +104,8 @@ Komponen Customer bergantung pada auth, context, cart type, dan hook Customer. V
 Lokasi kandidat:
 
 ```text
-packages/yumipos-web-shared/src/styles/
-packages/yumipos-web-shared/src/components/admin/
+packages/djiwaapps-web-shared/src/styles/
+packages/djiwaapps-web-shared/src/components/admin/
 apps/admin/src/index.css
 ```
 
@@ -187,7 +187,7 @@ Perubahan shell harus memengaruhi seluruh subroute yang menggunakan `AdminLayout
 Kandidat komponen:
 
 ```text
-packages/yumipos-web-shared/src/components/admin/
+packages/djiwaapps-web-shared/src/components/admin/
 ├── AdminPageShell.tsx
 ├── AdminHeader.tsx
 ├── AdminMobileTabs.tsx
@@ -247,7 +247,7 @@ Files likely to change:
 apps/admin/src/routes/admin/route.tsx
 apps/admin/src/routes/admin/index.lazy.tsx
 apps/admin/src/index.css
-packages/yumipos-web-shared/src/components/admin/*
+packages/djiwaapps-web-shared/src/components/admin/*
 ```
 
 ### Wave 2 — Operational pages
@@ -478,7 +478,7 @@ Yang boleh menjadi constant visual:
 
 ```bash
 git diff --check
-bunx turbo check-types --filter=@yumipos/admin
+bunx turbo check-types --filter=@djiwaapps/admin
 ```
 
 Jika typecheck penuh memiliki error pre-existing, pisahkan error baru dari baseline dan laporkan secara eksplisit.

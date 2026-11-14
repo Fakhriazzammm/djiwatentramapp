@@ -5,7 +5,7 @@
  */
 
 import type { HTMLAttributes } from "react";
-import { Skeleton as SharedSkeleton } from "@yumipos/web-shared";
+import { Skeleton as SharedSkeleton } from "@djiwaapps/web-shared";
 import { cn } from "@/lib/utils";
 
 // ============================================

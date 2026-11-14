@@ -1,4 +1,4 @@
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import { AnimatePresence, motion, useMotionValue, useTransform } from "framer-motion";
 import { AlertTriangle, ArrowLeft, Bell, Check, CreditCard, Info, Megaphone, RefreshCw, WalletCards, X } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";

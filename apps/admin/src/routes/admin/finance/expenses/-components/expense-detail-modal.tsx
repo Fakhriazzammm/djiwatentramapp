@@ -1,4 +1,4 @@
-import { shouldRunIntegratedStock, useManualStockMode } from "@yumipos/web-shared/lib/manual-stock";
+import { shouldRunIntegratedStock, useManualStockMode } from "@djiwaapps/web-shared/lib/manual-stock";
 import { expenseReceiptUrl } from "@/lib/expense-receipt";
 import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { X, Receipt, Image, ExternalLink } from "lucide-react";

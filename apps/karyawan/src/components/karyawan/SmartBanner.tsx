@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { createClient } from "@yumipos/web-shared/lib/client";
-import { Skeleton } from "@yumipos/web-shared";
+import { createClient } from "@djiwaapps/web-shared/lib/client";
+import { Skeleton } from "@djiwaapps/web-shared";
 import { Megaphone, Sparkles } from "lucide-react";
 
 type Announcement = {

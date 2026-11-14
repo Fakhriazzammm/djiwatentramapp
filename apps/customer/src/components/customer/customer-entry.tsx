@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@djiwaapps/web-shared";
 import { CUSTOMER_LOGO_FALLBACK } from "@/lib/asset-url";
 import { LogoTraceLoader } from "./LogoTraceLoader";
 

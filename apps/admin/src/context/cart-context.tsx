@@ -7,7 +7,7 @@ import {
 } from "react";
 import { useAppData } from "@/context/app-data-context";
 import { isDiscountApplicable, isFreeRefillActive } from "@/lib/utils/pricing";
-import { calculateOrderTax } from "@yumipos/web-shared/lib/tax-calculator";
+import { calculateOrderTax } from "@djiwaapps/web-shared/lib/tax-calculator";
 
 export interface CartItem {
 	productId: string;

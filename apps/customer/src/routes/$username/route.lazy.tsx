@@ -1,7 +1,7 @@
 import { createLazyFileRoute, Outlet, useLocation, useMatches, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { LogIn, ShieldCheck } from "lucide-react";
-import { Djiwa3DIcon } from "@yumipos/web-shared";
+import { Djiwa3DIcon } from "@djiwaapps/web-shared";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useCustomerSplashGate } from "@/hooks/use-customer-splash-gate";
 import { useCustomerOrders } from "@/hooks/use-customer-data";

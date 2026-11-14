@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { useStaffProfile } from "../$username.lazy";
-import { Skeleton, useHybridStaffLogs, useHybridStaffStats, useHybridSiteSettings } from "@yumipos/web-shared";
+import { Skeleton, useHybridStaffLogs, useHybridStaffStats, useHybridSiteSettings } from "@djiwaapps/web-shared";
 import { Calendar, Clock, AlertTriangle, TrendingUp, CheckCircle, XCircle } from "lucide-react";
 import { motion } from "framer-motion";
 

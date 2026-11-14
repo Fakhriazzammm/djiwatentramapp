@@ -1,4 +1,4 @@
-// @yumipos/web-shared — barrel export
+// @djiwaapps/web-shared — barrel export
 export * from "./lib/client";
 export * from "./lib/utils";
 export * from "./lib/utils/pricing";

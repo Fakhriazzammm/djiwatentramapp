@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dir, "../../../../..");
 const modules = ["admin", "pos", "customer", "b2b", "merchandise", "ordermieyamin"]
 	.map((app) => `apps/${app}/src/hooks/use-hybrid-write-actions.ts`)
-	.concat("packages/yumipos-web-shared/src/hooks/use-hybrid-write-actions.ts");
+	.concat("packages/djiwaapps-web-shared/src/hooks/use-hybrid-write-actions.ts");
 const transpiler = new Bun.Transpiler({ loader: "ts" });
 
 // Execute each real hook's returned callback with a manual-mode response and

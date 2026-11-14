@@ -4,7 +4,7 @@ import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
-import { deliveryApi, type DeliveryConfig } from "@yumipos/web-shared/lib/customer-delivery";
+import { deliveryApi, type DeliveryConfig } from "@djiwaapps/web-shared/lib/customer-delivery";
 export function DeliverySettingsPanel() {
   const { token, role } = useYumiAuth();
   const canSave = ["admin", "administrator", "owner", "superadmin", "super admin"].includes(role?.name?.trim().toLowerCase() ?? "");

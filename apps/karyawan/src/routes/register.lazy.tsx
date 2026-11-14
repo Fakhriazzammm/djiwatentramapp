@@ -4,7 +4,7 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { UserPlus, ArrowLeft, ArrowRight, Loader2, Check, CheckCircle2, FileText, Pen, Eraser } from "lucide-react";
-import { createClient } from "@yumipos/web-shared/lib/client";
+import { createClient } from "@djiwaapps/web-shared/lib/client";
 import { toast } from "sonner";
 
 export const Route = createLazyFileRoute("/register")({

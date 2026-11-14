@@ -1,7 +1,7 @@
 # Djiwa Checkout Standard Rollout — Definition of Done
 
 - [ ] Public/customer checkout apps are registered in one checkout standard manifest.
-- [ ] Existing customer, B2B, merchandise, Order Mie Yamin, and Djiwa Pay apps depend on `@yumipos/djiwa-checkout-ui`.
+- [ ] Existing customer, B2B, merchandise, Order Mie Yamin, and Djiwa Pay apps depend on `@djiwaapps/djiwa-checkout-ui`.
 - [ ] Existing checkout surfaces load shared checkout styles and shared page shell.
 - [ ] A repository guard fails when a new checkout surface is created without the shared package contract.
 - [ ] The guard distinguishes customer checkout from operator POS/admin payment operations.

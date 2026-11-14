@@ -1,4 +1,4 @@
-import { Djiwa3DIcon } from "@yumipos/web-shared";
+import { Djiwa3DIcon } from "@djiwaapps/web-shared";
 import { useEffect, useState } from "react";
 
 type BeforeInstallPromptEvent = Event & {

@@ -18,7 +18,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { toast } from "sonner";
-import { BookingTimelineSummary } from "@yumipos/web-shared/booking/timeline";
+import { BookingTimelineSummary } from "@djiwaapps/web-shared/booking/timeline";
 import { fetchBookingTimeline } from "@/lib/api-helper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 

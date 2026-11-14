@@ -24,11 +24,11 @@ Membuat subdomain baru `admindjiwatentram.web.id` yang menampung **seluruh panel
 
 | Fakta | Detail |
 |---|---|
-| **`pos.djiwatentram.web.id` bukan app "admin"** | Ia adalah **1 app monolitik** `@yumipos/pos` yang berisi: `/admin/*` (116 file), `/kasir/login`, `/attendance`, `/attendance/stock-opname`, `/menu`, `/register`, `/booking`, `/karyawan/login`, `/dashboard`, `/home`. Admin cuma **1 sub-route**. |
+| **`pos.djiwatentram.web.id` bukan app "admin"** | Ia adalah **1 app monolitik** `@djiwaapps/pos` yang berisi: `/admin/*` (116 file), `/kasir/login`, `/attendance`, `/attendance/stock-opname`, `/menu`, `/register`, `/booking`, `/karyawan/login`, `/dashboard`, `/home`. Admin cuma **1 sub-route**. |
 | **Admin sangat terkopling** | Admin memakai hook & komponen shared: `use-hybrid-pos-data` (43×), `use-hybrid-write-actions` (21×), `use-hybrid-finance-analytics-data` (14×), `useYumiAuth`, `Footer`, `dropdown-menu`, dll. Hook yang **sama persis** dipakai kasir/attendance/menu. |
 | **Auth guard** | `__root.tsx` → kalau `!isAuthenticated` redirect ke `/kasir/login`. Admin login di `/admin/login`. Guard permission per-item pakai `isAdmin \|\| role?.permissions?.includes(...)`. |
 | **Router** | TanStack Router, default basepath `/`. Tidak ada `basepath` custom. |
-| **Deploy** | `bun run build:pos` (turbo filter `@yumipos/pos`) → `dist/` (21 MB) → copy ke `/var/www/pos.djiwatentram.web.id`. Script: `scripts/deploy-vps.sh pos`. |
+| **Deploy** | `bun run build:pos` (turbo filter `@djiwaapps/pos`) → `dist/` (21 MB) → copy ke `/var/www/pos.djiwatentram.web.id`. Script: `scripts/deploy-vps.sh pos`. |
 | **PWA** | pos punya service worker + manifest, `scope: "/"`, `registerType: autoUpdate`. |
 | **Nginx** | `/etc/nginx/sites-enabled/djiwa-pos` → `server_name pos.djiwatentram.web.id`, root `/var/www/pos.djiwatentram.web.id`, SPA fallback, proxy `/api/rekrutmen/` → :3456. SSL via certbot. |
 | **DNS** | `admindjiwatentram` **BELUM ADA**. Yang ada: pos, karyawan, djiwatentram, hrd, supabase, rekrutmen, belajarjepang → semua A record → `43.129.54.5`. Hostinger CLI config ADA ✅. |
@@ -59,7 +59,7 @@ Deploy `dist/` POS yang **sama** ke `/var/www/admindjiwatentram.web.id`, tambahk
 
 ### Opsi B — **Split app admin terpisah (`apps/admin` baru)**
 
-Buat workspace `apps/admin` baru, pindahkan 116 file route admin + ekstrak semua shared hooks (`use-hybrid-*.ts` ~ribuan baris) & komponen ke `packages/yumipos-web-shared`, build terpisah, deploy ke domain admin.
+Buat workspace `apps/admin` baru, pindahkan 116 file route admin + ekstrak semua shared hooks (`use-hybrid-*.ts` ~ribuan baris) & komponen ke `packages/djiwaapps-web-shared`, build terpisah, deploy ke domain admin.
 
 | Pros | Cons |
 |---|---|
@@ -274,7 +274,7 @@ Rekomendasi: **cara (a) nginx** — nol perubahan kode.
 
 ## 🔭 Fase Lanjutan (opsional, di masa depan)
 
-Jika suatu saat mau pemisahan kode penuh (Opsi B): buat `apps/admin`, ekstrak shared hooks ke `packages/yumipos-web-shared`, refactor auth. Dilakukan **setelah** domain admin stabil, dengan plan & window terpisah. Tidak sekarang.
+Jika suatu saat mau pemisahan kode penuh (Opsi B): buat `apps/admin`, ekstrak shared hooks ke `packages/djiwaapps-web-shared`, refactor auth. Dilakukan **setelah** domain admin stabil, dengan plan & window terpisah. Tidak sekarang.
 
 ---
 

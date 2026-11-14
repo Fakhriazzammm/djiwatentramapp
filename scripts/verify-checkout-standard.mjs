@@ -5,7 +5,7 @@ const root = path.resolve(new URL("..", import.meta.url).pathname);
 const manifestPath = path.join(root, "config", "djiwa-checkout-apps.json");
 const config = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 const appsRoot = path.join(root, "apps");
-const packageName = "@yumipos/djiwa-checkout-ui";
+const packageName = "@djiwaapps/djiwa-checkout-ui";
 const failures = [];
 
 // Canonical FORMAT contract. These labels must never come back: the step header is rendered by the

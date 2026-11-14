@@ -1,4 +1,4 @@
-import { useManualStockMode } from "@yumipos/web-shared/lib/manual-stock";
+import { useManualStockMode } from "@djiwaapps/web-shared/lib/manual-stock";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";

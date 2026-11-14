@@ -19,9 +19,9 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useHybridCustomerServiceRequests } from "@/hooks/use-hybrid-finance-analytics-data";
 import { useHybridUpdateCustomerServiceStatus } from "@/hooks/use-hybrid-write-actions";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import { triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";
-import { AnimatedCount } from "@yumipos/web-shared/components/ui/animated-metric";
+import { AnimatedCount } from "@djiwaapps/web-shared/components/ui/animated-metric";
 
 export const Route = createLazyFileRoute("/admin/customer-service")({
 	component: CustomerServiceRequestsPage,

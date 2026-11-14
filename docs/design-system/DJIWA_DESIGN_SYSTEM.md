@@ -1,6 +1,6 @@
 # Djiwa Soft iOS — Design System Djiwa Tentram (v4 · lapang)
 
-Berlaku untuk semua aplikasi Djiwa Tentram (Karyawan, Customer, POS, Manager, Admin versi mobile). Pelengkap `DESIGN.md`; bila bertentangan, dokumen ini yang dipakai untuk tampilan, `DESIGN.md` untuk aturan ikon 3D dan proses inspeksi. Token dan komponen dasar: `packages/yumipos-web-shared/src/ds.css` (prefix `ds-`). Panduan visual hidup: `docs/design-system/index.html`.
+Berlaku untuk semua aplikasi Djiwa Tentram (Karyawan, Customer, POS, Manager, Admin versi mobile). Pelengkap `DESIGN.md`; bila bertentangan, dokumen ini yang dipakai untuk tampilan, `DESIGN.md` untuk aturan ikon 3D dan proses inspeksi. Token dan komponen dasar: `packages/djiwaapps-web-shared/src/ds.css` (prefix `ds-`). Panduan visual hidup: `docs/design-system/index.html`.
 
 ## 1. Karakter
 Tenang, lapang, lembut, seperti aplikasi iOS modern: langit biru pucat di bagian atas, kelompok konten berupa wadah abu-abu muda berradius besar, ikon 3D di lingkaran putih, satu tombol pil navy sebagai aksi utama, bar navigasi melayang. Lapang dan jelas: hierarki kuat, jarak cukup, boleh digulir. Layout menentukan; jangan memadatkan demi muat satu layar.
@@ -39,7 +39,7 @@ Tenang, lapang, lembut, seperti aplikasi iOS modern: langit biru pucat di bagian
 - **Status/hasil**: tag pil berwarna semantik; progres memakai `ds-bar`.
 
 ## 5. Komponen
-React: `@yumipos/web-shared/components/ds` (`DsScreen`, `DsHeader`, `DsPageTitle`, `DsGroup`, `DsRow`, `DsIcon`, `DsTiles`, `DsHero` via kelas, `DsButton`, `DsAsk`, `DsNote`, `DsSegmented`, `DsPills`, `DsPromo`, `DsChart`, `DsTabBar`, `DsSheet`, `DsEmpty`, `ds3d()`). Gaya: `@import "@yumipos/web-shared/ds.css";`. Kelas CSS:
+React: `@djiwaapps/web-shared/components/ds` (`DsScreen`, `DsHeader`, `DsPageTitle`, `DsGroup`, `DsRow`, `DsIcon`, `DsTiles`, `DsHero` via kelas, `DsButton`, `DsAsk`, `DsNote`, `DsSegmented`, `DsPills`, `DsPromo`, `DsChart`, `DsTabBar`, `DsSheet`, `DsEmpty`, `ds3d()`). Gaya: `@import "@djiwaapps/web-shared/ds.css";`. Kelas CSS:
 `ds-root` + `ds-screen` (kanvas + langit) · `ds-display/title/label/sub` · `ds-group` · `ds-row` + `ds-icon` + `ds-main` · `ds-tile` · `ds-hero` · `ds-btn` (`--ghost`, `--danger`, `--sm`, `--block`) · `ds-seg` · `ds-chip` · `ds-tag` (`--ok/warn/info/danger`) · `ds-bar` · `ds-note` (`--info`) · `ds-ask` · `ds-promo` · `ds-chart` · `ds-tabbar` + `ds-tab` + `ds-fab` · `ds-sheet` + `ds-scrim` · `ds-input` · `ds-empty` · `ds-skeleton`.
 
 Contoh acuan: `prototypes/karyawan-redesign/v4.html` dan implementasi `apps/karyawan` (Beranda, Jadwal, Gaji, Notifikasi).

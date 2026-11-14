@@ -1,4 +1,4 @@
-import { shouldRunIntegratedStock } from "@yumipos/web-shared/lib/manual-stock";
+import { shouldRunIntegratedStock } from "@djiwaapps/web-shared/lib/manual-stock";
 ﻿import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, Banknote, BarChart3, Bot, Calendar, Camera, ClipboardList, Sparkles, Bell, Telescope, TrendingUp, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";

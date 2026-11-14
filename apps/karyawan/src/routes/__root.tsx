@@ -1,8 +1,8 @@
 import { Outlet, createRootRoute, useLocation, useNavigate } from "@tanstack/react-router";
-import { useYumiAuth, YumiAuthProvider, useDemoMode } from "@yumipos/web-shared";
+import { useYumiAuth, YumiAuthProvider, useDemoMode } from "@djiwaapps/web-shared";
 import { Component, type ReactNode, useEffect } from "react";
 import { preloadFaceModels } from "@/components/auth/FaceRecognition";
-import { OwnerFooter } from "@yumipos/web-shared";
+import { OwnerFooter } from "@djiwaapps/web-shared";
 
 // ── Error Boundary ──
 class RootErrorBoundary extends Component<

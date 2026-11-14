@@ -2,7 +2,7 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AlertCircle, ArrowLeft, CheckCircle2, Clock3, CloudUpload, MapPin, RefreshCw, ShieldCheck, Trophy, Upload, X, XCircle } from "lucide-react";
-import { Djiwa3DIcon } from "@yumipos/web-shared";
+import { Djiwa3DIcon } from "@djiwaapps/web-shared";
 import { CustomerBottomNav, CustomerHeader } from "@/components/customer/customer-shell";
 import { CustomerSectionSkeleton } from "@/components/customer/customer-states";
 import { ActionSheet, NoGpsNotice, RunHomeView, RunLiveView, RunRankingView, RunResultView, daysLeft } from "@/components/customer/run-views";

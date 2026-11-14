@@ -1,8 +1,8 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useHybridStaffLogs } from "@yumipos/web-shared";
-import { createClient } from "@yumipos/web-shared/lib/client";
-import { DsAvatar, DsGroup, DsGroupLabel, DsIcon, DsRow, DsSegmented, DsTag } from "@yumipos/web-shared/components/ds";
+import { useHybridStaffLogs } from "@djiwaapps/web-shared";
+import { createClient } from "@djiwaapps/web-shared/lib/client";
+import { DsAvatar, DsGroup, DsGroupLabel, DsIcon, DsRow, DsSegmented, DsTag } from "@djiwaapps/web-shared/components/ds";
 import { useStaffProfile } from "../$username.lazy";
 import { hhmm, isOffShift, todayWib, useMonthSchedules } from "@/components/karyawan/use-staff-data";
 

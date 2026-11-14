@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useHybridOrderStatus, useHybridShiftStatus, useHybridStaffUsers } from "@/hooks/use-hybrid-pos-data";
 import type { OrderStatusRecord } from "@/hooks/use-hybrid-pos-data";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import { useHybridWriteOrderStatus, useHybridUpdateOrderStaff } from "@/hooks/use-hybrid-write-actions";
 import {
 	formatTimeAgo,

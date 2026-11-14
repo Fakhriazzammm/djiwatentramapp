@@ -18,7 +18,7 @@
 
 | Komponen | Lokasi | Status vs DNA v2.0 | vs Plastix |
 |----------|--------|-------------------|------------|
-| **theme.css** | `packages/yumipos-web-shared/src/theme.css` | ✅ DNA v2.0 compliant (dual font, 24px panel, 14px ctl, iOS curve, soft shadow, blue accent) | ✅ Sudah punya `--font-body` (Geist) + `--font-display` (PJS) |
+| **theme.css** | `packages/djiwaapps-web-shared/src/theme.css` | ✅ DNA v2.0 compliant (dual font, 24px panel, 14px ctl, iOS curve, soft shadow, blue accent) | ✅ Sudah punya `--font-body` (Geist) + `--font-display` (PJS) |
 | **mobile-shell** | Di theme.css | ✅ Ada class `.mobile-shell` (max-width 430px, centered) | ✅ Sama dengan Plastix |
 | **Button (shared)** | `packages/.../ui/button.tsx` | ✅ `rounded-xl`, `active:scale-[.97]`, iOS curve, CSS spinner | ✅ Sudah bagus — `font-bold`, loading spinner, banyak variant |
 | **ButtonV2** | `packages/.../ui/button-v2.tsx` | ✅ Simplified: 3 variant × 3 size | ✅ Mirip Plastix |
@@ -54,7 +54,7 @@ Jadi **shadcn hanya sebagai styling base**, bukan sebagai komponen. Real depende
 | **Penggunaan text-[9px]** | admin: 421, pos: 427, karyawan: 64 — terlalu kecil untuk body text |
 | **Penggunaan text-[10px]** | admin: 935, pos: 938, karyawan: 89 — acceptable untuk caption tapi bukan body |
 | **TypeScript errors (pos)** | ~50 errors — mayoritas `never` type + missing module declarations |
-| **TypeScript errors (karyawan)** | ~60 errors — mayoritas modul `@yumipos/web-shared` tidak terdeklarasi + route params |
+| **TypeScript errors (karyawan)** | ~60 errors — mayoritas modul `@djiwaapps/web-shared` tidak terdeklarasi + route params |
 | **TypeScript errors (customer)** | ~200 errors — mayoritas `never` type, missing `env` declarations, hook issues |
 | **Gradient usage** | admin: 80, karyawan: 30, customer: 14 — DNA v2.0 merekomendasikan minimalis |
 

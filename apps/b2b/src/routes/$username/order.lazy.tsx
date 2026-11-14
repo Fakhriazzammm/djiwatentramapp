@@ -1,4 +1,4 @@
-import { useManualStockMode } from "@yumipos/web-shared/lib/manual-stock";
+import { useManualStockMode } from "@djiwaapps/web-shared/lib/manual-stock";
 import { B2B_BRAND_SLUG } from "@/lib/marketplace-config";
 import {
 	Bell,
@@ -13,7 +13,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { Djiwa3DIcon } from "@yumipos/web-shared";
+import { Djiwa3DIcon } from "@djiwaapps/web-shared";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
 	useHybridActiveDiscounts,
@@ -33,8 +33,8 @@ import {
 	useHybridUpdateOrderStatus,
 } from "@/hooks/use-hybrid-write-actions";
 import { cn } from "@/lib/utils";
-import { calculateOrderTax } from "@yumipos/web-shared/lib/tax-calculator";
-import { getAdditionalOrderDiscount } from "@yumipos/web-shared/lib/order-pricing";
+import { calculateOrderTax } from "@djiwaapps/web-shared/lib/tax-calculator";
+import { getAdditionalOrderDiscount } from "@djiwaapps/web-shared/lib/order-pricing";
 import { CustomerHeader } from "@/components/customer/customer-shell";
 import { DeliveryStep } from "@/components/customer/delivery-step";
 import { calculateEffectivePrice, isFreeRefillActive } from "@/lib/utils/pricing";

@@ -2,7 +2,7 @@ import { Link, createLazyFileRoute, useNavigate, useParams } from "@tanstack/rea
 import { ArrowLeft, CheckCircle2, Clock3, CreditCard, Loader2, XCircle } from "lucide-react";
 import { useMemo } from "react";
 import { toast } from "sonner";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

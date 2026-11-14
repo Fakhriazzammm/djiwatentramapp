@@ -1,5 +1,5 @@
-import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@djiwaapps/web-shared";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import type { Doc, Id } from "@/types/backend-compat";
 import {
 	AlertCircle,

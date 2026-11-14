@@ -85,9 +85,9 @@ ALTER TABLE pos.inventory
 **Objective:** Create one reusable pure domain helper so Admin, POS, and Karyawan calculate status identically.
 
 **Files:**
-- Create: `packages/yumipos-web-shared/src/lib/operational-stock.ts`.
-- Modify: `packages/yumipos-web-shared/src/index.ts`.
-- Test: `packages/yumipos-web-shared/src/lib/operational-stock.test.ts` (or the repository's existing test location after audit).
+- Create: `packages/djiwaapps-web-shared/src/lib/operational-stock.ts`.
+- Modify: `packages/djiwaapps-web-shared/src/index.ts`.
+- Test: `packages/djiwaapps-web-shared/src/lib/operational-stock.test.ts` (or the repository's existing test location after audit).
 
 **Required functions:**
 
@@ -117,7 +117,7 @@ normalizeOperationalStockReport(payload)
 - Modify migration/view source for `public.pos_inventory`.
 - Modify: `apps/admin/src/hooks/use-hybrid-pos-data.ts`.
 - Modify: `apps/pos/src/hooks/use-hybrid-pos-data.ts`.
-- Modify: `packages/yumipos-web-shared/src/hooks/use-hybrid-pos-data.ts` if the shared hook is the active source.
+- Modify: `packages/djiwaapps-web-shared/src/hooks/use-hybrid-pos-data.ts` if the shared hook is the active source.
 - Modify corresponding `use-hybrid-write-actions.ts` files only where the active inventory CRUD path requires it.
 
 **Acceptance criteria:**
@@ -135,9 +135,9 @@ normalizeOperationalStockReport(payload)
 **Objective:** Prevent three apps from implementing different stock cards and interaction rules.
 
 **Files:**
-- Create under existing shared component convention: `packages/yumipos-web-shared/src/components/attendance/OperationalStockCard.tsx`.
-- Create: `packages/yumipos-web-shared/src/components/attendance/OperationalStockList.tsx`.
-- Modify: `packages/yumipos-web-shared/src/index.ts`.
+- Create under existing shared component convention: `packages/djiwaapps-web-shared/src/components/attendance/OperationalStockCard.tsx`.
+- Create: `packages/djiwaapps-web-shared/src/components/attendance/OperationalStockList.tsx`.
+- Modify: `packages/djiwaapps-web-shared/src/index.ts`.
 
 **UI specification:**
 - Card hierarchy: ingredient name → visual package/unit → quantity/status → one primary action.

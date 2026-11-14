@@ -1,4 +1,4 @@
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import { Check, Loader2, MapPin, Truck } from "lucide-react";
 import { useState } from "react";
 import { motion } from "framer-motion";

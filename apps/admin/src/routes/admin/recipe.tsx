@@ -1,4 +1,4 @@
-import { ManualStockGate } from "@yumipos/web-shared/components/inventory/manual-stock-page";
+import { ManualStockGate } from "@djiwaapps/web-shared/components/inventory/manual-stock-page";
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/admin/recipe")({

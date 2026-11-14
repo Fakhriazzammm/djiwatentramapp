@@ -17,7 +17,7 @@ Tanggal: 2026-11-13 · App: `apps/pos` · Prototype acuan: `prototypes/pos-menu-
 2. Gaya iOS: permukaan terang berlapis, radius lembut, sheet native (drag untuk tutup), segmented control, spring motion (`framer-motion`, sudah jadi dependency), hormati `prefers-reduced-motion`.
 3. Semua komponen tampilan **baru** di `apps/pos/src/components/pos-ios/`. Komponen lama untuk halaman ini tidak dipakai lagi.
 4. Logika bisnis dan hook data tidak diubah (`useHybrid*`, `useCart`, kalkulasi shift/pembayaran). Yang diganti hanya lapisan tampilan.
-5. Token warna dari `packages/yumipos-web-shared/src/theme.css`; ikon ilustratif memakai `Djiwa3DIcon`, ikon kontrol memakai Lucide.
+5. Token warna dari `packages/djiwaapps-web-shared/src/theme.css`; ikon ilustratif memakai `Djiwa3DIcon`, ikon kontrol memakai Lucide.
 6. Cegah submit ganda; konfirmasi untuk aksi destruktif; loading / empty / error / sukses tersedia.
 
 ## Struktur berkas

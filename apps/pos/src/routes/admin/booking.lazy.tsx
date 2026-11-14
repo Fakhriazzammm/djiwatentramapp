@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { BookingTimelineSummary } from "@yumipos/web-shared/booking/timeline";
+import { BookingTimelineSummary } from "@djiwaapps/web-shared/booking/timeline";
 import { fetchBookingTimeline } from "@/lib/api-helper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";

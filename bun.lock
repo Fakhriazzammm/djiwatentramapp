@@ -3,21 +3,21 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "yumipos",
+      "name": "djiwaapps",
       "dependencies": {
-        "@yumipos/env": "workspace:*",
+        "@djiwaapps/env": "workspace:*",
         "dotenv": "^17.2.3",
         "zod": "^3.25.76",
       },
       "devDependencies": {
         "@types/node": "^25.0.10",
-        "@yumipos/config": "workspace:*",
+        "@djiwaapps/config": "workspace:*",
         "turbo": "^2.7.6",
         "typescript": "5.0.4",
       },
     },
     "apps/500kopitasik": {
-      "name": "@yumipos/500kopitasik",
+      "name": "@djiwaapps/500kopitasik",
       "version": "0.0.0",
       "dependencies": {
         "@tailwindcss/vite": "^4.0.15",
@@ -36,7 +36,7 @@
       },
     },
     "apps/admin": {
-      "name": "@yumipos/admin",
+      "name": "@djiwaapps/admin",
       "version": "0.0.0",
       "dependencies": {
         "@dnd-kit/core": "^6.3.1",
@@ -49,9 +49,9 @@
         "@tanstack/react-form": "^1.12.3",
         "@tanstack/react-router": "^1.141.1",
         "@types/papaparse": "^5.5.2",
-        "@yumipos/backend": "workspace:*",
-        "@yumipos/env": "workspace:*",
-        "@yumipos/web-shared": "workspace:*",
+        "@djiwaapps/backend": "workspace:*",
+        "@djiwaapps/env": "workspace:*",
+        "@djiwaapps/web-shared": "workspace:*",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "date-fns": "^4.1.0",
@@ -89,7 +89,7 @@
         "@types/web-bluetooth": "^0.0.21",
         "@vite-pwa/assets-generator": "^1.0.0",
         "@vitejs/plugin-react": "^4.3.4",
-        "@yumipos/config": "workspace:*",
+        "@djiwaapps/config": "workspace:*",
         "postcss": "^8.5.3",
         "tailwindcss": "^4.0.15",
         "typescript": "catalog:",
@@ -109,7 +109,7 @@
       },
     },
     "apps/b2b": {
-      "name": "@yumipos/b2b",
+      "name": "@djiwaapps/b2b",
       "version": "0.0.0",
       "dependencies": {
         "@better-auth/infra": "^0.3.6",
@@ -117,10 +117,10 @@
         "@supabase/supabase-js": "^2.103.3",
         "@tailwindcss/vite": "^4.0.15",
         "@tanstack/react-router": "^1.141.1",
-        "@yumipos/djiwa-checkout-ui": "workspace:*",
-        "@yumipos/djiwapay-core": "workspace:*",
-        "@yumipos/env": "workspace:*",
-        "@yumipos/web-shared": "workspace:*",
+        "@djiwaapps/djiwa-checkout-ui": "workspace:*",
+        "@djiwaapps/djiwapay-core": "workspace:*",
+        "@djiwaapps/env": "workspace:*",
+        "@djiwaapps/web-shared": "workspace:*",
         "@zxing/library": "^0.23.0",
         "better-auth": "^1.6.23",
         "class-variance-authority": "^0.7.1",
@@ -144,19 +144,19 @@
         "@types/react": "19.2.7",
         "@types/react-dom": "19.2.3",
         "@vitejs/plugin-react": "^4.3.4",
-        "@yumipos/config": "workspace:*",
+        "@djiwaapps/config": "workspace:*",
         "tailwindcss": "^4.0.15",
         "typescript": "catalog:",
         "vite": "^6.2.2",
       },
     },
     "apps/booking": {
-      "name": "@yumipos/booking",
+      "name": "@djiwaapps/booking",
       "version": "0.0.0",
       "dependencies": {
         "@supabase/supabase-js": "^2.103.3",
         "@tailwindcss/vite": "^4.0.15",
-        "@yumipos/web-shared": "workspace:*",
+        "@djiwaapps/web-shared": "workspace:*",
         "lucide-react": "^0.473.0",
         "react": "19.2.3",
         "react-dom": "19.2.3",
@@ -172,7 +172,7 @@
       },
     },
     "apps/customer": {
-      "name": "@yumipos/customer",
+      "name": "@djiwaapps/customer",
       "version": "0.0.0",
       "dependencies": {
         "@better-auth/infra": "^0.3.6",
@@ -180,10 +180,10 @@
         "@supabase/supabase-js": "^2.103.3",
         "@tailwindcss/vite": "^4.0.15",
         "@tanstack/react-router": "^1.141.1",
-        "@yumipos/djiwa-checkout-ui": "workspace:*",
-        "@yumipos/djiwapay-core": "workspace:*",
-        "@yumipos/env": "workspace:*",
-        "@yumipos/web-shared": "workspace:*",
+        "@djiwaapps/djiwa-checkout-ui": "workspace:*",
+        "@djiwaapps/djiwapay-core": "workspace:*",
+        "@djiwaapps/env": "workspace:*",
+        "@djiwaapps/web-shared": "workspace:*",
         "@zxing/library": "^0.23.0",
         "better-auth": "^1.6.23",
         "class-variance-authority": "^0.7.1",
@@ -207,23 +207,23 @@
         "@types/react": "19.2.7",
         "@types/react-dom": "19.2.3",
         "@vitejs/plugin-react": "^4.3.4",
-        "@yumipos/config": "workspace:*",
+        "@djiwaapps/config": "workspace:*",
         "tailwindcss": "^4.0.15",
         "typescript": "catalog:",
         "vite": "^6.2.2",
       },
     },
     "apps/djiwapay": {
-      "name": "@yumipos/djiwapay",
+      "name": "@djiwaapps/djiwapay",
       "version": "0.0.0",
       "dependencies": {
         "@better-auth/infra": "^0.3.6",
         "@supabase/supabase-js": "^2.103.3",
         "@tailwindcss/vite": "^4.0.15",
-        "@yumipos/djiwa-checkout-ui": "workspace:*",
-        "@yumipos/djiwapay-core": "workspace:*",
-        "@yumipos/djiwapay-ui": "workspace:*",
-        "@yumipos/web-shared": "workspace:*",
+        "@djiwaapps/djiwa-checkout-ui": "workspace:*",
+        "@djiwaapps/djiwapay-core": "workspace:*",
+        "@djiwaapps/djiwapay-ui": "workspace:*",
+        "@djiwaapps/web-shared": "workspace:*",
         "better-auth": "^1.6.23",
         "framer-motion": "^12.23.24",
         "jsqr": "^1.4.0",
@@ -243,11 +243,11 @@
       },
     },
     "apps/investor": {
-      "name": "@yumipos/investor",
+      "name": "@djiwaapps/investor",
       "version": "0.0.0",
       "dependencies": {
         "@tanstack/react-router": "^1.141.1",
-        "@yumipos/web-shared": "workspace:*",
+        "@djiwaapps/web-shared": "workspace:*",
         "better-auth": "^1.6.23",
         "lucide-react": "^0.473.0",
         "react": "19.2.3",
@@ -266,7 +266,7 @@
       },
     },
     "apps/karyawan": {
-      "name": "@yumipos/karyawan",
+      "name": "@djiwaapps/karyawan",
       "version": "0.0.0",
       "dependencies": {
         "@supabase/ssr": "^0.10.2",
@@ -274,8 +274,8 @@
         "@tailwindcss/vite": "^4.0.15",
         "@tanstack/react-router": "^1.141.1",
         "@tanstack/react-router-devtools": "^1.141.1",
-        "@yumipos/env": "workspace:*",
-        "@yumipos/web-shared": "workspace:*",
+        "@djiwaapps/env": "workspace:*",
+        "@djiwaapps/web-shared": "workspace:*",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "date-fns": "^4.1.0",
@@ -305,7 +305,7 @@
       },
     },
     "apps/kol": {
-      "name": "@yumipos/kol",
+      "name": "@djiwaapps/kol",
       "version": "0.1.0",
       "dependencies": {
         "@supabase/supabase-js": "^2.103.3",
@@ -327,11 +327,11 @@
       },
     },
     "apps/linkbio": {
-      "name": "@yumipos/linkbio",
+      "name": "@djiwaapps/linkbio",
       "version": "0.0.0",
       "dependencies": {
         "@tailwindcss/vite": "^4.0.15",
-        "@yumipos/web-shared": "workspace:*",
+        "@djiwaapps/web-shared": "workspace:*",
         "framer-motion": "^12.29.0",
         "lucide-react": "^0.473.0",
         "react": "19.2.3",
@@ -347,7 +347,7 @@
       },
     },
     "apps/manager": {
-      "name": "@yumipos/manager",
+      "name": "@djiwaapps/manager",
       "version": "0.0.0",
       "dependencies": {
         "better-auth": "^1.6.23",
@@ -367,7 +367,7 @@
       },
     },
     "apps/merchandise": {
-      "name": "@yumipos/merchandise",
+      "name": "@djiwaapps/merchandise",
       "version": "0.0.0",
       "dependencies": {
         "@better-auth/infra": "^0.3.6",
@@ -375,10 +375,10 @@
         "@supabase/supabase-js": "^2.103.3",
         "@tailwindcss/vite": "^4.0.15",
         "@tanstack/react-router": "^1.141.1",
-        "@yumipos/djiwa-checkout-ui": "workspace:*",
-        "@yumipos/djiwapay-core": "workspace:*",
-        "@yumipos/env": "workspace:*",
-        "@yumipos/web-shared": "workspace:*",
+        "@djiwaapps/djiwa-checkout-ui": "workspace:*",
+        "@djiwaapps/djiwapay-core": "workspace:*",
+        "@djiwaapps/env": "workspace:*",
+        "@djiwaapps/web-shared": "workspace:*",
         "@zxing/library": "^0.23.0",
         "better-auth": "^1.6.23",
         "class-variance-authority": "^0.7.1",
@@ -402,14 +402,14 @@
         "@types/react": "19.2.7",
         "@types/react-dom": "19.2.3",
         "@vitejs/plugin-react": "^4.3.4",
-        "@yumipos/config": "workspace:*",
+        "@djiwaapps/config": "workspace:*",
         "tailwindcss": "^4.0.15",
         "typescript": "catalog:",
         "vite": "^6.2.2",
       },
     },
     "apps/ordermieyamin": {
-      "name": "@yumipos/ordermieyamin",
+      "name": "@djiwaapps/ordermieyamin",
       "version": "0.0.0",
       "dependencies": {
         "@better-auth/infra": "^0.3.6",
@@ -417,9 +417,9 @@
         "@supabase/supabase-js": "^2.103.3",
         "@tailwindcss/vite": "^4.0.15",
         "@tanstack/react-router": "^1.141.1",
-        "@yumipos/djiwa-checkout-ui": "workspace:*",
-        "@yumipos/env": "workspace:*",
-        "@yumipos/web-shared": "workspace:*",
+        "@djiwaapps/djiwa-checkout-ui": "workspace:*",
+        "@djiwaapps/env": "workspace:*",
+        "@djiwaapps/web-shared": "workspace:*",
         "better-auth": "^1.6.23",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -440,14 +440,14 @@
         "@types/react": "19.2.7",
         "@types/react-dom": "19.2.3",
         "@vitejs/plugin-react": "^4.3.4",
-        "@yumipos/config": "workspace:*",
+        "@djiwaapps/config": "workspace:*",
         "tailwindcss": "^4.0.15",
         "typescript": "catalog:",
         "vite": "^6.2.2",
       },
     },
     "apps/pos": {
-      "name": "@yumipos/pos",
+      "name": "@djiwaapps/pos",
       "version": "0.0.0",
       "dependencies": {
         "@dnd-kit/core": "^6.3.1",
@@ -460,9 +460,9 @@
         "@tanstack/react-form": "^1.12.3",
         "@tanstack/react-router": "^1.141.1",
         "@types/papaparse": "^5.5.2",
-        "@yumipos/backend": "workspace:*",
-        "@yumipos/env": "workspace:*",
-        "@yumipos/web-shared": "workspace:*",
+        "@djiwaapps/backend": "workspace:*",
+        "@djiwaapps/env": "workspace:*",
+        "@djiwaapps/web-shared": "workspace:*",
         "@zxing/browser": "^0.2.1",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -501,7 +501,7 @@
         "@types/web-bluetooth": "^0.0.21",
         "@vite-pwa/assets-generator": "^1.0.0",
         "@vitejs/plugin-react": "^4.3.4",
-        "@yumipos/config": "workspace:*",
+        "@djiwaapps/config": "workspace:*",
         "postcss": "^8.5.3",
         "tailwindcss": "^4.0.15",
         "typescript": "catalog:",
@@ -536,7 +536,7 @@
       },
     },
     "packages/backend": {
-      "name": "@yumipos/backend",
+      "name": "@djiwaapps/backend",
       "version": "1.0.0",
       "dependencies": {
         "@supabase/supabase-js": "^2.103.3",
@@ -548,16 +548,16 @@
       },
       "devDependencies": {
         "@types/node": "^24.3.0",
-        "@yumipos/config": "workspace:*",
+        "@djiwaapps/config": "workspace:*",
         "typescript": "catalog:",
       },
     },
     "packages/config": {
-      "name": "@yumipos/config",
+      "name": "@djiwaapps/config",
       "version": "0.0.0",
     },
     "packages/djiwa-checkout-ui": {
-      "name": "@yumipos/djiwa-checkout-ui",
+      "name": "@djiwaapps/djiwa-checkout-ui",
       "version": "0.0.0",
       "devDependencies": {
         "@types/react": "19.2.7",
@@ -568,17 +568,17 @@
       },
     },
     "packages/djiwapay-core": {
-      "name": "@yumipos/djiwapay-core",
+      "name": "@djiwaapps/djiwapay-core",
       "version": "0.0.0",
       "devDependencies": {
         "typescript": "catalog:",
       },
     },
     "packages/djiwapay-ui": {
-      "name": "@yumipos/djiwapay-ui",
+      "name": "@djiwaapps/djiwapay-ui",
       "version": "0.0.0",
       "dependencies": {
-        "@yumipos/djiwapay-core": "workspace:*",
+        "@djiwaapps/djiwapay-core": "workspace:*",
       },
       "devDependencies": {
         "@types/react": "19.2.7",
@@ -589,7 +589,7 @@
       },
     },
     "packages/env": {
-      "name": "@yumipos/env",
+      "name": "@djiwaapps/env",
       "version": "0.0.0",
       "dependencies": {
         "@t3-oss/env-core": "^0.13.1",
@@ -597,13 +597,13 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@yumipos/config": "workspace:*",
+        "@djiwaapps/config": "workspace:*",
         "typescript": "catalog:",
         "vite": "catalog:",
       },
     },
-    "packages/yumipos-web-shared": {
-      "name": "@yumipos/web-shared",
+    "packages/djiwaapps-web-shared": {
+      "name": "@djiwaapps/web-shared",
       "version": "0.0.0",
       "dependencies": {
         "@sfinterface/numbers": "0.3.4",
@@ -620,7 +620,7 @@
       "devDependencies": {
         "@types/react": "^19.0.0",
         "@types/react-dom": "^19.0.0",
-        "@yumipos/config": "workspace:*",
+        "@djiwaapps/config": "workspace:*",
         "typescript": "catalog:",
       },
       "peerDependencies": {
@@ -1290,47 +1290,47 @@
 
     "@vitejs/plugin-react": ["@vitejs/plugin-react@4.7.0", "", { "dependencies": { "@babel/core": "^7.28.0", "@babel/plugin-transform-react-jsx-self": "^7.27.1", "@babel/plugin-transform-react-jsx-source": "^7.27.1", "@rolldown/pluginutils": "1.0.0-beta.27", "@types/babel__core": "^7.20.5", "react-refresh": "^0.17.0" }, "peerDependencies": { "vite": "^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0" } }, "sha512-gUu9hwfWvvEDBBmgtAowQCojwZmJ5mcLn3aufeCsitijs3+f2NsrPtlAWIR6OPiqljl96GVCUbLe0HyqIpVaoA=="],
 
-    "@yumipos/500kopitasik": ["@yumipos/500kopitasik@workspace:apps/500kopitasik"],
+    "@djiwaapps/500kopitasik": ["@djiwaapps/500kopitasik@workspace:apps/500kopitasik"],
 
-    "@yumipos/admin": ["@yumipos/admin@workspace:apps/admin"],
+    "@djiwaapps/admin": ["@djiwaapps/admin@workspace:apps/admin"],
 
-    "@yumipos/b2b": ["@yumipos/b2b@workspace:apps/b2b"],
+    "@djiwaapps/b2b": ["@djiwaapps/b2b@workspace:apps/b2b"],
 
-    "@yumipos/backend": ["@yumipos/backend@workspace:packages/backend"],
+    "@djiwaapps/backend": ["@djiwaapps/backend@workspace:packages/backend"],
 
-    "@yumipos/booking": ["@yumipos/booking@workspace:apps/booking"],
+    "@djiwaapps/booking": ["@djiwaapps/booking@workspace:apps/booking"],
 
-    "@yumipos/config": ["@yumipos/config@workspace:packages/config"],
+    "@djiwaapps/config": ["@djiwaapps/config@workspace:packages/config"],
 
-    "@yumipos/customer": ["@yumipos/customer@workspace:apps/customer"],
+    "@djiwaapps/customer": ["@djiwaapps/customer@workspace:apps/customer"],
 
-    "@yumipos/djiwa-checkout-ui": ["@yumipos/djiwa-checkout-ui@workspace:packages/djiwa-checkout-ui"],
+    "@djiwaapps/djiwa-checkout-ui": ["@djiwaapps/djiwa-checkout-ui@workspace:packages/djiwa-checkout-ui"],
 
-    "@yumipos/djiwapay": ["@yumipos/djiwapay@workspace:apps/djiwapay"],
+    "@djiwaapps/djiwapay": ["@djiwaapps/djiwapay@workspace:apps/djiwapay"],
 
-    "@yumipos/djiwapay-core": ["@yumipos/djiwapay-core@workspace:packages/djiwapay-core"],
+    "@djiwaapps/djiwapay-core": ["@djiwaapps/djiwapay-core@workspace:packages/djiwapay-core"],
 
-    "@yumipos/djiwapay-ui": ["@yumipos/djiwapay-ui@workspace:packages/djiwapay-ui"],
+    "@djiwaapps/djiwapay-ui": ["@djiwaapps/djiwapay-ui@workspace:packages/djiwapay-ui"],
 
-    "@yumipos/env": ["@yumipos/env@workspace:packages/env"],
+    "@djiwaapps/env": ["@djiwaapps/env@workspace:packages/env"],
 
-    "@yumipos/investor": ["@yumipos/investor@workspace:apps/investor"],
+    "@djiwaapps/investor": ["@djiwaapps/investor@workspace:apps/investor"],
 
-    "@yumipos/karyawan": ["@yumipos/karyawan@workspace:apps/karyawan"],
+    "@djiwaapps/karyawan": ["@djiwaapps/karyawan@workspace:apps/karyawan"],
 
-    "@yumipos/kol": ["@yumipos/kol@workspace:apps/kol"],
+    "@djiwaapps/kol": ["@djiwaapps/kol@workspace:apps/kol"],
 
-    "@yumipos/linkbio": ["@yumipos/linkbio@workspace:apps/linkbio"],
+    "@djiwaapps/linkbio": ["@djiwaapps/linkbio@workspace:apps/linkbio"],
 
-    "@yumipos/manager": ["@yumipos/manager@workspace:apps/manager"],
+    "@djiwaapps/manager": ["@djiwaapps/manager@workspace:apps/manager"],
 
-    "@yumipos/merchandise": ["@yumipos/merchandise@workspace:apps/merchandise"],
+    "@djiwaapps/merchandise": ["@djiwaapps/merchandise@workspace:apps/merchandise"],
 
-    "@yumipos/ordermieyamin": ["@yumipos/ordermieyamin@workspace:apps/ordermieyamin"],
+    "@djiwaapps/ordermieyamin": ["@djiwaapps/ordermieyamin@workspace:apps/ordermieyamin"],
 
-    "@yumipos/pos": ["@yumipos/pos@workspace:apps/pos"],
+    "@djiwaapps/pos": ["@djiwaapps/pos@workspace:apps/pos"],
 
-    "@yumipos/web-shared": ["@yumipos/web-shared@workspace:packages/yumipos-web-shared"],
+    "@djiwaapps/web-shared": ["@djiwaapps/web-shared@workspace:packages/djiwaapps-web-shared"],
 
     "@yumme/group-landing": ["@yumme/group-landing@workspace:apps/yumme"],
 
@@ -2306,13 +2306,13 @@
 
     "@tanstack/router-plugin/zod": ["zod@4.4.3", "", {}, "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="],
 
-    "@yumipos/admin/@types/node": ["@types/node@22.19.19", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-dyh/xO2Fh5bYrfWaaqGrRQQGkNdmYw6AmaAUvYeUMNTWQtvb796ikLdmTchRmOlOiIJ1TDXfWgVx1QkUlQ6Hew=="],
+    "@djiwaapps/admin/@types/node": ["@types/node@22.19.19", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-dyh/xO2Fh5bYrfWaaqGrRQQGkNdmYw6AmaAUvYeUMNTWQtvb796ikLdmTchRmOlOiIJ1TDXfWgVx1QkUlQ6Hew=="],
 
-    "@yumipos/backend/@types/node": ["@types/node@24.12.4", "", { "dependencies": { "undici-types": "~7.16.0" } }, "sha512-GUUEShf+PBCGW2KaXwcIt3Yk+e3pkKwWKb9GSyM9WQVE+ep2jzmHdGsHzu4wgcZy5fN9FBdVzjpBQsYlpfpgLA=="],
+    "@djiwaapps/backend/@types/node": ["@types/node@24.12.4", "", { "dependencies": { "undici-types": "~7.16.0" } }, "sha512-GUUEShf+PBCGW2KaXwcIt3Yk+e3pkKwWKb9GSyM9WQVE+ep2jzmHdGsHzu4wgcZy5fN9FBdVzjpBQsYlpfpgLA=="],
 
-    "@yumipos/backend/better-auth": ["better-auth@1.4.9", "", { "dependencies": { "@better-auth/core": "1.4.9", "@better-auth/telemetry": "1.4.9", "@better-auth/utils": "0.3.0", "@better-fetch/fetch": "1.1.21", "@noble/ciphers": "^2.0.0", "@noble/hashes": "^2.0.0", "better-call": "1.1.7", "defu": "^6.1.4", "jose": "^6.1.0", "kysely": "^0.28.5", "nanostores": "^1.0.1", "zod": "^4.1.12" }, "peerDependencies": { "@lynx-js/react": "*", "@prisma/client": "^5.0.0 || ^6.0.0 || ^7.0.0", "@sveltejs/kit": "^2.0.0", "@tanstack/react-start": "^1.0.0", "better-sqlite3": "^12.0.0", "drizzle-kit": ">=0.31.4", "drizzle-orm": ">=0.41.0", "mongodb": "^6.0.0 || ^7.0.0", "mysql2": "^3.0.0", "next": "^14.0.0 || ^15.0.0 || ^16.0.0", "pg": "^8.0.0", "prisma": "^5.0.0 || ^6.0.0 || ^7.0.0", "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0", "solid-js": "^1.0.0", "svelte": "^4.0.0 || ^5.0.0", "vitest": "^2.0.0 || ^3.0.0 || ^4.0.0", "vue": "^3.0.0" }, "optionalPeers": ["@lynx-js/react", "@prisma/client", "@sveltejs/kit", "@tanstack/react-start", "better-sqlite3", "drizzle-kit", "drizzle-orm", "mongodb", "mysql2", "next", "pg", "prisma", "react", "react-dom", "solid-js", "svelte", "vitest", "vue"] }, "sha512-usSdjuyTzZwIvM8fjF8YGhPncxV3MAg3dHUO9uPUnf0yklXUSYISiH1+imk6/Z+UBqsscyyPRnbIyjyK97p7YA=="],
+    "@djiwaapps/backend/better-auth": ["better-auth@1.4.9", "", { "dependencies": { "@better-auth/core": "1.4.9", "@better-auth/telemetry": "1.4.9", "@better-auth/utils": "0.3.0", "@better-fetch/fetch": "1.1.21", "@noble/ciphers": "^2.0.0", "@noble/hashes": "^2.0.0", "better-call": "1.1.7", "defu": "^6.1.4", "jose": "^6.1.0", "kysely": "^0.28.5", "nanostores": "^1.0.1", "zod": "^4.1.12" }, "peerDependencies": { "@lynx-js/react": "*", "@prisma/client": "^5.0.0 || ^6.0.0 || ^7.0.0", "@sveltejs/kit": "^2.0.0", "@tanstack/react-start": "^1.0.0", "better-sqlite3": "^12.0.0", "drizzle-kit": ">=0.31.4", "drizzle-orm": ">=0.41.0", "mongodb": "^6.0.0 || ^7.0.0", "mysql2": "^3.0.0", "next": "^14.0.0 || ^15.0.0 || ^16.0.0", "pg": "^8.0.0", "prisma": "^5.0.0 || ^6.0.0 || ^7.0.0", "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0", "solid-js": "^1.0.0", "svelte": "^4.0.0 || ^5.0.0", "vitest": "^2.0.0 || ^3.0.0 || ^4.0.0", "vue": "^3.0.0" }, "optionalPeers": ["@lynx-js/react", "@prisma/client", "@sveltejs/kit", "@tanstack/react-start", "better-sqlite3", "drizzle-kit", "drizzle-orm", "mongodb", "mysql2", "next", "pg", "prisma", "react", "react-dom", "solid-js", "svelte", "vitest", "vue"] }, "sha512-usSdjuyTzZwIvM8fjF8YGhPncxV3MAg3dHUO9uPUnf0yklXUSYISiH1+imk6/Z+UBqsscyyPRnbIyjyK97p7YA=="],
 
-    "@yumipos/pos/@types/node": ["@types/node@22.19.19", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-dyh/xO2Fh5bYrfWaaqGrRQQGkNdmYw6AmaAUvYeUMNTWQtvb796ikLdmTchRmOlOiIJ1TDXfWgVx1QkUlQ6Hew=="],
+    "@djiwaapps/pos/@types/node": ["@types/node@22.19.19", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-dyh/xO2Fh5bYrfWaaqGrRQQGkNdmYw6AmaAUvYeUMNTWQtvb796ikLdmTchRmOlOiIJ1TDXfWgVx1QkUlQ6Hew=="],
 
     "auth/zod": ["zod@4.4.3", "", {}, "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="],
 
@@ -2342,27 +2342,27 @@
 
     "@tanstack/react-router/@tanstack/react-store/@tanstack/store": ["@tanstack/store@0.9.3", "", {}, "sha512-8reSzl/qGWGGVKhBoxXPMWzATSbZLZFWhwBAFO9NAyp0TxzfBP0mIrGb8CP8KrQTmvzXlR/vFPPUrHTLBGyFyw=="],
 
-    "@yumipos/admin/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
+    "@djiwaapps/admin/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
-    "@yumipos/backend/@types/node/undici-types": ["undici-types@7.16.0", "", {}, "sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw=="],
+    "@djiwaapps/backend/@types/node/undici-types": ["undici-types@7.16.0", "", {}, "sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw=="],
 
-    "@yumipos/backend/better-auth/@better-auth/core": ["@better-auth/core@1.4.9", "", { "dependencies": { "@standard-schema/spec": "^1.0.0", "zod": "^4.1.12" }, "peerDependencies": { "@better-auth/utils": "0.3.0", "@better-fetch/fetch": "1.1.21", "better-call": "1.1.7", "jose": "^6.1.0", "kysely": "^0.28.5", "nanostores": "^1.0.1" } }, "sha512-JT2q4NDkQzN22KclUEoZ7qU6tl9HUTfK1ctg2oWlT87SEagkwJcnrUwS9VznL+u9ziOIfY27P0f7/jSnmvLcoQ=="],
+    "@djiwaapps/backend/better-auth/@better-auth/core": ["@better-auth/core@1.4.9", "", { "dependencies": { "@standard-schema/spec": "^1.0.0", "zod": "^4.1.12" }, "peerDependencies": { "@better-auth/utils": "0.3.0", "@better-fetch/fetch": "1.1.21", "better-call": "1.1.7", "jose": "^6.1.0", "kysely": "^0.28.5", "nanostores": "^1.0.1" } }, "sha512-JT2q4NDkQzN22KclUEoZ7qU6tl9HUTfK1ctg2oWlT87SEagkwJcnrUwS9VznL+u9ziOIfY27P0f7/jSnmvLcoQ=="],
 
-    "@yumipos/backend/better-auth/@better-auth/telemetry": ["@better-auth/telemetry@1.4.9", "", { "dependencies": { "@better-auth/utils": "0.3.0", "@better-fetch/fetch": "1.1.21" }, "peerDependencies": { "@better-auth/core": "1.4.9" } }, "sha512-Tthy1/Gmx+pYlbvRQPBTKfVei8+pJwvH1NZp+5SbhwA6K2EXIaoonx/K6N/AXYs2aKUpyR4/gzqDesDjL7zd6A=="],
+    "@djiwaapps/backend/better-auth/@better-auth/telemetry": ["@better-auth/telemetry@1.4.9", "", { "dependencies": { "@better-auth/utils": "0.3.0", "@better-fetch/fetch": "1.1.21" }, "peerDependencies": { "@better-auth/core": "1.4.9" } }, "sha512-Tthy1/Gmx+pYlbvRQPBTKfVei8+pJwvH1NZp+5SbhwA6K2EXIaoonx/K6N/AXYs2aKUpyR4/gzqDesDjL7zd6A=="],
 
-    "@yumipos/backend/better-auth/@better-auth/utils": ["@better-auth/utils@0.3.0", "", {}, "sha512-W+Adw6ZA6mgvnSnhOki270rwJ42t4XzSK6YWGF//BbVXL6SwCLWfyzBc1lN2m/4RM28KubdBKQ4X5VMoLRNPQw=="],
+    "@djiwaapps/backend/better-auth/@better-auth/utils": ["@better-auth/utils@0.3.0", "", {}, "sha512-W+Adw6ZA6mgvnSnhOki270rwJ42t4XzSK6YWGF//BbVXL6SwCLWfyzBc1lN2m/4RM28KubdBKQ4X5VMoLRNPQw=="],
 
-    "@yumipos/backend/better-auth/@better-fetch/fetch": ["@better-fetch/fetch@1.1.21", "", {}, "sha512-/ImESw0sskqlVR94jB+5+Pxjf+xBwDZF/N5+y2/q4EqD7IARUTSpPfIo8uf39SYpCxyOCtbyYpUrZ3F/k0zT4A=="],
+    "@djiwaapps/backend/better-auth/@better-fetch/fetch": ["@better-fetch/fetch@1.1.21", "", {}, "sha512-/ImESw0sskqlVR94jB+5+Pxjf+xBwDZF/N5+y2/q4EqD7IARUTSpPfIo8uf39SYpCxyOCtbyYpUrZ3F/k0zT4A=="],
 
-    "@yumipos/backend/better-auth/better-call": ["better-call@1.1.7", "", { "dependencies": { "@better-auth/utils": "^0.3.0", "@better-fetch/fetch": "^1.1.4", "rou3": "^0.7.10", "set-cookie-parser": "^2.7.1" }, "peerDependencies": { "zod": "^4.0.0" }, "optionalPeers": ["zod"] }, "sha512-6gaJe1bBIEgVebQu/7q9saahVzvBsGaByEnE8aDVncZEDiJO7sdNB28ot9I6iXSbR25egGmmZ6aIURXyQHRraQ=="],
+    "@djiwaapps/backend/better-auth/better-call": ["better-call@1.1.7", "", { "dependencies": { "@better-auth/utils": "^0.3.0", "@better-fetch/fetch": "^1.1.4", "rou3": "^0.7.10", "set-cookie-parser": "^2.7.1" }, "peerDependencies": { "zod": "^4.0.0" }, "optionalPeers": ["zod"] }, "sha512-6gaJe1bBIEgVebQu/7q9saahVzvBsGaByEnE8aDVncZEDiJO7sdNB28ot9I6iXSbR25egGmmZ6aIURXyQHRraQ=="],
 
-    "@yumipos/backend/better-auth/zod": ["zod@4.4.3", "", {}, "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="],
+    "@djiwaapps/backend/better-auth/zod": ["zod@4.4.3", "", {}, "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="],
 
-    "@yumipos/pos/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
+    "@djiwaapps/pos/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
     "filelist/minimatch/brace-expansion": ["brace-expansion@2.1.1", "", { "dependencies": { "balanced-match": "^1.0.0" } }, "sha512-WR1cURNjuvBLMZBMbqM0UoE+WAfdUcEV1ccD8PVBVOI+Z3ND4+SZbN8RsfT2bMuG1qwz5RFvPukSZm5fF2D5eA=="],
 
-    "@yumipos/backend/better-auth/better-call/set-cookie-parser": ["set-cookie-parser@2.7.2", "", {}, "sha512-oeM1lpU/UvhTxw+g3cIfxXHyJRc/uidd3yK1P242gzHds0udQBYzs3y8j4gCCW+ZJ7ad0yctld8RYO+bdurlvw=="],
+    "@djiwaapps/backend/better-auth/better-call/set-cookie-parser": ["set-cookie-parser@2.7.2", "", {}, "sha512-oeM1lpU/UvhTxw+g3cIfxXHyJRc/uidd3yK1P242gzHds0udQBYzs3y8j4gCCW+ZJ7ad0yctld8RYO+bdurlvw=="],
 
     "filelist/minimatch/brace-expansion/balanced-match": ["balanced-match@1.0.2", "", {}, "sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw=="],
   }

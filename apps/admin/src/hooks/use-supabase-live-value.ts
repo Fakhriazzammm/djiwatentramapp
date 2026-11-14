@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/client";
-import { pollWhenVisible } from "@yumipos/web-shared/lib/visible-polling";
+import { pollWhenVisible } from "@djiwaapps/web-shared/lib/visible-polling";
 
 export type UseSupabaseLiveValueOptions = {
 	realtimeSchemas?: string[];

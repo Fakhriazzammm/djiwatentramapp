@@ -8,7 +8,7 @@
 
 **Architecture:** Buat app corporate terpisah untuk `djiwatentram.web.id`, bukan menumpang pada `apps/customer`, `apps/admin`, atau `apps/kol`. Landing page bersifat public, cepat, SEO-friendly, responsive, dan tidak mengubah business logic aplikasi operasional yang sudah ada. App akan memiliki jalur CTA ke ekosistem existing seperti Djiwa Tentram, KOL Partnership, booking, POS, HR, dan contact/business inquiry.
 
-**Tech Stack:** React + Vite + TypeScript, Tailwind CSS v4, shared UI/tokens dari `packages/yumipos-web-shared`, Lucide icons, Framer Motion hanya untuk motion yang bermakna, `DESIGN.md` sebagai design contract, Apple HIG + AI Product Design DNA v2.0.
+**Tech Stack:** React + Vite + TypeScript, Tailwind CSS v4, shared UI/tokens dari `packages/djiwaapps-web-shared`, Lucide icons, Framer Motion hanya untuk motion yang bermakna, `DESIGN.md` sebagai design contract, Apple HIG + AI Product Design DNA v2.0.
 
 **Design references wajib:**
 - `/opt/djiwatentramapp/DESIGN.md`
@@ -287,7 +287,7 @@ Wajib memuat:
 
 - Existing global standard: `/opt/djiwatentramapp/DESIGN.md`.
 - New corporate-specific contract: `apps/yumme/DESIGN.md` atau folder app corporate yang disetujui setelah audit struktur deployment.
-- Shared tokens: `packages/yumipos-web-shared/src/theme.css` bila token corporate dapat dipakai tanpa mengubah brand existing.
+- Shared tokens: `packages/djiwaapps-web-shared/src/theme.css` bila token corporate dapat dipakai tanpa mengubah brand existing.
 - Jangan membuat token per-section atau CSS global lepas.
 
 ### Visual principles

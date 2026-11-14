@@ -2,7 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import "./index.css";
-import { installNumberInputBehavior } from "@yumipos/web-shared";
+import { installNumberInputBehavior } from "@djiwaapps/web-shared";
 import { AppUpdatePrompt } from "./components/app-update-prompt";
 import { checkForAppUpdate, startAppUpdatePolling } from "./lib/app-update";
 

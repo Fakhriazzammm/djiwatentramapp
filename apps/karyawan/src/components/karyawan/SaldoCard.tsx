@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
-import { createClient } from "@yumipos/web-shared/lib/client";
-import { Djiwa3DIcon, type Djiwa3DIconName, Skeleton } from "@yumipos/web-shared";
+import { createClient } from "@djiwaapps/web-shared/lib/client";
+import { Djiwa3DIcon, type Djiwa3DIconName, Skeleton } from "@djiwaapps/web-shared";
 
 const spring = { type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 };
 

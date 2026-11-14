@@ -7,7 +7,7 @@ import {
 	useHybridStaffUsers,
 	DEFAULT_ORDER_TYPES,
 } from "@/hooks/use-hybrid-pos-data";
-import { calculateOrderTax } from "@yumipos/web-shared/lib/tax-calculator";
+import { calculateOrderTax } from "@djiwaapps/web-shared/lib/tax-calculator";
 import { isDiscountApplicable } from "@/lib/utils/pricing";
 import {
 	canPrintCheckoutResult,

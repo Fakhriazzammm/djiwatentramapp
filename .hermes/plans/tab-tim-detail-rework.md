@@ -41,7 +41,7 @@ Alasan:
 Flex row: avatar + info (flex-1) + jam (shrink-0, text-right)
 
 ## File yang diedit
-`packages/yumipos-web-shared/src/components/attendance/PersonalSchedule.tsx`
+`packages/djiwaapps-web-shared/src/components/attendance/PersonalSchedule.tsx`
 
 ## Acceptance Criteria
 - [ ] Jam tampil `07:30` bukan `07:30:00`

@@ -1,4 +1,4 @@
-import { CheckoutActionBar, CheckoutHeader, CheckoutPage, OrderSummary, PaymentMethodCard } from "@yumipos/djiwa-checkout-ui";
+import { CheckoutActionBar, CheckoutHeader, CheckoutPage, OrderSummary, PaymentMethodCard } from "@djiwaapps/djiwa-checkout-ui";
 import { Loader2, QrCode } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CartItem, PaymentChoice } from "./types";

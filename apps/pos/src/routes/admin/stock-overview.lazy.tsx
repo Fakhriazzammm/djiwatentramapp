@@ -1,4 +1,4 @@
-import { ManualStockGate } from "@yumipos/web-shared/components/inventory/manual-stock-page";
+import { ManualStockGate } from "@djiwaapps/web-shared/components/inventory/manual-stock-page";
 import { createLazyFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";

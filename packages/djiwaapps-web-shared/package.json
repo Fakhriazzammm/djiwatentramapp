@@ -1,5 +1,5 @@
 {
-  "name": "@yumipos/web-shared",
+  "name": "@djiwaapps/web-shared",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -48,7 +48,7 @@
     "class-variance-authority": "^0.7.0"
   },
   "devDependencies": {
-    "@yumipos/config": "workspace:*",
+    "@djiwaapps/config": "workspace:*",
     "typescript": "catalog:",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0"

@@ -606,8 +606,8 @@ Periksa dan sesuaikan:
 
 - `supabase/functions/record-financial-transaction/index.ts`
 - `supabase/functions/yumi-ai/index.ts`
-- `packages/yumipos-web-shared/src/hooks/use-hybrid-write-actions.ts`
-- `packages/yumipos-web-shared/src/hooks/use-hybrid-pos-data.ts`
+- `packages/djiwaapps-web-shared/src/hooks/use-hybrid-write-actions.ts`
+- `packages/djiwaapps-web-shared/src/hooks/use-hybrid-pos-data.ts`
 - `apps/admin/src/hooks/use-hybrid-finance-analytics-data.ts`
 - `apps/pos/src/hooks/use-hybrid-pos-data.ts`
 - `yumi-finance-agent/finance.py`
@@ -757,7 +757,7 @@ bunx turbo build
 
 Typecheck/test target:
 
-- `packages/yumipos-web-shared`
+- `packages/djiwaapps-web-shared`
 - `apps/admin`
 - `apps/pos`
 - `yumi-finance-agent` dengan `py_compile`

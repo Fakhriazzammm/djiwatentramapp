@@ -2,7 +2,7 @@
 import { createClient } from "@/lib/client";
 import { adminProtectedRead } from "@/lib/admin-protected-read";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
-import { fetchManualStock, type ManualStockItem } from "@yumipos/web-shared/lib/manual-stock";
+import { fetchManualStock, type ManualStockItem } from "@djiwaapps/web-shared/lib/manual-stock";
 
 type InventoryStoreType = "store" | "supplier" | "market" | "other";
 

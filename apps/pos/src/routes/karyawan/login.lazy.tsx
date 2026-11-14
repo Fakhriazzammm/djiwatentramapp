@@ -6,7 +6,7 @@ import {
 	loginWithYumiPin,
 	useYumiAuth,
 	type YumiPublicUser,
-} from "@yumipos/web-shared";
+} from "@djiwaapps/web-shared";
 import { IdentityPicker } from "@/components/auth/identity-picker";
 import { LoginShell } from "@/components/auth/login-shell";
 import { OneTimeCode, type OneTimeCodeStatus } from "@/components/ui/OneTimeCode";

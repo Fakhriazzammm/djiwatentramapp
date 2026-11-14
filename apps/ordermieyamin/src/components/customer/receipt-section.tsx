@@ -1,7 +1,7 @@
 import { CheckCircle2, QrCode, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Doc } from "@/types/backend-compat";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import type { CartItem, ReceiptState } from "./types";
 import { currency } from "./types";
 import { BarcodeLines } from "./shared-components";

@@ -4,7 +4,7 @@
  * Reusable empty state components dengan illustration, message, dan action.
  */
 
-import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@djiwaapps/web-shared";
 import {
 	FileText,
 	Inbox,

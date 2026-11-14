@@ -107,8 +107,8 @@ Output:
 Lokasi kandidat:
 
 ```text
-packages/yumipos-web-shared/src/theme.css
-packages/yumipos-web-shared/src/components/admin/
+packages/djiwaapps-web-shared/src/theme.css
+packages/djiwaapps-web-shared/src/components/admin/
 apps/admin/src/index.css
 ```
 
@@ -213,7 +213,7 @@ Implementasi visual:
 Lokasi:
 
 ```text
-packages/yumipos-web-shared/src/components/admin/
+packages/djiwaapps-web-shared/src/components/admin/
 ```
 
 Komponen:
@@ -609,7 +609,7 @@ Shared CSS tetap menjadi safety net, tetapi perubahan utama harus menggunakan ko
 Kandidat lokasi:
 
 ```text
-packages/yumipos-web-shared/src/components/admin/
+packages/djiwaapps-web-shared/src/components/admin/
 ```
 
 Komponen:
@@ -654,7 +654,7 @@ apps/admin/src/routes/admin/route.tsx
 apps/admin/src/routes/__root.tsx
 apps/admin/src/index.css
 apps/admin/src/components/layout/Footer.tsx
-packages/yumipos-web-shared/src/components/admin/*
+packages/djiwaapps-web-shared/src/components/admin/*
 ```
 
 ### Visual changes

@@ -1,5 +1,5 @@
 import type { Doc, Id } from "@/types/backend-compat";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import {
 	ChevronLeft,
 	ClipboardList,

@@ -156,7 +156,7 @@ Perilaku yang direncanakan:
 Target test baru/yang diperluas:
 
 - `apps/customer/src/hooks/use-order-context.test.tsx` atau helper test yang sesuai pola repository.
-- `packages/yumipos-web-shared` hanya jika helper sengaja dipindahkan ke shared package.
+- `packages/djiwaapps-web-shared` hanya jika helper sengaja dipindahkan ke shared package.
 
 Skenario wajib:
 

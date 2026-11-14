@@ -1,4 +1,4 @@
-import { DsButton, DsIcon, DsNote, DsSheet } from "@yumipos/web-shared/components/ds";
+import { DsButton, DsIcon, DsNote, DsSheet } from "@djiwaapps/web-shared/components/ds";
 
 /** Sheet dari tombol Absen di tab bar. Absen masuk tetap lewat bot Telegram (verifikasi lokasi); keluar lewat Closing shift. */
 export function AbsenSheet({ isIn, onClose, onClosing, onHistory }: { isIn: boolean; onClose: () => void; onClosing: () => void; onHistory: () => void }) {

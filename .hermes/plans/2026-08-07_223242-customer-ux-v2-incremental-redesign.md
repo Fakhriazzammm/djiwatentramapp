@@ -140,7 +140,7 @@ apps/customer/src/components/customer/CustomerMenuGrid.tsx
 apps/customer/src/routes/$username/order.lazy.tsx
 apps/customer/src/components/customer/shared-components.tsx
 apps/customer/src/index.css
-packages/yumipos-web-shared/theme.css
+packages/djiwaapps-web-shared/theme.css
 ```
 
 Output: baseline checklist dan daftar regression route.

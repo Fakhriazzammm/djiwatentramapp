@@ -1,4 +1,4 @@
-import type { ManualStockItem } from "@yumipos/web-shared/lib/manual-stock";
+import type { ManualStockItem } from "@djiwaapps/web-shared/lib/manual-stock";
 import type { StockOverviewMovement } from "@/hooks/use-hybrid-inventory-admin-data";
 
 export type MovementDirection = "incoming" | "outgoing" | "adjustment" | "other";

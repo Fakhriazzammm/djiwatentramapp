@@ -1,4 +1,4 @@
-# Djiwa Tentram App (yumipos monorepo)
+# Djiwa Tentram App (djiwaapps monorepo)
 
 A modern TypeScript monorepo for POS operations, admin analytics, booking, inventory, and AI-assisted workflows.
 
@@ -36,7 +36,7 @@ Detailed status:
 ## Project Structure
 
 ```text
-yumipos/
+djiwaapps/
 |-- apps/
 |   |-- web/         # Frontend app (React + TanStack Router)
 |-- packages/

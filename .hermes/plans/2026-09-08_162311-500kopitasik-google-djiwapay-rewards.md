@@ -48,7 +48,7 @@ Frontend       React 19 + Vite + TypeScript
 Package        Bun 1.3.4
 Workspace      apps/* dan packages/*
 Styling        Tailwind CSS v4
-Shared UI      packages/yumipos-web-shared
+Shared UI      packages/djiwaapps-web-shared
 Animation      framer-motion
 Icons          lucide-react
 Database       Supabase PostgreSQL
@@ -63,7 +63,7 @@ File yang sudah diperiksa:
 /opt/djiwatentramapp/PROJECT.md
 /apps/customer/package.json
 /apps/linkbio/package.json
-/packages/yumipos-web-shared/package.json
+/packages/djiwaapps-web-shared/package.json
 ```
 
 ### Better Auth
@@ -127,7 +127,7 @@ Namun saldo wallet existing adalah saldo umum. Karena reward baru harus dibatasi
 Buat app frontend baru yang berdiri sendiri di `apps/500kopitasik`, tetapi reuse:
 
 - React/Vite/TypeScript;
-- `@yumipos/web-shared`;
+- `@djiwaapps/web-shared`;
 - Better Auth customer session pusat;
 - PostgreSQL/Supabase;
 - R2/Worker pattern untuk media;
@@ -1022,8 +1022,8 @@ Changes must add the new app only. Do not alter existing app deployment mappings
 ### Frontend
 
 ```txt
-bun run --filter @yumipos/500kopitasik check-types
-bun run --filter @yumipos/500kopitasik build
+bun run --filter @djiwaapps/500kopitasik check-types
+bun run --filter @djiwaapps/500kopitasik build
 git diff --check -- apps/500kopitasik
 ```
 
@@ -1491,8 +1491,8 @@ Jika DESIGN.md dibuat saat implementation, validasi harus melewati:
 Monorepo sudah memiliki asset visual 3D/3D-style yang dapat dipertimbangkan untuk reuse:
 
 ```txt
-packages/yumipos-web-shared/src/components/ui/djiwa-3d-icon.tsx
-packages/yumipos-web-shared/src/assets/djiwa-icons-v2/
+packages/djiwaapps-web-shared/src/components/ui/djiwa-3d-icon.tsx
+packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/
 
 apps/customer/public/assets/djiwa-pay-abstract-3d.png
 apps/customer/public/assets/djiwa-3d-topup.png

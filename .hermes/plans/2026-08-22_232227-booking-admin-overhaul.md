@@ -224,7 +224,7 @@ Jangan menjalankan backfill otomatis untuk status ambigu tanpa fixture dan revie
 ### File likely to change
 
 - `apps/admin/src/routes/admin/booking.lazy.tsx`
-- `packages/yumipos-web-shared/src/hooks/use-hybrid-write-actions.ts`
+- `packages/djiwaapps-web-shared/src/hooks/use-hybrid-write-actions.ts`
 - `supabase/functions/booking-admin/index.ts`
 - migration baru additive di `supabase/migrations/`
 
@@ -730,8 +730,8 @@ Nilai yang tidak boleh hardcoded di frontend:
 
 - `apps/admin/src/routes/admin/booking.lazy.tsx`
 - `apps/admin/src/routes/admin/orders.lazy.tsx` jika detail booking diselaraskan
-- `packages/yumipos-web-shared/src/hooks/use-hybrid-write-actions.ts`
-- `packages/yumipos-web-shared/src/hooks/use-hybrid-pos-data.ts`
+- `packages/djiwaapps-web-shared/src/hooks/use-hybrid-write-actions.ts`
+- `packages/djiwaapps-web-shared/src/hooks/use-hybrid-pos-data.ts`
 - `supabase/functions/booking-admin/index.ts`
 - `supabase/functions/mayar-webhook/index.ts`
 - `supabase/migrations/<new-additive-booking-safety>.sql`

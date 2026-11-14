@@ -1,5 +1,5 @@
 {
-  "name": "@yumipos/linkbio",
+  "name": "@djiwaapps/linkbio",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@yumipos/web-shared": "workspace:*",
+    "@djiwaapps/web-shared": "workspace:*",
     "@tailwindcss/vite": "^4.0.15",
     "framer-motion": "^12.29.0",
     "lucide-react": "^0.473.0",

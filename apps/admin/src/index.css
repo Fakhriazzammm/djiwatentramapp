@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@yumipos/web-shared/theme.css";
+@import "@djiwaapps/web-shared/theme.css";
 
 body.admin-shell[data-admin-density="compact"] [data-slot="dialog-content"],
 body.admin-shell[data-admin-density="compact"] [data-slot="sheet-content"],

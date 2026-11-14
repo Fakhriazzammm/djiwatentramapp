@@ -1,8 +1,8 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useStaffProfile } from "../$username.lazy";
-import { createClient } from "@yumipos/web-shared";
-import { Button } from "@yumipos/web-shared/components/ui/button";
+import { createClient } from "@djiwaapps/web-shared";
+import { Button } from "@djiwaapps/web-shared/components/ui/button";
 import { FileText, Download, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 

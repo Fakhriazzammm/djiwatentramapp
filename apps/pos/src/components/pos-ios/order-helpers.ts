@@ -1,4 +1,4 @@
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 
 export function displayOrderNumber(order: any): string {
 	return getDisplayOrderNumber(order?.orderNumber, {

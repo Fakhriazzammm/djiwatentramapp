@@ -1,4 +1,4 @@
-import { createClient as createSharedClient } from "@yumipos/web-shared/lib/client";
+import { createClient as createSharedClient } from "@djiwaapps/web-shared/lib/client";
 import { BOOKING_API_URL, BOOKING_SLUG, DEV_FALLBACK, SUPABASE_URL, type BookingOption } from "./booking-constants";
 
 export type BookingCustomField = { id: string; label: string; type: string; options: string[]; placeholder: string; required: boolean; isBookingEventOption?: boolean };

@@ -1,4 +1,4 @@
-import { formatPaymentLabel } from "@yumipos/web-shared/lib/payment-label";
+import { formatPaymentLabel } from "@djiwaapps/web-shared/lib/payment-label";
 import { Pencil, Printer, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";

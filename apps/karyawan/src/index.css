@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "./lib/tw-animate.css";
-@import "@yumipos/web-shared/theme.css";
-@import "@yumipos/web-shared/ds.css";
+@import "@djiwaapps/web-shared/theme.css";
+@import "@djiwaapps/web-shared/ds.css";
 
 /* Karyawan mobile field-operation layer. Tokens remain sourced from web-shared. */
 @layer base {

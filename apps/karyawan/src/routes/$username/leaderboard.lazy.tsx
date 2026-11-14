@@ -5,9 +5,9 @@ import {
   Trophy, Crown, Medal, Star, TrendingUp, ChevronDown, ChevronUp,
   Users, ArrowLeft, Loader2, Sparkles, DollarSign,
 } from "lucide-react";
-import { createClient } from "@yumipos/web-shared/lib/client";
-import { Djiwa3DIcon } from "@yumipos/web-shared";
-import { Skeleton } from "@yumipos/web-shared";
+import { createClient } from "@djiwaapps/web-shared/lib/client";
+import { Djiwa3DIcon } from "@djiwaapps/web-shared";
+import { Skeleton } from "@djiwaapps/web-shared";
 import { useStaffProfile } from "../$username.lazy";
 
 // ── Inline formatter ──────────────────────────────────────────────────

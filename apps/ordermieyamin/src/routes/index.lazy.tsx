@@ -5,7 +5,7 @@ import { CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, ClipboardList, 
 import { toast } from "sonner";
 import { useHybridCreateOrder, useHybridMayarCreateInvoice, useHybridMayarGetInvoiceDetail, useHybridUpdateOrderPaymentGateway } from "@/hooks/use-hybrid-write-actions";
 import { useHybridDeliveryOrderCounts, useHybridOrderById } from "@/hooks/use-hybrid-ops-data";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { redirectToCustomerLogin } from "@/lib/auth-client";

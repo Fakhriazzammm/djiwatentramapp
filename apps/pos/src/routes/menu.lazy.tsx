@@ -1,4 +1,4 @@
-import { useManualStockMode } from "@yumipos/web-shared/lib/manual-stock";
+import { useManualStockMode } from "@djiwaapps/web-shared/lib/manual-stock";
 ﻿import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import type { Id } from "@/types/backend-compat";
 import {
@@ -46,7 +46,7 @@ import { MenuSidebar } from "@/components/pos/menu-sidebar";
 import { CartDrawer } from "@/components/pos/cart-drawer";
 import { CheckoutSidebar } from "@/components/pos/checkout-sidebar";
 import { ScanScreen } from "@/components/pos-ios/scan-screen";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import { PaymentConfirmationModal } from "@/components/pos/payment-modal";
 import {
 	useHybridActiveDiscounts,
@@ -98,9 +98,9 @@ import { ProductOptionsSheet } from "@/components/pos-ios/product-options-sheet"
 import { MarketingInfoStrip } from "@/components/pos/marketing-info-strip";
 import { StockSheet } from "@/components/pos-ios/stock-sheet";
 import { StockTutorial, shouldShowStockTutorial } from "@/components/pos/stock-tutorial";
-import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
-import { getAdditionalOrderDiscount } from "@yumipos/web-shared/lib/order-pricing";
-import { calculateOrderTax } from "@yumipos/web-shared/lib/tax-calculator";
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@djiwaapps/web-shared";
+import { getAdditionalOrderDiscount } from "@djiwaapps/web-shared/lib/order-pricing";
+import { calculateOrderTax } from "@djiwaapps/web-shared/lib/tax-calculator";
 import { canAccessAdminRoute } from "@/lib/route-metadata";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { usePosPanel } from "@/hooks/use-pos-panel";

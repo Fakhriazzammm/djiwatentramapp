@@ -120,8 +120,8 @@ apps/customer/src/routes/__root.tsx
 Shared design system:
 
 ```text
-packages/yumipos-web-shared/src/theme.css
-packages/yumipos-web-shared/src/components/layout/OwnerFooter.tsx
+packages/djiwaapps-web-shared/src/theme.css
+packages/djiwaapps-web-shared/src/components/layout/OwnerFooter.tsx
 ```
 
 Design tokens existing yang wajib dipakai:

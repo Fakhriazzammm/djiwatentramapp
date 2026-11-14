@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Check, Clock3, MapPin, PackageCheck, RefreshCw, Truck } from "lucide-react";
-import { Djiwa3DIcon } from "@yumipos/web-shared";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { Djiwa3DIcon } from "@djiwaapps/web-shared";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import { useHybridOrderById } from "@/hooks/use-hybrid-ops-data";
 import { currency } from "./types";
 

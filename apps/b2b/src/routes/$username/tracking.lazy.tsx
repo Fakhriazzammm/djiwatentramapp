@@ -6,7 +6,7 @@ import { CustomerSectionSkeleton } from "@/components/customer/customer-states";
 import { OrderTrackingView } from "@/components/customer/order-tracking-view";
 import { useCustomerOrders } from "@/hooks/use-customer-data";
 import { currency } from "@/components/customer/types";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 
 export const Route = createLazyFileRoute("/$username/tracking")({ component: TrackingPage });
 

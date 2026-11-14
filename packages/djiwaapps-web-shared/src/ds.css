@@ -1,6 +1,6 @@
 /* Djiwa Soft iOS — design system tokens & komponen dasar (prefix ds-). Versi lapang (v4).
    Spesifikasi: docs/design-system/DJIWA_DESIGN_SYSTEM.md · Panduan hidup: docs/design-system/index.html
-   Aditif: tidak mengubah theme.css. Impor setelah theme.css: @import "@yumipos/web-shared/ds.css"; */
+   Aditif: tidak mengubah theme.css. Impor setelah theme.css: @import "@djiwaapps/web-shared/ds.css"; */
 :root{
   --ds-navy:#0f2347;--ds-blue:#1a5dc6;--ds-blue-soft:#e6efff;
   --ds-canvas:#f6f7fb;--ds-group:#f1f3f8;--ds-surface:#fff;--ds-line:#e4e8f1;--ds-hair:rgba(15,35,71,.07);

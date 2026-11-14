@@ -2,7 +2,7 @@ import { createLazyFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Bike, Bell, Check, ChevronDown, Copy, ExternalLink, FileDown, Mail, PackageCheck, RefreshCw, Save, Search, Settings2, ShoppingBag, Trash2, Truck, X } from "lucide-react";
 import { toast } from "sonner";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useHybridOrders, triggerHybridRefresh } from "@/hooks/use-hybrid-pos-data";

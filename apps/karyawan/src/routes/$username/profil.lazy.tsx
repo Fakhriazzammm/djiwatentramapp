@@ -1,17 +1,17 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useStaffProfile } from "../$username.lazy";
-import { useYumiAuth } from "@yumipos/web-shared";
+import { useYumiAuth } from "@djiwaapps/web-shared";
 import {
 	useHybridPrivateStaffData,
 	useHybridUpdateUserPin,
 	useHybridUpdateUserProfile,
 	useHybridSiteSettings,
 	createClient,
-} from "@yumipos/web-shared";
-import { DsAvatar, DsBar, DsButton, DsGroup, DsGroupLabel, DsIcon, DsNote, DsPageTitle, DsRow, DsTag } from "@yumipos/web-shared/components/ds";
-import { Button } from "@yumipos/web-shared/components/ui/button";
-import { Input } from "@yumipos/web-shared/components/ui/input";
+} from "@djiwaapps/web-shared";
+import { DsAvatar, DsBar, DsButton, DsGroup, DsGroupLabel, DsIcon, DsNote, DsPageTitle, DsRow, DsTag } from "@djiwaapps/web-shared/components/ds";
+import { Button } from "@djiwaapps/web-shared/components/ui/button";
+import { Input } from "@djiwaapps/web-shared/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import {
 	User, Clock, FileText, Camera, ShieldCheck, Bell, Check, Send, ExternalLink,

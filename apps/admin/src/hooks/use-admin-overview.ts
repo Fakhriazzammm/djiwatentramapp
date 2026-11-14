@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { pollWhenVisible } from "@yumipos/web-shared/lib/visible-polling";
+import { pollWhenVisible } from "@djiwaapps/web-shared/lib/visible-polling";
 import { createClient } from "@/lib/client";
 import { adminProtectedRpc } from "@/lib/admin-protected-read";
 import {

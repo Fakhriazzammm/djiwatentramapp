@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { adminProtectedRead } from "@/lib/admin-protected-read";
 import { CheckCircle2, ChevronRight } from "lucide-react";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import type { AdminOverview, Source } from "@/hooks/use-admin-overview";
 import type { AttendancePayload, FeedEvent, RecentOrderRow } from "@/lib/dashboard-analytics";
 import { LiveDot } from "./motion";

@@ -2,7 +2,7 @@
 
 > Standar untuk seluruh aplikasi Djiwa Tentram. Arah visual: pengalaman produk Apple yang tenang, presisi, mudah disentuh, dan terasa premium, dengan identitas Djiwa Tentram sendiri. Gunakan aset ikon 3D Djiwa sebagai ikon ilustratif utama.
 
-> **Design system terbaru (wajib untuk UI baru dan rombakan): [Djiwa Soft iOS](docs/design-system/DJIWA_DESIGN_SYSTEM.md).** Token dan komponen: `packages/yumipos-web-shared/src/ds.css`; panduan visual: `docs/design-system/index.html`. Bila ada pertentangan tampilan, dokumen itu yang dipakai; aturan ikon 3D di bawah tetap berlaku.
+> **Design system terbaru (wajib untuk UI baru dan rombakan): [Djiwa Soft iOS](docs/design-system/DJIWA_DESIGN_SYSTEM.md).** Token dan komponen: `packages/djiwaapps-web-shared/src/ds.css`; panduan visual: `docs/design-system/index.html`. Bila ada pertentangan tampilan, dokumen itu yang dipakai; aturan ikon 3D di bawah tetap berlaku.
 
 ## 1. Prinsip pengalaman
 
@@ -16,10 +16,10 @@
 
 Sebelum mengubah UI, periksa berurutan:
 
-1. Token tema di `packages/yumipos-web-shared/src/theme.css` dan stylesheet app terkait di `apps/*/src/index.css`.
-2. Primitive dan pola yang sudah ada di `packages/yumipos-web-shared/src/components/ui/`.
-3. Komponen layout di `packages/yumipos-web-shared/src/components/layout/`.
-4. Ikon 3D dan pemetaan komponennya di `packages/yumipos-web-shared/src/assets/djiwa-icons-v2/` dan `components/ui/djiwa-3d-icon.tsx`.
+1. Token tema di `packages/djiwaapps-web-shared/src/theme.css` dan stylesheet app terkait di `apps/*/src/index.css`.
+2. Primitive dan pola yang sudah ada di `packages/djiwaapps-web-shared/src/components/ui/`.
+3. Komponen layout di `packages/djiwaapps-web-shared/src/components/layout/`.
+4. Ikon 3D dan pemetaan komponennya di `packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/` dan `components/ui/djiwa-3d-icon.tsx`.
 5. Implementasi app terdekat sebelum menambah varian baru.
 
 Jangan menganggap seluruh app memiliki token identik. Pertahankan tema brand dan semantic color yang sudah dipakai app; bila perlu token lintas app, tambahkan pada shared theme dengan fallback yang kompatibel.
@@ -47,7 +47,7 @@ Ikon fitur, navigasi, benefit, kategori, dan empty state yang bersifat ilustrati
 Contoh penggunaan:
 
 ```tsx
-import { Djiwa3DIcon } from "@yumipos/web-shared"; // sesuaikan dengan pola export app
+import { Djiwa3DIcon } from "@djiwaapps/web-shared"; // sesuaikan dengan pola export app
 
 <Djiwa3DIcon name="payment-wallet" size="sm" alt="" />
 ```

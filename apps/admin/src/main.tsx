@@ -12,7 +12,7 @@ import { startAppUpdatePolling, checkForAppUpdate, setPwaUpdateHandler } from "@
 import { registerSW } from "virtual:pwa-register";
 import "./index.css";
 import "./command-center.css";
-import { installNumberInputBehavior } from "@yumipos/web-shared";
+import { installNumberInputBehavior } from "@djiwaapps/web-shared";
 
 // Set up Router instance
 

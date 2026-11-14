@@ -6,7 +6,7 @@
 
 **Architecture:** Keep service-specific business operations in `apps/djiwapay/src/lib/wallet-adapter.ts`. Introduce a small checkout presentation model and shared Djiwa Pay checkout surface that renders the same step/header/payment/summary/action patterns as Customer, with service adapters supplying fields and submit behavior. Reuse existing shared checkout primitives and CSS rather than copying restaurant fields or payment rules.
 
-**Tech Stack:** React 19, TypeScript, Vite, shared `@yumipos/djiwa-checkout-ui`, Bun tests, existing Pay Bridge and Mayar APIs.
+**Tech Stack:** React 19, TypeScript, Vite, shared `@djiwaapps/djiwa-checkout-ui`, Bun tests, existing Pay Bridge and Mayar APIs.
 
 **Spec:** `docs/superpowers/specs/2026-10-23-djiwapay-release-hardening-design.md`
 

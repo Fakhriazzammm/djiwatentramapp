@@ -25,7 +25,7 @@ import { formatCurrencyIDR } from "@/lib/export-utils";
 import { NewTransactionDialog } from "../../-components/new-transaction-dialog";
 import { toast } from "sonner";
 import type { Id } from "@/types/backend-compat";
-import { getDisplayOrderNumber } from "@yumipos/web-shared/lib/order-number";
+import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import { format, startOfDay, endOfDay } from "date-fns";
 import { id as localeID } from "date-fns/locale";
 import { useHybridShiftReportRows } from "@/hooks/use-hybrid-pos-data";

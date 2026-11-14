@@ -1,4 +1,4 @@
-import type { WalletLedgerEntry, WalletSummary } from "@yumipos/djiwapay-core";
+import type { WalletLedgerEntry, WalletSummary } from "@djiwaapps/djiwapay-core";
 import type { WalletWithdrawalDraft } from "./djiwa-pay-withdrawal";
 import { normalizeWalletPhone } from "./djiwa-pay-transfer";
 export type WalletResponse = { wallet: WalletSummary; ledger: WalletLedgerEntry[]; transactions?: WalletTransaction[] };

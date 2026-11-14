@@ -16,7 +16,7 @@ Pisahkan satu Vite PWA (`apps/web`) menjadi **dua app terpisah** dengan **dua do
 | **POS** (internal) | `pos.djiwatentram.web.id` | Kasir, Admin, Owner | "Djiwa Tentram POS" | YumiAuth (PIN/email) | — |
 | **Customer** | `djiwatentram.web.id` | Customer | "Djiwa Tentram App" | None (public) | Email + password (simple) |
 
-Backend & database tetap **satu Supabase yang sama**. Shared code di `packages/yumipos-web-shared`.
+Backend & database tetap **satu Supabase yang sama**. Shared code di `packages/djiwaapps-web-shared`.
 
 ### Key Differences from Previous Plan
 
@@ -55,9 +55,9 @@ djiwatentramapp/
 │       │   └── main.tsx
 │       └── vite.config.ts    ← PWA "Djiwa Tentram POS"
 ├── packages/
-│   ├── backend/              ← @yumipos/backend
-│   ├── config/               ← @yumipos/config
-│   └── env/                  ← @yumipos/env
+│   ├── backend/              ← @djiwaapps/backend
+│   ├── config/               ← @djiwaapps/config
+│   └── env/                  ← @djiwaapps/env
 └── turbo.json
 ```
 
@@ -116,7 +116,7 @@ Semua route kecuali `/$brandSlug*` — ~126 file:
               └────────────────┘    └────────────────────┘
 
               ┌────────────────────────────────────────┐
-              │     packages/yumipos-web-shared         │
+              │     packages/djiwaapps-web-shared         │
               │  hooks/use-hybrid-pos-data (2071L)      │
               │  hooks/use-hybrid-write-actions (6084L) │
               │  hooks/use-hybrid-ops-data              │
@@ -294,11 +294,11 @@ workbox: {
 ```json
 {
   "scripts": {
-    "build:pos": "turbo build --filter=@yumipos/pos",
-    "build:customer": "turbo build --filter=@yumipos/customer",
-    "build:shared": "turbo build --filter=@yumipos/web-shared",
-    "dev:pos": "turbo dev --filter=@yumipos/pos",
-    "dev:customer": "turbo dev --filter=@yumipos/customer"
+    "build:pos": "turbo build --filter=@djiwaapps/pos",
+    "build:customer": "turbo build --filter=@djiwaapps/customer",
+    "build:shared": "turbo build --filter=@djiwaapps/web-shared",
+    "dev:pos": "turbo dev --filter=@djiwaapps/pos",
+    "dev:customer": "turbo dev --filter=@djiwaapps/customer"
   }
 }
 ```
@@ -382,7 +382,7 @@ pos.djiwatentram.web.id, djiwatentram.web.id
 ### Phase 1: Shared Package (3-4 jam)
 
 ```
-Step 1.1: Create packages/yumipos-web-shared
+Step 1.1: Create packages/djiwaapps-web-shared
   - package.json, tsconfig.json, src/index.ts barrel
 
 Step 1.2: Move types + lib utilities
@@ -427,12 +427,12 @@ Step 2.2: Remove customer routes
   - Delete routes/$brandSlug.minigames.tsx + .lazy.tsx
   - Delete components/customer/customer-ordering-page.tsx
 Step 2.3: Update package.json
-  - name: "@yumipos/pos"
-  - Add dep: "@yumipos/web-shared": "workspace:*"
+  - name: "@djiwaapps/pos"
+  - Add dep: "@djiwaapps/web-shared": "workspace:*"
 Step 2.4: Update imports
-  - @/hooks/use-hybrid-* → @yumipos/web-shared
-  - @/lib/client → @yumipos/web-shared
-  - @/context/* → @yumipos/web-shared
+  - @/hooks/use-hybrid-* → @djiwaapps/web-shared
+  - @/lib/client → @djiwaapps/web-shared
+  - @/context/* → @djiwaapps/web-shared
 Step 2.5: Simplify __root.tsx
   - Remove brandSlug heuristic (line 24-28)
   - Public pages = /login, /register, /register/selesai/* only
@@ -458,7 +458,7 @@ Step 3.2: Minimal src structure
 Step 3.3: Copy customer component
   - components/customer/customer-ordering-page.tsx
 Step 3.4: Wire imports
-  - All from @yumipos/web-shared
+  - All from @djiwaapps/web-shared
 Step 3.5: PWA config
   - name: "Djiwa Tentram App"
   - short_name: "Djiwa App"
@@ -506,7 +506,7 @@ Sistem sedang dipakai produksi (`app.djiwatentram.web.id` live). **Tidak boleh a
 |---|---|
 | **Jangan sentuh `apps/web/`** | Tidak ada edit, hapus, atau rename. `apps/web` adalah source of truth yang sedang live. |
 | **Develop di samping, bukan di tempat** | `apps/pos/` dan `apps/customer/` dibuat sebagai app BARU, bukan hasil modifikasi `apps/web`. |
-| **Build terisolasi** | `turbo build --filter=@yumipos/pos` tidak akan menyentuh `apps/web/dist/` yang sedang di-serve. |
+| **Build terisolasi** | `turbo build --filter=@djiwaapps/pos` tidak akan menyentuh `apps/web/dist/` yang sedang di-serve. |
 | **Deploy ke CF project terpisah** | `yumme-pos` dan `yumme-app` adalah project CF Pages BARU — tidak mengubah project existing yang serve `app.djiwatentram.web.id`. |
 
 ### 12.2 Strategi Parallel Run
@@ -578,7 +578,7 @@ FASE CUTOVER (1 jam, bisa di luar jam operasional)
 | **Supabase database** | Tidak berubah | Schema, RLS, data semua tetap |
 | **Supabase edge functions** | Tidak berubah | yumi-auth, yumi-ai, auto-close-shifts, dll |
 | **yumi-ai-bot (Python)** | Tidak berubah | Jalan sendiri, gak terkait frontend |
-| **GitHub repo** | Tidak berubah | Hanya tambah folder `apps/pos`, `apps/customer`, `packages/yumipos-web-shared` |
+| **GitHub repo** | Tidak berubah | Hanya tambah folder `apps/pos`, `apps/customer`, `packages/djiwaapps-web-shared` |
 | **CI/CD existing** | Tambah, bukan ganti | Pipeline `apps/web` tetap jalan sampai dihapus manual |
 | **Cloudflare Pages existing** | Tidak berubah | Project existing tetap serve `apps/web` |
 
@@ -603,7 +603,7 @@ ATAU lebih cepat:
 ## 13. Files Summary
 
 ### New Files (~45 files)
-- `packages/yumipos-web-shared/` — ~25 files (lib, hooks, context, ui, types)
+- `packages/djiwaapps-web-shared/` — ~25 files (lib, hooks, context, ui, types)
 - `apps/customer/` — ~15 files (config, routes, components, main, css)
 - `apps/pos/` — ~5 NEW files (package.json updated, vite.config updated, __root updated)
 
@@ -686,7 +686,7 @@ Welcome screen — dua opsi:
 ```tsx
 // __root.tsx — Phase 2
 import { Outlet, createRootRoute } from "@tanstack/react-router";
-import { SupabaseAuthProvider } from "@yumipos/web-shared"; // baru
+import { SupabaseAuthProvider } from "@djiwaapps/web-shared"; // baru
 
 export const Route = createRootRoute({
   component: () => (
@@ -707,7 +707,7 @@ export const Route = createRootRoute({
 | `apps/customer/src/routes/__root.tsx` | `<Outlet />` only | + Auth context wrapper |
 | `apps/customer/src/routes/profile.$slug.tsx` | — | **NEW**: Customer profile page |
 | `components/customer/customer-ordering-page.tsx` | Welcome → langsung menu | Welcome → pilih login/guest → menu |
-| `packages/yumipos-web-shared` | Existing | + `hooks/useCustomerAuth.ts`, `context/auth-context.tsx` |
+| `packages/djiwaapps-web-shared` | Existing | + `hooks/useCustomerAuth.ts`, `context/auth-context.tsx` |
 
 ### 15.6 Customer Profile Page — `/profile/$slug`
 

@@ -1,5 +1,5 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { ReceiptPreview, type ReceiptPrintMode } from "@yumipos/web-shared/components/ui/receipt-preview";
+import { ReceiptPreview, type ReceiptPrintMode } from "@djiwaapps/web-shared/components/ui/receipt-preview";
 import type { Id } from "@/types/backend-compat";
 import {
 	Bell,

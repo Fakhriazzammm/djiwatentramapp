@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useHybridPayslips, useHybridStaffLogs, useHybridStaffStats } from "@yumipos/web-shared";
-import { DsBar, DsChart, DsGroup, DsGroupLabel, DsIcon, DsIconButton, DsPageTitle, DsPills, DsRow, DsTag, DsTiles } from "@yumipos/web-shared/components/ds";
+import { useHybridPayslips, useHybridStaffLogs, useHybridStaffStats } from "@djiwaapps/web-shared";
+import { DsBar, DsChart, DsGroup, DsGroupLabel, DsIcon, DsIconButton, DsPageTitle, DsPills, DsRow, DsTag, DsTiles } from "@djiwaapps/web-shared/components/ds";
 import { Eye, EyeOff } from "lucide-react";
 import { useStaffProfile } from "../$username.lazy";
 import { rupiah, useLatestRunItem } from "@/components/karyawan/use-staff-data";

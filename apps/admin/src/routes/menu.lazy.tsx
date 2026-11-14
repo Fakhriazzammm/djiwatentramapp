@@ -1,4 +1,4 @@
-import { useManualStockMode } from "@yumipos/web-shared/lib/manual-stock";
+import { useManualStockMode } from "@djiwaapps/web-shared/lib/manual-stock";
 ﻿import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import type { Id } from "@/types/backend-compat";
 import {

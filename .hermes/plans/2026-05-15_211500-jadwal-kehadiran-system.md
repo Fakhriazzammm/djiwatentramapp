@@ -669,11 +669,11 @@ export function useHybridDeleteAttendanceSchedule() {
 
 ### Write Permission Strategy
 
-The existing project uses `service_role` for all writes (via the `@yumipos/backend` package). The `pos.attendance_schedules` table needs write grants.
+The existing project uses `service_role` for all writes (via the `@djiwaapps/backend` package). The `pos.attendance_schedules` table needs write grants.
 
 **If using direct Supabase insert from client (simplest):** Add RLS policies on `public.pos_attendance_schedules` for authenticated users with appropriate roles.
 
-**If using the legacy pattern:** Insert into `pos.attendance_schedules` via the `@yumipos/backend` backend helpers (same pattern as `useHybridUpdateSiteSettings`).
+**If using the legacy pattern:** Insert into `pos.attendance_schedules` via the `@djiwaapps/backend` backend helpers (same pattern as `useHybridUpdateSiteSettings`).
 
 Check `useHybridWriteActions` to see the exact write pattern used in the project — likely a backend helper that uses `service_role`.
 

@@ -1,4 +1,4 @@
-import { buildDjiwaPayBridgeUrl } from "@yumipos/djiwapay-core";
+import { buildDjiwaPayBridgeUrl } from "@djiwaapps/djiwapay-core";
 
 // Djiwa Pay is served from djiwapay.web.id, a different registrable domain than
 // the customer app. Open it through the auth bridge so the existing

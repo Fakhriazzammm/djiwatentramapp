@@ -27,7 +27,7 @@
 ### Task 1: Update shared typography tokens
 
 **Files:**
-- Modify: `packages/yumipos-web-shared/src/theme.css`
+- Modify: `packages/djiwaapps-web-shared/src/theme.css`
 
 - [ ] Ganti `--font-body` menjadi Apple-compatible system stack dengan SF Pro Text sebagai preferred Apple body face.
 - [ ] Ganti `--font-display` menjadi Apple-compatible system stack dengan SF Pro Display sebagai preferred Apple display face.

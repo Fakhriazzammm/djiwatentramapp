@@ -6,7 +6,7 @@ import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { deliveryApi } from "@yumipos/web-shared/lib/customer-delivery";
+import { deliveryApi } from "@djiwaapps/web-shared/lib/customer-delivery";
 import { DeliverySettingsPanel } from "./-components/delivery-settings-panel";
 export const Route = createLazyFileRoute("/admin/delivery")({ component: AdminCustomerDelivery });
 const DELIVERY_STATUSES = [

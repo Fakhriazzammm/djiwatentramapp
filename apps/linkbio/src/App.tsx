@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowUpRight, BadgeCheck, ChevronRight, Globe2, HeartHandshake, MapPin, ShoppingBag, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
-import { OwnerFooter } from "@yumipos/web-shared";
+import { OwnerFooter } from "@djiwaapps/web-shared";
 
 const links = [
   {

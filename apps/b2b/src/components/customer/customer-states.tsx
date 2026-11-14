@@ -1,4 +1,4 @@
-import { Djiwa3DIcon, type Djiwa3DIconName } from "@yumipos/web-shared";
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@djiwaapps/web-shared";
 import type { ReactNode } from "react";
 import { AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";

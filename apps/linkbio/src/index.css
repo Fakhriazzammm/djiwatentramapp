@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "@yumipos/web-shared/theme.css";
+@import "@djiwaapps/web-shared/theme.css";
 
 :root {
   color: #17233f;

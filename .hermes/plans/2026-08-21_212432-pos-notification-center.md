@@ -344,7 +344,7 @@ Requirements:
 
 ### Shared types
 
-- `packages/yumipos-web-shared/src/types/*` or existing POS type location, only if notification contracts are shared by Admin/POS.
+- `packages/djiwaapps-web-shared/src/types/*` or existing POS type location, only if notification contracts are shared by Admin/POS.
 
 ## Integration Points
 

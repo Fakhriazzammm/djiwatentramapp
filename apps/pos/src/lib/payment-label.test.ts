@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { formatPaymentLabel } from "@yumipos/web-shared/lib/payment-label";
+import { formatPaymentLabel } from "@djiwaapps/web-shared/lib/payment-label";
 
 describe("payment provenance labels", () => {
   test.each([

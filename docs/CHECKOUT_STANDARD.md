@@ -17,7 +17,7 @@ packages/djiwa-checkout-ui/src
 Every consuming app must import the stylesheet once:
 
 ```ts
-import "@yumipos/djiwa-checkout-ui/styles.css";
+import "@djiwaapps/djiwa-checkout-ui/styles.css";
 ```
 
 ## 1. Golden rule
@@ -85,12 +85,12 @@ short, pass `walletShortage` — the option disables and shows `topupLabel` + `o
 
 ## 7. Adding a NEW app (checklist)
 
-1. `apps/<new>/package.json` → `"@yumipos/djiwa-checkout-ui": "workspace:*"`.
-2. `apps/<new>/src/main.tsx` → `import "@yumipos/djiwa-checkout-ui/styles.css";`
+1. `apps/<new>/package.json` → `"@djiwaapps/djiwa-checkout-ui": "workspace:*"`.
+2. `apps/<new>/src/main.tsx` → `import "@djiwaapps/djiwa-checkout-ui/styles.css";`
 3. Build the screen from the canonical flow — no bespoke markup:
 
 ```tsx
-import { CustomerCheckout, CheckoutSummaryLines } from "@yumipos/djiwa-checkout-ui";
+import { CustomerCheckout, CheckoutSummaryLines } from "@djiwaapps/djiwa-checkout-ui";
 
 <CustomerCheckout
   mode={step === "review" ? "review" : "payment"}

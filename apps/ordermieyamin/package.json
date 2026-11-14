@@ -1,5 +1,5 @@
 {
-  "name": "@yumipos/ordermieyamin",
+  "name": "@djiwaapps/ordermieyamin",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -16,9 +16,9 @@
     "@supabase/supabase-js": "^2.103.3",
     "@tailwindcss/vite": "^4.0.15",
     "@tanstack/react-router": "^1.141.1",
-    "@yumipos/env": "workspace:*",
-    "@yumipos/web-shared": "workspace:*",
-    "@yumipos/djiwa-checkout-ui": "workspace:*",
+    "@djiwaapps/env": "workspace:*",
+    "@djiwaapps/web-shared": "workspace:*",
+    "@djiwaapps/djiwa-checkout-ui": "workspace:*",
     "better-auth": "^1.6.23",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -36,7 +36,7 @@
   "devDependencies": {
     "@tanstack/react-router-devtools": "^1.141.1",
     "@tanstack/router-plugin": "^1.141.1",
-    "@yumipos/config": "workspace:*",
+    "@djiwaapps/config": "workspace:*",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "^4.3.4",

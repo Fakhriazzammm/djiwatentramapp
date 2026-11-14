@@ -1,4 +1,4 @@
-import { buildDjiwaPayBridgeUrl } from "@yumipos/djiwapay-core";
+import { buildDjiwaPayBridgeUrl } from "@djiwaapps/djiwapay-core";
 
 export function openDjiwaPay(username: string, route: "wallet" | "topup" = "wallet") {
   const returnTo = `${window.location.origin}/${encodeURIComponent(username)}`;
