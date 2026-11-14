@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Btn, I3, Ic, Seg, Sheet, iconOr, type IconName } from "../shell/dpx-ui";
+import { Btn, I3, Ic, Seg, Sheet, bigAmountSize, iconOr, type IconName } from "../shell/dpx-ui";
 import { debtTotals, goalProjection, goalSaved, uid } from "../../lib/finance/calc";
 import { CATEGORY_ICONS, PAY_ACCOUNT_ID, TONES } from "../../lib/finance/categories";
 import { parseEntries, type ParsedItem } from "../../lib/finance/parse";
@@ -16,7 +16,7 @@ export const CatIcon = ({ cat, size = 44 }: { cat: Category; size?: number }) =>
 export function MoneyInput({ value, onChange, placeholder = "0", label, big = false }: { value: string; onChange: (digits: string) => void; placeholder?: string; label?: string; big?: boolean }) {
   const n = Number(value || 0);
   return big
-    ? <div className="dpx-bigamt"><b>Rp</b><input aria-label={label ?? "Nominal"} inputMode="numeric" value={n ? n.toLocaleString("id-ID") : ""} placeholder={placeholder} onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 11))} /></div>
+    ? <div className="dpx-bigamt"><b>Rp</b><input style={{ fontSize: bigAmountSize(value) }} aria-label={label ?? "Nominal"} inputMode="numeric" value={n ? n.toLocaleString("id-ID") : ""} placeholder={placeholder} onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 11))} /></div>
     : <div className="dpx-input"><b>Rp</b><input aria-label={label ?? "Nominal"} inputMode="numeric" value={n ? n.toLocaleString("id-ID") : ""} placeholder={placeholder} onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 11))} /></div>;
 }
 

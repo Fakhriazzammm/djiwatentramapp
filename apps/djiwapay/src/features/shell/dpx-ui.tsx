@@ -39,6 +39,8 @@ export function I3({ name, px = 40, alt = "", style }: { name: Djiwa3DIconName; 
   return <Djiwa3DIcon name={name} alt={alt} size="sm" style={{ width: px, height: px, ...style }} />;
 }
 
+/** Font size for the big amount field so long numbers never clip. */
+export const bigAmountSize = (digits: string) => { const n = digits.replace(/\D/g, "").length; const grouped = n + Math.floor((n - 1) / 3); return grouped <= 7 ? 52 : grouped <= 9 ? 42 : grouped <= 11 ? 34 : 28; };
 export const spring = { type: "spring", stiffness: 420, damping: 32, mass: 0.8 } as const;
 export const ease = [0.32, 0.72, 0, 1] as const;
 

@@ -139,7 +139,7 @@
 .dpx-hdr .dpx-grow h1{margin:0}
 .dpx-lock{overflow:hidden}
 .dpx-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-.dpx button:focus-visible,.dpx input:focus-visible,.dpx a:focus-visible,.dpx select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.dpx button:focus-visible,.dpx a:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .dpx-display.dpx-sm{font-size:44px}
 @media(max-width:360px){.dpx-display{font-size:46px}.dpx-quick .dpx-q .dpx-qi{width:54px;height:54px}}
 .dpx-next{display:flex;gap:10px;overflow-x:auto;margin:0 -18px;padding:0 18px 4px;scrollbar-width:none}.dpx-next::-webkit-scrollbar{display:none}
@@ -215,3 +215,9 @@
 .dpx-kp button:active{background:#e4e8f1}.dpx-lockrow{opacity:.6}
 .dpx-textarea{width:100%;min-height:90px;border:0;border-radius:26px;background:var(--group);padding:16px 18px;font-size:17px;outline:0;resize:none}
 .dpx-item-edit input{border:0;background:none;outline:0;font:inherit;width:100%}
+
+/* inputs: the wrapper shows focus, never a second rectangular outline */
+.dpx :is(input,textarea,select):focus-visible,.dpx :is(input,textarea,select):focus{outline:none!important;box-shadow:none!important}
+.dpx-search:focus-within{background:#fff;box-shadow:0 0 0 2px var(--blue)}
+.dpx-textarea:focus{background:#fff;box-shadow:0 0 0 2px var(--blue)!important}
+.dpx-bigamt{max-width:100%;padding:0 6px}.dpx-bigamt input{flex:1 1 auto;min-width:0;width:auto;text-align:left}

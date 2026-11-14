@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CustomerProfile } from "../../lib/identity-adapter";
-import { Btn, Header, Ic, Screen, Seg, Sky } from "../shell/dpx-ui";
+import { Btn, Header, Ic, Screen, Seg, Sky, bigAmountSize } from "../shell/dpx-ui";
 import { DjiwaPayWalletScanner } from "./djiwa-pay-wallet-scanner";
 import { requestWalletWithdrawal, resolveWalletRecipient, transferWallet } from "../../lib/wallet-adapter";
 import { validateWalletWithdrawal } from "../../lib/djiwa-pay-withdrawal";
@@ -154,7 +154,7 @@ export function DjiwaPayWalletAction({ mode, profile, balance, onClose, onSucces
   const phoneReady = Boolean(verifiedRecipient);
   const wrap = (content: React.ReactNode, cta?: React.ReactNode) => <Screen><Sky><div className="dpx-pad dpx-nobar" style={{ paddingBottom: cta ? 170 : 60 }}><Header title={title} onBack={onClose} />{content}</div>{cta ? <div className="dpx-sticky">{cta}</div> : null}</Sky></Screen>;
   const err = message ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div>{message}</div></div> : null;
-  const amountField = (placeholder: string, hint: string) => <><div className="dpx-bigamt"><b>Rp</b><input aria-label="Nominal" value={amount ? Number(amount).toLocaleString("id-ID") : ""} inputMode="numeric" onChange={(event) => setAmount(event.currentTarget.value.replace(/\D/g, "").slice(0, 8))} placeholder={placeholder} /></div><p className="dpx-hint dpx-center">{hint}</p></>;
+  const amountField = (placeholder: string, hint: string) => <><div className="dpx-bigamt"><b>Rp</b><input style={{ fontSize: bigAmountSize(amount) }} aria-label="Nominal" value={amount ? Number(amount).toLocaleString("id-ID") : ""} inputMode="numeric" onChange={(event) => setAmount(event.currentTarget.value.replace(/\D/g, "").slice(0, 8))} placeholder={placeholder} /></div><p className="dpx-hint dpx-center">{hint}</p></>;
 
   if (mode === "withdraw") return wrap(<>
     <div className="dpx-center"><div className="dpx-sub">Saldo dapat ditarik</div><div className="dpx-money" style={{ fontSize: 22 }}>{money(balance)}</div></div>

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { AnimatedNumber, Btn, Header, Ic, Screen, Sky, SuccessMark } from "../shell/dpx-ui";
+import { AnimatedNumber, Btn, Header, Ic, Screen, Sky, SuccessMark, bigAmountSize } from "../shell/dpx-ui";
 import { MIN_TOPUP_AMOUNT, normalizeTopupAmount, normalizeTopupDigits } from "../../lib/djiwa-pay-topup";
 
 type TopupStage = "detail" | "payment";
@@ -95,7 +95,7 @@ export function DjiwaPayTopup({
           <>
             <div className="dpx-center"><div className="dpx-sub">Saldo saat ini</div><div className="dpx-money" style={{ fontSize: 22 }}>{money(availableBalance)}</div></div>
             <div className="dpx-bigamt"><b>Rp</b>
-              <input id="topup-custom-amount" inputMode="numeric" autoComplete="off" enterKeyHint="done" aria-label="Nominal isi saldo" aria-describedby="topup-amount-hint" placeholder="0" value={groupDigits(amount)} onChange={(event) => onAmountChange(normalizeTopupDigits(event.currentTarget.value))} />
+              <input style={{ fontSize: bigAmountSize(amount) }} id="topup-custom-amount" inputMode="numeric" autoComplete="off" enterKeyHint="done" aria-label="Nominal isi saldo" aria-describedby="topup-amount-hint" placeholder="0" value={groupDigits(amount)} onChange={(event) => onAmountChange(normalizeTopupDigits(event.currentTarget.value))} />
             </div>
             <p id="topup-amount-hint" className={`dpx-hint dpx-center ${invalid ? "dpx-err" : ""}`}>{invalid ? `Minimal isi saldo ${money(MIN_TOPUP_AMOUNT)}.` : `Minimal ${money(MIN_TOPUP_AMOUNT)} · saldo setelah top up ${money(projectedBalance)}`}</p>
             <div className="dpx-amt-presets" role="group" aria-label="Pilihan nominal isi saldo">
