@@ -7,6 +7,7 @@ import { streak } from "../../lib/finance/calc";
 import { rupiah, formatDateTime } from "../../lib/djiwa-pay-format";
 import type { Account, AccountType, Budget, Category, Debt, Entry, FinanceState, Goal } from "../../lib/finance/types";
 import type { Finance } from "../../lib/finance/use-finance";
+import { ReceiptAttachment } from "./fin-receipt";
 
 export type Notify = (text: string, undo?: () => void) => void;
 export const catOf = (state: FinanceState, id: string): Category => state.categories.find((c) => c.id === id) ?? { id, name: id, icon: "tag", tone: "slate", income: false };
@@ -51,9 +52,10 @@ export function EntrySheet({ entry, fin, notify, onClose, onEdit, onPickCategory
     <div className="dpx-center" style={{ margin: "-4px 0 10px" }}><CatIcon cat={c} size={64} /><div className="dpx-money" style={{ marginTop: 8, color: entry.kind === "in" ? "var(--ok)" : undefined }}>{sign}{rupiah(entry.amount)}</div><div className="dpx-sub">{entry.note || c.name}</div></div>
     <div className="dpx-group">
       <div className="dpx-kv"><span>Kategori</span><b>{c.name}</b></div><div className="dpx-kv"><span>Dompet</span><b>{accName(state, entry.accountId)}</b></div>
-      <div className="dpx-kv"><span>Waktu</span><b>{formatDateTime(entry.at)}</b></div><div className="dpx-kv"><span>Sumber</span><b>{pay ? "Djiwa Pay (otomatis)" : entry.source === "voice" ? "Suara / teks" : "Manual"}</b></div>
+      <div className="dpx-kv"><span>Waktu</span><b>{formatDateTime(entry.at)}</b></div><div className="dpx-kv"><span>Sumber</span><b>{pay ? "Djiwa Pay (otomatis)" : entry.source === "voice" ? "Suara / teks" : entry.source === "receipt" ? "Scan struk" : "Manual"}</b></div>
       {entry.tags.length ? <div className="dpx-kv"><span>Tag</span><b>{entry.tags.map((t) => `#${t}`).join(" ")}</b></div> : null}
     </div>
+    {entry.receiptId ? <ReceiptAttachment id={entry.receiptId} /> : null}
     {pay ? <><Btn type="button" className="dpx-btn dpx-ghost" onClick={() => onPickCategory(entry.categoryId)}><Ic n="tag" size="sm" /> Ubah kategori</Btn><p className="dpx-hint dpx-center">Nominal transaksi Djiwa Pay tidak dapat diubah. Kategori boleh.</p></>
       : <div className="dpx-flex dpx-mt"><Btn type="button" className="dpx-btn dpx-ghost" style={{ margin: 0 }} onClick={onEdit}><Ic n="edit" size="sm" /> Ubah</Btn><Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} onClick={() => setConfirm(true)}><Ic n="trash" size="sm" /> Hapus</Btn></div>}
     {confirm ? <div className="dpx-note dpx-danger" role="alert" style={{ marginTop: 12 }}><Ic n="warn" /><div><b>Hapus catatan ini?</b> Saldo dan anggaran dihitung ulang.<div className="dpx-flex" style={{ marginTop: 10 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" onClick={del}>Hapus</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => setConfirm(false)}>Batal</Btn></div></div></div> : null}
@@ -66,7 +68,7 @@ const speechCtor = (): (new () => SpeechRecognitionLike) | null => { const w = w
 
 const atDaysAgo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); if (n > 0) d.setHours(12, 0, 0, 0); return d.toISOString(); };
 
-export function CatatSheet({ fin, notify, onClose, onManual, onPay, balances }: { fin: Finance; notify: Notify; onClose: () => void; onManual: (kind: "out" | "in") => void; onPay: () => void; balances: Record<string, number> }) {
+export function CatatSheet({ fin, notify, onClose, onManual, onPay, onScan, balances }: { fin: Finance; notify: Notify; onClose: () => void; onManual: (kind: "out" | "in") => void; onPay: () => void; onScan: () => void; balances: Record<string, number> }) {
   const { state, dispatch } = fin;
   const [text, setText] = useState("");
   const [items, setItems] = useState<(ParsedItem & { key: string })[] | null>(null);
@@ -131,6 +133,7 @@ export function CatatSheet({ fin, notify, onClose, onManual, onPay, balances }: 
       <Btn type="button" className="dpx-btn" style={{ margin: 0, flex: 1 }} onClick={listen} aria-pressed={listening}><Ic n="mic" size="sm" /> {listening ? "Mendengarkan… ketuk selesai" : supported ? "Bicara" : "Bicara (tidak didukung)"}</Btn>
       <Btn type="button" className={`dpx-btn dpx-soft ${text.trim() ? "" : "dpx-off"}`} style={{ margin: 0, width: 96, padding: 0 }} onClick={submit} disabled={!text.trim()}><Ic n="up" size="sm" /> Kirim</Btn>
     </div>
+    <Btn type="button" className="dpx-row dpx-mt" style={{ background: "var(--blue-soft)", borderRadius: 22, boxShadow: "0 0 0 2px var(--blue) inset" }} onClick={onScan}><span className="dpx-ico" style={{ background: "var(--blue)", color: "#fff" }}><Ic n="receipt" /></span><span className="dpx-main"><b>Scan atau unggah struk</b><span>Paling cepat untuk belanja banyak item</span></span><Ic n="chev" size="sm" /></Btn>
     <div className="dpx-tile3 dpx-mt" style={{ gridTemplateColumns: "repeat(2,1fr)", gap: 8 }}>
       <Btn type="button" className="dpx-tile dpx-t-mint" style={{ minHeight: 84 }} onClick={() => onManual("out")}><Ic n="edit" size="lg" /><span style={{ fontSize: 13 }}>Catat manual</span></Btn>
       <Btn type="button" className="dpx-tile dpx-t-lav" style={{ minHeight: 84 }} onClick={() => onManual("in")}><Ic n="down" size="lg" /><span style={{ fontSize: 13 }}>Pemasukan</span></Btn>

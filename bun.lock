@@ -10,8 +10,8 @@
         "zod": "^3.25.76",
       },
       "devDependencies": {
-        "@types/node": "^25.0.10",
         "@djiwaapps/config": "workspace:*",
+        "@types/node": "^25.0.10",
         "turbo": "^2.7.6",
         "typescript": "5.0.4",
       },
@@ -39,6 +39,9 @@
       "name": "@djiwaapps/admin",
       "version": "0.0.0",
       "dependencies": {
+        "@djiwaapps/backend": "workspace:*",
+        "@djiwaapps/env": "workspace:*",
+        "@djiwaapps/web-shared": "workspace:*",
         "@dnd-kit/core": "^6.3.1",
         "@dnd-kit/sortable": "^10.0.0",
         "@dnd-kit/utilities": "^3.2.2",
@@ -49,9 +52,6 @@
         "@tanstack/react-form": "^1.12.3",
         "@tanstack/react-router": "^1.141.1",
         "@types/papaparse": "^5.5.2",
-        "@djiwaapps/backend": "workspace:*",
-        "@djiwaapps/env": "workspace:*",
-        "@djiwaapps/web-shared": "workspace:*",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "date-fns": "^4.1.0",
@@ -79,6 +79,7 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@djiwaapps/config": "workspace:*",
         "@tanstack/react-router-devtools": "^1.141.1",
         "@tanstack/router-plugin": "^1.141.1",
         "@tauri-apps/cli": "^2.4.0",
@@ -89,7 +90,6 @@
         "@types/web-bluetooth": "^0.0.21",
         "@vite-pwa/assets-generator": "^1.0.0",
         "@vitejs/plugin-react": "^4.3.4",
-        "@djiwaapps/config": "workspace:*",
         "postcss": "^8.5.3",
         "tailwindcss": "^4.0.15",
         "typescript": "catalog:",
@@ -113,14 +113,14 @@
       "version": "0.0.0",
       "dependencies": {
         "@better-auth/infra": "^0.3.6",
-        "@supabase/ssr": "^0.10.2",
-        "@supabase/supabase-js": "^2.103.3",
-        "@tailwindcss/vite": "^4.0.15",
-        "@tanstack/react-router": "^1.141.1",
         "@djiwaapps/djiwa-checkout-ui": "workspace:*",
         "@djiwaapps/djiwapay-core": "workspace:*",
         "@djiwaapps/env": "workspace:*",
         "@djiwaapps/web-shared": "workspace:*",
+        "@supabase/ssr": "^0.10.2",
+        "@supabase/supabase-js": "^2.103.3",
+        "@tailwindcss/vite": "^4.0.15",
+        "@tanstack/react-router": "^1.141.1",
         "@zxing/library": "^0.23.0",
         "better-auth": "^1.6.23",
         "class-variance-authority": "^0.7.1",
@@ -139,12 +139,12 @@
         "workbox-window": "^7.4.0",
       },
       "devDependencies": {
+        "@djiwaapps/config": "workspace:*",
         "@tanstack/react-router-devtools": "^1.141.1",
         "@tanstack/router-plugin": "^1.141.1",
         "@types/react": "19.2.7",
         "@types/react-dom": "19.2.3",
         "@vitejs/plugin-react": "^4.3.4",
-        "@djiwaapps/config": "workspace:*",
         "tailwindcss": "^4.0.15",
         "typescript": "catalog:",
         "vite": "^6.2.2",
@@ -154,9 +154,9 @@
       "name": "@djiwaapps/booking",
       "version": "0.0.0",
       "dependencies": {
+        "@djiwaapps/web-shared": "workspace:*",
         "@supabase/supabase-js": "^2.103.3",
         "@tailwindcss/vite": "^4.0.15",
-        "@djiwaapps/web-shared": "workspace:*",
         "lucide-react": "^0.473.0",
         "react": "19.2.3",
         "react-dom": "19.2.3",
@@ -176,14 +176,14 @@
       "version": "0.0.0",
       "dependencies": {
         "@better-auth/infra": "^0.3.6",
-        "@supabase/ssr": "^0.10.2",
-        "@supabase/supabase-js": "^2.103.3",
-        "@tailwindcss/vite": "^4.0.15",
-        "@tanstack/react-router": "^1.141.1",
         "@djiwaapps/djiwa-checkout-ui": "workspace:*",
         "@djiwaapps/djiwapay-core": "workspace:*",
         "@djiwaapps/env": "workspace:*",
         "@djiwaapps/web-shared": "workspace:*",
+        "@supabase/ssr": "^0.10.2",
+        "@supabase/supabase-js": "^2.103.3",
+        "@tailwindcss/vite": "^4.0.15",
+        "@tanstack/react-router": "^1.141.1",
         "@zxing/library": "^0.23.0",
         "better-auth": "^1.6.23",
         "class-variance-authority": "^0.7.1",
@@ -202,12 +202,12 @@
         "workbox-window": "^7.4.0",
       },
       "devDependencies": {
+        "@djiwaapps/config": "workspace:*",
         "@tanstack/react-router-devtools": "^1.141.1",
         "@tanstack/router-plugin": "^1.141.1",
         "@types/react": "19.2.7",
         "@types/react-dom": "19.2.3",
         "@vitejs/plugin-react": "^4.3.4",
-        "@djiwaapps/config": "workspace:*",
         "tailwindcss": "^4.0.15",
         "typescript": "catalog:",
         "vite": "^6.2.2",
@@ -218,12 +218,12 @@
       "version": "0.0.0",
       "dependencies": {
         "@better-auth/infra": "^0.3.6",
-        "@supabase/supabase-js": "^2.103.3",
-        "@tailwindcss/vite": "^4.0.15",
         "@djiwaapps/djiwa-checkout-ui": "workspace:*",
         "@djiwaapps/djiwapay-core": "workspace:*",
         "@djiwaapps/djiwapay-ui": "workspace:*",
         "@djiwaapps/web-shared": "workspace:*",
+        "@supabase/supabase-js": "^2.103.3",
+        "@tailwindcss/vite": "^4.0.15",
         "better-auth": "^1.6.23",
         "framer-motion": "^12.23.24",
         "jsqr": "^1.4.0",
@@ -242,12 +242,23 @@
         "vite": "^6.2.2",
       },
     },
+    "apps/djiwapay-api": {
+      "name": "djiwapay-api",
+      "dependencies": {
+        "hono": "^4.6.0",
+        "pg": "^8.13.0",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.4",
+        "@types/pg": "^8.11.0",
+      },
+    },
     "apps/investor": {
       "name": "@djiwaapps/investor",
       "version": "0.0.0",
       "dependencies": {
-        "@tanstack/react-router": "^1.141.1",
         "@djiwaapps/web-shared": "workspace:*",
+        "@tanstack/react-router": "^1.141.1",
         "better-auth": "^1.6.23",
         "lucide-react": "^0.473.0",
         "react": "19.2.3",
@@ -269,13 +280,13 @@
       "name": "@djiwaapps/karyawan",
       "version": "0.0.0",
       "dependencies": {
+        "@djiwaapps/env": "workspace:*",
+        "@djiwaapps/web-shared": "workspace:*",
         "@supabase/ssr": "^0.10.2",
         "@supabase/supabase-js": "^2.103.3",
         "@tailwindcss/vite": "^4.0.15",
         "@tanstack/react-router": "^1.141.1",
         "@tanstack/react-router-devtools": "^1.141.1",
-        "@djiwaapps/env": "workspace:*",
-        "@djiwaapps/web-shared": "workspace:*",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "date-fns": "^4.1.0",
@@ -330,8 +341,8 @@
       "name": "@djiwaapps/linkbio",
       "version": "0.0.0",
       "dependencies": {
-        "@tailwindcss/vite": "^4.0.15",
         "@djiwaapps/web-shared": "workspace:*",
+        "@tailwindcss/vite": "^4.0.15",
         "framer-motion": "^12.29.0",
         "lucide-react": "^0.473.0",
         "react": "19.2.3",
@@ -371,14 +382,14 @@
       "version": "0.0.0",
       "dependencies": {
         "@better-auth/infra": "^0.3.6",
-        "@supabase/ssr": "^0.10.2",
-        "@supabase/supabase-js": "^2.103.3",
-        "@tailwindcss/vite": "^4.0.15",
-        "@tanstack/react-router": "^1.141.1",
         "@djiwaapps/djiwa-checkout-ui": "workspace:*",
         "@djiwaapps/djiwapay-core": "workspace:*",
         "@djiwaapps/env": "workspace:*",
         "@djiwaapps/web-shared": "workspace:*",
+        "@supabase/ssr": "^0.10.2",
+        "@supabase/supabase-js": "^2.103.3",
+        "@tailwindcss/vite": "^4.0.15",
+        "@tanstack/react-router": "^1.141.1",
         "@zxing/library": "^0.23.0",
         "better-auth": "^1.6.23",
         "class-variance-authority": "^0.7.1",
@@ -397,12 +408,12 @@
         "workbox-window": "^7.4.0",
       },
       "devDependencies": {
+        "@djiwaapps/config": "workspace:*",
         "@tanstack/react-router-devtools": "^1.141.1",
         "@tanstack/router-plugin": "^1.141.1",
         "@types/react": "19.2.7",
         "@types/react-dom": "19.2.3",
         "@vitejs/plugin-react": "^4.3.4",
-        "@djiwaapps/config": "workspace:*",
         "tailwindcss": "^4.0.15",
         "typescript": "catalog:",
         "vite": "^6.2.2",
@@ -413,13 +424,13 @@
       "version": "0.0.0",
       "dependencies": {
         "@better-auth/infra": "^0.3.6",
+        "@djiwaapps/djiwa-checkout-ui": "workspace:*",
+        "@djiwaapps/env": "workspace:*",
+        "@djiwaapps/web-shared": "workspace:*",
         "@supabase/ssr": "^0.10.2",
         "@supabase/supabase-js": "^2.103.3",
         "@tailwindcss/vite": "^4.0.15",
         "@tanstack/react-router": "^1.141.1",
-        "@djiwaapps/djiwa-checkout-ui": "workspace:*",
-        "@djiwaapps/env": "workspace:*",
-        "@djiwaapps/web-shared": "workspace:*",
         "better-auth": "^1.6.23",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -435,12 +446,12 @@
         "workbox-window": "^7.4.0",
       },
       "devDependencies": {
+        "@djiwaapps/config": "workspace:*",
         "@tanstack/react-router-devtools": "^1.141.1",
         "@tanstack/router-plugin": "^1.141.1",
         "@types/react": "19.2.7",
         "@types/react-dom": "19.2.3",
         "@vitejs/plugin-react": "^4.3.4",
-        "@djiwaapps/config": "workspace:*",
         "tailwindcss": "^4.0.15",
         "typescript": "catalog:",
         "vite": "^6.2.2",
@@ -450,6 +461,9 @@
       "name": "@djiwaapps/pos",
       "version": "0.0.0",
       "dependencies": {
+        "@djiwaapps/backend": "workspace:*",
+        "@djiwaapps/env": "workspace:*",
+        "@djiwaapps/web-shared": "workspace:*",
         "@dnd-kit/core": "^6.3.1",
         "@dnd-kit/sortable": "^10.0.0",
         "@dnd-kit/utilities": "^3.2.2",
@@ -460,9 +474,6 @@
         "@tanstack/react-form": "^1.12.3",
         "@tanstack/react-router": "^1.141.1",
         "@types/papaparse": "^5.5.2",
-        "@djiwaapps/backend": "workspace:*",
-        "@djiwaapps/env": "workspace:*",
-        "@djiwaapps/web-shared": "workspace:*",
         "@zxing/browser": "^0.2.1",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -491,6 +502,7 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@djiwaapps/config": "workspace:*",
         "@tanstack/react-router-devtools": "^1.141.1",
         "@tanstack/router-plugin": "^1.141.1",
         "@tauri-apps/cli": "^2.4.0",
@@ -501,7 +513,6 @@
         "@types/web-bluetooth": "^0.0.21",
         "@vite-pwa/assets-generator": "^1.0.0",
         "@vitejs/plugin-react": "^4.3.4",
-        "@djiwaapps/config": "workspace:*",
         "postcss": "^8.5.3",
         "tailwindcss": "^4.0.15",
         "typescript": "catalog:",
@@ -547,8 +558,8 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@types/node": "^24.3.0",
         "@djiwaapps/config": "workspace:*",
+        "@types/node": "^24.3.0",
         "typescript": "catalog:",
       },
     },
@@ -565,6 +576,39 @@
       },
       "peerDependencies": {
         "react": "^19.0.0",
+      },
+    },
+    "packages/djiwaapps-web-shared": {
+      "name": "@djiwaapps/web-shared",
+      "version": "0.0.0",
+      "dependencies": {
+        "@sfinterface/numbers": "0.3.4",
+        "@supabase/ssr": "^0.10.2",
+        "@supabase/supabase-js": "^2.103.3",
+        "class-variance-authority": "^0.7.1",
+        "clsx": "^2.1.1",
+        "sonner": "^2.0.5",
+        "tailwind-merge": "^3.3.1",
+        "tailwindcss": "^4.0.15",
+        "tw-animate-css": "^1.4.0",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@djiwaapps/config": "workspace:*",
+        "@types/react": "^19.0.0",
+        "@types/react-dom": "^19.0.0",
+        "typescript": "catalog:",
+      },
+      "peerDependencies": {
+        "@tanstack/react-router": "^1.0.0",
+        "class-variance-authority": "^0.7.0",
+        "date-fns": "^4.0.0",
+        "framer-motion": "^12.0.0",
+        "jspdf": "^4.0.0",
+        "jspdf-autotable": "^5.0.0",
+        "lucide-react": "^0.473.0",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
       },
     },
     "packages/djiwapay-core": {
@@ -600,39 +644,6 @@
         "@djiwaapps/config": "workspace:*",
         "typescript": "catalog:",
         "vite": "catalog:",
-      },
-    },
-    "packages/djiwaapps-web-shared": {
-      "name": "@djiwaapps/web-shared",
-      "version": "0.0.0",
-      "dependencies": {
-        "@sfinterface/numbers": "0.3.4",
-        "@supabase/ssr": "^0.10.2",
-        "@supabase/supabase-js": "^2.103.3",
-        "class-variance-authority": "^0.7.1",
-        "clsx": "^2.1.1",
-        "sonner": "^2.0.5",
-        "tailwind-merge": "^3.3.1",
-        "tailwindcss": "^4.0.15",
-        "tw-animate-css": "^1.4.0",
-        "zod": "catalog:",
-      },
-      "devDependencies": {
-        "@types/react": "^19.0.0",
-        "@types/react-dom": "^19.0.0",
-        "@djiwaapps/config": "workspace:*",
-        "typescript": "catalog:",
-      },
-      "peerDependencies": {
-        "@tanstack/react-router": "^1.0.0",
-        "class-variance-authority": "^0.7.0",
-        "date-fns": "^4.0.0",
-        "framer-motion": "^12.0.0",
-        "jspdf": "^4.0.0",
-        "jspdf-autotable": "^5.0.0",
-        "lucide-react": "^0.473.0",
-        "react": "^19.0.0",
-        "react-dom": "^19.0.0",
       },
     },
   },
@@ -883,6 +894,48 @@
     "@clack/core": ["@clack/core@0.5.0", "", { "dependencies": { "picocolors": "^1.0.0", "sisteransi": "^1.0.5" } }, "sha512-p3y0FIOwaYRUPRcMO7+dlmLh8PSRcrjuTndsiA0WAFbWES0mLZlrjVoBRZ9DzkPFJZG6KGkJmoEAY0ZcVWTkow=="],
 
     "@clack/prompts": ["@clack/prompts@0.11.0", "", { "dependencies": { "@clack/core": "0.5.0", "picocolors": "^1.0.0", "sisteransi": "^1.0.5" } }, "sha512-pMN5FcrEw9hUkZA4f+zLlzivQSeQf5dRGJjSUbvVYDLvpKCdQx5OaknvKzgbtXOizhP+SJJJjqEbOe55uKKfAw=="],
+
+    "@djiwaapps/500kopitasik": ["@djiwaapps/500kopitasik@workspace:apps/500kopitasik"],
+
+    "@djiwaapps/admin": ["@djiwaapps/admin@workspace:apps/admin"],
+
+    "@djiwaapps/b2b": ["@djiwaapps/b2b@workspace:apps/b2b"],
+
+    "@djiwaapps/backend": ["@djiwaapps/backend@workspace:packages/backend"],
+
+    "@djiwaapps/booking": ["@djiwaapps/booking@workspace:apps/booking"],
+
+    "@djiwaapps/config": ["@djiwaapps/config@workspace:packages/config"],
+
+    "@djiwaapps/customer": ["@djiwaapps/customer@workspace:apps/customer"],
+
+    "@djiwaapps/djiwa-checkout-ui": ["@djiwaapps/djiwa-checkout-ui@workspace:packages/djiwa-checkout-ui"],
+
+    "@djiwaapps/djiwapay": ["@djiwaapps/djiwapay@workspace:apps/djiwapay"],
+
+    "@djiwaapps/djiwapay-core": ["@djiwaapps/djiwapay-core@workspace:packages/djiwapay-core"],
+
+    "@djiwaapps/djiwapay-ui": ["@djiwaapps/djiwapay-ui@workspace:packages/djiwapay-ui"],
+
+    "@djiwaapps/env": ["@djiwaapps/env@workspace:packages/env"],
+
+    "@djiwaapps/investor": ["@djiwaapps/investor@workspace:apps/investor"],
+
+    "@djiwaapps/karyawan": ["@djiwaapps/karyawan@workspace:apps/karyawan"],
+
+    "@djiwaapps/kol": ["@djiwaapps/kol@workspace:apps/kol"],
+
+    "@djiwaapps/linkbio": ["@djiwaapps/linkbio@workspace:apps/linkbio"],
+
+    "@djiwaapps/manager": ["@djiwaapps/manager@workspace:apps/manager"],
+
+    "@djiwaapps/merchandise": ["@djiwaapps/merchandise@workspace:apps/merchandise"],
+
+    "@djiwaapps/ordermieyamin": ["@djiwaapps/ordermieyamin@workspace:apps/ordermieyamin"],
+
+    "@djiwaapps/pos": ["@djiwaapps/pos@workspace:apps/pos"],
+
+    "@djiwaapps/web-shared": ["@djiwaapps/web-shared@workspace:packages/djiwaapps-web-shared"],
 
     "@dnd-kit/accessibility": ["@dnd-kit/accessibility@3.1.1", "", { "dependencies": { "tslib": "^2.0.0" }, "peerDependencies": { "react": ">=16.8.0" } }, "sha512-2P+YgaXF+gRsIihwwY1gCsQSYnu9Zyj2py8kY5fFvUM1qm2WA2u639R6YNVfU4GWr+ZM5mqEsfHZZLoRONbemw=="],
 
@@ -1236,6 +1289,8 @@
 
     "@types/babel__traverse": ["@types/babel__traverse@7.28.0", "", { "dependencies": { "@babel/types": "^7.28.2" } }, "sha512-8PvcXf70gTDZBgt9ptxJ8elBeBjcLOAcOtoO/mPJjtji1+CdGbHgm77om1GrsPxsiE+uXIpNSK64UYaIwQXd4Q=="],
 
+    "@types/bun": ["@types/bun@1.4.4", "", { "dependencies": { "bun-types": "1.4.4" } }, "sha512-9wkRDXUXK124pEnAutE6n/l18j+i9GC5IAHK8TmX/2nlySETmky0OU6yL5U8pW1AoKh++AN9auDCr647BfurjQ=="],
+
     "@types/d3-array": ["@types/d3-array@3.2.2", "", {}, "sha512-hOLWVbm7uRza0BYXpIIW5pxfrKe0W+D5lrFiAEYR+pb6w3N2SwSMaJbXdUfSEv+dT4MfHBLtn5js0LAWaO6otw=="],
 
     "@types/d3-color": ["@types/d3-color@3.1.3", "", {}, "sha512-iO90scth9WAbmgv7ogoq57O9YpKmFBbmoEoCHDB2xMBY0+/KVrqAaCDyCE16dUspeOvIxFFRI+0sEtqDqy2b4A=="],
@@ -1266,6 +1321,8 @@
 
     "@types/papaparse": ["@types/papaparse@5.5.2", "", { "dependencies": { "@types/node": "*" } }, "sha512-gFnFp/JMzLHCwRf7tQHrNnfhN4eYBVYYI897CGX4MY1tzY9l2aLkVyx2IlKZ/SAqDbB3I1AOZW5gTMGGsqWliA=="],
 
+    "@types/pg": ["@types/pg@8.23.1", "", { "dependencies": { "@types/node": "*", "pg-protocol": "*", "pg-types": "^2.2.0" } }, "sha512-fKVHpikPdg4GKks3JuLEhvwSyvwzF23hnabPy6DD8ljVbC7+6J5dQzdv4arV6jqq57djnMgs1HKBxX4P8aBI3A=="],
+
     "@types/raf": ["@types/raf@3.4.3", "", {}, "sha512-c4YAvMedbPZ5tEyxzQdMoOhhJ4RD3rngZIdwC2/qDN3d7JpEhB6fiBRKVY1lg5B7Wk+uPBjn5f39j1/2MY1oOw=="],
 
     "@types/react": ["@types/react@19.2.7", "", { "dependencies": { "csstype": "^3.2.2" } }, "sha512-MWtvHrGZLFttgeEj28VXHxpmwYbor/ATPYbBfSFZEIRK0ecCFLl2Qo55z52Hss+UV9CRN7trSeq1zbgx7YDWWg=="],
@@ -1289,48 +1346,6 @@
     "@vite-pwa/assets-generator": ["@vite-pwa/assets-generator@1.0.2", "", { "dependencies": { "cac": "^6.7.14", "colorette": "^2.0.20", "consola": "^3.4.2", "sharp": "^0.33.5", "sharp-ico": "^0.1.5", "unconfig": "^7.3.1" }, "bin": { "pwa-assets-generator": "bin/pwa-assets-generator.mjs" } }, "sha512-MCbrb508JZHqe7bUibmZj/lyojdhLRnfkmyXnkrCM2zVrjTgL89U8UEfInpKTvPeTnxsw2hmyZxnhsdNR6yhwg=="],
 
     "@vitejs/plugin-react": ["@vitejs/plugin-react@4.7.0", "", { "dependencies": { "@babel/core": "^7.28.0", "@babel/plugin-transform-react-jsx-self": "^7.27.1", "@babel/plugin-transform-react-jsx-source": "^7.27.1", "@rolldown/pluginutils": "1.0.0-beta.27", "@types/babel__core": "^7.20.5", "react-refresh": "^0.17.0" }, "peerDependencies": { "vite": "^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0" } }, "sha512-gUu9hwfWvvEDBBmgtAowQCojwZmJ5mcLn3aufeCsitijs3+f2NsrPtlAWIR6OPiqljl96GVCUbLe0HyqIpVaoA=="],
-
-    "@djiwaapps/500kopitasik": ["@djiwaapps/500kopitasik@workspace:apps/500kopitasik"],
-
-    "@djiwaapps/admin": ["@djiwaapps/admin@workspace:apps/admin"],
-
-    "@djiwaapps/b2b": ["@djiwaapps/b2b@workspace:apps/b2b"],
-
-    "@djiwaapps/backend": ["@djiwaapps/backend@workspace:packages/backend"],
-
-    "@djiwaapps/booking": ["@djiwaapps/booking@workspace:apps/booking"],
-
-    "@djiwaapps/config": ["@djiwaapps/config@workspace:packages/config"],
-
-    "@djiwaapps/customer": ["@djiwaapps/customer@workspace:apps/customer"],
-
-    "@djiwaapps/djiwa-checkout-ui": ["@djiwaapps/djiwa-checkout-ui@workspace:packages/djiwa-checkout-ui"],
-
-    "@djiwaapps/djiwapay": ["@djiwaapps/djiwapay@workspace:apps/djiwapay"],
-
-    "@djiwaapps/djiwapay-core": ["@djiwaapps/djiwapay-core@workspace:packages/djiwapay-core"],
-
-    "@djiwaapps/djiwapay-ui": ["@djiwaapps/djiwapay-ui@workspace:packages/djiwapay-ui"],
-
-    "@djiwaapps/env": ["@djiwaapps/env@workspace:packages/env"],
-
-    "@djiwaapps/investor": ["@djiwaapps/investor@workspace:apps/investor"],
-
-    "@djiwaapps/karyawan": ["@djiwaapps/karyawan@workspace:apps/karyawan"],
-
-    "@djiwaapps/kol": ["@djiwaapps/kol@workspace:apps/kol"],
-
-    "@djiwaapps/linkbio": ["@djiwaapps/linkbio@workspace:apps/linkbio"],
-
-    "@djiwaapps/manager": ["@djiwaapps/manager@workspace:apps/manager"],
-
-    "@djiwaapps/merchandise": ["@djiwaapps/merchandise@workspace:apps/merchandise"],
-
-    "@djiwaapps/ordermieyamin": ["@djiwaapps/ordermieyamin@workspace:apps/ordermieyamin"],
-
-    "@djiwaapps/pos": ["@djiwaapps/pos@workspace:apps/pos"],
-
-    "@djiwaapps/web-shared": ["@djiwaapps/web-shared@workspace:packages/djiwaapps-web-shared"],
 
     "@yumme/group-landing": ["@yumme/group-landing@workspace:apps/yumme"],
 
@@ -1391,6 +1406,8 @@
     "browserslist": ["browserslist@4.28.2", "", { "dependencies": { "baseline-browser-mapping": "^2.10.12", "caniuse-lite": "^1.0.30001782", "electron-to-chromium": "^1.5.328", "node-releases": "^2.0.36", "update-browserslist-db": "^1.2.3" }, "bin": { "browserslist": "cli.js" } }, "sha512-48xSriZYYg+8qXna9kwqjIVzuQxi+KYWp2+5nCYnYKPTr0LvD89Jqk2Or5ogxz0NUMfIjhh2lIUX/LyX9B4oIg=="],
 
     "buffer-from": ["buffer-from@1.1.2", "", {}, "sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ=="],
+
+    "bun-types": ["bun-types@1.4.4", "", { "dependencies": { "@types/node": "*", "undici-types": "*" } }, "sha512-yjrJh5oGX7mMPKGd19YXyIjmEuj4G4zNC30bs7PM9Az7NQ3ndF3j6hbeRdvJTRQEhJ/FYQwW0a2moweEi2hMxQ=="],
 
     "bundle-name": ["bundle-name@4.1.0", "", { "dependencies": { "run-applescript": "^7.0.0" } }, "sha512-tjwM5exMg6BGRI+kNmTntNsvdZS1X8BFYS6tnJ2hdH0kVxM6/eVZ2xy+FqStSWvYmtfFMDLIxurorHwDKfDz5Q=="],
 
@@ -1533,6 +1550,8 @@
     "detect-libc": ["detect-libc@2.1.2", "", {}, "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ=="],
 
     "diff": ["diff@8.0.4", "", {}, "sha512-DPi0FmjiSU5EvQV0++GFDOJ9ASQUVFh5kD+OzOnYdi7n3Wpm9hWWGfB/O2blfHcMVTL5WkQXSnRiK9makhrcnw=="],
+
+    "djiwapay-api": ["djiwapay-api@workspace:apps/djiwapay-api"],
 
     "dompurify": ["dompurify@3.4.7", "", { "optionalDependencies": { "@types/trusted-types": "^2.0.7" } }, "sha512-2jBxDJY4RR06tQNy4w5FlFH7kfxsQZlufd0sbv+chfHCxeJwrFw2baUDsSwvBISD4K4RDbd0PTfy3uNXsR6siA=="],
 
@@ -2286,6 +2305,14 @@
 
     "@better-auth/core/zod": ["zod@4.4.3", "", {}, "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="],
 
+    "@djiwaapps/admin/@types/node": ["@types/node@22.19.19", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-dyh/xO2Fh5bYrfWaaqGrRQQGkNdmYw6AmaAUvYeUMNTWQtvb796ikLdmTchRmOlOiIJ1TDXfWgVx1QkUlQ6Hew=="],
+
+    "@djiwaapps/backend/@types/node": ["@types/node@24.12.4", "", { "dependencies": { "undici-types": "~7.16.0" } }, "sha512-GUUEShf+PBCGW2KaXwcIt3Yk+e3pkKwWKb9GSyM9WQVE+ep2jzmHdGsHzu4wgcZy5fN9FBdVzjpBQsYlpfpgLA=="],
+
+    "@djiwaapps/backend/better-auth": ["better-auth@1.4.9", "", { "dependencies": { "@better-auth/core": "1.4.9", "@better-auth/telemetry": "1.4.9", "@better-auth/utils": "0.3.0", "@better-fetch/fetch": "1.1.21", "@noble/ciphers": "^2.0.0", "@noble/hashes": "^2.0.0", "better-call": "1.1.7", "defu": "^6.1.4", "jose": "^6.1.0", "kysely": "^0.28.5", "nanostores": "^1.0.1", "zod": "^4.1.12" }, "peerDependencies": { "@lynx-js/react": "*", "@prisma/client": "^5.0.0 || ^6.0.0 || ^7.0.0", "@sveltejs/kit": "^2.0.0", "@tanstack/react-start": "^1.0.0", "better-sqlite3": "^12.0.0", "drizzle-kit": ">=0.31.4", "drizzle-orm": ">=0.41.0", "mongodb": "^6.0.0 || ^7.0.0", "mysql2": "^3.0.0", "next": "^14.0.0 || ^15.0.0 || ^16.0.0", "pg": "^8.0.0", "prisma": "^5.0.0 || ^6.0.0 || ^7.0.0", "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0", "solid-js": "^1.0.0", "svelte": "^4.0.0 || ^5.0.0", "vitest": "^2.0.0 || ^3.0.0 || ^4.0.0", "vue": "^3.0.0" }, "optionalPeers": ["@lynx-js/react", "@prisma/client", "@sveltejs/kit", "@tanstack/react-start", "better-sqlite3", "drizzle-kit", "drizzle-orm", "mongodb", "mysql2", "next", "pg", "prisma", "react", "react-dom", "solid-js", "svelte", "vitest", "vue"] }, "sha512-usSdjuyTzZwIvM8fjF8YGhPncxV3MAg3dHUO9uPUnf0yklXUSYISiH1+imk6/Z+UBqsscyyPRnbIyjyK97p7YA=="],
+
+    "@djiwaapps/pos/@types/node": ["@types/node@22.19.19", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-dyh/xO2Fh5bYrfWaaqGrRQQGkNdmYw6AmaAUvYeUMNTWQtvb796ikLdmTchRmOlOiIJ1TDXfWgVx1QkUlQ6Hew=="],
+
     "@reduxjs/toolkit/immer": ["immer@11.1.8", "", {}, "sha512-/tbkHMW7y10Lx6i1crLjD4/OhNkRG+Fo7byZHtah0547nIeXYcpIXaUh0IAQY6gO5459qpGGYapcEOHtFXkIuA=="],
 
     "@tailwindcss/oxide-wasm32-wasi/@emnapi/core": ["@emnapi/core@1.10.0", "", { "dependencies": { "@emnapi/wasi-threads": "1.2.1", "tslib": "^2.4.0" }, "bundled": true }, "sha512-yq6OkJ4p82CAfPl0u9mQebQHKPJkY7WrIuk205cTYnYe+k2Z8YBh11FrbRG/H6ihirqcacOgl2BIO8oyMQLeXw=="],
@@ -2305,14 +2332,6 @@
     "@tanstack/router-generator/zod": ["zod@4.4.3", "", {}, "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="],
 
     "@tanstack/router-plugin/zod": ["zod@4.4.3", "", {}, "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="],
-
-    "@djiwaapps/admin/@types/node": ["@types/node@22.19.19", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-dyh/xO2Fh5bYrfWaaqGrRQQGkNdmYw6AmaAUvYeUMNTWQtvb796ikLdmTchRmOlOiIJ1TDXfWgVx1QkUlQ6Hew=="],
-
-    "@djiwaapps/backend/@types/node": ["@types/node@24.12.4", "", { "dependencies": { "undici-types": "~7.16.0" } }, "sha512-GUUEShf+PBCGW2KaXwcIt3Yk+e3pkKwWKb9GSyM9WQVE+ep2jzmHdGsHzu4wgcZy5fN9FBdVzjpBQsYlpfpgLA=="],
-
-    "@djiwaapps/backend/better-auth": ["better-auth@1.4.9", "", { "dependencies": { "@better-auth/core": "1.4.9", "@better-auth/telemetry": "1.4.9", "@better-auth/utils": "0.3.0", "@better-fetch/fetch": "1.1.21", "@noble/ciphers": "^2.0.0", "@noble/hashes": "^2.0.0", "better-call": "1.1.7", "defu": "^6.1.4", "jose": "^6.1.0", "kysely": "^0.28.5", "nanostores": "^1.0.1", "zod": "^4.1.12" }, "peerDependencies": { "@lynx-js/react": "*", "@prisma/client": "^5.0.0 || ^6.0.0 || ^7.0.0", "@sveltejs/kit": "^2.0.0", "@tanstack/react-start": "^1.0.0", "better-sqlite3": "^12.0.0", "drizzle-kit": ">=0.31.4", "drizzle-orm": ">=0.41.0", "mongodb": "^6.0.0 || ^7.0.0", "mysql2": "^3.0.0", "next": "^14.0.0 || ^15.0.0 || ^16.0.0", "pg": "^8.0.0", "prisma": "^5.0.0 || ^6.0.0 || ^7.0.0", "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0", "solid-js": "^1.0.0", "svelte": "^4.0.0 || ^5.0.0", "vitest": "^2.0.0 || ^3.0.0 || ^4.0.0", "vue": "^3.0.0" }, "optionalPeers": ["@lynx-js/react", "@prisma/client", "@sveltejs/kit", "@tanstack/react-start", "better-sqlite3", "drizzle-kit", "drizzle-orm", "mongodb", "mysql2", "next", "pg", "prisma", "react", "react-dom", "solid-js", "svelte", "vitest", "vue"] }, "sha512-usSdjuyTzZwIvM8fjF8YGhPncxV3MAg3dHUO9uPUnf0yklXUSYISiH1+imk6/Z+UBqsscyyPRnbIyjyK97p7YA=="],
-
-    "@djiwaapps/pos/@types/node": ["@types/node@22.19.19", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-dyh/xO2Fh5bYrfWaaqGrRQQGkNdmYw6AmaAUvYeUMNTWQtvb796ikLdmTchRmOlOiIJ1TDXfWgVx1QkUlQ6Hew=="],
 
     "auth/zod": ["zod@4.4.3", "", {}, "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="],
 
@@ -2340,8 +2359,6 @@
 
     "workbox-build/pretty-bytes": ["pretty-bytes@5.6.0", "", {}, "sha512-FFw039TmrBqFK8ma/7OL3sDz/VytdtJr044/QUJtH0wK9lb9jLq9tJyIxUwtQJHwar2BqtiA4iCWSwo9JLkzFg=="],
 
-    "@tanstack/react-router/@tanstack/react-store/@tanstack/store": ["@tanstack/store@0.9.3", "", {}, "sha512-8reSzl/qGWGGVKhBoxXPMWzATSbZLZFWhwBAFO9NAyp0TxzfBP0mIrGb8CP8KrQTmvzXlR/vFPPUrHTLBGyFyw=="],
-
     "@djiwaapps/admin/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
     "@djiwaapps/backend/@types/node/undici-types": ["undici-types@7.16.0", "", {}, "sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw=="],
@@ -2359,6 +2376,8 @@
     "@djiwaapps/backend/better-auth/zod": ["zod@4.4.3", "", {}, "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="],
 
     "@djiwaapps/pos/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
+
+    "@tanstack/react-router/@tanstack/react-store/@tanstack/store": ["@tanstack/store@0.9.3", "", {}, "sha512-8reSzl/qGWGGVKhBoxXPMWzATSbZLZFWhwBAFO9NAyp0TxzfBP0mIrGb8CP8KrQTmvzXlR/vFPPUrHTLBGyFyw=="],
 
     "filelist/minimatch/brace-expansion": ["brace-expansion@2.1.1", "", { "dependencies": { "balanced-match": "^1.0.0" } }, "sha512-WR1cURNjuvBLMZBMbqM0UoE+WAfdUcEV1ccD8PVBVOI+Z3ND4+SZbN8RsfT2bMuG1qwz5RFvPukSZm5fF2D5eA=="],
 

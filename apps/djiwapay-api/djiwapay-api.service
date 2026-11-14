@@ -1,0 +1,18 @@
+[Unit]
+Description=Djiwa Pay finance API (Postgres Helipod)
+After=network-online.target better-auth.service
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/opt/djiwapay-api
+EnvironmentFile=/etc/djiwatentramapp/djiwapay-api.env
+ExecStart=/usr/local/bin/bun src/index.ts
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/djiwapay-api
+
+[Install]
+WantedBy=multi-user.target

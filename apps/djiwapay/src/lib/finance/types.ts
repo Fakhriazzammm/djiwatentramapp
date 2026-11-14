@@ -1,5 +1,5 @@
 export type Kind = "out" | "in" | "tf";
-export type EntrySource = "manual" | "voice" | "pay";
+export type EntrySource = "manual" | "voice" | "pay" | "receipt";
 
 export type Entry = {
   id: string;
@@ -13,6 +13,8 @@ export type Entry = {
   note: string;
   tags: string[];
   source: EntrySource;
+  /** Set when the entry came from a scanned receipt (server-side finance.receipts id). */
+  receiptId?: string;
   createdAt: string;
 };
 

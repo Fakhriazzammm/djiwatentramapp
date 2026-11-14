@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AnimatedNumber, Bar, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
 import type { Nav } from "../shell/dpx-pages";
+import { ReceiptSheet } from "./fin-receipt";
 import { AccountEditSheet, AccountSheet, BudgetSheet, CatIcon, CategoryEditSheet, CategorySheet, DebtSheet, EntrySheet, GoalDetailSheet, GoalSheet, CatatSheet, SplitSheet, StreakSheet, MoneyInput, accName, catOf, type Notify } from "./fin-sheets";
 import { accountBalance, budgetStatuses, buildInsights, dailySpend, daysIn, debtTotals, detectSubscriptions, goalProjection, goalSaved, inMonth, monthlySeries, safeToSpend, spendByCategory, streak, toCsv, totals, uid } from "../../lib/finance/calc";
 import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
@@ -14,7 +15,7 @@ import type { CustomerProfile } from "../../lib/identity-adapter";
 import type { WalletTransaction } from "../../lib/wallet-adapter";
 
 export type FinSheet =
-  | { k: "catat" } | { k: "entry"; id: string } | { k: "budget"; cid?: string } | { k: "goal"; id?: string } | { k: "goal-detail"; id: string }
+  | { k: "catat" } | { k: "scan" } | { k: "entry"; id: string } | { k: "budget"; cid?: string } | { k: "goal"; id?: string } | { k: "goal-detail"; id: string }
   | { k: "debt"; id?: string } | { k: "split" } | { k: "streak" } | { k: "account"; id?: string } | { k: "category"; id?: string } | { k: "pay-category"; id: string };
 
 export type FinCtx = {
@@ -324,7 +325,7 @@ export function FinSettings({ ctx, onBack }: { ctx: FinCtx; onBack: () => void }
   const importJson = (f: File | undefined) => { if (!f) return; void f.text().then((txt) => { try { const next = normalize(JSON.parse(txt)); fin.dispatch({ type: "import", state: { ...next, onboarded: true } }); ctx.notify(`Data dipulihkan: ${next.entries.length} catatan`); } catch { ctx.notify("Berkas cadangan tidak valid"); } }); };
   return <div className="dpx-page"><Sky><div className="dpx-pad dpx-nobar">
     <Header title="Pengaturan keuangan" onBack={onBack} />
-    <div className="dpx-note dpx-info" style={{ marginTop: 6 }}><Ic n="shield" /><div><b>Data tersimpan di perangkat ini.</b> Catatan pribadi tidak dikirim ke server. Buat cadangan berkala agar tidak hilang saat ganti perangkat. Transaksi Djiwa Pay tetap aman di akunmu.</div></div>
+    <div className="dpx-note dpx-info" style={{ marginTop: 6 }} role="status"><Ic n="shield" /><div><b>{fin.sync.status === "ok" ? "Tersinkron ke akun Djiwa Pay." : fin.sync.status === "syncing" || fin.sync.status === "starting" ? "Menyinkronkan…" : "Belum tersinkron — data aman di perangkat ini."}</b> Catatan disimpan di perangkat dan dicadangkan otomatis ke server Djiwa Pay, jadi tetap ada saat ganti perangkat.{fin.sync.status === "offline" ? <> <Btn type="button" className="dpx-chip3" onClick={() => void fin.retrySync()}>Coba lagi</Btn></> : null}</div></div>
     <div className="dpx-glabel">Kategori <Btn type="button" onClick={() => ctx.open({ k: "category" })}>+ Tambah</Btn></div>
     <div className="dpx-group dpx-flush dpx-white">{state.categories.map((c) => <Row key={c.id} icon={iconOr(c.icon)} tone={c.tone} title={c.name} sub={`${c.income ? "Pemasukan" : "Pengeluaran"}${c.custom ? " · buatanmu" : ""}`} onClick={() => ctx.open({ k: "category", id: c.id })} />)}</div>
     <div className="dpx-glabel">Data</div>
@@ -335,7 +336,7 @@ export function FinSettings({ ctx, onBack }: { ctx: FinCtx; onBack: () => void }
     </div>
     <div className="dpx-glabel">Zona hati-hati</div>
     <div className="dpx-group dpx-flush dpx-white"><Row icon="trash" tone="rose" title="Hapus semua data keuangan" sub="Catatan, anggaran, tujuan, hutang" onClick={() => setConfirmReset(true)} chev={false} /></div>
-    {confirmReset ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div><b>Hapus semua data keuangan di perangkat ini?</b> Tidak bisa dibatalkan. Transaksi Djiwa Pay tidak terpengaruh.<div className="dpx-flex" style={{ marginTop: 10 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" onClick={() => { fin.dispatch({ type: "reset" }); setConfirmReset(false); ctx.notify("Data keuangan dihapus"); onBack(); }}>Hapus semua</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => setConfirmReset(false)}>Batal</Btn></div></div></div> : null}
+    {confirmReset ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div><b>Hapus semua data keuangan (perangkat dan server)?</b> Tidak bisa dibatalkan. Transaksi Djiwa Pay tidak terpengaruh.<div className="dpx-flex" style={{ marginTop: 10 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" onClick={() => { fin.dispatch({ type: "reset" }); setConfirmReset(false); ctx.notify("Data keuangan dihapus"); onBack(); }}>Hapus semua</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => setConfirmReset(false)}>Batal</Btn></div></div></div> : null}
   </div></Sky></div>;
 }
 
@@ -346,7 +347,8 @@ export function FinSheetHost({ ctx, sheet, close, goManual, openPaySheet }: { ct
   const suggested = useMemo(() => { const now = new Date(); const out: Record<string, number> = {}; for (let i = 1; i <= 3; i++) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); for (const [id, v] of spendByCategory(entries.filter((e) => inMonth(e, d.getFullYear(), d.getMonth())))) out[id] = (out[id] ?? 0) + v / 3; } for (const k of Object.keys(out)) out[k] = Math.round(out[k] / 1000) * 1000; return out; }, [entries]);
   if (!sheet) return null;
   switch (sheet.k) {
-    case "catat": return <CatatSheet key="catat" fin={fin} notify={notify} balances={balances} onClose={close} onManual={(k) => { close(); goManual(k); }} onPay={() => { close(); openPaySheet(); }} />;
+    case "catat": return <CatatSheet key="catat" fin={fin} notify={notify} balances={balances} onClose={close} onManual={(k) => { close(); goManual(k); }} onPay={() => { close(); openPaySheet(); }} onScan={() => ctx.open({ k: "scan" })} />;
+    case "scan": return <ReceiptSheet key="scan" fin={fin} notify={notify} balances={balances} onClose={close} />;
     case "entry": { const e = entries.find((x) => x.id === sheet.id); if (!e) return null; return <EntrySheet key="entry" entry={e} fin={fin} notify={notify} onClose={close} onEdit={() => { close(); goManual(e.kind, e.id); }} onPickCategory={() => ctx.open({ k: "pay-category", id: e.id })} />; }
     case "pay-category": { const e = entries.find((x) => x.id === sheet.id); if (!e) return null; return <CategorySheet key="paycat" categories={state.categories} income={e.kind === "in"} value={e.categoryId} onPick={(id) => { fin.dispatch({ type: "override/set", id: e.id, override: { categoryId: id } }); notify("Kategori diubah"); }} onClose={close} />; }
     case "budget": return <BudgetSheet key="budget" fin={fin} categoryId={sheet.cid} suggested={suggested} notify={notify} onClose={close} />;

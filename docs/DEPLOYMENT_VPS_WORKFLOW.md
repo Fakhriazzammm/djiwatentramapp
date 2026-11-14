@@ -310,3 +310,13 @@ Mengikuti pola timer `djiwa-autodeploy` di VPS Djiwa Travel (tanpa GitHub Action
 
 Pasang sekali di VPS: `sudo bash /opt/djiwatentramapp/scripts/install-artifact-autodeploy.sh`.
 Operasi: `node scripts/artifact-autodeploy.mjs --check` (status), `--force` (publish ulang), `journalctl -u djiwa-artifact-deploy -n 50`. Matikan: `sudo systemctl disable --now djiwa-artifact-deploy.timer`.
+
+## Djiwa Pay finance API (`apps/djiwapay-api`)
+
+Backend catatan keuangan Djiwa Pay: Postgres Helipod (project `djiwatentram`, schema `finance`), proses Bun terpisah `djiwapay-api.service` di `vps-djiwa-tentram` (127.0.0.1:3011). auth-server tidak diubah; service ini memvalidasi sesi lewat `GET 127.0.0.1:3001/api/pay-bridge/profile`.
+
+- Nginx `pay.djiwatentram.web.id` dan `djiwapay.web.id`: `location ^~ /api/finance/` -> `127.0.0.1:3011` (`client_max_body_size 8m`), di `/etc/nginx/sites-enabled/djiwapay.conf` (backup di `/opt/djiwapay-nginx-backups/`).
+- Rahasia hanya di `/etc/djiwatentramapp/djiwapay-api.env` (root, 600): `DATABASE_URL`, `HELIPOD_AI_KEY`, `AUTH_URL`, `PORT`, `RECEIPTS_DIR`, `SCAN_DAILY_LIMIT`.
+- Foto struk: `/var/lib/djiwapay-api/receipts/<user>/<id>.jpg` (bukan di Postgres).
+- Deploy/migrasi: `scripts/deploy-djiwapay-api.sh` (rsync + `bun src/migrate.ts` + restart + cek health). Dependensi di-install di Mac karena mirror npm VPS tidak andal.
+- Rencana dan keputusan: `docs/superpowers/plans/2026-11-15-djiwapay-finance-backend.md`.
