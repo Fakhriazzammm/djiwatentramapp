@@ -968,6 +968,12 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 												permission="finance:view"
 											/>
 									<DesktopSubNavLink
+										icon={<Workflow />}
+										label="Arus Dana"
+										to="/admin/finance/flow"
+										permission="finance:view"
+									/>
+									<DesktopSubNavLink
 										icon={<ClipboardList />}
 										label="Transaksi"
 										to="/admin/finance/transactions"
