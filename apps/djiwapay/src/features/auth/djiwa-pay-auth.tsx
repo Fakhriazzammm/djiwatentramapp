@@ -12,11 +12,11 @@ export function DjiwaPayAuth({ error }: { error: string | null }) {
     <div className="dpx-hdr"><Btn type="button" className="dpx-rb" onClick={() => window.location.assign("https://djiwatentram.web.id/")} aria-label="Kembali ke Djiwa Tentram"><Ic n="back" /></Btn></div>
     <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
       <I3 name="payment-wallet" px={190} style={{ marginBottom: 8, filter: "drop-shadow(0 16px 24px rgba(15,35,71,.18))" }} />
-      <h1 className="dpx-page-title" style={{ fontSize: 34 }}>Bayar apa saja,<br />tenang.</h1>
-      <p className="dpx-sub" style={{ maxWidth: 290, fontSize: 15, marginTop: 10 }}>Isi saldo, kirim uang, bayar listrik, pulsa, dan tagihan dalam satu aplikasi.</p>
+      <h1 className="dpx-page-title" style={{ fontSize: 34 }}>Catat uangmu,<br />bayar dengan tenang.</h1>
+      <p className="dpx-sub" style={{ maxWidth: 290, fontSize: 15, marginTop: 10 }}>Catat pengeluaran dengan satu kalimat, atur anggaran, lalu bayar tagihan dan isi pulsa — semuanya otomatis tercatat.</p>
     </div>
     <Btn type="button" className="dpx-gbtn" disabled={busy} onClick={() => void signIn()}><GoogleMark />{busy ? "Menghubungkan..." : "Lanjutkan dengan Google"}</Btn>
     {authError || error ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div>{authError || error}</div></div> : null}
-    <p className="dpx-sub dpx-center" style={{ margin: "16px 20px 0", fontSize: 12 }}>Satu akun untuk login dan saldo Djiwa Pay.</p>
+    <p className="dpx-sub dpx-center" style={{ margin: "16px 20px 0", fontSize: 12 }}>Satu akun untuk catatan keuangan dan saldo Djiwa Pay.</p>
   </div></Sky></Screen>;
 }
