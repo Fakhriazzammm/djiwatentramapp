@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { domainOf, extractPayment, forwardingCode, guessCategory, isConfident, isPromo, isReportMail, isSecretMail, issuerFor, parseRupiah, parseWhen, redact } from "./extract";
+import { domainOf, extractPayment, forwardingCode, guessCategory, isBillReminder, isConfident, isFailedMail, isPromo, isReportMail, isSecretMail, issuerFor, parseRupiah, parseWhen, redact } from "./extract";
 
 describe("rupiah and dates", () => {
   test("parses Indonesian and English number formats", () => {
@@ -95,8 +95,28 @@ describe("campaigns and reports are not money", () => {
   test("periodic reports are ignored even when they carry a total", () => {
     expect(isReportMail("Laporan Transaksi Merchant BCA 004069399 DJIWA TENTRAM Hasil Settlement per 09-1")).toBe(true);
     expect(isReportMail("Mutasi rekening November")).toBe(true);
+    expect(isReportMail("Riwayat transaksi tagihan GoPay")).toBe(true);
     expect(isReportMail("Pembayaran Berhasil!")).toBe(false);
     expect(isReportMail("Transfer Berhasil")).toBe(false);
+  });
+  test("a survey that promises a reward is a campaign, not money", () => {
+    expect(isPromo("Pendapatmu penting buat Jago", "Isi di sini & dapatkan Rp20.000! Yuk luangkan 5 menit untuk mengisi survei singkat kami. Ada 20 responden beruntung. Berhenti berlangganan email di sini.")).toBe(true);
+  });
+  test("a transfer that failed moved no money", () => {
+    expect(isFailedMail("Transfer Tidak Berhasil")).toBe(true);
+    expect(isFailedMail("Top-up Tidak Berhasil")).toBe(true);
+    expect(isFailedMail("Pembayaran Berhasil!")).toBe(false);
+    expect(isFailedMail("Transfer Berhasil")).toBe(false);
+  });
+});
+
+describe("bill reminders are not payments", () => {
+  test("a bill asking to be paid is a reminder", () => {
+    expect(isBillReminder("Bill Event", "Plgn Yth, tagihan IndiHome bulan ini Rp337440. Jatuh tempo tgl 20-SEP-26, bayar dengan klik: tsel.id/bayarindihome Terimakasih jika sudah bayar")).toBe(true);
+    expect(isBillReminder("Informasi Tagihan IndiHome", "RINGKASAN TAGIHAN Jenis Layanan : IndiHome Jumlah Tagihan : Rp340.215,- Tanggal Jatuh Tempo: 20 November 2026 PEMBAYARAN TAGIHAN Bayar Sekarang atau melalui merchant pilihan")).toBe(true);
+  });
+  test("a confirmation that the bill was already paid is a payment", () => {
+    expect(isBillReminder("Bill Event", "Kami informasikan bahwa pembayaran tagihan Anda sebesar Rp340215 pada tanggal 2026-10-21 melalui MKM telah berhasil.")).toBe(false);
   });
 });
 
@@ -104,6 +124,10 @@ describe("amounts that are not payments", () => {
   test("reads the juta/ribu shorthand instead of dropping the scale", () => {
     expect(extractPayment("Pembayaran berhasil", "Pembayaran ke Toko Maju sebesar Rp3,5 Juta berhasil").amount).toBe(3500000);
     expect(extractPayment("Top up berhasil", "Top-up berhasil Rp 25rb pada 15/11/2026 10:00").amount).toBe(25000);
+  });
+  test("takes the nominal, not a total that already includes the admin fee", () => {
+    const x = extractPayment("Top-up Berhasil", "Nominal Top-up Rp 11.000.000,00 Biaya Transaksi Rp 1.200,00 Total Transaksi Rp 11.001.200,00 No. Referensi 702610060617361525");
+    expect(x.amount).toBe(11000000);
   });
   test("skips a ceiling or a teaser, and takes the real transaction amount", () => {
     const x = extractPayment("Pembayaran berhasil", "Hemat s.d. Rp 3,5 Juta! Pembayaran ke Kopi Kenangan sebesar Rp 25.000 berhasil pada 15/11/2026 13:45");

@@ -50,7 +50,7 @@ export function isSecretMail(subject: string, text: string): boolean {
 
 /** Wording that only a payment notification has; a campaign promises rupiah without ever moving any. */
 const TXN_EVIDENCE = /(berhasil|telah (?:dibayar|diterima|ditransfer|diproses)|transaksi (?:berhasil|kamu|anda|dengan|nomor|no)|pembayaran (?:berhasil|kepada|anda|sebesar)|transfer (?:berhasil|ke|sebesar|masuk)|top ?up berhasil|dana (?:masuk|keluar)|penarikan|nominal|no\.? ?ref|nomor referensi|struk|bukti transaksi)/i;
-const PROMO_WORD = /\b(promo\w*|promosi|diskon\w*|cashback|voucher|kupon|penawaran|spesial|flash ?sale|gratis|undian|hadiah|buruan|hemat\w*|jangan lewatkan|klik (?:di sini|link|tombol)|syarat (?:dan|&) ketentuan|berhenti berlangganan|unsubscribe|poin\w*|serunya|nikmat\w*)/gi;
+const PROMO_WORD = /\b(promo\w*|promosi|diskon\w*|cashback|voucher|kupon|penawaran|spesial|flash ?sale|gratis|undian|hadiah|buruan|hemat\w*|jangan lewatkan|klik (?:di sini|link|tombol)|syarat (?:dan|&) ketentuan|berhenti berlangganan|unsubscribe|poin\w*|serunya|nikmat\w*|survei|survey|responden|kuesioner)/gi;
 
 /** An email campaign, not a payment: "Spesial 11.11: Hemat s.d. Rp3,5 Juta!" is worth nothing in a ledger. */
 export function isPromo(subject: string, text: string): boolean {
@@ -65,8 +65,23 @@ export function isPromo(subject: string, text: string): boolean {
 /** Does this mail read like a payment notification at all? Used before queueing something unreadable. */
 export const looksLikePayment = (subject: string, text: string) => TXN_EVIDENCE.test(`${subject}\n${text.slice(0, 4000)}`);
 
-/** A periodic report (merchant settlement, monthly statement) is not one transaction, even when it carries a total. */
-export const isReportMail = (subject: string) => /\b(laporan|statement|rekap\w*|ringkasan|mutasi|settlement)\b/i.test(subject);
+/** A periodic report (merchant settlement, monthly statement, transaction history) is not one transaction, even when it carries a total. */
+export const isReportMail = (subject: string) => /\b(laporan|statement|rekap\w*|ringkasan|mutasi|riwayat|settlement)\b/i.test(subject);
+
+/** "Transfer Tidak Berhasil", "Top-up gagal": the money never left, so there is nothing to record. */
+export const isFailedMail = (subject: string) => /\b(tidak berhasil|gagal|dibatalkan|cancelled|canceled|ditolak|unsuccessful|failed)\b/i.test(subject);
+
+/** Wording that proves a payment really happened; a reminder asks for one instead. */
+const PAID_EVIDENCE = /(?:pembayaran|transaksi|transfer|top[-\s]?up)[^.]{0,120}(?:berhasil|sukses|telah diterima)|(?:telah|sudah)\s+(?:berhasil\s+)?(?:dibayar|diterima)/i;
+
+/** "Tagihan IndiHome bulan ini Rp340.215, jatuh tempo 20 Nov, bayar di sini": a bill, not a movement of money. */
+export function isBillReminder(subject: string, text: string): boolean {
+  const whole = `${subject}\n${text.slice(0, 3000)}`;
+  if (PAID_EVIDENCE.test(whole)) return false;
+  const bill = /\b(tagihan|billing|e-?bill|jumlah tagihan|total tagihan|jatuh tempo|due date)\b/i.test(whole);
+  const ask = /\b(bayar sekarang|bayar sebelum|lakukan pembayaran|belum (?:kamu )?bayar|bayar dengan klik|jatuh tempo)\b/i.test(whole);
+  return bill && ask;
+}
 
 const MONTHS: Record<string, number> = { jan: 0, januari: 0, feb: 1, februari: 1, mar: 2, maret: 2, apr: 3, april: 3, mei: 4, may: 4, jun: 5, juni: 5, jul: 6, juli: 6, agu: 7, agt: 7, agustus: 7, aug: 7, sep: 8, sept: 8, september: 8, okt: 9, oktober: 9, oct: 9, nov: 10, november: 10, des: 11, desember: 11, dec: 11 };
 
@@ -110,7 +125,7 @@ export type Extracted = {
 
 const OUT_RE = /(pembayaran|pembelian|bayar(?:an)?|membayar|dibayar|transfer (?:ke|keluar|berhasil ke)|dikirim|pengiriman dana|penarikan|tarik tunai|debit|belanja|top[- ]?up ke|payment|purchase|paid|withdraw)/gi;
 const IN_RE = /(diterima|dana masuk|uang masuk|menerima|kredit|pemasukan|received|refund|pengembalian dana|cashback|gaji|top[- ]?up berhasil|saldo (?:bertambah|masuk)|transfer masuk)/gi;
-const AMOUNT_LABEL = /(?:nominal|jumlah|total(?: pembayaran| transaksi| bayar)?|sebesar|senilai|amount|nilai transaksi|harga)\s*[:\-]?\s*(?:rp|idr)\.?\s*([\d.,]+)/i;
+const AMOUNT_LABEL = /(?:nominal|jumlah|total|sebesar|senilai|amount|nilai transaksi|harga)(?:\s+(?:pembayaran|transaksi|bayar|top[-\s]?up|transfer|tagihan))?\s*[:\-]?\s*(?:rp|idr)\.?\s*([\d.,]+)/gi;
 const AMOUNT_ANY = /(?:rp|idr)\.?\s*([\d][\d.,]*)/gi;
 const FEE_NEAR = /(biaya admin|admin fee|biaya layanan|saldo|sisa|limit|bunga|pajak)/i;
 /** "s.d. Rp 3,5 Juta", "hingga Rp 500.000", "maks 10rb": a ceiling or an estimate, never what was paid. */
@@ -125,8 +140,10 @@ function valueAt(text: string, at: number, digits: string): number {
 }
 
 function pickAmount(text: string): number {
-  const labeled = text.match(AMOUNT_LABEL);
-  if (labeled) { const n = valueAt(text, (labeled.index ?? 0) + labeled[0].lastIndexOf(labeled[1]), labeled[1]); if (n >= MIN_AMOUNT) return n; }
+  const labeled = [...text.matchAll(AMOUNT_LABEL)];
+  // "Nominal Top-up Rp 2.000.000 ... Total Transaksi Rp 2.001.200": the nominal is the money, the total also carries the fee.
+  const best = labeled.find((m) => /^nominal/i.test(m[0])) ?? labeled[0];
+  if (best) { const n = valueAt(text, (best.index ?? 0) + best[0].lastIndexOf(best[1]), best[1]); if (n >= MIN_AMOUNT) return n; }
   for (const m of text.matchAll(AMOUNT_ANY)) {
     const i = m.index ?? 0;
     const before = text.slice(Math.max(0, i - 24), i);
