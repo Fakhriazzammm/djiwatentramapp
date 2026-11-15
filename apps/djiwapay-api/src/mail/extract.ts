@@ -72,7 +72,7 @@ export const isReportMail = (subject: string) => /\b(laporan|statement|rekap\w*|
 export const isFailedMail = (subject: string) => /\b(tidak berhasil|gagal|dibatalkan|cancelled|canceled|ditolak|unsuccessful|failed)\b/i.test(subject);
 
 /** Collapses the padded table markup of e-bill mail; without it the useful lines sit past any slice. */
-const flat = (text: string) => text.replace(/[ \t]+/g, " ").replace(/\n{1,}/g, " ").slice(0, 4000);
+const flat = (text: string) => text.replace(/[ \t]+/g, " ").replace(/\n{1,}/g, " ").slice(0, 6000);
 
 /** Wording that proves a payment really happened; a reminder asks for one instead. */
 const PAID_EVIDENCE = /(?:pembayaran|transaksi|transfer|top[-\s]?up)[^.]{0,120}(?:berhasil|sukses|telah diterima)|(?:telah|sudah)\s+(?:berhasil\s+)?(?:dibayar|diterima)/i;
