@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { Q, Tx } from "../sync.js";
-import { domainOf, extractPayment, forwardingCode, guessCategory, isBillReminder, isConfident, isFailedMail, isPromo, isReportMail, isSecretMail, issuerFor, looksLikePayment, merchantKey, redactForShare, type Extracted, type Issuer } from "./extract.js";
+import { domainOf, extractPayment, forwardingCode, guessCategory, isBillReminder, isConfident, isFailedMail, isNoticeMail, isPromo, isReportMail, isSecretMail, issuerFor, looksLikePayment, merchantKey, redactForShare, type Extracted, type Issuer } from "./extract.js";
 
 export type RawMail = {
   messageId: string; from: string; to: string[]; subject: string; text: string; date: Date | null;
@@ -102,6 +102,8 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   // Gate 5: a failed transfer moved nothing, and a bill that asks to be paid has not been paid yet.
   if (isFailedMail(mail.subject)) return { status: "ignored", reason: "failed", userId };
   if (isBillReminder(mail.subject, mail.text)) return { status: "ignored", reason: "bill", userId };
+  // Gate 6: a warning or a fee schedule names rupiah without any money moving.
+  if (isNoticeMail(mail.subject, mail.text)) return { status: "ignored", reason: "notice", userId };
 
   const messageId = (mail.messageId || `${fromDomain}:${mail.subject}:${mail.date?.toISOString() ?? ""}`).slice(0, 300);
   const claimed = await d.db.query("insert into finance.inbound_messages(user_id,message_id,sender_domain,channel,status,import_id) values($1,$2,$3,$4,'review',$5) on conflict(user_id,message_id) do nothing returning id", [userId, messageId, fromDomain, issuer.id, stage?.importId ?? null]);

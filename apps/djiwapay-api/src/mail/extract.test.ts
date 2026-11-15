@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { domainOf, extractPayment, forwardingCode, guessCategory, isBillReminder, isConfident, isFailedMail, isPromo, isReportMail, isSecretMail, issuerFor, parseRupiah, parseWhen, redact } from "./extract";
+import { domainOf, extractPayment, forwardingCode, guessCategory, isBillReminder, isConfident, isFailedMail, isNoticeMail, isPromo, isReportMail, isSecretMail, issuerFor, parseRupiah, parseWhen, redact } from "./extract";
 
 describe("rupiah and dates", () => {
   test("parses Indonesian and English number formats", () => {
@@ -107,6 +107,15 @@ describe("campaigns and reports are not money", () => {
     expect(isFailedMail("Top-up Tidak Berhasil")).toBe(true);
     expect(isFailedMail("Pembayaran Berhasil!")).toBe(false);
     expect(isFailedMail("Transfer Berhasil")).toBe(false);
+  });
+  test("a warning or a fee schedule moves no money", () => {
+    expect(isNoticeMail("Hati-Hati Terhadap Modus Penipuan Investasi Emas", "Kenali modusnya dan cara menghadapinya.")).toBe(true);
+    expect(isNoticeMail("Info terkait biaya Kantong tidak aktif", "Biaya tidak aktif sebesar Rp10.000 akan didebet setiap bulan.")).toBe(true);
+    expect(isNoticeMail("Pembayaran Berhasil!", "Pembayaran ke Kopi Kenangan sebesar Rp 25.000 berhasil. Biaya admin Rp 2.500 telah didebet.")).toBe(false);
+  });
+  test("a starting price is not a purchase", () => {
+    const x = extractPayment("Mulai beli emas dari Rp5.000 aja!", "Mulai dari Rp5.000 aja, kamu sudah bisa beli emas langsung dari aplikasi Jago.");
+    expect(x.amount).toBe(0);
   });
 });
 

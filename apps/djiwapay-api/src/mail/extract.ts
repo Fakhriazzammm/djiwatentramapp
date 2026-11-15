@@ -62,6 +62,13 @@ export function isPromo(subject: string, text: string): boolean {
   return hits >= 2 || /\b(promo\w*|penawaran|diskon\w*|flash ?sale|hemat\w*|spesial)\b/i.test(subject);
 }
 
+/** Announces money but moves none: a scam warning, a fee schedule, a product launch. */
+export function isNoticeMail(subject: string, text: string): boolean {
+  if (/\b(waspada|hati-hati|modus|penipuan|scam|tips|edukasi)\b/i.test(subject)) return true;
+  // "biaya tidak aktif sebesar Rp10.000 akan didebet setiap bulan": a future charge is not a payment.
+  return /\bakan\s+(?:didebet|dipotong|ditagih|dikenakan)\b/i.test(flat(text));
+}
+
 /** Does this mail read like a payment notification at all? Used before queueing something unreadable. */
 export const looksLikePayment = (subject: string, text: string) => TXN_EVIDENCE.test(`${subject}\n${flat(text)}`);
 
@@ -132,7 +139,7 @@ const AMOUNT_LABEL = /(?:nominal|jumlah|total|sebesar|senilai|amount|nilai trans
 const AMOUNT_ANY = /(?:rp|idr)\.?\s*([\d][\d.,]*)/gi;
 const FEE_NEAR = /(biaya admin|admin fee|biaya layanan|saldo|sisa|limit|bunga|pajak)/i;
 /** "s.d. Rp 3,5 Juta", "hingga Rp 500.000", "maks 10rb": a ceiling or an estimate, never what was paid. */
-const ESTIMATE_NEAR = /(s\.?\s?d\.?|sampai|hingga|maks(?:imal|\.)?|mulai dari|s\/d|up to)\s*$/i;
+const ESTIMATE_NEAR = /(s\.?\s?d\.?|sampai|hingga|maks(?:imal|\.)?|mulai dari|dari|s\/d|up to)\s*$/i;
 const MIN_AMOUNT = 100, MAX_AMOUNT = 1e12;   // "Rp 4" out of a promo is not a payment; neither is a typo'd 10^12
 
 /** Rupiah with the shorthand people actually print: "3,5 Juta" is 3.500.000, "25rb" is 25.000. */
