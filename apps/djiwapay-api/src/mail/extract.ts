@@ -167,11 +167,11 @@ function pickAmount(text: string): number {
 
 function pickMerchant(text: string, subject: string): string {
   // A name ends where the next field starts: a keyword, a date, a comma or a line break.
-  const stop = String.raw`(?=\.?\s+(?:sebesar|senilai|jumlah|nominal|total|dengan|pada|tanggal|berhasil|rp|idr|saldo|no\.?\s|ref|\d{1,2}[/.-]\d)|[,;\n]|$)`;
+  const stop = String.raw`(?=\.?\s+(?:sebesar|senilai|jumlah|nominal|total|dengan|pada|tanggal|berhasil|rp|idr|saldo|no\.?\s|ref|bank|rekening|\d{1,2}[/.-]\d)|[,;*\n]|\s-\s|\d{3,}|$)`;
   const name = String.raw`([A-Za-z0-9][A-Za-z0-9 &'.\-/]{1,38}?)`;
   const pats = [
     new RegExp(String.raw`(?:pembayaran|pembelian|transaksi|belanja|payment|purchase)\s+(?:di|ke|kepada|at|to)\s+` + name + stop, "i"),
-    new RegExp(String.raw`(?:merchant|toko|penerima|nama penerima|kepada|beneficiary|tujuan|pengirim)\s*[:\-]\s*` + name + stop, "i"),
+    new RegExp(String.raw`(?:penyedia jasa|merchant|toko|penerima|nama penerima|kepada|beneficiary|tujuan|pengirim)\s*[:\-]?\s*` + name + stop, "i"),
     new RegExp(String.raw`(?:transfer|kiriman)\s+(?:dari|from)\s+` + name + stop, "i"),
     new RegExp(String.raw`(?:top[- ]?up|isi saldo)\s+(?:ke|to)?\s*([A-Za-z0-9][A-Za-z0-9 ]{1,20}?)` + stop, "i"),
   ];
@@ -184,8 +184,12 @@ export function extractPayment(subject: string, bodyText: string): Extracted {
   const whole = `${subject}\n${text}`;
   const amount = pickAmount(whole);
   const outHits = (whole.match(OUT_RE) ?? []).length, inHits = (whole.match(IN_RE) ?? []).length;
-  const direction: Extracted["direction"] = outHits === inHits ? "unknown" : outHits > inHits ? "out" : "in";
-  const acct = whole.match(/(?:rek(?:ening)?|no\.? ?rek|kartu|card|a\/c|akun|account)[^\d\n]{0,14}(?:[x*•·]+[\s-]*)*(\d{4})\b/i) ?? whole.match(/(?:[x*•]{3,}[\s-]*)(\d{4})\b/i);
+  let direction: Extracted["direction"] = outHits === inHits ? "unknown" : outHits > inHits ? "out" : "in";
+  // "Rekening Sumber ... ****4399" is the user's own account: the money left it. Livin prints this on a
+  // top-up to GoPay and on an outgoing transfer, both of which read as "Top-up Berhasil" otherwise.
+  const srcAcct = whole.match(/(?:rekening sumber|sumber dana|akun sumber|dari rekening|dari kartu)[^\d\n]{0,40}(?:[x*•·]+[\s-]*)*(\d{4})\b/i);
+  if (srcAcct) direction = "out";
+  const acct = srcAcct ?? whole.match(/(?:rek(?:ening)?|no\.? ?rek|kartu|card|a\/c|akun|account)[^\d\n]{0,14}(?:[x*•·]+[\s-]*)*(\d{4})\b/i) ?? whole.match(/(?:[x*•]{3,}[\s-]*)(\d{4})\b/i);
   const ref = whole.match(/(?:no\.? ?(?:ref(?:erensi)?|transaksi)|ref(?:erence)? ?(?:no|id|number)?|trx ?id|id transaksi|kode transaksi|order id)\b\s*[:#]?\s*(?=[A-Z0-9-]*\d)([A-Z0-9][A-Z0-9-]{4,29})\b/i);
   const at = parseWhen(whole);
   const merchant = pickMerchant(text, subject);

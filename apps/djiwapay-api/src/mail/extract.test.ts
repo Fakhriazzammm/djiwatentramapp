@@ -84,6 +84,24 @@ describe("payment extraction", () => {
   });
 });
 
+describe("direction and account", () => {
+  test("a bank mail that names the source account is money out", () => {
+    const x = extractPayment("Top-up Berhasil", "Penyedia Jasa GoPay Customer ****9831 Nominal Top-up Rp 41.000,00 Total Transaksi Rp 42.200,00 No. Referensi 702611152212511787 Rekening Sumber MOCHAMMAD FAKHRI AZZ ****4399");
+    expect(x.amount).toBe(41000);
+    expect(x.direction).toBe("out");
+    expect(x.accountHint).toBe("4399");
+    expect(x.merchant).toBe("GoPay Customer");
+  });
+  test("a wallet top-up with no source account is money in", () => {
+    expect(extractPayment("Top-up Berhasil", "Top-up GoPay sebesar Rp 100.000 berhasil").direction).toBe("in");
+  });
+  test("an outgoing transfer names the recipient, not the bank", () => {
+    const x = extractPayment("Transfer Berhasil", "Penerima DIAN SITI FATIMAH Bank Mandiri - 1770020151020 Jumlah Transfer Rp 162.000,00 No. Referensi 2611131122029932703 Rekening Sumber MOCHAMMAD FAKHRI AZZ ****4399");
+    expect(x.direction).toBe("out");
+    expect(x.merchant).toBe("DIAN SITI FATIMAH");
+  });
+});
+
 describe("campaigns and reports are not money", () => {
   test("a promo subject with a rupiah figure is ignored, not recorded", () => {
     expect(isPromo("Spesial 11.11: Hemat s.d. Rp3,5 Juta!", "Belanja hemat di Jago, diskon hingga Rp 100.000. Klik di sini.")).toBe(true);
