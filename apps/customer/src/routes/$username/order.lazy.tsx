@@ -295,18 +295,22 @@ function OrderPage() {
 		setShippingQuote(null);
 		setShippingQuoteError(null);
 		setShippingQuoteLoading(true);
-		void deliveryApi<{ rates?: Array<{ courierCode?: string; courierName?: string; serviceName?: string; serviceCode?: string; serviceType?: string; shippingFee?: number; price?: number }> }>("biteship-rates", {
+		// Server menghitung nama, berat, dan harga dari katalog; klien hanya mengirim produk + jumlah dan tujuan.
+		void deliveryApi<{ rates?: Array<{ courierCode?: string; courierName?: string; serviceName?: string; serviceCode?: string; serviceType?: string; shippingFee?: number; price?: number }>; quote?: { feeSource?: string } }>("biteship-rates", {
 			destination_postal_code: postalCode,
 			destination_latitude: deliveryLocation?.latitude,
 			destination_longitude: deliveryLocation?.longitude,
+			destination_address: deliveryAddress,
 			couriers: deliveryProvider,
-			items: items.map(({ deliveryEnabled: _, ...item }) => item),
+			items: cart.map((item) => ({ productId: String(item.productId), quantity: item.quantity })),
 		}).then((response) => {
 			if (cancelled) return;
+			// Server memakai tarif tetap bila Biteship gagal; jangan ditandai sebagai tarif Biteship asli.
+			const quotedFromBiteship = response.quote?.feeSource !== "fallback";
 			const rate = (response.rates ?? []).find((entry) => String(entry.courierCode ?? "").toLowerCase() === deliveryProvider);
 			const fee = Number(rate?.shippingFee ?? rate?.price);
 			if (!rate || (rate.shippingFee == null && rate.price == null) || !Number.isFinite(fee) || fee < 0) { setShippingQuote(null); setShippingQuoteError("Kurir tidak menyediakan tarif untuk lokasi ini."); return; }
-			setShippingQuote({ fee: Math.round(fee), courierCode: deliveryProvider, serviceType: rate.serviceType, serviceCode: rate.serviceCode, serviceName: rate.serviceName, feeSource: "biteship", expiresAt: Date.now() + 5 * 60 * 1000 });
+			setShippingQuote({ fee: Math.round(fee), courierCode: deliveryProvider, serviceType: rate.serviceType, serviceCode: rate.serviceCode, serviceName: rate.serviceName, feeSource: quotedFromBiteship ? "biteship" : "fallback", expiresAt: Date.now() + 5 * 60 * 1000 });
 		}).catch((error: unknown) => {
 			if (cancelled) return;
 			const transient = error instanceof TypeError || (error instanceof DeliveryApiError && ["QUOTE_UNAVAILABLE", "BITESHIP_RATE_REQUEST_FAILED", "INVALID_BITESHIP_RESPONSE"].includes(error.code) && error.status >= 500);

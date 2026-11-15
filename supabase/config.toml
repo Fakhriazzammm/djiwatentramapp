@@ -83,6 +83,10 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+[functions.delivery-admin]
+enabled = true
+verify_jwt = false
+
 [functions.admin-protected-read]
 enabled = true
 verify_jwt = false

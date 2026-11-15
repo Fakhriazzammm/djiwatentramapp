@@ -169,6 +169,8 @@ function AdminCustomerDelivery() {
       await refresh();
     } catch (cause) {
       const code = String((cause as { code?: unknown })?.code ?? (cause as Error)?.message ?? "");
+      // Penolakan Biteship membawa penyebab (aktivasi key, saldo, kuota, koordinat); tampilkan apa adanya agar bisa ditindaklanjuti.
+      if (code === "SHIPMENT_PROVIDER_FAILED" && (cause as Error)?.message) { setActionError((cause as Error).message); return; }
       setActionError(code.includes("SHIPMENT_NOT_CONFIGURED") ? "Konfigurasi alamat pengirim Biteship belum lengkap." : code.includes("SHIPMENT_DATA_INCOMPLETE") || code.includes("DESTINATION_COORDINATES_REQUIRED") ? "Data tarif/lokasi order belum cukup untuk dibuatkan shipment." : "Shipment belum berhasil dibuat. Periksa konfigurasi dan status order, lalu coba lagi.");
     } finally { setBookingId(null); }
   };
