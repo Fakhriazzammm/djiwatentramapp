@@ -174,3 +174,11 @@ export async function syncCalendar(db: Q, cfg: GoogleCfg, userId: string, f: Fet
   }
   return { ok: failed === 0, created, updated, removed, failed };
 }
+
+/** Why Google refused: the first "reason" in its error body (e.g. accessNotConfigured, rateLimitExceeded), never the message text. */
+export async function googleReason(res: Response): Promise<string> {
+  try {
+    const j = (await res.clone().json()) as { error?: { status?: string; errors?: { reason?: string }[]; details?: { reason?: string }[] } };
+    return String(j.error?.errors?.[0]?.reason ?? j.error?.details?.[0]?.reason ?? j.error?.status ?? "").replace(/[^A-Za-z_]/g, "").slice(0, 40);
+  } catch { return ""; }
+}

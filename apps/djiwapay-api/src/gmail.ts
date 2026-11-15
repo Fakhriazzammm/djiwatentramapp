@@ -1,6 +1,6 @@
 /** Gmail direct: fetches only mail from the listed bank / e-wallet senders and runs it through the same pipeline as forwarded mail.
  *  The message is taken raw from Gmail, so its DKIM signature can be verified exactly like mail that arrives by SMTP. */
-import { accessToken, type Fetch, type GoogleCfg } from "./google.js";
+import { accessToken, googleReason, type Fetch, type GoogleCfg } from "./google.js";
 import { ensureSource, processForUser, type Outcome, type PipelineDeps, type RawMail } from "./mail/pipeline.js";
 import { ISSUERS } from "./mail/extract.js";
 import type { MailCtx } from "./mail/smtp.js";
@@ -46,7 +46,7 @@ export async function pollGmail(d: PollDeps, userId: string): Promise<PollResult
   let page: string | undefined;
   for (let i = 0; i < 3 && ids.length < MAX_PER_POLL; i++) {
     const res = await f(`https://gmail.googleapis.com/gmail/v1/users/me/messages?${new URLSearchParams({ q: gmailQuery(since), maxResults: "30", ...(page ? { pageToken: page } : {}) })}`, { headers: auth });
-    if (res.status === 403 || res.status === 401) return done(res.status === 403 ? "GMAIL_FORBIDDEN" : "NOT_CONNECTED", 0, false);
+    if (res.status === 403 || res.status === 401) return done(res.status === 403 ? `GMAIL_FORBIDDEN:${await googleReason(res)}` : "NOT_CONNECTED", 0, false);
     if (!res.ok) return done(`GMAIL_${res.status}`, 0, false);
     const j = (await res.json()) as { messages?: { id: string }[]; nextPageToken?: string };
     ids.push(...(j.messages ?? []).map((m) => m.id));

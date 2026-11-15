@@ -62,10 +62,10 @@ run("gmail direct (real database, simulated Gmail)", () => {
     const before = (await pool.query("select last_polled_at from finance.gmail_sync where user_id=$1", [user])).rows[0].last_polled_at;
     listStatus = 403;
     const r = await pollGmail(deps(), user);
-    expect(r).toMatchObject({ ok: false, error: "GMAIL_FORBIDDEN" });
+    expect(r).toMatchObject({ ok: false, error: "GMAIL_FORBIDDEN:" });
     const after = (await pool.query("select last_polled_at,last_error,next_poll_at from finance.gmail_sync where user_id=$1", [user])).rows[0];
     expect(new Date(after.last_polled_at).getTime()).toBe(new Date(before).getTime());
-    expect(after.last_error).toBe("GMAIL_FORBIDDEN");
+    expect(after.last_error).toBe("GMAIL_FORBIDDEN:");
     expect(new Date(after.next_poll_at).getTime()).toBeGreaterThan(Date.now() + 5 * 60_000);
     listStatus = 200;
   });

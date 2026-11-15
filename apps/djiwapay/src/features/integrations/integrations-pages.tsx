@@ -9,7 +9,16 @@ import {
   type GoogleFeature, type GoogleStatus, type ImportItem, type ImportState, type InboundSummary, type ReviewItem,
 } from "../../lib/finance/integrations";
 
-const gmailError = (code: string) => ({ NOT_CONNECTED: "Izin Google dicabut. Hubungkan ulang", SCOPE_MISSING: "Izin Gmail belum diberikan", GMAIL_FORBIDDEN: "Google menolak akses Gmail. Hubungkan ulang" } as Record<string, string>)[code] ?? "Pemeriksaan terakhir gagal, dicoba lagi otomatis";
+/** What a Gmail error code means for the person looking at the screen. */
+const gmailError = (code: string) => {
+  const [base, reason = ""] = code.split(":");
+  if (/accessNotConfigured|SERVICE_DISABLED|has not been used/i.test(reason)) return "Gmail API belum diaktifkan di Google Cloud. Aktifkan, lalu coba lagi";
+  if (/insufficient|PERMISSION/i.test(reason) || base === "SCOPE_MISSING") return "Izin Gmail belum diberikan. Hubungkan ulang";
+  if (/rateLimit|quota|userRateLimit/i.test(reason) || base === "GMAIL_429") return "Google meminta jeda sebentar. Dilanjutkan otomatis";
+  if (base === "NOT_CONNECTED") return "Izin Google dicabut. Hubungkan ulang";
+  if (base === "GMAIL_FORBIDDEN" || base === "GMAIL_403") return `Google menolak akses Gmail${reason ? ` (${reason})` : ""}. Hubungkan ulang atau periksa pengaturan Google Cloud`;
+  return "Pemeriksaan terakhir gagal, dicoba lagi otomatis";
+};
 const copyText = async (text: string) => { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } };
 const ago = (iso: string | null) => {
   if (!iso) return "";
@@ -183,7 +192,7 @@ export function ImportSheet({ ctx, onClose, onChanged }: { ctx: FinCtx; onClose:
     {imp?.status === "scanning" ? <>
       <div className="dpx-scan"><div className="dpx-bar"><motion.i animate={{ width: `${Math.max(4, Math.round(imp.progress * 100))}%` }} transition={{ duration: 0.6 }} /></div>
         <b>{Math.round(imp.progress * 100)}%</b><span>{imp.scanned} email diperiksa · {imp.staged} transaksi ditemukan{imp.scanningTo ? ` · sampai ${new Date(imp.scanningTo).toLocaleDateString("id-ID", { month: "short", year: "numeric" })}` : ""}</span></div>
-      {imp.error ? <div className="dpx-note"><Ic n="info" /><div>{imp.error === "GMAIL_429" ? "Google meminta jeda sebentar. Pemindaian dilanjutkan otomatis." : "Ada kendala sementara. Dicoba lagi otomatis."}</div></div> : null}
+      {imp.error ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div><b>Pemindaian tertahan.</b> {gmailError(imp.error)}</div></div> : null}
       <p className="dpx-sub dpx-center">Boleh ditutup. Pemindaian jalan terus di server, dan Beranda memberi tahu saat pratinjau siap.</p>
       <Btn type="button" className="dpx-btn dpx-soft" disabled={busy} onClick={() => void act(() => cancelImport(), "Pemindaian dihentikan")}>Hentikan</Btn>
     </> : null}

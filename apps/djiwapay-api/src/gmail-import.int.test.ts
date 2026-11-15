@@ -134,7 +134,7 @@ run("gmail import (real database, simulated Gmail)", () => {
     rateLimit = true;
     await runImports(deps());
     let s = (await importState(db, user)) as any;
-    expect(s.status).toBe("scanning"); expect(s.error).toBe("GMAIL_429");
+    expect(s.status).toBe("scanning"); expect(s.error).toBe("GMAIL_429:");
     rateLimit = false;
     await pool.query("update finance.gmail_import set next_at=now() where user_id=$1 and status='scanning'", [user]);
     const done = await scanAll(); expect(done.s.status).toBe("ready");

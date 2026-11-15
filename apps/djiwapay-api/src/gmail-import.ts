@@ -1,6 +1,6 @@
 /** Import of old Gmail mail. The scan walks back through the mailbox in time windows, stages what it can read, and waits for the user to
  *  look at a preview. Only the commit turns staged mail into entries, and a whole import can be undone. */
-import { accessToken, type Fetch, type GoogleCfg } from "./google.js";
+import { accessToken, googleReason, type Fetch, type GoogleCfg } from "./google.js";
 import { senderQuery } from "./gmail.js";
 import { processForUser, type PipelineDeps, type RawMail } from "./mail/pipeline.js";
 import type { MailCtx } from "./mail/smtp.js";
@@ -56,7 +56,7 @@ export async function scanStep(d: ImportDeps, imp: Record<string, any>): Promise
     const start = Math.max(since, end - windowSize(end, until));
     const q = `${senderQuery()} after:${Math.floor(start / 1000)} before:${Math.floor(end / 1000)}`;
     const res = await gmail(f, token, `messages?${new URLSearchParams({ q, maxResults: String(PAGE), ...(pageToken ? { pageToken } : {}) })}`);
-    if (res.status === 429 || res.status === 403) { await fail(`GMAIL_${res.status}`); return; }
+    if (res.status === 429 || res.status === 403) { await fail(`GMAIL_${res.status}:${await googleReason(res)}`, res.status === 403 ? 300_000 : 120_000); return; }
     if (res.status === 401) { await fail("NOT_CONNECTED"); return; }
     if (!res.ok) { await fail(`GMAIL_${res.status}`, 60_000); return; }
     const page = (await res.json()) as { messages?: { id: string }[]; nextPageToken?: string };
