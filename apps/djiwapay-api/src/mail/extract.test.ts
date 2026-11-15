@@ -87,7 +87,8 @@ describe("payment extraction", () => {
 describe("direction and account", () => {
   test("a bank mail that names the source account is money out", () => {
     const x = extractPayment("Top-up Berhasil", "Penyedia Jasa GoPay Customer ****9831 Nominal Top-up Rp 41.000,00 Total Transaksi Rp 42.200,00 No. Referensi 702611152212511787 Rekening Sumber MOCHAMMAD FAKHRI AZZ ****4399");
-    expect(x.amount).toBe(41000);
+    // the bank debited 42.200 (fee included), so the account still matches the statement
+    expect(x.amount).toBe(42200);
     expect(x.direction).toBe("out");
     expect(x.accountHint).toBe("4399");
     expect(x.merchant).toBe("GoPay Customer");
@@ -158,9 +159,10 @@ describe("amounts that are not payments", () => {
     expect(extractPayment("Pembayaran berhasil", "Pembayaran ke Toko Maju sebesar Rp3,5 Juta berhasil").amount).toBe(3500000);
     expect(extractPayment("Top up berhasil", "Top-up berhasil Rp 25rb pada 15/11/2026 10:00").amount).toBe(25000);
   });
-  test("takes the nominal, not a total that already includes the admin fee", () => {
+  test("a top-up read from the wallet side is the nominal, not the total", () => {
     const x = extractPayment("Top-up Berhasil", "Nominal Top-up Rp 11.000.000,00 Biaya Transaksi Rp 1.200,00 Total Transaksi Rp 11.001.200,00 No. Referensi 702610060617361525");
     expect(x.amount).toBe(11000000);
+    expect(x.direction).toBe("in");
   });
   test("skips a ceiling or a teaser, and takes the real transaction amount", () => {
     const x = extractPayment("Pembayaran berhasil", "Hemat s.d. Rp 3,5 Juta! Pembayaran ke Kopi Kenangan sebesar Rp 25.000 berhasil pada 15/11/2026 13:45");

@@ -165,13 +165,21 @@ function pickAmount(text: string): number {
   return 0;
 }
 
-function pickMerchant(text: string, subject: string): string {
+/** "Total Transaksi Rp 42.200": what the bank actually debited, admin fee included. */
+function pickTotal(text: string): number {
+  const m = text.match(/(?:total(?: transaksi| pembayaran| bayar)?|jumlah (?:transaksi|transfer|pembayaran))\s*[:\-]?\s*(?:rp|idr)\.?\s*([\d.,]+)/i);
+  return m ? valueAt(text, (m.index ?? 0) + m[0].lastIndexOf(m[1]), m[1]) : 0;
+}
+
+function pickMerchant(body: string, subject: string): string {
+  // E-bill mail is padded with newlines and blank lines: read it flat so a name and its field stay together.
+  const text = flat(body);
   // A name ends where the next field starts: a keyword, a date, a comma or a line break.
   const stop = String.raw`(?=\.?\s+(?:sebesar|senilai|jumlah|nominal|total|dengan|pada|tanggal|berhasil|rp|idr|saldo|no\.?\s|ref|bank|rekening|\d{1,2}[/.-]\d)|[,;*\n]|\s-\s|\d{3,}|$)`;
   const name = String.raw`([A-Za-z0-9][A-Za-z0-9 &'.\-/]{1,38}?)`;
   const pats = [
+    new RegExp(String.raw`(?:penyedia jasa|merchant|toko|penerima|nama penerima|beneficiary|tujuan|pengirim)\b\s*[:\-]?\s*` + name + stop, "i"),
     new RegExp(String.raw`(?:pembayaran|pembelian|transaksi|belanja|payment|purchase)\s+(?:di|ke|kepada|at|to)\s+` + name + stop, "i"),
-    new RegExp(String.raw`(?:penyedia jasa|merchant|toko|penerima|nama penerima|kepada|beneficiary|tujuan|pengirim)\s*[:\-]?\s*` + name + stop, "i"),
     new RegExp(String.raw`(?:transfer|kiriman)\s+(?:dari|from)\s+` + name + stop, "i"),
     new RegExp(String.raw`(?:top[- ]?up|isi saldo)\s+(?:ke|to)?\s*([A-Za-z0-9][A-Za-z0-9 ]{1,20}?)` + stop, "i"),
   ];
@@ -182,13 +190,15 @@ function pickMerchant(text: string, subject: string): string {
 export function extractPayment(subject: string, bodyText: string): Extracted {
   const text = bodyText.replace(/\r/g, "").replace(/[ \t]+/g, " ").slice(0, 20_000);
   const whole = `${subject}\n${text}`;
-  const amount = pickAmount(whole);
+  const nominal = pickAmount(whole);
   const outHits = (whole.match(OUT_RE) ?? []).length, inHits = (whole.match(IN_RE) ?? []).length;
   let direction: Extracted["direction"] = outHits === inHits ? "unknown" : outHits > inHits ? "out" : "in";
   // "Rekening Sumber ... ****4399" is the user's own account: the money left it. Livin prints this on a
   // top-up to GoPay and on an outgoing transfer, both of which read as "Top-up Berhasil" otherwise.
-  const srcAcct = whole.match(/(?:rekening sumber|sumber dana|akun sumber|dari rekening|dari kartu)[^\d\n]{0,40}(?:[x*•·]+[\s-]*)*(\d{4})\b/i);
+  const srcAcct = whole.match(/(?:rekening sumber|sumber dana|akun sumber|dari rekening|dari kartu)[^\d]{0,40}(?:[x*•·]+[\s-]*)*(\d{4})\b/i);
   if (srcAcct) direction = "out";
+  // On the bank's own account the debit is the total, so the balance still matches the statement.
+  const amount = srcAcct ? pickTotal(whole) || nominal : nominal;
   const acct = srcAcct ?? whole.match(/(?:rek(?:ening)?|no\.? ?rek|kartu|card|a\/c|akun|account)[^\d\n]{0,14}(?:[x*•·]+[\s-]*)*(\d{4})\b/i) ?? whole.match(/(?:[x*•]{3,}[\s-]*)(\d{4})\b/i);
   const ref = whole.match(/(?:no\.? ?(?:ref(?:erensi)?|transaksi)|ref(?:erence)? ?(?:no|id|number)?|trx ?id|id transaksi|kode transaksi|order id)\b\s*[:#]?\s*(?=[A-Z0-9-]*\d)([A-Z0-9][A-Z0-9-]{4,29})\b/i);
   const at = parseWhen(whole);
