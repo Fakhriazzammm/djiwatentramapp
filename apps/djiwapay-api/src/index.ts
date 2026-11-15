@@ -1,3 +1,5 @@
+import { rereadMail } from "./mail/reread.js";
+import { makeLlm } from "./mail/llm.js";
 import { Hono } from "hono";
 import { Pool } from "pg";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
@@ -162,7 +164,22 @@ export function createApp(d: Deps) {
     return json(c, { success: true, source: sourceView({ ...made, forwarding: true }) });
   });
   app.delete("/api/finance/inbound/source", async (c) => { await removeSource(d.db, uid(c), c.req.query("wipe") === "1"); return json(c, { success: true }); });
-  app.get("/api/finance/inbound/review", async (c) => json(c, { success: true, items: await reviewList(d.db, uid(c)) }));
+  app.get("/api/finance/inbound/review", async (c) => {
+    const offset = Number(c.req.query("offset") || 0);
+    if (!Number.isInteger(offset) || offset < 0 || offset > 100000) return json(c,{success:false,error:"INVALID_OFFSET"},400);
+    return json(c,{success:true,items:await reviewList(d.db,uid(c),offset),total:await reviewCount(d.db,uid(c))});
+  });
+  app.post("/api/finance/inbound/bulk", async(c)=>{
+    const body=await c.req.json().catch(()=>null);
+    if(!body || !["approve","reject"].includes(body.action) || !Array.isArray(body.ids) || !body.ids.length || body.ids.length>200 || body.ids.some((id:unknown)=>typeof id!=="string"|| !/^[a-f0-9-]{36}$/i.test(id))) return json(c,{success:false,error:"INVALID_BATCH"},400);
+    const results=[];
+    for(const id of [...new Set<string>(body.ids)]){try{const ok=body.action==="approve"?await approve(d.db,uid(c),id,{}):await reject(d.db,uid(c),id);results.push({id,ok:Boolean(ok)});}catch{results.push({id,ok:false});}}
+    return json(c,{success:true,results});
+  });
+  app.post("/api/finance/inbound/:id/reread",async(c)=>{
+    if(!google)return json(c,{success:false,error:"NOT_CONNECTED"},409);
+    try{return json(c,{success:true,details:await rereadMail(d.db,uid(c),c.req.param("id"),google,d.gfetch,d.aiKey?makeLlm({key:d.aiKey}):undefined)});}catch(e){return json(c,{success:false,error:e instanceof Error?e.message:"READ_FAILED"},409);}
+  });
   app.post("/api/finance/inbound/:id/approve", async (c) => {
     const edits = await c.req.json().catch(() => ({}));
     const out = await approve(d.db, uid(c), c.req.param("id"), edits && typeof edits === "object" ? edits : {});

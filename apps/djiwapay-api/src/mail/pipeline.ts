@@ -119,15 +119,16 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   // Read it: rules first, model only when the rules are unsure.
   const rules = extractPayment(mail.subject, mail.text);
   let x = rules, agreed = false;
-  if (!isConfident(x) && d.llm) {
+  if ((!isConfident(x) || !x.merchant || (!x.details?.items.length && /rincian|detail pesanan|daftar (?:produk|barang)|qty|subtotal|ppn|pajak/i.test(mail.text))) && d.llm) {
     try {
       const m = await d.llm(mail.subject, mail.text, mail.from);
-      if (m && m.amount > 0 && m.confidence >= x.confidence) { agreed = rules.amount === m.amount && m.direction !== "unknown" && m.confidence >= 0.6; x = { ...x, ...m, accountHint: m.accountHint || x.accountHint, ref: m.ref || x.ref }; }
+      if (m?.details) x = { ...x, details: m.details };
+      if (!isConfident(rules) && m && m.amount > 0 && m.confidence >= x.confidence) { agreed = rules.amount === m.amount && m.direction !== "unknown" && m.confidence >= 0.6; x = { ...x, ...m, accountHint: m.accountHint || x.accountHint, ref: m.ref || x.ref }; }
     } catch { /* model is optional */ }
   }
   const atMs = x.at ?? mail.date?.getTime() ?? now.getTime();
   const at = new Date(Number.isFinite(atMs) ? atMs : now.getTime()).toISOString();
-  const parsed = { amount: x.amount, direction: x.direction, merchant: x.merchant, accountHint: x.accountHint, ref: x.ref, at, subject: mail.subject.slice(0, 80), issuer: issuer.name, rulesVersion: RULES_VERSION };
+  const parsed = { amount: x.amount, direction: x.direction, merchant: x.merchant, accountHint: x.accountHint, ref: x.ref, at, subject: mail.subject.slice(0, 80), issuer: issuer.name, rulesVersion: RULES_VERSION, details: x.details };
   // Gate 7: the read must agree with the mail it came from. A shape nobody has taught the parser yet
   // then waits for a person instead of being recorded, for every user and not only the one who reported it.
   const flags = implausible(`${mail.subject}\n${mail.text}`, x, mail.date?.getTime() ?? null);
@@ -185,8 +186,8 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
 
 /* ---------------- review queue ---------------- */
 
-export async function reviewList(db: Q, userId: string) {
-  const r = await db.query("select id,channel,sender_domain,parsed,confidence,status,reason,occurred_at,created_at from finance.inbound_messages where user_id=$1 and status in ('review','failed') order by created_at desc limit 50", [userId]);
+export async function reviewList(db: Q, userId: string, offset = 0) {
+  const r = await db.query("select id,channel,sender_domain,parsed,confidence,status,reason,occurred_at,created_at from finance.inbound_messages where user_id=$1 and status in ('review','failed') order by created_at desc,id desc limit 200 offset $2", [userId, offset]);
   return r.rows.map((m) => ({ id: m.id as string, channel: m.channel as string, status: m.status as string, reason: m.reason as string, confidence: Number(m.confidence), parsed: m.parsed as Record<string, any>, createdAt: new Date(m.created_at).toISOString() }));
 }
 export async function reviewCount(db: Q, userId: string) {
@@ -233,7 +234,7 @@ export async function reject(d: Tx, userId: string, inboundId: string): Promise<
 export async function originOf(db: Q, userId: string, inboundId: string) {
   const r = await db.query("select id,channel,sender_domain,parsed,status,created_at from finance.inbound_messages where user_id=$1 and id=$2", [userId, inboundId]);
   const m = r.rows[0];
-  return m ? { id: m.id as string, channel: m.channel as string, senderDomain: m.sender_domain as string, status: m.status as string, issuer: String(m.parsed?.issuer ?? ""), subject: String(m.parsed?.subject ?? ""), receivedAt: new Date(m.created_at).toISOString() } : null;
+  return m ? { id: m.id as string, channel: m.channel as string, senderDomain: m.sender_domain as string, status: m.status as string, issuer: String(m.parsed?.issuer ?? ""), subject: String(m.parsed?.subject ?? ""), receivedAt: new Date(m.created_at).toISOString(), details: m.parsed?.details ?? null } : null;
 }
 
 /** Housekeeping: nothing but recent, actionable rows are kept. */

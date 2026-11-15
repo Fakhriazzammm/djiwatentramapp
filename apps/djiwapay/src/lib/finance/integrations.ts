@@ -1,9 +1,10 @@
+export type PaymentDetails = { description: string; items: {name:string;qty:number|null;unitPrice:number|null;amount:number|null}[]; subtotal:number|null; discount:number|null; charges:{label:string;amount:number;included:boolean}[]; total:number|null; warnings:string[] };
 /** Browser side of the Google and payment-e-mail integrations. Tokens never reach the browser; this only talks to /api/finance. */
 export type InboundSource = { forwarding: boolean; address: string; enabled: boolean; mailCount: number; lastMailAt: string | null; trusted: number; forwardCode: string | null };
 export type InboundSummary = { configured: boolean; filter: string; source: InboundSource | null; review: number; importReady: number };
 export type ReviewItem = {
   id: string; channel: string; status: "review" | "failed"; reason: string; confidence: number; createdAt: string;
-  parsed: { amount?: number; kind?: "out" | "in"; direction?: string; merchant?: string; categoryId?: string; accountId?: string; accountHint?: string; at?: string; subject?: string; issuer?: string };
+  parsed: { amount?: number; kind?: "out" | "in"; direction?: string; merchant?: string; categoryId?: string; accountId?: string; accountHint?: string; at?: string; subject?: string; issuer?: string; details?: PaymentDetails; flags?: string[] };
 };
 export type GoogleStatus = {
   configured: boolean; connected: boolean; email: string | null; features: { calendar: boolean; drive: boolean; gmail: boolean };
@@ -23,11 +24,13 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 export const getInbound = () => call<InboundSummary & { success: true }>("/inbound");
 export const createSource = (rotate = false) => call<{ source: InboundSource }>("/inbound/source", { method: "POST", body: JSON.stringify({ rotate }) });
 export const removeSource = (wipe: boolean) => call<object>(`/inbound/source${wipe ? "?wipe=1" : ""}`, { method: "DELETE" });
-export const getReview = () => call<{ items: ReviewItem[] }>("/inbound/review");
+export const getReview = (offset=0) => call<{ items: ReviewItem[];total:number }>(`/inbound/review?offset=${offset}`);
+export const bulkReview = (ids:string[],action:"approve"|"reject")=>call<{results:{id:string;ok:boolean}[]}>("/inbound/bulk",{method:"POST",body:JSON.stringify({ids,action})});
+export const rereadItem = (id:string)=>call<{details:PaymentDetails}>(`/inbound/${encodeURIComponent(id)}/reread`,{method:"POST"});
 export type ReviewEdits = { amount?: number; kind?: "out" | "in"; categoryId?: string; accountId?: string; note?: string };
 export const approveItem = (id: string, edits: ReviewEdits = {}) => call<{ entryId: string }>(`/inbound/${encodeURIComponent(id)}/approve`, { method: "POST", body: JSON.stringify(edits) });
 export const rejectItem = (id: string) => call<object>(`/inbound/${encodeURIComponent(id)}/reject`, { method: "POST" });
-export type Origin = { id: string; channel: string; senderDomain: string; status: string; issuer: string; subject: string; receivedAt: string };
+export type Origin = { id: string; channel: string; senderDomain: string; status: string; issuer: string; subject: string; receivedAt: string; details?: PaymentDetails };
 export const getOrigin = (id: string) => call<{ origin: Origin }>(`/inbound/${encodeURIComponent(id)}/origin`);
 
 export const getGoogle = () => call<GoogleStatus & { success: true }>("/google/status");

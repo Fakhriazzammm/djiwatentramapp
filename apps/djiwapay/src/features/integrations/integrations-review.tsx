@@ -1,0 +1,42 @@
+import {useCallback,useEffect,useState} from 'react';
+import {Btn,Header,Ic,Sky} from '../shell/dpx-ui';
+import type {FinCtx} from '../finance/fin-pages';
+import {MoneyInput,accName,catOf} from '../finance/fin-sheets';
+import {rupiah,formatDateTime} from '../../lib/djiwa-pay-format';
+import {CHANNEL_NAME,approveItem,rejectItem,getReview,bulkReview,rereadItem,type ReviewItem} from '../../lib/finance/integrations';
+import {PaymentDetails} from './payment-details';
+function ReviewRow({item,ctx,selected,onSelect,open,onOpen,onDone,busy:allBusy}:{item:ReviewItem;ctx:FinCtx;selected:boolean;onSelect:()=>void;open:boolean;onOpen:()=>void;onDone:()=>Promise<void>;busy:boolean}){
+ const p=item.parsed, state=ctx.fin.state;
+ const [amount,setAmount]=useState(String(p.amount??0)),[note,setNote]=useState(p.details?.description||p.merchant||''),[kind,setKind]=useState<'in'|'out'>(p.kind??(p.direction==='in'?'in':'out')),[cat,setCat]=useState(p.categoryId??'lainnya'),[account,setAccount]=useState(p.accountId??'tunai'),[busy,setBusy]=useState(false);
+ const act=async(fn:()=>Promise<unknown>,message:string)=>{setBusy(true);try{await fn();await onDone();ctx.notify(message);}catch{ctx.notify('Gagal memproses. Pilihan dan data tetap tersimpan. Coba lagi.');}finally{setBusy(false);}};
+ const title=note||p.subject||CHANNEL_NAME[item.channel]||'Email pembayaran';
+ return <article className={`dpx-review-row ${selected?'is-selected':''}`}>
+  <div className="dpx-review-summary"><label className="dpx-review-check"><input type="checkbox" checked={selected} disabled={busy||allBusy} onChange={onSelect} aria-label={`Pilih ${title}`}/></label>
+   <Btn type="button" className="dpx-review-open" onClick={onOpen} aria-expanded={open}><span className="dpx-review-copy"><b>{title}</b><small>{CHANNEL_NAME[item.channel]??p.issuer} · {p.at?formatDateTime(p.at):'Waktu belum terbaca'}</small><small>{catOf(state,cat).name} · {accName(state,account)}{p.details?.items.length?` · ${p.details.items.length} item`:''}</small></span><span className="dpx-review-value">{p.amount?`${kind==='in'?'+':'−'}${rupiah(Number(amount))}`:'Periksa nominal'}<small>{open?'Tutup detail':'Lihat detail'}</small></span></Btn>
+  </div>
+  {open?<div className="dpx-review-editor">
+   <PaymentDetails details={p.details}/>
+   <Btn type="button" className="dpx-linkbtn" disabled={busy||allBusy} onClick={()=>void act(()=>rereadItem(item.id),'Rincian dibaca dari isi email')}>{busy?'Memproses…':p.details?'Baca ulang isi email':'Lengkapi dari isi email'}</Btn>
+   <div className="dpx-review-fields"><label>Jenis<select value={kind} onChange={e=>{setKind(e.target.value as 'in'|'out');setCat(e.target.value==='in'?'bonus':'lainnya');}}><option value="out">Pengeluaran</option><option value="in">Pemasukan</option></select></label><label>Kategori<select value={cat} onChange={e=>setCat(e.target.value)}>{state.categories.filter(x=>x.income===(kind==='in')).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label>Dompet<select value={account} onChange={e=>setAccount(e.target.value)}>{state.accounts.filter(x=>!x.archived).map(a=><option key={a.id} value={a.id}>{a.name}</option>)}{!state.accounts.some(x=>x.id===account)?<option value={account}>{p.issuer}{p.accountHint?` ••${p.accountHint}`:''}</option>:null}</select></label></div>
+   <MoneyInput value={amount} onChange={setAmount} label="Total yang dicatat"/>
+   <label className="dpx-review-note">Keterangan<input value={note} maxLength={200} onChange={e=>setNote(e.target.value)} placeholder="Nama item, layanan atau tujuan transaksi"/></label>
+   <details className="dpx-sub"><summary>Asal email</summary><p>{p.subject||'Judul tidak tersedia'}</p>{p.flags?.length?<p>Perlu diperiksa: {p.flags.join(', ')}</p>:null}</details>
+   <div className="dpx-review-row-actions"><Btn type="button" disabled={busy||allBusy||!(Number(amount)>0)} onClick={()=>void act(async()=>{await approveItem(item.id,{amount:Number(amount),kind,categoryId:cat,accountId:account,note:note||undefined});await ctx.fin.retrySync();},'Catatan disetujui')}>Setujui</Btn><Btn type="button" disabled={busy||allBusy} onClick={onOpen}>Tutup</Btn><Btn type="button" disabled={busy||allBusy} onClick={()=>void act(()=>rejectItem(item.id),'Email diabaikan')}>Abaikan</Btn></div>
+  </div>:null}
+ </article>;
+}
+export function ReviewPage({ctx,onBack,onOpenIntegrations}:{ctx:FinCtx;onBack:()=>void;onOpenIntegrations:()=>void}){
+ const [items,setItems]=useState<ReviewItem[]>([]),[total,setTotal]=useState(0),[loading,setLoading]=useState(true),[error,setError]=useState(false),[selected,setSelected]=useState<Set<string>>(new Set()),[open,setOpen]=useState<string|null>(null),[busy,setBusy]=useState(false),[confirm,setConfirm]=useState<'approve'|'reject'|null>(null);
+ const load=useCallback(async(more=false)=>{setLoading(true);try{const r=await getReview(more?items.length:0);setItems(prev=>more?[...new Map([...prev,...r.items].map(x=>[x.id,x])).values()]:r.items);setTotal(r.total);setError(false);}catch{setError(true);}finally{setLoading(false);}},[items.length]);
+ useEffect(()=>{void load();},[]);
+ const toggle=(id:string)=>setSelected(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
+ const chosen=items.filter(i=>selected.has(i.id));
+ const run=async(action:'approve'|'reject')=>{if(busy)return;setBusy(true);setConfirm(null);try{const ids=chosen.filter(i=>action==='reject'||(i.parsed.amount??0)>0).map(i=>i.id);const results:{id:string;ok:boolean}[]=[];for(let at=0;at<ids.length;at+=200){const r=await bulkReview(ids.slice(at,at+200),action);results.push(...r.results);}const ok=new Set(results.filter(x=>x.ok).map(x=>x.id));setSelected(prev=>new Set([...prev].filter(id=>!ok.has(id))));setOpen(null);await ctx.fin.retrySync();await load();ctx.notify(`${ok.size} ${action==='approve'?'disetujui':'diabaikan'}${ok.size<chosen.length?`; ${chosen.length-ok.size} belum diproses, periksa kembali`:''}`);}catch{ctx.notify('Gagal memproses pilihan. Muat ulang sebelum mencoba lagi.');await load();}finally{setBusy(false);}};
+ return <div className="dpx-page dpx-review-page"><Sky><div className="dpx-pad dpx-review-pad"><Header title="Perlu ditinjau" onBack={onBack} right={<Btn type="button" className="dpx-rb" onClick={onOpenIntegrations} aria-label="Pengaturan integrasi"><Ic n="grid"/></Btn>}/><p className="dpx-sub">{total} email menunggu · Buka baris untuk rincian dan koreksi.</p>
+  <div className="dpx-review-toolbar"><label><input type="checkbox" checked={items.length>0&&items.every(x=>selected.has(x.id))} disabled={busy||!items.length} onChange={()=>setSelected(items.every(x=>selected.has(x.id))?new Set():new Set(items.map(x=>x.id)))}/> Pilih {items.length} tampil</label><span>{selected.size} dipilih</span><div><Btn type="button" disabled={busy||open!==null||!chosen.some(x=>(x.parsed.amount??0)>0)} onClick={()=>setConfirm('approve')}>Setujui</Btn><Btn type="button" disabled={busy} onClick={()=>{setOpen(null);setSelected(new Set());setConfirm(null);}}>Tutup</Btn><Btn type="button" disabled={busy||open!==null||!chosen.length} onClick={()=>setConfirm('reject')}>Abaikan</Btn></div></div>
+  {confirm?<div className="dpx-review-confirm" role="alert"><p>{confirm==='approve'?`Catat ${chosen.filter(x=>(x.parsed.amount??0)>0).length} transaksi sesuai nominal, kategori, dan dompet yang ditampilkan?`:`Abaikan ${chosen.length} email terpilih? Email ini tidak akan dicatat.`}</p><Btn type="button" disabled={busy} onClick={()=>void run(confirm)}>Ya, {confirm==='approve'?'setujui':'abaikan'}</Btn><Btn type="button" onClick={()=>setConfirm(null)}>Batal</Btn></div>:null}
+  {error?<p role="alert">Gagal memuat antrean. <Btn type="button" onClick={()=>void load()}>Coba lagi</Btn></p>:null}
+  <div className="dpx-review-list">{items.map(item=><ReviewRow key={item.id+':'+(open===item.id)+':'+JSON.stringify(item.parsed.details)} item={item} ctx={ctx} selected={selected.has(item.id)} onSelect={()=>toggle(item.id)} open={open===item.id} onOpen={()=>setOpen(open===item.id?null:item.id)} onDone={async()=>{setSelected(new Set());await load();}} busy={busy}/>)}</div>
+  {loading?<p className="dpx-sub" role="status">Memuat…</p>:null}{!loading&&items.length<total?<Btn type="button" className="dpx-btn dpx-ghost" onClick={()=>void load(true)}>Muat berikutnya · {items.length} dari {total}</Btn>:null}{!loading&&!error&&!items.length?<div className="dpx-empty"><Ic n="check"/><b>Semua sudah ditinjau</b></div>:null}
+ </div></Sky></div>;
+}

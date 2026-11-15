@@ -1,3 +1,4 @@
+import { paymentDetails, type PaymentDetails } from "./details.js";
 /** Reads payment notifications. Pure (no network, no DB) so every rule is unit-tested.
  *  Deterministic rules run first; the LLM in llm.ts is only a fallback, and anything unsure goes to the review queue. */
 
@@ -133,6 +134,7 @@ export type Extracted = {
   at: number | null;         // epoch ms
   confidence: number;
   missing: string[];
+  details?: PaymentDetails;
 };
 
 const OUT_RE = /(pembayaran|pembelian|bayar(?:an)?|membayar|dibayar|transfer (?:ke|keluar|berhasil ke)|dikirim|pengiriman dana|penarikan|tarik tunai|debit|belanja|top[- ]?up ke|payment|purchase|paid|withdraw)/gi;
@@ -203,21 +205,23 @@ export function extractPayment(subject: string, bodyText: string): Extracted {
   const acct = srcAcct ?? whole.match(/(?:rek(?:ening)?|no\.? ?rek|kartu|card|a\/c|akun|account)[^\d\n]{0,14}(?:[x*•·]+[\s-]*)*(\d{4})\b/i) ?? whole.match(/(?:[x*•]{3,}[\s-]*)(\d{4})\b/i);
   const ref = whole.match(/(?:no\.? ?(?:ref(?:erensi)?|transaksi)|ref(?:erence)? ?(?:no|id|number)?|trx ?id|id transaksi|kode transaksi|order id)\b\s*[:#]?\s*(?=[A-Z0-9-]*\d)([A-Z0-9][A-Z0-9-]{4,29})\b/i);
   const at = parseWhen(whole);
-  const merchant = pickMerchant(text, subject);
+  const details = paymentDetails(text);
+  const picked = pickMerchant(text, "");
+  const merchant = picked && !/aplikasi|livin.*mandiri/i.test(picked) ? picked : details.description;
   const missing: string[] = [];
   if (!amount) missing.push("amount");
   if (direction === "unknown") missing.push("direction");
   if (!merchant) missing.push("merchant");
   if (at === null) missing.push("at");
   const confidence = Math.max(0, Math.min(1, (amount ? 0.4 : 0) + (direction !== "unknown" ? 0.25 : 0) + (merchant ? 0.15 : 0) + (at !== null ? 0.1 : 0) + (acct ? 0.05 : 0) + (ref ? 0.05 : 0) + (TXN_EVIDENCE.test(whole) ? 0 : -0.3)));
-  return { amount, direction, merchant, accountHint: acct?.[1] ?? "", ref: ref?.[1] ?? "", at, confidence, missing };
+  return { amount, direction, merchant, accountHint: acct?.[1] ?? "", ref: ref?.[1] ?? "", at, confidence, missing, details };
 }
 
 /** Deterministic read is trusted only when amount and direction are both clear. */
 export const isConfident = (x: Extracted) => x.amount > 0 && x.direction !== "unknown" && x.confidence >= 0.65;
 
 /** Bumped whenever the read changes meaning, so an old staged row can be told apart from a new one. */
-export const RULES_VERSION = 4;
+export const RULES_VERSION = 5;
 
 /** A payment mail is about a day or two, never years away: "26-10-21" once put 2026 mail in 2021. */
 const MAX_DRIFT_MS = 45 * 86400_000;

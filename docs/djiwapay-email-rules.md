@@ -116,3 +116,21 @@ Penanda yang mungkin muncul: `noise-subject`, `tiny-amount`, `far-date`, `no-dat
 Aturan ini berlaku pada jalur server bersama untuk semua pengguna. Bentuk email baru
 masih dapat memerlukan tinjauan; tidak ada jaminan seluruh format bank akan terbaca
 sempurna. Kasus baru harus menjadi tes regresi sebelum aturan diubah.
+
+## Rincian email dan tinjauan massal (2026-11-16)
+
+`parsed.details` menyimpan deskripsi dari badan email, item, jumlah, harga satuan, subtotal,
+diskon, pajak/biaya, total tercetak, serta peringatan. Nilai yang tidak tercetak tetap kosong;
+email bank tidak boleh menghasilkan daftar barang rekaan. Rincian tetap bisa dibuka melalui
+asal email setelah entri disetujui. Versi pembacaan naik ke 5.
+
+Pembacaan ulang merupakan POST eksplisit: cari pesan milik pengguna melalui Message-ID,
+verifikasi pengirim dan autentikasinya, baca isi, lalu lengkapi rincian antrean. Operasi ini
+menjaga nominal/kategori tersimpan serta tidak membuat entri buku. Ketidaksesuaian total
+ditandai untuk pemeriksaan. Tidak ada akses Gmail atau penulisan data pada GET daftar.
+
+Halaman Tinjau memuat 200 baris per halaman dan menyediakan pemuatan berikutnya. Pengguna
+memilih baris lalu mengonfirmasi setujui/abaikan. Setiap batch maksimal 200 ID, dihapus
+duplikasinya, dibatasi pengguna yang login, dan melaporkan hasil per ID. Persetujuan memakai
+penguncian entri antrean sehingga pengulangan permintaan tidak mencatat dua kali. “Tutup”
+hanya menutup detail/pilihan. Tidak ada aksi persetujuan produksi saat pengujian UI.

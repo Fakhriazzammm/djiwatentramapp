@@ -1,0 +1,22 @@
+import {afterAll,expect,test} from 'bun:test';
+import {Pool} from 'pg';
+import {createApp} from '../index';
+import {poolTx} from '../db';
+const url=process.env.DATABASE_URL,pool=url?new Pool({connectionString:url,max:1,ssl:{rejectUnauthorized:false}}):null;
+const user=`itest-bulk-${crypto.randomUUID()}`,other=`${user}-other`;
+afterAll(async()=>{if(!pool)return;for(const table of ['inbound_messages','entries','accounts','profiles','merchant_rules','inbound_sources'])await pool.query(`delete from finance.${table} where user_id=any($1::text[])`,[[user,other]]);await pool.end();});
+const run=url?test:test.skip;
+run('bulk review isolates users and retries cannot duplicate ledger entries',async()=>{
+ const db=poolTx(pool!),app=createApp({db,resolve:async()=>user,dir:'/tmp/unused-bulk-tests'});
+ const make=async(u:string)=>(await pool!.query(`insert into finance.inbound_messages(user_id,message_id,sender_domain,channel,status,parsed) values($1,$2,'gopay.co.id','gopay','review',$3::jsonb) returning id`,[u,crypto.randomUUID(),JSON.stringify({amount:25000,kind:'out',categoryId:'makan',accountId:'tunai',at:new Date().toISOString(),merchant:'Kopi',details:{description:'Kopi',items:[{name:'Kopi',amount:25000}],charges:[],total:25000}})])).rows[0].id;
+ const a=await make(user),b=await make(other);
+ const call=(ids:string[],action='approve')=>app.request('/api/finance/inbound/bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids,action})});
+ const r=await(await call([a,b,a])).json() as any;expect(r.results).toEqual([{id:a,ok:true},{id:b,ok:false}]);
+ expect((await(await call([a])).json() as any).results[0].ok).toBe(false);
+ expect((await pool!.query('select count(*)::int n from finance.entries where user_id=$1',[user])).rows[0].n).toBe(1);
+ expect((await pool!.query('select status from finance.inbound_messages where id=$1',[b])).rows[0].status).toBe('review');
+ expect((await call(Array(201).fill(a))).status).toBe(400);
+ const c=await make(user);expect((await(await call([c],'reject')).json() as any).results[0].ok).toBe(true);
+ expect((await pool!.query('select count(*)::int n from finance.entries where user_id=$1',[user])).rows[0].n).toBe(1);
+ const origin=await(await app.request(`/api/finance/inbound/${a}/origin`)).json() as any;expect(origin.origin.details.items[0].name).toBe('Kopi');
+});

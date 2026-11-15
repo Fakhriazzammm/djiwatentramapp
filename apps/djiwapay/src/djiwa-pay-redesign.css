@@ -523,3 +523,23 @@ html:has(.dpx-scened),body:has(.dpx-scened){overflow-x:hidden}
 .dpx .dpx-checkitem>div{flex:1;min-width:0;display:flex;flex-direction:column}
 .dpx .dpx-checkitem b{font:600 13.5px var(--font)}
 .dpx .dpx-checkitem span{font-size:12.5px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Compact mail review: details expand in place; content clears the fixed tab bar. */
+.dpx .dpx-pad.dpx-review-pad{padding-bottom:calc(180px + env(safe-area-inset-bottom,0px))}
+.dpx-review-list{margin-top:10px;border-radius:16px;background:var(--white,#fff);overflow:hidden}
+.dpx-review-row{border-bottom:1px solid var(--line,#e8e2d9);padding:8px 10px}
+.dpx-review-row:last-child{border-bottom:0}.dpx-review-row.is-selected{background:var(--group)}
+.dpx-review-summary{display:flex;align-items:center;gap:4px}.dpx-review-check{min-width:32px;min-height:44px;display:grid;place-items:center}
+.dpx-review-page input[type=checkbox]{width:18px;height:18px;accent-color:var(--ink);flex:none}
+.dpx-review-open{flex:1;min-width:0;display:flex;align-items:center;gap:8px;min-height:60px;border:0;background:none;text-align:left;color:inherit;padding:4px 0}
+.dpx-review-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.dpx-review-copy b{font-size:13px;line-height:1.35;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dpx-review-copy small,.dpx-review-value small{font-size:10.5px;font-weight:400;color:var(--mute);line-height:1.35;display:block}.dpx-review-value{font-weight:700;font-size:13px;white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
+.dpx-review-toolbar{position:sticky;top:0;z-index:5;background:var(--paper,#faf7f0);padding:10px 0;display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12px;border-bottom:1px solid var(--line,#e8e2d9)}
+.dpx-review-toolbar label{display:flex;align-items:center;gap:6px}.dpx-review-toolbar>span{margin-left:auto;color:var(--mute)}.dpx-review-toolbar>div{display:flex;width:100%;gap:6px}
+.dpx-review-toolbar button,.dpx-review-row-actions button,.dpx-review-confirm button{border:1px solid var(--line,#e8e2d9);border-radius:10px;min-height:40px;padding:6px 12px;background:var(--group);color:var(--ink);font:600 12px var(--font);flex:1}
+.dpx-review-toolbar button:first-child,.dpx-review-row-actions button:first-child,.dpx-review-confirm button:first-of-type{background:var(--ink);color:#fff}.dpx-review-page button:disabled{opacity:.45}
+.dpx-review-editor{padding:10px 0 4px;border-top:1px solid var(--line,#e8e2d9);margin-top:6px;font-size:12px}.dpx-review-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.dpx-review-fields label:last-child{grid-column:1/-1}
+.dpx-review-fields label,.dpx-review-note{font-size:11px;color:var(--mute);display:flex;flex-direction:column;gap:4px}.dpx-review-fields select,.dpx-review-note input{width:100%;min-height:40px;border:1px solid var(--line,#e8e2d9);border-radius:8px;background:var(--paper,#faf7f0);padding:8px;color:var(--ink);font:inherit;font-size:13px}.dpx-review-note{margin:8px 0}
+.dpx-review-row-actions{display:flex;gap:6px;margin-top:10px}.dpx-review-confirm{padding:10px;background:var(--group);border-radius:12px;font-size:12px}.dpx-review-confirm button{margin-right:6px}
+.dpx-mail-details{font-size:12px;line-height:1.45}.dpx-mail-description{font-weight:600;overflow-wrap:anywhere}.dpx-mail-details table{width:100%;border-collapse:collapse}.dpx-mail-details th,.dpx-mail-details td{padding:6px 0;text-align:left;border-bottom:1px solid var(--line,#e8e2d9);vertical-align:top}.dpx-mail-details td:first-child{overflow-wrap:anywhere}.dpx-mail-details th:last-child,.dpx-mail-details td:last-child{text-align:right;padding-left:12px;white-space:nowrap}.dpx-mail-details small{display:block;color:var(--mute)}
+.dpx-mail-details dl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;margin:10px 0}.dpx-mail-details dd{margin:0;text-align:right}.dpx-mail-charge{display:contents}.dpx-mail-warning{color:var(--danger);font-size:12px}
