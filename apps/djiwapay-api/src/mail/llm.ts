@@ -7,8 +7,15 @@ export const MAIL_PROMPT = `Kamu membaca email notifikasi pembayaran bank atau e
 
 export type LlmOpts = { key: string; model?: string; base?: string; fetchImpl?: typeof fetch };
 
+/**
+ * Text-only reads: measured on real bank mail at ~1.5 s each with valid JSON (gemini-3-1-flash-lite),
+ * against 13-25 s for qwen3.7-flash - and a failed import spends one call per unsure mail.
+ * MAIL_LLM_MODEL overrides it without a deploy.
+ */
+export const MAIL_MODEL = "gemini-3-1-flash-lite";
+
 export function makeLlm(o: LlmOpts) {
-  const f = o.fetchImpl ?? fetch, base = o.base ?? "https://ai.helipod.io/v1", model = o.model ?? "qwen3.7-flash";
+  const f = o.fetchImpl ?? fetch, base = o.base ?? "https://ai.helipod.io/v1", model = o.model ?? MAIL_MODEL;
   return async (subject: string, text: string, from: string): Promise<Extracted | null> => {
     const res = await f(`${base}/chat/completions`, {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${o.key}` },

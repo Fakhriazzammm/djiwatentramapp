@@ -265,7 +265,7 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
   };
   const holdOk = async (fn: () => Promise<unknown>) => { setBusy("hold"); try { await fn(); ctx.notify("Dilanjutkan. Memproses…"); window.setTimeout(() => void loadG(), 6000); await loadG(); } catch { ctx.notify("Gagal. Coba lagi."); } finally { setBusy(""); } };
   const checkGmail = async () => {
-    setBusy("gmail");
+    setBusy("gmail-check");
     try { await pollGmailNow(); ctx.notify("Memeriksa Gmail… hasilnya muncul sebentar lagi"); window.setTimeout(() => { void loadG(); void refresh(); }, 6000); }
     catch { ctx.notify("Gagal memulai pemeriksaan. Coba lagi."); } finally { setBusy(""); }
   };
@@ -281,21 +281,27 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
   const cal = Boolean(g?.features.calendar), drive = Boolean(g?.features.drive);
   const gm = Boolean(g?.features.gmail && g?.gmail?.enabled), gmInfo = g?.gmail ?? null;
   const soon = <Tag tone="later">Segera</Tag>;
+  /** One tap for every Google sync that is on: bills to Calendar, and the workbook export. */
+  const syncAll = async () => {
+    setBusy("google-all");
+    try {
+      await Promise.all([cal ? syncGoogle("calendar") : null, drive ? syncGoogle("sheets") : null].filter(Boolean));
+      ctx.notify(cal && drive ? "Calendar dan Spreadsheet disinkronkan" : cal ? "Calendar disinkronkan" : "Sinkronisasi Spreadsheet dimulai. Hasilnya muncul sebentar lagi");
+      window.setTimeout(() => void loadG(), 7000); await loadG();
+    } catch { ctx.notify("Gagal memulai. Coba lagi."); } finally { setBusy(""); }
+  };
   return <div className="dpx-page"><Sky><div className="dpx-pad dpx-nobar">
     <Header title="Integrasi" onBack={onBack} />
     <div className="dpx-note dpx-info" style={{ marginTop: 6 }}><Ic n="shield" /><div><b>Kamu yang mengatur.</b> Setiap integrasi bisa diputus kapan saja. Token dan data turunan ikut dihapus.</div></div>
 
-    <div className="dpx-glabel">Catat otomatis dari email</div>
+    <div className="dpx-glabel">Catat otomatis dari email{gm ? <Btn type="button" disabled={busy === "gmail-check"} onClick={() => void checkGmail()}>{busy === "gmail-check" ? "Memeriksa…" : "Periksa"}</Btn> : null}</div>
     <Reveal i={1}><div className="dpx-group dpx-white dpx-int">
       <Row icon="spark" tone="orange" title="Gmail langsung" sub={gm ? (gmInfo?.error ? gmailError(gmInfo.error) : gmInfo?.lastPolledAt ? `Dicek ${ago(gmInfo.lastPolledAt)} · ${gmInfo.fetched} email dibaca` : "Memeriksa email pertama…") : "Satu ketukan. Email bank dan e-wallet tercatat sendiri"}
         trail={loadingG ? undefined : !gReady ? soon : gm ? <Tag tone={gmInfo?.error ? "warn" : "ok"}>{gmInfo?.error ? "Perlu perhatian" : "Aktif"}</Tag> : <Tag tone="warn">Disarankan</Tag>}
         onClick={gReady && !loadingG && !gm ? () => setSheet({ consent: ["gmail"] }) : undefined} />
-      {gm ? <>
-        <Row icon="dl" tone="amber" title="Impor email lama" sub={inbound && inbound.importReady ? `${inbound.importReady} transaksi siap ditinjau` : "Catat pembayaran lama dari Gmail-mu, dengan pratinjau dulu"} onClick={() => setSheet("import")} />
-        <Row icon="refresh" tone="slate" title={busy === "gmail" ? "Memeriksa…" : "Periksa sekarang"} sub="Pengecekan otomatis tiap beberapa menit" onClick={() => void checkGmail()} chev={false} />
-        <Row icon="trash" tone="rose" title="Matikan Gmail langsung" sub="Berhenti membaca email. Catatan yang sudah ada tetap" onClick={() => void turnGmailOff()} chev={false} />
-      </> : null}
+      {gm ? <Row icon="dl" tone="amber" title="Impor email lama" sub={inbound && inbound.importReady ? `${inbound.importReady} transaksi siap ditinjau` : "Catat pembayaran lama dari Gmail-mu, dengan pratinjau dulu"} onClick={() => setSheet("import")} /> : null}
       {gm || (src && src.forwarding) ? <Row icon="check" tone="emerald" title={`Antrean tinjau${inbound && inbound.review ? ` (${inbound.review})` : ""}`} sub={src && src.trusted >= 10 ? "Email yang jelas dicatat otomatis" : `Belajar dari tinjauanmu: ${src?.trusted ?? 0}/10 disetujui`} onClick={onReview} /> : null}
+      {gm ? <Row icon="trash" tone="rose" title="Matikan Gmail langsung" sub="Berhenti membaca email. Catatan yang sudah ada tetap" onClick={() => void turnGmailOff()} chev={false} /> : null}
     </div></Reveal>
 
     <div className="dpx-glabel">Atau lewat terusan email</div>
@@ -308,16 +314,14 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
       </> : null}
     </div></Reveal>
 
-    <div className="dpx-glabel">Google</div>
+    <div className="dpx-glabel">Google{cal || drive ? <Btn type="button" disabled={busy === "google-all"} onClick={() => void syncAll()}>{busy === "google-all" ? "Menyinkronkan…" : "Sinkronkan"}</Btn> : null}</div>
     <Reveal i={3}><div className="dpx-group dpx-white dpx-int">
       <Row icon="cal" tone="blue" title="Google Calendar" sub={cal ? `${g!.calendar.events} tagihan jadi acara bulanan` : "Tagihan rutin jadi acara + pengingat"} trail={loadingG ? undefined : !gReady ? soon : cal ? <Tag tone="ok">Aktif</Tag> : <Tag>Mati</Tag>}
         onClick={gReady && !loadingG && !cal ? () => setSheet({ consent: ["calendar"] }) : undefined} />
-      {cal ? <Row icon="refresh" tone="slate" title={busy === "calendar" ? "Menyinkronkan…" : "Sinkronkan sekarang"} sub="Tagihan berubah otomatis ikut diperbarui" onClick={() => void run("calendar", "Calendar diperbarui")} chev={false} /> : null}
       <Row icon="list" tone="emerald" title="Spreadsheet keuangan" sub={drive ? (g!.sheet?.status === "missing" ? "Spreadsheet terhapus di Drive. Ketuk untuk membuat ulang" : g!.sheet?.url ? `Dua arah · ${g!.sheet.pending ? "menyinkronkan…" : g!.sheet.lastSyncedAt ? `disinkron ${ago(g!.sheet.lastSyncedAt)}` : "menunggu sinkron pertama"}` : "Sedang dibuat di Drive-mu…") : "Semua catatan otomatis tertulis di Spreadsheet-mu, dua arah"}
         trail={loadingG ? undefined : !gReady ? soon : drive ? <Tag tone={g!.sheet?.error || g!.sheet?.status === "missing" ? "warn" : "ok"}>{g!.sheet?.error || g!.sheet?.status === "missing" ? "Perlu perhatian" : "Aktif"}</Tag> : <Tag tone="warn">Disarankan</Tag>}
         onClick={gReady && !loadingG ? (!drive ? () => setSheet({ consent: ["drive"] }) : g!.sheet?.status === "missing" ? () => void run("sheets", "Membuat ulang spreadsheet…") : g!.sheet?.url ? () => window.open(g!.sheet!.url!, "_blank", "noopener") : undefined) : undefined} />
       {drive && g!.sheet?.hold ? <div className="dpx-note dpx-danger" role="alert" style={{ margin: "6px 12px 10px" }}><Ic n="warn" /><div><b>Penghapusan ditahan.</b> {g!.sheet.hold}<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy === "hold"} onClick={() => void holdOk(confirmSheetDeletes)}>Ya, hapus juga di aplikasi</Btn></div></div></div> : null}
-      {drive ? <Row icon="refresh" tone="slate" title={busy === "sheets" ? "Menyiapkan…" : "Sinkronkan sekarang"} sub="Perubahan di aplikasi dan di Sheets saling menyusul tiap beberapa menit" onClick={() => void run("sheets", "Sinkronisasi dimulai. Hasilnya muncul sebentar lagi")} chev={false} /> : null}
       {drive ? <Row icon="dl" tone="amber" title="Foto struk di Drive" sub={`${g!.drive.uploaded} foto di “Djiwa Pay / Struk”${g!.drive.failed ? ` · ${g!.drive.failed} gagal` : ""} · dua arah`} chev={false} /> : null}
       {drive && g!.drive.hold ? <div className="dpx-note dpx-danger" role="alert" style={{ margin: "6px 12px 10px" }}><Ic n="warn" /><div><b>Penghapusan ditahan.</b> {g!.drive.hold}<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy === "hold"} onClick={() => void holdOk(confirmDriveRemovals)}>Ya, hapus juga di aplikasi</Btn></div></div></div> : null}
     </div></Reveal>
