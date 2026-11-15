@@ -1473,8 +1473,9 @@ function OrderPage() {
 					/>
 
 					{!orderModeConfirmed && step !== "receipt" ? <>
-						<div className="px-2 pt-2">
-							<img src="/order-greeting-cafe.jpg" alt="Suasana hangat Djiwa Tentram Cafe & Resto" className="h-auto max-h-40 w-full rounded-2xl object-cover shadow-sm" loading="eager" />
+						<div className="relative -mt-2 px-0 pt-0">
+							{/* Menyatu dengan kanvas: tepi bawah dan samping memudar, tanpa kotak, sudut, atau bayangan. */}
+							<img src="/order-greeting-cafe.jpg" alt="Suasana hangat Djiwa Tentram Cafe & Resto" className="h-auto max-h-48 w-full object-cover [mask-image:linear-gradient(to_bottom,black_55%,transparent),linear-gradient(to_right,transparent,black_12%,black_88%,transparent)] [mask-composite:intersect] [-webkit-mask-composite:source-in]" loading="eager" />
 						</div>
 						<CustomerOrderModeSelection themeColor={themeColor} onSelect={(nextMode) => { setOrderMode(nextMode); setOrderModeConfirmed(true); setStep(nextMode === "delivery" ? "address" : "table"); }} />
 					</> : null}
