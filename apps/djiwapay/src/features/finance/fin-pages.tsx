@@ -88,7 +88,7 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
   const remaining = t.in - t.out;
   const showIncomeBased = t.in > 0;
   const trend = pt.out > 0 ? Math.round(((t.out - pt.out) / pt.out) * 100) : null;
-  return <div className="dpx-page"><Sky><div className="dpx-pad" style={{ paddingBottom: 0 }}>
+  return <div className="dpx-page"><Sky><div className="dpx-pad">
     <div className="dpx-hdr" style={{ paddingTop: 0 }}>
       <Btn type="button" className="dpx-av" onClick={() => nav.go("/akun")} aria-label="Akun saya">{firstName(profile.name, profile.email)[0]?.toUpperCase()}</Btn><div className="dpx-grow" />
       <Btn type="button" className="dpx-pill-info" onClick={() => ctx.open({ k: "streak" })} aria-label={`Streak ${st.count} hari`}><Ic n="flame" size="sm" /> {st.count}</Btn>
