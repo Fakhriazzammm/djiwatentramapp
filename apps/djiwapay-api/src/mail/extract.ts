@@ -110,14 +110,15 @@ export function parseRupiah(raw: string): number {
   return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
 }
 
-/** dd/mm/yyyy hh:mm, dd Mon yyyy hh:mm, yyyy-mm-dd hh:mm — printed in WIB unless a zone is given. */
+/** dd/mm/yyyy hh:mm, dd Mon yyyy hh:mm, yyyy-mm-dd [hh:mm] — printed in WIB unless a zone is given. */
 export function parseWhen(text: string): number | null {
   const wib = (y: number, mo: number, d: number, h = 0, mi = 0) => Date.UTC(y, mo, d, h - 7, mi);
-  let m = text.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
-  if (m) return wib(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]));
-  m = text.match(/(\d{1,2})[/.-](\d{1,2})[/.-](\d{4}|\d{2})(?:[ ,T]+(?:pukul\s*)?(\d{1,2})[:.](\d{2}))?/);
+  // Anchored so "2026-10-21" can never be read as the 26-10-21 inside it (which became 2021-10-26).
+  let m = text.match(/(?<!\d)(\d{4})-(\d{2})-(\d{2})(?:[ T]+(\d{2}):(\d{2}))?(?!\d)/);
+  if (m) return wib(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4] ?? 0), Number(m[5] ?? 0));
+  m = text.match(/(?<!\d)(\d{1,2})[/.-](\d{1,2})[/.-](\d{4}|\d{2})(?!\d)(?:[ ,T]+(?:pukul\s*)?(\d{1,2})[:.](\d{2}))?/);
   if (m) { const y = Number(m[3]) < 100 ? 2000 + Number(m[3]) : Number(m[3]); if (Number(m[2]) >= 1 && Number(m[2]) <= 12) return wib(y, Number(m[2]) - 1, Number(m[1]), Number(m[4] ?? 0), Number(m[5] ?? 0)); }
-  m = text.match(/(\d{1,2})\s+([A-Za-z]{3,9})\.?\s+(\d{4})(?:[ ,]+(?:pukul\s*)?(\d{1,2})[:.](\d{2}))?/);
+  m = text.match(/(?<!\d)(\d{1,2})\s+([A-Za-z]{3,9})\.?\s+(\d{4})(?:[ ,]+(?:pukul\s*)?(\d{1,2})[:.](\d{2}))?/);
   if (m && MONTHS[m[2].toLowerCase()] !== undefined) return wib(Number(m[3]), MONTHS[m[2].toLowerCase()], Number(m[1]), Number(m[4] ?? 0), Number(m[5] ?? 0));
   return null;
 }

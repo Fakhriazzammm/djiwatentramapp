@@ -15,6 +15,8 @@ describe("rupiah and dates", () => {
     expect(parseWhen("15/11/2026 13:45")).toBe(Date.UTC(2026, 10, 15, 6, 45));
     expect(parseWhen("15 Nov 2026 13.45")).toBe(Date.UTC(2026, 10, 15, 6, 45));
     expect(parseWhen("2026-11-15 13:45")).toBe(Date.UTC(2026, 10, 15, 6, 45));
+    expect(parseWhen("pembayaran pada tanggal 2026-10-21 melalui MKM")).toBe(Date.UTC(2026, 9, 20, 17, 0));
+    expect(parseWhen("tagihan 20-OCT-26 jatuh tempo")).toBeNull();
     expect(parseWhen("tidak ada tanggal")).toBeNull();
   });
 });
