@@ -292,10 +292,11 @@
 .dpx .dpx-ring{width:76px;height:76px}
 .dpx .dpx-ring .dpx-c{font-size:11px}
 .dpx .dpx-ring .dpx-c b{font-size:20px!important}
-.dpx .dpx-kpi{gap:8px}
-.dpx .dpx-kpi .dpx-group{padding:9px 11px}
-.dpx .dpx-kpi small{font-size:11.5px}
-.dpx .dpx-kpi b{font-size:16px!important}
+/* Grid owns spacing: stacked-group margins otherwise shorten the second card. */
+.dpx .dpx-kpi{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:stretch}
+.dpx .dpx-kpi > .dpx-group{display:flex;flex-direction:column;gap:4px;min-width:0;min-height:64px;margin:0;padding:10px 12px;text-align:left}
+.dpx .dpx-kpi small{font-size:11.5px;line-height:1.4}
+.dpx .dpx-kpi b{display:block;font-size:16px!important;line-height:1.3;overflow-wrap:anywhere}
 .dpx .dpx-row{padding:7px 0;min-height:44px;gap:10px}
 .dpx .dpx-row .dpx-ico{width:32px;height:32px}
 .dpx .dpx-row .dpx-ico img{width:22px;height:22px}
