@@ -143,9 +143,11 @@ function AdminCustomerDelivery() {
   const [selected, setSelected] = useState<CustomerDeliveryOrder | null>(null);
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const reselectId = useRef<string | null>(null);
   const refresh = useCallback(async () => {
     const version = ++requestVersion.current;
-    setLoading(true); setError(null); setSelected(null); setOrders([]);
+    setLoading(true); setError(null); if (!reselectId.current) setSelected(null); setOrders([]);
     try {
       const data = await deliveryApi<{ orders: Record<string, any>[] }>("delivery-admin", { action: "list_orders", staffToken: token });
       if (version !== requestVersion.current) return;
@@ -154,6 +156,13 @@ function AdminCustomerDelivery() {
     finally { if (version === requestVersion.current) setLoading(false); }
   }, [token]);
   useEffect(() => { void refresh(); return () => { requestVersion.current++; }; }, [refresh]);
+  // Setelah memesan kurir, buka lagi detail order yang sama agar resi/ID kurir langsung terlihat.
+  useEffect(() => {
+    if (!reselectId.current || loading) return;
+    const next = orders.find((o) => o._id === reselectId.current);
+    reselectId.current = null;
+    if (next) setSelected(next);
+  }, [orders, loading]);
   const bookShipment = async (order: CustomerDeliveryOrder) => {
     if (bookingId) return;
     const accepted = await requestAdminConfirm({
@@ -163,9 +172,11 @@ function AdminCustomerDelivery() {
       variant: "warning",
     });
     if (!accepted) return;
-    setBookingId(order._id); setActionError(null);
+    setBookingId(order._id); setActionError(null); setActionNotice(null);
     try {
       await deliveryApi("delivery-admin", { action: "create_shipment", staffToken: token, sourceId: order._id });
+      reselectId.current = order._id;
+      setActionNotice("Pesanan kurir berhasil dibuat. Status, resi, dan driver akan diperbarui otomatis lewat webhook Biteship.");
       await refresh();
     } catch (cause) {
       const code = String((cause as { code?: unknown })?.code ?? (cause as Error)?.message ?? "");
@@ -229,12 +240,12 @@ function AdminCustomerDelivery() {
               <td className="px-4 py-3"><p className="text-xs font-semibold text-slate-700">{courierLabel(o)}</p><p className="mt-1 max-w-[200px] break-all font-mono text-xs text-slate-500">{o.deliveryWaybillId || o.deliveryTrackingId || "-"}</p></td>
               <td className="whitespace-nowrap px-4 py-3 tabular-nums"><p className="font-semibold">{formatRupiah(o.totalAmount)}</p><p className="mt-1 text-xs text-slate-500">Ongkir {formatRupiah(o.shippingFeeAmount)}</p></td>
               <td className="px-4 py-3"><StatusBadge payment status={String(o.status ?? "")} /><p className="mt-1.5 text-xs text-slate-500">{paymentLabel(o.paymentMethod)}</p></td>
-              <td className="px-4 py-3"><Button variant="ghost" size="sm" className="min-h-11 gap-1 rounded-lg text-slate-600" aria-label={`Detail order #${o.orderNumber}`} onClick={() => setSelected(o)}>Detail<ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /></Button></td>
+              <td className="px-4 py-3"><Button variant="ghost" size="sm" className="min-h-11 gap-1 rounded-lg text-slate-600" aria-label={`Detail order #${o.orderNumber}`} onClick={() => { setActionNotice(null); setActionError(null); setSelected(o); }}>Detail<ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /></Button></td>
             </tr>)}</tbody></table></div>
           <div className="divide-y divide-slate-100 md:hidden">{filtered.map((o) => <article key={o._id} className="space-y-3 p-4">
             <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="font-semibold tracking-tight">#{o.orderNumber}</h2><p className="mt-0.5 break-words text-sm font-medium text-slate-700">{o.deliveryContactName || o.customerName || "-"}</p><p className="mt-1 text-xs text-slate-500">{formatDate(o.createdAt)}</p></div><p className="shrink-0 text-sm font-semibold tabular-nums">{formatRupiah(o.totalAmount)}</p></div>
             <div className="grid grid-cols-2 gap-3"><div><p className="mb-1.5 text-xs text-slate-500">Delivery</p><StatusBadge status={normalizeStatus(o)} /></div><div><p className="mb-1.5 text-xs text-slate-500">Payment · {paymentLabel(o.paymentMethod)}</p><StatusBadge payment status={String(o.status ?? "")} /></div></div>
-            <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-2"><div className="min-w-0"><p className="text-xs font-medium text-slate-600">{courierLabel(o)}</p><p className="mt-1 break-all font-mono text-xs text-slate-500">{o.deliveryWaybillId || o.deliveryTrackingId || "-"}</p></div><Button variant="outline" className="min-h-11 shrink-0 gap-2 rounded-lg" aria-label={`Detail order #${o.orderNumber}`} onClick={() => setSelected(o)}>Detail<ArrowRight className="h-4 w-4" aria-hidden="true" /></Button></div>
+            <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-2"><div className="min-w-0"><p className="text-xs font-medium text-slate-600">{courierLabel(o)}</p><p className="mt-1 break-all font-mono text-xs text-slate-500">{o.deliveryWaybillId || o.deliveryTrackingId || "-"}</p></div><Button variant="outline" className="min-h-11 shrink-0 gap-2 rounded-lg" aria-label={`Detail order #${o.orderNumber}`} onClick={() => { setActionNotice(null); setActionError(null); setSelected(o); }}>Detail<ArrowRight className="h-4 w-4" aria-hidden="true" /></Button></div>
           </article>)}</div>
         </>}
     </section>
@@ -243,6 +254,18 @@ function AdminCustomerDelivery() {
       <section className="rounded-xl border border-slate-200 p-4"><h3 className="mb-3 flex items-center gap-2 font-semibold"><Package className="h-4 w-4 text-slate-400" aria-hidden="true" />Penerima</h3><dl className="space-y-3"><DetailField label="Customer" value={selected.deliveryContactName || selected.customerName || "-"} /><DetailField label="Telepon" value={selected.deliveryContactPhone || "-"} /><div className="whitespace-pre-wrap"><DetailField label="Alamat pengiriman" value={selected.deliveryAddress || "-"} /></div></dl></section>
       <section className="space-y-4 rounded-xl border border-slate-200 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 font-semibold"><Truck className="h-4 w-4 text-slate-400" aria-hidden="true" />Pengiriman</h3><StatusBadge status={normalizeStatus(selected)} /></div><div className="overflow-x-auto pb-1"><div className="min-w-[420px]"><DeliveryTimeline status={normalizeStatus(selected)} /></div></div>
         {selected.shippingRateSnapshot?.feeSource === "fallback" && normalizeStatus(selected) === "ready_to_ship" ? <p role="status" className="rounded-lg bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">Tarif ongkir menggunakan fallback. Atur kurir secara manual; pemesanan otomatis Biteship tidak tersedia untuk tarif ini.</p> : null}
+        {actionNotice ? <p role="status" className="rounded-lg bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-800">{actionNotice}</p> : null}
+        {(() => {
+          // Jelaskan kenapa tombol "Buat pesanan kurir" tidak muncul, supaya admin tahu langkah berikutnya.
+          if (selected.deliveryProviderOrderId) return <p role="status" className="rounded-lg bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">Pesanan kurir sudah dibuat di Biteship. Pantau status dan resinya di bawah.</p>;
+          const paid = ["paid", "completed"].includes(String(selected.status ?? "").toLowerCase());
+          const st = normalizeStatus(selected);
+          if (!paid) return <p role="status" className="rounded-lg bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">Kurir baru bisa dipanggil setelah pembayaran lunas.</p>;
+          if (["delivered", "cancelled"].includes(st)) return null;
+          if (st !== "ready_to_ship") return <p role="status" className="rounded-lg bg-blue-50 p-3 text-xs leading-relaxed text-blue-900">Untuk memanggil kurir, ubah status pengiriman order ini menjadi <strong>Siap dikirim</strong> di menu Pesanan. Tombol “Buat pesanan kurir” akan muncul di sini.</p>;
+          if (selected.shippingRateSnapshot?.feeSource !== "biteship" && selected.shippingRateSnapshot?.feeSource !== "fallback") return <p role="status" className="rounded-lg bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">Order ini tidak punya tarif Biteship, jadi kurir tidak bisa dipanggil dari sini. Atur pengantaran secara manual.</p>;
+          return null;
+        })()}
         {actionError ? <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs leading-relaxed text-rose-700">{actionError}</p> : null}
         {normalizeStatus(selected) === "ready_to_ship" && ["paid", "completed"].includes(String(selected.status ?? "").toLowerCase()) && !selected.deliveryProviderOrderId && selected.shippingRateSnapshot?.feeSource === "biteship" ? <Button className="min-h-11 w-full gap-2 rounded-lg" disabled={Boolean(bookingId)} onClick={() => void bookShipment(selected)}><Truck className="h-4 w-4" aria-hidden="true" />{bookingId === selected._id ? "Membuat shipment…" : "Pesan kurir Biteship"}</Button> : null}
         <dl className="grid grid-cols-2 gap-4"><DetailField label="Kurir" value={courierLabel(selected)} /><DetailField label="Waybill" value={selected.deliveryWaybillId || "-"} /><DetailField label="Tracking" value={selected.deliveryTrackingId || "-"} /><DetailField label="Provider order" value={selected.deliveryProviderOrderId || "-"} /></dl>

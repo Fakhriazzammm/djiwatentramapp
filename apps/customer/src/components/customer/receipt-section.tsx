@@ -19,12 +19,13 @@ const STATUS_STEPS = [
 	{ key: "completed", label: "Selesai" },
 ] as const;
 
+// Kunci mengikuti nilai delivery_status yang benar-benar ditulis backend (admin + webhook Biteship),
+// bukan status mentah kurir. Webhook memetakan semua status kurir yang sedang jalan ke out_for_delivery.
 const DELIVERY_STEPS = [
-	{ key: "confirmed", label: "Diterima" },
-	{ key: "allocated", label: "Kurir ditemukan" },
-	{ key: "picking_up", label: "Kurir menuju cafe" },
-	{ key: "picked", label: "Pesanan diambil" },
-	{ key: "dropping_off", label: "Menuju kamu" },
+	{ key: "received", label: "Diterima" },
+	{ key: "preparing", label: "Disiapkan" },
+	{ key: "ready", label: "Siap dikirim" },
+	{ key: "on_the_way", label: "Dalam perjalanan" },
 	{ key: "delivered", label: "Terkirim" },
 ] as const;
 
@@ -37,9 +38,12 @@ function getStatusStepIndex(status?: string) {
 
 function getDeliveryStepIndex(status?: string) {
 	const normalized = String(status ?? "").toLowerCase();
-	if (normalized === "cancelled" || normalized === "canceled") return -1;
-	const idx = DELIVERY_STEPS.findIndex((step) => step.key === normalized);
-	return idx >= 0 ? idx : 0;
+	if (normalized === "cancelled" || normalized === "canceled" || normalized === "failed") return -1;
+	if (normalized === "delivered") return 4;
+	if (["out_for_delivery", "allocated", "picking_up", "picked", "in_transit", "dropping_off"].includes(normalized)) return 3;
+	if (["ready_to_ship", "scheduled"].includes(normalized)) return 2;
+	if (["preparing", "packing"].includes(normalized)) return 1;
+	return 0;
 }
 
 function getCourierLabel(provider?: string) {
@@ -163,7 +167,8 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 	const courierLabel = getCourierLabel((props.currentOrder as any)?.deliveryProvider ?? (props.currentOrder as any)?.delivery_provider);
 	const deliveryStepIndex = getDeliveryStepIndex(deliveryStatus);
 	const deliveryCancelled = String(deliveryStatus ?? "").toLowerCase() === "cancelled" || String(deliveryStatus ?? "").toLowerCase() === "canceled";
-	const currentStepIndex = isExpired || (isDeliveryOrder && deliveryCancelled) ? -1 : isDeliveryOrder ? deliveryStepIndex : getStatusStepIndex(orderStatus);
+	const deliveryFailed = String(deliveryStatus ?? "").toLowerCase() === "failed";
+	const currentStepIndex = isExpired || (isDeliveryOrder && (deliveryCancelled || deliveryFailed)) ? -1 : isDeliveryOrder ? deliveryStepIndex : getStatusStepIndex(orderStatus);
 	const currentStepLabel = currentStepIndex >= 0 ? (isDeliveryOrder ? DELIVERY_STEPS[currentStepIndex].label : STATUS_STEPS[currentStepIndex].label) : null;
 	const paymentLabel = isWalletPayment ? "Djiwa Pay" : isQrisPayment ? "QRIS" : "Bayar di Kasir";
 	const printerStatusLabel = isCashierTicket ? "Menunggu pembayaran" : mode === "paid" ? "Pembayaran berhasil" : mode === "cashier_expired" ? "Tiket kedaluwarsa" : isQrisPayment ? "Invoice siap dibayar" : "Menyiapkan pembayaran";
@@ -180,6 +185,8 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 
 	return (
 		<div className="space-y-2 px-2 py-2 pb-[calc(11rem+env(safe-area-inset-bottom))]">
+			{isDeliveryOrder && deliveryFailed ? <div role="status" className="mx-auto w-full max-w-sm rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-center text-amber-950"><p className="text-xs font-black">Ada kendala pada pengantaran</p><p className="mt-0.5 text-[11px] leading-relaxed">Pesananmu tetap tercatat. Hubungi kafe agar kami bantu mengatur ulang pengantaran.</p></div> : null}
+			{isDeliveryOrder && deliveryCancelled ? <div role="status" className="mx-auto w-full max-w-sm rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-center text-red-950"><p className="text-xs font-black">Pengantaran dibatalkan</p><p className="mt-0.5 text-[11px] leading-relaxed">Hubungi kafe bila kamu merasa ini keliru.</p></div> : null}
 			{currentStepLabel ? (
 				<div className="mx-auto w-full max-w-sm px-3 py-3">
 					<div className="flex items-center justify-between gap-2">
