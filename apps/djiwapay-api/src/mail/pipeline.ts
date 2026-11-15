@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { Q, Tx } from "../sync.js";
-import { domainOf, extractPayment, forwardingCode, guessCategory, isBillReminder, isConfident, isFailedMail, isNoticeMail, isPromo, isReportMail, isSecretMail, issuerFor, looksLikePayment, merchantKey, redactForShare, type Extracted, type Issuer } from "./extract.js";
+import { auditQueue, auditSummary } from "./audit.js";
+import { domainOf, extractPayment, forwardingCode, guessCategory, implausible, isBillReminder, isConfident, isFailedMail, isNoticeMail, isPromo, isReportMail, isSecretMail, issuerFor, looksLikePayment, merchantKey, redactForShare, RULES_VERSION, type Extracted, type Issuer } from "./extract.js";
 
 export type RawMail = {
   messageId: string; from: string; to: string[]; subject: string; text: string; date: Date | null;
@@ -126,7 +127,10 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   }
   const atMs = x.at ?? mail.date?.getTime() ?? now.getTime();
   const at = new Date(Number.isFinite(atMs) ? atMs : now.getTime()).toISOString();
-  const parsed = { amount: x.amount, direction: x.direction, merchant: x.merchant, accountHint: x.accountHint, ref: x.ref, at, subject: mail.subject.slice(0, 80), issuer: issuer.name };
+  const parsed = { amount: x.amount, direction: x.direction, merchant: x.merchant, accountHint: x.accountHint, ref: x.ref, at, subject: mail.subject.slice(0, 80), issuer: issuer.name, rulesVersion: RULES_VERSION };
+  // Gate 7: the read must agree with the mail it came from. A shape nobody has taught the parser yet
+  // then waits for a person instead of being recorded, for every user and not only the one who reported it.
+  const flags = implausible(`${mail.subject}\n${mail.text}`, x, mail.date?.getTime() ?? null);
   if (!(x.amount > 0)) return stage ? finish("ignored", "unreadable", { confidence: x.confidence }) : looksLikePayment(mail.subject, mail.text) ? finish("failed", "unreadable", { parsed, confidence: x.confidence }) : finish("ignored", "unreadable", { confidence: x.confidence });
 
   // A bank reference seen before is the same payment.
@@ -146,7 +150,7 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
     const learnedS = await learnedCategory(d.db, userId, x.merchant);
     const categoryS = learnedS ?? guessCategory(x.merchant, mail.subject, x.direction);
     const knownS = Boolean(learnedS) || (categoryS !== "lainnya" && Boolean(x.merchant)) || (kind === "in" && Boolean(x.merchant));
-    const sure = (isConfident(rules) || agreed) && x.direction !== "unknown" && knownS && issuer.kind !== "service" && x.amount <= (d.autoCeiling ?? AUTO_CEILING);
+    const sure = flags.length === 0 && (isConfident(rules) || agreed) && x.direction !== "unknown" && knownS && issuer.kind !== "service" && x.amount <= (d.autoCeiling ?? AUTO_CEILING);
     return finish("staged", sure ? "sure" : "check", { confidence: x.confidence, at, parsed: { ...parsed, kind, categoryId: categoryS, accountId, accountName: `${issuer.name}${x.accountHint ? " ••" + x.accountHint : ""}`, accountType: issuer.kind === "bank" ? "bank" : issuer.kind === "ewallet" ? "ewallet" : "other", sure, ...(sure ? {} : { sample: redactForShare(`${mail.subject}\n${mail.text}`) }) } });
   }
 
@@ -167,12 +171,12 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
 
   const knownMerchant = Boolean(learned) || (categoryId !== "lainnya" && Boolean(x.merchant)) || (kind === "in" && Boolean(x.merchant));
   const trusted = trustedCount >= (d.trustMin ?? TRUST_MIN);
-  const auto = trusted && isConfident(x) && knownMerchant && issuer.kind !== "service" && x.amount <= (d.autoCeiling ?? AUTO_CEILING);
+  const auto = flags.length === 0 && trusted && isConfident(x) && knownMerchant && issuer.kind !== "service" && x.amount <= (d.autoCeiling ?? AUTO_CEILING);
   if (auto) {
     const entryId = await d.db.tx((q) => insertEntry(q, userId, candidate, inboundId));
     return finish("auto", "recorded", { parsed, confidence: x.confidence, entryId, at });
   }
-  return finish("review", trusted ? "needs-check" : "learning", { parsed: { ...parsed, categoryId, accountId, kind }, confidence: x.confidence, at });
+  return finish("review", trusted ? "needs-check" : "learning", { parsed: { ...parsed, categoryId, accountId, kind, ...(flags.length ? { flags } : {}) }, confidence: x.confidence, at });
 }
 
 /* ---------------- review queue ---------------- */
@@ -232,4 +236,9 @@ export async function originOf(db: Q, userId: string, inboundId: string) {
 export async function sweep(db: Q) {
   await db.query("delete from finance.inbound_messages where status in ('ignored','duplicate','rejected','failed') and created_at < now() - interval '30 days'");
   await db.query("delete from finance.inbound_messages where status in ('review') and created_at < now() - interval '90 days'");
+  // Tripwire: the shapes that were once read as money must never come back unnoticed, for any user.
+  try {
+    const flagged = await auditQueue(db);
+    if (flagged.length) console.warn("mail audit:", JSON.stringify(auditSummary(flagged)));
+  } catch (e) { console.error("mail audit", e instanceof Error ? e.message : e); }
 }

@@ -215,6 +215,35 @@ export function extractPayment(subject: string, bodyText: string): Extracted {
 /** Deterministic read is trusted only when amount and direction are both clear. */
 export const isConfident = (x: Extracted) => x.amount > 0 && x.direction !== "unknown" && x.confidence >= 0.65;
 
+/** Bumped whenever the read changes meaning, so an old staged row can be told apart from a new one. */
+export const RULES_VERSION = 3;
+
+/** A payment mail is about a day or two, never years away: "26-10-21" once put 2026 mail in 2021. */
+const MAX_DRIFT_MS = 45 * 86400_000;
+
+/** Every rupiah the mail prints, with "rb"/"juta" read the way a person reads them. */
+function printedAmounts(text: string): number[] {
+  const out: number[] = [];
+  for (const m of text.matchAll(/(?:rp|idr)\.?\s*([\d][\d.,]*)\s*(juta|jt|ribu|rb|k)?/gi)) {
+    const n = parseRupiah(m[1]);
+    if (!n) continue;
+    const unit = (m[2] ?? "").toLowerCase();
+    out.push(Math.round(n * (/^j/.test(unit) ? 1e6 : /^(rb|ribu|k)$/.test(unit) ? 1e3 : 1)));
+  }
+  return out;
+}
+
+/** Where the read disagrees with the mail itself, whatever shape the mail has. Knowing the shapes that
+ *  fooled us only fixes those; this catches the next unknown one before it can be recorded. */
+export function implausible(text: string, x: { amount: number; at: number | null }, mailDate?: number | null): string[] {
+  const problems: string[] = [];
+  // The money must be a number the mail actually prints (a rounded fee may differ by a rupiah).
+  if (x.amount > 0 && !printedAmounts(text).some((p) => Math.abs(p - x.amount) <= 1)) problems.push("amount-not-printed");
+  // A transaction mail describes today. A date years off means the date was misread, not that mail was late.
+  if (x.at && mailDate && Math.abs(x.at - mailDate) > MAX_DRIFT_MS) problems.push("date-drift");
+  return problems;
+}
+
 // Merchant/keyword → category. Falls back to "lainnya"; learned rules (finance.merchant_rules) win over this.
 const CATEGORY_HINTS: [string, string[]][] = [
   ["makan", ["kopi", "coffee", "resto", "restaurant", "cafe", "warung", "bakso", "mie", "ayam", "nasi", "grabfood", "gofood", "shopeefood", "kfc", "mcd", "starbucks", "pizza", "burger", "bakery", "roti"]],
