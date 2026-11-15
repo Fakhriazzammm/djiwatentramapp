@@ -1,6 +1,7 @@
 import { CheckCircle2, MapPin, Truck, Wallet } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { DeliveryLiveTracker } from "@/components/order-flow/delivery-live-tracker";
 import type { Doc } from "@/types/backend-compat";
 import type { CartItem, ReceiptState } from "./types";
 import { currency } from "./types";
@@ -185,9 +186,8 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 
 	return (
 		<div className="space-y-2 px-2 py-2 pb-[calc(11rem+env(safe-area-inset-bottom))]">
-			{isDeliveryOrder && deliveryFailed ? <div role="status" className="mx-auto w-full max-w-sm rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-center text-amber-950"><p className="text-xs font-black">Ada kendala pada pengantaran</p><p className="mt-0.5 text-[11px] leading-relaxed">Pesananmu tetap tercatat. Hubungi kafe agar kami bantu mengatur ulang pengantaran.</p></div> : null}
-			{isDeliveryOrder && deliveryCancelled ? <div role="status" className="mx-auto w-full max-w-sm rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-center text-red-950"><p className="text-xs font-black">Pengantaran dibatalkan</p><p className="mt-0.5 text-[11px] leading-relaxed">Hubungi kafe bila kamu merasa ini keliru.</p></div> : null}
-			{currentStepLabel ? (
+			{isDeliveryOrder && mode === "paid" && !isExpired ? <DeliveryLiveTracker order={currentOrder} courierLabel={courierLabel} /> : null}
+			{currentStepLabel && !(isDeliveryOrder && mode === "paid") ? (
 				<div className="mx-auto w-full max-w-sm px-3 py-3">
 					<div className="flex items-center justify-between gap-2">
 						<p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{isDeliveryOrder ? "Progress pengantaran" : "Status pesanan"}</p>

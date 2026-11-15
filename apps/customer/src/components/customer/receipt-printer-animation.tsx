@@ -26,6 +26,31 @@ const toothPoints = Array.from({ length: toothCount * 2 }, (_, index) => {
 const receiptClipPath = `polygon(0 0, 100% 0, 100% calc(100% - ${toothDepth}px), ${toothPoints})`;
 const paperFeedKeyframes = ["translateY(-92%)", "translateY(-68%)", "translateY(-40%)", "translateY(0%)"];
 
+const CONFETTI_COLORS = ["#0a67bd", "#13a35e", "#f5a524", "#ff6b6b", "#7c5cff", "#22b8cf"];
+
+/** Semburan konfeti dari celah printer saat struk lunas selesai dicetak. */
+function ReceiptConfetti() {
+  const pieces = useMemo(() => Array.from({ length: 26 }, (_, index) => {
+    const angle = (-100 + (index / 25) * 200) * (Math.PI / 180);
+    const power = 70 + ((index * 37) % 90);
+    return { id: index, x: Math.sin(angle) * power * 1.6, y: -Math.cos(angle) * power - 30, rotate: (index * 53) % 360, color: CONFETTI_COLORS[index % CONFETTI_COLORS.length], delay: (index % 6) * 0.025, w: 6 + (index % 3) * 2 };
+  }), []);
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-[9.5rem] z-50 flex justify-center">
+      {pieces.map((piece) => (
+        <motion.span
+          key={piece.id}
+          className="absolute rounded-[2px]"
+          style={{ width: piece.w, height: piece.w * 1.6, backgroundColor: piece.color }}
+          initial={{ x: 0, y: 0, opacity: 1, rotate: 0, scale: 0.6 }}
+          animate={{ x: piece.x, y: [0, piece.y, piece.y + 150], opacity: [1, 1, 0], rotate: piece.rotate + 360, scale: 1 }}
+          transition={{ duration: 1.5, delay: piece.delay, ease: "easeOut", times: [0, 0.4, 1] }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function ReceiptPrinterAnimation({ orderReference, total, paymentLabel, statusLabel, finalStage = "complete", variant = "paid", children }: ReceiptPrinterAnimationProps) {
   const reduceMotion = useReducedMotion();
   const isCashierTicket = variant === "cashier-ticket";
@@ -84,6 +109,15 @@ export function ReceiptPrinterAnimation({ orderReference, total, paymentLabel, s
     return statusLabel;
   }, [stage, statusLabel]);
   const isComplete = stage === "complete";
+  const isPaidReceipt = !isCashierTicket && /berhasil|lunas/i.test(statusLabel);
+  const [burst, setBurst] = useState(false);
+  useEffect(() => {
+    if (!isComplete || !isPaidReceipt || reduceMotion) return;
+    setBurst(true);
+    try { navigator.vibrate?.([14, 40, 22]); } catch { /* tanpa haptic */ }
+    const timer = window.setTimeout(() => setBurst(false), 2200);
+    return () => window.clearTimeout(timer);
+  }, [isComplete, isPaidReceipt, reduceMotion]);
 
   return (
     <section aria-label="Status pembuatan struk" className="mx-auto mb-3 w-full max-w-sm">
@@ -113,10 +147,25 @@ export function ReceiptPrinterAnimation({ orderReference, total, paymentLabel, s
             style={{ clipPath: receiptClipPath }}
           >
             <div className="receipt-paper-content text-[10px] leading-relaxed">{children}</div>
+            <AnimatePresence>
+              {isComplete && isPaidReceipt ? (
+                <motion.div
+                  key="stamp"
+                  aria-hidden="true"
+                  initial={reduceMotion ? false : { opacity: 0, scale: 2.6, rotate: -34 }}
+                  animate={{ opacity: 0.92, scale: 1, rotate: -12 }}
+                  transition={{ type: "spring", stiffness: 380, damping: 16, delay: 0.25 }}
+                  className="pointer-events-none absolute right-3 top-[7.2rem] rounded-md border-[3px] border-emerald-600/90 px-2.5 py-0.5 text-[15px] font-black tracking-[0.18em] text-emerald-600/90"
+                >
+                  LUNAS
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
           </motion.div>
         </div>
 
         <div className={cn("absolute inset-x-6 top-[10.6rem] z-40 h-2 rounded shadow-inner", accent.bar)} />
+        {burst ? <ReceiptConfetti /> : null}
       </div>
     </section>
   );

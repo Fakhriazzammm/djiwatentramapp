@@ -69,3 +69,24 @@ export function shipmentResponseId(payload: Row, ok: boolean, referenceId?: stri
 	if (payload.success === false && String(payload.code) === '40002060' && typeof payload.details?.order_id === 'string' && (!referenceId || payload.details.reference_id === referenceId)) return payload.details.order_id;
 	return '';
 }
+
+// Data live tracking untuk customer: status kurir mentah, driver, tautan lacak, dan riwayat status.
+// Dipisah dari webhookPatch agar aturan status internal (delivery_status) tidak berubah.
+export function webhookTrackingPatch(data: Row, current: Row, now = Date.now()) {
+	const update: Row = {};
+	const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : '');
+	const raw = text(data.status).toLowerCase();
+	const field = (column: string, value: string, max = 300) => { if (value && value.slice(0, max) !== current[column]) update[column] = value.slice(0, max); };
+	field('delivery_driver_name', text(data.courier_driver_name), 120);
+	field('delivery_driver_phone', text(data.courier_driver_phone), 40);
+	field('delivery_driver_plate', text(data.courier_driver_plate_number), 40);
+	field('delivery_driver_photo_url', /^https:\/\//.test(text(data.courier_driver_photo_url)) ? text(data.courier_driver_photo_url) : '', 500);
+	field('delivery_tracking_link', /^https:\/\//.test(text(data.courier_link)) ? text(data.courier_link) : '', 500);
+	const history: Row[] = Array.isArray(current.delivery_status_history) ? current.delivery_status_history : [];
+	if (raw && raw !== current.delivery_courier_status) {
+		update.delivery_courier_status = raw;
+		update.delivery_status_history = [...history, { status: raw, at: now }].slice(-40);
+	}
+	if (Object.keys(update).length) update.delivery_status_updated_at = now;
+	return update;
+}

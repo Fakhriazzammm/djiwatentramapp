@@ -97,3 +97,23 @@ describe("mapCustomerOrder", () => {
     expect(order.items[0].status).toBe("ready");
   });
 });
+
+describe("mapCustomerOrder delivery tracking", () => {
+  it("keeps live courier status, driver and history", () => {
+    const order = mapCustomerOrder({
+      _id: "order_1",
+      deliveryStatus: "out_for_delivery",
+      deliveryCourierStatus: "picking_up",
+      deliveryDriverName: "Budi",
+      deliveryDriverPlate: "B 1234 AAA",
+      deliveryTrackingLink: "https://track.example/x",
+      deliveryStatusUpdatedAt: "1700000000000",
+      deliveryStatusHistory: [{ status: "allocated", at: 1 }, { status: 5 }, null],
+    });
+    expect(order.deliveryCourierStatus).toBe("picking_up");
+    expect(order.deliveryDriverName).toBe("Budi");
+    expect(order.deliveryTrackingLink).toBe("https://track.example/x");
+    expect(order.deliveryStatusUpdatedAt).toBe(1700000000000);
+    expect(order.deliveryStatusHistory).toEqual([{ status: "allocated", at: 1 }]);
+  });
+});

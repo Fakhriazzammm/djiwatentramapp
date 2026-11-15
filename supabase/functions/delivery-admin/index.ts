@@ -82,6 +82,10 @@ async function createShipment(sourceId: string) {
   if (!id) return fail("INVALID_SHIPMENT_RESPONSE", 502);
   const update: Row = { delivery_provider: provider, delivery_provider_order_id: id }; const tracking = trackingId(payload); const waybill = waybillId(payload); const mapped = providerStatus(isObject(payload) ? payload.status : null);
   if (tracking) update.delivery_tracking_id = tracking; if (waybill) update.delivery_waybill_id = waybill; if (mapped) update.delivery_status = mapped;
+  const rawStatus = text(isObject(payload) ? payload.status : "").toLowerCase();
+  if (rawStatus) { update.delivery_courier_status = rawStatus; update.delivery_status_history = [{ status: rawStatus, at: Date.now() }]; update.delivery_status_updated_at = Date.now(); }
+  const courierObject = isObject(payload) && isObject(payload.courier) ? payload.courier : {};
+  const link = text(courierObject.link); if (/^https:\/\//.test(link)) update.delivery_tracking_link = link.slice(0, 500);
   const updated = await deliveryRest("orders", { source_id: `eq.${sourceId}`, delivery_provider_order_id: "is.null" }, "pos", update);
   if (updated.length !== 1) { const [existing] = await deliveryRest("orders", { select: "delivery_provider_order_id", source_id: `eq.${sourceId}`, limit: "1" }); if (!text(existing?.delivery_provider_order_id)) return fail("SHIPMENT_PERSIST_FAILED", 503); }
   return reply({ success: true, providerOrderId: id, trackingId: tracking || null, waybillId: waybill || null, deliveryStatus: mapped || "ready_to_ship" });

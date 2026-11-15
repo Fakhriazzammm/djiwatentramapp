@@ -1,6 +1,9 @@
-import { CheckoutActionBar, CheckoutHeader, CheckoutPage, OrderSummary, PaymentMethodCard } from "@djiwaapps/djiwa-checkout-ui";
-import { Loader2, QrCode, ShoppingCart } from "lucide-react";
+import { animate, AnimatePresence, motion, useMotionValue, useReducedMotion } from "framer-motion";
+import { Loader2, Minus, Plus, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Djiwa3DIcon } from "@djiwaapps/web-shared";
 import { cn } from "@/lib/utils";
+import { GhostButton, PrimaryButton, Rise, SPRING, StepScreen, StepTitle, tap } from "@/components/order-flow/step-parts";
 import type { CartItem, PaymentChoice } from "./types";
 import { CUSTOMER_ORDERING_DEFAULTS, currency } from "./types";
 import { SummaryCardLines } from "./shared-components";
@@ -56,108 +59,179 @@ export interface CheckoutSectionProps {
 	checkoutError: string | null;
 }
 
-export function renderCheckoutSection(props: CheckoutSectionProps) {
-	const isPaymentOnly = props.mode === "payment";
-	const isReview = props.mode === "review";
-	if (!props.cart.length) {
-		return (
-			<div className="space-y-2 px-2 py-2">
-				<div className="rounded-3xl border border-dashed border-border bg-card p-6 text-center shadow-sm">
-					<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground"><ShoppingCart className="h-6 w-6" aria-hidden="true" /></div>
-					<h2 className="mt-3 text-base font-black">Keranjang masih kosong</h2>
-					<p className="mt-1 text-xs leading-relaxed text-muted-foreground">Tambahkan menu terlebih dahulu untuk melanjutkan checkout.</p>
-					<button type="button" onClick={props.onBackToMenu} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-[14px] bg-primary px-4 py-2.5 text-xs font-black text-primary-foreground">Kembali ke menu</button>
+/** Angka rupiah yang bergulir ke nilai baru, supaya perubahan total terasa hidup. */
+function AnimatedMoney({ value }: { value: number }) {
+	const reduce = useReducedMotion();
+	const motionValue = useMotionValue(value);
+	const [text, setText] = useState(currency(value));
+	useEffect(() => {
+		if (reduce) { setText(currency(value)); return; }
+		const controls = animate(motionValue, value, { duration: 0.55, ease: [0.32, 0.72, 0, 1] });
+		const stop = motionValue.on("change", (latest) => setText(currency(Math.round(latest))));
+		return () => { controls.stop(); stop(); };
+	}, [value, reduce, motionValue]);
+	return <span className="tabular-nums">{text}</span>;
+}
+
+const fieldClass = "w-full rounded-2xl bg-white px-4 py-3 text-[16px] font-medium outline-none shadow-[inset_0_0_0_1px_rgba(60,60,67,0.16)] transition-shadow focus:shadow-[inset_0_0_0_2px_var(--primary)]";
+
+function Field({ label, optional, children }: { label: string; optional?: boolean; children: React.ReactNode }) {
+	return (
+		<label className="block">
+			<span className="mb-1.5 ml-1 block text-xs font-semibold text-muted-foreground">{label}{optional ? <span className="font-normal"> (opsional)</span> : null}</span>
+			{children}
+		</label>
+	);
+}
+
+function ReviewRow({ item, onMinus, onPlus, onRemove }: { item: CartItem; onMinus: () => void; onPlus: () => void; onRemove: () => void }) {
+	const reduce = useReducedMotion();
+	return (
+		<motion.div layout initial={reduce ? false : { opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0, x: -40, height: 0, marginBottom: 0 }} transition={SPRING} className="mb-2 flex items-center gap-3 rounded-[20px] bg-white p-2.5 shadow-[0_4px_14px_rgba(15,35,71,0.05)]">
+			<div className="h-[58px] w-[58px] shrink-0 overflow-hidden rounded-2xl bg-muted">{item.image ? <img src={item.image} alt="" className="h-full w-full object-cover" /> : null}</div>
+			<div className="min-w-0 flex-1">
+				<p className="truncate text-[15px] font-bold leading-tight">{item.name}</p>
+				<p className="text-[12.5px] text-muted-foreground">{item.variant ? `${item.variant} · ` : ""}{currency(item.price)}</p>
+				<div className="mt-1.5 flex w-fit items-center rounded-full bg-primary/10 text-primary">
+					<motion.button type="button" aria-label={item.quantity <= 1 ? `Hapus ${item.name}` : `Kurangi jumlah ${item.name}`} whileTap={reduce ? undefined : { scale: 0.8 }} transition={SPRING} onClick={() => { tap(); item.quantity <= 1 ? onRemove() : onMinus(); }} className="flex h-8 w-9 items-center justify-center">{item.quantity <= 1 ? <Trash2 className="h-3.5 w-3.5" /> : <Minus className="h-4 w-4" strokeWidth={2.8} />}</motion.button>
+					<span className="relative flex h-8 min-w-6 items-center justify-center overflow-hidden text-sm font-bold tabular-nums" aria-live="polite">
+						<AnimatePresence initial={false} mode="popLayout"><motion.span key={item.quantity} initial={reduce ? false : { y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={reduce ? undefined : { y: -12, opacity: 0 }} transition={SPRING}>{item.quantity}</motion.span></AnimatePresence>
+					</span>
+					<motion.button type="button" aria-label={`Tambah jumlah ${item.name}`} whileTap={reduce ? undefined : { scale: 0.8 }} transition={SPRING} onClick={() => { tap(); onPlus(); }} className="flex h-8 w-9 items-center justify-center"><Plus className="h-4 w-4" strokeWidth={2.8} /></motion.button>
 				</div>
 			</div>
+			<p className="shrink-0 text-[15px] font-bold tabular-nums"><AnimatedMoney value={item.price * item.quantity} /></p>
+		</motion.div>
+	);
+}
+
+const PAYMENT_ICON: Record<string, "payment-wallet" | "order-receipt" | "cashier-terminal"> = { wallet: "payment-wallet", mayar: "order-receipt", cashier: "cashier-terminal" };
+
+function PaymentCard({ option, selected, insufficient, balance, total, onSelect, onTopup }: { option: { key: PaymentChoice; label: string; description: string }; selected: boolean; insufficient: boolean; balance: number; total: number; onSelect: () => void; onTopup: () => void }) {
+	const reduce = useReducedMotion();
+	const on = selected && !insufficient;
+	return (
+		<motion.div layout animate={{ scale: on ? 1.01 : 1 }} transition={SPRING} className={cn("overflow-hidden rounded-[22px] transition-colors", on ? "bg-[#f4f9ff] shadow-[inset_0_0_0_2px_var(--primary)]" : insufficient ? "bg-amber-50 shadow-[inset_0_0_0_1px_rgba(245,165,36,0.5)]" : "bg-white shadow-[inset_0_0_0_1px_rgba(60,60,67,0.16)]")}>
+			<motion.button type="button" role="radio" aria-checked={on} aria-disabled={insufficient} disabled={insufficient} onClick={() => { tap(); onSelect(); }} whileTap={reduce || insufficient ? undefined : { scale: 0.985 }} className={cn("flex w-full items-start gap-3 p-3.5 text-left", insufficient ? "cursor-not-allowed opacity-80" : "cursor-pointer")}>
+				<Djiwa3DIcon name={PAYMENT_ICON[option.key] ?? "order-receipt"} size="sm" alt="" className="h-11 w-11 object-contain" />
+				<span className="min-w-0 flex-1">
+					<span className="block text-base font-bold">{option.label}</span>
+					<span className="mt-0.5 block text-[12.5px] leading-snug text-muted-foreground">{insufficient ? `Saldo tersedia ${currency(balance)}, masih kurang ${currency(total - balance)}.` : option.description}</span>
+				</span>
+				<span aria-hidden="true" className={cn("mt-1 h-[22px] w-[22px] shrink-0 rounded-full transition-all", on ? "shadow-[inset_0_0_0_7px_var(--primary)]" : "shadow-[inset_0_0_0_2px_#c4c7d0]")} />
+			</motion.button>
+			{insufficient ? (
+				<div className="flex items-center justify-between gap-2 border-t border-amber-200/80 px-3.5 py-2.5">
+					<p className="text-xs font-semibold leading-relaxed text-amber-800">Isi saldo Djiwa Pay dulu sebelum menggunakan metode ini.</p>
+					<button type="button" onClick={onTopup} className="shrink-0 rounded-full bg-amber-600 px-3.5 py-2 text-xs font-bold text-white">Top up</button>
+				</div>
+			) : null}
+		</motion.div>
+	);
+}
+
+function CheckoutView(props: CheckoutSectionProps) {
+	const reduce = useReducedMotion();
+	const isPaymentOnly = props.mode === "payment";
+	const isReview = props.mode === "review";
+	const totalItems = props.cart.reduce((sum, item) => sum + item.quantity, 0);
+
+	if (!props.cart.length) {
+		return (
+			<StepScreen label="Keranjang kosong">
+				<Rise className="my-auto text-center">
+					<motion.div animate={reduce ? undefined : { y: [0, -6, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} className="flex justify-center"><Djiwa3DIcon name="shopping-cart-order" size="lg" alt="" className="h-28 w-28 object-contain drop-shadow-[0_18px_18px_rgba(15,35,71,0.2)]" /></motion.div>
+					<h2 className="mt-2 font-display text-[22px] font-extrabold">Keranjang masih kosong</h2>
+					<p className="mt-1 text-[15px] text-muted-foreground">Tambahkan menu terlebih dahulu untuk melanjutkan checkout.</p>
+					<div className="mt-5"><PrimaryButton onClick={props.onBackToMenu}>Kembali ke menu</PrimaryButton></div>
+				</Rise>
+			</StepScreen>
 		);
 	}
 
+	const mayarGuest = props.paymentChoice === "mayar" && !props.isAuthenticated;
+	const actionDisabled = isReview ? !props.onContinueToPayment || props.canPay === false : props.isSubmitting || props.canPay === false;
+
 	return (
-		<CheckoutPage className="space-y-2 px-2 py-2">
-			<div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
-				<CheckoutHeader
-					step={isReview ? 4 : 5}
-					totalSteps={5}
-					eyebrow={isReview ? "Review pesanan" : "Pembayaran"}
-					title={isReview ? "Periksa dan edit pesanan" : "Pilih metode pembayaran"}
-				/>
-				{isReview ? <button type="button" onClick={props.onEditMenu} className="mt-3 flex min-h-11 w-full items-center justify-center rounded-[14px] border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-black text-primary">Ubah menu / tambah produk</button> : null}
-				{!isPaymentOnly ? <>
-				<div className="mt-3 rounded-2xl border border-border bg-muted/25 p-3" aria-label="Detail pesanan">
-					<div className="mb-2 flex items-center justify-between">
-						<p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Detail pesanan</p>
-						<span className="text-[10px] font-bold text-muted-foreground">{props.cart.reduce((sum, item) => sum + item.quantity, 0)} item</span>
+		<StepScreen label={isReview ? "Review pesanan" : "Pembayaran"} className="pb-0">
+			<StepTitle center={false} title={isReview ? "Review pesanan" : "Pilih pembayaran"} lead={isReview ? `${totalItems} item · periksa dan ubah bila perlu` : "Pilih cara bayar yang paling mudah untukmu."} />
+
+			{isReview ? (
+				<Rise className="mt-4">
+					<div role="list" aria-label="Detail pesanan">
+						<AnimatePresence initial={false}>
+							{props.cart.map((item) => (
+								<ReviewRow key={`${item.productId}-${item.variant || "default"}`} item={item} onMinus={() => props.updateCartQuantity(item.productId, item.variant, -1)} onPlus={() => props.updateCartQuantity(item.productId, item.variant, 1)} onRemove={() => props.onRemoveItem(item.productId, item.variant)} />
+							))}
+						</AnimatePresence>
 					</div>
-					<div className="space-y-2">
-						{props.cart.map((item) => (
-							<div key={`${item.productId}-${item.variant || "default"}`} className="flex items-center gap-2.5">
-								<div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-muted">
-									{item.image ? <img src={item.image} alt="" className="h-full w-full object-cover" /> : null}
+					<motion.button type="button" onClick={props.onEditMenu} whileTap={reduce ? undefined : { scale: 0.97 }} transition={SPRING} className="mb-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-bold text-primary shadow-[inset_0_0_0_1.5px_rgba(10,103,189,0.28)]"><Plus className="h-4 w-4" strokeWidth={3} />Tambah menu lagi</motion.button>
+				</Rise>
+			) : null}
+
+			{!isPaymentOnly ? (
+				<Rise className="space-y-3">
+					<Field label="Nama customer"><input aria-label="Nama customer" className={fieldClass} value={props.customerName} onChange={(event) => props.setCustomerName(event.target.value)} placeholder="Nama untuk pesanan" /></Field>
+					<Field label="Ciri khusus customer" optional><input aria-label="Ciri khusus customer" maxLength={160} className={fieldClass} value={props.customerDescription} onChange={(event) => props.setCustomerDescription(event.target.value)} placeholder="Contoh: kaos hitam, dekat jendela" /></Field>
+					<Field label="Nomor meja"><input aria-label="Nomor meja" inputMode="numeric" className={fieldClass} value={props.tableNumber} onChange={(event) => props.setTableNumber(event.target.value.replace(/[^0-9]/g, "").slice(0, 8))} placeholder="Contoh: 4" /></Field>
+					<AnimatePresence initial={false}>
+						{mayarGuest ? (
+							<motion.div initial={reduce ? false : { opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden rounded-[22px] bg-primary/5">
+								<div className="space-y-3 p-4">
+									<p className="text-sm font-bold text-primary">Data untuk pembayaran QRIS</p>
+									<p className="text-xs leading-relaxed text-muted-foreground">Email dan nomor WhatsApp diperlukan untuk menyiapkan pembayaran QRIS.</p>
+									<Field label="Email *"><input aria-label="Email untuk pembayaran QRIS" autoComplete="email" className={fieldClass} value={props.guestEmail} onChange={(event) => props.setGuestEmail(event.target.value)} placeholder="nama@email.com" /></Field>
+									<Field label="Nomor WhatsApp *"><input aria-label="Nomor WhatsApp untuk pembayaran QRIS" autoComplete="tel" className={fieldClass} value={props.guestPhone} onChange={(event) => props.setGuestPhone(event.target.value)} placeholder="08xxxxxxxxxx" /></Field>
 								</div>
-								<div className="min-w-0 flex-1">
-									<p className="truncate text-xs font-black">{item.name}</p>
-									<p className="mt-0.5 text-[10px] text-muted-foreground">{item.variant ? `${item.variant} · ` : ""}{item.quantity} × {currency(item.price)}</p>
-									{isReview ? <div className="mt-2 flex items-center gap-1.5"><button type="button" aria-label={`Kurangi jumlah ${item.name}`} onClick={() => props.updateCartQuantity(item.productId, item.variant, -1)} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-sm font-black">−</button><span className="min-w-6 text-center text-xs font-black">{item.quantity}</span><button type="button" aria-label={`Tambah jumlah ${item.name}`} onClick={() => props.updateCartQuantity(item.productId, item.variant, 1)} className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-black text-primary-foreground">+</button><button type="button" aria-label={`Hapus ${item.name}`} onClick={() => props.onRemoveItem(item.productId, item.variant)} className="ml-1 min-h-9 rounded-full bg-destructive/10 px-2.5 text-[10px] font-black text-destructive">Hapus</button></div> : null}
-								</div>
-								<p className="shrink-0 text-xs font-black text-foreground">{currency(item.price * item.quantity)}</p>
-							</div>
-						))}
-					</div>
-				</div>
-				<div className="mt-2.5 space-y-2">
-					<div className="space-y-0.5">
-						<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Nama customer</label>
-						<input aria-label="Nama customer" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none" value={props.customerName} onChange={(event) => props.setCustomerName(event.target.value)} placeholder="Opsional" type="text" />
-					</div>
-					<div className="space-y-0.5">
-						<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Ciri khusus customer <span className="text-muted-foreground">(opsional)</span></label>
-						<input aria-label="Ciri khusus customer" maxLength={160} className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none" value={props.customerDescription} onChange={(event) => props.setCustomerDescription(event.target.value.slice(0, 160))} placeholder="Contoh: baju merah, topi hitam" type="text" />
-					</div>
-					<div className="space-y-0.5">
-						<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Nomor meja</label>
-						<input aria-label="Nomor meja" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none" value={props.tableNumber} onChange={(event) => props.setTableNumber(event.target.value.replace(/[^\dA-Za-z-]/g, ""))} placeholder="Contoh 12" type="text" />
-					</div>
-					{props.paymentChoice === "mayar" && !props.isAuthenticated ? (
-						<div className="rounded-2xl border border-primary/20 bg-primary/5 p-3">
-							<p className="text-[10px] font-black uppercase tracking-[0.12em] text-primary">Data untuk pembayaran QRIS</p>
-							<p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Email dan nomor WhatsApp diperlukan untuk menyiapkan pembayaran QRIS.</p>
-							<div className="mt-2 space-y-2">
-								<div className="space-y-0.5">
-									<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Email <span className="text-destructive">*</span></label>
-									<input aria-label="Email untuk pembayaran QRIS" autoComplete="email" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none" value={props.guestEmail} onChange={(event) => props.setGuestEmail(event.target.value)} placeholder="nama@email.com" type="email" inputMode="email" />
-								</div>
-								<div className="space-y-0.5">
-									<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Nomor WhatsApp <span className="text-destructive">*</span></label>
-									<input aria-label="Nomor WhatsApp untuk pembayaran QRIS" autoComplete="tel" className="min-h-11 w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none" value={props.guestPhone} onChange={(event) => props.setGuestPhone(event.target.value.replace(/[^0-9+ ]/g, ""))} placeholder="08xxxxxxxxxx" type="tel" inputMode="tel" />
-								</div>
-							</div>
+							</motion.div>
+						) : null}
+					</AnimatePresence>
+					<Field label="Catatan order"><textarea aria-label="Catatan order" rows={3} className={cn(fieldClass, "resize-none")} value={props.notes} onChange={(event) => props.setNotes(event.target.value)} placeholder="Contoh: tanpa pedas, es dipisah" /></Field>
+					{props.config.enableDessertLater && props.hasDessertInCart ? (
+						<div className="flex items-center justify-between gap-3 rounded-[20px] bg-white p-3.5 shadow-[inset_0_0_0_1px_rgba(60,60,67,0.16)]">
+							<div><p className="text-sm font-bold">Bawakan dessert nanti</p><p className="text-xs text-muted-foreground">Bisa dipanggil saat sudah siap.</p></div>
+							<button type="button" role="switch" aria-checked={props.dessertLater} aria-label="Bawakan dessert nanti" onClick={() => { tap(); props.setDessertLater((value: boolean) => !value); }} className={cn("relative h-8 w-14 shrink-0 rounded-full transition-colors", props.dessertLater ? "bg-primary" : "bg-black/15")}>
+								<motion.span layout transition={SPRING} className={cn("absolute top-1 h-6 w-6 rounded-full bg-white shadow", props.dessertLater ? "right-1" : "left-1")} />
+							</button>
 						</div>
 					) : null}
-					<div className="space-y-0.5">
-						<label className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Catatan order</label>
-						<textarea aria-label="Catatan order" className="min-h-[88px] w-full rounded-[14px] border border-border bg-background px-3 py-2 text-xs font-medium outline-none" value={props.notes} onChange={(event) => props.setNotes(event.target.value)} placeholder="Contoh: saus dipisah, tanpa es" />
+				</Rise>
+			) : null}
+
+			{!isReview ? (
+				<Rise className="mt-1">
+					<div className="space-y-2.5" role="radiogroup" aria-label="Metode pembayaran">
+						{props.paymentOptions.map((option) => (
+							<PaymentCard key={option.key} option={option} selected={props.paymentChoice === option.key} insufficient={option.key === "wallet" && props.walletBalance < props.total} balance={props.walletBalance} total={props.total} onSelect={() => props.setPaymentChoice(option.key)} onTopup={props.onTopup} />
+						))}
 					</div>
-					{props.config.enableDessertLater && props.hasDessertInCart ? <div className="flex items-center justify-between rounded-[14px] border border-primary/15 bg-primary/5 px-3 py-2"><div><p className="font-bold text-[10px] text-foreground">Bawakan dessert nanti</p><p className="text-[10px] text-muted-foreground">Bisa dipanggil saat sudah siap.</p></div><button type="button" role="switch" aria-checked={props.dessertLater} aria-label="Bawakan dessert nanti" className={cn("relative h-11 w-12 rounded-full transition-all", props.dessertLater ? "bg-primary" : "bg-muted-foreground/20")} onClick={() => props.setDessertLater((value: boolean) => !value)}><span className={cn("absolute top-2.5 h-6 w-6 rounded-full bg-white shadow-sm transition-all", props.dessertLater ? "right-1" : "left-1")} /></button></div> : null}
+				</Rise>
+			) : null}
+
+			<AnimatePresence initial={false}>
+				{props.checkoutError ? <motion.div key="err" initial={reduce ? false : { opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} role="alert" className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold leading-relaxed text-red-800">{props.checkoutError}</motion.div> : null}
+			</AnimatePresence>
+
+			<Rise className="mt-4">
+				<div className="rounded-[24px] bg-white p-4 shadow-[0_10px_30px_rgba(15,35,71,0.07)]">
+					<SummaryCardLines productGrossSubtotal={props.productGrossSubtotal} freeRefillCharge={props.freeRefillCharge} shippingFee={props.shippingFee} promoDiscount={props.promoDiscount} djiwaPayDiscount={props.djiwaPayDiscount} djiwaPayDiscountRate={props.djiwaPayDiscountRate} paymentChoice={props.paymentChoice === "cashier" ? "cashier" : props.paymentChoice} serviceChargeAmount={props.serviceChargeAmount} serviceChargeRate={props.serviceChargeRate} taxEnabled={props.taxEnabled} taxAmount={props.taxAmount} taxRate={props.taxRate} total={props.total} />
+					{props.shippingQuotePending ? <p className="mt-3 inline-flex items-center gap-2 rounded-xl bg-primary/5 px-3 py-2 text-xs font-semibold text-primary"><Loader2 className="h-3.5 w-3.5 animate-spin" />Memuat tarif pengantaran…</p> : null}
+					{props.shippingQuoteError ? <p role="alert" className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold leading-relaxed text-red-800">{props.shippingQuoteError}</p> : null}
+					<p className={cn("mt-3 rounded-xl px-3 py-2 text-xs font-semibold leading-relaxed", props.paymentChoice === "wallet" ? "bg-emerald-50 text-emerald-800" : "bg-muted/60 text-muted-foreground")}>{props.paymentChoice === "wallet" ? "Bayar dengan Djiwa Pay dan dapatkan saldo Djiwa Pay +Rp1.000 setelah transaksi berhasil." : "Reward +Rp1.000 saldo Djiwa Pay diberikan setelah transaksi berhasil."}</p>
 				</div>
-				</> : null}
+			</Rise>
+
+			<div className="sticky bottom-0 z-20 -mx-5 mt-4 bg-gradient-to-t from-[#f2f2f7] via-[#f2f2f7]/95 to-[#f2f2f7]/0 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5">
+				<div className="mb-2 flex items-center justify-between px-1 text-[13px] text-muted-foreground"><span>Total bayar</span><b className="font-display text-[22px] font-extrabold tracking-[-0.02em] text-foreground"><AnimatedMoney value={props.total} /></b></div>
+				<PrimaryButton arrow={!props.isSubmitting} disabled={actionDisabled} onClick={() => { if (isReview) props.onContinueToPayment?.(); else void props.checkout(); }}>
+					{props.isSubmitting ? <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Memproses...</span> : isReview ? "Lanjut ke pembayaran" : <>Bayar {props.currency(props.total)}</>}
+				</PrimaryButton>
+				<div className="mt-2"><GhostButton onClick={props.onBackToMenu}>{isReview ? "Kembali ke menu" : "Kembali"}</GhostButton></div>
 			</div>
-			{!isReview ? <div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
-				<div className="flex items-center gap-1.5"><QrCode className="h-3.5 w-3.5 text-primary" /><h3 className="text-sm font-black">Pilih pembayaran</h3></div>
-				<div className="mt-2.5 space-y-1.5" role="radiogroup" aria-label="Metode pembayaran">{props.paymentOptions.map((option) => { const walletInsufficient = option.key === "wallet" && props.walletBalance < props.total; return <PaymentMethodCard key={option.key}><div className={cn("rounded-lg border transition-all", props.paymentChoice === option.key && !walletInsufficient ? "border-primary bg-primary/5 shadow-sm" : walletInsufficient ? "border-amber-200 bg-amber-50/60" : "border-border bg-background")}><button type="button" role="radio" aria-checked={props.paymentChoice === option.key && !walletInsufficient} aria-disabled={walletInsufficient} disabled={walletInsufficient} className={cn("flex min-h-11 w-full items-start justify-between px-2.5 py-2.5 text-left transition-all", walletInsufficient ? "cursor-not-allowed opacity-80" : "cursor-pointer")} onClick={() => props.setPaymentChoice(option.key)}><div><p className="font-black text-xs">{option.label}</p><p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">{walletInsufficient ? `Saldo tersedia ${currency(props.walletBalance)}, masih kurang ${currency(props.total - props.walletBalance)}.` : option.description}</p></div><div aria-hidden="true" className={cn("mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2", props.paymentChoice === option.key && !walletInsufficient ? "border-primary bg-primary" : "border-muted-foreground/30")}>{props.paymentChoice === option.key && !walletInsufficient ? <div className="h-1.5 w-1.5 rounded-full bg-white" /> : null}</div></button>{walletInsufficient ? <div className="flex items-center justify-between gap-2 border-t border-amber-200/80 px-2.5 py-2"><p className="text-[10px] font-semibold leading-relaxed text-amber-800">Isi saldo Djiwa Pay dulu sebelum menggunakan metode ini.</p><button type="button" onClick={props.onTopup} className="shrink-0 rounded-lg bg-amber-600 px-2.5 py-1.5 text-[10px] font-black text-white">Top up</button></div> : null}</div></PaymentMethodCard>; })}</div>
-			</div> : null}
-			{props.checkoutError ? <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold leading-relaxed text-red-800">{props.checkoutError}</div> : null}
-			<OrderSummary className="rounded-3xl border border-border bg-card p-4 shadow-sm">
-				<SummaryCardLines productGrossSubtotal={props.productGrossSubtotal} freeRefillCharge={props.freeRefillCharge} shippingFee={props.shippingFee} promoDiscount={props.promoDiscount} djiwaPayDiscount={props.djiwaPayDiscount} djiwaPayDiscountRate={props.djiwaPayDiscountRate} paymentChoice={props.paymentChoice} taxAmount={props.taxAmount} taxEnabled={props.taxEnabled} taxRate={props.taxRate} serviceChargeAmount={props.serviceChargeAmount} serviceChargeRate={props.serviceChargeRate} total={props.total} />
-				{props.shippingQuotePending ? <p className="mt-2 rounded-xl bg-primary/5 px-3 py-2 text-[10px] font-semibold text-primary">Memuat tarif pengantaran…</p> : null}
-				{props.shippingQuoteError ? <p role="alert" className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-[10px] font-semibold leading-relaxed text-red-800">{props.shippingQuoteError}</p> : null}
-				{props.paymentChoice === "wallet" ? <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-[10px] font-bold leading-relaxed text-emerald-800">Bayar dengan Djiwa Pay dan dapatkan saldo Djiwa Pay +Rp1.000 setelah transaksi berhasil.</p> : <p className="mt-2 rounded-xl bg-muted/50 px-3 py-2 text-[10px] font-semibold leading-relaxed text-muted-foreground">Reward +Rp1.000 saldo Djiwa Pay diberikan setelah transaksi berhasil.</p>}
-				<div className="flex gap-2">
-					{(isReview || isPaymentOnly) ? <button type="button" onClick={props.onBackToMenu} className="mt-2.5 min-h-11 flex-1 rounded-[14px] border border-border bg-background px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button> : null}
-					<CheckoutActionBar>
-						<button type="button" className="mt-2.5 flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground shadow-sm transition-all disabled:opacity-60" onClick={isReview ? props.onContinueToPayment : props.checkout} disabled={isReview ? !props.onContinueToPayment || props.canPay === false : props.isSubmitting || props.canPay === false}>{props.isSubmitting ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Memproses...</> : isReview ? <>Lanjut ke pembayaran <QrCode className="h-3.5 w-3.5" /></> : <>Bayar {props.currency(props.total)}</>}</button>
-					</CheckoutActionBar>
-				</div>
-			</OrderSummary>
-		</CheckoutPage>
+		</StepScreen>
 	);
+}
+
+export function renderCheckoutSection(props: CheckoutSectionProps) {
+	return <CheckoutView {...props} />;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { catalogItems, deliveryTotal, eligibleRate, mapProviderStatus, quoteSnapshot, readyTransition, shipmentEligible, shipmentResponseId, validateDestination, webhookPatch } from './delivery-policy.ts';
+import { catalogItems, deliveryTotal, eligibleRate, mapProviderStatus, quoteSnapshot, readyTransition, shipmentEligible, shipmentResponseId, validateDestination, webhookPatch, webhookTrackingPatch } from './delivery-policy.ts';
 const destination = { destination_contact_name: 'Customer', destination_contact_phone: '08123456789', destination_address: 'Jalan test 1', destination_postal_code: '40141', destination_latitude: -6.9, destination_longitude: 107.6, couriers: 'grab' };
 const product = { source_id: 'p1', name: 'Catalog name', price: 30000, delivery_enabled: true, delivery_weight_grams: 350 };
 const order = { source_id: 'order_1', order_type: 'delivery', status: 'paid', delivery_status: 'ready_to_ship', delivery_provider: 'grab', shipping_fee_amount: 15000, shipping_rate_snapshot: { feeSource: 'biteship', courierCode: 'grab', courierType: 'instant', destinationPostalCode: '40141', fee: 15000 } };
@@ -48,5 +48,25 @@ describe('quote authentication', () => {
 			await expect(verifyQuote(expired)).rejects.toThrow('expired');
 			expect((await verifyQuote(expired, true)).feeSource).toBe('biteship');
 		} finally { (globalThis as any).Deno = previous; }
+	});
+});
+
+describe('live tracking patch', () => {
+	const payload = { event: 'order.status', status: 'allocated', courier_driver_name: 'Budi', courier_driver_phone: '0812', courier_driver_plate_number: 'B 1234 AAA', courier_driver_photo_url: 'https://img.example/p.jpg', courier_link: 'https://track.example/x' };
+	test('stores raw courier status, driver, link and history once', () => {
+		const patch = webhookTrackingPatch(payload, { delivery_status_history: [] }, 1000);
+		expect(patch).toMatchObject({ delivery_courier_status: 'allocated', delivery_driver_name: 'Budi', delivery_driver_plate: 'B 1234 AAA', delivery_tracking_link: 'https://track.example/x', delivery_status_updated_at: 1000 });
+		expect(patch.delivery_status_history).toEqual([{ status: 'allocated', at: 1000 }]);
+	});
+	test('is a no-op when nothing changed', () => {
+		const current = { delivery_courier_status: 'allocated', delivery_driver_name: 'Budi', delivery_driver_phone: '0812', delivery_driver_plate: 'B 1234 AAA', delivery_driver_photo_url: 'https://img.example/p.jpg', delivery_tracking_link: 'https://track.example/x', delivery_status_history: [{ status: 'allocated', at: 1 }] };
+		expect(webhookTrackingPatch(payload, current, 2000)).toEqual({});
+	});
+	test('ignores non-https photo and link, keeps history capped', () => {
+		const history = Array.from({ length: 40 }, (_, i) => ({ status: 's' + i, at: i }));
+		const patch = webhookTrackingPatch({ status: 'picked', courier_driver_photo_url: 'javascript:alert(1)', courier_link: 'http://x' }, { delivery_status_history: history }, 5);
+		expect(patch.delivery_driver_photo_url).toBeUndefined();
+		expect(patch.delivery_tracking_link).toBeUndefined();
+		expect(patch.delivery_status_history).toHaveLength(40);
 	});
 });

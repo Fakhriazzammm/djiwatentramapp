@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { webhookPatch } from "../_shared/delivery-policy.ts";
+import { webhookPatch, webhookTrackingPatch } from "../_shared/delivery-policy.ts";
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 const object = (v: unknown): v is Record<string, any> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const str = (...values: unknown[]) => values.find(v => typeof v === 'string' && v.trim())?.toString().trim() ?? '';
@@ -37,13 +37,13 @@ Deno.serve(async req => {
 			const filter = `delivery_provider_order_id=eq.${encodeURIComponent(orderId)}`;
 			let mapped = false;
 			for (let attempt = 0; attempt < 3; attempt++) {
-				const orders = await rest(`orders?select=source_id,delivery_status,delivery_tracking_id,delivery_waybill_id&${filter}`);
+				const orders = await rest(`orders?select=source_id,delivery_status,delivery_tracking_id,delivery_waybill_id,delivery_courier_status,delivery_status_history,delivery_status_updated_at,delivery_driver_name,delivery_driver_phone,delivery_driver_plate,delivery_driver_photo_url,delivery_tracking_link&${filter}`);
 				if (!Array.isArray(orders) || orders.length !== 1) throw new Error('Order mapping deferred');
 				const current = orders[0];
-				const patch = event === 'order.price' ? {} : webhookPatch(data, current);
+				const patch = event === 'order.price' ? {} : { ...webhookPatch(data, current), ...(event === 'order.status' ? webhookTrackingPatch(data, current) : {}) };
 				if (!Object.keys(patch).length) { mapped = true; break; }
 				const condition = (field: string) => current[field] == null ? `${field}=is.null` : `${field}=eq.${encodeURIComponent(current[field])}`;
-				const updated = await rest(`orders?${filter}&${['delivery_status', 'delivery_tracking_id', 'delivery_waybill_id'].map(condition).join('&')}`, 'PATCH', patch);
+				const updated = await rest(`orders?${filter}&${['delivery_status', 'delivery_tracking_id', 'delivery_waybill_id', 'delivery_status_updated_at'].map(condition).join('&')}`, 'PATCH', patch);
 				if (Array.isArray(updated) && updated.length === 1) { mapped = true; break; }
 			}
 			if (!mapped) throw new Error('Concurrent mapping deferred');

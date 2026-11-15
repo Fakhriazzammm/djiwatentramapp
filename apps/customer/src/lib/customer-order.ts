@@ -35,6 +35,16 @@ export type CustomerOrder = {
   deliveryProvider?: string | null;
   deliveryAddress?: string | null;
   deliveryDate?: string | null;
+  deliveryTrackingId?: string | null;
+  deliveryWaybillId?: string | null;
+  deliveryCourierStatus?: string | null;
+  deliveryDriverName?: string | null;
+  deliveryDriverPhone?: string | null;
+  deliveryDriverPlate?: string | null;
+  deliveryDriverPhotoUrl?: string | null;
+  deliveryTrackingLink?: string | null;
+  deliveryStatusUpdatedAt?: number | null;
+  deliveryStatusHistory?: Array<{ status: string; at: number }>;
   customerName?: string | null;
   customerDescription?: string | null;
   notes?: string | null;
@@ -130,6 +140,18 @@ export function mapCustomerOrder(row: Record<string, unknown>): CustomerOrder {
     deliveryProvider: nullableString(row, "deliveryProvider", "delivery_provider"),
     deliveryAddress: nullableString(row, "deliveryAddress", "delivery_address"),
     deliveryDate: nullableString(row, "deliveryDate", "delivery_date"),
+    deliveryTrackingId: nullableString(row, "deliveryTrackingId", "delivery_tracking_id"),
+    deliveryWaybillId: nullableString(row, "deliveryWaybillId", "delivery_waybill_id"),
+    deliveryCourierStatus: nullableString(row, "deliveryCourierStatus", "delivery_courier_status"),
+    deliveryDriverName: nullableString(row, "deliveryDriverName", "delivery_driver_name"),
+    deliveryDriverPhone: nullableString(row, "deliveryDriverPhone", "delivery_driver_phone"),
+    deliveryDriverPlate: nullableString(row, "deliveryDriverPlate", "delivery_driver_plate"),
+    deliveryDriverPhotoUrl: nullableString(row, "deliveryDriverPhotoUrl", "delivery_driver_photo_url"),
+    deliveryTrackingLink: nullableString(row, "deliveryTrackingLink", "delivery_tracking_link"),
+    deliveryStatusUpdatedAt: timestampValue(row, "deliveryStatusUpdatedAt", "delivery_status_updated_at") || null,
+    deliveryStatusHistory: (Array.isArray(row.deliveryStatusHistory) ? row.deliveryStatusHistory : Array.isArray(row.delivery_status_history) ? row.delivery_status_history : [])
+      .filter((entry): entry is { status: string; at: number } => Boolean(entry) && typeof (entry as any).status === "string" && Number.isFinite(Number((entry as any).at)))
+      .map((entry) => ({ status: entry.status, at: Number(entry.at) })),
     customerName: nullableString(row, "customerName", "customer_name"),
     customerDescription: nullableString(row, "customerDescription", "customer_description"),
     notes: nullableString(row, "notes", "note"),

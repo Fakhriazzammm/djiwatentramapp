@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Check, Minus, Plus, Trash2, Truck, Utensils } from "lucide-react";
+import { Check, ChevronRight, Minus, Plus, Trash2, Truck, Utensils } from "lucide-react";
+import { Djiwa3DIcon } from "@djiwaapps/web-shared";
 import { ImageWithPlaceholder } from "@/components/customer/image-with-placeholder";
 import type { CartItem } from "./types";
 import { currency } from "./types";
@@ -13,8 +14,8 @@ export function BadgePill({ label }: { label: string }) {
 
 export function chipClassName(active: boolean, compact = false) {
 	return cn(
-		compact ? "min-h-10 whitespace-nowrap rounded-md px-2.5 py-1 text-[11px] font-semibold leading-none transition-all" : "min-h-11 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-semibold transition-all",
-		active ? "bg-primary text-primary-foreground shadow-sm" : "border border-border bg-background text-muted-foreground"
+		compact ? "min-h-10 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] font-semibold leading-none transition-all duration-300" : "min-h-11 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300",
+		active ? "bg-foreground text-background shadow-sm" : "bg-white text-muted-foreground shadow-[inset_0_0_0_1px_rgba(60,60,67,0.16)]"
 	);
 }
 
@@ -292,23 +293,43 @@ export function BarcodeLines({ value }: { value: string }) {
 
 export type CustomerOrderMode = "dine_in" | "delivery";
 
-export function CustomerOrderModeSelection({ onSelect, themeColor }: { onSelect: (mode: CustomerOrderMode) => void; themeColor: string }) {
+export function CustomerOrderModeSelection({ onSelect }: { onSelect: (mode: CustomerOrderMode) => void; themeColor?: string }) {
+	const reduce = useReducedMotion();
+	const spring = { type: "spring" as const, stiffness: 340, damping: 26 };
+	const options = [
+		{ key: "dine_in" as const, title: "Dine In", hint: "Makan di tempat", icon: "restaurant-cafe" as const },
+		{ key: "delivery" as const, title: "Delivery", hint: "Antar ke alamat", icon: "delivery-management" as const },
+	];
 	return (
-		<section className="space-y-3 px-2 py-3" aria-labelledby="order-mode-title">
-			<div className="rounded-2xl border border-border bg-card p-4 text-center shadow-sm">
-				<p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: themeColor }}>Mulai pesanan</p>
-				<h1 id="order-mode-title" className="mt-1 text-lg font-black">Bagaimana kamu ingin menerima pesanan?</h1>
-				<p className="mt-1 text-xs leading-relaxed text-muted-foreground">Pilih dulu cara pesanan agar langkah berikutnya sesuai kebutuhanmu.</p>
-				<div className="mt-4 grid gap-2 sm:grid-cols-2">
-					<button type="button" onClick={() => onSelect("dine_in")} className="flex min-h-24 items-center gap-3 rounded-2xl border border-border bg-background p-4 text-left transition hover:border-primary hover:bg-primary/5 active:scale-[.99]">
-						<span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Utensils className="h-5 w-5" /></span><span><span className="block text-sm font-black">Dine In</span><span className="mt-1 block text-xs text-muted-foreground">Makan di tempat</span></span>
-					</button>
-					<button type="button" onClick={() => onSelect("delivery")} className="flex min-h-24 items-center gap-3 rounded-2xl border border-border bg-background p-4 text-left transition hover:border-primary hover:bg-primary/5 active:scale-[.99]">
-						<span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Truck className="h-5 w-5" /></span><span><span className="block text-sm font-black">Delivery</span><span className="mt-1 block text-xs text-muted-foreground">Antar ke alamat</span></span>
-					</button>
-				</div>
+		<motion.section initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.09, delayChildren: 0.05 } } }} className="space-y-3 px-4 py-3" aria-labelledby="order-mode-title">
+			<motion.div variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.32, 0.72, 0, 1] } } }} className="text-center">
+				<p className="text-[13px] font-semibold text-primary">Mulai pesanan</p>
+				<h1 id="order-mode-title" className="mt-1 font-display text-[30px] font-extrabold leading-[1.08] tracking-[-0.04em]">Bagaimana kamu ingin menerima pesanan?</h1>
+				<p className="mt-1.5 text-[15px] text-muted-foreground">Pilih dulu cara pesanan agar langkah berikutnya sesuai kebutuhanmu.</p>
+			</motion.div>
+			<div className="grid gap-3">
+				{options.map((option) => (
+					<motion.button
+						key={option.key}
+						type="button"
+						onClick={() => onSelect(option.key)}
+						variants={{ hidden: { opacity: 0, y: 22, scale: 0.97 }, show: { opacity: 1, y: 0, scale: 1, transition: spring } }}
+						whileHover={reduce ? undefined : { y: -3 }}
+						whileTap={reduce ? undefined : { scale: 0.97 }}
+						className="group relative flex min-h-[112px] items-center gap-4 overflow-hidden rounded-[26px] bg-white p-4 text-left shadow-[0_10px_30px_rgba(15,35,71,0.08)]"
+					>
+						<motion.span animate={reduce ? undefined : { y: [0, -5, 0], rotate: [0, 2, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: option.key === "delivery" ? 1.2 : 0 }} className="flex h-[84px] w-[84px] shrink-0 items-center justify-center">
+							<Djiwa3DIcon name={option.icon} size="lg" alt="" className="h-[84px] w-[84px] object-contain drop-shadow-[0_14px_14px_rgba(15,35,71,0.22)]" />
+						</motion.span>
+						<span className="min-w-0 flex-1">
+							<span className="block font-display text-[22px] font-extrabold tracking-[-0.02em]">{option.title}</span>
+							<span className="mt-0.5 block text-[14px] text-muted-foreground">{option.hint}</span>
+						</span>
+						<span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:translate-x-0.5"><ChevronRight className="h-[18px] w-[18px]" strokeWidth={2.6} /></span>
+					</motion.button>
+				))}
 			</div>
-		</section>
+		</motion.section>
 	);
 }
 

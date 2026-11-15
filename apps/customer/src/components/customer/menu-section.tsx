@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Grid2X2, Minus, PackageSearch, Plus, RefreshCw, Search, Star, X, ZoomIn, ZoomOut } from "lucide-react";
 import { createPortal } from "react-dom";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { calculateEffectivePrice, getActiveHappyHourBanner, isDjiwaPayCampaignActive } from "@/lib/utils/pricing";
 import { ImageWithPlaceholder } from "./image-with-placeholder";
@@ -53,7 +53,7 @@ function ProductImageButton({ src, alt, isSold }: { src?: string | null; alt: st
 	};
 	return (
 		<>
-			<button type="button" aria-label={`Lihat gambar ${alt}`} disabled={!src} className="relative h-[64px] w-[64px] shrink-0 overflow-hidden rounded-[12px] bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[.97] disabled:cursor-default" onClick={() => setIsOpen(true)}>
+			<button type="button" aria-label={`Lihat gambar ${alt}`} disabled={!src} className="relative h-[88px] w-[88px] shrink-0 overflow-hidden rounded-[18px] bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[.97] disabled:cursor-default" onClick={() => setIsOpen(true)}>
 				<ProductImage src={src} alt={alt} />
 				{isSold ? <span className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/55 text-[10px] font-black tracking-[0.18em] text-white">SOLD</span> : null}
 			</button>
@@ -77,6 +77,27 @@ function ProductImageButton({ src, alt, isSold }: { src?: string | null; alt: st
 		</>
 	);
 }
+/** Tombol tambah: lingkaran "+" yang berubah jadi stepper; angka bergulir dan tombol memantul. */
+function ProductAddControl({ name, quantity, disabled, onAdd, onMinus }: { name: string; quantity: number; disabled: boolean; onAdd: (origin: DOMRect) => void; onMinus: () => void }) {
+	const reduce = useReducedMotion();
+	const spring = { type: "spring", stiffness: 420, damping: 26 } as const;
+	return (
+		<motion.div layout transition={spring} className={cn("flex h-10 items-center overflow-hidden rounded-full", quantity > 0 ? "bg-primary/10 text-primary" : "bg-primary text-primary-foreground shadow-md shadow-primary/30")}>
+			<AnimatePresence initial={false} mode="popLayout">
+				{quantity > 0 ? (
+					<motion.button key="minus" type="button" disabled={disabled} aria-label={`Kurangi ${name}`} initial={reduce ? false : { opacity: 0, scale: 0.4, width: 0 }} animate={{ opacity: 1, scale: 1, width: 36 }} exit={reduce ? undefined : { opacity: 0, scale: 0.4, width: 0 }} transition={spring} whileTap={reduce ? undefined : { scale: 0.8 }} className="flex h-10 w-9 items-center justify-center" onClick={onMinus}><Minus className="h-4 w-4" strokeWidth={2.8} /></motion.button>
+				) : null}
+			</AnimatePresence>
+			{quantity > 0 ? (
+				<span className="relative flex h-10 min-w-6 items-center justify-center overflow-hidden text-[15px] font-bold tabular-nums" aria-live="polite">
+					<AnimatePresence initial={false} mode="popLayout"><motion.span key={quantity} initial={reduce ? false : { y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={reduce ? undefined : { y: -16, opacity: 0 }} transition={spring}>{quantity}</motion.span></AnimatePresence>
+				</span>
+			) : null}
+			<motion.button type="button" disabled={disabled} aria-label={`Tambah ${name}`} whileTap={reduce ? undefined : { scale: 0.8, rotate: 90 }} transition={spring} className="flex h-10 w-10 items-center justify-center disabled:opacity-40" onClick={(event) => onAdd(event.currentTarget.getBoundingClientRect())}><Plus className="h-[18px] w-[18px]" strokeWidth={2.8} /></motion.button>
+		</motion.div>
+	);
+}
+
 export interface MenuSectionProps {
 	integratedStock?: boolean;
 	activeCategoryId: Id<"categories"> | null;
@@ -227,15 +248,15 @@ export function renderMenuSection(props: MenuSectionProps) {
 	return (
 		<div className="space-y-3 px-3 py-3">
 			{happyHourBanner ? (
-				<div data-banner-variant={happyHourBanner.session} className="rounded-2xl border border-indigo-200/50 bg-indigo-50 px-3 py-2.5 text-indigo-950">
+				<div data-banner-variant={happyHourBanner.session} className="rounded-[22px] bg-gradient-to-br from-[#0f2347] to-[#17407f] px-4 py-3 text-white shadow-[0_10px_30px_rgba(15,35,71,0.18)]">
 					<div className="flex items-center justify-between gap-2">
-						<div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-700">Happy Hour {happyHourBanner.sessionLabel}</p><p className="mt-0.5 truncate text-sm font-black">{happyHourBanner.priceLabel}</p></div>
-						<p className="shrink-0 text-[10px] font-bold text-indigo-700">{happyHourBanner.startTime}–{happyHourBanner.endTime} WIB</p>
+						<div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-300">Happy Hour {happyHourBanner.sessionLabel}</p><p className="mt-0.5 truncate text-sm font-black">{happyHourBanner.priceLabel}</p></div>
+						<p className="shrink-0 text-[11px] font-semibold text-white/75">{happyHourBanner.startTime}–{happyHourBanner.endTime} WIB</p>
 					</div>
 				</div>
 			) : null}
 			{activeDjiwaPayPromo ? (
-				<details data-banner-variant="djiwa-pay" className="group rounded-xl border border-blue-200/70 bg-blue-50 text-blue-950">
+				<details data-banner-variant="djiwa-pay" className="group rounded-[20px] bg-primary/10 text-blue-950">
 					<summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 px-2.5 py-1.5 text-left [&::-webkit-details-marker]:hidden">
 						<span className="min-w-0 truncate text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">Promo Djiwa Pay · Diskon 50%</span>
 						<span className="shrink-0 text-[10px] font-black text-blue-700 group-open:hidden">Detail</span>
@@ -244,30 +265,30 @@ export function renderMenuSection(props: MenuSectionProps) {
 					<div id="djiwa-pay-promo-detail" className="border-t border-blue-200/70 px-2.5 py-2 text-[10px] font-bold text-blue-800"><div className="flex items-center justify-between gap-2"><span>Menu Rp30.000 jadi Rp15.000</span><span className="shrink-0">08:00–21:00 WIB</span></div></div>
 				</details>
 			) : null}
-			<div className="flex items-center justify-between gap-3 px-1 text-[11px] font-bold text-muted-foreground" aria-label="Ringkasan pesanan">
+			<div className="flex items-center justify-between gap-3 px-1 text-[13px] font-semibold text-muted-foreground" aria-label="Ringkasan pesanan">
 				{props.showDineInSummary ? <p className="min-w-0 truncate">Meja {props.tableNumber.trim() || "—"} · {props.partySize} orang</p> : <span />}
 				<p className="shrink-0">{props.totalItems} item · {currency(props.total)}</p>
 			</div>
 			{props.freeRefillCharge > 0 ? <p className="px-1 text-[11px] font-bold text-emerald-700">Free refill · {currency(props.freeRefillCharge)}</p> : null}
 
-			<p className="px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Katalog menu</p>
+			
 
 			{props.config.enableCatalogBrowsing ? (
 				<div className="relative space-y-3">
-					<div data-menu-catalog-top className="-mx-1 rounded-xl border border-border bg-card/95 p-1.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
-						<div className="flex items-center gap-1.5"><Grid2X2 className="h-4 w-4 shrink-0 text-primary" /><h3 className="text-sm font-black leading-tight">Katalog produk</h3></div>
-						<div className="relative mt-1.5">
-							<Search aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+					<div data-menu-catalog-top className="-mx-1 pt-1">
+						<h3 className="px-1 font-display text-[32px] font-extrabold leading-none tracking-[-0.04em]">Menu</h3>
+						<div className="relative mt-3">
+							<Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 							<input
 								aria-label="Cari menu"
-								className="min-h-10 w-full rounded-lg border border-border bg-background py-1.5 pl-8 pr-2.5 text-xs font-medium outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+								className="h-11 w-full rounded-[14px] bg-[rgba(118,118,128,0.12)] py-1.5 pl-9 pr-3 text-[16px] font-medium outline-none transition-shadow focus:bg-white focus:shadow-[inset_0_0_0_2px_var(--primary)]"
 								placeholder="Cari nama atau nomor menu"
 								value={props.catalogQuery}
 								onChange={(event) => props.setCatalogQuery(event.target.value)}
 							/>
 						</div>
 					</div>
-					<div data-category-catalog className="sticky top-0 z-40 isolate self-start -mx-1 w-full rounded-lg border border-border bg-card p-1 shadow-[0_6px_16px_rgba(15,23,42,0.08)] backdrop-blur supports-[backdrop-filter]:bg-card/95" style={{ position: "sticky", top: 0, zIndex: 40 }}>
+					<div data-category-catalog className="sticky top-0 z-40 isolate self-start -mx-1 w-full rounded-2xl bg-white/80 p-1.5 shadow-[0_8px_24px_rgba(15,35,71,0.1)] backdrop-blur-2xl" style={{ position: "sticky", top: 0, zIndex: 40 }}>
 						<div className="relative">
 							<p className="mb-1 px-1 text-[9px] font-black uppercase tracking-[0.14em] text-muted-foreground">Kategori utama</p>
 							<div aria-label="Kategori utama menu" className="flex gap-1 overflow-x-auto pb-0.5 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -340,33 +361,29 @@ export function renderMenuSection(props: MenuSectionProps) {
 								const showSubcategoryHeading = productCategory?.parentId && firstProductIndexByCategory.get(String(productCategory._id)) === index;
 								return (
 									<div key={product._id}>
-										{showRootCategoryHeading ? <div data-category-section={rootCategoryId} data-category-section-level="root" className="scroll-mt-28 pt-3 first:pt-0"><h4 className="px-1 text-sm font-black text-foreground">{rootCategory.name}</h4><div className="mt-1 h-0.5 w-8 rounded-full bg-primary" /></div> : null}
-										{showSubcategoryHeading ? <div data-category-section={String(productCategory._id)} data-category-section-level="subcategory" className="scroll-mt-28 pt-3 pb-2"><h5 className="px-1 text-xs font-black text-primary">{productCategory.name}</h5><div className="mt-1 h-px w-full bg-primary/15" /></div> : null}
-										<article className="flex items-start gap-2 rounded-[16px] border border-border/80 bg-card p-1.5 shadow-[0_2px_10px_rgba(9,9,11,0.04)] transition-transform duration-[180ms] ease-[cubic-bezier(.32,.72,0,1)]">
+										{showRootCategoryHeading ? <div data-category-section={rootCategoryId} data-category-section-level="root" className="scroll-mt-28 pt-3 first:pt-0"><h4 className="px-1 font-display text-[22px] font-extrabold tracking-[-0.02em] text-foreground">{rootCategory.name}</h4><div className="mt-1.5 h-1 w-9 rounded-full bg-primary" /></div> : null}
+										{showSubcategoryHeading ? <div data-category-section={String(productCategory._id)} data-category-section-level="subcategory" className="scroll-mt-28 pt-3 pb-2"><h5 className="px-1 text-[15px] font-bold text-primary">{productCategory.name}</h5><div className="mt-1 h-px w-full bg-primary/15" /></div> : null}
+										<motion.article initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-30px" }} transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }} whileTap={{ scale: 0.985 }} className="flex items-start gap-3 rounded-[24px] bg-white p-2.5 shadow-[0_6px_18px_rgba(15,35,71,0.06)]">
 										<ProductImageButton src={product.image} alt={product.name} isSold={isSold} />
 										<div className="min-w-0 flex-1 py-0">
 											<div className="flex min-h-full flex-col gap-1">
 											<div>
 												<div className="mb-0.5 flex min-h-4 items-center gap-1.5">
-													{product.menuNumber != null ? <span className="shrink-0 text-[9px] font-bold text-muted-foreground">#{product.menuNumber}</span> : null}
-													{isDjiwaPayEligible ? <span className="rounded-full bg-[#2563eb]/10 px-1.5 py-0.5 text-[9px] font-black leading-none text-[#2563eb]">Djiwa Pay 50%</span> : pricing.isPromo ? <span className="rounded-full px-1.5 py-0.5 text-[9px] font-black leading-none" style={{ background: pricing.isHappyHour ? '#f59e0b1a' : '#ef44441a', color: pricing.isHappyHour ? '#b45309' : '#dc2626' }}>{pricing.isHappyHour ? 'HAPPY HOUR' : 'PROMO'}</span> : null}
+													{product.menuNumber != null ? <span className="shrink-0 text-[11px] font-semibold text-muted-foreground/80">#{product.menuNumber}</span> : null}
+													{isDjiwaPayEligible ? <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold leading-none text-primary">Djiwa Pay 50%</span> : pricing.isPromo ? <span className="rounded-full px-1.5 py-0.5 text-[9px] font-black leading-none" style={{ background: pricing.isHappyHour ? '#f59e0b1a' : '#ef44441a', color: pricing.isHappyHour ? '#b45309' : '#dc2626' }}>{pricing.isHappyHour ? 'HAPPY HOUR' : 'PROMO'}</span> : null}
 												</div>
-												<p className="break-words text-[13px] font-black leading-tight">{product.name}</p>
-												{product.description ? <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">{product.description}</p> : <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">Siap dipesan di meja Anda.</p>}
+												<p className="break-words text-[16px] font-bold leading-tight tracking-[-0.01em]">{product.name}</p>
+												{product.description ? <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-snug text-muted-foreground">{product.description}</p> : <p className="mt-0.5 text-[12.5px] leading-snug text-muted-foreground">Siap dipesan di meja Anda.</p>}
 												<ProductReviewSignal productSourceId={String(product._id)} />
-												{hasNutritionValues ? <div className="mt-1 flex items-center gap-3 border-y border-primary/10 py-1"><p className="shrink-0 text-[10px] font-black text-primary">Gizi</p><div className="grid min-w-0 flex-1 grid-cols-5 gap-1">{[["Kalori", `${nutrition.caloriesKcal} kkal`], ["Protein", `${nutrition.proteinG} g`], ["Karbo", `${nutrition.carbohydratesG} g`], ["Lemak", `${nutrition.fatG} g`], ["Gula", `${nutrition.sugarG ?? "-"} g`]].map(([label, value]) => <div key={label} className="min-w-0"><p className="truncate text-[9px] leading-tight text-muted-foreground">{label}</p><p className="truncate text-[10px] font-black leading-tight text-foreground">{value}</p></div>)}</div></div> : null}
+												{hasNutritionValues ? <div className="mt-1.5 flex items-center gap-2.5 border-y border-black/[0.07] py-1.5"><p className="shrink-0 text-[11px] font-bold text-primary">Gizi</p><div className="grid min-w-0 flex-1 grid-cols-[1.4fr_1fr_1fr_1fr_1fr] gap-1">{[["Kalori", `${nutrition.caloriesKcal} kkal`], ["Protein", `${nutrition.proteinG} g`], ["Karbo", `${nutrition.carbohydratesG} g`], ["Lemak", `${nutrition.fatG} g`], ["Gula", `${nutrition.sugarG ?? "-"} g`]].map(([label, value]) => <div key={label} className="min-w-0"><p className="truncate text-[9px] leading-tight text-muted-foreground">{label}</p><p className="whitespace-nowrap text-[10.5px] font-bold leading-tight tabular-nums text-foreground">{value}</p></div>)}</div></div> : null}
 											</div>
 											<div className="flex items-center justify-between gap-2">
-													<div><p className="text-base font-black leading-none text-primary">{currency(pricing.finalPrice)}</p>{pricing.isPromo ? <p className="mt-0.5 text-[10px] font-semibold text-muted-foreground line-through">{currency(pricing.originalPrice)}</p> : null}</div>
-													{hasVariations ? <button type="button" disabled={isSold} className="min-h-11 rounded-[14px] border border-primary/25 bg-primary/5 px-3 py-2 text-xs font-black text-primary transition-transform duration-[180ms] active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" onClick={(event) => { props.onProductIntent?.(product, event.currentTarget.getBoundingClientRect()); props.handleProductSelect(product); }}>{quantity > 0 ? `${quantity} di cart` : 'Pilih opsi'}</button> : <div className="flex min-h-11 items-center gap-1 rounded-[14px] border border-border bg-background p-1">
-														{quantity > 0 ? <button type="button" disabled={isSold} aria-label={`Kurangi ${product.name}`} className="flex h-9 w-9 items-center justify-center rounded-[10px] text-muted-foreground transition-transform active:scale-[.97] hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={() => props.updateCartQuantity(product._id, undefined, -1)}><Minus className="h-3.5 w-3.5" /></button> : null}
-														{quantity > 0 ? <span className="min-w-6 text-center text-xs font-black">{quantity}</span> : null}
-														<button type="button" disabled={isSold} aria-label={`Tambah ${product.name}`} className="flex h-9 min-w-9 items-center justify-center rounded-[10px] bg-primary px-2 text-primary-foreground transition-transform active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" onClick={(event) => { if (quantity > 0) { props.updateCartQuantity(product._id, undefined, 1); props.onProductAdded?.(product, event.currentTarget.getBoundingClientRect()); return; } const added = props.handleProductSelect(product); if (added) props.onProductAdded?.(product, event.currentTarget.getBoundingClientRect()); }}><Plus className="h-3.5 w-3.5" /></button>
-													</div>}
+													<div><p className="text-[17px] font-extrabold leading-none tabular-nums text-foreground">{currency(pricing.finalPrice)}</p>{pricing.isPromo ? <p className="mt-0.5 text-[10px] font-semibold text-muted-foreground line-through">{currency(pricing.originalPrice)}</p> : null}</div>
+													{hasVariations ? <motion.button type="button" disabled={isSold} whileTap={{ scale: 0.95 }} className="min-h-10 rounded-full bg-primary/10 px-4 py-2 text-[13px] font-bold text-primary disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" onClick={(event) => { props.onProductIntent?.(product, event.currentTarget.getBoundingClientRect()); props.handleProductSelect(product); }}>{quantity > 0 ? `${quantity} di keranjang` : 'Pilih opsi'}</motion.button> : <ProductAddControl name={product.name} quantity={quantity} disabled={Boolean(isSold)} onMinus={() => props.updateCartQuantity(product._id, undefined, -1)} onAdd={(origin) => { if (quantity > 0) { props.updateCartQuantity(product._id, undefined, 1); props.onProductAdded?.(product, origin); return; } const added = props.handleProductSelect(product); if (added) props.onProductAdded?.(product, origin); }} />}
 												</div>
 											</div>
 										</div>
-									</article>
+									</motion.article>
 									{recommendationBlocksByIndex.has(index) ? renderRecommendationBlock(recommendationBlocksByIndex.get(index)!) : null}
 									</div>
 								);
