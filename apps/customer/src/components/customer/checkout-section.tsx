@@ -56,6 +56,8 @@ export interface CheckoutSectionProps {
 	taxRate: number;
 	total: number;
 	walletBalance: number;
+	/** Delivery: nomor meja tidak relevan, jadi kolomnya disembunyikan. */
+	isDelivery?: boolean;
 	onTopup: () => void;
 	checkoutError: string | null;
 }
@@ -176,7 +178,7 @@ function CheckoutView(props: CheckoutSectionProps) {
 				<Rise className="space-y-3">
 					<Field label="Nama customer"><input aria-label="Nama customer" className={fieldClass} value={props.customerName} onChange={(event) => props.setCustomerName(event.target.value)} placeholder="Nama untuk pesanan" /></Field>
 					<Field label="Ciri khusus customer" optional><input aria-label="Ciri khusus customer" maxLength={160} className={fieldClass} value={props.customerDescription} onChange={(event) => props.setCustomerDescription(event.target.value)} placeholder="Contoh: kaos hitam, dekat jendela" /></Field>
-					<Field label="Nomor meja"><input aria-label="Nomor meja" inputMode="numeric" className={fieldClass} value={props.tableNumber} onChange={(event) => props.setTableNumber(event.target.value.replace(/[^0-9]/g, "").slice(0, 8))} placeholder="Contoh: 4" /></Field>
+					{props.isDelivery ? null : <Field label="Nomor meja"><input aria-label="Nomor meja" inputMode="numeric" className={fieldClass} value={props.tableNumber} onChange={(event) => props.setTableNumber(event.target.value.replace(/[^0-9]/g, "").slice(0, 8))} placeholder="Contoh: 4" /></Field>}
 					<AnimatePresence initial={false}>
 						{mayarGuest ? (
 							<motion.div initial={reduce ? false : { opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden rounded-[22px] bg-primary/5">
