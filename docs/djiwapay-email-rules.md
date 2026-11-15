@@ -96,3 +96,23 @@ Penanda yang mungkin muncul: `noise-subject`, `tiny-amount`, `far-date`, `no-dat
 3. Perbaiki `extract.ts` (atau tambahkan gerbang di `pipeline.ts`).
 4. Naikkan `RULES_VERSION`, jalankan `bun test`, deploy, lalu bangun ulang antrean yang terdampak.
 5. Periksa `bun src/audit-mail-queue.ts` sampai bersih.
+
+## Pengaman saat aturan berubah (2026-11-16)
+
+- Preview impor hanya menghitung `sure` dari `RULES_VERSION` yang sedang berjalan. Baris
+  beraturan lama masuk kelompok perlu tinjauan, walaupun sebelumnya berlabel `sure`.
+- Saat commit, versi lama diberi `sure=false` dan penanda `old-rules` di dalam transaksi
+  database sebelum ada entri yang dibuat. Angka aslinya dipertahankan untuk pemeriksaan;
+  ini bukan pembacaan ulang atau koreksi nominal otomatis.
+- Penggabungan dua email menjadi transfer wajib lulus pemeriksaan nominal/tanggal dan
+  memiliki pembacaan yang yakin. Pembacaan AI yang menyebut nominal yang tidak ada
+  di email tidak boleh mengubah entri yang sudah tersimpan.
+- Audit baca-saja berjalan segera saat pekerja email mulai, kemudian melalui sapuan
+  berkala setiap 6 jam. Audit memakai aturan pengumuman limit yang sama dengan parser.
+- Tes `src/mail/guards.int.test.ts` menguji database dengan identitas `itest-*` terisolasi:
+  transfer palsu tidak mengubah buku; baris lama tidak masuk commit massal; baris
+  versi baru tetap bisa dicatat. Tes `src/mail/audit.test.ts` menjaga deteksi limit kartu.
+
+Aturan ini berlaku pada jalur server bersama untuk semua pengguna. Bentuk email baru
+masih dapat memerlukan tinjauan; tidak ada jaminan seluruh format bank akan terbaca
+sempurna. Kasus baru harus menjadi tes regresi sebelum aturan diubah.

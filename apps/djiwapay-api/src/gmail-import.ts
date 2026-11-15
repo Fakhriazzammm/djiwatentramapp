@@ -1,11 +1,14 @@
 /** Import of old Gmail mail. The scan walks back through the mailbox in time windows, stages what it can read, and waits for the user to
  *  look at a preview. Only the commit turns staged mail into entries, and a whole import can be undone. */
 import { accessToken, googleReason, type Fetch, type GoogleCfg } from "./google.js";
+import { RULES_VERSION } from "./mail/extract.js";
 import { senderQuery } from "./gmail.js";
 import { processForUser, type PipelineDeps, type RawMail } from "./mail/pipeline.js";
 import type { MailCtx } from "./mail/smtp.js";
 import type { Q, Tx } from "./sync.js";
 
+// Only a preview produced by the current rules can enter a bulk commit.
+const CURRENT_SURE = `coalesce((parsed->>'sure')::boolean,false) and coalesce(parsed->>'rulesVersion','0')='${RULES_VERSION}'`;
 const DAY = 86400_000, EVERYTHING_SINCE = Date.UTC(2010, 0, 1);
 const TICK_BUDGET_MS = 8000, PAGE = 50, TRANSFER_MS = 15 * 60_000;
 export type ImportDeps = { db: Tx; cfg: GoogleCfg; pipeline: PipelineDeps; toMail: (raw: Buffer, ctx: MailCtx) => Promise<RawMail>; f?: Fetch; now?: () => Date; budgetMs?: number };
@@ -105,12 +108,12 @@ export async function importState(db: Q, userId: string) {
   if (imp.status === "ready" || imp.status === "scanning") {
     const [tot, months, cats, chk] = await Promise.all([
       db.query(`select count(*)::int n, coalesce(sum(case when parsed->>'kind'='in' then (parsed->>'amount')::numeric end),0) inc, coalesce(sum(case when parsed->>'kind'='out' then (parsed->>'amount')::numeric end),0) outc
-        from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' and (parsed->>'sure')::boolean`, [userId, imp.id]),
+        from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' and (${CURRENT_SURE})`, [userId, imp.id]),
       db.query(`select to_char((parsed->>'at')::timestamptz at time zone 'Asia/Jakarta','YYYY-MM') m, count(*)::int n, coalesce(sum(case when parsed->>'kind'='in' then (parsed->>'amount')::numeric end),0) inc, coalesce(sum(case when parsed->>'kind'='out' then (parsed->>'amount')::numeric end),0) outc
-        from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' and (parsed->>'sure')::boolean group by 1 order by 1 desc`, [userId, imp.id]),
+        from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' and (${CURRENT_SURE}) group by 1 order by 1 desc`, [userId, imp.id]),
       db.query(`select parsed->>'categoryId' c, count(*)::int n, sum((parsed->>'amount')::numeric) total from finance.inbound_messages
-        where user_id=$1 and import_id=$2 and status='staged' and (parsed->>'sure')::boolean and parsed->>'kind'='out' group by 1 order by total desc limit 6`, [userId, imp.id]),
-      db.query("select count(*)::int n from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' and not (parsed->>'sure')::boolean", [userId, imp.id]),
+        where user_id=$1 and import_id=$2 and status='staged' and (${CURRENT_SURE}) and parsed->>'kind'='out' group by 1 order by total desc limit 6`, [userId, imp.id]),
+      db.query(`select count(*)::int n from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' and not (${CURRENT_SURE})`, [userId, imp.id]),
     ]);
     out.preview = {
       sure: { count: tot.rows[0].n, income: Number(tot.rows[0].inc), expense: Number(tot.rows[0].outc) },
@@ -123,7 +126,7 @@ export async function importState(db: Q, userId: string) {
 }
 
 export async function importCheckItems(db: Q, userId: string, importId: string) {
-  const r = await db.query("select id,channel,parsed,confidence from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' and not (parsed->>'sure')::boolean order by (parsed->>'at')::timestamptz desc limit 40", [userId, importId]);
+  const r = await db.query(`select id,channel,parsed,confidence from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' and not (${CURRENT_SURE}) order by (parsed->>'at')::timestamptz desc limit 40`, [userId, importId]);
   return r.rows.map((m) => ({ id: m.id as string, channel: m.channel as string, confidence: Number(m.confidence), parsed: m.parsed as Record<string, any> }));
 }
 
@@ -140,6 +143,12 @@ export async function commitImport(db: Tx, userId: string, importId: string) {
   return db.tx(async (q) => {
     const imp = (await q.query("select status from finance.gmail_import where id=$1 and user_id=$2 for update", [importId, userId])).rows[0];
     if (!imp || imp.status !== "ready") return null;
+    // Deployment can change the parser while an import is scanning. Never trust the old
+    // "sure" label: retain the extracted values for explicit review, without recording them.
+    await q.query(`update finance.inbound_messages set parsed=jsonb_set(parsed,'{sure}','false'::jsonb)
+      || jsonb_build_object('flags',coalesce(parsed->'flags','[]'::jsonb) || '["old-rules"]'::jsonb), reason='check'
+      where user_id=$1 and import_id=$2 and status='staged'
+      and coalesce(parsed->>'rulesVersion','0')<>$3`, [userId, importId, String(RULES_VERSION)]);
     await q.query(`insert into finance.accounts(user_id,id,name,type,opening)
       select distinct on (parsed->>'accountId') user_id, parsed->>'accountId', parsed->>'accountName', coalesce(parsed->>'accountType','other'), 0 from finance.inbound_messages
       where user_id=$1 and import_id=$2 and status='staged' and parsed->>'accountId' is not null on conflict do nothing`, [userId, importId]);

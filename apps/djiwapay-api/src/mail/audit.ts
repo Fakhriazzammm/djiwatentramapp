@@ -4,10 +4,10 @@
  *  shapes must never come back, and a shape nobody has seen yet should be noticed early rather than
  *  recorded. This module never changes a row: it names the ones that look like the mistakes, for
  *  every user, so a person can look. `sweep()` logs it every few hours and
- *  `apps/djiwapay-api/scripts/audit-mail-queue.ts` prints it in full.
+ *  `apps/djiwapay-api/src/audit-mail-queue.ts` prints it in full.
  */
 import type { Q } from "../sync.js";
-import { RULES_VERSION } from "./extract.js";
+import { isNoticeMail, RULES_VERSION } from "./extract.js";
 
 export type AuditRow = {
   id: string;
@@ -32,7 +32,7 @@ const AHEAD_MS = 2 * 86400_000;
 /** What is wrong with this row, if anything. Pure, so the shapes can be unit-tested. */
 export function auditRow(r: Omit<AuditRow, "id" | "userId" | "reason" | "status">): string[] {
   const flags: string[] = [];
-  if (NOISE.test(r.subject)) flags.push("noise-subject");
+  if (NOISE.test(r.subject) || isNoticeMail(r.subject, "")) flags.push("noise-subject");
   if (!(r.amount >= TINY)) flags.push("tiny-amount");
   const at = r.at ? Date.parse(r.at) : NaN;
   if (Number.isFinite(at)) {

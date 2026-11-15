@@ -159,7 +159,7 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   }
 
   // The other half of a move between the user's own accounts becomes one transfer.
-  if (x.direction !== "unknown") {
+  if (flags.length === 0 && isConfident(x) && x.direction !== "unknown") {
     const other = await d.db.query("select id,account_id from finance.entries where user_id=$1 and source='email' and kind=$2 and amount=$3 and account_id<>$4 and at between $5::timestamptz - ($6 * interval '1 millisecond') and $5::timestamptz + ($6 * interval '1 millisecond') limit 1", [userId, kind === "in" ? "out" : "in", x.amount, accountId, at, TRANSFER_MS]);
     if (other.rows[0]) {
       const from = kind === "in" ? other.rows[0].account_id : accountId, to = kind === "in" ? accountId : other.rows[0].account_id;
@@ -240,7 +240,11 @@ export async function originOf(db: Q, userId: string, inboundId: string) {
 export async function sweep(db: Q) {
   await db.query("delete from finance.inbound_messages where status in ('ignored','duplicate','rejected','failed') and created_at < now() - interval '30 days'");
   await db.query("delete from finance.inbound_messages where status in ('review') and created_at < now() - interval '90 days'");
-  // Tripwire: the shapes that were once read as money must never come back unnoticed, for any user.
+  await auditPending(db);
+}
+
+/** Read-only audit; safe to run on startup without running retention deletes. */
+export async function auditPending(db: Q) {
   try {
     const flagged = await auditQueue(db);
     if (flagged.length) console.warn("mail audit:", JSON.stringify(auditSummary(flagged)));

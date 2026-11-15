@@ -2,7 +2,7 @@ import "./polyfill.js";
 import { Pool } from "pg";
 import { poolTx } from "./db.js";
 import { makeLlm } from "./mail/llm.js";
-import { sweep } from "./mail/pipeline.js";
+import { auditPending, sweep } from "./mail/pipeline.js";
 import { startSmtp, toRawMail } from "./mail/smtp.js";
 import { googleConfig } from "./google.js";
 import { runDue } from "./gmail.js";
@@ -20,7 +20,9 @@ startSmtp(
   pipeline,
   { port: Number(process.env.MAIL_PORT || 25), hostname: domain, tlsKey: process.env.MAIL_TLS_KEY, tlsCert: process.env.MAIL_TLS_CERT },
 );
-setInterval(() => void sweep(db).catch(() => {}), 6 * 3600_000);
+// Run once after restart as well: deploying a fix must expose old queued reads immediately.
+void auditPending(db).catch((e) => console.error("mail audit", e));
+setInterval(() => void sweep(db).catch((e) => console.error("mail sweep", e)), 6 * 3600_000);
 
 // Gmail direct: every 20 s look for users whose turn has come (each user is polled every ~5 min, or right away on request).
 const cfg = googleConfig();
