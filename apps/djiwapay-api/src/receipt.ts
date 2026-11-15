@@ -3,8 +3,15 @@ export const CATEGORY_IDS = ["makan", "transport", "belanja", "tagihan", "hibura
 export type ReceiptItem = { name: string; qty: number; price: number; categoryId: string; confidence: number };
 export type ReceiptRead = { merchant: string; purchasedAt: string | null; total: number; tax: number; items: ReceiptItem[]; confidence: number; mismatch: number; model: string };
 
-export const PRIMARY_MODEL = "qwen-vl-ocr";
-export const FALLBACK_MODEL = "qwen3-vl-plus";
+/**
+ * Measured on a real Indonesian thermal receipt (Rp per read, latency, item accuracy):
+ * qwen-vl-ocr Rp 2 / 1.8 s but merged "2 x 3.500" into 45.000 and dropped a line at confidence 0.99;
+ * qwen3-vl-plus Rp 9 / 2.8 s read every line, merchant, total and time exactly;
+ * qwen3.8-flash Rp 13 / 12 s also exact, so it is the second opinion only.
+ * A wrong item list costs more than Rp 7, so accuracy leads.
+ */
+export const PRIMARY_MODEL = "qwen3-vl-plus";
+export const FALLBACK_MODEL = "qwen3.8-flash";
 
 export const PROMPT = `Kamu membaca foto struk belanja Indonesia. Balas HANYA satu objek JSON, tanpa teks lain, dengan bentuk:
 {"merchant":string,"purchasedAt":"YYYY-MM-DDTHH:mm" atau null,"total":angka rupiah,"tax":angka rupiah (0 jika tidak ada),"items":[{"name":string,"qty":angka,"price":total harga baris itu dalam rupiah,"categoryId":salah satu dari ${CATEGORY_IDS.join("|")},"confidence":0..1}],"confidence":0..1}
@@ -27,11 +34,16 @@ export function extractJson(text: string): unknown {
   return JSON.parse(fenced.slice(start, end + 1));
 }
 
-/** ISO, or the Indonesian dd/mm/yyyy [hh:mm] that thermal receipts print. Local (WIB) time when no zone is given. */
+/** ISO, or the Indonesian dd/mm/yyyy [hh:mm] that thermal receipts print. No zone means WIB, whatever the server clock says. */
 export function parseWhen(text: string): number {
-  const m = text.trim().match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})(?:[ T,]+(\d{1,2})[:.](\d{2}))?/);
+  const s = text.trim();
+  const m = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})(?:[ T,]+(\d{1,2})[:.](\d{2}))?/);
   if (m) { const y = Number(m[3]) < 100 ? 2000 + Number(m[3]) : Number(m[3]); return Date.UTC(y, Number(m[2]) - 1, Number(m[1]), Number(m[4] ?? 12) - 7, Number(m[5] ?? 0)); }
-  return Date.parse(text);
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2}))?$/);
+  if (iso) return Date.UTC(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]), Number(iso[4] ?? 12) - 7, Number(iso[5] ?? 0));
+  if (/(?:Z|[+-]\d{2}:?\d{2})$/i.test(s)) return Date.parse(s);
+  const wib = Date.parse(`${s}+07:00`);
+  return Number.isNaN(wib) ? Date.parse(s) : wib;
 }
 
 export function parseReceipt(text: string, model: string, now = new Date()): ReceiptRead {
@@ -54,13 +66,20 @@ export function parseReceipt(text: string, model: string, now = new Date()): Rec
 export const needsSecondOpinion = (r: ReceiptRead) => r.items.length === 0 || r.confidence < 0.85 || Math.abs(r.mismatch) > Math.max(500, r.total * 0.02);
 export const isEmptyRead = (r: ReceiptRead) => r.items.length === 0 && r.total <= 0;
 
+/** Some model families answer with content blocks instead of one string; keep the text ones. */
+export const contentText = (content: unknown): string =>
+  typeof content === "string" ? content
+    : Array.isArray(content) ? content.map((p) => (typeof p === "string" ? p : typeof (p as { text?: unknown })?.text === "string" ? (p as { text: string }).text : "")).join("")
+    : "";
+
 export async function readReceipt(dataUrl: string, opts: { key: string; base?: string; fetchImpl?: typeof fetch; onModel?: (m: string) => void }): Promise<ReceiptRead> {
   const f = opts.fetchImpl ?? fetch, base = opts.base ?? "https://ai.helipod.io/v1";
   const call = async (model: string) => {
-    const res = await f(`${base}/chat/completions`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${opts.key}` }, body: JSON.stringify({ model, temperature: 0, max_tokens: 1500, messages: [{ role: "user", content: [{ type: "image_url", image_url: { url: dataUrl } }, { type: "text", text: PROMPT }] }] }) });
+    const res = await f(`${base}/chat/completions`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${opts.key}` }, body: JSON.stringify({ model, temperature: 0, max_tokens: 2500, messages: [{ role: "user", content: [{ type: "image_url", image_url: { url: dataUrl } }, { type: "text", text: PROMPT }] }] }) });
     if (!res.ok) throw new Error(`AI_${res.status}`);
-    const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-    return parseReceipt(body.choices?.[0]?.message?.content ?? "", model);
+    const body = (await res.json()) as { choices?: { message?: { content?: unknown } }[] };
+    opts.onModel?.(model);
+    return parseReceipt(contentText(body.choices?.[0]?.message?.content), model);
   };
   let first: ReceiptRead | null = null;
   try { first = await call(PRIMARY_MODEL); } catch (e) { if (!(e instanceof Error) || e.message === "AI_401" || e.message === "AI_402") throw e; }

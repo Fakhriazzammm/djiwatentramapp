@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { authServerResolver } from "./auth";
 import { createApp } from "./index";
-import { needsSecondOpinion, parseReceipt, readReceipt } from "./receipt";
+import { FALLBACK_MODEL, PRIMARY_MODEL, needsSecondOpinion, parseReceipt, readReceipt } from "./receipt";
 import { applySync } from "./sync";
 
 const GOOD = '```json\n{"merchant":"Alfamart","purchasedAt":"2026-11-14T16:10","total":"182.000","tax":0,"items":[{"name":"Beras 5kg","qty":1,"price":"68.000","categoryId":"belanja","confidence":0.99},{"name":"Minyak","qty":1,"price":38000,"categoryId":"zzz"},{"name":"Susu UHT","qty":3,"price":54000,"categoryId":"makan"},{"name":"Sabun","qty":1,"price":22000,"categoryId":"rumah"}],"confidence":0.96}\n```';
@@ -25,9 +25,15 @@ describe("parseReceipt", () => {
   });
   test("escalates to the fallback model when the first read is weak", async () => {
     const models: string[] = [];
-    const f = (async (_u: string, init: RequestInit) => { const m = JSON.parse(String(init.body)).model; models.push(m); return new Response(JSON.stringify({ choices: [{ message: { content: m === "qwen-vl-ocr" ? '{"merchant":"x","total":100,"items":[],"confidence":0.3}' : GOOD } }] })); }) as unknown as typeof fetch;
+    const f = (async (_u: string, init: RequestInit) => { const m = JSON.parse(String(init.body)).model; models.push(m); return new Response(JSON.stringify({ choices: [{ message: { content: m === PRIMARY_MODEL ? '{"merchant":"x","total":100,"items":[],"confidence":0.3}' : GOOD } }] })); }) as unknown as typeof fetch;
     const r = await readReceipt("data:image/jpeg;base64,AAAA", { key: "k", fetchImpl: f });
-    expect(models).toEqual(["qwen-vl-ocr", "qwen3-vl-plus"]); expect(r.items).toHaveLength(4);
+    expect(models).toEqual([PRIMARY_MODEL, FALLBACK_MODEL]); expect(r.items).toHaveLength(4);
+  });
+  test("one call when the first read is clean, even when content arrives as blocks", async () => {
+    const models: string[] = [];
+    const f = (async (_u: string, init: RequestInit) => { models.push(JSON.parse(String(init.body)).model); return new Response(JSON.stringify({ choices: [{ message: { content: [{ type: "text", text: GOOD }] } }] })); }) as unknown as typeof fetch;
+    const r = await readReceipt("data:image/jpeg;base64,AAAA", { key: "k", fetchImpl: f });
+    expect(models).toEqual([PRIMARY_MODEL]); expect(r.total).toBe(182000);
   });
 });
 
@@ -35,6 +41,14 @@ describe("dates", () => {
   test("reads dd/mm/yyyy hh:mm as WIB", () => {
     const r = parseReceipt('{"merchant":"a","purchasedAt":"14/11/2026 16:10","total":1000,"items":[{"name":"x","price":1000}],"confidence":0.9}', "m", NOW);
     expect(r.purchasedAt).toBe("2026-11-14T09:10:00.000Z");
+  });
+  test("a zone-less ISO time is WIB too, and a bare date is noon WIB", () => {
+    const a = parseReceipt('{"purchasedAt":"2026-11-14T16:10","total":1000,"items":[{"name":"x","price":1000}]}', "m", NOW);
+    expect(a.purchasedAt).toBe("2026-11-14T09:10:00.000Z");
+    const b = parseReceipt('{"purchasedAt":"2026-11-14","total":1000,"items":[{"name":"x","price":1000}]}', "m", NOW);
+    expect(b.purchasedAt).toBe("2026-11-14T05:00:00.000Z");
+    const c = parseReceipt('{"purchasedAt":"2026-11-14T09:10:00Z","total":1000,"items":[{"name":"x","price":1000}]}', "m", NOW);
+    expect(c.purchasedAt).toBe("2026-11-14T09:10:00.000Z");
   });
 });
 
