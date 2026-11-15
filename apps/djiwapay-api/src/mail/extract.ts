@@ -54,7 +54,7 @@ const PROMO_WORD = /\b(promo\w*|promosi|diskon\w*|cashback|voucher|kupon|penawar
 
 /** An email campaign, not a payment: "Spesial 11.11: Hemat s.d. Rp3,5 Juta!" is worth nothing in a ledger. */
 export function isPromo(subject: string, text: string): boolean {
-  const whole = `${subject}\n${text.slice(0, 4000)}`;
+  const whole = `${subject}\n${flat(text)}`;
   const hits = (whole.match(PROMO_WORD) ?? []).length;
   if (!hits) return false;
   // A receipt may mention cashback or poin and still be a receipt; a campaign is mostly this vocabulary.
@@ -63,7 +63,7 @@ export function isPromo(subject: string, text: string): boolean {
 }
 
 /** Does this mail read like a payment notification at all? Used before queueing something unreadable. */
-export const looksLikePayment = (subject: string, text: string) => TXN_EVIDENCE.test(`${subject}\n${text.slice(0, 4000)}`);
+export const looksLikePayment = (subject: string, text: string) => TXN_EVIDENCE.test(`${subject}\n${flat(text)}`);
 
 /** A periodic report (merchant settlement, monthly statement, transaction history) is not one transaction, even when it carries a total. */
 export const isReportMail = (subject: string) => /\b(laporan|statement|rekap\w*|ringkasan|mutasi|riwayat|settlement)\b/i.test(subject);
@@ -71,12 +71,15 @@ export const isReportMail = (subject: string) => /\b(laporan|statement|rekap\w*|
 /** "Transfer Tidak Berhasil", "Top-up gagal": the money never left, so there is nothing to record. */
 export const isFailedMail = (subject: string) => /\b(tidak berhasil|gagal|dibatalkan|cancelled|canceled|ditolak|unsuccessful|failed)\b/i.test(subject);
 
+/** Collapses the padded table markup of e-bill mail; without it the useful lines sit past any slice. */
+const flat = (text: string) => text.replace(/[ \t]+/g, " ").replace(/\n{1,}/g, " ").slice(0, 4000);
+
 /** Wording that proves a payment really happened; a reminder asks for one instead. */
 const PAID_EVIDENCE = /(?:pembayaran|transaksi|transfer|top[-\s]?up)[^.]{0,120}(?:berhasil|sukses|telah diterima)|(?:telah|sudah)\s+(?:berhasil\s+)?(?:dibayar|diterima)/i;
 
 /** "Tagihan IndiHome bulan ini Rp340.215, jatuh tempo 20 Nov, bayar di sini": a bill, not a movement of money. */
 export function isBillReminder(subject: string, text: string): boolean {
-  const whole = `${subject}\n${text.slice(0, 3000)}`;
+  const whole = `${subject}\n${flat(text)}`;
   if (PAID_EVIDENCE.test(whole)) return false;
   const bill = /\b(tagihan|billing|e-?bill|jumlah tagihan|total tagihan|jatuh tempo|due date)\b/i.test(whole);
   const ask = /\b(bayar sekarang|bayar sebelum|lakukan pembayaran|belum (?:kamu )?bayar|bayar dengan klik|jatuh tempo)\b/i.test(whole);

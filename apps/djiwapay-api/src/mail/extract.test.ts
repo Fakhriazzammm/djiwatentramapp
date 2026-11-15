@@ -118,6 +118,10 @@ describe("bill reminders are not payments", () => {
   test("a confirmation that the bill was already paid is a payment", () => {
     expect(isBillReminder("Bill Event", "Kami informasikan bahwa pembayaran tagihan Anda sebesar Rp340215 pada tanggal 2026-10-21 melalui MKM telah berhasil.")).toBe(false);
   });
+  test("reads through the padded table of an e-bill mail", () => {
+    const padded = "INFO BILLING\n" + "   Nomor Pelanggan \n   : 131427173880 \n\n".repeat(120) + "Jumlah Tagihan : Rp340.215,- Tanggal Jatuh Tempo: 20 November 2026 PEMBAYARAN TAGIHAN Bayar Sekarang";
+    expect(isBillReminder("Informasi Tagihan IndiHome", padded)).toBe(true);
+  });
 });
 
 describe("amounts that are not payments", () => {
