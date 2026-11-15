@@ -136,7 +136,7 @@ export function CatatSheet({ fin, notify, onClose, onManual, onPay, balances }: 
     <div className={listening ? "dpx-glow" : "dpx-glow"} style={{ width: 88, height: 88, margin: "14px auto 6px", boxShadow: listening ? "0 0 0 12px rgba(209,75,26,.18),0 0 0 26px rgba(209,75,26,.08)" : "0 0 0 10px rgba(209,75,26,.10)" }}><I3 name="business-ai-assistant" px={58} /></div>
     <textarea className="dpx-textarea" aria-label="Catatan dalam satu kalimat" placeholder="Atau ketik di sini" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }} />
     <div className="dpx-flex dpx-mt">
-      <Btn type="button" className="dpx-btn" style={{ margin: 0, flex: 1 }} onClick={listen} aria-pressed={listening}><Ic n="mic" size="sm" /> {listening ? "Mendengarkan… ketuk selesai" : supported ? "Bicara" : "Bicara (tidak didukung)"}</Btn>
+      <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0, flex: 1 }} onClick={listen} aria-pressed={listening}><Ic n="mic" size="sm" /> {listening ? "Mendengarkan… ketuk selesai" : supported ? "Bicara" : "Bicara (tidak didukung)"}</Btn>
       <Btn type="button" className={`dpx-btn dpx-soft ${text.trim() ? "" : "dpx-off"}`} style={{ margin: 0, width: 96, padding: 0 }} onClick={submit} disabled={!text.trim()}><Ic n="up" size="sm" /> Kirim</Btn>
     </div>
     <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={choose} /><input ref={gallery} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={choose} />

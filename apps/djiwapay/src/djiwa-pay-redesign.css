@@ -223,8 +223,8 @@
 .dpx-bigamt{max-width:100%;padding:0 6px}.dpx-bigamt input{flex:1 1 auto;min-width:0;width:auto;text-align:left}
 
 /* ---------- scan struk (Catat sheet) ---------- */
-.dpx-t-scan{background:linear-gradient(135deg,#2d241d 0%,#d14b1a 100%);color:#fff;box-shadow:0 10px 24px rgba(45,36,29,.2)}
-.dpx-t-scan svg{color:#fff}
+.dpx-t-scan{background:linear-gradient(135deg,#fde9d6 0%,#f8c9a3 100%);color:var(--ink);box-shadow:0 8px 20px rgba(209,75,26,.14)}
+.dpx-t-scan svg{color:var(--ink)}
 
 /* ---- Kelola: padat ala iOS (dari prototipe compact). Semua komponen mengecil bersama. ---- */
 .dpx .dpx-pad{padding:44px 14px 112px}
