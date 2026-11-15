@@ -77,7 +77,7 @@ export function ReceiptFlow({ fin, notify, onClose, onRetry, balances, file }: {
         <Btn type="button" className="dpx-sh-x" style={{ width: 34, height: 34 }} onClick={() => setItems((cur) => cur.filter((x) => x.key !== i.key))} aria-label="Hapus item"><Ic n="close" size="sm" /></Btn>
       </div>; })}
     </div>
-    <div className="dpx-chips2 dpx-mt8"><Btn type="button" className="dpx-chip3" onClick={() => setPick({ kind: "acc" })}>Dompet: {accName(state, accountId)}</Btn><Btn type="button" className="dpx-chip3" onClick={() => setItems((cur) => [...cur, { key: uid(), name: "Item", qty: 1, price: 0, categoryId: "belanja", confidence: 1 }])}><Ic n="plus" size="sm" /> Tambah item</Btn></div>
+    <Btn type="button" className="dpx-walletpick" onClick={() => setPick({ kind: "acc" })}><Ic n="wallet" size="lg" /><span><small>Dompet</small><b>{accName(state, accountId)}</b></span><em>Ganti</em><Ic n="chev" size="sm" /></Btn><Btn type="button" className="dpx-btn dpx-ghost dpx-sm" style={{ marginTop: 8, width: "100%" }} onClick={() => setItems((cur) => [...cur, { key: uid(), name: "Item", qty: 1, price: 0, categoryId: "belanja", confidence: 1 }])}><Ic n="plus" size="sm" /> Tambah item</Btn>
     <div className="dpx-kv"><span>Total dicatat</span><b>{rupiah(total)}</b></div>
     {off ? <div className="dpx-note dpx-warn" role="status"><Ic n="warn" /><div>Total di struk {rupiah(receipt.total)}, jumlah item {rupiah(total)} (selisih {rupiah(Math.abs(receipt.total - total))}). Periksa item sebelum menyimpan.</div></div> : null}
     <Btn type="button" className="dpx-btn" disabled={total <= 0} onClick={save}>{mode === "split" ? "Simpan catatan" : "Simpan 1 catatan"}</Btn>

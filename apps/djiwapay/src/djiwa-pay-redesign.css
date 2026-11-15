@@ -408,3 +408,14 @@
 .dpx img.dpx-ic.dpx-sm{width:18px;height:18px}
 .dpx img.dpx-ic.dpx-lg{width:28px;height:28px}
 .dpx .dpx-success-ring img{object-fit:contain}
+
+/* Wallet picker: a full-width, 56px tap target instead of a tiny chip. */
+.dpx .dpx-walletpick{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;margin-top:10px;padding:8px 14px;border-radius:18px;background:#fff;box-shadow:0 0 0 1.5px var(--line);text-align:left}
+.dpx .dpx-walletpick>span{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.dpx .dpx-walletpick small{font-size:12px;color:var(--mute)}
+.dpx .dpx-walletpick b{font-size:16px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dpx .dpx-walletpick em{font:600 14px var(--font);color:var(--blue);font-style:normal}
+.dpx .dpx-walletpick:active{background:var(--group)}
+/* More scroll room so the last card clears the floating tab bar. */
+.dpx .dpx-pad{padding-bottom:calc(172px + env(safe-area-inset-bottom,0px))}
+.dpx .dpx-pad.dpx-nobar{padding-bottom:24px}

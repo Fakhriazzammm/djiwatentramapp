@@ -123,7 +123,7 @@ export function CatatSheet({ fin, notify, onClose, onManual, onPay, balances }: 
           <Btn type="button" className="dpx-sh-x" style={{ width: 34, height: 34 }} onClick={() => setItems((cur) => cur?.filter((x) => x.key !== i.key) ?? null)} aria-label="Hapus baris"><Ic n="close" size="sm" /></Btn>
         </div>; })}
       </div>
-      <div className="dpx-chips2 dpx-mt8"><Btn type="button" className="dpx-chip3" onClick={() => setPick({ key: items[0]?.key ?? "", kind: "acc" })}>Dompet: {accName(state, items[0]?.accountId ?? accountId)}</Btn></div>
+      <Btn type="button" className="dpx-walletpick" onClick={() => setPick({ key: items[0]?.key ?? "", kind: "acc" })}><Ic n="wallet" size="lg" /><span><small>Dompet</small><b>{accName(state, items[0]?.accountId ?? accountId)}</b></span><em>Ganti</em><Ic n="chev" size="sm" /></Btn>
       <div className="dpx-kv"><span>Total</span><b>{total < 0 ? "−" : "+"}{rupiah(total)}</b></div>
       <Btn type="button" className="dpx-btn" disabled={!items.length} onClick={save}>Simpan {items.length} catatan</Btn>
       <Btn type="button" className="dpx-btn dpx-soft" onClick={() => setItems(null)}>Ubah kalimat</Btn>
