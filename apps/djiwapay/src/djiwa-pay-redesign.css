@@ -376,3 +376,15 @@
 @media (prefers-reduced-motion:reduce){.dpx *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 .dpx .dpx-main .dpx-tag{display:inline-block;margin-top:2px}
 .dpx .dpx-ring .dpx-c span{font-size:9px}
+
+/* Bottom bar: one consistent geometry (64px pill, 52px items, centred FAB) and
+   enough scroll room so the last card never sits under it. */
+.dpx .dpx-tabbar{height:64px;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));padding:6px 8px;grid-template-columns:repeat(4,1fr) 62px;column-gap:2px;align-items:center}
+.dpx .dpx-tabbar .dpx-tb{position:relative;height:52px;min-width:0;gap:3px;padding:0 2px;font-size:10px;line-height:1;white-space:nowrap}
+.dpx .dpx-tabbar .dpx-tb>span:not(.dpx-tabpill){position:relative;z-index:1;font-size:10px;line-height:1}
+.dpx .dpx-tabbar .dpx-tb img{width:24px;height:24px}
+.dpx .dpx-tabbar .dpx-tabpill{position:absolute;inset:0;border-radius:999px}
+.dpx .dpx-tabbar .dpx-fab{width:54px;height:54px;margin:-10px 0 0;justify-self:center;align-self:center;font-size:10px;gap:1px;box-shadow:0 8px 20px rgba(15,35,71,.35),0 0 0 4px rgba(255,255,255,.92)}
+.dpx .dpx-tabbar .dpx-fab svg{width:20px;height:20px}
+.dpx .dpx-pad{padding-bottom:calc(128px + env(safe-area-inset-bottom,0px))}
+.dpx .dpx-pad.dpx-nobar{padding-bottom:24px}
