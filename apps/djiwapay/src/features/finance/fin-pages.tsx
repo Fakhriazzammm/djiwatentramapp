@@ -28,7 +28,7 @@ export type FinCtx = {
 
 const COLORS: Record<string, string> = { orange: "#e8833a", blue: "#1a5dc6", violet: "#7a5af0", amber: "#d9a21a", rose: "#e0568a", indigo: "#4a5fd6", cyan: "#16a3b8", emerald: "#1f9d62", slate: "#7b8497" };
 export const useBalances = (state: FinanceState, entries: Entry[], payBalance: number) => useMemo(() => { const m: Record<string, number> = {}; for (const a of state.accounts) m[a.id] = accountBalance(a, entries, payBalance); m[PAY_ACCOUNT_ID] = payBalance; return m; }, [state.accounts, entries, payBalance]);
-const sourceBadge = (s: Entry["source"]) => s === "pay" ? <span className="dpx-tx-badge dpx-auto">Djiwa Pay · otomatis</span> : s === "voice" ? <span className="dpx-tx-badge">Suara</span> : null;
+const sourceBadge = (s: Entry["source"]) => s === "voice" ? <span className="dpx-tx-badge">Suara</span> : null;
 
 export function EntryRow({ entry, state, onOpen, i = 0 }: { entry: Entry; state: FinanceState; onOpen: (id: string) => void; i?: number }) {
   const c = catOf(state, entry.categoryId);
