@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { payAsset, AnimatedNumber, Bar, Mascot, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
+import { payAsset, AnimatedNumber, Bar, Mascot, MascotBuddy, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
 import type { Nav } from "../shell/dpx-pages";
 import { AccountEditSheet, AccountSheet, BudgetSheet, CatIcon, CategoryEditSheet, CategorySheet, DebtSheet, EntrySheet, GoalDetailSheet, GoalSheet, CatatSheet, SplitSheet, StreakSheet, MoneyInput, accName, catOf, type Notify } from "./fin-sheets";
 import { accountBalance, budgetStatuses, buildInsights, dailySpend, daysIn, debtTotals, detectSubscriptions, goalProjection, goalSaved, inMonth, monthlySeries, safeToSpend, spendByCategory, streak, toCsv, totals, uid } from "../../lib/finance/calc";
@@ -103,6 +103,12 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
     {trend !== null && trend !== 0 ? <div className="dpx-sub dpx-mt8 dpx-onsky" style={{ fontSize: 14 }}>Pengeluaran <b style={{ color: trend < 0 ? "var(--ok)" : "var(--danger)" }}>{trend < 0 ? "turun" : "naik"} {Math.abs(trend)}%</b> dibanding bulan lalu</div> : null}
 
     <ReviewChip count={inbound.data?.review ?? 0} onOpen={() => nav.go("/tinjau")} />
+    <MascotBuddy messages={[
+      `Halo ${firstName(profile.name, profile.email)}! Ketuk aku kalau butuh tips.`,
+      over ? "Anggaran bulan ini sudah terlampaui. Tahan belanja dulu ya." : safe ? `Aman dibelanjakan hari ini ${ctx.visible ? rupiah(safe.perDay) : "•••••"}.` : "Atur anggaran dulu, nanti aku hitung jatah harianmu.",
+      st.count > 0 ? `Streak ${st.count} hari. Jangan putus ya!` : "Catat satu pengeluaran hari ini untuk mulai streak.",
+      "Tulis “kopi 25rb” di kolom catat, aku bantu rapikan.",
+    ]} />
     <Reveal i={1}>{empty && !safe ? <div className="dpx-hero-day"><I3 name="sales-report" px={110} style={{ position: "absolute", right: -6, top: -6 }} /><div className="dpx-sub">Belum ada catatan</div><div className="dpx-title" style={{ marginTop: 2, maxWidth: 200 }}>Mulai dari satu catatan.</div><div className="dpx-sub" style={{ marginTop: 6, maxWidth: 210 }}>Tulis “kopi 25rb” atau atur anggaran agar kami hitung sisa uang harianmu.</div><Btn type="button" className="dpx-btn dpx-sm" style={{ marginTop: 14 }} onClick={() => ctx.open({ k: "catat" })}><Ic n="plus" size="sm" /> Catat pertama</Btn></div>
       : safe ? <div className="dpx-hero-day"><div className="dpx-flex" style={{ gap: 16 }}><Ring percent={Math.min(100, safe.percent)} big={over ? "Lewat" : `${Math.round(safe.percent)}%`} small={over ? "anggaran" : "terpakai"} color={over ? "#d23a2a" : "#d14b1a"} />
         <div style={{ flex: 1, minWidth: 0 }}><div className="dpx-sub">{over ? "Anggaran bulan ini terlampaui" : "Aman dibelanjakan hari ini"}</div><div className="dpx-money" style={{ fontSize: 28, color: over ? "var(--danger)" : "var(--navy)" }}>{ctx.visible ? (over ? "−" : "") + rupiah(over ? -safe.left : safe.perDay) : "••••••"}</div><div className="dpx-sub" style={{ marginTop: 4, fontSize: 12.5 }}>{over ? "Kurangi pengeluaran atau naikkan anggaran." : `Sisa ${rupiah(safe.left)} untuk ${safe.daysLeft} hari lagi.`}</div></div></div>

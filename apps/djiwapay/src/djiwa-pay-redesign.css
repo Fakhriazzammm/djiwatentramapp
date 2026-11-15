@@ -486,3 +486,10 @@ html:has(.dpx-scened),body:has(.dpx-scened){overflow-x:hidden}
 .dpx-night .dpx-onsky,.dpx-night .dpx-onsky .dpx-display{color:#fff6e6!important;text-shadow:0 1px 10px rgba(20,16,40,.45)}
 .dpx-night .dpx-onsky b{color:#ffb4a8!important}
 @media (prefers-reduced-motion:reduce){.dpx-scene img{transition:none}}
+/* Maskot interaktif di atas kartu hero Beranda. */
+.dpx-buddy{position:relative;z-index:2;display:flex;justify-content:flex-end;align-items:flex-end;gap:6px;margin:8px 4px -22px;min-height:84px;pointer-events:none}
+.dpx-buddy>*{pointer-events:auto}
+.dpx-buddy-btn{display:block;padding:0;border:0;background:none;cursor:grab;touch-action:pan-y;-webkit-tap-highlight-color:transparent;filter:drop-shadow(0 8px 10px rgba(43,38,32,.22));transform-origin:50% 90%}
+.dpx-buddy-btn:active{cursor:grabbing}
+.dpx-buddy-btn img{display:block;width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none}
+.dpx-buddy-bubble{position:relative;align-self:center;max-width:226px;padding:9px 12px;border-radius:16px 16px 4px 16px;background:#fff;color:var(--ink);font:600 13px/1.35 var(--font);box-shadow:0 8px 22px rgba(43,38,32,.16),0 0 0 1px rgba(43,38,32,.05)}

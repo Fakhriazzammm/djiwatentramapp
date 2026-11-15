@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { AnimatePresence, MotionConfig, animate, motion, useDragControls, useMotionValue, useReducedMotion, type HTMLMotionProps } from "framer-motion";
+import { AnimatePresence, MotionConfig, animate, motion, useAnimation, useDragControls, useMotionValue, useReducedMotion, useTransform, type HTMLMotionProps } from "framer-motion";
 
 export const ICON_NAMES = ["back", "close", "bell", "eye", "eyeoff", "search", "filter", "cal", "up", "plus", "check", "chev", "share", "copy", "shield", "help", "user", "flash", "clock", "warn", "info", "chart", "phone", "wifi", "receipt", "drop", "heart", "tv", "game", "car", "repeat", "gift", "grid", "bank", "down", "send", "scan", "qr", "link", "bag", "mic", "edit", "trash", "tag", "target", "flame", "users", "dl", "split", "trend", "pie", "list", "spark", "del", "book", "cup", "card", "home", "undo", "refresh", "swap", "wallet"] as const;
 export type IconName = typeof ICON_NAMES[number];
@@ -22,6 +22,48 @@ export function I3({ name, px = 40, alt = "", style }: { name: PayIllustrationNa
 }
 export function Mascot({ px = 112, style }: { px?: number; style?: CSSProperties }) {
   return <img src={payAsset("mascot")} alt="Maskot Djiwa Pay" width={px} height={px} style={{ width: px, height: px, objectFit: "contain", ...style }} />;
+}
+
+/** Maskot interaktif: melayang pelan, melompat saat diketuk, bisa diseret (miring lalu kembali) dan bicara lewat gelembung. */
+export function MascotBuddy({ messages, px = 84 }: { messages: string[]; px?: number }) {
+  const [index, setIndex] = useState(0);
+  const [bubble, setBubble] = useState<string | null>(null);
+  const controls = useAnimation();
+  const x = useMotionValue(0);
+  const rotate = useTransform(x, [-140, 0, 140], [-16, 0, 16]);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const busy = useRef(false);
+  const say = (text: string, ms = 4200) => {
+    setBubble(text);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setBubble(null), ms);
+  };
+  const hop = async () => {
+    busy.current = true;
+    await controls.start({ y: [0, 6, -30, 0, -6, 0], scaleX: [1, 1.1, 0.92, 1.08, 0.98, 1], scaleY: [1, 0.88, 1.1, 0.9, 1.03, 1], rotate: [0, 0, -8, 6, 0, 0], transition: { duration: 0.7, times: [0, 0.18, 0.45, 0.7, 0.85, 1], ease: "easeOut" } });
+    busy.current = false;
+  };
+  useEffect(() => {
+    const first = setTimeout(() => { say(messages[0] ?? "Halo!"); void hop(); }, 900);
+    const idle = setInterval(() => { if (!busy.current) { busy.current = true; void controls.start({ rotate: [0, -10, 9, -6, 0], transition: { duration: 0.9 } }).then(() => { busy.current = false; }); } }, 11000);
+    return () => { clearTimeout(first); clearInterval(idle); if (timer.current) clearTimeout(timer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const onTap = () => {
+    const next = (index + 1) % Math.max(messages.length, 1);
+    setIndex(next);
+    say(messages[next] ?? "Halo!");
+    void hop();
+  };
+  return <div className="dpx-buddy">
+    <AnimatePresence>{bubble ? <motion.div key={bubble} className="dpx-buddy-bubble" role="status" initial={{ opacity: 0, scale: 0.85, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={spring}>{bubble}</motion.div> : null}</AnimatePresence>
+    <motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}>
+      <motion.button type="button" className="dpx-buddy-btn" aria-label="Maskot Djiwa Pay. Ketuk untuk mendengar tips" animate={controls} style={{ x, rotate, width: px, height: px }}
+        drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.5} dragSnapToOrigin onDragStart={() => say("Wuih, pelan-pelan!", 1800)} onTap={onTap} whileTap={{ scale: 0.94 }}>
+        <img src={payAsset("mascot")} alt="" draggable={false} width={px} height={px} />
+      </motion.button>
+    </motion.div>
+  </div>;
 }
 
 /** Font size for the big amount field so long numbers never clip. */
