@@ -38,7 +38,7 @@ export function KelolaHome({ ctx }: { ctx: FinCtx }) {
       <div className="dpx-flex" style={{ gap: 14 }}><ScoreRing score={k.health.score} tone={k.health.tone} />
         <div style={{ flex: 1, minWidth: 0 }}><div className="dpx-sub">Kesehatan keuangan</div><div className="dpx-money" style={{ color: toneColor(k.health.tone) }}>{k.health.label}</div>
           <div className="dpx-sub" style={{ marginTop: 3 }}>Langkah tercepat: {[...k.health.pillars].sort((a, b) => a.score - b.score)[0].action.toLowerCase()}.</div></div></div>
-      <div className="dpx-chips2" style={{ marginTop: 8 }}>{k.health.pillars.slice(0, 2).map((p) => <span key={p.id} className="dpx-chip3">{p.name} {p.score}</span>)}</div>
+      <div className="dpx-chips2 dpx-pillars" style={{ marginTop: 10 }}>{k.health.pillars.slice(0, 2).map((p) => <span key={p.id} className="dpx-chip3 dpx-pillar">{p.name}<b style={{ color: p.score >= 70 ? "var(--ok)" : p.score >= 40 ? "var(--warn)" : "var(--danger)" }}>{p.score}</b></span>)}<span className="dpx-chev-end"><Ic n="chev" size="sm" /></span></div>
     </Btn></Reveal>
     <Reveal i={3}><Btn type="button" className="dpx-group dpx-white" style={{ width: "100%", textAlign: "left", marginTop: 10 }} onClick={() => nav.go("/prakiraan")}>
       <div className="dpx-spread"><div><div className="dpx-sub">{bad ? `Kas diperkirakan habis tgl ${k.fc.runsOutDay}` : `Kas sampai akhir bulan`}</div><div className="dpx-money" style={{ color: k.fc.end < 0 ? "var(--danger)" : "var(--navy)" }}>{mask(ctx, rupiah(k.fc.end))}</div></div><span className={`dpx-tag ${bad ? "dpx-danger" : "dpx-ok"}`}>{bad ? "Defisit" : "Aman"}</span></div>

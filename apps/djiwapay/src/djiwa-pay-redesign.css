@@ -391,3 +391,13 @@
 .dpx .dpx-tabbar .dpx-tb>span:nth-of-type(1):not(.dpx-tabpill),.dpx .dpx-tabbar .dpx-tb>span.dpx-tabpill+span{width:24px;height:24px;display:grid;place-items:center}
 .dpx .dpx-tabbar .dpx-tb img{width:24px;height:24px;max-width:none;display:block}
 .dpx .dpx-tabbar .dpx-tb,.dpx .dpx-tabbar .dpx-fab{transform:none}
+
+/* Kesehatan keuangan card: score centred in its ring, pillar chips legible. */
+.dpx .dpx-ring .dpx-c{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.dpx .dpx-ring .dpx-c b{line-height:1}
+.dpx .dpx-ring .dpx-c span{line-height:1;margin-top:1px}
+.dpx .dpx-hero-day .dpx-flex{align-items:center}
+.dpx .dpx-pillars{align-items:center;gap:6px}
+.dpx .dpx-chip3.dpx-pillar{display:inline-flex;align-items:center;gap:6px;font-weight:500;color:var(--mute)}
+.dpx .dpx-chip3.dpx-pillar b{font-weight:700}
+.dpx .dpx-chev-end{margin-left:auto;color:var(--mute);display:inline-flex}
