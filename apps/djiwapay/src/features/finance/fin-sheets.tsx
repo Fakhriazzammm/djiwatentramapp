@@ -8,6 +8,7 @@ import { rupiah, formatDateTime } from "../../lib/djiwa-pay-format";
 import type { Account, AccountType, Budget, Category, Debt, Entry, FinanceState, Goal } from "../../lib/finance/types";
 import type { Finance } from "../../lib/finance/use-finance";
 import { ReceiptAttachment, ReceiptFlow } from "./fin-receipt";
+import { EmailOrigin } from "../integrations/email-origin";
 
 export type Notify = (text: string, undo?: () => void) => void;
 export const catOf = (state: FinanceState, id: string): Category => state.categories.find((c) => c.id === id) ?? { id, name: id, icon: "tag", tone: "slate", income: false };
@@ -52,10 +53,11 @@ export function EntrySheet({ entry, fin, notify, onClose, onEdit, onPickCategory
     <div className="dpx-center" style={{ margin: "-4px 0 10px" }}><CatIcon cat={c} size={64} /><div className="dpx-money" style={{ marginTop: 8, color: entry.kind === "in" ? "var(--ok)" : undefined }}>{sign}{rupiah(entry.amount)}</div><div className="dpx-sub">{entry.note || c.name}</div></div>
     <div className="dpx-group">
       <div className="dpx-kv"><span>Kategori</span><b>{c.name}</b></div><div className="dpx-kv"><span>Dompet</span><b>{accName(state, entry.accountId)}</b></div>
-      <div className="dpx-kv"><span>Waktu</span><b>{formatDateTime(entry.at)}</b></div><div className="dpx-kv"><span>Sumber</span><b>{pay ? "Djiwa Pay (otomatis)" : entry.source === "voice" ? "Suara / teks" : entry.source === "receipt" ? "Scan struk" : "Manual"}</b></div>
+      <div className="dpx-kv"><span>Waktu</span><b>{formatDateTime(entry.at)}</b></div><div className="dpx-kv"><span>Sumber</span><b>{pay ? "Djiwa Pay (otomatis)" : entry.source === "voice" ? "Suara / teks" : entry.source === "receipt" ? "Scan struk" : entry.source === "email" ? "Email pembayaran" : "Manual"}</b></div>
       {entry.tags.length ? <div className="dpx-kv"><span>Tag</span><b>{entry.tags.map((t) => `#${t}`).join(" ")}</b></div> : null}
     </div>
     {entry.receiptId ? <ReceiptAttachment id={entry.receiptId} /> : null}
+    {entry.inboundId ? <EmailOrigin inboundId={entry.inboundId} onUndo={() => { const copy = entry; dispatch({ type: "entry/delete", id: entry.id }); onClose(); notify("Catatan dari email diurungkan", () => dispatch({ type: "entry/restore", entry: copy })); }} /> : null}
     {pay ? <><Btn type="button" className="dpx-btn dpx-ghost" onClick={() => onPickCategory(entry.categoryId)}><Ic n="tag" size="sm" /> Ubah kategori</Btn><p className="dpx-hint dpx-center">Nominal transaksi Djiwa Pay tidak dapat diubah. Kategori boleh.</p></>
       : <div className="dpx-flex dpx-mt"><Btn type="button" className="dpx-btn dpx-ghost" style={{ margin: 0 }} onClick={onEdit}><Ic n="edit" size="sm" /> Ubah</Btn><Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} onClick={() => setConfirm(true)}><Ic n="trash" size="sm" /> Hapus</Btn></div>}
     {confirm ? <div className="dpx-note dpx-danger" role="alert" style={{ marginTop: 12 }}><Ic n="warn" /><div><b>Hapus catatan ini?</b> Saldo dan anggaran dihitung ulang.<div className="dpx-flex" style={{ marginTop: 10 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" onClick={del}>Hapus</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => setConfirm(false)}>Batal</Btn></div></div></div> : null}

@@ -9,6 +9,7 @@ import { emptyState, normalize } from "../../lib/finance/store";
 import { dayLabel, firstName, formatTime, greeting, rupiah } from "../../lib/djiwa-pay-format";
 import { heatLevel, monthLabel } from "../../lib/djiwa-pay-summary";
 import type { Entry, FinanceState, Kind } from "../../lib/finance/types";
+import { ReviewChip, useInbound } from "../integrations/integrations-pages";
 import type { Finance } from "../../lib/finance/use-finance";
 import { KelolaHome, PocketsPanel, WealthExtras, useCash } from "../kelola/kelola-pages";
 import { AssetSheet, BillPaySheet, BillSheet, PayoffSheet, PocketRuleSheet, WeeklySheet } from "../kelola/kelola-sheets";
@@ -28,7 +29,7 @@ export type FinCtx = {
 
 const COLORS: Record<string, string> = { orange: "#e8833a", blue: "#d14b1a", violet: "#eeb866", amber: "#d9a21a", rose: "#e0568a", indigo: "#e45825", cyan: "#16a3b8", emerald: "#1f9d62", slate: "#958a7d" };
 export const useBalances = (state: FinanceState, entries: Entry[], payBalance: number) => useMemo(() => { const m: Record<string, number> = {}; for (const a of state.accounts) m[a.id] = accountBalance(a, entries, payBalance); m[PAY_ACCOUNT_ID] = payBalance; return m; }, [state.accounts, entries, payBalance]);
-const sourceBadge = (s: Entry["source"]) => s === "voice" ? <span className="dpx-tx-badge">Suara</span> : null;
+const sourceBadge = (s: Entry["source"]) => s === "voice" ? <span className="dpx-tx-badge">Suara</span> : s === "email" ? <span className="dpx-tx-badge">Email</span> : null;
 
 export function EntryRow({ entry, state, onOpen, i = 0 }: { entry: Entry; state: FinanceState; onOpen: (id: string) => void; i?: number }) {
   const c = catOf(state, entry.categoryId);
@@ -73,6 +74,7 @@ export function Onboarding({ ctx }: { ctx: FinCtx }) {
 /* ---------- Beranda ---------- */
 export function FinHome({ ctx }: { ctx: FinCtx }) {
   const { fin, nav, profile } = ctx; const { state, entries } = fin;
+  const inbound = useInbound();
   const now = new Date(); const y = now.getFullYear(), m = now.getMonth();
   const month = useMemo(() => entries.filter((e) => inMonth(e, y, m)), [entries]);
   const prev = useMemo(() => entries.filter((e) => inMonth(e, m === 0 ? y - 1 : y, (m + 11) % 12)), [entries]);
@@ -100,6 +102,7 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
     <div style={{ marginTop: 6 }}><span className="dpx-display" style={{ fontSize: 40 }}><small>Rp</small>{ctx.visible ? <>{showIncomeBased && remaining < 0 ? "−" : ""}<AnimatedNumber value={Math.abs(showIncomeBased ? remaining : t.out)} /></> : "•••••••"}</span></div>
     {trend !== null && trend !== 0 ? <div className="dpx-sub dpx-mt8" style={{ fontSize: 14 }}>Pengeluaran <b style={{ color: trend < 0 ? "var(--ok)" : "var(--danger)" }}>{trend < 0 ? "turun" : "naik"} {Math.abs(trend)}%</b> dibanding bulan lalu</div> : null}
 
+    <ReviewChip count={inbound.data?.review ?? 0} onOpen={() => nav.go("/tinjau")} />
     <Reveal i={1}>{empty && !safe ? <div className="dpx-hero-day"><I3 name="sales-report" px={110} style={{ position: "absolute", right: -6, top: -6 }} /><div className="dpx-sub">Belum ada catatan</div><div className="dpx-title" style={{ marginTop: 2, maxWidth: 200 }}>Mulai dari satu catatan.</div><div className="dpx-sub" style={{ marginTop: 6, maxWidth: 210 }}>Tulis “kopi 25rb” atau atur anggaran agar kami hitung sisa uang harianmu.</div><Btn type="button" className="dpx-btn dpx-sm" style={{ marginTop: 14 }} onClick={() => ctx.open({ k: "catat" })}><Ic n="plus" size="sm" /> Catat pertama</Btn></div>
       : safe ? <div className="dpx-hero-day"><div className="dpx-flex" style={{ gap: 16 }}><Ring percent={Math.min(100, safe.percent)} big={over ? "Lewat" : `${Math.round(safe.percent)}%`} small={over ? "anggaran" : "terpakai"} color={over ? "#d23a2a" : "#d14b1a"} />
         <div style={{ flex: 1, minWidth: 0 }}><div className="dpx-sub">{over ? "Anggaran bulan ini terlampaui" : "Aman dibelanjakan hari ini"}</div><div className="dpx-money" style={{ fontSize: 28, color: over ? "var(--danger)" : "var(--navy)" }}>{ctx.visible ? (over ? "−" : "") + rupiah(over ? -safe.left : safe.perDay) : "••••••"}</div><div className="dpx-sub" style={{ marginTop: 4, fontSize: 12.5 }}>{over ? "Kurangi pengeluaran atau naikkan anggaran." : `Sisa ${rupiah(safe.left)} untuk ${safe.daysLeft} hari lagi.`}</div></div></div>
@@ -332,6 +335,8 @@ export function FinSettings({ ctx, onBack }: { ctx: FinCtx; onBack: () => void }
   return <div className="dpx-page"><Sky><div className="dpx-pad dpx-nobar">
     <Header title="Pengaturan keuangan" onBack={onBack} />
     <div className="dpx-note dpx-info" style={{ marginTop: 6 }} role="status"><Ic n="shield" /><div><b>{fin.sync.status === "ok" ? "Tersinkron ke akun Djiwa Pay." : fin.sync.status === "syncing" || fin.sync.status === "starting" ? "Menyinkronkan…" : "Belum tersinkron — data aman di perangkat ini."}</b> Catatan disimpan di perangkat dan dicadangkan otomatis ke server Djiwa Pay, jadi tetap ada saat ganti perangkat.{fin.sync.status === "offline" ? <> <Btn type="button" className="dpx-chip3" onClick={() => void fin.retrySync()}>Coba lagi</Btn></> : null}</div></div>
+    <div className="dpx-glabel">Integrasi</div>
+    <div className="dpx-group dpx-flush dpx-white"><Row icon="link" tone="orange" title="Integrasi" sub="Email pembayaran, Google Calendar, Drive, Sheets" onClick={() => ctx.nav.go("/integrasi")} /></div>
     <div className="dpx-glabel">Kategori <Btn type="button" onClick={() => ctx.open({ k: "category" })}>+ Tambah</Btn></div>
     <div className="dpx-group dpx-flush dpx-white">{state.categories.map((c) => <Row key={c.id} icon={iconOr(c.icon)} tone={c.tone} title={c.name} sub={`${c.income ? "Pemasukan" : "Pengeluaran"}${c.custom ? " · buatanmu" : ""}`} onClick={() => ctx.open({ k: "category", id: c.id })} />)}</div>
     <div className="dpx-glabel">Data</div>

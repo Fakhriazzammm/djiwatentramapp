@@ -4,32 +4,50 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { authServerResolver, type Resolver } from "./auth.js";
 import { applySync, loadState, type Tx } from "./sync.js";
+import { poolTx } from "./db.js";
+export { poolTx };
 import { isEmptyRead, readReceipt, type ReceiptRead } from "./receipt.js";
+import { disconnect as googleDisconnect, exportSheet, FEATURES, finishConnect, googleConfig, startConnect, status as googleStatus, syncCalendar, syncDrive, type Feature, type Fetch, type GoogleCfg } from "./google.js";
+import { ISSUERS } from "./mail/extract.js";
+import { approve, ensureSource, getSource, originOf, reject, removeSource, reviewCount, reviewList } from "./mail/pipeline.js";
 
 const DAILY_SCAN_LIMIT = Number(process.env.SCAN_DAILY_LIMIT || 30);
 const MAX_IMAGE_BYTES = 3_500_000;
 
-export type Deps = { db: Tx; resolve: Resolver; dir: string; aiKey?: string; read?: (dataUrl: string) => Promise<ReceiptRead> };
+export type Deps = { db: Tx; resolve: Resolver; dir: string; aiKey?: string; read?: (dataUrl: string) => Promise<ReceiptRead>; google?: GoogleCfg | null; gfetch?: Fetch; mailDomain?: string };
 
 export function createApp(d: Deps) {
   const app = new Hono();
   const json = (c: any, body: unknown, status = 200) => c.body(JSON.stringify(body), status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
   app.get("/api/finance/health", (c) => json(c, { ok: true }));
   app.use("/api/finance/*", async (c, next) => {
-    if (c.req.path === "/api/finance/health") return next();
+    if (c.req.path === "/api/finance/health" || c.req.path === "/api/finance/google/callback") return next();
     const userId = await d.resolve(c.req.header("cookie") || "");
     if (!userId) return json(c, { success: false, error: "UNAUTHORIZED" }, 401);
     c.set("userId" as never, userId as never);
     return next();
   });
   const uid = (c: any) => c.get("userId") as string;
+  const google = d.google ?? null, mailDomain = d.mailDomain ?? "";
+  // Keep Google in step with what the user just changed, without ever slowing or failing the request.
+  const connected = async (userId: string, feature: Feature) => {
+    if (!google) return false;
+    const r = await d.db.query("select granted_scopes from finance.google_connections where user_id=$1 and refresh_enc is not null", [userId]);
+    return Boolean(r.rows[0]) && (r.rows[0].granted_scopes as string[]).includes(feature === "calendar" ? "https://www.googleapis.com/auth/calendar.events" : "https://www.googleapis.com/auth/drive.file");
+  };
+  const later = (fn: () => Promise<unknown>) => void fn().catch((e) => console.error("background sync", e instanceof Error ? e.message : e));
 
   app.get("/api/finance/state", async (c) => json(c, { success: true, ...(await loadState(d.db, uid(c))) }));
 
   app.post("/api/finance/sync", async (c) => {
     const body = await c.req.json().catch(() => null);
     if (!body || typeof body !== "object") return json(c, { success: false, error: "BAD_REQUEST" }, 400);
-    try { return json(c, { success: true, ...(await applySync(d.db, uid(c), body)) }); }
+    try {
+      const out = await applySync(d.db, uid(c), body);
+      const touchedBills = Boolean((body as any).upserts?.bills?.length || (body as any).deletes?.bills?.length);
+      if (touchedBills && google) later(async () => { if (await connected(uid(c), "calendar")) await syncCalendar(d.db, google, uid(c), d.gfetch); });
+      return json(c, { success: true, ...out });
+    }
     catch (e) { console.error("sync failed", e instanceof Error ? e.message : e); return json(c, { success: false, error: "SYNC_FAILED" }, 500); }
   });
 
@@ -62,6 +80,7 @@ export function createApp(d: Deps) {
     await d.db.query(`insert into finance.receipts(user_id,id,merchant,purchased_at,total,tax,confidence,items,model,image_path,image_bytes) values($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11)
       on conflict(user_id,id) do update set merchant=excluded.merchant,purchased_at=excluded.purchased_at,total=excluded.total,tax=excluded.tax,confidence=excluded.confidence,items=excluded.items,model=excluded.model,image_path=excluded.image_path,image_bytes=excluded.image_bytes`,
       [userId, id, read.merchant, read.purchasedAt, read.total, read.tax, read.confidence, JSON.stringify(read.items), read.model, rel, bytes.length]);
+    if (google) later(async () => { if (await connected(userId, "drive")) await syncDrive(d.db, google, userId, d.dir, d.gfetch); });
     return json(c, { success: true, receipt: { id, ...read } });
   });
 
@@ -80,25 +99,61 @@ export function createApp(d: Deps) {
     if (rel) await unlink(join(d.dir, rel)).catch(() => {});
     return json(c, { success: true });
   });
-  return app;
-}
+  /* ---------- Google ---------- */
+  app.get("/api/finance/google/status", async (c) => json(c, { success: true, ...(await googleStatus(d.db, google, uid(c))) }));
+  app.post("/api/finance/google/connect", async (c) => {
+    if (!google) return json(c, { success: false, error: "NOT_CONFIGURED" }, 503);
+    const body = await c.req.json().catch(() => ({})) as { features?: unknown };
+    const wanted = (Array.isArray(body.features) ? body.features : []).filter((x): x is Feature => (FEATURES as string[]).includes(String(x)));
+    const features = wanted.length ? [...new Set(wanted)] : (["drive"] as Feature[]);
+    // Keep what was granted before: asking for one more feature must not drop the others.
+    const prev = await d.db.query("select granted_scopes from finance.google_connections where user_id=$1 and refresh_enc is not null", [uid(c)]);
+    const have = (prev.rows[0]?.granted_scopes as string[] | undefined) ?? [];
+    for (const f of FEATURES) if (have.includes(f === "calendar" ? "https://www.googleapis.com/auth/calendar.events" : "https://www.googleapis.com/auth/drive.file") && !features.includes(f)) features.push(f);
+    return json(c, { success: true, url: await startConnect(d.db, google, uid(c), features) });
+  });
+  app.get("/api/finance/google/callback", async (c) => {
+    const back = (q: string) => c.redirect(`/integrasi?google=${q}`, 302);
+    if (!google) return back("unavailable");
+    const code = c.req.query("code"), state = c.req.query("state");
+    if (c.req.query("error") || !code || !state) return back("denied");
+    try {
+      const out = await finishConnect(d.db, google, code, state, d.gfetch);
+      later(async () => { if (out.features.calendar) await syncCalendar(d.db, google, out.userId, d.gfetch); if (out.features.drive) await syncDrive(d.db, google, out.userId, d.dir, d.gfetch); });
+      return back("ok");
+    } catch (e) { console.error("google connect", e instanceof Error ? e.message : e); return back("error"); }
+  });
+  app.post("/api/finance/google/disconnect", async (c) => { await googleDisconnect(d.db, google, uid(c), d.gfetch); return json(c, { success: true }); });
+  const need = (c: any) => (!google ? json(c, { success: false, error: "NOT_CONFIGURED" }, 503) : null);
+  app.post("/api/finance/google/calendar/sync", async (c) => need(c) ?? json(c, { success: true, ...(await syncCalendar(d.db, google!, uid(c), d.gfetch)) }));
+  app.post("/api/finance/google/drive/sync", async (c) => need(c) ?? json(c, { success: true, ...(await syncDrive(d.db, google!, uid(c), d.dir, d.gfetch)) }));
+  app.post("/api/finance/google/sheets/export", async (c) => need(c) ?? json(c, { success: true, ...(await exportSheet(d.db, google!, uid(c), d.gfetch)) }));
 
-export function poolTx(pool: Pool): Tx {
-  return {
-    query: (t, p) => pool.query(t, p as any[]),
-    tx: async (fn) => {
-      const client = await pool.connect();
-      try { await client.query("begin"); const out = await fn({ query: (t, p) => client.query(t, p as any[]) }); await client.query("commit"); return out; }
-      catch (e) { await client.query("rollback").catch(() => {}); throw e; } finally { client.release(); }
-    },
-  };
+  /* ---------- Payment e-mail inbox ---------- */
+  const sourceView = (s: any) => s && mailDomain ? { address: `${s.token}@${mailDomain}`, enabled: Boolean(s.enabled), mailCount: Number(s.mail_count), lastMailAt: s.last_mail_at ? new Date(s.last_mail_at).toISOString() : null, trusted: Number(s.trusted_count), forwardCode: s.forward_code && s.forward_code_at && Date.now() - new Date(s.forward_code_at).getTime() < 3 * 3600_000 ? String(s.forward_code) : null } : null;
+  app.get("/api/finance/inbound", async (c) => json(c, { success: true, configured: Boolean(mailDomain), filter: `from:(${ISSUERS.flatMap((i) => i.domains).join(" OR ")})`, source: sourceView(await getSource(d.db, uid(c))), review: await reviewCount(d.db, uid(c)) }));
+  app.post("/api/finance/inbound/source", async (c) => {
+    if (!mailDomain) return json(c, { success: false, error: "NOT_CONFIGURED" }, 503);
+    const body = await c.req.json().catch(() => ({})) as { rotate?: unknown };
+    return json(c, { success: true, source: sourceView(await ensureSource(d.db, uid(c), body.rotate === true)) });
+  });
+  app.delete("/api/finance/inbound/source", async (c) => { await removeSource(d.db, uid(c), c.req.query("wipe") === "1"); return json(c, { success: true }); });
+  app.get("/api/finance/inbound/review", async (c) => json(c, { success: true, items: await reviewList(d.db, uid(c)) }));
+  app.post("/api/finance/inbound/:id/approve", async (c) => {
+    const edits = await c.req.json().catch(() => ({}));
+    const out = await approve(d.db, uid(c), c.req.param("id"), edits && typeof edits === "object" ? edits : {});
+    return out ? json(c, { success: true, ...out }) : json(c, { success: false, error: "NOT_FOUND" }, 404);
+  });
+  app.post("/api/finance/inbound/:id/reject", async (c) => (await reject(d.db, uid(c), c.req.param("id"))) ? json(c, { success: true }) : json(c, { success: false, error: "NOT_FOUND" }, 404));
+  app.get("/api/finance/inbound/:id/origin", async (c) => { const o = await originOf(d.db, uid(c), c.req.param("id")); return o ? json(c, { success: true, origin: o }) : json(c, { success: false, error: "NOT_FOUND" }, 404); });
+  return app;
 }
 
 if (import.meta.main) {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is required");
   const pool = new Pool({ connectionString: url, max: 5, ssl: process.env.PGSSL === "off" ? undefined : { rejectUnauthorized: false } });
-  const app = createApp({ db: poolTx(pool), resolve: authServerResolver(), dir: process.env.RECEIPTS_DIR || "/var/lib/djiwapay-api/receipts", aiKey: process.env.HELIPOD_AI_KEY });
+  const app = createApp({ db: poolTx(pool), resolve: authServerResolver(), dir: process.env.RECEIPTS_DIR || "/var/lib/djiwapay-api/receipts", aiKey: process.env.HELIPOD_AI_KEY, google: googleConfig(), mailDomain: process.env.MAIL_DOMAIN || undefined });
   const port = Number(process.env.PORT || 3011);
   Bun.serve({ port, hostname: "127.0.0.1", fetch: app.fetch, maxRequestBodySize: 8 * 1024 * 1024 });
   console.log(`djiwapay-api listening on 127.0.0.1:${port}`);

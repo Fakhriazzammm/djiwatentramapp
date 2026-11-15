@@ -1,0 +1,269 @@
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Btn, Header, Ic, Reveal, Row, Sheet, Sky, spring, type IconName } from "../shell/dpx-ui";
+import { CatIcon, MoneyInput, accName, catOf } from "../finance/fin-sheets";
+import type { FinCtx } from "../finance/fin-pages";
+import { rupiah } from "../../lib/djiwa-pay-format";
+import {
+  CHANNEL_NAME, approveItem, connectGoogle, createSource, disconnectGoogle, getGoogle, getInbound, getReview, rejectItem, removeSource, syncGoogle,
+  type GoogleFeature, type GoogleStatus, type InboundSummary, type ReviewItem,
+} from "../../lib/finance/integrations";
+
+const copyText = async (text: string) => { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } };
+const ago = (iso: string | null) => {
+  if (!iso) return "";
+  const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  return m < 1 ? "baru saja" : m < 60 ? `${m} menit lalu` : m < 1440 ? `${Math.round(m / 60)} jam lalu` : `${Math.round(m / 1440)} hari lalu`;
+};
+
+/** Inbound summary (address, mail count, review queue size). Refreshes on mount and whenever the app comes back to the foreground. */
+export function useInbound() {
+  const [data, setData] = useState<InboundSummary | null>(null);
+  const refresh = useCallback(async () => { try { const r = await getInbound(); setData(r); return r; } catch { return null; } }, []);
+  useEffect(() => {
+    void refresh();
+    const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [refresh]);
+  return { data, refresh };
+}
+
+/* ---------- Beranda: the small dot that says something is waiting ---------- */
+export function ReviewChip({ count, onOpen }: { count: number; onOpen: () => void }) {
+  if (count <= 0) return null;
+  return <Reveal i={1}><Btn type="button" className="dpx-reviewchip" onClick={onOpen} aria-label={`${count} catatan dari email perlu ditinjau`}>
+    <span className="dpx-rc-dot" aria-hidden="true">{count > 9 ? "9+" : count}</span>
+    <span className="dpx-rc-t"><b>{count} perlu ditinjau</b><span>Dari email pembayaran, ketuk untuk memeriksa</span></span>
+    <Ic n="chev" size="sm" />
+  </Btn></Reveal>;
+}
+
+/* ---------- Google: what Djiwa Pay can and cannot do, shown before Google's own screen ---------- */
+function ConsentSheet({ features, onClose, busy, onGo }: { features: GoogleFeature[]; onClose: () => void; busy: boolean; onGo: () => void }) {
+  const can: string[] = [], cannot = ["Membaca email, kontak, atau file lain di Google-mu", "Mengubah atau menghapus file yang tidak dibuat Djiwa Pay", "Menyimpan kata sandi Google-mu"];
+  if (features.includes("calendar")) can.push("Membuat acara pengingat tagihan di Google Calendar-mu");
+  if (features.includes("drive")) can.push("Membuat folder “Djiwa Pay” dan menyimpan foto struk di sana", "Membuat satu Spreadsheet laporan keuanganmu");
+  return <Sheet title="Izinkan akses Google" onClose={onClose}>
+    <p className="dpx-sub" style={{ marginTop: -6 }}>Kamu akan diarahkan ke Google untuk menyetujui. Bisa dicabut kapan saja.</p>
+    <div className="dpx-glabel" style={{ marginTop: 14 }}>Yang bisa dilakukan Djiwa Pay</div>
+    <div className="dpx-group dpx-white dpx-checks">{can.map((t) => <div key={t} className="dpx-chk dpx-yes"><Ic n="check" size="sm" /><span>{t}</span></div>)}</div>
+    <div className="dpx-glabel">Yang tidak bisa</div>
+    <div className="dpx-group dpx-white dpx-checks">{cannot.map((t) => <div key={t} className="dpx-chk dpx-no"><Ic n="close" size="sm" /><span>{t}</span></div>)}</div>
+    <Btn type="button" className="dpx-btn" disabled={busy} onClick={onGo}>{busy ? "Membuka Google…" : "Lanjut ke Google"}</Btn>
+  </Sheet>;
+}
+
+/* ---------- Email setup: three short steps, no Gmail permission needed ---------- */
+function EmailSetupSheet({ onClose, summary, refresh, ctx }: { onClose: () => void; summary: InboundSummary | null; refresh: () => Promise<InboundSummary | null>; ctx: FinCtx }) {
+  const [step, setStep] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const src = summary?.source ?? null;
+  const [copied, setCopied] = useState("");
+  const flash = (what: string) => { setCopied(what); window.setTimeout(() => setCopied(""), 1600); };
+  const create = async () => { setBusy(true); try { await createSource(); await refresh(); } catch { ctx.notify("Alamat belum bisa dibuat. Coba lagi."); } finally { setBusy(false); } };
+  useEffect(() => { if (!src && summary?.configured) void create(); /* the address is made the moment the sheet opens */ }, [summary?.configured]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { const t = window.setInterval(() => { void refresh(); }, 4000); return () => window.clearInterval(t); }, [refresh]);
+  const copy = async (what: string, text: string) => { if (await copyText(text)) flash(what); else ctx.notify("Tidak bisa menyalin. Tekan lama untuk menyalin manual."); };
+  const received = (src?.mailCount ?? 0) > 0;
+  const steps = ["Alamat", "Gmail", "Filter", "Uji"];
+  return <Sheet title="Email pembayaran" onClose={onClose}>
+    <div className="dpx-stepper" aria-label={`Langkah ${step + 1} dari ${steps.length}`}>{steps.map((s, i) => <span key={s} className={i === step ? "dpx-on" : i < step ? "dpx-done" : ""}><i>{i < step ? <Ic n="check" size="sm" /> : i + 1}</i>{s}</span>)}</div>
+    {step === 0 ? <>
+      <p className="dpx-sub">Ini alamat khusus milikmu. Email pembayaran dari bank dan e-wallet yang kamu teruskan ke sini dibaca dan dicatat otomatis.</p>
+      <div className="dpx-addr" role="group" aria-label="Alamat email khusus"><code>{src?.address ?? "Membuat alamat…"}</code>
+        <Btn type="button" className="dpx-copybtn" disabled={!src} onClick={() => src && copy("addr", src.address)}><Ic n="copy" size="sm" /> {copied === "addr" ? "Tersalin" : "Salin"}</Btn></div>
+      <div className="dpx-note dpx-info"><Ic n="shield" /><div><b>Tanpa izin baca Gmail.</b> Hanya email yang kamu pilih lewat filter yang sampai ke sini. Kode OTP dan PIN diabaikan.</div></div>
+      <Btn type="button" className="dpx-btn" disabled={!src || busy} onClick={() => setStep(1)}>Lanjut</Btn>
+    </> : null}
+    {step === 1 ? <>
+      <p className="dpx-sub">Daftarkan alamat tadi sebagai alamat terusan di Gmail.</p>
+      <ol className="dpx-howto"><li>Buka Gmail → <b>Setelan</b> → <b>Lihat semua setelan</b></li><li>Tab <b>Penerusan dan POP/IMAP</b> → <b>Tambahkan alamat terusan</b></li><li>Tempel alamat Djiwa Pay, lalu <b>Lanjutkan</b></li></ol>
+      <a className="dpx-btn dpx-ghost dpx-linkbtn2" href="https://mail.google.com/mail/u/0/#settings/fwdandpop" target="_blank" rel="noreferrer"><Ic n="link" size="sm" /> Buka setelan Gmail</a>
+      <div className={`dpx-codebox ${src?.forwardCode ? "dpx-got" : ""}`} aria-live="polite">
+        {src?.forwardCode
+          ? <><span>Kode verifikasi dari Gmail</span><b>{src.forwardCode}</b><Btn type="button" className="dpx-copybtn" onClick={() => copy("code", src.forwardCode!)}><Ic n="copy" size="sm" /> {copied === "code" ? "Tersalin" : "Salin kode"}</Btn><small>Tempel kode ini di Gmail, lalu <b>Verifikasi</b>. Jangan pilih “teruskan semua email”: kita pakai filter di langkah berikutnya.</small></>
+          : <><span className="dpx-pulse" aria-hidden="true" /><span>Menunggu kode dari Gmail… muncul di sini otomatis.</span></>}
+      </div>
+      <div className="dpx-flex dpx-mt"><Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} onClick={() => setStep(0)}>Kembali</Btn><Btn type="button" className="dpx-btn" style={{ margin: 0 }} onClick={() => setStep(2)}>{src?.forwardCode ? "Lanjut" : "Sudah terverifikasi"}</Btn></div>
+    </> : null}
+    {step === 2 ? <>
+      <p className="dpx-sub">Buat satu filter agar hanya email bank dan e-wallet yang diteruskan.</p>
+      <ol className="dpx-howto"><li>Di Gmail: <b>Setelan</b> → <b>Filter dan alamat yang diblokir</b> → <b>Buat filter baru</b></li><li>Tempel teks di bawah ke kolom <b>Dari</b>, lalu <b>Buat filter</b></li><li>Centang <b>Teruskan ke</b> dan pilih alamat Djiwa Pay → <b>Buat filter</b></li></ol>
+      <div className="dpx-addr dpx-small"><code>{summary?.filter ?? ""}</code><Btn type="button" className="dpx-copybtn" onClick={() => summary && copy("filter", summary.filter)}><Ic n="copy" size="sm" /> {copied === "filter" ? "Tersalin" : "Salin"}</Btn></div>
+      <a className="dpx-btn dpx-ghost dpx-linkbtn2" href="https://mail.google.com/mail/u/0/#settings/filters" target="_blank" rel="noreferrer"><Ic n="link" size="sm" /> Buka filter Gmail</a>
+      <div className="dpx-flex dpx-mt"><Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} onClick={() => setStep(1)}>Kembali</Btn><Btn type="button" className="dpx-btn" style={{ margin: 0 }} onClick={() => setStep(3)}>Lanjut</Btn></div>
+    </> : null}
+    {step === 3 ? <>
+      <div className={`dpx-codebox ${received ? "dpx-got" : ""}`} aria-live="polite">
+        {received ? <><Ic n="check" size="lg" /><b style={{ fontSize: 17 }}>Email pertama diterima</b><small>{src!.mailCount} email masuk · {ago(src!.lastMailAt)}. Notifikasi pembayaran berikutnya akan muncul di antrean tinjau.</small></>
+          : <><span className="dpx-pulse" aria-hidden="true" /><span>Kirim email apa saja ke alamatmu dari Gmail, atau tunggu notifikasi bank berikutnya. Halaman ini memeriksa otomatis.</span></>}
+      </div>
+      <div className="dpx-addr dpx-small"><code>{src?.address}</code><Btn type="button" className="dpx-copybtn" onClick={() => src && copy("addr", src.address)}><Ic n="copy" size="sm" /> {copied === "addr" ? "Tersalin" : "Salin"}</Btn></div>
+      <div className="dpx-flex dpx-mt"><Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} onClick={() => setStep(2)}>Kembali</Btn><Btn type="button" className="dpx-btn" style={{ margin: 0 }} onClick={onClose}>{received ? "Selesai" : "Selesaikan nanti"}</Btn></div>
+    </> : null}
+  </Sheet>;
+}
+
+/* ---------- Integrasi page ---------- */
+function Tag({ tone, children }: { tone?: "ok" | "warn" | "later"; children: ReactNode }) { return <span className={`dpx-tag ${tone ? "dpx-" + (tone === "later" ? "later" : tone) : ""}`}>{children}</span>; }
+
+export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBack: () => void; onReview: () => void }) {
+  const { data: inbound, refresh } = useInbound();
+  const [g, setG] = useState<(GoogleStatus & { success: true }) | null>(null);
+  const [loadingG, setLoadingG] = useState(true);
+  const [sheet, setSheet] = useState<null | "email" | { consent: GoogleFeature[] }>(null);
+  const [busy, setBusy] = useState("");
+  const [confirmOff, setConfirmOff] = useState<null | "google" | "email">(null);
+  const loadG = useCallback(async () => { try { setG(await getGoogle()); } catch { /* offline: leave as is */ } finally { setLoadingG(false); } }, []);
+  useEffect(() => { void loadG(); }, [loadG]);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("google");
+    if (!q) return;
+    window.history.replaceState({}, "", window.location.pathname);
+    ctx.notify(q === "ok" ? "Google terhubung" : q === "denied" ? "Izin Google dibatalkan" : q === "unavailable" ? "Integrasi Google belum tersedia" : "Gagal menghubungkan Google. Coba lagi.");
+    void loadG();
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  const goGoogle = async (features: GoogleFeature[]) => {
+    setBusy("connect");
+    try { const { url } = await connectGoogle(features); window.location.assign(url); }
+    catch (e) { setBusy(""); ctx.notify((e as { code?: string }).code === "NOT_CONFIGURED" ? "Integrasi Google belum tersedia" : "Tidak bisa membuka Google. Coba lagi."); }
+  };
+  const run = async (what: "calendar" | "drive" | "sheets", done: string) => {
+    setBusy(what);
+    try { const r = await syncGoogle(what); await loadG(); if (what === "sheets" && r.ok === true && typeof r.url === "string") { window.open(r.url, "_blank", "noopener"); ctx.notify(done); } else if (r.ok === false) ctx.notify("Sebagian belum tersinkron. Coba lagi nanti."); else ctx.notify(done); }
+    catch { ctx.notify("Gagal menyinkronkan. Coba lagi."); } finally { setBusy(""); }
+  };
+  const off = async () => {
+    setBusy("off");
+    try { if (confirmOff === "google") { await disconnectGoogle(); await loadG(); ctx.notify("Google diputuskan. Token dihapus."); } else { await removeSource(true); await refresh(); ctx.notify("Email pembayaran dimatikan"); } setConfirmOff(null); }
+    catch { ctx.notify("Gagal memutuskan. Coba lagi."); } finally { setBusy(""); }
+  };
+
+  const src = inbound?.source ?? null;
+  const gOn = Boolean(g?.connected), gReady = g?.configured !== false;
+  const cal = Boolean(g?.features.calendar), drive = Boolean(g?.features.drive);
+  const soon = <Tag tone="later">Segera</Tag>;
+  return <div className="dpx-page"><Sky><div className="dpx-pad dpx-nobar">
+    <Header title="Integrasi" onBack={onBack} />
+    <div className="dpx-note dpx-info" style={{ marginTop: 6 }}><Ic n="shield" /><div><b>Kamu yang mengatur.</b> Setiap integrasi bisa diputus kapan saja. Token dan data turunan ikut dihapus.</div></div>
+
+    <div className="dpx-glabel">Catat otomatis</div>
+    <Reveal i={1}><div className="dpx-group dpx-white dpx-int">
+      <Row icon="bank" tone="orange" title="Email pembayaran" sub={src ? `${src.mailCount ? `${src.mailCount} email · ${ago(src.lastMailAt)}` : "Menunggu email pertama"}` : "Bank dan e-wallet masuk ke catatan sendiri"} trail={src ? <Tag tone="ok">Aktif</Tag> : inbound && !inbound.configured ? soon : <Tag>Mati</Tag>}
+        onClick={inbound?.configured ? () => setSheet("email") : undefined} />
+      {src ? <>
+        <Row icon="check" tone="emerald" title={`Antrean tinjau${inbound && inbound.review ? ` (${inbound.review})` : ""}`} sub={src.trusted >= 10 ? "Email yang jelas dicatat otomatis" : `Belajar dari tinjauanmu: ${src.trusted}/10 disetujui`} onClick={onReview} />
+        <Row icon="refresh" tone="slate" title="Buat alamat baru" sub="Alamat lama berhenti menerima email" onClick={async () => { setBusy("rot"); try { await createSource(true); await refresh(); ctx.notify("Alamat baru dibuat. Perbarui terusan di Gmail."); setSheet("email"); } catch { ctx.notify("Gagal membuat alamat baru"); } finally { setBusy(""); } }} chev={false} />
+        <Row icon="trash" tone="rose" title="Matikan email pembayaran" sub="Hapus alamat dan antrean" onClick={() => setConfirmOff("email")} chev={false} />
+      </> : null}
+      <Row icon="mic" tone="slate" title="Gmail langsung" sub="Tanpa filter, satu ketukan" trail={soon} />
+    </div></Reveal>
+
+    <div className="dpx-glabel">Google</div>
+    <Reveal i={2}><div className="dpx-group dpx-white dpx-int">
+      <Row icon="cal" tone="blue" title="Google Calendar" sub={cal ? `${g!.calendar.events} tagihan jadi acara bulanan` : "Tagihan rutin jadi acara + pengingat"} trail={loadingG ? undefined : !gReady ? soon : cal ? <Tag tone="ok">Aktif</Tag> : <Tag>Mati</Tag>}
+        onClick={gReady && !loadingG && !cal ? () => setSheet({ consent: ["calendar"] }) : undefined} />
+      {cal ? <Row icon="refresh" tone="slate" title={busy === "calendar" ? "Menyinkronkan…" : "Sinkronkan sekarang"} sub="Tagihan berubah otomatis ikut diperbarui" onClick={() => void run("calendar", "Calendar diperbarui")} chev={false} /> : null}
+      <Row icon="dl" tone="emerald" title="Drive dan Sheets" sub={drive ? `${g!.drive.uploaded} struk di Drive${g!.drive.failed ? ` · ${g!.drive.failed} gagal` : ""}` : "Struk ke folder Drive, laporan bulanan ke Sheets"} trail={loadingG ? undefined : !gReady ? soon : drive ? <Tag tone="ok">Aktif</Tag> : <Tag>Mati</Tag>}
+        onClick={gReady && !loadingG && !drive ? () => setSheet({ consent: ["drive"] }) : undefined} />
+      {drive ? <>
+        <Row icon="up" tone="slate" title={busy === "drive" ? "Mengunggah…" : "Unggah struk ke Drive"} sub="Foto struk yang belum tersalin" onClick={() => void run("drive", "Struk tersalin ke Drive")} chev={false} />
+        <Row icon="list" tone="violet" title={busy === "sheets" ? "Menyiapkan Sheets…" : g!.sheet?.url ? "Perbarui dan buka Sheets" : "Ekspor ke Google Sheets"} sub={g!.sheet?.lastSyncedAt ? `Terakhir ${ago(g!.sheet.lastSyncedAt)}` : "Catatan dan ringkasan bulanan"} onClick={() => void run("sheets", "Spreadsheet diperbarui")} chev={false} />
+      </> : null}
+    </div></Reveal>
+
+    {gOn ? <Reveal i={3}><div className="dpx-group dpx-white dpx-int" style={{ marginTop: 12 }}>
+      <Row icon="user" tone="slate" title={g!.email ?? "Akun Google"} sub="Akun yang terhubung" chev={false} />
+      <Row icon="trash" tone="rose" title="Putuskan Google" sub="Token dihapus, file di Drive-mu tetap ada" onClick={() => setConfirmOff("google")} chev={false} />
+    </div></Reveal> : null}
+
+    {g && !g.configured ? <div className="dpx-note" style={{ marginTop: 12 }}><Ic n="info" /><div><b>Google belum dihubungkan di server ini.</b> Calendar, Drive dan Sheets aktif begitu kredensial Google dipasang.</div></div> : null}
+    {inbound && !inbound.configured ? <div className="dpx-note" style={{ marginTop: 12 }}><Ic n="info" /><div><b>Penerima email belum aktif.</b> Email pembayaran aktif begitu alamat domain surat dipasang.</div></div> : null}
+
+    {confirmOff ? <div className="dpx-note dpx-danger" role="alert" style={{ marginTop: 12 }}><Ic n="warn" /><div><b>{confirmOff === "google" ? "Putuskan Google?" : "Matikan email pembayaran?"}</b> {confirmOff === "google" ? "Acara Calendar dan file yang sudah dibuat tetap ada di akun Google-mu." : "Alamat dihapus dan antrean tinjau dikosongkan. Catatan yang sudah tersimpan tetap ada."}
+      <div className="dpx-flex" style={{ marginTop: 10 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy === "off"} onClick={() => void off()}>{busy === "off" ? "Memproses…" : "Ya, putuskan"}</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => setConfirmOff(null)}>Batal</Btn></div></div></div> : null}
+
+    <AnimatePresence>
+      {sheet === "email" ? <EmailSetupSheet key="email" ctx={ctx} summary={inbound} refresh={refresh} onClose={() => setSheet(null)} /> : null}
+      {sheet && typeof sheet === "object" ? <ConsentSheet key="consent" features={sheet.consent} busy={busy === "connect"} onClose={() => setSheet(null)} onGo={() => void goGoogle(sheet.consent)} /> : null}
+    </AnimatePresence>
+  </div></Sky></div>;
+}
+
+/* ---------- Antrean tinjau ---------- */
+function ReviewCard({ item, ctx, onDone }: { item: ReviewItem; ctx: FinCtx; onDone: () => void }) {
+  const { state } = ctx.fin;
+  const p = item.parsed;
+  const [kind, setKind] = useState<"out" | "in">(p.kind ?? (p.direction === "in" ? "in" : "out"));
+  const [categoryId, setCategoryId] = useState(p.categoryId ?? (kind === "in" ? "bonus" : "lainnya"));
+  const [accountId, setAccountId] = useState(p.accountId ?? "tunai");
+  const [amount, setAmount] = useState(String(Math.round(p.amount ?? 0)));
+  const [note, setNote] = useState(p.merchant || p.subject || "");
+  const [edit, setEdit] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const failed = item.status === "failed" || !(p.amount && p.amount > 0);
+  const cats = state.categories.filter((c) => c.income === (kind === "in"));
+  const accounts = state.accounts.filter((a) => !a.archived);
+  const channel = CHANNEL_NAME[item.channel] ?? p.issuer ?? item.channel;
+  const act = async (fn: () => Promise<unknown>, ok: string) => { setBusy(true); try { await fn(); ctx.notify(ok); onDone(); } catch { ctx.notify("Gagal. Coba lagi."); } finally { setBusy(false); } };
+  const approve = () => act(async () => { await approveItem(item.id, { amount: Number(amount), kind, categoryId, accountId, note: note.trim() || undefined }); await ctx.fin.retrySync(); }, `${note || "Catatan"} ${rupiah(Number(amount))} tercatat`);
+  const cat = catOf(state, categoryId);
+  return <motion.div layout className={`dpx-rev ${failed ? "dpx-rev-fail" : ""}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -40 }} transition={spring}>
+    <div className="dpx-rev-top"><span className="dpx-rev-ch"><Ic n="bank" size="sm" /> {channel}</span><span className="dpx-rev-when">{ago(item.createdAt)}</span></div>
+    {failed ? <>
+      <b className="dpx-rev-title">Email tidak terbaca</b>
+      <p className="dpx-sub" style={{ margin: "2px 0 10px" }}>{p.subject ? `“${p.subject}”. ` : ""}Nominal tidak ditemukan. Catat sendiri atau abaikan.</p>
+      <div className="dpx-flex"><Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} disabled={busy} onClick={() => ctx.nav.go("/catat?kind=out")}>Catat manual</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" style={{ margin: 0 }} disabled={busy} onClick={() => void act(() => rejectItem(item.id), "Diabaikan")}>Abaikan</Btn></div>
+    </> : <>
+      <div className="dpx-rev-main">
+        <CatIcon cat={cat} size={48} />
+        <div className="dpx-rev-text"><b className="dpx-rev-title">{note || channel}</b><span className="dpx-sub">{cat.name} · {accName(state, accountId)}{p.at ? ` · ${new Date(p.at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}` : ""}</span></div>
+        <b className={`dpx-rev-amt ${kind === "in" ? "dpx-in" : ""}`}>{kind === "in" ? "+" : "−"}{rupiah(Number(amount))}</b>
+      </div>
+      {item.reason === "learning" ? null : null}
+      <AnimatePresence initial={false}>{edit ? <motion.div className="dpx-rev-edit" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }}>
+        <div className="dpx-inline-seg" role="group" aria-label="Jenis">{(["out", "in"] as const).map((k) => <Btn key={k} type="button" className={kind === k ? "dpx-on" : ""} aria-pressed={kind === k} onClick={() => { setKind(k); setCategoryId(k === "in" ? "bonus" : "lainnya"); }}>{k === "out" ? "Pengeluaran" : "Pemasukan"}</Btn>)}</div>
+        <MoneyInput value={amount} onChange={setAmount} label="Nominal" />
+        <div className="dpx-input" style={{ marginTop: 8 }}><input aria-label="Catatan" value={note} maxLength={60} onChange={(e) => setNote(e.target.value)} placeholder="Catatan" /></div>
+        <div className="dpx-glabel" style={{ margin: "12px 2px 6px" }}>Kategori</div>
+        <div className="dpx-chips2">{cats.map((c) => <Btn key={c.id} type="button" className={`dpx-chip3 ${categoryId === c.id ? "dpx-on" : ""}`} onClick={() => setCategoryId(c.id)}>{c.name}</Btn>)}</div>
+        <div className="dpx-glabel" style={{ margin: "12px 2px 6px" }}>Dompet</div>
+        <div className="dpx-chips2">{accounts.map((a) => <Btn key={a.id} type="button" className={`dpx-chip3 ${accountId === a.id ? "dpx-on" : ""}`} onClick={() => setAccountId(a.id)}>{a.name}</Btn>)}{!accounts.some((a) => a.id === accountId) ? <Btn type="button" className="dpx-chip3 dpx-on">{p.issuer ?? channel}{p.accountHint ? ` ••${p.accountHint}` : ""}</Btn> : null}</div>
+      </motion.div> : null}</AnimatePresence>
+      <div className="dpx-rev-act">
+        <Btn type="button" className="dpx-btn" style={{ margin: 0 }} disabled={busy || !(Number(amount) > 0)} onClick={() => void approve()}>Setuju</Btn>
+        <Btn type="button" className="dpx-btn dpx-ghost" style={{ margin: 0 }} disabled={busy} onClick={() => setEdit((v) => !v)} aria-expanded={edit}>{edit ? "Tutup" : "Ubah"}</Btn>
+        <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} disabled={busy} onClick={() => void act(() => rejectItem(item.id), "Diabaikan")}>Abaikan</Btn>
+      </div>
+    </>}
+  </motion.div>;
+}
+
+export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; onBack: () => void; onOpenIntegrations: () => void }) {
+  const [items, setItems] = useState<ReviewItem[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [bulk, setBulk] = useState(false);
+  const load = useCallback(async () => { try { setItems((await getReview()).items); setFailed(false); } catch { setFailed(true); } }, []);
+  useEffect(() => { void load(); }, [load]);
+  const sure = useMemo(() => (items ?? []).filter((i) => i.status === "review" && (i.parsed.amount ?? 0) > 0 && i.confidence >= 0.8 && (i.parsed.categoryId ?? "lainnya") !== "lainnya"), [items]);
+  const approveSure = async () => {
+    setBulk(true);
+    let ok = 0;
+    for (const i of sure) { try { await approveItem(i.id, {}); ok++; } catch { /* keep going */ } }
+    await ctx.fin.retrySync(); await load(); setBulk(false);
+    ctx.notify(`${ok} catatan disetujui`);
+  };
+  return <div className="dpx-page"><Sky><div className="dpx-pad dpx-nobar">
+    <Header title="Perlu ditinjau" onBack={onBack} right={<Btn type="button" className="dpx-rb" onClick={onOpenIntegrations} aria-label="Pengaturan integrasi"><Ic n="grid" /></Btn>} />
+    <p className="dpx-sub" style={{ margin: "2px 4px 12px" }}>Catatan dari email pembayaran. Setelah sepuluh kamu setujui, email yang jelas dicatat otomatis.</p>
+    {sure.length > 1 ? <Btn type="button" className="dpx-btn dpx-ghost" style={{ marginTop: 0 }} disabled={bulk} onClick={() => void approveSure()}><Ic n="check" size="sm" /> {bulk ? "Menyetujui…" : `Setujui ${sure.length} yang yakin`}</Btn> : null}
+    {items === null && !failed ? <div className="dpx-sub dpx-center" style={{ padding: 40 }}>Memuat…</div> : null}
+    {failed ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div><b>Antrean belum bisa dimuat.</b><div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-sm" onClick={() => void load()}>Coba lagi</Btn></div></div></div> : null}
+    <div className="dpx-revlist"><AnimatePresence initial={false}>{(items ?? []).map((it) => <ReviewCard key={it.id} item={it} ctx={ctx} onDone={() => void load()} />)}</AnimatePresence></div>
+    {items && !items.length ? <div className="dpx-empty" style={{ paddingTop: 48 }}><Ic n="check" size="lg" /><b>Semua sudah ditinjau</b><p>Notifikasi pembayaran berikutnya muncul di sini bila perlu dicek.</p><Btn type="button" className="dpx-btn dpx-ghost" style={{ maxWidth: 260 }} onClick={onOpenIntegrations}>Atur email pembayaran</Btn></div> : null}
+  </div></Sky></div>;
+}
+
+export type { IconName };

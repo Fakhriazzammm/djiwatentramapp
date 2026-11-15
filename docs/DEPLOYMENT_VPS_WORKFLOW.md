@@ -320,3 +320,14 @@ Backend catatan keuangan Djiwa Pay: Postgres Helipod (project `djiwatentram`, sc
 - Foto struk: `/var/lib/djiwapay-api/receipts/<user>/<id>.jpg` (bukan di Postgres).
 - Deploy/migrasi: `scripts/deploy-djiwapay-api.sh` (rsync + `bun src/migrate.ts` + restart + cek health). Dependensi di-install di Mac karena mirror npm VPS tidak andal.
 - Rencana dan keputusan: `docs/superpowers/plans/2026-11-15-djiwapay-finance-backend.md`.
+
+### Integrasi Djiwa Pay: email pembayaran dan Google
+
+Rencana: `docs/superpowers/plans/2026-11-15-djiwapay-google-integrations.md`. Migrasi `0003_integrations.sql`.
+
+- **Penerima email** `djiwapay-mail.service` (SMTP, port 25, `User=ubuntu` dengan `CAP_NET_BIND_SERVICE`) menerima `<token>@catat.djiwapay.web.id` (satu alamat per pengguna, `finance.inbound_sources`). Berjalan di **Node** (`/usr/bin/node dist/mail.mjs`): STARTTLS gagal di bawah Bun. `deploy-djiwapay-api.sh` membangun bundel `dist/mail.mjs` di Mac. Node 18 di VPS butuh `src/polyfill.ts` (global `File`).
+- **DNS** (Helipod, domain `djiwapay.web.id`): `catat` A -> `43.173.20.62`, `catat` MX `10 catat.djiwapay.web.id`. Gunakan `update_dns_record`, bukan `set_dns_records` (yang menimpa semua).
+- **TLS**: Let's Encrypt via webroot (`/etc/nginx/sites-enabled/catat-acme.conf`, `/var/www/certbot`). Hook `/etc/letsencrypt/renewal-hooks/deploy/djiwapay-mail.sh` menyalin sertifikat ke `/etc/djiwapay-mail/` dan restart service. Port 25 terbuka dari internet (diuji dari 3 negara); jaringan rumah dan VPS Travel memblokir koneksi keluar port 25, jadi jangan uji dari sana.
+- **Keamanan email**: hanya domain pengirim di allowlist `src/mail/extract.ts` (ISSUERS), harus lolos DMARC atau DKIM selaras, OTP/PIN dibuang tanpa disimpan, isi email tidak disimpan (hanya judul terpotong dan field hasil baca). Pengguna baru: semua masuk antrean tinjau sampai 10 disetujui.
+- **Env tambahan** di `/etc/djiwatentramapp/djiwapay-api.env`: `MAIL_DOMAIN`, `GOOGLE_TOKEN_KEY` (32 byte base64, enkripsi token). Google aktif setelah `GOOGLE_CLIENT_ID` dan `GOOGLE_CLIENT_SECRET` dipasang (client OAuth khusus Pay; redirect URI `https://djiwapay.web.id/api/finance/google/callback`). Tanpa itu, UI menandai Calendar/Drive/Sheets "Segera".
+- Tes terhadap Postgres sungguhan (`*.int.test.ts`) dijalankan di VPS dengan env service; tes itu memakai user id acak dan membersihkan diri.
