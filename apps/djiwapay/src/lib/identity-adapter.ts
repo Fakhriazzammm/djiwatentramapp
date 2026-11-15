@@ -1,7 +1,11 @@
 import { createAuthClient } from "better-auth/react";
 
-export const CUSTOMER_AUTH_BASE = "https://api.djiwatentram.web.id/v1/auth";
-export const BRIDGE_START = "https://api.djiwatentram.web.id/v1/customer/pay-bridge/start";
+// Auth goes through this app's own origin (Nginx proxies /api/auth and
+// /api/customer/pay-bridge to the central auth server), so the browser never sees
+// another host and the session cookie stays first-party.
+const PAY_ORIGIN = typeof window !== "undefined" && /^https?:/.test(window.location.origin) ? window.location.origin : "https://djiwapay.web.id";
+export const CUSTOMER_AUTH_BASE = `${PAY_ORIGIN}/api/auth`;
+export const BRIDGE_START = `${PAY_ORIGIN}/api/customer/pay-bridge/start`;
 export const authClient = createAuthClient({ baseURL: CUSTOMER_AUTH_BASE, fetchOptions: { credentials: "include" } });
 export function buildGoogleSignInOptions(callbackURL: string) {
   return {
@@ -17,6 +21,18 @@ export function cleanAuthCallbackURL(value: string) {
   url.searchParams.delete("error_description");
   url.searchParams.delete("error_uri");
   return url.toString();
+}
+// Starts Google sign-in without leaving Djiwa Pay's own domain; the callback
+// returns here with ?sso=1 so resolveIdentity trades the session for a Pay cookie.
+export async function signInWithGoogle(currentUrl = window.location.href) {
+  const returnTo = new URL(currentUrl);
+  returnTo.search = "";
+  returnTo.hash = "";
+  returnTo.searchParams.set("sso", "1");
+  const result = await authClient.signIn.social(buildGoogleSignInOptions(returnTo.toString()));
+  const url = result.data?.url;
+  if (!url) throw new Error(result.error?.message || "Gagal memulai masuk dengan Google");
+  window.location.assign(url);
 }
 export function buildCustomerAuthUrl(currentUrl = window.location.href) {
   const returnTo = new URL(currentUrl);

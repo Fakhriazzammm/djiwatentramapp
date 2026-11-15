@@ -26,8 +26,8 @@ describe("Djiwa Pay Google auth", () => {
     expect(shouldResumePayBridge("https://djiwapay.web.id/alice/wallet")).toBe(false);
   });
 
-  test("uses the same public v1 auth and customer contracts as Djiwa Tentram", () => {
-    expect(CUSTOMER_AUTH_BASE).toBe("https://api.djiwatentram.web.id/v1/auth");
-    expect(BRIDGE_START).toBe("https://api.djiwatentram.web.id/v1/customer/pay-bridge/start");
+  test("talks to auth through its own same-origin proxy", () => {
+    expect(CUSTOMER_AUTH_BASE).toBe("https://djiwapay.web.id/api/auth");
+    expect(BRIDGE_START).toBe("https://djiwapay.web.id/api/customer/pay-bridge/start");
   });
 });

@@ -8,6 +8,7 @@ export const customerAuthBaseUrl = {
 	allowedHosts: [
 		"djiwatentram.web.id",
 		"*.djiwatentram.web.id",
+		"djiwapay.web.id",
 		"*.yumme.id",
 		"djiwatravel.com",
 		"www.djiwatravel.com",
