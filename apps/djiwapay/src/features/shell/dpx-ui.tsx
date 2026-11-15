@@ -105,8 +105,16 @@ export function Header({ title, onBack, right, left }: { title?: string; onBack?
   </div>;
 }
 
-export function Sky({ children, deep = false }: { children: ReactNode; deep?: boolean }) {
-  return <div className={`dpx-sky ${deep ? "dpx-deep" : ""}`}><div className="dpx-clouds" aria-hidden="true"><i /><i /><i /></div>{children}</div>;
+export type DayPart = "pagi" | "siang" | "sore" | "malam";
+const SCENES: DayPart[] = ["pagi", "siang", "sore", "malam"];
+
+export function Sky({ children, deep = false, scene }: { children: ReactNode; deep?: boolean; scene?: DayPart }) {
+  return <div className={`dpx-sky ${deep ? "dpx-deep" : ""} ${scene ? "dpx-scened" : ""} ${scene === "malam" ? "dpx-night" : ""}`}>
+    {scene
+      ? <div className="dpx-scene" aria-hidden="true">{SCENES.map((name) => <img key={name} src={`/bg/${name}.webp`} alt="" decoding="async" className={name === scene ? "on" : ""} />)}</div>
+      : <div className="dpx-clouds" aria-hidden="true"><i /><i /><i /></div>}
+    {children}
+  </div>;
 }
 
 export function Sheet({ title, onClose, children, label }: { title?: string; onClose: () => void; children: ReactNode; label?: string }) {

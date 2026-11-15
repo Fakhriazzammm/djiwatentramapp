@@ -36,4 +36,8 @@ export function greeting(now = new Date()) {
   const h = now.getHours();
   return h < 11 ? "Selamat pagi" : h < 15 ? "Selamat siang" : h < 18 ? "Selamat sore" : "Selamat malam";
 }
+export function daypart(now = new Date()): "pagi" | "siang" | "sore" | "malam" {
+  const h = now.getHours();
+  return h >= 5 && h < 11 ? "pagi" : h >= 11 && h < 15 ? "siang" : h >= 15 && h < 18 ? "sore" : "malam";
+}
 export const firstName = (name: string | null | undefined, email?: string | null) => (name || email || "Teman").trim().split(/[\s@]/)[0] || "Teman";

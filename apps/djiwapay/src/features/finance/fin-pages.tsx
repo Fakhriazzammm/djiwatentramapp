@@ -6,7 +6,7 @@ import { AccountEditSheet, AccountSheet, BudgetSheet, CatIcon, CategoryEditSheet
 import { accountBalance, budgetStatuses, buildInsights, dailySpend, daysIn, debtTotals, detectSubscriptions, goalProjection, goalSaved, inMonth, monthlySeries, safeToSpend, spendByCategory, streak, toCsv, totals, uid } from "../../lib/finance/calc";
 import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
 import { emptyState, normalize } from "../../lib/finance/store";
-import { dayLabel, firstName, formatTime, greeting, rupiah } from "../../lib/djiwa-pay-format";
+import { dayLabel, daypart, firstName, formatTime, greeting, rupiah } from "../../lib/djiwa-pay-format";
 import { heatLevel, monthLabel } from "../../lib/djiwa-pay-summary";
 import type { Entry, FinanceState, Kind } from "../../lib/finance/types";
 import { ReviewChip, useInbound } from "../integrations/integrations-pages";
@@ -90,17 +90,17 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
   const remaining = t.in - t.out;
   const showIncomeBased = t.in > 0;
   const trend = pt.out > 0 ? Math.round(((t.out - pt.out) / pt.out) * 100) : null;
-  return <div className="dpx-page"><Sky><div className="dpx-pad">
+  return <div className="dpx-page"><Sky scene={daypart(now)}><div className="dpx-pad">
     <div className="dpx-hdr" style={{ paddingTop: 0 }}>
       <Btn type="button" className="dpx-av" onClick={() => nav.go("/akun")} aria-label="Akun saya">{firstName(profile.name, profile.email)[0]?.toUpperCase()}</Btn><div className="dpx-grow" />
       <Btn type="button" className="dpx-pill-info" onClick={() => ctx.open({ k: "streak" })} aria-label={`Streak ${st.count} hari`}><Ic n="flame" size="sm" /> {st.count}</Btn>
       <Btn type="button" className="dpx-rb" onClick={ctx.onOpenNotifications} aria-label={`Notifikasi${ctx.unread ? `, ${ctx.unread} belum dibaca` : ""}`}><Wiggle active={ctx.unread > 0}><Ic n="bell" /></Wiggle>{ctx.unread ? <span className="dpx-bd">{ctx.unread > 9 ? "9+" : ctx.unread}</span> : null}</Btn>
     </div>
-    <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.05 }} className="dpx-title" style={{ fontSize: 24, letterSpacing: "-.035em", marginTop: 6 }}>{greeting(now)}, {firstName(profile.name, profile.email)}.</motion.h1>
-    <div className="dpx-flex dpx-mt8" style={{ color: "var(--mute)", font: "600 13px var(--font)" }}>{showIncomeBased ? "Sisa uang bulan ini" : "Pengeluaran bulan ini"}
+    <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.05 }} className="dpx-title dpx-onsky" style={{ fontSize: 24, letterSpacing: "-.035em", marginTop: 6 }}>{greeting(now)}, {firstName(profile.name, profile.email)}.</motion.h1>
+    <div className="dpx-flex dpx-mt8 dpx-onsky" style={{ color: "var(--mute)", font: "600 13px var(--font)" }}>{showIncomeBased ? "Sisa uang bulan ini" : "Pengeluaran bulan ini"}
       <Btn type="button" onClick={ctx.onToggleVisible} aria-label={ctx.visible ? "Sembunyikan angka" : "Tampilkan angka"} aria-pressed={!ctx.visible}><IconSwap k={ctx.visible ? "eye" : "eyeoff"}><Ic n={ctx.visible ? "eye" : "eyeoff"} size="sm" /></IconSwap></Btn></div>
-    <div style={{ marginTop: 6 }}><span className="dpx-display" style={{ fontSize: 40 }}><small>Rp</small>{ctx.visible ? <>{showIncomeBased && remaining < 0 ? "−" : ""}<AnimatedNumber value={Math.abs(showIncomeBased ? remaining : t.out)} /></> : "•••••••"}</span></div>
-    {trend !== null && trend !== 0 ? <div className="dpx-sub dpx-mt8" style={{ fontSize: 14 }}>Pengeluaran <b style={{ color: trend < 0 ? "var(--ok)" : "var(--danger)" }}>{trend < 0 ? "turun" : "naik"} {Math.abs(trend)}%</b> dibanding bulan lalu</div> : null}
+    <div className="dpx-onsky" style={{ marginTop: 6 }}><span className="dpx-display" style={{ fontSize: 40 }}><small>Rp</small>{ctx.visible ? <>{showIncomeBased && remaining < 0 ? "−" : ""}<AnimatedNumber value={Math.abs(showIncomeBased ? remaining : t.out)} /></> : "•••••••"}</span></div>
+    {trend !== null && trend !== 0 ? <div className="dpx-sub dpx-mt8 dpx-onsky" style={{ fontSize: 14 }}>Pengeluaran <b style={{ color: trend < 0 ? "var(--ok)" : "var(--danger)" }}>{trend < 0 ? "turun" : "naik"} {Math.abs(trend)}%</b> dibanding bulan lalu</div> : null}
 
     <ReviewChip count={inbound.data?.review ?? 0} onOpen={() => nav.go("/tinjau")} />
     <Reveal i={1}>{empty && !safe ? <div className="dpx-hero-day"><I3 name="sales-report" px={110} style={{ position: "absolute", right: -6, top: -6 }} /><div className="dpx-sub">Belum ada catatan</div><div className="dpx-title" style={{ marginTop: 2, maxWidth: 200 }}>Mulai dari satu catatan.</div><div className="dpx-sub" style={{ marginTop: 6, maxWidth: 210 }}>Tulis “kopi 25rb” atau atur anggaran agar kami hitung sisa uang harianmu.</div><Btn type="button" className="dpx-btn dpx-sm" style={{ marginTop: 14 }} onClick={() => ctx.open({ k: "catat" })}><Ic n="plus" size="sm" /> Catat pertama</Btn></div>
