@@ -1,6 +1,7 @@
 import { animate, AnimatePresence, motion, useMotionValue, useReducedMotion } from "framer-motion";
 import { Loader2, Minus, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { CheckoutHeader, CheckoutPage, PaymentMethodCard } from "@djiwaapps/djiwa-checkout-ui";
 import { Djiwa3DIcon } from "@djiwaapps/web-shared";
 import { cn } from "@/lib/utils";
 import { GhostButton, PrimaryButton, Rise, SPRING, StepScreen, StepTitle, tap } from "@/components/order-flow/step-parts";
@@ -153,7 +154,9 @@ function CheckoutView(props: CheckoutSectionProps) {
 	const actionDisabled = isReview ? !props.onContinueToPayment || props.canPay === false : props.isSubmitting || props.canPay === false;
 
 	return (
+		<CheckoutPage className="contents">
 		<StepScreen label={isReview ? "Review pesanan" : "Pembayaran"} className="pb-0">
+			<CheckoutHeader className="sr-only" step={isReview ? 4 : 5} totalSteps={5} eyebrow={isReview ? "Review pesanan" : "Pembayaran"} title={isReview ? "Periksa dan edit pesanan" : "Pilih metode pembayaran"} />
 			<StepTitle center={false} title={isReview ? "Review pesanan" : "Pilih pembayaran"} lead={isReview ? `${totalItems} item · periksa dan ubah bila perlu` : "Pilih cara bayar yang paling mudah untukmu."} />
 
 			{isReview ? (
@@ -202,7 +205,7 @@ function CheckoutView(props: CheckoutSectionProps) {
 				<Rise className="mt-1">
 					<div className="space-y-2.5" role="radiogroup" aria-label="Metode pembayaran">
 						{props.paymentOptions.map((option) => (
-							<PaymentCard key={option.key} option={option} selected={props.paymentChoice === option.key} insufficient={option.key === "wallet" && props.walletBalance < props.total} balance={props.walletBalance} total={props.total} onSelect={() => props.setPaymentChoice(option.key)} onTopup={props.onTopup} />
+							<PaymentMethodCard key={option.key}><PaymentCard option={option} selected={props.paymentChoice === option.key} insufficient={option.key === "wallet" && props.walletBalance < props.total} balance={props.walletBalance} total={props.total} onSelect={() => props.setPaymentChoice(option.key)} onTopup={props.onTopup} /></PaymentMethodCard>
 						))}
 					</div>
 				</Rise>
@@ -229,6 +232,7 @@ function CheckoutView(props: CheckoutSectionProps) {
 				<div className="mt-2"><GhostButton onClick={props.onBackToMenu}>{isReview ? "Kembali ke menu" : "Kembali"}</GhostButton></div>
 			</div>
 		</StepScreen>
+		</CheckoutPage>
 	);
 }
 
