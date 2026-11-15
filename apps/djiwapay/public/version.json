@@ -1,7 +1,7 @@
 {
   "version": "0.2.569",
-  "commitHash": "ae3583d",
-  "message": "docs(prototype): brand stays Djiwa Pay (drop 'Catat' as a product name)",
+  "commitHash": "47cd683",
+  "message": "fix(djiwapay): redesign scan-receipt entry in Catat sheet",
   "buildDate": "2026-11-14",
-  "generatedAt": "2026-11-14T17:58:43.795Z"
+  "generatedAt": "2026-11-14T19:02:08.140Z"
 }

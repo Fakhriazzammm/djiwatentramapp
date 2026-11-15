@@ -2,15 +2,15 @@ import { normalize } from "./store";
 import type { FinanceState } from "./types";
 
 /** Local-first sync helpers. Pure: the network lives in use-finance. */
-export type Table = "accounts" | "categories" | "entries" | "budgets" | "goals" | "debts";
-export const TABLES: Table[] = ["accounts", "categories", "entries", "budgets", "goals", "debts"];
-const keyOf: Record<Table, (x: any) => string> = { accounts: (x) => x.id, categories: (x) => x.id, entries: (x) => x.id, budgets: (x) => x.categoryId, goals: (x) => x.id, debts: (x) => x.id };
+export type Table = "accounts" | "categories" | "entries" | "budgets" | "goals" | "debts" | "bills" | "assets";
+export const TABLES: Table[] = ["accounts", "categories", "entries", "budgets", "goals", "debts", "bills", "assets"];
+const keyOf: Record<Table, (x: any) => string> = { accounts: (x) => x.id, categories: (x) => x.id, entries: (x) => x.id, budgets: (x) => x.categoryId, goals: (x) => x.id, debts: (x) => x.id, bills: (x) => x.id, assets: (x) => x.id };
 
 export type Snapshot = Record<Table, Record<string, string>> & { profile: string };
-export type SyncBody = { upserts: Partial<Record<Table, unknown[]>>; deletes: Partial<Record<Table, string[]>>; profile?: { onboarded: boolean; overrides: FinanceState["overrides"] } };
+export type SyncBody = { upserts: Partial<Record<Table, unknown[]>>; deletes: Partial<Record<Table, string[]>>; profile?: { onboarded: boolean; overrides: FinanceState["overrides"]; pockets: FinanceState["pockets"] } };
 
-const profileOf = (s: FinanceState) => JSON.stringify([s.onboarded, s.overrides]);
-export const emptySnapshot = (): Snapshot => ({ accounts: {}, categories: {}, entries: {}, budgets: {}, goals: {}, debts: {}, profile: "" });
+const profileOf = (s: FinanceState) => JSON.stringify([s.onboarded, s.overrides, s.pockets]);
+export const emptySnapshot = (): Snapshot => ({ accounts: {}, categories: {}, entries: {}, budgets: {}, goals: {}, debts: {}, bills: {}, assets: {}, profile: "" });
 export function snapshotOf(state: FinanceState): Snapshot {
   const snap = emptySnapshot();
   for (const t of TABLES) for (const item of state[t] as unknown[]) snap[t][keyOf[t](item)] = JSON.stringify(item);
@@ -24,12 +24,12 @@ export function diffState(snap: Snapshot, state: FinanceState): SyncBody | null 
   let dirty = false;
   for (const t of TABLES) {
     const seen = new Set<string>(), up: unknown[] = [];
-    for (const item of state[t] as unknown[]) { const k = keyOf[t](item); seen.add(k); if (snap[t][k] !== JSON.stringify(item)) up.push(item); }
-    const del = Object.keys(snap[t]).filter((k) => !seen.has(k));
+    for (const item of state[t] as unknown[]) { const k = keyOf[t](item); seen.add(k); if ((snap[t] ?? {})[k] !== JSON.stringify(item)) up.push(item); }
+    const del = Object.keys(snap[t] ?? {}).filter((k) => !seen.has(k));
     if (up.length) { body.upserts[t] = up; dirty = true; }
     if (del.length) { body.deletes[t] = del; dirty = true; }
   }
-  if (snap.profile !== profileOf(state)) { body.profile = { onboarded: state.onboarded, overrides: state.overrides }; dirty = true; }
+  if (snap.profile !== profileOf(state)) { body.profile = { onboarded: state.onboarded, overrides: state.overrides, pockets: state.pockets }; dirty = true; }
   return dirty ? body : null;
 }
 
@@ -41,6 +41,7 @@ export function mergeStates(local: FinanceState, server: FinanceState): FinanceS
     accounts: union(local.accounts, server.accounts, (x) => x.id), categories: union(local.categories, server.categories, (x) => x.id),
     entries: union(local.entries, server.entries, (x) => x.id).sort((x, y) => Date.parse(y.at) - Date.parse(x.at)),
     budgets: union(local.budgets, server.budgets, (x) => x.categoryId), goals: union(local.goals, server.goals, (x) => x.id), debts: union(local.debts, server.debts, (x) => x.id),
+    bills: union(local.bills, server.bills, (x) => x.id), assets: union(local.assets, server.assets, (x) => x.id), pockets: server.pockets.length ? server.pockets : local.pockets,
     overrides: { ...local.overrides, ...server.overrides },
   });
 }

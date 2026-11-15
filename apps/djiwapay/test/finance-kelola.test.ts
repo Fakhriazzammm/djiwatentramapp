@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { afford, allocate, billsFor, DEFAULT_POCKETS, emergencyFund, forecast, healthScore, loan, monthKey, netWorth, zakatMaal } from "../src/lib/finance/kelola";
+import { payoffPlan, weeklyReview, afford, allocate, billsFor, DEFAULT_POCKETS, emergencyFund, forecast, healthScore, loan, monthKey, netWorth, zakatMaal } from "../src/lib/finance/kelola";
 import { emptyState, normalize, reduce } from "../src/lib/finance/store";
 import type { Bill, Entry } from "../src/lib/finance/types";
 
@@ -81,5 +81,20 @@ describe("pockets, wealth and store", () => {
     expect(s.bills[0].paid).toEqual(["2026-11"]);
     expect(normalize(JSON.parse(JSON.stringify(s))).bills).toHaveLength(1);
     expect(normalize({ v: 1 }).bills).toEqual([]);
+  });
+});
+
+describe("payoff and weekly review", () => {
+  test("snowball clears the smallest first and rolls over", () => {
+    const p = payoffPlan([{ person: "B", amount: 900_000 }, { person: "A", amount: 300_000 }], 400_000);
+    expect(p.order.map((d) => d.person)).toEqual(["A", "B"]);
+    expect(p.order[0].doneMonth).toBe(1); expect(p.months).toBe(3); expect(p.feasible).toBe(true);
+    expect(payoffPlan([{ person: "A", amount: 1 }], 0).feasible).toBe(false);
+  });
+  test("compares 7 days with the 7 before", () => {
+    const d = (n: number) => new Date(2026, 10, 15 - n, 9).toISOString();
+    const w = weeklyReview([entry({ amount: 100_000, at: d(1) }), entry({ amount: 50_000, at: d(2), categoryId: "transport" }), entry({ amount: 100_000, at: d(9) })], now);
+    expect(w).toMatchObject({ spent: 150_000, previous: 100_000, delta: 50, count: 2 });
+    expect(w.topCategory?.id).toBe("makan");
   });
 });

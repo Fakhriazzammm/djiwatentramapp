@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Btn, Ic, Seg, Sheet, type IconName } from "../shell/dpx-ui";
 import { MoneyInput, type Notify } from "../finance/fin-sheets";
 import { uid } from "../../lib/finance/calc";
-import { ASSET_KINDS, DEFAULT_POCKETS, monthKey } from "../../lib/finance/kelola";
+import { ASSET_KINDS, DEFAULT_POCKETS, monthKey, payoffPlan, weeklyReview } from "../../lib/finance/kelola";
 import { rupiah } from "../../lib/djiwa-pay-format";
-import type { Asset, Bill, Pocket } from "../../lib/finance/types";
+import type { Asset, Bill, Entry, Pocket } from "../../lib/finance/types";
 import type { Finance } from "../../lib/finance/use-finance";
 
 const BILL_PRESETS: { name: string; icon: string; tone: string }[] = [
@@ -70,5 +70,27 @@ export function PocketRuleSheet({ fin, current, onClose, notify }: { fin: Financ
     <Seg id="rule" label="Pola" value={String(rule)} onChange={(v) => setRule(Number(v))} options={RULES.map(([l], i) => [String(i), l] as const)} />
     <div className="dpx-group dpx-mt">{DEFAULT_POCKETS.map((p, i) => <div key={p.id} className="dpx-flex" style={{ justifyContent: "space-between", padding: "5px 0" }}><b>{p.name}</b><span>{RULES[rule][1][i]}%</span></div>)}</div>
     <Btn type="button" className="dpx-btn" onClick={apply}>Terapkan</Btn>
+  </Sheet>;
+}
+
+export function PayoffSheet({ debts, onClose }: { debts: { person: string; amount: number }[]; onClose: () => void }) {
+  const total = debts.reduce((s, d) => s + d.amount, 0);
+  const [monthly, setMonthly] = useState(String(Math.max(100_000, Math.round(total / 12 / 50_000) * 50_000)));
+  const plan = payoffPlan(debts, Number(monthly) || 0);
+  return <Sheet title="Rencana pelunasan" onClose={onClose}>
+    <p className="dpx-sub" style={{ marginBottom: 8 }}>Metode bola salju: lunasi hutang terkecil dulu, lalu sisanya mengalir ke berikutnya.</p>
+    <label className="dpx-field" style={{ marginTop: 0 }}><span>Bayar per bulan</span><MoneyInput value={monthly} onChange={setMonthly} /></label>
+    <div className="dpx-group dpx-center dpx-mt"><div className="dpx-sub">Bebas hutang dalam</div><div className="dpx-money">{plan.feasible ? `${plan.months} bulan` : plan.order.length ? "Naikkan cicilan" : "Tidak ada hutang"}</div></div>
+    {plan.order.length ? <div className="dpx-group dpx-flush dpx-white dpx-mt">{plan.order.map((d, i) => <div key={d.person} className="dpx-row"><span className="dpx-ico">{i + 1}</span><span className="dpx-main"><b>{d.person}</b><span>{rupiah(d.total)}</span></span><span className="dpx-trail">{d.doneMonth ? <span className="dpx-tag dpx-ok">Lunas bulan {d.doneMonth}</span> : <span className="dpx-tag">Belum</span>}</span></div>)}</div> : null}
+    <Btn type="button" className="dpx-btn dpx-soft" onClick={onClose}>Tutup</Btn>
+  </Sheet>;
+}
+
+export function WeeklySheet({ entries, categoryName, onClose }: { entries: Entry[]; categoryName: (id: string) => string; onClose: () => void }) {
+  const w = weeklyReview(entries);
+  return <Sheet title="Review mingguan" onClose={onClose}>
+    <div className="dpx-kpi"><div className="dpx-group"><small>7 hari ini</small><b>{rupiah(w.spent)}</b></div><div className="dpx-group"><small>7 hari sebelumnya</small><b>{rupiah(w.previous)}</b></div></div>
+    <div className={`dpx-note ${w.delta !== null && w.delta > 0 ? "dpx-danger" : "dpx-info"}`} style={{ marginTop: 10 }}><Ic n={w.delta !== null && w.delta > 0 ? "warn" : "spark"} /><div><b>{w.delta === null ? "Belum ada pembanding minggu lalu." : w.delta > 0 ? `Belanja naik ${w.delta}% dari minggu lalu.` : w.delta < 0 ? `Belanja turun ${Math.abs(w.delta)}% dari minggu lalu. Bagus.` : "Belanja sama dengan minggu lalu."}</b>{w.topCategory ? <div>Terbesar: {categoryName(w.topCategory.id)} ({rupiah(w.topCategory.amount)}) dari {w.count} transaksi.</div> : null}</div></div>
+    <Btn type="button" className="dpx-btn" onClick={onClose}>Mengerti</Btn>
   </Sheet>;
 }

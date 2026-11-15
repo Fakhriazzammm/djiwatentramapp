@@ -46,4 +46,11 @@ describe("receiptToEntries", () => {
     expect(out.find((x) => x.categoryId === "belanja")!.amount).toBe(106000); expect(out[0].note).toContain("Alfamart");
   });
   it("ignores empty receipts", () => { expect(receiptToEntries({ ...base, items: [], mode: "one" })).toEqual([]); });
+  it("syncs bills, assets and pockets and survives an old snapshot", () => {
+    let s = emptyState();
+    const old = snapshotOf(s) as any; delete old.bills; delete old.assets;
+    s = { ...s, bills: [{ id: "b", name: "PLN", amount: 1000, day: 3, icon: "flash", tone: "amber", paid: [] }], assets: [{ id: "a", name: "Emas", kind: "gold", value: 5 }], pockets: [{ id: "p", name: "K", percent: 50, categoryIds: [], tone: "blue", icon: "home" }] };
+    const d = diffState(old, s)!;
+    expect(d.upserts.bills).toHaveLength(1); expect(d.upserts.assets).toHaveLength(1); expect(d.profile!.pockets).toHaveLength(1);
+  });
 });

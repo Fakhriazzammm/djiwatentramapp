@@ -11,7 +11,7 @@ import { heatLevel, monthLabel } from "../../lib/djiwa-pay-summary";
 import type { Entry, FinanceState, Kind } from "../../lib/finance/types";
 import type { Finance } from "../../lib/finance/use-finance";
 import { KelolaHome, PocketsPanel, WealthExtras, useCash } from "../kelola/kelola-pages";
-import { AssetSheet, BillPaySheet, BillSheet, PocketRuleSheet } from "../kelola/kelola-sheets";
+import { AssetSheet, BillPaySheet, BillSheet, PayoffSheet, PocketRuleSheet, WeeklySheet } from "../kelola/kelola-sheets";
 import { netWorth, pocketsOf } from "../../lib/finance/kelola";
 import type { CustomerProfile } from "../../lib/identity-adapter";
 import type { WalletTransaction } from "../../lib/wallet-adapter";
@@ -19,7 +19,7 @@ import type { WalletTransaction } from "../../lib/wallet-adapter";
 export type FinSheet =
   | { k: "catat" } | { k: "entry"; id: string } | { k: "budget"; cid?: string } | { k: "goal"; id?: string } | { k: "goal-detail"; id: string }
   | { k: "debt"; id?: string } | { k: "split" } | { k: "streak" } | { k: "account"; id?: string } | { k: "category"; id?: string } | { k: "pay-category"; id: string }
-  | { k: "bill"; id?: string } | { k: "bill-pay"; id: string } | { k: "asset"; id?: string } | { k: "pockets" };
+  | { k: "bill"; id?: string } | { k: "bill-pay"; id: string } | { k: "asset"; id?: string } | { k: "pockets" } | { k: "payoff" } | { k: "weekly" };
 
 export type FinCtx = {
   fin: Finance; notify: Notify; nav: Nav; profile: CustomerProfile; transactions: WalletTransaction[]; payBalance: number; loading: boolean;
@@ -233,6 +233,7 @@ export function FinBudget({ ctx }: { ctx: FinCtx }) {
           <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => ctx.open({ k: "goal" })}><Ic n="plus" size="sm" /> Tujuan baru</Btn></>}
     </> : <>
       <div className="dpx-kpi"><div className="dpx-group dpx-white"><small>Orang berutang padamu</small><b className="dpx-up">{rupiah(dt.owedToMe)}</b></div><div className="dpx-group dpx-white"><small>Kamu berutang</small><b className="dpx-dn">{rupiah(dt.iOwe)}</b></div></div>
+      {dt.iOwe > 0 ? <Btn type="button" className="dpx-group dpx-flex" style={{ width: "100%", marginTop: 8, textAlign: "left" }} onClick={() => ctx.open({ k: "payoff" })}><span className="dpx-cat dpx-c-rose"><Ic n="trend" /></span><span style={{ flex: 1 }}><b>Rencana pelunasan</b><div className="dpx-sub">Hitung kapan bebas hutang</div></span><Ic n="chev" size="sm" /></Btn> : null}
       <div className="dpx-glabel">Aktif <Btn type="button" onClick={() => ctx.open({ k: "debt" })}>+ Tambah</Btn></div>
       {state.debts.filter((d) => !d.settled).length === 0 ? <div className="dpx-group dpx-white dpx-center"><p className="dpx-sub" style={{ margin: 0 }}>Belum ada hutang atau piutang aktif.</p></div> :
         <div className="dpx-group dpx-flush dpx-white">{state.debts.filter((d) => !d.settled).map((d) => <Row key={d.id} icon={d.direction === "owed_to_me" ? "down" : "up"} tone={d.direction === "owed_to_me" ? "emerald" : "rose"} title={d.person} sub={`${d.direction === "owed_to_me" ? "Piutang" : "Hutang"}${d.note ? ` · ${d.note}` : ""}${d.due ? ` · jatuh tempo ${new Date(d.due).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}` : ""}`} trail={<b className={d.direction === "owed_to_me" ? "dpx-up" : "dpx-dn"}>{rupiah(d.amount)}</b>} onClick={() => ctx.open({ k: "debt", id: d.id })} />)}</div>}
@@ -363,6 +364,8 @@ export function FinSheetHost({ ctx, sheet, close, goManual, openPaySheet }: { ct
     case "bill-pay": { const b = state.bills.find((x) => x.id === sheet.id); return b ? <BillPaySheet key="billpay" fin={fin} bill={b} notify={notify} onClose={close} goPay={() => ctx.nav.go("/bayar")} accounts={[{ id: PAY_ACCOUNT_ID, name: "Djiwa Pay" }, ...state.accounts.filter((a) => !a.archived).map((a) => ({ id: a.id, name: a.name }))]} /> : null; }
     case "asset": return <AssetSheet key="asset" fin={fin} asset={state.assets.find((a) => a.id === sheet.id)} notify={notify} onClose={close} />;
     case "pockets": return <PocketRuleSheet key="pockets" fin={fin} current={pocketsOf(state)} notify={notify} onClose={close} />;
+    case "payoff": return <PayoffSheet key="payoff" debts={state.debts.filter((d) => !d.settled && d.direction === "i_owe")} onClose={close} />;
+    case "weekly": return <WeeklySheet key="weekly" entries={entries} categoryName={(id) => catOf(state, id).name} onClose={close} />;
     case "split": return <SplitSheet key="split" notify={notify} onClose={close} />;
     case "streak": return <StreakSheet key="streak" entries={entries} onClose={close} onCatat={() => ctx.open({ k: "catat" })} />;
     case "account": return <AccountEditSheet key="acc" fin={fin} account={state.accounts.find((a) => a.id === sheet.id)} notify={notify} onClose={close} />;

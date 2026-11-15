@@ -133,3 +133,27 @@ export function assetMix(state: FinanceState, cash: number) {
   const sum = parts.reduce((s, p) => s + p.value, 0) || 1;
   return parts.map((p) => ({ ...p, percent: (p.value / sum) * 100 }));
 }
+
+/* ---------- debt payoff ---------- */
+/** Pays the smallest balance first with a fixed monthly amount; freed money rolls into the next debt. */
+export function payoffPlan(debts: { person: string; amount: number }[], monthly: number) {
+  const order = [...debts].filter((d) => d.amount > 0).sort((a, b) => a.amount - b.amount).map((d) => ({ person: d.person, left: d.amount, total: d.amount, doneMonth: 0 }));
+  if (!order.length || monthly <= 0) return { order, months: 0, feasible: order.length === 0 };
+  let month = 0;
+  while (order.some((d) => d.left > 0) && month < 600) {
+    month += 1; let pool = monthly;
+    for (const d of order) { if (d.left <= 0) continue; const pay = Math.min(d.left, pool); d.left -= pay; pool -= pay; if (d.left <= 0 && !d.doneMonth) d.doneMonth = month; if (pool <= 0) break; }
+  }
+  return { order, months: month, feasible: order.every((d) => d.left <= 0) };
+}
+
+/* ---------- weekly review ---------- */
+export function weeklyReview(entries: Entry[], now = new Date()) {
+  const day = startOfDay(now).getTime(), wk = 7 * 86_400_000;
+  const within = (e: Entry, from: number, to: number) => { const t = new Date(e.at).getTime(); return e.kind === "out" && t >= from && t < to; };
+  const cur = entries.filter((e) => within(e, day - 6 * 86_400_000, day + 86_400_000)), prev = entries.filter((e) => within(e, day - 6 * 86_400_000 - wk, day - 6 * 86_400_000));
+  const sum = (l: Entry[]) => l.reduce((s, e) => s + e.amount, 0), c = sum(cur), p = sum(prev);
+  const byCat = new Map<string, number>(); for (const e of cur) byCat.set(e.categoryId, (byCat.get(e.categoryId) ?? 0) + e.amount);
+  const top = [...byCat.entries()].sort((a, b) => b[1] - a[1])[0];
+  return { spent: c, previous: p, delta: p > 0 ? Math.round(((c - p) / p) * 100) : null, topCategory: top ? { id: top[0], amount: top[1] } : null, count: cur.length };
+}

@@ -44,6 +44,7 @@ export function KelolaHome({ ctx }: { ctx: FinCtx }) {
       <div className="dpx-spread"><div><div className="dpx-sub">{bad ? `Kas diperkirakan habis tgl ${k.fc.runsOutDay}` : `Kas sampai akhir bulan`}</div><div className="dpx-money" style={{ color: k.fc.end < 0 ? "var(--danger)" : "var(--navy)" }}>{mask(ctx, rupiah(k.fc.end))}</div></div><span className={`dpx-tag ${bad ? "dpx-danger" : "dpx-ok"}`}>{bad ? "Defisit" : "Aman"}</span></div>
       <div style={{ marginTop: 6 }}><AreaChart points={k.fc.pts} height={64} color={bad ? "#d23a2a" : "#1a5dc6"} label="Prakiraan saldo sampai akhir bulan" /></div>
     </Btn></Reveal>
+    <Reveal i={4}><Btn type="button" className="dpx-group dpx-flex" style={{ width: "100%", textAlign: "left", marginTop: 10 }} onClick={() => ctx.open({ k: "weekly" })}><span className="dpx-cat dpx-c-emerald"><Ic n="spark" /></span><span style={{ flex: 1 }}><b>Review mingguan</b><div className="dpx-sub">Bandingkan belanja 7 hari ini dengan minggu lalu</div></span><Ic n="chev" size="sm" /></Btn></Reveal>
     <div className="dpx-sec"><h2>Tagihan terdekat</h2><Btn type="button" onClick={() => nav.go("/kalender")}>Kalender</Btn></div>
     {due.length ? <div className="dpx-group dpx-white">{due.map((v, i) => <motion.div key={v.bill.id} className="dpx-row" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: i * 0.05 }}>
       <span className={`dpx-cat dpx-c-${v.bill.tone}`}><Ic n={v.bill.icon as IconName} /></span><span className="dpx-main"><b>{v.bill.name}</b><span>{statusTag(v)}</span></span>

@@ -82,4 +82,11 @@ describe("applySync", () => {
     expect(log.some((l) => l.t.includes("finance.budgets"))).toBe(false);
     expect(log.find((l) => l.t.startsWith("delete from finance.entries"))!.p).toEqual(["u9", ["old"]]);
   });
+  test("writes bills, assets and pockets scoped to the user", async () => {
+    const { db, log } = fakeDb();
+    await applySync(db, "u9", { upserts: { bills: [{ id: "b1", name: "PLN", amount: 250000, day: 20, paid: ["2026-11"] }, { id: "x", name: "bad", amount: 0, day: 40 }], assets: [{ id: "a1", name: "Emas", kind: "gold", value: 100 }, { id: "a2", name: "?", kind: "nope", value: -5 }] }, profile: { pockets: [{ id: "p", name: "Kebutuhan", percent: 150, categoryIds: ["makan"] }] } });
+    const b = log.find((l) => l.t.startsWith("insert into finance.bills"))!; expect(b.p![0]).toBe("u9"); expect(JSON.parse(String(b.p![1]))).toHaveLength(1);
+    expect(JSON.parse(String(log.find((l) => l.t.startsWith("insert into finance.assets"))!.p![1]))).toHaveLength(1);
+    const prof = log.find((l) => l.t.startsWith("update finance.profiles"))!; expect(JSON.parse(String(prof.p![3]))[0].percent).toBe(100);
+  });
 });
