@@ -1,7 +1,7 @@
 // Real Postgres, simulated Google. Isolated user id, cleaned up afterwards. Skipped without DATABASE_URL.
 import { afterAll, describe, expect, test } from "bun:test";
 import { Pool } from "pg";
-import { disconnect, exportSheet, finishConnect, googleConfig, startConnect, status, syncCalendar, SCOPES } from "./google";
+import { disconnect, finishConnect, googleConfig, startConnect, status, syncCalendar, SCOPES } from "./google";
 
 const url = process.env.DATABASE_URL;
 const run = url ? describe : describe.skip;
@@ -57,18 +57,6 @@ run("google (real database, simulated Google)", () => {
     expect(c).toMatchObject({ ok: true, removed: 1 });
     expect(calls.some((x) => x.method === "DELETE")).toBe(true);
     expect((await status(db, cfg, user)).calendar.events).toBe(1);
-  });
-
-  test("the sheet is created once and rewritten on later exports", async () => {
-    await pool.query("insert into finance.entries(user_id,id,kind,amount,category_id,account_id,at,note,source) values($1,'e1','out',25000,'makan','tunai','2026-11-15T06:45:00Z','Kopi','manual')", [user]);
-    const a = await exportSheet(db, cfg, user, gfetch);
-    expect(a).toMatchObject({ ok: true, url: "https://docs.google.com/spreadsheets/d/sh-1", rows: 1 });
-    const creates = () => calls.filter((x) => x.url.endsWith("/v4/spreadsheets")).length;
-    expect(creates()).toBe(1);
-    await exportSheet(db, cfg, user, gfetch);
-    expect(creates()).toBe(1);
-    expect(calls.some((x) => x.url.includes("values:batchClear"))).toBe(true);
-    expect((await status(db, cfg, user)).sheet?.status).toBe("synced");
   });
 
   test("disconnecting revokes at Google and wipes every mapping", async () => {

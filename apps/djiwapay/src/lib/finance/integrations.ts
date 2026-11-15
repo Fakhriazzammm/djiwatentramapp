@@ -8,8 +8,8 @@ export type ReviewItem = {
 export type GoogleStatus = {
   configured: boolean; connected: boolean; email: string | null; features: { calendar: boolean; drive: boolean; gmail: boolean };
   gmail: { enabled: boolean; lastPolledAt: string | null; error: string | null; fetched: number } | null;
-  calendar: { events: number }; drive: { uploaded: number; failed: number };
-  sheet: { url: string | null; status: string; lastSyncedAt: string | null; error: string | null } | null;
+  calendar: { events: number }; drive: { uploaded: number; failed: number; hold: string | null; lastCheckedAt: string | null };
+  sheet: { url: string | null; status: string; lastSyncedAt: string | null; error: string | null; hold: string | null; pending: boolean; stats: Record<string, number> } | null;
 };
 export type GoogleFeature = "calendar" | "drive" | "gmail";
 
@@ -32,6 +32,8 @@ export const getOrigin = (id: string) => call<{ origin: Origin }>(`/inbound/${en
 
 export const getGoogle = () => call<GoogleStatus & { success: true }>("/google/status");
 export const connectGoogle = (features: GoogleFeature[]) => call<{ url: string }>("/google/connect", { method: "POST", body: JSON.stringify({ features }) });
+export const confirmSheetDeletes = () => call<object>("/google/sheets/confirm", { method: "POST" });
+export const confirmDriveRemovals = () => call<object>("/google/drive/confirm", { method: "POST" });
 export const pollGmailNow = () => call<object>("/google/gmail/poll", { method: "POST" });
 export const gmailOff = () => call<object>("/google/gmail/off", { method: "POST" });
 export const disconnectGoogle = () => call<object>("/google/disconnect", { method: "POST" });

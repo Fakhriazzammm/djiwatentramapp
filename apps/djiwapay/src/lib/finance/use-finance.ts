@@ -56,7 +56,9 @@ export function useFinance(profileId: string, transactions: WalletTransaction[])
     } catch { busy.current = false; setSync((s) => ({ ...s, status: "offline" })); }
   }, [profileId, push]);
 
-  useEffect(() => { void pull(); const onVisible = () => { if (document.visibilityState === "visible" && Date.now() - lastPull.current > 20_000) void pull(); }; document.addEventListener("visibilitychange", onVisible); return () => { document.removeEventListener("visibilitychange", onVisible); clearTimeout(timer.current); }; }, [pull]);
+  useEffect(() => { void pull(); const onVisible = () => { if (document.visibilityState === "visible" && Date.now() - lastPull.current > 20_000) void pull(); }; document.addEventListener("visibilitychange", onVisible); // Edits made in the user's Google Sheet arrive on the server; while the app is open, look for them every minute.
+    const poll = window.setInterval(() => { if (document.visibilityState === "visible" && Date.now() - lastPull.current > 55_000) void pull(); }, 60_000);
+    return () => { document.removeEventListener("visibilitychange", onVisible); window.clearInterval(poll); clearTimeout(timer.current); }; }, [pull]);
   useEffect(() => { if (!ready.current) return; clearTimeout(timer.current); timer.current = setTimeout(push, 1500); return () => clearTimeout(timer.current); }, [state, push]);
 
   const dispatch = useCallback((action: Action) => setState((current) => reduce(current, action)), []);

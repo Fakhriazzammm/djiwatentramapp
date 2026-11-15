@@ -1,5 +1,5 @@
 export type Kind = "out" | "in" | "tf";
-export type EntrySource = "manual" | "voice" | "pay" | "receipt" | "email";
+export type EntrySource = "manual" | "voice" | "pay" | "receipt" | "email" | "sheet";
 
 export type Entry = {
   id: string;

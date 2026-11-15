@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { billEvent, decrypt, encrypt, featuresFromScopes, googleConfig, nextDate, scopesFor, sheetRows, SCOPES } from "./google";
+import { billEvent, decrypt, encrypt, featuresFromScopes, googleConfig, nextDate, scopesFor, SCOPES } from "./google";
 
 describe("token encryption", () => {
   const key = Buffer.alloc(32, 7);
@@ -47,17 +47,5 @@ describe("calendar events for recurring bills", () => {
   });
   test("a day past the 28th falls on the last day of shorter months", () => {
     expect(billEvent({ id: "b", name: "x", amount: 1, day: 31 }, now).recurrence[0]).toContain("BYSETPOS=-1");
-  });
-});
-
-describe("sheet export", () => {
-  test("lays out entries in WIB with readable names and a monthly summary", () => {
-    const r = sheetRows([
-      { at: "2026-11-15T06:45:00Z", kind: "out", amount: "25000.00", category_id: "makan", account_id: "email-gopay", note: "Kopi Kenangan", source: "email" },
-      { at: "2026-11-01T00:30:00Z", kind: "in", amount: 5000000, category_id: "gaji", account_id: "tunai", note: "Gaji", source: "manual" },
-    ], { cat: { makan: "Makan & minum", gaji: "Gaji" }, acc: { "email-gopay": "GoPay", tunai: "Tunai" } });
-    expect(r.catatan[0]).toEqual(["Tanggal", "Jam", "Jenis", "Kategori", "Dompet", "Jumlah", "Catatan", "Sumber"]);
-    expect(r.catatan[1]).toEqual(["2026-11-15", "13:45", "Pengeluaran", "Makan & minum", "GoPay", 25000, "Kopi Kenangan", "Email"]);
-    expect(r.ringkasan[1]).toEqual(["2026-11", 5000000, 25000, 4975000]);
   });
 });

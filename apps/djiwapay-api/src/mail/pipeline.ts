@@ -37,7 +37,7 @@ export async function removeSource(db: Q, userId: string, wipe: boolean) {
 
 /* ---------------- helpers ---------------- */
 
-const bump = (q: Q, userId: string) => q.query("insert into finance.profiles(user_id) values($1) on conflict do nothing", [userId]).then(() => q.query("update finance.profiles set version=version+1, updated_at=now() where user_id=$1", [userId]));
+const bump = (q: Q, userId: string) => q.query("insert into finance.profiles(user_id) values($1) on conflict do nothing", [userId]).then(() => q.query("update finance.profiles set version=version+1, updated_at=now() where user_id=$1", [userId])).then(() => q.query("update finance.google_sheet_exports set dirty=true, next_sync_at=least(next_sync_at, now()+interval '8 seconds') where user_id=$1", [userId]));
 
 async function ensureAccount(q: Q, userId: string, issuer: Issuer, hint: string) {
   const id = `email-${issuer.id}${hint ? "-" + hint : ""}`;

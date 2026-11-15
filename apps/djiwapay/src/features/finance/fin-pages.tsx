@@ -9,7 +9,7 @@ import { emptyState, normalize } from "../../lib/finance/store";
 import { dayLabel, daypart, firstName, formatTime, greeting, rupiah } from "../../lib/djiwa-pay-format";
 import { heatLevel, monthLabel } from "../../lib/djiwa-pay-summary";
 import type { Entry, FinanceState, Kind } from "../../lib/finance/types";
-import { ReviewChip, useInbound } from "../integrations/integrations-pages";
+import { GoogleNudge, ReviewChip, useInbound } from "../integrations/integrations-pages";
 import type { Finance } from "../../lib/finance/use-finance";
 import { KelolaHome, PocketsPanel, WealthExtras, useCash } from "../kelola/kelola-pages";
 import { AssetSheet, BillPaySheet, BillSheet, PayoffSheet, PocketRuleSheet, WeeklySheet } from "../kelola/kelola-sheets";
@@ -29,7 +29,7 @@ export type FinCtx = {
 
 const COLORS: Record<string, string> = { orange: "#e8833a", blue: "#d14b1a", violet: "#eeb866", amber: "#d9a21a", rose: "#e0568a", indigo: "#e45825", cyan: "#16a3b8", emerald: "#1f9d62", slate: "#958a7d" };
 export const useBalances = (state: FinanceState, entries: Entry[], payBalance: number) => useMemo(() => { const m: Record<string, number> = {}; for (const a of state.accounts) m[a.id] = accountBalance(a, entries, payBalance); m[PAY_ACCOUNT_ID] = payBalance; return m; }, [state.accounts, entries, payBalance]);
-const sourceBadge = (s: Entry["source"]) => s === "voice" ? <span className="dpx-tx-badge">Suara</span> : s === "email" ? <span className="dpx-tx-badge">Email</span> : null;
+const sourceBadge = (s: Entry["source"]) => s === "voice" ? <span className="dpx-tx-badge">Suara</span> : s === "email" ? <span className="dpx-tx-badge">Email</span> : s === "sheet" ? <span className="dpx-tx-badge">Sheets</span> : null;
 
 export function EntryRow({ entry, state, onOpen, i = 0 }: { entry: Entry; state: FinanceState; onOpen: (id: string) => void; i?: number }) {
   const c = catOf(state, entry.categoryId);
@@ -103,6 +103,7 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
     {trend !== null && trend !== 0 ? <div className="dpx-sub dpx-mt8 dpx-onsky" style={{ fontSize: 14 }}>Pengeluaran <b style={{ color: trend < 0 ? "var(--ok)" : "var(--danger)" }}>{trend < 0 ? "turun" : "naik"} {Math.abs(trend)}%</b> dibanding bulan lalu</div> : null}
 
     <ReviewChip count={inbound.data?.review ?? 0} onOpen={() => nav.go("/tinjau")} />
+    <GoogleNudge onOpenIntegrations={() => nav.go("/integrasi")} />
     <MascotBuddy messages={[
       `Halo ${firstName(profile.name, profile.email)}! Ketuk aku kalau butuh tips.`,
       over ? "Anggaran bulan ini sudah terlampaui. Tahan belanja dulu ya." : safe ? `Aman dibelanjakan hari ini ${ctx.visible ? rupiah(safe.perDay) : "•••••"}.` : "Atur anggaran dulu, nanti aku hitung jatah harianmu.",

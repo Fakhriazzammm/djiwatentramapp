@@ -1,8 +1,6 @@
 /** One Google connection per Djiwa Pay user, shared by Calendar, Drive and Sheets.
  *  Tokens are AES-256-GCM encrypted in Postgres; the browser only ever gets the account e-mail and which features are on. */
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import type { Q } from "./sync.js";
 
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -80,7 +78,7 @@ export async function finishConnect(db: Q, cfg: GoogleCfg, code: string, state: 
 export async function disconnect(db: Q, cfg: GoogleCfg | null, userId: string, f: Fetch = fetch) {
   const row = (await db.query("select refresh_enc from finance.google_connections where user_id=$1", [userId])).rows[0];
   if (row?.refresh_enc && cfg) { try { await f(REVOKE_URL, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ token: decrypt(cfg.key, row.refresh_enc) }) }); } catch { /* revoking is best effort */ } }
-  for (const t of ["google_connections", "google_calendar_events", "google_drive_files", "google_sheet_exports", "gmail_sync", "gmail_seen"]) await db.query(`delete from finance.${t} where user_id=$1`, [userId]);
+  for (const t of ["google_connections", "google_calendar_events", "google_drive_files", "google_sheet_exports", "gmail_sync", "gmail_seen", "sheet_rows", "google_drive_state"]) await db.query(`delete from finance.${t} where user_id=$1`, [userId]);
 }
 
 export async function status(db: Q, cfg: GoogleCfg | null, userId: string) {
@@ -91,15 +89,16 @@ export async function status(db: Q, cfg: GoogleCfg | null, userId: string) {
   const [ev, dr, sh] = connected ? await Promise.all([
     db.query("select count(*)::int n from finance.google_calendar_events where user_id=$1", [userId]),
     db.query("select status,count(*)::int n from finance.google_drive_files where user_id=$1 group by status", [userId]),
-    db.query("select spreadsheet_url,status,last_synced_at,last_error from finance.google_sheet_exports where user_id=$1", [userId]),
+    db.query("select spreadsheet_url,status,last_synced_at,last_error,hold,last_stats,dirty from finance.google_sheet_exports where user_id=$1", [userId]),
   ]) : [null, null, null];
   const drive = Object.fromEntries((dr?.rows ?? []).map((r) => [r.status, Number(r.n)]));
+  const dh = connected ? (await db.query("select hold,last_error,last_checked_at from finance.google_drive_state where user_id=$1", [userId])).rows[0] : null;
   return {
     configured: Boolean(cfg), connected, email: connected ? c.email ?? null : null, features,
     gmail: gm ? { enabled: Boolean(gm.enabled), lastPolledAt: gm.last_polled_at ? new Date(gm.last_polled_at).toISOString() : null, error: (gm.last_error as string | null) ?? null, fetched: Number(gm.fetched_count) } : null,
     calendar: { events: Number(ev?.rows[0]?.n ?? 0) },
-    drive: { uploaded: drive.uploaded ?? 0, failed: drive.failed ?? 0 },
-    sheet: sh?.rows[0] ? { url: sh.rows[0].spreadsheet_url as string | null, status: sh.rows[0].status as string, lastSyncedAt: sh.rows[0].last_synced_at ? new Date(sh.rows[0].last_synced_at).toISOString() : null, error: sh.rows[0].last_error as string | null } : null,
+    drive: { uploaded: drive.uploaded ?? 0, failed: drive.failed ?? 0, hold: (dh?.hold as string | null) ?? null, lastCheckedAt: dh?.last_checked_at ? new Date(dh.last_checked_at).toISOString() : null },
+    sheet: sh?.rows[0] ? { url: sh.rows[0].spreadsheet_url as string | null, status: sh.rows[0].status as string, lastSyncedAt: sh.rows[0].last_synced_at ? new Date(sh.rows[0].last_synced_at).toISOString() : null, error: sh.rows[0].last_error as string | null, hold: (sh.rows[0].hold as string | null) ?? null, pending: Boolean(sh.rows[0].dirty), stats: (sh.rows[0].last_stats ?? {}) as Record<string, number> } : null,
   };
 }
 
@@ -174,101 +173,4 @@ export async function syncCalendar(db: Q, cfg: GoogleCfg, userId: string, f: Fet
     if (r.ok || r.status === 404 || r.status === 410) { await db.query("delete from finance.google_calendar_events where user_id=$1 and bill_id=$2", [userId, m.bill_id]); removed++; } else failed++;
   }
   return { ok: failed === 0, created, updated, removed, failed };
-}
-
-/* ---------------- Drive: receipt photos ---------------- */
-
-async function ensureFolder(f: Fetch, token: string, name: string, parent?: string): Promise<string> {
-  const q = `name='${name.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false${parent ? ` and '${parent}' in parents` : ""}`;
-  const found = await api(f, token, `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)&spaces=drive`);
-  if (found.ok) { const id = ((await found.json()) as { files?: { id: string }[] }).files?.[0]?.id; if (id) return id; }
-  const made = await api(f, token, "https://www.googleapis.com/drive/v3/files?fields=id", { method: "POST", body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder", ...(parent ? { parents: [parent] } : {}) }) });
-  if (!made.ok) throw new Error(`DRIVE_FOLDER_${made.status}`);
-  return ((await made.json()) as { id: string }).id;
-}
-
-export async function syncDrive(db: Q, cfg: GoogleCfg, userId: string, dir: string, f: Fetch = fetch, limit = 15) {
-  const token = await accessToken(db, cfg, userId, f);
-  if (!token) return { ok: false as const, error: "NOT_CONNECTED" };
-  const todo = (await db.query(`select r.id,r.merchant,r.purchased_at,r.created_at,r.image_path from finance.receipts r
-    left join finance.google_drive_files d on d.user_id=r.user_id and d.receipt_id=r.id
-    where r.user_id=$1 and r.image_path is not null and (d.receipt_id is null or (d.status<>'uploaded' and d.attempts<5)) order by r.created_at limit $2`, [userId, limit])).rows;
-  if (!todo.length) return { ok: true as const, uploaded: 0, failed: 0 };
-  let folder: string;
-  try { folder = await ensureFolder(f, token, "Struk", await ensureFolder(f, token, "Djiwa Pay")); } catch (e) { return { ok: false as const, error: e instanceof Error ? e.message : "DRIVE_FAILED" }; }
-  let uploaded = 0, failed = 0;
-  for (const r of todo) {
-    try {
-      const bytes = await readFile(join(dir, r.image_path as string));
-      const ext = String(r.image_path).split(".").pop() || "jpg", mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
-      const day = new Date(r.purchased_at ?? r.created_at).toISOString().slice(0, 10);
-      const name = `${day} ${String(r.merchant || "Struk").replace(/[\\/:*?"<>|]/g, " ").trim().slice(0, 40)}.${ext}`;
-      const boundary = `b${randomBytes(8).toString("hex")}`;
-      const meta = JSON.stringify({ name, parents: [folder], appProperties: { djiwapay: "1", receiptId: r.id } });
-      const body = Buffer.concat([Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${boundary}\r\nContent-Type: ${mime}\r\n\r\n`), bytes, Buffer.from(`\r\n--${boundary}--`)]);
-      const res = await f("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id", { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": `multipart/related; boundary=${boundary}` }, body });
-      if (!res.ok) throw new Error(`DRIVE_${res.status}`);
-      const file = (await res.json()) as { id: string };
-      await db.query("insert into finance.google_drive_files(user_id,receipt_id,file_id,folder_id,status,attempts) values($1,$2,$3,$4,'uploaded',1) on conflict(user_id,receipt_id) do update set file_id=excluded.file_id, folder_id=excluded.folder_id, status='uploaded', last_error=null, attempts=finance.google_drive_files.attempts+1, updated_at=now()", [userId, r.id, file.id, folder]);
-      uploaded++;
-    } catch (e) {
-      failed++;
-      await db.query("insert into finance.google_drive_files(user_id,receipt_id,status,attempts,last_error) values($1,$2,'failed',1,$3) on conflict(user_id,receipt_id) do update set status='failed', attempts=finance.google_drive_files.attempts+1, last_error=excluded.last_error, updated_at=now()", [userId, r.id, (e instanceof Error ? e.message : "error").slice(0, 120)]);
-    }
-  }
-  return { ok: failed === 0, uploaded, failed };
-}
-
-/* ---------------- Sheets: monthly export ---------------- */
-
-type Row = { at: string | Date; kind: string; amount: number | string; category_id: string; account_id: string; note: string; source: string };
-const KIND: Record<string, string> = { out: "Pengeluaran", in: "Pemasukan", tf: "Transfer" };
-const SOURCE: Record<string, string> = { manual: "Manual", voice: "Suara", pay: "Djiwa Pay", receipt: "Scan struk", email: "Email" };
-const WIB = (d: string | Date) => new Date(new Date(d).getTime() + 7 * 3600_000).toISOString();
-
-export function sheetRows(entries: Row[], names: { cat: Record<string, string>; acc: Record<string, string> }) {
-  const catatan: (string | number)[][] = [["Tanggal", "Jam", "Jenis", "Kategori", "Dompet", "Jumlah", "Catatan", "Sumber"]];
-  const month = new Map<string, { in: number; out: number }>();
-  for (const e of entries) {
-    const w = WIB(e.at), amount = Number(e.amount);
-    catatan.push([w.slice(0, 10), w.slice(11, 16), KIND[e.kind] ?? e.kind, names.cat[e.category_id] ?? e.category_id, names.acc[e.account_id] ?? e.account_id, amount, e.note, SOURCE[e.source] ?? e.source]);
-    const m = month.get(w.slice(0, 7)) ?? { in: 0, out: 0 };
-    if (e.kind === "in") m.in += amount; else if (e.kind === "out") m.out += amount;
-    month.set(w.slice(0, 7), m);
-  }
-  const ringkasan: (string | number)[][] = [["Bulan", "Pemasukan", "Pengeluaran", "Selisih"], ...[...month].sort(([a], [b]) => (a < b ? 1 : -1)).map(([k, v]) => [k, v.in, v.out, v.in - v.out])];
-  return { catatan, ringkasan };
-}
-
-export type ExportResult = { ok: true; url: string; rows: number } | { ok: false; error: string };
-export async function exportSheet(db: Q, cfg: GoogleCfg, userId: string, f: Fetch = fetch): Promise<ExportResult> {
-  const token = await accessToken(db, cfg, userId, f);
-  if (!token) return { ok: false, error: "NOT_CONNECTED" };
-  const [en, ca, ac, ex] = await Promise.all([
-    db.query("select at,kind,amount,category_id,account_id,note,source from finance.entries where user_id=$1 order by at desc limit 20000", [userId]),
-    db.query("select id,name from finance.categories where user_id=$1", [userId]),
-    db.query("select id,name from finance.accounts where user_id=$1", [userId]),
-    db.query("select spreadsheet_id,spreadsheet_url from finance.google_sheet_exports where user_id=$1", [userId]),
-  ]);
-  const cat: Record<string, string> = { makan: "Makan & minum", transport: "Transportasi", belanja: "Belanja", tagihan: "Tagihan & utilitas", hiburan: "Hiburan", kesehatan: "Kesehatan", pendidikan: "Pendidikan", rumah: "Rumah", transfer: "Transfer", lainnya: "Lainnya", gaji: "Gaji", bonus: "Bonus & lainnya", tunai: "Tunai" };
-  for (const r of ca.rows) cat[r.id] = r.name;
-  const acc: Record<string, string> = { tunai: "Tunai" };
-  for (const r of ac.rows) acc[r.id] = r.name;
-  const { catatan, ringkasan } = sheetRows(en.rows as Row[], { cat, acc });
-  let id = ex.rows[0]?.spreadsheet_id as string | undefined, url = ex.rows[0]?.spreadsheet_url as string | undefined;
-  const fail = async (error: string): Promise<ExportResult> => { await db.query("insert into finance.google_sheet_exports(user_id,spreadsheet_id,spreadsheet_url,status,last_error) values($1,$2,$3,'failed',$4) on conflict(user_id) do update set status='failed', last_error=excluded.last_error, updated_at=now()", [userId, id ?? null, url ?? null, error]); return { ok: false, error }; };
-  if (!id) {
-    const r = await api(f, token, "https://sheets.googleapis.com/v4/spreadsheets", { method: "POST", body: JSON.stringify({ properties: { title: "Djiwa Pay · Catatan keuangan", locale: "id_ID", timeZone: "Asia/Jakarta" }, sheets: [{ properties: { title: "Catatan", gridProperties: { frozenRowCount: 1 } } }, { properties: { title: "Ringkasan", gridProperties: { frozenRowCount: 1 } } }] }) });
-    if (!r.ok) return fail(`SHEETS_${r.status}`);
-    const j = (await r.json()) as { spreadsheetId: string; spreadsheetUrl: string };
-    id = j.spreadsheetId; url = j.spreadsheetUrl;
-  } else {
-    const c = await api(f, token, `https://sheets.googleapis.com/v4/spreadsheets/${id}/values:batchClear`, { method: "POST", body: JSON.stringify({ ranges: ["Catatan", "Ringkasan"] }) });
-    if (c.status === 404) { await db.query("delete from finance.google_sheet_exports where user_id=$1", [userId]); return exportSheet(db, cfg, userId, f); }   // the user deleted the file: make a fresh one
-    if (!c.ok) return fail(`SHEETS_${c.status}`);
-  }
-  const w = await api(f, token, `https://sheets.googleapis.com/v4/spreadsheets/${id}/values:batchUpdate`, { method: "POST", body: JSON.stringify({ valueInputOption: "USER_ENTERED", data: [{ range: "Catatan!A1", values: catatan }, { range: "Ringkasan!A1", values: ringkasan }] }) });
-  if (!w.ok) return fail(`SHEETS_${w.status}`);
-  await db.query("insert into finance.google_sheet_exports(user_id,spreadsheet_id,spreadsheet_url,status,last_synced_at,last_error) values($1,$2,$3,'synced',now(),null) on conflict(user_id) do update set spreadsheet_id=excluded.spreadsheet_id, spreadsheet_url=excluded.spreadsheet_url, status='synced', last_synced_at=now(), last_error=null, updated_at=now()", [userId, id, url]);
-  return { ok: true, url: url!, rows: catatan.length - 1 };
 }

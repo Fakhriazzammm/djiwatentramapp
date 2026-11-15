@@ -5,7 +5,7 @@ import { CatIcon, MoneyInput, accName, catOf } from "../finance/fin-sheets";
 import type { FinCtx } from "../finance/fin-pages";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import {
-  CHANNEL_NAME, approveItem, connectGoogle, createSource, disconnectGoogle, getGoogle, gmailOff, pollGmailNow, getInbound, getReview, rejectItem, removeSource, syncGoogle,
+  CHANNEL_NAME, approveItem, connectGoogle, confirmDriveRemovals, confirmSheetDeletes, createSource, disconnectGoogle, getGoogle, gmailOff, pollGmailNow, getInbound, getReview, rejectItem, removeSource, syncGoogle,
   type GoogleFeature, type GoogleStatus, type InboundSummary, type ReviewItem,
 } from "../../lib/finance/integrations";
 
@@ -40,13 +40,49 @@ export function ReviewChip({ count, onOpen }: { count: number; onOpen: () => voi
   </Btn></Reveal>;
 }
 
+/** Google connection state for the whole app (no tokens, only what the UI shows). */
+export function useGoogle() {
+  const [g, setG] = useState<(GoogleStatus & { success: true }) | null>(null);
+  const refresh = useCallback(async () => { try { const r = await getGoogle(); setG(r); return r; } catch { return null; } }, []);
+  useEffect(() => {
+    void refresh();
+    const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [refresh]);
+  return { g, refresh };
+}
+
+const NUDGE_KEY = "djiwapay.google-nudge-until";
+const nudgeHidden = () => { try { return Number(localStorage.getItem(NUDGE_KEY) ?? 0) > Date.now(); } catch { return false; } };
+
+/** Beranda: until every Google feature is on, one clear card to connect them all in a single consent. */
+export function GoogleNudge({ onOpenIntegrations }: { onOpenIntegrations: () => void }) {
+  const { g } = useGoogle();
+  const [hidden, setHidden] = useState(nudgeHidden);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  if (!g || !g.configured || hidden) return null;
+  const items: [GoogleFeature, string, string][] = [["drive", "Spreadsheet + Drive", "dl"], ["gmail", "Email bank", "spark"], ["calendar", "Calendar", "cal"]];
+  const missing = items.filter(([k]) => !g.features[k]).map(([k]) => k);
+  if (!missing.length) return null;
+  const snooze = () => { try { localStorage.setItem(NUDGE_KEY, String(Date.now() + 3 * 86400_000)); } catch { /* it just shows again */ } setHidden(true); };
+  const go = async () => { setBusy(true); try { const { url } = await connectGoogle(missing); window.location.assign(url); } catch { setBusy(false); } };
+  return <Reveal i={1}><div className="dpx-nudge" role="region" aria-label="Hubungkan Google">
+    <div className="dpx-nudge-h"><span className="dpx-nudge-ic"><Ic n="link" /></span><div><b>{g.connected ? "Lengkapi koneksi Google-mu" : "Hubungkan Google-mu"}</b><span>Catatan masuk ke Spreadsheet, struk tersimpan di Drive, tagihan di Calendar, dan email bank tercatat sendiri.</span></div></div>
+    <div className="dpx-nudge-chips">{items.map(([k, label]) => <span key={k} className={g.features[k] ? "dpx-on" : ""}>{g.features[k] ? <Ic n="check" size="sm" /> : <i aria-hidden="true" />}{label}</span>)}</div>
+    <div className="dpx-nudge-act"><Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setOpen(true)}>{g.connected ? "Lengkapi sekarang" : "Hubungkan semua"}</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" style={{ margin: 0 }} onClick={snooze}>Nanti</Btn><Btn type="button" className="dpx-linkbtn" onClick={onOpenIntegrations}>Atur satu per satu</Btn></div>
+    <AnimatePresence>{open ? <ConsentSheet key="nudge-consent" features={missing} busy={busy} onClose={() => setOpen(false)} onGo={() => void go()} /> : null}</AnimatePresence>
+  </div></Reveal>;
+}
+
 /* ---------- Google: what Djiwa Pay can and cannot do, shown before Google's own screen ---------- */
 function ConsentSheet({ features, onClose, busy, onGo }: { features: GoogleFeature[]; onClose: () => void; busy: boolean; onGo: () => void }) {
   const can: string[] = [], cannot = ["Membaca atau menyimpan email lain", "Mengubah atau menghapus file yang tidak dibuat Djiwa Pay", "Menyimpan kata sandi Google-mu"];
   const gmail = features.includes("gmail");
   if (gmail) { can.push("Mencari email dari bank dan e-wallet yang terdaftar (BCA, Mandiri, GoPay, OVO, DANA, dan lainnya), lalu mencatat pembayarannya", "Menyimpan hanya nominal, toko, dan waktu. Isi email tidak disimpan"); cannot.unshift("Mengirim, menghapus, atau mengubah email-mu"); }
   if (features.includes("calendar")) can.push("Membuat acara pengingat tagihan di Google Calendar-mu");
-  if (features.includes("drive")) can.push("Membuat folder “Djiwa Pay” dan menyimpan foto struk di sana", "Membuat satu Spreadsheet laporan keuanganmu");
+  if (features.includes("drive")) { can.push("Membuat folder “Djiwa Pay / Struk” dan menyimpan setiap foto struk di sana", "Membuat satu Spreadsheet keuangan dan menyinkronkannya dua arah: ubah atau hapus di aplikasi atau di Sheets, keduanya ikut", "Memindahkan foto ke tempat sampah Drive saat struknya dihapus di aplikasi"); cannot.unshift("Membaca foto atau file lain di Drive-mu. Foto yang kamu taruh sendiri di folder itu tidak ikut terbaca"); }
   return <Sheet title="Izinkan akses Google" onClose={onClose}>
     <p className="dpx-sub" style={{ marginTop: -6 }}>Kamu akan diarahkan ke Google untuk menyetujui. Bisa dicabut kapan saja.</p>
     <div className="dpx-glabel" style={{ marginTop: 14 }}>Yang bisa dilakukan Djiwa Pay</div>
@@ -136,9 +172,10 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
   };
   const run = async (what: "calendar" | "drive" | "sheets", done: string) => {
     setBusy(what);
-    try { const r = await syncGoogle(what); await loadG(); if (what === "sheets" && r.ok === true && typeof r.url === "string") { window.open(r.url, "_blank", "noopener"); ctx.notify(done); } else if (r.ok === false) ctx.notify("Sebagian belum tersinkron. Coba lagi nanti."); else ctx.notify(done); }
-    catch { ctx.notify("Gagal menyinkronkan. Coba lagi."); } finally { setBusy(""); }
+    try { await syncGoogle(what); ctx.notify(done); window.setTimeout(() => void loadG(), 7000); await loadG(); }
+    catch { ctx.notify("Gagal memulai. Coba lagi."); } finally { setBusy(""); }
   };
+  const holdOk = async (fn: () => Promise<unknown>) => { setBusy("hold"); try { await fn(); ctx.notify("Dilanjutkan. Memproses…"); window.setTimeout(() => void loadG(), 6000); await loadG(); } catch { ctx.notify("Gagal. Coba lagi."); } finally { setBusy(""); } };
   const checkGmail = async () => {
     setBusy("gmail");
     try { await pollGmailNow(); ctx.notify("Memeriksa Gmail… hasilnya muncul sebentar lagi"); window.setTimeout(() => { void loadG(); void refresh(); }, 6000); }
@@ -187,12 +224,13 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
       <Row icon="cal" tone="blue" title="Google Calendar" sub={cal ? `${g!.calendar.events} tagihan jadi acara bulanan` : "Tagihan rutin jadi acara + pengingat"} trail={loadingG ? undefined : !gReady ? soon : cal ? <Tag tone="ok">Aktif</Tag> : <Tag>Mati</Tag>}
         onClick={gReady && !loadingG && !cal ? () => setSheet({ consent: ["calendar"] }) : undefined} />
       {cal ? <Row icon="refresh" tone="slate" title={busy === "calendar" ? "Menyinkronkan…" : "Sinkronkan sekarang"} sub="Tagihan berubah otomatis ikut diperbarui" onClick={() => void run("calendar", "Calendar diperbarui")} chev={false} /> : null}
-      <Row icon="dl" tone="emerald" title="Drive dan Sheets" sub={drive ? `${g!.drive.uploaded} struk di Drive${g!.drive.failed ? ` · ${g!.drive.failed} gagal` : ""}` : "Struk ke folder Drive, laporan bulanan ke Sheets"} trail={loadingG ? undefined : !gReady ? soon : drive ? <Tag tone="ok">Aktif</Tag> : <Tag>Mati</Tag>}
-        onClick={gReady && !loadingG && !drive ? () => setSheet({ consent: ["drive"] }) : undefined} />
-      {drive ? <>
-        <Row icon="up" tone="slate" title={busy === "drive" ? "Mengunggah…" : "Unggah struk ke Drive"} sub="Foto struk yang belum tersalin" onClick={() => void run("drive", "Struk tersalin ke Drive")} chev={false} />
-        <Row icon="list" tone="violet" title={busy === "sheets" ? "Menyiapkan Sheets…" : g!.sheet?.url ? "Perbarui dan buka Sheets" : "Ekspor ke Google Sheets"} sub={g!.sheet?.lastSyncedAt ? `Terakhir ${ago(g!.sheet.lastSyncedAt)}` : "Catatan dan ringkasan bulanan"} onClick={() => void run("sheets", "Spreadsheet diperbarui")} chev={false} />
-      </> : null}
+      <Row icon="list" tone="emerald" title="Spreadsheet keuangan" sub={drive ? (g!.sheet?.status === "missing" ? "Spreadsheet terhapus di Drive. Ketuk untuk membuat ulang" : g!.sheet?.url ? `Dua arah · ${g!.sheet.pending ? "menyinkronkan…" : g!.sheet.lastSyncedAt ? `disinkron ${ago(g!.sheet.lastSyncedAt)}` : "menunggu sinkron pertama"}` : "Sedang dibuat di Drive-mu…") : "Semua catatan otomatis tertulis di Spreadsheet-mu, dua arah"}
+        trail={loadingG ? undefined : !gReady ? soon : drive ? <Tag tone={g!.sheet?.error || g!.sheet?.status === "missing" ? "warn" : "ok"}>{g!.sheet?.error || g!.sheet?.status === "missing" ? "Perlu perhatian" : "Aktif"}</Tag> : <Tag tone="warn">Disarankan</Tag>}
+        onClick={gReady && !loadingG ? (!drive ? () => setSheet({ consent: ["drive"] }) : g!.sheet?.status === "missing" ? () => void run("sheets", "Membuat ulang spreadsheet…") : g!.sheet?.url ? () => window.open(g!.sheet!.url!, "_blank", "noopener") : undefined) : undefined} />
+      {drive && g!.sheet?.hold ? <div className="dpx-note dpx-danger" role="alert" style={{ margin: "6px 12px 10px" }}><Ic n="warn" /><div><b>Penghapusan ditahan.</b> {g!.sheet.hold}<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy === "hold"} onClick={() => void holdOk(confirmSheetDeletes)}>Ya, hapus juga di aplikasi</Btn></div></div></div> : null}
+      {drive ? <Row icon="refresh" tone="slate" title={busy === "sheets" ? "Menyiapkan…" : "Sinkronkan sekarang"} sub="Perubahan di aplikasi dan di Sheets saling menyusul tiap beberapa menit" onClick={() => void run("sheets", "Sinkronisasi dimulai. Hasilnya muncul sebentar lagi")} chev={false} /> : null}
+      {drive ? <Row icon="dl" tone="amber" title="Foto struk di Drive" sub={`${g!.drive.uploaded} foto di “Djiwa Pay / Struk”${g!.drive.failed ? ` · ${g!.drive.failed} gagal` : ""} · dua arah`} chev={false} /> : null}
+      {drive && g!.drive.hold ? <div className="dpx-note dpx-danger" role="alert" style={{ margin: "6px 12px 10px" }}><Ic n="warn" /><div><b>Penghapusan ditahan.</b> {g!.drive.hold}<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy === "hold"} onClick={() => void holdOk(confirmDriveRemovals)}>Ya, hapus juga di aplikasi</Btn></div></div></div> : null}
     </div></Reveal>
 
     {gOn ? <Reveal i={4}><div className="dpx-group dpx-white dpx-int" style={{ marginTop: 12 }}>

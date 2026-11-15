@@ -7,7 +7,8 @@ import { applySync, loadState, type Tx } from "./sync.js";
 import { poolTx } from "./db.js";
 export { poolTx };
 import { isEmptyRead, readReceipt, type ReceiptRead } from "./receipt.js";
-import { disconnect as googleDisconnect, exportSheet, FEATURES, finishConnect, googleConfig, startConnect, status as googleStatus, syncCalendar, syncDrive, type Feature, type Fetch, type GoogleCfg } from "./google.js";
+import { disconnect as googleDisconnect, FEATURES, finishConnect, googleConfig, startConnect, status as googleStatus, syncCalendar, type Feature, type Fetch, type GoogleCfg } from "./google.js";
+import { confirmDriveRemovals, confirmSheetDeletes, requestSheet, touchDrive } from "./google-sync.js";
 import { ISSUERS } from "./mail/extract.js";
 import { disableGmail, enableGmail, pollSoon } from "./gmail.js";
 import { approve, ensureSource, getSource, originOf, reject, removeSource, reviewCount, reviewList } from "./mail/pipeline.js";
@@ -82,7 +83,7 @@ export function createApp(d: Deps) {
     await d.db.query(`insert into finance.receipts(user_id,id,merchant,purchased_at,total,tax,confidence,items,model,image_path,image_bytes) values($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11)
       on conflict(user_id,id) do update set merchant=excluded.merchant,purchased_at=excluded.purchased_at,total=excluded.total,tax=excluded.tax,confidence=excluded.confidence,items=excluded.items,model=excluded.model,image_path=excluded.image_path,image_bytes=excluded.image_bytes`,
       [userId, id, read.merchant, read.purchasedAt, read.total, read.tax, read.confidence, JSON.stringify(read.items), read.model, rel, bytes.length]);
-    if (google) later(async () => { if (await connected(userId, "drive")) await syncDrive(d.db, google, userId, d.dir, d.gfetch); });
+    if (google) later(async () => { if (await connected(userId, "drive")) await touchDrive(d.db, userId); });
     return json(c, { success: true, receipt: { id, ...read } });
   });
 
@@ -97,6 +98,7 @@ export function createApp(d: Deps) {
 
   app.delete("/api/finance/receipts/:id", async (c) => {
     const r = await d.db.query("delete from finance.receipts where user_id=$1 and id=$2 returning image_path", [uid(c), c.req.param("id")]);
+    if (google) later(async () => { await d.db.query("update finance.google_drive_files set status='pending_trash' where user_id=$1 and receipt_id=$2", [uid(c), c.req.param("id")]); await touchDrive(d.db, uid(c)); });
     const rel = r.rows[0]?.image_path as string | undefined;
     if (rel) await unlink(join(d.dir, rel)).catch(() => {});
     return json(c, { success: true });
@@ -121,7 +123,7 @@ export function createApp(d: Deps) {
     if (c.req.query("error") || !code || !state) return back("denied");
     try {
       const out = await finishConnect(d.db, google, code, state, d.gfetch);
-      later(async () => { if (out.features.gmail) await enableGmail(d.db, out.userId); if (out.features.calendar) await syncCalendar(d.db, google, out.userId, d.gfetch); if (out.features.drive) await syncDrive(d.db, google, out.userId, d.dir, d.gfetch); });
+      later(async () => { if (out.features.gmail) await enableGmail(d.db, out.userId); if (out.features.calendar) await syncCalendar(d.db, google, out.userId, d.gfetch); if (out.features.drive) { await requestSheet(d.db, out.userId); await touchDrive(d.db, out.userId); } });
       return back("ok");
     } catch (e) { console.error("google connect", e instanceof Error ? e.message : e); return back("error"); }
   });
@@ -130,8 +132,11 @@ export function createApp(d: Deps) {
   app.post("/api/finance/google/disconnect", async (c) => { await googleDisconnect(d.db, google, uid(c), d.gfetch); return json(c, { success: true }); });
   const need = (c: any) => (!google ? json(c, { success: false, error: "NOT_CONFIGURED" }, 503) : null);
   app.post("/api/finance/google/calendar/sync", async (c) => need(c) ?? json(c, { success: true, ...(await syncCalendar(d.db, google!, uid(c), d.gfetch)) }));
-  app.post("/api/finance/google/drive/sync", async (c) => need(c) ?? json(c, { success: true, ...(await syncDrive(d.db, google!, uid(c), d.dir, d.gfetch)) }));
-  app.post("/api/finance/google/sheets/export", async (c) => need(c) ?? json(c, { success: true, ...(await exportSheet(d.db, google!, uid(c), d.gfetch)) }));
+  // Drive and Sheets are handled by the background worker; these only ask it to look now.
+  app.post("/api/finance/google/drive/sync", async (c) => need(c) ?? (!(await connected(uid(c), "drive")) ? json(c, { success: false, error: "NOT_CONNECTED" }, 409) : (await touchDrive(d.db, uid(c)), json(c, { success: true, queued: true }))));
+  app.post("/api/finance/google/sheets/export", async (c) => need(c) ?? (!(await connected(uid(c), "drive")) ? json(c, { success: false, error: "NOT_CONNECTED" }, 409) : (await requestSheet(d.db, uid(c), true), json(c, { success: true, queued: true }))));
+  app.post("/api/finance/google/sheets/confirm", async (c) => { await confirmSheetDeletes(d.db, uid(c)); return json(c, { success: true }); });
+  app.post("/api/finance/google/drive/confirm", async (c) => { await confirmDriveRemovals(d.db, uid(c)); return json(c, { success: true }); });
 
   /* ---------- Payment e-mail inbox ---------- */
   const sourceView = (s: any) => s && mailDomain ? { forwarding: Boolean(s.forwarding), address: `${s.token}@${mailDomain}`, enabled: Boolean(s.enabled), mailCount: Number(s.mail_count), lastMailAt: s.last_mail_at ? new Date(s.last_mail_at).toISOString() : null, trusted: Number(s.trusted_count), forwardCode: s.forward_code && s.forward_code_at && Date.now() - new Date(s.forward_code_at).getTime() < 3 * 3600_000 ? String(s.forward_code) : null } : null;
