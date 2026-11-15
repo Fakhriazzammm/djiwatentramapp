@@ -11,6 +11,7 @@ import { disconnect as googleDisconnect, FEATURES, finishConnect, googleConfig, 
 import { confirmDriveRemovals, confirmSheetDeletes, requestSheet, touchDrive } from "./google-sync.js";
 import { ISSUERS } from "./mail/extract.js";
 import { disableGmail, enableGmail, pollSoon } from "./gmail.js";
+import { cancelImport, commitImport, createImport, importCheckItems, importState, undoImport } from "./gmail-import.js";
 import { approve, ensureSource, getSource, originOf, reject, removeSource, reviewCount, reviewList } from "./mail/pipeline.js";
 
 const DAILY_SCAN_LIMIT = Number(process.env.SCAN_DAILY_LIMIT || 30);
@@ -128,6 +129,18 @@ export function createApp(d: Deps) {
     } catch (e) { console.error("google connect", e instanceof Error ? e.message : e); return back("error"); }
   });
   app.post("/api/finance/google/gmail/poll", async (c) => { if (!(await connected(uid(c), "gmail"))) return json(c, { success: false, error: "NOT_CONNECTED" }, 409); await enableGmail(d.db, uid(c)); await pollSoon(d.db, uid(c)); return json(c, { success: true }); });
+  // Import of old mail: scan (worker) -> preview -> commit. The API only creates, reads and decides.
+  app.post("/api/finance/google/gmail/import", async (c) => {
+    if (!(await connected(uid(c), "gmail"))) return json(c, { success: false, error: "NOT_CONNECTED" }, 409);
+    const body = await c.req.json().catch(() => ({})) as { days?: unknown };
+    await enableGmail(d.db, uid(c));
+    return json(c, { success: true, id: await createImport(d.db, uid(c), Number(body.days ?? 90)) });
+  });
+  app.get("/api/finance/google/gmail/import", async (c) => json(c, { success: true, import: await importState(d.db, uid(c)) }));
+  app.get("/api/finance/google/gmail/import/:id/items", async (c) => json(c, { success: true, items: await importCheckItems(d.db, uid(c), c.req.param("id")) }));
+  app.post("/api/finance/google/gmail/import/:id/commit", async (c) => { const r = await commitImport(d.db, uid(c), c.req.param("id")); return r ? json(c, { success: true, ...r }) : json(c, { success: false, error: "NOT_READY" }, 409); });
+  app.post("/api/finance/google/gmail/import/:id/undo", async (c) => { const r = await undoImport(d.db, uid(c), c.req.param("id")); return r ? json(c, { success: true, ...r }) : json(c, { success: false, error: "NOT_FOUND" }, 404); });
+  app.post("/api/finance/google/gmail/import/cancel", async (c) => { await cancelImport(d.db, uid(c)); return json(c, { success: true }); });
   app.post("/api/finance/google/gmail/off", async (c) => { await disableGmail(d.db, uid(c)); return json(c, { success: true }); });
   app.post("/api/finance/google/disconnect", async (c) => { await googleDisconnect(d.db, google, uid(c), d.gfetch); return json(c, { success: true }); });
   const need = (c: any) => (!google ? json(c, { success: false, error: "NOT_CONFIGURED" }, 503) : null);
@@ -140,7 +153,7 @@ export function createApp(d: Deps) {
 
   /* ---------- Payment e-mail inbox ---------- */
   const sourceView = (s: any) => s && mailDomain ? { forwarding: Boolean(s.forwarding), address: `${s.token}@${mailDomain}`, enabled: Boolean(s.enabled), mailCount: Number(s.mail_count), lastMailAt: s.last_mail_at ? new Date(s.last_mail_at).toISOString() : null, trusted: Number(s.trusted_count), forwardCode: s.forward_code && s.forward_code_at && Date.now() - new Date(s.forward_code_at).getTime() < 3 * 3600_000 ? String(s.forward_code) : null } : null;
-  app.get("/api/finance/inbound", async (c) => json(c, { success: true, configured: Boolean(mailDomain), filter: `from:(${ISSUERS.flatMap((i) => i.domains).join(" OR ")})`, source: sourceView(await getSource(d.db, uid(c))), review: await reviewCount(d.db, uid(c)) }));
+  app.get("/api/finance/inbound", async (c) => json(c, { success: true, importReady: Number((await d.db.query("select coalesce(max(staged),0)::int n from finance.gmail_import where user_id=$1 and status='ready'", [uid(c)])).rows[0]?.n ?? 0), configured: Boolean(mailDomain), filter: `from:(${ISSUERS.flatMap((i) => i.domains).join(" OR ")})`, source: sourceView(await getSource(d.db, uid(c))), review: await reviewCount(d.db, uid(c)) }));
   app.post("/api/finance/inbound/source", async (c) => {
     if (!mailDomain) return json(c, { success: false, error: "NOT_CONFIGURED" }, 503);
     const body = await c.req.json().catch(() => ({})) as { rotate?: unknown };

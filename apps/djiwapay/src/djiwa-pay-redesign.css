@@ -506,3 +506,19 @@ html:has(.dpx-scened),body:has(.dpx-scened){overflow-x:hidden}
 .dpx .dpx-nudge-chips span.dpx-on{background:var(--ok-soft);color:var(--ok)}
 .dpx .dpx-nudge-act{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
 .dpx .dpx-nudge-act .dpx-linkbtn{margin-left:auto;padding:8px 4px}
+
+/* ---- Import of old mail ---- */
+.dpx .dpx-scan{display:flex;flex-direction:column;gap:8px;margin:14px 0;padding:16px;border-radius:18px;background:var(--group)}
+.dpx .dpx-scan b{font:700 26px var(--font);color:var(--ink)}
+.dpx .dpx-scan span{font-size:13px;color:var(--mute)}
+.dpx .dpx-impsum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.dpx .dpx-impsum>div{padding:12px;border-radius:16px;background:var(--group);display:flex;flex-direction:column;gap:2px;min-width:0}
+.dpx .dpx-impsum span{font-size:11.5px;color:var(--mute)}
+.dpx .dpx-impsum b{font:700 15px var(--font);color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dpx .dpx-impsum>div:first-child b{font-size:22px}
+.dpx .dpx-in{color:var(--ok)}
+.dpx .dpx-checks2{margin-top:8px;display:flex;flex-direction:column;gap:8px}
+.dpx .dpx-checkitem{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:var(--group)}
+.dpx .dpx-checkitem>div{flex:1;min-width:0;display:flex;flex-direction:column}
+.dpx .dpx-checkitem b{font:600 13.5px var(--font)}
+.dpx .dpx-checkitem span{font-size:12.5px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

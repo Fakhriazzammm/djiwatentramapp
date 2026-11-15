@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { Q, Tx } from "../sync.js";
-import { domainOf, extractPayment, forwardingCode, guessCategory, isConfident, isSecretMail, issuerFor, merchantKey, type Extracted, type Issuer } from "./extract.js";
+import { domainOf, extractPayment, forwardingCode, guessCategory, isConfident, isSecretMail, issuerFor, merchantKey, redactForShare, type Extracted, type Issuer } from "./extract.js";
 
 export type RawMail = {
   messageId: string; from: string; to: string[]; subject: string; text: string; date: Date | null;
@@ -9,7 +9,7 @@ export type RawMail = {
 };
 export type Llm = (subject: string, text: string, from: string) => Promise<Extracted | null>;
 export type PipelineDeps = { db: Tx; llm?: Llm; domain: string; now?: () => Date; trustMin?: number; autoCeiling?: number };
-export type Outcome = { status: "auto" | "review" | "ignored" | "duplicate" | "failed" | "forwarding-code"; reason: string; userId?: string };
+export type Outcome = { status: "auto" | "review" | "ignored" | "duplicate" | "failed" | "forwarding-code" | "staged"; reason: string; userId?: string };
 
 const TRUST_MIN = 10;               // approvals before a user's mail is recorded without asking
 const AUTO_CEILING = 5_000_000;     // anything larger always waits for a person
@@ -39,8 +39,9 @@ export async function removeSource(db: Q, userId: string, wipe: boolean) {
 
 const bump = (q: Q, userId: string) => q.query("insert into finance.profiles(user_id) values($1) on conflict do nothing", [userId]).then(() => q.query("update finance.profiles set version=version+1, updated_at=now() where user_id=$1", [userId])).then(() => q.query("update finance.google_sheet_exports set dirty=true, next_sync_at=least(next_sync_at, now()+interval '8 seconds') where user_id=$1", [userId]));
 
+const accountIdFor = (issuer: Issuer, hint: string) => `email-${issuer.id}${hint ? "-" + hint : ""}`;
 async function ensureAccount(q: Q, userId: string, issuer: Issuer, hint: string) {
-  const id = `email-${issuer.id}${hint ? "-" + hint : ""}`;
+  const id = accountIdFor(issuer, hint);
   await q.query("insert into finance.accounts(user_id,id,name,type,opening) values($1,$2,$3,$4,0) on conflict do nothing", [userId, id, `${issuer.name}${hint ? " ••" + hint : ""}`, issuer.kind === "bank" ? "bank" : issuer.kind === "ewallet" ? "ewallet" : "other"]);
   return id;
 }
@@ -74,9 +75,11 @@ export async function processMail(d: PipelineDeps, mail: RawMail): Promise<Outco
 }
 
 /** The same pipeline for mail that already belongs to a known user (forwarded, or fetched from their Gmail). */
-export async function processForUser(d: PipelineDeps, userId: string, trustedCount: number, mail: RawMail): Promise<Outcome> {
+export type ProcessOpts = { stage?: { importId: string } };
+export async function processForUser(d: PipelineDeps, userId: string, trustedCount: number, mail: RawMail, opts: ProcessOpts = {}): Promise<Outcome> {
   const now = (d.now ?? (() => new Date()))();
-  await d.db.query("update finance.inbound_sources set mail_count=mail_count+1, last_mail_at=now(), first_mail_at=coalesce(first_mail_at,now()) where user_id=$1", [userId]);
+  const stage = opts.stage;
+  if (!stage) await d.db.query("update finance.inbound_sources set mail_count=mail_count+1, last_mail_at=now(), first_mail_at=coalesce(first_mail_at,now()) where user_id=$1", [userId]);
 
   // Gmail's forwarding confirmation: keep the code for the setup screen, nothing else.
   const fromDomain = domainOf(mail.from);
@@ -95,7 +98,7 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   if (isSecretMail(mail.subject, mail.text)) return { status: "ignored", reason: "secret", userId };
 
   const messageId = (mail.messageId || `${fromDomain}:${mail.subject}:${mail.date?.toISOString() ?? ""}`).slice(0, 300);
-  const claimed = await d.db.query("insert into finance.inbound_messages(user_id,message_id,sender_domain,channel,status) values($1,$2,$3,$4,'review') on conflict(user_id,message_id) do nothing returning id", [userId, messageId, fromDomain, issuer.id]);
+  const claimed = await d.db.query("insert into finance.inbound_messages(user_id,message_id,sender_domain,channel,status,import_id) values($1,$2,$3,$4,'review',$5) on conflict(user_id,message_id) do nothing returning id", [userId, messageId, fromDomain, issuer.id, stage?.importId ?? null]);
   if (!claimed.rows[0]) return { status: "duplicate", reason: "same-message", userId };
   const inboundId = claimed.rows[0].id as string;
 
@@ -105,14 +108,18 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   };
 
   // Read it: rules first, model only when the rules are unsure.
-  let x = extractPayment(mail.subject, mail.text);
+  const rules = extractPayment(mail.subject, mail.text);
+  let x = rules, agreed = false;
   if (!isConfident(x) && d.llm) {
-    try { const m = await d.llm(mail.subject, mail.text, mail.from); if (m && m.amount > 0 && m.confidence >= x.confidence) x = { ...x, ...m, accountHint: m.accountHint || x.accountHint, ref: m.ref || x.ref }; } catch { /* model is optional */ }
+    try {
+      const m = await d.llm(mail.subject, mail.text, mail.from);
+      if (m && m.amount > 0 && m.confidence >= x.confidence) { agreed = rules.amount === m.amount && m.direction !== "unknown" && m.confidence >= 0.6; x = { ...x, ...m, accountHint: m.accountHint || x.accountHint, ref: m.ref || x.ref }; }
+    } catch { /* model is optional */ }
   }
   const atMs = x.at ?? mail.date?.getTime() ?? now.getTime();
   const at = new Date(Number.isFinite(atMs) ? atMs : now.getTime()).toISOString();
   const parsed = { amount: x.amount, direction: x.direction, merchant: x.merchant, accountHint: x.accountHint, ref: x.ref, at, subject: mail.subject.slice(0, 80), issuer: issuer.name };
-  if (!(x.amount > 0)) return finish("failed", "unreadable", { parsed, confidence: x.confidence });
+  if (!(x.amount > 0)) return stage ? finish("ignored", "unreadable", { confidence: x.confidence }) : finish("failed", "unreadable", { parsed, confidence: x.confidence });
 
   // A bank reference seen before is the same payment.
   if (x.ref) {
@@ -120,12 +127,20 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
     if (dup.rows[0]) return finish("duplicate", "same-reference", { parsed, confidence: x.confidence, entryId: dup.rows[0].entry_id, at });
   }
 
-  const accountId = await ensureAccount(d.db, userId, issuer, x.accountHint);
+  const accountId = stage ? accountIdFor(issuer, x.accountHint) : await ensureAccount(d.db, userId, issuer, x.accountHint);
   const kind: "out" | "in" = x.direction === "in" ? "in" : "out";
 
   // Same money already recorded (Djiwa Pay, scan, manual or another e-mail)?
   const same = await d.db.query("select id from finance.entries where user_id=$1 and amount=$2 and kind=$3 and account_id=$4 and at between $5::timestamptz - ($6 * interval '1 millisecond') and $5::timestamptz + ($6 * interval '1 millisecond') limit 1", [userId, x.amount, kind, accountId, at, CLOSE_MS]);
   if (same.rows[0]) return finish("duplicate", "already-recorded", { parsed, confidence: x.confidence, entryId: same.rows[0].id, at });
+
+  if (stage) {   // an import: keep it aside until the user has seen the preview. Accounts, transfers and entries come with the commit.
+    const learnedS = await learnedCategory(d.db, userId, x.merchant);
+    const categoryS = learnedS ?? guessCategory(x.merchant, mail.subject, x.direction);
+    const knownS = Boolean(learnedS) || (categoryS !== "lainnya" && Boolean(x.merchant)) || (kind === "in" && Boolean(x.merchant));
+    const sure = (isConfident(rules) || agreed) && x.direction !== "unknown" && knownS && issuer.kind !== "service" && x.amount <= (d.autoCeiling ?? AUTO_CEILING);
+    return finish("staged", sure ? "sure" : "check", { confidence: x.confidence, at, parsed: { ...parsed, kind, categoryId: categoryS, accountId, accountName: `${issuer.name}${x.accountHint ? " ••" + x.accountHint : ""}`, accountType: issuer.kind === "bank" ? "bank" : issuer.kind === "ewallet" ? "ewallet" : "other", sure, ...(sure ? {} : { sample: redactForShare(`${mail.subject}\n${mail.text}`) }) } });
+  }
 
   // The other half of a move between the user's own accounts becomes one transfer.
   if (x.direction !== "unknown") {
@@ -176,6 +191,8 @@ export async function approve(d: Tx, userId: string, inboundId: string, e: Edits
       kind, amount, categoryId: String(e.categoryId ?? p.categoryId ?? "lainnya").slice(0, 80),
       accountId: String(e.accountId ?? p.accountId ?? "tunai").slice(0, 80), at: new Date(Number.isNaN(atMs) ? Date.now() : atMs).toISOString(), note: String(e.note ?? p.merchant ?? p.subject ?? "").slice(0, 200),
     };
+    if (typeof p.accountId === "string" && p.accountId.startsWith("email-") && p.accountId === candidate.accountId)   // imported items keep their account until approved
+      await q.query("insert into finance.accounts(user_id,id,name,type,opening) values($1,$2,$3,$4,0) on conflict do nothing", [userId, p.accountId, String(p.accountName ?? p.issuer ?? "Dompet").slice(0, 60), ["bank", "ewallet"].includes(p.accountType) ? p.accountType : "other"]);
     const entryId = await insertEntry(q, userId, candidate, inboundId);
     await q.query("update finance.inbound_messages set status='approved', entry_id=$2, reason='approved' where id=$1", [inboundId, entryId]);
     await q.query("update finance.inbound_sources set trusted_count=trusted_count+1 where user_id=$1", [userId]);

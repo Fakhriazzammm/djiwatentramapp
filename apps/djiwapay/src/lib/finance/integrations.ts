@@ -1,6 +1,6 @@
 /** Browser side of the Google and payment-e-mail integrations. Tokens never reach the browser; this only talks to /api/finance. */
 export type InboundSource = { forwarding: boolean; address: string; enabled: boolean; mailCount: number; lastMailAt: string | null; trusted: number; forwardCode: string | null };
-export type InboundSummary = { configured: boolean; filter: string; source: InboundSource | null; review: number };
+export type InboundSummary = { configured: boolean; filter: string; source: InboundSource | null; review: number; importReady: number };
 export type ReviewItem = {
   id: string; channel: string; status: "review" | "failed"; reason: string; confidence: number; createdAt: string;
   parsed: { amount?: number; kind?: "out" | "in"; direction?: string; merchant?: string; categoryId?: string; accountId?: string; accountHint?: string; at?: string; subject?: string; issuer?: string };
@@ -41,3 +41,20 @@ export const syncGoogle = (what: "calendar" | "drive" | "sheets") => call<Record
 
 /** What the review card needs to show a channel. */
 export const CHANNEL_NAME: Record<string, string> = { bca: "BCA", blu: "blu", mandiri: "Mandiri", bri: "BRI", bni: "BNI", cimb: "CIMB Niaga", jago: "Jago", jenius: "Jenius", seabank: "SeaBank", gopay: "GoPay", ovo: "OVO", dana: "DANA", shopeepay: "ShopeePay", linkaja: "LinkAja", grab: "Grab", tokopedia: "Tokopedia", pln: "PLN", telkom: "Telkom", bpjs: "BPJS" };
+
+/* ---- Import of old Gmail mail ---- */
+export type ImportPreview = {
+  sure: { count: number; income: number; expense: number }; check: { count: number };
+  months: { month: string; count: number; income: number; expense: number }[]; categories: { categoryId: string; count: number; total: number }[];
+};
+export type ImportState = {
+  id: string; status: "scanning" | "ready" | "done" | "cancelled" | "undone" | "failed"; periodDays: number; scanned: number; staged: number; progress: number;
+  error: string | null; committed: number; movedToReview: number; scanningTo: string | null; since: string | null; preview?: ImportPreview;
+};
+export type ImportItem = { id: string; channel: string; confidence: number; parsed: { merchant?: string; amount?: number; kind?: string; subject?: string; sample?: string; issuer?: string; at?: string } };
+export const startImport = (days: number) => call<{ id: string }>("/google/gmail/import", { method: "POST", body: JSON.stringify({ days }) });
+export const getImport = () => call<{ import: ImportState | null }>("/google/gmail/import");
+export const getImportItems = (id: string) => call<{ items: ImportItem[] }>(`/google/gmail/import/${encodeURIComponent(id)}/items`);
+export const commitImport = (id: string) => call<{ committed: number; movedToReview: number; transfers: number }>(`/google/gmail/import/${encodeURIComponent(id)}/commit`, { method: "POST" });
+export const undoImport = (id: string) => call<{ removed: number }>(`/google/gmail/import/${encodeURIComponent(id)}/undo`, { method: "POST" });
+export const cancelImport = () => call<object>("/google/gmail/import/cancel", { method: "POST" });

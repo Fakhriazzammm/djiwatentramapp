@@ -6,10 +6,23 @@ import { processMail, type PipelineDeps, type RawMail } from "./pipeline.js";
 
 const MAX_BYTES = 1_000_000;
 
+/** Google's own Authentication-Results, added when the mail reached the user's mailbox. Only the topmost header, and only from a google.com
+ *  authserv-id, is believed: anything a sender wrote into the message sits below Google's. */
+export function googleVerdict(headerLines: string[]): { dmarcPass: boolean; dmarcFrom: string | null; dkimDomains: string[] } {
+  const first = headerLines[0]?.replace(/^authentication-results:\s*/i, "").replace(/\r?\n\s+/g, " ") ?? "";
+  const id = first.split(";")[0]?.trim().toLowerCase() ?? "";
+  if (!/(^|\.)google\.com$/.test(id)) return { dmarcPass: false, dmarcFrom: null, dkimDomains: [] };
+  const dkimDomains: string[] = [];
+  for (const m of first.matchAll(/dkim=pass[^;]*?header\.(?:i=@?|d=)([\w.-]+)/gi)) dkimDomains.push(m[1].toLowerCase());
+  const dmarc = first.match(/dmarc=pass[^;]*?header\.from=([\w.-]+)/i);
+  return { dmarcPass: Boolean(dmarc), dmarcFrom: dmarc ? dmarc[1].toLowerCase() : null, dkimDomains };
+}
+
 const stripTags = (html: string) => html.replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ").replace(/<br\s*\/?>|<\/(p|div|tr|li|h\d)>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#?\w+;/g, " ");
 
 /** Parses and authenticates one raw message into the shape the pipeline wants. */
-export type MailCtx = { ip: string; helo: string; sender: string; host: string; recipients: string[]; resolver?: (name: string, rr: string) => Promise<unknown> };
+export type MailCtx = { ip: string; helo: string; sender: string; host: string; recipients: string[]; resolver?: (name: string, rr: string) => Promise<unknown>;
+  /** Old Gmail mail: its DKIM key may have been rotated away, so also accept Google's own verdict recorded when the mail arrived. */ trustGoogleVerdict?: boolean };
 export async function toRawMail(raw: Buffer, ctx: MailCtx): Promise<RawMail> {
   const parsed = await simpleParser(raw, { skipImageLinks: true, skipHtmlToText: false });
   let dmarcPass = false; const dkimDomains: string[] = [];
@@ -18,6 +31,12 @@ export async function toRawMail(raw: Buffer, ctx: MailCtx): Promise<RawMail> {
     dmarcPass = typeof a.dmarc === "object" && a.dmarc?.status?.result === "pass";
     for (const r of a.dkim?.results ?? []) if (r.status?.result === "pass" && r.signingDomain) dkimDomains.push(String(r.signingDomain).toLowerCase());
   } catch { /* an unverifiable mail simply fails the gate */ }
+  if (ctx.trustGoogleVerdict) {
+    const v = googleVerdict(parsed.headerLines?.filter((h) => h.key === "authentication-results").map((h) => h.line) ?? []);
+    const fromDomain = (parsed.from?.value?.[0]?.address ?? "").split("@").pop()?.toLowerCase() ?? "";
+    dmarcPass ||= v.dmarcPass && v.dmarcFrom === fromDomain;       // Google's DMARC pass only counts for the domain it says it checked
+    for (const d of v.dkimDomains) if (!dkimDomains.includes(d)) dkimDomains.push(d);
+  }
   return {
     messageId: parsed.messageId ?? "", from: parsed.from?.value?.[0]?.address ?? ctx.sender, to: ctx.recipients, subject: parsed.subject ?? "",
     text: (parsed.text && parsed.text.trim() ? parsed.text : stripTags(parsed.html || "")).slice(0, 20_000), date: parsed.date ?? null, auth: { dmarcPass, dkimDomains },

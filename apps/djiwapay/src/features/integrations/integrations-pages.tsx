@@ -5,8 +5,8 @@ import { CatIcon, MoneyInput, accName, catOf } from "../finance/fin-sheets";
 import type { FinCtx } from "../finance/fin-pages";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import {
-  CHANNEL_NAME, approveItem, connectGoogle, confirmDriveRemovals, confirmSheetDeletes, createSource, disconnectGoogle, getGoogle, gmailOff, pollGmailNow, getInbound, getReview, rejectItem, removeSource, syncGoogle,
-  type GoogleFeature, type GoogleStatus, type InboundSummary, type ReviewItem,
+  CHANNEL_NAME, approveItem, cancelImport, commitImport, getImport, getImportItems, startImport, undoImport, connectGoogle, confirmDriveRemovals, confirmSheetDeletes, createSource, disconnectGoogle, getGoogle, gmailOff, pollGmailNow, getInbound, getReview, rejectItem, removeSource, syncGoogle,
+  type GoogleFeature, type GoogleStatus, type ImportItem, type ImportState, type InboundSummary, type ReviewItem,
 } from "../../lib/finance/integrations";
 
 const gmailError = (code: string) => ({ NOT_CONNECTED: "Izin Google dicabut. Hubungkan ulang", SCOPE_MISSING: "Izin Gmail belum diberikan", GMAIL_FORBIDDEN: "Google menolak akses Gmail. Hubungkan ulang" } as Record<string, string>)[code] ?? "Pemeriksaan terakhir gagal, dicoba lagi otomatis";
@@ -31,13 +31,20 @@ export function useInbound() {
 }
 
 /* ---------- Beranda: the small dot that says something is waiting ---------- */
-export function ReviewChip({ count, onOpen }: { count: number; onOpen: () => void }) {
-  if (count <= 0) return null;
-  return <Reveal i={1}><Btn type="button" className="dpx-reviewchip" onClick={onOpen} aria-label={`${count} catatan dari email perlu ditinjau`}>
-    <span className="dpx-rc-dot" aria-hidden="true">{count > 9 ? "9+" : count}</span>
-    <span className="dpx-rc-t"><b>{count} perlu ditinjau</b><span>Dari email pembayaran, ketuk untuk memeriksa</span></span>
-    <Ic n="chev" size="sm" />
-  </Btn></Reveal>;
+export function ReviewChip({ count, importReady, onOpen, onOpenImport }: { count: number; importReady?: number; onOpen: () => void; onOpenImport?: () => void }) {
+  if (count <= 0 && !(importReady && importReady > 0)) return null;
+  return <>
+    {importReady && importReady > 0 ? <Reveal i={1}><Btn type="button" className="dpx-reviewchip" onClick={onOpenImport} aria-label={`Impor email lama siap ditinjau, ${importReady} transaksi`}>
+      <span className="dpx-rc-dot" aria-hidden="true"><Ic n="dl" size="sm" /></span>
+      <span className="dpx-rc-t"><b>Impor email lama siap</b><span>{importReady} transaksi menunggu pratinjau kamu</span></span>
+      <Ic n="chev" size="sm" />
+    </Btn></Reveal> : null}
+    {count > 0 ? <Reveal i={1}><Btn type="button" className="dpx-reviewchip" onClick={onOpen} aria-label={`${count} catatan dari email perlu ditinjau`}>
+      <span className="dpx-rc-dot" aria-hidden="true">{count > 9 ? "9+" : count}</span>
+      <span className="dpx-rc-t"><b>{count} perlu ditinjau</b><span>Dari email pembayaran, ketuk untuk memeriksa</span></span>
+      <Ic n="chev" size="sm" />
+    </Btn></Reveal> : null}
+  </>;
 }
 
 /** Google connection state for the whole app (no tokens, only what the UI shows). */
@@ -145,6 +152,70 @@ function EmailSetupSheet({ onClose, summary, refresh, ctx }: { onClose: () => vo
   </Sheet>;
 }
 
+/* ---------- Import of old Gmail mail: choose, scan, preview, commit, undo ---------- */
+const PERIODS: [number, string][] = [[90, "3 bulan"], [180, "6 bulan"], [365, "1 tahun"], [0, "Semua"]];
+const monthName = (ym: string) => new Date(`${ym}-15T00:00:00+07:00`).toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+
+export function ImportSheet({ ctx, onClose, onChanged }: { ctx: FinCtx; onClose: () => void; onChanged: () => void }) {
+  const [imp, setImp] = useState<ImportState | null | undefined>(undefined);
+  const [days, setDays] = useState(90);
+  const [busy, setBusy] = useState(false);
+  const [items, setItems] = useState<ImportItem[] | null>(null);
+  const [showCheck, setShowCheck] = useState(false);
+  const [confirmUndo, setConfirmUndo] = useState(false);
+  const load = useCallback(async () => { try { setImp((await getImport()).import); } catch { setImp((cur) => cur ?? null); } }, []);
+  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { if (imp?.status !== "scanning") return; const t = window.setInterval(() => void load(), 3000); return () => window.clearInterval(t); }, [imp?.status, load]);
+  useEffect(() => { if (imp?.status === "ready" && showCheck && !items) void getImportItems(imp.id).then((r) => setItems(r.items)).catch(() => setItems([])); }, [imp?.status, imp?.id, showCheck, items]);
+  const act = async (fn: () => Promise<unknown>, ok?: string) => { setBusy(true); try { await fn(); if (ok) ctx.notify(ok); await load(); onChanged(); } catch (e) { ctx.notify((e as { code?: string }).code === "NOT_CONNECTED" ? "Hubungkan Gmail dulu" : "Gagal. Coba lagi."); } finally { setBusy(false); } };
+  const share = async (it: ImportItem) => { const text = `[${CHANNEL_NAME[it.channel] ?? it.channel}] ${it.parsed.sample ?? ""}`; if (await copyText(text)) ctx.notify("Contoh tersalin. Nomor dan nama sudah disamarkan"); else ctx.notify("Tidak bisa menyalin"); };
+  const p = imp?.preview;
+  const periodLabel = imp ? (PERIODS.find(([d]) => d === imp.periodDays)?.[1] ?? "") : "";
+  return <Sheet title="Impor email lama" onClose={onClose}>
+    {imp === undefined ? <div className="dpx-sub dpx-center" style={{ padding: 30 }}>Memuat…</div> : null}
+    {imp === null || (imp && ["cancelled", "undone"].includes(imp.status)) ? <>
+      <p className="dpx-sub" style={{ marginTop: -6 }}>Cari pembayaran lama di Gmail-mu dan catat sekaligus. Kamu lihat pratinjau dulu. Tidak ada yang tercatat sebelum kamu setuju.</p>
+      <div className="dpx-glabel" style={{ marginTop: 12 }}>Seberapa jauh ke belakang?</div>
+      <div className="dpx-inline-seg" role="group" aria-label="Periode">{PERIODS.map(([d, label]) => <Btn key={d} type="button" className={days === d ? "dpx-on" : ""} aria-pressed={days === d} onClick={() => setDays(d)}>{label}</Btn>)}</div>
+      <div className="dpx-note dpx-info"><Ic n="shield" /><div>Hanya email dari bank dan e-wallet yang terdaftar yang dibaca. Disimpan hanya nominal, toko, dan waktu.{days === 0 || days === 365 ? " Email yang lebih lama bisa memakan waktu beberapa menit." : ""}</div></div>
+      <Btn type="button" className="dpx-btn" disabled={busy} onClick={() => void act(() => startImport(days))}>{busy ? "Memulai…" : "Mulai pindai"}</Btn>
+    </> : null}
+    {imp?.status === "scanning" ? <>
+      <div className="dpx-scan"><div className="dpx-bar"><motion.i animate={{ width: `${Math.max(4, Math.round(imp.progress * 100))}%` }} transition={{ duration: 0.6 }} /></div>
+        <b>{Math.round(imp.progress * 100)}%</b><span>{imp.scanned} email diperiksa · {imp.staged} transaksi ditemukan{imp.scanningTo ? ` · sampai ${new Date(imp.scanningTo).toLocaleDateString("id-ID", { month: "short", year: "numeric" })}` : ""}</span></div>
+      {imp.error ? <div className="dpx-note"><Ic n="info" /><div>{imp.error === "GMAIL_429" ? "Google meminta jeda sebentar. Pemindaian dilanjutkan otomatis." : "Ada kendala sementara. Dicoba lagi otomatis."}</div></div> : null}
+      <p className="dpx-sub dpx-center">Boleh ditutup. Pemindaian jalan terus di server, dan Beranda memberi tahu saat pratinjau siap.</p>
+      <Btn type="button" className="dpx-btn dpx-soft" disabled={busy} onClick={() => void act(() => cancelImport(), "Pemindaian dihentikan")}>Hentikan</Btn>
+    </> : null}
+    {imp?.status === "ready" && p ? <>
+      <p className="dpx-sub" style={{ marginTop: -6 }}>Hasil pindai {periodLabel.toLowerCase()} terakhir. Belum ada yang dicatat.</p>
+      <div className="dpx-impsum"><div><span>Siap dicatat</span><b>{p.sure.count}</b></div><div><span>Masuk</span><b className="dpx-in">+{rupiah(p.sure.income)}</b></div><div><span>Keluar</span><b>−{rupiah(p.sure.expense)}</b></div></div>
+      {p.months.length ? <div className="dpx-group dpx-white dpx-flush" style={{ marginTop: 10 }}>{p.months.slice(0, 8).map((m) => <div key={m.month} className="dpx-kv"><span>{monthName(m.month)} · {m.count}</span><b>{m.income ? <span className="dpx-in">+{rupiah(m.income)} </span> : null}−{rupiah(m.expense)}</b></div>)}{p.months.length > 8 ? <div className="dpx-kv"><span>dan {p.months.length - 8} bulan lain</span><b /></div> : null}</div> : null}
+      {p.categories.length ? <div className="dpx-chips2" style={{ marginTop: 10 }}>{p.categories.map((c) => <span key={c.categoryId} className="dpx-chip3">{catOf(ctx.fin.state, c.categoryId).name} {rupiah(c.total)}</span>)}</div> : null}
+      {p.check.count ? <>
+        <Btn type="button" className="dpx-linkbtn" style={{ marginTop: 12 }} onClick={() => setShowCheck((v) => !v)} aria-expanded={showCheck}>{p.check.count} email belum terbaca jelas, masuk antrean tinjau {showCheck ? "▴" : "▾"}</Btn>
+        {showCheck ? <div className="dpx-checks2">{items === null ? <div className="dpx-sub">Memuat…</div> : items.map((it) => <div key={it.id} className="dpx-checkitem"><div><b>{CHANNEL_NAME[it.channel] ?? it.channel}{it.parsed.amount ? ` · ${rupiah(it.parsed.amount)}` : ""}</b><span>{it.parsed.merchant || it.parsed.subject || "Tanpa judul"}</span></div><Btn type="button" className="dpx-copybtn" onClick={() => void share(it)}><Ic n="copy" size="sm" /> Salin contoh</Btn></div>)}
+          <p className="dpx-hint">“Salin contoh” menyalin teks email dengan nomor dan nama disamarkan. Kirim ke pengembang agar pembaca email bisa diperbaiki.</p></div> : null}
+      </> : null}
+      {!p.sure.count && !p.check.count ? <div className="dpx-note"><Ic n="info" /><div><b>Tidak ada pembayaran ditemukan</b> di periode ini. Coba periode yang lebih panjang.</div></div> : null}
+      <div className="dpx-flex dpx-mt">
+        <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} disabled={busy} onClick={() => void act(() => cancelImport(), "Impor dibatalkan")}>Batalkan</Btn>
+        {p.sure.count || p.check.count ? <Btn type="button" className="dpx-btn" style={{ margin: 0 }} disabled={busy} onClick={() => void act(async () => { const r = await commitImport(imp.id); await ctx.fin.retrySync(); ctx.notify(`${r.committed} transaksi dicatat${r.movedToReview ? `, ${r.movedToReview} masuk antrean tinjau` : ""}`); })}>{busy ? "Mencatat…" : p.sure.count ? `Catat ${p.sure.count} transaksi` : "Pindahkan ke antrean tinjau"}</Btn> : null}
+      </div>
+    </> : null}
+    {imp?.status === "done" ? <>
+      <div className="dpx-codebox dpx-got"><Ic n="check" size="lg" /><b style={{ fontSize: 17 }}>{imp.committed} transaksi dicatat</b><small>{imp.movedToReview ? `${imp.movedToReview} lainnya menunggu di antrean tinjau. ` : ""}Catatan ini juga tertulis di Spreadsheet-mu.</small></div>
+      {confirmUndo ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div><b>Hapus semua catatan dari impor ini?</b> Perubahan yang sudah kamu buat pada catatan itu ikut hilang.<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy} onClick={() => void act(async () => { const r = await undoImport(imp.id); await ctx.fin.retrySync(); setConfirmUndo(false); ctx.notify(`${r.removed} catatan dihapus`); })}>Ya, urungkan</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => setConfirmUndo(false)}>Batal</Btn></div></div></div>
+        : <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => setConfirmUndo(true)}><Ic n="undo" size="sm" /> Urungkan impor ini</Btn>}
+      <Btn type="button" className="dpx-btn" onClick={onClose}>Selesai</Btn>
+    </> : null}
+    {imp?.status === "failed" ? <>
+      <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div><b>Impor gagal.</b> {imp.error === "SCOPE_MISSING" || imp.error === "NOT_CONNECTED" ? "Izin Gmail belum ada atau dicabut. Hubungkan Gmail lagi." : "Coba lagi sebentar lagi."}</div></div>
+      <Btn type="button" className="dpx-btn" disabled={busy} onClick={() => void act(() => startImport(days))}>Coba lagi</Btn>
+    </> : null}
+  </Sheet>;
+}
+
 /* ---------- Integrasi page ---------- */
 function Tag({ tone, children }: { tone?: "ok" | "warn" | "later"; children: ReactNode }) { return <span className={`dpx-tag ${tone ? "dpx-" + (tone === "later" ? "later" : tone) : ""}`}>{children}</span>; }
 
@@ -152,19 +223,27 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
   const { data: inbound, refresh } = useInbound();
   const [g, setG] = useState<(GoogleStatus & { success: true }) | null>(null);
   const [loadingG, setLoadingG] = useState(true);
-  const [sheet, setSheet] = useState<null | "email" | { consent: GoogleFeature[] }>(null);
+  const [sheet, setSheet] = useState<null | "email" | "import" | { consent: GoogleFeature[] }>(null);
+  const [autoImport, setAutoImport] = useState(false);
   const [busy, setBusy] = useState("");
   const [confirmOff, setConfirmOff] = useState<null | "google" | "email">(null);
   const loadG = useCallback(async () => { try { setG(await getGoogle()); } catch { /* offline: leave as is */ } finally { setLoadingG(false); } }, []);
   useEffect(() => { void loadG(); }, [loadG]);
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("impor") === "1") { window.history.replaceState({}, "", window.location.pathname); setSheet("import"); }
     const q = new URLSearchParams(window.location.search).get("google");
     if (!q) return;
     window.history.replaceState({}, "", window.location.pathname);
+    if (q === "ok") setAutoImport(true);
     ctx.notify(q === "ok" ? "Google terhubung" : q === "denied" ? "Izin Google dibatalkan" : q === "unavailable" ? "Integrasi Google belum tersedia" : "Gagal menghubungkan Google. Coba lagi.");
     void loadG();
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {       // right after Gmail is connected, offer to bring in the old mail
+    if (!autoImport || !g) return;
+    setAutoImport(false);
+    if (g.features.gmail) void getImport().then((r) => { if (!r.import || ["cancelled", "undone"].includes(r.import.status)) setSheet("import"); }).catch(() => {});
+  }, [autoImport, g]);
   const goGoogle = async (features: GoogleFeature[]) => {
     setBusy("connect");
     try { const { url } = await connectGoogle(features); window.location.assign(url); }
@@ -203,6 +282,7 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
         trail={loadingG ? undefined : !gReady ? soon : gm ? <Tag tone={gmInfo?.error ? "warn" : "ok"}>{gmInfo?.error ? "Perlu perhatian" : "Aktif"}</Tag> : <Tag tone="warn">Disarankan</Tag>}
         onClick={gReady && !loadingG && !gm ? () => setSheet({ consent: ["gmail"] }) : undefined} />
       {gm ? <>
+        <Row icon="dl" tone="amber" title="Impor email lama" sub={inbound && inbound.importReady ? `${inbound.importReady} transaksi siap ditinjau` : "Catat pembayaran lama dari Gmail-mu, dengan pratinjau dulu"} onClick={() => setSheet("import")} />
         <Row icon="refresh" tone="slate" title={busy === "gmail" ? "Memeriksa…" : "Periksa sekarang"} sub="Pengecekan otomatis tiap beberapa menit" onClick={() => void checkGmail()} chev={false} />
         <Row icon="trash" tone="rose" title="Matikan Gmail langsung" sub="Berhenti membaca email. Catatan yang sudah ada tetap" onClick={() => void turnGmailOff()} chev={false} />
       </> : null}
@@ -245,6 +325,7 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
       <div className="dpx-flex" style={{ marginTop: 10 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy === "off"} onClick={() => void off()}>{busy === "off" ? "Memproses…" : "Ya, putuskan"}</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => setConfirmOff(null)}>Batal</Btn></div></div></div> : null}
 
     <AnimatePresence>
+      {sheet === "import" ? <ImportSheet key="import" ctx={ctx} onClose={() => setSheet(null)} onChanged={() => void refresh()} /> : null}
       {sheet === "email" ? <EmailSetupSheet key="email" ctx={ctx} summary={inbound} refresh={refresh} onClose={() => setSheet(null)} /> : null}
       {sheet && typeof sheet === "object" ? <ConsentSheet key="consent" features={sheet.consent} busy={busy === "connect"} onClose={() => setSheet(null)} onGo={() => void goGoogle(sheet.consent)} /> : null}
     </AnimatePresence>

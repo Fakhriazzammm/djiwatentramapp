@@ -56,6 +56,12 @@ describe("payment extraction", () => {
     expect(x.amount).toBe(48500);
     expect(x.direction).toBe("out");
   });
+  test("a merchant name stops where the next field starts", () => {
+    expect(extractPayment("Transfer", "Transfer ke rekening sendiri berhasil. Penerima: DANA. Jumlah Rp 200.000 pada 20/11/2026 10:00").merchant).toBe("DANA");
+    expect(extractPayment("Dana masuk", "Transfer dari BCA sebesar Rp 200.000 diterima").merchant).toBe("BCA");
+    expect(extractPayment("Bayar", "Pembayaran ke PT. Tokopedia Indonesia sebesar Rp 50.000 berhasil").merchant).toBe("PT. Tokopedia Indonesia");
+    expect(extractPayment("Bayar", "Pembayaran ke Kopi Kenangan, Rp 25.000").merchant).toBe("Kopi Kenangan");
+  });
   test("a reference label without a value is not a reference", () => {
     expect(extractPayment("Pembayaran", "Pembayaran ke Toko Rp 10.000. No. Referensi: tidak tersedia").ref).toBe("");
     expect(extractPayment("Pembayaran", "Referensi dan bukti ada di aplikasi. Pembayaran ke Toko Rp 10.000").ref).toBe("");

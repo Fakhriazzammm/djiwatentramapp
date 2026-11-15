@@ -7,6 +7,7 @@ import { startSmtp, toRawMail } from "./mail/smtp.js";
 import { googleConfig } from "./google.js";
 import { runDue } from "./gmail.js";
 import { runGoogleDue } from "./google-sync.js";
+import { runImports } from "./gmail-import.js";
 
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL is required");
@@ -32,4 +33,8 @@ if (cfg) {
   const dir = process.env.RECEIPTS_DIR || "/var/lib/djiwapay-api/receipts";
   setInterval(async () => { if (busyG) return; busyG = true; try { await runGoogleDue({ db, cfg, dir }); } catch (e) { console.error("google tick", e instanceof Error ? e.message : e); } finally { busyG = false; } }, 20_000);
   console.log("google sheets/drive sync on");
+  // Old-mail imports scan in short time-boxed steps so a long mailbox never blocks the other jobs.
+  let busyI = false;
+  setInterval(async () => { if (busyI) return; busyI = true; try { await runImports({ db, cfg, pipeline, toMail: toRawMail }); } catch (e) { console.error("import tick", e instanceof Error ? e.message : e); } finally { busyI = false; } }, 5_000);
+  console.log("gmail import scanner on");
 }

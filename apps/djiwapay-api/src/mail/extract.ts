@@ -107,11 +107,14 @@ function pickAmount(text: string): number {
 }
 
 function pickMerchant(text: string, subject: string): string {
+  // A name ends where the next field starts: a keyword, a date, a comma or a line break.
+  const stop = String.raw`(?=\.?\s+(?:sebesar|senilai|jumlah|nominal|total|dengan|pada|tanggal|berhasil|rp|idr|saldo|no\.?\s|ref|\d{1,2}[/.-]\d)|[,;\n]|$)`;
+  const name = String.raw`([A-Za-z0-9][A-Za-z0-9 &'.\-/]{1,38}?)`;
   const pats = [
-    /(?:pembayaran|pembelian|transaksi|belanja|payment|purchase)\s+(?:di|ke|kepada|at|to)\s+([A-Za-z0-9][A-Za-z0-9 &'.\-/]{1,38}?)(?=\s+(?:sebesar|senilai|dengan|pada|tanggal|berhasil|rp|idr|\d{1,2}[/.-]\d)|[,.\n]|$)/i,
-    /(?:merchant|toko|penerima|nama penerima|kepada|beneficiary|tujuan)\s*[:\-]\s*([A-Za-z0-9][A-Za-z0-9 &'.\-/]{1,38})/i,
-    /(?:transfer|kiriman)\s+(?:dari|from)\s+([A-Za-z][A-Za-z '.\-]{1,38}?)(?=\s+(?:sebesar|senilai|rp|idr)|[,.\n]|$)/i,
-    /(?:top[- ]?up|isi saldo)\s+(?:ke|to)?\s*([A-Za-z0-9][A-Za-z0-9 ]{1,20})/i,
+    new RegExp(String.raw`(?:pembayaran|pembelian|transaksi|belanja|payment|purchase)\s+(?:di|ke|kepada|at|to)\s+` + name + stop, "i"),
+    new RegExp(String.raw`(?:merchant|toko|penerima|nama penerima|kepada|beneficiary|tujuan|pengirim)\s*[:\-]\s*` + name + stop, "i"),
+    new RegExp(String.raw`(?:transfer|kiriman)\s+(?:dari|from)\s+` + name + stop, "i"),
+    new RegExp(String.raw`(?:top[- ]?up|isi saldo)\s+(?:ke|to)?\s*([A-Za-z0-9][A-Za-z0-9 ]{1,20}?)` + stop, "i"),
   ];
   for (const p of pats) { const m = text.match(p) ?? subject.match(p); if (m) return m[1].trim().replace(/\s+/g, " ").slice(0, 40); }
   return "";
@@ -162,4 +165,13 @@ export const merchantKey = (merchant: string) => merchant.toLowerCase().replace(
 /** Masks long digit runs (card/account numbers) before anything is sent to a model. */
 export function redact(text: string): string {
   return text.replace(/\b(\d{4})[\d\s-]{6,}(\d{4})\b/g, "••••$2").replace(/\b\d{9,}\b/g, (d) => "•".repeat(d.length - 4) + d.slice(-4));
+}
+
+/** For text a person will copy out of the app and share so a parser can be fixed: masks numbers, addresses and names. */
+export function redactForShare(text: string): string {
+  return redact(text)
+    .replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, "■■■@■■■")
+    .replace(/(?:\+62|62|0)8\d{7,11}/g, "08■■■■■■■■")
+    .replace(/\b(Yth\.?|Halo|Hai|Kepada|Dear|Bapak\/Ibu|Bapak|Ibu|Sdr\.?)\s+[A-Z][\w'.-]*(?:\s+[A-Z][\w'.-]*){0,3}/g, "$1 ■■■")
+    .replace(/\s+/g, " ").trim().slice(0, 900);
 }
