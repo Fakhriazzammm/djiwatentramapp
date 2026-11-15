@@ -62,6 +62,9 @@ export function isPromo(subject: string, text: string): boolean {
   return hits >= 2 || /\b(promo\w*|penawaran|diskon\w*|flash ?sale|hemat\w*|spesial)\b/i.test(subject);
 }
 
+/** Does this mail read like a payment notification at all? Used before queueing something unreadable. */
+export const looksLikePayment = (subject: string, text: string) => TXN_EVIDENCE.test(`${subject}\n${text.slice(0, 4000)}`);
+
 /** A periodic report (merchant settlement, monthly statement) is not one transaction, even when it carries a total. */
 export const isReportMail = (subject: string) => /\b(laporan|statement|rekap\w*|ringkasan|mutasi|settlement)\b/i.test(subject);
 

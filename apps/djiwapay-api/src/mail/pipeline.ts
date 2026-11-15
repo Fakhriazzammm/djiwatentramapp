@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { Q, Tx } from "../sync.js";
-import { domainOf, extractPayment, forwardingCode, guessCategory, isConfident, isPromo, isReportMail, isSecretMail, issuerFor, merchantKey, redactForShare, type Extracted, type Issuer } from "./extract.js";
+import { domainOf, extractPayment, forwardingCode, guessCategory, isConfident, isPromo, isReportMail, isSecretMail, issuerFor, looksLikePayment, merchantKey, redactForShare, type Extracted, type Issuer } from "./extract.js";
 
 export type RawMail = {
   messageId: string; from: string; to: string[]; subject: string; text: string; date: Date | null;
@@ -122,7 +122,7 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   const atMs = x.at ?? mail.date?.getTime() ?? now.getTime();
   const at = new Date(Number.isFinite(atMs) ? atMs : now.getTime()).toISOString();
   const parsed = { amount: x.amount, direction: x.direction, merchant: x.merchant, accountHint: x.accountHint, ref: x.ref, at, subject: mail.subject.slice(0, 80), issuer: issuer.name };
-  if (!(x.amount > 0)) return stage ? finish("ignored", "unreadable", { confidence: x.confidence }) : finish("failed", "unreadable", { parsed, confidence: x.confidence });
+  if (!(x.amount > 0)) return stage ? finish("ignored", "unreadable", { confidence: x.confidence }) : looksLikePayment(mail.subject, mail.text) ? finish("failed", "unreadable", { parsed, confidence: x.confidence }) : finish("ignored", "unreadable", { confidence: x.confidence });
 
   // A bank reference seen before is the same payment.
   if (x.ref) {
