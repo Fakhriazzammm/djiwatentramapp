@@ -419,3 +419,5 @@
 /* More scroll room so the last card clears the floating tab bar. */
 .dpx .dpx-pad{padding-bottom:calc(172px + env(safe-area-inset-bottom,0px))}
 .dpx .dpx-pad.dpx-nobar{padding-bottom:24px}
+/* Header sits close to the top edge; only the device safe area is added. */
+.dpx .dpx-pad{padding-top:calc(env(safe-area-inset-top,0px) + 12px)}
