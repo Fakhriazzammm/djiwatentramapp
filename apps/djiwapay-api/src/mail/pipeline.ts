@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { Q, Tx } from "../sync.js";
-import { domainOf, extractPayment, forwardingCode, guessCategory, isConfident, isSecretMail, issuerFor, merchantKey, redactForShare, type Extracted, type Issuer } from "./extract.js";
+import { domainOf, extractPayment, forwardingCode, guessCategory, isConfident, isPromo, isReportMail, isSecretMail, issuerFor, merchantKey, redactForShare, type Extracted, type Issuer } from "./extract.js";
 
 export type RawMail = {
   messageId: string; from: string; to: string[]; subject: string; text: string; date: Date | null;
@@ -96,6 +96,9 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   if (!aligned) return { status: "ignored", reason: "auth-failed", userId };
   // Gate 3: codes, PINs and resets are never read or stored.
   if (isSecretMail(mail.subject, mail.text)) return { status: "ignored", reason: "secret", userId };
+  // Gate 4: a campaign or a periodic report is not one movement of money, whatever rupiah it prints.
+  if (isPromo(mail.subject, mail.text)) return { status: "ignored", reason: "promo", userId };
+  if (isReportMail(mail.subject)) return { status: "ignored", reason: "report", userId };
 
   const messageId = (mail.messageId || `${fromDomain}:${mail.subject}:${mail.date?.toISOString() ?? ""}`).slice(0, 300);
   const claimed = await d.db.query("insert into finance.inbound_messages(user_id,message_id,sender_domain,channel,status,import_id) values($1,$2,$3,$4,'review',$5) on conflict(user_id,message_id) do nothing returning id", [userId, messageId, fromDomain, issuer.id, stage?.importId ?? null]);

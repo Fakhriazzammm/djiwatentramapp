@@ -48,6 +48,23 @@ export function isSecretMail(subject: string, text: string): boolean {
   return /\b(pin|password|kata sandi)\b.{0,30}\b(baru|anda|kamu|reset)\b/i.test(head);
 }
 
+/** Wording that only a payment notification has; a campaign promises rupiah without ever moving any. */
+const TXN_EVIDENCE = /(berhasil|telah (?:dibayar|diterima|ditransfer|diproses)|transaksi (?:berhasil|kamu|anda|dengan|nomor|no)|pembayaran (?:berhasil|kepada|anda|sebesar)|transfer (?:berhasil|ke|sebesar|masuk)|top ?up berhasil|dana (?:masuk|keluar)|penarikan|nominal|no\.? ?ref|nomor referensi|struk|bukti transaksi)/i;
+const PROMO_WORD = /\b(promo\w*|promosi|diskon\w*|cashback|voucher|kupon|penawaran|spesial|flash ?sale|gratis|undian|hadiah|buruan|hemat\w*|jangan lewatkan|klik (?:di sini|link|tombol)|syarat (?:dan|&) ketentuan|berhenti berlangganan|unsubscribe|poin\w*|serunya|nikmat\w*)/gi;
+
+/** An email campaign, not a payment: "Spesial 11.11: Hemat s.d. Rp3,5 Juta!" is worth nothing in a ledger. */
+export function isPromo(subject: string, text: string): boolean {
+  const whole = `${subject}\n${text.slice(0, 4000)}`;
+  const hits = (whole.match(PROMO_WORD) ?? []).length;
+  if (!hits) return false;
+  // A receipt may mention cashback or poin and still be a receipt; a campaign is mostly this vocabulary.
+  if (TXN_EVIDENCE.test(whole) && hits < 3) return false;
+  return hits >= 2 || /\b(promo\w*|penawaran|diskon\w*|flash ?sale|hemat\w*|spesial)\b/i.test(subject);
+}
+
+/** A periodic report (merchant settlement, monthly statement) is not one transaction, even when it carries a total. */
+export const isReportMail = (subject: string) => /\b(laporan|statement|rekap\w*|ringkasan|mutasi|settlement)\b/i.test(subject);
+
 const MONTHS: Record<string, number> = { jan: 0, januari: 0, feb: 1, februari: 1, mar: 2, maret: 2, apr: 3, april: 3, mei: 4, may: 4, jun: 5, juni: 5, jul: 6, juli: 6, agu: 7, agt: 7, agustus: 7, aug: 7, sep: 8, sept: 8, september: 8, okt: 9, oktober: 9, oct: 9, nov: 10, november: 10, des: 11, desember: 11, dec: 11 };
 
 /** "Rp 1.250.000", "IDR 1,250,000.50", "Rp125.000,00" → number. */
@@ -93,15 +110,26 @@ const IN_RE = /(diterima|dana masuk|uang masuk|menerima|kredit|pemasukan|receive
 const AMOUNT_LABEL = /(?:nominal|jumlah|total(?: pembayaran| transaksi| bayar)?|sebesar|senilai|amount|nilai transaksi|harga)\s*[:\-]?\s*(?:rp|idr)\.?\s*([\d.,]+)/i;
 const AMOUNT_ANY = /(?:rp|idr)\.?\s*([\d][\d.,]*)/gi;
 const FEE_NEAR = /(biaya admin|admin fee|biaya layanan|saldo|sisa|limit|bunga|pajak)/i;
+/** "s.d. Rp 3,5 Juta", "hingga Rp 500.000", "maks 10rb": a ceiling or an estimate, never what was paid. */
+const ESTIMATE_NEAR = /(s\.?\s?d\.?|sampai|hingga|maks(?:imal|\.)?|mulai dari|s\/d|up to)\s*$/i;
+const MIN_AMOUNT = 100, MAX_AMOUNT = 1e12;   // "Rp 4" out of a promo is not a payment; neither is a typo'd 10^12
+
+/** Rupiah with the shorthand people actually print: "3,5 Juta" is 3.500.000, "25rb" is 25.000. */
+function valueAt(text: string, at: number, digits: string): number {
+  const unit = text.slice(at + digits.length, at + digits.length + 10).match(/^\s*(juta|jt|ribu|rb|k)\b/i)?.[1]?.toLowerCase();
+  const n = parseRupiah(digits) * (unit ? (/^j/.test(unit) ? 1e6 : 1e3) : 1);
+  return Math.round(n);
+}
 
 function pickAmount(text: string): number {
   const labeled = text.match(AMOUNT_LABEL);
-  if (labeled) { const n = parseRupiah(labeled[1]); if (n > 0) return n; }
+  if (labeled) { const n = valueAt(text, (labeled.index ?? 0) + labeled[0].lastIndexOf(labeled[1]), labeled[1]); if (n >= MIN_AMOUNT) return n; }
   for (const m of text.matchAll(AMOUNT_ANY)) {
-    const around = text.slice(Math.max(0, (m.index ?? 0) - 24), m.index ?? 0);
-    if (FEE_NEAR.test(around)) continue;
-    const n = parseRupiah(m[1]);
-    if (n > 0) return n;
+    const i = m.index ?? 0;
+    const before = text.slice(Math.max(0, i - 24), i);
+    if (FEE_NEAR.test(before) || ESTIMATE_NEAR.test(before)) continue;
+    const n = valueAt(text, i + m[0].lastIndexOf(m[1]), m[1]);
+    if (n >= MIN_AMOUNT && n <= MAX_AMOUNT) return n;
   }
   return 0;
 }
@@ -135,7 +163,7 @@ export function extractPayment(subject: string, bodyText: string): Extracted {
   if (direction === "unknown") missing.push("direction");
   if (!merchant) missing.push("merchant");
   if (at === null) missing.push("at");
-  const confidence = Math.max(0, Math.min(1, (amount ? 0.4 : 0) + (direction !== "unknown" ? 0.25 : 0) + (merchant ? 0.15 : 0) + (at !== null ? 0.1 : 0) + (acct ? 0.05 : 0) + (ref ? 0.05 : 0)));
+  const confidence = Math.max(0, Math.min(1, (amount ? 0.4 : 0) + (direction !== "unknown" ? 0.25 : 0) + (merchant ? 0.15 : 0) + (at !== null ? 0.1 : 0) + (acct ? 0.05 : 0) + (ref ? 0.05 : 0) + (TXN_EVIDENCE.test(whole) ? 0 : -0.3)));
   return { amount, direction, merchant, accountHint: acct?.[1] ?? "", ref: ref?.[1] ?? "", at, confidence, missing };
 }
 

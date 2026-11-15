@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { domainOf, extractPayment, forwardingCode, guessCategory, isConfident, isSecretMail, issuerFor, parseRupiah, parseWhen, redact } from "./extract";
+import { domainOf, extractPayment, forwardingCode, guessCategory, isConfident, isPromo, isReportMail, isSecretMail, issuerFor, parseRupiah, parseWhen, redact } from "./extract";
 
 describe("rupiah and dates", () => {
   test("parses Indonesian and English number formats", () => {
@@ -79,5 +79,43 @@ describe("payment extraction", () => {
   });
   test("masks long numbers before a model sees them", () => {
     expect(redact("Kartu 4111 1111 1111 1234 dan rek 1234567890")).toBe("Kartu ••••1234 dan rek ••••••7890");
+  });
+});
+
+describe("campaigns and reports are not money", () => {
+  test("a promo subject with a rupiah figure is ignored, not recorded", () => {
+    expect(isPromo("Spesial 11.11: Hemat s.d. Rp3,5 Juta!", "Belanja hemat di Jago, diskon hingga Rp 100.000. Klik di sini.")).toBe(true);
+    expect(isPromo("Mau tahu cara hemat bayar tagihan? 👀", "Cek promo terbaru, ada cashback dan voucher.")).toBe(true);
+    expect(isPromo("Serunya dapet, promonya juga 😎", "Penawaran spesial untukmu, buruan sebelum berakhir.")).toBe(true);
+  });
+  test("a receipt that merely mentions cashback is still a receipt", () => {
+    expect(isPromo("Pembayaran Berhasil!", "Pembayaran ke Kopi Kenangan sebesar Rp 25.000 berhasil. Kamu dapat cashback Rp 500.")).toBe(false);
+    expect(isPromo("Top-up Berhasil", "Top-up GoPay sebesar Rp 100.000 berhasil pada 15/11/2026 08.00.")).toBe(false);
+  });
+  test("periodic reports are ignored even when they carry a total", () => {
+    expect(isReportMail("Laporan Transaksi Merchant BCA 004069399 DJIWA TENTRAM Hasil Settlement per 09-1")).toBe(true);
+    expect(isReportMail("Mutasi rekening November")).toBe(true);
+    expect(isReportMail("Pembayaran Berhasil!")).toBe(false);
+    expect(isReportMail("Transfer Berhasil")).toBe(false);
+  });
+});
+
+describe("amounts that are not payments", () => {
+  test("reads the juta/ribu shorthand instead of dropping the scale", () => {
+    expect(extractPayment("Pembayaran berhasil", "Pembayaran ke Toko Maju sebesar Rp3,5 Juta berhasil").amount).toBe(3500000);
+    expect(extractPayment("Top up berhasil", "Top-up berhasil Rp 25rb pada 15/11/2026 10:00").amount).toBe(25000);
+  });
+  test("skips a ceiling or a teaser, and takes the real transaction amount", () => {
+    const x = extractPayment("Pembayaran berhasil", "Hemat s.d. Rp 3,5 Juta! Pembayaran ke Kopi Kenangan sebesar Rp 25.000 berhasil pada 15/11/2026 13:45");
+    expect(x.amount).toBe(25000);
+  });
+  test("a rupiah figure too small to be a payment leaves the amount empty", () => {
+    const x = extractPayment("Notifikasi", "Transaksi Rp 4 tercatat di sistem kami");
+    expect(x.amount).toBe(0);
+    expect(isConfident(x)).toBe(false);
+  });
+  test("no transaction wording means no confidence, even with a full set of fields", () => {
+    const x = extractPayment("Info", "Belanja di Toko Maju Rp 250.000 pada 15/11/2026 10:00");
+    expect(isConfident(x)).toBe(false);
   });
 });
