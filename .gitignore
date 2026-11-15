@@ -63,3 +63,7 @@ result_batch_analyze.txt
 yumi-supervisor-agent/.yumi_supervisor_cursor.txt
 yumi-supervisor-agent/.shift_recap_cursor.txt
 .worktrees/
+apps/djiwapay/artwork/archive/
+apps/djiwapay/artwork/studio/*.png
+!apps/djiwapay/artwork/studio/style-reference.png
+!apps/djiwapay/artwork/studio/mascot.png

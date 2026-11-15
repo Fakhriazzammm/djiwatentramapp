@@ -3,7 +3,7 @@ import { useId } from "react";
 import { ease } from "../shell/dpx-ui";
 
 /** Area chart that draws itself. Zero line is dashed when the series dips below it. */
-export function AreaChart({ points, height = 96, color = "#1a5dc6", marks = [], label }: { points: number[]; height?: number; color?: string; marks?: { i: number; color: string }[]; label: string }) {
+export function AreaChart({ points, height = 96, color = "#d14b1a", marks = [], label }: { points: number[]; height?: number; color?: string; marks?: { i: number; color: string }[]; label: string }) {
   const id = useId().replace(/:/g, ""), w = 340;
   if (points.length < 2) return null;
   const min = Math.min(...points, 0), max = Math.max(...points, 1), span = max - min || 1;
@@ -21,7 +21,7 @@ export function AreaChart({ points, height = 96, color = "#1a5dc6", marks = [], 
 /** Score ring that sweeps in. */
 export function ScoreRing({ score, tone, small = "/ 100" }: { score: number; tone: "ok" | "warn" | "bad"; small?: string }) {
   const r = 54, c = 2 * Math.PI * r, color = tone === "ok" ? "#13804a" : tone === "warn" ? "#d9941a" : "#d23a2a";
-  return <div className="dpx-ring" role="img" aria-label={`Skor ${score} dari 100`}><svg viewBox="0 0 132 132"><circle cx="66" cy="66" r={r} fill="none" stroke="rgba(15,35,71,.08)" strokeWidth="13" /><motion.circle cx="66" cy="66" r={r} fill="none" stroke={color} strokeWidth="13" strokeLinecap="round" strokeDasharray={c} initial={{ strokeDashoffset: c }} animate={{ strokeDashoffset: c * (1 - Math.min(100, score) / 100) }} transition={{ duration: 1, ease }} /></svg>
+  return <div className="dpx-ring" role="img" aria-label={`Skor ${score} dari 100`}><svg viewBox="0 0 132 132"><circle cx="66" cy="66" r={r} fill="none" stroke="rgba(45,36,29,.08)" strokeWidth="13" /><motion.circle cx="66" cy="66" r={r} fill="none" stroke={color} strokeWidth="13" strokeLinecap="round" strokeDasharray={c} initial={{ strokeDashoffset: c }} animate={{ strokeDashoffset: c * (1 - Math.min(100, score) / 100) }} transition={{ duration: 1, ease }} /></svg>
     <div className="dpx-c"><b>{score}</b><span>{small}</span></div></div>;
 }
 

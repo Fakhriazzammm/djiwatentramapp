@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AnimatedNumber, Bar, Btn, Chev, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sheet, Sky, SuccessMark, Wiggle, ease, serviceIcon, serviceTone, spring, type IconName } from "./dpx-ui";
+import { payAsset, AnimatedNumber, Bar, Btn, Chev, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sheet, Sky, SuccessMark, Wiggle, ease, serviceIcon, serviceTone, spring, type IconName } from "./dpx-ui";
 import { dayLabel, firstName, formatDateTime, formatTime, greeting, rupiah, signedRupiah, transactionTitle, transactionVisual } from "../../lib/djiwa-pay-format";
 import { heatLevel, monthLabel, summarizeMonth, summaryCategory } from "../../lib/djiwa-pay-summary";
 import { paymentMethodLabel, transactionMethodLine, type WalletNotification, type WalletTransaction } from "../../lib/wallet-adapter";
@@ -23,7 +23,7 @@ function SkeletonBlock({ h, w }: { h: number; w?: number | string }) { return <d
 export function TxRow({ entry, onOpen, i = 0 }: { entry: WalletTransaction; onOpen: (id: string) => void; i?: number }) {
   const v = transactionVisual(entry);
   const pending = entry.status !== "success" && entry.status !== "completed";
-  return <Btn type="button" className="dpx-row" onClick={() => onOpen(String(entry.id))} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: Math.min(i, 10) * 0.045 }} whileTap={{ scale: 0.985, backgroundColor: "rgba(15,35,71,.04)" }}>
+  return <Btn type="button" className="dpx-row" onClick={() => onOpen(String(entry.id))} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: Math.min(i, 10) * 0.045 }} whileTap={{ scale: 0.985, backgroundColor: "rgba(45,36,29,.04)" }}>
     <span className={`dpx-cat dpx-c-${toneForVisual(v.tone)}`}><Ic n={v.icon as IconName} /></span>
     <span className="dpx-main"><b>{transactionTitle(entry)}</b><span>{transactionMethodLine(entry)}</span></span>
     <span className="dpx-trail"><b className={entry.direction === "credit" ? "dpx-in" : ""}>{entry.direct ? rupiah(entry.amount) : signedRupiah(entry.amount, entry.direction)}</b>{pending ? <span className="dpx-tag dpx-warn">Diproses</span> : formatTime(entry.created_at)}</span>
@@ -47,7 +47,7 @@ export function ComingSoonSheet({ title = "Segera hadir", message, onClose }: { 
 
 export function CardSheet({ onClose }: { onClose: () => void }) {
   return <Sheet title="Kartu Djiwa" onClose={onClose}>
-    <div className="dpx-center" style={{ padding: "6px 0 4px" }}><img src="/assets/djiwa-pay-actions/card.webp" width={132} height={132} alt="" style={{ margin: "0 auto" }} /><b style={{ fontSize: 20, display: "block", marginTop: 8 }}>Segera hadir</b><p className="dpx-sub" style={{ maxWidth: 270, margin: "6px auto 0" }}>Kartu virtual untuk belanja online dan langganan, terhubung ke saldo Djiwa Pay.</p></div>
+    <div className="dpx-center" style={{ padding: "6px 0 4px" }}><img src={payAsset("card")} width={132} height={132} alt="" style={{ margin: "0 auto" }} /><b style={{ fontSize: 20, display: "block", marginTop: 8 }}>Segera hadir</b><p className="dpx-sub" style={{ maxWidth: 270, margin: "6px auto 0" }}>Kartu virtual untuk belanja online dan langganan, terhubung ke saldo Djiwa Pay.</p></div>
     <Btn type="button" className="dpx-btn" onClick={onClose}>Mengerti</Btn>
   </Sheet>;
 }
@@ -62,7 +62,7 @@ export function PaySheet({ nav, onClose, withdrawSupported }: { nav: Nav; onClos
     </Btn>
     <div className="dpx-tile3" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 6, marginTop: 16 }}>
       {actions.map(([key, label, path, asset, ok]) => <Btn key={key} type="button" className="dpx-q" disabled={!ok} style={ok ? undefined : { opacity: 0.55 }} onClick={() => ok && go(path)} aria-label={ok ? label : `${label}, segera hadir`}>
-        <span className="dpx-qi" style={{ background: "var(--group)", width: 64, height: 64, borderRadius: 22, display: "grid", placeItems: "center" }}><img src={`/assets/djiwa-pay-actions/${asset}`} width={40} height={40} alt="" /></span>{label}{ok ? null : <span className="dpx-tag" style={{ marginTop: -4 }}>Segera</span>}
+        <span className="dpx-qi" style={{ background: "var(--group)", width: 64, height: 64, borderRadius: 22, display: "grid", placeItems: "center" }}><img src={payAsset(asset)} width={40} height={40} alt="" /></span>{label}{ok ? null : <span className="dpx-tag" style={{ marginTop: -4 }}>Segera</span>}
       </Btn>)}
     </div>
     <div className="dpx-group dpx-flush" style={{ marginTop: 14 }}>
@@ -103,7 +103,7 @@ export function ServicesTab({ nav, focusSearch, recentNumbers }: { nav: Nav; foc
         {list.map(([key, label], idx) => <Btn key={key} type="button" className="dpx-q" style={{ padding: "8px 0" }} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ ...spring, delay: idx * 0.035 }} whileTap={{ scale: 0.92 }} onClick={() => nav.openService(key, label)}><span className={`dpx-qi dpx-c-${serviceTone[key]}`} style={{ width: 56, height: 56, borderRadius: 20, display: "grid", placeItems: "center" }}><Ic n={serviceIcon[key]} size="lg" /></span><span style={{ fontSize: 13, fontWeight: 600 }}>{label}</span>{COMING_SOON.has(key) ? <span className="dpx-tag" style={{ marginTop: -4 }}>Segera</span> : null}</Btn>)}
       </div></div>}
     {recentNumbers.length ? <><div className="dpx-glabel">Nomor terakhir dipakai</div><div className="dpx-group dpx-flush">{recentNumbers.slice(0, 5).map((n) => <Row key={n} icon="phone" tone="blue" title={n} sub="Pulsa & data" trail="Beli lagi" chev={false} onClick={() => nav.openService("pulsa", "Pulsa")} />)}</div></> : null}
-    <div className="dpx-group dpx-flex" style={{ background: "linear-gradient(135deg,#e1ecff,#c9dcff)", marginTop: 16 }}><div style={{ flex: 1 }}><span className="dpx-tag dpx-info">REWARD</span><div className="dpx-title" style={{ fontSize: 19, marginTop: 6 }}>Saldo +Rp 1.000 tiap transaksi</div><div className="dpx-sub">Bayar PPOB dengan Djiwa Pay, reward masuk setelah berhasil.</div></div><I3 name="promo-voucher" px={76} /></div>
+    <div className="dpx-group dpx-flex" style={{ background: "linear-gradient(135deg,#f9f2e7,#f5ead6)", marginTop: 16 }}><div style={{ flex: 1 }}><span className="dpx-tag dpx-info">REWARD</span><div className="dpx-title" style={{ fontSize: 19, marginTop: 6 }}>Saldo +Rp 1.000 tiap transaksi</div><div className="dpx-sub">Bayar PPOB dengan Djiwa Pay, reward masuk setelah berhasil.</div></div><I3 name="promo-voucher" px={76} /></div>
   </div></Sky></div>;
 }
 

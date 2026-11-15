@@ -131,7 +131,7 @@ export function CatatSheet({ fin, notify, onClose, onManual, onPay, balances }: 
   }
   return <Sheet title="Catat" onClose={onClose}>
     <span className="dpx-bubble">Cukup tulis atau bilang: “kopi 25rb dan parkir 5rb”</span>
-    <div className={listening ? "dpx-glow" : "dpx-glow"} style={{ width: 88, height: 88, margin: "14px auto 6px", boxShadow: listening ? "0 0 0 12px rgba(26,93,198,.18),0 0 0 26px rgba(26,93,198,.08)" : "0 0 0 10px rgba(26,93,198,.10)" }}><I3 name="business-ai-assistant" px={58} /></div>
+    <div className={listening ? "dpx-glow" : "dpx-glow"} style={{ width: 88, height: 88, margin: "14px auto 6px", boxShadow: listening ? "0 0 0 12px rgba(209,75,26,.18),0 0 0 26px rgba(209,75,26,.08)" : "0 0 0 10px rgba(209,75,26,.10)" }}><I3 name="business-ai-assistant" px={58} /></div>
     <textarea className="dpx-textarea" aria-label="Catatan dalam satu kalimat" placeholder="Atau ketik di sini" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }} />
     <div className="dpx-flex dpx-mt">
       <Btn type="button" className="dpx-btn" style={{ margin: 0, flex: 1 }} onClick={listen} aria-pressed={listening}><Ic n="mic" size="sm" /> {listening ? "Mendengarkan… ketuk selesai" : supported ? "Bicara" : "Bicara (tidak didukung)"}</Btn>
@@ -236,7 +236,7 @@ export function StreakSheet({ entries, onClose, onCatat }: { entries: Entry[]; o
   const labels = ["M", "S", "S", "R", "K", "J", "S"];
   return <Sheet title="Streak mencatat" onClose={onClose}>
     <div className="dpx-center" style={{ margin: "-6px 0 8px" }}><span className="dpx-cat dpx-c-amber" style={{ width: 72, height: 72, margin: "0 auto" }}><Ic n="flame" size="lg" /></span><div className="dpx-money dpx-mt8">{s.count} hari</div><div className="dpx-sub">{s.loggedToday ? "Hari ini sudah tercatat. Pertahankan!" : "Catat sesuatu hari ini agar streak berlanjut."}</div></div>
-    <div className="dpx-streak">{s.week.map((d, i) => <div key={i} className={d.today ? "dpx-today" : d.logged ? "dpx-on" : ""}><i>{d.logged ? "✓" : "•"}</i>{labels[d.date.getDay()]}</div>)}</div>
+    <div className="dpx-streak">{s.week.map((d, i) => <div key={i} className={d.today ? "dpx-today" : d.logged ? "dpx-on" : ""}><i>{d.logged ? <Ic n="check" size="sm" /> : "•"}</i>{labels[d.date.getDay()]}</div>)}</div>
     {s.loggedToday ? null : <Btn type="button" className="dpx-btn" onClick={onCatat}>Catat sekarang</Btn>}
   </Sheet>;
 }

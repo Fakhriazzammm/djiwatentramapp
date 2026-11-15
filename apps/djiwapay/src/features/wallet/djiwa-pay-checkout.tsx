@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { QrCode, WalletCards } from "lucide-react";
+import { Ic } from "../shell/dpx-ui";
 import {
   CheckoutField,
   CheckoutInput,
@@ -82,10 +82,10 @@ export function DjiwaPayCheckout({
   const cart: CheckoutCartItem[] = [{ productId, name: productName, variant: productDescription, price: amount, quantity: 1 }];
   const wallet = walletPaymentState(walletBalance, amount);
   const paymentOptions = kind === "topup"
-    ? [{ key: "mayar", label: "QRIS Mayar", description: "Bayar aman melalui halaman QRIS Mayar.", icon: <QrCode size={16} /> }]
+    ? [{ key: "mayar", label: "QRIS Mayar", description: "Bayar aman melalui halaman QRIS Mayar.", icon: <Ic n="qr" size="sm" /> }]
     : [
-        { key: "wallet", label: "Djiwa Pay", description: "Bayar langsung dari saldo Djiwa Pay.", icon: <WalletCards size={16} /> },
-        { key: "mayar", label: "QRIS", description: "Bayar cepat dan cashierless dengan QRIS.", icon: <QrCode size={16} /> },
+        { key: "wallet", label: "Djiwa Pay", description: "Bayar langsung dari saldo Djiwa Pay.", icon: <Ic n="wallet" size="sm" /> },
+        { key: "mayar", label: "QRIS", description: "Bayar cepat dan cashierless dengan QRIS.", icon: <Ic n="qr" size="sm" /> },
       ];
 
   const fields = !isPayment ? (

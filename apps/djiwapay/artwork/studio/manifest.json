@@ -1,0 +1,471 @@
+[
+  {
+    "name": "back",
+    "width": 256,
+    "height": 256,
+    "bytes": 11306,
+    "sha256": "d991b8635caaa57d9519001f75f4f721cd5ae36f2556ad0ea705cc8934095120"
+  },
+  {
+    "name": "close",
+    "width": 256,
+    "height": 256,
+    "bytes": 17536,
+    "sha256": "c7f860e7d4df69becb18978a4c1dd32087cb56fba8f74e2aec7ee112e11e45be"
+  },
+  {
+    "name": "bell",
+    "width": 256,
+    "height": 256,
+    "bytes": 15310,
+    "sha256": "88ccdf5b1f2f402ae6822347754db04eb226ef6cf8a2d6f9f5684fb1e40b9c5c"
+  },
+  {
+    "name": "eye",
+    "width": 256,
+    "height": 256,
+    "bytes": 13800,
+    "sha256": "7c4efbe635076631190f4daebe14710618ef34c8c4071203865aa0c36bd103fc"
+  },
+  {
+    "name": "eyeoff",
+    "width": 256,
+    "height": 256,
+    "bytes": 14596,
+    "sha256": "2355278701a6ccbe7704ead2c0f0844a9904148cc41bb7ad6f9828e2b5dde3cf"
+  },
+  {
+    "name": "search",
+    "width": 256,
+    "height": 256,
+    "bytes": 13572,
+    "sha256": "6c03e59e3912760bce8c2692dadf8efdd658860e32cf52d455762c5ed0453750"
+  },
+  {
+    "name": "filter",
+    "width": 256,
+    "height": 256,
+    "bytes": 15744,
+    "sha256": "30ff2124667dd6ea7ced8c553452a70f1f373dffc902b1c3625453826d8d5b0f"
+  },
+  {
+    "name": "cal",
+    "width": 256,
+    "height": 256,
+    "bytes": 18298,
+    "sha256": "a38de8e02f5d5ad1879d299729bc11ebe09bacbfab8fecb5794cf9249882db68"
+  },
+  {
+    "name": "up",
+    "width": 256,
+    "height": 256,
+    "bytes": 11360,
+    "sha256": "0db652a5ec3ef0dc05fb2ba2dc486147d94239c7c454f3ea24c9f01fa97333d7"
+  },
+  {
+    "name": "plus",
+    "width": 256,
+    "height": 256,
+    "bytes": 24226,
+    "sha256": "bb8aade89c02043e17358387521d09d95e437918a726fa95a5248cca8104dc5f"
+  },
+  {
+    "name": "check",
+    "width": 256,
+    "height": 256,
+    "bytes": 12070,
+    "sha256": "e9b7b555a64d1c2cfa3d21a6c29f0b604016377e49b69bb3ed29043802c29561"
+  },
+  {
+    "name": "chev",
+    "width": 256,
+    "height": 256,
+    "bytes": 10966,
+    "sha256": "104296c3456bff3b1408d8f533e26b472c423f9ed8eca92d36c9df0219d2308e"
+  },
+  {
+    "name": "share",
+    "width": 256,
+    "height": 256,
+    "bytes": 14118,
+    "sha256": "daa5f2c6684c0063dd410e58125a2c5af74e0e5f019dc2393e5205bb4f51f8db"
+  },
+  {
+    "name": "copy",
+    "width": 256,
+    "height": 256,
+    "bytes": 14718,
+    "sha256": "f9949808d7525f746028df92dd1f114cdb9c074d8286f1e00aaf309c87d1bbb3"
+  },
+  {
+    "name": "shield",
+    "width": 256,
+    "height": 256,
+    "bytes": 15470,
+    "sha256": "41ff9b5503449951f7c098c4b56681d3fb065ee653c21660c8ae079bd81999c5"
+  },
+  {
+    "name": "help",
+    "width": 256,
+    "height": 256,
+    "bytes": 12188,
+    "sha256": "bddf7d69393d458f52698fb41ff8ee736ad9fb16962e29b6fe2b80eb37d3329a"
+  },
+  {
+    "name": "user",
+    "width": 256,
+    "height": 256,
+    "bytes": 13060,
+    "sha256": "b38efe1f95642771172f58ff0a764f9e7e5685535e55518be3abd34130a859a7"
+  },
+  {
+    "name": "flash",
+    "width": 256,
+    "height": 256,
+    "bytes": 12636,
+    "sha256": "97e1bc3a17f18be2f13fa233b7028ed8a9bac3fb313f6fd3921a699ed2c2896b"
+  },
+  {
+    "name": "clock",
+    "width": 256,
+    "height": 256,
+    "bytes": 18896,
+    "sha256": "3f0aec0e5906e64e4b8e9ba6ccd04d89426da5b8bdc92e76466da8ad82c1c3ee"
+  },
+  {
+    "name": "warn",
+    "width": 256,
+    "height": 256,
+    "bytes": 15974,
+    "sha256": "e3a85ee0fba6550d3596c0f9a4affb8c142360005b297a577fb3cd521aa85dfb"
+  },
+  {
+    "name": "info",
+    "width": 256,
+    "height": 256,
+    "bytes": 15976,
+    "sha256": "eae87fdbe7ef844af977c599d2b498c887f6d26f724f4386b5ca4d4bc2b2d66c"
+  },
+  {
+    "name": "chart",
+    "width": 256,
+    "height": 256,
+    "bytes": 13280,
+    "sha256": "c8ad67fc00813c1c19045dd5263c0bc5c14e1613e65298e0ef5d5474fe7080f3"
+  },
+  {
+    "name": "phone",
+    "width": 256,
+    "height": 256,
+    "bytes": 6990,
+    "sha256": "d5e06f60ff9fa7916f78d97d8707e6db75b1dd6592d7ec6b66413cd4091c570f"
+  },
+  {
+    "name": "wifi",
+    "width": 256,
+    "height": 256,
+    "bytes": 19104,
+    "sha256": "e5157ecdde0a306f29f6f279c80b049974303c3a76ac5a4ec7de42c1829b0900"
+  },
+  {
+    "name": "receipt",
+    "width": 256,
+    "height": 256,
+    "bytes": 15986,
+    "sha256": "552aa4c5d68dfcfceaab93eb4767f8c55a8f460f5de294ab04b104e7c56d772f"
+  },
+  {
+    "name": "drop",
+    "width": 256,
+    "height": 256,
+    "bytes": 12912,
+    "sha256": "cdf2d95d4d730e1765325ce597199b0c936040db1e5b91fb4868eecca6754106"
+  },
+  {
+    "name": "heart",
+    "width": 256,
+    "height": 256,
+    "bytes": 15782,
+    "sha256": "e8b38c9006fe6c4ac370a9b3fdd15e885d7b43fc2fe7ca245b7c9d02b9cdcd07"
+  },
+  {
+    "name": "tv",
+    "width": 256,
+    "height": 256,
+    "bytes": 15936,
+    "sha256": "4e7c34f5228b5da11b6a09cb730017ce79c4d65def783c4ca5acd1f2cfcb308b"
+  },
+  {
+    "name": "game",
+    "width": 256,
+    "height": 256,
+    "bytes": 15792,
+    "sha256": "1e3bb6fdd4561157646f2557561bbbd4d742f8ab07885da3ed8757c43bbde2c3"
+  },
+  {
+    "name": "car",
+    "width": 256,
+    "height": 256,
+    "bytes": 21208,
+    "sha256": "2c2a4d1ce15ebf7b720e936610307eaf39d0dd0d62fd5767fa1db56562cbf2b8"
+  },
+  {
+    "name": "repeat",
+    "width": 256,
+    "height": 256,
+    "bytes": 15758,
+    "sha256": "fd61f91c0d1fea850f8bcf83ed2f058f1b0dc8e3916e6654516eb556a05b0f94"
+  },
+  {
+    "name": "gift",
+    "width": 256,
+    "height": 256,
+    "bytes": 21164,
+    "sha256": "9219e5d0b5e8b12e9a920c09b955b551b574bed858ee0a90f20f78cbb3850d08"
+  },
+  {
+    "name": "grid",
+    "width": 256,
+    "height": 256,
+    "bytes": 11876,
+    "sha256": "b74ede865c6e04a28acbb54da1767de9d69c2c6ec405fdf1ec7e8439d480f478"
+  },
+  {
+    "name": "bank",
+    "width": 256,
+    "height": 256,
+    "bytes": 20964,
+    "sha256": "640e72aff41f35a72c4556b752c0ecbedbc0423904375eaf4b01d3f8a8530136"
+  },
+  {
+    "name": "down",
+    "width": 256,
+    "height": 256,
+    "bytes": 11820,
+    "sha256": "f45a4aea334b62ac02204242e12d3c5a9bee52a6719c15feb4d81a144482933b"
+  },
+  {
+    "name": "send",
+    "width": 256,
+    "height": 256,
+    "bytes": 12806,
+    "sha256": "b2f5cc21a6e4bbd9610a97827888e49179ced8a07055aef7dfeacb53da88b3f1"
+  },
+  {
+    "name": "scan",
+    "width": 256,
+    "height": 256,
+    "bytes": 20774,
+    "sha256": "12992fbc99db02baa0e2e8c6fe4e9cf7d8f78a86ddddde4acb5a58a05644a98f"
+  },
+  {
+    "name": "qr",
+    "width": 256,
+    "height": 256,
+    "bytes": 19286,
+    "sha256": "5e80ec78fa4d1b26b815add75ebc6866e0b5abed46216cebe0bdaab6f47546d0"
+  },
+  {
+    "name": "link",
+    "width": 256,
+    "height": 256,
+    "bytes": 16660,
+    "sha256": "8db26fe871ff98e8364aa7a5a67f44113fe90b0ef0d94ccbf39e2a8fa063c96c"
+  },
+  {
+    "name": "bag",
+    "width": 256,
+    "height": 256,
+    "bytes": 17620,
+    "sha256": "f30138d8cc7fee2508aef6962781b8168187a88d5b67ddbf9f49bc4a8174c176"
+  },
+  {
+    "name": "mic",
+    "width": 256,
+    "height": 256,
+    "bytes": 16034,
+    "sha256": "fd9a503c9f0b5aad601b7976054aa21edfaa7b6c487177261ca945a0c02a7c66"
+  },
+  {
+    "name": "edit",
+    "width": 256,
+    "height": 256,
+    "bytes": 11792,
+    "sha256": "6a4f143438cbdb79144f5c2f8b7763701021fd44e0ef1b457d4122417271866b"
+  },
+  {
+    "name": "trash",
+    "width": 256,
+    "height": 256,
+    "bytes": 10184,
+    "sha256": "7765541ba6a96e349dc62ef0d37eb56b54e7c21dce2b65efc013aaa8f3e0c257"
+  },
+  {
+    "name": "tag",
+    "width": 256,
+    "height": 256,
+    "bytes": 18662,
+    "sha256": "2d44379809eb5c11b1695ec81ba55c499c2d73cfdf16b134b0b9d941cfda2d05"
+  },
+  {
+    "name": "target",
+    "width": 256,
+    "height": 256,
+    "bytes": 21586,
+    "sha256": "732e83630ffb58353cd79f220a0f4b814f454ce2e4f00431334853aa7659fc17"
+  },
+  {
+    "name": "flame",
+    "width": 256,
+    "height": 256,
+    "bytes": 14598,
+    "sha256": "44737de6bc6378cbd9986cf24236e2a4bc385b5c8ee567036fa9b66b30d593b3"
+  },
+  {
+    "name": "users",
+    "width": 256,
+    "height": 256,
+    "bytes": 13392,
+    "sha256": "7905a52d2b6fa8c7946ffbbabf262e0a333039d5d26ad4c0b9ce8a1ede7e99cd"
+  },
+  {
+    "name": "dl",
+    "width": 256,
+    "height": 256,
+    "bytes": 14384,
+    "sha256": "67b22c4b9d20f3a64f92f53d34555eeec511146be8588bb932d8d8f99ea03652"
+  },
+  {
+    "name": "split",
+    "width": 256,
+    "height": 256,
+    "bytes": 13010,
+    "sha256": "89eeb1eb295e8d5e34a5ff1fc94b1563ea93f4b319ce7f81df893cbbcd0e9c44"
+  },
+  {
+    "name": "trend",
+    "width": 256,
+    "height": 256,
+    "bytes": 15306,
+    "sha256": "c88b024a438d85312792052ad310ffcbea4d0cd6b98a587b674a4603d07296ff"
+  },
+  {
+    "name": "pie",
+    "width": 256,
+    "height": 256,
+    "bytes": 16426,
+    "sha256": "032c1deaad0afdef2605fa70ddfb9bdc7993c012ee1a461cee909042d6067557"
+  },
+  {
+    "name": "list",
+    "width": 256,
+    "height": 256,
+    "bytes": 13498,
+    "sha256": "8a31d0ee470d4196f412ad4efb9c088949db29bab7300de1cc434839de1fa627"
+  },
+  {
+    "name": "spark",
+    "width": 256,
+    "height": 256,
+    "bytes": 13650,
+    "sha256": "c00613ac9831e6ef757eee9df81039f008614dd988a85e53cd8a46c23e73cd02"
+  },
+  {
+    "name": "del",
+    "width": 256,
+    "height": 256,
+    "bytes": 14398,
+    "sha256": "b2a001a3c36303a696b78d2e710738d8b23be81f1db6f8e538f6da740967e973"
+  },
+  {
+    "name": "book",
+    "width": 256,
+    "height": 256,
+    "bytes": 12790,
+    "sha256": "63bcfd9a3334e90d1b23317d28d259c27302204e2a9367a39bee6b22f83b1fa1"
+  },
+  {
+    "name": "cup",
+    "width": 256,
+    "height": 256,
+    "bytes": 16814,
+    "sha256": "5e9cc93145983aaf524292b852a864682d76b02d65eaf2ccde2cf8786feef64a"
+  },
+  {
+    "name": "card",
+    "width": 256,
+    "height": 256,
+    "bytes": 10048,
+    "sha256": "276e5bb1e750c50ee381a2c9d1b4832aec352ac6238bce5301f217221f4b7348"
+  },
+  {
+    "name": "home",
+    "width": 256,
+    "height": 256,
+    "bytes": 18318,
+    "sha256": "9b3e93206b680d32c1ef4bfe064261aa0c86fa4048f59be279f86622a4684963"
+  },
+  {
+    "name": "undo",
+    "width": 256,
+    "height": 256,
+    "bytes": 14088,
+    "sha256": "dcbbfa3d919fb5fdf3e0949371da409ca1422c0000c4388fab3ac10cfeb9574f"
+  },
+  {
+    "name": "refresh",
+    "width": 256,
+    "height": 256,
+    "bytes": 19296,
+    "sha256": "435d300d3247bfac29c87be91e5cb3f8675fda188cf26e51b6117dd7ff3e9b41"
+  },
+  {
+    "name": "swap",
+    "width": 256,
+    "height": 256,
+    "bytes": 15356,
+    "sha256": "5ed563921564d846915d4d0127dc97126873b58895ae14468aa7d0fcabc69d11"
+  },
+  {
+    "name": "wallet",
+    "width": 256,
+    "height": 256,
+    "bytes": 27580,
+    "sha256": "3e926d60670fea0d4ae84553b0ce2d1dbe2668e18d575694cc4a875b8585ec35"
+  },
+  {
+    "name": "topup",
+    "width": 256,
+    "height": 256,
+    "bytes": 19502,
+    "sha256": "20a137ceec319b3c78a270117610db495704e958d2267df7ec71b6baab24cb0c"
+  },
+  {
+    "name": "receive",
+    "width": 256,
+    "height": 256,
+    "bytes": 16022,
+    "sha256": "c05c8de026158272ddcaa443d88d3c03de9c21ee825265ff4abd37c87f4cb1a9"
+  },
+  {
+    "name": "withdraw",
+    "width": 256,
+    "height": 256,
+    "bytes": 15140,
+    "sha256": "b76c8de147fa355b56ab585118ce0c06302e3abc4e317f78e94d0d7d92224f80"
+  },
+  {
+    "name": "bills",
+    "width": 256,
+    "height": 256,
+    "bytes": 20518,
+    "sha256": "2d107ee63831888d7d11a21a7d84def9ef5767abd69e982da07ddffcee6f99d8"
+  },
+  {
+    "name": "mascot",
+    "width": 512,
+    "height": 512,
+    "bytes": 49466,
+    "sha256": "85ecb1e9d74264f9d519087e545fbb0b83ec334bf3cf9d9e146cd1f45ed1e2dc"
+  }
+]

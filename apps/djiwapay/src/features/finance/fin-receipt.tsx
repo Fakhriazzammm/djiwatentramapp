@@ -44,7 +44,7 @@ export function ReceiptFlow({ fin, notify, onClose, onRetry, balances, file }: {
   if (stage.s === "reading") return <Sheet title="Membaca struk" onClose={onClose}>
     <div style={{ position: "relative", height: 190, borderRadius: 20, overflow: "hidden", background: "var(--group)" }}>{stage.preview ? <img src={stage.preview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.55, filter: "blur(1px)" }} /> : null}</div>
     <div style={{ display: "flex", flexDirection: "column", gap: 12, margin: "18px 4px 6px" }} role="status" aria-live="polite">
-      {STEPS.map((t, i) => <div key={t} style={{ display: "flex", gap: 10, alignItems: "center", fontWeight: i <= step ? 600 : 400, color: i <= step ? "inherit" : "var(--faint)" }}><span style={{ width: 22, height: 22, borderRadius: "50%", display: "grid", placeItems: "center", background: i < step ? "var(--ok)" : "var(--group)", color: "#fff", fontSize: 12 }}>{i < step ? "✓" : ""}</span>{t}{i === step ? "…" : ""}</div>)}
+      {STEPS.map((t, i) => <div key={t} style={{ display: "flex", gap: 10, alignItems: "center", fontWeight: i <= step ? 600 : 400, color: i <= step ? "inherit" : "var(--faint)" }}><span style={{ width: 22, height: 22, borderRadius: "50%", display: "grid", placeItems: "center", background: i < step ? "var(--ok)" : "var(--group)", color: "#fff", fontSize: 12 }}>{i < step ? <Ic n="check" size="sm" /> : ""}</span>{t}{i === step ? "…" : ""}</div>)}
     </div>
     <p className="dpx-hint dpx-center">Biasanya 3–8 detik.</p>
   </Sheet>;

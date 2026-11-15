@@ -1,42 +1,27 @@
 import { forwardRef, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { AnimatePresence, MotionConfig, animate, motion, useDragControls, useMotionValue, useReducedMotion, type HTMLMotionProps } from "framer-motion";
-import { Djiwa3DIcon, type Djiwa3DIconName } from "@djiwaapps/web-shared";
 
-const PATHS = {
-  back: "M15 18l-6-6 6-6", close: "M18 6L6 18M6 6l12 12", bell: "M6 8a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 003.4 0",
-  eye: "M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 9a3 3 0 100 6 3 3 0 000-6z", eyeoff: "M17.9 17.9A10.1 10.1 0 0112 19c-6.4 0-10-7-10-7a18 18 0 014.1-5M9.9 4.2A9.7 9.7 0 0112 4c6.4 0 10 7 10 7a18 18 0 01-2.2 3.2M1 1l22 22",
-  search: "M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-4.3-4.3", filter: "M4 6h16M7 12h10M10 18h4", cal: "M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2zM16 2v4M8 2v4M3 10h18",
-  up: "M12 19V5M5 12l7-7 7 7", plus: "M12 5v14M5 12h14", check: "M20 6L9 17l-5-5", chev: "M9 6l6 6-6 6", share: "M4 12v7a2 2 0 002 2h12a2 2 0 002-2v-7M16 6l-4-4-4 4M12 2v14",
-  copy: "M11 9h9a2 2 0 012 2v9a2 2 0 01-2 2h-9a2 2 0 01-2-2v-9a2 2 0 012-2zM5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1", shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
-  help: "M12 2a10 10 0 100 20 10 10 0 000-20zM9.1 9a3 3 0 015.8 1c0 2-3 3-3 3M12 17h.01", user: "M12 4a4 4 0 100 8 4 4 0 000-8zM4 21a8 8 0 0116 0", flash: "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
-  clock: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2", warn: "M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0zM12 9v4M12 17h.01", info: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 16v-4M12 8h.01",
-  chart: "M3 3v18h18M7 15v3M12 9v9M17 5v13", phone: "M9 2h6a3 3 0 013 3v14a3 3 0 01-3 3H9a3 3 0 01-3-3V5a3 3 0 013-3zM11 18h2", wifi: "M5 12.5a10 10 0 0114 0M8.5 16a5 5 0 017 0M2 9a14 14 0 0120 0M12 20h.01",
-  receipt: "M4 2v20l3-2 2.5 2L12 20l2.5 2L17 20l3 2V2l-3 2-2.5-2L12 4 9.5 2 7 4 4 2zM8 9h8M8 13h8", drop: "M12 2.7S5 10 5 14.5a7 7 0 0014 0C19 10 12 2.7 12 2.7z",
-  heart: "M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 00-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 000-7.8z", tv: "M4 7h16a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2zM17 2l-5 5-5-5",
-  game: "M6 11h4M8 9v4M15 12h.01M18 10h.01M8 6h8a6 6 0 010 12H8A6 6 0 018 6z", car: "M5 17H3v-5l2-5h14l2 5v5h-2M5 17a2 2 0 104 0M15 17a2 2 0 104 0M9 17h6M3 12h18",
-  repeat: "M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 01-4 4H3", gift: "M3 8h18v4H3zM12 8v13M19 12v9H5v-9M7.5 8a2.5 2.5 0 010-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 010 5",
-  grid: "M4 4h4v4H4zM10 4h4v4h-4zM16 4h4v4h-4zM4 10h4v4H4zM10 10h4v4h-4zM16 10h4v4h-4zM4 16h4v4H4zM10 16h4v4h-4zM16 16h4v4h-4z", bank: "M3 21h18M5 21V10M9 21V10M15 21V10M19 21V10M2 10l10-7 10 7z",
-  down: "M12 5v14M19 12l-7 7-7-7", send: "M22 2L11 13M22 2l-7 20-4-9-9-4z", scan: "M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2M7 12h10",
-  qr: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3M21 14v.01M14 21h3M21 17v4", link: "M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1", bag: "M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0",
-  mic: "M12 2a3 3 0 00-3 3v6a3 3 0 006 0V5a3 3 0 00-3-3zM5 11a7 7 0 0014 0M12 18v4", edit: "M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z", trash: "M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6",
-  tag: "M20.6 13.4l-7.2 7.2a2 2 0 01-2.8 0L3 13V3h10l7.6 7.6a2 2 0 010 2.8zM7.5 7.5h.01", target: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 6a6 6 0 100 12 6 6 0 000-12zM12 10a2 2 0 100 4 2 2 0 000-4z", flame: "M12 2s5 4.5 5 10a5 5 0 01-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-5 1-8.5z",
-  users: "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 3a4 4 0 100 8 4 4 0 000-8zM22 21v-2a4 4 0 00-3-3.9M16 3.1a4 4 0 010 7.8", dl: "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3", split: "M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5",
-  trend: "M3 17l6-6 4 4 8-8M15 7h6v6", pie: "M21 12A9 9 0 1112 3v9zM15 3.5A9 9 0 0120.5 9H15z", list: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01", spark: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z",
-  del: "M21 4H8l-7 8 7 8h13a2 2 0 002-2V6a2 2 0 00-2-2zM18 9l-6 6M12 9l6 6", book: "M4 19.5A2.5 2.5 0 016.5 17H20V3H6.5A2.5 2.5 0 004 5.5zM4 19.5A2.5 2.5 0 006.5 22H20v-5", cup: "M5 8h12v6a5 5 0 01-5 5h-2a5 5 0 01-5-5zM17 10h2a2 2 0 010 4h-2M7 2v3M11 2v3M15 2v3",
-  card: "M3 6h18a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V7a1 1 0 011-1zM2 10h20", home: "M3 11l9-8 9 8M5 10v10h14V10", undo: "M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3",
-  refresh: "M23 4v6h-6M1 20v-6h6M3.5 9a9 9 0 0114.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0020.5 15", swap: "M7 16V4M7 4L3 8M7 4l4 4M17 8v12M17 20l4-4M17 20l-4-4", wallet: "M20 7H5a2 2 0 010-4h13v4zM3 5v14a2 2 0 002 2h15a1 1 0 001-1V8a1 1 0 00-1-1M17 14h.01",
-} as const;
-export type IconName = keyof typeof PATHS;
-export const iconOr = (name: string): IconName => ((name in PATHS ? name : "tag") as IconName);
+export const ICON_NAMES = ["back", "close", "bell", "eye", "eyeoff", "search", "filter", "cal", "up", "plus", "check", "chev", "share", "copy", "shield", "help", "user", "flash", "clock", "warn", "info", "chart", "phone", "wifi", "receipt", "drop", "heart", "tv", "game", "car", "repeat", "gift", "grid", "bank", "down", "send", "scan", "qr", "link", "bag", "mic", "edit", "trash", "tag", "target", "flame", "users", "dl", "split", "trend", "pie", "list", "spark", "del", "book", "cup", "card", "home", "undo", "refresh", "swap", "wallet"] as const;
+export type IconName = typeof ICON_NAMES[number];
+export const iconOr = (name: string): IconName => ICON_NAMES.includes(name as IconName) ? name as IconName : "tag";
+export const payAsset = (name: string) => `/assets/djiwapay-studio/${name.replace(/\.webp$/, "").replace("scan-qr", "scan")}.webp`;
 
 export function Ic({ n, size, className = "" }: { n: IconName; size?: "sm" | "lg"; className?: string }) {
-  return <svg className={`dpx-ic ${size ? "dpx-" + size : ""} ${className}`} viewBox="0 0 24 24" aria-hidden="true"><path d={PATHS[n]} /></svg>;
+  return <img src={payAsset(iconOr(n))} className={`dpx-ic ${size ? "dpx-" + size : ""} ${className}`} alt="" aria-hidden="true" decoding="async" />;
 }
-export const Chev = () => <svg className="dpx-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>;
-
-/** Catalog 3D illustration. Decorative unless `alt` is passed. */
-export function I3({ name, px = 40, alt = "", style }: { name: Djiwa3DIconName; px?: number; alt?: string; style?: CSSProperties }) {
-  return <Djiwa3DIcon name={name} alt={alt} size="sm" style={{ width: px, height: px, ...style }} />;
+export const Chev = () => <img className="dpx-chev" src={payAsset("chev")} alt="" aria-hidden="true" />;
+const illustrationAssets = {
+  "payment-wallet": "wallet", "customer-benefit-wallet": "wallet", "navigation-wallet": "wallet",
+  "navigation-home": "home", "navigation-history": "receipt", "sales-report": "chart",
+  "order-receipt": "receipt", "restaurant-cafe": "cup", "loyalty-points": "bank",
+  "notifications-alerts": "bell", "promo-voucher": "gift", "business-ai-assistant": "mascot",
+} as const;
+type PayIllustrationName = keyof typeof illustrationAssets;
+export function I3({ name, px = 40, alt = "", style }: { name: PayIllustrationName; px?: number; alt?: string; style?: CSSProperties }) {
+  return <img src={payAsset(illustrationAssets[name])} alt={alt} width={px} height={px} decoding="async" style={{ width: px, height: px, objectFit: "contain", flexShrink: 0, ...style }} />;
+}
+export function Mascot({ px = 112, style }: { px?: number; style?: CSSProperties }) {
+  return <img src={payAsset("mascot")} alt="Maskot Djiwa Pay" width={px} height={px} style={{ width: px, height: px, objectFit: "contain", ...style }} />;
 }
 
 /** Font size for the big amount field so long numbers never clip. */
@@ -85,9 +70,9 @@ export function Bar({ percent, delay = 0 }: { percent: number; delay?: number })
 }
 
 export function SuccessMark({ tone = "ok" }: { tone?: "ok" | "warn" | "bad" }) {
-  const d = tone === "ok" ? "M20 6L9 17l-5-5" : tone === "warn" ? "M12 6v6l4 2" : "M18 6L6 18M6 6l12 12";
+
   return <motion.div className={`dpx-success-ring ${tone === "ok" ? "" : "dpx-" + tone}`} initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 240, damping: 16 }}>
-    <svg viewBox="0 0 24 24" aria-hidden="true"><motion.path d={d} initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ delay: 0.25, duration: 0.5, ease: "easeOut" }} /></svg>
+    <img src={payAsset(tone === "ok" ? "check" : tone === "warn" ? "clock" : "close")} alt="" width={56} height={56} />
   </motion.div>;
 }
 
@@ -101,7 +86,7 @@ export function IconSwap({ k, children }: { k: string; children: ReactNode }) {
   return <AnimatePresence mode="wait" initial={false}><motion.span key={k} style={{ display: "grid", placeItems: "center" }} initial={{ opacity: 0, scale: 0.6, rotate: -25 }} animate={{ opacity: 1, scale: 1, rotate: 0 }} exit={{ opacity: 0, scale: 0.6, rotate: 25 }} transition={{ duration: 0.16 }}>{children}</motion.span></AnimatePresence>;
 }
 
-export function Row({ icon, tone, i3, title, sub, trail, onClick, chev = true, children, i }: { i?: number; icon?: IconName; tone?: string; i3?: Djiwa3DIconName; title: ReactNode; sub?: ReactNode; trail?: ReactNode; onClick?: () => void; chev?: boolean; children?: ReactNode }) {
+export function Row({ icon, tone, i3, title, sub, trail, onClick, chev = true, children, i }: { i?: number; icon?: IconName; tone?: string; i3?: PayIllustrationName; title: ReactNode; sub?: ReactNode; trail?: ReactNode; onClick?: () => void; chev?: boolean; children?: ReactNode }) {
   const inner = <>
     <span className={`dpx-ico ${tone ? "dpx-c-" + tone : ""}`} style={tone ? { boxShadow: "none" } : undefined}>{i3 ? <I3 name={i3} px={30} /> : <Ic n={icon ?? "info"} />}</span>
     <span className="dpx-main"><b>{title}</b>{sub ? <span>{sub}</span> : null}</span>
@@ -109,7 +94,7 @@ export function Row({ icon, tone, i3, title, sub, trail, onClick, chev = true, c
     {onClick && chev ? <Chev /> : null}{children}
   </>;
   const enter = { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { ...spring, delay: Math.min(i ?? 0, 10) * 0.04 } };
-  return onClick ? <Btn type="button" className="dpx-row" onClick={onClick} whileTap={{ scale: 0.985, backgroundColor: "rgba(15,35,71,.04)" }} {...enter}>{inner}</Btn> : <motion.div className="dpx-row" {...enter}>{inner}</motion.div>;
+  return onClick ? <Btn type="button" className="dpx-row" onClick={onClick} whileTap={{ scale: 0.985, backgroundColor: "rgba(45,36,29,.04)" }} {...enter}>{inner}</Btn> : <motion.div className="dpx-row" {...enter}>{inner}</motion.div>;
 }
 
 export function Header({ title, onBack, right, left }: { title?: string; onBack?: () => void; right?: ReactNode; left?: ReactNode }) {

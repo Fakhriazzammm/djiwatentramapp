@@ -1,11 +1,11 @@
 /* Djiwa Pay iOS visual language: native typography, grouped surfaces and 44pt controls. */
 :root {
-  --djiwa-bg: #f2f2f7;
+  --djiwa-bg: #f8f5f1;
   --djiwa-surface: #ffffff;
   --djiwa-text: #1c1c1e;
   --djiwa-muted: #6e6e73;
   --djiwa-secondary: #8e8e93;
-  --djiwa-blue: #0a84ff;
+  --djiwa-blue: #e45825;
   --djiwa-separator: rgba(60,60,67,.14);
   --djiwa-card-radius: 20px;
   --djiwa-control-radius: 14px;
@@ -20,7 +20,7 @@
 body { background: var(--djiwa-bg); }
 button, input, select, textarea { font-family: inherit; }
 button { touch-action: manipulation; }
-button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid rgba(10, 132, 255, .32); outline-offset: 3px; }
+button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid rgba(228,88,37,.32); outline-offset: 3px; }
 button:disabled { cursor: default; }
 
 .pay-page {
@@ -64,7 +64,7 @@ button:disabled { cursor: default; }
   height: 44px;
   border: 0;
   background: transparent;
-  color: #0a84ff;
+  color: #e45825;
   transition: transform .18s ease, background .18s ease;
 }
 .round-control:active { transform: scale(.9); background: rgba(120, 120, 128, .12); }
@@ -72,8 +72,8 @@ button:disabled { cursor: default; }
 .wallet-card {
   min-height: 216px;
   border-radius: 26px;
-  background: linear-gradient(145deg, #101d46, #174b9d 62%, #0a84ff);
-  box-shadow: 0 16px 36px rgba(21, 66, 137, .22), 0 2px 6px rgba(15, 35, 75, .12);
+  background: linear-gradient(145deg, #2d241d, #d14b1a 62%, #e45825);
+  box-shadow: 0 16px 36px rgba(209,75,26,.22), 0 2px 6px rgba(47,38,30,.12);
 }
 .wallet-content { min-height: 216px; padding: 18px; }
 .wallet-balance { font-size: 31px; font-weight: 700; letter-spacing: -.045em; }
@@ -122,7 +122,7 @@ button:disabled { cursor: default; }
   -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 .bottom-nav a, .bottom-nav button { min-height: 52px; }
-.bottom-nav .active { color: #0a84ff; }
+.bottom-nav .active { color: #e45825; }
 
 /* Shared full-page navigation. */
 .ios-page-header { margin: 0 -4px 20px; }
@@ -143,16 +143,16 @@ button:disabled { cursor: default; }
   border: 0;
   border-radius: 12px;
   background: transparent;
-  color: #0a84ff;
+  color: #e45825;
   font-size: 16px;
   cursor: pointer;
   transition: transform .16s ease, background .16s ease;
 }
-.ios-back-button:active { transform: scale(.96); background: rgba(10,132,255,.08); }
+.ios-back-button:active { transform: scale(.96); background: rgba(228,88,37,.08); }
 .ios-navigation-title { max-width: 160px; overflow: hidden; font-size: 16px; font-weight: 600; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
 .ios-navigation-trailing { display: flex; align-items: center; justify-content: flex-end; min-height: 44px; }
-.ios-mark-read { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 12px; background: rgba(10,132,255,.1); color: var(--djiwa-blue); font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: transform .16s ease, background .16s ease, opacity .16s ease; }
-.ios-mark-read:not(:disabled):active { transform: scale(.96); background: rgba(10,132,255,.16); }
+.ios-mark-read { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 12px; background: rgba(228,88,37,.1); color: var(--djiwa-blue); font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: transform .16s ease, background .16s ease, opacity .16s ease; }
+.ios-mark-read:not(:disabled):active { transform: scale(.96); background: rgba(228,88,37,.16); }
 .ios-mark-read:disabled { background: rgba(120,120,128,.08); color: var(--djiwa-secondary); opacity: .8; }
 .ios-large-title { padding: 12px 4px 0; }
 .ios-large-title h1 { margin: 0; color: #000; font-size: 32px; font-weight: 750; line-height: 1.12; letter-spacing: -.045em; }
@@ -162,13 +162,13 @@ button:disabled { cursor: default; }
 .wallet-notifications-heading .ios-section-label { margin: 0; }
 .wallet-notifications-heading h2 { margin: 5px 0 0; font-size: 19px; font-weight: 700; letter-spacing: -.025em; }
 .wallet-notification-row { position: relative; }
-.wallet-notification-row.is-unread { background: rgba(10,132,255,.035) !important; }
+.wallet-notification-row.is-unread { background: rgba(228,88,37,.035) !important; }
 .wallet-notification-row .notification-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--djiwa-blue); }
 
 /* Sign-in is part of the same wallet app, so it uses the same grouped iOS shell. */
 .auth-page { justify-content: center; }
 .auth-card { width: 100%; max-width: 440px; padding: 34px 24px 28px; border-radius: 24px; text-align: center; }
-.auth-logo { width: 60px; height: 60px; margin: 8px auto 18px; border-radius: 19px; background: rgba(10,132,255,.1); color: var(--djiwa-blue); }
+.auth-logo { width: 60px; height: 60px; margin: 8px auto 18px; border-radius: 19px; background: rgba(228,88,37,.1); color: var(--djiwa-blue); }
 .auth-card h1 { color: var(--djiwa-text); font-size: 28px; font-weight: 700; letter-spacing: -.04em; line-height: 1.12; }
 .auth-copy { color: var(--djiwa-muted); font-size: 14px; line-height: 1.5; }
 .google-auth-button { min-height: 50px; border: 1px solid var(--djiwa-separator); border-radius: var(--djiwa-control-radius); color: var(--djiwa-text); font-size: 14px; font-weight: 600; box-shadow: none; }
@@ -198,7 +198,7 @@ button:disabled { cursor: default; }
 .wallet-action-intro strong { font-size: 15px; font-weight: 650; letter-spacing: -.015em; }
 .wallet-action-intro small { margin-top: 4px; color: #6e6e73; font-size: 12px; line-height: 1.45; }
 .wallet-action-icon { width: 46px; height: 46px; border-radius: 14px; }
-.wallet-action-icon.send { background: rgba(10,132,255,.12); color: #0a84ff; }
+.wallet-action-icon.send { background: rgba(228,88,37,.12); color: #e45825; }
 .wallet-action-icon.receive { background: rgba(52,199,89,.13); color: #248a3d; }
 .wallet-action-field { display: grid; gap: 7px; color: #3a3a3c; font-size: 12px; font-weight: 600; }
 .wallet-action-field > span { margin: 0 2px; }
@@ -228,7 +228,7 @@ button:disabled { cursor: default; }
 .wallet-action-recipient { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
 .wallet-action-recipient input { min-width: 0; padding: 0 12px; }
 .wallet-action-recipient .secondary-action { min-height: 50px; padding: 0 14px; border-radius: 14px; font-size: 12px; }
-.wallet-action-amount { padding: 0 14px; color: #0a84ff; }
+.wallet-action-amount { padding: 0 14px; color: #e45825; }
 .wallet-action-amount input { min-width: 0; height: 48px; border: 0; background: transparent; font-size: 20px; font-weight: 600; }
 .wallet-recipient-verified { padding: 14px; border: 0; border-radius: 16px; background: rgba(52,199,89,.1); }
 .wallet-recipient-verified strong { font-size: 14px; }
@@ -243,30 +243,30 @@ button:disabled { cursor: default; }
   font-weight: 600;
   transition: transform .16s ease, opacity .16s ease;
 }
-.wallet-action-sheet > .primary-action { width: 100%; background: #0a84ff; box-shadow: none; }
+.wallet-action-sheet > .primary-action { width: 100%; background: #e45825; box-shadow: none; }
 .wallet-action-sheet > .primary-action:disabled { background: rgba(120,120,128,.16); color: #8e8e93; opacity: 1; }
 .wallet-action-sheet > .primary-action:not(:disabled):active,
 .wallet-action-buttons > button:active,
 .ios-copy-button:active { transform: scale(.98); opacity: .82; }
 .wallet-receive-card { gap: 14px; padding: 18px 16px; border: 0; border-radius: 18px; background: #fff; color: #1c1c1e; }
-.wallet-receive-card > svg { color: #0a84ff; }
+.wallet-receive-card > svg { color: #e45825; }
 .wallet-receive-card small { color: #8e8e93; font-size: 11px; }
 .wallet-receive-card strong { margin-top: 4px; font-size: 18px; letter-spacing: -.02em; }
-.wallet-receive-card button { width: 44px; height: 44px; border-radius: 12px; color: #0a84ff; }
+.wallet-receive-card button { width: 44px; height: 44px; border-radius: 12px; color: #e45825; }
 .wallet-receive-payload { padding: 14px; border: 0; border-radius: 16px; background: rgba(120,120,128,.08); }
 .wallet-receive-payload small { color: #8e8e93; }
 .wallet-receive-payload code { color: #3a3a3c; font-size: 11px; overflow-wrap: anywhere; }
 .wallet-action-buttons { gap: 10px; }
 .wallet-action-buttons > button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
-.wallet-action-buttons .primary-action { background: #0a84ff; }
-.wallet-action-buttons .secondary-action { border: 0; background: rgba(10,132,255,.1); color: #0a84ff; }
+.wallet-action-buttons .primary-action { background: #e45825; }
+.wallet-action-buttons .secondary-action { border: 0; background: rgba(228,88,37,.1); color: #e45825; }
 .wallet-action-helper { margin: 0 8px; color: #8e8e93; font-size: 12px; line-height: 1.5; text-align: center; }
 
 /* Transfer offers manual entry and an inline QR camera, never a popup. */
 .wallet-action-mode { grid-template-columns: repeat(2,minmax(0,1fr)); margin-bottom: 0; }
 .wallet-action-mode button { min-height: 36px; font-size: 13px; }
 .wallet-action-scan-hint { display: flex; align-items: center; justify-content: center; gap: 6px; margin: -4px 4px 0; text-align: left; }
-.wallet-action-scan-hint svg { flex: none; color: #0a84ff; }
+.wallet-action-scan-hint svg { flex: none; color: #e45825; }
 .wallet-action-scan-hint b { color: #3a3a3c; font-weight: 600; }
 .wallet-scanner { display: grid; gap: 14px; }
 .wallet-scanner-preview { position: relative; width: 100%; max-width: 330px; min-height: 0; margin: 0 auto; overflow: hidden; aspect-ratio: 1; border-radius: 24px; background: #000; }
@@ -274,10 +274,10 @@ button:disabled { cursor: default; }
 .wallet-scanner-preview video { display: block; width: 100%; height: 100%; object-fit: cover; }
 .wallet-scanner-frame { position: absolute; inset: 15%; border: 2px solid rgba(255,255,255,.94); border-radius: 24px; box-shadow: 0 0 0 999px rgba(0,0,0,.34); }
 .wallet-scanner-status { display: flex; align-items: flex-start; justify-content: center; gap: 7px; margin: 0; padding: 12px 14px; border-radius: 14px; background: rgba(120,120,128,.08); color: #3a3a3c; font-size: 12px; line-height: 1.45; }
-.wallet-scanner-status svg { flex: none; margin-top: 1px; color: #0a84ff; }
+.wallet-scanner-status svg { flex: none; margin-top: 1px; color: #e45825; }
 .wallet-scanner-status.is-error { background: rgba(255,59,48,.1); color: #c9342c; }
 .wallet-scanner-status.is-error svg { color: #c9342c; }
-.wallet-scanner-manual { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 50px; border: 0; border-radius: 14px; background: rgba(10,132,255,.1); color: #0a84ff; font-size: 14px; font-weight: 600; cursor: pointer; }
+.wallet-scanner-manual { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 50px; border: 0; border-radius: 14px; background: rgba(228,88,37,.1); color: #e45825; font-size: 14px; font-weight: 600; cursor: pointer; }
 .wallet-scanner-manual:active { transform: scale(.98); opacity: .82; }
 
 /* Receive shows a real per-account QR that the transfer scanner can read. */
@@ -289,12 +289,12 @@ button:disabled { cursor: default; }
 .wallet-qr-identity strong { max-width: 100%; color: #1c1c1e; font-size: 18px; font-weight: 650; letter-spacing: -.02em; overflow-wrap: anywhere; }
 .wallet-qr-identity span { color: #6e6e73; font-size: 13px; }
 .wallet-qr-hint { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; color: #8e8e93; font-size: 11px; line-height: 1.45; }
-.wallet-qr-hint svg { flex: none; color: #0a84ff; }
+.wallet-qr-hint svg { flex: none; color: #e45825; }
 .wallet-qr-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .wallet-qr-actions .primary-action,
 .wallet-qr-actions .secondary-action { display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: 100%; min-height: 50px; padding: 0 12px; border: 0; border-radius: 14px; font-size: 14px; font-weight: 600; }
-.wallet-qr-actions .primary-action { background: #0a84ff; color: #fff; }
-.wallet-qr-actions .secondary-action { background: rgba(10,132,255,.1); color: #0a84ff; }
+.wallet-qr-actions .primary-action { background: #e45825; color: #fff; }
+.wallet-qr-actions .secondary-action { background: rgba(228,88,37,.1); color: #e45825; }
 .wallet-qr-actions button:active { transform: scale(.98); opacity: .82; }
 
 /* History uses a native segmented control and inset grouped rows. */
@@ -307,7 +307,7 @@ button:disabled { cursor: default; }
 .ios-history-list > button:active { background: rgba(120,120,128,.08); }
 .ios-history-icon { display: grid; flex: 0 0 40px; place-items: center; width: 40px; height: 40px; border-radius: 13px; }
 .ios-history-icon.credit { background: rgba(52,199,89,.12); color: #248a3d; }
-.ios-history-icon.debit { background: rgba(10,132,255,.1); color: #0a84ff; }
+.ios-history-icon.debit { background: rgba(228,88,37,.1); color: #e45825; }
 .ios-history-copy { display: grid; flex: 1; gap: 5px; min-width: 0; }
 .ios-history-copy strong { overflow: hidden; font-size: 14px; font-weight: 600; letter-spacing: -.015em; text-overflow: ellipsis; white-space: nowrap; }
 .ios-history-copy small { overflow: hidden; color: #8e8e93; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
@@ -317,9 +317,9 @@ button:disabled { cursor: default; }
 .ios-history-empty { display: grid; justify-items: center; gap: 8px; min-height: 220px; align-content: center; padding: 24px; color: #8e8e93; text-align: center; }
 .ios-history-empty strong { color: #3a3a3c; font-size: 16px; }
 .ios-history-empty p { max-width: 260px; margin: 0; font-size: 13px; line-height: 1.45; }
-.ios-loader { width: 22px; height: 22px; border: 2px solid rgba(10,132,255,.18); border-top-color: #0a84ff; border-radius: 50%; animation: spin .8s linear infinite; }
+.ios-loader { width: 22px; height: 22px; border: 2px solid rgba(228,88,37,.18); border-top-color: #e45825; border-radius: 50%; animation: spin .8s linear infinite; }
 .ios-transaction-hero { display: grid; justify-items: center; padding: 20px 16px 26px; text-align: center; }
-.ios-transaction-hero-icon { display: grid; place-items: center; width: 58px; height: 58px; margin-bottom: 14px; border-radius: 19px; background: rgba(10,132,255,.1); color: #0a84ff; }
+.ios-transaction-hero-icon { display: grid; place-items: center; width: 58px; height: 58px; margin-bottom: 14px; border-radius: 19px; background: rgba(228,88,37,.1); color: #e45825; }
 .ios-transaction-hero.credit .ios-transaction-hero-icon { background: rgba(52,199,89,.12); color: #248a3d; }
 .ios-transaction-hero > small { color: #6e6e73; font-size: 13px; }
 .ios-transaction-hero > strong { margin: 7px 0 12px; font-size: 32px; font-weight: 700; letter-spacing: -.04em; }
@@ -330,23 +330,23 @@ button:disabled { cursor: default; }
 .ios-detail-group span { color: #8e8e93; }
 .ios-detail-group strong { min-width: 0; overflow-wrap: anywhere; text-align: right; font-weight: 550; }
 .ios-mono { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size: 11px; }
-.ios-copy-button { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 16px; background: rgba(10,132,255,.1); color: #0a84ff; cursor: pointer; }
+.ios-copy-button { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 16px; background: rgba(228,88,37,.1); color: #e45825; cursor: pointer; }
 
 /* Help content stays useful without inventing an unavailable support channel. */
-.ios-help-hero { display: flex; align-items: flex-start; gap: 13px; padding: 17px; border-radius: 18px; background: linear-gradient(135deg, #0a84ff, #0060df); color: #fff; }
+.ios-help-hero { display: flex; align-items: flex-start; gap: 13px; padding: 17px; border-radius: 18px; background: linear-gradient(135deg, #e45825, #d14b1a); color: #fff; }
 .ios-help-hero > span { display: grid; flex: 0 0 42px; place-items: center; width: 42px; height: 42px; border-radius: 13px; background: rgba(255,255,255,.16); }
 .ios-help-hero strong { font-size: 15px; font-weight: 650; }
 .ios-help-hero p { margin: 5px 0 0; color: rgba(255,255,255,.82); font-size: 12px; line-height: 1.5; }
 .ios-shortcut-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 24px; }
-.ios-shortcut-grid button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px; border: 0; border-radius: 15px; background: #fff; color: #0a84ff; font-size: 13px; font-weight: 600; cursor: pointer; }
-.ios-shortcut-grid button:active { background: rgba(10,132,255,.08); }
+.ios-shortcut-grid button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px; border: 0; border-radius: 15px; background: #fff; color: #e45825; font-size: 13px; font-weight: 600; cursor: pointer; }
+.ios-shortcut-grid button:active { background: rgba(228,88,37,.08); }
 .ios-section-label { display: block; margin: 0 16px 8px; }
 .ios-disclosure-list { overflow: hidden; border-radius: 18px; background: #fff; }
 .ios-disclosure-list details { border-bottom: .5px solid rgba(60,60,67,.14); }
 .ios-disclosure-list details:last-child { border-bottom: 0; }
 .ios-disclosure-list summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 14px 16px; color: #1c1c1e; font-size: 14px; font-weight: 550; line-height: 1.35; cursor: pointer; list-style: none; }
 .ios-disclosure-list summary::-webkit-details-marker { display: none; }
-.ios-disclosure-list summary span { color: #0a84ff; font-size: 22px; font-weight: 400; transition: transform .18s ease; }
+.ios-disclosure-list summary span { color: #e45825; font-size: 22px; font-weight: 400; transition: transform .18s ease; }
 .ios-disclosure-list details[open] summary span { transform: rotate(45deg); }
 .ios-disclosure-list details p { margin: -2px 16px 16px; color: #6e6e73; font-size: 13px; line-height: 1.55; }
 .ios-help-footnote, .ios-help-assurance { display: flex; align-items: center; justify-content: center; gap: 7px; color: #8e8e93; font-size: 11px; line-height: 1.45; }
@@ -355,14 +355,14 @@ button:disabled { cursor: default; }
 .ios-help-assurance { justify-content: flex-start; margin: 0 4px; padding: 13px 14px; border-radius: 14px; background: rgba(120,120,128,.08); }
 
 /* Checkout shares the same native spacing, controls and grouped cards. */
-.djiwa-checkout-page { --checkout-bg: #f2f2f7; --checkout-border: rgba(60,60,67,.12); --checkout-text: #1c1c1e; --checkout-muted: #6e6e73; --checkout-primary: #0a84ff; --checkout-selected: rgba(10,132,255,.08); }
+.djiwa-checkout-page { --checkout-bg: #f8f5f1; --checkout-border: rgba(60,60,67,.12); --checkout-text: #1c1c1e; --checkout-muted: #6e6e73; --checkout-primary: #e45825; --checkout-selected: rgba(228,88,37,.08); }
 .djiwa-checkout-page .djiwa-checkout-header h1 { font-size: 28px; font-weight: 750; letter-spacing: -.04em; }
 .djiwa-checkout-page .djiwa-checkout-section,
 .djiwa-checkout-page .djiwa-order-summary { border: 0; border-radius: 18px; box-shadow: 0 1px 2px rgba(0,0,0,.025); }
 .djiwa-checkout-page .djiwa-checkout-input,
 .djiwa-checkout-page .djiwa-checkout-textarea { min-height: 50px; border-radius: 14px; font-size: 16px; }
 .djiwa-checkout-page .djiwa-checkout-actions button { min-height: 50px; border-radius: 14px; font-size: 14px; }
-.djiwa-checkout-page .djiwa-checkout-primary { background: #0a84ff; }
+.djiwa-checkout-page .djiwa-checkout-primary { background: #e45825; }
 
 @media (max-width: 390px) {
   .pay-page { padding-right: 13px; padding-left: 13px; }
@@ -395,7 +395,7 @@ button:disabled { cursor: default; }
   display: grid;
   place-items: center;
   padding: calc(32px + env(safe-area-inset-top)) 24px calc(32px + env(safe-area-inset-bottom));
-  background: #f2f2f7;
+  background: #f8f5f1;
   opacity: 1;
   transition: opacity .22s cubic-bezier(.32, .72, 0, 1);
 }
@@ -406,7 +406,7 @@ button:disabled { cursor: default; }
   width: min(320px, 78vw);
   aspect-ratio: 1;
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(26, 93, 198, .1), transparent 68%);
+  background: radial-gradient(circle, rgba(209,75,26,.1), transparent 68%);
   content: "";
   pointer-events: none;
   transform: translate(-50%, -50%);
@@ -419,11 +419,11 @@ button:disabled { cursor: default; }
   text-align: center;
   animation: djiwa-pay-splash-in .38s cubic-bezier(.32, .72, 0, 1) both;
 }
-.djiwa-splash-logo { color: #1a5dc6; }
+.djiwa-splash-logo { color: #d14b1a; }
 .djiwa-pay-logo-trace { animation: logo-trace-loader-loop 1.4s linear infinite; }
 .djiwa-splash-brand {
   margin: 18px 0 0;
-  color: #1a5dc6;
+  color: #d14b1a;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .22em;

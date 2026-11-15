@@ -1,8 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowDownLeft, ArrowUpRight, Bell, Car, CheckCheck, CreditCard, Droplets, Eye, EyeOff, Gamepad2, HeartPulse, HelpCircle, House, ReceiptText, RefreshCw, ScanLine, Smartphone, Tv, UserRound, Wallet, Wifi, X, Zap } from "lucide-react";
 import { checkPpobStatus, checkTopupStatus, checkPostpaidStatus, createPpobInvoice, inquirePostpaid, markAllWalletNotificationsRead, markWalletNotificationRead, payPostpaid, ppobProductName, purchasePpob, readPpobCatalog, readPostpaidCatalog, readWalletNotifications, type PpobProduct, type PpobPurchaseResult, type PostpaidInquiry, type PostpaidProduct, type WalletNotification, type WalletResponse, type WalletTransaction, transactionMethodLine } from "../../lib/wallet-adapter";
-import { Djiwa3DIcon } from "@djiwaapps/web-shared";
 import type { CustomerProfile, PayNavigationContext } from "../../lib/identity-adapter";
 import { readPayFrameContext } from "../../lib/embed-context";
 import { CheckoutActionBar, CheckoutSection, OrderSummary, PaymentMethodCard } from "@djiwaapps/djiwa-checkout-ui";
@@ -29,22 +27,7 @@ const date = (value: string) => { const parsed = new Date(value); return Number.
 const labels: Record<string, string> = { topup_completed: "Top up", manual_credit: "Credit saldo", order_debit: "Pembayaran pesanan", wallet_hold: "Saldo ditahan", wallet_release: "Saldo dikembalikan", wallet_transfer_sent: "Transfer terkirim", wallet_transfer_received: "Transfer diterima", refund: "Refund pesanan", adjustment: "Penyesuaian saldo" };
 const scanAction = walletQuickActionState("scan");
 const withdrawAction = walletQuickActionState("withdraw");
-const actions = [
-  ["topup", "Isi Saldo", "topup.webp", true, "", ""], ["send", "Kirim", "send.webp", true, "", ""], ["receive", "Terima", "receive.webp", true, "", ""], ["scan", "Scan QR", "scan-qr.webp", scanAction.supported, scanAction.badge, "cyan"],
-  ["history", "Riwayat", "history.webp", true, "", ""], ["card", "Kartu", "card.webp", false, "Soon", "indigo"], ["withdraw", "Tarik Dana", "withdraw.webp", withdrawAction.supported, withdrawAction.badge, "orange"], ["help", "Bantuan", "help.webp", true, "", ""],
-] as const;
-
-const ppobServices = [
-  ["pulsa", "Pulsa", "Isi pulsa semua operator", Smartphone, "blue"],
-  ["data", "Paket Data", "Internet dan kuota", Wifi, "violet"],
-  ["pln-token", "Token PLN", "Beli token listrik", Zap, "amber"],
-  ["pln-bill", "Tagihan PLN", "Bayar listrik bulanan", ReceiptText, "orange"],
-  ["pdam", "PDAM", "Tagihan air", Droplets, "cyan"],
-  ["bpjs", "BPJS", "Kesehatan dan ketenagakerjaan", HeartPulse, "rose"],
-  ["tv", "TV & Streaming", "Bayar langganan", Tv, "indigo"],
-  ["game", "Voucher Game", "Top up game favorit", Gamepad2, "emerald"],
-  ["multifinance", "Cicilan", "Bayar pembiayaan", Car, "slate"],
-] as const;
+const ppobServices = [["pulsa", "Pulsa"], ["data", "Paket Data"], ["pln-token", "Token PLN"], ["pln-bill", "Tagihan PLN"], ["pdam", "PDAM"], ["bpjs", "BPJS"], ["tv", "TV & Streaming"], ["game", "Voucher Game"], ["multifinance", "Cicilan"]] as const;
 
 type Props = { profile: CustomerProfile; wallet: WalletResponse | null; loading: boolean; error: string | null; busy: boolean; onRefresh: () => void; onTopup: (amount: number) => Promise<{ invoiceUrl: string; invoiceId?: string }>; navigationContext: PayNavigationContext; onNavigate: (label?: string) => void; onPageReady: () => void; transitionId: number; previewOnly?: boolean };
 
@@ -52,7 +35,7 @@ function PpobReceipt({ product, number, serialNumber, reference, onDone }: { pro
   const [stage, setStage] = useState<"processing" | "printing" | "complete">("processing");
   useEffect(() => { const printTimer = window.setTimeout(() => setStage("printing"), 450); const doneTimer = window.setTimeout(() => setStage("complete"), 2100); return () => { window.clearTimeout(printTimer); window.clearTimeout(doneTimer); }; }, []);
   const operator = product.product_description.toLowerCase().includes("by.u") || product.product_code.toLowerCase().includes("byu") ? "by.U" : product.product_description.split(" ")[0];
-  return <div className="ppob-receipt-backdrop"><section className="ppob-receipt-shell" role="dialog" aria-modal="true" aria-labelledby="ppob-receipt-title"><div className="ppob-receipt-brand"><span>D</span><strong>Djiwa Pay</strong><small>{stage === "complete" ? "Pembayaran berhasil" : stage === "printing" ? "Menyiapkan struk" : "Memproses pembayaran"}</small></div><div className={`ppob-receipt-paper ${stage}`}><div className="ppob-receipt-check">{stage === "complete" ? "✓" : "·"}</div><h2 id="ppob-receipt-title">Pembayaran Berhasil</h2><p className="ppob-receipt-caption">Struk digital transaksi PPOB</p><div className="ppob-receipt-rows"><span>Operator <b>{operator}</b></span><span>Produk <b>{product.product_description}</b></span><span>Nomor tujuan <b>{number}</b></span><span>Total <b>{money(product.product_price)}</b></span><span>Metode <b>Saldo Djiwa Pay</b></span>{serialNumber ? <span>Serial Number <b>{serialNumber}</b></span> : null}{reference ? <span>Referensi <b>{reference}</b></span> : null}</div><div className="ppob-receipt-status">{stage === "complete" ? "Transaksi selesai dan saldo telah dipotong." : stage === "printing" ? "Menyiapkan struk digital..." : "Memverifikasi transaksi..."}</div></div>{stage === "complete" ? <button className="primary-action" onClick={onDone}>Selesai</button> : <div className="ppob-receipt-progress" aria-live="polite">{stage === "printing" ? "Menyiapkan struk..." : "Memproses..."}</div>}</section></div>;
+  return <div className="ppob-receipt-backdrop"><section className="ppob-receipt-shell" role="dialog" aria-modal="true" aria-labelledby="ppob-receipt-title"><div className="ppob-receipt-brand"><span>D</span><strong>Djiwa Pay</strong><small>{stage === "complete" ? "Pembayaran berhasil" : stage === "printing" ? "Menyiapkan struk" : "Memproses pembayaran"}</small></div><div className={`ppob-receipt-paper ${stage}`}><div className="ppob-receipt-check"><Ic n={stage === "complete" ? "check" : "clock"} size="lg" /></div><h2 id="ppob-receipt-title">Pembayaran Berhasil</h2><p className="ppob-receipt-caption">Struk digital transaksi PPOB</p><div className="ppob-receipt-rows"><span>Operator <b>{operator}</b></span><span>Produk <b>{product.product_description}</b></span><span>Nomor tujuan <b>{number}</b></span><span>Total <b>{money(product.product_price)}</b></span><span>Metode <b>Saldo Djiwa Pay</b></span>{serialNumber ? <span>Serial Number <b>{serialNumber}</b></span> : null}{reference ? <span>Referensi <b>{reference}</b></span> : null}</div><div className="ppob-receipt-status">{stage === "complete" ? "Transaksi selesai dan saldo telah dipotong." : stage === "printing" ? "Menyiapkan struk digital..." : "Memverifikasi transaksi..."}</div></div>{stage === "complete" ? <button className="primary-action" onClick={onDone}>Selesai</button> : <div className="ppob-receipt-progress" aria-live="polite">{stage === "printing" ? "Menyiapkan struk..." : "Memproses..."}</div>}</section></div>;
 }
 
 export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefresh, onTopup, navigationContext, onNavigate, onPageReady, transitionId, previewOnly = false }: Props) {

@@ -117,9 +117,9 @@ export function DjiwaPayWalletScanner({ onDetected, onUseManual, notice = null }
     };
   }, []);
 
-  return <div className="dpx"><div className="dpx-cam" style={{ background: "#0b1020" }}>
+  return <div className="dpx"><div className="dpx-cam" style={{ background: "#16120e" }}>
     <video ref={videoRef} autoPlay muted playsInline style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: error ? 0 : 0.92 }} />
-    <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 42%,transparent 30%,rgba(8,12,24,.72) 78%)" }} aria-hidden="true" />
+    <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 42%,transparent 30%,rgba(17,13,11,.72) 78%)" }} aria-hidden="true" />
     <div className="dpx-hdr" style={{ position: "absolute", top: "calc(env(safe-area-inset-top,0px) + 14px)", left: 18, right: 18 }}>
       <Btn type="button" className="dpx-rb" onClick={onUseManual} aria-label="Tutup pemindai"><Ic n="close" /></Btn>
       <div className="dpx-grow"><h1 style={{ color: "#fff" }}>Scan QR</h1></div><span style={{ width: 44 }} />

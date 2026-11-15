@@ -42,7 +42,7 @@ export function KelolaHome({ ctx }: { ctx: FinCtx }) {
     </Btn></Reveal>
     <Reveal i={3}><Btn type="button" className="dpx-group dpx-white" style={{ width: "100%", textAlign: "left", marginTop: 10 }} onClick={() => nav.go("/prakiraan")}>
       <div className="dpx-spread"><div><div className="dpx-sub">{bad ? `Kas diperkirakan habis tgl ${k.fc.runsOutDay}` : `Kas sampai akhir bulan`}</div><div className="dpx-money" style={{ color: k.fc.end < 0 ? "var(--danger)" : "var(--navy)" }}>{mask(ctx, rupiah(k.fc.end))}</div></div><span className={`dpx-tag ${bad ? "dpx-danger" : "dpx-ok"}`}>{bad ? "Defisit" : "Aman"}</span></div>
-      <div style={{ marginTop: 6 }}><AreaChart points={k.fc.pts} height={64} color={bad ? "#d23a2a" : "#1a5dc6"} label="Prakiraan saldo sampai akhir bulan" /></div>
+      <div style={{ marginTop: 6 }}><AreaChart points={k.fc.pts} height={64} color={bad ? "#d23a2a" : "#d14b1a"} label="Prakiraan saldo sampai akhir bulan" /></div>
     </Btn></Reveal>
     <Reveal i={4}><Btn type="button" className="dpx-group dpx-flex" style={{ width: "100%", textAlign: "left", marginTop: 10 }} onClick={() => ctx.open({ k: "weekly" })}><span className="dpx-cat dpx-c-emerald"><Ic n="spark" /></span><span style={{ flex: 1 }}><b>Review mingguan</b><div className="dpx-sub">Bandingkan belanja 7 hari ini dengan minggu lalu</div></span><Ic n="chev" size="sm" /></Btn></Reveal>
     <div className="dpx-sec"><h2>Tagihan terdekat</h2><Btn type="button" onClick={() => nav.go("/kalender")}>Kalender</Btn></div>
@@ -74,7 +74,7 @@ export function PocketsPanel({ ctx }: { ctx: FinCtx }) {
 /* ---------- Kekayaan ---------- */
 export function WealthExtras({ ctx }: { ctx: FinCtx }) {
   const { state } = ctx.fin, cash = useCash(ctx), nw = netWorth(state, cash), mix = assetMix(state, cash), debt = debtTotals(state.debts);
-  const colors = ["#13804a", "#d9a21a", "#1a5dc6", "#4a5fd6", "#7a5af0", "#16a3b8", "#7b8497", "#e0568a"];
+  const colors = ["#13804a", "#d9a21a", "#d14b1a", "#e45825", "#eeb866", "#16a3b8", "#958a7d", "#e0568a"];
   return <>
     <div className="dpx-glabel">Komposisi</div>
     <div className="dpx-group dpx-white"><div style={{ display: "flex", height: 10, borderRadius: 99, overflow: "hidden", background: "var(--group)" }}>{mix.map((p, i) => <motion.i key={p.id} style={{ background: colors[i % colors.length], display: "block" }} initial={{ width: 0 }} animate={{ width: `${p.percent}%` }} transition={{ duration: 0.8, delay: 0.1 + i * 0.06, ease: [0.32, 0.72, 0, 1] }} />)}</div>
@@ -110,7 +110,7 @@ export function CalendarPage({ ctx, onBack }: { ctx: FinCtx; onBack: () => void 
       {Array.from({ length: dim }, (_, i) => { const d = i + 1, bs = byDay(d), sel = d === day, today = d === k.now.getDate(); return <Btn key={d} type="button" aria-pressed={sel} aria-label={`Tanggal ${d}${bs.length ? `, ${bs.length} tagihan` : ""}`} onClick={() => setDay(d)} style={{ position: "relative", height: 38, borderRadius: 12, fontWeight: 600, fontSize: 13, color: sel ? "#fff" : "var(--ink)", boxShadow: today && !sel ? "inset 0 0 0 1.5px var(--navy)" : undefined }}>
         {sel ? <motion.span layoutId="cal-sel" style={{ position: "absolute", inset: 0, borderRadius: 12, background: "var(--navy)" }} transition={spring} /> : null}
         <span style={{ position: "relative" }}>{d}</span>
-        <span style={{ position: "absolute", bottom: 3, left: 0, right: 0, display: "flex", gap: 2, justifyContent: "center" }}>{bs.map((b) => <i key={b.bill.id} style={{ width: 5, height: 5, borderRadius: 9, background: b.status === "paid" ? "#13804a" : b.status === "late" ? "#d23a2a" : "#d9941a" }} />)}{pay?.day === d ? <i style={{ width: 5, height: 5, borderRadius: 9, background: "#1a5dc6" }} /> : null}</span></Btn>; })}
+        <span style={{ position: "absolute", bottom: 3, left: 0, right: 0, display: "flex", gap: 2, justifyContent: "center" }}>{bs.map((b) => <i key={b.bill.id} style={{ width: 5, height: 5, borderRadius: 9, background: b.status === "paid" ? "#13804a" : b.status === "late" ? "#d23a2a" : "#d9941a" }} />)}{pay?.day === d ? <i style={{ width: 5, height: 5, borderRadius: 9, background: "#d14b1a" }} /> : null}</span></Btn>; })}
     </div></div>
     <div className="dpx-sec"><h2>{day} {k.now.toLocaleDateString("id-ID", { month: "long" })}</h2></div>
     <AnimatePresence mode="wait" initial={false}><motion.div key={day} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
@@ -150,7 +150,7 @@ export function ForecastPage({ ctx, onBack }: { ctx: FinCtx; onBack: () => void 
     <Header title="Prakiraan kas" onBack={onBack} />
     <Seg id="fc" label="Skenario" value={cut} onChange={setCut} options={[["0", "Kondisi sekarang"], ["1", "Hemat 10%"]] as const} />
     <div className="dpx-group dpx-white dpx-mt"><div className="dpx-sub">Saldo diperkirakan pada {f.endLabel}</div><div className="dpx-money" style={{ color: f.end < 0 ? "var(--danger)" : "var(--navy)", fontSize: 28 }}>{mask(ctx, `${f.end < 0 ? "−" : ""}${rupiah(Math.abs(f.end))}`)}</div>
-      <div style={{ marginTop: 6 }}><AreaChart key={cut} points={f.pts} height={130} color={bad ? "#d23a2a" : "#1a5dc6"} marks={marks} label="Prakiraan saldo harian" /></div>
+      <div style={{ marginTop: 6 }}><AreaChart key={cut} points={f.pts} height={130} color={bad ? "#d23a2a" : "#d14b1a"} marks={marks} label="Prakiraan saldo harian" /></div>
       <div className="dpx-spread dpx-sub" style={{ marginTop: 4 }}><span>Hari ini</span><span>{f.endLabel}</span></div></div>
     <div className="dpx-kpi dpx-mt"><div className="dpx-group dpx-white"><small>Saldo sekarang</small><b>{mask(ctx, rupiah(k.cash))}</b></div><div className="dpx-group dpx-white"><small>Terendah (tgl {f.minDay})</small><b style={{ color: f.min < 0 ? "var(--danger)" : undefined }}>{mask(ctx, rupiah(f.min))}</b></div></div>
     <Note tone={bad ? "danger" : "info"} icon={bad ? "warn" : "info"}>{bad ? <>Dengan kebiasaanmu sekarang, kas habis tanggal <b>{f.runsOutDay}</b>. {cut === "0" ? "Coba skenario Hemat 10% di atas." : "Masih perlu menunda belanja non-primer."}</> : cut === "1" ? <>Hemat 10% menambah saldo akhir bulan sekitar <b>{rupiah(f.end - base.end)}</b>.</> : <>Rata-rata belanja harianmu <b>{rupiah(f.perDay)}</b>. Saldo aman sampai akhir bulan.</>}</Note>

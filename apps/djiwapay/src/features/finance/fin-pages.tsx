@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AnimatedNumber, Bar, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
+import { payAsset, AnimatedNumber, Bar, Mascot, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
 import type { Nav } from "../shell/dpx-pages";
 import { AccountEditSheet, AccountSheet, BudgetSheet, CatIcon, CategoryEditSheet, CategorySheet, DebtSheet, EntrySheet, GoalDetailSheet, GoalSheet, CatatSheet, SplitSheet, StreakSheet, MoneyInput, accName, catOf, type Notify } from "./fin-sheets";
 import { accountBalance, budgetStatuses, buildInsights, dailySpend, daysIn, debtTotals, detectSubscriptions, goalProjection, goalSaved, inMonth, monthlySeries, safeToSpend, spendByCategory, streak, toCsv, totals, uid } from "../../lib/finance/calc";
@@ -26,14 +26,14 @@ export type FinCtx = {
   visible: boolean; onToggleVisible: () => void; unread: number; onOpenNotifications: () => void; open: (s: FinSheet) => void; onPayDetail: (id: string) => void;
 };
 
-const COLORS: Record<string, string> = { orange: "#e8833a", blue: "#1a5dc6", violet: "#7a5af0", amber: "#d9a21a", rose: "#e0568a", indigo: "#4a5fd6", cyan: "#16a3b8", emerald: "#1f9d62", slate: "#7b8497" };
+const COLORS: Record<string, string> = { orange: "#e8833a", blue: "#d14b1a", violet: "#eeb866", amber: "#d9a21a", rose: "#e0568a", indigo: "#e45825", cyan: "#16a3b8", emerald: "#1f9d62", slate: "#958a7d" };
 export const useBalances = (state: FinanceState, entries: Entry[], payBalance: number) => useMemo(() => { const m: Record<string, number> = {}; for (const a of state.accounts) m[a.id] = accountBalance(a, entries, payBalance); m[PAY_ACCOUNT_ID] = payBalance; return m; }, [state.accounts, entries, payBalance]);
 const sourceBadge = (s: Entry["source"]) => s === "voice" ? <span className="dpx-tx-badge">Suara</span> : null;
 
 export function EntryRow({ entry, state, onOpen, i = 0 }: { entry: Entry; state: FinanceState; onOpen: (id: string) => void; i?: number }) {
   const c = catOf(state, entry.categoryId);
   const sign = entry.kind === "in" ? "+" : entry.kind === "out" ? "−" : "";
-  return <Btn type="button" className="dpx-row" onClick={() => onOpen(entry.id)} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: Math.min(i, 10) * 0.04 }} whileTap={{ scale: 0.985, backgroundColor: "rgba(15,35,71,.04)" }}>
+  return <Btn type="button" className="dpx-row" onClick={() => onOpen(entry.id)} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: Math.min(i, 10) * 0.04 }} whileTap={{ scale: 0.985, backgroundColor: "rgba(45,36,29,.04)" }}>
     <CatIcon cat={c} />
     <span className="dpx-main"><b>{entry.note || c.name}</b><span>{entry.kind === "tf" ? "Transfer" : c.name} · {accName(state, entry.accountId)}{sourceBadge(entry.source)}</span></span>
     <span className="dpx-trail"><b className={entry.kind === "in" ? "dpx-in" : ""}>{sign}{rupiah(entry.amount)}</b>{formatTime(entry.at)}</span>
@@ -55,7 +55,7 @@ export function Onboarding({ ctx }: { ctx: FinCtx }) {
     ctx.notify("Siap! Ketuk Catat untuk mencatat yang pertama.");
   };
   const steps = [
-    { img: <I3 name="payment-wallet" px={170} style={{ filter: "drop-shadow(0 16px 24px rgba(15,35,71,.18))" }} />, title: "Tahu uangmu pergi ke mana.", sub: "Catat dengan satu kalimat, lihat anggaran, dan semua pembayaran Djiwa Pay otomatis tercatat.", body: null, cta: "Mulai" },
+    { img: <Mascot px={170} style={{ filter: "drop-shadow(0 16px 24px rgba(45,36,29,.18))" }} />, title: "Tahu uangmu pergi ke mana.", sub: "Catat dengan satu kalimat, lihat anggaran, dan semua pembayaran Djiwa Pay otomatis tercatat.", body: null, cta: "Mulai" },
     { img: <I3 name="customer-benefit-wallet" px={110} />, title: "Berapa uang tunaimu sekarang?", sub: "Saldo awal dompet Tunai. Boleh dikosongkan dan diubah nanti.", body: <MoneyInput big value={cash} onChange={setCash} label="Saldo tunai" />, cta: "Lanjut" },
     { img: <I3 name="loyalty-points" px={110} />, title: "Punya rekening yang ingin dicatat?", sub: "Opsional. Djiwa Pay sudah terhubung otomatis.", body: <><label className="dpx-field" style={{ textAlign: "left" }}><span>Nama rekening</span><div className="dpx-input"><input value={bank} onChange={(e) => setBank(e.target.value)} placeholder="Contoh: BCA" maxLength={30} /></div></label>{bank.trim() ? <label className="dpx-field" style={{ textAlign: "left" }}><span>Saldo awal</span><MoneyInput value={bankBal} onChange={setBankBal} /></label> : null}</>, cta: "Selesai" },
   ];
@@ -101,7 +101,7 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
     {trend !== null && trend !== 0 ? <div className="dpx-sub dpx-mt8" style={{ fontSize: 14 }}>Pengeluaran <b style={{ color: trend < 0 ? "var(--ok)" : "var(--danger)" }}>{trend < 0 ? "turun" : "naik"} {Math.abs(trend)}%</b> dibanding bulan lalu</div> : null}
 
     <Reveal i={1}>{empty && !safe ? <div className="dpx-hero-day"><I3 name="sales-report" px={110} style={{ position: "absolute", right: -6, top: -6 }} /><div className="dpx-sub">Belum ada catatan</div><div className="dpx-title" style={{ marginTop: 2, maxWidth: 200 }}>Mulai dari satu catatan.</div><div className="dpx-sub" style={{ marginTop: 6, maxWidth: 210 }}>Tulis “kopi 25rb” atau atur anggaran agar kami hitung sisa uang harianmu.</div><Btn type="button" className="dpx-btn dpx-sm" style={{ marginTop: 14 }} onClick={() => ctx.open({ k: "catat" })}><Ic n="plus" size="sm" /> Catat pertama</Btn></div>
-      : safe ? <div className="dpx-hero-day"><div className="dpx-flex" style={{ gap: 16 }}><Ring percent={Math.min(100, safe.percent)} big={over ? "Lewat" : `${Math.round(safe.percent)}%`} small={over ? "anggaran" : "terpakai"} color={over ? "#d23a2a" : "#1a5dc6"} />
+      : safe ? <div className="dpx-hero-day"><div className="dpx-flex" style={{ gap: 16 }}><Ring percent={Math.min(100, safe.percent)} big={over ? "Lewat" : `${Math.round(safe.percent)}%`} small={over ? "anggaran" : "terpakai"} color={over ? "#d23a2a" : "#d14b1a"} />
         <div style={{ flex: 1, minWidth: 0 }}><div className="dpx-sub">{over ? "Anggaran bulan ini terlampaui" : "Aman dibelanjakan hari ini"}</div><div className="dpx-money" style={{ fontSize: 28, color: over ? "var(--danger)" : "var(--navy)" }}>{ctx.visible ? (over ? "−" : "") + rupiah(over ? -safe.left : safe.perDay) : "••••••"}</div><div className="dpx-sub" style={{ marginTop: 4, fontSize: 12.5 }}>{over ? "Kurangi pengeluaran atau naikkan anggaran." : `Sisa ${rupiah(safe.left)} untuk ${safe.daysLeft} hari lagi.`}</div></div></div>
         {templates.length ? <div className="dpx-chips2" style={{ marginTop: 14 }}>{templates.map((e) => <Btn key={e.id} type="button" className="dpx-chip3" onClick={() => addTemplate(e)}>+ {e.note} {Math.round(e.amount / 1000)} rb</Btn>)}</div> : null}</div>
         : <div className="dpx-hero-day"><div className="dpx-sub">Belum ada anggaran</div><div className="dpx-title" style={{ marginTop: 2 }}>Atur anggaran bulanan</div><div className="dpx-sub" style={{ marginTop: 6 }}>Kami hitung berapa yang aman dibelanjakan tiap hari.</div><Btn type="button" className="dpx-btn dpx-sm" style={{ marginTop: 14 }} onClick={() => ctx.open({ k: "budget" })}>Atur anggaran</Btn>{templates.length ? <div className="dpx-chips2" style={{ marginTop: 12 }}>{templates.map((e) => <Btn key={e.id} type="button" className="dpx-chip3" onClick={() => addTemplate(e)}>+ {e.note} {Math.round(e.amount / 1000)} rb</Btn>)}</div> : null}</div>}</Reveal>
@@ -115,13 +115,13 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
 
     <div className="dpx-sec"><h2>Dompet & Bayar</h2><Btn type="button" onClick={() => nav.go("/dompet")}>Buka</Btn></div>
     <div className="dpx-group"><div className="dpx-spread"><div><div className="dpx-sub">Saldo Djiwa Pay</div><div className="dpx-money" style={{ fontSize: 26 }}>{ctx.visible ? rupiah(ctx.payBalance) : "•••••"}</div></div><span className="dpx-tag dpx-ok">Otomatis tercatat</span></div>
-      <div className="dpx-tile3 dpx-mt" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>{([["topup", "Isi saldo", "/wallet/topup"], ["send", "Kirim", "/wallet/transfer"], ["scan-qr", "Scan", "/wallet/transfer?mode=scan"], ["bills", "Layanan", "/bayar"]] as const).map(([a, l, p]) => <Btn key={a} type="button" className="dpx-q" onClick={() => nav.go(p)}><img src={`/assets/djiwa-pay-actions/${a}.webp`} width={38} height={38} alt="" />{l}</Btn>)}</div></div>
+      <div className="dpx-tile3 dpx-mt" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>{([["topup", "Isi saldo", "/wallet/topup"], ["send", "Kirim", "/wallet/transfer"], ["scan-qr", "Scan", "/wallet/transfer?mode=scan"], ["bills", "Layanan", "/bayar"]] as const).map(([a, l, p]) => <Btn key={a} type="button" className="dpx-q" onClick={() => nav.go(p)}><img src={payAsset(a)} width={38} height={38} alt="" />{l}</Btn>)}</div></div>
   </div></Sky></div>;
 }
 
 function Ring({ percent, big, small, color }: { percent: number; big: string; small: string; color: string }) {
   const r = 54, c = 2 * Math.PI * r;
-  return <div className="dpx-ring"><svg viewBox="0 0 132 132"><circle cx="66" cy="66" r={r} fill="none" stroke="rgba(15,35,71,.08)" strokeWidth="13" /><motion.circle cx="66" cy="66" r={r} fill="none" stroke={color} strokeWidth="13" strokeLinecap="round" strokeDasharray={c} initial={{ strokeDashoffset: c }} animate={{ strokeDashoffset: c * (1 - Math.min(percent, 100) / 100) }} transition={{ duration: 1, ease: [0.32, 0.72, 0, 1] }} /></svg><div className="dpx-c"><div><b>{big}</b><span>{small}</span></div></div></div>;
+  return <div className="dpx-ring"><svg viewBox="0 0 132 132"><circle cx="66" cy="66" r={r} fill="none" stroke="rgba(45,36,29,.08)" strokeWidth="13" /><motion.circle cx="66" cy="66" r={r} fill="none" stroke={color} strokeWidth="13" strokeLinecap="round" strokeDasharray={c} initial={{ strokeDashoffset: c }} animate={{ strokeDashoffset: c * (1 - Math.min(percent, 100) / 100) }} transition={{ duration: 1, ease: [0.32, 0.72, 0, 1] }} /></svg><div className="dpx-c"><div><b>{big}</b><span>{small}</span></div></div></div>;
 }
 
 function BudgetRow({ status, state, onOpen }: { status: ReturnType<typeof budgetStatuses>[number]; state: FinanceState; onOpen: () => void }) {
@@ -224,7 +224,7 @@ export function FinBudget({ ctx }: { ctx: FinCtx }) {
     <div style={{ marginBottom: 14 }}><Seg id="bseg" label="Bagian" value={seg} onChange={setSeg} options={[["bud", "Anggaran"], ["pocket", "Kantong"], ["goal", "Tujuan"], ["debt", "Hutang"]] as const} /></div>
     {seg === "pocket" ? <PocketsPanel ctx={ctx} /> : seg === "bud" ? <>
       {state.budgets.length === 0 ? <Empty img="sales-report" title="Belum ada anggaran" text="Tentukan batas per kategori. Kami hitung berapa yang aman dibelanjakan setiap hari."><Btn type="button" className="dpx-btn" style={{ maxWidth: 300 }} onClick={() => ctx.open({ k: "budget" })}><Ic n="plus" size="sm" /> Atur anggaran</Btn></Empty> : <>
-        <div className="dpx-group dpx-white"><div className="dpx-flex" style={{ gap: 16 }}><Ring percent={Math.min(100, pct)} big={`${Math.round(pct)}%`} small="terpakai" color={pct > 100 ? "#d23a2a" : "#1a5dc6"} /><div><div className="dpx-sub">Sisa anggaran</div><div className="dpx-money" style={{ fontSize: 26 }}>{rupiah(Math.max(0, total - used))}</div><div className="dpx-sub">dari {rupiah(total)}</div></div></div></div>
+        <div className="dpx-group dpx-white"><div className="dpx-flex" style={{ gap: 16 }}><Ring percent={Math.min(100, pct)} big={`${Math.round(pct)}%`} small="terpakai" color={pct > 100 ? "#d23a2a" : "#d14b1a"} /><div><div className="dpx-sub">Sisa anggaran</div><div className="dpx-money" style={{ fontSize: 26 }}>{rupiah(Math.max(0, total - used))}</div><div className="dpx-sub">dari {rupiah(total)}</div></div></div></div>
         <div className="dpx-sec"><h2>Per kategori</h2></div><div className="dpx-group dpx-white">{statuses.map((s) => <BudgetRow key={s.budget.categoryId} status={s} state={state} onOpen={() => ctx.open({ k: "budget", cid: s.budget.categoryId })} />)}</div>
         <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => ctx.open({ k: "budget" })}><Ic n="plus" size="sm" /> Tambah anggaran</Btn></>}
     </> : seg === "goal" ? <>
@@ -264,8 +264,8 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
     <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => ctx.open({ k: "account" })}><Ic n="plus" size="sm" /> Tambah dompet</Btn>
     <WealthExtras ctx={ctx} />
     <div className="dpx-sec"><h2>Bayar & layanan</h2><Btn type="button" onClick={() => nav.go("/bayar")}>Semua layanan</Btn></div>
-    <div className="dpx-group"><div className="dpx-tile3" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>{acts.map(([a, l, p]) => <Btn key={a} type="button" className="dpx-q" onClick={() => nav.go(p)}><img src={`/assets/djiwa-pay-actions/${a}.webp`} width={42} height={42} alt="" />{l}</Btn>)}</div></div>
-    <Btn type="button" className="dpx-group dpx-flex" style={{ width: "100%", marginTop: 12, textAlign: "left" }} onClick={() => nav.openSheet("card")}><img src="/assets/djiwa-pay-actions/card.webp" width={56} height={56} alt="" /><span style={{ flex: 1 }}><b style={{ fontSize: 16 }}>Kartu Djiwa</b><div className="dpx-sub">Kartu virtual untuk belanja online.</div></span><span className="dpx-tag">Segera</span></Btn>
+    <div className="dpx-group"><div className="dpx-tile3" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>{acts.map(([a, l, p]) => <Btn key={a} type="button" className="dpx-q" onClick={() => nav.go(p)}><img src={payAsset(a)} width={42} height={42} alt="" />{l}</Btn>)}</div></div>
+    <Btn type="button" className="dpx-group dpx-flex" style={{ width: "100%", marginTop: 12, textAlign: "left" }} onClick={() => nav.openSheet("card")}><img src={payAsset("card")} width={56} height={56} alt="" /><span style={{ flex: 1 }}><b style={{ fontSize: 16 }}>Kartu Djiwa</b><div className="dpx-sub">Kartu virtual untuk belanja online.</div></span><span className="dpx-tag">Segera</span></Btn>
   </div></Sky></div>;
 }
 
