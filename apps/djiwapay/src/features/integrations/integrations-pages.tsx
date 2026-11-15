@@ -5,10 +5,11 @@ import { CatIcon, MoneyInput, accName, catOf } from "../finance/fin-sheets";
 import type { FinCtx } from "../finance/fin-pages";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import {
-  CHANNEL_NAME, approveItem, connectGoogle, createSource, disconnectGoogle, getGoogle, getInbound, getReview, rejectItem, removeSource, syncGoogle,
+  CHANNEL_NAME, approveItem, connectGoogle, createSource, disconnectGoogle, getGoogle, gmailOff, pollGmailNow, getInbound, getReview, rejectItem, removeSource, syncGoogle,
   type GoogleFeature, type GoogleStatus, type InboundSummary, type ReviewItem,
 } from "../../lib/finance/integrations";
 
+const gmailError = (code: string) => ({ NOT_CONNECTED: "Izin Google dicabut. Hubungkan ulang", SCOPE_MISSING: "Izin Gmail belum diberikan", GMAIL_FORBIDDEN: "Google menolak akses Gmail. Hubungkan ulang" } as Record<string, string>)[code] ?? "Pemeriksaan terakhir gagal, dicoba lagi otomatis";
 const copyText = async (text: string) => { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } };
 const ago = (iso: string | null) => {
   if (!iso) return "";
@@ -41,7 +42,9 @@ export function ReviewChip({ count, onOpen }: { count: number; onOpen: () => voi
 
 /* ---------- Google: what Djiwa Pay can and cannot do, shown before Google's own screen ---------- */
 function ConsentSheet({ features, onClose, busy, onGo }: { features: GoogleFeature[]; onClose: () => void; busy: boolean; onGo: () => void }) {
-  const can: string[] = [], cannot = ["Membaca email, kontak, atau file lain di Google-mu", "Mengubah atau menghapus file yang tidak dibuat Djiwa Pay", "Menyimpan kata sandi Google-mu"];
+  const can: string[] = [], cannot = ["Membaca atau menyimpan email lain", "Mengubah atau menghapus file yang tidak dibuat Djiwa Pay", "Menyimpan kata sandi Google-mu"];
+  const gmail = features.includes("gmail");
+  if (gmail) { can.push("Mencari email dari bank dan e-wallet yang terdaftar (BCA, Mandiri, GoPay, OVO, DANA, dan lainnya), lalu mencatat pembayarannya", "Menyimpan hanya nominal, toko, dan waktu. Isi email tidak disimpan"); cannot.unshift("Mengirim, menghapus, atau mengubah email-mu"); }
   if (features.includes("calendar")) can.push("Membuat acara pengingat tagihan di Google Calendar-mu");
   if (features.includes("drive")) can.push("Membuat folder “Djiwa Pay” dan menyimpan foto struk di sana", "Membuat satu Spreadsheet laporan keuanganmu");
   return <Sheet title="Izinkan akses Google" onClose={onClose}>
@@ -50,6 +53,7 @@ function ConsentSheet({ features, onClose, busy, onGo }: { features: GoogleFeatu
     <div className="dpx-group dpx-white dpx-checks">{can.map((t) => <div key={t} className="dpx-chk dpx-yes"><Ic n="check" size="sm" /><span>{t}</span></div>)}</div>
     <div className="dpx-glabel">Yang tidak bisa</div>
     <div className="dpx-group dpx-white dpx-checks">{cannot.map((t) => <div key={t} className="dpx-chk dpx-no"><Ic n="close" size="sm" /><span>{t}</span></div>)}</div>
+    {gmail ? <div className="dpx-note"><Ic n="info" /><div><b>Google akan menampilkan “belum diverifikasi”.</b> Ketuk <b>Lanjutan</b>, lalu <b>Buka Djiwa Pay</b>, dan centang izin Gmail. Layar itu muncul karena izin baca Gmail memerlukan verifikasi tambahan dari Google, dan kamu bisa mencabutnya kapan saja.</div></div> : null}
     <Btn type="button" className="dpx-btn" disabled={busy} onClick={onGo}>{busy ? "Membuka Google…" : "Lanjut ke Google"}</Btn>
   </Sheet>;
 }
@@ -135,34 +139,51 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
     try { const r = await syncGoogle(what); await loadG(); if (what === "sheets" && r.ok === true && typeof r.url === "string") { window.open(r.url, "_blank", "noopener"); ctx.notify(done); } else if (r.ok === false) ctx.notify("Sebagian belum tersinkron. Coba lagi nanti."); else ctx.notify(done); }
     catch { ctx.notify("Gagal menyinkronkan. Coba lagi."); } finally { setBusy(""); }
   };
+  const checkGmail = async () => {
+    setBusy("gmail");
+    try { await pollGmailNow(); ctx.notify("Memeriksa Gmail… hasilnya muncul sebentar lagi"); window.setTimeout(() => { void loadG(); void refresh(); }, 6000); }
+    catch { ctx.notify("Gagal memulai pemeriksaan. Coba lagi."); } finally { setBusy(""); }
+  };
+  const turnGmailOff = async () => { setBusy("gmail"); try { await gmailOff(); await loadG(); ctx.notify("Gmail langsung dimatikan"); } catch { ctx.notify("Gagal mematikan. Coba lagi."); } finally { setBusy(""); } };
   const off = async () => {
     setBusy("off");
-    try { if (confirmOff === "google") { await disconnectGoogle(); await loadG(); ctx.notify("Google diputuskan. Token dihapus."); } else { await removeSource(true); await refresh(); ctx.notify("Email pembayaran dimatikan"); } setConfirmOff(null); }
+    try { if (confirmOff === "google") { await disconnectGoogle(); await loadG(); ctx.notify("Google diputuskan. Token dihapus."); } else { await removeSource(true); await refresh(); ctx.notify("Email terusan dimatikan"); } setConfirmOff(null); }
     catch { ctx.notify("Gagal memutuskan. Coba lagi."); } finally { setBusy(""); }
   };
 
   const src = inbound?.source ?? null;
   const gOn = Boolean(g?.connected), gReady = g?.configured !== false;
   const cal = Boolean(g?.features.calendar), drive = Boolean(g?.features.drive);
+  const gm = Boolean(g?.features.gmail && g?.gmail?.enabled), gmInfo = g?.gmail ?? null;
   const soon = <Tag tone="later">Segera</Tag>;
   return <div className="dpx-page"><Sky><div className="dpx-pad dpx-nobar">
     <Header title="Integrasi" onBack={onBack} />
     <div className="dpx-note dpx-info" style={{ marginTop: 6 }}><Ic n="shield" /><div><b>Kamu yang mengatur.</b> Setiap integrasi bisa diputus kapan saja. Token dan data turunan ikut dihapus.</div></div>
 
-    <div className="dpx-glabel">Catat otomatis</div>
+    <div className="dpx-glabel">Catat otomatis dari email</div>
     <Reveal i={1}><div className="dpx-group dpx-white dpx-int">
-      <Row icon="bank" tone="orange" title="Email pembayaran" sub={src ? `${src.mailCount ? `${src.mailCount} email · ${ago(src.lastMailAt)}` : "Menunggu email pertama"}` : "Bank dan e-wallet masuk ke catatan sendiri"} trail={src ? <Tag tone="ok">Aktif</Tag> : inbound && !inbound.configured ? soon : <Tag>Mati</Tag>}
-        onClick={inbound?.configured ? () => setSheet("email") : undefined} />
-      {src ? <>
-        <Row icon="check" tone="emerald" title={`Antrean tinjau${inbound && inbound.review ? ` (${inbound.review})` : ""}`} sub={src.trusted >= 10 ? "Email yang jelas dicatat otomatis" : `Belajar dari tinjauanmu: ${src.trusted}/10 disetujui`} onClick={onReview} />
-        <Row icon="refresh" tone="slate" title="Buat alamat baru" sub="Alamat lama berhenti menerima email" onClick={async () => { setBusy("rot"); try { await createSource(true); await refresh(); ctx.notify("Alamat baru dibuat. Perbarui terusan di Gmail."); setSheet("email"); } catch { ctx.notify("Gagal membuat alamat baru"); } finally { setBusy(""); } }} chev={false} />
-        <Row icon="trash" tone="rose" title="Matikan email pembayaran" sub="Hapus alamat dan antrean" onClick={() => setConfirmOff("email")} chev={false} />
+      <Row icon="spark" tone="orange" title="Gmail langsung" sub={gm ? (gmInfo?.error ? gmailError(gmInfo.error) : gmInfo?.lastPolledAt ? `Dicek ${ago(gmInfo.lastPolledAt)} · ${gmInfo.fetched} email dibaca` : "Memeriksa email pertama…") : "Satu ketukan. Email bank dan e-wallet tercatat sendiri"}
+        trail={loadingG ? undefined : !gReady ? soon : gm ? <Tag tone={gmInfo?.error ? "warn" : "ok"}>{gmInfo?.error ? "Perlu perhatian" : "Aktif"}</Tag> : <Tag tone="warn">Disarankan</Tag>}
+        onClick={gReady && !loadingG && !gm ? () => setSheet({ consent: ["gmail"] }) : undefined} />
+      {gm ? <>
+        <Row icon="refresh" tone="slate" title={busy === "gmail" ? "Memeriksa…" : "Periksa sekarang"} sub="Pengecekan otomatis tiap beberapa menit" onClick={() => void checkGmail()} chev={false} />
+        <Row icon="trash" tone="rose" title="Matikan Gmail langsung" sub="Berhenti membaca email. Catatan yang sudah ada tetap" onClick={() => void turnGmailOff()} chev={false} />
       </> : null}
-      <Row icon="mic" tone="slate" title="Gmail langsung" sub="Tanpa filter, satu ketukan" trail={soon} />
+      {gm || (src && src.forwarding) ? <Row icon="check" tone="emerald" title={`Antrean tinjau${inbound && inbound.review ? ` (${inbound.review})` : ""}`} sub={src && src.trusted >= 10 ? "Email yang jelas dicatat otomatis" : `Belajar dari tinjauanmu: ${src?.trusted ?? 0}/10 disetujui`} onClick={onReview} /> : null}
+    </div></Reveal>
+
+    <div className="dpx-glabel">Atau lewat terusan email</div>
+    <Reveal i={2}><div className="dpx-group dpx-white dpx-int">
+      <Row icon="bank" tone="slate" title="Email terusan" sub={src?.forwarding ? `${src.mailCount ? `${src.mailCount} email · ${ago(src.lastMailAt)}` : "Menunggu email pertama"}` : "Tanpa izin Gmail. Atur sekali di Gmail atau di aplikasi bank"} trail={src?.forwarding ? <Tag tone="ok">Aktif</Tag> : inbound && !inbound.configured ? soon : <Tag>Mati</Tag>}
+        onClick={inbound?.configured ? () => setSheet("email") : undefined} />
+      {src?.forwarding ? <>
+        <Row icon="refresh" tone="slate" title="Buat alamat baru" sub="Alamat lama berhenti menerima email" onClick={async () => { setBusy("rot"); try { await createSource(true); await refresh(); ctx.notify("Alamat baru dibuat. Perbarui terusan di Gmail."); setSheet("email"); } catch { ctx.notify("Gagal membuat alamat baru"); } finally { setBusy(""); } }} chev={false} />
+        <Row icon="trash" tone="rose" title="Matikan email terusan" sub="Hapus alamat dan antrean" onClick={() => setConfirmOff("email")} chev={false} />
+      </> : null}
     </div></Reveal>
 
     <div className="dpx-glabel">Google</div>
-    <Reveal i={2}><div className="dpx-group dpx-white dpx-int">
+    <Reveal i={3}><div className="dpx-group dpx-white dpx-int">
       <Row icon="cal" tone="blue" title="Google Calendar" sub={cal ? `${g!.calendar.events} tagihan jadi acara bulanan` : "Tagihan rutin jadi acara + pengingat"} trail={loadingG ? undefined : !gReady ? soon : cal ? <Tag tone="ok">Aktif</Tag> : <Tag>Mati</Tag>}
         onClick={gReady && !loadingG && !cal ? () => setSheet({ consent: ["calendar"] }) : undefined} />
       {cal ? <Row icon="refresh" tone="slate" title={busy === "calendar" ? "Menyinkronkan…" : "Sinkronkan sekarang"} sub="Tagihan berubah otomatis ikut diperbarui" onClick={() => void run("calendar", "Calendar diperbarui")} chev={false} /> : null}
@@ -174,15 +195,15 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
       </> : null}
     </div></Reveal>
 
-    {gOn ? <Reveal i={3}><div className="dpx-group dpx-white dpx-int" style={{ marginTop: 12 }}>
+    {gOn ? <Reveal i={4}><div className="dpx-group dpx-white dpx-int" style={{ marginTop: 12 }}>
       <Row icon="user" tone="slate" title={g!.email ?? "Akun Google"} sub="Akun yang terhubung" chev={false} />
       <Row icon="trash" tone="rose" title="Putuskan Google" sub="Token dihapus, file di Drive-mu tetap ada" onClick={() => setConfirmOff("google")} chev={false} />
     </div></Reveal> : null}
 
     {g && !g.configured ? <div className="dpx-note" style={{ marginTop: 12 }}><Ic n="info" /><div><b>Google belum dihubungkan di server ini.</b> Calendar, Drive dan Sheets aktif begitu kredensial Google dipasang.</div></div> : null}
-    {inbound && !inbound.configured ? <div className="dpx-note" style={{ marginTop: 12 }}><Ic n="info" /><div><b>Penerima email belum aktif.</b> Email pembayaran aktif begitu alamat domain surat dipasang.</div></div> : null}
+    {inbound && !inbound.configured ? <div className="dpx-note" style={{ marginTop: 12 }}><Ic n="info" /><div><b>Penerima email belum aktif.</b> Email terusan aktif begitu alamat domain surat dipasang.</div></div> : null}
 
-    {confirmOff ? <div className="dpx-note dpx-danger" role="alert" style={{ marginTop: 12 }}><Ic n="warn" /><div><b>{confirmOff === "google" ? "Putuskan Google?" : "Matikan email pembayaran?"}</b> {confirmOff === "google" ? "Acara Calendar dan file yang sudah dibuat tetap ada di akun Google-mu." : "Alamat dihapus dan antrean tinjau dikosongkan. Catatan yang sudah tersimpan tetap ada."}
+    {confirmOff ? <div className="dpx-note dpx-danger" role="alert" style={{ marginTop: 12 }}><Ic n="warn" /><div><b>{confirmOff === "google" ? "Putuskan Google?" : "Matikan email terusan?"}</b> {confirmOff === "google" ? "Acara Calendar dan file yang sudah dibuat tetap ada di akun Google-mu." : "Alamat dihapus dan antrean tinjau dikosongkan. Catatan yang sudah tersimpan tetap ada."}
       <div className="dpx-flex" style={{ marginTop: 10 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy === "off"} onClick={() => void off()}>{busy === "off" ? "Memproses…" : "Ya, putuskan"}</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => setConfirmOff(null)}>Batal</Btn></div></div></div> : null}
 
     <AnimatePresence>

@@ -20,7 +20,7 @@ const newToken = () => { const a = "abcdefghjkmnpqrstuvwxyz23456789"; return Arr
 /* ---------------- source (the user's forwarding address) ---------------- */
 
 export async function getSource(db: Q, userId: string) {
-  const r = await db.query("select token,enabled,forward_code,forward_code_at,trusted_count,mail_count,first_mail_at,last_mail_at from finance.inbound_sources where user_id=$1", [userId]);
+  const r = await db.query("select token,enabled,forwarding,forward_code,forward_code_at,trusted_count,mail_count,first_mail_at,last_mail_at from finance.inbound_sources where user_id=$1", [userId]);
   return r.rows[0] ?? null;
 }
 export async function ensureSource(db: Q, userId: string, rotate = false) {
@@ -63,13 +63,19 @@ async function insertEntry(q: Q, userId: string, c: Candidate, inboundId: string
 
 /* ---------------- the pipeline ---------------- */
 
+/** Mail that arrived at a user's own forwarding address. */
 export async function processMail(d: PipelineDeps, mail: RawMail): Promise<Outcome> {
-  const now = (d.now ?? (() => new Date()))();
   const local = mail.to.map((a) => a.toLowerCase()).find((a) => a.endsWith("@" + d.domain.toLowerCase()))?.split("@")[0] ?? "";
   if (!local) return { status: "ignored", reason: "no-recipient" };
   const src = (await d.db.query("select user_id,trusted_count from finance.inbound_sources where token=$1 and enabled", [local])).rows[0] as { user_id: string; trusted_count: number } | undefined;
   if (!src) return { status: "ignored", reason: "unknown-address" };
-  const userId = src.user_id;
+  await d.db.query("update finance.inbound_sources set forwarding=true where user_id=$1 and not forwarding", [src.user_id]);
+  return processForUser(d, src.user_id, src.trusted_count, mail);
+}
+
+/** The same pipeline for mail that already belongs to a known user (forwarded, or fetched from their Gmail). */
+export async function processForUser(d: PipelineDeps, userId: string, trustedCount: number, mail: RawMail): Promise<Outcome> {
+  const now = (d.now ?? (() => new Date()))();
   await d.db.query("update finance.inbound_sources set mail_count=mail_count+1, last_mail_at=now(), first_mail_at=coalesce(first_mail_at,now()) where user_id=$1", [userId]);
 
   // Gmail's forwarding confirmation: keep the code for the setup screen, nothing else.
@@ -137,7 +143,7 @@ export async function processMail(d: PipelineDeps, mail: RawMail): Promise<Outco
   const candidate: Candidate = { kind, amount: x.amount, categoryId, accountId, at, note: x.merchant || mail.subject.slice(0, 60) || issuer.name };
 
   const knownMerchant = Boolean(learned) || (categoryId !== "lainnya" && Boolean(x.merchant)) || (kind === "in" && Boolean(x.merchant));
-  const trusted = src.trusted_count >= (d.trustMin ?? TRUST_MIN);
+  const trusted = trustedCount >= (d.trustMin ?? TRUST_MIN);
   const auto = trusted && isConfident(x) && knownMerchant && issuer.kind !== "service" && x.amount <= (d.autoCeiling ?? AUTO_CEILING);
   if (auto) {
     const entryId = await d.db.tx((q) => insertEntry(q, userId, candidate, inboundId));

@@ -38,7 +38,7 @@ run("google (real database, simulated Google)", () => {
     const state = u.searchParams.get("state")!;
     await expect(finishConnect(db, cfg, "code", "wrong-state", gfetch)).rejects.toThrow("STATE_EXPIRED");
     const done = await finishConnect(db, cfg, "code", state, gfetch);
-    expect(done.features).toEqual({ calendar: true, drive: true });
+    expect(done.features).toEqual({ calendar: true, drive: true, gmail: false });
     await expect(finishConnect(db, cfg, "code", state, gfetch)).rejects.toThrow("STATE_EXPIRED");   // a state works once
     const st = await status(db, cfg, user);
     expect(st).toMatchObject({ connected: true, email: "tester@example.com", features: { calendar: true, drive: true } });

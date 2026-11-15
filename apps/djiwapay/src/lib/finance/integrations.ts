@@ -1,16 +1,17 @@
 /** Browser side of the Google and payment-e-mail integrations. Tokens never reach the browser; this only talks to /api/finance. */
-export type InboundSource = { address: string; enabled: boolean; mailCount: number; lastMailAt: string | null; trusted: number; forwardCode: string | null };
+export type InboundSource = { forwarding: boolean; address: string; enabled: boolean; mailCount: number; lastMailAt: string | null; trusted: number; forwardCode: string | null };
 export type InboundSummary = { configured: boolean; filter: string; source: InboundSource | null; review: number };
 export type ReviewItem = {
   id: string; channel: string; status: "review" | "failed"; reason: string; confidence: number; createdAt: string;
   parsed: { amount?: number; kind?: "out" | "in"; direction?: string; merchant?: string; categoryId?: string; accountId?: string; accountHint?: string; at?: string; subject?: string; issuer?: string };
 };
 export type GoogleStatus = {
-  configured: boolean; connected: boolean; email: string | null; features: { calendar: boolean; drive: boolean };
+  configured: boolean; connected: boolean; email: string | null; features: { calendar: boolean; drive: boolean; gmail: boolean };
+  gmail: { enabled: boolean; lastPolledAt: string | null; error: string | null; fetched: number } | null;
   calendar: { events: number }; drive: { uploaded: number; failed: number };
   sheet: { url: string | null; status: string; lastSyncedAt: string | null; error: string | null } | null;
 };
-export type GoogleFeature = "calendar" | "drive";
+export type GoogleFeature = "calendar" | "drive" | "gmail";
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api/finance${path}`, { credentials: "include", ...init, headers: { Accept: "application/json", ...(init.body ? { "Content-Type": "application/json" } : {}), ...(init.headers ?? {}) } });
@@ -31,6 +32,8 @@ export const getOrigin = (id: string) => call<{ origin: Origin }>(`/inbound/${en
 
 export const getGoogle = () => call<GoogleStatus & { success: true }>("/google/status");
 export const connectGoogle = (features: GoogleFeature[]) => call<{ url: string }>("/google/connect", { method: "POST", body: JSON.stringify({ features }) });
+export const pollGmailNow = () => call<object>("/google/gmail/poll", { method: "POST" });
+export const gmailOff = () => call<object>("/google/gmail/off", { method: "POST" });
 export const disconnectGoogle = () => call<object>("/google/disconnect", { method: "POST" });
 export const syncGoogle = (what: "calendar" | "drive" | "sheets") => call<Record<string, unknown>>(what === "sheets" ? "/google/sheets/export" : `/google/${what}/sync`, { method: "POST" });
 

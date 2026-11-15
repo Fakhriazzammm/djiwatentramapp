@@ -15,9 +15,11 @@ export const SCOPES = {
   calendar: "https://www.googleapis.com/auth/calendar.events",
   /** Only files this app creates (Sheets created through the Sheets API are covered too). Non-sensitive. */
   drive: "https://www.googleapis.com/auth/drive.file",
+  /** Restricted scope. Only used to fetch mail from the listed bank / e-wallet senders. */
+  gmail: "https://www.googleapis.com/auth/gmail.readonly",
 } as const;
-export type Feature = "calendar" | "drive";
-export const FEATURES: Feature[] = ["calendar", "drive"];
+export type Feature = "calendar" | "drive" | "gmail";
+export const FEATURES: Feature[] = ["calendar", "drive", "gmail"];
 
 export type GoogleCfg = { clientId: string; clientSecret: string; redirectUri: string; key: Buffer };
 export type Fetch = typeof fetch;
@@ -42,7 +44,7 @@ export const decrypt = (key: Buffer, value: string) => {
   return Buffer.concat([d.update(enc), d.final()]).toString("utf8");
 };
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
-export const featuresFromScopes = (scopes: readonly string[]) => ({ calendar: scopes.includes(SCOPES.calendar), drive: scopes.includes(SCOPES.drive) });
+export const featuresFromScopes = (scopes: readonly string[]) => ({ calendar: scopes.includes(SCOPES.calendar), drive: scopes.includes(SCOPES.drive), gmail: scopes.includes(SCOPES.gmail) });
 
 export function scopesFor(features: readonly Feature[]) {
   return [...new Set([SCOPES.email, ...features.map((f) => SCOPES[f])])];
@@ -78,13 +80,14 @@ export async function finishConnect(db: Q, cfg: GoogleCfg, code: string, state: 
 export async function disconnect(db: Q, cfg: GoogleCfg | null, userId: string, f: Fetch = fetch) {
   const row = (await db.query("select refresh_enc from finance.google_connections where user_id=$1", [userId])).rows[0];
   if (row?.refresh_enc && cfg) { try { await f(REVOKE_URL, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ token: decrypt(cfg.key, row.refresh_enc) }) }); } catch { /* revoking is best effort */ } }
-  for (const t of ["google_connections", "google_calendar_events", "google_drive_files", "google_sheet_exports"]) await db.query(`delete from finance.${t} where user_id=$1`, [userId]);
+  for (const t of ["google_connections", "google_calendar_events", "google_drive_files", "google_sheet_exports", "gmail_sync", "gmail_seen"]) await db.query(`delete from finance.${t} where user_id=$1`, [userId]);
 }
 
 export async function status(db: Q, cfg: GoogleCfg | null, userId: string) {
   const c = (await db.query("select email,granted_scopes,connected_at,refresh_enc from finance.google_connections where user_id=$1", [userId])).rows[0];
   const connected = Boolean(c?.refresh_enc);
-  const features = connected ? featuresFromScopes(c.granted_scopes ?? []) : { calendar: false, drive: false };
+  const features = connected ? featuresFromScopes(c.granted_scopes ?? []) : { calendar: false, drive: false, gmail: false };
+  const gm = connected ? (await db.query("select enabled,last_polled_at,last_error,fetched_count from finance.gmail_sync where user_id=$1", [userId])).rows[0] : null;
   const [ev, dr, sh] = connected ? await Promise.all([
     db.query("select count(*)::int n from finance.google_calendar_events where user_id=$1", [userId]),
     db.query("select status,count(*)::int n from finance.google_drive_files where user_id=$1 group by status", [userId]),
@@ -93,6 +96,7 @@ export async function status(db: Q, cfg: GoogleCfg | null, userId: string) {
   const drive = Object.fromEntries((dr?.rows ?? []).map((r) => [r.status, Number(r.n)]));
   return {
     configured: Boolean(cfg), connected, email: connected ? c.email ?? null : null, features,
+    gmail: gm ? { enabled: Boolean(gm.enabled), lastPolledAt: gm.last_polled_at ? new Date(gm.last_polled_at).toISOString() : null, error: (gm.last_error as string | null) ?? null, fetched: Number(gm.fetched_count) } : null,
     calendar: { events: Number(ev?.rows[0]?.n ?? 0) },
     drive: { uploaded: drive.uploaded ?? 0, failed: drive.failed ?? 0 },
     sheet: sh?.rows[0] ? { url: sh.rows[0].spreadsheet_url as string | null, status: sh.rows[0].status as string, lastSyncedAt: sh.rows[0].last_synced_at ? new Date(sh.rows[0].last_synced_at).toISOString() : null, error: sh.rows[0].last_error as string | null } : null,

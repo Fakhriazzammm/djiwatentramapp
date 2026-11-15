@@ -9,6 +9,7 @@ export { poolTx };
 import { isEmptyRead, readReceipt, type ReceiptRead } from "./receipt.js";
 import { disconnect as googleDisconnect, exportSheet, FEATURES, finishConnect, googleConfig, startConnect, status as googleStatus, syncCalendar, syncDrive, type Feature, type Fetch, type GoogleCfg } from "./google.js";
 import { ISSUERS } from "./mail/extract.js";
+import { disableGmail, enableGmail, pollSoon } from "./gmail.js";
 import { approve, ensureSource, getSource, originOf, reject, removeSource, reviewCount, reviewList } from "./mail/pipeline.js";
 
 const DAILY_SCAN_LIMIT = Number(process.env.SCAN_DAILY_LIMIT || 30);
@@ -30,10 +31,11 @@ export function createApp(d: Deps) {
   const uid = (c: any) => c.get("userId") as string;
   const google = d.google ?? null, mailDomain = d.mailDomain ?? "";
   // Keep Google in step with what the user just changed, without ever slowing or failing the request.
+  const SCOPE_OF: Record<Feature, string> = { calendar: "https://www.googleapis.com/auth/calendar.events", drive: "https://www.googleapis.com/auth/drive.file", gmail: "https://www.googleapis.com/auth/gmail.readonly" };
   const connected = async (userId: string, feature: Feature) => {
     if (!google) return false;
     const r = await d.db.query("select granted_scopes from finance.google_connections where user_id=$1 and refresh_enc is not null", [userId]);
-    return Boolean(r.rows[0]) && (r.rows[0].granted_scopes as string[]).includes(feature === "calendar" ? "https://www.googleapis.com/auth/calendar.events" : "https://www.googleapis.com/auth/drive.file");
+    return Boolean(r.rows[0]) && (r.rows[0].granted_scopes as string[]).includes(SCOPE_OF[feature]);
   };
   const later = (fn: () => Promise<unknown>) => void fn().catch((e) => console.error("background sync", e instanceof Error ? e.message : e));
 
@@ -109,7 +111,7 @@ export function createApp(d: Deps) {
     // Keep what was granted before: asking for one more feature must not drop the others.
     const prev = await d.db.query("select granted_scopes from finance.google_connections where user_id=$1 and refresh_enc is not null", [uid(c)]);
     const have = (prev.rows[0]?.granted_scopes as string[] | undefined) ?? [];
-    for (const f of FEATURES) if (have.includes(f === "calendar" ? "https://www.googleapis.com/auth/calendar.events" : "https://www.googleapis.com/auth/drive.file") && !features.includes(f)) features.push(f);
+    for (const f of FEATURES) if (have.includes(SCOPE_OF[f]) && !features.includes(f)) features.push(f);
     return json(c, { success: true, url: await startConnect(d.db, google, uid(c), features) });
   });
   app.get("/api/finance/google/callback", async (c) => {
@@ -119,10 +121,12 @@ export function createApp(d: Deps) {
     if (c.req.query("error") || !code || !state) return back("denied");
     try {
       const out = await finishConnect(d.db, google, code, state, d.gfetch);
-      later(async () => { if (out.features.calendar) await syncCalendar(d.db, google, out.userId, d.gfetch); if (out.features.drive) await syncDrive(d.db, google, out.userId, d.dir, d.gfetch); });
+      later(async () => { if (out.features.gmail) await enableGmail(d.db, out.userId); if (out.features.calendar) await syncCalendar(d.db, google, out.userId, d.gfetch); if (out.features.drive) await syncDrive(d.db, google, out.userId, d.dir, d.gfetch); });
       return back("ok");
     } catch (e) { console.error("google connect", e instanceof Error ? e.message : e); return back("error"); }
   });
+  app.post("/api/finance/google/gmail/poll", async (c) => { if (!(await connected(uid(c), "gmail"))) return json(c, { success: false, error: "NOT_CONNECTED" }, 409); await enableGmail(d.db, uid(c)); await pollSoon(d.db, uid(c)); return json(c, { success: true }); });
+  app.post("/api/finance/google/gmail/off", async (c) => { await disableGmail(d.db, uid(c)); return json(c, { success: true }); });
   app.post("/api/finance/google/disconnect", async (c) => { await googleDisconnect(d.db, google, uid(c), d.gfetch); return json(c, { success: true }); });
   const need = (c: any) => (!google ? json(c, { success: false, error: "NOT_CONFIGURED" }, 503) : null);
   app.post("/api/finance/google/calendar/sync", async (c) => need(c) ?? json(c, { success: true, ...(await syncCalendar(d.db, google!, uid(c), d.gfetch)) }));
@@ -130,12 +134,14 @@ export function createApp(d: Deps) {
   app.post("/api/finance/google/sheets/export", async (c) => need(c) ?? json(c, { success: true, ...(await exportSheet(d.db, google!, uid(c), d.gfetch)) }));
 
   /* ---------- Payment e-mail inbox ---------- */
-  const sourceView = (s: any) => s && mailDomain ? { address: `${s.token}@${mailDomain}`, enabled: Boolean(s.enabled), mailCount: Number(s.mail_count), lastMailAt: s.last_mail_at ? new Date(s.last_mail_at).toISOString() : null, trusted: Number(s.trusted_count), forwardCode: s.forward_code && s.forward_code_at && Date.now() - new Date(s.forward_code_at).getTime() < 3 * 3600_000 ? String(s.forward_code) : null } : null;
+  const sourceView = (s: any) => s && mailDomain ? { forwarding: Boolean(s.forwarding), address: `${s.token}@${mailDomain}`, enabled: Boolean(s.enabled), mailCount: Number(s.mail_count), lastMailAt: s.last_mail_at ? new Date(s.last_mail_at).toISOString() : null, trusted: Number(s.trusted_count), forwardCode: s.forward_code && s.forward_code_at && Date.now() - new Date(s.forward_code_at).getTime() < 3 * 3600_000 ? String(s.forward_code) : null } : null;
   app.get("/api/finance/inbound", async (c) => json(c, { success: true, configured: Boolean(mailDomain), filter: `from:(${ISSUERS.flatMap((i) => i.domains).join(" OR ")})`, source: sourceView(await getSource(d.db, uid(c))), review: await reviewCount(d.db, uid(c)) }));
   app.post("/api/finance/inbound/source", async (c) => {
     if (!mailDomain) return json(c, { success: false, error: "NOT_CONFIGURED" }, 503);
     const body = await c.req.json().catch(() => ({})) as { rotate?: unknown };
-    return json(c, { success: true, source: sourceView(await ensureSource(d.db, uid(c), body.rotate === true)) });
+    const made = await ensureSource(d.db, uid(c), body.rotate === true);
+    await d.db.query("update finance.inbound_sources set forwarding=true where user_id=$1", [uid(c)]);
+    return json(c, { success: true, source: sourceView({ ...made, forwarding: true }) });
   });
   app.delete("/api/finance/inbound/source", async (c) => { await removeSource(d.db, uid(c), c.req.query("wipe") === "1"); return json(c, { success: true }); });
   app.get("/api/finance/inbound/review", async (c) => json(c, { success: true, items: await reviewList(d.db, uid(c)) }));

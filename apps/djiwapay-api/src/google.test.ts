@@ -27,7 +27,7 @@ describe("configuration and scopes", () => {
   test("asks only for the scopes the chosen features need", () => {
     expect(scopesFor(["drive"])).toEqual([SCOPES.email, SCOPES.drive]);
     expect(scopesFor(["calendar", "drive"])).toEqual([SCOPES.email, SCOPES.calendar, SCOPES.drive]);
-    expect(featuresFromScopes([SCOPES.email, SCOPES.drive])).toEqual({ calendar: false, drive: true });
+    expect(featuresFromScopes([SCOPES.email, SCOPES.drive])).toEqual({ calendar: false, drive: true, gmail: false });
   });
 });
 

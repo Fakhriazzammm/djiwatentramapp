@@ -9,11 +9,12 @@ const MAX_BYTES = 1_000_000;
 const stripTags = (html: string) => html.replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ").replace(/<br\s*\/?>|<\/(p|div|tr|li|h\d)>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#?\w+;/g, " ");
 
 /** Parses and authenticates one raw message into the shape the pipeline wants. */
-export async function toRawMail(raw: Buffer, ctx: { ip: string; helo: string; sender: string; host: string; recipients: string[] }): Promise<RawMail> {
+export type MailCtx = { ip: string; helo: string; sender: string; host: string; recipients: string[]; resolver?: (name: string, rr: string) => Promise<unknown> };
+export async function toRawMail(raw: Buffer, ctx: MailCtx): Promise<RawMail> {
   const parsed = await simpleParser(raw, { skipImageLinks: true, skipHtmlToText: false });
   let dmarcPass = false; const dkimDomains: string[] = [];
   try {
-    const a = await authenticate(raw, { ip: ctx.ip, helo: ctx.helo, sender: ctx.sender, mta: ctx.host, trustReceived: true } as any);
+    const a = await authenticate(raw, { ip: ctx.ip, helo: ctx.helo, sender: ctx.sender, mta: ctx.host, trustReceived: true, ...(ctx.resolver ? { resolver: ctx.resolver } : {}) } as any);
     dmarcPass = typeof a.dmarc === "object" && a.dmarc?.status?.result === "pass";
     for (const r of a.dkim?.results ?? []) if (r.status?.result === "pass" && r.signingDomain) dkimDomains.push(String(r.signingDomain).toLowerCase());
   } catch { /* an unverifiable mail simply fails the gate */ }
