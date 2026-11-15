@@ -185,6 +185,20 @@ function AdminCustomerDelivery() {
       setActionError(code.includes("SHIPMENT_NOT_CONFIGURED") ? "Konfigurasi alamat pengirim Biteship belum lengkap." : code.includes("SHIPMENT_DATA_INCOMPLETE") || code.includes("DESTINATION_COORDINATES_REQUIRED") ? "Data tarif/lokasi order belum cukup untuk dibuatkan shipment." : "Shipment belum berhasil dibuat. Periksa konfigurasi dan status order, lalu coba lagi.");
     } finally { setBookingId(null); }
   };
+  // Langkah gudang sebelum kurir dipanggil: dikemas -> siap dikirim. Aturan transisi dijaga di server.
+  const advanceStatus = async (order: CustomerDeliveryOrder, nextStatus: "packing" | "ready_to_ship") => {
+    if (bookingId) return;
+    setBookingId(order._id); setActionError(null); setActionNotice(null);
+    try {
+      await deliveryApi("delivery-admin", { action: "advance_status", staffToken: token, sourceId: order._id, nextStatus });
+      reselectId.current = order._id;
+      setActionNotice(nextStatus === "packing" ? "Order ditandai sedang dikemas." : "Order siap dikirim. Sekarang kurir bisa dipanggil.");
+      await refresh();
+    } catch (cause) {
+      const e = cause as { message?: unknown };
+      setActionError(typeof e?.message === "string" && e.message ? e.message : "Status order belum bisa diubah. Segarkan halaman lalu coba lagi.");
+    } finally { setBookingId(null); }
+  };
   const filtered = useMemo(() => orders.filter((o) => (statusFilter === "all" || (statusFilter === "active" ? !TERMINAL_STATUSES.has(normalizeStatus(o)) : normalizeStatus(o) === statusFilter)) && [o.orderNumber, o.customerName, o.deliveryContactName, o.deliveryContactPhone, o.deliveryAddress, o.deliveryProviderOrderId, o.deliveryTrackingId, o.deliveryWaybillId].join(" ").toLowerCase().includes(query.trim().toLowerCase())), [orders, query, statusFilter]);
   const summary = [
     { label: "Order aktif", count: orders.filter((o) => !TERMINAL_STATUSES.has(normalizeStatus(o))).length, context: "Dalam proses", icon: Package, accent: "bg-blue-50 text-blue-600" },
@@ -256,14 +270,16 @@ function AdminCustomerDelivery() {
         {selected.shippingRateSnapshot?.feeSource === "fallback" && normalizeStatus(selected) === "ready_to_ship" ? <p role="status" className="rounded-lg bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">Tarif ongkir menggunakan fallback. Atur kurir secara manual; pemesanan otomatis Biteship tidak tersedia untuk tarif ini.</p> : null}
         {actionNotice ? <p role="status" className="rounded-lg bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-800">{actionNotice}</p> : null}
         {(() => {
-          // Jelaskan kenapa tombol "Buat pesanan kurir" tidak muncul, supaya admin tahu langkah berikutnya.
+          // Satu panduan langkah berikutnya, dengan tombol bila admin bisa langsung melakukannya.
           if (selected.deliveryProviderOrderId) return <p role="status" className="rounded-lg bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">Pesanan kurir sudah dibuat di Biteship. Pantau status dan resinya di bawah.</p>;
           const paid = ["paid", "completed"].includes(String(selected.status ?? "").toLowerCase());
           const st = normalizeStatus(selected);
           if (!paid) return <p role="status" className="rounded-lg bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">Kurir baru bisa dipanggil setelah pembayaran lunas.</p>;
-          if (["delivered", "cancelled"].includes(st)) return null;
-          if (st !== "ready_to_ship") return <p role="status" className="rounded-lg bg-blue-50 p-3 text-xs leading-relaxed text-blue-900">Untuk memanggil kurir, ubah status pengiriman order ini menjadi <strong>Siap dikirim</strong> di menu Pesanan. Tombol “Buat pesanan kurir” akan muncul di sini.</p>;
-          if (selected.shippingRateSnapshot?.feeSource !== "biteship" && selected.shippingRateSnapshot?.feeSource !== "fallback") return <p role="status" className="rounded-lg bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">Order ini tidak punya tarif Biteship, jadi kurir tidak bisa dipanggil dari sini. Atur pengantaran secara manual.</p>;
+          if (["delivered", "cancelled", "failed", "out_for_delivery"].includes(st)) return null;
+          const source = selected.shippingRateSnapshot?.feeSource;
+          if (source !== "biteship") return <p role="status" className="rounded-lg bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">{source === "fallback" ? "Order ini memakai tarif tetap karena tarif kurir tidak bisa dimuat saat checkout, jadi tidak bisa dipanggil lewat Biteship. Pesan kurir manual lewat aplikasi Gojek/Grab." : "Order ini tidak punya tarif Biteship, jadi kurir tidak bisa dipanggil dari sini. Atur pengantaran secara manual."}</p>;
+          if (["paid", "preparing", "pending_payment"].includes(st)) return <div className="space-y-2"><p role="status" className="rounded-lg bg-blue-50 p-3 text-xs leading-relaxed text-blue-900">Langkah berikutnya: kemas pesanan, lalu tandai siap dikirim agar kurir bisa dipanggil.</p><Button className="min-h-11 w-full gap-2 rounded-lg" disabled={Boolean(bookingId)} onClick={() => void advanceStatus(selected, "packing")}><Package className="h-4 w-4" aria-hidden="true" />{bookingId === selected._id ? "Memproses…" : "Mulai dikemas"}</Button></div>;
+          if (st === "packing") return <div className="space-y-2"><p role="status" className="rounded-lg bg-blue-50 p-3 text-xs leading-relaxed text-blue-900">Pesanan sedang dikemas. Setelah selesai, tandai siap dikirim.</p><Button className="min-h-11 w-full gap-2 rounded-lg" disabled={Boolean(bookingId)} onClick={() => void advanceStatus(selected, "ready_to_ship")}><Check className="h-4 w-4" aria-hidden="true" />{bookingId === selected._id ? "Memproses…" : "Tandai siap dikirim"}</Button></div>;
           return null;
         })()}
         {actionError ? <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs leading-relaxed text-rose-700">{actionError}</p> : null}

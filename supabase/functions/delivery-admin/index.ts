@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { deliveryRest, getDeliveryConfig, validateDeliveryConfig } from "../_shared/customer-delivery.ts";
+import { readyTransition } from "../_shared/delivery-policy.ts";
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info", "Access-Control-Allow-Methods": "POST, OPTIONS" };
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store" } });
 const fail = (code: string, status: number, message?: string) => reply({ success: false, error: { code, message: message ?? (code === "INVALID_CONFIG" ? "Konfigurasi delivery tidak valid" : "Permintaan delivery tidak dapat diproses") } }, status);
@@ -106,6 +107,18 @@ Deno.serve(async (req) => {
       if (!admin) return fail("FORBIDDEN", 403);
       const sourceId = typeof body.sourceId === "string" ? body.sourceId.trim() : typeof body.orderSourceId === "string" ? body.orderSourceId.trim() : "";
       return await createShipment(sourceId);
+    }
+    if (body.action === "advance_status") {
+      // Urutan kerja gudang: dibayar -> dikemas -> siap dikirim. Aturan transisi ada di readyTransition
+      // (tidak boleh melompat, tidak untuk tarif fallback, tidak untuk pesanan yang sudah dipesankan kurir).
+      const sourceId = text(body.sourceId); const next = text(body.nextStatus);
+      if (!sourceId || sourceId.length > 200 || !["packing", "ready_to_ship"].includes(next)) return fail("INVALID_STATUS", 400);
+      const [order] = await deliveryRest("orders", { select: "source_id,order_type,status,delivery_status,delivery_provider_order_id,shipping_rate_snapshot,receipt_meta", source_id: `eq.${sourceId}`, limit: "1" });
+      if (!order) return fail("ORDER_NOT_FOUND", 404);
+      if (!readyTransition(order, next)) return fail("TRANSITION_NOT_ALLOWED", 409, "Status order ini tidak bisa dipindah ke langkah tersebut. Segarkan halaman lalu periksa statusnya.");
+      const rows = await deliveryRest("orders", { source_id: `eq.${sourceId}`, delivery_provider_order_id: "is.null", delivery_status: `eq.${text(order.delivery_status)}` }, "pos", { delivery_status: next });
+      if (rows.length !== 1) return fail("ORDER_CHANGED", 409, "Order baru saja berubah. Segarkan halaman lalu coba lagi.");
+      return reply({ success: true, deliveryStatus: next });
     }
     if (body.action === "list_orders") {
       const orders = await deliveryRest("orders", { select: "source_id,order_number,customer_name,status,payment_method,delivery_status,delivery_provider,delivery_contact_name,delivery_contact_phone,delivery_address,delivery_provider_order_id,delivery_tracking_id,delivery_waybill_id,shipping_rate_snapshot,shipping_fee_amount,total_amount,created_at", source: "eq.customer_self_service", order_type: "eq.delivery", order: "created_at.desc.nullslast", limit: "100" });

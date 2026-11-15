@@ -64,6 +64,8 @@ import { reserveDjiwaRunCheckoutReward, releaseDjiwaRunCheckoutReward, finalizeD
 import { getCustomerHiddenCategoryIds } from "@/lib/customer-catalog-visibility";
 import { shouldShowPaymentProcessing } from "@/lib/payment-processing";
 
+type ShippingQuoteValue = { fee: number; courierCode: string; serviceType?: string; serviceCode?: string; serviceName?: string; duration?: string; feeSource: "biteship" | "fallback"; expiresAt: number };
+
 export const Route = createLazyFileRoute("/$username/order")({
 	component: OrderPage,
 });
@@ -163,7 +165,10 @@ function OrderPage() {
 	const [deliveryLocation, setDeliveryLocation] = useState<{ latitude: number; longitude: number; postalCode?: string } | null>(null);
 	const [deliveryLocationLoading, setDeliveryLocationLoading] = useState(false);
 	const [deliveryLocationError, setDeliveryLocationError] = useState<string | null>(null);
-	const [shippingQuote, setShippingQuote] = useState<{ fee: number; courierCode: string; serviceType?: string; serviceCode?: string; serviceName?: string; duration?: string; feeSource: "biteship" | "fallback"; expiresAt: number } | null>(null);
+	const [shippingQuote, setShippingQuote] = useState<ShippingQuoteValue | null>(null);
+	// Tarif semua kurir untuk alamat+keranjang yang sama: ditampilkan di kartu kurir dan dipakai ulang saat pindah kurir.
+	const [courierQuotes, setCourierQuotes] = useState<Record<string, ShippingQuoteValue>>({});
+	const quoteCacheRef = useRef(new Map<string, ShippingQuoteValue>());
 	const [shippingQuoteRetry, setShippingQuoteRetry] = useState(0);
 	const [shippingQuoteLoading, setShippingQuoteLoading] = useState(false);
 	const [shippingQuoteError, setShippingQuoteError] = useState<string | null>(null);
@@ -293,31 +298,55 @@ function OrderPage() {
 		}
 		const flatDeliveryFee = deliveryConfig.fallbackFee;
 		let cancelled = false;
+		const requestKey = JSON.stringify([shippingQuoteRetry, deliveryAddress, postalCode, deliveryLocation.latitude, deliveryLocation.longitude, cart.map((item) => [String(item.productId), item.quantity])]);
+		const NO_RATE = "Kurir tidak menyediakan tarif untuk lokasi ini.";
+		const requestQuote = async (courier: "gojek" | "grab"): Promise<ShippingQuoteValue> => {
+			const cached = quoteCacheRef.current.get(`${requestKey}|${courier}`);
+			if (cached && cached.expiresAt > Date.now() + 30_000) return cached;
+			let quote: ShippingQuoteValue;
+			try {
+				// Server menghitung nama, berat, dan harga dari katalog; klien hanya mengirim produk + jumlah dan tujuan.
+				const response = await deliveryApi<{ rates?: Array<{ courierCode?: string; courierName?: string; serviceName?: string; serviceCode?: string; serviceType?: string; duration?: string; shippingFee?: number; price?: number }>; quote?: { feeSource?: string } }>("biteship-rates", {
+					destination_postal_code: postalCode,
+					destination_latitude: deliveryLocation?.latitude,
+					destination_longitude: deliveryLocation?.longitude,
+					destination_address: deliveryAddress,
+					couriers: courier,
+					items: cart.map((item) => ({ productId: String(item.productId), quantity: item.quantity })),
+				});
+				// Server memakai tarif tetap bila Biteship gagal; jangan ditandai sebagai tarif Biteship asli.
+				const quotedFromBiteship = response.quote?.feeSource !== "fallback";
+				const rate = (response.rates ?? []).find((entry) => String(entry.courierCode ?? "").toLowerCase() === courier);
+				const fee = Number(rate?.shippingFee ?? rate?.price);
+				if (!rate || (rate.shippingFee == null && rate.price == null) || !Number.isFinite(fee) || fee < 0) throw new Error(NO_RATE);
+				quote = { fee: Math.round(fee), courierCode: courier, serviceType: rate.serviceType, serviceCode: rate.serviceCode, serviceName: rate.serviceName, duration: quotedFromBiteship ? rate.duration : undefined, feeSource: quotedFromBiteship ? "biteship" : "fallback", expiresAt: Date.now() + 5 * 60 * 1000 };
+			} catch (error) {
+				if (error instanceof Error && error.message === NO_RATE) throw error;
+				const transient = error instanceof TypeError || (error instanceof DeliveryApiError && ["QUOTE_UNAVAILABLE", "BITESHIP_RATE_REQUEST_FAILED", "INVALID_BITESHIP_RESPONSE"].includes(error.code) && error.status >= 500);
+				if (!transient) throw (error instanceof DeliveryApiError ? error : new Error("Tarif delivery tidak dapat dimuat."));
+				quote = { fee: flatDeliveryFee, courierCode: courier, feeSource: "fallback", expiresAt: Date.now() + 5 * 60 * 1000 };
+			}
+			quoteCacheRef.current.set(`${requestKey}|${courier}`, quote);
+			return quote;
+		};
 		setShippingQuote(null);
 		setShippingQuoteError(null);
 		setShippingQuoteLoading(true);
-		// Server menghitung nama, berat, dan harga dari katalog; klien hanya mengirim produk + jumlah dan tujuan.
-		void deliveryApi<{ rates?: Array<{ courierCode?: string; courierName?: string; serviceName?: string; serviceCode?: string; serviceType?: string; duration?: string; shippingFee?: number; price?: number }>; quote?: { feeSource?: string } }>("biteship-rates", {
-			destination_postal_code: postalCode,
-			destination_latitude: deliveryLocation?.latitude,
-			destination_longitude: deliveryLocation?.longitude,
-			destination_address: deliveryAddress,
-			couriers: deliveryProvider,
-			items: cart.map((item) => ({ productId: String(item.productId), quantity: item.quantity })),
-		}).then((response) => {
+		setCourierQuotes({});
+		void requestQuote(deliveryProvider).then((quote) => {
 			if (cancelled) return;
-			// Server memakai tarif tetap bila Biteship gagal; jangan ditandai sebagai tarif Biteship asli.
-			const quotedFromBiteship = response.quote?.feeSource !== "fallback";
-			const rate = (response.rates ?? []).find((entry) => String(entry.courierCode ?? "").toLowerCase() === deliveryProvider);
-			const fee = Number(rate?.shippingFee ?? rate?.price);
-			if (!rate || (rate.shippingFee == null && rate.price == null) || !Number.isFinite(fee) || fee < 0) { setShippingQuote(null); setShippingQuoteError("Kurir tidak menyediakan tarif untuk lokasi ini."); return; }
-			setShippingQuote({ fee: Math.round(fee), courierCode: deliveryProvider, serviceType: rate.serviceType, serviceCode: rate.serviceCode, serviceName: rate.serviceName, duration: quotedFromBiteship ? rate.duration : undefined, feeSource: quotedFromBiteship ? "biteship" : "fallback", expiresAt: Date.now() + 5 * 60 * 1000 });
+			setShippingQuote(quote);
+			setCourierQuotes((current) => ({ ...current, [deliveryProvider]: quote }));
 		}).catch((error: unknown) => {
 			if (cancelled) return;
-			const transient = error instanceof TypeError || (error instanceof DeliveryApiError && ["QUOTE_UNAVAILABLE", "BITESHIP_RATE_REQUEST_FAILED", "INVALID_BITESHIP_RESPONSE"].includes(error.code) && error.status >= 500);
-			if (transient) setShippingQuote({ fee: flatDeliveryFee, courierCode: deliveryProvider, feeSource: "fallback", expiresAt: Date.now() + 5 * 60 * 1000 });
-			else { setShippingQuote(null); setShippingQuoteError(error instanceof DeliveryApiError ? error.message : "Tarif delivery tidak dapat dimuat."); }
+			setShippingQuote(null);
+			setShippingQuoteError(error instanceof Error ? error.message : "Tarif delivery tidak dapat dimuat.");
 		}).finally(() => { if (!cancelled) setShippingQuoteLoading(false); });
+		// Tarif kurir lain hanya untuk perbandingan di kartu; kegagalannya tidak memblokir checkout.
+		for (const other of deliveryConfig.couriers) {
+			if (other === deliveryProvider) continue;
+			void requestQuote(other).then((quote) => { if (!cancelled) setCourierQuotes((current) => ({ ...current, [other]: quote })); }).catch(() => undefined);
+		}
 		return () => { cancelled = true; };
 	}, [deliveryConfig, deliveryConfigError, cart, customer?.postalCode, deliveryAddress, deliveryAddressFields.postalCode, deliveryLocation?.latitude, deliveryLocation?.longitude, deliveryLocation?.postalCode, deliveryProvider, orderMode, products, shippingQuoteRetry]);
 
@@ -1530,7 +1559,7 @@ function OrderPage() {
 					{step === "menu" ? <div className="grid grid-cols-2 gap-2 px-2 pb-4"><button type="button" onClick={() => setStep(orderMode === "delivery" ? "address" : "party")} className="min-h-11 rounded-[14px] border border-border bg-card px-3 py-2.5 text-xs font-black text-foreground">← Kembali</button><button type="button" disabled={!cart.length} onClick={() => setStep(orderMode === "delivery" ? "shipping" : "review")} className="min-h-11 rounded-[14px] bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke {orderMode === "delivery" ? "pengantaran" : "review"} →</button></div> : null}
 
 					{step === "shipping" && orderMode === "delivery" ? (
-						<section className="space-y-2 px-2 py-2"><div className="rounded-xl border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Langkah 3 dari 6</p><h2 className="text-base font-black">Pilih kurir pengantaran</h2></div></div><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Pilih layanan yang tersedia untuk mengantar pesananmu.</p><div className="mt-3 grid grid-cols-2 gap-2">{([{ key: "gojek", label: "Gojek", detail: "Antar langsung ke alamatmu" }, { key: "grab", label: "Grab", detail: "Antar langsung ke alamatmu" }] as const).filter((option) => deliveryConfig?.active && deliveryConfig.couriers.includes(option.key)).map((option) => <button key={option.key} type="button" onClick={() => setDeliveryProvider(option.key)} aria-pressed={deliveryProvider === option.key} className={cn("min-h-24 rounded-xl border p-3 text-left transition-all", deliveryProvider === option.key ? "border-primary bg-primary/10 shadow-sm" : "border-border bg-background")}><span className="flex items-center justify-between gap-2"><span className="text-sm font-black">{option.label}</span><span className={cn("h-4 w-4 rounded-full border-2", deliveryProvider === option.key ? "border-primary bg-primary ring-2 ring-primary/20" : "border-muted-foreground/40")} /></span><span className="mt-1 block text-[11px] text-muted-foreground">{option.detail}</span><span className={cn("mt-1 block text-[11px] font-black", deliveryProvider === option.key ? "text-primary" : "text-muted-foreground")}>{deliveryProvider === option.key ? (shippingQuoteLoading ? "Menghitung tarif…" : shippingQuote && shippingQuote.courierCode === option.key ? `${currency(shippingQuote.fee)}${shippingQuote.duration ? ` · ${shippingQuote.duration}` : ""}` : "Tarif belum tersedia") : "Ketuk untuk lihat tarif"}</span></button>)}</div><p className="mt-3 rounded-xl bg-primary/5 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">{shippingQuoteLoading ? <span className="inline-flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" />Memuat tarif pengantaran…</span> : shippingQuote ? (shippingQuote.feeSource === "fallback" ? `Tarif pengantaran tetap ${currency(shippingQuote.fee)} karena tarif kurir belum bisa dimuat. Berlaku 5 menit.` : `Biaya pengantaran ${currency(shippingQuote.fee)}${shippingQuote.duration ? ` · estimasi ${shippingQuote.duration}` : ""} · berlaku 5 menit.`) : shippingQuoteError || "Lengkapi lokasi dengan kode pos agar tarif pengantaran dapat dihitung."}{!shippingQuoteLoading && (!shippingQuote || shippingQuote.feeSource === "fallback") && deliveryAddress ? <button type="button" onClick={() => setShippingQuoteRetry((value) => value + 1)} className="ml-2 inline-flex min-h-8 items-center font-black text-primary underline underline-offset-2">Muat ulang tarif</button> : null}</p><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => setStep("menu")} className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black">← Kembali</button><button type="button" disabled={shippingPaymentBlocked} onClick={() => { if (!shippingPaymentBlocked) setStep("review"); }} className="min-h-11 rounded-xl bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke review →</button></div></div></section>
+						<section className="space-y-2 px-2 py-2"><div className="rounded-xl border border-border bg-card p-3 shadow-sm"><div className="flex items-center gap-2.5"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><MapPin className="h-5 w-5" /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: themeColor }}>Langkah 3 dari 6</p><h2 className="text-base font-black">Pilih kurir pengantaran</h2></div></div><p className="mt-2 text-xs leading-relaxed text-muted-foreground">Pilih layanan yang tersedia untuk mengantar pesananmu.</p><div className="mt-3 grid grid-cols-2 gap-2">{([{ key: "gojek", label: "Gojek", detail: "Antar langsung ke alamatmu" }, { key: "grab", label: "Grab", detail: "Antar langsung ke alamatmu" }] as const).filter((option) => deliveryConfig?.active && deliveryConfig.couriers.includes(option.key)).map((option) => <button key={option.key} type="button" onClick={() => setDeliveryProvider(option.key)} aria-pressed={deliveryProvider === option.key} className={cn("min-h-24 rounded-xl border p-3 text-left transition-all", deliveryProvider === option.key ? "border-primary bg-primary/10 shadow-sm" : "border-border bg-background")}><span className="flex items-center justify-between gap-2"><span className="text-sm font-black">{option.label}</span><span className={cn("h-4 w-4 rounded-full border-2", deliveryProvider === option.key ? "border-primary bg-primary ring-2 ring-primary/20" : "border-muted-foreground/40")} /></span><span className="mt-1 block text-[11px] text-muted-foreground">{option.detail}</span><span className={cn("mt-1 block text-[11px] font-black", deliveryProvider === option.key ? "text-primary" : "text-muted-foreground")}>{courierQuotes[option.key] ? `${currency(courierQuotes[option.key].fee)}${courierQuotes[option.key].duration ? ` · ${courierQuotes[option.key].duration}` : ""}${courierQuotes[option.key].feeSource === "fallback" ? " (tetap)" : ""}` : shippingQuoteLoading || (deliveryProvider !== option.key && shippingQuote) ? "Menghitung tarif…" : "Tarif belum tersedia"}</span></button>)}</div><p className="mt-3 rounded-xl bg-primary/5 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">{shippingQuoteLoading ? <span className="inline-flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" />Memuat tarif pengantaran…</span> : shippingQuote ? (shippingQuote.feeSource === "fallback" ? `Tarif pengantaran tetap ${currency(shippingQuote.fee)} karena tarif kurir belum bisa dimuat. Berlaku 5 menit.` : `Biaya pengantaran ${currency(shippingQuote.fee)}${shippingQuote.duration ? ` · estimasi ${shippingQuote.duration}` : ""} · berlaku 5 menit.`) : shippingQuoteError || "Lengkapi lokasi dengan kode pos agar tarif pengantaran dapat dihitung."}{!shippingQuoteLoading && (!shippingQuote || shippingQuote.feeSource === "fallback") && deliveryAddress ? <button type="button" onClick={() => setShippingQuoteRetry((value) => value + 1)} className="ml-2 inline-flex min-h-8 items-center font-black text-primary underline underline-offset-2">Muat ulang tarif</button> : null}</p><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => setStep("menu")} className="min-h-11 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-black">← Kembali</button><button type="button" disabled={shippingPaymentBlocked} onClick={() => { if (!shippingPaymentBlocked) setStep("review"); }} className="min-h-11 rounded-xl bg-primary px-3 py-2.5 text-xs font-black text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">Lanjut ke review →</button></div></div></section>
 					) : null}
 
 					{/* ── Review and payment sections ───────────────── */}
