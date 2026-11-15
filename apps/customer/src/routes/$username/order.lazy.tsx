@@ -1422,8 +1422,8 @@ function OrderPage() {
 	};
 
 	return (
-		<div className="app-page h-app min-h-app overflow-hidden">
-			<div className="app-shell mx-auto flex h-app max-h-app min-h-app max-w-md flex-col bg-background">
+		<div className="app-page h-full min-h-0 overflow-hidden">
+			<div className="app-shell mx-auto flex h-full min-h-0 max-w-md flex-col bg-background">
 				{/* ── Sticky header ──────────────────────────────── */}
 				<OrderFlowHeader
 					step={step as FlowStep}

@@ -8,6 +8,13 @@ import { OwnerFooter } from "@djiwaapps/web-shared";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { trackPageView } from "@/lib/web-analytics";
 
+/** Footer kredit disembunyikan di halaman pesan: halaman itu setinggi layar dan hanya boleh punya satu scroll. */
+function RootFooter() {
+	const pathname = useLocation({ select: (location) => location.pathname });
+	if (/\/order\/?$/.test(pathname)) return null;
+	return <OwnerFooter compact twoLine className="mb-[calc(5.5rem+env(safe-area-inset-bottom))]" />;
+}
+
 function PageViewTracker() {
 	const pathname = useLocation({ select: (location) => location.pathname });
 	useEffect(() => {
@@ -27,7 +34,7 @@ export const Route = createRootRoute({
 							<div className="min-h-app bg-background font-sans text-foreground antialiased">
 								<PageViewTracker />
 								<Outlet />
-								<OwnerFooter compact twoLine className="mb-[calc(5.5rem+env(safe-area-inset-bottom))]" />
+								<RootFooter />
 							</div>
 						</div>
 					</OrderProvider>

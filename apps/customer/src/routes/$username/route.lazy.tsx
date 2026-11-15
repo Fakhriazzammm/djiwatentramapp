@@ -280,9 +280,10 @@ function MemberHomePage() {
 	if (isChildRoute) {
 		return (
 			<>
-				<div className="min-h-app pb-safe-with-nav">
+				{/* Halaman pesan memakai satu area scroll saja (di dalam halamannya): kolom setinggi layar, tanpa padding nav bawah. */}
+				<div className={isOrderChild ? "flex h-app flex-col overflow-hidden" : "min-h-app pb-safe-with-nav"}>
 					{!isCommunityChild ? <CustomerLiveShiftIndicator /> : null}
-					<Outlet />
+					{isOrderChild ? <div className="min-h-0 flex-1"><Outlet /></div> : <Outlet />}
 				</div>
 				{!isOrderChild ? <CustomerBottomNav items={customerNav} /> : null}
 				{authModal}
