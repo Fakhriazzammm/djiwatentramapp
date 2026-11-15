@@ -33,7 +33,7 @@ export function djiwaPaySplashLabel(path: string): string {
   return "Kembali ke Djiwa Pay";
 }
 
-export type DjiwaPayWalletPage = "topup" | "transfer" | "receive" | "history" | "help" | "services" | "wallet" | "summary" | "account" | "budget" | "catat" | "settings" | null;
+export type DjiwaPayWalletPage = "topup" | "transfer" | "receive" | "history" | "help" | "services" | "wallet" | "summary" | "account" | "budget" | "catat" | "settings" | "calendar" | "health" | "forecast" | "tools" | null;
 
 export type DjiwaPayPageData = {
   /** Waiting for data is pointless without a connection. */

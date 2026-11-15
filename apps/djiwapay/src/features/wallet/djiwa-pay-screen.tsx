@@ -14,6 +14,7 @@ import { checkoutCustomerNumberHint, parsePpobPath, parseWalletPath, postpaidSer
 import { djiwaPaySplashLabel, isDjiwaPayPageReady } from "../../lib/djiwa-pay-splash";
 import { DjiwaPayWalletAction } from "./djiwa-pay-wallet-actions";
 import { AccountPage, AllServicesSheet, CardSheet, ComingSoonSheet, HelpPage, NotificationsPage, PaySheet, ServicesTab, TabBar, TxnSheet, type Nav } from "../shell/dpx-pages";
+import { CalendarPage, ForecastPage, HealthPage, ToolsPage } from "../kelola/kelola-pages";
 import { FinBudget, FinHome, FinRecords, FinReport, FinSettings, FinSheetHost, FinWallet, ManualForm, Onboarding, type FinCtx, type FinSheet } from "../finance/fin-pages";
 import type { Notify } from "../finance/fin-sheets";
 import { useFinance } from "../../lib/finance/use-finance";
@@ -576,6 +577,10 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   if (walletRoute?.page === "catat") { const editId = paySearchParams.get("edit") ?? undefined; const k = paySearchParams.get("kind"); return frameShell(<ManualForm key={editId ?? k ?? "new"} ctx={finCtx} editId={editId} initialKind={k === "in" || k === "tf" ? k : undefined} onDone={() => { if (window.history.length > 1) window.history.back(); else goPayRoute("/"); }} />, null); }
   if (notificationsOpen) return frameShell(<NotificationsPage items={walletNotifications} loading={notificationsLoading} busy={notificationsBusy} onBack={() => { onNavigate("Kembali ke Saldo Djiwa Pay"); setNotificationsOpen(false); }} onRead={async (notification) => { if (notification.unread) { await markWalletNotificationRead(notification.id); await refreshWalletNotifications(); } }} onReadAll={async () => { setNotificationsBusy(true); try { await markAllWalletNotificationsRead(); await refreshWalletNotifications(); } finally { setNotificationsBusy(false); } }} />, null);
   if (walletRoute?.page === "services") return frameShell(<ServicesTab nav={payNav} focusSearch={paySearchParams.get("cari") === "1"} recentNumbers={recentCustomerNumbers} />, "wallet");
+  if (walletRoute?.page === "calendar") return frameShell(<CalendarPage ctx={finCtx} onBack={() => goPayRoute("/rencana")} />, "budget");
+  if (walletRoute?.page === "health") return frameShell(<HealthPage ctx={finCtx} onBack={() => goPayRoute("/")} />, "home");
+  if (walletRoute?.page === "forecast") return frameShell(<ForecastPage ctx={finCtx} onBack={() => goPayRoute("/")} />, "home");
+  if (walletRoute?.page === "tools") return frameShell(<ToolsPage ctx={finCtx} onBack={() => goPayRoute("/kekayaan")} />, "wallet");
   if (walletRoute?.page === "wallet") return frameShell(<FinWallet ctx={finCtx} />, "wallet");
   if (walletRoute?.page === "budget") return frameShell(<FinBudget ctx={finCtx} />, "budget");
   if (!fin.state.onboarded) return frameShell(<Onboarding ctx={finCtx} />, null);

@@ -49,8 +49,10 @@ export function useFinance(profileId: string, transactions: WalletTransaction[])
       const merged = server.exists ? (pending ? mergeStates(local, server.state) : server.state) : local;
       snap.current = server.exists ? snapshotOf(server.state) : emptySnapshot();
       saveSnapshot(profileId, snap.current);
-      if (merged !== local) setState(merged);
-      stateRef.current = merged; ready.current = true;
+      /* Bills, pockets and assets are local-only for now: the server state never carries them. */
+      const kept: FinanceState = merged === local ? merged : { ...merged, bills: local.bills, pockets: local.pockets, assets: local.assets };
+      if (kept !== local) setState(kept);
+      stateRef.current = kept; ready.current = true;
       busy.current = false;
       await push();
     } catch { busy.current = false; setSync((s) => ({ ...s, status: "offline" })); }

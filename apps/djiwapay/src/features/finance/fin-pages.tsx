@@ -10,12 +10,16 @@ import { dayLabel, firstName, formatTime, greeting, rupiah } from "../../lib/dji
 import { heatLevel, monthLabel } from "../../lib/djiwa-pay-summary";
 import type { Entry, FinanceState, Kind } from "../../lib/finance/types";
 import type { Finance } from "../../lib/finance/use-finance";
+import { KelolaHome, PocketsPanel, WealthExtras, useCash } from "../kelola/kelola-pages";
+import { AssetSheet, BillPaySheet, BillSheet, PocketRuleSheet } from "../kelola/kelola-sheets";
+import { netWorth, pocketsOf } from "../../lib/finance/kelola";
 import type { CustomerProfile } from "../../lib/identity-adapter";
 import type { WalletTransaction } from "../../lib/wallet-adapter";
 
 export type FinSheet =
   | { k: "catat" } | { k: "entry"; id: string } | { k: "budget"; cid?: string } | { k: "goal"; id?: string } | { k: "goal-detail"; id: string }
-  | { k: "debt"; id?: string } | { k: "split" } | { k: "streak" } | { k: "account"; id?: string } | { k: "category"; id?: string } | { k: "pay-category"; id: string };
+  | { k: "debt"; id?: string } | { k: "split" } | { k: "streak" } | { k: "account"; id?: string } | { k: "category"; id?: string } | { k: "pay-category"; id: string }
+  | { k: "bill"; id?: string } | { k: "bill-pay"; id: string } | { k: "asset"; id?: string } | { k: "pockets" };
 
 export type FinCtx = {
   fin: Finance; notify: Notify; nav: Nav; profile: CustomerProfile; transactions: WalletTransaction[]; payBalance: number; loading: boolean;
@@ -90,10 +94,10 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
       <Btn type="button" className="dpx-pill-info" onClick={() => ctx.open({ k: "streak" })} aria-label={`Streak ${st.count} hari`}><Ic n="flame" size="sm" /> {st.count}</Btn>
       <Btn type="button" className="dpx-rb" onClick={ctx.onOpenNotifications} aria-label={`Notifikasi${ctx.unread ? `, ${ctx.unread} belum dibaca` : ""}`}><Wiggle active={ctx.unread > 0}><Ic n="bell" /></Wiggle>{ctx.unread ? <span className="dpx-bd">{ctx.unread > 9 ? "9+" : ctx.unread}</span> : null}</Btn>
     </div>
-    <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.05 }} className="dpx-title" style={{ fontSize: 30, letterSpacing: "-.04em", marginTop: 10 }}>{greeting(now)}, {firstName(profile.name, profile.email)}.</motion.h1>
-    <div className="dpx-flex dpx-mt8" style={{ color: "var(--mute)", font: "600 15px var(--font)" }}>{showIncomeBased ? "Sisa uang bulan ini" : "Pengeluaran bulan ini"}
+    <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.05 }} className="dpx-title" style={{ fontSize: 24, letterSpacing: "-.035em", marginTop: 6 }}>{greeting(now)}, {firstName(profile.name, profile.email)}.</motion.h1>
+    <div className="dpx-flex dpx-mt8" style={{ color: "var(--mute)", font: "600 13px var(--font)" }}>{showIncomeBased ? "Sisa uang bulan ini" : "Pengeluaran bulan ini"}
       <Btn type="button" onClick={ctx.onToggleVisible} aria-label={ctx.visible ? "Sembunyikan angka" : "Tampilkan angka"} aria-pressed={!ctx.visible}><IconSwap k={ctx.visible ? "eye" : "eyeoff"}><Ic n={ctx.visible ? "eye" : "eyeoff"} size="sm" /></IconSwap></Btn></div>
-    <div style={{ marginTop: 6 }}><span className="dpx-display" style={{ fontSize: 52 }}><small>Rp</small>{ctx.visible ? <>{showIncomeBased && remaining < 0 ? "−" : ""}<AnimatedNumber value={Math.abs(showIncomeBased ? remaining : t.out)} /></> : "•••••••"}</span></div>
+    <div style={{ marginTop: 6 }}><span className="dpx-display" style={{ fontSize: 40 }}><small>Rp</small>{ctx.visible ? <>{showIncomeBased && remaining < 0 ? "−" : ""}<AnimatedNumber value={Math.abs(showIncomeBased ? remaining : t.out)} /></> : "•••••••"}</span></div>
     {trend !== null && trend !== 0 ? <div className="dpx-sub dpx-mt8" style={{ fontSize: 14 }}>Pengeluaran <b style={{ color: trend < 0 ? "var(--ok)" : "var(--danger)" }}>{trend < 0 ? "turun" : "naik"} {Math.abs(trend)}%</b> dibanding bulan lalu</div> : null}
 
     <Reveal i={1}>{empty && !safe ? <div className="dpx-hero-day"><I3 name="sales-report" px={110} style={{ position: "absolute", right: -6, top: -6 }} /><div className="dpx-sub">Belum ada catatan</div><div className="dpx-title" style={{ marginTop: 2, maxWidth: 200 }}>Mulai dari satu catatan.</div><div className="dpx-sub" style={{ marginTop: 6, maxWidth: 210 }}>Tulis “kopi 25rb” atau atur anggaran agar kami hitung sisa uang harianmu.</div><Btn type="button" className="dpx-btn dpx-sm" style={{ marginTop: 14 }} onClick={() => ctx.open({ k: "catat" })}><Ic n="plus" size="sm" /> Catat pertama</Btn></div>
@@ -104,6 +108,7 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
 
     {empty ? null : <Reveal i={2}><div className="dpx-kpi" style={{ marginTop: 12 }}><Btn type="button" className="dpx-group" style={{ textAlign: "left" }} onClick={() => nav.go("/ringkasan")}><small>Masuk bulan ini</small><b className="dpx-up">{ctx.visible ? rupiah(t.in) : "•••••"}</b></Btn><Btn type="button" className="dpx-group" style={{ textAlign: "left" }} onClick={() => nav.go("/ringkasan")}><small>Keluar bulan ini</small><b>{ctx.visible ? rupiah(t.out) : "•••••"}</b></Btn></div></Reveal>}
 
+    {empty ? null : <KelolaHome ctx={ctx} />}
     {statuses.length ? <><div className="dpx-sec"><h2>Anggaran bulan ini</h2><Btn type="button" onClick={() => nav.go("/anggaran")}>Semua</Btn></div><div className="dpx-group dpx-white">{statuses.slice(0, 3).map((s) => <BudgetRow key={s.budget.categoryId} status={s} state={state} onOpen={() => ctx.open({ k: "budget", cid: s.budget.categoryId })} />)}</div></> : null}
     {insights.length ? <><div className="dpx-sec"><h2>Insight untukmu</h2></div><div className="dpx-next">{insights.map((i) => <div key={i.id} className="dpx-group" style={{ flex: "none", width: 236 }}><span className={`dpx-cat dpx-c-${i.tone === "warn" ? "amber" : i.tone === "ok" ? "emerald" : "violet"}`} style={{ marginBottom: 8 }}><Ic n={i.tone === "warn" ? "warn" : i.tone === "ok" ? "spark" : "trend"} /></span><b>{i.title}</b><div className="dpx-sub">{i.body}</div></div>)}</div></> : null}
     {empty ? null : <><div className="dpx-sec"><h2>Catatan terbaru</h2><Btn type="button" onClick={() => nav.go("/riwayat")}>Lihat semua</Btn></div><div className="dpx-group dpx-flush">{entries.slice(0, 4).map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div></>}
@@ -206,7 +211,7 @@ export function ManualForm({ ctx, editId, initialKind, onDone }: { ctx: FinCtx; 
 /* ---------- Anggaran, tujuan, hutang ---------- */
 export function FinBudget({ ctx }: { ctx: FinCtx }) {
   const { fin, nav } = ctx; const { state, entries } = fin;
-  const [seg, setSeg] = useState<"bud" | "goal" | "debt">("bud");
+  const [seg, setSeg] = useState<"bud" | "pocket" | "goal" | "debt">(() => { const q = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("bagian") : null; return q === "kantong" ? "pocket" : q === "tujuan" ? "goal" : q === "hutang" ? "debt" : "bud"; });
   const now = new Date(); const month = entries.filter((e) => inMonth(e, now.getFullYear(), now.getMonth()));
   const statuses = budgetStatuses(state.budgets, month);
   const total = state.budgets.reduce((s, b) => s + b.limit, 0);
@@ -215,9 +220,9 @@ export function FinBudget({ ctx }: { ctx: FinCtx }) {
   const dt = debtTotals(state.debts);
   const subs = useMemo(() => detectSubscriptions(state.entries), [state.entries]);
   return <div className="dpx-page"><Sky><div className="dpx-pad">
-    <div className="dpx-hdr" style={{ paddingTop: 0 }}><h1 className="dpx-page-title" style={{ flex: 1 }}>Anggaran</h1></div>
-    <div style={{ marginBottom: 14 }}><Seg id="bseg" label="Bagian" value={seg} onChange={setSeg} options={[["bud", "Anggaran"], ["goal", "Tujuan"], ["debt", "Hutang & lainnya"]] as const} /></div>
-    {seg === "bud" ? <>
+    <div className="dpx-hdr" style={{ paddingTop: 0 }}><h1 className="dpx-page-title" style={{ flex: 1 }}>Rencana</h1><Btn type="button" className="dpx-rb" onClick={() => nav.go("/kalender")} aria-label="Kalender tagihan"><Ic n="cal" /></Btn></div>
+    <div style={{ marginBottom: 14 }}><Seg id="bseg" label="Bagian" value={seg} onChange={setSeg} options={[["bud", "Anggaran"], ["pocket", "Kantong"], ["goal", "Tujuan"], ["debt", "Hutang"]] as const} /></div>
+    {seg === "pocket" ? <PocketsPanel ctx={ctx} /> : seg === "bud" ? <>
       {state.budgets.length === 0 ? <Empty img="sales-report" title="Belum ada anggaran" text="Tentukan batas per kategori. Kami hitung berapa yang aman dibelanjakan setiap hari."><Btn type="button" className="dpx-btn" style={{ maxWidth: 300 }} onClick={() => ctx.open({ k: "budget" })}><Ic n="plus" size="sm" /> Atur anggaran</Btn></Empty> : <>
         <div className="dpx-group dpx-white"><div className="dpx-flex" style={{ gap: 16 }}><Ring percent={Math.min(100, pct)} big={`${Math.round(pct)}%`} small="terpakai" color={pct > 100 ? "#d23a2a" : "#1a5dc6"} /><div><div className="dpx-sub">Sisa anggaran</div><div className="dpx-money" style={{ fontSize: 26 }}>{rupiah(Math.max(0, total - used))}</div><div className="dpx-sub">dari {rupiah(total)}</div></div></div></div>
         <div className="dpx-sec"><h2>Per kategori</h2></div><div className="dpx-group dpx-white">{statuses.map((s) => <BudgetRow key={s.budget.categoryId} status={s} state={state} onOpen={() => ctx.open({ k: "budget", cid: s.budget.categoryId })} />)}</div>
@@ -244,11 +249,11 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
   const { fin, nav } = ctx; const { state, entries } = fin;
   const balances = useBalances(state, entries, ctx.payBalance);
   const accounts = state.accounts.filter((a) => !a.archived);
-  const net = accounts.reduce((s, a) => s + (balances[a.id] ?? 0), 0) + ctx.payBalance;
+  const cash = useCash(ctx); const net = netWorth(state, cash).total;
   const acts: [string, string, string][] = [["topup", "Isi saldo", "/wallet/topup"], ["send", "Kirim", "/wallet/transfer"], ["receive", "Terima", "/wallet/receive"], ["scan-qr", "Scan QR", "/wallet/transfer?mode=scan"]];
   return <div className="dpx-page"><Sky><div className="dpx-pad">
-    <div className="dpx-hdr" style={{ paddingTop: 0 }}><h1 className="dpx-page-title" style={{ flex: 1 }}>Dompet</h1><Btn type="button" className="dpx-rb" onClick={() => nav.go("/akun")} aria-label="Akun saya"><Ic n="user" /></Btn></div>
-    <div className="dpx-label" style={{ marginTop: 6 }}>Total kekayaan bersih</div>
+    <div className="dpx-hdr" style={{ paddingTop: 0 }}><h1 className="dpx-page-title" style={{ flex: 1 }}>Kekayaan</h1><Btn type="button" className="dpx-rb" onClick={() => nav.go("/akun")} aria-label="Akun saya"><Ic n="user" /></Btn></div>
+    <div className="dpx-label" style={{ marginTop: 6 }}>Kekayaan bersih</div>
     <div className="dpx-flex" style={{ marginTop: 4 }}><span className="dpx-display"><small>Rp</small>{ctx.visible ? <>{net < 0 ? "−" : ""}<AnimatedNumber value={Math.abs(net)} /></> : "•••••••"}</span><Btn type="button" onClick={ctx.onToggleVisible} aria-label={ctx.visible ? "Sembunyikan saldo" : "Tampilkan saldo"} style={{ color: "var(--mute)" }}><IconSwap k={ctx.visible ? "eye" : "eyeoff"}><Ic n={ctx.visible ? "eye" : "eyeoff"} /></IconSwap></Btn></div>
     <div className="dpx-glabel">Akun & dompet</div>
     <div className="dpx-group dpx-flush dpx-white">
@@ -256,6 +261,7 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
       {accounts.map((a) => <Btn key={a.id} type="button" className="dpx-row" onClick={() => ctx.open({ k: "account", id: a.id })}><span className={`dpx-ico dpx-c-${a.type === "bank" ? "blue" : a.type === "card" ? "rose" : a.type === "ewallet" ? "indigo" : "emerald"}`} style={{ boxShadow: "none" }}><Ic n={a.type === "bank" ? "bank" : a.type === "card" ? "card" : "wallet"} /></span><span className="dpx-main"><b>{a.name}</b><span>Catat manual</span></span><span className="dpx-trail"><b className={(balances[a.id] ?? 0) < 0 ? "dpx-dn" : ""}>{ctx.visible ? `${(balances[a.id] ?? 0) < 0 ? "−" : ""}${rupiah(balances[a.id] ?? 0)}` : "•••••"}</b></span></Btn>)}
     </div>
     <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => ctx.open({ k: "account" })}><Ic n="plus" size="sm" /> Tambah dompet</Btn>
+    <WealthExtras ctx={ctx} />
     <div className="dpx-sec"><h2>Bayar & layanan</h2><Btn type="button" onClick={() => nav.go("/bayar")}>Semua layanan</Btn></div>
     <div className="dpx-group"><div className="dpx-tile3" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>{acts.map(([a, l, p]) => <Btn key={a} type="button" className="dpx-q" onClick={() => nav.go(p)}><img src={`/assets/djiwa-pay-actions/${a}.webp`} width={42} height={42} alt="" />{l}</Btn>)}</div></div>
     <Btn type="button" className="dpx-group dpx-flex" style={{ width: "100%", marginTop: 12, textAlign: "left" }} onClick={() => nav.openSheet("card")}><img src="/assets/djiwa-pay-actions/card.webp" width={56} height={56} alt="" /><span style={{ flex: 1 }}><b style={{ fontSize: 16 }}>Kartu Djiwa</b><div className="dpx-sub">Kartu virtual untuk belanja online.</div></span><span className="dpx-tag">Segera</span></Btn>
@@ -353,6 +359,10 @@ export function FinSheetHost({ ctx, sheet, close, goManual, openPaySheet }: { ct
     case "goal": return <GoalSheet key="goal" fin={fin} goal={state.goals.find((g) => g.id === sheet.id)} notify={notify} onClose={close} />;
     case "goal-detail": { const g = state.goals.find((x) => x.id === sheet.id); return g ? <GoalDetailSheet key="gd" fin={fin} goal={g} notify={notify} onClose={close} onEdit={() => ctx.open({ k: "goal", id: g.id })} /> : null; }
     case "debt": return <DebtSheet key="debt" fin={fin} debt={state.debts.find((d) => d.id === sheet.id)} notify={notify} onClose={close} />;
+    case "bill": return <BillSheet key="bill" fin={fin} bill={state.bills.find((b) => b.id === sheet.id)} notify={notify} onClose={close} />;
+    case "bill-pay": { const b = state.bills.find((x) => x.id === sheet.id); return b ? <BillPaySheet key="billpay" fin={fin} bill={b} notify={notify} onClose={close} goPay={() => ctx.nav.go("/bayar")} accounts={[{ id: PAY_ACCOUNT_ID, name: "Djiwa Pay" }, ...state.accounts.filter((a) => !a.archived).map((a) => ({ id: a.id, name: a.name }))]} /> : null; }
+    case "asset": return <AssetSheet key="asset" fin={fin} asset={state.assets.find((a) => a.id === sheet.id)} notify={notify} onClose={close} />;
+    case "pockets": return <PocketRuleSheet key="pockets" fin={fin} current={pocketsOf(state)} notify={notify} onClose={close} />;
     case "split": return <SplitSheet key="split" notify={notify} onClose={close} />;
     case "streak": return <StreakSheet key="streak" entries={entries} onClose={close} onCatat={() => ctx.open({ k: "catat" })} />;
     case "account": return <AccountEditSheet key="acc" fin={fin} account={state.accounts.find((a) => a.id === sheet.id)} notify={notify} onClose={close} />;

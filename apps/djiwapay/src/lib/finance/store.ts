@@ -1,7 +1,7 @@
 import { DEFAULT_ACCOUNTS, DEFAULT_CATEGORIES } from "./categories";
-import type { Account, Budget, Category, Debt, Entry, FinanceState, Goal, Override } from "./types";
+import type { Account, Asset, Bill, Budget, Category, Debt, Entry, FinanceState, Goal, Override, Pocket } from "./types";
 
-export const emptyState = (): FinanceState => ({ v: 1, onboarded: false, accounts: DEFAULT_ACCOUNTS.map((a) => ({ ...a })), categories: DEFAULT_CATEGORIES.map((c) => ({ ...c })), entries: [], budgets: [], goals: [], debts: [], overrides: {} });
+export const emptyState = (): FinanceState => ({ v: 1, onboarded: false, accounts: DEFAULT_ACCOUNTS.map((a) => ({ ...a })), categories: DEFAULT_CATEGORIES.map((c) => ({ ...c })), entries: [], budgets: [], goals: [], debts: [], overrides: {}, bills: [], pockets: [], assets: [] });
 
 export type Action =
   | { type: "onboard"; accounts: Account[] }
@@ -12,6 +12,9 @@ export type Action =
   | { type: "budget/set"; budget: Budget } | { type: "budget/delete"; categoryId: string }
   | { type: "goal/upsert"; goal: Goal } | { type: "goal/delete"; id: string } | { type: "goal/deposit"; id: string; at: string; amount: number }
   | { type: "debt/upsert"; debt: Debt } | { type: "debt/delete"; id: string } | { type: "debt/settle"; id: string }
+  | { type: "bill/upsert"; bill: Bill } | { type: "bill/delete"; id: string } | { type: "bill/pay"; id: string; month: string; paid: boolean }
+  | { type: "pocket/set"; pockets: Pocket[] }
+  | { type: "asset/upsert"; asset: Asset } | { type: "asset/delete"; id: string }
   | { type: "import"; state: FinanceState } | { type: "reset" };
 
 const upsert = <T extends { id: string }>(list: T[], item: T) => (list.some((x) => x.id === item.id) ? list.map((x) => (x.id === item.id ? item : x)) : [...list, item]);
@@ -36,6 +39,12 @@ export function reduce(state: FinanceState, action: Action): FinanceState {
     case "debt/upsert": return { ...state, debts: upsert(state.debts, action.debt) };
     case "debt/delete": return { ...state, debts: state.debts.filter((d) => d.id !== action.id) };
     case "debt/settle": return { ...state, debts: state.debts.map((d) => (d.id === action.id ? { ...d, settled: true } : d)) };
+    case "bill/upsert": return { ...state, bills: upsert(state.bills, action.bill) };
+    case "bill/delete": return { ...state, bills: state.bills.filter((b) => b.id !== action.id) };
+    case "bill/pay": return { ...state, bills: state.bills.map((b) => (b.id === action.id ? { ...b, paid: action.paid ? [...new Set([...b.paid, action.month])] : b.paid.filter((m) => m !== action.month) } : b)) };
+    case "pocket/set": return { ...state, pockets: action.pockets };
+    case "asset/upsert": return { ...state, assets: upsert(state.assets, action.asset) };
+    case "asset/delete": return { ...state, assets: state.assets.filter((a) => a.id !== action.id) };
     case "import": return normalize(action.state);
     case "reset": return emptyState();
   }
@@ -50,7 +59,10 @@ export function normalize(raw: unknown): FinanceState {
   const categories = arr<Category>(r.categories, base.categories);
   for (const d of DEFAULT_CATEGORIES) if (!categories.some((c) => c.id === d.id)) categories.push(d);
   const entries = arr<Entry>(r.entries, []).filter((e) => e && typeof e.id === "string" && Number.isFinite(e.amount) && e.amount > 0 && !Number.isNaN(Date.parse(e.at)));
-  return { v: 1, onboarded: Boolean(r.onboarded), accounts: arr<Account>(r.accounts, base.accounts).filter((a) => a && a.id && a.name), categories, entries, budgets: arr<Budget>(r.budgets, []).filter((b) => b && b.categoryId && b.limit > 0), goals: arr<Goal>(r.goals, []), debts: arr<Debt>(r.debts, []), overrides: r.overrides && typeof r.overrides === "object" ? (r.overrides as FinanceState["overrides"]) : {} };
+  return { v: 1, onboarded: Boolean(r.onboarded), accounts: arr<Account>(r.accounts, base.accounts).filter((a) => a && a.id && a.name), categories, entries, budgets: arr<Budget>(r.budgets, []).filter((b) => b && b.categoryId && b.limit > 0), goals: arr<Goal>(r.goals, []), debts: arr<Debt>(r.debts, []), overrides: r.overrides && typeof r.overrides === "object" ? (r.overrides as FinanceState["overrides"]) : {},
+    bills: arr<Bill>(r.bills, []).filter((b) => b && b.id && b.amount > 0 && b.day >= 1 && b.day <= 31).map((b) => ({ ...b, paid: Array.isArray(b.paid) ? b.paid : [] })),
+    pockets: arr<Pocket>(r.pockets, []).filter((p) => p && p.id && p.percent >= 0),
+    assets: arr<Asset>(r.assets, []).filter((a) => a && a.id && Number.isFinite(a.value) && a.value >= 0) };
 }
 
 export const storageKey = (profileId: string) => `djiwa-finance:v1:${profileId}`;

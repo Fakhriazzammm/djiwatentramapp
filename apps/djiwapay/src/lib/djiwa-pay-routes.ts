@@ -17,14 +17,14 @@ export function parsePpobPath(pathname: string): PpobRoute | null {
 }
 
 export type WalletRoute = {
-  page: "topup" | "transfer" | "receive" | "history" | "help" | "services" | "wallet" | "summary" | "account" | "budget" | "catat" | "settings";
+  page: "topup" | "transfer" | "receive" | "history" | "help" | "services" | "wallet" | "summary" | "account" | "budget" | "catat" | "settings" | "calendar" | "health" | "forecast" | "tools";
   transactionId?: string;
 };
 
 /** Bottom-tab destinations and the standalone pages reachable from them. */
-const tabPaths = { "/layanan": "services", "/bayar": "services", "/dompet": "wallet", "/riwayat": "history", "/ringkasan": "summary", "/laporan": "summary", "/akun": "account", "/anggaran": "budget", "/catat": "catat", "/pengaturan": "settings" } as const;
-const tabPathPattern = /^(\/layanan|\/bayar|\/dompet|\/riwayat|\/ringkasan|\/laporan|\/akun|\/anggaran|\/catat|\/pengaturan)\/?$/;
-export const payTabPath = { home: "/", history: "/riwayat", budget: "/anggaran", wallet: "/dompet" } as const;
+const tabPaths = { "/layanan": "services", "/bayar": "services", "/dompet": "wallet", "/riwayat": "history", "/ringkasan": "summary", "/laporan": "summary", "/akun": "account", "/anggaran": "budget", "/rencana": "budget", "/kekayaan": "wallet", "/kalender": "calendar", "/kesehatan": "health", "/prakiraan": "forecast", "/alat": "tools", "/catat": "catat", "/pengaturan": "settings" } as const;
+const tabPathPattern = /^(\/layanan|\/bayar|\/dompet|\/riwayat|\/ringkasan|\/laporan|\/akun|\/anggaran|\/rencana|\/kekayaan|\/kalender|\/kesehatan|\/prakiraan|\/alat|\/catat|\/pengaturan)\/?$/;
+export const payTabPath = { home: "/", history: "/riwayat", budget: "/rencana", wallet: "/kekayaan" } as const;
 export type PayTab = keyof typeof payTabPath;
 
 const walletPagePattern = /^\/wallet\/(topup|transfer|receive|history|help)\/?$/;

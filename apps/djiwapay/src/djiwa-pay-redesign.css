@@ -225,3 +225,154 @@
 /* ---------- scan struk (Catat sheet) ---------- */
 .dpx-t-scan{background:linear-gradient(135deg,#0f2347 0%,#1a4aa0 100%);color:#fff;box-shadow:0 10px 24px rgba(15,35,71,.2)}
 .dpx-t-scan svg{color:#fff}
+
+/* ---- Kelola: padat ala iOS (dari prototipe compact). Semua komponen mengecil bersama. ---- */
+.dpx .dpx-pad{padding:44px 14px 112px}
+.dpx .dpx-page-title{font-size:26px}
+.dpx .dpx-title{font-size:20px}
+.dpx .dpx-display{font-size:44px}
+.dpx .dpx-display small{font-size:20px}
+.dpx .dpx-money{font-size:28px}
+.dpx .dpx-sec{margin:18px 4px 8px}
+.dpx .dpx-sec h2{font-size:15px}
+.dpx .dpx-sec button,.dpx .dpx-sec a{font-size:13px}
+.dpx .dpx-hdr{min-height:42px;padding:2px 0 6px}
+.dpx .dpx-hdr h1{font-size:16px}
+.dpx .dpx-rb,.dpx .dpx-av,.dpx .dpx-pill-info{width:38px;height:38px}
+.dpx .dpx-pill-info{width:auto;height:38px;font-size:14px;padding:0 13px}
+.dpx .dpx-av{font-size:14px}
+.dpx .dpx-ask{min-height:50px;margin-top:16px;padding:6px 6px 6px 14px}
+.dpx .dpx-ask span{font-size:15px}
+.dpx .dpx-ask .dpx-go{width:38px;height:38px}
+.dpx .dpx-ask img{width:24px;height:24px}
+.dpx .dpx-group{border-radius:24px;padding:12px 14px}
+.dpx .dpx-group.dpx-flush{padding-top:2px;padding-bottom:2px}
+.dpx .dpx-group+.dpx-group{margin-top:10px}
+.dpx .dpx-glabel{margin:14px 6px 6px;font-size:12px}
+.dpx .dpx-row{gap:11px;padding:9px 0;min-height:50px}
+.dpx .dpx-row .dpx-ico{width:36px;height:36px}
+.dpx .dpx-row .dpx-ico img{width:25px;height:25px}
+.dpx .dpx-row .dpx-main b{font-size:14px}
+.dpx .dpx-row .dpx-main span{font-size:12px}
+.dpx .dpx-row .dpx-trail{font-size:12.5px}
+.dpx .dpx-row .dpx-trail b{font-size:14px}
+.dpx .dpx-body-sheet{border-radius:28px 28px 0 0;margin:18px -14px 0;padding:16px 14px 112px}
+.dpx .dpx-btn{min-height:46px;font-size:15px;padding:0 20px;margin-top:12px}
+.dpx .dpx-btn.dpx-sm{min-height:34px;font-size:13px}
+.dpx .dpx-chip{padding:7px 13px;font-size:13px}
+.dpx .dpx-tabbar{left:12px;right:12px;bottom:14px;height:58px;grid-template-columns:repeat(4,1fr) 66px}
+.dpx .dpx-fab{width:58px;height:58px;margin-top:-20px;font-size:10px}
+.dpx .dpx-fab svg{width:22px;height:22px}
+.dpx .dpx-tabbar img{width:22px;height:22px}
+.dpx .dpx-tabbar button{font-size:10px}
+.dpx .dpx-sheet{border-radius:28px 28px 0 0;padding:8px 14px 24px}
+.dpx .dpx-toast{bottom:90px;font-size:13px;padding:10px 16px}
+.dpx .dpx-bigamt input{font-size:42px;width:200px}
+.dpx .dpx-bigamt b{font-size:20px}
+.dpx .dpx-group,.dpx .dpx-row,.dpx .dpx-tile3{font-size:14px}
+.dpx .dpx-pad{padding:40px 12px 96px}
+.dpx .dpx-pad.dpx-nobar{padding-bottom:24px}
+.dpx .dpx-hdr{min-height:36px}
+.dpx .dpx-rb,.dpx .dpx-av{width:34px;height:34px}
+.dpx .dpx-pill-info{height:34px;font-size:13px;padding:0 11px}
+.dpx .dpx-label{font-size:12px}
+.dpx .dpx-page-title{font-size:24px}
+.dpx .dpx-title{font-size:18px}
+.dpx .dpx-money{font-size:21px!important;letter-spacing:-.03em}
+.dpx .dpx-display{font-size:38px}
+.dpx .dpx-sec{margin:14px 4px 6px}
+.dpx .dpx-sec h2{font-size:14px}
+.dpx .dpx-group,.dpx .dpx-hero-day,.dpx .dpx-note,.dpx .dpx-kpi .dpx-group{border-radius:18px}
+.dpx .dpx-group{padding:10px 12px}
+.dpx .dpx-group.dpx-flush{padding-top:0;padding-bottom:0}
+.dpx .dpx-group+.dpx-group{margin-top:8px}
+.dpx .dpx-group[style*="padding:22px"]{padding:14px!important}
+.dpx .dpx-hero-day{padding:12px;margin-top:10px;box-shadow:0 6px 18px rgba(15,35,71,.08)}
+.dpx .dpx-hero-day .dpx-art{width:72px;height:72px}
+.dpx .dpx-ring{width:76px;height:76px}
+.dpx .dpx-ring .dpx-c{font-size:11px}
+.dpx .dpx-ring .dpx-c b{font-size:20px!important}
+.dpx .dpx-kpi{gap:8px}
+.dpx .dpx-kpi .dpx-group{padding:9px 11px}
+.dpx .dpx-kpi small{font-size:11.5px}
+.dpx .dpx-kpi b{font-size:16px!important}
+.dpx .dpx-row{padding:7px 0;min-height:44px;gap:10px}
+.dpx .dpx-row .dpx-ico{width:32px;height:32px}
+.dpx .dpx-row .dpx-ico img{width:22px;height:22px}
+.dpx .dpx-row .dpx-main b{font-size:13.5px}
+.dpx .dpx-row .dpx-main span,.dpx .dpx-sub{font-size:11.5px}
+.dpx .dpx-row .dpx-trail b{font-size:13.5px}
+.dpx .dpx-bud{padding:8px 0}
+.dpx .dpx-bud .dpx-top{gap:10px}
+.dpx .dpx-cat{width:32px;height:32px}
+.dpx .dpx-cat svg{width:17px;height:17px}
+.dpx .dpx-ic{width:18px;height:18px}
+.dpx .dpx-ic.dpx-lg{width:22px;height:22px}
+.dpx .dpx-ic.dpx-sm{width:14px;height:14px}
+.dpx .dpx-bar{height:6px}
+.dpx .dpx-tile{border-radius:16px;min-height:64px!important;padding:8px 4px!important;gap:3px;font-size:12px}
+.dpx .dpx-tile img{width:34px;height:34px}
+.dpx .dpx-tile span{font-size:11.5px!important}
+.dpx .dpx-tile3{gap:8px}
+.dpx .dpx-q{font-size:11.5px;gap:4px}
+.dpx .dpx-q .dpx-qi{width:46px;height:46px;border-radius:16px}
+.dpx .dpx-q img{width:30px;height:30px}
+.dpx .dpx-chips{gap:6px;margin-bottom:4px!important}
+.dpx .dpx-chip{padding:6px 12px;font-size:12.5px}
+.dpx .dpx-chip3{padding:5px 10px;font-size:12px}
+.dpx .dpx-chips2{gap:6px}
+.dpx .dpx-tag{padding:2px 8px;font-size:10.5px}
+.dpx .dpx-seg{padding:2px}
+.dpx .dpx-seg button{padding:6px 10px;font-size:12.5px;min-height:30px}
+.dpx .dpx-note{padding:10px 12px;font-size:12.5px;gap:9px;margin-top:8px}
+.dpx .dpx-btn{min-height:42px;font-size:14.5px;margin-top:10px}
+.dpx .dpx-btn.dpx-sm{min-height:30px!important;font-size:12.5px;padding:0 12px}
+.dpx .dpx-field{margin-top:10px}
+.dpx .dpx-field input,.dpx .dpx-field textarea,.dpx .dpx-field select{font-size:15px}
+.dpx .dpx-glabel{margin:10px 6px 4px}
+.dpx .dpx-bigamt input{font-size:34px;width:170px}
+.dpx .dpx-bigamt b{font-size:16px}
+.dpx .dpx-amt-presets{gap:6px}
+.dpx .dpx-d{height:38px!important;border-radius:10px;font-size:12px}
+.dpx .dpx-tabbar{height:52px;left:10px;right:10px;bottom:10px;grid-template-columns:repeat(4,1fr) 58px}
+.dpx .dpx-fab{width:50px;height:50px;margin-top:-16px;box-shadow:0 8px 20px rgba(15,35,71,.35),0 0 0 4px rgba(255,255,255,.9)}
+.dpx .dpx-tabbar img{width:20px;height:20px}
+.dpx .dpx-sheet{border-radius:22px 22px 0 0;padding:8px 12px 18px}
+.dpx .dpx-sheet .dpx-btn:first-of-type{margin-top:10px}
+.dpx .dpx-toast{bottom:76px;font-size:12.5px;padding:8px 14px}
+.dpx .dpx-hdr h1{font-size:15px}
+.dpx .dpx-ask{min-height:44px;margin-top:10px}
+.dpx [style*="font-size:26px"],.dpx [style*="font-size:24px"],.dpx [style*="font-size:32px"]{font-size:21px!important}
+.dpx [style*="height:52px"]{height:38px!important}
+.dpx [style*="min-height:92px"]{min-height:64px!important}
+.dpx [style*="height:84px"]{height:60px!important}
+.dpx [style*="padding:10px 0"]{padding:7px 0!important}
+.dpx .dpx-bud .dpx-top{gap:9px}
+.dpx .dpx-bud .dpx-top .dpx-main b,.dpx .dpx-bud .dpx-top>b{font-size:13.5px!important;font-weight:600}
+.dpx .dpx-bud .dpx-top span,.dpx .dpx-bud .dpx-top .dpx-main span{font-size:11.5px;line-height:1.3}
+.dpx .dpx-bud .dpx-bar{margin-top:6px}
+.dpx .dpx-page-title{font-size:22px!important}
+.dpx .dpx-ring .dpx-c b{font-size:16px!important}
+.dpx .dpx-ring .dpx-c span{font-size:9.5px}
+.dpx .dpx-hero-day .dpx-flex{gap:12px!important}
+.dpx .dpx-flex{gap:10px}
+.dpx .dpx-group b{font-size:inherit}
+.dpx .dpx-group .dpx-spread b,.dpx .dpx-group>.dpx-flex b{font-size:13.5px}
+.dpx .dpx-tabbar .dpx-on,.dpx .dpx-tabbar [aria-current],.dpx .dpx-tabbar .dpx-tb.dpx-on{border-radius:999px}
+.dpx .dpx-tabbar button{padding:0 2px}
+.dpx .dpx-tabbar span{font-size:10px}
+.dpx .dpx-title,.dpx .dpx-t-xl{line-height:1.15}
+.dpx .dpx-cat,.dpx .dpx-row .dpx-ico,.dpx .dpx-q .dpx-qi{display:flex!important;align-items:center;justify-content:center}
+.dpx .dpx-cat>svg,.dpx .dpx-cat>img{margin:0!important}
+.dpx .dpx-display{font-size:30px!important;line-height:1.1}
+.dpx .dpx-display small{font-size:15px!important;vertical-align:.35em}
+.dpx .dpx-group svg[style*="height:1"]{max-height:96px}
+.dpx .dpx-donut,.dpx .dpx-group svg[viewBox*="42"]{max-height:96px}
+.dpx .dpx-pill,.dpx .dpx-chip3{white-space:nowrap}
+.dpx .dpx-tb{font-size:10px;gap:1px}.dpx .dpx-tb img{width:22px;height:22px}
+.dpx .dpx-note.dpx-info{background:var(--blue-soft);color:var(--navy)}
+.dpx .dpx-tag.dpx-danger{background:var(--danger-soft);color:var(--danger)}
+.dpx .dpx-chip3.dpx-on{background:var(--navy);color:#fff}
+@media (prefers-reduced-motion:reduce){.dpx *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+.dpx .dpx-main .dpx-tag{display:inline-block;margin-top:2px}
+.dpx .dpx-ring .dpx-c span{font-size:9px}
