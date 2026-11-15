@@ -388,3 +388,6 @@
 .dpx .dpx-tabbar .dpx-fab svg{width:20px;height:20px}
 .dpx .dpx-pad{padding-bottom:calc(128px + env(safe-area-inset-bottom,0px))}
 .dpx .dpx-pad.dpx-nobar{padding-bottom:24px}
+.dpx .dpx-tabbar .dpx-tb>span:nth-of-type(1):not(.dpx-tabpill),.dpx .dpx-tabbar .dpx-tb>span.dpx-tabpill+span{width:24px;height:24px;display:grid;place-items:center}
+.dpx .dpx-tabbar .dpx-tb img{width:24px;height:24px;max-width:none;display:block}
+.dpx .dpx-tabbar .dpx-tb,.dpx .dpx-tabbar .dpx-fab{transform:none}
