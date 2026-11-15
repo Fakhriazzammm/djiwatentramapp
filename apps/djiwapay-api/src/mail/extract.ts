@@ -64,7 +64,8 @@ export function isPromo(subject: string, text: string): boolean {
 
 /** Announces money but moves none: a scam warning, a fee schedule, a product launch. */
 export function isNoticeMail(subject: string, text: string): boolean {
-  if (/\b(waspada|hati-hati|modus|penipuan|scam|tips|edukasi)\b/i.test(subject)) return true;
+  // Announcements of a product or a limit change ("[PENTING] Limit Baru Kartu Jago!") read as money too.
+  if (/\b(waspada|hati-hati|modus|penipuan|scam|tips|edukasi|limit baru|kenaikan limit|kebijakan baru|fitur baru)\b/i.test(subject)) return true;
   // "biaya tidak aktif sebesar Rp10.000 akan didebet setiap bulan": a future charge is not a payment.
   return /\bakan\s+(?:didebet|dipotong|ditagih|dikenakan)\b/i.test(flat(text));
 }
@@ -216,7 +217,7 @@ export function extractPayment(subject: string, bodyText: string): Extracted {
 export const isConfident = (x: Extracted) => x.amount > 0 && x.direction !== "unknown" && x.confidence >= 0.65;
 
 /** Bumped whenever the read changes meaning, so an old staged row can be told apart from a new one. */
-export const RULES_VERSION = 3;
+export const RULES_VERSION = 4;
 
 /** A payment mail is about a day or two, never years away: "26-10-21" once put 2026 mail in 2021. */
 const MAX_DRIFT_MS = 45 * 86400_000;

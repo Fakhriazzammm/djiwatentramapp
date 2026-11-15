@@ -132,6 +132,10 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   // then waits for a person instead of being recorded, for every user and not only the one who reported it.
   const flags = implausible(`${mail.subject}\n${mail.text}`, x, mail.date?.getTime() ?? null);
   if (!(x.amount > 0)) return stage ? finish("ignored", "unreadable", { confidence: x.confidence }) : looksLikePayment(mail.subject, mail.text) ? finish("failed", "unreadable", { parsed, confidence: x.confidence }) : finish("ignored", "unreadable", { confidence: x.confidence });
+  // Gate 6b: an announcement can print a rupiah figure ("Limit Baru Kartu Jago", "kenaikan limit
+  // transaksi dari Rp50 juta jadi Rp150 juta") without paying anything. No transaction wording at all
+  // and a shaky read means it is not a payment, whatever the words of the announcement are.
+  if (!agreed && !isConfident(x) && !looksLikePayment(mail.subject, mail.text)) return finish("ignored", "notice", { parsed: { ...parsed, flags: ["no-transaction-wording"] }, confidence: x.confidence });
 
   // A bank reference seen before is the same payment.
   if (x.ref) {

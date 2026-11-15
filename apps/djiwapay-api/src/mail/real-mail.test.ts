@@ -8,7 +8,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import {
-  extractPayment, implausible, isBillReminder, isConfident, isFailedMail, isNoticeMail, isPromo, isReportMail, parseWhen,
+  extractPayment, implausible, isBillReminder, isConfident, isFailedMail, isNoticeMail, isPromo, isReportMail, looksLikePayment, parseWhen,
 } from "./extract";
 
 describe("telkomsel and indihome", () => {
@@ -156,6 +156,15 @@ describe("campaigns, surveys, reports and notices", () => {
   test("a scam warning and a fee that will be charged move no money", () => {
     expect(isNoticeMail("Hati-Hati Terhadap Modus Penipuan Investasi Emas", "Kenali modusnya dan cara menghadapinya.")).toBe(true);
     expect(isNoticeMail("Info terkait biaya Kantong tidak aktif", "Biaya tidak aktif sebesar Rp10.000 akan didebet setiap bulan.")).toBe(true);
+  });
+
+  test("an announcement of a new limit is not a payment of that limit", () => {
+    const subject = "[PENTING] Limit Baru Kartu Jago!";
+    const body = "Cek di sini! Informasi Kenaikan Limit Kartu Jago Mulai 8 Desember 2026. Limit EDC: dari Rp50 juta jadi Rp150 juta/hari. Limit Online: dari Rp50 juta jadi Rp150 juta/hari.";
+    expect(isNoticeMail(subject, body)).toBe(true);
+    // and even without that wording, nothing in it says a payment happened
+    expect(looksLikePayment(subject, body)).toBe(false);
+    expect(isConfident(extractPayment(subject, body))).toBe(false);
   });
 
   test("a starting price is not a purchase", () => {
