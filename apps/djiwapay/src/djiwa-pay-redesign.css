@@ -476,9 +476,11 @@
 .dpx .dpx-origin .dpx-sub{margin-top:2px;overflow-wrap:anywhere}
 /* Beranda scene: ilustrasi menyesuaikan waktu, memudar ke kanvas di bawahnya. */
 .dpx-sky.dpx-scened{position:relative}
-.dpx-scene{position:absolute;left:0;right:0;top:0;aspect-ratio:2/3;pointer-events:none;overflow:hidden;
-  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 52%,transparent 80%);mask-image:linear-gradient(180deg,#000 0,#000 52%,transparent 80%)}
-.dpx-scene img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 1.2s ease}
+.dpx-scene{position:absolute;top:0;left:50%;width:100vw;height:460px;transform:translateX(-50%);pointer-events:none;overflow:hidden;
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 55%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 55%,transparent 100%)}
+html:has(.dpx-scened),body:has(.dpx-scened){overflow-x:hidden}
+.dpx:has(.dpx-scened){overflow-x:visible}
+.dpx-scene img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:85% 0;opacity:0;transition:opacity 1.2s ease}
 .dpx-scene img.on{opacity:1}
 .dpx-scened .dpx-pad{padding-top:calc(env(safe-area-inset-top,0px) + 12px)}
 .dpx-night .dpx-onsky,.dpx-night .dpx-onsky .dpx-display{color:#fff6e6!important;text-shadow:0 1px 10px rgba(20,16,40,.45)}
