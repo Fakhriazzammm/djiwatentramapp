@@ -31,7 +31,7 @@ export interface CheckoutSectionProps {
 	isSubmitting: boolean;
 	notes: string;
 	paymentChoice: PaymentChoice;
-	paymentOptions: Array<{ key: PaymentChoice; label: string; description: string }>;
+	paymentOptions: Array<{ key: PaymentChoice; label: string; description: string; maintenance?: boolean }>;
 	productGrossSubtotal: number;
 	promoDiscount: number;
 	serviceChargeAmount: number;
@@ -110,8 +110,21 @@ function ReviewRow({ item, onMinus, onPlus, onRemove }: { item: CartItem; onMinu
 
 const PAYMENT_ICON: Record<string, "payment-wallet" | "order-receipt" | "cashier-terminal"> = { wallet: "payment-wallet", mayar: "order-receipt", cashier: "cashier-terminal" };
 
-function PaymentCard({ option, selected, insufficient, balance, total, onSelect, onTopup }: { option: { key: PaymentChoice; label: string; description: string }; selected: boolean; insufficient: boolean; balance: number; total: number; onSelect: () => void; onTopup: () => void }) {
+function PaymentCard({ option, selected, insufficient, balance, total, onSelect, onTopup }: { option: { key: PaymentChoice; label: string; description: string; maintenance?: boolean }; selected: boolean; insufficient: boolean; balance: number; total: number; onSelect: () => void; onTopup: () => void }) {
 	const reduce = useReducedMotion();
+	const maintenance = option.maintenance === true;
+	if (maintenance) {
+		return (
+			<div className="overflow-hidden rounded-[22px] bg-muted/50 shadow-[inset_0_0_0_1px_rgba(245,165,36,0.5)]" aria-disabled="true">
+				<div className="flex w-full items-start gap-3 p-3.5 opacity-60">
+					<Djiwa3DIcon name={PAYMENT_ICON[option.key] ?? "order-receipt"} size="sm" alt="" className="h-11 w-11 object-contain grayscale" />
+					<span className="min-w-0 flex-1"><span className="block text-base font-bold">{option.label}</span></span>
+					<span className="mt-0.5 shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-800">Maintenance</span>
+				</div>
+				<p className="border-t border-amber-200/80 px-3.5 py-2.5 text-xs font-semibold leading-relaxed text-amber-800">{option.description}</p>
+			</div>
+		);
+	}
 	const on = selected && !insufficient;
 	return (
 		<motion.div layout animate={{ scale: on ? 1.01 : 1 }} transition={SPRING} className={cn("overflow-hidden rounded-[22px] transition-colors", on ? "bg-[#f4f9ff] shadow-[inset_0_0_0_2px_var(--primary)]" : insufficient ? "bg-amber-50 shadow-[inset_0_0_0_1px_rgba(245,165,36,0.5)]" : "bg-white shadow-[inset_0_0_0_1px_rgba(60,60,67,0.16)]")}>

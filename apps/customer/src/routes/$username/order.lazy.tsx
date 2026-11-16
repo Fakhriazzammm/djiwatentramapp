@@ -551,8 +551,13 @@ function OrderPage() {
 	const themeColor = brandSettings?.themeColor || "var(--color-primary)";
 	const logoUrl = brandSettings?.logoUrl || siteSettings?.logoUrl || "";
 	const storeName = brandSettings?.title || siteSettings?.storeName || "Ordering";
-	const canUseMayar = Boolean(siteSettings?.mayarEnabled && mayarConfig?.configured);
-	const canUseWallet = Boolean(isAuthenticated && customer && customer.walletStatus !== "blocked");
+	const walletMaintenance = config.walletPaymentEnabled !== true;
+	const mayarMaintenance = config.mayarPaymentEnabled !== true;
+	const canUseMayar = Boolean(siteSettings?.mayarEnabled && mayarConfig?.configured && !mayarMaintenance);
+	const walletAvailable = Boolean(isAuthenticated && customer && customer.walletStatus !== "blocked");
+	const canUseWallet = walletAvailable && !walletMaintenance;
+	const showMayarOption = Boolean(siteSettings?.mayarEnabled && mayarConfig?.configured);
+	const maintenanceNote = "Sedang maintenance / dalam perbaikan. Silakan gunakan Bayar Tunai di Kasir (tunai atau QRIS statis).";
 	const selectedRunRewardId = paymentChoice === "wallet" ? (search.runRewardId ?? null) : null;
 	const upsellEnabled = siteSettings?.upsellEnabled === true;
 	const upsellMaxRecommendations = Number(siteSettings?.upsellMaxRecommendations);
@@ -699,21 +704,23 @@ function OrderPage() {
 			label: "Bayar Tunai di Kasir",
 			description: "Tampilkan struk dan bayar langsung ke kasir.",
 		},
-		...(canUseWallet
+		...(walletAvailable
 			? [
 					{
 						key: "wallet" as PaymentChoice,
 						label: "Djiwa Pay",
-						description: `Gunakan saldo Djiwa Pay ${currency(customer?.walletBalance ?? 0)} untuk membayar pesanan.`,
+						description: walletMaintenance ? maintenanceNote : `Gunakan saldo Djiwa Pay ${currency(customer?.walletBalance ?? 0)} untuk membayar pesanan.`,
+						maintenance: walletMaintenance,
 					},
 			  ]
 			: []),
-		...(canUseMayar
+		...(showMayarOption
 			? [
 					{
 						key: "mayar" as PaymentChoice,
 						label: "QRIS",
-						description: "Bayar cepat dan cashierless dengan QRIS",
+						description: mayarMaintenance ? maintenanceNote : "Bayar cepat dan cashierless dengan QRIS",
+						maintenance: mayarMaintenance,
 					},
 			  ]
 			: []),
@@ -778,7 +785,7 @@ function OrderPage() {
 	}, [activeFreeRefillPromo, config.enableFreeRefillPrompt, freeRefillOptIn]);
 
 	useEffect(() => {
-		if (!paymentOptions.find((option) => option.key === paymentChoice) || (paymentChoice === "wallet" && (!customer || (customer.walletBalance ?? 0) < total))) {
+		if (!paymentOptions.find((option) => option.key === paymentChoice && !(option as { maintenance?: boolean }).maintenance) || (paymentChoice === "wallet" && (!customer || (customer.walletBalance ?? 0) < total))) {
 			setPaymentChoice("cashier");
 		}
 	}, [customer, paymentChoice, total]);

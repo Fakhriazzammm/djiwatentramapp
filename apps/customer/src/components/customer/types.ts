@@ -77,6 +77,8 @@ export const CUSTOMER_ORDERING_DEFAULTS = {
 	requireTableNumber: false,
 	cashPaymentLabel: "Bayar di kasir",
 	mayarPaymentLabel: "QRIS",
+	walletPaymentEnabled: false,
+	mayarPaymentEnabled: false,
 };
 
 export const currency = (value: number) =>

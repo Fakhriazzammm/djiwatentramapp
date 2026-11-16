@@ -580,6 +580,8 @@ export function SettingsPage({
 		requireTableNumber: false,
 		cashPaymentLabel: "Bayar di kasir",
 		mayarPaymentLabel: "QRIS",
+		walletPaymentEnabled: false,
+		mayarPaymentEnabled: false,
 	});
 	const [aiModelConfig, setAiModelConfig] =
 		useState<AiModelConfig>(DEFAULT_AI_MODEL_CONFIG);
@@ -798,6 +800,10 @@ export function SettingsPage({
 				mayarPaymentLabel:
 					siteSettings.customerOrdering?.mayarPaymentLabel ??
 					"QRIS",
+				walletPaymentEnabled:
+					siteSettings.customerOrdering?.walletPaymentEnabled ?? false,
+				mayarPaymentEnabled:
+					siteSettings.customerOrdering?.mayarPaymentEnabled ?? false,
 			});
 			setAiModelConfig(normalizeAiModelConfig(siteSettings.aiModelConfig ?? {}));
 			setEmployeeOnboardingSettings(normalizeEmployeeOnboardingSettings(siteSettings.employeeOnboarding));
@@ -3847,6 +3853,16 @@ export function SettingsPage({
 												key: "enableDessertLater",
 												label: "Dessert nanti",
 												description: "Tampilkan opsi dessert dibawakan nanti dan request follow-up.",
+											},
+											{
+												key: "walletPaymentEnabled",
+												label: "Pembayaran Djiwa Pay",
+												description: "Matikan untuk maintenance. Customer melihat info 'sedang perbaikan' dan diarahkan bayar di kasir.",
+											},
+											{
+												key: "mayarPaymentEnabled",
+												label: "Pembayaran QRIS online",
+												description: "Matikan untuk maintenance. Customer melihat info 'sedang perbaikan' dan diarahkan bayar di kasir (tunai / QRIS statis).",
 											},
 											{
 												key: "requireTableNumber",
