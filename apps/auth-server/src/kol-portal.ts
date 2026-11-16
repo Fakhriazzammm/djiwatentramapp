@@ -2,7 +2,7 @@ import type { Hono } from "hono";
 
 import { createHash } from "node:crypto";
 import { isInquiryHoneypotFilled, validatePublicInquiry } from "./kol-inquiry-contract.js";
-import { isVisitTimeAllowed } from "./kol-portal-contract.js";
+import { VISIT_CONSENT_TEXT, VISIT_CONSENT_VERSION, isVisitTimeAllowed } from "./kol-portal-contract.js";
 
 type DbPool = { connect: () => Promise<any>; query: (text: string, values?: unknown[]) => Promise<any> };
 type AuthApi = { api: { getSession: (input: { headers: Headers }) => Promise<any> } };
@@ -189,6 +189,10 @@ export async function kolAdminContext(c: any, auth: AuthApi, pool: Pick<DbPool, 
 }
 
 export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPool) {
+  // Catat versi dan teks persetujuan terbaru (termasuk konsekuensi bila tidak hadir) pada booking yang baru dibuat.
+  const stampVisitConsent = (db: Pick<DbPool, "query">, bookingId: unknown) =>
+    db.query(`update pos.kol_visit_bookings set consent_version = $1, consent_text = $2 where id = $3`, [VISIT_CONSENT_VERSION, VISIT_CONSENT_TEXT, bookingId]);
+
   // Invite routes deliberately select only public creator fields. Raw invite tokens never enter SQL.
   const inviteLookup = async (rawToken: string, db = pool) => {
     const result = await db.query(
@@ -279,7 +283,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     if (!token) return json(c, { success: false, error: "INVALID_INVITE" }, 400);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isBookingDateFromTomorrow(date)) return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
     if (!isVisitTimeAllowed(time)) return json(c, { success: false, error: "INVALID_BOOKING_TIME" }, 400);
-    if (body.consentTerms !== true || body.consentAttendance !== true) return json(c, { success: false, error: "CONSENT_REQUIRED" }, 400);
+    if (body.consentTerms !== true || body.consentAttendance !== true || body.consentNoShow !== true) return json(c, { success: false, error: "CONSENT_REQUIRED" }, 400);
     const invite = await inviteLookup(token);
     if (!invite) return json(c, { success: false, error: "INVITE_NOT_FOUND" }, 404);
     if (invite.source_id !== current.kol.source_id) return json(c, { success: false, error: "INVITE_NOT_LINKED" }, 403);
@@ -290,6 +294,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
       if (error?.code === "P0001" && ["INVALID_BOOKING_DATE","INVALID_BOOKING_TIME","DATE_ALREADY_BOOKED","CREATOR_ALREADY_HAS_ACTIVE_BOOKING","INVITATION_NOT_VALID","CONSENT_REQUIRED"].includes(error?.message)) return json(c, { success: false, error: error.message }, error.message === "DATE_ALREADY_BOOKED" || error.message === "CREATOR_ALREADY_HAS_ACTIVE_BOOKING" ? 409 : 400);
       throw error;
     }
+    await stampVisitConsent(pool, (result as any).rows?.[0]?.id).catch(() => undefined);
     return json(c, { success: true, data: (result as any).rows?.[0] ?? null }, 201);
   });
 
@@ -316,7 +321,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const time = typeof body.bookingTime === "string" ? body.bookingTime.trim() : "";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isBookingDateFromTomorrow(date)) return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
     if (!isVisitTimeAllowed(time)) return json(c, { success: false, error: "INVALID_BOOKING_TIME" }, 400);
-    if (body.consentTerms !== true || body.consentAttendance !== true) return json(c, { success: false, error: "CONSENT_REQUIRED" }, 400);
+    if (body.consentTerms !== true || body.consentAttendance !== true || body.consentNoShow !== true) return json(c, { success: false, error: "CONSENT_REQUIRED" }, 400);
 
     const sourceId = `kol_${crypto.randomUUID().replace(/-/g, "")}`;
     const client = await pool.connect();
@@ -344,6 +349,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
       await client.query(`insert into pos.kol_profiles(kol_id, display_name, slug, is_public) values ($1,$2,$3,false) on conflict (kol_id) do nothing`, [sourceId, name, username]);
       await client.query(`insert into pos.kol_private_contacts(kol_id,email,whatsapp) values($1,$2,$3)`, [sourceId, accountEmail || null, whatsapp]);
       const booking = await client.query(`select * from pos.kol_request_shared_visit_booking($1,$2,$3::time,$4,$5,$6)`, [sourceId, date, time, true, true, userId]);
+      await stampVisitConsent(client, booking.rows[0]?.id);
       await client.query("COMMIT");
       return json(c, { success: true, data: { creator: { id: sourceId, name, username: `@${username}`, status: "Scheduled Visit" }, booking: booking.rows[0] ?? null } }, 201);
     } catch (error: any) {
@@ -634,7 +640,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const time = typeof body.bookingTime === "string" ? body.bookingTime.trim() : "";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isBookingDateFromTomorrow(date)) return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
     if (!isVisitTimeAllowed(time)) return json(c, { success: false, error: "INVALID_BOOKING_TIME" }, 400);
-    if (body.consentTerms !== true || body.consentAttendance !== true) return json(c, { success: false, error: "CONSENT_REQUIRED" }, 400);
+    if (body.consentTerms !== true || body.consentAttendance !== true || body.consentNoShow !== true) return json(c, { success: false, error: "CONSENT_REQUIRED" }, 400);
     const result = await pool.query(`select * from pos.kol_request_shared_visit_booking($1,$2,$3::time,$4,$5,$6)`, [current.kol.source_id, date, time, true, true, current.userId]).catch((error: any) => ({ error }));
     if ((result as any).error) {
       const error = (result as any).error;
@@ -642,6 +648,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
       if (error?.code === "P0001" && ["INVALID_BOOKING_DATE","INVALID_BOOKING_TIME","DATE_ALREADY_BOOKED","CREATOR_ALREADY_HAS_ACTIVE_BOOKING","VISIT_NOT_ELIGIBLE","KOL_PROFILE_NOT_FOUND","CONSENT_REQUIRED"].includes(error?.message)) return json(c, { success: false, error: error.message }, error.message === "DATE_ALREADY_BOOKED" || error.message === "CREATOR_ALREADY_HAS_ACTIVE_BOOKING" ? 409 : error.message === "VISIT_NOT_ELIGIBLE" ? 403 : 400);
       throw error;
     }
+    await stampVisitConsent(pool, (result as any).rows?.[0]?.id).catch(() => undefined);
     return json(c, { success: true, data: (result as any).rows?.[0] ?? null }, 201);
   });
 

@@ -23,7 +23,7 @@ export const ERROR_TEXT: Record<string, string> = {
   CREATOR_ALREADY_HAS_ACTIVE_BOOKING: "Kamu sudah punya jadwal visit aktif.",
   INVALID_BOOKING_DATE: "Pilih tanggal mulai besok.",
   INVALID_BOOKING_TIME: "Jam datang hanya 11.00 sampai 17.00.",
-  CONSENT_REQUIRED: "Setujui syarat dan komitmen kehadiran dulu.",
+  CONSENT_REQUIRED: "Setujui semua persetujuan dulu (syarat, kehadiran, dan konsekuensi bila tidak hadir).",
   INVALID_KOL_INTAKE: "Data belum lengkap. Periksa lagi nama, WhatsApp, dan username.",
   PROFILE_DUPLICATE: "Akun media sosial ini sudah terdaftar. Hubungi admin Djiwa Tentram bila itu akunmu.",
   ALREADY_REGISTERED: "Akun Google ini sudah terdaftar sebagai KOL.",
@@ -67,3 +67,6 @@ export function timeAgo(value?: string | null) {
   if (seconds < 7 * 86400) return `${Math.floor(seconds / 86400)} hari lalu`;
   return new Date(value).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
 }
+
+/** Persetujuan ketiga pada booking visit. Teks resmi yang dicatat server ada di kol-portal-contract.ts. */
+export const CONSENT_NO_SHOW = "Jika saya tidak hadir pada tanggal dan jam yang saya pilih, saya bersedia menerima konsekuensi dan denda yang ditetapkan Djiwa Tentram, karena saya telah menyetujui jadwal ini.";

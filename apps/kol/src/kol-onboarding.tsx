@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays, Handshake, UtensilsCrossed, Users } from "lucide-react";
 import { VisitPicker } from "./kol-visit";
-import { dotTime, errorText, kolApi, longDate, type VisitRow } from "./kol-lib";
+import { CONSENT_NO_SHOW, dotTime, errorText, kolApi, longDate, type VisitRow } from "./kol-lib";
 
 type Session = { user: { id: string; name?: string | null; email?: string | null; image?: string | null } };
 const CATEGORIES = ["Food & Beverage", "Coffee", "Lifestyle", "Travel", "Fashion", "Beauty", "Entertainment", "Other"];
@@ -47,6 +47,7 @@ export function RegisterFlow({ session, onRegistered }: { session: Session; onRe
   const [pick, setPick] = useState<{ date: string | null; time: string | null }>({ date: null, time: null });
   const [c1, setC1] = useState(false);
   const [c2, setC2] = useState(false);
+  const [c3, setC3] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
   const [formNote, setFormNote] = useState("");
@@ -69,14 +70,14 @@ export function RegisterFlow({ session, onRegistered }: { session: Session; onRe
   };
   const next = () => { setFormNote(""); if (validate()) setStep("book"); };
 
-  const ready = Boolean(pick.date && pick.time && c1 && c2) && !busy;
+  const ready = Boolean(pick.date && pick.time && c1 && c2 && c3) && !busy;
   const submit = async () => {
     if (!pick.date || !pick.time) return;
     setBusy(true);
     try {
       await kolApi("/register", { method: "POST", body: JSON.stringify({
         name: f.name.trim(), location: f.city.trim(), whatsapp: f.wa, platform: f.plat, username: f.user, followers: Number(f.followers) || 0,
-        category: f.cat, contentTypes: f.types, reason: f.why, bookingDate: pick.date, bookingTime: pick.time, consentTerms: c1, consentAttendance: c2,
+        category: f.cat, contentTypes: f.types, reason: f.why, bookingDate: pick.date, bookingTime: pick.time, consentTerms: c1, consentAttendance: c2, consentNoShow: c3,
       }) });
       setBooked({ date: pick.date, time: pick.time });
       setStep("done");
@@ -142,6 +143,7 @@ export function RegisterFlow({ session, onRegistered }: { session: Session; onRe
             <div className="kx-section">Persetujuan</div>
             <button type="button" className="kx-check" onClick={() => setC1(!c1)} role="checkbox" aria-checked={c1}><span className="kx-box" data-on={c1}>✓</span><span>Saya setuju dengan syarat &amp; ketentuan kolaborasi Djiwa Tentram.</span></button>
             <button type="button" className="kx-check" onClick={() => setC2(!c2)} role="checkbox" aria-checked={c2}><span className="kx-box" data-on={c2}>✓</span><span>Saya berkomitmen hadir sesuai jadwal. Bila berhalangan, saya akan memberi kabar lebih awal.</span></button>
+            <button type="button" className="kx-check" onClick={() => setC3(!c3)} role="checkbox" aria-checked={c3}><span className="kx-box" data-on={c3}>✓</span><span>{CONSENT_NO_SHOW}</span></button>
           </div>
           <div className="kx-dock">
             <button type="button" className="kx-btn" disabled={!ready} onClick={submit}>

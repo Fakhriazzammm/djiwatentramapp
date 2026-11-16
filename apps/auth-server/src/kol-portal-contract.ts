@@ -25,3 +25,9 @@ export function isVisitTimeAllowed(value: unknown) {
   if (typeof value !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return false;
   return value >= VISIT_TIME_MIN && value <= VISIT_TIME_MAX;
 }
+
+/** Teks persetujuan visit yang dicatat pada setiap booking (termasuk konsekuensi bila tidak hadir). */
+export const VISIT_CONSENT_VERSION = "kol-visit-v2";
+export const VISIT_CONSENT_TEXT =
+  "Saya telah membaca dan menyetujui ketentuan kunjungan Djiwa Tentram. Saya siap hadir pada tanggal dan jam yang saya pilih. " +
+  "Jika saya tidak hadir, saya bersedia menerima konsekuensi dan denda yang ditetapkan Djiwa Tentram, karena saya telah menyetujui jadwal ini.";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { CAMPAIGN_STATUSES, KOL_PLATFORMS, SUBMISSION_STATUSES, VISIT_ACTIVE_STATUSES, VISIT_RELEASE_STATUSES, isValidKolUrl, isVisitTimeAllowed, normalizeKolSlug } from "./kol-portal-contract";
+import { CAMPAIGN_STATUSES, KOL_PLATFORMS, SUBMISSION_STATUSES, VISIT_ACTIVE_STATUSES, VISIT_RELEASE_STATUSES, isValidKolUrl, isVisitTimeAllowed, normalizeKolSlug, VISIT_CONSENT_TEXT, VISIT_CONSENT_VERSION } from "./kol-portal-contract";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createHash } from "node:crypto";
@@ -147,6 +147,15 @@ describe("KOL Creator Portal contracts", () => {
     expect(googlePhotoUrl(null)).toBeNull();
     expect(source).toContain("avatar_url is null or btrim(avatar_url) = ''");
     expect(source).toContain("googlePhotoUrl(session?.user?.image)");
+  });
+
+  it("requires and records the no-show consent on every booking path", () => {
+    const source = readFileSync(resolve(process.cwd(), "./src/kol-portal.ts"), "utf8");
+    expect(source.split("body.consentNoShow !== true").length - 1).toBe(3);
+    expect(source.split("stampVisitConsent(").length - 1).toBe(3);
+    expect(VISIT_CONSENT_VERSION).toBe("kol-visit-v2");
+    expect(VISIT_CONSENT_TEXT).toContain("denda");
+    expect(VISIT_CONSENT_TEXT).toContain("tidak hadir");
   });
 
   it("accepts visit arrival times only from 11:00 to 17:00", () => {

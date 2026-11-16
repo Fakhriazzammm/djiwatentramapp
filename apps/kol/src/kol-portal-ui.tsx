@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { CalendarDays, FileText, Home, LogOut, Sparkles, UserCircle, Users } from "lucide-react";
 import { VisitPicker } from "./kol-visit";
 import { KxSheet } from "./kol-sheet";
-import { errorText, kolApi, logoutKol, longDate, dotTime, type VisitRow } from "./kol-lib";
+import { CONSENT_NO_SHOW, errorText, kolApi, logoutKol, longDate, dotTime, type VisitRow } from "./kol-lib";
 
 export type PortalTabKey = "home" | "community" | "campaigns" | "calendar" | "profile";
 export type PortalProfileData = {
@@ -127,17 +127,18 @@ export function VisitTab({ rows, own, invite, refresh }: { rows: VisitRow[]; own
   const [pick, setPick] = useState<{ date: string | null; time: string | null }>({ date: null, time: null });
   const [c1, setC1] = useState(false);
   const [c2, setC2] = useState(false);
+  const [c3, setC3] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
-  const ready = Boolean(pick.date && pick.time && c1 && c2) && !busy;
+  const ready = Boolean(pick.date && pick.time && c1 && c2 && c3) && !busy;
   const submit = async () => {
     if (!pick.date || !pick.time) return;
     setBusy(true); setMsg(null);
     try {
-      const payload = JSON.stringify({ bookingDate: pick.date, bookingTime: pick.time, consentTerms: c1, consentAttendance: c2 });
+      const payload = JSON.stringify({ bookingDate: pick.date, bookingTime: pick.time, consentTerms: c1, consentAttendance: c2, consentNoShow: c3 });
       if (invite) await kolApi(`/invites/${encodeURIComponent(invite)}/booking`, { method: "POST", body: payload });
       else await kolApi("/portal/visit-calendar", { method: "POST", body: payload });
-      setPick({ date: null, time: null }); setC1(false); setC2(false);
+      setPick({ date: null, time: null }); setC1(false); setC2(false); setC3(false);
       setMsg({ tone: "ok", text: "Jadwal visit terkirim. Tim akan mengonfirmasi lewat WhatsApp." });
       await refresh();
     } catch (e) {
@@ -162,6 +163,7 @@ export function VisitTab({ rows, own, invite, refresh }: { rows: VisitRow[]; own
           <div className="kx-section">Persetujuan</div>
           <button type="button" className="kx-check" role="checkbox" aria-checked={c1} onClick={() => setC1(!c1)}><span className="kx-box" data-on={c1}>✓</span><span>Saya setuju dengan syarat &amp; ketentuan kolaborasi Djiwa Tentram.</span></button>
           <button type="button" className="kx-check" role="checkbox" aria-checked={c2} onClick={() => setC2(!c2)}><span className="kx-box" data-on={c2}>✓</span><span>Saya berkomitmen hadir sesuai jadwal. Bila berhalangan, saya akan memberi kabar lebih awal.</span></button>
+          <button type="button" className="kx-check" role="checkbox" aria-checked={c3} onClick={() => setC3(!c3)}><span className="kx-box" data-on={c3}>✓</span><span>{CONSENT_NO_SHOW}</span></button>
           <button type="button" className="kx-btn" style={{ marginTop: 10 }} disabled={!ready} onClick={submit}>{busy ? "Mengirim…" : ready ? "Pesan jadwal visit" : !pick.date ? "Pilih tanggal" : !pick.time ? "Pilih jam datang" : "Setujui persetujuan"}</button>
         </>
       )}
