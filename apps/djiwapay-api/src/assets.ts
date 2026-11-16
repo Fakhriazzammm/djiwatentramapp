@@ -35,6 +35,17 @@ export function goldPerGram(gold: Map<string, number>, idr: Map<string, number>)
   }
   return out;
 }
+/** Today's price from two free spot endpoints that answer from a datacenter (the history source rate-limits servers). */
+export async function goldSpot(f: Fetch): Promise<number> {
+  const [g, r] = await Promise.all([
+    f("https://api.gold-api.com/price/XAU", { signal: AbortSignal.timeout(12_000) }).then((x) => x.json() as Promise<any>),
+    f("https://open.er-api.com/v6/latest/USD", { signal: AbortSignal.timeout(12_000) }).then((x) => x.json() as Promise<any>),
+  ]);
+  const usd = Number(g?.price), idr = Number(r?.rates?.IDR);
+  if (!(usd > 0) || !(idr > 0)) throw new Error("SPOT_UNAVAILABLE");
+  return Math.round((usd * idr) / OZ_GRAMS);
+}
+const upsertPoints = (db: Tx, pts: GoldPoint[]) => db.query("insert into finance.market_prices(code,day,price) select 'gold',x.day::date,x.price from jsonb_to_recordset($1::jsonb) as x(day text,price numeric) on conflict(code,day) do update set price=excluded.price", [JSON.stringify(pts.map(([day, price]) => ({ day, price })))]);
 let lastAttempt = 0;
 export async function goldHistory(db: Tx, f: Fetch = fetch, now = Date.now()): Promise<GoldPoint[]> {
   const stored = async () => (await db.query("select to_char(day,'YYYY-MM-DD') as day, price from finance.market_prices where code='gold' order by day", [])).rows.map((r) => [r.day as string, Number(r.price)] as GoldPoint);
@@ -43,13 +54,11 @@ export async function goldHistory(db: Tx, f: Fetch = fetch, now = Date.now()): P
   if ((rows.length === 0 || rows[rows.length - 1][0] < today) && now - lastAttempt > 30 * 60_000) {
     lastAttempt = now;
     try {
-      const range = rows.length < 30 ? "5y" : "1mo";
-      const [g, i] = await Promise.all([yahoo(f, "GC=F", range), yahoo(f, "IDR=X", range)]);
-      const pts = goldPerGram(g, i);
-      if (pts.length) {
-        await db.query("insert into finance.market_prices(code,day,price) select 'gold',x.day::date,x.price from jsonb_to_recordset($1::jsonb) as x(day text,price numeric) on conflict(code,day) do update set price=excluded.price", [JSON.stringify(pts.map(([day, price]) => ({ day, price })))]);
-        rows = await stored();
+      if (rows.length < 30) { // first run: try the long history; it may be refused for a server address, then only today's price is kept
+        try { const [g, i] = await Promise.all([yahoo(f, "GC=F", "5y"), yahoo(f, "IDR=X", "5y")]); const pts = goldPerGram(g, i); if (pts.length) await upsertPoints(db, pts); } catch (e) { console.error("gold history unavailable", e instanceof Error ? e.message : e); }
       }
+      await upsertPoints(db, [[today, await goldSpot(f)]]);
+      rows = await stored();
     } catch (e) { console.error("gold price refresh failed", e instanceof Error ? e.message : e); }
   }
   return rows;
