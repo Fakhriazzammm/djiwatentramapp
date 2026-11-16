@@ -7,6 +7,7 @@ import { DjiwaPayAuth } from "./features/auth/djiwa-pay-auth";
 import { DjiwaPayScreen } from "./features/wallet/djiwa-pay-screen";
 import { isKnownPayPath } from "./lib/djiwa-pay-routes";
 import { DjiwaPaySplash } from "./components/djiwa-pay-splash";
+import { UpdateWatcher } from "./components/update-watcher";
 import { useDjiwaPaySplash } from "./hooks/use-djiwa-pay-splash";
 
 const localPreview = import.meta.env.DEV && new URLSearchParams(window.location.search).get("preview") === "1";
@@ -39,6 +40,7 @@ export function DjiwaPayApp() {
     ) : loading ? null : (
       <DjiwaPayAuth error={error} />
     )}
+    <UpdateWatcher />
     <DjiwaPaySplash visible={splash.visible} leaving={splash.leaving} slow={splash.slow} label={splash.label} />
   </>;
 }
