@@ -642,4 +642,4 @@ html:has(.dpx-scened),body:has(.dpx-scened){overflow-x:hidden}
 /* Only Beranda has the scene; every other page is a plain canvas edge to edge */
 .dpx-sky.dpx-plain{background:var(--canvas)}
 .dpx-sky.dpx-plain .dpx-clouds{display:none}
-html:has(.dpx-plain),body:has(.dpx-plain){background:var(--canvas)}
+html:has(.dpx-plain),body:has(.dpx-plain),#root:has(.dpx-plain){background:#f8f3e9}
