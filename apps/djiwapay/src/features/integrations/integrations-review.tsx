@@ -35,7 +35,7 @@ function Row({ item, ctx, selecting, selected, onToggle, onOpen, onQuick, busy }
         <span className="dpx-rv-sub">{sourceOf(item)}{p.at ? ` · ${timeOf(p.at)}` : ""}</span>
         <span className="dpx-rv-chips"><i>{cat.name}</i>{needsLook(item) ? <i className="is-warn">{(p.categoryId ?? "lainnya") === "lainnya" ? "Pilih kategori" : "Perlu dicek"}</i> : null}</span>
       </span>
-      <span className={`dpx-rv-amt ${kind === "in" ? "is-in" : ""}`}>{ok ? `${kind === "in" ? "+" : "−"}${rupiah(p.amount ?? 0)}` : "—"}</span>
+      <span className={`dpx-rv-amt ${kind === "in" ? "is-in" : ""}`}>{ok ? `${kind === "in" ? "+" : "−"}${rupiah(p.amount ?? 0)}` : <em style={{ fontSize: 12, fontStyle: "normal", color: "var(--warn, #b4691a)", fontWeight: 600 }}>Nominal belum terbaca</em>}</span>
     </Btn>
     {!selecting && ok ? <Btn type="button" className="dpx-rv-ok" onClick={onQuick} disabled={busy} aria-label={`Setujui ${titleOf(item)}`}><Ic n="check" size="sm" /></Btn> : null}
   </div>;
@@ -57,6 +57,7 @@ function DetailSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: Fi
   const approve = () => act(async () => { await approveItem(item.id, { amount: Number(amount), kind, categoryId: cat, accountId: account, note: note || undefined }); await ctx.fin.retrySync(); }, `${note || "Catatan"} ${rupiah(Number(amount))} tercatat`);
   return <Sheet title="Tinjau catatan" onClose={onClose}>
     <div className="dpx-rv-hero"><CatIcon cat={catOf(state, cat)} size={56} /><div><b>{tidyTitle(p.details?.description || p.merchant || p.subject || "Email pembayaran")}</b><span>{sourceOf(item)}{p.at ? ` · ${new Date(p.at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}, ${timeOf(p.at)}` : ""}</span></div></div>
+    {!((p.amount ?? 0) > 0) ? <div className="dpx-note" style={{ marginTop: 0 }}><Ic n="info" /><div><b>Nominal belum terbaca.</b> Email ini tidak memuat angka yang bisa dibaca otomatis. Coba &quot;Lengkapi dari isi email&quot; di bawah, atau isi nominal sendiri lalu setujui.</div></div> : null}
     {needsLook(item) ? <div className="dpx-note" style={{ marginTop: 0 }}><Ic n="info" /><div>{p.flags?.length ? <><b>Perlu dicek.</b> {p.flags.join(", ")}</> : <><b>Kategori belum jelas.</b> Pilih yang paling pas di bawah.</>}</div></div> : null}
     <div className="dpx-glabel">Rincian dari email</div>
     <div className="dpx-group dpx-white dpx-rv-details"><PaymentDetails details={p.details} /></div>
