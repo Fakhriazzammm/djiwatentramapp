@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prototype Onboarding KOL</title>
+<style>
+:root{--blue:#2f80ed;--blue-soft:#eaf2fe;--ink:#17181c;--muted:#6b7280;--line:#e5e7eb;--bg:#f5f5f7;--card:#fff;--ok:#16a34a;--ok-soft:#e8f7ee;--warn:#d97706;--warn-soft:#fdf3e1;--bad:#dc2626;--r:18px;--ease:cubic-bezier(.32,.72,0,1);
+--font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--font);background:#e9eaee;color:var(--ink);display:flex;gap:40px;justify-content:center;align-items:flex-start;padding:32px 20px;flex-wrap:wrap}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+/* side rail */
+.rail{width:300px;position:sticky;top:32px}
+.rail h1{font-size:20px;font-weight:800;letter-spacing:-.02em}
+.rail p.sub{color:var(--muted);font-size:13px;line-height:1.5;margin:6px 0 18px}
+.flow{display:flex;flex-direction:column;gap:6px}
+.flow button{display:flex;gap:12px;align-items:center;text-align:left;padding:11px 12px;border-radius:14px;background:transparent;transition:.2s}
+.flow button:hover{background:#fff8}
+.flow button.on{background:#fff;box-shadow:0 1px 3px #0001}
+.flow .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;background:#d9dbe1;color:#555;flex:none}
+.flow button.on .n{background:var(--blue);color:#fff}
+.flow button.done .n{background:var(--ok);color:#fff}
+.flow b{display:block;font-size:14px}.flow small{color:var(--muted);font-size:12px}
+.rules{margin-top:18px;background:#fff;border-radius:16px;padding:14px 16px;font-size:12.5px;line-height:1.55;color:#444}
+.rules h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px}
+.rules li{margin-left:16px;margin-bottom:3px}
+.reset{margin-top:12px;font-size:13px;font-weight:600;color:var(--blue)}
+/* phone */
+.phone{width:390px;height:800px;background:#000;border-radius:54px;padding:10px;box-shadow:0 30px 60px #0003}
+.screen{position:relative;width:100%;height:100%;background:var(--bg);border-radius:44px;overflow:hidden;display:flex;flex-direction:column}
+.status{height:46px;flex:none;display:flex;justify-content:space-between;align-items:flex-end;padding:0 28px 6px;font-size:13px;font-weight:700}
+.view{flex:1;overflow-y:auto;scrollbar-width:none;animation:in .45s var(--ease)}
+.view::-webkit-scrollbar{display:none}
+@keyframes in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.pad{padding:8px 20px 24px}
+h2{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+.lead{color:var(--muted);font-size:14px;line-height:1.5;margin-top:8px}
+.topbar{display:flex;align-items:center;gap:10px;padding:4px 14px 0}
+.back{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:20px}
+.steps{display:flex;gap:6px;flex:1}
+.steps i{flex:1;height:5px;border-radius:9px;background:#d9dbe1;overflow:hidden;position:relative}
+.steps i.on::after,.steps i.done::after{content:"";position:absolute;inset:0;background:var(--blue);border-radius:9px;animation:grow .5s var(--ease)}
+.steps i.done::after{background:var(--ok)}
+@keyframes grow{from{transform:scaleX(0);transform-origin:left}}
+.stepl{font-size:12px;color:var(--muted);font-weight:600;width:48px;text-align:right}
+.btn{width:100%;min-height:52px;border-radius:16px;background:var(--blue);color:#fff;font-weight:700;font-size:16px;transition:.2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{transform:scale(.98)}
+.btn[disabled]{background:#c9ccd4;cursor:not-allowed}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.dock{flex:none;padding:12px 20px 26px;background:linear-gradient(#f5f5f700,var(--bg) 30%)}
+.card{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:0 1px 2px #0000000d}
+.label{font-size:13px;font-weight:600;margin:16px 0 7px;display:block}
+.label em{font-style:normal;color:var(--muted);font-weight:500}
+.inp{width:100%;min-height:48px;border-radius:14px;border:1.5px solid var(--line);background:#fff;padding:0 14px;font:inherit;font-size:16px;outline:none;transition:.15s}
+.inp:focus{border-color:var(--blue);box-shadow:0 0 0 4px #2f80ed22}
+textarea.inp{padding:12px 14px;min-height:92px;resize:none}
+.err{color:var(--bad);font-size:12px;margin-top:5px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:40px;padding:0 14px;border-radius:99px;background:#fff;border:1.5px solid var(--line);font-size:14px;font-weight:600;transition:.15s}
+.chip.on{background:var(--blue-soft);border-color:var(--blue);color:var(--blue)}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.sectitle{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:22px 0 8px}
+/* login */
+.hero{padding:24px 24px 0;text-align:left}
+.logo{width:56px;height:56px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:800;font-size:22px}
+.ill{margin:26px 0;height:200px;border-radius:28px;background:linear-gradient(135deg,#dbeafe,#fde7d3);display:grid;place-items:center;position:relative;overflow:hidden}
+.ill .tag{position:absolute;bottom:10px;right:12px;font-size:10px;background:#fff9;border-radius:9px;padding:3px 8px;color:#555}
+.ben{display:flex;flex-direction:column;gap:12px;margin:6px 0 20px}
+.ben div{display:flex;gap:12px;align-items:center;font-size:14px}
+.ico{width:38px;height:38px;border-radius:12px;background:#fff;display:grid;place-items:center;flex:none;box-shadow:0 1px 3px #0001;font-size:18px}
+.gbtn{background:#fff;border:1px solid var(--line);color:var(--ink)}
+/* calendar */
+.cal{background:#fff;border-radius:var(--r);padding:14px;box-shadow:0 1px 2px #0000000d}
+.calh{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.calh b{font-size:16px}
+.calh button{width:36px;height:36px;border-radius:50%;background:var(--bg);font-size:16px}
+.calh button[disabled]{opacity:.35}
+.grid7{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.dow{font-size:11px;color:var(--muted);font-weight:700;padding:6px 0}
+.day{aspect-ratio:1;border-radius:12px;font-size:15px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;transition:.15s}
+.day.free{background:#f4f8ff}
+.day.free:hover{background:var(--blue-soft)}
+.day.past{color:#c3c6cf;cursor:default}
+.day.full{background:repeating-linear-gradient(135deg,#f3f4f6,#f3f4f6 4px,#eceef1 4px,#eceef1 8px);color:#a0a4af;text-decoration:line-through;cursor:not-allowed}
+.day.today{box-shadow:inset 0 0 0 1.5px var(--blue)}
+.day.sel{background:var(--blue);color:#fff;transform:scale(1.06);box-shadow:0 6px 14px #2f80ed55}
+.legend{display:flex;gap:14px;font-size:11.5px;color:var(--muted);margin-top:10px;flex-wrap:wrap}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:4px;vertical-align:-1px;margin-right:5px}
+.times{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.time{min-height:44px;border-radius:13px;background:#fff;border:1.5px solid var(--line);font-weight:700;font-size:15px;transition:.15s}
+.time.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.sum{display:flex;gap:12px;align-items:center;background:var(--blue-soft);border-radius:16px;padding:12px 14px;margin-top:14px;animation:in .3s var(--ease)}
+.sum b{font-size:15px}.sum small{color:#4b6a99;font-size:12px;display:block}
+.check{display:flex;gap:12px;align-items:flex-start;font-size:13px;line-height:1.45;margin-top:12px;text-align:left}
+.box{width:24px;height:24px;border-radius:8px;border:1.5px solid #c3c6cf;flex:none;display:grid;place-items:center;background:#fff;transition:.15s;color:transparent;font-size:14px;font-weight:800}
+.box.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.toast{position:absolute;left:20px;right:20px;top:56px;background:#17181c;color:#fff;border-radius:14px;padding:12px 14px;font-size:13px;z-index:20;animation:in .3s var(--ease)}
+/* success */
+.ring{width:132px;height:132px;position:relative;margin:34px auto 18px}
+.ring svg{transform:rotate(-90deg)}
+.ring .c{position:absolute;inset:0;display:grid;place-items:center;font-size:44px;font-weight:800}
+.okbadge{width:88px;height:88px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;font-size:44px;margin:40px auto 0;animation:pop .6s var(--ease)}
+@keyframes pop{from{transform:scale(.3);opacity:0}}
+.tl{position:relative;padding-left:30px;margin-top:10px}
+.tl::before{content:"";position:absolute;left:11px;top:8px;bottom:8px;width:2px;background:var(--line)}
+.tli{position:relative;padding:8px 0 14px;text-align:left}
+.tli::before{content:"";position:absolute;left:-26px;top:10px;width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid #c3c6cf}
+.tli.now::before{border-color:var(--ok);background:var(--ok)}
+.tli.next::before{border-color:var(--blue)}
+.tli b{font-size:14px;display:block}.tli small{font-size:12.5px;color:var(--muted);line-height:1.45;display:block;margin-top:2px}
+/* portal */
+.nav{flex:none;display:flex;background:#fffd;backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:6px 6px 22px}
+.nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;font-weight:600;color:#8a8f9c;padding:6px 0;position:relative}
+.nav button .i{font-size:21px;filter:grayscale(1) opacity(.6);transition:.2s}
+.nav button.on{color:var(--blue)}.nav button.on .i{filter:none;transform:translateY(-2px)}
+.dot{position:absolute;top:2px;right:calc(50% - 20px);background:var(--bad);color:#fff;border-radius:99px;font-size:9px;min-width:16px;height:16px;display:grid;place-items:center}
+.prog{height:8px;border-radius:9px;background:#e6e8ee;overflow:hidden;margin:10px 0 4px}
+.prog i{display:block;height:100%;background:var(--blue);border-radius:9px;transition:width .6s var(--ease)}
+.task{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line);text-align:left;width:100%}
+.task:first-of-type{border-top:0}
+.task .box{border-radius:50%}
+.task.done b{text-decoration:line-through;color:var(--muted)}
+.task b{font-size:14px;display:block}.task small{font-size:12px;color:var(--muted)}
+.task .go{margin-left:auto;color:#b0b4c0}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.warn{background:var(--warn-soft);color:var(--warn)}.pill.bl{background:var(--blue-soft);color:var(--blue)}
+.post{background:#fff;border-radius:var(--r);padding:14px;margin-bottom:12px;box-shadow:0 1px 2px #0000000d;text-align:left}
+.ph{display:flex;gap:10px;align-items:center}
+.av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;flex:none}
+.post p{font-size:14px;line-height:1.5;margin:10px 0}
+.thumb{height:150px;border-radius:14px;display:grid;place-items:center;font-size:12px;color:#fff9;margin-bottom:10px}
+.acts{display:flex;gap:18px;font-size:13px;color:var(--muted);font-weight:600}
+.acts .liked{color:#e11d48}
+.seg{display:flex;background:#e4e6ec;border-radius:12px;padding:3px;margin:0 0 14px}
+.seg button{flex:1;min-height:34px;border-radius:10px;font-size:13px;font-weight:700;color:#666}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px #0002}
+.hs{display:flex;gap:10px;overflow-x:auto;margin:0 -20px;padding:0 20px 4px;scrollbar-width:none}
+.cr{flex:none;width:112px;background:#fff;border-radius:16px;padding:12px;text-align:center;box-shadow:0 1px 2px #0000000d}
+.cr .av{margin:0 auto 8px;width:52px;height:52px}
+.cr b{font-size:13px;display:block}.cr small{font-size:11px;color:var(--muted)}
+.cr button{margin-top:8px;font-size:12px;font-weight:700;color:var(--blue);background:var(--blue-soft);border-radius:99px;padding:5px 12px}
+.big{font-size:34px;font-weight:800;letter-spacing:-.03em}
+.day .dots{position:absolute;bottom:4px;display:flex;gap:2px}
+.day .dots u{width:4px;height:4px;border-radius:50%;background:var(--blue);opacity:.55}
+.day.sel .dots u{background:#fff;opacity:.9}.day.full .dots u{background:#9aa0ad}
+.legend i.dt{width:5px;height:5px;border-radius:50%;background:var(--blue);margin:0 6px 0 3px;vertical-align:1px}
+.bkhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;font-size:14px}
+.bklist{display:flex;flex-direction:column;gap:8px;animation:in .3s var(--ease)}
+.bk{display:flex;gap:10px;align-items:center;background:#fff;border-radius:14px;padding:10px 12px;box-shadow:0 1px 2px #0000000d}
+.bkm{flex:1;min-width:0}.bkm b{font-size:14px;display:block}.bkm small{font-size:12px;color:var(--muted)}
+.bkt{text-align:right;display:flex;flex-direction:column;gap:3px;align-items:flex-end}.bkt b{font-size:15px;font-variant-numeric:tabular-nums}
+.nobk{display:flex;gap:12px;align-items:center;font-size:14px}.nobk small{display:block;color:var(--muted);font-size:12px}
+.time{position:relative;font-variant-numeric:tabular-nums}
+.time small{display:block;font-size:9.5px;font-weight:600;line-height:1}
+.day.peek{box-shadow:inset 0 0 0 2px var(--warn)}
+.day.full{cursor:pointer}
+.held{background:var(--warn-soft);box-shadow:none;animation:in .3s var(--ease)}
+.heldp{font-size:12.5px;color:#7a4b06;line-height:1.5;margin-top:10px}
+.dtag{width:40px;text-align:center;flex:none}.dtag b{font-size:18px;display:block;line-height:1}.dtag small{font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700}
+.time.taken{background:repeating-linear-gradient(135deg,#f3f4f6,#f3f4f6 4px,#eceef1 4px,#eceef1 8px);color:#9aa0ad;border-color:#eceef1;cursor:not-allowed}
+@media(max-width:760px){.rail{position:static;width:100%}}
+</style>
+</head>
+<body>
+
+<aside class="rail">
+  <h1>Onboarding KOL</h1>
+  <p class="sub">Prototype alur baru: daftar → booking kehadiran → info sukses → portal komunitas. Klik langkah di bawah untuk lompat, atau jalani langsung di ponsel.</p>
+  <div class="flow" id="flow"></div>
+  <div class="rules">
+    <h3>Aturan yang diwujudkan di UI</h3>
+    <ul>
+      <li>1 tanggal = 1 KOL, jam berapa pun. Tanggal yang sudah dipegang dicoret.</li><li>Ketuk tanggal yang dicoret untuk melihat KOL yang memegangnya, jam, dan statusnya. Daftar jadwal bulan ini selalu tampil.</li>
+      <li>Booking mulai besok; jam datang 11.00–17.00.</li>
+      <li>Wajib setuju syarat &amp; kehadiran.</li>
+      <li>Setelah sukses, otomatis masuk portal dalam 5 detik (bisa ditahan).</li>
+      <li>Portal menagih kelengkapan profil sebelum tampil di komunitas.</li>
+    </ul>
+  </div>
+  <button class="reset" onclick="reset()">↺ Ulangi dari awal</button>
+</aside>
+
+<div class="phone"><div class="screen" id="screen"></div></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const TODAY=new Date(2026,10,16);            // 16 Nov 2026
+const B=(n,cat,plat,time,st,c)=>({n,cat,plat,time,st,c});
+// Aturan: 1 tanggal = 1 KOL, jam berapa pun. Tanggal yang sudah dipegang KOL lain tidak bisa dipilih.
+const BOOK={
+"2026-11-18":B("Raka Pratama","Coffee","TikTok","12:00","Terkonfirmasi","#7c3aed"),
+"2026-11-20":B("Salsa Amelia","Food & Beverage","Instagram","11:00","Terkonfirmasi","#e11d48"),
+"2026-11-21":B("Dimas Arya","Lifestyle","TikTok","14:30","Menunggu","#0891b2"),
+"2026-11-24":B("Nadia S.","Beauty","Instagram","13:00","Menunggu","#db2777"),
+"2026-11-27":B("Fikri H.","Food & Beverage","TikTok","11:30","Terkonfirmasi","#059669"),
+"2026-12-02":B("Putri Wulan","Travel","YouTube","16:00","Terkonfirmasi","#d97706"),
+"2026-12-05":B("Bayu K.","Coffee","Reels","15:00","Terkonfirmasi","#2563eb")};
+const isFull=k=>!!BOOK[k];
+const shortD=k=>{const[a,b,c]=k.split("-").map(Number);return new Date(a,b-1,c).toLocaleDateString("id-ID",{weekday:"short",day:"numeric",month:"short"})};
+const nextFree=()=>{for(let i=1;i<90;i++){const d=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate()+i);const k=ymd(d.getFullYear(),d.getMonth(),d.getDate());if(!BOOK[k])return k}return null};
+const TIMES=[];for(let h=11;h<=17;h++){TIMES.push(String(h).padStart(2,"0")+":00");if(h<17)TIMES.push(String(h).padStart(2,"0")+":30")}
+const CATS=["Food & Beverage","Coffee","Lifestyle","Travel","Fashion","Beauty","Entertainment","Other"];
+const PLATS=["TikTok","Instagram","YouTube","Threads"];
+const CONTENT=["Review makanan","Review kopi","Short video","Reels","Story","Foto & carousel","Live review"];
+const FLOW=[["login","Masuk dengan Google","Mulai pendaftaran"],["form","Data KOL","Langkah 1 dari 2"],["book","Booking kehadiran","Langkah 2 dari 2"],["done","Berhasil mendaftar","Info interaktif + hitung mundur 5 detik"],["portal","Portal komunitas KOL","Lengkapi profil & komunitas"]];
+
+let S;function init(){S={peek:null,page:"login",f:{name:"",city:"Tasikmalaya",wa:"",email:"nadia@gmail.com",plat:"TikTok",user:"",followers:"",cat:"Food & Beverage",types:[],why:""},errors:{},month:{y:2026,m:10},date:null,time:null,c1:false,c2:false,toast:"",count:5,paused:false,tab:"home",feed:"semua",liked:{},profile:{bio:false,avatar:false,portfolio:false,slug:false,socials:true,public:false},follow:{}}}
+let timer=null;
+const ymd=(y,m,d)=>`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+const fmtDate=k=>{const[a,b,c]=k.split("-").map(Number);return new Date(a,b-1,c).toLocaleDateString("id-ID",{weekday:"long",day:"numeric",month:"long",year:"numeric"})};
+const go=p=>{clearInterval(timer);S.page=p;S.toast="";render();if(p==="done")startCount()};
+function reset(){clearInterval(timer);init();render()}
+
+function renderFlow(){const idx=FLOW.findIndex(x=>x[0]===S.page);$("#flow").innerHTML=FLOW.map((x,i)=>`<button class="${i===idx?"on":""} ${i<idx?"done":""}" onclick="jump('${x[0]}')"><span class="n">${i<idx?"✓":i+1}</span><span><b>${x[1]}</b><small>${x[2]}</small></span></button>`).join("")}
+function jump(p){if(p==="done"||p==="portal"){S.f.name=S.f.name||"Nadia Putri";S.f.user=S.f.user||"nadiaeats";S.date=S.date||"2026-11-25";S.time=S.time||"14:00"}go(p)}
+
+function status(){return `<div class="status"><span>9:41</span><span>●●● 5G ▮</span></div>`}
+function topbar(step,back){return `<div class="topbar"><button class="back" onclick="${back}">‹</button><div class="steps"><i class="${step>=1?(step>1?"done":"on"):""}"></i><i class="${step>=2?"on":""}"></i></div><span class="stepl">${step}/2</span></div>`}
+
+function pageLogin(){return `<div class="view"><div class="hero"><div class="logo">D</div>
+<p style="font-size:12px;font-weight:800;letter-spacing:.16em;color:var(--blue);margin-top:18px">DJIWA TENTRAM · CREATOR</p>
+<div class="ill"><svg width="120" height="120" viewBox="0 0 120 120"><circle cx="60" cy="60" r="46" fill="#fff" opacity=".7"/><rect x="38" y="40" width="44" height="40" rx="10" fill="#2f80ed"/><circle cx="60" cy="60" r="11" fill="#fff"/><circle cx="76" cy="48" r="3" fill="#fff"/></svg><span class="tag">ilustrasi 3D sementara</span></div>
+<h2>Gabung komunitas creator kuliner Tasikmalaya</h2>
+<p class="lead">Daftar, pilih jadwal datang, lalu masuk ke portal untuk berkolaborasi.</p></div>
+<div class="pad"><div class="ben"><div><span class="ico">🍽️</span>Cicipi menu pilihan di Djiwa Tentram</div><div><span class="ico">📅</span>Pilih sendiri hari &amp; jam visit untuk review &amp; bikin konten</div><div><span class="ico">🤝</span>Barter menu &amp; kolaborasi campaign</div><div><span class="ico">👥</span>Terhubung dengan komunitas KOL lain</div></div>
+<button class="btn gbtn" onclick="go('form')"><b style="color:#4285f4;font-size:18px">G</b> Lanjutkan dengan Google</button>
+<p style="font-size:11.5px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.5">Dengan melanjutkan, kamu menyetujui syarat kolaborasi Djiwa Tentram.</p></div></div>`}
+
+function pageForm(){const f=S.f,e=S.errors;
+return `${topbar(1,"go('login')")}<div class="view"><div class="pad"><h2>Kenalkan dirimu</h2><p class="lead">Data ini dipakai tim Djiwa Tentram untuk mengenal akunmu.</p>
+<label class="label">Nama lengkap</label><input class="inp" value="${f.name}" placeholder="mis. Nadia Putri" oninput="S.f.name=this.value" onblur="validate()">${e.name?`<p class="err">${e.name}</p>`:""}
+<label class="label">Kota / domisili</label><input class="inp" value="${f.city}" oninput="S.f.city=this.value">
+<div class="row"><div><label class="label">WhatsApp</label><input class="inp" inputmode="tel" value="${f.wa}" placeholder="08xx…" oninput="S.f.wa=this.value"></div></div>${e.wa?`<p class="err">${e.wa}</p>`:""}
+<label class="label">Email <em>(dari Google)</em></label><input class="inp" value="${f.email}" disabled style="background:#f0f1f4;color:#777">
+<p class="sectitle">Akun utama</p>
+<div class="chips">${PLATS.map(p=>`<button class="chip ${f.plat===p?"on":""}" onclick="S.f.plat='${p}';render(true)">${p}</button>`).join("")}</div>
+<div class="row"><div><label class="label">Username</label><input class="inp" value="${f.user}" placeholder="@username" oninput="S.f.user=this.value"></div><div><label class="label">Followers</label><input class="inp" inputmode="numeric" value="${f.followers}" placeholder="12000" oninput="S.f.followers=this.value"></div></div>${e.user?`<p class="err">${e.user}</p>`:""}
+<p class="sectitle">Konten</p>
+<label class="label" style="margin-top:0">Kategori</label><div class="chips">${CATS.map(c=>`<button class="chip ${f.cat===c?"on":""}" onclick="S.f.cat='${c}';render(true)">${c}</button>`).join("")}</div>
+<label class="label">Jenis konten <em>(boleh lebih dari satu)</em></label><div class="chips">${CONTENT.map(c=>`<button class="chip ${f.types.includes(c)?"on":""}" onclick="tgl('${c}')">${c}</button>`).join("")}</div>
+<label class="label">Kenapa ingin berkolaborasi?</label><textarea class="inp" placeholder="Ceritakan singkat…" oninput="S.f.why=this.value">${f.why}</textarea></div></div>
+<div class="dock"><button class="btn" onclick="nextForm()">Lanjut pilih jadwal ›</button></div>`}
+function tgl(c){const t=S.f.types;t.includes(c)?t.splice(t.indexOf(c),1):t.push(c);render(true)}
+function validate(){const f=S.f,e={};if(f.name.trim().length<2)e.name="Nama minimal 2 karakter.";if(!/^0\d{8,13}$/.test(f.wa.replace(/\D/g,"")))e.wa="Isi nomor WhatsApp yang valid (08…).";if(!f.user.trim())e.user="Username akun wajib diisi.";S.errors=e;return!Object.keys(e).length}
+function nextForm(){if(validate())go("book");else render(true)}
+
+function cal(){const{y,m}=S.month,first=new Date(y,m,1),off=(first.getDay()+6)%7,days=new Date(y,m+1,0).getDate();
+const cells=[...Array(off).fill(null),...Array.from({length:days},(_,i)=>i+1)];
+const minD=new Date(TODAY.getFullYear(),TODAY.getMonth(),TODAY.getDate()+1);
+const isMin=y===TODAY.getFullYear()&&m===TODAY.getMonth();
+return `<div class="cal"><div class="calh"><button ${isMin?"disabled":""} onclick="mon(-1)">‹</button><b>${new Date(y,m,1).toLocaleDateString("id-ID",{month:"long",year:"numeric"})}</b><button onclick="mon(1)">›</button></div>
+<div class="grid7">${["Sen","Sel","Rab","Kam","Jum","Sab","Min"].map(d=>`<div class="dow">${d}</div>`).join("")}
+${cells.map(d=>{if(!d)return"<div></div>";const k=ymd(y,m,d),dt=new Date(y,m,d);const past=dt<minD,full=isFull(k),own=BOOK[k];
+let cls=past?"past":full?"full":"free";if(S.peek===k)cls+=" peek";if(S.date===k)cls="sel";if(dt.getTime()===TODAY.getTime())cls+=" today";
+return `<button class="day ${cls}" ${past?"":`onclick="pick('${k}')"`}>${d}${own&&!past?`<span class="dots"><u style="background:${own.c};opacity:1"></u></span>`:""}</button>`}).join("")}</div>
+<div class="legend"><span><i style="background:#f4f8ff;border:1px solid #cfe0fb"></i>Tersedia</span><span><i style="background:var(--blue)"></i>Pilihanmu</span><span><i style="background:#e3e5ea"></i>Sudah dibooking KOL lain (ketuk untuk lihat)</span></div></div>`}
+function mon(d){let{y,m}=S.month;m+=d;if(m>11){m=0;y++}if(m<0){m=11;y--}S.month={y,m};render(true)}
+function pick(k){S.toast="";if(isFull(k)){S.peek=k;S.date=null;S.time=null;render(true);return}S.peek=null;S.date=k;S.time=null;render(true)}
+function setTime(t){S.time=t;render(true)}
+function peekCard(k){const b=BOOK[k],nf=nextFree();return `<div class="card held"><div class="bkhead"><b>Tanggal ini sudah dipegang</b><span class="pill warn">1 hari = 1 KOL</span></div><div class="bk" style="box-shadow:none;padding:0"><div class="av" style="background:${b.c};width:40px;height:40px">${b.n[0]}</div><div class="bkm"><b>${b.n}</b><small>${b.cat} · ${b.plat}</small></div><div class="bkt"><b>${b.time.replace(":",".")}</b><span class="pill ${b.st==="Terkonfirmasi"?"ok":"warn"}">${b.st}</span></div></div><p class="heldp">${fmtDate(k)}. Satu tanggal hanya untuk satu KOL, jadi jam berapa pun tidak bisa dibagi.</p>${nf?`<button class="btn" style="min-height:44px;font-size:14px;margin-top:10px" onclick="pick('${nf}')">Pilih tanggal kosong terdekat · ${shortD(nf)}</button>`:""}</div>`}
+function freeCard(k){return `<div class="card nobk"><span class="ico">✅</span><div><b>${fmtDate(k).split(",")[1].trim().replace(/ 2026$/,"")} masih kosong</b><small>Tidak ada KOL lain di tanggal ini. Pilih jam datangmu.</small></div></div>`}
+function monthList(){const{y,m}=S.month,pre=`${y}-${String(m+1).padStart(2,"0")}-`;const ks=Object.keys(BOOK).filter(k=>k.startsWith(pre)&&new Date(k+"T00:00:00")>TODAY).sort();
+return `<div class="bkhead"><b>Jadwal KOL lain bulan ini</b><span class="pill bl">${ks.length} tanggal terisi</span></div>${ks.length?`<div class="bklist">${ks.map(k=>{const b=BOOK[k];return `<button class="bk" style="text-align:left;width:100%" onclick="pick('${k}')"><div class="dtag"><b>${k.slice(8)}</b><small>${shortD(k).split(" ")[0]}</small></div><div class="bkm"><b>${b.n}</b><small>${b.cat} · ${b.plat}</small></div><div class="bkt"><b>${b.time.replace(":",".")}</b><span class="pill ${b.st==="Terkonfirmasi"?"ok":"warn"}">${b.st}</span></div></button>`}).join("")}</div>`:`<div class="card nobk"><span class="ico">🌟</span><div><b>Belum ada KOL lain bulan ini</b><small>Semua tanggal masih kosong.</small></div></div>`}`}
+function pageBook(){const ready=S.date&&S.time&&S.c1&&S.c2;
+return `${topbar(2,"go('form')")}<div class="view" id="v"><div class="pad"><h2>Jadwalkan visit ke Djiwa Tentram</h2><p class="lead">Datang untuk mereview menu dan membuat kontenmu di kafe. Satu tanggal hanya untuk satu KOL, jadi pilih tanggal yang masih kosong. Booking mulai besok.</p>
+<div style="margin-top:16px">${cal()}</div>
+<div style="margin-top:14px">${S.peek?peekCard(S.peek):S.date?freeCard(S.date):""}</div>
+${S.date?`<p class="sectitle">Jam kedatangan <em style="text-transform:none;letter-spacing:0;font-weight:500">· 11.00–17.00, bebas pilih</em></p><div class="times">${TIMES.map(t=>`<button class="time ${S.time===t?"on":""}" onclick="setTime('${t}')">${t.replace(":",".")}</button>`).join("")}</div>`:""}
+${S.date&&S.time?`<div class="sum"><span style="font-size:26px">📍</span><div><b>${fmtDate(S.date)}</b><small>Pukul ${S.time.replace(":",".")} WIB · Visit review &amp; konten di Djiwa Tentram</small></div></div>`:""}
+<p class="sectitle" style="margin-top:26px">Siapa yang sudah booking</p>${monthList()}
+<p class="sectitle">Persetujuan</p>
+<button class="check" onclick="S.c1=!S.c1;render(true)"><span class="box ${S.c1?"on":""}">✓</span><span>Saya setuju dengan syarat &amp; ketentuan kolaborasi Djiwa Tentram.</span></button>
+<button class="check" onclick="S.c2=!S.c2;render(true)"><span class="box ${S.c2?"on":""}">✓</span><span>Saya berkomitmen hadir sesuai jadwal. Bila berhalangan, saya akan memberi kabar lebih awal.</span></button>
+</div></div>
+<div class="dock"><button class="btn" ${ready?"":"disabled"} onclick="submitBook()">${ready?"Kirim pendaftaran":!S.date?"Pilih tanggal":!S.time?"Pilih jam datang":"Setujui persetujuan"}</button></div>`}
+function submitBook(){if(isFull(S.date)){const b=BOOK[S.date];S.toast=`Tanggal itu baru saja diambil ${b.n}. Pilih tanggal lain.`;S.peek=S.date;S.date=null;S.time=null;render(true);return}go("done")}
+
+function startCount(){S.count=5;S.paused=false;timer=setInterval(()=>{if(S.paused)return;S.count--;if(S.count<=0){clearInterval(timer);go("portal");return}updRing()},1000)}
+function updRing(){const c=$("#cnt"),r=$("#arc");if(c){c.textContent=S.count}if(r){r.style.strokeDashoffset=(1-S.count/5)*(2*Math.PI*58)}}
+function pageDone(){const circ=2*Math.PI*58;
+return `<div class="view"><div class="pad" style="text-align:center"><div class="okbadge">✓</div><h2 style="margin-top:18px">Pendaftaran berhasil!</h2><p class="lead">Halo ${S.f.name||"Creator"}, jadwal visit-mu ke Djiwa Tentram sudah kami catat. Tim akan mengonfirmasi lewat WhatsApp.</p>
+<div class="sum" style="text-align:left;margin-top:18px"><span style="font-size:26px">📅</span><div><b>${fmtDate(S.date)}</b><small>Pukul ${S.time.replace(":",".")} WIB</small></div><span class="pill warn" style="margin-left:auto">Menunggu konfirmasi</span></div>
+<p class="sectitle" style="text-align:left">Apa selanjutnya</p>
+<div class="tl"><div class="tli now"><b>Pendaftaran terkirim</b><small>Data &amp; jadwalmu aman di sistem.</small></div><div class="tli next"><b>Konfirmasi tim Djiwa Tentram</b><small>Maksimal 1×24 jam lewat WhatsApp.</small></div><div class="tli"><b>Visit: review &amp; buat konten</b><small>Datang ke Djiwa Tentram, cicipi menu, lalu buat kontenmu.</small></div></div>
+<div class="ring"><svg width="132" height="132"><circle cx="66" cy="66" r="58" fill="none" stroke="#e1e4ea" stroke-width="8"/><circle id="arc" cx="66" cy="66" r="58" fill="none" stroke="var(--blue)" stroke-width="8" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="0" style="transition:stroke-dashoffset 1s linear"/></svg><div class="c" id="cnt">${S.count}</div></div>
+<p style="font-size:13px;color:var(--muted)">Membuka portal komunitas…</p></div></div>
+<div class="dock"><div class="row"><button class="btn ghost" onclick="S.paused=!S.paused;render(true);updRing()">${S.paused?"Lanjutkan hitung":"Tahan"}</button><button class="btn" onclick="go('portal')">Masuk sekarang</button></div></div>`}
+
+/* portal */
+const NAV=[["home","🏠","Beranda"],["komunitas","👥","Komunitas"],["kampanye","📣","Kampanye"],["visit","📅","Visit"],["profil","👤","Profil"]];
+const POSTS=[{n:"Raka Pratama",c:"#7c3aed",t:"Review kopi susu gula aren, tekstur creamy banget. Cocok buat kerja sore.",tag:"Portfolio",time:"2 jam lalu",k:"tiktok",l:48},{n:"Salsa Amelia",c:"#e11d48",t:"Selesai campaign Weekend Brunch! Terima kasih tim Djiwa Tentram ✨",tag:"Pencapaian",time:"Kemarin",k:"",l:132},{n:"Dimas Arya",c:"#0891b2",t:"Ada yang mau kolab bikin konten duet Reels? Open collab minggu ini.",tag:"Teks",time:"2 hari lalu",k:"",l:21}];
+const CREATORS=[["Raka P.","Coffee","#7c3aed"],["Salsa A.","Food","#e11d48"],["Dimas A.","Lifestyle","#0891b2"],["Putri W.","Travel","#d97706"]];
+function pct(){const p=S.profile;const v=[p.socials,p.avatar,p.bio,p.slug,p.portfolio];return Math.round(v.filter(Boolean).length/v.length*100)}
+function task(k,t,s){const d=S.profile[k];return `<button class="task ${d?"done":""}" onclick="S.profile['${k}']=!S.profile['${k}'];render(true)"><span class="box ${d?"on":""}">✓</span><span><b>${t}</b><small>${s}</small></span><span class="go">›</span></button>`}
+function tabHome(){const p=pct();return `<div class="pad"><p style="font-size:13px;color:var(--muted)">Selamat datang,</p><h2>${S.f.name||"Creator"} 👋</h2>
+<div class="card" style="margin-top:16px"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>Lengkapi profilmu</b><span class="big" style="font-size:22px">${p}%</span></div><div class="prog"><i style="width:${p}%"></i></div><p style="font-size:12px;color:var(--muted);margin-bottom:4px">${p===100?"Lengkap! Profilmu siap dipublikasikan.":"Profil lengkap dibutuhkan agar tampil di komunitas."}</p>
+${task("socials","Akun media sosial","Sudah terisi dari pendaftaran")}${task("avatar","Foto profil","Unggah foto agar mudah dikenali")}${task("bio","Bio singkat","Ceritakan gaya kontenmu")}${task("slug","Link profil publik","djiwatentram.web.id/"+(S.f.user||"namamu"))}${task("portfolio","Portofolio konten","Tambah minimal 1 konten terbaik")}
+<button class="btn" style="margin-top:10px;min-height:46px;font-size:15px" ${p===100?"":"disabled"} onclick="S.profile.public=true;render(true)">${S.profile.public?"✓ Profil sudah publik":"Publikasikan ke komunitas"}</button></div>
+<div class="card" style="margin-top:12px"><div style="display:flex;justify-content:space-between;align-items:center"><b>Visit ke Djiwa Tentram</b><span class="pill warn">Menunggu konfirmasi</span></div><div style="display:flex;gap:12px;align-items:center;margin-top:10px"><span class="ico" style="background:var(--blue-soft)">📍</span><div><b style="font-size:14px">${fmtDate(S.date)}</b><small style="color:var(--muted);font-size:12px;display:block">Pukul ${S.time.replace(":",".")} WIB · Djiwa Tentram</small></div></div><div class="row" style="margin-top:12px"><button class="btn ghost" style="min-height:42px;font-size:14px">Ubah jadwal</button><button class="btn ghost" style="min-height:42px;font-size:14px">Petunjuk arah</button></div></div>
+<p class="sectitle">Kampanye untukmu</p><div class="card"><div style="display:flex;justify-content:space-between"><b>Weekend Brunch Series</b><span class="pill bl">Dibuka</span></div><p style="font-size:12.5px;color:var(--muted);margin:6px 0 10px;line-height:1.5">Review menu brunch · barter menu senilai Rp150.000 · deadline 30 Nov</p><button class="btn" style="min-height:42px;font-size:14px" onclick="S.tab='kampanye';render()">Lihat detail</button></div></div>`}
+function tabKomunitas(){const ready=S.profile.public;return `<div class="pad"><h2>Komunitas</h2><p class="lead" style="margin-bottom:14px">Lihat karya &amp; kabar dari sesama creator.</p>
+${ready?"":`<div class="card" style="background:var(--warn-soft);box-shadow:none;margin-bottom:14px;font-size:13px;line-height:1.5"><b>Profilmu belum publik.</b> Kamu bisa melihat komunitas, tapi baru bisa menulis &amp; dikenal creator lain setelah profil lengkap dipublikasikan.<button style="display:block;margin-top:8px;color:var(--blue);font-weight:700" onclick="S.tab='home';render()">Lengkapi sekarang ›</button></div>`}
+<div class="seg">${["semua","portfolio","pencapaian"].map(x=>`<button class="${S.feed===x?"on":""}" onclick="S.feed='${x}';render(true)">${x[0].toUpperCase()+x.slice(1)}</button>`).join("")}</div>
+<div class="sectitle" style="margin-top:0">Creator untuk diikuti</div><div class="hs">${CREATORS.map((c,i)=>`<div class="cr"><div class="av" style="background:${c[2]}">${c[0][0]}</div><b>${c[0]}</b><small>${c[1]}</small><br><button onclick="S.follow[${i}]=!S.follow[${i}];render(true)">${S.follow[i]?"Mengikuti":"Ikuti"}</button></div>`).join("")}</div>
+<div class="sectitle">Linimasa</div>
+${ready?`<button class="card" style="width:100%;text-align:left;color:var(--muted);font-size:14px;margin-bottom:12px">Bagikan sesuatu dengan komunitas…</button>`:""}
+${POSTS.filter(p=>S.feed==="semua"||p.tag.toLowerCase()===S.feed).map((p,i)=>`<div class="post"><div class="ph"><div class="av" style="background:${p.c}">${p.n[0]}</div><div><b style="font-size:14px">${p.n}</b><small style="display:block;color:var(--muted);font-size:12px">${p.time} · <span class="pill bl" style="padding:1px 7px">${p.tag}</span></small></div></div><p>${p.t}</p>${p.k?`<div class="thumb" style="background:linear-gradient(135deg,${p.c},#17181c)">▶ pratinjau konten ${p.k}</div>`:""}<div class="acts"><button class="${S.liked[i]?"liked":""}" onclick="S.liked[${i}]=!S.liked[${i}];render(true)">${S.liked[i]?"♥":"♡"} ${p.l+(S.liked[i]?1:0)}</button><span>💬 Balas</span><span style="margin-left:auto">⚑ Laporkan</span></div></div>`).join("")}</div>`}
+function tabSimple(t,d,ic){return `<div class="pad"><h2>${t}</h2><p class="lead">${d}</p><div class="card" style="margin-top:18px;text-align:center;padding:36px 20px"><div style="font-size:44px">${ic}</div><p style="color:var(--muted);font-size:13.5px;margin-top:10px;line-height:1.5">Layar ini tidak termasuk cakupan prototype alur pendaftaran.</p></div></div>`}
+function tabProfil(){return `<div class="pad" style="text-align:center"><div class="av" style="background:var(--blue);width:84px;height:84px;font-size:32px;margin:10px auto 10px">${(S.f.name||"C")[0]}</div><h2 style="font-size:22px">${S.f.name||"Creator"}</h2><p class="lead" style="margin-top:2px">@${S.f.user||"username"} · ${S.f.plat}</p>
+<div style="margin:12px 0"><span class="pill ${S.profile.public?"ok":"warn"}">${S.profile.public?"Profil publik":"Belum publik"}</span></div>
+<div class="card" style="text-align:left">${task("avatar","Foto profil","")}${task("bio","Bio","")}${task("portfolio","Portofolio","")}</div></div>`}
+function pagePortal(){const t=S.tab;const body=t==="home"?tabHome():t==="komunitas"?tabKomunitas():t==="kampanye"?tabSimple("Kampanye","Daftar campaign dan bukti konten.","📣"):t==="visit"?tabSimple("Visit","Kalender dan jadwal kunjunganmu.","📅"):tabProfil();
+return `<div class="view" id="v">${body}</div><div class="nav">${NAV.map(n=>`<button class="${t===n[0]?"on":""}" onclick="S.tab='${n[0]}';render()"><span class="i">${n[1]}</span>${n[2]}${n[0]==="home"&&pct()<100?`<span class="dot">${5-Math.round(pct()/20)}</span>`:""}</button>`).join("")}</div>`}
+
+function render(keep){const sc=$("#screen");const old=$("#v")||sc.querySelector(".view");const top=old?old.scrollTop:0;
+const body={login:pageLogin,form:pageForm,book:pageBook,done:pageDone,portal:pagePortal}[S.page]();
+sc.innerHTML=status()+body+(S.toast?`<div class="toast">${S.toast}</div>`:"");
+const nv=sc.querySelector(".view");if(keep&&nv){nv.style.animation="none";nv.scrollTop=top}
+if(S.toast)setTimeout(()=>{S.toast="";const t=sc.querySelector(".toast");t&&t.remove()},2600);
+renderFlow()}
+init();render();
+</script>
+</body>
+</html>

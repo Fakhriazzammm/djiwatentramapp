@@ -17,3 +17,11 @@ export function isValidKolUrl(value: unknown) {
     return false;
   }
 }
+
+/** Jam datang visit ke Djiwa Tentram: 11.00 sampai 17.00 WIB (inklusif). */
+export const VISIT_TIME_MIN = "11:00";
+export const VISIT_TIME_MAX = "17:00";
+export function isVisitTimeAllowed(value: unknown) {
+  if (typeof value !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return false;
+  return value >= VISIT_TIME_MIN && value <= VISIT_TIME_MAX;
+}

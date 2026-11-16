@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { CAMPAIGN_STATUSES, KOL_PLATFORMS, SUBMISSION_STATUSES, VISIT_ACTIVE_STATUSES, VISIT_RELEASE_STATUSES, isValidKolUrl, normalizeKolSlug } from "./kol-portal-contract";
+import { CAMPAIGN_STATUSES, KOL_PLATFORMS, SUBMISSION_STATUSES, VISIT_ACTIVE_STATUSES, VISIT_RELEASE_STATUSES, isValidKolUrl, isVisitTimeAllowed, normalizeKolSlug } from "./kol-portal-contract";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createHash } from "node:crypto";
@@ -138,4 +138,26 @@ describe("KOL Creator Portal contracts", () => {
     expect(publicViewMigration).toContain("pi.review_status = 'approved' and pi.is_public = true");
   });
 
+  it("accepts visit arrival times only from 11:00 to 17:00", () => {
+    expect(isVisitTimeAllowed("11:00")).toBe(true);
+    expect(isVisitTimeAllowed("14:30")).toBe(true);
+    expect(isVisitTimeAllowed("17:00")).toBe(true);
+    expect(isVisitTimeAllowed("10:59")).toBe(false);
+    expect(isVisitTimeAllowed("17:01")).toBe(false);
+    expect(isVisitTimeAllowed("9:00")).toBe(false);
+    expect(isVisitTimeAllowed(null)).toBe(false);
+  });
+
+  it("registers a creator and books the visit atomically, with the time window enforced in the database too", () => {
+    const source = readFileSync(resolve(process.cwd(), "./src/kol-portal.ts"), "utf8");
+    const migration = readFileSync(resolve(process.cwd(), "../../packages/backend/supabase/migrations/20261116100000_kol_visit_time_window.sql"), "utf8");
+    const route = source.slice(source.indexOf('app.post("/api/kol/register"'), source.indexOf('app.post("/api/kol/portal/intake"'));
+    expect(route).toContain("pos.kol_request_shared_visit_booking");
+    expect(route.indexOf("BEGIN")).toBeLessThan(route.indexOf("pos.kol_request_shared_visit_booking"));
+    expect(route.indexOf("pos.kol_request_shared_visit_booking")).toBeLessThan(route.indexOf("COMMIT"));
+    expect(route).toContain("isVisitTimeAllowed(time)");
+    expect(migration).toContain("INVALID_BOOKING_TIME");
+    expect(migration).toContain("time '11:00'");
+    expect(migration).toContain("time '17:00'");
+  });
 });

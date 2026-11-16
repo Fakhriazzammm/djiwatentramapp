@@ -2,6 +2,7 @@ import type { Hono } from "hono";
 
 import { createHash } from "node:crypto";
 import { isInquiryHoneypotFilled, validatePublicInquiry } from "./kol-inquiry-contract.js";
+import { isVisitTimeAllowed } from "./kol-portal-contract.js";
 
 type DbPool = { connect: () => Promise<any>; query: (text: string, values?: unknown[]) => Promise<any> };
 type AuthApi = { api: { getSession: (input: { headers: Headers }) => Promise<any> } };
@@ -263,7 +264,8 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const date = typeof body.bookingDate === "string" ? body.bookingDate.trim() : "";
     const time = typeof body.bookingTime === "string" ? body.bookingTime.trim() : "";
     if (!token) return json(c, { success: false, error: "INVALID_INVITE" }, 400);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isBookingDateFromTomorrow(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isBookingDateFromTomorrow(date)) return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
+    if (!isVisitTimeAllowed(time)) return json(c, { success: false, error: "INVALID_BOOKING_TIME" }, 400);
     if (body.consentTerms !== true || body.consentAttendance !== true) return json(c, { success: false, error: "CONSENT_REQUIRED" }, 400);
     const invite = await inviteLookup(token);
     if (!invite) return json(c, { success: false, error: "INVITE_NOT_FOUND" }, 404);
@@ -272,10 +274,75 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     if ((result as any).error) {
       const error = (result as any).error;
       if (error?.code === "23505" || error?.message === "DATE_ALREADY_BOOKED") return json(c, { success: false, error: "DATE_ALREADY_BOOKED" }, 409);
-      if (error?.code === "P0001" && ["INVALID_BOOKING_DATE","DATE_ALREADY_BOOKED","CREATOR_ALREADY_HAS_ACTIVE_BOOKING","INVITATION_NOT_VALID","CONSENT_REQUIRED"].includes(error?.message)) return json(c, { success: false, error: error.message }, error.message === "DATE_ALREADY_BOOKED" || error.message === "CREATOR_ALREADY_HAS_ACTIVE_BOOKING" ? 409 : 400);
+      if (error?.code === "P0001" && ["INVALID_BOOKING_DATE","INVALID_BOOKING_TIME","DATE_ALREADY_BOOKED","CREATOR_ALREADY_HAS_ACTIVE_BOOKING","INVITATION_NOT_VALID","CONSENT_REQUIRED"].includes(error?.message)) return json(c, { success: false, error: error.message }, error.message === "DATE_ALREADY_BOOKED" || error.message === "CREATOR_ALREADY_HAS_ACTIVE_BOOKING" ? 409 : 400);
       throw error;
     }
     return json(c, { success: true, data: (result as any).rows?.[0] ?? null }, 201);
+  });
+
+  // Pendaftaran baru: data KOL + booking visit dalam satu transaksi. Jika tanggal bentrok, tidak ada data yang tersimpan.
+  app.post("/api/kol/register", async (c) => {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    const userId = session?.user?.id;
+    const accountEmail = typeof session?.user?.email === "string" ? session.user.email.trim().toLowerCase() : "";
+    if (!userId) return json(c, { success: false, error: "UNAUTHORIZED" }, 401);
+    const body = await c.req.json().catch(() => ({}));
+    const name = typeof body.name === "string" ? body.name.trim().slice(0, 120) : "";
+    const location = typeof body.location === "string" ? body.location.trim().slice(0, 120) : "";
+    const category = typeof body.category === "string" ? body.category : "";
+    const username = typeof body.username === "string" ? body.username.trim().toLowerCase().replace(/^@/, "").replace(/[^a-z0-9._-]+/g, "") : "";
+    const platform = typeof body.platform === "string" ? body.platform : "";
+    const profileUrl = typeof body.profileUrl === "string" ? body.profileUrl.trim() : "";
+    const whatsapp = typeof body.whatsapp === "string" ? body.whatsapp.replace(/[^\d+]/g, "").slice(0, 40) : "";
+    const allowedCategories = ["Food & Beverage", "Coffee", "Lifestyle", "Travel", "Fashion", "Beauty", "Entertainment", "Other"];
+    const allowedPlatforms = ["TikTok", "Instagram", "YouTube", "Threads", "Other"];
+    if (name.length < 2 || location.length < 2 || !allowedCategories.includes(category) || !username || !allowedPlatforms.includes(platform) || (profileUrl && !validUrl(profileUrl)) || !/^(\+62|62|0)\d{8,13}$/.test(whatsapp)) {
+      return json(c, { success: false, error: "INVALID_KOL_INTAKE" }, 400);
+    }
+    const date = typeof body.bookingDate === "string" ? body.bookingDate.trim() : "";
+    const time = typeof body.bookingTime === "string" ? body.bookingTime.trim() : "";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isBookingDateFromTomorrow(date)) return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
+    if (!isVisitTimeAllowed(time)) return json(c, { success: false, error: "INVALID_BOOKING_TIME" }, 400);
+    if (body.consentTerms !== true || body.consentAttendance !== true) return json(c, { success: false, error: "CONSENT_REQUIRED" }, 400);
+
+    const sourceId = `kol_${crypto.randomUUID().replace(/-/g, "")}`;
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const owned = await client.query(`select source_id from pos.kol_creators where auth_user_id = $1 limit 1`, [userId]);
+      if (owned.rows[0]) { await client.query("ROLLBACK"); return json(c, { success: false, error: "ALREADY_REGISTERED" }, 409); }
+      const duplicate = await client.query(
+        `select 1 from pos.kol_platforms where platform = $1 and username_normalized = $2 limit 1`,
+        [platform, username],
+      );
+      if (duplicate.rows[0]) { await client.query("ROLLBACK"); return json(c, { success: false, error: "PROFILE_DUPLICATE" }, 409); }
+      const contentTypes = Array.isArray(body.contentTypes) ? body.contentTypes.filter((x: unknown) => typeof x === "string").slice(0, 20) : [];
+      await client.query(
+        `insert into pos.kol_creators(source_id,name,username,username_normalized,location,category,status,public_reason,application_data,auth_user_id,
+                                      visit_booking_eligible,visit_booking_eligible_at,visit_booking_eligibility_note)
+         values($1,$2,$3,$4,$5,$6,'Scheduled Visit',$7,$8,$9,true,now(),'Pendaftaran mandiri dengan booking visit')`,
+        [sourceId, name, `@${username}`, username, location, category, String(body.reason ?? "").trim().slice(0, 1000),
+         JSON.stringify({ averageViews: Number(body.averageViews) || 0, contentTypes, profileUrl, source: "self-register" }), userId],
+      );
+      await client.query(
+        `insert into pos.kol_platforms(kol_id,platform,username,username_normalized,profile_url,followers) values($1,$2,$3,$4,$5,$6)`,
+        [sourceId, platform, username, username, profileUrl || null, Math.max(0, Math.floor(Number(body.followers) || 0))],
+      );
+      await client.query(`insert into pos.kol_profiles(kol_id, display_name, slug, is_public) values ($1,$2,$3,false) on conflict (kol_id) do nothing`, [sourceId, name, username]);
+      await client.query(`insert into pos.kol_private_contacts(kol_id,email,whatsapp) values($1,$2,$3)`, [sourceId, accountEmail || null, whatsapp]);
+      const booking = await client.query(`select * from pos.kol_request_shared_visit_booking($1,$2,$3::time,$4,$5,$6)`, [sourceId, date, time, true, true, userId]);
+      await client.query("COMMIT");
+      return json(c, { success: true, data: { creator: { id: sourceId, name, username: `@${username}`, status: "Scheduled Visit" }, booking: booking.rows[0] ?? null } }, 201);
+    } catch (error: any) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      const message = error?.code === "P0001" ? error.message : "";
+      if (message === "DATE_ALREADY_BOOKED" || (error?.code === "23505" && /per_day/.test(String(error?.constraint ?? error?.message)))) return json(c, { success: false, error: "DATE_ALREADY_BOOKED" }, 409);
+      if (["INVALID_BOOKING_DATE", "INVALID_BOOKING_TIME", "CONSENT_REQUIRED"].includes(message)) return json(c, { success: false, error: message }, 400);
+      if (error?.code === "23505") return json(c, { success: false, error: "PROFILE_DUPLICATE" }, 409);
+      throw error;
+    } finally {
+      client.release();
+    }
   });
 
   app.post("/api/kol/portal/intake", async (c) => {
@@ -517,10 +584,31 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     return json(c, { success: true });
   });
 
+  // Jadwal visit: satu tanggal = satu KOL. Menampilkan siapa yang memegang tiap tanggal (nama tampilan, kategori, platform utama).
+  const visitCalendarRows = (kolId: string | null) => pool.query(
+    `select to_char(b.booking_date, 'YYYY-MM-DD') as booking_date, to_char(b.booking_time, 'HH24:MI') as booking_time, b.status, (c.source_id = $1::text) as own,
+            coalesce(nullif(btrim(p.display_name), ''), c.name) as creator_name, c.category, pl.platform
+       from pos.kol_visit_bookings b
+       join pos.kol_creators c on c.source_id = b.kol_id
+       left join pos.kol_profiles p on p.kol_id = c.source_id
+       left join lateral (select platform from pos.kol_platforms where kol_id = c.source_id order by followers desc limit 1) pl on true
+      where b.booking_date >= ((now() at time zone 'Asia/Jakarta')::date) and b.status in ('requested','confirmed','completed')
+      order by b.booking_date asc limit 200`,
+    [kolId],
+  );
+
   app.get("/api/kol/portal/visit-calendar", async (c) => {
     const current = await context(c, auth, pool);
     if (current.error) return current.error;
-    const result = await pool.query(`select booking_date, booking_time, status, (kol_id = $1) as own from pos.kol_visit_bookings where booking_date >= ((now() at time zone 'Asia/Jakarta')::date) and status in ('requested','confirmed','completed') order by booking_date asc limit 120`, [current.kol.source_id]);
+    const result = await visitCalendarRows(current.kol.source_id);
+    return json(c, { success: true, data: result.rows });
+  });
+
+  // Dipakai saat pendaftaran: creator sudah login Google tetapi profilnya belum ada.
+  app.get("/api/kol/register/calendar", async (c) => {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    if (!session?.user?.id) return json(c, { success: false, error: "UNAUTHORIZED" }, 401);
+    const result = await visitCalendarRows(null);
     return json(c, { success: true, data: result.rows });
   });
 
@@ -531,13 +619,14 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const body = await c.req.json().catch(() => ({}));
     const date = typeof body.bookingDate === "string" ? body.bookingDate.trim() : "";
     const time = typeof body.bookingTime === "string" ? body.bookingTime.trim() : "";
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isBookingDateFromTomorrow(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isBookingDateFromTomorrow(date)) return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
+    if (!isVisitTimeAllowed(time)) return json(c, { success: false, error: "INVALID_BOOKING_TIME" }, 400);
     if (body.consentTerms !== true || body.consentAttendance !== true) return json(c, { success: false, error: "CONSENT_REQUIRED" }, 400);
     const result = await pool.query(`select * from pos.kol_request_shared_visit_booking($1,$2,$3::time,$4,$5,$6)`, [current.kol.source_id, date, time, true, true, current.userId]).catch((error: any) => ({ error }));
     if ((result as any).error) {
       const error = (result as any).error;
       if (error?.code === "23505" || error?.message === "DATE_ALREADY_BOOKED") return json(c, { success: false, error: "DATE_ALREADY_BOOKED" }, 409);
-      if (error?.code === "P0001" && ["INVALID_BOOKING_DATE","DATE_ALREADY_BOOKED","CREATOR_ALREADY_HAS_ACTIVE_BOOKING","VISIT_NOT_ELIGIBLE","KOL_PROFILE_NOT_FOUND","CONSENT_REQUIRED"].includes(error?.message)) return json(c, { success: false, error: error.message }, error.message === "DATE_ALREADY_BOOKED" || error.message === "CREATOR_ALREADY_HAS_ACTIVE_BOOKING" ? 409 : error.message === "VISIT_NOT_ELIGIBLE" ? 403 : 400);
+      if (error?.code === "P0001" && ["INVALID_BOOKING_DATE","INVALID_BOOKING_TIME","DATE_ALREADY_BOOKED","CREATOR_ALREADY_HAS_ACTIVE_BOOKING","VISIT_NOT_ELIGIBLE","KOL_PROFILE_NOT_FOUND","CONSENT_REQUIRED"].includes(error?.message)) return json(c, { success: false, error: error.message }, error.message === "DATE_ALREADY_BOOKED" || error.message === "CREATOR_ALREADY_HAS_ACTIVE_BOOKING" ? 409 : error.message === "VISIT_NOT_ELIGIBLE" ? 403 : 400);
       throw error;
     }
     return json(c, { success: true, data: (result as any).rows?.[0] ?? null }, 201);
@@ -668,7 +757,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
 
   app.post("/api/kol/public/:username/inquiries", async (c) => {
     const origin = c.req.header("origin");
-    if (origin && origin !== "https://kolmarketing.djiwatentram.web.id" && !/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)) {
+    if (origin && !["https://kol.djiwatentram.web.id", "https://kolmarketing.djiwatentram.web.id"].includes(origin) && !/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)) {
       return json(c, { success: false, error: "ORIGIN_NOT_ALLOWED" }, 403);
     }
     const declaredLength = Number(c.req.header("content-length") || 0);
