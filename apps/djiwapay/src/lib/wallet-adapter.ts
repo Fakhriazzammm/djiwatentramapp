@@ -111,9 +111,10 @@ export async function readWallet(_profile: { source_id: string }): Promise<Walle
   if (response.status === 401) throw new Error("Sesi Djiwa Pay kedaluwarsa");
   if (!response.ok) throw new Error("Wallet customer tidak dapat dimuat");
   const payload = await response.json() as { wallet?: WalletSummary; ledger?: WalletLedgerEntry[]; transactions?: WalletTransaction[]; direct_payments?: DirectPayment[] };
-  if (!payload.wallet) throw new Error("Wallet customer tidak ditemukan");
+  // A new Google sign-in has no Djiwa wallet row yet. That is not an error: the finance pages work without it and the wallet starts at zero.
+  const wallet: WalletSummary = payload.wallet ?? { available_balance: 0, held_balance: 0, total_credited: 0, total_debited: 0, status: "active" };
   return {
-    wallet: normalizeWalletSummary(payload.wallet),
+    wallet: normalizeWalletSummary(wallet),
     ledger: normalizeLedger(payload.ledger ?? []),
     transactions: [...normalizeTransactions(payload.transactions ?? []), ...directToTransactions(payload.direct_payments ?? [])]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
