@@ -1,0 +1,169 @@
+/* Djiwa KOL — profil publik creator. Prototipe gabungan A + C:
+   hero gelap + strip statistik (C), aksi bulat, daftar berkelompok, bilah CTA melekat (A).
+   Satu kolom 480px, target sentuh >= 44px, safe-area dihormati. */
+.kpp{--blue:#2f80ed;--blue-ink:#1d63c8;--ink:#17181c;--muted:#6b7280;--line:#e5e7eb;--bg:#f5f5f7;--ok:#16a34a;--ok-soft:#e8f7ee;--r:16px;--ease:cubic-bezier(.32,.72,0,1);
+  position:relative;width:100%;max-width:480px;min-height:100dvh;margin:0 auto;background:var(--bg);color:var(--ink);letter-spacing:-.005em;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif;font-size:15px;line-height:1.4;-webkit-tap-highlight-color:transparent}
+.kpp *{box-sizing:border-box}
+.kpp :where(button){font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.kpp :where(button,a,input,textarea,select):focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+.kpp :where(a){color:inherit}
+@media(min-width:560px){body:has(.kpp){background:#e9eaee}.kpp{box-shadow:0 0 0 1px #0000000a,0 20px 50px #0000001a}}
+
+/* Judul kecil yang muncul saat hero terlewati */
+.kpp-cbar{position:fixed;top:0;left:50%;z-index:30;width:min(480px,100%);display:flex;align-items:center;gap:10px;
+  padding:calc(6px + env(safe-area-inset-top)) 14px 8px;background:#ffffffee;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);opacity:0;transform:translate(-50%,-12px);pointer-events:none;transition:opacity .25s var(--ease),transform .25s var(--ease)}
+.kpp-cbar[data-on=true]{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.kpp-cbar-mid{flex:1;display:flex;justify-content:center;align-items:center;gap:8px;min-width:0}
+.kpp-cbar b{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpp-cbar .kpp-av{width:30px;height:30px;font-size:13px}
+.kpp-ib2{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--blue-ink);flex:none}
+
+/* Hero */
+.kpp-hero{position:relative;display:flex;flex-direction:column;justify-content:flex-end;min-height:350px;overflow:hidden;color:#fff;text-align:center;
+  padding:calc(64px + env(safe-area-inset-top)) 16px 44px;
+  background:radial-gradient(120% 90% at 18% 0%,#2f6fe0 0%,#1b2f6b 46%,#0f1830 100%)}
+.kpp-hero::before,.kpp-hero::after{content:"";position:absolute;border-radius:50%;background:#ffffff10}
+.kpp-hero::before{width:280px;height:280px;right:-90px;top:-70px}
+.kpp-hero::after{width:180px;height:180px;left:-70px;bottom:40px}
+.kpp-hero-top{position:absolute;top:0;left:16px;right:12px;z-index:2;display:flex;align-items:center;justify-content:space-between;
+  padding-top:calc(12px + env(safe-area-inset-top))}
+.kpp-brand{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:#cfe0ff;text-decoration:none}
+.kpp-brand img{width:26px;height:26px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 1px #ffffff33}
+.kpp-hero-share{width:44px;height:44px;border-radius:50%;background:#ffffff22;color:#fff;display:grid;place-items:center;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:transform .18s var(--ease),background .18s}
+.kpp-hero-share:active{transform:scale(.94);background:#ffffff33}
+.kpp-who{position:relative;z-index:2}
+.kpp-who .kpp-av-hero{width:104px;height:104px;font-size:42px;margin:0 auto 10px;border:4px solid #fff;box-shadow:0 10px 28px #00000055}
+.kpp-who h1{margin:0;font-size:27px;line-height:1.15;font-weight:800;letter-spacing:-.02em;overflow-wrap:anywhere;text-wrap:balance}
+.kpp-who .kpp-at{color:#b9c8ee;font-size:14px;margin-top:2px;overflow-wrap:anywhere}
+.kpp-chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:11px}
+.kpp-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:99px;background:#ffffff1f;color:#e8eeff;
+  font-size:12px;font-weight:700;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+
+/* Strip statistik menimpa hero */
+.kpp-stats{position:relative;z-index:3;display:flex;margin:-34px 16px 0;background:#fff;border-radius:18px;box-shadow:0 10px 28px #0f183022}
+.kpp-stats>div{flex:1;min-width:0;text-align:center;padding:13px 4px}
+.kpp-stats>div+div{border-left:1px solid var(--line)}
+.kpp-stats b{display:block;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:nowrap}
+.kpp-stats small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:var(--muted);white-space:nowrap}
+
+.kpp-body{padding:0 20px calc(168px + env(safe-area-inset-bottom))}
+.kpp-bio{margin:18px 6px 0;text-align:center;font-size:14.5px;line-height:1.6;color:#3d4350;white-space:pre-line;overflow-wrap:anywhere}
+
+/* Tiga aksi bulat */
+.kpp-acts{display:flex;justify-content:center;flex-wrap:wrap;gap:18px;margin:18px 0 4px}
+.kpp-act{width:78px;text-align:center;font-size:11.5px;font-weight:600;color:var(--blue-ink);text-decoration:none;transition:transform .18s var(--ease)}
+.kpp-act:active{transform:scale(.96)}
+.kpp-act i{display:grid;place-items:center;width:56px;height:56px;border-radius:50%;margin:0 auto 6px;background:#fff;color:var(--blue-ink);box-shadow:0 1px 3px #0001;font-style:normal}
+.kpp-act.pri i{background:var(--blue);color:#fff;box-shadow:0 8px 20px #2f80ed44}
+.kpp-act span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Banner ketersediaan */
+.kpp-avl{display:flex;align-items:center;gap:10px;margin-top:14px;padding:12px 14px;border-radius:16px;background:var(--ok-soft);color:#15803d;font-size:13.5px;font-weight:600}
+.kpp-avl small{display:block;margin-top:1px;font-size:12px;font-weight:500;color:#2f7d4f;line-height:1.4}
+.kpp-avl[data-tone=neutral]{background:#eceef2;color:#4b5160}
+.kpp-avl[data-tone=neutral] small{color:#6b7280}
+.kpp-avl-dot{width:10px;height:10px;border-radius:50%;background:currentColor;flex:none;box-shadow:0 0 0 4px #16a34a1f}
+.kpp-avl[data-tone=neutral] .kpp-avl-dot{box-shadow:0 0 0 4px #9ca3af26}
+.kpp-avl b{font-weight:600}
+
+/* Daftar berkelompok */
+.kpp-sec{margin:22px 4px 8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.kpp-grp{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 2px #0000000d}
+.kpp-gr{display:flex;align-items:center;gap:12px;width:100%;min-height:54px;padding:8px 14px;border-top:1px solid var(--line);text-align:left;text-decoration:none;color:inherit}
+.kpp-grp>*:first-child{border-top:0}
+.kpp-gr-m{flex:1;min-width:0}
+.kpp-gr-m b{display:block;font-size:14.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kpp-gr-m small{display:block;margin-top:1px;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kpp-gr[data-tappable=true]{transition:background .18s}
+.kpp-gr[data-tappable=true]:active{background:#f6f7f9}
+.kpp-chev{color:#b0b4c0;flex:none}
+.kpp-ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;color:#fff;font-size:13px;font-weight:800}
+.kpp-ic--tiktok{background:#111}
+.kpp-ic--instagram{background:linear-gradient(135deg,#f9a03f,#e1306c,#7b3fe4)}
+.kpp-ic--youtube{background:#f00}
+.kpp-ic--threads{background:#111}
+.kpp-ic--facebook{background:#1877f2}
+.kpp-ic--other{background:#64748b}
+.kpp-ic--badge{background:var(--blue)}
+.kpp-pill{display:inline-flex;align-items:center;flex:none;padding:4px 10px;border-radius:99px;background:#eceef2;color:#4b5160;font-size:12px;font-weight:700;white-space:nowrap}
+
+/* Terbaru: kartu geser */
+.kpp-hs{display:flex;gap:10px;overflow-x:auto;margin:0 -20px;padding:0 20px 4px;scroll-snap-type:x mandatory;scroll-padding-left:20px;scrollbar-width:none}
+.kpp-hs::-webkit-scrollbar{display:none}
+.kpp-post{flex:none;width:292px;scroll-snap-align:start;padding:14px;border-radius:16px;background:#fff;box-shadow:0 1px 2px #0000000d}
+.kpp-post-h{display:flex;align-items:center;gap:10px;min-width:0}
+.kpp-post-h .kpp-av{width:36px;height:36px;font-size:14px}
+.kpp-post-h b{display:block;font-size:13.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kpp-post-h small{display:block;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kpp-post p{margin:9px 0 0;font-size:14px;line-height:1.5;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.kpp-tag{color:var(--blue-ink);font-weight:600}
+.kpp-media{display:block;margin-top:9px;border-radius:12px;overflow:hidden;background:var(--bg);color:var(--blue-ink);text-decoration:none}
+.kpp-media img{display:block;width:100%;height:132px;object-fit:cover;border-radius:12px 12px 0 0}
+.kpp-media span{display:flex;align-items:center;gap:5px;padding:11px 12px;font-size:13px;font-weight:600}
+.kpp-hs-error{margin:0 2px;padding:14px;border-radius:14px;background:#fff;color:var(--muted);font-size:13px;box-shadow:0 1px 2px #0000000d}
+.kpp-hs-error button{min-height:38px;margin-top:6px;padding:0 14px;border-radius:10px;background:var(--bg);color:var(--ink);font-size:13px;font-weight:700}
+.kpp-skel-post{flex:none;width:292px;height:132px;border-radius:16px;background:#e9ecf1}
+
+.kpp-ft{margin-top:26px;text-align:center;font-size:11.5px;color:#8a90a0}
+
+/* Bilah CTA melekat */
+.kpp-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);z-index:25;width:min(480px,100%);display:flex;gap:10px;
+  padding:14px 16px calc(16px + env(safe-area-inset-bottom));background:linear-gradient(#f5f5f700,#f5f5f7 32%)}
+:is(.kpp,.kpp-state) .kpp-btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;width:100%;border-radius:16px;background:var(--blue);color:#fff;
+  font-size:16px;font-weight:700;text-decoration:none;box-shadow:0 8px 20px #2f80ed44;transition:transform .18s var(--ease),background .18s}
+:is(.kpp,.kpp-state) .kpp-btn:active{transform:scale(.985)}
+:is(.kpp,.kpp-state) .kpp-btn:disabled{background:#dfe2e8;color:#7b8190;box-shadow:none;cursor:wait}
+:is(.kpp,.kpp-state) .kpp-btn--sq{width:52px;flex:none;background:#fff;color:var(--blue-ink);box-shadow:0 1px 3px #0002}
+:is(.kpp,.kpp-state) .kpp-btn--ghost{background:#fff;color:var(--ink);border:1px solid var(--line);box-shadow:none}
+
+/* Notifikasi ringkas */
+.kpp-toast{position:fixed;top:calc(12px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:40;
+  width:min(448px,calc(100% - 32px));padding:11px 14px;border-radius:13px;background:#17181c;color:#fff;font-size:13px;
+  box-shadow:0 12px 30px #0b0d1233;animation:kpp-in .3s var(--ease)}
+@keyframes kpp-in{from{opacity:0;transform:translate(-50%,-6px)}}
+
+/* Form pengajuan di dalam sheet */
+.kpp-form{display:block}
+.kpp-form .kx-label:first-child{margin-top:2px}
+.kpp-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpp-form textarea.kx-input{min-height:92px;resize:none}
+.kpp-form .kx-input::placeholder{color:#9ca3af}
+.kpp-alert{margin-top:12px;padding:10px 12px;border-radius:12px;background:#fdecec;color:#9b1c1c;font-size:12.5px;line-height:1.5}
+.kpp-form-note{margin:10px 0 0;text-align:center;font-size:12px;line-height:1.5;color:var(--muted)}
+.kpp-hp{position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden}
+
+.kpp-done{padding:26px 8px;text-align:center}
+.kpp-done .kpp-ok{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;animation:kpp-pop .5s var(--ease)}
+@keyframes kpp-pop{from{transform:scale(.4);opacity:0}}
+.kpp-done b{display:block;font-size:18px;font-weight:800;letter-spacing:-.01em}
+.kpp-done p{margin:6px 0 0;font-size:13.5px;line-height:1.5;color:var(--muted)}
+.kpp-done .kpp-btn{margin-top:16px}
+
+/* Muat dan galat */
+.kpp-state{--blue:#2f80ed;--blue-ink:#1d63c8;--ink:#17181c;--muted:#6b7280;--line:#e5e7eb;--bg:#f5f5f7;
+  min-height:100dvh;display:grid;place-items:center;padding:24px;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif}
+.kpp-state-card{width:100%;max-width:400px;padding:26px 22px;border-radius:24px;background:#fff;text-align:center;box-shadow:0 1px 2px #0000000d}
+.kpp-state-ico{width:56px;height:56px;margin:0 auto;border-radius:18px;display:grid;place-items:center;background:#eaf2fe;color:var(--blue-ink)}
+.kpp-state h1{margin:16px 0 0;font-size:19px;font-weight:800;letter-spacing:-.02em}
+.kpp-state p{margin:8px 0 0;font-size:13.5px;line-height:1.55;color:var(--muted)}
+.kpp-state .kpp-btn{margin-top:18px}
+.kpp-state-link{display:inline-flex;align-items:center;min-height:44px;margin-top:10px;color:var(--blue-ink);font-size:13.5px;font-weight:700;text-decoration:none}
+.kpp-skel{background:linear-gradient(90deg,#e3e6ee,#f2f4f8,#e3e6ee);background-size:200% 100%;animation:kpp-sh 1.2s linear infinite}
+@keyframes kpp-sh{to{background-position:-200% 0}}
+.kpp-skel-hero{height:350px}
+.kpp-skel-strip{height:74px;margin:-34px 16px 0;border-radius:18px;position:relative;z-index:3}
+.kpp-skel-body{padding:22px 20px}
+.kpp-skel-line{height:14px;border-radius:8px;margin-bottom:10px}
+.kpp-skel-block{height:74px;border-radius:16px;margin-top:14px}
+
+@media(max-width:360px){
+  .kpp-row2{grid-template-columns:1fr}
+  .kpp-acts{gap:12px}
+  .kpp-act{width:70px}
+  .kpp-post{width:min(292px,calc(100vw - 72px))}
+}
+@media(prefers-reduced-motion:reduce){.kpp *,.kpp *::before,.kpp *::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
