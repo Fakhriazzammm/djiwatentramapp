@@ -13,6 +13,7 @@ import { djiwaPaySplashLabel, isDjiwaPayPageReady } from "../../lib/djiwa-pay-sp
 import { DjiwaPayWalletAction } from "./djiwa-pay-wallet-actions";
 import { AccountPage, AllServicesSheet, CardSheet, ComingSoonSheet, HelpPage, NotificationsPage, PaySheet, ServicesTab, TabBar, TxnSheet, type Nav } from "../shell/dpx-pages";
 import { CalendarPage, ForecastPage, HealthPage, ToolsPage } from "../kelola/kelola-pages";
+import { AssetOverview } from "../kelola/asset-overview";
 import { IntegrationsPage, ReviewPage } from "../integrations/integrations-pages";
 import { FinBudget, FinHome, FinRecords, FinReport, FinSettings, FinSheetHost, FinWallet, ManualForm, Onboarding, type FinCtx, type FinSheet } from "../finance/fin-pages";
 import type { Notify } from "../finance/fin-sheets";
@@ -566,6 +567,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   if (walletRoute?.page === "calendar") return frameShell(<CalendarPage ctx={finCtx} onBack={() => goPayRoute("/rencana")} />, "budget");
   if (walletRoute?.page === "health") return frameShell(<HealthPage ctx={finCtx} onBack={() => goPayRoute("/")} />, "home");
   if (walletRoute?.page === "forecast") return frameShell(<ForecastPage ctx={finCtx} onBack={() => goPayRoute("/")} />, "home");
+  if (walletRoute?.page === "assets") return frameShell(<AssetOverview ctx={finCtx} onBack={() => goPayRoute("/kekayaan")} />, "wallet");
   if (walletRoute?.page === "tools") return frameShell(<ToolsPage ctx={finCtx} onBack={() => goPayRoute("/kekayaan")} />, "wallet");
   if (walletRoute?.page === "wallet") return frameShell(<FinWallet ctx={finCtx} />, "wallet");
   if (walletRoute?.page === "budget") return frameShell(<FinBudget ctx={finCtx} />, "budget");

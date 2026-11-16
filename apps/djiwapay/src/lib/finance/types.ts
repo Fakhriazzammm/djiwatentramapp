@@ -32,7 +32,8 @@ export type Debt = { id: string; person: string; direction: "owed_to_me" | "i_ow
 export type Bill = { id: string; name: string; amount: number; /** Day of month 1-31. */ day: number; icon: string; tone: string; /** "YYYY-MM" months already paid. */ paid: string[] };
 export type Pocket = { id: string; name: string; percent: number; categoryIds: string[]; tone: string; icon: string };
 export type AssetKind = "gold" | "fund" | "stock" | "crypto" | "property" | "vehicle" | "other";
-export type Asset = { id: string; name: string; kind: AssetKind; value: number };
+export type AssetSub = "batangan" | "perhiasan" | "koin" | "lainnya";
+export type Asset = { id: string; name: string; kind: AssetKind; value: number; sub?: AssetSub; weight?: number; purity?: number; boughtOn?: string; cost?: number; shop?: string; note?: string; stickerId?: string; auto?: boolean };
 
 export type Override = { categoryId?: string; note?: string };
 

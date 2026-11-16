@@ -8,6 +8,8 @@ import { accountBalance, daysIn, debtTotals, goalSaved, inMonth, totals } from "
 import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
 import { ASSET_KINDS, afford, allocate, assetMix, billsFor, dailyBurn, emergencyFund, forecast, healthScore, loan, netWorth, payday, pocketUsage, pocketsOf, unpaidTotal, zakatMaal, type AffordMode, type BillView } from "../../lib/finance/kelola";
 import { rupiah } from "../../lib/djiwa-pay-format";
+import { Sticker } from "./asset-ui";
+import { assetValue, gainOf, useGold } from "../../lib/finance/assets";
 
 /** Total cash across wallets, Djiwa Pay included. */
 export function useCash(ctx: FinCtx) {
@@ -73,18 +75,18 @@ export function PocketsPanel({ ctx }: { ctx: FinCtx }) {
 
 /* ---------- Kekayaan ---------- */
 export function WealthExtras({ ctx }: { ctx: FinCtx }) {
+  useGold();
   const { state } = ctx.fin, cash = useCash(ctx), nw = netWorth(state, cash), mix = assetMix(state, cash), debt = debtTotals(state.debts);
   const colors = ["#13804a", "#d9a21a", "#d14b1a", "#e45825", "#eeb866", "#16a3b8", "#958a7d", "#e0568a"];
   return <>
     {mix.length ? <><div className="dpx-glabel">Komposisi</div>
     <div className="dpx-group dpx-white"><div style={{ display: "flex", height: 10, borderRadius: 99, overflow: "hidden", background: "var(--group)" }}>{mix.map((p, i) => <motion.i key={p.id} style={{ background: colors[i % colors.length], display: "block" }} initial={{ width: 0 }} animate={{ width: `${p.percent}%` }} transition={{ duration: 0.8, delay: 0.1 + i * 0.06, ease: [0.32, 0.72, 0, 1] }} />)}</div>
       <div className="dpx-chips2" style={{ marginTop: 8 }}>{mix.map((p, i) => <span key={p.id} className="dpx-chip3"><i style={{ width: 8, height: 8, borderRadius: 99, background: colors[i % colors.length], display: "inline-block" }} /> {p.label} {Math.round(p.percent)}%</span>)}</div></div></> : null}
-    <div className="dpx-sec"><h2>Aset</h2><Btn type="button" onClick={() => ctx.open({ k: "asset" })}>+ Tambah</Btn></div>
-    <div className="dpx-group dpx-flush dpx-white">
-      <Row i={0} icon="wallet" tone="emerald" title="Kas & dompet" sub="Otomatis dari semua dompet" trail={<b>{mask(ctx, rupiah(cash))}</b>} />
-      {state.assets.map((a, i) => <Row key={a.id} i={i + 1} icon={ASSET_KINDS[a.kind].icon as IconName} tone={ASSET_KINDS[a.kind].tone} title={a.name} sub={`${ASSET_KINDS[a.kind].label} · nilai manual`} trail={<b>{mask(ctx, rupiah(a.value))}</b>} onClick={() => ctx.open({ k: "asset", id: a.id })} />)}
-    </div>
-    {state.assets.length === 0 ? <p className="dpx-sub" style={{ margin: "8px 4px 0" }}>Tambahkan emas, reksa dana, saham, kendaraan, atau properti. Nilainya kamu perbarui sendiri.</p> : null}
+    <div className="dpx-sec"><h2>Aset</h2><span className="dpx-as-secbtns">{state.assets.length ? <Btn type="button" onClick={() => ctx.nav.go("/aset")}>Nilai aset</Btn> : null}<Btn type="button" onClick={() => ctx.open({ k: "asset-new" })}>+ Tambah</Btn></span></div>
+    <div className="dpx-group dpx-flush dpx-white"><Row i={0} icon="wallet" tone="emerald" title="Kas & dompet" sub="Otomatis dari semua dompet" trail={<b>{mask(ctx, rupiah(cash))}</b>} /></div>
+    {state.assets.length ? <div className="dpx-as-grid">{state.assets.map((a, i) => { const g = gainOf(a); return <motion.button type="button" key={a.id} className="dpx-as-card" onClick={() => ctx.open({ k: "asset-view", id: a.id })} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: i * 0.05 }} whileTap={{ scale: 0.97 }}>
+      <span className="dpx-as-cardimg"><Sticker asset={a} size={72} /></span><b>{a.name}</b><span className="dpx-sub">{mask(ctx, rupiah(assetValue(a)))}</span>{g ? <span className={g.pct >= 0 ? "dpx-up" : "dpx-dn"} style={{ fontSize: 12, fontWeight: 700 }}>{g.pct >= 0 ? "▲" : "▼"} {Math.abs(g.pct).toFixed(1).replace(".", ",")}%</span> : <span className="dpx-sub" style={{ fontSize: 11 }}>{ASSET_KINDS[a.kind].label}</span>}</motion.button>; })}
+      <button type="button" className="dpx-as-card dpx-as-add" onClick={() => ctx.open({ k: "asset-new" })}><Ic n="scan" /><b>Foto aset baru</b></button></div> : null}
     <div className="dpx-sec"><h2>Kewajiban</h2><Btn type="button" onClick={() => ctx.nav.go("/rencana?bagian=hutang")}>Kelola</Btn></div>
     <div className="dpx-group dpx-flush dpx-white"><Row icon="down" tone="rose" title="Hutang saya" sub="Belum lunas" trail={<b className="dpx-dn">−{mask(ctx, rupiah(debt.iOwe))}</b>} /><Row i={1} icon="up" tone="emerald" title="Piutang" sub="Orang berutang padamu" trail={<b className="dpx-up">{mask(ctx, rupiah(debt.owedToMe))}</b>} /></div>
     <Btn type="button" className="dpx-group dpx-flex" style={{ width: "100%", marginTop: 12, textAlign: "left" }} onClick={() => ctx.nav.go("/alat")}><span className="dpx-cat dpx-c-violet"><Ic n="grid" /></span><span style={{ flex: 1 }}><b>Alat keuangan</b><div className="dpx-sub">Bisa beli?, dana darurat, zakat, simulasi cicilan</div></span><Ic n="chev" size="sm" /></Btn>

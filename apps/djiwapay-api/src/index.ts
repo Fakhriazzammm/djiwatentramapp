@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { authServerResolver, type Resolver } from "./auth.js";
 import { applySync, loadState, type Tx } from "./sync.js";
 import { poolTx } from "./db.js";
+import { registerAssetRoutes } from "./assets.js";
 export { poolTx };
 import { confirmReceipt, getReceipt, ReceiptProblem } from "./receipt-records.js";
 import { isEmptyRead, readReceipt, type ReceiptRead } from "./receipt.js";
@@ -27,13 +28,14 @@ export function createApp(d: Deps) {
   const json = (c: any, body: unknown, status = 200) => c.body(JSON.stringify(body), status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
   app.get("/api/finance/health", (c) => json(c, { ok: true }));
   app.use("/api/finance/*", async (c, next) => {
-    if (c.req.path === "/api/finance/health" || c.req.path === "/api/finance/google/callback") return next();
+    if (c.req.path === "/api/finance/health" || c.req.path === "/api/finance/google/callback" || c.req.path.startsWith("/api/finance/assets/ref/")) return next();
     const userId = await d.resolve(c.req.header("cookie") || "");
     if (!userId) return json(c, { success: false, error: "UNAUTHORIZED" }, 401);
     c.set("userId" as never, userId as never);
     return next();
   });
   const uid = (c: any) => c.get("userId") as string;
+  registerAssetRoutes(app, { db: d.db, dir: d.dir, aiKey: d.aiKey }, uid, json);
   const google = d.google ?? null, mailDomain = d.mailDomain ?? "";
   // Keep Google in step with what the user just changed, without ever slowing or failing the request.
   const SCOPE_OF: Record<Feature, string> = { calendar: "https://www.googleapis.com/auth/calendar.events", drive: "https://www.googleapis.com/auth/drive.file", gmail: "https://www.googleapis.com/auth/gmail.readonly" };

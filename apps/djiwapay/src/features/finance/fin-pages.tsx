@@ -13,7 +13,10 @@ import type { Entry, FinanceState, Kind } from "../../lib/finance/types";
 import { GoogleNudge, ReviewChip, useInbound } from "../integrations/integrations-pages";
 import type { Finance } from "../../lib/finance/use-finance";
 import { KelolaHome, PocketsPanel, WealthExtras, useCash } from "../kelola/kelola-pages";
-import { AssetSheet, BillPaySheet, BillSheet, PayoffSheet, PocketRuleSheet, WeeklySheet } from "../kelola/kelola-sheets";
+import { useGold } from "../../lib/finance/assets";
+import { AssetFlow } from "../kelola/asset-flow";
+import { AssetDetail } from "../kelola/asset-detail";
+import { BillPaySheet, BillSheet, PayoffSheet, PocketRuleSheet, WeeklySheet } from "../kelola/kelola-sheets";
 import { netWorth, pocketsOf } from "../../lib/finance/kelola";
 import type { CustomerProfile } from "../../lib/identity-adapter";
 import type { WalletTransaction } from "../../lib/wallet-adapter";
@@ -21,7 +24,7 @@ import type { WalletTransaction } from "../../lib/wallet-adapter";
 export type FinSheet =
   | { k: "catat" } | { k: "entry"; id: string } | { k: "budget"; cid?: string } | { k: "goal"; id?: string } | { k: "goal-detail"; id: string }
   | { k: "debt"; id?: string } | { k: "split" } | { k: "streak" } | { k: "account"; id?: string } | { k: "category"; id?: string } | { k: "pay-category"; id: string }
-  | { k: "bill"; id?: string } | { k: "bill-pay"; id: string } | { k: "asset"; id?: string } | { k: "pockets" } | { k: "payoff" } | { k: "weekly" };
+  | { k: "bill"; id?: string } | { k: "bill-pay"; id: string } | { k: "asset"; id?: string } | { k: "asset-new" } | { k: "asset-view"; id: string } | { k: "pockets" } | { k: "payoff" } | { k: "weekly" };
 
 export type FinCtx = {
   fin: Finance; notify: Notify; nav: Nav; profile: CustomerProfile; transactions: WalletTransaction[]; payBalance: number; loading: boolean;
@@ -98,6 +101,7 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
   const over = safe ? safe.left < 0 : false;
   const remaining = t.in - t.out;
   const showIncomeBased = t.in > 0;
+  useGold();
   const cashNow = useCash(ctx), wealth = netWorth(state, cashNow);
   const trend = pt.out > 0 ? Math.round(((t.out - pt.out) / pt.out) * 100) : null;
   return <div className="dpx-page"><Sky scene={daypart(now)}><div className="dpx-pad">
@@ -388,7 +392,8 @@ export function FinSheetHost({ ctx, sheet, close, goManual, openPaySheet }: { ct
     case "debt": return <DebtSheet key="debt" fin={fin} debt={state.debts.find((d) => d.id === sheet.id)} notify={notify} onClose={close} />;
     case "bill": return <BillSheet key="bill" fin={fin} bill={state.bills.find((b) => b.id === sheet.id)} notify={notify} onClose={close} />;
     case "bill-pay": { const b = state.bills.find((x) => x.id === sheet.id); return b ? <BillPaySheet key="billpay" fin={fin} bill={b} notify={notify} onClose={close} goPay={() => ctx.nav.go("/bayar")} accounts={[{ id: PAY_ACCOUNT_ID, name: "Djiwa Pay" }, ...state.accounts.filter((a) => !a.archived).map((a) => ({ id: a.id, name: a.name }))]} /> : null; }
-    case "asset": return <AssetSheet key="asset" fin={fin} asset={state.assets.find((a) => a.id === sheet.id)} notify={notify} onClose={close} />;
+    case "asset": case "asset-new": return <AssetFlow key={`asset-${"id" in sheet ? sheet.id ?? "" : ""}`} fin={fin} asset={"id" in sheet ? state.assets.find((a) => a.id === sheet.id) : undefined} notify={notify} onClose={close} />;
+    case "asset-view": { const a = state.assets.find((x) => x.id === sheet.id); if (!a) return null; return <AssetDetail key="asset-view" asset={a} visible={ctx.visible} onClose={close} onEdit={() => ctx.open({ k: "asset", id: a.id })} onDelete={() => { fin.dispatch({ type: "asset/delete", id: a.id }); close(); notify("Aset dihapus", () => fin.dispatch({ type: "asset/upsert", asset: a })); }} />; }
     case "pockets": return <PocketRuleSheet key="pockets" fin={fin} current={pocketsOf(state)} notify={notify} onClose={close} />;
     case "payoff": return <PayoffSheet key="payoff" debts={state.debts.filter((d) => !d.settled && d.direction === "i_owe")} onClose={close} />;
     case "weekly": return <WeeklySheet key="weekly" entries={entries} categoryName={(id) => catOf(state, id).name} onClose={close} />;

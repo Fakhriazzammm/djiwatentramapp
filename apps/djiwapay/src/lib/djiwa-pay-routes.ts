@@ -17,13 +17,13 @@ export function parsePpobPath(pathname: string): PpobRoute | null {
 }
 
 export type WalletRoute = {
-  page: "topup" | "transfer" | "receive" | "history" | "help" | "services" | "wallet" | "summary" | "account" | "budget" | "catat" | "settings" | "calendar" | "health" | "forecast" | "tools" | "integrations" | "review";
+  page: "topup" | "transfer" | "receive" | "history" | "help" | "services" | "wallet" | "summary" | "account" | "budget" | "catat" | "settings" | "calendar" | "health" | "forecast" | "tools" | "integrations" | "review" | "assets";
   transactionId?: string;
 };
 
 /** Bottom-tab destinations and the standalone pages reachable from them. */
-const tabPaths = { "/layanan": "services", "/bayar": "services", "/dompet": "wallet", "/riwayat": "history", "/ringkasan": "summary", "/laporan": "summary", "/akun": "account", "/anggaran": "budget", "/rencana": "budget", "/kekayaan": "wallet", "/kalender": "calendar", "/kesehatan": "health", "/prakiraan": "forecast", "/alat": "tools", "/catat": "catat", "/pengaturan": "settings", "/integrasi": "integrations", "/tinjau": "review" } as const;
-const tabPathPattern = /^(\/layanan|\/bayar|\/dompet|\/riwayat|\/ringkasan|\/laporan|\/akun|\/anggaran|\/rencana|\/kekayaan|\/kalender|\/kesehatan|\/prakiraan|\/alat|\/catat|\/pengaturan|\/integrasi|\/tinjau)\/?$/;
+const tabPaths = { "/layanan": "services", "/bayar": "services", "/dompet": "wallet", "/riwayat": "history", "/ringkasan": "summary", "/laporan": "summary", "/akun": "account", "/anggaran": "budget", "/rencana": "budget", "/aset": "assets", "/kekayaan": "wallet", "/kalender": "calendar", "/kesehatan": "health", "/prakiraan": "forecast", "/alat": "tools", "/catat": "catat", "/pengaturan": "settings", "/integrasi": "integrations", "/tinjau": "review" } as const;
+const tabPathPattern = /^(\/layanan|\/bayar|\/dompet|\/riwayat|\/ringkasan|\/laporan|\/akun|\/anggaran|\/rencana|\/kekayaan|\/kalender|\/kesehatan|\/prakiraan|\/alat|\/catat|\/pengaturan|\/integrasi|\/tinjau|\/aset)\/?$/;
 export const payTabPath = { home: "/", history: "/riwayat", budget: "/rencana", wallet: "/kekayaan" } as const;
 export type PayTab = keyof typeof payTabPath;
 

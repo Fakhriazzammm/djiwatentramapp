@@ -1,4 +1,5 @@
 import type { Asset, Bill, Entry, FinanceState, Pocket } from "./types";
+import { assetValue } from "./assets";
 import { daysIn, debtTotals, goalSaved, inMonth, totals } from "./calc";
 
 /** Pure money-management maths behind Rencana, Kesehatan, Prakiraan and the tools. No UI, no I/O. */
@@ -124,12 +125,12 @@ export const ASSET_KINDS: Record<Asset["kind"], { label: string; icon: string; t
   crypto: { label: "Kripto", icon: "flash", tone: "violet" }, property: { label: "Properti", icon: "home", tone: "cyan" }, vehicle: { label: "Kendaraan", icon: "car", tone: "slate" }, other: { label: "Lainnya", icon: "tag", tone: "slate" },
 };
 export function netWorth(state: FinanceState, cash: number) {
-  const assets = state.assets.reduce((s, a) => s + a.value, 0), goals = state.goals.reduce((s, g) => s + goalSaved(g), 0), debt = debtTotals(state.debts);
+  const assets = state.assets.reduce((s, a) => s + assetValue(a), 0), goals = state.goals.reduce((s, g) => s + goalSaved(g), 0), debt = debtTotals(state.debts);
   const liabilities = debt.iOwe, receivables = debt.owedToMe;
   return { cash, assets, goals, receivables, liabilities, total: cash + assets + receivables - liabilities };
 }
 export function assetMix(state: FinanceState, cash: number) {
-  const parts = [{ id: "cash", label: "Kas & dompet", value: Math.max(0, cash) }, ...(Object.keys(ASSET_KINDS) as Asset["kind"][]).map((k) => ({ id: k, label: ASSET_KINDS[k].label, value: state.assets.filter((a) => a.kind === k).reduce((s, a) => s + a.value, 0) }))].filter((p) => p.value > 0);
+  const parts = [{ id: "cash", label: "Kas & dompet", value: Math.max(0, cash) }, ...(Object.keys(ASSET_KINDS) as Asset["kind"][]).map((k) => ({ id: k, label: ASSET_KINDS[k].label, value: state.assets.filter((a) => a.kind === k).reduce((s, a) => s + assetValue(a), 0) }))].filter((p) => p.value > 0);
   const sum = parts.reduce((s, p) => s + p.value, 0) || 1;
   return parts.map((p) => ({ ...p, percent: (p.value / sum) * 100 }));
 }

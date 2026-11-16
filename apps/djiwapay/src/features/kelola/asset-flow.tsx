@@ -1,0 +1,160 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Btn, Ic, Seg } from "../shell/dpx-ui";
+import { MoneyInput, type Notify } from "../finance/fin-sheets";
+import { FullPage, PriceNote, Sticker } from "./asset-ui";
+import { uid } from "../../lib/finance/calc";
+import { ASSET_KINDS } from "../../lib/finance/kelola";
+import { KARAT, SUB_LABEL, assetValue, createSticker, fetchRaw, goldNow, makeStickerPng, priceOn, stickerUrl, uploadSticker, useGold, type StickerMode } from "../../lib/finance/assets";
+import { rupiah } from "../../lib/djiwa-pay-format";
+import type { Asset, AssetKind, AssetSub } from "../../lib/finance/types";
+import type { Finance } from "../../lib/finance/use-finance";
+
+type Step = "shoot" | "work" | "sticker" | "form";
+const SUBS: AssetSub[] = ["batangan", "perhiasan", "koin", "lainnya"];
+const OTHER_KINDS: AssetKind[] = ["gold", "fund", "stock", "crypto", "property", "vehicle", "other"];
+const today = () => new Date().toISOString().slice(0, 10);
+
+export function AssetFlow({ fin, asset, notify, onClose }: { fin: Finance; asset?: Asset; notify: Notify; onClose: () => void }) {
+  const [step, setStep] = useState<Step>(asset ? "form" : "shoot");
+  const [stickerId, setStickerId] = useState<string | undefined>(asset?.stickerId);
+  const gold = useGold();
+
+  /* ----- camera ----- */
+  const video = useRef<HTMLVideoElement>(null), stream = useRef<MediaStream | null>(null), gallery = useRef<HTMLInputElement>(null), nativeCam = useRef<HTMLInputElement>(null);
+  const [camOn, setCamOn] = useState(false), [camErr, setCamErr] = useState(false);
+  const stop = () => { stream.current?.getTracks().forEach((t) => t.stop()); stream.current = null; setCamOn(false); };
+  useEffect(() => {
+    if (step !== "shoot") return;
+    let dead = false;
+    navigator.mediaDevices?.getUserMedia?.({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1600 } }, audio: false })
+      .then((s) => { if (dead) { s.getTracks().forEach((t) => t.stop()); return; } stream.current = s; if (video.current) { video.current.srcObject = s; void video.current.play().catch(() => {}); } setCamOn(true); })
+      .catch(() => setCamErr(true));
+    if (!navigator.mediaDevices?.getUserMedia) setCamErr(true);
+    return () => { dead = true; stop(); };
+  }, [step]);
+  const snap = () => {
+    const v = video.current; if (!v || !v.videoWidth) return;
+    const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext("2d")!.drawImage(v, 0, 0);
+    c.toBlob((b) => b && void process(b), "image/jpeg", 0.9);
+  };
+
+  /* ----- sticker ----- */
+  const [err, setErr] = useState<string | null>(null);
+  const [rawUrl, setRawUrl] = useState<string | null>(null), [png, setPng] = useState<string | null>(null), [mode, setMode] = useState<StickerMode>("local"), [view, setView] = useState<"cut" | "raw">("cut");
+  const draftId = useRef<string | null>(null);
+  const process = async (blob: Blob) => {
+    stop(); setErr(null); setStep("work");
+    try {
+      const made = await createSticker(blob);
+      draftId.current = made.id; setMode(made.mode);
+      const raw = await fetchRaw(made.id);
+      setRawUrl(URL.createObjectURL(blob));
+      setPng(await makeStickerPng(raw, made.mode)); setView("cut"); setStep("sticker");
+    } catch (e) { setErr(e instanceof Error ? e.message : "Foto belum bisa diproses."); setStep("shoot"); }
+  };
+  useEffect(() => () => { if (rawUrl) URL.revokeObjectURL(rawUrl); }, [rawUrl]);
+  const [saving, setSaving] = useState(false);
+  const useSticker = async () => {
+    if (!png || !draftId.current) return;
+    setSaving(true);
+    try { await uploadSticker(draftId.current, png); setStickerId(draftId.current); setStep("form"); }
+    catch (e) { setErr(e instanceof Error ? e.message : "Stiker belum tersimpan."); }
+    finally { setSaving(false); }
+  };
+  const pick = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void process(f); };
+
+  /* ----- form ----- */
+  const [sub, setSub] = useState<AssetSub>(asset ? (asset.auto ? asset.sub ?? "batangan" : "lainnya") : "batangan");
+  const [kind, setKind] = useState<AssetKind>(asset ? asset.kind : "gold");
+  const isGold = sub !== "lainnya";
+  const [name, setName] = useState(asset?.name ?? "");
+  const [weight, setWeight] = useState(asset?.weight ? String(asset.weight).replace(".", ",") : "");
+  const [purity, setPurity] = useState(asset?.purity ?? 0.9999);
+  const [boughtOn, setBoughtOn] = useState(asset?.boughtOn ?? today());
+  const [shop, setShop] = useState(asset?.shop ?? "");
+  const [cost, setCost] = useState(asset?.cost ? String(asset.cost) : "");
+  const [value, setValue] = useState(asset && !asset.auto ? String(asset.value) : "");
+  const [note, setNote] = useState(asset?.note ?? "");
+  const w = Number(weight.replace(",", ".")) || 0;
+  useEffect(() => { if (!asset) setPurity(sub === "perhiasan" ? 0.9167 : 0.9999); }, [sub, asset]);
+  const draft: Asset = useMemo(() => ({ id: asset?.id ?? "draft", name, kind: isGold ? "gold" : kind, value: isGold ? Number(cost) || 0 : Number(value) || 0, sub, ...(isGold ? { weight: w, purity, boughtOn, cost: Number(cost) || undefined, auto: true } : {}) }), [asset?.id, name, isGold, kind, value, sub, w, purity, boughtOn, cost]);
+  const nowPrice = goldNow(), perGram = nowPrice ? Math.round(nowPrice * purity) : null, valueNow = assetValue(draft, gold?.points ?? null);
+  const buyPrice = gold?.points.length && boughtOn ? priceOn(gold.points, boughtOn) : null;
+  const ok = name.trim().length > 0 && (isGold ? w > 0 : value !== "" && Number(value) >= 0);
+  const save = () => {
+    const out: Asset = {
+      id: asset?.id ?? uid(), name: name.trim(), kind: draft.kind, value: isGold ? valueNow || Number(cost) || 0 : Number(value), sub,
+      ...(isGold ? { weight: w, purity, boughtOn, auto: true, ...(Number(cost) > 0 ? { cost: Number(cost) } : {}) } : { boughtOn }),
+      ...(shop.trim() ? { shop: shop.trim() } : {}), ...(note.trim() ? { note: note.trim() } : {}), ...(stickerId ? { stickerId } : {}),
+    };
+    fin.dispatch({ type: "asset/upsert", asset: out });
+    onClose(); notify(asset ? "Aset diperbarui" : "Aset ditambahkan");
+  };
+
+  const back = step === "form" && !asset ? () => setStep(stickerId ? "sticker" : "shoot") : step === "sticker" ? () => setStep("shoot") : onClose;
+  const title = step === "shoot" ? "Foto aset" : step === "work" ? "Membuat stiker" : step === "sticker" ? "Stiker aset" : "Data aset";
+
+  return <FullPage title={title} onBack={step === "work" ? () => {} : back} dark={step === "shoot"}>
+    {step === "shoot" ? <div className="dpx-as-shoot">
+      <div className="dpx-as-view">
+        <video ref={video} playsInline muted aria-label="Pratinjau kamera" style={{ opacity: camOn ? 1 : 0 }} />
+        {!camOn ? <div className="dpx-as-novideo"><Ic n="scan" /><p>{camErr ? "Kamera tidak bisa dibuka di sini. Pakai tombol di bawah untuk memotret atau pilih dari galeri." : "Membuka kamera…"}</p></div> : null}
+        <i className="dpx-as-c a" /><i className="dpx-as-c b" /><i className="dpx-as-c c" /><i className="dpx-as-c d" />
+        <div className="dpx-as-hint">Taruh emas di tempat polos dan terang.<br />Satu aset per foto.</div>
+      </div>
+      {err ? <div className="dpx-as-err" role="alert">{err}</div> : null}
+      <div className="dpx-as-cam">
+        <Btn type="button" className="dpx-as-side" onClick={() => gallery.current?.click()} aria-label="Pilih dari galeri"><Ic n="grid" /></Btn>
+        <Btn type="button" className="dpx-as-shutter" onClick={() => (camOn ? snap() : nativeCam.current?.click())} aria-label="Ambil foto"><i /></Btn>
+        <Btn type="button" className="dpx-as-side" onClick={() => setStep("form")} aria-label="Lanjut tanpa foto"><Ic n="edit" /></Btn>
+      </div>
+      <p className="dpx-as-sub">Ketuk bulat untuk memotret · kiri galeri · kanan isi tanpa foto</p>
+      <input ref={gallery} type="file" accept="image/*" hidden onChange={pick} />
+      <input ref={nativeCam} type="file" accept="image/*" capture="environment" hidden onChange={pick} />
+    </div> : null}
+
+    {step === "work" ? <div className="dpx-as-body dpx-as-center"><div className="dpx-as-spin" aria-hidden="true" /><b>Memotong latar…</b><p className="dpx-sub">Biasanya 10 sampai 30 detik. Jangan tutup layar ini.</p></div> : null}
+
+    {step === "sticker" ? <div className="dpx-as-body">
+      <div className={`dpx-as-cut ${view === "raw" ? "raw" : ""}`}>
+        {view === "raw" ? <img src={rawUrl ?? ""} alt="Foto asli" /> : <div className="dpx-as-checker"><img className="dpx-as-stk" src={png ?? ""} alt="Stiker aset" /><span className="dpx-as-sp" style={{ top: 28, left: 40 }}>✦</span><span className="dpx-as-sp" style={{ top: 60, right: 36, animationDelay: ".7s" }}>✦</span><span className="dpx-as-sp" style={{ bottom: 40, left: 64, animationDelay: "1.2s" }}>✦</span></div>}
+      </div>
+      <Seg id="as-view" label="Tampilan" value={view} onChange={setView} options={[["raw", "Foto asli"], ["cut", "Stiker"]] as const} />
+      <div className="dpx-as-live"><span>{mode === "ai" ? "Latar dipotong oleh AI" : "Latar dipotong di perangkat"}</span><span className="dpx-as-pill">{mode === "ai" ? "Hasil AI" : "Foto polos terbaik"}</span></div>
+      <p className="dpx-sub">Tepi putih dan bayangan ditambahkan otomatis. Kalau hasilnya kurang rapi, foto ulang di tempat polos dengan cahaya merata.</p>
+      {err ? <div className="dpx-as-err" role="alert">{err}</div> : null}
+      <div className="dpx-as-chips"><Btn type="button" className="dpx-chip3" onClick={() => setStep("shoot")}><Ic n="refresh" size="sm" /> Foto ulang</Btn></div>
+      <Btn type="button" className="dpx-btn" disabled={saving || !png} onClick={() => void useSticker()}>{saving ? "Menyimpan stiker…" : "Pakai stiker ini"}</Btn>
+    </div> : null}
+
+    {step === "form" ? <div className="dpx-as-body">
+      <div className="dpx-as-namerow">
+        <button type="button" className="dpx-as-pic" onClick={() => setStep("shoot")} aria-label={stickerId ? "Ganti foto" : "Tambah foto"}>{stickerId ? <img className="dpx-as-stk" src={stickerUrl(stickerId)} alt="" /> : <Sticker asset={{ kind: draft.kind }} size={64} />}</button>
+        <label className="dpx-as-fld dpx-grow"><span>Nama aset</span><input id="as-name" value={name} maxLength={60} placeholder={isGold ? "Contoh: Emas Antam 10 g" : "Contoh: Reksa dana pasar uang"} onChange={(e) => setName(e.target.value)} /></label>
+      </div>
+      <div className="dpx-as-chips" role="group" aria-label="Jenis aset">{SUBS.map((s) => <Btn key={s} type="button" className={`dpx-chip3 ${sub === s ? "dpx-on" : ""}`} aria-pressed={sub === s} onClick={() => setSub(s)}>{SUB_LABEL[s]}</Btn>)}</div>
+
+      {isGold ? <>
+        <div className="dpx-as-two">
+          <label className="dpx-as-fld"><span>Berat (gram)</span><input id="as-weight" inputMode="decimal" value={weight} placeholder="0" onChange={(e) => setWeight(e.target.value.replace(/[^0-9,.]/g, "").slice(0, 9))} /></label>
+          <label className="dpx-as-fld"><span>Kadar</span><select id="as-purity" value={String(purity)} onChange={(e) => setPurity(Number(e.target.value))}>{KARAT.map(([l, v]) => <option key={l} value={v}>{l} · {(v * 100).toFixed(2).replace(".", ",")}%</option>)}</select></label>
+        </div>
+        <div className="dpx-as-two">
+          <label className="dpx-as-fld"><span>Tanggal beli</span><input id="as-date" type="date" value={boughtOn} max={today()} onChange={(e) => setBoughtOn(e.target.value)} /></label>
+          <label className="dpx-as-fld"><span>Tempat beli</span><input id="as-shop" value={shop} maxLength={60} placeholder="Butik, toko, marketplace" onChange={(e) => setShop(e.target.value)} /></label>
+        </div>
+        <label className="dpx-field dpx-as-money"><span>Harga beli total <em>kosongkan kalau tidak ingat</em></span><MoneyInput value={cost} onChange={setCost} label="Harga beli total" /></label>
+        <div className="dpx-as-live"><span>Harga emas hari ini<br /><b>{perGram ? `${rupiah(perGram)} / gram (${KARAT.find(([, v]) => v === purity)?.[0] ?? ""})` : "memuat…"}</b></span><span className="dpx-as-pill">Otomatis</span></div>
+        {w > 0 ? <div className="dpx-as-live"><span>Perkiraan nilai sekarang<br /><b>{rupiah(valueNow)}</b>{Number(cost) > 0 ? <em className={valueNow >= Number(cost) ? "dpx-up" : "dpx-dn"}> {valueNow >= Number(cost) ? "▲" : "▼"} {rupiah(Math.abs(valueNow - Number(cost)))}</em> : null}</span></div> : null}
+        {buyPrice && Number(cost) > 0 && w > 0 ? <p className="dpx-sub dpx-as-note">Harga acuan saat beli {rupiah(Math.round(buyPrice * purity))}/gram. Harga beli Anda {rupiah(Math.round(Number(cost) / w))}/gram, selisihnya biasanya ongkos dan margin toko.</p> : null}
+        <PriceNote gold={gold} />
+      </> : <>
+        <div className="dpx-as-chips" role="group" aria-label="Golongan">{OTHER_KINDS.map((k) => <Btn key={k} type="button" className={`dpx-chip3 ${kind === k ? "dpx-on" : ""}`} aria-pressed={kind === k} onClick={() => setKind(k)}>{ASSET_KINDS[k].label}</Btn>)}</div>
+        <label className="dpx-field dpx-as-money"><span>Nilai sekarang <em>diperbarui manual</em></span><MoneyInput value={value} onChange={setValue} label="Nilai sekarang" /></label>
+        <label className="dpx-as-fld"><span>Tanggal beli</span><input id="as-date2" type="date" value={boughtOn} max={today()} onChange={(e) => setBoughtOn(e.target.value)} /></label>
+      </>}
+      <label className="dpx-as-fld"><span>Catatan (surat, nomor seri, lokasi simpan)</span><input id="as-note" value={note} maxLength={300} placeholder="Contoh: sertifikat ada di brankas" onChange={(e) => setNote(e.target.value)} /></label>
+      <Btn type="button" className={`dpx-btn ${ok ? "" : "dpx-off"}`} disabled={!ok} onClick={save}>Simpan aset</Btn>
+    </div> : null}
+  </FullPage>;
+}
