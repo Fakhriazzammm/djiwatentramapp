@@ -1,3 +1,4 @@
+import { createAuthClient } from "better-auth/react";
 export const AUTH_BASE = "https://api.djiwatentram.web.id/v1/auth";
 export const KOL_API = "https://api.djiwatentram.web.id/v1/kol";
 
@@ -50,8 +51,10 @@ export function tomorrowKey() { const d = new Date(); d.setHours(0, 0, 0, 0); d.
 export const AVATAR_COLORS = ["#7c3aed", "#e11d48", "#0891b2", "#d97706", "#059669", "#db2777", "#2563eb"];
 export const colorFor = (text: string) => { let h = 0; for (const ch of text) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return AVATAR_COLORS[h % AVATAR_COLORS.length]; };
 
+const authClient = createAuthClient({ baseURL: AUTH_BASE, fetchOptions: { credentials: "include" } });
+/** Keluar: hapus sesi di server lewat Better Auth, lalu kembali ke layar masuk. */
 export async function logoutKol() {
-  await fetch(`${AUTH_BASE}/sign-out`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" } }).catch(() => undefined);
+  try { await authClient.signOut(); } catch { /* tetap kembali ke layar masuk */ }
   window.location.assign("/");
 }
 

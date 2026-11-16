@@ -1,6 +1,7 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { CalendarDays, FileText, Home, Sparkles, UserCircle, Users } from "lucide-react";
+import { useMemo, useState } from "react";
+import { CalendarDays, FileText, Home, LogOut, Sparkles, UserCircle, Users } from "lucide-react";
 import { VisitPicker } from "./kol-visit";
+import { KxSheet } from "./kol-sheet";
 import { errorText, kolApi, logoutKol, longDate, dotTime, type VisitRow } from "./kol-lib";
 
 export type PortalTabKey = "home" | "community" | "campaigns" | "calendar" | "profile";
@@ -24,11 +25,21 @@ export function Avatar({ session, profile, size = 44 }: { session: SessionUser; 
   return <div className="kx-av" style={{ width: size, height: size, background: "var(--kx-blue)", fontSize: size * 0.4 }}>{src ? <img src={src} alt={name} /> : name.slice(0, 1).toUpperCase()}</div>;
 }
 
-export function PortalHeader({ title, subtitle, right }: { title: string; subtitle?: string; right?: ReactNode }) {
+export function PortalHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  const [asking, setAsking] = useState(false);
   return (
     <div className="kx-large" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
       <div style={{ minWidth: 0 }}>{subtitle && <p className="kx-sub" style={{ margin: 0 }}>{subtitle}</p>}<h1 className="kx-h1">{title}</h1></div>
-      {right}
+      <button type="button" className="kx-more" style={{ margin: 0, background: "#fff", boxShadow: "0 1px 2px #0000000d" }} aria-label="Keluar dari akun" onClick={() => setAsking(true)}><LogOut size={19} /></button>
+      {asking && (
+        <KxSheet title="Keluar dari akun?" onClose={() => setAsking(false)}>
+          <p className="kx-lead" style={{ marginTop: 0 }}>Kamu akan kembali ke layar masuk. Data dan jadwalmu tetap tersimpan.</p>
+          <div className="kx-row2" style={{ marginTop: 16 }}>
+            <button type="button" className="kx-btn kx-btn--ghost" onClick={() => setAsking(false)}>Batal</button>
+            <button type="button" className="kx-btn" style={{ background: "var(--kx-bad)" }} onClick={() => void logoutKol()}>Keluar</button>
+          </div>
+        </KxSheet>
+      )}
     </div>
   );
 }
