@@ -144,7 +144,10 @@ function BudgetRow({ status, state, onOpen }: { status: ReturnType<typeof budget
 export function FinRecords({ ctx, selected }: { ctx: FinCtx; selected?: ReactNode }) {
   const { fin, nav } = ctx; const { state, entries } = fin;
   const today = new Date();
-  const [cursor, setCursor] = useState({ y: today.getFullYear(), m: today.getMonth() });
+  const [cursor, setCursor] = useState(() => {   // ?bulan=2026-05 opens that month (e.g. from "Lihat di Catatan" after approving imported mail)
+    const m = /^(\d{4})-(\d{2})$/.exec(new URLSearchParams(window.location.search).get("bulan") ?? "");
+    return m && Number(m[2]) >= 1 && Number(m[2]) <= 12 ? { y: Number(m[1]), m: Number(m[2]) - 1 } : { y: today.getFullYear(), m: today.getMonth() };
+  });
   const [seg, setSeg] = useState<"all" | "in" | "out" | "tf">("all");
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
@@ -155,9 +158,14 @@ export function FinRecords({ ctx, selected }: { ctx: FinCtx; selected?: ReactNod
   const shift = (d: number) => setCursor((c) => { const n = new Date(c.y, c.m + d, 1); return { y: n.getFullYear(), m: n.getMonth() }; });
   const list = month.filter((e) => (seg === "all" || e.kind === seg) && (cat === "all" || e.categoryId === cat) && (!q || `${e.note} ${catOf(state, e.categoryId).name} ${accName(state, e.accountId)} ${e.tags.join(" ")}`.toLowerCase().includes(q.toLowerCase())));
   const days = [...new Set(list.map((e) => dayLabel(e.at)))];
+  // Which months hold records, newest first: imported mail lands in past months that the month view would otherwise hide.
+  const monthsWith = useMemo(() => { const c = new Map<string, number>(); for (const e of entries) { const d = new Date(e.at); const k = `${d.getFullYear()}-${d.getMonth()}`; c.set(k, (c.get(k) ?? 0) + 1); } return [...c].map(([k, n]) => { const [y, mo] = k.split("-").map(Number); return { y, m: mo, n }; }).sort((a, b) => b.y * 12 + b.m - (a.y * 12 + a.m)); }, [entries]);
+  const showStrip = monthsWith.length > 1 || (monthsWith.length === 1 && month.length === 0);
   return <div className="dpx-page"><Sky><div className="dpx-pad">
     <div className="dpx-hdr" style={{ paddingTop: 0 }}><h1 className="dpx-page-title" style={{ flex: 1 }}>Catatan</h1><Btn type="button" className="dpx-rb" onClick={() => nav.go("/ringkasan")} aria-label="Laporan"><Ic n="chart" /></Btn></div>
     <div className="dpx-spread" style={{ margin: "2px 0 4px" }}><Btn type="button" className="dpx-rb" onClick={() => shift(-1)} aria-label="Bulan sebelumnya"><Ic n="back" size="sm" /></Btn><b style={{ fontSize: 17, textTransform: "capitalize" }}>{monthLabel(cursor.y, cursor.m)}</b><Btn type="button" className="dpx-rb" style={isCurrent ? { opacity: 0.4 } : undefined} disabled={isCurrent} onClick={() => shift(1)} aria-label="Bulan berikutnya"><Ic n="chev" size="sm" /></Btn></div>
+    {showStrip ? <div className="dpx-chips dpx-mt8" role="group" aria-label="Bulan yang punya catatan">{monthsWith.slice(0, 24).map((x) => { const on = x.y === cursor.y && x.m === cursor.m; return <Btn key={`${x.y}-${x.m}`} type="button" className={`dpx-chip ${on ? "dpx-on" : ""}`} aria-pressed={on} onClick={() => setCursor({ y: x.y, m: x.m })}>{monthLabel(x.y, x.m)} · {x.n}</Btn>; })}</div> : null}
+    {month.length === 0 && entries.length > 0 ? <div className="dpx-note dpx-info" style={{ marginTop: 8 }} role="status"><Ic n="info" /><div><b>Tidak ada catatan di {monthLabel(cursor.y, cursor.m)}.</b> Ada {entries.length} catatan di bulan lain.<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setCursor({ y: monthsWith[0].y, m: monthsWith[0].m })}>Lihat {monthLabel(monthsWith[0].y, monthsWith[0].m)}</Btn></div></div></div> : null}
     <div className="dpx-kpi"><div className="dpx-group"><small>Masuk</small><b className="dpx-up">{ctx.visible ? rupiah(t.in) : "•••••"}</b></div><div className="dpx-group"><small>Keluar</small><b>{ctx.visible ? rupiah(t.out) : "•••••"}</b></div></div>
     <label className="dpx-search dpx-mt"><Ic n="search" size="sm" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari catatan, kategori, dompet" aria-label="Cari catatan" /></label>
     <div className="dpx-chips dpx-mt8"><Btn type="button" className={`dpx-chip ${cat !== "all" ? "dpx-on" : ""}`} onClick={() => setSheet("filter")}><Ic n="filter" size="sm" /> {cat === "all" ? "Kategori" : catOf(state, cat).name}</Btn></div>

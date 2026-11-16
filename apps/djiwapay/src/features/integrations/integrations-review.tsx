@@ -4,6 +4,7 @@ import { Btn, Header, Ic, Reveal, Seg, Sheet, Sky, spring } from "../shell/dpx-u
 import type { FinCtx } from "../finance/fin-pages";
 import { CatIcon, MoneyInput, accName, catOf } from "../finance/fin-sheets";
 import { rupiah } from "../../lib/djiwa-pay-format";
+import { monthLabel } from "../../lib/djiwa-pay-summary";
 import { CHANNEL_NAME, approveItem, bulkReview, getReview, rejectItem, rereadItem, type ReviewItem } from "../../lib/finance/integrations";
 import { PaymentDetails } from "./payment-details";
 import { tidyTitle } from "../../lib/finance/review-format";
@@ -83,6 +84,13 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
   const [loading, setLoading] = useState(true), [error, setError] = useState(false), [busy, setBusy] = useState(false);
   const [selecting, setSelecting] = useState(false), [selected, setSelected] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null), [confirm, setConfirm] = useState<"approve" | "reject" | null>(null);
+  const [done, setDone] = useState<{ count: number; y: number; m: number } | null>(null);
+  /** Remember what was just recorded, so the page can point at where it went (a past month is not on the default Catatan view). */
+  const markDone = (list: ReviewItem[]) => {
+    if (!list.length) return;
+    const latest = list.map((i) => new Date(i.parsed.at ?? i.createdAt)).sort((a, b) => b.getTime() - a.getTime())[0];
+    setDone((cur) => ({ count: (cur?.count ?? 0) + list.length, y: latest.getFullYear(), m: latest.getMonth() }));
+  };
 
   const load = useCallback(async (more = false) => {
     setLoading(true);
@@ -106,7 +114,7 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
     if (busy) return; setBusy(true);
     try {
       const r = await approveItem(it.id, { amount: it.parsed.amount, kind: kindOf(it), categoryId: it.parsed.categoryId, accountId: it.parsed.accountId });
-      await ctx.fin.retrySync(); await load();
+      await ctx.fin.retrySync(); markDone([it]); await load();
       ctx.notify(`${titleOf(it)} ${rupiah(it.parsed.amount ?? 0)} tercatat`, () => ctx.fin.dispatch({ type: "entry/delete", id: r.entryId }));
     } catch { ctx.notify("Gagal memproses. Coba lagi."); } finally { setBusy(false); }
   };
@@ -117,7 +125,7 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
       for (let at = 0; at < ids.length; at += 200) results.push(...(await bulkReview(ids.slice(at, at + 200), action)).results);
       const ok = new Set(results.filter((x) => x.ok).map((x) => x.id));
       setSelected((prev) => new Set([...prev].filter((id) => !ok.has(id))));
-      await ctx.fin.retrySync(); await load();
+      await ctx.fin.retrySync(); if (action === "approve") markDone(chosen.filter((i) => ok.has(i.id))); await load();
       ctx.notify(`${ok.size} ${action === "approve" ? "disetujui" : "diabaikan"}${ok.size < ids.length ? `; ${ids.length - ok.size} belum diproses, periksa kembali` : ""}`);
       if (ok.size === ids.length) leaveSelect();
     } catch { ctx.notify("Gagal memproses pilihan. Muat ulang sebelum mencoba lagi."); await load(); } finally { setBusy(false); }
@@ -126,6 +134,7 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
   return <div className="dpx-page dpx-rv-page"><Sky><div className="dpx-pad dpx-rv-pad">
     <Header title="Perlu ditinjau" onBack={onBack} right={items.length ? <Btn type="button" className={`dpx-rv-pill ${selecting ? "is-on" : ""}`} onClick={() => (selecting ? leaveSelect() : setSelecting(true))}>{selecting ? "Selesai" : "Pilih"}</Btn> : <Btn type="button" className="dpx-rb" onClick={onOpenIntegrations} aria-label="Pengaturan integrasi"><Ic n="grid" /></Btn>} />
     {total > 0 ? <Reveal i={0}><div className="dpx-rv-summary"><div><b>{total}</b><span>email menunggu</span></div><div><span>Keluar</span><b>{rupiah(outTotal)}</b></div>{inTotal ? <div><span>Masuk</span><b className="is-in">+{rupiah(inTotal)}</b></div> : null}</div></Reveal> : null}
+    {done ? <Reveal i={0}><div className="dpx-rv-done" role="status"><Ic n="check" /><div><b>{done.count} transaksi masuk ke Catatan</b><span>Terakhir untuk {monthLabel(done.y, done.m)}. Catatan menampilkan satu bulan, pilih bulannya di sana.</span></div><Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => ctx.nav.go(`/riwayat?bulan=${done.y}-${String(done.m + 1).padStart(2, "0")}`)}>Lihat</Btn></div></Reveal> : null}
     {!selecting && items.length ? <p className="dpx-hint dpx-rv-hint">Ketuk baris untuk memeriksa. Tombol centang menyetujui langsung.</p> : null}
     {error ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div><b>Antrean belum bisa dimuat.</b><div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-sm" onClick={() => void load()}>Coba lagi</Btn></div></div></div> : null}
     {groups.map(([key, list]) => <section key={key} className="dpx-rv-group"><h2>{dayLabel(key)}</h2>
@@ -147,7 +156,7 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
         <p className="dpx-sub" style={{ marginTop: -6 }}>{confirm === "approve" ? `${approvable.length} transaksi dicatat sesuai nominal, kategori, dan dompet yang tampil di daftar.` : `${chosen.length} email tidak akan dicatat.`}</p>
         <div className="dpx-flex dpx-mt"><Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} onClick={() => setConfirm(null)}>Batal</Btn><Btn type="button" className={`dpx-btn ${confirm === "reject" ? "dpx-danger" : ""}`} style={{ margin: 0 }} disabled={busy} onClick={() => void run(confirm)}>{confirm === "approve" ? "Ya, setujui" : "Ya, abaikan"}</Btn></div>
       </Sheet> : null}
-      {open ? <DetailSheet key={open.id + JSON.stringify(open.parsed.details)} item={open} ctx={ctx} onClose={() => setOpenId(null)} onDone={async (message) => { setOpenId(null); await load(); ctx.notify(message); }} /> : null}
+      {open ? <DetailSheet key={open.id + JSON.stringify(open.parsed.details)} item={open} ctx={ctx} onClose={() => setOpenId(null)} onDone={async (message) => { const it = open; setOpenId(null); if (it && message.includes("tercatat")) markDone([it]); await load(); ctx.notify(message); }} /> : null}
     </AnimatePresence>
   </div></Sky></div>;
 }

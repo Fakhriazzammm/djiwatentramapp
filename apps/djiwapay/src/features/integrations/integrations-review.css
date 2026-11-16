@@ -60,3 +60,8 @@
 .dpx-rv-pick button.is-on{background:var(--navy);color:#fff}
 .dpx-rv-source{overflow-wrap:anywhere;margin:4px 2px 0}
 .dpx-rv-footer{position:sticky;bottom:0;display:grid;grid-template-columns:1fr 1.6fr;gap:10px;margin:16px -18px -6px;padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,rgba(255,255,255,0),#fff 28%)}
+.dpx-rv-done{display:flex;align-items:center;gap:12px;margin:10px 0 2px;padding:12px 14px;border-radius:18px;background:var(--ok-soft);color:var(--ink)}
+.dpx-rv-done>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.dpx-rv-done b{font:700 14.5px var(--font)}
+.dpx-rv-done span{font-size:12.5px;color:var(--mute);line-height:1.35}
+.dpx-rv-done svg,.dpx-rv-done img{flex:none;color:var(--ok)}
