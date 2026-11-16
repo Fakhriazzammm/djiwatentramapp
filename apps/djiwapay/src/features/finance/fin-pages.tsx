@@ -300,7 +300,7 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
   const m = (s: string) => (ctx.visible ? s : "•••••");
   const KIND_COLORS = ["#d9a21a", "#c9461b", "#16a3b8", "#13804a", "#958a7d", "#e0568a", "#eeb866"];
   return <div className="dpx-page"><Sky><div className="dpx-pad">
-    <div className="dpx-hdr" style={{ paddingTop: 0 }}><h1 className="dpx-page-title" style={{ flex: 1 }}>Kekayaan</h1><Btn type="button" className="dpx-vt-photo" onClick={() => ctx.open({ k: "asset-new" })}><Ic n="plus" size="sm" /> Foto aset</Btn></div>
+    <div className="dpx-hdr" style={{ paddingTop: 0 }}><h1 className="dpx-page-title" style={{ flex: 1 }}>Kekayaan</h1></div>
     <motion.div className="dpx-vt-net" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="dpx-sub">Kekayaan bersih</div>
@@ -342,6 +342,7 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
       <Btn type="button" className="dpx-group dpx-flex" style={{ width: "100%", marginTop: 4, textAlign: "left" }} onClick={() => nav.go("/alat")}><span className="dpx-cat dpx-c-violet"><Ic n="grid" /></span><span style={{ flex: 1 }}><b>Alat keuangan</b><div className="dpx-sub">Bisa beli?, dana darurat, zakat, simulasi cicilan</div></span><Ic n="chev" size="sm" /></Btn>
       <p className="dpx-sub" style={{ margin: "8px 4px 0" }}>Perkiraan berdasarkan catatanmu, bukan nasihat keuangan.</p>
     </div> : null}
+    <div className="dpx-vt-fab"><motion.button type="button" className="dpx-vt-photo" onClick={() => ctx.open({ k: "asset-new" })} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring} whileTap={{ scale: 0.95 }}><Ic n="scan" size="sm" /> Foto aset</motion.button></div>
   </div></Sky></div>;
 }
 
