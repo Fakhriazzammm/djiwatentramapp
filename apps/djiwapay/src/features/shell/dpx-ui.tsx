@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, MotionConfig, animate, motion, useAnimation, useDragControls, useMotionValue, useReducedMotion, useTransform, type HTMLMotionProps } from "framer-motion";
 
 export const ICON_NAMES = ["back", "close", "bell", "eye", "eyeoff", "search", "filter", "cal", "up", "plus", "check", "chev", "share", "copy", "shield", "help", "user", "flash", "clock", "warn", "info", "chart", "phone", "wifi", "receipt", "drop", "heart", "tv", "game", "car", "repeat", "gift", "grid", "bank", "down", "send", "scan", "qr", "link", "bag", "mic", "edit", "trash", "tag", "target", "flame", "users", "dl", "split", "trend", "pie", "list", "spark", "del", "book", "cup", "card", "home", "undo", "refresh", "swap", "wallet"] as const;
@@ -166,7 +167,8 @@ export function Sheet({ title, onClose, children, label }: { title?: string; onC
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-  return <div className="dpx dpx-sheetwrap" style={{ background: "transparent", minHeight: 0, maxWidth: "none", overflow: "visible" }}>
+  // Rendered at the top of the document: a page that creates its own stacking context would otherwise trap the sheet under the floating tab bar.
+  const node = <div className="dpx dpx-sheetwrap" style={{ background: "transparent", minHeight: 0, maxWidth: "none", overflow: "visible" }}>
     <motion.div className="dpx-scrim" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }} />
     <motion.div className="dpx-sheet" role="dialog" aria-modal="true" aria-label={label ?? title}
       initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 380, damping: 36 }}
@@ -177,6 +179,7 @@ export function Sheet({ title, onClose, children, label }: { title?: string; onC
       {children}
     </motion.div>
   </div>;
+  return typeof document === "undefined" ? node : createPortal(node, document.body);
 }
 
 export const serviceTone: Record<string, string> = { pulsa: "blue", data: "violet", "pln-token": "amber", "pln-bill": "orange", pdam: "cyan", bpjs: "rose", tv: "indigo", game: "emerald", multifinance: "slate" };
