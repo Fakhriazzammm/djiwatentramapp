@@ -560,3 +560,39 @@ html:has(.dpx-scened),body:has(.dpx-scened){overflow-x:hidden}
 /* Banner versi baru. */
 .dpx-update{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 10px);z-index:80;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 24px);padding:9px 10px 9px 16px;border-radius:999px;background:#fff;color:#241f1a;font:600 13.5px/1.2 -apple-system,"SF Pro Text",Inter,system-ui,sans-serif;box-shadow:0 10px 30px rgba(43,38,32,.2),0 0 0 1px rgba(43,38,32,.06)}
 .dpx-update button{border:0;border-radius:999px;background:#c9461b;color:#fff;font:inherit;padding:8px 14px;cursor:pointer}
+
+/* ---- Struk: form review dan rincian (v2) ---- */
+.dpx .dpx-rcs{background:#faf6ee;border-radius:20px;padding:6px 14px 10px;margin:8px 0;box-shadow:inset 0 0 0 1px #efe6d4}
+.dpx .dpx-receipt-heading{display:flex;align-items:baseline;justify-content:space-between;font:700 16px/1.3 var(--font);letter-spacing:-.01em;margin:22px 2px 6px;color:var(--ink)}
+.dpx .dpx-rb-count{font:600 12.5px var(--font);color:var(--mute)}
+.dpx .dpx-receipt-field{gap:6px;margin:10px 0 4px}
+.dpx .dpx-receipt-field>span{font:600 12px/1.2 var(--font);color:var(--mute);letter-spacing:.01em}
+.dpx .dpx-receipt-field input,.dpx .dpx-receipt-field select{min-height:48px;border:0!important;border-radius:14px!important;padding:0 14px!important;background:#fff!important;box-shadow:inset 0 0 0 1.5px #e3d8c4;font:500 16px var(--font)!important;color:var(--ink);transition:box-shadow .15s}
+.dpx .dpx-receipt-field input::placeholder{color:#b3a791;font-weight:400}
+.dpx .dpx-receipt-field input:focus,.dpx .dpx-receipt-field select:focus{outline:0!important;box-shadow:inset 0 0 0 2px var(--blue)}
+.dpx .dpx-receipt-fields{gap:0 12px}
+.dpx .dpx-receipt-item{background:#faf6ee;border:0;border-radius:20px;padding:6px 14px 12px;margin:10px 0;box-shadow:inset 0 0 0 1px #efe6d4}
+.dpx .dpx-receipt-item-head{align-items:flex-end;gap:10px}
+.dpx .dpx-receipt-item-head .dpx-sh-x{flex:none;width:40px;height:40px;margin-bottom:4px}
+.dpx .dpx-receipt-components{margin:8px 0 0;padding:4px 12px 8px;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1px #efe6d4}
+.dpx .dpx-receipt-check{background:#fff;border-radius:14px;padding:10px 12px;min-height:0;margin:8px 0;box-shadow:inset 0 0 0 1px #efe6d4;font-size:13px}
+.dpx .dpx-receipt-editor>.dpx-btn{background:#fff;color:var(--blue);box-shadow:inset 0 0 0 1.5px #e9b79f;min-height:46px;margin-top:10px}
+.dpx .dpx-receipt-photo{margin:10px 0;border-radius:16px;background:#faf6ee;padding:0 14px;box-shadow:inset 0 0 0 1px #efe6d4}
+.dpx .dpx-receipt-photo summary{min-height:48px}
+.dpx .dpx-rc-verdict{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin:12px 0;padding:14px 16px;border-radius:18px}
+.dpx .dpx-rc-verdict small{display:block;font:600 12px var(--font);opacity:.8}.dpx .dpx-rc-verdict b{font:700 18px var(--font);font-variant-numeric:tabular-nums}
+.dpx .dpx-rc-verdict em{grid-column:1/-1;font:700 13px var(--font);font-style:normal}
+.dpx .dpx-rc-verdict.ok{background:#eaf1d9;color:#37591b}.dpx .dpx-rc-verdict.bad{background:#fdeae4;color:#8f2418}
+.dpx .dpx-rc-bar{position:sticky;bottom:calc(-18px - env(safe-area-inset-bottom,0px));margin:14px -12px calc(-18px - env(safe-area-inset-bottom,0px));padding:10px 14px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,rgba(255,255,255,0),#fff 22%);z-index:3}
+.dpx .dpx-rc-bar .dpx-receipt-check{margin:0 0 4px}.dpx .dpx-rc-bar .dpx-btn{margin-top:8px}
+/* Rincian di Detail catatan */
+.dpx .dpx-receipt-breakdown{margin-top:6px}
+.dpx .dpx-rb-items{list-style:none;margin:6px 0;padding:0;background:#faf6ee;border-radius:20px;box-shadow:inset 0 0 0 1px #efe6d4}
+.dpx .dpx-rb-items li{display:flex;justify-content:space-between;gap:14px;padding:13px 16px;border-top:1px solid #efe6d4}.dpx .dpx-rb-items li:first-child{border-top:0}
+.dpx .dpx-rb-main{min-width:0;display:flex;flex-direction:column;gap:2px}.dpx .dpx-rb-main b{font:600 15px/1.3 var(--font);overflow-wrap:anywhere}
+.dpx .dpx-rb-main small{font-size:12.5px;color:var(--mute)}.dpx .dpx-rb-main .dpx-rb-sub{padding-left:10px;border-left:2px solid #e3d8c4;margin-top:2px}
+.dpx .dpx-rb-amt{flex:none;font:600 15px var(--font);font-variant-numeric:tabular-nums;white-space:nowrap}
+.dpx .dpx-rb-sum{margin-top:8px;padding:4px 16px;border-radius:20px;background:#fff;box-shadow:inset 0 0 0 1px #efe6d4}
+.dpx .dpx-rb-sum .dpx-kv{border-top:1px solid #f1e9d9;padding:10px 0;font-size:14px}.dpx .dpx-rb-sum .dpx-kv:first-child{border-top:0}
+.dpx .dpx-rb-sum .dpx-rb-total{font-size:16px}.dpx .dpx-rb-sum .dpx-rb-total span{color:var(--ink);font-weight:600}.dpx .dpx-rb-sum .dpx-rb-total b{font:800 19px var(--font);font-variant-numeric:tabular-nums}
+.dpx .dpx-rb-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 4px}.dpx .dpx-rb-actions .dpx-btn{margin:0;min-height:46px;font-size:14px;padding:0 10px}

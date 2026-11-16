@@ -80,11 +80,11 @@ export function ReceiptReview({ initial, preview, onRetry, entry, ...props }: Fl
   return <Sheet title={entry ? "Ubah rincian struk" : "Periksa rincian struk"} onClose={()=>{if(!savingRef.current)onClose();}}>
     <p className="dpx-sub">Satu struk, satu pengeluaran. Semua rincian tetap tersimpan.</p>
     <fieldset className="dpx-receipt-editor" disabled={saving}>
-      <label className="dpx-receipt-field"><span>Toko / tempat</span><input value={doc.merchant} maxLength={160} onChange={e=>change({merchant:e.target.value})} /></label>
+      <div className="dpx-rcs"><label className="dpx-receipt-field"><span>Toko / tempat</span><input value={doc.merchant} maxLength={160} onChange={e=>change({merchant:e.target.value})} /></label>
       <label className="dpx-receipt-field"><span>Tanggal dan waktu transaksi</span><input type="datetime-local" value={dateInput(doc.purchasedAt)} onChange={e=>change({purchasedAt:e.target.value ? new Date(e.target.value).toISOString() : null})} /></label>
       {!metadataValid ? <p className="dpx-hint">Lengkapi toko serta tanggal yang sesuai dengan struk.</p> : null}
       <div className="dpx-receipt-fields"><label className="dpx-receipt-field"><span>Nomor struk (opsional)</span><input value={doc.reference} onChange={e=>change({reference:e.target.value})} /></label><label className="dpx-receipt-field"><span>Metode bayar tercetak (opsional)</span><input value={doc.paymentMethod} onChange={e=>change({paymentMethod:e.target.value})} /></label></div>
-      <label className="dpx-receipt-field"><span>Alamat toko (opsional)</span><input value={doc.merchantAddress} onChange={e=>change({merchantAddress:e.target.value})} /></label>
+      <label className="dpx-receipt-field"><span>Alamat toko (opsional)</span><input value={doc.merchantAddress} onChange={e=>change({merchantAddress:e.target.value})} /></label></div>
       <details className="dpx-receipt-photo"><summary>Lihat foto struk asli</summary><img src={preview ?? receiptImageUrl(doc.id)} alt="Foto struk asli untuk memeriksa rincian" /></details>
       <h3 className="dpx-receipt-heading">Rincian item · {doc.items.length}</h3>
       {doc.items.map((i,k)=><div className="dpx-receipt-item" key={k}>
@@ -94,7 +94,7 @@ export function ReceiptReview({ initial, preview, onRetry, entry, ...props }: Fl
         <NumberField label={`Jumlah baris item ${k+1}`} value={i.price} onChange={price=>itemChange(k,{price})} />
       </div>)}
       <Btn type="button" className="dpx-btn dpx-soft" onClick={()=>change({items:[...doc.items,{name:"",qty:1,unit:"",unitPrice:null,discount:0,price:null,categoryId:"belanja",confidence:1,components:[]}]})} disabled={doc.items.length>=200}><Ic n="plus" size="sm" /> Tambah item</Btn>
-      <h3 className="dpx-receipt-heading">Ringkasan struk</h3>
+      <h3 className="dpx-receipt-heading">Ringkasan struk</h3><div className="dpx-rcs">
       <div className="dpx-kv"><span>Jumlah seluruh item</span><b>{rupiah(totals.itemSum)}</b></div>
       <div className="dpx-receipt-fields"><NumberField label="Subtotal pada struk (opsional)" value={doc.subtotal} onChange={subtotal=>change({subtotal})} /><NumberField label="Diskon seluruh struk" value={doc.discount} onChange={discount=>change({discount:discount ?? 0})} /></div>
       <label className="dpx-receipt-check"><input type="checkbox" checked={doc.subtotalBeforeItemDiscounts} onChange={e=>change({subtotalBeforeItemDiscounts:e.target.checked})} /> Subtotal tercetak masih sebelum diskon item</label>
@@ -107,16 +107,17 @@ export function ReceiptReview({ initial, preview, onRetry, entry, ...props }: Fl
       <Btn type="button" className="dpx-btn dpx-soft" onClick={()=>change({charges:[...doc.charges,{label:"",kind:"tax",amount:null,included:false}]})} disabled={doc.charges.length>=50}>Tambah pajak / biaya</Btn>
       <NumberField label="Total akhir pada struk" value={doc.total} onChange={total=>change({total:total ?? 0})} />
       <div className="dpx-receipt-fields"><NumberField label="Uang dibayar (opsional)" value={doc.tendered} onChange={tendered=>change({tendered})} /><NumberField label="Kembalian (opsional)" value={doc.change} onChange={changeValue=>change({change:changeValue})} /></div>
-      <div className="dpx-group dpx-receipt-total" aria-live="polite"><div className="dpx-kv"><span>Total hasil hitung</span><b>{rupiah(totals.computed)}</b></div><div className="dpx-kv"><span>Selisih dengan struk</span><b>{rupiah(totals.difference)}</b></div></div>
+      </div><div className={`dpx-rc-verdict ${totals.valid ? "ok" : "bad"}`} aria-live="polite"><div><small>Total hasil hitung</small><b>{rupiah(totals.computed)}</b></div><div><small>Selisih dengan struk</small><b>{rupiah(totals.difference)}</b></div><em>{totals.valid ? "Cocok dengan struk" : "Belum cocok"}</em></div>
       {totals.problems.length ? <div className="dpx-note dpx-warn" role="status"><div><b>Perlu diperiksa</b><ul>{totals.problems.map((p,k)=><li key={k}>{p}</li>)}</ul></div></div> : null}
       {doc.warnings.length ? <div className="dpx-note dpx-warn"><div><b>Catatan pembacaan</b><ul>{doc.warnings.map((w,k)=><li key={k}>{w}</li>)}</ul></div></div> : null}
       <Btn type="button" className="dpx-walletpick" onClick={()=>setPick("account")}><Ic n="wallet" /><span><small>Dompet</small><b>{accountId ? accName(fin.state,accountId) : "Pilih dompet pembayaran"}</b></span><em>Ganti</em></Btn>
       <Btn type="button" className="dpx-walletpick" onClick={()=>setPick("category")}><Ic n="tag" /><span><small>Kategori catatan</small><b>{catOf(fin.state,categoryId).name}</b></span><em>Ganti</em></Btn>
-      <label className="dpx-receipt-check"><input type="checkbox" checked={checked} onChange={e=>setChecked(e.target.checked)} /> Saya sudah memeriksa semua item, kuantitas, biaya, total, dan dompet pembayaran.</label>
     </fieldset>
     {error ? <div className="dpx-note dpx-danger" role="alert">{error}</div> : null}
+    <div className="dpx-rc-bar"><label className="dpx-receipt-check"><input type="checkbox" checked={checked} onChange={e=>setChecked(e.target.checked)} /> Saya sudah memeriksa semua item, kuantitas, biaya, total, dan dompet pembayaran.</label>
     <Btn type="button" className="dpx-btn" disabled={saving || !checked || !totals.valid || !metadataValid || !selectionValid} onClick={()=>void save()}>{saving ? "Menyimpan…" : entry ? "Simpan perubahan struk" : `Simpan 1 catatan · ${rupiah(doc.total)}`}</Btn>
     {onRetry ? <Btn type="button" className="dpx-btn dpx-soft" disabled={saving} onClick={onRetry}>Pilih foto lain</Btn> : null}
+    </div>
   </Sheet>;
 }
 
@@ -124,30 +125,33 @@ export function ReceiptBreakdown({ receipt }: { receipt: ReceiptDocument }) {
   const sum = reconcileReceipt(receipt);
   return <section className="dpx-receipt-breakdown" aria-label="Rincian struk">
     {receipt.reference ? <p className="dpx-sub">No. struk: {receipt.reference}</p> : null}{receipt.paymentMethod ? <p className="dpx-sub">Metode bayar pada struk: {receipt.paymentMethod}</p> : null}{receipt.merchantAddress ? <p className="dpx-hint">{receipt.merchantAddress}</p> : null}
-    <h3 className="dpx-receipt-heading">Rincian struk · {receipt.items.length} item</h3>
-    <div className="dpx-receipt-table"><table><caption className="sr-only">Item, kuantitas, harga satuan, dan jumlah baris</caption><thead><tr><th>Item</th><th>Qty</th><th>Harga satuan</th><th>Jumlah</th></tr></thead><tbody>{receipt.items.map((i,k)=><tr key={k}><th scope="row">{i.name || "Belum terbaca"}{i.discount ? <small>Diskon {rupiah(i.discount)}</small> : null}{i.components.map((c,n)=><small key={n}>{c.qty!==null ? `${c.qty} × ` : ""}{c.name} · isi paket</small>)}</th><td>{i.qty === null ? "—" : i.qty.toLocaleString("id-ID")}{i.unit ? ` ${i.unit}` : ""}</td><td>{moneyText(i.unitPrice)}</td><td>{moneyText(i.price)}</td></tr>)}</tbody></table></div>
+    <h3 className="dpx-receipt-heading">Rincian struk <span className="dpx-rb-count">{receipt.items.length} item</span></h3>
+    <ul className="dpx-rb-items">{receipt.items.map((i,k)=><li key={k}><div className="dpx-rb-main"><b>{i.name || "Belum terbaca"}</b>
+      <small>{i.qty === null ? "Kuantitas belum terbaca" : `${i.qty.toLocaleString("id-ID")}${i.unit ? ` ${i.unit}` : ""}`}{i.unitPrice !== null ? ` × ${rupiah(i.unitPrice)}` : ""}{i.discount ? ` · diskon −${rupiah(i.discount)}` : ""}</small>
+      {i.components.map((c,n)=><small className="dpx-rb-sub" key={n}>{c.qty!==null ? `${c.qty} × ` : ""}{c.name}</small>)}</div><span className="dpx-rb-amt">{i.price === null ? "—" : rupiah(i.price)}</span></li>)}</ul>
     {!receipt.items.length ? <p className="dpx-hint">Rincian item belum tersedia pada pembacaan ini.</p> : null}
-    <div className="dpx-kv"><span>Jumlah item</span><b>{rupiah(sum.itemSum)}</b></div>
+    <div className="dpx-rb-sum"><div className="dpx-kv"><span>Jumlah item</span><b>{rupiah(sum.itemSum)}</b></div>
     {receipt.subtotal!==null ? <div className="dpx-kv"><span>Subtotal pada struk{receipt.subtotalBeforeItemDiscounts ? " (sebelum diskon item)" : ""}</span><b>{rupiah(receipt.subtotal)}</b></div> : null}
     {receipt.discount ? <div className="dpx-kv"><span>Diskon struk</span><b>−{rupiah(receipt.discount)}</b></div> : null}
     {receipt.charges.map((c,k)=><div className="dpx-kv" key={k}><span>{c.label}{c.included ? " (termasuk harga)" : ""}</span><b>{moneyText(c.amount)}</b></div>)}
-    <div className="dpx-kv"><span>Total pada struk</span><b>{rupiah(receipt.total)}</b></div>
+    <div className="dpx-kv dpx-rb-total"><span>Total pada struk</span><b>{rupiah(receipt.total)}</b></div>
     {receipt.tendered!==null ? <div className="dpx-kv"><span>Uang dibayar</span><b>{rupiah(receipt.tendered)}</b></div> : null}
     {receipt.change!==null ? <div className="dpx-kv"><span>Kembalian</span><b>{rupiah(receipt.change)}</b></div> : null}
+    </div>
     {!sum.valid ? <div className="dpx-note dpx-warn"><div>Rincian lama belum cocok atau belum lengkap. Saldo tidak diubah otomatis.<ul>{sum.problems.map((p,k)=><li key={k}>{p}</li>)}</ul></div></div> : null}
     {receipt.warnings.length ? <div className="dpx-hint">{receipt.warnings.join(" · ")}</div> : null}
   </section>;
 }
 
 /** Load the durable document, not just the image, including on another device. */
-export function ReceiptAttachment({ id, onEdit }: { id: string; onEdit?: (receipt: ScannedReceipt)=>void }) {
+export function ReceiptAttachment({ id, onEdit, ledgerAmount }: { id: string; onEdit?: (receipt: ScannedReceipt)=>void; ledgerAmount?: number }) {
   const [rereading,setRereading]=useState(false);
   const [receipt,setReceipt]=useState<ScannedReceipt|null>(null), [error,setError]=useState(""), [imageFailed,setImageFailed]=useState(false), [attempt,setAttempt]=useState(0);
   useEffect(()=>{let active=true;setError("");setReceipt(null);void fetchReceipt(id).then(r=>{if(active)setReceipt(r);}).catch(e=>{if(active)setError(e.message);});return ()=>{active=false;};},[id,attempt]);
   return <>
     {!receipt && !error ? <p role="status">Memuat rincian struk…</p> : null}
     {error ? <div className="dpx-note dpx-warn" role="alert"><div>{error}<Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={()=>setAttempt(a=>a+1)}>Coba lagi</Btn></div></div> : null}
-    {receipt ? <><p className="dpx-sub">{receipt.merchant} · {receipt.purchasedAt ? formatDateTime(receipt.purchasedAt) : "Tanggal belum terbaca"}</p><ReceiptBreakdown receipt={receipt} />{onEdit ? <Btn type="button" className="dpx-btn dpx-soft" onClick={()=>onEdit(receipt)}>Periksa / ubah rincian struk</Btn> : null}{onEdit ? <Btn type="button" className="dpx-btn dpx-soft" disabled={rereading} onClick={async()=>{if(rereading)return;setRereading(true);try{onEdit(await rereadReceipt(id));}catch(e){setError(e instanceof Error?e.message:"Belum dapat dibaca ulang.");}finally{setRereading(false);}}}>{rereading ? "Membaca ulang foto…" : "Baca ulang foto struk"}</Btn> : null}</> : null}
+    {receipt ? <><p className="dpx-sub">{receipt.merchant} · {receipt.purchasedAt ? formatDateTime(receipt.purchasedAt) : "Tanggal belum terbaca"}</p><ReceiptBreakdown receipt={receipt} />{ledgerAmount !== undefined && receipt.total > 0 && Math.abs(ledgerAmount - receipt.total) > 0.5 ? <div className="dpx-note dpx-warn" role="status"><div><b>Nominal catatan berbeda</b>Catatan ini tercatat {rupiah(ledgerAmount)}, sedangkan total pada struk {rupiah(receipt.total)}. Ketuk Ubah rincian untuk menyamakannya.</div></div> : null}{onEdit ? <div className="dpx-rb-actions"><Btn type="button" className="dpx-btn dpx-soft" onClick={()=>onEdit(receipt)}><Ic n="edit" size="sm" /> Ubah rincian</Btn><Btn type="button" className="dpx-btn dpx-soft" disabled={rereading} onClick={async()=>{if(rereading)return;setRereading(true);try{onEdit(await rereadReceipt(id));}catch(e){setError(e instanceof Error?e.message:"Belum dapat dibaca ulang.");}finally{setRereading(false);}}}>{rereading ? "Membaca ulang…" : "Baca ulang foto"}</Btn></div> : null}</> : null}
     <details className="dpx-receipt-photo"><summary>Foto struk asli</summary>{imageFailed ? <p role="status">Foto belum dapat dimuat. <button type="button" onClick={()=>setImageFailed(false)}>Coba lagi</button></p> : <img src={receiptImageUrl(id)} alt="Foto struk asli" onError={()=>setImageFailed(true)} />}</details>
   </>;
 }
