@@ -39,6 +39,43 @@ export function googlePhotoUrl(value: unknown) {
   return /^https:\/\/[^\s]{8,2000}$/.test(url) ? url : null;
 }
 
+export const AVATAR_PUBLIC_BASE = "https://api.djiwatentram.web.id/v1/kol/avatar";
+const GOOGLE_IMAGE_HOST = /^https:\/\/[a-z0-9-]+\.googleusercontent\.com\//i;
+export const isGoogleImageUrl = (value: unknown) => typeof value === "string" && GOOGLE_IMAGE_HOST.test(value);
+/** Minta ukuran 256px (kotak) dari host gambar Google. */
+export const googleImageAt256 = (url: string) => url.replace(/=s\d+(-[a-z]+)*$/i, "=s256-c");
+const avatarRetryAfter = new Map<string, number>();
+
+/** Salin foto Google ke pos.kol_avatars dan arahkan avatar_url ke salinan itu. Mengembalikan URL baru atau null. */
+export async function mirrorGoogleAvatar(db: Pick<DbPool, "query">, kolId: string, url: string, fetchImpl: typeof fetch = fetch): Promise<string | null> {
+  if (!isGoogleImageUrl(url)) return null;
+  if ((avatarRetryAfter.get(kolId) ?? 0) > Date.now()) return null;
+  try {
+    const response = await fetchImpl(googleImageAt256(url), { signal: AbortSignal.timeout(8000) });
+    const type = (response.headers.get("content-type") || "").split(";")[0]!.trim().toLowerCase();
+    if (!response.ok || !["image/jpeg", "image/png", "image/webp"].includes(type)) throw new Error("AVATAR_FETCH_FAILED");
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.length < 200 || bytes.length > 1_000_000) throw new Error("AVATAR_SIZE");
+    const version = createHash("sha256").update(bytes).digest("hex").slice(0, 10);
+    await db.query(
+      `insert into pos.kol_avatars(kol_id, content_type, data, source_url) values ($1,$2,$3,$4)
+       on conflict (kol_id) do update set content_type = excluded.content_type, data = excluded.data, source_url = excluded.source_url, updated_at = now()`,
+      [kolId, type, bytes, url],
+    );
+    const stored = `${AVATAR_PUBLIC_BASE}/${encodeURIComponent(kolId)}?v=${version}`;
+    await db.query(
+      `update pos.kol_creators set avatar_url = $1 where source_id = $2
+         and (avatar_url is null or btrim(avatar_url) = '' or avatar_url ~ '^https://[a-z0-9-]+[.]googleusercontent[.]com/' or avatar_url like $3)`,
+      [stored, kolId, `${AVATAR_PUBLIC_BASE}/%`],
+    );
+    avatarRetryAfter.delete(kolId);
+    return stored;
+  } catch {
+    avatarRetryAfter.set(kolId, Date.now() + 10 * 60 * 1000);
+    return null;
+  }
+}
+
 async function context(c: any, auth: AuthApi, pool: DbPool) {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   const userId = session?.user?.id;
@@ -55,11 +92,18 @@ async function context(c: any, auth: AuthApi, pool: DbPool) {
   );
   const kol = result.rows[0];
   if (!kol) return { error: json(c, { success: false, error: "KOL_PROFILE_NOT_LINKED" }, 409) };
-  // Foto profil Google dipakai sebagai avatar creator bila belum ada (tidak menimpa avatar yang sudah diatur).
+  // Foto profil Google dipakai sebagai avatar creator bila belum ada, lalu disalin ke database sendiri.
   const googleImage = googlePhotoUrl(session?.user?.image);
-  if (googleImage && !kol.avatar_url) {
-    await pool.query(`update pos.kol_creators set avatar_url = $1 where source_id = $2 and (avatar_url is null or btrim(avatar_url) = '')`, [googleImage, kol.source_id]).catch(() => undefined);
-    kol.avatar_url = googleImage;
+  if (!kol.avatar_url && googleImage) {
+    const stored = await mirrorGoogleAvatar(pool, kol.source_id, googleImage);
+    if (stored) {
+      kol.avatar_url = stored;
+    } else {
+      await pool.query(`update pos.kol_creators set avatar_url = $1 where source_id = $2 and (avatar_url is null or btrim(avatar_url) = '')`, [googleImage, kol.source_id]).catch(() => undefined);
+      kol.avatar_url = googleImage;
+    }
+  } else if (isGoogleImageUrl(kol.avatar_url)) {
+    void mirrorGoogleAvatar(pool, kol.source_id, kol.avatar_url);
   }
   return { userId, email, kol };
 }
@@ -108,6 +152,16 @@ function boundedLimit(value: string | undefined) {
 }
 function timelineType(value: string | undefined) {
   return !value || value === "all" ? null : TIMELINE_TYPES.includes(value as TimelineType) ? value : undefined;
+}
+type CreatorCursor = { ts: string; id: string };
+const encodeCreatorCursor = (cursor: CreatorCursor) => Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
+function decodeCreatorCursor(value: string | undefined): CreatorCursor | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
+    if (typeof parsed?.ts !== "string" || typeof parsed?.id !== "string" || !/^\d{4}-\d{2}-\d{2}[ T][\d:.]+([+-]\d{2}(:?\d{2})?|Z)?$/.test(parsed.ts) || parsed.id.length > 200) return null;
+    return { ts: parsed.ts, id: parsed.id };
+  } catch { return null; }
 }
 const publicUsername = (value: unknown) => String(value ?? "").trim().replace(/^@+/, "");
 const inquiryRateBuckets = new Map<string, number[]>();
@@ -298,6 +352,24 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     return json(c, { success: true, data: (result as any).rows?.[0] ?? null }, 201);
   });
 
+  // Avatar creator yang disimpan di database. Profil publik: terbuka; selain itu hanya untuk pengguna yang login.
+  app.get("/api/kol/avatar/:id", async (c) => {
+    const result = await pool.query(
+      `select a.content_type, a.data, coalesce(p.is_public, false) as is_public
+         from pos.kol_avatars a join pos.kol_creators k on k.source_id = a.kol_id
+         left join pos.kol_profiles p on p.kol_id = a.kol_id
+        where a.kol_id = $1 and k.status <> 'Rejected'`,
+      [c.req.param("id")],
+    );
+    const row = result.rows[0];
+    if (!row) return c.body(null, 404);
+    if (!row.is_public) {
+      const session = await auth.api.getSession({ headers: c.req.raw.headers });
+      if (!session?.user?.id) return c.body(null, 404);
+    }
+    return c.body(row.data, 200, { "Content-Type": row.content_type, "Cache-Control": row.is_public ? "public, max-age=86400" : "private, max-age=3600", "X-Content-Type-Options": "nosniff" });
+  });
+
   // Pendaftaran baru: data KOL + booking visit dalam satu transaksi. Jika tanggal bentrok, tidak ada data yang tersimpan.
   app.post("/api/kol/register", async (c) => {
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
@@ -351,6 +423,8 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
       const booking = await client.query(`select * from pos.kol_request_shared_visit_booking($1,$2,$3::time,$4,$5,$6)`, [sourceId, date, time, true, true, userId]);
       await stampVisitConsent(client, booking.rows[0]?.id);
       await client.query("COMMIT");
+      const photo = googlePhotoUrl(session?.user?.image);
+      if (photo) void mirrorGoogleAvatar(pool, sourceId, photo);
       return json(c, { success: true, data: { creator: { id: sourceId, name, username: `@${username}`, status: "Scheduled Visit" }, booking: booking.rows[0] ?? null } }, 201);
     } catch (error: any) {
       await client.query("ROLLBACK").catch(() => undefined);
@@ -847,7 +921,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
   });
   async function creatorDiscovery(c: any, db: DbPool, authenticated: boolean) {
     const limit = boundedLimit(c.req.query("limit")); if (!limit) return json(c, { success: false, error: "INVALID_LIMIT" }, 400);
-    const cursor = decodeTimelineCursor(c.req.query("before")); if (c.req.query("before") && !cursor) return json(c, { success: false, error: "INVALID_CURSOR" }, 400);
+    const cursor = decodeCreatorCursor(c.req.query("before")); if (c.req.query("before") && !cursor) return json(c, { success: false, error: "INVALID_CURSOR" }, 400);
     const values: unknown[] = []; const filters = authenticated ? ["c.status <> 'Rejected'"] : ["c.status <> 'Rejected'", "coalesce(p.is_public,false)=true"];
     const category = c.req.query("category"), location = c.req.query("location"), availability = c.req.query("availability"), q = c.req.query("q");
     if (category) { values.push(category.slice(0, 80)); filters.push(`c.category=$${values.length}`); }
@@ -855,13 +929,13 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     if (availability && ["open", "selective", "unavailable", "not_set"].includes(availability)) { values.push(availability); filters.push(`coalesce(p.public_availability,'not_set')=$${values.length}`); }
     if (q && q.trim().length >= 2) { values.push(`%${q.trim().slice(0, 80)}%`); filters.push(`(coalesce(p.display_name,c.name) ilike $${values.length} or coalesce(p.slug,c.username) ilike $${values.length} or coalesce(p.bio,'') ilike $${values.length} or c.category ilike $${values.length})`); }
     if (c.req.query("hasPortfolio") === "true") filters.push("exists(select 1 from pos.kol_portfolio_items pi where pi.kol_id=c.source_id and pi.review_status='approved' and pi.is_public=true)");
-    if (cursor) { values.push(cursor.publishedAt); filters.push(`c.created_at < $${values.length}`); }
+    if (cursor) { values.push(cursor.ts, cursor.id); filters.push(`(c.created_at, c.source_id) < ($${values.length - 1}::timestamptz, $${values.length})`); }
     values.push(limit + 1);
-    const result = await db.query(`select c.source_id,c.name,c.username,c.avatar_url,c.category,c.location,p.slug,p.display_name,p.bio,p.public_availability,p.availability_label,c.created_at,
+    const result = await db.query(`select c.source_id,c.name,c.username,c.avatar_url,c.category,c.location,p.slug,p.display_name,p.bio,p.public_availability,p.availability_label,c.created_at,c.created_at::text as cursor_ts,
       (select count(*) from pos.kol_portfolio_items pi where pi.kol_id=c.source_id and pi.review_status='approved' and pi.is_public=true) portfolio_count
       from pos.kol_creators c left join pos.kol_profiles p on p.kol_id=c.source_id where ${filters.join(" and ")} order by c.created_at desc,c.source_id desc limit $${values.length}`, values);
     const rows = result.rows.slice(0, limit), next = result.rows.length > limit ? rows[rows.length - 1] : null;
-    return json(c, { success: true, data: { items: rows.map(safeCreator), nextCursor: next ? encodeTimelineCursor({ publishedAt: new Date(next.created_at).toISOString(), id: Number(next.id ?? 1) }) : null, hasMore: Boolean(next) } });
+    return json(c, { success: true, data: { items: rows.map(safeCreator), nextCursor: next ? encodeCreatorCursor({ ts: String(next.cursor_ts), id: String(next.source_id) }) : null, hasMore: Boolean(next) } });
   }
 
   app.get("/api/kol/portal/campaign-discovery", async (c) => {

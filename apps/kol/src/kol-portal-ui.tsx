@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { CalendarDays, FileText, Home, LogOut, Sparkles, UserCircle, Users } from "lucide-react";
 import { VisitPicker } from "./kol-visit";
 import { KxSheet } from "./kol-sheet";
+import { AvatarImg } from "./kol-avatar";
 import { CONSENT_NO_SHOW, errorText, kolApi, logoutKol, longDate, dotTime, type VisitRow } from "./kol-lib";
 
 export type PortalTabKey = "home" | "community" | "campaigns" | "calendar" | "profile";
@@ -21,8 +22,7 @@ const statusTone = (s: string) => (s === "confirmed" || s === "completed" ? "kx-
 
 export function Avatar({ session, profile, size = 44 }: { session: SessionUser; profile?: PortalProfileData | null; size?: number }) {
   const name = profile?.display_name || profile?.name || session.user.name || "Creator";
-  const src = session.user.image || profile?.avatar_url;
-  return <div className="kx-av" style={{ width: size, height: size, background: "var(--kx-blue)", fontSize: size * 0.4 }}>{src ? <img src={src} alt={name} referrerPolicy="no-referrer" /> : name.slice(0, 1).toUpperCase()}</div>;
+  return <AvatarImg url={profile?.avatar_url || session.user.image} name={name} size={size} />;
 }
 
 export function PortalHeader({ title, subtitle }: { title: string; subtitle?: string }) {

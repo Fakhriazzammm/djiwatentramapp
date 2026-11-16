@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { KxSheet } from "./kol-sheet";
+import { AvatarImg } from "./kol-avatar";
 import { kolApi, timeAgo } from "./kol-lib";
 
 type Item = {
@@ -18,9 +19,7 @@ const AVAILABILITY: Record<string, string> = { open: "Terbuka untuk kolaborasi",
 const empty: Page = { items: [], nextCursor: null, hasMore: false };
 const toPage = (d: any): Page => ({ items: Array.isArray(d?.items) ? d.items : [], nextCursor: d?.nextCursor ?? null, hasMore: Boolean(d?.hasMore) });
 
-function Avatar({ url, name }: { url?: string | null; name: string }) {
-  return <div className="kx-av" style={{ background: "var(--kx-blue)" }}>{url ? <img src={url} alt="" referrerPolicy="no-referrer" /> : name.slice(0, 1).toUpperCase()}</div>;
-}
+const Avatar = AvatarImg;
 function Body({ text }: { text: string }) {
   return <>{text.split(/(#[\p{L}\d_]+)/u).map((part, i) => (part.startsWith("#") ? <span key={i} className="kx-tag">{part}</span> : part))}</>;
 }
@@ -172,20 +171,35 @@ function Composer({ initial, onClose, onSaved }: { initial?: Item; onClose: () =
 function Creators({ username }: { username: string }) {
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<Creator[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [more, setMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [total, setTotal] = useState(0);
+  const query = (before?: string | null) => `/portal/discovery?limit=30${q.trim().length >= 2 ? `&q=${encodeURIComponent(q.trim())}` : ""}${before ? `&before=${encodeURIComponent(before)}` : ""}`;
   useEffect(() => {
     let live = true;
     const t = window.setTimeout(() => {
       setLoading(true);
-      kolApi<any>(`/portal/discovery?limit=20${q.trim().length >= 2 ? `&q=${encodeURIComponent(q.trim())}` : ""}`)
-        .then(d => { if (live) { setRows(Array.isArray(d?.items) ? d.items : Array.isArray(d) ? d : []); setError(""); } })
+      kolApi<any>(query())
+        .then(d => { if (!live) return; const items: Creator[] = Array.isArray(d?.items) ? d.items : []; setRows(items); setCursor(d?.hasMore ? d.nextCursor ?? null : null); setTotal(items.length); setError(""); })
         .catch(() => live && setError("Daftar creator belum bisa dimuat."))
         .finally(() => live && setLoading(false));
     }, 250);
     return () => { live = false; window.clearTimeout(t); };
   }, [q]);
+  const loadMore = async () => {
+    if (!cursor) return;
+    setMore(true);
+    try {
+      const d = await kolApi<any>(query(cursor));
+      const items: Creator[] = Array.isArray(d?.items) ? d.items : [];
+      setRows(prev => [...prev, ...items.filter(i => !prev.some(p => p.username === i.username))]);
+      setTotal(t => t + items.length);
+      setCursor(d?.hasMore ? d.nextCursor ?? null : null);
+    } catch { setError("Creator berikutnya belum bisa dimuat."); } finally { setMore(false); }
+  };
   const list = rows.filter(r => r.username !== username);
   const share = async () => {
     const url = `${window.location.origin}/${username}/profile`;
@@ -194,25 +208,28 @@ function Creators({ username }: { username: string }) {
   return (
     <div>
       <div className="kx-search"><Search size={17} /><input className="kx-input" type="search" aria-label="Cari creator" value={q} onChange={e => setQ(e.target.value)} placeholder="Cari creator, niche, kota" /></div>
-      <div className="kx-section">Temukan creator</div>
+      <div className="kx-section">Temukan creator{!loading && !error ? ` · ${total}${cursor ? "+" : ""}` : ""}</div>
       {loading ? [1, 2, 3].map(i => <div key={i} className="kx-skel" style={{ height: 60 }} />)
-        : error ? <p role="alert" className="kx-note kx-note--err">{error}</p>
+        : error && !list.length ? <p role="alert" className="kx-note kx-note--err">{error}</p>
         : list.length ? (
-          <div className="kx-group">
-            {list.map(c => {
-              const status = typeof c.availability === "string" ? c.availability : c.availability?.status;
-              return (
-                <a key={c.username} className="kx-grow" href={`/${c.username}/profile`} style={{ textDecoration: "none", color: "inherit" }}>
-                  <Avatar url={c.avatarUrl} name={c.displayName || c.username} />
-                  <span className="kx-main"><b>{c.displayName || c.username}</b><small>@{c.username} · {[c.category, c.location].filter(Boolean).join(" · ") || "Creator"}</small>{status && AVAILABILITY[status] && <span className="kx-pill kx-pill--ok" style={{ marginTop: 4 }}>{AVAILABILITY[status]}</span>}</span>
-                  <span className="kx-chev">›</span>
-                </a>
-              );
-            })}
-          </div>
+          <>
+            <div className="kx-group">
+              {list.map(c => {
+                const status = typeof c.availability === "string" ? c.availability : c.availability?.status;
+                return (
+                  <a key={c.username} className="kx-grow" href={`/${c.username}/profile`} style={{ textDecoration: "none", color: "inherit" }}>
+                    <Avatar url={c.avatarUrl} name={c.displayName || c.username} />
+                    <span className="kx-main"><b>{c.displayName || c.username}</b><small>@{c.username} · {[c.category, c.location].filter(Boolean).join(" · ") || "Creator"}</small>{status && AVAILABILITY[status] && <span className="kx-pill kx-pill--ok" style={{ marginTop: 4 }}>{AVAILABILITY[status]}</span>}</span>
+                    <span className="kx-chev">›</span>
+                  </a>
+                );
+              })}
+            </div>
+            {error && <p role="alert" className="kx-note kx-note--err" style={{ marginTop: 10 }}>{error}</p>}
+            {cursor && <button type="button" className="kx-btn kx-btn--ghost kx-btn--sm" style={{ marginTop: 12 }} disabled={more} onClick={() => void loadMore()}>{more ? "Memuat…" : "Muat lebih banyak"}</button>}
+          </>
         ) : <div className="kx-card kx-sub" style={{ textAlign: "center" }}>Belum ada creator yang cocok.</div>}
       <button type="button" className="kx-btn kx-btn--ghost" style={{ marginTop: 16 }} onClick={share}>{copied ? "✓ Link profil disalin" : "Bagikan link profilmu"}</button>
     </div>
   );
 }
-
