@@ -10,7 +10,7 @@ import type { CustomerProfile } from "../../lib/identity-adapter";
 export const SERVICE_LIST = [
   ["pulsa", "Pulsa", "Semua operator"], ["data", "Paket Data", "Internet & kuota"], ["pln-token", "Token PLN", "Listrik prabayar"],
   ["pln-bill", "Tagihan PLN", "Listrik bulanan"], ["pdam", "PDAM", "Tagihan air"], ["bpjs", "BPJS", "Kesehatan"],
-  ["tv", "TV & Streaming", "Langganan"], ["game", "Voucher Game", "Top up game"], ["multifinance", "Cicilan", "Pembiayaan"],
+  ["tv", "TV & Streaming", "Langganan"], ["game", "Voucher Game", "Top up game"], ["multifinance", "Cicilan", "Pembiayaan"], ["etoll", "E-Wallet & e-Toll", "DANA, OVO, GoPay"],
 ] as const;
 const COMING_SOON = new Set(["bpjs", "tv", "multifinance"]);
 const toneForVisual = (tone: string) => tone;

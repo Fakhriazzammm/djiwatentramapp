@@ -41,7 +41,7 @@ const PROFILES: Record<string, Partial<PpobServiceProfile>> = {
     placeholder: "Contoh: 32123456789", hint: "11 digit nomor meter atau 12 digit ID pelanggan.", min: 11, max: 12, autoComplete: "off", group: [4, 4, 4],
     tips: ["Nomor meter ada di meteran atau struk token terakhir.", "Periksa lagi: token yang sudah terbit tidak bisa dibatalkan.", "Kode token 20 digit tampil di struk dan bisa disalin."],
   },
-  etoll: { title: "Isi saldo e-Toll", description: "Saldo kartu tol prabayar.", label: "Nomor kartu e-Toll", short: "Nomor kartu", placeholder: "16 digit nomor kartu", hint: "16 digit di bagian depan kartu.", min: 16, max: 16, autoComplete: "off", group: [4, 4, 4, 4] },
+  etoll: { title: "Isi saldo e-wallet", description: "DANA, OVO, ShopeePay, GoPay, LinkAja, Maxim, dan e-Toll.", label: "Nomor HP atau nomor kartu", short: "Nomor tujuan", placeholder: "0812 3456 7890", hint: "Nomor HP yang terdaftar di e-wallet. Untuk Mandiri e-Toll isi 16 digit nomor kartu.", tips: ["Saldo masuk ke akun e-wallet pemilik nomor ini."], min: 9, max: 16, autoComplete: "tel", group: [] },
   game: { title: "Beli voucher game", description: "Voucher masuk ke akun game Anda.", label: "ID pemain game", short: "ID pemain", placeholder: "ID pemain (angka saja)", hint: "Isi ID persis seperti di dalam game. Server atau zone ID ikut diminta oleh sebagian game.", tips: ["Salah ID berarti voucher masuk ke akun lain."], min: 8, max: 20, autoComplete: "off", group: [] },
 };
 export const ppobServiceProfile = (service?: string): PpobServiceProfile => ({ ...DEFAULT_PROFILE, ...(PROFILES[String(service ?? "").toLowerCase()] ?? {}) });

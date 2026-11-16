@@ -183,8 +183,8 @@ export function Sheet({ title, onClose, children, label }: { title?: string; onC
   return typeof document === "undefined" ? node : createPortal(node, document.body);
 }
 
-export const serviceTone: Record<string, string> = { pulsa: "blue", data: "violet", "pln-token": "amber", "pln-bill": "orange", pdam: "cyan", bpjs: "rose", tv: "indigo", game: "emerald", multifinance: "slate" };
-export const serviceIcon: Record<string, IconName> = { pulsa: "phone", data: "wifi", "pln-token": "flash", "pln-bill": "receipt", pdam: "drop", bpjs: "heart", tv: "tv", game: "game", multifinance: "car" };
+export const serviceTone: Record<string, string> = { pulsa: "blue", data: "violet", "pln-token": "amber", "pln-bill": "orange", pdam: "cyan", bpjs: "rose", tv: "indigo", game: "emerald", multifinance: "slate", etoll: "indigo" };
+export const serviceIcon: Record<string, IconName> = { pulsa: "phone", data: "wifi", "pln-token": "flash", "pln-bill": "receipt", pdam: "drop", bpjs: "heart", tv: "tv", game: "game", multifinance: "car", etoll: "wallet" };
 
 /** Full-screen page wrapper with an entrance animation (pages outside the tabbed shell). */
 export function Screen({ children, className = "" }: { children: ReactNode; className?: string }) {

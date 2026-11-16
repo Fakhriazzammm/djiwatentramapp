@@ -29,7 +29,7 @@ const date = (value: string) => { const parsed = new Date(value); return Number.
 const labels: Record<string, string> = { topup_completed: "Top up", manual_credit: "Credit saldo", order_debit: "Pembayaran pesanan", wallet_hold: "Saldo ditahan", wallet_release: "Saldo dikembalikan", wallet_transfer_sent: "Transfer terkirim", wallet_transfer_received: "Transfer diterima", refund: "Refund pesanan", adjustment: "Penyesuaian saldo" };
 const scanAction = walletQuickActionState("scan");
 const withdrawAction = walletQuickActionState("withdraw");
-const ppobServices = [["pulsa", "Pulsa"], ["data", "Paket Data"], ["pln-token", "Token PLN"], ["pln-bill", "Tagihan PLN"], ["pdam", "PDAM"], ["bpjs", "BPJS"], ["tv", "TV & Streaming"], ["game", "Voucher Game"], ["multifinance", "Cicilan"]] as const;
+const ppobServices = [["pulsa", "Pulsa"], ["data", "Paket Data"], ["pln-token", "Token PLN"], ["pln-bill", "Tagihan PLN"], ["pdam", "PDAM"], ["bpjs", "BPJS"], ["tv", "TV & Streaming"], ["game", "Voucher Game"], ["multifinance", "Cicilan"], ["etoll", "E-Wallet & e-Toll"]] as const;
 
 type Props = { profile: CustomerProfile; wallet: WalletResponse | null; loading: boolean; error: string | null; busy: boolean; onRefresh: () => void; onTopup: (amount: number) => Promise<{ invoiceUrl: string; invoiceId?: string }>; navigationContext: PayNavigationContext; onNavigate: (label?: string) => void; onPageReady: () => void; transitionId: number; previewOnly?: boolean };
 
@@ -428,7 +428,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
       />
     </main>
   );
-  const ppobTitle = ppobFilter === "all" ? "Layanan digital" : ppobFilter === "bpjs" ? "BPJS" : ppobFilter === "tv" ? "TV & Streaming" : ppobFilter === "multifinance" ? "Cicilan" : ppobFilter === "pln" ? "Token PLN" : ppobFilter === "data" ? "Paket Data" : ppobFilter === "game" ? "Voucher Game" : ppobFilter === "pdam" ? "PDAM" : ppobFilter === "pln-bill" ? "Tagihan PLN" : ppobFilter.charAt(0).toUpperCase() + ppobFilter.slice(1);
+  const ppobTitle = ppobFilter === "all" ? "Layanan digital" : ppobFilter === "bpjs" ? "BPJS" : ppobFilter === "tv" ? "TV & Streaming" : ppobFilter === "multifinance" ? "Cicilan" : ppobFilter === "etoll" ? "E-Wallet & e-Toll" : ppobFilter === "pln" ? "Token PLN" : ppobFilter === "data" ? "Paket Data" : ppobFilter === "game" ? "Voucher Game" : ppobFilter === "pdam" ? "PDAM" : ppobFilter === "pln-bill" ? "Tagihan PLN" : ppobFilter.charAt(0).toUpperCase() + ppobFilter.slice(1);
   if (ppobOpen && ["bpjs", "tv", "multifinance"].includes(ppobFilter)) return (
     <Screen><Sky><div className="dpx-pad dpx-nobar">
       <Header title={ppobTitle} onBack={() => closePpob()} />
