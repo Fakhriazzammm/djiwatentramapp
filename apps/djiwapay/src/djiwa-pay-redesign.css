@@ -638,3 +638,7 @@ html:has(.dpx-scened),body:has(.dpx-scened){overflow-x:hidden}
 .dpx .dpx-hd-chip-i{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#fbe3d3;flex:none}.dpx .dpx-hd-chip-i .dpx-ic{width:16px;height:16px}
 .dpx .dpx-hd-chip-n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dpx .dpx-hd-chip b{flex:none;color:var(--blue);font-weight:700}
 .dpx .dpx-hd-chip.ok{background:#e4efd0;box-shadow:inset 0 0 0 1.5px #a8c97a}.dpx .dpx-hd-chip.ok .dpx-hd-chip-i{background:#c9e2a3}
+
+/* Same time-of-day scene on every page (shorter than Beranda so content leads) */
+.dpx-subscene .dpx-scene{height:360px}
+.dpx-night.dpx-subscene .dpx-page-title,.dpx-night.dpx-subscene .dpx-title,.dpx-night.dpx-subscene .dpx-spread>b{color:#fff6e6;text-shadow:0 1px 10px rgba(20,16,40,.45)}
