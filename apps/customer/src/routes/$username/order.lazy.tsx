@@ -602,8 +602,15 @@ function OrderPage() {
 		// Customer catalog follows the reference anchor pattern: category chips
 		// scroll to sections while the visible customer catalog remains one
 		// vertical flow.
-		return customerVisibleProducts.filter((product) => !query || product.name.toLowerCase().includes(query) || String(product.menuNumber ?? "").includes(query));
-	}, [catalogQuery, customerVisibleProducts]);
+		const parentById = new Map(customerVisibleCategories.map((category) => [String(category._id), category.parentId == null ? null : String(category.parentId)]));
+		const activeId = activeCategoryId ? String(activeCategoryId) : null;
+		return customerVisibleProducts.filter((product) => {
+			if (query && !product.name.toLowerCase().includes(query) && !String(product.menuNumber ?? "").includes(query)) return false;
+			if (!activeId) return true;
+			const categoryId = String(product.categoryId);
+			return categoryId === activeId || parentById.get(categoryId) === activeId;
+		});
+	}, [activeCategoryId, catalogQuery, customerVisibleCategories, customerVisibleProducts]);
 	const menuNumberIndex = useMemo(() => {
 		const lookup = new Map<string, (typeof customerVisibleProducts)[number]>();
 		const duplicates = new Set<string>();

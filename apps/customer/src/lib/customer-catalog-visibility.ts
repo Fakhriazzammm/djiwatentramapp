@@ -1,6 +1,7 @@
 type CustomerCategoryLike = Record<string, any>;
 
 const HIDDEN_CUSTOMER_CATEGORY_NAMES = new Set(["event", "promo", "b2b"]);
+const HIDDEN_CUSTOMER_CATEGORY_KEYWORDS = ["ramadhan", "ramadan", "marketing"];
 
 export function getCustomerHiddenCategoryIds(categories: CustomerCategoryLike[]): Set<string> {
 	const categoryById = new Map(categories.map((category) => [String(category._id), category]));
@@ -16,7 +17,7 @@ export function getCustomerHiddenCategoryIds(categories: CustomerCategoryLike[])
 			visited.add(currentId);
 
 			const name = String(current.name ?? "").trim().toLowerCase();
-			if (HIDDEN_CUSTOMER_CATEGORY_NAMES.has(name)) {
+			if (HIDDEN_CUSTOMER_CATEGORY_NAMES.has(name) || HIDDEN_CUSTOMER_CATEGORY_KEYWORDS.some((keyword) => name.includes(keyword))) {
 				hiddenIds.add(String(category._id));
 				break;
 			}
