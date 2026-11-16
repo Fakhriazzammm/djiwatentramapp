@@ -8,6 +8,7 @@ import { authServerResolver, type Resolver } from "./auth.js";
 import { applySync, loadState, type Tx } from "./sync.js";
 import { poolTx } from "./db.js";
 export { poolTx };
+import { confirmReceipt, getReceipt, ReceiptProblem } from "./receipt-records.js";
 import { isEmptyRead, readReceipt, type ReceiptRead } from "./receipt.js";
 import { disconnect as googleDisconnect, FEATURES, finishConnect, googleConfig, startConnect, status as googleStatus, syncCalendar, type Feature, type Fetch, type GoogleCfg } from "./google.js";
 import { confirmDriveRemovals, confirmSheetDeletes, requestSheet, touchDrive } from "./google-sync.js";
@@ -54,8 +55,29 @@ export function createApp(d: Deps) {
       if (touchedBills && google) later(async () => { if (await connected(uid(c), "calendar")) await syncCalendar(d.db, google, uid(c), d.gfetch); });
       return json(c, { success: true, ...out });
     }
-    catch (e) { console.error("sync failed", e instanceof Error ? e.message : e); return json(c, { success: false, error: "SYNC_FAILED" }, 500); }
+    catch (e) {
+      if (e instanceof Error && e.message === "RECEIPT_CONFIRMATION_REQUIRED") return json(c, { success: false, error: e.message }, 409);
+      console.error("sync failed", e instanceof Error ? e.message : e); return json(c, { success: false, error: "SYNC_FAILED" }, 500);
+    }
   });
+
+  const analyzeImage = async (userId: string, image: string) => {
+    const reader = d.read ?? (d.aiKey ? (u: string) => readReceipt(u, { key: d.aiKey! }) : null);
+    if (!reader) return { error: "SCAN_UNAVAILABLE", status: 503 } as const;
+    const used = await d.db.query("insert into finance.scan_usage(user_id,scans) values($1,1) on conflict(user_id,day) do update set scans=finance.scan_usage.scans+1 returning scans", [userId]);
+    if (Number(used.rows[0].scans) > DAILY_SCAN_LIMIT) return { error: "DAILY_LIMIT", status: 429 } as const;
+    let read: ReceiptRead;
+    try { read = await reader(image); } catch (e) {
+      await d.db.query("update finance.scan_usage set scans=greatest(scans-1,0) where user_id=$1 and day=current_date", [userId]);
+      console.error("scan failed", e instanceof Error ? e.message : e);
+      return { error: "SCAN_FAILED", status: 502 } as const;
+    }
+    if (isEmptyRead(read)) {
+      await d.db.query("update finance.scan_usage set scans=greatest(scans-1,0) where user_id=$1 and day=current_date", [userId]);
+      return { error: "NOT_A_RECEIPT", status: 422 } as const;
+    }
+    return { read } as const;
+  };
 
   app.post("/api/finance/receipts/scan", async (c) => {
     const body = await c.req.json().catch(() => null) as { image?: unknown; id?: unknown } | null;
@@ -64,30 +86,50 @@ export function createApp(d: Deps) {
     if (!m) return json(c, { success: false, error: "BAD_IMAGE" }, 400);
     const bytes = Buffer.from(m[2], "base64");
     if (bytes.length > MAX_IMAGE_BYTES) return json(c, { success: false, error: "IMAGE_TOO_LARGE" }, 413);
-    const reader = d.read ?? (d.aiKey ? (u: string) => readReceipt(u, { key: d.aiKey! }) : null);
-    if (!reader) return json(c, { success: false, error: "SCAN_UNAVAILABLE" }, 503);
     const userId = uid(c);
-    const used = await d.db.query("insert into finance.scan_usage(user_id,scans) values($1,1) on conflict(user_id,day) do update set scans=finance.scan_usage.scans+1 returning scans", [userId]);
-    if (Number(used.rows[0].scans) > DAILY_SCAN_LIMIT) return json(c, { success: false, error: "DAILY_LIMIT", limit: DAILY_SCAN_LIMIT }, 429);
-    let read: ReceiptRead;
-    try { read = await reader(image); } catch (e) {
-      await d.db.query("update finance.scan_usage set scans=greatest(scans-1,0) where user_id=$1 and day=current_date", [userId]);
-      console.error("scan failed", e instanceof Error ? e.message : e);
-      return json(c, { success: false, error: "SCAN_FAILED" }, 502);
-    }
-    if (isEmptyRead(read)) {
-      await d.db.query("update finance.scan_usage set scans=greatest(scans-1,0) where user_id=$1 and day=current_date", [userId]);
-      return json(c, { success: false, error: "NOT_A_RECEIPT" }, 422);
-    }
-    const id = typeof body?.id === "string" && /^[\w-]{8,64}$/.test(body.id) ? body.id : crypto.randomUUID();
+    const analysis = await analyzeImage(userId, image);
+    if ("error" in analysis) return json(c, { success: false, error: analysis.error }, analysis.status);
+    const read = analysis.read;
+    // Server-generated IDs make scan documents/images immutable across retries.
+    const id = crypto.randomUUID();
     const rel = join(userId.replace(/[^\w-]/g, "_"), `${id}.${m[1] === "jpeg" ? "jpg" : m[1]}`);
     await mkdir(join(d.dir, rel, ".."), { recursive: true });
     await writeFile(join(d.dir, rel), bytes);
-    await d.db.query(`insert into finance.receipts(user_id,id,merchant,purchased_at,total,tax,confidence,items,model,image_path,image_bytes) values($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11)
-      on conflict(user_id,id) do update set merchant=excluded.merchant,purchased_at=excluded.purchased_at,total=excluded.total,tax=excluded.tax,confidence=excluded.confidence,items=excluded.items,model=excluded.model,image_path=excluded.image_path,image_bytes=excluded.image_bytes`,
-      [userId, id, read.merchant, read.purchasedAt, read.total, read.tax, read.confidence, JSON.stringify(read.items), read.model, rel, bytes.length]);
+    await d.db.query(`insert into finance.receipts(user_id,id,merchant,purchased_at,total,tax,confidence,items,model,image_path,image_bytes,details) values($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12::jsonb)
+`,
+      [userId, id, read.merchant, read.purchasedAt, read.total, read.tax, read.confidence, JSON.stringify(read.items), read.model, rel, bytes.length, JSON.stringify({ version: 2, original: read })]);
     if (google) later(async () => { if (await connected(userId, "drive")) await touchDrive(d.db, userId); });
     return json(c, { success: true, receipt: { id, ...read } });
+  });
+
+  app.get("/api/finance/receipts/:id", async c => {
+    try { return json(c, { success: true, receipt: await getReceipt(d.db, uid(c), c.req.param("id")) }); }
+    catch (e) { if (e instanceof ReceiptProblem) return json(c, { success: false, error: e.code }, e.status); throw e; }
+  });
+  app.post("/api/finance/receipts/:id/confirm", async c => {
+    try {
+      const out = await confirmReceipt(d.db, uid(c), c.req.param("id"), await c.req.json().catch(()=>null));
+      return json(c, { success: true, ...out });
+    } catch (e) { if (e instanceof ReceiptProblem) return json(c, { success: false, error: e.code }, e.status); console.error("receipt confirmation failed"); return json(c, { success: false, error: "SAVE_FAILED" }, 500); }
+  });
+
+  app.post("/api/finance/receipts/:id/revise", async c => {
+    try { return json(c, { success: true, ...(await confirmReceipt(d.db, uid(c), c.req.param("id"), await c.req.json().catch(()=>null), true)) }); }
+    catch (e) { if (e instanceof ReceiptProblem) return json(c, { success: false, error: e.code }, e.status); console.error("receipt revision failed"); return json(c, { success: false, error: "SAVE_FAILED" }, 500); }
+  });
+
+  app.post("/api/finance/receipts/:id/reread", async c => {
+    const userId = uid(c), id = c.req.param("id");
+    const found = await d.db.query("select * from finance.receipts where user_id=$1 and id=$2", [userId,id]);
+    const row = found.rows[0];
+    if (!row?.image_path) return json(c, { success: false, error: "NOT_FOUND" }, 404);
+    const bytes = await readFile(join(d.dir,row.image_path)).catch(()=>null);
+    if (!bytes) return json(c, { success: false, error: "NOT_FOUND" }, 404);
+    const mime = row.image_path.endsWith(".png") ? "png" : row.image_path.endsWith(".webp") ? "webp" : "jpeg";
+    const result = await analyzeImage(userId, `data:image/${mime};base64,${bytes.toString("base64")}`);
+    if ("error" in result) return json(c, { success: false, error: result.error }, result.status);
+    // Read-only until an explicit review/revise; never adjust historical money in OCR.
+    return json(c, { success: true, receipt: { id, ...result.read, revision: row.confirmed_at ? new Date(row.confirmed_at).toISOString() : null } });
   });
 
   app.get("/api/finance/receipts/:id/image", async (c) => {

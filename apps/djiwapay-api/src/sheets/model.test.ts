@@ -130,3 +130,12 @@ describe("two-way plan", () => {
     expect(p.toSheet.statuses).toEqual([{ row: 2, value: OK }]);
   });
 });
+
+test('confirmed itemized receipt edits must go through its receipt editor',()=>{
+  const entry=e({source:'receipt',receiptLocked:true});
+  const cells=rowOf(entry,names);cells[COL.amount]=99000;
+  const result=plan([entry],{[entry.id]:hashOf(entry)},[{row:2,cells}]);
+  expect(result.toApp.upserts).toHaveLength(0);
+  expect(result.toSheet.rewrites[0].values[COL.amount]).toBe(25000);
+  expect(result.toSheet.statuses.some(s=>s.value.includes('rincian struk'))).toBe(true);
+});

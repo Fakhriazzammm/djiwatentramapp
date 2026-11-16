@@ -6,6 +6,7 @@ HOST="${DEPLOY_HOST:-vps-djiwa-tentram}"
 SRC="$(cd "$(dirname "$0")/../apps/djiwapay-api" && pwd)"
 STAGE="$(mktemp -d)"; trap 'rm -rf "$STAGE"' EXIT
 cp -R "$SRC/src" "$SRC/migrations" "$SRC/package.json" "$SRC"/*.service "$STAGE/"
+cp "$SRC/../../packages/backend/supabase/migrations/20261115180412_finance_receipt_documents.sql" "$STAGE/migrations/"
 rm -f "$STAGE"/src/*.test.ts
 node -e 'const p=require(process.argv[1]);delete p.devDependencies;require("fs").writeFileSync(process.argv[1],JSON.stringify(p,null,2))' "$STAGE/package.json"
 (cd "$STAGE" && PATH="$HOME/.bun/bin:$PATH" bun install --production --silent)

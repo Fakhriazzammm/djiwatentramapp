@@ -39,7 +39,13 @@ export async function applySync(db: Tx, userId: string, body: SyncBody): Promise
     for (const t of TABLES) {
       const s = SQL[t];
       const rows = arr(body.upserts?.[t]).map(sanitize[t] as (x: any) => any).filter(Boolean);
-      if (rows.length) await q.query(`insert into finance.${t}(user_id,${s.cols}) select $1,${s.cols} from jsonb_to_recordset($2::jsonb) as x(${s.def}) on conflict(user_id,${s.key}) do update set ${s.update}`, [userId, JSON.stringify(rows)]);
+      if (t === "entries" && rows.some((r: any) => r.receipt_id)) {
+        // Itemized receipts are confirmed only through the receipt endpoint; an old cached client must not
+        // create a second (or unreviewed) expense for a receipt via the generic diff.
+        const blocked = await q.query("select 1 from jsonb_to_recordset($2::jsonb) as x(id text,receipt_id text) where coalesce(x.receipt_id,'')<>'' and exists(select 1 from finance.receipts r where r.user_id=$1 and r.id=x.receipt_id) and not exists(select 1 from finance.entries e where e.user_id=$1 and e.id=x.id) limit 1", [userId, JSON.stringify(rows)]);
+        if (blocked.rows.length) throw new Error("RECEIPT_CONFIRMATION_REQUIRED");
+      }
+      if (rows.length) await q.query(`insert into finance.${t}(user_id,${s.cols}) select $1,${s.cols} from jsonb_to_recordset($2::jsonb) as x(${s.def}) on conflict(user_id,${s.key}) do update set ${s.update}${t === "entries" ? " where not exists(select 1 from finance.receipts r where r.user_id=finance.entries.user_id and r.id=finance.entries.receipt_id and r.confirmed_at is not null)" : ""}`, [userId, JSON.stringify(rows)]);
       const del = ids(body.deletes?.[t]);
       if (del.length) await q.query(`delete from finance.${t} where user_id=$1 and ${s.key} = any($2::text[])`, [userId, del]);
     }

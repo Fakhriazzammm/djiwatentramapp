@@ -8,7 +8,7 @@ export const CATATAN_HEADERS = ["ID", "Waktu", "Jenis", "Kategori", "Dompet", "K
 export const OK = "✓ Tersinkron";
 const WIB_MS = 7 * 3600_000, DAY = 86400_000, EPOCH = 25569;   // Sheets serial 25569 = 1970-01-01
 
-export type EntryRow = { id: string; kind: "out" | "in" | "tf"; amount: number; categoryId: string; accountId: string; toAccountId?: string | null; at: string; note: string; source: string };
+export type EntryRow = { id: string; kind: "out" | "in" | "tf"; amount: number; categoryId: string; accountId: string; toAccountId?: string | null; at: string; note: string; source: string; receiptLocked?: boolean };
 export type Names = { catName: Record<string, string>; accName: Record<string, string> };
 export type SheetRow = { row: number; cells: unknown[] };          // row = 1-based sheet row number
 export type Cell = string | number;
@@ -104,6 +104,11 @@ export function planSync(input: { entries: EntryRow[]; mapping: Map<string, stri
       continue;
     }
     const dbHash = hashOf(entry), sheetHash = parsed.ok ? hashOf(parsed.entry) : null;
+    if (entry.receiptLocked) {
+      if (sheetHash !== dbHash) { writeApp(entry, row); status(row, current, "Ubah melalui rincian struk di Djiwa Pay"); }
+      else { plan.mapping.set(id, dbHash); status(row, current, OK); }
+      continue;
+    }
     if (known === undefined) {                        // first meeting (e.g. a rebuilt sheet): the app is the source of truth
       if (sheetHash === dbHash) { plan.mapping.set(id, dbHash); status(row, current, OK); } else writeApp(entry, row);
       continue;

@@ -30,7 +30,7 @@ export async function loadNames(db: Q, userId: string) {
 }
 
 const loadEntries = async (db: Q, userId: string): Promise<EntryRow[]> =>
-  (await db.query("select id,kind,amount,category_id,account_id,to_account_id,at,note,source from finance.entries where user_id=$1 order by at desc limit 20000", [userId])).rows.map((r) => ({ id: r.id, kind: r.kind, amount: Number(r.amount), categoryId: r.category_id, accountId: r.account_id, toAccountId: r.to_account_id, at: new Date(r.at).toISOString(), note: r.note ?? "", source: r.source }));
+  (await db.query("select e.*, exists(select 1 from finance.receipts r where r.user_id=e.user_id and r.id=e.receipt_id and r.confirmed_at is not null) as receipt_locked from finance.entries e where user_id=$1 order by at desc limit 20000", [userId])).rows.map((r) => ({ id: r.id, kind: r.kind, amount: Number(r.amount), categoryId: r.category_id, accountId: r.account_id, toAccountId: r.to_account_id, at: new Date(r.at).toISOString(), note: r.note ?? "", source: r.source, receiptLocked: Boolean(r.receipt_locked) }));
 
 const bump = async (q: Q, userId: string) => { await q.query("insert into finance.profiles(user_id) values($1) on conflict do nothing", [userId]); await q.query("update finance.profiles set version=version+1, updated_at=now() where user_id=$1", [userId]); };
 const monthSerial = (y: number, m: number) => Date.UTC(y, m, 1) / 86400000 + 25569;

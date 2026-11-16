@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Btn, I3, Ic, Seg, Sheet, bigAmountSize, iconOr, type IconName } from "../shell/dpx-ui";
-import { debtTotals, goalProjection, goalSaved, uid } from "../../lib/finance/calc";
+import { accountBalance, debtTotals, goalProjection, goalSaved, uid } from "../../lib/finance/calc";
 import { CATEGORY_ICONS, PAY_ACCOUNT_ID, TONES } from "../../lib/finance/categories";
 import { parseEntries, type ParsedItem } from "../../lib/finance/parse";
 import { streak } from "../../lib/finance/calc";
 import { rupiah, formatDateTime } from "../../lib/djiwa-pay-format";
 import type { Account, AccountType, Budget, Category, Debt, Entry, FinanceState, Goal } from "../../lib/finance/types";
 import type { Finance } from "../../lib/finance/use-finance";
-import { ReceiptAttachment, ReceiptFlow } from "./fin-receipt";
+import { ReceiptAttachment, ReceiptFlow, ReceiptReview } from "./fin-receipt";
+import type { ScannedReceipt } from "../../lib/finance/receipt";
 import { EmailOrigin } from "../integrations/email-origin";
 
 export type Notify = (text: string, undo?: () => void) => void;
@@ -48,7 +49,12 @@ export function EntrySheet({ entry, fin, notify, onClose, onEdit, onPickCategory
   const pay = entry.source === "pay";
   const sign = entry.kind === "in" ? "+" : entry.kind === "out" ? "−" : "";
   const [confirm, setConfirm] = useState(false);
+  const [receiptEdit, setReceiptEdit] = useState<ScannedReceipt | null>(null);
   const del = () => { const copy = entry; dispatch({ type: "entry/delete", id: entry.id }); onClose(); notify("Catatan dihapus", () => dispatch({ type: "entry/restore", entry: copy })); };
+  if (receiptEdit) {
+    const balances = Object.fromEntries(state.accounts.map(a=>[a.id, accountBalance(a, fin.entries)]));
+    return <ReceiptReview fin={fin} notify={notify} onClose={onClose} balances={balances} initial={receiptEdit} entry={entry} />;
+  }
   return <Sheet title="Detail catatan" onClose={onClose}>
     <div className="dpx-center" style={{ margin: "-4px 0 10px" }}><CatIcon cat={c} size={64} /><div className="dpx-money" style={{ marginTop: 8, color: entry.kind === "in" ? "var(--ok)" : undefined }}>{sign}{rupiah(entry.amount)}</div><div className="dpx-sub">{entry.note || c.name}</div></div>
     <div className="dpx-group">
@@ -56,10 +62,10 @@ export function EntrySheet({ entry, fin, notify, onClose, onEdit, onPickCategory
       <div className="dpx-kv"><span>Waktu</span><b>{formatDateTime(entry.at)}</b></div><div className="dpx-kv"><span>Sumber</span><b>{pay ? "Djiwa Pay (otomatis)" : entry.source === "voice" ? "Suara / teks" : entry.source === "receipt" ? "Scan struk" : entry.source === "email" ? "Email pembayaran" : entry.source === "sheet" ? "Spreadsheet" : "Manual"}</b></div>
       {entry.tags.length ? <div className="dpx-kv"><span>Tag</span><b>{entry.tags.map((t) => `#${t}`).join(" ")}</b></div> : null}
     </div>
-    {entry.receiptId ? <ReceiptAttachment id={entry.receiptId} /> : null}
+    {entry.receiptId ? <ReceiptAttachment id={entry.receiptId} onEdit={setReceiptEdit} /> : null}
     {entry.inboundId ? <EmailOrigin inboundId={entry.inboundId} onUndo={() => { const copy = entry; dispatch({ type: "entry/delete", id: entry.id }); onClose(); notify("Catatan dari email diurungkan", () => dispatch({ type: "entry/restore", entry: copy })); }} /> : null}
     {pay ? <><Btn type="button" className="dpx-btn dpx-ghost" onClick={() => onPickCategory(entry.categoryId)}><Ic n="tag" size="sm" /> Ubah kategori</Btn><p className="dpx-hint dpx-center">Nominal transaksi Djiwa Pay tidak dapat diubah. Kategori boleh.</p></>
-      : <div className="dpx-flex dpx-mt"><Btn type="button" className="dpx-btn dpx-ghost" style={{ margin: 0 }} onClick={onEdit}><Ic n="edit" size="sm" /> Ubah</Btn><Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} onClick={() => setConfirm(true)}><Ic n="trash" size="sm" /> Hapus</Btn></div>}
+      : <div className="dpx-flex dpx-mt">{!entry.receiptId ? <Btn type="button" className="dpx-btn dpx-ghost" style={{ margin: 0 }} onClick={onEdit}><Ic n="edit" size="sm" /> Ubah</Btn> : null}<Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} onClick={() => setConfirm(true)}><Ic n="trash" size="sm" /> Hapus</Btn></div>}
     {confirm ? <div className="dpx-note dpx-danger" role="alert" style={{ marginTop: 12 }}><Ic n="warn" /><div><b>Hapus catatan ini?</b> Saldo dan anggaran dihitung ulang.<div className="dpx-flex" style={{ marginTop: 10 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" onClick={del}>Hapus</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => setConfirm(false)}>Batal</Btn></div></div></div> : null}
   </Sheet>;
 }
