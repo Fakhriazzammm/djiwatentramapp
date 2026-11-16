@@ -6,7 +6,7 @@ import { readPayFrameContext } from "../../lib/embed-context";
 import { CheckoutActionBar, CheckoutSection, OrderSummary, PaymentMethodCard } from "@djiwaapps/djiwa-checkout-ui";
 import { DjiwaPayCheckout, DjiwaPaySuccess } from "./djiwa-pay-checkout";
 import { DjiwaPayTopup } from "./djiwa-pay-topup";
-import { isSettledPpob, preferredPaymentMethod, validateCustomerNumber } from "../../lib/djiwa-pay-checkout";
+import { isSettledPpob, ppobServiceProfile, preferredPaymentMethod, validateCustomerNumber } from "../../lib/djiwa-pay-checkout";
 import { parseCheckoutDraft, serializeCheckoutDraft, type CheckoutDraft } from "../../lib/djiwa-pay-draft";
 import { checkoutCustomerNumberHint, parsePpobPath, parseWalletPath, postpaidServiceForCategory } from "../../lib/djiwa-pay-routes";
 import { djiwaPaySplashLabel, isDjiwaPayPageReady } from "../../lib/djiwa-pay-splash";
@@ -282,7 +282,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   }, [ppobReviewOpen, selectedPpobProduct?.product_code, selectedPpobProduct?.product_price, wallet?.wallet.available_balance]);
   const payPpob = async () => {
     if (ppobPaymentBusy || ppobPaymentStatus === "pending") return;
-    if (!selectedPpobProduct || !validateCustomerNumber(ppobCustomerNumber).valid) { setPpobPaymentStatus("failed"); setPpobPaymentMessage(validateCustomerNumber(ppobCustomerNumber).message); return; }
+    if (!selectedPpobProduct || !validateCustomerNumber(ppobCustomerNumber, selectedPpobProduct.product_type.toLowerCase()).valid) { setPpobPaymentStatus("failed"); setPpobPaymentMessage(validateCustomerNumber(ppobCustomerNumber).message); return; }
     saveDraft({ kind: "ppob", productCode: selectedPpobProduct.product_code, category: ppobFilter, customerNumber: ppobCustomerNumber, amount: selectedPpobProduct.product_price, pending: ppobPaymentMethod === "mayar", invoiceId: ppobPaymentMethod === "mayar" ? ppobInvoiceId ?? undefined : undefined, paymentMethod: ppobPaymentMethod, returnTo: ppobProductRoute("konfirmasi") });
     setPpobPaymentBusy(true); setPpobPaymentStatus("idle"); setPpobPaymentMessage(null);
     try {
@@ -408,7 +408,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   const ppobOperators = Array.from(new Set(ppobOperatorProducts.map(operatorName))).sort();
   const operatorLogo = (operator: string) => ppobOperatorProducts.find((product) => operatorName(product) === operator)?.icon_url || null;
   const visibleProducts = (ppobCatalog ?? []).filter((product) => ppobFilter !== "all" && product.product_type.toLowerCase() === ppobFilter && (ppobOperator === "all" || ppobOperator === "all-products" || operatorName(product) === ppobOperator) && `${product.product_description} ${product.product_nominal} ${product.product_code}`.toLowerCase().includes(ppobQuery.toLowerCase())).sort((a, b) => ppobSort === "price-asc" ? a.product_price - b.product_price : ppobSort === "price-desc" ? b.product_price - a.product_price : ppobSort === "name" ? a.product_description.localeCompare(b.product_description) : 0).slice(0, 40);
-  const ppobValidation = validateCustomerNumber(ppobCustomerNumber);
+  const ppobValidation = validateCustomerNumber(ppobCustomerNumber, selectedPpobProduct?.product_type.toLowerCase() ?? (["pulsa", "data"].includes(ppobFilter) ? ppobFilter : ppobFilter === "pln" ? "pln" : undefined));
   const ppobBalance = wallet?.wallet.available_balance ?? 0;
   const ppobPaymentNotice = ppobPaymentStatus === "pending" && ppobPaymentMessage
     ? <div className="djiwa-payment-notice is-warning" role="status"><strong>Transaksi masih diproses</strong><small>{ppobPaymentMessage} Jangan kirim ulang sampai status provider berubah.</small><button type="button" className="djiwa-payment-notice-action" onClick={() => void refreshPpobPayment()} disabled={ppobPaymentBusy}>{ppobPaymentBusy ? "Memeriksa..." : ppobInvoiceId ? "Periksa status" : "Perbarui saldo"}</button></div>
@@ -463,6 +463,8 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
         stage={ppobReviewOpen ? "payment" : "detail"}
         amount={selectedPpobProduct.product_price}
         productId={selectedPpobProduct.product_code}
+        productImage={selectedPpobProduct.icon_url ?? null}
+        service={selectedPpobProduct.product_type.toLowerCase()}
         productName={ppobProductName(selectedPpobProduct)}
         productDescription={operatorName(selectedPpobProduct)}
         customerNumber={ppobCustomerNumber}
@@ -474,7 +476,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
         paymentMethod={ppobPaymentMethod}
         onPaymentMethodChange={setPpobPaymentMethod}
         walletBalance={ppobBalance}
-        fieldError={checkoutCustomerNumberHint(ppobCustomerNumber)}
+        fieldError={checkoutCustomerNumberHint(ppobCustomerNumber, selectedPpobProduct.product_type.toLowerCase())}
         error={ppobPaymentStatus === "failed" ? ppobPaymentMessage : null}
         notice={ppobPaymentNotice}
         busy={ppobPaymentBusy}
@@ -490,11 +492,11 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     const detected = isPhoneCategory ? detectOperator(ppobCustomerNumber) : null;
     const activeOperator = ppobOperator === "all" && detected && (ppobOperators as string[]).includes(detected) ? detected : ppobOperator;
     const shownProducts = (ppobCatalog ?? []).filter((product) => product.product_type.toLowerCase() === ppobFilter && (activeOperator === "all" || operatorName(product) === activeOperator) && `${product.product_description} ${product.product_nominal} ${product.product_code}`.toLowerCase().includes(ppobQuery.toLowerCase())).sort((a, b) => ppobSort === "price-asc" ? a.product_price - b.product_price : ppobSort === "price-desc" ? b.product_price - a.product_price : ppobSort === "name" ? a.product_description.localeCompare(b.product_description) : a.product_price - b.product_price).slice(0, 60);
-    const numberLabel = isPhoneCategory ? "Nomor HP tujuan" : ppobFilter === "pln" ? "Nomor meter / ID pelanggan" : "Nomor atau ID tujuan";
+    const svc = ppobServiceProfile(ppobFilter), numberLabel = svc.label;
     return <Screen><Sky><div className="dpx-pad dpx-nobar" style={{ paddingBottom: 60 }}>
       <Header title={ppobTitle} onBack={() => closePpob()} />
       {ppobFilter === "all" ? <><p className="dpx-sub" style={{ margin: "0 6px 12px" }}>Pilih layanan yang ingin dibayar dengan saldo Djiwa Pay.</p><div className="dpx-group dpx-white"><div className="dpx-tile3" style={{ gap: "6px 8px" }}>{ppobServices.map(([key, label]) => <Btn key={key} type="button" className="dpx-q" style={{ padding: "8px 0" }} onClick={() => { openPpob(key, label); setPpobOperator("all"); setSelectedPpobProduct(null); }}><span className={`dpx-qi dpx-c-${serviceTone[key]}`} style={{ width: 56, height: 56, borderRadius: 20, display: "grid", placeItems: "center" }}><Ic n={serviceIcon[key]} size="lg" /></span><span style={{ fontSize: 13, fontWeight: 600 }}>{label}</span></Btn>)}</div></div></> : <>
-        <label className="dpx-field" style={{ marginTop: 6 }}><span>{numberLabel}</span><div className="dpx-input"><Ic n={isPhoneCategory ? "phone" : ppobFilter === "pln" ? "flash" : "game"} size="sm" /><input id="ppob-number" inputMode="numeric" autoComplete="tel" value={ppobCustomerNumber} onChange={(event) => setPpobCustomerNumber(event.target.value.replace(/\D/g, "").slice(0, 20))} placeholder={isPhoneCategory ? "0812 3456 7890" : "Masukkan nomor"} />{detected ? <span className="dpx-tag dpx-info">{detected}</span> : null}{ppobCustomerNumber ? <Btn type="button" onClick={() => setPpobCustomerNumber("")} aria-label="Hapus nomor"><Ic n="close" size="sm" /></Btn> : null}</div>{isPhoneCategory ? <div className="dpx-hint">Operator terdeteksi otomatis dari awalan nomor.</div> : null}</label>
+        <label className="dpx-field" style={{ marginTop: 6 }}><span>{numberLabel}</span><div className="dpx-input"><Ic n={isPhoneCategory ? "phone" : ppobFilter === "pln" ? "flash" : "game"} size="sm" /><input id="ppob-number" inputMode="numeric" autoComplete="tel" value={ppobCustomerNumber} onChange={(event) => setPpobCustomerNumber(event.target.value.replace(/\D/g, "").slice(0, svc.max))} placeholder={svc.placeholder} />{detected ? <span className="dpx-tag dpx-info">{detected}</span> : null}{ppobCustomerNumber ? <Btn type="button" onClick={() => setPpobCustomerNumber("")} aria-label="Hapus nomor"><Ic n="close" size="sm" /></Btn> : null}</div>{isPhoneCategory ? <div className="dpx-hint">Operator terdeteksi otomatis dari awalan nomor.</div> : null}</label>
         {recentCustomerNumbers.length ? <div className="dpx-chips dpx-mt8" aria-label="Nomor terakhir dipakai">{recentCustomerNumbers.map((number) => <Btn key={number} type="button" className="dpx-chip" onClick={() => setPpobCustomerNumber(number)}>{number}</Btn>)}</div> : null}
         {ppobCatalogLoading ? <div style={{ marginTop: 18 }} role="status" aria-label="Memuat produk"><div className="dpx-skel" style={{ height: 70 }} /><div style={{ height: 10 }} /><div className="dpx-skel" style={{ height: 70 }} /></div>
           : ppobCatalogError ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div><b>Katalog belum dapat dimuat</b>{ppobCatalogError}<br /><Btn type="button" className="dpx-linkbtn" style={{ marginTop: 8, fontWeight: 600 }} onClick={() => setPpobCatalogError(null)}>Coba lagi</Btn></div></div>

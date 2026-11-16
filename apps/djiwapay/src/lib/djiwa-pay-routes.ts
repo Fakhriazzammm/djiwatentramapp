@@ -49,9 +49,9 @@ export function isKnownPayPath(pathname: string) {
   return pathname === "/" || pathname === "/wallet" || parseCustomerWalletUsername(pathname) !== null || parseWalletPath(pathname) !== null || parsePpobPath(pathname) !== null;
 }
 
-export function checkoutCustomerNumberHint(value: string) {
-  const validation = validateCustomerNumber(value);
-  return validation.valid ? null : value ? validation.message : "Masukkan nomor tujuan untuk melanjutkan.";
+export function checkoutCustomerNumberHint(value: string, service?: string) {
+  const validation = validateCustomerNumber(value, service);
+  return validation.valid ? null : value ? validation.message : null;
 }
 
 export function postpaidServiceForCategory(category: string): "pln" | "pdam" | null {

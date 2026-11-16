@@ -77,8 +77,10 @@ describe("Djiwa Pay route contract", () => {
     });
   });
 
-  test("explains why the detail step cannot continue without a number", () => {
-    expect(checkoutCustomerNumberHint("")).toBe("Masukkan nomor tujuan untuk melanjutkan.");
+  test("stays quiet until a number is typed, then explains the service's own format", () => {
+    expect(checkoutCustomerNumberHint("")).toBeNull();
+    expect(checkoutCustomerNumberHint("123", "pln")).toBe("No. meter / ID pelanggan harus 11–12 digit.");
+    expect(checkoutCustomerNumberHint("32123456789", "pln")).toBeNull();
     expect(checkoutCustomerNumberHint("08123")).toBe("Nomor tujuan harus 8–20 digit.");
     expect(checkoutCustomerNumberHint("081234567890")).toBeNull();
   });

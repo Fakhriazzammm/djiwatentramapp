@@ -8,6 +8,9 @@ import {
 } from "@djiwaapps/djiwa-checkout-ui";
 import {
   checkoutStep,
+  groupDigits,
+  ppobServiceProfile,
+  validateCustomerNumber,
   paymentLabel,
   walletPaymentState,
   type PayCheckoutKind,
@@ -22,6 +25,8 @@ type PayCheckoutProps = {
   productName: string;
   productDescription?: string;
   productId: string;
+  productImage?: string | null;
+  service?: string;
   customerNumber?: string;
   onCustomerNumberChange?: (value: string) => void;
   recentCustomerNumbers?: string[];
@@ -57,6 +62,8 @@ export function DjiwaPayCheckout({
   productName,
   productDescription,
   productId,
+  productImage,
+  service,
   customerNumber,
   onCustomerNumberChange,
   recentCustomerNumbers = [],
@@ -79,7 +86,9 @@ export function DjiwaPayCheckout({
   const { step, totalSteps } = checkoutStep(kind, stage);
   const isPayment = stage === "payment";
   const amountIsValid = Number.isSafeInteger(amount) && amount >= 1000;
-  const cart: CheckoutCartItem[] = [{ productId, name: productName, variant: productDescription, price: amount, quantity: 1 }];
+  const profile = ppobServiceProfile(kind === "ppob" ? service : undefined);
+  const numberOk = validateCustomerNumber(customerNumber ?? "", service).valid;
+  const cart: CheckoutCartItem[] = [{ productId, name: productName, variant: productDescription, price: amount, quantity: 1, image: productImage ?? null }];
   const wallet = walletPaymentState(walletBalance, amount);
   const paymentOptions = kind === "topup"
     ? [{ key: "mayar", label: "QRIS Mayar", description: "Bayar aman melalui halaman QRIS Mayar.", icon: <Ic n="qr" size="sm" /> }]
@@ -90,17 +99,18 @@ export function DjiwaPayCheckout({
 
   const fields = !isPayment ? (
     kind === "topup" ? amountEditor : (
-      <CheckoutField label="Nomor tujuan" required htmlFor="djiwa-ppob-customer-number" hint="Wajib diisi · 8–20 digit sebelum lanjut.">
+      <CheckoutField label={profile.label} required htmlFor="djiwa-ppob-customer-number" hint={profile.hint}>
         <CheckoutInput
           id="djiwa-ppob-customer-number"
           inputMode="numeric"
-          autoComplete="tel"
+          autoComplete={profile.autoComplete}
           value={customerNumber ?? ""}
-          onChange={(event) => onCustomerNumberChange?.(event.currentTarget.value.replace(/\D/g, "").slice(0, 20))}
-          placeholder="08xxxxxxxxxx"
+          onChange={(event) => onCustomerNumberChange?.(event.currentTarget.value.replace(/\D/g, "").slice(0, profile.max))}
+          placeholder={profile.placeholder}
         />
         {fieldError ? <small className="djiwa-checkout-field-error" role="alert">{fieldError}</small> : null}
         {recentCustomerNumbers.length ? <div className="djiwa-recent-numbers" aria-label="Nomor tujuan terakhir">{recentCustomerNumbers.map((number) => <span key={number} className="djiwa-recent-number"><button type="button" onClick={() => onSelectCustomerNumber?.(number)}>{number}</button><button type="button" className={favoriteCustomerNumbers.includes(number) ? "is-favorite" : ""} onClick={() => onToggleFavoriteCustomerNumber?.(number)} aria-label={`${favoriteCustomerNumbers.includes(number) ? "Hapus dari" : "Tambahkan ke"} nomor favorit`}>★</button></span>)}</div> : null}
+        {profile.tips.length ? <ul className="djiwa-ppob-tips" aria-label="Petunjuk">{profile.tips.map((tip) => <li key={tip}>{tip}</li>)}</ul> : null}
       </CheckoutField>
     )
   ) : undefined;
@@ -109,7 +119,7 @@ export function DjiwaPayCheckout({
     <div className="djiwa-summary-rows">
       {summaryRow("Layanan", productName)}
       {productDescription ? summaryRow(kind === "ppob" ? "Operator" : "Metode", productDescription) : null}
-      {kind === "ppob" && customerNumber ? summaryRow("Nomor tujuan", customerNumber) : null}
+      {kind === "ppob" && customerNumber ? summaryRow(profile.short, groupDigits(customerNumber, profile.group)) : null}
       {summaryRow(kind === "topup" ? "Nominal isi saldo" : "Total pembayaran", money(amount), "is-total")}
     </div>
   );
@@ -120,8 +130,8 @@ export function DjiwaPayCheckout({
       step={step}
       totalSteps={totalSteps}
       eyebrow={isPayment ? "Pembayaran" : "Detail layanan"}
-      title={isPayment ? "Pilih metode pembayaran" : kind === "topup" ? "Isi saldo Djiwa Pay" : "Detail pembelian"}
-      description={isPayment ? "Pilih satu metode untuk menyelesaikan pembayaran." : productDescription}
+      title={isPayment ? "Pilih metode pembayaran" : kind === "topup" ? "Isi saldo Djiwa Pay" : profile.title}
+      description={isPayment ? "Pilih satu metode untuk menyelesaikan pembayaran." : profile.description || productDescription}
       cart={cart}
       currency={money}
       showOrderDetail={!isPayment}
@@ -147,9 +157,9 @@ export function DjiwaPayCheckout({
       error={error}
       onBack={onBack}
       backLabel={isPayment ? "Kembali ke detail" : "Kembali"}
-      primaryLabel={pending ? "Menunggu status provider" : isPayment ? paymentLabel(kind, paymentMethod, amount) : kind === "ppob" && !customerNumber?.match(/^\d{8,20}$/) ? "Masukkan nomor tujuan" : "Lanjutkan ke pembayaran"}
+      primaryLabel={pending ? "Menunggu status provider" : isPayment ? paymentLabel(kind, paymentMethod, amount) : kind === "ppob" && !numberOk ? `Masukkan ${profile.short.toLowerCase()}` : "Lanjutkan ke pembayaran"}
       onPrimary={onPrimary}
-      primaryDisabled={busy || pending || (!isPayment && kind === "topup" && !amountIsValid) || (!isPayment && kind === "ppob" && !customerNumber?.match(/^\d{8,20}$/)) || (isPayment && kind === "ppob" && paymentMethod === "wallet" && wallet.disabled)}
+      primaryDisabled={busy || pending || (!isPayment && kind === "topup" && !amountIsValid) || (!isPayment && kind === "ppob" && !numberOk) || (isPayment && kind === "ppob" && paymentMethod === "wallet" && wallet.disabled)}
       busy={busy}
       busyLabel="Memproses…"
     />
