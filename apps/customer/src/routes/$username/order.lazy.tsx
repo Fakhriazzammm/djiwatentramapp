@@ -1458,7 +1458,7 @@ function OrderPage() {
 						step === "menu"
 							? "relative isolate min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[calc(11rem+env(safe-area-inset-bottom))]"
 							: step === "receipt"
-								? "flex-1 overflow-y-auto pb-[calc(15rem+env(safe-area-inset-bottom))]"
+								? "min-h-0 flex-1 overflow-y-auto pb-[calc(6rem+env(safe-area-inset-bottom))]"
 								: step === "review" || step === "payment" ? "flex min-h-0 flex-1 flex-col overflow-y-auto" : "flex min-h-0 flex-1 flex-col overflow-y-auto pb-6"
 					}
 				>
