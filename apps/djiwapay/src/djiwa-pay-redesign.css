@@ -596,3 +596,4 @@ html:has(.dpx-scened),body:has(.dpx-scened){overflow-x:hidden}
 .dpx .dpx-rb-sum .dpx-kv{border-top:1px solid #f1e9d9;padding:10px 0;font-size:14px}.dpx .dpx-rb-sum .dpx-kv:first-child{border-top:0}
 .dpx .dpx-rb-sum .dpx-rb-total{font-size:16px}.dpx .dpx-rb-sum .dpx-rb-total span{color:var(--ink);font-weight:600}.dpx .dpx-rb-sum .dpx-rb-total b{font:800 19px var(--font);font-variant-numeric:tabular-nums}
 .dpx .dpx-rb-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 4px}.dpx .dpx-rb-actions .dpx-btn{margin:0;min-height:46px;font-size:14px;padding:0 10px}
+.dpx .dpx-mail-details .dpx-receipt-heading{margin-top:12px}.dpx .dpx-mail-details .dpx-mail-description{font:600 13px/1.4 var(--font);margin:8px 2px 0}

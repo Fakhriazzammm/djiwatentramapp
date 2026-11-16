@@ -9,6 +9,7 @@ import type { Account, AccountType, Budget, Category, Debt, Entry, FinanceState,
 import type { Finance } from "../../lib/finance/use-finance";
 import { ReceiptAttachment, ReceiptFlow, ReceiptReview } from "./fin-receipt";
 import type { ScannedReceipt } from "../../lib/finance/receipt";
+import { Breakdown } from "./breakdown";
 import { EmailOrigin } from "../integrations/email-origin";
 
 export type Notify = (text: string, undo?: () => void) => void;
@@ -62,6 +63,11 @@ export function EntrySheet({ entry, fin, notify, onClose, onEdit, onPickCategory
       <div className="dpx-kv"><span>Waktu</span><b>{formatDateTime(entry.at)}</b></div><div className="dpx-kv"><span>Sumber</span><b>{pay ? "Djiwa Pay (otomatis)" : entry.source === "voice" ? "Suara / teks" : entry.source === "receipt" ? "Scan struk" : entry.source === "email" ? "Email pembayaran" : entry.source === "sheet" ? "Spreadsheet" : "Manual"}</b></div>
       {entry.tags.length ? <div className="dpx-kv"><span>Tag</span><b>{entry.tags.map((t) => `#${t}`).join(" ")}</b></div> : null}
     </div>
+    {!entry.receiptId && !entry.inboundId ? <Breakdown title="Rincian" count="1 item"
+      lines={[{ name: entry.note || c.name, sub: [c.name, ...entry.tags.map((t) => `#${t}`)].join(" \u00b7 "), amount: rupiah(entry.amount) }]}
+      rows={[{ label: entry.kind === "in" ? "Total masuk" : entry.kind === "tf" ? "Total transfer" : "Total", value: rupiah(entry.amount), strong: true }]}>
+      <p className="dpx-hint">{entry.source === "pay" ? "Transaksi Djiwa Pay otomatis." : "Dicatat manual. Untuk rincian per item, foto atau unggah strukanya."}</p>
+    </Breakdown> : null}
     {entry.receiptId ? <ReceiptAttachment id={entry.receiptId} onEdit={setReceiptEdit} ledgerAmount={entry.amount} /> : null}
     {entry.inboundId ? <EmailOrigin inboundId={entry.inboundId} onUndo={() => { const copy = entry; dispatch({ type: "entry/delete", id: entry.id }); onClose(); notify("Catatan dari email diurungkan", () => dispatch({ type: "entry/restore", entry: copy })); }} /> : null}
     {pay ? <><Btn type="button" className="dpx-btn dpx-ghost" onClick={() => onPickCategory(entry.categoryId)}><Ic n="tag" size="sm" /> Ubah kategori</Btn><p className="dpx-hint dpx-center">Nominal transaksi Djiwa Pay tidak dapat diubah. Kategori boleh.</p></>

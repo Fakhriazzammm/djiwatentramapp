@@ -5,6 +5,7 @@ import { SCAN_ERROR_TEXT, ScanError, compressImage, receiptImageUrl, scanReceipt
 import { pushDiff } from "../../lib/finance/sync";
 import type { Entry } from "../../lib/finance/types";
 import type { Finance } from "../../lib/finance/use-finance";
+import { Breakdown, type BreakdownRow } from "./breakdown";
 import { AccountSheet, CategorySheet, accName, catOf, type Notify } from "./fin-sheets";
 
 type FlowProps = { fin: Finance; notify: Notify; onClose: () => void; balances: Record<string, number> };
@@ -123,24 +124,25 @@ export function ReceiptReview({ initial, preview, onRetry, entry, ...props }: Fl
 
 export function ReceiptBreakdown({ receipt }: { receipt: ReceiptDocument }) {
   const sum = reconcileReceipt(receipt);
-  return <section className="dpx-receipt-breakdown" aria-label="Rincian struk">
-    {receipt.reference ? <p className="dpx-sub">No. struk: {receipt.reference}</p> : null}{receipt.paymentMethod ? <p className="dpx-sub">Metode bayar pada struk: {receipt.paymentMethod}</p> : null}{receipt.merchantAddress ? <p className="dpx-hint">{receipt.merchantAddress}</p> : null}
-    <h3 className="dpx-receipt-heading">Rincian struk <span className="dpx-rb-count">{receipt.items.length} item</span></h3>
-    <ul className="dpx-rb-items">{receipt.items.map((i,k)=><li key={k}><div className="dpx-rb-main"><b>{i.name || "Belum terbaca"}</b>
-      <small>{i.qty === null ? "Kuantitas belum terbaca" : `${i.qty.toLocaleString("id-ID")}${i.unit ? ` ${i.unit}` : ""}`}{i.unitPrice !== null ? ` × ${rupiah(i.unitPrice)}` : ""}{i.discount ? ` · diskon −${rupiah(i.discount)}` : ""}</small>
-      {i.components.map((c,n)=><small className="dpx-rb-sub" key={n}>{c.qty!==null ? `${c.qty} × ` : ""}{c.name}</small>)}</div><span className="dpx-rb-amt">{i.price === null ? "—" : rupiah(i.price)}</span></li>)}</ul>
-    {!receipt.items.length ? <p className="dpx-hint">Rincian item belum tersedia pada pembacaan ini.</p> : null}
-    <div className="dpx-rb-sum"><div className="dpx-kv"><span>Jumlah item</span><b>{rupiah(sum.itemSum)}</b></div>
-    {receipt.subtotal!==null ? <div className="dpx-kv"><span>Subtotal pada struk{receipt.subtotalBeforeItemDiscounts ? " (sebelum diskon item)" : ""}</span><b>{rupiah(receipt.subtotal)}</b></div> : null}
-    {receipt.discount ? <div className="dpx-kv"><span>Diskon struk</span><b>−{rupiah(receipt.discount)}</b></div> : null}
-    {receipt.charges.map((c,k)=><div className="dpx-kv" key={k}><span>{c.label}{c.included ? " (termasuk harga)" : ""}</span><b>{moneyText(c.amount)}</b></div>)}
-    <div className="dpx-kv dpx-rb-total"><span>Total pada struk</span><b>{rupiah(receipt.total)}</b></div>
-    {receipt.tendered!==null ? <div className="dpx-kv"><span>Uang dibayar</span><b>{rupiah(receipt.tendered)}</b></div> : null}
-    {receipt.change!==null ? <div className="dpx-kv"><span>Kembalian</span><b>{rupiah(receipt.change)}</b></div> : null}
-    </div>
-    {!sum.valid ? <div className="dpx-note dpx-warn"><div>Rincian lama belum cocok atau belum lengkap. Saldo tidak diubah otomatis.<ul>{sum.problems.map((p,k)=><li key={k}>{p}</li>)}</ul></div></div> : null}
-    {receipt.warnings.length ? <div className="dpx-hint">{receipt.warnings.join(" · ")}</div> : null}
-  </section>;
+  const rows: BreakdownRow[] = [{ label: "Jumlah item", value: rupiah(sum.itemSum) }];
+  if (receipt.subtotal !== null) rows.push({ label: `Subtotal pada struk${receipt.subtotalBeforeItemDiscounts ? " (sebelum diskon item)" : ""}`, value: rupiah(receipt.subtotal) });
+  if (receipt.discount) rows.push({ label: "Diskon struk", value: `\u2212${rupiah(receipt.discount)}` });
+  for (const c of receipt.charges) rows.push({ label: `${c.label}${c.included ? " (termasuk harga)" : ""}`, value: moneyText(c.amount) });
+  rows.push({ label: "Total pada struk", value: rupiah(receipt.total), strong: true });
+  if (receipt.tendered !== null) rows.push({ label: "Uang dibayar", value: rupiah(receipt.tendered) });
+  if (receipt.change !== null) rows.push({ label: "Kembalian", value: rupiah(receipt.change) });
+  return <Breakdown title="Rincian struk" count={`${receipt.items.length} item`}
+    lines={receipt.items.map(i => ({
+      name: i.name || "Belum terbaca",
+      sub: `${i.qty === null ? "Kuantitas belum terbaca" : `${i.qty.toLocaleString("id-ID")}${i.unit ? ` ${i.unit}` : ""}`}${i.unitPrice !== null ? ` \u00d7 ${rupiah(i.unitPrice)}` : ""}${i.discount ? ` \u00b7 diskon \u2212${rupiah(i.discount)}` : ""}`,
+      subs: i.components.map(c => `${c.qty !== null ? `${c.qty} \u00d7 ` : ""}${c.name}`),
+      amount: i.price === null ? "\u2014" : rupiah(i.price),
+    }))}
+    rows={rows} empty="Rincian item belum tersedia pada pembacaan ini.">
+    {receipt.reference || receipt.paymentMethod || receipt.merchantAddress ? <p className="dpx-hint">{[receipt.reference ? `No. struk ${receipt.reference}` : "", receipt.paymentMethod ? `Bayar: ${receipt.paymentMethod}` : "", receipt.merchantAddress].filter(Boolean).join(" \u00b7 ")}</p> : null}
+    {!sum.valid ? <div className="dpx-note dpx-warn"><div>Rincian lama belum cocok atau belum lengkap. Saldo tidak diubah otomatis.<ul>{sum.problems.map((p, k) => <li key={k}>{p}</li>)}</ul></div></div> : null}
+    {receipt.warnings.length ? <div className="dpx-hint">{receipt.warnings.join(" \u00b7 ")}</div> : null}
+  </Breakdown>;
 }
 
 /** Load the durable document, not just the image, including on another device. */
