@@ -1,4 +1,3 @@
-import { daypart } from "../../lib/djiwa-pay-format";
 import { forwardRef, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, MotionConfig, animate, motion, useAnimation, useDragControls, useMotionValue, useReducedMotion, useTransform, type HTMLMotionProps } from "framer-motion";
@@ -153,8 +152,8 @@ export type DayPart = "pagi" | "siang" | "sore" | "malam";
 const SCENES: DayPart[] = ["pagi", "siang", "sore", "malam"];
 
 export function Sky({ children, deep = false, scene: sceneProp }: { children: ReactNode; deep?: boolean; scene?: DayPart }) {
-  const scene = sceneProp ?? (deep ? undefined : daypart(new Date()));
-  return <div className={`dpx-sky ${deep ? "dpx-deep" : ""} ${scene ? "dpx-scened" : ""} ${scene && !sceneProp ? "dpx-subscene" : ""} ${scene === "malam" ? "dpx-night" : ""}`}>
+  const scene = sceneProp;
+  return <div className={`dpx-sky ${deep ? "dpx-deep" : ""} ${scene ? "dpx-scened" : deep ? "" : "dpx-plain"} ${scene === "malam" ? "dpx-night" : ""}`}>
     {scene
       ? <div className="dpx-scene" aria-hidden="true">{SCENES.map((name) => <img key={name} src={`/bg/${name}.webp`} alt="" decoding="async" className={name === scene ? "on" : ""} />)}</div>
       : <div className="dpx-clouds" aria-hidden="true"><i /><i /><i /></div>}
