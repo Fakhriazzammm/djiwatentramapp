@@ -729,3 +729,9 @@ html:has(.dpx-plain),body:has(.dpx-plain),#root:has(.dpx-plain){background:#f8f3
 .dpx-vt-warn{font-style:normal;color:#a05d00;font-weight:600}
 .dpx-vt-fab{position:fixed;left:0;right:0;margin:0 auto;max-width:452px;width:calc(100% - 28px);bottom:calc(112px + env(safe-area-inset-bottom,0px));display:flex;justify-content:flex-end;pointer-events:none;z-index:45}
 .dpx-vt-fab .dpx-vt-photo{pointer-events:auto;padding:12px 18px;font-size:14px;box-shadow:0 10px 22px rgba(201,70,27,.4)}
+
+/* One focus style everywhere: the field's wrapper shows it. The shared theme draws a blue ring on the bare input
+   with higher specificity, so this repeats the input selector to win and stop the blue box inside the red border. */
+.dpx :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),textarea,select):is(:focus,:focus-visible){outline:none!important;box-shadow:none!important}
+.dpx :is(.dpx-as-fld,.dpx-receipt-field,.dpx-search):focus-within{box-shadow:0 0 0 2px var(--blue)}
+.dpx .dpx-input:focus-within{border-color:var(--blue)}

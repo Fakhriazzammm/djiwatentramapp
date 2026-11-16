@@ -149,7 +149,9 @@ export function ppobProductName(product: Pick<PpobProduct, "product_nominal" | "
   return product.product_description.trim() || product.product_code;
 }
 export async function readPpobCatalog(): Promise<PpobProduct[]> {
-  const response = await fetch("https://api.djiwatentram.web.id/api/ppob/iak/", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "price-list" }) });
+  // Without a deadline a stalled provider leaves the page on skeletons forever; fail with a message the page can retry.
+  const response = await fetch("https://api.djiwatentram.web.id/api/ppob/iak/", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "price-list" }), signal: AbortSignal.timeout(50_000) })
+    .catch((e) => { throw new Error(e instanceof DOMException && e.name === "TimeoutError" ? "Penyedia layanan lambat merespons. Coba lagi sebentar." : "Katalog PPOB tidak dapat dimuat. Periksa koneksi lalu coba lagi."); });
   if (!response.ok) throw new Error("Katalog PPOB tidak dapat dimuat");
   const payload = await response.json() as { success?: boolean; data?: { data?: { pricelist?: PpobProduct[] } } };
   const products = payload.data?.data?.pricelist;
