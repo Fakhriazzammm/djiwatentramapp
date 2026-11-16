@@ -43,7 +43,7 @@ export function buildCustomerAuthUrl(currentUrl = window.location.href) {
 export function shouldResumePayBridge(currentUrl = window.location.href) {
   return new URL(currentUrl).searchParams.get("sso") === "1";
 }
-export type CustomerProfile = { source_id: string; name: string | null; email: string | null; phone?: string | null; wallet_status?: "active" | "blocked" };
+export type CustomerProfile = { source_id: string; name: string | null; email: string | null; phone?: string | null; photo_url?: string | null; wallet_status?: "active" | "blocked" };
 const CUSTOMER_AUTH_ORIGIN = "https://djiwatentram.web.id/masuk";
 export type PayNavigationContext = { source: "customer"; username: string } | null;
 export function getPayNavigationContext(): PayNavigationContext {

@@ -190,3 +190,14 @@ export const serviceIcon: Record<string, IconName> = { pulsa: "phone", data: "wi
 export function Screen({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <MotionConfig reducedMotion="user"><motion.div className={`dpx ${className}`.trim()} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.34, ease }}>{children}</motion.div></MotionConfig>;
 }
+
+
+/** The person's Google / account photo, or their initial when there is none or it cannot load. */
+export function Avatar({ url, initial }: { url?: string | null; initial: string }) {
+  const [failed, setFailed] = useState(false);
+  const src = url && /^https:\/\//.test(url) ? url.replace(/=s\d+(-c)?$/, "=s256-c") : "";
+  useEffect(() => setFailed(false), [src]);
+  return src && !failed
+    ? <img className="dpx-av-img" src={src} alt="" referrerPolicy="no-referrer" draggable={false} onError={() => setFailed(true)} />
+    : <>{initial}</>;
+}

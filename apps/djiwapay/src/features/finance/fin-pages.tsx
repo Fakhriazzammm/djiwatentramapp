@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { HeroDay } from "./hero-day";
-import { payAsset, AnimatedNumber, Bar, Mascot, MascotBuddy, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
+import { Avatar, payAsset, AnimatedNumber, Bar, Mascot, MascotBuddy, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
 import type { Nav } from "../shell/dpx-pages";
 import { AccountEditSheet, AccountSheet, BudgetSheet, CatIcon, CategoryEditSheet, CategorySheet, DebtSheet, EntrySheet, GoalDetailSheet, GoalSheet, CatatSheet, SplitSheet, StreakSheet, MoneyInput, accName, catOf, type Notify } from "./fin-sheets";
 import { accountBalance, budgetStatuses, buildInsights, dailySpend, daysIn, debtTotals, detectSubscriptions, goalProjection, goalSaved, inMonth, monthlySeries, safeToSpend, spendByCategory, streak, toCsv, totals, uid } from "../../lib/finance/calc";
@@ -108,7 +108,7 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
   const trend = pt.out > 0 ? Math.round(((t.out - pt.out) / pt.out) * 100) : null;
   return <div className="dpx-page"><Sky scene={daypart(now)}><div className="dpx-pad">
     <div className="dpx-hdr" style={{ paddingTop: 0 }}>
-      <Btn type="button" className="dpx-av" onClick={() => nav.go("/akun")} aria-label="Akun saya">{firstName(profile.name, profile.email)[0]?.toUpperCase()}</Btn><div className="dpx-grow" />
+      <Btn type="button" className="dpx-av" onClick={() => nav.go("/akun")} aria-label="Akun saya"><Avatar url={profile.photo_url} initial={firstName(profile.name, profile.email)[0]?.toUpperCase() ?? ""} /></Btn><div className="dpx-grow" />
       <Btn type="button" className="dpx-pill-info" onClick={() => ctx.open({ k: "streak" })} aria-label={`Streak ${st.count} hari`}><Ic n="flame" size="sm" /> {st.count}</Btn>
       <Btn type="button" className="dpx-rb" onClick={ctx.onOpenNotifications} aria-label={`Notifikasi${ctx.unread ? `, ${ctx.unread} belum dibaca` : ""}`}><Wiggle active={ctx.unread > 0}><Ic n="bell" /></Wiggle>{ctx.unread ? <span className="dpx-bd">{ctx.unread > 9 ? "9+" : ctx.unread}</span> : null}</Btn>
     </div>
