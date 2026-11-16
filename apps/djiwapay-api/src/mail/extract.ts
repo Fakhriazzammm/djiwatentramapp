@@ -267,6 +267,8 @@ export function guessCategory(merchant: string, subject: string, direction: "out
   return "lainnya";
 }
 
+/** What two spellings of the same shop share: machine suffixes ("· PAN 9360…") and long numbers are dropped. Used to group the review queue and to learn categories. */
+export const groupKey = (name: string) => name.toLowerCase().replace(/\s*[·|]\s*(pan|nmid|mid|tid|ref|no)\b.*$/, "").replace(/\b\d{6,}\b/g, "").replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim().slice(0, 40);
 export const merchantKey = (merchant: string) => merchant.toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim().slice(0, 40);
 
 /** Masks long digit runs (card/account numbers) before anything is sent to a model. */

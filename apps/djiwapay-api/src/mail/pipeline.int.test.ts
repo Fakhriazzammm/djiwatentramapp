@@ -2,7 +2,7 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { Pool } from "pg";
 import { poolTx } from "../index";
-import { approve, ensureSource, processMail, reject, reviewCount, reviewList, type RawMail } from "./pipeline";
+import { approve, approveGroup, ensureSource, processMail, reject, rejectGroup, reviewCount, reviewGroups, reviewList, type RawMail } from "./pipeline";
 
 const url = process.env.DATABASE_URL;
 const run = url ? describe : describe.skip;
@@ -102,5 +102,39 @@ run("mail pipeline (real database)", () => {
   test("an amount too large to trust waits for a person", async () => {
     const out = await processMail(deps(), mail({ body: "Pembayaran ke Toko Emas sebesar Rp 60.000.000 berhasil pada 15/11/2026 16:00. No. Referensi: GP2611151600F3" }));
     expect(out.status).toBe("review");
+  });
+
+  test("the review queue can be decided shop by shop, and the shop is learned", async () => {
+    const put = (merchant: string, amount: number, over: Record<string, unknown> = {}) => pool.query(
+      "insert into finance.inbound_messages(user_id,message_id,sender_domain,channel,status,reason,parsed,confidence) values($1,$2,'bankmandiri.co.id','mandiri','review','needs-check',$3::jsonb,0.7)",
+      [user, `<grp-${++n}-${user}@x>`, JSON.stringify({ amount, kind: "out", merchant, categoryId: "lainnya", accountId: "email-mandiri-4399", accountName: "Mandiri ••4399", accountType: "bank", at: "2026-03-10T05:00:00.000Z", subject: merchant, ...over })]);
+    await put("TOKO LISTRIK BAROKAH · PAN 9360091800232207169", 91000);
+    await put("Toko Listrik Barokah · PAN 9360091800239999999", 50000, { at: "2026-04-02T05:00:00.000Z" });
+    await put("Toko Listrik Barokah", 25000, { flags: ["nominal tidak cocok dengan isi email"] });     // flagged: shown, never bulk-approved
+    await put("Gaji PT Maju", 5000000, { kind: "in", categoryId: "gaji" });
+    await put("Kopilogi Tasikmalaya", 22500);
+    const { groups, groupedItems } = await reviewGroups(db, user);
+    expect(groupedItems).toBeGreaterThanOrEqual(5);
+    const shop = groups.find((g) => g.key === "toko listrik barokah|out")!;
+    expect(shop).toMatchObject({ count: 3, total: 166000, flagged: 1, kind: "out", categoryId: "lainnya" });
+    expect(groups.find((g) => g.key === "gaji pt maju|in")).toMatchObject({ count: 1, kind: "in", categoryId: "gaji" });   // direction splits groups
+
+    const before = (await entries()).length;
+    const out = await approveGroup(db, user, "toko listrik barokah|out", { categoryId: "tagihan" });
+    expect(out).toMatchObject({ approved: 2, skipped: 1, expense: 141000, income: 0 });
+    expect(out!.months.map((m) => `${m.y}-${m.m + 1}`).sort()).toEqual(["2026-3", "2026-4"]);
+    const rows = (await entries()).slice(before - (await entries()).length);
+    expect((await pool.query("select category_id,source from finance.entries where user_id=$1 and note ilike '%barokah%'", [user])).rows).toEqual([{ category_id: "tagihan", source: "email" }, { category_id: "tagihan", source: "email" }]);
+    expect(rows).toBeDefined();
+    expect((await reviewGroups(db, user)).groups.find((g) => g.key === "toko listrik barokah|out")).toMatchObject({ count: 1, flagged: 1 });   // only the flagged one is left
+    expect(await approveGroup(db, user, "no such shop|out", { categoryId: "tagihan" })).toBeNull();
+
+    // the shop is learned: new mail from it, spelled with another PAN, lands in the right category
+    const learned = await processMail(deps(), mail({ body: "Pembayaran ke TOKO LISTRIK BAROKAH sebesar Rp 12.000 berhasil pada 16/11/2026 09:00. No. Referensi: GP2611160900Q7" }));
+    expect(learned.status).toBe("auto");
+    expect((await pool.query("select category_id from finance.entries where user_id=$1 and amount=12000", [user])).rows[0].category_id).toBe("tagihan");
+
+    expect(await rejectGroup(db, user, "kopilogi tasikmalaya|out")).toBe(1);
+    expect((await reviewGroups(db, user)).groups.some((g) => g.key.startsWith("kopilogi"))).toBe(false);
   });
 });

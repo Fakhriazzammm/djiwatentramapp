@@ -15,7 +15,7 @@ import { confirmDriveRemovals, confirmSheetDeletes, requestSheet, touchDrive } f
 import { ISSUERS } from "./mail/extract.js";
 import { disableGmail, enableGmail, pollSoon } from "./gmail.js";
 import { cancelImport, commitImport, createImport, importCheckItems, importState, undoImport } from "./gmail-import.js";
-import { approve, ensureSource, getSource, originOf, reject, removeSource, reviewCount, reviewList } from "./mail/pipeline.js";
+import { approveGroup, rejectGroup, reviewGroups, approve, ensureSource, getSource, originOf, reject, removeSource, reviewCount, reviewList } from "./mail/pipeline.js";
 
 const DAILY_SCAN_LIMIT = Number(process.env.SCAN_DAILY_LIMIT || 30);
 const MAX_IMAGE_BYTES = 3_500_000;
@@ -210,6 +210,18 @@ export function createApp(d: Deps) {
     const offset = Number(c.req.query("offset") || 0);
     if (!Number.isInteger(offset) || offset < 0 || offset > 100000) return json(c,{success:false,error:"INVALID_OFFSET"},400);
     return json(c,{success:true,items:await reviewList(d.db,uid(c),offset),total:await reviewCount(d.db,uid(c))});
+  });
+  app.get("/api/finance/inbound/groups", async (c) => json(c, { success: true, ...(await reviewGroups(d.db, uid(c))), total: await reviewCount(d.db, uid(c)) }));
+  app.post("/api/finance/inbound/groups/approve", async (c) => {
+    const b = await c.req.json().catch(() => null) as { key?: unknown; categoryId?: unknown; accountId?: unknown } | null;
+    if (!b || typeof b.key !== "string" || b.key.length > 80 || typeof b.categoryId !== "string" || !/^[\w-]{1,80}$/.test(b.categoryId)) return json(c, { success: false, error: "INVALID_GROUP" }, 400);
+    const r = await approveGroup(d.db, uid(c), b.key, { categoryId: b.categoryId, accountId: typeof b.accountId === "string" && /^[\w-]{1,80}$/.test(b.accountId) ? b.accountId : undefined });
+    return r ? json(c, { success: true, ...r }) : json(c, { success: false, error: "NOT_FOUND" }, 404);
+  });
+  app.post("/api/finance/inbound/groups/reject", async (c) => {
+    const b = await c.req.json().catch(() => null) as { key?: unknown } | null;
+    if (!b || typeof b.key !== "string" || b.key.length > 80) return json(c, { success: false, error: "INVALID_GROUP" }, 400);
+    return json(c, { success: true, rejected: await rejectGroup(d.db, uid(c), b.key) });
   });
   app.post("/api/finance/inbound/bulk", async(c)=>{
     const body=await c.req.json().catch(()=>null);

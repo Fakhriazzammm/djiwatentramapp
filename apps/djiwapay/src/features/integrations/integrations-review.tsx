@@ -5,7 +5,7 @@ import type { FinCtx } from "../finance/fin-pages";
 import { CatIcon, MoneyInput, accName, catOf } from "../finance/fin-sheets";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import { monthLabel } from "../../lib/djiwa-pay-summary";
-import { CHANNEL_NAME, approveItem, bulkReview, getReview, rejectItem, rereadItem, type ReviewItem } from "../../lib/finance/integrations";
+import { CHANNEL_NAME, approveItem, approveReviewGroup, bulkReview, getReview, getReviewGroups, rejectItem, rejectReviewGroup, rereadItem, type ReviewGroup, type ReviewItem } from "../../lib/finance/integrations";
 import { PaymentDetails } from "./payment-details";
 import { tidyTitle } from "../../lib/finance/review-format";
 import "./integrations-review.css";
@@ -78,6 +78,56 @@ function DetailSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: Fi
   </Sheet>;
 }
 
+/* ---------- grouped by shop ---------- */
+const span = (g: ReviewGroup) => {
+  if (!g.firstAt || !g.lastAt) return "";
+  const f = new Date(g.firstAt), l = new Date(g.lastAt), fmt = (d: Date) => d.toLocaleDateString("id-ID", { month: "short", year: "numeric" });
+  return fmt(f) === fmt(l) ? fmt(l) : `${fmt(f)} – ${fmt(l)}`;
+};
+
+function GroupRow({ g, ctx, onOpen }: { g: ReviewGroup; ctx: FinCtx; onOpen: () => void }) {
+  const cat = catOf(ctx.fin.state, g.categoryId);
+  return <Btn type="button" className="dpx-rv-grow" onClick={onOpen} aria-label={`Buka kelompok ${tidyTitle(g.name)}, ${g.count} transaksi`}>
+    <CatIcon cat={cat} size={44} />
+    <span className="dpx-rv-text">
+      <b>{tidyTitle(g.name)}</b>
+      <span className="dpx-rv-sub">{g.count} transaksi{span(g) ? ` · ${span(g)}` : ""}</span>
+      <span className="dpx-rv-chips"><i>{cat.name}</i>{g.categoryId === "lainnya" ? <i className="is-warn">Pilih kategori</i> : null}{g.flagged ? <i className="is-warn">{g.flagged} perlu dicek</i> : null}</span>
+    </span>
+    <span className={`dpx-rv-amt ${g.kind === "in" ? "is-in" : ""}`}>{g.kind === "in" ? "+" : "−"}{rupiah(g.total)}</span>
+  </Btn>;
+}
+
+function GroupSheet({ g, ctx, onClose, onApproved, onRejected }: { g: ReviewGroup; ctx: FinCtx; onClose: () => void; onApproved: (result: Result) => Promise<void>; onRejected: (n: number) => Promise<void> }) {
+  const state = ctx.fin.state;
+  const [cat, setCat] = useState(g.categoryId);
+  const [busy, setBusy] = useState(false), [confirmReject, setConfirmReject] = useState(false);
+  const cats = state.categories.filter((c) => c.income === (g.kind === "in"));
+  const ready = g.count - g.flagged;
+  const approve = async () => {
+    setBusy(true);
+    try {
+      const r = await approveReviewGroup(g.key, cat);
+      await ctx.fin.retrySync();
+      await onApproved({ count: r.approved, income: r.income, expense: r.expense, uncategorised: cat === "lainnya" ? r.approved : 0, remaining: 0, months: r.months });
+    } catch { ctx.notify("Gagal memproses. Datanya tetap aman. Coba lagi."); } finally { setBusy(false); }
+  };
+  const reject = async () => { setBusy(true); try { const r = await rejectReviewGroup(g.key); await onRejected(r.rejected); } catch { ctx.notify("Gagal memproses. Coba lagi."); } finally { setBusy(false); } };
+  return <Sheet title="Satu toko, sekali putus" onClose={onClose}>
+    <div className="dpx-rv-hero"><CatIcon cat={catOf(state, cat)} size={56} /><div><b>{tidyTitle(g.name)}</b><span>{g.count} transaksi{span(g) ? ` · ${span(g)}` : ""} · {g.kind === "in" ? "+" : "−"}{rupiah(g.total)}</span></div></div>
+    <div className="dpx-group dpx-white dpx-flush">{g.sample.map((x, i) => <div key={i} className="dpx-kv"><span>{x.at ? new Date(x.at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "Tanggal belum terbaca"}</span><b>{g.kind === "in" ? "+" : "−"}{rupiah(x.amount)}</b></div>)}{g.count > g.sample.length ? <div className="dpx-kv"><span>dan {g.count - g.sample.length} transaksi lain</span><b /></div> : null}</div>
+    <div className="dpx-glabel">Kategori untuk semuanya</div>
+    <div className="dpx-rv-pick" role="group" aria-label="Kategori">{cats.map((c) => <Btn key={c.id} type="button" className={cat === c.id ? "is-on" : ""} aria-pressed={cat === c.id} onClick={() => setCat(c.id)}>{c.name}</Btn>)}</div>
+    {cat === "lainnya" ? <div className="dpx-note"><Ic n="info" /><div>“Lainnya” membuat laporan per kategori tidak berguna. Pilih yang paling pas bila bisa.</div></div> : <div className="dpx-note dpx-info"><Ic n="check" /><div>Toko ini akan diingat. Email berikutnya dari {tidyTitle(g.name)} langsung masuk ke <b>{catOf(state, cat).name}</b>.</div></div>}
+    {g.flagged ? <div className="dpx-note dpx-danger"><Ic n="warn" /><div><b>{g.flagged} transaksi tidak ikut.</b> Pembaca menandainya perlu dicek. Tinjau satu per satu di tampilan “Per hari”.</div></div> : null}
+    {confirmReject ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div><b>Abaikan {g.count} email dari toko ini?</b> Tidak ada yang dicatat.<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy} onClick={() => void reject()}>Ya, abaikan</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => setConfirmReject(false)}>Batal</Btn></div></div></div> : null}
+    <div className="dpx-rv-footer">
+      <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} disabled={busy} onClick={() => setConfirmReject(true)}>Abaikan</Btn>
+      <Btn type="button" className="dpx-btn" style={{ margin: 0 }} disabled={busy || ready <= 0} onClick={() => void approve()}>{busy ? "Mencatat…" : `Catat ${ready} transaksi`}</Btn>
+    </div>
+  </Sheet>;
+}
+
 /* ---------- what just happened ---------- */
 type Result = { count: number; income: number; expense: number; uncategorised: number; remaining: number; months: { y: number; m: number; n: number; out: number; inc: number }[] };
 const resultOf = (list: ReviewItem[], remaining: number): Result => {
@@ -121,6 +171,9 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
   const [openId, setOpenId] = useState<string | null>(null), [confirm, setConfirm] = useState<"approve" | "reject" | null>(null);
   const [done, setDone] = useState<{ count: number; y: number; m: number } | null>(null);
   const [result, setResult] = useState<Result | null>(null);
+  const [view, setView] = useState<"toko" | "hari">("toko");
+  const [shops, setShops] = useState<ReviewGroup[]>([]), [groupedItems, setGroupedItems] = useState(0), [groupsLoading, setGroupsLoading] = useState(true), [openGroup, setOpenGroup] = useState<string | null>(null);
+  const loadGroups = useCallback(async () => { setGroupsLoading(true); try { const r = await getReviewGroups(); setShops(r.groups); setGroupedItems(r.groupedItems); setError(false); } catch { setError(true); } finally { setGroupsLoading(false); } }, []);
   /** Remember what was just recorded, so the page can point at where it went (a past month is not on the default Catatan view). */
   const markDone = (list: ReviewItem[]) => {
     if (!list.length) return;
@@ -133,7 +186,7 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
     try { const r = await getReview(more ? items.length : 0); setItems((prev) => more ? [...new Map([...prev, ...r.items].map((x) => [x.id, x])).values()] : r.items); setTotal(r.total); setError(false); }
     catch { setError(true); } finally { setLoading(false); }
   }, [items.length]);
-  useEffect(() => { void load(); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { void load(); void loadGroups(); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const groups = useMemo(() => {
     const m = new Map<string, ReviewItem[]>();
@@ -170,19 +223,26 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
   };
 
   return <div className="dpx-page dpx-rv-page"><Sky><div className="dpx-pad dpx-rv-pad">
-    <Header title="Perlu ditinjau" onBack={onBack} right={items.length ? <Btn type="button" className={`dpx-rv-pill ${selecting ? "is-on" : ""}`} onClick={() => (selecting ? leaveSelect() : setSelecting(true))}>{selecting ? "Selesai" : "Pilih"}</Btn> : <Btn type="button" className="dpx-rb" onClick={onOpenIntegrations} aria-label="Pengaturan integrasi"><Ic n="grid" /></Btn>} />
+    <Header title="Perlu ditinjau" onBack={onBack} right={items.length && view === "hari" ? <Btn type="button" className={`dpx-rv-pill ${selecting ? "is-on" : ""}`} onClick={() => (selecting ? leaveSelect() : setSelecting(true))}>{selecting ? "Selesai" : "Pilih"}</Btn> : <Btn type="button" className="dpx-rb" onClick={onOpenIntegrations} aria-label="Pengaturan integrasi"><Ic n="grid" /></Btn>} />
     {total > 0 ? <Reveal i={0}><div className="dpx-rv-summary"><div><b>{total}</b><span>email menunggu</span></div><div><span>Keluar</span><b>{rupiah(outTotal)}</b></div>{inTotal ? <div><span>Masuk</span><b className="is-in">+{rupiah(inTotal)}</b></div> : null}</div></Reveal> : null}
     {done ? <Reveal i={0}><div className="dpx-rv-done" role="status"><Ic n="check" /><div><b>{done.count} transaksi masuk ke Catatan</b><span>Terakhir untuk {monthLabel(done.y, done.m)}. Catatan menampilkan satu bulan, pilih bulannya di sana.</span></div><Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => ctx.nav.go(`/riwayat?bulan=${done.y}-${String(done.m + 1).padStart(2, "0")}`)}>Lihat</Btn></div></Reveal> : null}
-    {!selecting && items.length ? <p className="dpx-hint dpx-rv-hint">Ketuk baris untuk memeriksa. Tombol centang menyetujui langsung.</p> : null}
+    {total > 0 ? <div className="dpx-rv-view"><Seg id="rv-view" label="Tampilan antrean" value={view} onChange={(v) => { setView(v); if (v === "toko") { leaveSelect(); void loadGroups(); } }} options={[["toko", "Per toko"], ["hari", "Per hari"]] as const} /></div> : null}
+    {view === "toko" && total > 0 ? <>
+      <p className="dpx-hint dpx-rv-hint">Satu keputusan untuk semua email dari toko yang sama. Toko yang sudah kamu pilihkan kategorinya diingat untuk email berikutnya.</p>
+      {shops.length ? <div className="dpx-rv-card dpx-rv-shops">{shops.map((g) => <GroupRow key={g.key} g={g} ctx={ctx} onOpen={() => setOpenGroup(g.key)} />)}</div> : !groupsLoading ? <div className="dpx-note dpx-info"><Ic n="info" /><div>Belum ada email yang bisa dikelompokkan per toko. Lihat satu per satu di “Per hari”.</div></div> : null}
+      {groupsLoading && !shops.length ? <div className="dpx-sub dpx-center" role="status" style={{ padding: 30 }}>Memuat…</div> : null}
+      {total > groupedItems && shops.length ? <p className="dpx-hint dpx-rv-hint">{total - groupedItems} email lain belum terbaca jelas dan tidak masuk kelompok. Lihat di “Per hari”.</p> : null}
+    </> : null}
+    {view === "hari" && !selecting && items.length ? <p className="dpx-hint dpx-rv-hint">Ketuk baris untuk memeriksa. Tombol centang menyetujui langsung.</p> : null}
     {error ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div><b>Antrean belum bisa dimuat.</b><div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-sm" onClick={() => void load()}>Coba lagi</Btn></div></div></div> : null}
-    {groups.map(([key, list]) => <section key={key} className="dpx-rv-group"><h2>{dayLabel(key)}</h2>
+    {view === "hari" ? groups.map(([key, list]) => <section key={key} className="dpx-rv-group"><h2>{dayLabel(key)}</h2>
       <div className="dpx-rv-card">{list.map((it) => <Row key={it.id} item={it} ctx={ctx} selecting={selecting} selected={selected.has(it.id)} busy={busy} onToggle={() => toggle(it.id)} onOpen={() => setOpenId(it.id)} onQuick={() => void quick(it)} />)}</div>
-    </section>)}
+    </section>) : null}
     {loading && !items.length ? <div className="dpx-sub dpx-center" role="status" style={{ padding: 40 }}>Memuat…</div> : null}
-    {!loading && items.length < total ? <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => void load(true)}>Muat berikutnya · {items.length} dari {total}</Btn> : null}
+    {view === "hari" && !loading && items.length < total ? <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => void load(true)}>Muat berikutnya · {items.length} dari {total}</Btn> : null}
     {!loading && !error && !items.length ? <div className="dpx-empty" style={{ paddingTop: 56 }}><Ic n="check" size="lg" /><b>Semua sudah ditinjau</b><p>Pembayaran berikutnya dari email muncul di sini bila perlu dicek.</p><Btn type="button" className="dpx-btn dpx-ghost" style={{ maxWidth: 260 }} onClick={onOpenIntegrations}>Atur email pembayaran</Btn></div> : null}
 
-    <AnimatePresence>{selecting ? <motion.div key="bar" className="dpx-rv-bar" initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }} transition={spring}>
+    <AnimatePresence>{selecting && view === "hari" ? <motion.div key="bar" className="dpx-rv-bar" initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }} transition={spring}>
       <Btn type="button" className="dpx-rv-all" disabled={busy || !items.length} onClick={() => setSelected(items.every((x) => selected.has(x.id)) ? new Set() : new Set(items.map((x) => x.id)))}>{items.every((x) => selected.has(x.id)) ? "Batal semua" : "Pilih semua"}</Btn>
       <span className="dpx-rv-count">{selected.size ? `${selected.size} dipilih` : "Belum ada dipilih"}</span>
       <Btn type="button" className="dpx-rv-soft" disabled={busy || !chosen.length} onClick={() => setConfirm("reject")}>Abaikan</Btn>
@@ -194,6 +254,9 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
         <p className="dpx-sub" style={{ marginTop: -6 }}>{confirm === "approve" ? `${approvable.length} transaksi dicatat sesuai nominal, kategori, dan dompet yang tampil di daftar.` : `${chosen.length} email tidak akan dicatat.`}</p>
         <div className="dpx-flex dpx-mt"><Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} onClick={() => setConfirm(null)}>Batal</Btn><Btn type="button" className={`dpx-btn ${confirm === "reject" ? "dpx-danger" : ""}`} style={{ margin: 0 }} disabled={busy} onClick={() => void run(confirm)}>{confirm === "approve" ? "Ya, setujui" : "Ya, abaikan"}</Btn></div>
       </Sheet> : null}
+      {openGroup && shops.find((x) => x.key === openGroup) ? <GroupSheet key={openGroup} g={shops.find((x) => x.key === openGroup)!} ctx={ctx} onClose={() => setOpenGroup(null)}
+        onApproved={async (r) => { setOpenGroup(null); const latest = r.months[0]; if (latest) setDone((cur) => ({ count: (cur?.count ?? 0) + r.count, y: latest.y, m: latest.m })); setResult({ ...r, remaining: Math.max(0, total - r.count) }); await Promise.all([load(), loadGroups()]); }}
+        onRejected={async (n) => { setOpenGroup(null); ctx.notify(`${n} email diabaikan`); await Promise.all([load(), loadGroups()]); }} /> : null}
       {result ? <ResultSheet key="result" r={result} ctx={ctx} onClose={() => setResult(null)} /> : null}
       {open ? <DetailSheet key={open.id + JSON.stringify(open.parsed.details)} item={open} ctx={ctx} onClose={() => setOpenId(null)} onDone={async (message) => { const it = open; setOpenId(null); const recorded = Boolean(it && message.includes("tercatat")); if (it && recorded) { markDone([it]); setResult(resultOf([it], total - 1)); } await load(); if (!recorded) ctx.notify(message); }} /> : null}
     </AnimatePresence>

@@ -81,3 +81,8 @@
 /* Beranda: mail that was recorded on its own */
 .dpx .dpx-autochip{background:var(--ok-soft);box-shadow:0 0 0 1.5px color-mix(in srgb,var(--ok) 30%,transparent)}
 .dpx .dpx-autochip .dpx-rc-dot{background:var(--ok)}
+/* grouped by shop */
+.dpx-rv-view{margin:12px 0 4px}
+.dpx-rv-shops{margin-top:10px}
+.dpx-rv-grow{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;min-height:80px;text-align:left;border-bottom:1px solid var(--hair)}
+.dpx-rv-grow:last-child{border-bottom:0}

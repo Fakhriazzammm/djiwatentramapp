@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { Q, Tx } from "../sync.js";
 import { auditQueue, auditSummary } from "./audit.js";
-import { domainOf, extractPayment, forwardingCode, guessCategory, implausible, isBillReminder, isConfident, isFailedMail, isNoticeMail, isPromo, isReportMail, isSecretMail, issuerFor, looksLikePayment, merchantKey, redactForShare, RULES_VERSION, type Extracted, type Issuer } from "./extract.js";
+import { domainOf, extractPayment, forwardingCode, guessCategory, implausible, isBillReminder, isConfident, isFailedMail, isNoticeMail, isPromo, isReportMail, isSecretMail, issuerFor, looksLikePayment, groupKey, merchantKey, redactForShare, RULES_VERSION, type Extracted, type Issuer } from "./extract.js";
 
 export type RawMail = {
   messageId: string; from: string; to: string[]; subject: string; text: string; date: Date | null;
@@ -48,9 +48,9 @@ async function ensureAccount(q: Q, userId: string, issuer: Issuer, hint: string)
 }
 
 async function learnedCategory(q: Q, userId: string, merchant: string): Promise<string | null> {
-  const key = merchantKey(merchant);
-  if (!key) return null;
-  const r = await q.query("select category_id from finance.merchant_rules where user_id=$1 and pattern=$2", [userId, key]);
+  const keys = [...new Set([merchantKey(merchant), groupKey(merchant)].filter(Boolean))];   // the exact spelling first, then the cleaned shop name
+  if (!keys.length) return null;
+  const r = await q.query("select category_id from finance.merchant_rules where user_id=$1 and pattern = any($2::text[]) order by (pattern = $3) desc limit 1", [userId, keys, keys[0]]);
   return r.rows[0]?.category_id ?? null;
 }
 
@@ -251,4 +251,74 @@ export async function auditPending(db: Q) {
     const flagged = await auditQueue(db);
     if (flagged.length) console.warn("mail audit:", JSON.stringify(auditSummary(flagged)));
   } catch (e) { console.error("mail audit", e instanceof Error ? e.message : e); }
+}
+
+
+/* ---------------- review queue, grouped by shop ---------------- */
+
+export type ReviewGroup = { key: string; name: string; kind: "out" | "in"; count: number; total: number; flagged: number; categoryId: string; firstAt: string | null; lastAt: string | null; sample: { at: string | null; amount: number }[] };
+
+/** Rows of the queue that can be decided as a group: readable, with an amount. Flagged reads are shown but never bulk-approved. */
+async function groupRows(q: Q, userId: string) {
+  const r = await q.query(`select id, parsed->'details'->>'description' as dsc, parsed->>'merchant' as m, parsed->>'subject' as s, (parsed->>'amount')::numeric as amt,
+      parsed->>'kind' as kind, parsed->>'direction' as dir, parsed->>'categoryId' as cat, parsed->>'at' as at_, jsonb_array_length(coalesce(parsed->'flags','[]'::jsonb)) as nflags
+    from finance.inbound_messages where user_id=$1 and status='review' and (parsed->>'amount')::numeric > 0`, [userId]);
+  return r.rows.map((x) => {
+    const name = String(x.dsc || x.m || x.s || "Email pembayaran"), kind: "out" | "in" = (x.kind ?? (x.dir === "in" ? "in" : "out")) === "in" ? "in" : "out";
+    return { id: x.id as string, name, key: `${groupKey(name) || "lainnya"}|${kind}`, kind, amount: Number(x.amt), cat: String(x.cat || "lainnya"), at: (x.at_ as string | null) ?? null, flagged: Number(x.nflags) > 0 };
+  });
+}
+
+export async function reviewGroups(db: Q, userId: string): Promise<{ groups: ReviewGroup[]; groupedItems: number }> {
+  const rows = await groupRows(db, userId), by = new Map<string, typeof rows>();
+  for (const r of rows) by.set(r.key, [...(by.get(r.key) ?? []), r]);
+  const groups = [...by].map(([key, list]) => {
+    const names = new Map<string, number>(), cats = new Map<string, number>();
+    for (const r of list) { names.set(r.name, (names.get(r.name) ?? 0) + 1); cats.set(r.cat, (cats.get(r.cat) ?? 0) + 1); }
+    const top = <T,>(m: Map<T, number>) => [...m].sort((a, b) => b[1] - a[1])[0][0];
+    const known = new Map([...cats].filter(([c]) => c !== "lainnya"));
+    const dated = list.filter((r) => r.at).sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    return { key, name: top(names), kind: list[0].kind, count: list.length, total: list.reduce((n, r) => n + r.amount, 0), flagged: list.filter((r) => r.flagged).length, categoryId: known.size ? top(known) : "lainnya", firstAt: dated.length ? dated[dated.length - 1].at : null, lastAt: dated[0]?.at ?? null, sample: dated.slice(0, 3).map((r) => ({ at: r.at, amount: r.amount })) };
+  }).sort((a, b) => b.count - a.count || b.total - a.total);
+  return { groups: groups.slice(0, 300), groupedItems: rows.length };
+}
+
+export type GroupResult = { approved: number; skipped: number; income: number; expense: number; months: { y: number; m: number; n: number; out: number; inc: number }[] };
+
+/** Records every readable, unflagged item of one shop with the chosen category, and teaches the shop. Set-based: hundreds of rows in one go. */
+export async function approveGroup(d: Tx, userId: string, key: string, edits: { categoryId: string; accountId?: string }): Promise<GroupResult | null> {
+  return d.tx(async (q) => {
+    const rows = (await groupRows(q, userId)).filter((r) => r.key === key);
+    if (!rows.length) return null;
+    const ids = rows.filter((r) => !r.flagged).map((r) => r.id), skipped = rows.length - ids.length;
+    if (!ids.length) return { approved: 0, skipped, income: 0, expense: 0, months: [] };
+    const category = edits.categoryId.slice(0, 80), account = edits.accountId ? edits.accountId.slice(0, 80) : null;
+    await q.query(`insert into finance.accounts(user_id,id,name,type,opening)
+      select distinct on (parsed->>'accountId') user_id, parsed->>'accountId', left(coalesce(parsed->>'accountName', parsed->>'issuer', 'Dompet'),60), case when parsed->>'accountType' in ('bank','ewallet') then parsed->>'accountType' else 'other' end, 0
+      from finance.inbound_messages where user_id=$1 and id = any($2::uuid[]) and parsed->>'accountId' like 'email-%' on conflict do nothing`, [userId, ids]);
+    await q.query(`insert into finance.entries(user_id,id,kind,amount,category_id,account_id,at,note,tags,source,inbound_id)
+      select user_id, 'em-'||id::text, coalesce(parsed->>'kind', case when parsed->>'direction'='in' then 'in' else 'out' end), (parsed->>'amount')::numeric, $3,
+             coalesce($4::text, parsed->>'accountId', 'tunai'), coalesce((parsed->>'at')::timestamptz, created_at),
+             left(coalesce(nullif(parsed->'details'->>'description',''), nullif(parsed->>'merchant',''), nullif(parsed->>'subject',''), ''), 200), '{}', 'email', id::text
+      from finance.inbound_messages where user_id=$1 and id = any($2::uuid[]) on conflict do nothing`, [userId, ids, category, account]);
+    await q.query("update finance.inbound_messages set status='approved', entry_id='em-'||id::text, reason='approved-group' where user_id=$1 and id = any($2::uuid[])", [userId, ids]);
+    const names = [...new Set(rows.flatMap((r) => [groupKey(r.name), merchantKey(r.name)]).filter(Boolean))].slice(0, 40);
+    for (const pattern of names) await q.query("insert into finance.merchant_rules(user_id,pattern,category_id,uses) values($1,$2,$3,$4) on conflict(user_id,pattern) do update set category_id=excluded.category_id, uses=finance.merchant_rules.uses+excluded.uses, updated_at=now()", [userId, pattern, category, ids.length]);
+    await q.query("update finance.inbound_sources set trusted_count=trusted_count+$2 where user_id=$1", [userId, ids.length]);
+    await bump(q, userId);
+    const sum = (await q.query(`select kind, to_char(at at time zone 'Asia/Jakarta','YYYY-MM') mon, count(*)::int n, coalesce(sum(amount),0) total from finance.entries
+      where user_id=$1 and id = any($2::text[]) group by 1,2`, [userId, ids.map((i) => `em-${i}`)])).rows;
+    const months = new Map<string, GroupResult["months"][number]>(); let income = 0, expense = 0;
+    for (const r of sum) { const [y, m] = String(r.mon).split("-").map(Number), k = r.mon as string, row = months.get(k) ?? { y, m: m - 1, n: 0, out: 0, inc: 0 }; row.n += r.n; if (r.kind === "in") { row.inc += Number(r.total); income += Number(r.total); } else { row.out += Number(r.total); expense += Number(r.total); } months.set(k, row); }
+    return { approved: ids.length, skipped, income, expense, months: [...months.values()].sort((a, b) => b.y * 12 + b.m - (a.y * 12 + a.m)) };
+  });
+}
+
+export async function rejectGroup(d: Tx, userId: string, key: string): Promise<number> {
+  return d.tx(async (q) => {
+    const ids = (await groupRows(q, userId)).filter((r) => r.key === key).map((r) => r.id);
+    if (!ids.length) return 0;
+    await q.query("update finance.inbound_messages set status='rejected', reason='rejected-group' where user_id=$1 and id = any($2::uuid[]) and status='review'", [userId, ids]);
+    return ids.length;
+  });
 }

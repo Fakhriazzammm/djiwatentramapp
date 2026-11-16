@@ -61,3 +61,10 @@ export const getImportItems = (id: string) => call<{ items: ImportItem[] }>(`/go
 export const commitImport = (id: string) => call<{ committed: number; movedToReview: number; transfers: number }>(`/google/gmail/import/${encodeURIComponent(id)}/commit`, { method: "POST" });
 export const undoImport = (id: string) => call<{ removed: number }>(`/google/gmail/import/${encodeURIComponent(id)}/undo`, { method: "POST" });
 export const cancelImport = () => call<object>("/google/gmail/import/cancel", { method: "POST" });
+
+/* ---- Review queue grouped by shop ---- */
+export type ReviewGroup = { key: string; name: string; kind: "out" | "in"; count: number; total: number; flagged: number; categoryId: string; firstAt: string | null; lastAt: string | null; sample: { at: string | null; amount: number }[] };
+export type GroupResult = { approved: number; skipped: number; income: number; expense: number; months: { y: number; m: number; n: number; out: number; inc: number }[] };
+export const getReviewGroups = () => call<{ groups: ReviewGroup[]; groupedItems: number; total: number }>("/inbound/groups");
+export const approveReviewGroup = (key: string, categoryId: string, accountId?: string) => call<GroupResult>("/inbound/groups/approve", { method: "POST", body: JSON.stringify({ key, categoryId, accountId }) });
+export const rejectReviewGroup = (key: string) => call<{ rejected: number }>("/inbound/groups/reject", { method: "POST", body: JSON.stringify({ key }) });

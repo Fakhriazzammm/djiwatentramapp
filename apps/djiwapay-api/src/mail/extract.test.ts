@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { domainOf, extractPayment, forwardingCode, guessCategory, isBillReminder, isConfident, isFailedMail, isNoticeMail, isPromo, isReportMail, isSecretMail, issuerFor, parseRupiah, parseWhen, redact } from "./extract";
+import { groupKey, domainOf, extractPayment, forwardingCode, guessCategory, isBillReminder, isConfident, isFailedMail, isNoticeMail, isPromo, isReportMail, isSecretMail, issuerFor, parseRupiah, parseWhen, redact } from "./extract";
 
 describe("rupiah and dates", () => {
   test("parses Indonesian and English number formats", () => {
@@ -176,5 +176,16 @@ describe("amounts that are not payments", () => {
   test("no transaction wording means no confidence, even with a full set of fields", () => {
     const x = extractPayment("Info", "Belanja di Toko Maju Rp 250.000 pada 15/11/2026 10:00");
     expect(isConfident(x)).toBe(false);
+  });
+});
+
+describe("shop grouping", () => {
+  test("spellings of one shop share a key, machine suffixes are ignored", () => {
+    expect(groupKey("TOKO LISTRIK BAROKAH · PAN 9360091800232207169")).toBe("toko listrik barokah");
+    expect(groupKey("Toko Listrik Barokah · PAN 9360091800239999999")).toBe("toko listrik barokah");
+    expect(groupKey("Toko Listrik Barokah")).toBe("toko listrik barokah");
+    expect(groupKey("GoPay Customer")).toBe("gopay customer");
+    expect(groupKey("Kopi 99")).toBe("kopi 99");
+    expect(groupKey("")).toBe("");
   });
 });
