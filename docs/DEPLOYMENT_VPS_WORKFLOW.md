@@ -47,10 +47,10 @@ Versi live berbeda per app (pos 0.2.570, customer 0.2.576, admin 0.2.556, karyaw
 
 ### Ketidaksesuaian kode vs domain live (perlu keputusan pemilik)
 
-1. **KOL**: kode (`scripts/deploy-kolmarketing.sh`, CORS di `apps/auth-server/.env.example` dan `src/kol-portal.ts`, link undangan di Edge Function `kol-portal-admin`, `apps/admin` KolPortalAdmin) memakai `kolmarketing.djiwatentram.web.id`, tetapi domain itu **tidak bisa dibuka** (tidak ada vhost/sertifikat; sertifikat hanya mencakup `kol.djiwatentram.web.id`). App KOL live ada di `kol.djiwatentram.web.id`. Akibatnya link undangan creator mengarah ke domain mati, dan Origin `kol.` bisa ditolak CORS. Pilih satu: buat vhost+sertifikat `kolmarketing`, atau ganti semua referensi ke `kol`.
+1. **KOL** (diputuskan 2026-11-16): domain resmi hanya `kol.djiwatentram.web.id`; `kolmarketing.djiwatentram.web.id` dihapus dari kode (CORS, link undangan Edge Function `kol-portal-admin`, `apps/admin` KolPortalAdmin, `.env.example`) dan `scripts/deploy-kolmarketing.sh` dibuang. Nginx menyajikan `kol.` dari `/opt/djiwatentramapp/apps/kolmarketing/dist` (nama folder lama dipertahankan). Deploy frontend KOL: build `apps/kol` di Mac lalu rsync ke folder itu (backup dulu); belum ada di `ship-artifacts.sh`. Origin untuk Better Auth (`/v1/auth/*`) ada di `customerTrustedOrigins` pada `customer-auth-config.ts` di VPS.
 2. **500kopitasik**: canonical/og di `apps/500kopitasik/index.html` dan CORS memakai `500kopitasik.djiwatentram.web.id` (tidak bisa dibuka), sedangkan app live di `kopitasik.djiwatentram.web.id`.
 3. **Djiwa Pay**: dua domain valid (lihat tabel utama).
-4. `deploy-vps.sh` hanya menangani pos, karyawan, customer, admin, djiwapay. App lain di-deploy lewat script/prosedur masing-masing (mis. `deploy-kolmarketing.sh` ke `/var/www/<domain>`), bukan dari `apps/<app>/dist`.
+4. `deploy-vps.sh` hanya menangani pos, karyawan, customer, admin, djiwapay. App lain di-deploy lewat prosedur masing-masing, bukan dari `apps/<app>/dist`.
 
 Status terverifikasi 2026-11-02 (probe luar + SSH + `nginx -T`): semua domain di atas HTTP 200 kecuali `kolmarketing`, `500kopitasik`, `yumme` (tidak ada vhost). Nginx server: `kol.djiwatentram.web.id` -> `/opt/djiwatentramapp/apps/kolmarketing/dist`; `kopitasik.djiwatentram.web.id` -> `apps/500kopitasik/dist`; `pay.djiwatentram.web.id` dan `djiwapay.web.id` -> `apps/djiwapay/dist`; `rekrutmen` -> `apps/booking/dist`; `api`/`auth.djiwatentram.web.id` -> auth-server.
 
