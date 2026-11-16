@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { Download, Link2, Loader2, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -142,24 +143,26 @@ export function ReceiptActions({
 			toast.error(message);
 		} finally { setExporting(false); }
 	};
+	const tile = "flex min-h-[76px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-[20px] bg-white/80 px-2 py-2.5 text-[11px] font-bold text-primary shadow-[0_6px_20px_rgba(15,35,71,0.08)] ring-1 ring-black/5 backdrop-blur-xl disabled:opacity-60";
+	const spring = { type: "spring" as const, stiffness: 420, damping: 26 };
 	return <>
-		<div className="fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-md border-t border-border/80 bg-background/95 px-2 pb-1.5 pt-1.5 shadow-[0_-6px_18px_rgba(15,23,42,0.08)] backdrop-blur-md">
-			<div className={onRetryPayment ? "grid grid-cols-3 gap-1.5" : "grid grid-cols-2 gap-1.5"}>
-				<button type="button" aria-label="Split Bill — pisahkan item" className="flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border border-primary/20 bg-primary/5 px-1.5 text-[10px] font-black text-primary shadow-sm transition-transform active:scale-[.98]" onClick={() => setSplitOpen(true)}>
-					<img src="/receipt-actions/split-bill-3d.png" alt="" className="h-6 w-6 shrink-0 rounded-lg object-cover" />
+		<motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.9 }} className="mt-4">
+			<div className={onRetryPayment ? "grid grid-cols-3 gap-2" : "grid grid-cols-2 gap-2"}>
+				<motion.button whileTap={{ scale: 0.94 }} transition={spring} type="button" aria-label="Split Bill — pisahkan item" className={tile} onClick={() => setSplitOpen(true)}>
+					<img src="/receipt-actions/split-bill-3d.png" alt="" className="h-8 w-8 shrink-0 rounded-xl object-cover" />
 					<span className="truncate">Split Bill</span>
-				</button>
-				<button type="button" aria-label="Bagi Bukti Bayar — download struk" className="flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border border-primary/20 bg-primary/5 px-1.5 text-[10px] font-black text-primary shadow-sm transition-transform active:scale-[.98] disabled:opacity-60" onClick={() => void handleReceiptDownload()} disabled={exporting}>
-					<img src="/receipt-actions/payment-proof-3d.png" alt="" className="h-6 w-6 shrink-0 rounded-lg object-cover" />
-					<span className="truncate">{exporting ? "Menyiapkan PNG…" : "Bukti Bayar"}</span>
-				</button>
-				{onRetryPayment ? <button type="button" aria-label="Buat link pembayaran baru" className="flex min-h-11 min-w-0 items-center justify-center gap-1 rounded-xl border border-primary/20 bg-primary/5 px-1.5 text-[10px] font-black text-primary shadow-sm transition-transform active:scale-[.98] disabled:opacity-60" onClick={() => void onRetryPayment()} disabled={retryingPayment}>
-					{retryingPayment ? <Loader2 className="h-6 w-6 shrink-0 animate-spin rounded-lg bg-primary/10 p-1" /> : <Link2 className="h-6 w-6 shrink-0 rounded-lg bg-primary/10 p-1" />}
-					<span className="truncate">Link Pembayaran</span>
-				</button> : null}
+				</motion.button>
+				<motion.button whileTap={{ scale: 0.94 }} transition={spring} type="button" aria-label="Bagi Bukti Bayar — download struk" className={tile} onClick={() => void handleReceiptDownload()} disabled={exporting}>
+					<img src="/receipt-actions/payment-proof-3d.png" alt="" className="h-8 w-8 shrink-0 rounded-xl object-cover" />
+					<span className="truncate">{exporting ? "Menyiapkan…" : "Bukti Bayar"}</span>
+				</motion.button>
+				{onRetryPayment ? <motion.button whileTap={{ scale: 0.94 }} transition={spring} type="button" aria-label="Buat link pembayaran baru" className={tile} onClick={() => void onRetryPayment()} disabled={retryingPayment}>
+					{retryingPayment ? <Loader2 className="h-8 w-8 shrink-0 animate-spin rounded-xl bg-primary/10 p-1.5" /> : <Link2 className="h-8 w-8 shrink-0 rounded-xl bg-primary/10 p-1.5" />}
+					<span className="truncate">Link Bayar</span>
+				</motion.button> : null}
 			</div>
-			{exportMessage ? <p aria-live="polite" className="px-2 pt-1 text-center text-[10px] font-semibold text-muted-foreground">{exportMessage}</p> : null}
-		</div>
+			{exportMessage ? <p aria-live="polite" className="px-2 pt-2 text-center text-[11px] font-semibold text-muted-foreground">{exportMessage}</p> : null}
+		</motion.div>
 		<SplitBillSheet open={splitOpen} items={items} storeName={storeName} orderReference={orderReference} total={total} onClose={() => setSplitOpen(false)} />
 	</>;
 }

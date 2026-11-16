@@ -1,4 +1,5 @@
 import { CheckCircle2, MapPin, Truck, Wallet } from "lucide-react";
+import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { DeliveryLiveTracker } from "@/components/order-flow/delivery-live-tracker";
@@ -262,7 +263,13 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 					</PaymentDocumentAnimation>
 			{/* ── Live status tracker ─────────────────────────── */}
 			{!props.actionsHidden && !isExpired ? <ReceiptActions items={exportItems} storeName={props.storeName} orderReference={orderReference} payment={paymentLabel} status={unifiedStatusLabel} total={Number(props.currentOrder?.totalAmount ?? props.total)} onRetryPayment={canRetryPayment ? props.onRetryPayment : undefined} retryPaymentLabel="Buat link pembayaran baru" retryingPayment={props.retryingPayment} /> : null}
-			<div className="grid grid-cols-2 gap-2 pb-2"><button type="button" className="min-h-11 rounded-[14px] border border-border bg-card px-2.5 py-2.5 text-[10px] font-black shadow-sm" onClick={props.onOrderAgain}>Pesan lagi</button><button type="button" className="min-h-11 rounded-[14px] bg-primary px-2.5 py-2.5 text-[10px] font-black text-primary-foreground shadow-sm" onClick={props.onOpenService}>{props.dessertLater ? "Panggil staff / dessert" : "Panggil staff"}</button></div><button type="button" className="min-h-11 w-full rounded-[14px] border border-primary/20 bg-primary/5 px-2.5 py-2.5 text-[10px] font-black text-primary shadow-sm" onClick={props.onHome}>Kembali ke Home</button>
+			<motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 360, damping: 26, delay: 1.05 }} className="mt-3 space-y-2 pb-4">
+				<div className="grid grid-cols-2 gap-2">
+					<motion.button whileTap={{ scale: 0.96 }} type="button" className="min-h-12 rounded-full bg-white/85 px-3 text-[13px] font-bold text-foreground shadow-[0_6px_20px_rgba(15,35,71,0.08)] ring-1 ring-black/5" onClick={props.onOrderAgain}>Pesan lagi</motion.button>
+					<motion.button whileTap={{ scale: 0.96 }} type="button" className="min-h-12 rounded-full bg-primary px-3 text-[13px] font-bold text-primary-foreground shadow-[0_8px_22px_rgba(0,102,204,0.3)]" onClick={props.onOpenService}>{props.dessertLater ? "Panggil staff / dessert" : "Panggil staff"}</motion.button>
+				</div>
+				<motion.button whileTap={{ scale: 0.97 }} type="button" className="min-h-11 w-full rounded-full px-3 text-[13px] font-bold text-primary" onClick={props.onHome}>Kembali ke Home</motion.button>
+			</motion.div>
 		</div>
 	);
 }
