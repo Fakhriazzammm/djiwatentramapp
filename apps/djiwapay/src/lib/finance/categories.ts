@@ -22,15 +22,16 @@ export const DEFAULT_ACCOUNTS: Account[] = [{ id: "tunai", name: "Tunai", type: 
 /** Words that point to a category. First match wins; order matters (specific before generic). */
 export const KEYWORDS: [string, string[]][] = [
   ["gaji", ["gaji", "salary", "payroll"]],
+  ["transfer", ["transfer", "top up", "topup", "isi saldo", "gopay", "ovo", "dana", "linkaja", "shopeepay"]],
   ["bonus", ["bonus", "thr", "komisi", "cashback", "hadiah", "untung", "jual"]],
-  ["transport", ["parkir", "bensin", "pertalite", "pertamax", "ojek", "gojek", "grab", "tol", "bus", "krl", "kereta", "taksi", "taxi", "angkot", "transjakarta", "mrt", "lrt", "servis motor", "tambal"]],
+  ["transport", ["parkir", "bensin", "pertalite", "pertamax", "ojek", "gojek", "grab", "tol", "bus", "krl", "kereta", "taksi", "taxi", "angkot", "transjakarta", "mrt", "lrt", "spbu", "pertamina", "shell", "e-toll", "bluebird", "servis motor", "tambal"]],
   ["tagihan", ["listrik", "pln", "token", "pulsa", "paket data", "kuota", "internet", "wifi", "indihome", "air", "pdam", "bpjs", "cicilan", "tagihan"]],
   ["kesehatan", ["obat", "dokter", "apotek", "klinik", "rumah sakit", "vitamin", "dentist", "gigi"]],
   ["hiburan", ["nonton", "bioskop", "netflix", "spotify", "youtube", "game", "konser", "karaoke", "liburan", "wisata"]],
   ["pendidikan", ["buku", "kursus", "spp", "kuliah", "sekolah", "les", "seminar"]],
   ["rumah", ["sewa", "kos", "kontrakan", "perabot", "galon", "gas", "renovasi", "kebersihan"]],
-  ["belanja", ["belanja", "indomaret", "alfamart", "supermarket", "baju", "sepatu", "shopee", "tokopedia", "lazada", "tas", "kosmetik", "skincare"]],
-  ["makan", ["kopi", "makan", "minum", "bakso", "nasi", "ayam", "sarapan", "lunch", "dinner", "snack", "jajan", "warung", "resto", "gofood", "grabfood", "roti", "teh", "boba", "mie", "soto", "sate", "es"]],
+  ["belanja", ["belanja", "indomaret", "alfamart", "supermarket", "baju", "sepatu", "shopee", "tokopedia", "lazada", "tas", "kosmetik", "mart", "toko", "minimarket", "blibli", "zalora", "tiktok", "skincare"]],
+  ["makan", ["kopi", "makan", "minum", "bakso", "nasi", "ayam", "sarapan", "lunch", "dinner", "snack", "jajan", "burger", "kfc", "mcd", "mcdonald", "pizza", "geprek", "seblak", "martabak", "bakmi", "bakso", "kedai", "depot", "cafe", "coffee", "sushi", "dimsum", "kebab", "donat", "bakery", "warung", "catering", "resto", "gofood", "grabfood", "roti", "teh", "boba", "mie", "soto", "padang", "gudeg", "pecel", "bebek", "sop", "sate", "es"]],
 ];
 export const INCOME_HINTS = ["gaji", "bonus", "thr", "terima", "dapat", "masuk", "jual", "untung", "cashback", "komisi", "hadiah", "bayaran", "dibayar"];
 

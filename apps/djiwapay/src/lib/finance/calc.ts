@@ -1,5 +1,5 @@
 import type { WalletTransaction } from "../wallet-adapter";
-import { PAY_ACCOUNT_ID } from "./categories";
+import { PAY_ACCOUNT_ID, guessCategory } from "./categories";
 import type { Account, Budget, Category, Debt, Entry, FinanceState, Goal } from "./types";
 
 export const uid = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);
@@ -25,7 +25,13 @@ export function payEntries(transactions: WalletTransaction[], overrides: Finance
     });
 }
 
-export const allEntries = (state: FinanceState, transactions: WalletTransaction[]): Entry[] => [...state.entries, ...payEntries(transactions, state.overrides)].sort((a, b) => +new Date(b.at) - +new Date(a.at));
+/** Entries imported as "Lainnya" (email, scan without a hint) get a real category from their note when it is recognisable. */
+const regroup = (e: Entry): Entry => {
+  if (e.kind !== "out" || e.categoryId !== "lainnya" || !e.note) return e;
+  const g = guessCategory(e.note);
+  return g && g !== "gaji" && g !== "bonus" ? { ...e, categoryId: g } : e;
+};
+export const allEntries = (state: FinanceState, transactions: WalletTransaction[]): Entry[] => [...state.entries, ...payEntries(transactions, state.overrides)].map(regroup).sort((a, b) => +new Date(b.at) - +new Date(a.at));
 
 /* ---------- aggregates ---------- */
 export const inMonth = (entry: Entry, year: number, month: number) => { const d = new Date(entry.at); return d.getFullYear() === year && d.getMonth() === month; };
