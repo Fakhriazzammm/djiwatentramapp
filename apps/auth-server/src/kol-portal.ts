@@ -418,7 +418,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
         `insert into pos.kol_platforms(kol_id,platform,username,username_normalized,profile_url,followers) values($1,$2,$3,$4,$5,$6)`,
         [sourceId, platform, username, username, profileUrl || null, Math.max(0, Math.floor(Number(body.followers) || 0))],
       );
-      await client.query(`insert into pos.kol_profiles(kol_id, display_name, slug, is_public) values ($1,$2,$3,false) on conflict (kol_id) do nothing`, [sourceId, name, username]);
+      await client.query(`insert into pos.kol_profiles(kol_id, display_name, slug, is_public) values ($1,$2,$3,true) on conflict (kol_id) do nothing`, [sourceId, name, username]);
       await client.query(`insert into pos.kol_private_contacts(kol_id,email,whatsapp) values($1,$2,$3)`, [sourceId, accountEmail || null, whatsapp]);
       const booking = await client.query(`select * from pos.kol_request_shared_visit_booking($1,$2,$3::time,$4,$5,$6)`, [sourceId, date, time, true, true, userId]);
       await stampVisitConsent(client, booking.rows[0]?.id);
@@ -478,7 +478,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
       );
       await client.query(
         `insert into pos.kol_profiles(kol_id, display_name, slug, is_public)
-         values ($1, $2, $3, false)
+         values ($1, $2, $3, true)
          on conflict (kol_id) do nothing`,
         [sourceId, name, username],
       );
@@ -524,7 +524,8 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const displayName = typeof body.displayName === "string" ? body.displayName.trim().slice(0, 120) : null;
     const bio = typeof body.bio === "string" ? body.bio.trim().slice(0, 1000) : null;
     const slug = typeof body.slug === "string" ? body.slug.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 100) : null;
-    const isPublic = typeof body.isPublic === "boolean" ? body.isPublic : undefined;
+    // Semua profil creator publik; tidak ada pengaturan privat.
+    const isPublic = true;
     if (displayName !== null && displayName.length < 2) return json(c, { success: false, error: "INVALID_DISPLAY_NAME" }, 400);
     if (slug !== null && slug.length < 2) return json(c, { success: false, error: "INVALID_SLUG" }, 400);
     try {

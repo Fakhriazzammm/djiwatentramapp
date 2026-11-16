@@ -10,7 +10,6 @@ type Item = {
 };
 type Page = { items: Item[]; nextCursor: string | null; hasMore: boolean };
 type Creator = { username: string; displayName?: string; avatarUrl?: string | null; category?: string | null; location?: string | null; availability?: { status?: string } | string | null };
-type Profile = { is_public?: boolean; portfolio?: any[] } | null;
 
 const FILTERS: Array<[string, string]> = [["all", "Semua"], ["text", "Creator"], ["portfolio", "Karya"], ["campaign", "Kampanye"], ["achievement", "Pencapaian"]];
 const TYPE_LABEL: Record<string, string> = { text: "Update", portfolio: "Karya", campaign: "Kampanye", achievement: "Pencapaian" };
@@ -24,27 +23,21 @@ function Body({ text }: { text: string }) {
   return <>{text.split(/(#[\p{L}\d_]+)/u).map((part, i) => (part.startsWith("#") ? <span key={i} className="kx-tag">{part}</span> : part))}</>;
 }
 
-export function CommunityTab({ username, profile, onNavigate }: { username: string; profile: Profile; onNavigate: (tab: "home") => void }) {
+export function CommunityTab({ username }: { username: string }) {
   const [view, setView] = useState<"feed" | "creators">("feed");
   return (
     <div>
-      {!profile?.is_public && (
-        <div className="kx-note" style={{ marginBottom: 14 }}>
-          <b>Profilmu belum publik.</b> Kamu bisa melihat komunitas, tapi baru dikenal creator lain dan bisa berbagi setelah profil dipublikasikan.
-          <button type="button" className="kx-link" style={{ display: "flex" }} onClick={() => onNavigate("home")}>Lengkapi sekarang ›</button>
-        </div>
-      )}
       <div className="kx-seg" role="group" aria-label="Tampilan komunitas">
         <button type="button" aria-pressed={view === "feed"} onClick={() => setView("feed")}>Linimasa</button>
         <button type="button" aria-pressed={view === "creators"} onClick={() => setView("creators")}>Creator</button>
       </div>
-      {view === "feed" ? <Feed username={username} canPost={Boolean(profile?.is_public)} /> : <Creators username={username} />}
+      {view === "feed" ? <Feed username={username} /> : <Creators username={username} />}
     </div>
   );
 }
 
 /* ---------- Linimasa ---------- */
-function Feed({ username, canPost }: { username: string; canPost: boolean }) {
+function Feed({ username }: { username: string }) {
   const [filter, setFilter] = useState("all");
   const [page, setPage] = useState<Page>(empty);
   const [loading, setLoading] = useState(true);
@@ -85,8 +78,8 @@ function Feed({ username, canPost }: { username: string; canPost: boolean }) {
   return (
     <div>
       {toast && <div className="kx-toast" role="status">{toast}</div>}
-      <button type="button" className="kx-card" disabled={!canPost} onClick={() => setCompose(true)} style={{ width: "100%", textAlign: "left", display: "flex", gap: 12, alignItems: "center", minHeight: 56, color: canPost ? "var(--kx-muted)" : "#a7acb8" }}>
-        <span className="kx-ico" aria-hidden>✎</span>{canPost ? "Bagikan sesuatu dengan komunitas…" : "Publikasikan profil untuk berbagi"}
+      <button type="button" className="kx-card" onClick={() => setCompose(true)} style={{ width: "100%", textAlign: "left", display: "flex", gap: 12, alignItems: "center", minHeight: 56, color: "var(--kx-muted)" }}>
+        <span className="kx-ico" aria-hidden>✎</span>Bagikan sesuatu dengan komunitas…
       </button>
       <div className="kx-hs" style={{ marginTop: 14 }} role="group" aria-label="Filter linimasa">
         {FILTERS.map(([key, label]) => <button type="button" key={key} className="kx-chip" aria-pressed={filter === key} onClick={() => setFilter(key)}>{label}</button>)}

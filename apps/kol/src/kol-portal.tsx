@@ -11,7 +11,7 @@ const portalPathForTab = portalPath;
 
 type Session={user:{id:string;name?:string|null;email?:string|null;image?:string|null}};
 type Claim={linked:boolean;ambiguous:boolean;profile:{username:string;status:string}|null};
-type PortalProfile={source_id:string;name:string;username:string;status?:string;visit_booking_eligible?:boolean;avatar_url?:string|null;location?:string|null;category?:string|null;display_name?:string|null;slug?:string|null;bio?:string|null;is_public?:boolean;public_availability?:string|null;availability_label?:string|null;platforms:Array<{platform:string;username:string;profile_url?:string|null;followers:number}>;portfolio:Array<any>;badges:Array<any>};
+type PortalProfile={source_id:string;name:string;username:string;status?:string;visit_booking_eligible?:boolean;avatar_url?:string|null;location?:string|null;category?:string|null;display_name?:string|null;slug?:string|null;bio?:string|null;public_availability?:string|null;availability_label?:string|null;platforms:Array<{platform:string;username:string;profile_url?:string|null;followers:number}>;portfolio:Array<any>;badges:Array<any>};
 type CalendarRow={booking_date:string;booking_time:string|null;status:string;own:boolean};
 export type InviteContext={active?:boolean;token?:string|null;name?:string|null;displayName?:string|null;expiresAt?:string|null};
 const API="https://api.djiwatentram.web.id/v1/kol";
@@ -24,8 +24,8 @@ const uname=usernameOf(session,claim,profile);
 const pending=4-[Boolean(profile?.platforms?.length),Boolean(session.user.image||profile?.avatar_url),Boolean(profile?.bio?.trim()),Boolean(profile?.slug?.trim())].filter(Boolean).length;
 const titles:Record<PortalTab,string>={home:`Halo, ${(profile?.display_name||profile?.name||session.user.name||"Creator").split(" ")[0]}`,community:"Komunitas",campaigns:"Kampanye",calendar:"Visit",profile:"Profil"};
 return <div className="kx kx-wrap"><PortalHeader title={titles[tab]} subtitle={tab==="home"?"Selamat datang,":undefined}/><div className="kx-view kx-tabbed">{error&&<p role="alert" className="kx-note kx-note--err" style={{marginBottom:12}}>{error}</p>}
-{tab==="home"&&<HomeTab session={session} profile={profile as any} own={ownBooking} campaigns={campaigns} onNavigate={navigateTab} refresh={refresh}/>}
-{tab==="community"&&<CommunityTab username={uname} profile={profile as any} onNavigate={navigateTab}/>}
+{tab==="home"&&<HomeTab session={session} profile={profile as any} own={ownBooking} campaigns={campaigns} onNavigate={navigateTab}/>}
+{tab==="community"&&<CommunityTab username={uname}/>}
 {tab==="campaigns"&&<CampaignsTab campaigns={campaigns} refresh={refresh}/>}
 {tab==="calendar"&&<VisitTab rows={calendar} own={ownBooking} invite={inviteContext?.token} refresh={refresh}/>}
 {tab==="profile"&&<ProfileTab key={profile?.source_id} session={session} profile={profile as any} username={uname} refresh={refresh}/>}

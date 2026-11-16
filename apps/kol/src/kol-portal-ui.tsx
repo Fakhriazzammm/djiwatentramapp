@@ -8,7 +8,7 @@ import { CONSENT_NO_SHOW, errorText, kolApi, logoutKol, longDate, dotTime, type 
 export type PortalTabKey = "home" | "community" | "campaigns" | "calendar" | "profile";
 export type PortalProfileData = {
   name: string; username: string; status?: string; avatar_url?: string | null; display_name?: string | null; slug?: string | null; bio?: string | null;
-  is_public?: boolean; public_availability?: string | null; platforms: Array<{ platform: string; username: string; followers: number }>; portfolio: Array<any>;
+  public_availability?: string | null; platforms: Array<{ platform: string; username: string; followers: number }>; portfolio: Array<any>;
 };
 type SessionUser = { user: { id: string; name?: string | null; email?: string | null; image?: string | null } };
 const TAB_PATH: Record<PortalTabKey, string> = { home: "/", community: "/komunitas", campaigns: "/campaigns", calendar: "/visit", profile: "/profil" };
@@ -61,9 +61,7 @@ export function PortalTabBar({ tab, onSelect, pending, invite }: { tab: PortalTa
 }
 
 /* ---------- Beranda ---------- */
-export function HomeTab({ session, profile, own, campaigns, onNavigate, refresh }: { session: SessionUser; profile: PortalProfileData | null; own: VisitRow | undefined; campaigns: any[]; onNavigate: (t: PortalTabKey) => void; refresh: () => Promise<void> }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+export function HomeTab({ session, profile, own, campaigns, onNavigate }: { session: SessionUser; profile: PortalProfileData | null; own: VisitRow | undefined; campaigns: any[]; onNavigate: (t: PortalTabKey) => void }) {
   const tasks = useMemo(() => [
     { key: "socials", done: Boolean(profile?.platforms?.length), title: "Akun media sosial", sub: "Terisi dari pendaftaran", to: "profile" as PortalTabKey },
     { key: "avatar", done: Boolean(session.user.image || profile?.avatar_url), title: "Foto profil", sub: "Pakai foto akun Google atau unggah", to: "profile" as PortalTabKey },
@@ -71,19 +69,13 @@ export function HomeTab({ session, profile, own, campaigns, onNavigate, refresh 
     { key: "slug", done: Boolean(profile?.slug?.trim()), title: "Link profil publik", sub: `djiwatentram.web.id/${profile?.slug || "namamu"}`, to: "profile" as PortalTabKey },
   ], [profile, session.user.image]);
   const pct = Math.round(tasks.filter(t => t.done).length / tasks.length * 100);
-  const publish = async () => {
-    setBusy(true); setError("");
-    try { await kolApi("/portal/profile", { method: "PATCH", body: JSON.stringify({ isPublic: true }) }); await refresh(); }
-    catch (e) { setError(errorText(e, "Profil belum bisa dipublikasikan.")); }
-    finally { setBusy(false); }
-  };
   const nextCampaign = campaigns.find(c => c.assignment_status === "invited") || campaigns.find(c => c.status === "published" && !c.assignment_id);
   return (
     <div>
       <div className="kx-group" style={{ padding: 14 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}><b className="kx-h2">Lengkapi profilmu</b><span style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.03em" }}>{pct}%</span></div>
         <div className="kx-prog" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${pct}%` }} /></div>
-        <p className="kx-sub" style={{ margin: "0 0 4px" }}>{pct === 100 ? "Lengkap! Profilmu siap dipublikasikan." : "Profil lengkap dibutuhkan agar tampil di komunitas."}</p>
+        <p className="kx-sub" style={{ margin: "0 0 4px" }}>{pct === 100 ? "Lengkap! Profilmu sudah siap dilihat brand dan creator lain." : "Profilmu publik. Lengkapi agar mudah dikenal brand dan creator lain."}</p>
       </div>
       <div className="kx-group" style={{ marginTop: 10 }}>
         {tasks.map(t => (
@@ -94,11 +86,6 @@ export function HomeTab({ session, profile, own, campaigns, onNavigate, refresh 
           </button>
         ))}
       </div>
-      {error && <p role="alert" className="kx-note kx-note--err" style={{ marginTop: 10 }}>{error}</p>}
-      <button type="button" className="kx-btn" style={{ marginTop: 12 }} disabled={pct < 100 || busy || Boolean(profile?.is_public)} onClick={publish}>
-        {profile?.is_public ? "✓ Profil sudah publik" : busy ? "Memublikasikan…" : "Publikasikan ke komunitas"}
-      </button>
-
       <div className="kx-section">Visit ke Djiwa Tentram</div>
       {own ? (
         <div className="kx-card">
@@ -192,7 +179,7 @@ export function ProfileTab({ session, profile, username, refresh }: { session: S
   };
   return (
     <div>
-      <div style={{ display: "flex", gap: 14, alignItems: "center" }}><Avatar session={session} profile={profile} size={64} /><div style={{ minWidth: 0 }}><b className="kx-h2" style={{ display: "block" }}>{profile?.display_name || profile?.name || session.user.name}</b><span className="kx-sub">@{username}</span><div style={{ marginTop: 4 }}><span className={`kx-pill ${profile?.is_public ? "kx-pill--ok" : "kx-pill--warn"}`}>{profile?.is_public ? "Profil publik" : "Belum publik"}</span></div></div></div>
+      <div style={{ display: "flex", gap: 14, alignItems: "center" }}><Avatar session={session} profile={profile} size={64} /><div style={{ minWidth: 0 }}><b className="kx-h2" style={{ display: "block" }}>{profile?.display_name || profile?.name || session.user.name}</b><span className="kx-sub">@{username}</span><div style={{ marginTop: 4 }}><span className="kx-pill kx-pill--ok">Profil publik</span></div></div></div>
       <label className="kx-label" htmlFor="kp-name">Nama tampilan</label>
       <input id="kp-name" className="kx-input" value={name} onChange={e => setName(e.target.value)} />
       <label className="kx-label" htmlFor="kp-bio">Bio</label>

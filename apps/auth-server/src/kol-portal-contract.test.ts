@@ -158,6 +158,18 @@ describe("KOL Creator Portal contracts", () => {
     expect(VISIT_CONSENT_TEXT).toContain("tidak hadir");
   });
 
+  it("keeps every creator profile public (no private profiles)", () => {
+    const migration = readFileSync(resolve(process.cwd(), "../../packages/backend/supabase/migrations/20261116120000_kol_profiles_all_public.sql"), "utf8");
+    const source = readFileSync(resolve(process.cwd(), "./src/kol-portal.ts"), "utf8");
+    expect(migration).toContain("alter column is_public set default true");
+    expect(migration).toContain("update pos.kol_profiles set is_public = true");
+    expect(migration).toContain("trg_kol_creators_ensure_profile");
+    expect(migration).toContain("WHERE c.status <> 'Rejected'::text;");
+    expect(migration).not.toContain("COALESCE(p.is_public, false)");
+    expect(source).not.toMatch(/values \(\$1, ?\$2, ?\$3, ?false\)/);
+    expect(source).toContain("const isPublic = true;");
+  });
+
   it("accepts visit arrival times only from 11:00 to 17:00", () => {
     expect(isVisitTimeAllowed("11:00")).toBe(true);
     expect(isVisitTimeAllowed("14:30")).toBe(true);
