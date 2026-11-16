@@ -65,3 +65,15 @@
 .dpx-rv-done b{font:700 14.5px var(--font)}
 .dpx-rv-done span{font-size:12.5px;color:var(--mute);line-height:1.35}
 .dpx-rv-done svg,.dpx-rv-done img{flex:none;color:var(--ok)}
+/* result sheet */
+.dpx-rv-ok-hero{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;margin:-4px 0 10px}
+.dpx-rv-ok-hero b{font:700 18px/1.25 var(--font);color:var(--ink)}
+.dpx-rv-ok-hero span{font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums}
+.dpx-rv-mrow{display:flex;align-items:center;gap:10px;width:100%;padding:13px 14px;border-top:1px solid var(--hair);text-align:left;min-height:56px}
+.dpx-rv-mrow:first-child{border-top:0}
+.dpx-rv-mrow>span:first-child{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.dpx-rv-mrow b{font:700 15px var(--font);color:var(--ink);text-transform:capitalize}
+.dpx-rv-mrow small{font-size:12px;color:var(--mute)}
+.dpx-rv-mamt{display:flex;flex-direction:column;align-items:flex-end;font:600 14px var(--font);font-variant-numeric:tabular-nums;color:var(--ink)}
+.dpx-rv-mamt em{font-style:normal;color:var(--ok)}
+.dpx-rv-next{display:grid;grid-template-columns:1.3fr 1fr;gap:10px;margin-top:16px}

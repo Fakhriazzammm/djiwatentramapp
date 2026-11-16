@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Btn, Header, Ic, Reveal, Seg, Sheet, Sky, spring } from "../shell/dpx-ui";
+import { Btn, Header, Ic, Reveal, Seg, Sheet, Sky, SuccessMark, spring } from "../shell/dpx-ui";
 import type { FinCtx } from "../finance/fin-pages";
 import { CatIcon, MoneyInput, accName, catOf } from "../finance/fin-sheets";
 import { rupiah } from "../../lib/djiwa-pay-format";
@@ -78,6 +78,41 @@ function DetailSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: Fi
   </Sheet>;
 }
 
+/* ---------- what just happened ---------- */
+type Result = { count: number; income: number; expense: number; uncategorised: number; remaining: number; months: { y: number; m: number; n: number; out: number; inc: number }[] };
+const resultOf = (list: ReviewItem[], remaining: number): Result => {
+  const months = new Map<string, Result["months"][number]>();
+  let income = 0, expense = 0, uncategorised = 0;
+  for (const it of list) {
+    const amount = it.parsed.amount ?? 0, kind = kindOf(it), d = new Date(it.parsed.at ?? it.createdAt), key = `${d.getFullYear()}-${d.getMonth()}`;
+    const row = months.get(key) ?? { y: d.getFullYear(), m: d.getMonth(), n: 0, out: 0, inc: 0 };
+    row.n++; if (kind === "in") { row.inc += amount; income += amount; } else { row.out += amount; expense += amount; }
+    months.set(key, row);
+    if ((it.parsed.categoryId ?? "lainnya") === "lainnya") uncategorised++;
+  }
+  return { count: list.length, income, expense, uncategorised, remaining: Math.max(0, remaining), months: [...months.values()].sort((a, b) => b.y * 12 + b.m - (a.y * 12 + a.m)) };
+};
+const monthParam = (y: number, m: number) => `${y}-${String(m + 1).padStart(2, "0")}`;
+
+function ResultSheet({ r, ctx, onClose }: { r: Result; ctx: FinCtx; onClose: () => void }) {
+  const go = (path: string) => { onClose(); ctx.nav.go(path); };
+  const latest = r.months[0];
+  return <Sheet title="Berhasil dicatat" onClose={onClose}>
+    <div className="dpx-rv-ok-hero"><SuccessMark /><b>{r.count} transaksi masuk ke Catatan</b>
+      <span>{r.expense ? `Keluar ${rupiah(r.expense)}` : ""}{r.expense && r.income ? " · " : ""}{r.income ? `Masuk +${rupiah(r.income)}` : ""}</span></div>
+    <div className="dpx-glabel" style={{ marginTop: 6 }}>Tercatat di bulan</div>
+    <div className="dpx-group dpx-white dpx-flush">{r.months.slice(0, 6).map((x) => <Btn key={`${x.y}-${x.m}`} type="button" className="dpx-rv-mrow" onClick={() => go(`/riwayat?bulan=${monthParam(x.y, x.m)}`)}>
+      <span><b>{monthLabel(x.y, x.m)}</b><small>{x.n} transaksi</small></span><span className="dpx-rv-mamt">{x.out ? `−${rupiah(x.out)}` : ""}{x.inc ? <em>+{rupiah(x.inc)}</em> : null}</span><Ic n="chev" size="sm" />
+    </Btn>)}{r.months.length > 6 ? <div className="dpx-kv"><span>dan {r.months.length - 6} bulan lain</span><b /></div> : null}</div>
+    {r.uncategorised ? <div className="dpx-note"><Ic n="info" /><div><b>{r.uncategorised} masih berkategori “Lainnya”.</b> Laporan per kategori baru bermakna setelah dipilihkan. Ubah di Catatan, dan toko yang sama akan dikenali lain kali.</div></div> : null}
+    <div className="dpx-note dpx-info"><Ic n="shield" /><div>Catatan ini ikut muncul di Spreadsheet-mu dalam beberapa menit bila Google sudah terhubung. Salah catat? Buka catatannya lalu pilih Hapus.</div></div>
+    <div className="dpx-rv-next">
+      <Btn type="button" className="dpx-btn" style={{ margin: 0 }} onClick={() => latest ? go(`/riwayat?bulan=${monthParam(latest.y, latest.m)}`) : go("/riwayat")}>Lihat di Catatan</Btn>
+      {r.remaining > 0 ? <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} onClick={onClose}>Lanjut meninjau ({r.remaining})</Btn> : <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} onClick={() => go("/ringkasan")}>Lihat laporan</Btn>}
+    </div>
+  </Sheet>;
+}
+
 /* ---------- page ---------- */
 export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; onBack: () => void; onOpenIntegrations: () => void }) {
   const [items, setItems] = useState<ReviewItem[]>([]), [total, setTotal] = useState(0);
@@ -85,6 +120,7 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
   const [selecting, setSelecting] = useState(false), [selected, setSelected] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null), [confirm, setConfirm] = useState<"approve" | "reject" | null>(null);
   const [done, setDone] = useState<{ count: number; y: number; m: number } | null>(null);
+  const [result, setResult] = useState<Result | null>(null);
   /** Remember what was just recorded, so the page can point at where it went (a past month is not on the default Catatan view). */
   const markDone = (list: ReviewItem[]) => {
     if (!list.length) return;
@@ -125,7 +161,9 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
       for (let at = 0; at < ids.length; at += 200) results.push(...(await bulkReview(ids.slice(at, at + 200), action)).results);
       const ok = new Set(results.filter((x) => x.ok).map((x) => x.id));
       setSelected((prev) => new Set([...prev].filter((id) => !ok.has(id))));
-      await ctx.fin.retrySync(); if (action === "approve") markDone(chosen.filter((i) => ok.has(i.id))); await load();
+      await ctx.fin.retrySync();
+      if (action === "approve") { const okItems = chosen.filter((i) => ok.has(i.id)); markDone(okItems); if (okItems.length) setResult(resultOf(okItems, total - okItems.length)); }
+      await load();
       ctx.notify(`${ok.size} ${action === "approve" ? "disetujui" : "diabaikan"}${ok.size < ids.length ? `; ${ids.length - ok.size} belum diproses, periksa kembali` : ""}`);
       if (ok.size === ids.length) leaveSelect();
     } catch { ctx.notify("Gagal memproses pilihan. Muat ulang sebelum mencoba lagi."); await load(); } finally { setBusy(false); }
@@ -156,7 +194,8 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
         <p className="dpx-sub" style={{ marginTop: -6 }}>{confirm === "approve" ? `${approvable.length} transaksi dicatat sesuai nominal, kategori, dan dompet yang tampil di daftar.` : `${chosen.length} email tidak akan dicatat.`}</p>
         <div className="dpx-flex dpx-mt"><Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} onClick={() => setConfirm(null)}>Batal</Btn><Btn type="button" className={`dpx-btn ${confirm === "reject" ? "dpx-danger" : ""}`} style={{ margin: 0 }} disabled={busy} onClick={() => void run(confirm)}>{confirm === "approve" ? "Ya, setujui" : "Ya, abaikan"}</Btn></div>
       </Sheet> : null}
-      {open ? <DetailSheet key={open.id + JSON.stringify(open.parsed.details)} item={open} ctx={ctx} onClose={() => setOpenId(null)} onDone={async (message) => { const it = open; setOpenId(null); if (it && message.includes("tercatat")) markDone([it]); await load(); ctx.notify(message); }} /> : null}
+      {result ? <ResultSheet key="result" r={result} ctx={ctx} onClose={() => setResult(null)} /> : null}
+      {open ? <DetailSheet key={open.id + JSON.stringify(open.parsed.details)} item={open} ctx={ctx} onClose={() => setOpenId(null)} onDone={async (message) => { const it = open; setOpenId(null); const recorded = Boolean(it && message.includes("tercatat")); if (it && recorded) { markDone([it]); setResult(resultOf([it], total - 1)); } await load(); if (!recorded) ctx.notify(message); }} /> : null}
     </AnimatePresence>
   </div></Sky></div>;
 }
