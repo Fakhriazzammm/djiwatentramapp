@@ -32,6 +32,13 @@ function inviteSafeContext(row: any) {
   };
 }
 
+/** Hanya URL https yang dipakai sebagai avatar. */
+export function googlePhotoUrl(value: unknown) {
+  if (typeof value !== "string") return null;
+  const url = value.trim();
+  return /^https:\/\/[^\s]{8,2000}$/.test(url) ? url : null;
+}
+
 async function context(c: any, auth: AuthApi, pool: DbPool) {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   const userId = session?.user?.id;
@@ -48,6 +55,12 @@ async function context(c: any, auth: AuthApi, pool: DbPool) {
   );
   const kol = result.rows[0];
   if (!kol) return { error: json(c, { success: false, error: "KOL_PROFILE_NOT_LINKED" }, 409) };
+  // Foto profil Google dipakai sebagai avatar creator bila belum ada (tidak menimpa avatar yang sudah diatur).
+  const googleImage = googlePhotoUrl(session?.user?.image);
+  if (googleImage && !kol.avatar_url) {
+    await pool.query(`update pos.kol_creators set avatar_url = $1 where source_id = $2 and (avatar_url is null or btrim(avatar_url) = '')`, [googleImage, kol.source_id]).catch(() => undefined);
+    kol.avatar_url = googleImage;
+  }
   return { userId, email, kol };
 }
 
@@ -319,10 +332,10 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
       const contentTypes = Array.isArray(body.contentTypes) ? body.contentTypes.filter((x: unknown) => typeof x === "string").slice(0, 20) : [];
       await client.query(
         `insert into pos.kol_creators(source_id,name,username,username_normalized,location,category,status,public_reason,application_data,auth_user_id,
-                                      visit_booking_eligible,visit_booking_eligible_at,visit_booking_eligibility_note)
-         values($1,$2,$3,$4,$5,$6,'Scheduled Visit',$7,$8,$9,true,now(),'Pendaftaran mandiri dengan booking visit')`,
+                                      visit_booking_eligible,visit_booking_eligible_at,visit_booking_eligibility_note,avatar_url)
+         values($1,$2,$3,$4,$5,$6,'Scheduled Visit',$7,$8,$9,true,now(),'Pendaftaran mandiri dengan booking visit',$10)`,
         [sourceId, name, `@${username}`, username, location, category, String(body.reason ?? "").trim().slice(0, 1000),
-         JSON.stringify({ averageViews: Number(body.averageViews) || 0, contentTypes, profileUrl, source: "self-register" }), userId],
+         JSON.stringify({ averageViews: Number(body.averageViews) || 0, contentTypes, profileUrl, source: "self-register" }), userId, googlePhotoUrl(session?.user?.image)],
       );
       await client.query(
         `insert into pos.kol_platforms(kol_id,platform,username,username_normalized,profile_url,followers) values($1,$2,$3,$4,$5,$6)`,

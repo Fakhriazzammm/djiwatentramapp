@@ -19,7 +19,7 @@ const empty: Page = { items: [], nextCursor: null, hasMore: false };
 const toPage = (d: any): Page => ({ items: Array.isArray(d?.items) ? d.items : [], nextCursor: d?.nextCursor ?? null, hasMore: Boolean(d?.hasMore) });
 
 function Avatar({ url, name }: { url?: string | null; name: string }) {
-  return <div className="kx-av" style={{ background: "var(--kx-blue)" }}>{url ? <img src={url} alt="" /> : name.slice(0, 1).toUpperCase()}</div>;
+  return <div className="kx-av" style={{ background: "var(--kx-blue)" }}>{url ? <img src={url} alt="" referrerPolicy="no-referrer" /> : name.slice(0, 1).toUpperCase()}</div>;
 }
 function Body({ text }: { text: string }) {
   return <>{text.split(/(#[\p{L}\d_]+)/u).map((part, i) => (part.startsWith("#") ? <span key={i} className="kx-tag">{part}</span> : part))}</>;

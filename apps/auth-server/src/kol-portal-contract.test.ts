@@ -3,6 +3,7 @@ import { CAMPAIGN_STATUSES, KOL_PLATFORMS, SUBMISSION_STATUSES, VISIT_ACTIVE_STA
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createHash } from "node:crypto";
+import { googlePhotoUrl } from "./kol-portal";
 import { INQUIRY_STATUSES, isInquiryHoneypotFilled, validatePublicInquiry } from "./kol-inquiry-contract";
 
 describe("KOL Creator Portal contracts", () => {
@@ -136,6 +137,16 @@ describe("KOL Creator Portal contracts", () => {
     expect(migration).not.toContain("grant select on pos.kol_collaboration_inquiries to anon");
     expect(publicViewMigration).toContain("coalesce(p.is_public, false) = true");
     expect(publicViewMigration).toContain("pi.review_status = 'approved' and pi.is_public = true");
+  });
+
+  it("uses the Google profile photo as creator avatar without overwriting an existing one", () => {
+    const source = readFileSync(resolve(process.cwd(), "./src/kol-portal.ts"), "utf8");
+    expect(googlePhotoUrl("https://lh3.googleusercontent.com/a/abc=s96-c")).toBe("https://lh3.googleusercontent.com/a/abc=s96-c");
+    expect(googlePhotoUrl("http://insecure.example/x.png")).toBeNull();
+    expect(googlePhotoUrl("javascript:alert(1)")).toBeNull();
+    expect(googlePhotoUrl(null)).toBeNull();
+    expect(source).toContain("avatar_url is null or btrim(avatar_url) = ''");
+    expect(source).toContain("googlePhotoUrl(session?.user?.image)");
   });
 
   it("accepts visit arrival times only from 11:00 to 17:00", () => {
