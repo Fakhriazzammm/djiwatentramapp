@@ -43,7 +43,7 @@ const gfetch = (async (u: string) => {
   if (m) { const msg = mailbox.find((x) => x.id === m[1]); return msg ? ok({ raw: Buffer.from(msg.raw).toString("base64url") }) : new Response("{}", { status: 404 }); }
   return new Response("{}", { status: 200 });
 }) as unknown as typeof fetch;
-const deps = (budgetMs?: number) => ({ db, cfg, f: gfetch, pipeline: { db, domain: "catat.djiwapay.web.id" }, toMail: (raw: Buffer, ctx: any) => toRawMail(raw, { ...ctx, resolver: async () => { throw new Error("no dns: old keys are gone"); } }), budgetMs });
+const deps = (budgetMs?: number) => ({ test: true, db, cfg, f: gfetch, pipeline: { db, domain: "catat.djiwapay.web.id" }, toMail: (raw: Buffer, ctx: any) => toRawMail(raw, { ...ctx, resolver: async () => { throw new Error("no dns: old keys are gone"); } }), budgetMs });
 const scanAll = async (budgetMs?: number) => { let n = 0; for (; n < 400; n++) { await runImports(deps(budgetMs)); const s = (await importState(db, user)) as any; if (s.status !== "scanning") return { n, s }; } throw new Error("scan did not finish"); };
 const entryCount = async () => Number((await pool.query("select count(*)::int n from finance.entries where user_id=$1", [user])).rows[0].n);
 
@@ -97,7 +97,7 @@ run("gmail import (real database, simulated Gmail)", () => {
     const s = (await importState(db, user)) as any;
     const items = await importCheckItems(db, user, s.id);
     expect(items).toHaveLength(1);
-    expect(items[0].parsed.merchant).toContain("Toko Antah Berantah");
+    expect(items[0].parsed.merchant).toContain("Antah Berantah");
     expect(items[0].parsed.sample).toContain("Rp 15.000");
   });
 

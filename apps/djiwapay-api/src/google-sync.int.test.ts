@@ -19,7 +19,7 @@ const cfg = googleConfig({ GOOGLE_CLIENT_ID: "cid", GOOGLE_CLIENT_SECRET: "sec",
 const g = new FakeGoogle();
 const dir = mkdtempSync(join(tmpdir(), "dpx-"));
 let seq = 0;
-const deps = () => ({ db, cfg, f: g.fetch, dir, newId: () => `sh-t${++seq}` });
+const deps = () => ({ test: true, db, cfg, f: g.fetch, dir, newId: () => `sh-t${++seq}` });
 const E = (id: string, over: Record<string, unknown> = {}) => ({ id, kind: "out", amount: 25000, category_id: "makan", account_id: "tunai", at: "2026-11-15T06:45:00Z", note: `Catatan ${id}`, source: "manual", ...over });
 const addEntry = (e: ReturnType<typeof E>) => pool.query("insert into finance.entries(user_id,id,kind,amount,category_id,account_id,at,note,source) values($1,$2,$3,$4,$5,$6,$7,$8,$9)", [user, e.id, e.kind, e.amount, e.category_id, e.account_id, e.at, e.note, e.source]);
 const entries = async () => (await pool.query("select id,amount,note,category_id,kind from finance.entries where user_id=$1 order by id", [user])).rows;

@@ -40,9 +40,14 @@ export function useInbound() {
 }
 
 /* ---------- Beranda: the small dot that says something is waiting ---------- */
-export function ReviewChip({ count, importReady, onOpen, onOpenImport }: { count: number; importReady?: number; onOpen: () => void; onOpenImport?: () => void }) {
-  if (count <= 0 && !(importReady && importReady > 0)) return null;
+export function ReviewChip({ count, importReady, autoRecent, onOpen, onOpenImport, onOpenAuto }: { count: number; importReady?: number; autoRecent?: number; onOpen: () => void; onOpenImport?: () => void; onOpenAuto?: () => void }) {
+  if (count <= 0 && !(importReady && importReady > 0) && !(autoRecent && autoRecent > 0)) return null;
   return <>
+    {autoRecent && autoRecent > 0 ? <Reveal i={1}><Btn type="button" className="dpx-reviewchip dpx-autochip" onClick={onOpenAuto} aria-label={`${autoRecent} catatan baru tercatat otomatis dari email`}>
+      <span className="dpx-rc-dot" aria-hidden="true"><Ic n="check" size="sm" /></span>
+      <span className="dpx-rc-t"><b>{autoRecent} catatan baru dari email</b><span>Tercatat otomatis. Ketuk untuk melihat atau mengurungkan</span></span>
+      <Ic n="chev" size="sm" />
+    </Btn></Reveal> : null}
     {importReady && importReady > 0 ? <Reveal i={1}><Btn type="button" className="dpx-reviewchip" onClick={onOpenImport} aria-label={`Impor email lama siap ditinjau, ${importReady} transaksi`}>
       <span className="dpx-rc-dot" aria-hidden="true"><Ic n="dl" size="sm" /></span>
       <span className="dpx-rc-t"><b>Impor email lama siap</b><span>{importReady} transaksi menunggu pratinjau kamu</span></span>
@@ -152,7 +157,7 @@ function EmailSetupSheet({ onClose, summary, refresh, ctx }: { onClose: () => vo
     </> : null}
     {step === 3 ? <>
       <div className={`dpx-codebox ${received ? "dpx-got" : ""}`} aria-live="polite">
-        {received ? <><Ic n="check" size="lg" /><b style={{ fontSize: 17 }}>Email pertama diterima</b><small>{src!.mailCount} email masuk · {ago(src!.lastMailAt)}. Notifikasi pembayaran berikutnya akan muncul di antrean tinjau.</small></>
+        {received ? <><Ic n="check" size="lg" /><b style={{ fontSize: 17 }}>Email pertama diterima</b><small>{src!.mailCount} email masuk · {ago(src!.lastMailAt)}. Notifikasi pembayaran berikutnya langsung tercatat otomatis. Yang meragukan masuk antrean tinjau.</small></>
           : <><span className="dpx-pulse" aria-hidden="true" /><span>Kirim email apa saja ke alamatmu dari Gmail, atau tunggu notifikasi bank berikutnya. Halaman ini memeriksa otomatis.</span></>}
       </div>
       <div className="dpx-addr dpx-small"><code>{src?.address}</code><Btn type="button" className="dpx-copybtn" onClick={() => src && copy("addr", src.address)}><Ic n="copy" size="sm" /> {copied === "addr" ? "Tersalin" : "Salin"}</Btn></div>
@@ -300,7 +305,7 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
         trail={loadingG ? undefined : !gReady ? soon : gm ? <Tag tone={gmInfo?.error ? "warn" : "ok"}>{gmInfo?.error ? "Perlu perhatian" : "Aktif"}</Tag> : <Tag tone="warn">Disarankan</Tag>}
         onClick={gReady && !loadingG && !gm ? () => setSheet({ consent: ["gmail"] }) : undefined} />
       {gm ? <Row icon="dl" tone="amber" title="Impor email lama" sub={inbound && inbound.importReady ? `${inbound.importReady} transaksi siap ditinjau` : "Catat pembayaran lama dari Gmail-mu, dengan pratinjau dulu"} onClick={() => setSheet("import")} /> : null}
-      {gm || (src && src.forwarding) ? <Row icon="check" tone="emerald" title={`Antrean tinjau${inbound && inbound.review ? ` (${inbound.review})` : ""}`} sub={src && src.trusted >= 10 ? "Email yang jelas dicatat otomatis" : `Belajar dari tinjauanmu: ${src?.trusted ?? 0}/10 disetujui`} onClick={onReview} /> : null}
+      {gm || (src && src.forwarding) ? <Row icon="check" tone="emerald" title={`Antrean tinjau${inbound && inbound.review ? ` (${inbound.review})` : ""}`} sub={"Email baru tercatat otomatis. Di sini hanya yang perlu dicek"} onClick={onReview} /> : null}
       {gm ? <Row icon="trash" tone="rose" title="Matikan Gmail langsung" sub="Berhenti membaca email. Catatan yang sudah ada tetap" onClick={() => void turnGmailOff()} chev={false} /> : null}
     </div></Reveal>
 

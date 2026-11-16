@@ -1,7 +1,7 @@
 export type PaymentDetails = { description: string; items: {name:string;qty:number|null;unitPrice:number|null;amount:number|null}[]; subtotal:number|null; discount:number|null; charges:{label:string;amount:number;included:boolean}[]; total:number|null; warnings:string[] };
 /** Browser side of the Google and payment-e-mail integrations. Tokens never reach the browser; this only talks to /api/finance. */
 export type InboundSource = { forwarding: boolean; address: string; enabled: boolean; mailCount: number; lastMailAt: string | null; trusted: number; forwardCode: string | null };
-export type InboundSummary = { configured: boolean; filter: string; source: InboundSource | null; review: number; importReady: number };
+export type InboundSummary = { configured: boolean; filter: string; source: InboundSource | null; review: number; importReady: number; autoRecent: number };
 export type ReviewItem = {
   id: string; channel: string; status: "review" | "failed"; reason: string; confidence: number; createdAt: string;
   parsed: { amount?: number; kind?: "out" | "in"; direction?: string; merchant?: string; categoryId?: string; accountId?: string; accountHint?: string; at?: string; subject?: string; issuer?: string; details?: PaymentDetails; flags?: string[] };

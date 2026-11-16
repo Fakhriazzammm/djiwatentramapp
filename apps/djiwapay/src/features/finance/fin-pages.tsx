@@ -102,7 +102,7 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
     <div className="dpx-onsky" style={{ marginTop: 6 }}><span className="dpx-display" style={{ fontSize: 40 }}><small>Rp</small>{ctx.visible ? <>{showIncomeBased && remaining < 0 ? "−" : ""}<AnimatedNumber value={Math.abs(showIncomeBased ? remaining : t.out)} /></> : "•••••••"}</span></div>
     {trend !== null && trend !== 0 ? <div className="dpx-sub dpx-mt8 dpx-onsky" style={{ fontSize: 14 }}>Pengeluaran <b style={{ color: trend < 0 ? "var(--ok)" : "var(--danger)" }}>{trend < 0 ? "turun" : "naik"} {Math.abs(trend)}%</b> dibanding bulan lalu</div> : null}
 
-    <ReviewChip count={inbound.data?.review ?? 0} importReady={inbound.data?.importReady ?? 0} onOpen={() => nav.go("/tinjau")} onOpenImport={() => nav.go("/integrasi?impor=1")} />
+    <ReviewChip count={inbound.data?.review ?? 0} importReady={inbound.data?.importReady ?? 0} autoRecent={inbound.data?.autoRecent ?? 0} onOpenAuto={() => nav.go("/riwayat")} onOpen={() => nav.go("/tinjau")} onOpenImport={() => nav.go("/integrasi?impor=1")} />
     <GoogleNudge onOpenIntegrations={() => nav.go("/integrasi")} />
     <MascotBuddy messages={[
       `Halo ${firstName(profile.name, profile.email)}! Ketuk aku kalau butuh tips.`,

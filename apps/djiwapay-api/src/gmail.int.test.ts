@@ -27,7 +27,7 @@ const gfetch = (async (u: string, init: RequestInit = {}) => {
   if (m) return mailbox[m[1]] ? ok({ raw: mailbox[m[1]].toString("base64url") }) : new Response("{}", { status: 404 });
   return new Response("{}", { status: 200 });
 }) as unknown as typeof fetch;
-const deps = () => ({ db, cfg, f: gfetch, pipeline: { db, domain: "catat.djiwapay.web.id" }, toMail: (raw: Buffer, ctx: any) => toRawMail(raw, { ...ctx, resolver }) });
+const deps = () => ({ test: true, db, cfg, f: gfetch, pipeline: { db, domain: "catat.djiwapay.web.id" }, toMail: (raw: Buffer, ctx: any) => toRawMail(raw, { ...ctx, resolver }) });
 
 afterAll(async () => {
   if (!pool) return;
@@ -45,11 +45,11 @@ run("gmail direct (real database, simulated Gmail)", () => {
     resolver = async (name: string, rr: string) => { for (const s of [good, forged]) { try { return await s.resolver(name, rr); } catch { /* next */ } } throw new Error("ENOTFOUND"); };
     mailbox = { g1: good.raw, f1: forged.raw };
     const r = await pollGmail(deps(), user);
-    expect(r).toMatchObject({ ok: true, processed: 2, outcomes: { review: 1, ignored: 1 } });
-    const q = await reviewList(db, user);
-    expect(q).toHaveLength(1);
-    expect(q[0].parsed).toMatchObject({ amount: 25000, merchant: "Kopi Kenangan" });
-    expect(JSON.stringify(q)).not.toContain("9.999.000");   // the forged one left nothing behind
+    expect(r).toMatchObject({ ok: true, processed: 2, outcomes: { auto: 1, ignored: 1 } });
+    const rec = (await pool.query("select amount,note,source,category_id from finance.entries where user_id=$1", [user])).rows;
+    expect(rec).toEqual([{ amount: "25000.00", note: "Kopi Kenangan", source: "email", category_id: "makan" }]);   // the real one is recorded at once
+    expect(await reviewList(db, user)).toHaveLength(0);                                                          // nothing waits for a person
+    expect(JSON.stringify(rec)).not.toContain("9999000");                                                        // the forged one left nothing behind
   });
 
   test("a second poll skips mail it has already handled", async () => {

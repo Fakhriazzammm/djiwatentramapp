@@ -12,8 +12,8 @@ export type Llm = (subject: string, text: string, from: string) => Promise<Extra
 export type PipelineDeps = { db: Tx; llm?: Llm; domain: string; now?: () => Date; trustMin?: number; autoCeiling?: number };
 export type Outcome = { status: "auto" | "review" | "ignored" | "duplicate" | "failed" | "forwarding-code" | "staged"; reason: string; userId?: string };
 
-const TRUST_MIN = 10;               // approvals before a user's mail is recorded without asking
-const AUTO_CEILING = 5_000_000;     // anything larger always waits for a person
+const TRUST_MIN = 10;               // no longer gates automatic recording; kept for the learning counter shown in the app
+const AUTO_CEILING = 50_000_000;    // an amount this large is more likely a misread number than a payment: a person looks
 const CLOSE_MS = 10 * 60_000, TRANSFER_MS = 15 * 60_000;
 
 const newToken = () => { const a = "abcdefghjkmnpqrstuvwxyz23456789"; return Array.from(randomBytes(10), (b) => a[b % a.length]).join(""); };
@@ -174,14 +174,15 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   const categoryId = learned ?? guessCategory(x.merchant, mail.subject, x.direction);
   const candidate: Candidate = { kind, amount: x.amount, categoryId, accountId, at, note: x.merchant || mail.subject.slice(0, 60) || issuer.name };
 
-  const knownMerchant = Boolean(learned) || (categoryId !== "lainnya" && Boolean(x.merchant)) || (kind === "in" && Boolean(x.merchant));
-  const trusted = trustedCount >= (d.trustMin ?? TRUST_MIN);
-  const auto = flags.length === 0 && trusted && isConfident(x) && knownMerchant && issuer.kind !== "service" && x.amount <= (d.autoCeiling ?? AUTO_CEILING);
+  // New mail is recorded straight away once the gates above agree and the read is clear: money in or out, an amount, and nothing
+  // implausible about it. What stays for a person is only what the parser itself is unsure of. Every automatic record can be undone.
+  const clear = isConfident(x) || agreed;
+  const auto = flags.length === 0 && clear && x.direction !== "unknown" && x.amount <= (d.autoCeiling ?? AUTO_CEILING);
   if (auto) {
     const entryId = await d.db.tx((q) => insertEntry(q, userId, candidate, inboundId));
     return finish("auto", "recorded", { parsed, confidence: x.confidence, entryId, at });
   }
-  return finish("review", trusted ? "needs-check" : "learning", { parsed: { ...parsed, categoryId, accountId, kind, ...(flags.length ? { flags } : {}) }, confidence: x.confidence, at });
+  return finish("review", "needs-check", { parsed: { ...parsed, categoryId, accountId, kind, ...(flags.length ? { flags } : {}) }, confidence: x.confidence, at });
 }
 
 /* ---------------- review queue ---------------- */

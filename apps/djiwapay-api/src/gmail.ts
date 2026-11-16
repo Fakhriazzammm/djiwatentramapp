@@ -13,7 +13,7 @@ const MAX_PER_POLL = 60;
 export const senderQuery = () => `from:(${ISSUERS.flatMap((i) => i.domains).join(" OR ")})`;
 export const gmailQuery = (since: Date) => `${senderQuery()} after:${Math.floor(since.getTime() / 1000)}`;
 
-export type PollDeps = { db: Tx; cfg: GoogleCfg; pipeline: PipelineDeps; toMail: (raw: Buffer, ctx: MailCtx) => Promise<RawMail>; f?: Fetch; now?: () => Date };
+export type PollDeps = { db: Tx; cfg: GoogleCfg; pipeline: PipelineDeps; toMail: (raw: Buffer, ctx: MailCtx) => Promise<RawMail>; f?: Fetch; now?: () => Date; test?: boolean };
 export type PollResult = { ok: boolean; processed: number; outcomes: Record<string, number>; error?: string };
 
 export async function enableGmail(db: Q, userId: string) {
@@ -78,7 +78,7 @@ export async function pollGmail(d: PollDeps, userId: string): Promise<PollResult
 /** One scheduler tick: polls the few users whose turn has come. */
 export async function runDue(d: PollDeps, limit = 5) {
   const due = await d.db.query(`select g.user_id from finance.gmail_sync g join finance.google_connections c on c.user_id=g.user_id
-    where g.enabled and g.next_poll_at <= now() and c.refresh_enc is not null order by g.next_poll_at limit $1`, [limit]);
+    where g.enabled and g.next_poll_at <= now() and c.refresh_enc is not null ${d.test ? "" : "and g.user_id not like 'itest-%'"} order by g.next_poll_at limit $1`, [limit]);
   const out: Record<string, PollResult> = {};
   for (const r of due.rows) { try { out[r.user_id] = await pollGmail(d, r.user_id as string); } catch (e) { console.error("gmail poll", e instanceof Error ? e.message : e); } }
   return out;

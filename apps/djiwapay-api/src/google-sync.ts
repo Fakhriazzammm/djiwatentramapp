@@ -9,7 +9,7 @@ import { CATATAN_ROWS, GROW_BY, SHEET, TEMPLATE_VERSION, catatanRows, contentDat
 import type { Q, Tx } from "./sync.js";
 
 const SYNC_EVERY_MS = 2 * 60_000, DRIVE_EVERY_MS = 3 * 60_000, DRIVE_REMOVAL_GUARD = 5;
-export type SyncDeps = { db: Tx; cfg: GoogleCfg; f?: Fetch; dir: string; now?: () => Date; newId?: () => string };
+export type SyncDeps = { db: Tx; cfg: GoogleCfg; f?: Fetch; dir: string; now?: () => Date; newId?: () => string; test?: boolean };
 
 /* ---------------- shared helpers ---------------- */
 
@@ -325,10 +325,10 @@ export async function runGoogleDue(d: SyncDeps, limit = 4) {
   const out: Record<string, unknown> = {};
   const due = async (sql: string) => (await d.db.query(sql, [limit])).rows.map((r) => r.user_id as string);
   const sheetUsers = await due(`select e.user_id from finance.google_sheet_exports e join finance.google_connections c on c.user_id=e.user_id
-    where c.refresh_enc is not null and e.status<>'missing' and (e.dirty or e.next_sync_at<=now()) order by e.next_sync_at limit $1`);
+    where c.refresh_enc is not null and e.status<>'missing' and (e.dirty or e.next_sync_at<=now()) ${d.test ? "" : "and e.user_id not like 'itest-%'"} order by e.next_sync_at limit $1`);
   for (const u of sheetUsers) { try { out[`sheet:${u}`] = await syncSheet(d, u); } catch (e) { console.error("sheet sync", e instanceof Error ? e.message : e); } }
   const driveUsers = await due(`select s.user_id from finance.google_drive_state s join finance.google_connections c on c.user_id=s.user_id
-    where c.refresh_enc is not null and s.next_check_at<=now() order by s.next_check_at limit $1`);
+    where c.refresh_enc is not null and s.next_check_at<=now() ${d.test ? "" : "and s.user_id not like 'itest-%'"} order by s.next_check_at limit $1`);
   for (const u of driveUsers) { try { out[`drive:${u}`] = await syncDrive(d, u); } catch (e) { console.error("drive sync", e instanceof Error ? e.message : e); } }
   return out;
 }

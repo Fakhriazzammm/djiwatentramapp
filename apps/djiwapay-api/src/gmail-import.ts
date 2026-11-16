@@ -11,7 +11,7 @@ import type { Q, Tx } from "./sync.js";
 const CURRENT_SURE = `coalesce((parsed->>'sure')::boolean,false) and coalesce(parsed->>'rulesVersion','0')='${RULES_VERSION}'`;
 const DAY = 86400_000, EVERYTHING_SINCE = Date.UTC(2010, 0, 1);
 const TICK_BUDGET_MS = 8000, PAGE = 50, TRANSFER_MS = 15 * 60_000;
-export type ImportDeps = { db: Tx; cfg: GoogleCfg; pipeline: PipelineDeps; toMail: (raw: Buffer, ctx: MailCtx) => Promise<RawMail>; f?: Fetch; now?: () => Date; budgetMs?: number };
+export type ImportDeps = { db: Tx; cfg: GoogleCfg; pipeline: PipelineDeps; toMail: (raw: Buffer, ctx: MailCtx) => Promise<RawMail>; f?: Fetch; now?: () => Date; budgetMs?: number; test?: boolean };
 
 export async function createImport(db: Tx, userId: string, days: number, now = new Date()) {
   const period = [0, 90, 180, 365].includes(days) ? days : 90;
@@ -92,7 +92,8 @@ export async function scanStep(d: ImportDeps, imp: Record<string, any>): Promise
 
 /** One scheduler tick for imports. */
 export async function runImports(d: ImportDeps) {
-  const due = (await d.db.query("select * from finance.gmail_import where status='scanning' and next_at <= now() order by created_at limit 2")).rows;
+  // The production worker must never pick up the integration tests' users (they share the database): only a test run opts in.
+  const due = (await d.db.query(`select * from finance.gmail_import where status='scanning' and next_at <= now() ${d.test ? "" : "and user_id not like 'itest-%'"} order by created_at limit 2`)).rows;
   for (const imp of due) { try { await scanStep(d, imp); } catch (e) { console.error("import scan", e instanceof Error ? e.message : e); await d.db.query("update finance.gmail_import set error=$2, next_at=now()+interval '2 minutes' where id=$1", [imp.id, "SCAN_ERROR"]); } }
   return due.length;
 }
