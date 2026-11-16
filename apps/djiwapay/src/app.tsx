@@ -9,6 +9,8 @@ import { isKnownPayPath } from "./lib/djiwa-pay-routes";
 import { DjiwaPaySplash } from "./components/djiwa-pay-splash";
 import { UpdateWatcher } from "./components/update-watcher";
 import { useDjiwaPaySplash } from "./hooks/use-djiwa-pay-splash";
+import { LegalPage } from "./features/legal/legal-pages";
+import "./features/legal/legal.css";
 
 const localPreview = import.meta.env.DEV && new URLSearchParams(window.location.search).get("preview") === "1";
 const previewProfile: CustomerProfile = { source_id: "LOCAL-DEMO-0001", name: "Azzam", email: "preview@example.test", phone: "081234567890" };
@@ -25,6 +27,9 @@ function DjiwaPayNotFound() {
 }
 
 export function DjiwaPayApp() {
+  const path = window.location.pathname.replace(/\/$/, "");
+  if (path === "/privasi") return <LegalPage kind="privacy" />;   // public: Google and new users read these before signing in
+  if (path === "/syarat") return <LegalPage kind="terms" />;
   if (!isKnownPayPath(window.location.pathname)) return <DjiwaPayNotFound />;
   const navigationContext = getPayNavigationContext(); const [profile, setProfile] = useState<CustomerProfile | null>(localPreview ? previewProfile : null); const [wallet, setWallet] = useState<WalletResponse | null>(localPreview ? previewWallet : null); const [loading, setLoading] = useState(!localPreview); const [error, setError] = useState<string | null>(null); const [busy, setBusy] = useState(false);
   const load = async () => { setLoading(true); setError(null); try { const next = await resolveIdentity(); setProfile(next); if (next) setWallet(await readWallet(next)); } catch (cause) { setError(cause instanceof Error ? cause.message : "Gagal memuat Djiwa Pay"); } finally { setLoading(false); } };

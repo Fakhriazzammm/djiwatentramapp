@@ -111,6 +111,7 @@ function ConsentSheet({ features, onClose, busy, onGo }: { features: GoogleFeatu
     <div className="dpx-glabel">Yang tidak bisa</div>
     <div className="dpx-group dpx-white dpx-checks">{cannot.map((t) => <div key={t} className="dpx-chk dpx-no"><Ic n="close" size="sm" /><span>{t}</span></div>)}</div>
     {gmail ? <div className="dpx-note"><Ic n="info" /><div><b>Google akan menampilkan “belum diverifikasi”.</b> Ketuk <b>Lanjutan</b>, lalu <b>Buka Djiwa Pay</b>, dan centang izin Gmail. Layar itu muncul karena izin baca Gmail memerlukan verifikasi tambahan dari Google, dan kamu bisa mencabutnya kapan saja.</div></div> : null}
+    <p className="dpx-hint dpx-center">Cara data Google dipakai dijelaskan di <a href="/privasi" target="_blank" rel="noreferrer">Kebijakan Privasi</a>.</p>
     <Btn type="button" className="dpx-btn" disabled={busy} onClick={onGo}>{busy ? "Membuka Google…" : "Lanjut ke Google"}</Btn>
   </Sheet>;
 }

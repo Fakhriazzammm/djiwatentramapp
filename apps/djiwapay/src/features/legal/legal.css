@@ -1,0 +1,9 @@
+.dpx .dpx-legal-body{background:#fff;border-radius:22px;padding:6px 18px 14px;box-shadow:var(--soft)}
+.dpx .dpx-legal-body section{padding:14px 0;border-bottom:1px solid var(--hair)}
+.dpx .dpx-legal-body section:last-child{border-bottom:0}
+.dpx .dpx-legal-body h2{margin:0 0 6px;font:700 16px var(--font);color:var(--ink)}
+.dpx .dpx-legal-body p{margin:6px 0 0;font-size:14px;line-height:1.6;color:var(--ink);overflow-wrap:anywhere}
+.dpx .dpx-legal-foot{display:flex;gap:16px;flex-wrap:wrap;margin:14px 4px 0;font:600 14px var(--font)}
+.dpx .dpx-legal-foot a{color:var(--blue);text-decoration:none}
+.dpx .dpx-legal-links{margin:10px 20px 0;font-size:12px;color:var(--mute);text-align:center;line-height:1.6}
+.dpx .dpx-legal-links a{color:var(--blue);text-decoration:underline;text-underline-offset:2px}

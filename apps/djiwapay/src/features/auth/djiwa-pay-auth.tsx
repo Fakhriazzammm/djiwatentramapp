@@ -18,5 +18,6 @@ export function DjiwaPayAuth({ error }: { error: string | null }) {
     <Btn type="button" className="dpx-gbtn" disabled={busy} onClick={() => void signIn()}><GoogleMark />{busy ? "Menghubungkan..." : "Lanjutkan dengan Google"}</Btn>
     {authError || error ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div>{authError || error}</div></div> : null}
     <p className="dpx-sub dpx-center" style={{ margin: "16px 20px 0", fontSize: 12 }}>Satu akun untuk catatan keuangan dan saldo Djiwa Pay.</p>
+    <p className="dpx-legal-links">Dengan melanjutkan, kamu menyetujui <a href="/syarat">Syarat Layanan</a> dan <a href="/privasi">Kebijakan Privasi</a> Djiwa Pay, termasuk cara kami memakai data Google yang kamu izinkan.</p>
   </div></Sky></Screen>;
 }
