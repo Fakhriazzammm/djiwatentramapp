@@ -116,6 +116,7 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
     return { status, reason, userId };
   };
 
+  try {
   // Read it: rules first, model only when the rules are unsure.
   const rules = extractPayment(mail.subject, mail.text);
   let x = rules, agreed = false;
@@ -183,6 +184,11 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
     return finish("auto", "recorded", { parsed, confidence: x.confidence, entryId, at });
   }
   return finish("review", "needs-check", { parsed: { ...parsed, categoryId, accountId, kind, ...(flags.length ? { flags } : {}) }, confidence: x.confidence, at });
+  } catch (err) {
+    // The row was claimed above: never leave it queued empty. Record what we know so the person can fill it in or re-read it.
+    console.error("inbound pipeline failed", err instanceof Error ? err.message : err);
+    return finish("failed", "pipeline-error", { parsed: { subject: mail.subject.slice(0, 80), issuer: issuer.name, merchant: "" } });
+  }
 }
 
 /* ---------------- review queue ---------------- */

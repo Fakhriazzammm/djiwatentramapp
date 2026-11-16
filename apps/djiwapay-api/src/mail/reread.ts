@@ -23,6 +23,7 @@ export async function rereadMail(db:Tx,userId:string,id:string,cfg:GoogleCfg,f:F
  const details=x.details!;
  // Keep the reviewed amount and classification. Enrichment is not approval or correction of the ledger.
  if(details.total!==null&&Math.abs(details.total-Number(row.parsed?.amount??0))>.01)details.warnings.push('Total pada email berbeda dari nominal antrean. Periksa sebelum menyetujui.');
- await db.query(`update finance.inbound_messages set parsed=parsed || $3::jsonb where user_id=$1 and id=$2 and status in ('review','failed','staged')`,[userId,id,JSON.stringify({details,...(x.merchant?{merchant:x.merchant}:{})})]);
+ const fill=!(Number(row.parsed?.amount)>0)&&x.amount>0?{amount:x.amount,direction:x.direction,ref:x.ref,accountHint:x.accountHint,subject:mail.subject.slice(0,80),issuer:issuer.name,...(mail.date?{at:mail.date.toISOString()}:{})}:{};
+ await db.query(`update finance.inbound_messages set parsed=parsed || $3::jsonb where user_id=$1 and id=$2 and status in ('review','failed','staged')`,[userId,id,JSON.stringify({...fill,details,...(x.merchant?{merchant:x.merchant}:{})})]);
  return details;
 }
