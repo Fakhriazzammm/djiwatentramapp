@@ -12,12 +12,14 @@ import { heatLevel, monthLabel } from "../../lib/djiwa-pay-summary";
 import type { Entry, FinanceState, Kind } from "../../lib/finance/types";
 import { GoogleNudge, ReviewChip, useInbound } from "../integrations/integrations-pages";
 import type { Finance } from "../../lib/finance/use-finance";
-import { KelolaHome, PocketsPanel, WealthExtras, useCash } from "../kelola/kelola-pages";
-import { useGold } from "../../lib/finance/assets";
+import { KelolaHome, PocketsPanel, useCash } from "../kelola/kelola-pages";
+import { assetValue, assetsChange, gainOf, useGold } from "../../lib/finance/assets";
+import { Sticker } from "../kelola/asset-ui";
+import { short } from "../kelola/kelola-ui";
 import { AssetFlow } from "../kelola/asset-flow";
 import { AssetDetail } from "../kelola/asset-detail";
 import { BillPaySheet, BillSheet, PayoffSheet, PocketRuleSheet, WeeklySheet } from "../kelola/kelola-sheets";
-import { netWorth, pocketsOf } from "../../lib/finance/kelola";
+import { ASSET_KINDS, netWorth, pocketsOf } from "../../lib/finance/kelola";
 import type { CustomerProfile } from "../../lib/identity-adapter";
 import type { WalletTransaction } from "../../lib/wallet-adapter";
 
@@ -273,27 +275,73 @@ export function FinBudget({ ctx }: { ctx: FinCtx }) {
   </div></Sky></div>;
 }
 
-/* ---------- Dompet ---------- */
+/* ---------- Kekayaan (Brankas) ---------- */
+type VaultTab = "aset" | "dompet" | "kewajiban";
+const needsOpening = (a: { opening: number }, bal?: number) => a.opening === 0 && (bal === undefined || bal < 0);
+
 export function FinWallet({ ctx }: { ctx: FinCtx }) {
   const { fin, nav } = ctx; const { state, entries } = fin;
+  const gold = useGold();
   const balances = useBalances(state, entries, ctx.payBalance);
   const accounts = state.accounts.filter((a) => !a.archived);
-  const cash = useCash(ctx); const net = netWorth(state, cash).total;
+  const cash = useCash(ctx); const nw = netWorth(state, cash), net = nw.total;
+  const debt = debtTotals(state.debts);
+  const [tab, setTab] = useState<VaultTab>(() => { try { const t = sessionStorage.getItem("dpx-vault-tab"); return t === "dompet" || t === "kewajiban" ? t : "aset"; } catch { return "aset"; } });
+  const pick = (t: VaultTab) => { setTab(t); try { sessionStorage.setItem("dpx-vault-tab", t); } catch { /* optional */ } };
+  const change = useMemo(() => assetsChange(state.assets, gold?.points ?? null), [state.assets, gold]);
+  const changePct = change && net - change.delta !== 0 ? (change.delta / Math.abs(net - change.delta)) * 100 : null;
+  const rows = useMemo(() => state.assets.map((a) => ({ a, v: assetValue(a, gold?.points ?? null), g: gainOf(a) })), [state.assets, gold]);
+  const assetTotal = rows.reduce((s, r) => s + r.v, 0), cost = rows.reduce((s, r) => s + (r.a.cost ?? 0), 0), costed = rows.reduce((s, r) => s + (r.a.cost ? r.v : 0), 0);
+  const gainPct = cost > 0 ? ((costed - cost) / cost) * 100 : null;
+  const byKind = useMemo(() => { const m = new Map<string, number>(); for (const r of rows) m.set(r.a.kind, (m.get(r.a.kind) ?? 0) + r.v); return [...m.entries()].sort((x, y) => y[1] - x[1]); }, [rows]);
+  const shelves: typeof rows[] = []; for (let i = 0; i < rows.length; i += 3) shelves.push(rows.slice(i, i + 3));
+  const missing = accounts.filter((a) => needsOpening(a, balances[a.id]));
   const acts: [string, string, string][] = [["topup", "Isi saldo", "/wallet/topup"], ["send", "Kirim", "/wallet/transfer"], ["receive", "Terima", "/wallet/receive"], ["scan-qr", "Scan QR", "/wallet/transfer?mode=scan"]];
+  const m = (s: string) => (ctx.visible ? s : "•••••");
+  const KIND_COLORS = ["#d9a21a", "#c9461b", "#16a3b8", "#13804a", "#958a7d", "#e0568a", "#eeb866"];
   return <div className="dpx-page"><Sky><div className="dpx-pad">
-    <div className="dpx-hdr" style={{ paddingTop: 0 }}><h1 className="dpx-page-title" style={{ flex: 1 }}>Kekayaan</h1><Btn type="button" className="dpx-rb" onClick={() => nav.go("/akun")} aria-label="Akun saya"><Ic n="user" /></Btn></div>
-    <div className="dpx-label" style={{ marginTop: 6 }}>Kekayaan bersih</div>
-    <div className="dpx-flex" style={{ marginTop: 4 }}><span className="dpx-display"><small>Rp</small>{ctx.visible ? <>{net < 0 ? "−" : ""}<AnimatedNumber value={Math.abs(net)} /></> : "•••••••"}</span><Btn type="button" onClick={ctx.onToggleVisible} aria-label={ctx.visible ? "Sembunyikan saldo" : "Tampilkan saldo"} style={{ color: "var(--mute)" }}><IconSwap k={ctx.visible ? "eye" : "eyeoff"}><Ic n={ctx.visible ? "eye" : "eyeoff"} /></IconSwap></Btn></div>
-    <div className="dpx-glabel">Akun & dompet</div>
-    <div className="dpx-group dpx-flush dpx-white">
+    <div className="dpx-hdr" style={{ paddingTop: 0 }}><h1 className="dpx-page-title" style={{ flex: 1 }}>Kekayaan</h1><Btn type="button" className="dpx-vt-photo" onClick={() => ctx.open({ k: "asset-new" })}><Ic n="plus" size="sm" /> Foto aset</Btn></div>
+    <motion.div className="dpx-vt-net" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="dpx-sub">Kekayaan bersih</div>
+        <div className="dpx-vt-amt"><small>Rp</small>{ctx.visible ? <>{net < 0 ? "−" : ""}<AnimatedNumber value={Math.abs(net)} /></> : "•••••••"}
+          <Btn type="button" onClick={ctx.onToggleVisible} aria-label={ctx.visible ? "Sembunyikan saldo" : "Tampilkan saldo"} style={{ color: "var(--mute)" }}><IconSwap k={ctx.visible ? "eye" : "eyeoff"}><Ic n={ctx.visible ? "eye" : "eyeoff"} size="sm" /></IconSwap></Btn></div>
+      </div>
+      {ctx.visible && change && changePct !== null ? <div style={{ textAlign: "right" }}><div className={change.delta >= 0 ? "dpx-up" : "dpx-dn"} style={{ fontWeight: 700 }}>{change.delta >= 0 ? "▲" : "▼"} {Math.abs(changePct).toFixed(1).replace(".", ",")}%</div><div className="dpx-sub">aset 30 hari</div></div> : null}
+    </motion.div>
+    <Seg id="vault-tab" label="Bagian kekayaan" value={tab} onChange={pick} options={[["aset", `Aset · ${state.assets.length}`], ["dompet", `Dompet · ${accounts.length + 1}`], ["kewajiban", "Kewajiban"]] as const} />
+
+    {tab === "aset" ? <div key="aset" className="dpx-vt-pn">
+      {shelves.map((row, si) => <div className="dpx-vt-shelf" key={si}>{row.map(({ a, v, g }, i) => <motion.button type="button" key={a.id} className="dpx-vt-slot" onClick={() => ctx.open({ k: "asset-view", id: a.id })} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: (si * 3 + i) * 0.05 }} whileTap={{ scale: 0.95 }}>
+        <span className="dpx-vt-stk"><Sticker asset={a} size={72} /></span><b>{a.name}</b><span className="dpx-sub">{m(short(v))}</span>{g ? <span className={g.pct >= 0 ? "dpx-up" : "dpx-dn"} style={{ fontSize: 10.5, fontWeight: 700 }}>{g.pct >= 0 ? "▲" : "▼"} {Math.abs(g.pct).toFixed(1).replace(".", ",")}%</span> : <span className="dpx-sub" style={{ fontSize: 10.5 }}>{ASSET_KINDS[a.kind].label}</span>}</motion.button>)}</div>)}
+      <div className="dpx-vt-shelf"><button type="button" className="dpx-vt-slot dpx-vt-add" onClick={() => ctx.open({ k: "asset-new" })}><span className="dpx-vt-stk"><span className="dpx-vt-plus"><Ic n="plus" /></span></span><b style={{ color: "var(--mute)" }}>Foto aset</b></button></div>
+      {rows.length ? <div className="dpx-group dpx-white dpx-vt-sum">
+        <div className="dpx-sub">Nilai semua aset</div><div className="dpx-vt-sumamt">{m(rupiah(assetTotal))}</div>
+        <div className="dpx-sub">{cost > 0 && gainPct !== null ? <>Modal {m(rupiah(cost))} · {ctx.visible ? <span className={gainPct >= 0 ? "dpx-up" : "dpx-dn"} style={{ fontWeight: 700 }}>{gainPct >= 0 ? "▲ +" : "▼ −"}{Math.abs(gainPct).toFixed(1).replace(".", ",")}%</span> : "•••"}</> : `${rows.length} aset`}</div>
+        <div className="dpx-vt-bar" role="img" aria-label="Komposisi aset">{byKind.map(([k, v], i) => <i key={k} style={{ width: `${assetTotal ? (v / assetTotal) * 100 : 0}%`, background: KIND_COLORS[i % KIND_COLORS.length] }} />)}</div>
+        <div className="dpx-vt-leg">{byKind.map(([k, v], i) => <span key={k}><i style={{ background: KIND_COLORS[i % KIND_COLORS.length] }} />{ASSET_KINDS[k as keyof typeof ASSET_KINDS].label} {assetTotal ? Math.round((v / assetTotal) * 100) : 0}%</span>)}</div>
+        <Btn type="button" className="dpx-linkbtn" onClick={() => nav.go("/aset")}>Nilai &amp; grafik semua aset</Btn>
+      </div> : <p className="dpx-sub" style={{ margin: "4px 4px 0" }}>Foto emas, perhiasan, atau aset lain. Latarnya dipotong jadi stiker, lalu nilainya dipantau di sini.</p>}
+    </div> : null}
+
+    {tab === "dompet" ? <div key="dompet" className="dpx-vt-pn">
+      <div className="dpx-group dpx-flush dpx-white">
       <Btn type="button" className="dpx-row" onClick={() => nav.openSheet("pay")}><span className="dpx-ico dpx-c-violet" style={{ boxShadow: "none" }}><I3 name="payment-wallet" px={28} /></span><span className="dpx-main"><b>Djiwa Pay</b><span>Terhubung · transaksi otomatis tercatat</span></span><span className="dpx-trail"><b>{ctx.visible ? rupiah(ctx.payBalance) : "•••••"}</b></span></Btn>
-      {accounts.map((a) => <Btn key={a.id} type="button" className="dpx-row" onClick={() => ctx.open({ k: "account", id: a.id })}><span className={`dpx-ico dpx-c-${a.type === "bank" ? "blue" : a.type === "card" ? "rose" : a.type === "ewallet" ? "indigo" : "emerald"}`} style={{ boxShadow: "none" }}><Ic n={a.type === "bank" ? "bank" : a.type === "card" ? "card" : "wallet"} /></span><span className="dpx-main"><b>{a.name}</b><span>Catat manual</span></span><span className="dpx-trail"><b className={(balances[a.id] ?? 0) < 0 ? "dpx-dn" : ""}>{ctx.visible ? `${(balances[a.id] ?? 0) < 0 ? "−" : ""}${rupiah(balances[a.id] ?? 0)}` : "•••••"}</b></span></Btn>)}
-    </div>
-    <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => ctx.open({ k: "account" })}><Ic n="plus" size="sm" /> Tambah dompet</Btn>
-    <WealthExtras ctx={ctx} />
+      {accounts.map((a) => <Btn key={a.id} type="button" className="dpx-row" onClick={() => ctx.open({ k: "account", id: a.id })}><span className={`dpx-ico dpx-c-${a.type === "bank" ? "blue" : a.type === "card" ? "rose" : a.type === "ewallet" ? "indigo" : "emerald"}`} style={{ boxShadow: "none" }}><Ic n={a.type === "bank" ? "bank" : a.type === "card" ? "card" : "wallet"} /></span><span className="dpx-main"><b>{a.name}</b><span>{needsOpening(a) ? <em className="dpx-vt-warn">Saldo awal belum diisi</em> : "Catat manual"}</span></span><span className="dpx-trail"><b className={(balances[a.id] ?? 0) < 0 ? "dpx-dn" : ""}>{ctx.visible ? `${(balances[a.id] ?? 0) < 0 ? "−" : ""}${rupiah(balances[a.id] ?? 0)}` : "•••••"}</b></span></Btn>)}
+      </div>
+      {missing.length ? <div className="dpx-vt-note"><Ic n="warn" /><span>{missing.length} rekening hanya berisi pengeluaran tercatat, jadi saldonya minus. Ketuk rekening lalu isi saldo awal agar kekayaan bersih akurat.</span></div> : null}
+      <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => ctx.open({ k: "account" })}><Ic n="plus" size="sm" /> Tambah dompet</Btn>
     <div className="dpx-sec"><h2>Bayar & layanan</h2><Btn type="button" onClick={() => nav.go("/bayar")}>Semua layanan</Btn></div>
     <div className="dpx-group"><div className="dpx-tile3" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>{acts.map(([a, l, p]) => <Btn key={a} type="button" className="dpx-q" onClick={() => nav.go(p)}><img src={payAsset(a)} width={42} height={42} alt="" />{l}</Btn>)}</div></div>
     <Btn type="button" className="dpx-group dpx-flex" style={{ width: "100%", marginTop: 12, textAlign: "left" }} onClick={() => nav.openSheet("card")}><img src={payAsset("card")} width={56} height={56} alt="" /><span style={{ flex: 1 }}><b style={{ fontSize: 16 }}>Kartu Djiwa</b><div className="dpx-sub">Kartu virtual untuk belanja online.</div></span><span className="dpx-tag">Segera</span></Btn>
+    </div> : null}
+
+    {tab === "kewajiban" ? <div key="kewajiban" className="dpx-vt-pn">
+      <div className="dpx-group dpx-flush dpx-white"><Row icon="down" tone="rose" title="Hutang saya" sub="Belum lunas" trail={<b className="dpx-dn">−{m(rupiah(debt.iOwe))}</b>} /><Row i={1} icon="up" tone="emerald" title="Piutang" sub="Orang berutang padamu" trail={<b className="dpx-up">{m(rupiah(debt.owedToMe))}</b>} /></div>
+      <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => nav.go("/rencana?bagian=hutang")}>Kelola hutang dan piutang</Btn>
+      <Btn type="button" className="dpx-group dpx-flex" style={{ width: "100%", marginTop: 4, textAlign: "left" }} onClick={() => nav.go("/alat")}><span className="dpx-cat dpx-c-violet"><Ic n="grid" /></span><span style={{ flex: 1 }}><b>Alat keuangan</b><div className="dpx-sub">Bisa beli?, dana darurat, zakat, simulasi cicilan</div></span><Ic n="chev" size="sm" /></Btn>
+      <p className="dpx-sub" style={{ margin: "8px 4px 0" }}>Perkiraan berdasarkan catatanmu, bukan nasihat keuangan.</p>
+    </div> : null}
   </div></Sky></div>;
 }
 

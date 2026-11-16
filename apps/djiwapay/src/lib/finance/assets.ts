@@ -162,3 +162,16 @@ export async function makeStickerPng(raw: Blob, mode: StickerMode): Promise<stri
   g.putImageData(img, 0, 0);
   return cropToObject(c).toDataURL("image/png");
 }
+
+/** What the gold-backed assets gained or lost over the last `days` days (assets held for less than that are skipped). */
+export function assetsChange(assets: Asset[], points: GoldPoint[] | null, days = 30, now = new Date()): { delta: number; base: number } | null {
+  if (!points?.length) return null;
+  const day = new Date(now.getTime() - days * 864e5).toISOString().slice(0, 10), latest = points[points.length - 1][1], before = priceOn(points, day);
+  let delta = 0, base = 0;
+  for (const a of assets) {
+    if (!isGoldAsset(a) || (a.boughtOn && a.boughtOn > day)) continue;
+    const now$ = assetValue(a, points), ratio = latest / before; // the same asset valued at the earlier price
+    const then = now$ / ratio; delta += now$ - then; base += then;
+  }
+  return base > 0 ? { delta, base } : null;
+}
