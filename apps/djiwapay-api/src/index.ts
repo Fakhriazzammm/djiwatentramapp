@@ -14,6 +14,7 @@ import { isEmptyRead, readReceipt, type ReceiptRead } from "./receipt.js";
 import { disconnect as googleDisconnect, FEATURES, finishConnect, googleConfig, startConnect, status as googleStatus, syncCalendar, type Feature, type Fetch, type GoogleCfg } from "./google.js";
 import { confirmDriveRemovals, confirmSheetDeletes, requestSheet, touchDrive } from "./google-sync.js";
 import { ISSUERS } from "./mail/extract.js";
+import { ensureHook, getHook, hookConfig, hookScript, HOOK_MAX_BYTES, receiveHook, removeHook, type HookDeps } from "./hook.js";
 import { disableGmail, enableGmail, pollSoon } from "./gmail.js";
 import { cancelImport, commitImport, createImport, importCheckItems, importState, undoImport } from "./gmail-import.js";
 import { approveGroup, rejectGroup, reviewGroups, approve, ensureSource, getSource, originOf, reject, removeSource, reviewCount, reviewList } from "./mail/pipeline.js";
@@ -21,14 +22,14 @@ import { approveGroup, rejectGroup, reviewGroups, approve, ensureSource, getSour
 const DAILY_SCAN_LIMIT = Number(process.env.SCAN_DAILY_LIMIT || 30);
 const MAX_IMAGE_BYTES = 3_500_000;
 
-export type Deps = { db: Tx; resolve: Resolver; dir: string; aiKey?: string; read?: (dataUrl: string) => Promise<ReceiptRead>; google?: GoogleCfg | null; gfetch?: Fetch; mailDomain?: string };
+export type Deps = { db: Tx; resolve: Resolver; dir: string; aiKey?: string; read?: (dataUrl: string) => Promise<ReceiptRead>; google?: GoogleCfg | null; gfetch?: Fetch; mailDomain?: string; hook?: HookDeps; publicUrl?: string };
 
 export function createApp(d: Deps) {
   const app = new Hono();
   const json = (c: any, body: unknown, status = 200) => c.body(JSON.stringify(body), status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
   app.get("/api/finance/health", (c) => json(c, { ok: true }));
   app.use("/api/finance/*", async (c, next) => {
-    if (c.req.path === "/api/finance/health" || c.req.path === "/api/finance/google/callback" || c.req.path.startsWith("/api/finance/assets/ref/")) return next();
+    if (c.req.path === "/api/finance/health" || c.req.path === "/api/finance/google/callback" || c.req.path.startsWith("/api/finance/assets/ref/") || c.req.path.startsWith("/api/finance/hook/")) return next();
     const userId = await d.resolve(c.req.header("cookie") || "");
     if (!userId) return json(c, { success: false, error: "UNAUTHORIZED" }, 401);
     c.set("userId" as never, userId as never);
@@ -197,6 +198,30 @@ export function createApp(d: Deps) {
   app.post("/api/finance/google/sheets/confirm", async (c) => { await confirmSheetDeletes(d.db, uid(c)); return json(c, { success: true }); });
   app.post("/api/finance/google/drive/confirm", async (c) => { await confirmDriveRemovals(d.db, uid(c)); return json(c, { success: true }); });
 
+  /* ---------- Apps Script hook (alternative to Gmail OAuth): public, authenticated by its URL token ---------- */
+  const hookBase = (d.publicUrl ?? "https://djiwapay.web.id").replace(/\/$/, "");
+  const hookView = (h: any) => h ? { enabled: true, url: `${hookBase}/api/finance/hook/${h.token}`, script: hookScript(`${hookBase}/api/finance/hook/${h.token}`), lastAt: h.last_at ? new Date(h.last_at).toISOString() : null, lastStatus: h.last_status ?? null, lastReason: h.last_reason ?? null, received: Number(h.received) } : { enabled: false };
+  const hits = new Map<string, { n: number; t: number }>();
+  const hookLimited = (key: string) => { const now = Date.now(), h = hits.get(key); if (!h || now - h.t > 600_000) { hits.set(key, { n: 1, t: now }); return false; } h.n++; return h.n > 400; };
+  app.get("/api/finance/hook/:token", async (c) => { const cfg = await hookConfig(d.db, c.req.param("token")); return cfg ? json(c, { success: true, ...cfg }) : json(c, { success: false, error: "TOKEN_INVALID" }, 404); });
+  app.post("/api/finance/hook/:token", async (c) => {
+    if (!d.hook) return json(c, { success: false, error: "NOT_CONFIGURED" }, 503);
+    const token = c.req.param("token");
+    if (hookLimited(token)) return json(c, { success: false, error: "RATE_LIMITED" }, 429);
+    const len = Number(c.req.header("content-length") ?? 0);
+    if (len > HOOK_MAX_BYTES) return json(c, { success: false, error: "TOO_LARGE" }, 413);
+    const raw = Buffer.from(await c.req.arrayBuffer());
+    try { const r = await receiveHook(d.hook, token, raw); return json(c, r.body, r.code); }
+    catch (e) { console.error("hook", e instanceof Error ? e.message : e); return json(c, { success: false, error: "TRY_AGAIN" }, 503); }
+  });
+  app.get("/api/finance/inbound/hook", async (c) => json(c, { success: true, available: Boolean(d.hook), ...hookView(await getHook(d.db, uid(c))) }));
+  app.post("/api/finance/inbound/hook", async (c) => {
+    if (!d.hook) return json(c, { success: false, error: "NOT_CONFIGURED" }, 503);
+    const body = await c.req.json().catch(() => ({})) as { rotate?: unknown };
+    return json(c, { success: true, available: true, ...hookView(await ensureHook(d.db, uid(c), body.rotate === true)) });
+  });
+  app.delete("/api/finance/inbound/hook", async (c) => { await removeHook(d.db, uid(c)); return json(c, { success: true }); });
+
   /* ---------- Payment e-mail inbox ---------- */
   const sourceView = (s: any) => s && mailDomain ? { forwarding: Boolean(s.forwarding), address: `${s.token}@${mailDomain}`, enabled: Boolean(s.enabled), mailCount: Number(s.mail_count), lastMailAt: s.last_mail_at ? new Date(s.last_mail_at).toISOString() : null, trusted: Number(s.trusted_count), forwardCode: s.forward_code && s.forward_code_at && Date.now() - new Date(s.forward_code_at).getTime() < 3 * 3600_000 ? String(s.forward_code) : null } : null;
   app.get("/api/finance/inbound", async (c) => json(c, { success: true, importReady: Number((await d.db.query("select coalesce(max(staged),0)::int n from finance.gmail_import where user_id=$1 and status='ready'", [uid(c)])).rows[0]?.n ?? 0), autoRecent: Number((await d.db.query("select count(*)::int n from finance.inbound_messages where user_id=$1 and status='auto' and created_at > now() - interval '24 hours' and import_id is null", [uid(c)])).rows[0]?.n ?? 0), configured: Boolean(mailDomain), filter: `from:(${ISSUERS.flatMap((i) => i.domains).join(" OR ")})`, source: sourceView(await getSource(d.db, uid(c))), review: await reviewCount(d.db, uid(c)) }));
@@ -250,7 +275,9 @@ if (import.meta.main) {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is required");
   const pool = new Pool({ connectionString: url, max: 5, ssl: process.env.PGSSL === "off" ? undefined : { rejectUnauthorized: false } });
-  const app = createApp({ db: poolTx(pool), resolve: authServerResolver(), dir: process.env.RECEIPTS_DIR || "/var/lib/djiwapay-api/receipts", aiKey: process.env.HELIPOD_AI_KEY, google: googleConfig(), mailDomain: process.env.MAIL_DOMAIN || undefined });
+  const app = createApp({ db: poolTx(pool), resolve: authServerResolver(), dir: process.env.RECEIPTS_DIR || "/var/lib/djiwapay-api/receipts", aiKey: process.env.HELIPOD_AI_KEY, google: googleConfig(), mailDomain: process.env.MAIL_DOMAIN || undefined, publicUrl: process.env.PUBLIC_URL || undefined,
+    hook: await (async () => { const { toRawMail } = await import("./mail/smtp.js"); const key = process.env.HELIPOD_AI_KEY; const db = poolTx(pool);
+      return { db, toMail: toRawMail, pipeline: { db, domain: process.env.MAIL_DOMAIN || "catat.djiwapay.web.id", llm: key ? makeLlm({ key, model: process.env.MAIL_LLM_MODEL }) : undefined } }; })() });
   const port = Number(process.env.PORT || 3011);
   Bun.serve({ port, hostname: "127.0.0.1", fetch: app.fetch, maxRequestBodySize: 8 * 1024 * 1024 });
   console.log(`djiwapay-api listening on 127.0.0.1:${port}`);

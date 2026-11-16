@@ -68,3 +68,9 @@ export type GroupResult = { approved: number; skipped: number; income: number; e
 export const getReviewGroups = () => call<{ groups: ReviewGroup[]; groupedItems: number; total: number }>("/inbound/groups");
 export const approveReviewGroup = (key: string, categoryId: string, accountId?: string) => call<GroupResult>("/inbound/groups/approve", { method: "POST", body: JSON.stringify({ key, categoryId, accountId }) });
 export const rejectReviewGroup = (key: string) => call<{ rejected: number }>("/inbound/groups/reject", { method: "POST", body: JSON.stringify({ key }) });
+
+/** Apps Script alternative: a script the user pastes into their own Google account posts bank mail to a private URL. No Google permission for Djiwa Pay is involved. */
+export type HookInfo = { available?: boolean; enabled: boolean; url?: string; script?: string; lastAt?: string | null; lastStatus?: string | null; lastReason?: string | null; received?: number };
+export const getHook = () => call<HookInfo & { success: true }>("/inbound/hook");
+export const createHook = (rotate = false) => call<HookInfo & { success: true }>("/inbound/hook", { method: "POST", body: JSON.stringify({ rotate }) });
+export const removeHook = () => call<object>("/inbound/hook", { method: "DELETE" });

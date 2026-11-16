@@ -8,6 +8,8 @@ import {
   CHANNEL_NAME, approveItem, cancelImport, commitImport, getImport, getImportItems, startImport, undoImport, connectGoogle, confirmDriveRemovals, confirmSheetDeletes, createSource, disconnectGoogle, getGoogle, gmailOff, pollGmailNow, getInbound, getReview, rejectItem, removeSource, syncGoogle,
   type GoogleFeature, type GoogleStatus, type ImportItem, type ImportState, type InboundSummary, type ReviewItem,
 } from "../../lib/finance/integrations";
+import { createHook, removeHook } from "../../lib/finance/integrations";
+import { AppsScriptSheet, hookStatusText, useHook } from "./apps-script";
 
 /** What a Gmail error code means for the person looking at the screen. */
 const gmailError = (code: string) => {
@@ -238,10 +240,11 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
   const { data: inbound, refresh } = useInbound();
   const [g, setG] = useState<(GoogleStatus & { success: true }) | null>(null);
   const [loadingG, setLoadingG] = useState(true);
-  const [sheet, setSheet] = useState<null | "email" | "import" | { consent: GoogleFeature[] }>(null);
+  const [sheet, setSheet] = useState<null | "email" | "import" | "script" | { consent: GoogleFeature[] }>(null);
+  const { hook, refresh: refreshHook, setHook } = useHook();
   const [autoImport, setAutoImport] = useState(false);
   const [busy, setBusy] = useState("");
-  const [confirmOff, setConfirmOff] = useState<null | "google" | "email">(null);
+  const [confirmOff, setConfirmOff] = useState<null | "google" | "email" | "script">(null);
   const loadG = useCallback(async () => { try { setG(await getGoogle()); } catch { /* offline: leave as is */ } finally { setLoadingG(false); } }, []);
   useEffect(() => { void loadG(); }, [loadG]);
   useEffect(() => {
@@ -278,7 +281,7 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
   const turnGmailOff = async () => { setBusy("gmail"); try { await gmailOff(); await loadG(); ctx.notify("Gmail langsung dimatikan"); } catch { ctx.notify("Gagal mematikan. Coba lagi."); } finally { setBusy(""); } };
   const off = async () => {
     setBusy("off");
-    try { if (confirmOff === "google") { await disconnectGoogle(); await loadG(); ctx.notify("Google diputuskan. Token dihapus."); } else { await removeSource(true); await refresh(); ctx.notify("Email terusan dimatikan"); } setConfirmOff(null); }
+    try { if (confirmOff === "script") { await removeHook(); await refreshHook(); ctx.notify("Apps Script dimatikan. Hapus juga proyeknya di script.google.com."); } else if (confirmOff === "google") { await disconnectGoogle(); await loadG(); ctx.notify("Google diputuskan. Token dihapus."); } else { await removeSource(true); await refresh(); ctx.notify("Email terusan dimatikan"); } setConfirmOff(null); }
     catch { ctx.notify("Gagal memutuskan. Coba lagi."); } finally { setBusy(""); }
   };
 
@@ -310,8 +313,15 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
       {gm ? <Row icon="trash" tone="rose" title="Matikan Gmail langsung" sub="Berhenti membaca email. Catatan yang sudah ada tetap" onClick={() => void turnGmailOff()} chev={false} /> : null}
     </div></Reveal>
 
-    <div className="dpx-glabel">Atau lewat terusan email</div>
+    <div className="dpx-glabel">Alternatif tanpa izin Gmail</div>
     <Reveal i={2}><div className="dpx-group dpx-white dpx-int">
+      <Row icon="spark" tone="orange" title="Apps Script" sub={hook?.enabled ? (hook.received ? `${hook.received} email · ${ago(hook.lastAt ?? null)}${hookStatusText(hook.lastStatus, hook.lastReason) ? ` · ${hookStatusText(hook.lastStatus, hook.lastReason)}` : ""}` : "Menunggu email pertama dari skripmu") : "Skrip kecil di akun Googlemu. Gratis, tanpa batas pengguna. Ada tutorialnya"}
+        trail={hook?.enabled ? <Tag tone="ok">Aktif</Tag> : hook && hook.available === false ? soon : <Tag>Mati</Tag>}
+        onClick={hook && hook.available === false ? undefined : () => setSheet("script")} />
+      {hook?.enabled ? <>
+        <Row icon="refresh" tone="slate" title="Buat alamat skrip baru" sub="Alamat lama langsung mati. Salin dan tempel skrip yang baru" onClick={async () => { setBusy("hook"); try { setHook(await createHook(true)); ctx.notify("Alamat baru dibuat. Tempel ulang skripnya."); setSheet("script"); } catch { ctx.notify("Gagal membuat alamat baru"); } finally { setBusy(""); } }} chev={false} />
+        <Row icon="trash" tone="rose" title="Matikan Apps Script" sub="Alamat dihapus. Catatan yang sudah ada tetap" onClick={() => setConfirmOff("script")} chev={false} />
+      </> : null}
       <Row icon="bank" tone="slate" title="Email terusan" sub={src?.forwarding ? `${src.mailCount ? `${src.mailCount} email · ${ago(src.lastMailAt)}` : "Menunggu email pertama"}` : "Tanpa izin Gmail. Atur sekali di Gmail atau di aplikasi bank"} trail={src?.forwarding ? <Tag tone="ok">Aktif</Tag> : inbound && !inbound.configured ? soon : <Tag>Mati</Tag>}
         onClick={inbound?.configured ? () => setSheet("email") : undefined} />
       {src?.forwarding ? <>
@@ -340,11 +350,12 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
     {g && !g.configured ? <div className="dpx-note" style={{ marginTop: 12 }}><Ic n="info" /><div><b>Google belum dihubungkan di server ini.</b> Calendar, Drive dan Sheets aktif begitu kredensial Google dipasang.</div></div> : null}
     {inbound && !inbound.configured ? <div className="dpx-note" style={{ marginTop: 12 }}><Ic n="info" /><div><b>Penerima email belum aktif.</b> Email terusan aktif begitu alamat domain surat dipasang.</div></div> : null}
 
-    {confirmOff ? <div className="dpx-note dpx-danger" role="alert" style={{ marginTop: 12 }}><Ic n="warn" /><div><b>{confirmOff === "google" ? "Putuskan Google?" : "Matikan email terusan?"}</b> {confirmOff === "google" ? "Acara Calendar dan file yang sudah dibuat tetap ada di akun Google-mu." : "Alamat dihapus dan antrean tinjau dikosongkan. Catatan yang sudah tersimpan tetap ada."}
+    {confirmOff ? <div className="dpx-note dpx-danger" role="alert" style={{ marginTop: 12 }}><Ic n="warn" /><div><b>{confirmOff === "google" ? "Putuskan Google?" : confirmOff === "script" ? "Matikan Apps Script?" : "Matikan email terusan?"}</b> {confirmOff === "google" ? "Acara Calendar dan file yang sudah dibuat tetap ada di akun Google-mu." : confirmOff === "script" ? "Alamat skrip dihapus, jadi skrip di akun Google-mu berhenti dikenali. Hapus juga proyeknya di script.google.com. Catatan yang sudah tersimpan tetap ada." : "Alamat dihapus dan antrean tinjau dikosongkan. Catatan yang sudah tersimpan tetap ada."}
       <div className="dpx-flex" style={{ marginTop: 10 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy === "off"} onClick={() => void off()}>{busy === "off" ? "Memproses…" : "Ya, putuskan"}</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => setConfirmOff(null)}>Batal</Btn></div></div></div> : null}
 
     <AnimatePresence>
       {sheet === "import" ? <ImportSheet key="import" ctx={ctx} onClose={() => setSheet(null)} onChanged={() => void refresh()} /> : null}
+      {sheet === "script" ? <AppsScriptSheet key="script" ctx={ctx} hook={hook} setHook={setHook} refresh={refreshHook} rotate={async () => { try { setHook(await createHook(true)); } catch { ctx.notify("Gagal membuat alamat baru"); } }} onClose={() => setSheet(null)} /> : null}
       {sheet === "email" ? <EmailSetupSheet key="email" ctx={ctx} summary={inbound} refresh={refresh} onClose={() => setSheet(null)} /> : null}
       {sheet && typeof sheet === "object" ? <ConsentSheet key="consent" features={sheet.consent} busy={busy === "connect"} onClose={() => setSheet(null)} onGo={() => void goGoogle(sheet.consent)} /> : null}
     </AnimatePresence>
