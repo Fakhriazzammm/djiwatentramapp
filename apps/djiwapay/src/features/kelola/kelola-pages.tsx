@@ -76,9 +76,9 @@ export function WealthExtras({ ctx }: { ctx: FinCtx }) {
   const { state } = ctx.fin, cash = useCash(ctx), nw = netWorth(state, cash), mix = assetMix(state, cash), debt = debtTotals(state.debts);
   const colors = ["#13804a", "#d9a21a", "#d14b1a", "#e45825", "#eeb866", "#16a3b8", "#958a7d", "#e0568a"];
   return <>
-    <div className="dpx-glabel">Komposisi</div>
+    {mix.length ? <><div className="dpx-glabel">Komposisi</div>
     <div className="dpx-group dpx-white"><div style={{ display: "flex", height: 10, borderRadius: 99, overflow: "hidden", background: "var(--group)" }}>{mix.map((p, i) => <motion.i key={p.id} style={{ background: colors[i % colors.length], display: "block" }} initial={{ width: 0 }} animate={{ width: `${p.percent}%` }} transition={{ duration: 0.8, delay: 0.1 + i * 0.06, ease: [0.32, 0.72, 0, 1] }} />)}</div>
-      <div className="dpx-chips2" style={{ marginTop: 8 }}>{mix.map((p, i) => <span key={p.id} className="dpx-chip3"><i style={{ width: 8, height: 8, borderRadius: 99, background: colors[i % colors.length], display: "inline-block" }} /> {p.label} {Math.round(p.percent)}%</span>)}</div></div>
+      <div className="dpx-chips2" style={{ marginTop: 8 }}>{mix.map((p, i) => <span key={p.id} className="dpx-chip3"><i style={{ width: 8, height: 8, borderRadius: 99, background: colors[i % colors.length], display: "inline-block" }} /> {p.label} {Math.round(p.percent)}%</span>)}</div></div></> : null}
     <div className="dpx-sec"><h2>Aset</h2><Btn type="button" onClick={() => ctx.open({ k: "asset" })}>+ Tambah</Btn></div>
     <div className="dpx-group dpx-flush dpx-white">
       <Row i={0} icon="wallet" tone="emerald" title="Kas & dompet" sub="Otomatis dari semua dompet" trail={<b>{mask(ctx, rupiah(cash))}</b>} />
