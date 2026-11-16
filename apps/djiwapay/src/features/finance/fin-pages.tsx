@@ -106,10 +106,11 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
       <Btn type="button" className="dpx-rb" onClick={ctx.onOpenNotifications} aria-label={`Notifikasi${ctx.unread ? `, ${ctx.unread} belum dibaca` : ""}`}><Wiggle active={ctx.unread > 0}><Ic n="bell" /></Wiggle>{ctx.unread ? <span className="dpx-bd">{ctx.unread > 9 ? "9+" : ctx.unread}</span> : null}</Btn>
     </div>
     <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.05 }} className="dpx-title dpx-onsky" style={{ fontSize: 24, letterSpacing: "-.035em", marginTop: 6 }}>{greeting(now)}, {firstName(profile.name, profile.email)}.</motion.h1>
-    <div className="dpx-flex dpx-mt8 dpx-onsky" style={{ color: "var(--mute)", font: "600 13px var(--font)" }}>{showIncomeBased ? "Sisa uang bulan ini" : "Pengeluaran bulan ini"}
+    <div className="dpx-flex dpx-mt8 dpx-onsky" style={{ color: "var(--mute)", font: "600 13px var(--font)" }}>Pengeluaran bulan ini
       <Btn type="button" onClick={ctx.onToggleVisible} aria-label={ctx.visible ? "Sembunyikan angka" : "Tampilkan angka"} aria-pressed={!ctx.visible}><IconSwap k={ctx.visible ? "eye" : "eyeoff"}><Ic n={ctx.visible ? "eye" : "eyeoff"} size="sm" /></IconSwap></Btn></div>
-    <div className="dpx-onsky" style={{ marginTop: 6 }}><span className="dpx-display" style={{ fontSize: 40 }}><small>Rp</small>{ctx.visible ? <>{showIncomeBased && remaining < 0 ? "−" : ""}<AnimatedNumber value={Math.abs(showIncomeBased ? remaining : t.out)} /></> : "•••••••"}</span></div>
+    <div className="dpx-onsky" style={{ marginTop: 6 }}><span className="dpx-display" style={{ fontSize: 40 }}><small>Rp</small>{ctx.visible ? <><AnimatedNumber value={t.out} /></> : "•••••••"}</span></div>
     {trend !== null && trend !== 0 ? <div className="dpx-sub dpx-mt8 dpx-onsky" style={{ fontSize: 14 }}>Pengeluaran <b style={{ color: trend < 0 ? "var(--ok)" : "var(--danger)" }}>{trend < 0 ? "turun" : "naik"} {Math.abs(trend)}%</b> dibanding bulan lalu</div> : null}
+    {showIncomeBased && ctx.visible ? <div className="dpx-sub dpx-mt8 dpx-onsky" style={{ fontSize: 13 }}>Pemasukan {rupiah(t.in)} · {remaining < 0 ? "Defisit" : "Sisa"} {rupiah(Math.abs(remaining))}</div> : null}
 
     <ReviewChip count={inbound.data?.review ?? 0} importReady={inbound.data?.importReady ?? 0} autoRecent={inbound.data?.autoRecent ?? 0} onOpenAuto={() => nav.go("/riwayat")} onOpen={() => nav.go("/tinjau")} onOpenImport={() => nav.go("/integrasi?impor=1")} />
     <GoogleNudge onOpenIntegrations={() => nav.go("/integrasi")} />
