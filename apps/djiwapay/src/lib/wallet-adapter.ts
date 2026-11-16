@@ -139,11 +139,12 @@ export async function markAllWalletNotificationsRead(): Promise<void> {
 }
 
 export type PpobProduct = { product_code: string; product_description: string; product_nominal: string; product_details?: string; product_price: number; product_type: string; status: string; icon_url?: string };
-export function ppobProductName(product: Pick<PpobProduct, "product_nominal" | "product_description" | "product_code">): string {
+const NOMINAL_PREFIX: Record<string, string> = { pln: "Token PLN", etoll: "Saldo e-Toll" };
+export function ppobProductName(product: Pick<PpobProduct, "product_nominal" | "product_description" | "product_code"> & { product_type?: string }): string {
   const nominal = String(product.product_nominal ?? "").trim();
   if (nominal && nominal.toLowerCase() !== "nan") {
     const numericNominal = Number(nominal);
-    if (Number.isFinite(numericNominal)) return `Paket ${numericNominal.toLocaleString("id-ID")}`;
+    if (Number.isFinite(numericNominal)) return `${NOMINAL_PREFIX[String(product.product_type ?? "").toLowerCase()] ?? "Paket"} ${numericNominal.toLocaleString("id-ID")}`;
     return nominal;
   }
   return product.product_description.trim() || product.product_code;

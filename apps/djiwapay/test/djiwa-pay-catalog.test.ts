@@ -12,6 +12,9 @@ const product = (overrides: Partial<PpobProduct>): PpobProduct => ({
 });
 
 describe("PPOB product naming", () => {
+  test("names electricity tokens as tokens, not packages", () => {
+    expect(ppobProductName(product({ product_nominal: "10000", product_type: "pln" }))).toBe("Token PLN 10.000");
+  });
   test("formats numeric nominal values as a package amount", () => {
     expect(ppobProductName(product({ product_nominal: "10000" }))).toBe("Paket 10.000");
   });
