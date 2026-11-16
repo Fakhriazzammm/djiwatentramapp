@@ -102,13 +102,16 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     finally { setNotificationsLoading(false); }
   };
   useEffect(() => { if (!previewOnly) void refreshWalletNotifications(); }, [profile.source_id, previewOnly]);
-  const goPpobRoute = (path: string, silent = false) => { if (!silent) onNavigate(djiwaPaySplashLabel(path)); window.history.pushState({ ppob: true }, "", path); setRoutePath(path); };
-  const goPayRoute = (path: string) => { onNavigate(djiwaPaySplashLabel(path)); window.history.pushState({ wallet: true }, "", path); setRoutePath(window.location.pathname); window.scrollTo({ top: 0, behavior: "auto" }); };
+  const goPpobRoute = (path: string, silent = false) => { if (!silent) onNavigate(djiwaPaySplashLabel(path)); window.history.pushState({ ppob: true, depth: navDepth() + 1 }, "", path); setRoutePath(path); };
+  /** Back to the page the person came from; a page opened directly (no earlier in-app page) falls back to `fallback`. */
+  const navDepth = () => Number((window.history.state as { depth?: number } | null)?.depth ?? 0);
+  const goBack = (fallback: string) => { if (navDepth() > 0) { onNavigate("Kembali"); window.history.back(); } else goPayRoute(fallback); };
+  const goPayRoute = (path: string) => { onNavigate(djiwaPaySplashLabel(path)); window.history.pushState({ wallet: true, depth: navDepth() + 1 }, "", path); setRoutePath(window.location.pathname); window.scrollTo({ top: 0, behavior: "auto" }); };
   const walletRoute = parseWalletPath(routePath);
   const paySearchParams = new URLSearchParams(window.location.search);
   const transferInitialMode: "phone" | "scan" = paySearchParams.get("mode") === "scan" ? "scan" : "phone";
   const transferInitialRecipient = paySearchParams.get("phone") ?? "";
-  const closePpob = () => { setPpobOpen(false); setPpobFilter("all"); setSelectedPpobProduct(null); setPostpaidService(null); setPostpaidCatalog(null); setPostpaidInquiry(null); setPostpaidProductCode(""); setPostpaidCustomerNumber(""); setPostpaidStage("detail"); setPostpaidMessage(null); setPpobQuery(""); setPpobOperator("all"); setPpobSort("default"); setPpobCustomerNumber(""); setPpobPaymentMessage(null); setPpobReviewOpen(false); setPpobPaymentMethod("wallet"); setPpobSuccess(null); goPpobRoute("/"); };
+  const closePpob = (mode: "back" | "home" = "back") => { setPpobOpen(false); setPpobFilter("all"); setSelectedPpobProduct(null); setPostpaidService(null); setPostpaidCatalog(null); setPostpaidInquiry(null); setPostpaidProductCode(""); setPostpaidCustomerNumber(""); setPostpaidStage("detail"); setPostpaidMessage(null); setPpobQuery(""); setPpobOperator("all"); setPpobSort("default"); setPpobCustomerNumber(""); setPpobPaymentMessage(null); setPpobReviewOpen(false); setPpobPaymentMethod("wallet"); setPpobSuccess(null); if (mode === "home") goPpobRoute("/"); else goBack("/"); };
   const rememberCustomerNumber = (value: string) => { const next = [value, ...recentCustomerNumbers.filter((item) => item !== value)].slice(0, 5); setRecentCustomerNumbers(next); try { window.localStorage.setItem(recentNumbersKey, JSON.stringify(next)); } catch { /* best effort */ } };
   const toggleFavoriteCustomerNumber = (value: string) => { const next = favoriteCustomerNumbers.includes(value) ? favoriteCustomerNumbers.filter((item) => item !== value) : [value, ...favoriteCustomerNumbers].slice(0, 5); setFavoriteCustomerNumbers(next); try { window.localStorage.setItem(favoritesKey, JSON.stringify(next)); } catch { /* best effort */ } };
   const ppobProductRoute = (stage: string, product = selectedPpobProduct) => product ? `/ppob/${encodeURIComponent(ppobFilter)}/produk/${encodeURIComponent(product.product_code)}/${stage}` : `/ppob/${encodeURIComponent(ppobFilter)}`;
@@ -421,22 +424,22 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
         amount={ppobSuccess!.product.product_price}
         serialNumber={ppobSuccess!.serialNumber}
         reference={ppobSuccess!.reference}
-        onDone={() => { setPpobReceiptDraft(null); clearDraft(); closePpob(); }}
+        onDone={() => { setPpobReceiptDraft(null); clearDraft(); closePpob("home"); }}
       />
     </main>
   );
   const ppobTitle = ppobFilter === "all" ? "Layanan digital" : ppobFilter === "bpjs" ? "BPJS" : ppobFilter === "tv" ? "TV & Streaming" : ppobFilter === "multifinance" ? "Cicilan" : ppobFilter === "pln" ? "Token PLN" : ppobFilter === "data" ? "Paket Data" : ppobFilter === "game" ? "Voucher Game" : ppobFilter === "pdam" ? "PDAM" : ppobFilter === "pln-bill" ? "Tagihan PLN" : ppobFilter.charAt(0).toUpperCase() + ppobFilter.slice(1);
   if (ppobOpen && ["bpjs", "tv", "multifinance"].includes(ppobFilter)) return (
     <Screen><Sky><div className="dpx-pad dpx-nobar">
-      <Header title={ppobTitle} onBack={closePpob} />
-      <div className="dpx-empty" role="status"><I3 name="restaurant-cafe" px={112} /><b>Belum tersedia</b><p>Layanan ini belum tersedia di Djiwa Pay. Saldo dan transaksi Anda tidak akan berubah.</p><Btn type="button" className="dpx-btn dpx-inline" style={{ marginTop: 14 }} onClick={closePpob}>Pilih layanan lain</Btn></div>
+      <Header title={ppobTitle} onBack={() => closePpob()} />
+      <div className="dpx-empty" role="status"><I3 name="restaurant-cafe" px={112} /><b>Belum tersedia</b><p>Layanan ini belum tersedia di Djiwa Pay. Saldo dan transaksi Anda tidak akan berubah.</p><Btn type="button" className="dpx-btn dpx-inline" style={{ marginTop: 14 }} onClick={() => closePpob()}>Pilih layanan lain</Btn></div>
     </div></Sky></Screen>
   );
   if (ppobOpen && postpaidService) return (
     <Screen><Sky>
       <div className="dpx-pad dpx-nobar" style={{ paddingBottom: 150 }}>
-        <Header title={`Tagihan ${postpaidService.toUpperCase()}`} onBack={closePpob} />
-        {postpaidStage === "success" ? <div className="dpx-center" style={{ marginTop: 24 }} role="status"><SuccessMark /><h1 className="dpx-title">Pembayaran berhasil</h1><p className="dpx-sub" style={{ margin: "8px auto 0", maxWidth: 290 }}>Tagihan {postpaidService.toUpperCase()} sudah dibayar. Ref: {postpaidInquiry?.refId}</p><div className="dpx-sticky"><Btn className="dpx-btn" onClick={closePpob}>Selesai</Btn></div></div> : <>
+        <Header title={`Tagihan ${postpaidService.toUpperCase()}`} onBack={() => closePpob()} />
+        {postpaidStage === "success" ? <div className="dpx-center" style={{ marginTop: 24 }} role="status"><SuccessMark /><h1 className="dpx-title">Pembayaran berhasil</h1><p className="dpx-sub" style={{ margin: "8px auto 0", maxWidth: 290 }}>Tagihan {postpaidService.toUpperCase()} sudah dibayar. Ref: {postpaidInquiry?.refId}</p><div className="dpx-sticky"><Btn className="dpx-btn" onClick={() => closePpob("home")}>Selesai</Btn></div></div> : <>
           <p className="dpx-sub" style={{ margin: "0 6px 6px" }}>Masukkan nomor pelanggan untuk melihat rincian tagihan sebelum membayar.</p>
           {postpaidBusy && !postpaidCatalog ? <div className="dpx-skel" style={{ height: 120 }} role="status" aria-label="Memuat pilihan tagihan" /> : null}
           {!postpaidBusy && postpaidMessage && !postpaidCatalog ? <div role="alert" className="dpx-note dpx-danger"><Ic n="warn" /><div><b>Katalog belum dapat dimuat</b>Periksa koneksi lalu coba muat ulang.<br /><Btn type="button" className="dpx-linkbtn" style={{ marginTop: 8, fontWeight: 600 }} onClick={() => { setPostpaidMessage(null); setPostpaidRetry((value) => value + 1); }}>Muat ulang katalog</Btn></div></div> : null}
@@ -489,7 +492,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     const shownProducts = (ppobCatalog ?? []).filter((product) => product.product_type.toLowerCase() === ppobFilter && (activeOperator === "all" || operatorName(product) === activeOperator) && `${product.product_description} ${product.product_nominal} ${product.product_code}`.toLowerCase().includes(ppobQuery.toLowerCase())).sort((a, b) => ppobSort === "price-asc" ? a.product_price - b.product_price : ppobSort === "price-desc" ? b.product_price - a.product_price : ppobSort === "name" ? a.product_description.localeCompare(b.product_description) : a.product_price - b.product_price).slice(0, 60);
     const numberLabel = isPhoneCategory ? "Nomor HP tujuan" : ppobFilter === "pln" ? "Nomor meter / ID pelanggan" : "Nomor atau ID tujuan";
     return <Screen><Sky><div className="dpx-pad dpx-nobar" style={{ paddingBottom: 60 }}>
-      <Header title={ppobTitle} onBack={closePpob} />
+      <Header title={ppobTitle} onBack={() => closePpob()} />
       {ppobFilter === "all" ? <><p className="dpx-sub" style={{ margin: "0 6px 12px" }}>Pilih layanan yang ingin dibayar dengan saldo Djiwa Pay.</p><div className="dpx-group dpx-white"><div className="dpx-tile3" style={{ gap: "6px 8px" }}>{ppobServices.map(([key, label]) => <Btn key={key} type="button" className="dpx-q" style={{ padding: "8px 0" }} onClick={() => { openPpob(key, label); setPpobOperator("all"); setSelectedPpobProduct(null); }}><span className={`dpx-qi dpx-c-${serviceTone[key]}`} style={{ width: 56, height: 56, borderRadius: 20, display: "grid", placeItems: "center" }}><Ic n={serviceIcon[key]} size="lg" /></span><span style={{ fontSize: 13, fontWeight: 600 }}>{label}</span></Btn>)}</div></div></> : <>
         <label className="dpx-field" style={{ marginTop: 6 }}><span>{numberLabel}</span><div className="dpx-input"><Ic n={isPhoneCategory ? "phone" : ppobFilter === "pln" ? "flash" : "game"} size="sm" /><input id="ppob-number" inputMode="numeric" autoComplete="tel" value={ppobCustomerNumber} onChange={(event) => setPpobCustomerNumber(event.target.value.replace(/\D/g, "").slice(0, 20))} placeholder={isPhoneCategory ? "0812 3456 7890" : "Masukkan nomor"} />{detected ? <span className="dpx-tag dpx-info">{detected}</span> : null}{ppobCustomerNumber ? <Btn type="button" onClick={() => setPpobCustomerNumber("")} aria-label="Hapus nomor"><Ic n="close" size="sm" /></Btn> : null}</div>{isPhoneCategory ? <div className="dpx-hint">Operator terdeteksi otomatis dari awalan nomor.</div> : null}</label>
         {recentCustomerNumbers.length ? <div className="dpx-chips dpx-mt8" aria-label="Nomor terakhir dipakai">{recentCustomerNumbers.map((number) => <Btn key={number} type="button" className="dpx-chip" onClick={() => setPpobCustomerNumber(number)}>{number}</Btn>)}</div> : null}
@@ -555,20 +558,20 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
     return frameShell(<FinRecords ctx={finCtx} selected={selectedNode} />, "history");
   }
   if (walletRoute?.page === "transfer" || walletRoute?.page === "receive") return <DjiwaPayWalletAction mode={walletRoute.page === "transfer" ? "send" : "receive"} profile={profile} balance={balance} initialMode={transferInitialMode} initialRecipient={transferInitialRecipient} onClose={() => goPayRoute("/")} onSuccess={() => { goPayRoute("/"); onRefresh(); if (!previewOnly) void refreshWalletNotifications(); }} />;
-  if (walletRoute?.page === "help") return frameShell(<HelpPage onBack={() => goPayRoute("/")} nav={payNav} />, null);
-  if (walletRoute?.page === "summary") return frameShell(<FinReport ctx={finCtx} onBack={() => goPayRoute("/")} />, null);
-  if (walletRoute?.page === "account") return frameShell(<AccountPage profile={profile} unread={unreadCount} customerHome={customerHome} embedded={embedded} onBack={() => goPayRoute("/")} nav={payNav} onOpenNotifications={openNotifications} />, null);
-  if (walletRoute?.page === "settings") return frameShell(<FinSettings ctx={finCtx} onBack={() => goPayRoute("/akun")} />, null);
-  if (walletRoute?.page === "integrations") return frameShell(<IntegrationsPage ctx={finCtx} onBack={() => goPayRoute("/pengaturan")} onReview={() => goPayRoute("/tinjau")} />, null);
-  if (walletRoute?.page === "review") return frameShell(<ReviewPage ctx={finCtx} onBack={() => goPayRoute("/")} onOpenIntegrations={() => goPayRoute("/integrasi")} />, "home");
+  if (walletRoute?.page === "help") return frameShell(<HelpPage onBack={() => goBack("/")} nav={payNav} />, null);
+  if (walletRoute?.page === "summary") return frameShell(<FinReport ctx={finCtx} onBack={() => goBack("/")} />, null);
+  if (walletRoute?.page === "account") return frameShell(<AccountPage profile={profile} unread={unreadCount} customerHome={customerHome} embedded={embedded} onBack={() => goBack("/")} nav={payNav} onOpenNotifications={openNotifications} />, null);
+  if (walletRoute?.page === "settings") return frameShell(<FinSettings ctx={finCtx} onBack={() => goBack("/akun")} />, null);
+  if (walletRoute?.page === "integrations") return frameShell(<IntegrationsPage ctx={finCtx} onBack={() => goBack("/pengaturan")} onReview={() => goPayRoute("/tinjau")} />, null);
+  if (walletRoute?.page === "review") return frameShell(<ReviewPage ctx={finCtx} onBack={() => goBack("/")} onOpenIntegrations={() => goPayRoute("/integrasi")} />, "home");
   if (walletRoute?.page === "catat") { const editId = paySearchParams.get("edit") ?? undefined; const k = paySearchParams.get("kind"); return frameShell(<ManualForm key={editId ?? k ?? "new"} ctx={finCtx} editId={editId} initialKind={k === "in" || k === "tf" ? k : undefined} onDone={() => { if (window.history.length > 1) window.history.back(); else goPayRoute("/"); }} />, null); }
   if (notificationsOpen) return frameShell(<NotificationsPage items={walletNotifications} loading={notificationsLoading} busy={notificationsBusy} onBack={() => { onNavigate("Kembali ke Saldo Djiwa Pay"); setNotificationsOpen(false); }} onRead={async (notification) => { if (notification.unread) { await markWalletNotificationRead(notification.id); await refreshWalletNotifications(); } }} onReadAll={async () => { setNotificationsBusy(true); try { await markAllWalletNotificationsRead(); await refreshWalletNotifications(); } finally { setNotificationsBusy(false); } }} />, null);
   if (walletRoute?.page === "services") return frameShell(<ServicesTab nav={payNav} focusSearch={paySearchParams.get("cari") === "1"} recentNumbers={recentCustomerNumbers} />, "wallet");
-  if (walletRoute?.page === "calendar") return frameShell(<CalendarPage ctx={finCtx} onBack={() => goPayRoute("/rencana")} />, "budget");
-  if (walletRoute?.page === "health") return frameShell(<HealthPage ctx={finCtx} onBack={() => goPayRoute("/")} />, "home");
-  if (walletRoute?.page === "forecast") return frameShell(<ForecastPage ctx={finCtx} onBack={() => goPayRoute("/")} />, "home");
-  if (walletRoute?.page === "assets") return frameShell(<AssetOverview ctx={finCtx} onBack={() => goPayRoute("/kekayaan")} />, "wallet");
-  if (walletRoute?.page === "tools") return frameShell(<ToolsPage ctx={finCtx} onBack={() => goPayRoute("/kekayaan")} />, "wallet");
+  if (walletRoute?.page === "calendar") return frameShell(<CalendarPage ctx={finCtx} onBack={() => goBack("/rencana")} />, "budget");
+  if (walletRoute?.page === "health") return frameShell(<HealthPage ctx={finCtx} onBack={() => goBack("/")} />, "home");
+  if (walletRoute?.page === "forecast") return frameShell(<ForecastPage ctx={finCtx} onBack={() => goBack("/")} />, "home");
+  if (walletRoute?.page === "assets") return frameShell(<AssetOverview ctx={finCtx} onBack={() => goBack("/kekayaan")} />, "wallet");
+  if (walletRoute?.page === "tools") return frameShell(<ToolsPage ctx={finCtx} onBack={() => goBack("/kekayaan")} />, "wallet");
   if (walletRoute?.page === "wallet") return frameShell(<FinWallet ctx={finCtx} />, "wallet");
   if (walletRoute?.page === "budget") return frameShell(<FinBudget ctx={finCtx} />, "budget");
   if (!fin.state.onboarded) return frameShell(<Onboarding ctx={finCtx} />, null);
