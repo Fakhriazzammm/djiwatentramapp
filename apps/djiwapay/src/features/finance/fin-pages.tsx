@@ -87,6 +87,14 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
   const empty = entries.length === 0;
   const templates = useMemo(() => { const seen = new Map<string, Entry>(); for (const e of state.entries) if (e.kind === "out" && e.note.trim() && !seen.has(e.note.trim().toLowerCase())) seen.set(e.note.trim().toLowerCase(), e); return [...seen.values()].slice(0, 3); }, [state.entries]);
   const addTemplate = (e: Entry) => { const copy: Entry = { ...e, id: uid(), at: new Date().toISOString(), createdAt: new Date().toISOString() }; fin.dispatch({ type: "entry/add", entry: copy }); ctx.notify(`${copy.note} ${rupiah(copy.amount)} tercatat`, () => fin.dispatch({ type: "entry/delete", id: copy.id })); };
+  const plan = useMemo(() => {
+    const day = now.getDate(), total = daysIn(y, m), spent = t.out, perDay = day ? spent / day : 0;
+    const prevToDate = prev.filter((e) => e.kind === "out" && new Date(e.at).getDate() <= day).reduce((n, e) => n + e.amount, 0);
+    const past = monthlySeries(entries, 4, now).slice(0, 3).filter((x) => x.out > 0), avgPrev = past.length ? past.reduce((n, x) => n + x.out, 0) / past.length : null;
+    const basis = avgPrev ?? (perDay * total || null), suggested = basis ? Math.max(250_000, Math.round(basis / 250_000) * 250_000) : null;
+    const top = [...spendByCategory(month)].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([id, amount]) => ({ id, name: catOf(state, id).name, amount, pct: spent ? Math.round((amount / spent) * 100) : 0 }));
+    return { day, total, spent, perDay, projected: perDay * total, prevToDate, prevOut: pt.out, avgPrev, suggested, top };
+  }, [entries, month, prev, state.categories]);   // eslint-disable-line react-hooks/exhaustive-deps
   const over = safe ? safe.left < 0 : false;
   const remaining = t.in - t.out;
   const showIncomeBased = t.in > 0;
@@ -111,7 +119,7 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
       st.count > 0 ? `Streak ${st.count} hari. Jangan putus ya!` : "Catat satu pengeluaran hari ini untuk mulai streak.",
       "Tulis “kopi 25rb” di kolom catat, aku bantu rapikan.",
     ]} />
-    <Reveal i={1}><HeroDay empty={empty} safe={safe} visible={ctx.visible} spent={t.out} now={now} templates={templates} ring={safe ? <Ring percent={Math.min(100, safe.percent)} big={over ? "Lewat" : `${Math.round(safe.percent)}%`} small={over ? "anggaran" : "terpakai"} color={over ? "#d23a2a" : "#d14b1a"} /> : null} onAddTemplate={addTemplate} onOpenBudget={() => ctx.open({ k: "budget" })} onOpenCatat={() => ctx.open({ k: "catat" })} /></Reveal>
+    <Reveal i={1}><HeroDay plan={plan} empty={empty} safe={safe} visible={ctx.visible} spent={t.out} now={now} templates={templates} ring={safe ? <Ring percent={Math.min(100, safe.percent)} big={over ? "Lewat" : `${Math.round(safe.percent)}%`} small={over ? "anggaran" : "terpakai"} color={over ? "#d23a2a" : "#d14b1a"} /> : null} onAddTemplate={addTemplate} onOpenBudget={() => ctx.open({ k: "budget" })} onOpenCatat={() => ctx.open({ k: "catat" })} /></Reveal>
 
     {empty ? null : <Reveal i={2}><div className="dpx-kpi" style={{ marginTop: 12 }}><Btn type="button" className="dpx-group" style={{ textAlign: "left" }} onClick={() => nav.go("/ringkasan")}><small>Masuk bulan ini</small><b className="dpx-up">{ctx.visible ? rupiah(t.in) : "•••••"}</b></Btn><Btn type="button" className="dpx-group" style={{ textAlign: "left" }} onClick={() => nav.go("/ringkasan")}><small>Keluar bulan ini</small><b>{ctx.visible ? rupiah(t.out) : "•••••"}</b></Btn></div></Reveal>}
 

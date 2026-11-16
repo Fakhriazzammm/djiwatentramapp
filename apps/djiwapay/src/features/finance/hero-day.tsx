@@ -3,16 +3,21 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AnimatedNumber, Btn, I3, Ic, spring } from "../shell/dpx-ui";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import type { Entry } from "../../lib/finance/types";
+import "./hero-data.css";
 
 type Safe = { limit: number; used: number; left: number; daysLeft: number; perDay: number; percent: number };
+/** Real figures for the month so far, used when no budget is set. Nothing here is a simulation. */
+export type SpendPlan = {
+  day: number; total: number; spent: number; perDay: number; projected: number; prevToDate: number; prevOut: number; avgPrev: number | null; suggested: number | null;
+  top: { id: string; name: string; amount: number; pct: number }[];
+};
 type Props = {
-  empty: boolean; safe: Safe | null; visible: boolean; spent: number; now: Date; templates: Entry[]; ring: ReactNode;
+  empty: boolean; safe: Safe | null; visible: boolean; spent: number; now: Date; templates: Entry[]; ring: ReactNode; plan: SpendPlan;
   onAddTemplate: (e: Entry) => void; onOpenBudget: () => void; onOpenCatat: () => void;
 };
 
 const daysInMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
 const mask = (visible: boolean, text: string) => (visible ? text : "•••••");
-const PRESETS = [1_500_000, 3_000_000, 5_000_000, 8_000_000];
 const short = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt` : `${Math.round(n / 1000)} rb`);
 
 function QuickAdd({ templates, onAdd }: { templates: Entry[]; onAdd: (e: Entry) => void }) {
@@ -33,7 +38,6 @@ function QuickAdd({ templates, onAdd }: { templates: Entry[]; onAdd: (e: Entry) 
 export function HeroDay(p: Props) {
   const { empty, safe, visible, spent, now } = p;
   const total = daysInMonth(now), day = now.getDate(), daysLeft = Math.max(1, total - day + 1);
-  const [limit, setLimit] = useState(3_000_000);
   const [mode, setMode] = useState<"day" | "month">("day");
 
   if (empty && !safe) return <motion.div className="dpx-hd dpx-hd-first" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
@@ -48,26 +52,23 @@ export function HeroDay(p: Props) {
   </motion.div>;
 
   if (!safe) {
-    const left = limit - spent, perDay = Math.max(0, Math.floor(left / daysLeft));
-    const usedPct = Math.min(100, Math.round((spent / limit) * 100));
-    return <motion.div className="dpx-hd dpx-hd-plan" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
-      <div className="dpx-hd-eyebrow">Rencana bulan ini</div>
-      <h2 className="dpx-hd-h">Berapa jatah belanjamu?</h2>
-      <div className="dpx-hd-big" aria-live="polite">
-        <small>Aman dibelanjakan per hari</small>
-        <b><span>Rp</span>{visible ? <AnimatedNumber value={perDay} /> : "•••••"}</b>
-      </div>
-      <input className="dpx-hd-range" type="range" min={500_000} max={15_000_000} step={250_000} value={limit} aria-label="Simulasi anggaran bulanan" onChange={(e) => setLimit(Number(e.target.value))}
-        style={{ ["--pct" as string]: `${((limit - 500_000) / 14_500_000) * 100}%` }} />
-      <div className="dpx-hd-presets">{PRESETS.map((v) => <Btn key={v} type="button" className={`dpx-hd-pre ${limit === v ? "on" : ""}`} onClick={() => setLimit(v)} aria-pressed={limit === v}>{short(v)}</Btn>)}</div>
+    const pl = p.plan, delta = pl.prevToDate > 0 ? Math.round(((spent - pl.prevToDate) / pl.prevToDate) * 100) : null;
+    return <motion.div className="dpx-hd dpx-hd-data" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
+      <div className="dpx-hd-top"><span className="dpx-hd-eyebrow">Pengeluaran bulan ini</span><span className="dpx-hd-eyebrow">Hari ke-{day} dari {total}</span></div>
+      <div className="dpx-hd-spent" aria-live="polite"><b><span>Rp</span>{visible ? <AnimatedNumber value={spent} /> : "•••••••"}</b>
+        {delta !== null ? <span className={`dpx-hd-delta ${delta > 0 ? "up" : "down"}`}>{delta > 0 ? "▲" : delta < 0 ? "▼" : "•"} {Math.abs(delta)}% dari bulan lalu di tanggal yang sama</span> : <span className="dpx-hd-delta">Belum ada pembanding bulan lalu</span>}</div>
       <div className="dpx-hd-stats">
-        <div><small>Anggaran</small><b>{mask(visible, rupiah(limit))}</b></div>
-        <div><small>Terpakai</small><b>{mask(visible, rupiah(spent))}</b></div>
-        <div><small>Sisa hari</small><b>{daysLeft} hari</b></div>
+        <div><small>Rata-rata per hari</small><b>{mask(visible, rupiah(pl.perDay))}</b></div>
+        <div><small>Perkiraan akhir bulan</small><b>{mask(visible, rupiah(pl.projected))}</b></div>
+        <div><small>Total bulan lalu</small><b>{pl.prevOut ? mask(visible, rupiah(pl.prevOut)) : "—"}</b></div>
       </div>
-      <div className="dpx-hd-track" aria-hidden="true"><motion.i animate={{ width: `${usedPct}%` }} transition={spring} className={left < 0 ? "bad" : ""} /></div>
-      <Btn type="button" className="dpx-hd-btn wide" onClick={p.onOpenBudget}>Atur anggaran sungguhan <Ic n="chev" size="sm" /></Btn>
-      <p className="dpx-hd-note">Geser untuk simulasi. Anggaran baru tersimpan setelah Anda mengaturnya.</p>
+      {pl.top.length ? <div className="dpx-hd-cats"><div className="dpx-hd-cats-t">Paling banyak ke mana</div>
+        {pl.top.map((c) => <div key={c.id} className="dpx-hd-cat"><span>{c.name}</span><div className="dpx-hd-track" aria-hidden="true"><motion.i animate={{ width: `${Math.max(3, c.pct)}%` }} transition={spring} /></div><b>{mask(visible, rupiah(c.amount))}</b></div>)}
+      </div> : null}
+      <div className="dpx-hd-adv">
+        <div><b>Belum ada anggaran</b><span>{pl.suggested ? <>{pl.avgPrev ? `Rata-rata ${rupiah(pl.avgPrev)} per bulan. ` : ""}Anggaran yang pas untukmu sekitar <b>{mask(visible, rupiah(pl.suggested))}</b>.</> : "Atur batas bulanan agar kami bisa menghitung jatah harianmu."}</span></div>
+        <Btn type="button" className="dpx-hd-btn" onClick={p.onOpenBudget}>Atur anggaran <Ic n="chev" size="sm" /></Btn>
+      </div>
       <QuickAdd templates={p.templates} onAdd={p.onAddTemplate} />
     </motion.div>;
   }
