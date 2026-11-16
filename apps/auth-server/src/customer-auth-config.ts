@@ -31,6 +31,7 @@ export const defaultCustomerTrustedOrigins = [
 	"https://b2b.djiwatentram.web.id",
 	"https://merchandise.djiwatentram.web.id",
 	"https://ordermieyamin.djiwatentram.web.id",
+	"https://kol.djiwatentram.web.id",
 	// Legacy customer apps remain trusted during the domain migration.
 	"https://djiwatentram.yumme.id",
 	"https://pay.yumme.id",
