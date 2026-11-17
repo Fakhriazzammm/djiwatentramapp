@@ -7,6 +7,7 @@ import { streak } from "../../lib/finance/calc";
 import { rupiah, formatDateTime } from "../../lib/djiwa-pay-format";
 import type { Account, AccountType, Budget, Category, Debt, Entry, FinanceState, Goal, Pocket } from "../../lib/finance/types";
 import type { Finance } from "../../lib/finance/use-finance";
+import { VoiceSheet } from "./voice-sheet";
 import { ReceiptAttachment, ReceiptFlow, ReceiptReview } from "./fin-receipt";
 import type { ScannedReceipt } from "../../lib/finance/receipt";
 import { Breakdown } from "./breakdown";
@@ -77,8 +78,8 @@ export function EntrySheet({ entry, fin, notify, onClose, onEdit, onPickCategory
 }
 
 /* ---------- catat (sentence / voice) ---------- */
-type SpeechRecognitionLike = { lang: string; interimResults: boolean; continuous: boolean; start: () => void; stop: () => void; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null };
-const speechCtor = (): (new () => SpeechRecognitionLike) | null => { const w = window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }; return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null; };
+export type SpeechRecognitionLike = { lang: string; interimResults: boolean; continuous: boolean; start: () => void; stop: () => void; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: ((e: { error?: string }) => void) | null };
+export const speechCtor = (): (new () => SpeechRecognitionLike) | null => { const w = window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }; return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null; };
 
 const atDaysAgo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); if (n > 0) d.setHours(12, 0, 0, 0); return d.toISOString(); };
 
@@ -86,26 +87,16 @@ export function CatatSheet({ fin, notify, onClose, onManual, onPay, onAsset, bal
   const { state, dispatch } = fin;
   const [text, setText] = useState("");
   const [items, setItems] = useState<(ParsedItem & { key: string })[] | null>(null);
-  const [listening, setListening] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const [pick, setPick] = useState<{ key: string; kind: "cat" | "acc" } | null>(null);
   const [accountId, setAccountId] = useState(() => state.accounts.find((a) => !a.archived)?.id ?? "tunai");
-  const rec = useRef<SpeechRecognitionLike | null>(null);
   const [scanFile, setScanFile] = useState<File | null>(null);
   const camera = useRef<HTMLInputElement>(null), gallery = useRef<HTMLInputElement>(null);
   const choose = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) setScanFile(f); };
   const supported = typeof window !== "undefined" && speechCtor() !== null;
-  useEffect(() => () => rec.current?.stop(), []);
-  const listen = () => {
-    const Ctor = speechCtor();
-    if (!Ctor) { notify("Suara belum didukung di browser ini — ketik saja."); return; }
-    if (listening) { rec.current?.stop(); return; }
-    const r = new Ctor(); r.lang = "id-ID"; r.interimResults = true; r.continuous = false;
-    r.onresult = (event) => { setText(Array.from(event.results).map((x) => x[0].transcript).join(" ")); };
-    r.onend = () => setListening(false); r.onerror = () => { setListening(false); notify("Mikrofon tidak dapat dipakai. Periksa izin."); };
-    rec.current = r; setListening(true); r.start();
-  };
-  const submit = () => {
-    const parsed = parseEntries(text, state.accounts, state.categories);
+  const submit = (override?: string) => {
+    const input = override ?? text;
+    const parsed = parseEntries(input, state.accounts, state.categories);
     if (!parsed.length) { notify("Belum ada nominal. Contoh: “kopi 25rb dan parkir 5rb”"); return; }
     setItems(parsed.map((p) => ({ ...p, key: uid() })));
   };
@@ -118,6 +109,7 @@ export function CatatSheet({ fin, notify, onClose, onManual, onPay, onAsset, bal
     onClose();
     notify(`${entries.length} catatan tersimpan`, () => entries.forEach((e) => dispatch({ type: "entry/delete", id: e.id })));
   };
+  if (voiceOpen) return <VoiceSheet accounts={state.accounts} categories={state.categories} onClose={() => setVoiceOpen(false)} onUse={(t) => { setText(t); setVoiceOpen(false); submit(t); }} />;
   if (scanFile) return <ReceiptFlow key={scanFile.name + scanFile.size + scanFile.lastModified} file={scanFile} fin={fin} notify={notify} balances={balances} onClose={onClose} onRetry={() => setScanFile(null)} />;
   if (pick && items) {
     const item = items.find((i) => i.key === pick.key)!;
@@ -145,11 +137,11 @@ export function CatatSheet({ fin, notify, onClose, onManual, onPay, onAsset, bal
   }
   return <Sheet title="Catat" onClose={onClose}>
     <span className="dpx-bubble">Cukup tulis atau bilang: “kopi 25rb dan parkir 5rb”</span>
-    <div className={listening ? "dpx-glow" : "dpx-glow"} style={{ width: 88, height: 88, margin: "14px auto 6px", boxShadow: listening ? "0 0 0 12px rgba(209,75,26,.18),0 0 0 26px rgba(209,75,26,.08)" : "0 0 0 10px rgba(209,75,26,.10)" }}><I3 name="business-ai-assistant" px={58} /></div>
+    <div className="dpx-glow" style={{ width: 88, height: 88, margin: "14px auto 6px", boxShadow: "0 0 0 10px rgba(209,75,26,.10)" }}><I3 name="business-ai-assistant" px={58} /></div>
     <textarea className="dpx-textarea" aria-label="Catatan dalam satu kalimat" placeholder="Atau ketik di sini" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }} />
     <div className="dpx-flex dpx-mt">
-      <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0, flex: 1 }} onClick={listen} aria-pressed={listening}><Ic n="mic" size="sm" /> {listening ? "Mendengarkan… ketuk selesai" : supported ? "Bicara" : "Bicara (tidak didukung)"}</Btn>
-      <Btn type="button" className={`dpx-btn dpx-soft ${text.trim() ? "" : "dpx-off"}`} style={{ margin: 0, width: 96, padding: 0 }} onClick={submit} disabled={!text.trim()}><Ic n="up" size="sm" /> Kirim</Btn>
+      <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0, flex: 1 }} onClick={() => setVoiceOpen(true)}><Ic n="mic" size="sm" /> Bicara</Btn>
+      <Btn type="button" className={`dpx-btn dpx-soft ${text.trim() ? "" : "dpx-off"}`} style={{ margin: 0, width: 96, padding: 0 }} onClick={() => submit()} disabled={!text.trim()}><Ic n="up" size="sm" /> Kirim</Btn>
     </div>
     <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={choose} /><input ref={gallery} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={choose} />
     <div className="dpx-tile3 dpx-mt" style={{ gridTemplateColumns: "repeat(2,1fr)", gap: 8 }}>

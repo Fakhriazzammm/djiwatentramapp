@@ -920,3 +920,19 @@ html:has(.dpx-plain),body:has(.dpx-plain),#root:has(.dpx-plain){background:#f8f3
 .dpx .dpx-dir{position:absolute;right:-3px;bottom:-3px;width:19px;height:19px;border-radius:50%;display:grid;place-items:center;font:800 11px/1 var(--font);font-style:normal;color:#fff;box-shadow:0 0 0 2px #fff}
 .dpx .dpx-dir-in{background:#4f7a2b}.dpx .dpx-dir-out{background:#c9461b}.dpx .dpx-dir-tf{background:#3b6ea5}.dpx .dpx-dir-q{background:#d9941a}
 .dpx .dpx-buddy-bubble.dpx-buddy-q{max-width:min(272px,62vw);font:600 12.5px/1.4 var(--font);padding:10px 13px}
+
+/* ---------- Voice sheet ---------- */
+.dpx .dpx-vc{display:grid;gap:12px;justify-items:stretch}
+.dpx .dpx-vc-stage{--lvl:0;position:relative;width:132px;height:132px;margin:6px auto 0;display:grid;place-items:center}
+.dpx .dpx-vc-ring{position:absolute;inset:18px;border-radius:50%;background:rgba(209,75,26,.16);transform:scale(calc(1 + var(--lvl) * 0.75));transition:transform .08s linear}
+.dpx .dpx-vc-ring.b{background:rgba(209,75,26,.08);transform:scale(calc(1.1 + var(--lvl) * 1.1))}
+.dpx .dpx-vc-mic{position:relative;width:84px;height:84px;border-radius:50%;background:var(--navy);display:grid;place-items:center;box-shadow:0 10px 26px rgba(45,36,29,.32)}
+.dpx .dpx-vc-mic img{width:44px;height:44px;object-fit:contain}.dpx .dpx-vc-mic.on{background:var(--blue)}
+.dpx .dpx-vc-stop{width:26px;height:26px;border-radius:7px;background:#fff}
+.dpx .dpx-vc-bars{display:flex;align-items:center;justify-content:center;gap:4px;height:64px}
+.dpx .dpx-vc-bars i{width:5px;height:100%;border-radius:3px;background:linear-gradient(180deg,#e45825,#c9461b);transform:scaleY(.1);transform-origin:center;will-change:transform}
+.dpx .dpx-vc-status{margin:0;text-align:center;font:600 13px var(--font);color:var(--mute)}
+.dpx .dpx-vc-text{background:var(--group);border-radius:22px;padding:14px 16px;min-height:76px}.dpx .dpx-vc-text p{margin:0;font:600 17px/1.4 var(--font);color:var(--ink)}
+.dpx .dpx-vc-text .dpx-textarea{background:transparent;padding:0;min-height:70px;width:100%}
+.dpx .dpx-vc-interim{color:var(--mute);font-weight:500}.dpx .dpx-vc-hint{color:var(--mute);font:500 14px var(--font)}
+.dpx .dpx-vc-chips{display:flex;flex-wrap:wrap;gap:6px}.dpx .dpx-vc-chips span{padding:6px 11px;border-radius:99px;background:var(--blue-soft);font:500 12.5px var(--font)}.dpx .dpx-vc-chips span.in{background:var(--ok-soft)}.dpx .dpx-vc-chips b{font-weight:700}
