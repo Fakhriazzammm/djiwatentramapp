@@ -208,7 +208,13 @@ export function registerManagerKol(app: Hono, auth: Auth, pool: Pool) {
         ? b.ids.map((x) => String(x)).filter(Boolean)
         : [text(b.id, 120)].filter(Boolean);
       if (!ids.length || ids.length > 100) return json({ success: false, error: "INVALID_KOL_ID" }, 400);
-      await pool.query(`delete from pos.kol_creators where source_id = any($1::text[])`, [ids]);
+      try {
+        await pool.query(`delete from pos.kol_creators where source_id = any($1::text[])`, [ids]);
+      } catch (error: any) {
+        // Inquiry memakai FK on delete restrict; jangan sampai jadi 500 tanpa pesan.
+        if (error?.code === "23503") return json({ success: false, error: "CREATOR_HAS_REFERENCES" }, 409);
+        throw error;
+      }
       return json({ success: true, data: { deleted: ids.length } });
     }
 

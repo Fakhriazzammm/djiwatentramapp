@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { Empty, Kpis, Panel, Tabs } from "../ui";
 
 /* ------------------------------------------------------------------ */
@@ -116,7 +116,37 @@ const PREFERRED: Record<string, string> = { email: "Email", phone: "Telepon", ei
 /* ------------------------------------------------------------------ */
 /* Pembantu format                                                     */
 /* ------------------------------------------------------------------ */
-const errText = (e: unknown) => (e instanceof Error ? e.message : "Perubahan belum tersimpan.");
+const ERR: Record<string, string> = {
+  UNAUTHORIZED: "Sesi berakhir. Masuk ulang.",
+  FORBIDDEN: "Modul KOL hanya untuk peran Manager.",
+  CREATOR_NOT_FOUND: "Creator tidak ditemukan.",
+  CREATOR_NOT_ELIGIBLE: "Creator ini tidak bisa diundang (mungkin ditolak).",
+  CREATOR_HAS_REFERENCES: "Creator masih punya inquiry. Tutup atau selesaikan inquiry-nya dulu.",
+  CREATOR_HAS_ACTIVE_INVITE: "Undangan sebelumnya masih aktif.",
+  REJECTED_CREATOR_CANNOT_BOOK: "Creator berstatus Ditolak tidak bisa diizinkan booking.",
+  INVALID_CREATOR_STATUS: "Status creator tidak valid.",
+  INVALID_ELIGIBILITY: "Data izin booking tidak valid.",
+  BADGE_NOT_FOUND: "Badge tidak ditemukan atau tidak aktif.",
+  INVITE_NOT_FOUND: "Undangan tidak ditemukan.",
+  INVALID_EXPIRY: "Masa berlaku undangan tidak valid.",
+  CREATOR_REQUIRED: "Pilih creator lebih dulu.",
+  CAMPAIGN_SLUG_TITLE_REQUIRED: "Judul kampanye wajib diisi.",
+  INVALID_ASSIGNMENT: "Data undangan kampanye tidak valid.",
+  INVALID_SUBMISSION_REVIEW: "Review bukti tidak valid.",
+  SUBMISSION_NOT_FOUND: "Bukti konten tidak ditemukan.",
+  INVALID_INQUIRY_STATUS: "Status inquiry tidak valid.",
+  INQUIRY_NOT_FOUND: "Inquiry tidak ditemukan.",
+  INVALID_BOOKING_UPDATE: "Perubahan visit tidak valid.",
+  BOOKING_NOT_FOUND: "Pengajuan visit tidak ditemukan.",
+  INVALID_STATUS_TRANSITION: "Transisi status visit ini tidak diizinkan.",
+  INVALID_MODERATION_DECISION: "Keputusan moderasi tidak valid.",
+  REPORT_NOT_FOUND: "Laporan tidak ditemukan.",
+  UNKNOWN_ACTION: "Aksi tidak dikenal.",
+};
+const errText = (e: unknown) => {
+  const code = e instanceof ApiError ? e.code : e instanceof Error ? e.message : "";
+  return ERR[code] || code || "Perubahan belum tersimpan.";
+};
 const compact = (n: number) => new Intl.NumberFormat("id-ID", { notation: "compact", maximumFractionDigits: 1 }).format(n || 0);
 const totalFollowers = (c: Creator) => (c.kol_platforms ?? []).reduce((sum, p) => sum + Number(p.followers || 0), 0);
 const creatorLabel = (c: Creator) => c.profile?.display_name?.trim() || c.name;
