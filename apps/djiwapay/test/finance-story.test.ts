@@ -86,7 +86,7 @@ describe("rencana", () => {
   test("a goal with a date says what to set aside each month", () => {
     const g: Goal = { id: "g1", name: "Liburan", target: 12_000_000, deposits: [{ at: "2026-10-01T00:00:00Z", amount: 3_000_000 }], due: "2027-03-17", createdAt: "2026-10-01T00:00:00Z" };
     const p = goalPlan(g, new Date(2026, 10, 17));
-    expect(p.left).toBe(9_000_000); expect(p.perMonthNeeded).toBe(1_800_000); expect(p.done).toBe(false);
+    expect(p.left).toBe(9_000_000); expect(p.perMonthNeeded).toBe(2_250_000); expect(p.done).toBe(false);
     expect(goalPlan({ ...g, due: undefined }, new Date(2026, 10, 17)).perMonthNeeded).toBeNull();
   });
   test("deposits can be edited and deleted; budgets set in bulk", () => {
