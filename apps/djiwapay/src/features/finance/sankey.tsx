@@ -32,9 +32,9 @@ export function Sankey({ graph, state, visible, className = "" }: { graph: FlowG
   const s = (H - 36 - GAP * (maxN - 1)) / Math.max(1, total), mh = s * total, my = (H - mh) / 2;
   const L = place(left, s, H), R = place(right, s, H);
   let mIn = my, mOut = my;
-  const base = income > 0 ? income : total;
+  const base = total, baseWord = income >= total ? "pemasukan" : "total dana";
   const money = (v: number) => (visible ? `Rp${short(v)}` : "Rp •••");
-  const pct = (n: FlowNode) => (visible && base > 0 ? `${Math.round((n.amount / base) * 100)}% dari pemasukan` : "");
+  const pct = (n: FlowNode) => (visible && base > 0 ? `${Math.round((n.amount / base) * 100)}% dari ${baseWord}` : "");
   const chgTxt = (n: FlowNode) => (visible && n.change !== null ? `${n.change > 0 ? "+" : "−"}${Math.abs(n.change).toFixed(1).replace(".", ",")}%` : "");
   return <svg className={`dpx-fl ${className}`} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Diagram arus uang: dari sumber pemasukan ke pengeluaran dan kas bersih">
     {L.map((n) => { const f = s * n.amount, d = mIn; mIn += f; const p = ribbon(XL + BW, n.y + n.used, XM, d, f); n.used += f; return <path key={`l${n.id}`} d={p} fill={FLOW[n.kind]} />; })}

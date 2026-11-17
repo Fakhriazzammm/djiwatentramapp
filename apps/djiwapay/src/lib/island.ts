@@ -25,13 +25,13 @@ export function buildIsland(input: { entries: Entry[]; notes: FinNote[]; wallet:
   for (const w of input.wallet) {
     const id = `isl-w:${w.id}`; if (!w.unread || input.seen.has(id)) continue;
     const sent = /sent/.test(w.notification_type);
-    out.push({ id, tone: sent ? "out" : "in", icon: sent ? "send" : "down", label: "Djiwa Pay", title: w.title, message: w.message, route: "/riwayat", at: w.created_at });
+    out.push({ id, tone: sent ? "out" : "in", icon: sent ? "down" : "up", label: "Djiwa Pay", title: w.title, message: w.message, route: "/riwayat", at: w.created_at });
   }
   for (const e of input.entries) {
     const id = `isl-e:${e.id}`;
     if (!SOURCES.has(e.source) || input.seen.has(id) || +now - +new Date(e.at) > 36 * 36e5) continue;
     const tone: IslandTone = e.kind === "in" ? "in" : e.kind === "out" ? "out" : "move";
-    out.push({ id, tone: e.source === "email" && tone !== "move" ? tone : tone, icon: e.kind === "in" ? "down" : e.kind === "out" ? "up" : "swap", label: SOURCE_LABEL[e.source] ?? "Catatan", title: e.kind === "in" ? "Pemasukan" : e.kind === "out" ? "Pengeluaran" : "Pindah dana",
+    out.push({ id, tone: e.source === "email" && tone !== "move" ? tone : tone, icon: e.kind === "in" ? "up" : e.kind === "out" ? "down" : "swap", label: SOURCE_LABEL[e.source] ?? "Catatan", title: e.kind === "in" ? "Pemasukan" : e.kind === "out" ? "Pengeluaran" : "Pindah dana",
       message: `${e.note || "Tanpa keterangan"} · ${input.accountName(e.accountId)}`, amount: e.amount, sign: e.kind === "in" ? "+" : e.kind === "out" ? "−" : "⇄", route: "/riwayat", at: e.at });
   }
   return out.sort((a, b) => +new Date(b.at) - +new Date(a.at)).slice(0, input.max ?? 6);

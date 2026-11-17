@@ -12,18 +12,18 @@ const TONE: Record<IslandItem["tone"], string> = { in: "#34c759", out: "#ff6b4a"
 export function IslandHost() {
   const { queue, version } = useIslandState();
   const [pos, setPos] = useState(-1), [open, setOpen] = useState(false), [held, setHeld] = useState(false), [leaving, setLeaving] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null), len = useRef(0);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null), exit = useRef<ReturnType<typeof setTimeout> | null>(null), len = useRef(0);
   len.current = queue.length;
   const clear = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null; } };
   const item = !leaving && pos >= 0 ? queue[pos] : undefined;
 
   const leave = useCallback(() => {
-    clear(); setOpen(false); setHeld(false); setLeaving(true);
-    timer.current = setTimeout(() => { setLeaving(false); setPos((p) => (p + 1 < len.current ? p + 1 : -1)); }, EXIT_MS);
+    clear(); if (exit.current) clearTimeout(exit.current); setOpen(false); setHeld(false); setLeaving(true);
+    exit.current = setTimeout(() => { exit.current = null; setLeaving(false); setPos((p) => (p + 1 < len.current ? p + 1 : -1)); }, EXIT_MS);   // its own timer: the effects below clear `timer` when this banner goes away
   }, []);
 
   // a fresh queue starts after a short beat
-  useEffect(() => { clear(); setOpen(false); setHeld(false); setLeaving(false); setPos(-1); if (!queue.length) return; timer.current = setTimeout(() => setPos(0), START_MS); return clear; }, [version]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { clear(); if (exit.current) { clearTimeout(exit.current); exit.current = null; } setOpen(false); setHeld(false); setLeaving(false); setPos(-1); if (!queue.length) return; timer.current = setTimeout(() => setPos(0), START_MS); return () => { clear(); if (exit.current) clearTimeout(exit.current); }; }, [version]);   // eslint-disable-line react-hooks/exhaustive-deps
   // one banner: it arrives compact, opens by itself after a moment
   useEffect(() => { if (pos < 0 || !queue[pos]) return; islandShown(queue[pos]); setOpen(false); clear(); timer.current = setTimeout(() => setOpen(true), COMPACT_MS); return clear; }, [pos]);   // eslint-disable-line react-hooks/exhaustive-deps
   // ... and folds away on its own unless a finger is on it
