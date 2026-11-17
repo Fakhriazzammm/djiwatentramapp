@@ -90,7 +90,7 @@ export function PwaHost() {
   }, []);
   const snooze = (days: number) => { write(SNOOZE, String(days < 0 ? -1 : Date.now() + days * 864e5)); setAsk(false); };
   const install = async () => { if (st.canPrompt) { const r = await promptInstall(); if (r !== "unavailable") { setAsk(false); return; } } setGuide(true); };
-  const visible = ask && !st.installed;
+  const visible = ask && !st.installed && !guide;   // the invitation steps aside while the guide is open
   return <>
     <AnimatePresence>{visible ? <motion.div key="inv" className="dpx dpx-pw-invite" role="dialog" aria-label="Pasang Djiwa Pay" initial={{ y: 140, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 140, opacity: 0 }} transition={spring}>
       <img src="/pwa-192.png" alt="" width={52} height={52} />
