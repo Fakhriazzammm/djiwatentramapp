@@ -253,6 +253,24 @@ class FinanceManager:
         except Exception as e:
             errors.append(f"transaction:{e}")
 
+        # 4. Hapus mirror di tabel Pengeluaran Manager
+        try:
+            headers = {**self._service_headers(), "Accept-Profile": "public", "Content-Profile": "public"}
+            async with httpx.AsyncClient(timeout=15) as client:
+                url = f"{self.supabase_url}/rest/v1/mgr_expense_drafts?finance_source_id=eq.{sani}"
+                resp = await client.delete(url, headers=headers)
+                if resp.status_code < 300:
+                    try:
+                        del_data = resp.json()
+                        if isinstance(del_data, list):
+                            deleted["manager"] = len(del_data)
+                    except Exception:
+                        deleted["manager"] = 1
+                elif resp.status_code != 404:
+                    errors.append(f"manager:{resp.status_code}")
+        except Exception as e:
+            errors.append(f"manager:{e}")
+
         ok = deleted["transaction"] > 0
         return {
             "ok": ok,

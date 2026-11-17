@@ -123,6 +123,169 @@ def _save_pending():
         logger.warning("Failed to save pending sessions: %s", e)
 
 
+# ── Manager expense mirror (satu data untuk bot + apps/manager) ───
+# Kategori bot → slug kategori Manager (public.mgr_expense_categories).
+MGR_CATEGORY_MAP = {
+    "bahan_minuman": "bahan_minuman",
+    "bahan_makanan": "bahan_makanan",
+    "bahan_segar": "bahan_segar",
+    "packaging": "packaging",
+    "cleaning": "cleaning",
+    "gas_energi": "gas_energi",
+    "peralatan": "peralatan",
+    "gaji": "gaji",
+    "transport": "transport",
+    "transportasi": "transport",
+    "promosi": "promosi",
+    "pemasaran": "promosi",
+    "sewa": "sewa_wifi",
+    "sewa_wifi": "sewa_wifi",
+    "utilitas": "sewa_wifi",
+    "bahan_baku": "bahan_makanan",
+    "belanja": "operasional",
+    "operasional": "operasional",
+    "lainnya": "lainnya",
+}
+
+
+def _manager_category(value) -> str:
+    key = str(value or "").strip().lower().replace(" ", "_")
+    return MGR_CATEGORY_MAP.get(key, "lainnya")
+
+
+def _manager_tx_date(receipt: dict) -> str:
+    """Tanggal transaksi yang sama dengan yang dipakai finance.record_transaction."""
+    date_text = str(receipt.get("date") or "").strip()
+    time_text = str(receipt.get("time") or "").strip()
+    try:
+        if date_text:
+            if time_text:
+                parsed = datetime.strptime(f"{date_text} {time_text[:5]}", "%Y-%m-%d %H:%M")
+            else:
+                now = datetime.now(WIB)
+                parsed = datetime.strptime(date_text, "%Y-%m-%d").replace(
+                    hour=now.hour, minute=now.minute, second=now.second,
+                )
+            return parsed.replace(tzinfo=WIB).isoformat()
+    except ValueError:
+        pass
+    return datetime.now(WIB).isoformat()
+
+
+def _manager_items(receipt: dict, fallback_category: str, amount: float) -> list[dict]:
+    category = _manager_category(fallback_category)
+    items = []
+    for raw in receipt.get("items") or []:
+        name = str(raw.get("name") or raw.get("raw_name") or "").strip()
+        if not name:
+            continue
+        try:
+            qty = float(raw.get("qty") or raw.get("quantity") or 1)
+        except (TypeError, ValueError):
+            qty = 1.0
+        try:
+            price = float(raw.get("price") or 0)
+        except (TypeError, ValueError):
+            price = 0.0
+        try:
+            total = float(raw.get("subtotal") or raw.get("total") or qty * price)
+        except (TypeError, ValueError):
+            total = qty * price
+        items.append({
+            "name": name[:120],
+            "qty": qty,
+            "unit": str(raw.get("unit") or "pcs")[:20] or "pcs",
+            "price": price,
+            "total": total,
+            "category": _manager_category(raw.get("_category") or category),
+        })
+    if not items:
+        items.append({
+            "name": (str(receipt.get("merchant") or receipt.get("_description") or "Pengeluaran"))[:120],
+            "qty": 1,
+            "unit": "pcs",
+            "price": float(amount or 0),
+            "total": float(amount or 0),
+            "category": category,
+        })
+    return items[:200]
+
+
+async def _mirror_manager_expense(
+    *,
+    source_id: str,
+    amount: float,
+    receipt: dict,
+    category: str,
+    telegram_user=None,
+) -> None:
+    """Salin pengeluaran bot ke public.mgr_expense_drafts.
+
+    Hanya pengeluaran (bukan pemasukan), dan kegagalan mirror tidak boleh
+    menggagalkan transaksi finance yang sudah tersimpan.
+    """
+    if not source_id or not SUPABASE_URL:
+        return
+    try:
+        notes = str(receipt.get("notes") or "").strip()
+        if notes.lower().startswith("diproses oleh:"):
+            notes = notes.split(":", 1)[1].strip()
+        user_name = getattr(telegram_user, "full_name", "") or getattr(telegram_user, "username", "") or ""
+        user_id = getattr(telegram_user, "id", None)
+        created_by = f"tg:{user_id}" if user_id else "telegram"
+        items = _manager_items(receipt, category, amount)
+        payload = {
+            "channel": "telegram",
+            "created_by": created_by,
+            "created_by_name": (notes or user_name or None),
+            "status": "saved",
+            "photo_url": receipt.get("receipt_image_url") or None,
+            "merchant": (str(receipt.get("merchant") or "").strip() or None),
+            "tx_date": _manager_tx_date(receipt),
+            "payment_method": str(receipt.get("payment_method") or "cash")[:20] or "cash",
+            "items": items,
+            "total": float(amount or 0),
+            "raw_ocr": {
+                "scan_id": receipt.get("scan_id", ""),
+                "vision_attempt_id": receipt.get("vision_attempt_id", ""),
+                "date": receipt.get("date", ""),
+                "time": receipt.get("time", ""),
+                "notes": notes,
+                "category": category,
+                "confidence": receipt.get("confidence"),
+            },
+            "finance_source_id": source_id,
+        }
+        headers = {
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY or SUPABASE_KEY}",
+            "Accept-Profile": "public",
+            "Content-Profile": "public",
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal",
+        }
+        base_url = f"{SUPABASE_URL}/rest/v1/mgr_expense_drafts"
+        async with httpx.AsyncClient(timeout=15) as client:
+            existing = await client.get(
+                base_url,
+                params={"select": "id", "finance_source_id": f"eq.{source_id}", "limit": "1"},
+                headers=headers,
+            )
+            rows = existing.json() if existing.status_code < 400 else []
+            if rows:
+                response = await client.patch(
+                    f"{base_url}?id=eq.{rows[0]['id']}",
+                    headers=headers,
+                    json=payload,
+                )
+            else:
+                response = await client.post(base_url, headers=headers, json=payload)
+            response.raise_for_status()
+        logger.info("Manager expense mirrored: %s", source_id)
+    except Exception as exc:
+        logger.warning("Manager expense mirror failed for %s: %s", source_id, exc)
+
+
 # ── Supabase helpers (shared auth via employee_telegram_links) ────
 
 
@@ -1692,6 +1855,16 @@ async def _handle_receipt_callback(update: Update, context: ContextTypes.DEFAULT
             total_amount=total,
             tx_type=tx_type,
         ))
+
+    # ── Mirror ke tabel Pengeluaran Manager (khusus expense) ─────
+    if tx_result.get("success") and tx_type == "expense":
+        await _mirror_manager_expense(
+            source_id=tx_result.get("sourceId", ""),
+            amount=total,
+            receipt=receipt,
+            category=category,
+            telegram_user=getattr(query, "from_user", None),
+        )
 
     # ── Format balasan ──────────────────────────────────────────
     icon = "💰" if tx_type == "income" else "💸"
@@ -3609,6 +3782,15 @@ async def _handle_bulk_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 saved += 1
                 total_all += ri["total"]
 
+                if tx_type == "expense":
+                    await _mirror_manager_expense(
+                        source_id=tx_result.get("sourceId", ""),
+                        amount=ri["total"],
+                        receipt=ri,
+                        category=category,
+                        telegram_user=getattr(query, "from_user", None),
+                    )
+
                 # ── Record to AI memory ──────────────────────────
                 for item in ri.get("items", []):
                     await memory.record_item_category(
@@ -3928,6 +4110,13 @@ async def _handle_bulkitem_callback(update: Update, context: ContextTypes.DEFAUL
                     payment_method=ri.get("payment_method", "cash"),
                     total_amount=ri.get("total", 0),
                 ))
+            await _mirror_manager_expense(
+                source_id=source_id,
+                amount=ri.get("total", 0),
+                receipt=ri,
+                category=category,
+                telegram_user=getattr(query, "from_user", None),
+            )
 
         # Auto-advance ke next
         next_idx = idx + 1

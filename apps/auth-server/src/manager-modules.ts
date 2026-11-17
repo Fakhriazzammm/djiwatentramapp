@@ -99,7 +99,7 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
       pool.query(`SELECT count(*)::int AS n FROM public.mgr_tasks WHERE status = 'done' AND assignee_role = $1 AND done_at >= $2`, [m.role, new Date(day.start).toISOString()]),
       pool.query(
         `SELECT id, merchant, total::text, status, tx_date FROM public.mgr_expense_drafts
-          WHERE ($1 = 'manager' OR created_by = $2) ORDER BY created_at DESC LIMIT 5`,
+          WHERE ($1 = 'manager' OR channel = 'telegram' OR created_by = $2) ORDER BY created_at DESC LIMIT 5`,
         [m.role, m.userId],
       ),
     ]);
@@ -201,7 +201,8 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
         `SELECT id, channel, created_by, created_by_name, status, photo_url, merchant, tx_date, payment_method,
                 items, total::text, finance_source_id, decision_note, created_at
            FROM public.mgr_expense_drafts
-          WHERE ($1::text = 'all' OR status = $1) AND ($2 = 'manager' OR created_by = $3)
+          WHERE ($1::text = 'all' OR status = $1)
+            AND ($2 = 'manager' OR channel = 'telegram' OR created_by = $3)
           ORDER BY created_at DESC LIMIT 100`,
         [filter, m.role, m.userId],
       ),

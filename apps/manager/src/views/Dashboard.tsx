@@ -77,18 +77,16 @@ export function DashboardView({ onNavigate }: { onNavigate: (tab: string) => voi
         </section>
       </div>
 
-      {data.role === "manager" && (
-        <section className="panel p-3">
-          <div className="flex items-center justify-between"><div className="label">Pengeluaran terakhir</div><button className="btn !min-h-8" onClick={() => onNavigate("expenses")}>Catat</button></div>
-          {data.recentExpenses.length === 0 && <p className="mt-2 text-sm text-mute">Belum ada pengeluaran.</p>}
-          {data.recentExpenses.map((e) => (
-            <div key={e.id} className="mt-2 flex items-center justify-between text-sm">
-              <span className="truncate">{e.merchant ?? "Pengeluaran"}</span>
-              <span className="flex shrink-0 items-center gap-2"><span>{money(Number(e.total))}</span><span className="label">{STATUS[e.status] ?? e.status}</span></span>
-            </div>
-          ))}
-        </section>
-      )}
+      <section className="panel p-3">
+        <div className="flex items-center justify-between"><div className="label">Pengeluaran terakhir</div><button className="btn !min-h-8" onClick={() => onNavigate("expenses")}>Catat</button></div>
+        {data.recentExpenses.length === 0 && <p className="mt-2 text-sm text-mute">Belum ada pengeluaran.</p>}
+        {data.recentExpenses.map((e) => (
+          <div key={e.id} className="mt-2 flex items-center justify-between text-sm">
+            <span className="truncate">{e.merchant ?? "Pengeluaran"}</span>
+            <span className="flex shrink-0 items-center gap-2"><span>{money(Number(e.total))}</span><span className="label">{STATUS[e.status] ?? e.status}</span></span>
+          </div>
+        ))}
+      </section>
     </div>
   );
 }

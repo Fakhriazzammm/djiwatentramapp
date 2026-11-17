@@ -83,7 +83,7 @@ export function ExpensesView() {
 
 function History({ drafts, role }: { drafts: ExpenseDraft[]; role: string }) {
   return (
-    <Panel title="Riwayat pengeluaran" meta={role === "manager" ? "semua pengguna" : "milik Anda"}>
+    <Panel title="Riwayat pengeluaran" meta={role === "manager" ? "semua pengguna" : "semua via Telegram + milik Anda"}>
       <div className="tw2"><table>
         <thead><tr><th>Waktu</th><th>Toko</th><th>Item</th><th>Via</th><th style={{ textAlign: "right" }}>Total</th><th>Status</th><th /></tr></thead>
         <tbody>{drafts.map((d) => {
