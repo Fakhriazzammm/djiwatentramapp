@@ -160,6 +160,26 @@ const fmtDay = (key?: string | null) => (key ? dayDate(key).toLocaleDateString("
 const fmtDate = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Jakarta" }) : "—");
 const fmtDateTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }) : "—");
 const fmtTime = (t?: string | null) => (t ? String(t).slice(0, 5).replace(":", ".") : "");
+/* Kalender visit — Senin sebagai hari pertama, tanggal lokal (bukan UTC). */
+const dateKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const monthKey = (d: Date) => dateKey(d).slice(0, 7);
+const todayKey = () => dateKey(new Date());
+const monthTitle = (key: string) => dayDate(`${key}-01`).toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+const shiftMonth = (key: string, delta: number) => {
+  const [y, m] = key.split("-").map(Number);
+  return monthKey(new Date(y, m - 1 + delta, 1));
+};
+const monthCells = (key: string) => {
+  const [y, m] = key.split("-").map(Number);
+  const offset = (new Date(y, m - 1, 1).getDay() + 6) % 7;
+  const start = new Date(y, m - 1, 1 - offset);
+  return Array.from({ length: 42 }, (_, i) => {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    return { key: dateKey(d), day: d.getDate(), inMonth: d.getMonth() === m - 1 };
+  });
+};
+const WEEKDAYS = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+const VISIT_TONE: Record<string, string> = { requested: "md", confirmed: "ok", completed: "ai", cancelled: "off", no_show: "hi" };
 const slugify = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 120);
 const waUrl = (phone?: string | null, text?: string) => {
   const digits = String(phone ?? "").replace(/[^\d]/g, "");
@@ -838,11 +858,32 @@ function VisitView({ data, send }: { data: Snapshot; send: Send }) {
   const [days, setDays] = useState("7");
   const [inviteUrl, setInviteUrl] = useState("");
   const [busy, setBusy] = useState("");
+  const [view, setView] = useState<"calendar" | "table">("calendar");
+  const [month, setMonth] = useState(() => monthKey(new Date()));
+  const [selectedDay, setSelectedDay] = useState<string | null>(() => todayKey());
 
   const visits = useMemo(() => {
     const rows = data.visits.filter((v) => filter === "all" || v.status === filter);
     return rows.sort((a, b) => String(b.booking_date).localeCompare(String(a.booking_date)));
   }, [data.visits, filter]);
+
+  // Jadwal per hari, diurutkan berdasarkan jam untuk tampilan kalender.
+  const byDay = useMemo(() => {
+    const map = new Map<string, Visit[]>();
+    for (const v of visits) {
+      const key = String(v.booking_date).slice(0, 10);
+      const list = map.get(key) ?? [];
+      list.push(v);
+      map.set(key, list);
+    }
+    for (const list of map.values()) list.sort((a, b) => String(a.booking_time ?? "").localeCompare(String(b.booking_time ?? "")));
+    return map;
+  }, [visits]);
+
+  const cells = useMemo(() => monthCells(month), [month]);
+  const monthVisits = visits.filter((v) => String(v.booking_date).slice(0, 7) === month).length;
+  const dayVisits = selectedDay ? (byDay.get(selectedDay) ?? []) : [];
+  const goToday = () => { setMonth(monthKey(new Date())); setSelectedDay(todayKey()); };
 
   const createInvite = async () => {
     if (!createKol) { toast.error("Pilih creator lebih dulu"); return; }
@@ -877,9 +918,84 @@ function VisitView({ data, send }: { data: Snapshot; send: Send }) {
                   <option value="all">Semua status</option>
                   {Object.entries(VISIT_STATUS).map(([k, m]) => <option key={k} value={k}>{m[0]}</option>)}
                 </select>
+                <Tabs items={[["calendar", "Kalender"], ["table", "Tabel"]]} value={view} onChange={setView} style={{ margin: 0 }} />
                 <span className="meta">Hanya transisi yang diizinkan server yang ditampilkan.</span>
               </div>
             </div>
+            {view === "calendar" ? (
+              <>
+                <div className="calbar">
+                  <div className="calnav">
+                    <button className="btn s" aria-label="Bulan sebelumnya" onClick={() => setMonth(shiftMonth(month, -1))}>‹</button>
+                    <b>{monthTitle(month)}</b>
+                    <button className="btn s" aria-label="Bulan berikutnya" onClick={() => setMonth(shiftMonth(month, 1))}>›</button>
+                  </div>
+                  <div className="crow" style={{ marginTop: 0 }}>
+                    <button className="btn s" onClick={goToday}>Hari ini</button>
+                    <span className="meta">{monthVisits} jadwal bulan ini</span>
+                  </div>
+                </div>
+                <div className="calwrap">
+                  <div className="cal" aria-label={`Kalender visit ${monthTitle(month)}`}>
+                    {WEEKDAYS.map((d) => <div key={d} className="cal-w">{d}</div>)}
+                    {cells.map((cell) => {
+                      const list = byDay.get(cell.key) ?? [];
+                      const cls = ["cal-cell", cell.inMonth ? "" : "out", cell.key === todayKey() ? "today" : "", cell.key === selectedDay ? "sel" : ""].filter(Boolean).join(" ");
+                      return (
+                        <button
+                          key={cell.key}
+                          type="button"
+                          className={cls}
+                          aria-label={`${fmtDay(cell.key)}, ${list.length} jadwal`}
+                          aria-pressed={cell.key === selectedDay}
+                          onClick={() => {
+                            if (!cell.inMonth) setMonth(cell.key.slice(0, 7));
+                            setSelectedDay(cell.key);
+                          }}
+                        >
+                          <span className="cal-d">{cell.day}</span>
+                          {list.slice(0, 2).map((v) => (
+                            <span key={v.id} className={`cal-ev ${VISIT_TONE[v.status] ?? ""}`} title={`${v.booking_time ? fmtTime(v.booking_time) : "jam belum dipilih"} · ${v.kol_creators?.name ?? v.kol_id}`}>
+                              {v.booking_time ? fmtTime(v.booking_time) : "—"} {v.kol_creators?.name ?? v.kol_id}
+                            </span>
+                          ))}
+                          {list.length > 2 && <span className="cal-more">+{list.length - 2} lagi</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="cal-day">
+                    <div className="cal-dayhead">
+                      <b>{selectedDay ? dayDate(selectedDay).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" }) : "Pilih tanggal"}</b>
+                      <span className="meta">{dayVisits.length ? `${dayVisits.length} jadwal` : "—"}</span>
+                    </div>
+                    {dayVisits.length === 0 && <div className="meta">Tidak ada jadwal visit pada tanggal ini.</div>}
+                    {dayVisits.map((v) => {
+                      const contact = one(v.kol_creators?.kol_private_contacts) ?? null;
+                      const wa = waUrl(contact?.whatsapp);
+                      return (
+                        <div key={v.id} className="cal-item">
+                          <div className="cal-itemtop">
+                            <b>{v.booking_time ? fmtTime(v.booking_time) : "Jam belum dipilih"}</b>
+                            <St map={VISIT_STATUS} k={v.status} />
+                          </div>
+                          <div>{v.kol_creators?.name ?? v.kol_id} <span className="meta">{atUsername(v.kol_creators?.username)}</span></div>
+                          <div className="meta">{v.visit_note || "Tanpa catatan creator"}</div>
+                          <div className="crow" style={{ marginTop: 4 }}>
+                            {wa ? <a className="btn s" href={wa} target="_blank" rel="noreferrer">WhatsApp</a> : contact?.email ? <span className="meta">{contact.email}</span> : null}
+                          </div>
+                          <input className="f" placeholder="Catatan admin" value={notes[v.id] ?? ""} maxLength={1000}
+                            onChange={(e) => setNotes((prev) => ({ ...prev, [v.id]: e.target.value }))} />
+                          <div className="crow" style={{ marginTop: 4 }}>
+                            <VisitButtons visit={v} onUpdate={(next) => void send({ action: "visit_update", id: v.id, status: next, note: notes[v.id] ?? "" }, "Status visit diperbarui")} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            ) : (
             <div className="sc">
               <table>
                 <thead><tr><th>Tanggal</th><th>Creator</th><th>Kontak</th><th>Catatan</th><th>Status</th><th>Aksi</th></tr></thead>
@@ -908,6 +1024,7 @@ function VisitView({ data, send }: { data: Snapshot; send: Send }) {
               </table>
               {visits.length === 0 && <Empty>BELUM ADA PENGAJUAN VISIT</Empty>}
             </div>
+            )}
           </>
         ) : (
           <>
