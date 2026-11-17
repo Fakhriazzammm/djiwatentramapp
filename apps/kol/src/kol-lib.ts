@@ -70,3 +70,25 @@ export function timeAgo(value?: string | null) {
 
 /** Persetujuan ketiga pada booking visit. Teks resmi yang dicatat server ada di kol-portal-contract.ts. */
 export const CONSENT_NO_SHOW = "Jika saya tidak hadir pada tanggal dan jam yang saya pilih, saya bersedia menerima konsekuensi dan denda yang ditetapkan Djiwa Tentram, karena saya telah menyetujui jadwal ini.";
+
+/** Nama aplikasi bila halaman dibuka di browser dalam aplikasi (Google memblokir login Google di sana), selain itu null. */
+export function inAppBrowserName(ua: string = typeof navigator === "undefined" ? "" : navigator.userAgent): string | null {
+  const rules: Array<[RegExp, string]> = [
+    [/Instagram/i, "Instagram"], [/FBAN|FBAV|FB_IAB/i, "Facebook"], [/TikTok|musical_ly|BytedanceWebview/i, "TikTok"],
+    [/Line\//i, "LINE"], [/Snapchat/i, "Snapchat"], [/Twitter/i, "X (Twitter)"], [/MicroMessenger/i, "WeChat"], [/GSA\//i, "aplikasi Google"],
+  ];
+  for (const [pattern, name] of rules) if (pattern.test(ua)) return name;
+  return /; wv\)/.test(ua) ? "aplikasi" : null;
+}
+
+/** Pesan ramah untuk kode galat OAuth yang dikembalikan Better Auth ke ?error=. */
+export function loginErrorText(code: string | null): string {
+  switch (code) {
+    case "access_denied": return "Akses Google dibatalkan atau ditolak. Ketuk lagi, pilih akunmu, lalu izinkan.";
+    case "state_mismatch": case "please_restart_the_process": case "invalid_state":
+      return "Proses masuk terputus. Ketuk \"Lanjutkan dengan Google\" satu kali saja dan tunggu sampai selesai.";
+    case "email_not_found": return "Akun Google tidak memberikan alamat email. Gunakan akun Google lain.";
+    case "signup_disabled": return "Pendaftaran akun belum dibuka untuk akun ini. Hubungi admin Djiwa Tentram.";
+    default: return "Masuk dengan Google belum berhasil. Coba lagi, atau buka link ini di Chrome atau Safari.";
+  }
+}

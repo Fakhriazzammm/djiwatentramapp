@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays, Handshake, UtensilsCrossed, Users } from "lucide-react";
 import { VisitPicker } from "./kol-visit";
-import { CONSENT_NO_SHOW, dotTime, errorText, kolApi, longDate, type VisitRow } from "./kol-lib";
+import { CONSENT_NO_SHOW, dotTime, errorText, inAppBrowserName, kolApi, logoutKol, longDate, type VisitRow } from "./kol-lib";
 
 type Session = { user: { id: string; name?: string | null; email?: string | null; image?: string | null } };
 const CATEGORIES = ["Food & Beverage", "Coffee", "Lifestyle", "Travel", "Fashion", "Beauty", "Entertainment", "Other"];
@@ -10,6 +10,17 @@ const CONTENT_TYPES = ["Review makanan", "Review kopi", "Short video", "Reels", 
 
 /* ---------- 1. Masuk ---------- */
 export function LoginScreen({ loading, error, onGoogle }: { loading?: boolean; error?: string; onGoogle: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const inApp = inAppBrowserName();
+  // Tombol dibuka lagi bila gagal (ada galat) atau navigasi tidak terjadi dalam 10 detik.
+  useEffect(() => { if (error) setBusy(false); }, [error]);
+  useEffect(() => { if (!busy) return; const t = window.setTimeout(() => setBusy(false), 10000); return () => window.clearTimeout(t); }, [busy]);
+  const start = () => { if (busy) return; setBusy(true); onGoogle(); };
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(window.location.href); setCopied(true); window.setTimeout(() => setCopied(false), 2400); }
+    catch { window.prompt("Salin link ini lalu buka di Chrome atau Safari", window.location.href); }
+  };
   return (
     <div className="kx kx-wrap">
       <div className="kx-view" style={{ paddingTop: "calc(24px + env(safe-area-inset-top))" }}>
@@ -26,10 +37,16 @@ export function LoginScreen({ loading, error, onGoogle }: { loading?: boolean; e
           <div><span className="kx-ico"><Handshake size={18} /></span>Barter menu &amp; kolaborasi campaign</div>
           <div><span className="kx-ico"><Users size={18} /></span>Terhubung dengan komunitas KOL lain</div>
         </div>
+        {inApp && (
+          <div className="kx-note" role="note" style={{ marginBottom: 12 }}>
+            <b>Kamu membuka halaman ini di {inApp}.</b> Google tidak mengizinkan masuk dari browser dalam aplikasi. Buka link ini di <b>Chrome</b> atau <b>Safari</b>.
+            <button type="button" className="kx-link" style={{ display: "flex" }} onClick={copy}>{copied ? "✓ Link disalin" : "Salin link"}</button>
+          </div>
+        )}
         {error && <p role="alert" className="kx-note kx-note--err" style={{ marginBottom: 12 }}>{error}</p>}
         {loading
           ? <p className="kx-sub" style={{ textAlign: "center" }}>Memeriksa sesi Google…</p>
-          : <button type="button" className="kx-btn kx-btn--ghost" onClick={onGoogle}><b style={{ color: "#4285f4", fontSize: 18 }}>G</b> Lanjutkan dengan Google</button>}
+          : <button type="button" className="kx-btn kx-btn--ghost" disabled={busy} aria-busy={busy} onClick={start}><b style={{ color: "#4285f4", fontSize: 18 }}>G</b> {busy ? "Membuka Google…" : "Lanjutkan dengan Google"}</button>}
         <p className="kx-sub" style={{ textAlign: "center", marginTop: 12 }}>Dengan melanjutkan, kamu menyetujui syarat kolaborasi Djiwa Tentram.</p>
       </div>
     </div>
@@ -115,6 +132,7 @@ export function RegisterFlow({ session, onRegistered }: { session: Session; onRe
             {errors.wa && <p className="kx-err">{errors.wa}</p>}
             <label className="kx-label" htmlFor="kx-email">Email <em>(dari Google)</em></label>
             <input id="kx-email" className="kx-input" value={session.user.email || ""} disabled readOnly />
+            <button type="button" className="kx-link" onClick={() => void logoutKol()}>Bukan akunmu? Ganti akun Google</button>
 
             <div className="kx-section">Akun utama</div>
             <div className="kx-chips" role="group" aria-label="Platform">{PLATFORMS.map(p => <button type="button" key={p} className="kx-chip" aria-pressed={f.plat === p} onClick={() => set("plat", p)}>{p}</button>)}</div>
