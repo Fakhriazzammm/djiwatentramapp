@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { HeroDay } from "./hero-day";
+import { CeritaBody } from "./beranda-cerita";
+import { wealthHistory } from "../../lib/finance/story";
 import { Avatar, payAsset, AnimatedNumber, Bar, Mascot, MascotBuddy, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
 import type { Nav } from "../shell/dpx-pages";
 import { AccountEditSheet, AccountSheet, BudgetSheet, CatIcon, CategoryEditSheet, CategorySheet, DebtSheet, EntrySheet, GoalDetailSheet, GoalSheet, CatatSheet, SplitSheet, StreakSheet, MoneyInput, accName, catOf, type Notify } from "./fin-sheets";
@@ -103,41 +104,34 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
   const over = safe ? safe.left < 0 : false;
   const remaining = t.in - t.out;
   const showIncomeBased = t.in > 0;
-  useGold();
+  const goldData = useGold();
   const cashNow = useCash(ctx), wealth = netWorth(state, cashNow);
   const trend = pt.out > 0 ? Math.round(((t.out - pt.out) / pt.out) * 100) : null;
+  const history = useMemo(() => wealthHistory(state, entries, cashNow, goldData?.points ?? null, 12, now), [state, entries, cashNow, goldData]);
+  const sinceStart = history.length >= 2 ? wealth.total - history[history.length - 2].value : null;
+  const monthName = now.toLocaleDateString("id-ID", { month: "long" });
   return <div className="dpx-page"><Sky scene={daypart(now)}><div className="dpx-pad">
-    <div className="dpx-hdr" style={{ paddingTop: 0 }}>
-      <Btn type="button" className="dpx-av" onClick={() => nav.go("/akun")} aria-label="Akun saya"><Avatar url={profile.photo_url} initial={firstName(profile.name, profile.email)[0]?.toUpperCase() ?? ""} /></Btn><div className="dpx-grow" />
-      <Btn type="button" className="dpx-pill-info" onClick={() => ctx.open({ k: "streak" })} aria-label={`Streak ${st.count} hari`}><Ic n="flame" size="sm" /> {st.count}</Btn>
-      <Btn type="button" className="dpx-rb" onClick={ctx.onOpenNotifications} aria-label={`Notifikasi${ctx.unread ? `, ${ctx.unread} belum dibaca` : ""}`}><Wiggle active={ctx.unread > 0}><Ic n="bell" /></Wiggle>{ctx.unread ? <span className="dpx-bd">{ctx.unread > 9 ? "9+" : ctx.unread}</span> : null}</Btn>
+    <div className="dpx-st-sky">
+      <div className="dpx-hdr" style={{ paddingTop: 0 }}>
+        <Btn type="button" className="dpx-av" onClick={() => nav.go("/akun")} aria-label="Akun saya"><Avatar url={profile.photo_url} initial={firstName(profile.name, profile.email)[0]?.toUpperCase() ?? ""} /></Btn><div className="dpx-grow" />
+        <Btn type="button" className="dpx-pill-info" onClick={() => ctx.open({ k: "streak" })} aria-label={`Streak ${st.count} hari`}><Ic n="flame" size="sm" /> {st.count}</Btn>
+        <Btn type="button" className="dpx-rb" onClick={ctx.onOpenNotifications} aria-label={`Notifikasi${ctx.unread ? `, ${ctx.unread} belum dibaca` : ""}`}><Wiggle active={ctx.unread > 0}><Ic n="bell" /></Wiggle>{ctx.unread ? <span className="dpx-bd">{ctx.unread > 9 ? "9+" : ctx.unread}</span> : null}</Btn>
+      </div>
+      <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.05 }} className="dpx-title dpx-onsky" style={{ fontSize: 24, letterSpacing: "-.035em", marginTop: 6 }}>{greeting(now)}, {firstName(profile.name, profile.email)}.</motion.h1>
+      <div className="dpx-flex dpx-mt8 dpx-onsky" style={{ color: "var(--mute)", font: "600 13px var(--font)" }}>Total kekayaan
+        <Btn type="button" onClick={ctx.onToggleVisible} aria-label={ctx.visible ? "Sembunyikan angka" : "Tampilkan angka"} aria-pressed={!ctx.visible}><IconSwap k={ctx.visible ? "eye" : "eyeoff"}><Ic n={ctx.visible ? "eye" : "eyeoff"} size="sm" /></IconSwap></Btn></div>
+      <div className="dpx-onsky" style={{ marginTop: 6 }}><span className="dpx-display" style={{ fontSize: 40 }}><small>Rp</small>{ctx.visible ? <>{wealth.total < 0 ? "−" : ""}<AnimatedNumber value={Math.abs(wealth.total)} /></> : "•••••••"}</span></div>
+      {ctx.visible && sinceStart !== null ? <div className="dpx-sub dpx-mt8 dpx-onsky" style={{ fontSize: 13 }}><b className={sinceStart >= 0 ? "dpx-up" : "dpx-dn"}>{sinceStart >= 0 ? "▲ +" : "▼ −"}{rupiah(Math.abs(sinceStart))}</b> sejak akhir bulan lalu</div> : null}
+      {ctx.visible ? <div className="dpx-sub dpx-onsky" style={{ fontSize: 13, marginTop: 4 }}>Dompet {rupiah(wealth.cash)} · Aset {rupiah(wealth.assets)}{wealth.receivables ? ` · Piutang ${rupiah(wealth.receivables)}` : ""}{wealth.liabilities ? ` · Hutang −${rupiah(wealth.liabilities)}` : ""}</div> : null}
+      <div className="dpx-st-mascot"><MascotBuddy messages={[
+        `Halo ${firstName(profile.name, profile.email)}! Ketuk aku kalau butuh tips.`,
+        over ? "Anggaran bulan ini sudah terlampaui. Tahan belanja dulu ya." : safe ? `Aman dibelanjakan hari ini ${ctx.visible ? rupiah(safe.perDay) : "•••••"}.` : "Atur anggaran dulu, nanti aku hitung jatah harianmu.",
+        st.count > 0 ? `Streak ${st.count} hari. Jangan putus ya!` : "Catat satu pengeluaran hari ini untuk mulai streak.",
+        "Tulis “kopi 25rb” di kolom catat, aku bantu rapikan.",
+      ]} /></div>
+      <div className="dpx-st-hint dpx-onsky">Cerita {monthName} ada di bawah ↓</div>
     </div>
-    <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.05 }} className="dpx-title dpx-onsky" style={{ fontSize: 24, letterSpacing: "-.035em", marginTop: 6 }}>{greeting(now)}, {firstName(profile.name, profile.email)}.</motion.h1>
-    <div className="dpx-flex dpx-mt8 dpx-onsky" style={{ color: "var(--mute)", font: "600 13px var(--font)" }}>Total kekayaan
-      <Btn type="button" onClick={ctx.onToggleVisible} aria-label={ctx.visible ? "Sembunyikan angka" : "Tampilkan angka"} aria-pressed={!ctx.visible}><IconSwap k={ctx.visible ? "eye" : "eyeoff"}><Ic n={ctx.visible ? "eye" : "eyeoff"} size="sm" /></IconSwap></Btn></div>
-    <div className="dpx-onsky" style={{ marginTop: 6 }}><span className="dpx-display" style={{ fontSize: 40 }}><small>Rp</small>{ctx.visible ? <>{wealth.total < 0 ? "−" : ""}<AnimatedNumber value={Math.abs(wealth.total)} /></> : "•••••••"}</span></div>
-    {ctx.visible ? <div className="dpx-sub dpx-mt8 dpx-onsky" style={{ fontSize: 13 }}>Dompet {rupiah(wealth.cash)} · Aset {rupiah(wealth.assets)}{wealth.receivables ? ` · Piutang ${rupiah(wealth.receivables)}` : ""}{wealth.liabilities ? ` · Hutang −${rupiah(wealth.liabilities)}` : ""}</div> : null}
-
-    <ReviewChip count={inbound.data?.review ?? 0} importReady={inbound.data?.importReady ?? 0} autoRecent={inbound.data?.autoRecent ?? 0} onOpenAuto={() => nav.go("/riwayat")} onOpen={() => nav.go("/tinjau")} onOpenImport={() => nav.go("/integrasi?impor=1")} />
-    <GoogleNudge onOpenIntegrations={() => nav.go("/integrasi")} />
-    <MascotBuddy messages={[
-      `Halo ${firstName(profile.name, profile.email)}! Ketuk aku kalau butuh tips.`,
-      over ? "Anggaran bulan ini sudah terlampaui. Tahan belanja dulu ya." : safe ? `Aman dibelanjakan hari ini ${ctx.visible ? rupiah(safe.perDay) : "•••••"}.` : "Atur anggaran dulu, nanti aku hitung jatah harianmu.",
-      st.count > 0 ? `Streak ${st.count} hari. Jangan putus ya!` : "Catat satu pengeluaran hari ini untuk mulai streak.",
-      "Tulis “kopi 25rb” di kolom catat, aku bantu rapikan.",
-    ]} />
-    <Reveal i={1}><HeroDay plan={plan} empty={empty} safe={safe} visible={ctx.visible} spent={t.out} now={now} templates={templates} ring={safe ? <Ring percent={Math.min(100, safe.percent)} big={over ? "Lewat" : `${Math.round(safe.percent)}%`} small={over ? "anggaran" : "terpakai"} color={over ? "#d23a2a" : "#d14b1a"} /> : null} onAddTemplate={addTemplate} onOpenBudget={() => ctx.open({ k: "budget" })} onOpenCatat={() => ctx.open({ k: "catat" })} /></Reveal>
-
-    {empty ? null : <Reveal i={2}><div className="dpx-kpi" style={{ marginTop: 12 }}><Btn type="button" className="dpx-group" style={{ textAlign: "left" }} onClick={() => nav.go("/ringkasan")}><small>Masuk bulan ini</small><b className="dpx-up">{ctx.visible ? rupiah(t.in) : "•••••"}</b></Btn><Btn type="button" className="dpx-group" style={{ textAlign: "left" }} onClick={() => nav.go("/ringkasan")}><small>Keluar bulan ini</small><b>{ctx.visible ? rupiah(t.out) : "•••••"}</b></Btn></div></Reveal>}
-
-    {empty ? null : <KelolaHome ctx={ctx} />}
-    {statuses.length ? <><div className="dpx-sec"><h2>Anggaran bulan ini</h2><Btn type="button" onClick={() => nav.go("/anggaran")}>Semua</Btn></div><div className="dpx-group dpx-white">{statuses.slice(0, 3).map((s) => <BudgetRow key={s.budget.categoryId} status={s} state={state} onOpen={() => ctx.open({ k: "budget", cid: s.budget.categoryId })} />)}</div></> : null}
-    {insights.length ? <><div className="dpx-sec"><h2>Insight untukmu</h2></div><div className="dpx-next">{insights.map((i) => <div key={i.id} className="dpx-group" style={{ flex: "none", width: 236 }}><span className={`dpx-cat dpx-c-${i.tone === "warn" ? "amber" : i.tone === "ok" ? "emerald" : "violet"}`} style={{ marginBottom: 8 }}><Ic n={i.tone === "warn" ? "warn" : i.tone === "ok" ? "spark" : "trend"} /></span><b>{i.title}</b><div className="dpx-sub">{i.body}</div></div>)}</div></> : null}
-    {empty ? null : <><div className="dpx-sec"><h2>Catatan terbaru</h2><Btn type="button" onClick={() => nav.go("/riwayat")}>Lihat semua</Btn></div><div className="dpx-group dpx-flush">{entries.slice(0, 4).map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div></>}
-
-    <div className="dpx-sec"><h2>Dompet & Bayar</h2><Btn type="button" onClick={() => nav.go("/dompet")}>Buka</Btn></div>
-    <div className="dpx-group"><div className="dpx-spread"><div><div className="dpx-sub">Saldo Djiwa Pay</div><div className="dpx-money" style={{ fontSize: 26 }}>{ctx.visible ? rupiah(ctx.payBalance) : "•••••"}</div></div><span className="dpx-tag dpx-ok">Otomatis tercatat</span></div>
-      <div className="dpx-tile3 dpx-mt" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>{([["topup", "Isi saldo", "/wallet/topup"], ["send", "Kirim", "/wallet/transfer"], ["scan-qr", "Scan", "/wallet/transfer?mode=scan"], ["bills", "Layanan", "/bayar"]] as const).map(([a, l, p]) => <Btn key={a} type="button" className="dpx-q" onClick={() => nav.go(p)}><img src={payAsset(a)} width={38} height={38} alt="" />{l}</Btn>)}</div></div>
+    <CeritaBody ctx={ctx} entries={entries} cash={cashNow} gold={goldData} now={now} templates={templates} onAddTemplate={addTemplate} />
   </div></Sky></div>;
 }
 

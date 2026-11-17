@@ -20,7 +20,7 @@ const daysInMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0).
 const mask = (visible: boolean, text: string) => (visible ? text : "•••••");
 const short = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt` : `${Math.round(n / 1000)} rb`);
 
-function QuickAdd({ templates, onAdd }: { templates: Entry[]; onAdd: (e: Entry) => void }) {
+export function QuickAdd({ templates, onAdd }: { templates: Entry[]; onAdd: (e: Entry) => void }) {
   const [done, setDone] = useState<string | null>(null);
   if (!templates.length) return null;
   return <div className="dpx-hd-quick">
