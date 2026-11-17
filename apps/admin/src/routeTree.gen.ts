@@ -41,9 +41,11 @@ import { Route as AdminNotificationsRouteImport } from './routes/admin/notificat
 import { Route as AdminMinigamesRouteImport } from './routes/admin/minigames'
 import { Route as AdminManagerRouteImport } from './routes/admin/manager'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
-import { Route as AdminKolReportsRouteImport } from './routes/admin/kol-reports'
-import { Route as AdminKolDataRouteImport } from './routes/admin/kol-data'
-import { Route as AdminKolCollaborationsRouteImport } from './routes/admin/kol-collaborations'
+import { Route as AdminKolVisitsRouteImport } from './routes/admin/kol-visits'
+import { Route as AdminKolInquiriesRouteImport } from './routes/admin/kol-inquiries'
+import { Route as AdminKolCreatorsRouteImport } from './routes/admin/kol-creators'
+import { Route as AdminKolCommunityRouteImport } from './routes/admin/kol-community'
+import { Route as AdminKolCampaignsRouteImport } from './routes/admin/kol-campaigns'
 import { Route as AdminKolRouteImport } from './routes/admin/kol'
 import { Route as AdminKitchenRouteImport } from './routes/admin/kitchen'
 import { Route as AdminKaryawanRouteImport } from './routes/admin/karyawan'
@@ -319,26 +321,40 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() => import('./routes/admin.login.lazy').then((d) => d.Route))
-const AdminKolReportsRoute = AdminKolReportsRouteImport.update({
-  id: '/kol-reports',
-  path: '/kol-reports',
+const AdminKolVisitsRoute = AdminKolVisitsRouteImport.update({
+  id: '/kol-visits',
+  path: '/kol-visits',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() =>
-  import('./routes/admin/kol-reports.lazy').then((d) => d.Route),
+  import('./routes/admin/kol-visits.lazy').then((d) => d.Route),
 )
-const AdminKolDataRoute = AdminKolDataRouteImport.update({
-  id: '/kol-data',
-  path: '/kol-data',
+const AdminKolInquiriesRoute = AdminKolInquiriesRouteImport.update({
+  id: '/kol-inquiries',
+  path: '/kol-inquiries',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() =>
-  import('./routes/admin/kol-data.lazy').then((d) => d.Route),
+  import('./routes/admin/kol-inquiries.lazy').then((d) => d.Route),
 )
-const AdminKolCollaborationsRoute = AdminKolCollaborationsRouteImport.update({
-  id: '/kol-collaborations',
-  path: '/kol-collaborations',
+const AdminKolCreatorsRoute = AdminKolCreatorsRouteImport.update({
+  id: '/kol-creators',
+  path: '/kol-creators',
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() =>
-  import('./routes/admin/kol-collaborations.lazy').then((d) => d.Route),
+  import('./routes/admin/kol-creators.lazy').then((d) => d.Route),
+)
+const AdminKolCommunityRoute = AdminKolCommunityRouteImport.update({
+  id: '/kol-community',
+  path: '/kol-community',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/kol-community.lazy').then((d) => d.Route),
+)
+const AdminKolCampaignsRoute = AdminKolCampaignsRouteImport.update({
+  id: '/kol-campaigns',
+  path: '/kol-campaigns',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/kol-campaigns.lazy').then((d) => d.Route),
 )
 const AdminKolRoute = AdminKolRouteImport.update({
   id: '/kol',
@@ -1006,9 +1022,11 @@ export interface FileRoutesByFullPath {
   '/admin/karyawan': typeof AdminKaryawanRouteWithChildren
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/kol': typeof AdminKolRoute
-  '/admin/kol-collaborations': typeof AdminKolCollaborationsRoute
-  '/admin/kol-data': typeof AdminKolDataRoute
-  '/admin/kol-reports': typeof AdminKolReportsRoute
+  '/admin/kol-campaigns': typeof AdminKolCampaignsRoute
+  '/admin/kol-community': typeof AdminKolCommunityRoute
+  '/admin/kol-creators': typeof AdminKolCreatorsRoute
+  '/admin/kol-inquiries': typeof AdminKolInquiriesRoute
+  '/admin/kol-visits': typeof AdminKolVisitsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/manager': typeof AdminManagerRoute
   '/admin/minigames': typeof AdminMinigamesRoute
@@ -1120,9 +1138,11 @@ export interface FileRoutesByTo {
   '/admin/jumat-berkah': typeof AdminJumatBerkahRoute
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/kol': typeof AdminKolRoute
-  '/admin/kol-collaborations': typeof AdminKolCollaborationsRoute
-  '/admin/kol-data': typeof AdminKolDataRoute
-  '/admin/kol-reports': typeof AdminKolReportsRoute
+  '/admin/kol-campaigns': typeof AdminKolCampaignsRoute
+  '/admin/kol-community': typeof AdminKolCommunityRoute
+  '/admin/kol-creators': typeof AdminKolCreatorsRoute
+  '/admin/kol-inquiries': typeof AdminKolInquiriesRoute
+  '/admin/kol-visits': typeof AdminKolVisitsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/manager': typeof AdminManagerRoute
   '/admin/minigames': typeof AdminMinigamesRoute
@@ -1230,9 +1250,11 @@ export interface FileRoutesById {
   '/admin/karyawan': typeof AdminKaryawanRouteWithChildren
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/kol': typeof AdminKolRoute
-  '/admin/kol-collaborations': typeof AdminKolCollaborationsRoute
-  '/admin/kol-data': typeof AdminKolDataRoute
-  '/admin/kol-reports': typeof AdminKolReportsRoute
+  '/admin/kol-campaigns': typeof AdminKolCampaignsRoute
+  '/admin/kol-community': typeof AdminKolCommunityRoute
+  '/admin/kol-creators': typeof AdminKolCreatorsRoute
+  '/admin/kol-inquiries': typeof AdminKolInquiriesRoute
+  '/admin/kol-visits': typeof AdminKolVisitsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/manager': typeof AdminManagerRoute
   '/admin/minigames': typeof AdminMinigamesRoute
@@ -1351,9 +1373,11 @@ export interface FileRouteTypes {
     | '/admin/karyawan'
     | '/admin/kitchen'
     | '/admin/kol'
-    | '/admin/kol-collaborations'
-    | '/admin/kol-data'
-    | '/admin/kol-reports'
+    | '/admin/kol-campaigns'
+    | '/admin/kol-community'
+    | '/admin/kol-creators'
+    | '/admin/kol-inquiries'
+    | '/admin/kol-visits'
     | '/admin/login'
     | '/admin/manager'
     | '/admin/minigames'
@@ -1465,9 +1489,11 @@ export interface FileRouteTypes {
     | '/admin/jumat-berkah'
     | '/admin/kitchen'
     | '/admin/kol'
-    | '/admin/kol-collaborations'
-    | '/admin/kol-data'
-    | '/admin/kol-reports'
+    | '/admin/kol-campaigns'
+    | '/admin/kol-community'
+    | '/admin/kol-creators'
+    | '/admin/kol-inquiries'
+    | '/admin/kol-visits'
     | '/admin/login'
     | '/admin/manager'
     | '/admin/minigames'
@@ -1574,9 +1600,11 @@ export interface FileRouteTypes {
     | '/admin/karyawan'
     | '/admin/kitchen'
     | '/admin/kol'
-    | '/admin/kol-collaborations'
-    | '/admin/kol-data'
-    | '/admin/kol-reports'
+    | '/admin/kol-campaigns'
+    | '/admin/kol-community'
+    | '/admin/kol-creators'
+    | '/admin/kol-inquiries'
+    | '/admin/kol-visits'
     | '/admin/login'
     | '/admin/manager'
     | '/admin/minigames'
@@ -1901,25 +1929,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/admin/kol-reports': {
-      id: '/admin/kol-reports'
-      path: '/kol-reports'
-      fullPath: '/admin/kol-reports'
-      preLoaderRoute: typeof AdminKolReportsRouteImport
+    '/admin/kol-visits': {
+      id: '/admin/kol-visits'
+      path: '/kol-visits'
+      fullPath: '/admin/kol-visits'
+      preLoaderRoute: typeof AdminKolVisitsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/admin/kol-data': {
-      id: '/admin/kol-data'
-      path: '/kol-data'
-      fullPath: '/admin/kol-data'
-      preLoaderRoute: typeof AdminKolDataRouteImport
+    '/admin/kol-inquiries': {
+      id: '/admin/kol-inquiries'
+      path: '/kol-inquiries'
+      fullPath: '/admin/kol-inquiries'
+      preLoaderRoute: typeof AdminKolInquiriesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/admin/kol-collaborations': {
-      id: '/admin/kol-collaborations'
-      path: '/kol-collaborations'
-      fullPath: '/admin/kol-collaborations'
-      preLoaderRoute: typeof AdminKolCollaborationsRouteImport
+    '/admin/kol-creators': {
+      id: '/admin/kol-creators'
+      path: '/kol-creators'
+      fullPath: '/admin/kol-creators'
+      preLoaderRoute: typeof AdminKolCreatorsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/kol-community': {
+      id: '/admin/kol-community'
+      path: '/kol-community'
+      fullPath: '/admin/kol-community'
+      preLoaderRoute: typeof AdminKolCommunityRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/kol-campaigns': {
+      id: '/admin/kol-campaigns'
+      path: '/kol-campaigns'
+      fullPath: '/admin/kol-campaigns'
+      preLoaderRoute: typeof AdminKolCampaignsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/kol': {
@@ -2861,9 +2903,11 @@ interface AdminRouteRouteChildren {
   AdminKaryawanRoute: typeof AdminKaryawanRouteWithChildren
   AdminKitchenRoute: typeof AdminKitchenRoute
   AdminKolRoute: typeof AdminKolRoute
-  AdminKolCollaborationsRoute: typeof AdminKolCollaborationsRoute
-  AdminKolDataRoute: typeof AdminKolDataRoute
-  AdminKolReportsRoute: typeof AdminKolReportsRoute
+  AdminKolCampaignsRoute: typeof AdminKolCampaignsRoute
+  AdminKolCommunityRoute: typeof AdminKolCommunityRoute
+  AdminKolCreatorsRoute: typeof AdminKolCreatorsRoute
+  AdminKolInquiriesRoute: typeof AdminKolInquiriesRoute
+  AdminKolVisitsRoute: typeof AdminKolVisitsRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminManagerRoute: typeof AdminManagerRoute
   AdminMinigamesRoute: typeof AdminMinigamesRoute
@@ -2901,9 +2945,11 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminKaryawanRoute: AdminKaryawanRouteWithChildren,
   AdminKitchenRoute: AdminKitchenRoute,
   AdminKolRoute: AdminKolRoute,
-  AdminKolCollaborationsRoute: AdminKolCollaborationsRoute,
-  AdminKolDataRoute: AdminKolDataRoute,
-  AdminKolReportsRoute: AdminKolReportsRoute,
+  AdminKolCampaignsRoute: AdminKolCampaignsRoute,
+  AdminKolCommunityRoute: AdminKolCommunityRoute,
+  AdminKolCreatorsRoute: AdminKolCreatorsRoute,
+  AdminKolInquiriesRoute: AdminKolInquiriesRoute,
+  AdminKolVisitsRoute: AdminKolVisitsRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminManagerRoute: AdminManagerRoute,
   AdminMinigamesRoute: AdminMinigamesRoute,

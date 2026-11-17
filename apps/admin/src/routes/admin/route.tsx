@@ -50,7 +50,11 @@ import {
 	BarChart3,
 	CalendarDays,
 	CheckCircle2,
-	Search, HeartHandshake } from "lucide-react";
+	Search, HeartHandshake,
+	Megaphone,
+	MessageSquare,
+	Inbox,
+	CalendarCheck } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { filterCommandItems, type AdminCommandItem } from "@/lib/admin-command-search";
 import { AdminDialogHost } from "@/components/admin/admin-dialog-host";
@@ -139,10 +143,12 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/manager": "Manager & Supervisor",
 	"/admin/customers": "Pelanggan",
 	"/admin/djiwa-app": "Dashboard",
-	"/admin/kol": "KOL Marketing · Dashboard",
-	"/admin/kol-data": "Data KOL",
-	"/admin/kol-collaborations": "Kolaborasi KOL",
-	"/admin/kol-reports": "Laporan KOL",
+	"/admin/kol": "KOL Marketing · Ringkasan",
+	"/admin/kol-creators": "Creator KOL",
+	"/admin/kol-campaigns": "Kampanye KOL",
+	"/admin/kol-community": "Komunitas KOL",
+	"/admin/kol-visits": "Visit KOL",
+	"/admin/kol-inquiries": "Inquiry KOL",
 	"/admin/merchandise": "Merchandise · Ringkasan",
 	"/admin/merchandise/": "Merchandise · Ringkasan",
 	"/admin/merchandise/campaigns": "Produk & Pre-order",
@@ -192,9 +198,11 @@ const MORE_MENU_PATHS = [
 	"/admin/customers",
 	"/admin/djiwa-app",
 	"/admin/kol",
-	"/admin/kol-data",
-	"/admin/kol-collaborations",
-	"/admin/kol-reports",
+	"/admin/kol-creators",
+	"/admin/kol-campaigns",
+	"/admin/kol-community",
+	"/admin/kol-visits",
+	"/admin/kol-inquiries",
 	"/admin/merchandise",
 	"/admin/merchandise/",
 	"/admin/merchandise/campaigns",
@@ -371,9 +379,11 @@ const MERCHANDISE_PATHS = [
 
 const KOL_MARKETING_PATHS = [
 	"/admin/kol",
-	"/admin/kol-data",
-	"/admin/kol-collaborations",
-	"/admin/kol-reports",
+	"/admin/kol-creators",
+	"/admin/kol-campaigns",
+	"/admin/kol-community",
+	"/admin/kol-visits",
+	"/admin/kol-inquiries",
 ];
 
 const BOOKING_PATHS = [
@@ -1128,10 +1138,12 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 					<SidebarSection isCollapsed={isCollapsed} label="KOL MARKETING APP" />
 					{isCollapsed ? (
 						<>
-							<DesktopNavLink icon={<LayoutDashboard />} isCollapsed={isCollapsed} label="Dashboard" to="/admin/kol" permission="analytics:view" />
-							<DesktopNavLink icon={<Users />} isCollapsed={isCollapsed} label="Data KOL" to="/admin/kol-data" permission="analytics:view" />
-							<DesktopNavLink icon={<Sparkles />} isCollapsed={isCollapsed} label="Kolaborasi" to="/admin/kol-collaborations" permission="analytics:view" />
-							<DesktopNavLink icon={<BarChart3 />} isCollapsed={isCollapsed} label="Laporan" to="/admin/kol-reports" permission="analytics:view" />
+							<DesktopNavLink icon={<LayoutDashboard />} isCollapsed={isCollapsed} label="Ringkasan" to="/admin/kol" permission="analytics:view" />
+							<DesktopNavLink icon={<Users />} isCollapsed={isCollapsed} label="Creator" to="/admin/kol-creators" permission="analytics:view" />
+							<DesktopNavLink icon={<Megaphone />} isCollapsed={isCollapsed} label="Kampanye" to="/admin/kol-campaigns" permission="analytics:view" />
+							<DesktopNavLink icon={<MessageSquare />} isCollapsed={isCollapsed} label="Komunitas" to="/admin/kol-community" permission="analytics:view" />
+							<DesktopNavLink icon={<CalendarCheck />} isCollapsed={isCollapsed} label="Visit" to="/admin/kol-visits" permission="analytics:view" />
+							<DesktopNavLink icon={<Inbox />} isCollapsed={isCollapsed} label="Inquiry" to="/admin/kol-inquiries" permission="analytics:view" />
 						</>
 					) : (
 						<>
@@ -1140,10 +1152,12 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 							</button>
 							<AnimatePresence initial={false}>
 								{isKolMarketingOpen && <motion.div animate={{ height: "auto", opacity: 1 }} className="overflow-hidden" exit={{ height: 0, opacity: 0 }} initial={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: "easeInOut" }}><div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
-									<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/kol" permission="analytics:view" />
-									<DesktopSubNavLink icon={<Users />} label="Data KOL" to="/admin/kol-data" permission="analytics:view" />
-									<DesktopSubNavLink icon={<Sparkles />} label="Kolaborasi" to="/admin/kol-collaborations" permission="analytics:view" />
-									<DesktopSubNavLink icon={<BarChart3 />} label="Laporan" to="/admin/kol-reports" permission="analytics:view" />
+									<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Ringkasan" to="/admin/kol" permission="analytics:view" />
+									<DesktopSubNavLink icon={<Users />} label="Creator" to="/admin/kol-creators" permission="analytics:view" />
+									<DesktopSubNavLink icon={<Megaphone />} label="Kampanye" to="/admin/kol-campaigns" permission="analytics:view" />
+									<DesktopSubNavLink icon={<MessageSquare />} label="Komunitas" to="/admin/kol-community" permission="analytics:view" />
+									<DesktopSubNavLink icon={<CalendarCheck />} label="Visit" to="/admin/kol-visits" permission="analytics:view" />
+									<DesktopSubNavLink icon={<Inbox />} label="Inquiry" to="/admin/kol-inquiries" permission="analytics:view" />
 								</div></motion.div>}
 							</AnimatePresence>
 						</>
