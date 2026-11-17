@@ -130,3 +130,12 @@ describe("asset estimates", () => {
     expect(isEstimated(a)).toBe(false); expect(assetValue(a, null)).toBe(5_000_000);
   });
 });
+
+import { quoteDeck } from "../src/lib/quotes";
+describe("quoteDeck", () => {
+  test("alternates money and slow-living thoughts and rotates with the seed", () => {
+    const a = quoteDeck(0), b = quoteDeck(3);
+    expect(a.length).toBeGreaterThan(20); expect(new Set(a).size).toBe(a.length);
+    expect(b[0]).toBe(a[3]); expect(a[0]).toContain("Buffett"); expect(a[1]).toContain("Lao Tzu");
+  });
+});

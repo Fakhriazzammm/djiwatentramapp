@@ -919,3 +919,4 @@ html:has(.dpx-plain),body:has(.dpx-plain),#root:has(.dpx-plain){background:#f8f3
 .dpx .dpx-ent-av{position:relative;display:inline-flex;flex:none}
 .dpx .dpx-dir{position:absolute;right:-3px;bottom:-3px;width:19px;height:19px;border-radius:50%;display:grid;place-items:center;font:800 11px/1 var(--font);font-style:normal;color:#fff;box-shadow:0 0 0 2px #fff}
 .dpx .dpx-dir-in{background:#4f7a2b}.dpx .dpx-dir-out{background:#c9461b}.dpx .dpx-dir-tf{background:#3b6ea5}.dpx .dpx-dir-q{background:#d9941a}
+.dpx .dpx-buddy-bubble.dpx-buddy-q{max-width:min(272px,62vw);font:600 12.5px/1.4 var(--font);padding:10px 13px}

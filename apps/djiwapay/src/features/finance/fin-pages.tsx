@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { markAutoSeen, readAutoSeen } from "../../lib/finance/integrations";
 import { AnimatePresence, motion } from "framer-motion";
 import { CeritaBody } from "./beranda-cerita";
+import { quoteDeck } from "../../lib/quotes";
 import { wealthHistory } from "../../lib/finance/story";
 import { Avatar, payAsset, AnimatedNumber, Bar, Mascot, MascotBuddy, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
 import type { Nav } from "../shell/dpx-pages";
@@ -115,6 +116,7 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
   const goldData = useGold();
   const cashNow = useCash(ctx), wealth = netWorth(state, cashNow);
   const trend = pt.out > 0 ? Math.round(((t.out - pt.out) / pt.out) * 100) : null;
+  const quotes = useMemo(() => quoteDeck(), []);
   const history = useMemo(() => wealthHistory(state, entries, cashNow, goldData?.points ?? null, 12, now), [state, entries, cashNow, goldData]);
   const sinceStart = history.length >= 2 ? wealth.total - history[history.length - 2].value : null;
   const monthName = now.toLocaleDateString("id-ID", { month: "long" });
@@ -131,7 +133,7 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
       <div className="dpx-onsky" style={{ marginTop: 6 }}><span className="dpx-display" style={{ fontSize: 40 }}><small>Rp</small>{ctx.visible ? <>{wealth.total < 0 ? "−" : ""}<AnimatedNumber value={Math.abs(wealth.total)} /></> : "•••••••"}</span></div>
       {ctx.visible && sinceStart !== null ? <div className="dpx-sub dpx-mt8 dpx-onsky" style={{ fontSize: 13 }}><b className={sinceStart >= 0 ? "dpx-up" : "dpx-dn"}>{sinceStart >= 0 ? "▲ +" : "▼ −"}{rupiah(Math.abs(sinceStart))}</b> sejak akhir bulan lalu</div> : null}
       {ctx.visible ? <div className="dpx-sub dpx-onsky" style={{ fontSize: 13, marginTop: 4 }}>Dompet {rupiah(wealth.cash)} · Aset {rupiah(wealth.assets)}{wealth.receivables ? ` · Piutang ${rupiah(wealth.receivables)}` : ""}{wealth.liabilities ? ` · Hutang −${rupiah(wealth.liabilities)}` : ""}</div> : null}
-      <div className="dpx-st-mascot"><MascotBuddy messages={[
+      <div className="dpx-st-mascot"><MascotBuddy quotes={quotes} messages={[
         `Halo ${firstName(profile.name, profile.email)}! Ketuk aku kalau butuh tips.`,
         over ? "Anggaran bulan ini sudah terlampaui. Tahan belanja dulu ya." : safe ? `Aman dibelanjakan hari ini ${ctx.visible ? rupiah(safe.perDay) : "•••••"}.` : "Atur anggaran dulu, nanti aku hitung jatah harianmu.",
         st.count > 0 ? `Streak ${st.count} hari. Jangan putus ya!` : "Catat satu pengeluaran hari ini untuk mulai streak.",

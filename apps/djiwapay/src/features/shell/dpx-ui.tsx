@@ -26,18 +26,20 @@ export function Mascot({ px = 112, style }: { px?: number; style?: CSSProperties
 }
 
 /** Maskot interaktif: melayang pelan, melompat saat diketuk, bisa diseret (miring lalu kembali) dan bicara lewat gelembung. */
-export function MascotBuddy({ messages, px = 84 }: { messages: string[]; px?: number }) {
+export function MascotBuddy({ messages, px = 84, quotes = [] }: { messages: string[]; px?: number; quotes?: string[] }) {
   const [index, setIndex] = useState(0);
   const [bubble, setBubble] = useState<string | null>(null);
+  const [isQuote, setIsQuote] = useState(false), quoteAt = useRef(0), quoteList = useRef(quotes), shown = useRef(false);
+  quoteList.current = quotes;
   const controls = useAnimation();
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-140, 0, 140], [-16, 0, 16]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const busy = useRef(false);
-  const say = (text: string, ms = 4200) => {
-    setBubble(text);
+  const say = (text: string, ms = 4200, quote = false) => {
+    setBubble(text); setIsQuote(quote); shown.current = true;
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setBubble(null), ms);
+    timer.current = setTimeout(() => { shown.current = false; setBubble(null); }, ms);
   };
   const hop = async () => {
     busy.current = true;
@@ -47,7 +49,13 @@ export function MascotBuddy({ messages, px = 84 }: { messages: string[]; px?: nu
   useEffect(() => {
     const first = setTimeout(() => { say(messages[0] ?? "Halo!"); void hop(); }, 900);
     const idle = setInterval(() => { if (!busy.current) { busy.current = true; void controls.start({ rotate: [0, -10, 9, -6, 0], transition: { duration: 0.9 } }).then(() => { busy.current = false; }); } }, 11000);
-    return () => { clearTimeout(first); clearInterval(idle); if (timer.current) clearTimeout(timer.current); };
+    // Without a touch: every so often the mascot shares a thought, when nothing else is being said.
+    const talk = setInterval(() => {
+      const list = quoteList.current; if (!list.length || busy.current || shown.current || document.visibilityState !== "visible") return;
+      const q = list[quoteAt.current % list.length]; quoteAt.current += 1;
+      say(q, Math.min(12000, 4000 + q.length * 55), true); void hop();
+    }, 16000);
+    return () => { clearTimeout(first); clearInterval(idle); clearInterval(talk); if (timer.current) clearTimeout(timer.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const onTap = () => {
@@ -57,7 +65,7 @@ export function MascotBuddy({ messages, px = 84 }: { messages: string[]; px?: nu
     void hop();
   };
   return <div className="dpx-buddy">
-    <AnimatePresence>{bubble ? <motion.div key={bubble} className="dpx-buddy-bubble" role="status" initial={{ opacity: 0, scale: 0.85, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={spring}>{bubble}</motion.div> : null}</AnimatePresence>
+    <AnimatePresence>{bubble ? <motion.div key={bubble} className={`dpx-buddy-bubble ${isQuote ? "dpx-buddy-q" : ""}`} role="status" initial={{ opacity: 0, scale: 0.85, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={spring}>{bubble}</motion.div> : null}</AnimatePresence>
     <motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}>
       <motion.button type="button" className="dpx-buddy-btn" aria-label="Maskot Djiwa Pay. Ketuk untuk mendengar tips" animate={controls} style={{ x, rotate, width: px, height: px }}
         drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.5} dragSnapToOrigin onDragStart={() => say("Wuih, pelan-pelan!", 1800)} onTap={onTap} whileTap={{ scale: 0.94 }}>
