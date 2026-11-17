@@ -3,13 +3,14 @@ import { Btn, Ic, I3, payAsset, type IconName } from "../shell/dpx-ui";
 import { CatIcon, catOf } from "./fin-sheets";
 import { EntryRow, type FinCtx } from "./fin-pages";
 import { QuickAdd } from "./hero-day";
-import { CAT_COLORS, CashflowChart, DragRow, Donut, GoldSpark, HeatGrid, PaceChart, WealthChart } from "./story-charts";
+import { CAT_COLORS, DragRow, Donut, GoldSpark, HeatGrid, PaceChart, WealthChart } from "./story-charts";
 import { FullPage } from "../kelola/asset-ui";
 import { NEWS_TOPICS, timeAgo, useNews, type NewsItem } from "../../lib/finance/news";
 import { GoogleNudge, ReviewChip, useInbound } from "../integrations/integrations-pages";
 import { short } from "../kelola/kelola-ui";
-import { budgetStatuses, buildInsights, goalProjection, goalSaved, inMonth, monthlySeries, safeToSpend, totals } from "../../lib/finance/calc";
-import { categoryShares, pace, spendCalendar, spendStats, wealthHistory, type WealthPoint } from "../../lib/finance/story";
+import { budgetStatuses, buildInsights, goalProjection, goalSaved, inMonth, safeToSpend, totals } from "../../lib/finance/calc";
+import { FlowCard } from "./sankey";
+import { cashflowGraph, categoryShares, pace, spendCalendar, spendStats, wealthHistory, type WealthPoint } from "../../lib/finance/story";
 import { gainOf, isGoldAsset, assetValue, assetsChange, type GoldData } from "../../lib/finance/assets";
 import { billsFor, forecast, healthScore } from "../../lib/finance/kelola";
 import { rupiah } from "../../lib/djiwa-pay-format";
@@ -53,7 +54,7 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
   const pc = useMemo(() => pace(entries, now), [entries]);
   const st = useMemo(() => spendStats(entries, now), [entries]);
   const shares = useMemo(() => categoryShares(entries, now), [entries]);
-  const flow = useMemo(() => monthlySeries(entries, 6, now), [entries]);
+  const flowGraph = useMemo(() => cashflowGraph(month, prev.filter((e) => new Date(e.at).getDate() <= now.getDate())), [month, prev]);
   const health = useMemo(() => healthScore({ entries, state, cash }), [entries, state, cash]);
   const fc = useMemo(() => forecast(cash, entries, state.bills, now), [cash, entries, state.bills]);
   const bills = useMemo(() => billsFor(state.bills, now).filter((v) => v.status !== "paid").slice(0, 2), [state.bills]);
@@ -96,9 +97,9 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
           : <div className="dpx-st-card dpx-st-story"><b>Belum ada berita</b><span className="dpx-sub">Belum ada kabar untuk topik ini hari ini.</span></div>}
       </DragRow>
 
-      <Card title="Arus kas 6 bulan" right={<Btn type="button" className="dpx-st-link" onClick={() => nav.go("/ringkasan")}>Laporan</Btn>}>
-        <CashflowChart rows={flow} />
-        <div className="dpx-st-legend"><span><i style={{ background: "#4f7a2b" }} />Masuk</span><span><i style={{ background: "#c9461b" }} />Keluar</span><span><i style={{ background: "#2b2620" }} />Tabungan bersih</span></div>
+      <Card title="Arus uang bulan ini" right={<Btn type="button" className="dpx-st-link" onClick={() => nav.go("/ringkasan")}>Laporan</Btn>}>
+        <FlowCard graph={flowGraph} state={state} visible={visible} />
+        <div className="dpx-st-legend"><span><i style={{ background: "#2e9e57" }} />Pemasukan</span><span><i style={{ background: "#d9483b" }} />Pengeluaran</span><span><i style={{ background: "#1f7a46" }} />Kas bersih</span></div>
       </Card>
 
       {shares.rows.length ? <Card title="Ke mana uangmu pergi" right={<span className="dpx-sub">{now.toLocaleDateString("id-ID", { month: "short" })}</span>}>

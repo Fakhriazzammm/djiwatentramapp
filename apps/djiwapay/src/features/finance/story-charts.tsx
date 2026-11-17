@@ -6,7 +6,7 @@ import { short } from "../kelola/kelola-ui";
 
 /** Charts for the Cerita Beranda. Plain SVG, no chart library; every number is drawn on one scale. */
 const ACC = "#c9461b", OK = "#4f7a2b", NAVY = "#2b2620", GOLD = "#c9962e", GRID = "rgba(43,38,32,.1)";
-export const CAT_COLORS = [ACC, NAVY, GOLD, OK];
+export const CAT_COLORS = [ACC, NAVY, GOLD, OK, "#3b6ea5", "#8a5ba8", "#c0577d", "#8b8173"];
 export const rpFull = (n: number) => `${n < 0 ? "−" : ""}Rp ${Math.abs(Math.round(n)).toLocaleString("id-ID")}`;
 const niceMax = (v: number) => { if (v <= 0) return 1; const p = 10 ** Math.floor(Math.log10(v)), n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; };
 
@@ -108,4 +108,20 @@ export function DragRow({ className = "", children, ...rest }: { className?: str
     onPointerMove={(e) => { const s = st.current; if (!s.down || !ref.current) return; const dx = e.clientX - s.x; if (!s.moved && Math.abs(dx) > 5) { s.moved = true; setDrag(true); } if (s.moved) ref.current.scrollLeft = s.left - dx; }}
     onPointerUp={() => { st.current.down = false; setDrag(false); }} onPointerLeave={() => { st.current.down = false; setDrag(false); }}
     onClickCapture={(e) => { if (st.current.moved) { e.preventDefault(); e.stopPropagation(); st.current.moved = false; } }}>{children}</div>;
+}
+
+/* ---------- pengeluaran harian ---------- */
+export function DailyBars({ perDay, elapsed, today, visible }: { perDay: number[]; elapsed: number; today: number | null; visible: boolean }) {
+  const [pick, setPick] = useState<number | null>(null);
+  const W = 300, H = 150, pl = 40, pt = 12, pb = 20, n = perDay.length, spent = perDay.slice(0, elapsed), avg = elapsed ? spent.reduce((a, b) => a + b, 0) / elapsed : 0;
+  const mx = niceMax(Math.max(...perDay, avg, 1)), Y = (a: number) => pt + (H - pt - pb) * (1 - a / mx), bw = (W - 4 - pl) / n;
+  const i = pick ?? (today ? today - 1 : null), tip = i !== null && perDay[i] !== undefined ? perDay[i] : null;
+  const move = (e: React.PointerEvent<SVGSVGElement>) => { const r = e.currentTarget.getBoundingClientRect(), x = ((e.clientX - r.left) / r.width) * W; setPick(Math.max(0, Math.min(elapsed - 1, Math.floor((x - pl) / bw)))); };
+  return <><div className="dpx-st-read"><b>{i !== null && tip !== null ? (visible ? rpFull(tip) : "Rp •••••") : "—"}</b><span className="dpx-sub">{i !== null ? `tanggal ${i + 1}` : ""}{avg > 0 ? ` · rata-rata ${visible ? rpFull(Math.round(avg)) : "•••"}` : ""}</span></div>
+    <svg className="dpx-st-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Pengeluaran per hari" onPointerMove={move} onPointerDown={move} onPointerLeave={() => setPick(null)}>
+      {[0, mx / 2, mx].map((g) => <g key={g}><line x1={pl} x2={W - 4} y1={Y(g)} y2={Y(g)} stroke={GRID} /><text x={pl - 5} y={Y(g) + 3} textAnchor="end">{g ? short(g) : "0"}</text></g>)}
+      {perDay.map((v, k) => { const x = pl + bw * k + bw * 0.15, w = Math.max(2, bw * 0.7), future = k >= elapsed; return future ? <rect key={k} x={x} y={Y(0) - 2} width={w} height="2" rx="1" fill="rgba(43,38,32,.12)" /> : v > 0 ? <rect key={k} x={x} y={Y(v)} width={w} height={Math.max(2, Y(0) - Y(v))} rx={Math.min(3, w / 2)} fill={k === i ? NAVY : ACC} /> : <circle key={k} cx={x + w / 2} cy={Y(0) - 3} r="2.2" fill={OK} />; })}
+      {avg > 0 ? <><line x1={pl} x2={W - 4} y1={Y(avg)} y2={Y(avg)} stroke={NAVY} strokeDasharray="4 3" opacity=".7" /><text x={W - 6} y={Y(avg) - 4} textAnchor="end" style={{ fill: NAVY, fontWeight: 700 }}>rata-rata</text></> : null}
+      {[1, 5, 10, 15, 20, 25, n].filter((d, k, a) => a.indexOf(d) === k && d <= n).map((d) => <text key={d} x={pl + bw * (d - 1) + bw / 2} y={H - 5} textAnchor="middle">{d}</text>)}
+    </svg></>;
 }

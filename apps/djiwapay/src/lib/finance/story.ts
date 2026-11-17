@@ -96,3 +96,21 @@ export function categoryShares(entries: Entry[], now = new Date(), limit = 4) {
 }
 
 export const monthTotals = (entries: Entry[], year: number, month: number) => totals(entries.filter((e) => inMonth(e, year, month)));
+
+/* ---------- money flow (Sankey) ---------- */
+export type FlowNode = { id: string; amount: number; change: number | null; kind: "in" | "out" | "net" | "gap" };
+export type FlowGraph = { left: FlowNode[]; right: FlowNode[]; total: number; income: number; spent: number; net: number };
+const byCat = (entries: Entry[], kind: "in" | "out") => { const m = new Map<string, number>(); for (const e of entries) if (e.kind === kind) m.set(e.categoryId, (m.get(e.categoryId) ?? 0) + e.amount); return m; };
+const fold = (rows: [string, number][], keep: number, restId: string) => (rows.length > keep ? [...rows.slice(0, keep - 1), [restId, rows.slice(keep - 1).reduce((s, r) => s + r[1], 0)] as [string, number]] : rows);
+const chg = (cur: number, was: number | undefined) => (was && was > 0 ? Math.round(((cur - was) / was) * 1000) / 10 : null);
+/** Where this month's money came from and where it went. `compare` is the period the change percentages refer to. */
+export function cashflowGraph(month: Entry[], compare: Entry[], maxRight = 7): FlowGraph {
+  const inc = byCat(month, "in"), out = byCat(month, "out"), pin = byCat(compare, "in"), pout = byCat(compare, "out");
+  const income = [...inc.values()].reduce((s, v) => s + v, 0), spent = [...out.values()].reduce((s, v) => s + v, 0), net = income - spent;
+  const sorted = (m: Map<string, number>) => [...m.entries()].sort((a, b) => b[1] - a[1]);
+  const left: FlowNode[] = fold(sorted(inc), 4, "_inrest").map(([id, amount]) => ({ id, amount, change: id === "_inrest" ? null : chg(amount, pin.get(id)), kind: "in" as const }));
+  if (net < 0) left.push({ id: "_gap", amount: -net, change: null, kind: "gap" });
+  const right: FlowNode[] = fold(sorted(out), net > 0 ? maxRight - 1 : maxRight, "_outrest").map(([id, amount]) => ({ id, amount, change: id === "_outrest" ? null : chg(amount, pout.get(id)), kind: "out" as const }));
+  if (net > 0) right.unshift({ id: "_net", amount: net, change: null, kind: "net" });
+  return { left, right, total: Math.max(income, spent), income, spent, net };
+}

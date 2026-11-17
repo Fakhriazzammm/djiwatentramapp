@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { categoryShares, pace, spendCalendar, spendStats, wealthHistory } from "../src/lib/finance/story";
+import { cashflowGraph, categoryShares, pace, spendCalendar, spendStats, wealthHistory } from "../src/lib/finance/story";
 import { emptyState } from "../src/lib/finance/store";
 import type { Entry } from "../src/lib/finance/types";
 
@@ -46,5 +46,24 @@ describe("pace and stats", () => {
     const rows = categoryShares([e({ categoryId: "a", amount: 5 }), e({ categoryId: "b", amount: 4 }), e({ categoryId: "c", amount: 3 }), e({ categoryId: "d", amount: 2 }), e({ categoryId: "f", amount: 1 })], NOW, 4);
     expect(rows.rows.map((r) => r.id)).toEqual(["a", "b", "c", "_rest"]);
     expect(rows.rows[3].amount).toBe(3);
+  });
+});
+
+describe("cashflowGraph", () => {
+  const m = [e({ kind: "in", categoryId: "gaji", amount: 10_000 }), e({ categoryId: "makan", amount: 4_000 }), e({ categoryId: "belanja", amount: 1_000 })];
+  test("balances income against spending plus what is left", () => {
+    const g = cashflowGraph(m, []);
+    expect(g.income).toBe(10_000); expect(g.spent).toBe(5_000); expect(g.net).toBe(5_000);
+    expect(g.right.map((n) => n.id)).toEqual(["_net", "makan", "belanja"]);
+    expect(g.right.reduce((s, n) => s + n.amount, 0)).toBe(g.total);
+  });
+  test("adds a gap source when spending exceeds income", () => {
+    const g = cashflowGraph([e({ kind: "in", categoryId: "gaji", amount: 1_000 }), e({ categoryId: "makan", amount: 3_000 })], []);
+    expect(g.left.map((n) => n.id)).toEqual(["gaji", "_gap"]);
+    expect(g.left.reduce((s, n) => s + n.amount, 0)).toBe(g.total);
+  });
+  test("reports change against the comparison period", () => {
+    const g = cashflowGraph(m, [e({ categoryId: "makan", amount: 2_000 })]);
+    expect(g.right.find((n) => n.id === "makan")?.change).toBe(100);
   });
 });

@@ -340,59 +340,7 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
   </div></Sky></div>;
 }
 
-/* ---------- Laporan ---------- */
-export function FinReport({ ctx, onBack }: { ctx: FinCtx; onBack: () => void }) {
-  const { fin } = ctx; const { state, entries } = fin;
-  const today = new Date();
-  const [cursor, setCursor] = useState({ y: today.getFullYear(), m: today.getMonth() });
-  const [tab, setTab] = useState<"sum" | "cat" | "trend" | "flow">("sum");
-  const isCurrent = cursor.y === today.getFullYear() && cursor.m === today.getMonth();
-  const shift = (d: number) => setCursor((c) => { const n = new Date(c.y, c.m + d, 1); return { y: n.getFullYear(), m: n.getMonth() }; });
-  const month = entries.filter((e) => inMonth(e, cursor.y, cursor.m));
-  const prevD = new Date(cursor.y, cursor.m - 1, 1);
-  const prev = entries.filter((e) => inMonth(e, prevD.getFullYear(), prevD.getMonth()));
-  const t = totals(month), pt = totals(prev);
-  const cats = useMemo(() => [...spendByCategory(month).entries()].sort((a, b) => b[1] - a[1]), [month]);
-  const prevCats = useMemo(() => spendByCategory(prev), [prev]);
-  const perDay = useMemo(() => dailySpend(entries, cursor.y, cursor.m), [entries, cursor]);
-  const max = Math.max(0, ...perDay);
-  const series = useMemo(() => monthlySeries(entries, 6, new Date(cursor.y, cursor.m, 1)), [entries, cursor]);
-  const smax = Math.max(1, ...series.map((s) => Math.max(s.out, s.in)));
-  const elapsed = isCurrent ? today.getDate() : daysIn(cursor.y, cursor.m);
-  const offset = (new Date(cursor.y, cursor.m, 1).getDay() + 6) % 7;
-  const incomeBy = useMemo(() => { const m = new Map<string, number>(); for (const e of month) if (e.kind === "in") m.set(e.categoryId, (m.get(e.categoryId) ?? 0) + e.amount); return [...m.entries()].sort((a, b) => b[1] - a[1]); }, [month]);
-  const exportCsv = () => { const blob = new Blob(["﻿" + toCsv(entries, state.categories, state.accounts)], { type: "text/csv;charset=utf-8" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `djiwa-pay-catatan-${cursor.y}-${String(cursor.m + 1).padStart(2, "0")}.csv`; a.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000); ctx.notify("CSV diunduh"); };
-  const donutR = 48, circ = 2 * Math.PI * donutR; let off = 0;
-  return <div className="dpx-page"><Sky><div className="dpx-pad dpx-nobar">
-    <Header title="Laporan" onBack={onBack} right={<Btn type="button" className="dpx-rb" onClick={exportCsv} aria-label="Ekspor CSV"><Ic n="dl" /></Btn>} />
-    <div className="dpx-chips" style={{ marginTop: 2 }}>{([["sum", "Ringkasan"], ["cat", "Kategori"], ["trend", "Tren"], ["flow", "Arus uang"]] as const).map(([k, l]) => <Btn key={k} type="button" className={`dpx-chip ${tab === k ? "dpx-on" : ""}`} onClick={() => setTab(k)}>{l}</Btn>)}</div>
-    <div className="dpx-spread" style={{ margin: "6px 0 4px" }}><Btn type="button" className="dpx-rb" onClick={() => shift(-1)} aria-label="Bulan sebelumnya"><Ic n="back" size="sm" /></Btn><b style={{ fontSize: 17, textTransform: "capitalize" }}>{monthLabel(cursor.y, cursor.m)}</b><Btn type="button" className="dpx-rb" style={isCurrent ? { opacity: 0.4 } : undefined} disabled={isCurrent} onClick={() => shift(1)} aria-label="Bulan berikutnya"><Ic n="chev" size="sm" /></Btn></div>
-    {month.length === 0 ? <Empty img="sales-report" title="Belum ada data bulan ini" text="Catat pengeluaran atau pemasukan agar laporan terisi." /> : <AnimatePresence mode="wait" initial={false}><motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-      {tab === "sum" ? <>
-        <div className="dpx-mt"><div className="dpx-sub">Uang keluar</div><div className="dpx-display" style={{ fontSize: 46 }}><small style={{ fontSize: 22 }}>Rp</small><AnimatedNumber value={t.out} /></div>{pt.out > 0 ? <div className="dpx-sub dpx-mt8"><b style={{ color: t.out <= pt.out ? "var(--ok)" : "var(--danger)" }}>{t.out <= pt.out ? "▼" : "▲"} {Math.abs(Math.round(((t.out - pt.out) / pt.out) * 100))}%</b> dibanding bulan lalu ({rupiah(pt.out)})</div> : null}</div>
-        <div className="dpx-kpi dpx-mt"><div className="dpx-group dpx-white"><small>Masuk</small><b className="dpx-up">{rupiah(t.in)}</b></div><div className="dpx-group dpx-white"><small>Selisih</small><b>{t.net < 0 ? "−" : ""}{rupiah(t.net)}</b></div><div className="dpx-group dpx-white"><small>Rasio menabung</small><b>{t.in > 0 ? `${Math.max(0, Math.round((t.net / t.in) * 100))}%` : "—"}</b></div><div className="dpx-group dpx-white"><small>Rata-rata / hari</small><b>{rupiah(t.out / elapsed)}</b></div></div>
-        <div className="dpx-sec"><h2>Kalender harian</h2></div><div className="dpx-heatw">{["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"].map((d) => <span key={d}>{d}</span>)}</div>
-        <div className="dpx-heat">{Array.from({ length: offset }, (_, i) => <span key={`b${i}`} />)}{perDay.map((a, i) => { const day = i + 1; const fut = isCurrent && day > today.getDate(); const l = heatLevel(a, max); return <motion.div key={day} initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} transition={{ ...spring, delay: day * 0.01 }} className={`dpx-d ${fut ? "dpx-fut" : l ? "dpx-l" + l : ""} ${isCurrent && day === today.getDate() ? "dpx-today" : ""}`} title={a ? `${day}: ${rupiah(a)}` : String(day)}>{day}</motion.div>; })}</div>
-      </> : tab === "cat" ? <>
-        <div className="dpx-group dpx-white dpx-mt" style={{ display: "flex", justifyContent: "center", padding: 22 }}><div className="dpx-ring" style={{ width: 170, height: 170 }}><svg viewBox="0 0 132 132">{cats.map(([id, v]) => { const len = (v / (t.out || 1)) * circ; const el = <circle key={id} cx="66" cy="66" r={donutR} fill="none" stroke={COLORS[catOf(state, id).tone]} strokeWidth="18" strokeDasharray={`${Math.max(0, len - 2)} ${circ - len + 2}`} strokeDashoffset={-off} />; off += len; return el; })}</svg><div className="dpx-c"><div><b style={{ fontSize: 17 }}>{rupiah(t.out)}</b><span>keluar</span></div></div></div></div>
-        <div className="dpx-glabel">Per kategori</div>
-        <div className="dpx-group dpx-white">{cats.map(([id, v], i) => { const c = catOf(state, id); const p = prevCats.get(id) ?? 0; const d = p > 0 ? Math.round(((v - p) / p) * 100) : null; return <div className="dpx-bud" key={id}><div className="dpx-top"><CatIcon cat={c} /><div className="dpx-main"><b>{c.name}</b><span>{Math.round((v / (t.out || 1)) * 100)}% dari total{d !== null ? <> · <span className={d <= 0 ? "dpx-up" : "dpx-dn"}>{d <= 0 ? "▼" : "▲"} {Math.abs(d)}%</span> vs bulan lalu</> : ""}</span></div><b style={{ fontSize: 14 }}>{rupiah(v)}</b></div><div style={{ marginTop: 8 }}><Bar percent={(v / (cats[0]?.[1] || 1)) * 100} delay={i * 0.06} /></div></div>; })}</div>
-      </> : tab === "trend" ? <>
-        <div className="dpx-sec"><h2>Masuk vs keluar · 6 bulan</h2></div>
-        <div className="dpx-group dpx-white"><div className="dpx-bars">{series.map((s, i) => <div key={s.label + i}><div className="dpx-bars2" style={{ height: 110 }}><motion.i initial={{ height: 0 }} animate={{ height: `${(s.in / smax) * 100}%` }} transition={{ duration: 0.7, delay: i * 0.05 }} style={{ background: "linear-gradient(180deg,#7fd1a6,var(--ok))", borderRadius: "6px 6px 2px 2px" }} /><motion.i className="dpx-out" initial={{ height: 0 }} animate={{ height: `${(s.out / smax) * 100}%` }} transition={{ duration: 0.7, delay: i * 0.05 + 0.05 }} style={{ borderRadius: "6px 6px 2px 2px" }} /></div>{s.label}</div>)}</div><div className="dpx-legend" style={{ flexDirection: "row", gap: 16, justifyContent: "center", marginTop: 8 }}><div><i style={{ background: "var(--ok)" }} />Masuk</div><div><i style={{ background: "var(--danger)" }} />Keluar</div></div></div>
-        <div className="dpx-glabel">Perbandingan dengan bulan lalu</div>
-        <div className="dpx-group dpx-flush dpx-white">{cats.slice(0, 6).map(([id, v]) => { const c = catOf(state, id); const p = prevCats.get(id) ?? 0; const d = p > 0 ? Math.round(((v - p) / p) * 100) : null; return <Row key={id} icon={iconOr(c.icon)} tone={c.tone} title={c.name} sub={d === null ? "Baru bulan ini" : d <= 0 ? "Lebih hemat" : "Lebih boros"} trail={d === null ? <b>{rupiah(v)}</b> : <b className={d <= 0 ? "dpx-up" : "dpx-dn"}>{d <= 0 ? "▼" : "▲"} {Math.abs(d)}%</b>} />; })}</div>
-      </> : <>
-        <div className="dpx-note dpx-info" style={{ marginTop: 6 }}><Ic n="info" /><div>Ke mana uang bulan ini mengalir: dari sumber pemasukan ke kategori pengeluaran dan tabungan.</div></div>
-        <div className="dpx-group dpx-white dpx-mt"><div className="dpx-flow">
-          <div className="dpx-col">{incomeBy.length ? incomeBy.map(([id, v]) => <div key={id} className="dpx-node dpx-c-emerald" style={{ flex: v }}><span>{catOf(state, id).name.split(" ")[0]}</span><span>{rupiah(v)}</span></div>) : <div className="dpx-node dpx-c-slate" style={{ flex: 1 }}><span>Belum ada pemasukan</span></div>}</div>
-          <div className="dpx-mid"><Ic n="chev" /></div>
-          <div className="dpx-col">{cats.map(([id, v]) => <div key={id} className={`dpx-node dpx-c-${catOf(state, id).tone}`} style={{ flex: Math.max(v, t.in * 0.04) }}><span>{catOf(state, id).name.split(" ")[0]}</span><span>{rupiah(v)}</span></div>)}{t.net > 0 ? <div className="dpx-node dpx-c-emerald" style={{ flex: t.net }}><span>Tersisa</span><span>{rupiah(t.net)}</span></div> : null}</div>
-        </div></div>
-      </>}
-    </motion.div></AnimatePresence>}
-  </div></Sky></div>;
-}
+export { FinReport } from "./fin-report";
 
 /* ---------- Pengaturan keuangan ---------- */
 export function FinSettings({ ctx, onBack }: { ctx: FinCtx; onBack: () => void }) {
