@@ -12,14 +12,16 @@ import { ExpensesView } from "./views/Expenses";
 import { StockView } from "./views/Stock";
 import { TeamView } from "./views/Team";
 import { PurchasingView } from "./views/Purchasing";
+import { KolView } from "./views/Kol";
 
 type Access = { status: "none" | "pending" | "approved" | "rejected" | "revoked"; role: Role | null; requestedRole: Role | null };
-type Page = "guide" | "dash" | "keuangan" | "expense" | "opset" | "sdm" | "purch" | "belanja" | "laporan";
+type Page = "guide" | "dash" | "keuangan" | "expense" | "opset" | "sdm" | "purch" | "belanja" | "laporan" | "kol";
 // [id, icon, title, subtitle, short label] — same as the prototype RAIL.
 const RAIL: Record<Role, [Page, string, string, string, string][]> = {
   manager: [
     ["guide", "book", "Playbook & Dokumen", "Panduan, templat", "Panduan"],
     ["dash", "grid", "Dasbor Manager", "Tugas & monitor", "Dasbor"],
+    ["kol", "spark", "KOL Marketing", "Creator, kampanye, visit", "KOL"],
     ["keuangan", "chart", "Keuangan", "Transaksi & analitik", "Keuangan"],
     ["expense", "receipt", "Pengeluaran", "Scan struk & input", "Biaya"],
     ["opset", "sl", "Stok & Opname", "Satuan, jadwal, toleransi", "Stok"],
@@ -43,7 +45,7 @@ const FIRST_KEY = "mgr_seen_guide";
 export function App() {
   const { data: session, isPending } = managerAuth.useSession();
   const [access, setAccess] = useState<Access | null>(null);
-  const [page, setPage] = useState<Page | null>(() => { const h = window.location.hash.slice(1); return (["guide", "dash", "keuangan", "expense", "opset", "sdm", "purch", "belanja", "laporan"] as string[]).includes(h) ? (h as Page) : null; });
+  const [page, setPage] = useState<Page | null>(() => { const h = window.location.hash.slice(1); return (["guide", "dash", "keuangan", "expense", "opset", "sdm", "purch", "belanja", "laporan", "kol"] as string[]).includes(h) ? (h as Page) : null; });
   const [sheet, setSheet] = useState(false);
   const [bug, setBug] = useState(0);
 
@@ -96,9 +98,10 @@ export function App() {
             <span className="circ" title="Notifikasi"><Ic n="bell" /></span>
             <span className="circ blk" title={session.user.name}>{initials[0]}</span>
           </header>
-          <div className={`body ${["laporan", "keuangan", "sdm", "expense", "opset", "purch", "belanja"].includes(cur) ? "scroll" : ""}`}>
+          <div className={`body ${["laporan", "keuangan", "sdm", "expense", "opset", "purch", "belanja", "kol"].includes(cur) ? "scroll" : ""}`}>
             {cur === "guide" && <GuideView role={role} onSkip={() => go("dash")} />}
             {cur === "dash" && <DashView role={role} onNavigate={(p) => go(p as Page)} />}
+            {cur === "kol" && role === "manager" && <KolView />}
             {cur === "keuangan" && role === "manager" && <FinanceView />}
             {cur === "expense" && <ExpensesView />}
             {cur === "opset" && <StockView role={role} />}
