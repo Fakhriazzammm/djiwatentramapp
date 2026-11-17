@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { registerPinRequester } from "../src/lib/pin";
 import {
   checkoutStep,
   isSettledPpob,
@@ -122,15 +123,18 @@ describe("Djiwa Pay checkout presentation contract", () => {
   test("sends a normalized phone to the transfer bridge", async () => {
     const originalFetch = globalThis.fetch;
     let requestBody: Record<string, unknown> | undefined;
-    globalThis.fetch = (async (_input, init) => {
+    globalThis.fetch = (async (input, init) => {
+      if (String(input).endsWith("/pin/status")) return new Response(JSON.stringify({ success: true, set: true, lockedUntil: null }), { status: 200, headers: { "Content-Type": "application/json" } });
       requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
       return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });
     }) as typeof fetch;
+    const unregister = registerPinRequester(async () => "482916");
     try {
       await transferWallet("0812-3456-7890", 1000, "Bantuan makan");
-      expect(requestBody).toMatchObject({ action: "transfer", phone: "6281234567890", amount: 1000, note: "Bantuan makan" });
+      expect(requestBody).toMatchObject({ action: "transfer", phone: "6281234567890", amount: 1000, note: "Bantuan makan", pin: "482916" });
       expect(requestBody).not.toHaveProperty("recipient");
     } finally {
+      unregister();
       globalThis.fetch = originalFetch;
     }
   });
@@ -145,5 +149,18 @@ describe("Djiwa Pay checkout presentation contract", () => {
     expect(walletQuickActionState("scan")).toEqual({ supported: true, badge: "" });
     expect(walletQuickActionState("withdraw")).toEqual({ supported: false, badge: "Soon" });
     expect(walletQuickActionState("send")).toEqual({ supported: true, badge: "" });
+  });
+});
+
+describe("pin guard", () => {
+  test("asks again after a wrong PIN and stops when the person cancels", async () => {
+    const { pinGuarded, PinCancelled } = await import("../src/lib/pin");
+    const originalFetch = globalThis.fetch; let calls = 0; const asked: (string | undefined)[] = [];
+    globalThis.fetch = (async (input) => String(input).endsWith("/pin/status") ? new Response(JSON.stringify({ set: true }), { status: 200 }) : new Response(JSON.stringify({ success: false, error: "PIN_INVALID", attemptsLeft: 4 }), { status: 403 })) as typeof fetch;
+    const unregister = registerPinRequester(async (r) => { asked.push(r.error); calls += 1; return calls === 1 ? "111112" : null; });
+    try {
+      await expect(pinGuarded("Uji", async () => new Response(JSON.stringify({ success: false, error: "PIN_INVALID", attemptsLeft: 4 }), { status: 403 }))).rejects.toBeInstanceOf(PinCancelled);
+      expect(asked[0]).toBeUndefined(); expect(asked[1]).toContain("PIN salah");
+    } finally { unregister(); globalThis.fetch = originalFetch; }
   });
 });

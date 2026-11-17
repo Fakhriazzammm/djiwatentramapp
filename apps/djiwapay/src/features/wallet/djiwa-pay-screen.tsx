@@ -16,6 +16,8 @@ import { CalendarPage, ForecastPage, HealthPage, ToolsPage } from "../kelola/kel
 import { AssetOverview } from "../kelola/asset-overview";
 import { IntegrationsPage, ReviewPage, useInbound } from "../integrations/integrations-pages";
 import { financeNotes, loadRead, saveRead } from "../../lib/finance/notify";
+import { PinHost } from "../auth/pin-ui";
+import { ProfileEditPage, SecurityPage } from "../account/account-pages";
 import { FinBudget, FinHome, FinRecords, FinReport, FinSettings, FinSheetHost, FinWallet, ManualForm, Onboarding, type FinCtx, type FinSheet } from "../finance/fin-pages";
 import type { Notify } from "../finance/fin-sheets";
 import { useFinance } from "../../lib/finance/use-finance";
@@ -41,7 +43,10 @@ function PpobReceipt({ product, number, serialNumber, reference, onDone }: { pro
   return <div className="ppob-receipt-backdrop"><section className="ppob-receipt-shell" role="dialog" aria-modal="true" aria-labelledby="ppob-receipt-title"><div className="ppob-receipt-brand"><span>D</span><strong>Djiwa Pay</strong><small>{stage === "complete" ? "Pembayaran berhasil" : stage === "printing" ? "Menyiapkan struk" : "Memproses pembayaran"}</small></div><div className={`ppob-receipt-paper ${stage}`}><div className="ppob-receipt-check"><Ic n={stage === "complete" ? "check" : "clock"} size="lg" /></div><h2 id="ppob-receipt-title">Pembayaran Berhasil</h2><p className="ppob-receipt-caption">Struk digital transaksi PPOB</p><div className="ppob-receipt-rows"><span>Operator <b>{operator}</b></span><span>Produk <b>{product.product_description}</b></span><span>Nomor tujuan <b>{number}</b></span><span>Total <b>{money(product.product_price)}</b></span><span>Metode <b>Saldo Djiwa Pay</b></span>{serialNumber ? <span>Serial Number <b>{serialNumber}</b></span> : null}{reference ? <span>Referensi <b>{reference}</b></span> : null}</div><div className="ppob-receipt-status">{stage === "complete" ? "Transaksi selesai dan saldo telah dipotong." : stage === "printing" ? "Menyiapkan struk digital..." : "Memverifikasi transaksi..."}</div></div>{stage === "complete" ? <button className="primary-action" onClick={onDone}>Selesai</button> : <div className="ppob-receipt-progress" aria-live="polite">{stage === "printing" ? "Menyiapkan struk..." : "Memproses..."}</div>}</section></div>;
 }
 
-export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefresh, onTopup, navigationContext, onNavigate, onPageReady, transitionId, previewOnly = false }: Props) {
+/** The wallet screen plus the PIN pad it can ask for from anywhere. */
+export function DjiwaPayScreen(props: Props) { return <><DjiwaPayScreenInner {...props} /><PinHost /></>; }
+
+function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh, onTopup, navigationContext, onNavigate, onPageReady, transitionId, previewOnly = false }: Props) {
   // Host apps (Djiwa Travel) already draw a bottom tab bar around the iframe.
   const [frame] = useState(readPayFrameContext);
   const [visible, setVisible] = useState(() => { try { return window.localStorage.getItem("djiwa-pay-balance-visible") !== "0"; } catch { return true; } });
@@ -196,6 +201,7 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   const visibleTransactions = activityFilter === "all" ? transactions : activityFilter === "transfer" ? transactions.filter((entry) => entry.category === "transfer") : transactions.filter((entry) => entry.direction === activityFilter && !entry.direct);
   const fin = useFinance(profile.source_id, transactions);
   const inboundSummary = useInbound();
+  const [accountSub, setAccountSub] = useState<null | "profile" | "security">(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("keamanan") === "1" ? "security" : null));
   const [localRead, setLocalRead] = useState<Set<string>>(() => loadRead(profile.source_id));
   const finNotes = useMemo(() => financeNotes(fin.state, fin.entries, inboundSummary.data, new Date()), [fin.state, fin.entries, inboundSummary.data]);
   const allNotifications = useMemo<WalletNotification[]>(() => [...finNotes.map((n) => ({ id: n.id, title: n.title, message: n.message, notification_type: n.notification_type, created_at: n.created_at, unread: !localRead.has(n.id), action_payload: { route: n.route } })), ...walletNotifications].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)), [finNotes, localRead, walletNotifications]);
@@ -568,7 +574,9 @@ export function DjiwaPayScreen({ profile, wallet, loading, error, busy, onRefres
   if (walletRoute?.page === "transfer" || walletRoute?.page === "receive") return <DjiwaPayWalletAction mode={walletRoute.page === "transfer" ? "send" : "receive"} profile={profile} balance={balance} initialMode={transferInitialMode} initialRecipient={transferInitialRecipient} onClose={() => goPayRoute("/")} onSuccess={() => { goPayRoute("/"); onRefresh(); if (!previewOnly) void refreshWalletNotifications(); }} />;
   if (walletRoute?.page === "help") return frameShell(<HelpPage onBack={() => goBack("/")} nav={payNav} />, null);
   if (walletRoute?.page === "summary") return frameShell(<FinReport ctx={finCtx} onBack={() => goBack("/")} />, null);
-  if (walletRoute?.page === "account") return frameShell(<AccountPage profile={profile} unread={unreadCount} customerHome={customerHome} embedded={embedded} onBack={() => goBack("/")} nav={payNav} onOpenNotifications={openNotifications} />, null);
+  if (walletRoute?.page === "account" && accountSub === "profile") return frameShell(<ProfileEditPage onBack={() => setAccountSub(null)} notify={(t) => notify(t)} />, null);
+  if (walletRoute?.page === "account" && accountSub === "security") return frameShell(<SecurityPage onBack={() => setAccountSub(null)} notify={(t) => notify(t)} />, null);
+  if (walletRoute?.page === "account") return frameShell(<AccountPage onOpenProfile={() => setAccountSub("profile")} onOpenSecurity={() => setAccountSub("security")} profile={profile} unread={unreadCount} customerHome={customerHome} embedded={embedded} onBack={() => goBack("/")} nav={payNav} onOpenNotifications={openNotifications} />, null);
   if (walletRoute?.page === "settings") return frameShell(<FinSettings ctx={finCtx} onBack={() => goBack("/akun")} />, null);
   if (walletRoute?.page === "integrations") return frameShell(<IntegrationsPage ctx={finCtx} onBack={() => goBack("/pengaturan")} onReview={() => goPayRoute("/tinjau")} />, null);
   if (walletRoute?.page === "review") return frameShell(<ReviewPage ctx={finCtx} onBack={() => goBack("/")} onOpenIntegrations={() => goPayRoute("/integrasi")} />, "home");

@@ -15,6 +15,7 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createHmac } from "node:crypto";
 import { createTravelWalletPaymentEndpoint } from "./travel-wallet-payment.js";
+import { checkPin, pinResponse, registerPayAccount } from "./pay-account.js";
 
 const app = new Hono();
 const MAYAR_PROXY_URL = process.env.MAYAR_PROXY_URL || "";
@@ -821,6 +822,8 @@ async function callIakPpob(body: Record<string, unknown>) {
   return payload.data && typeof payload.data === "object" ? payload.data as Record<string, any> : {};
 }
 
+registerPayAccount({ app, pool, auth, privateJson, requirePaySession, revokePaySessions: (userId) => { for (const [key, value] of payBridgeSessions) if (value.userId === userId) payBridgeSessions.delete(key); } });
+
 app.post("/api/pay-bridge/ppob/postpaid/catalog", async (c) => {
   const session = await requirePaySession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);
@@ -865,6 +868,7 @@ app.post("/api/pay-bridge/ppob/postpaid/payment", async (c) => {
   const body = await c.req.json().catch(() => ({})) as { refId?: unknown; paymentMethod?: unknown };
   const refId = typeof body.refId === "string" ? body.refId.trim() : ""; const sourceId = String(session.customer.source_id || "");
   if (!refId || body.paymentMethod !== "wallet" || !sourceId) return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+  { const pv = await checkPin(pool, sourceId, (body as Record<string, unknown>).pin); if (!pv.ok) return pinResponse(privateJson, pv); }
   const found = await pool.query<Record<string, any>>(`SELECT * FROM pos.ppob_transactions WHERE ref_id=$1 AND customer_source_id=$2 LIMIT 1`, [refId, sourceId]);
   const row = found.rows[0];
   if (!row) return privateJson({ success: false, error: "PPOB_TRANSACTION_NOT_FOUND" }, 404);
@@ -1006,6 +1010,7 @@ app.post("/api/pay-bridge/ppob/purchase", async (c) => {
   const customerNumber = typeof body.customerNumber === "string" ? body.customerNumber.trim() : "";
   const sourceId = String(session.customer.source_id || ""); const email = String(session.customer.email || "");
   if (!sourceId || !email || !productCode || !/^[0-9]{8,20}$/.test(customerNumber)) return privateJson({ success: false, error: "INVALID_INPUT" }, 400);
+  { const pv = await checkPin(pool, sourceId, (body as Record<string, unknown>).pin); if (!pv.ok) return pinResponse(privateJson, pv); }
   const iakUrl = "https://api.djiwatentram.web.id/api/ppob/iak/";
   const catalogResponse = await fetch(iakUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "price-list" }) });
   const catalogPayload = await catalogResponse.json().catch(() => ({})) as any;
@@ -1162,6 +1167,7 @@ app.post("/api/pay-bridge/wallet", async (c) => {
     if (!target) return privateJson({ success: false, error: "RECIPIENT_NOT_FOUND" }, 404);
     return privateJson({ success: true, recipient: { name: target.name || "Customer Djiwa", phone: normalizedPhone } });
   }
+  if (action === "transfer" || action === "withdrawal-request") { const pv = await checkPin(pool, sourceId, (body as Record<string, unknown>).pin); if (!pv.ok) return pinResponse(privateJson, pv); }
   if (action === "transfer") {
     const rawPhone = typeof body.phone === "string" ? body.phone : typeof body.recipient === "string" ? body.recipient : "";
     const digits = rawPhone.replace(/\D/g, "");

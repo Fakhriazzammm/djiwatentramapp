@@ -1,3 +1,4 @@
+import { pinGuarded } from "./pin";
 import type { WalletLedgerEntry, WalletSummary } from "@djiwaapps/djiwapay-core";
 import type { WalletWithdrawalDraft } from "./djiwa-pay-withdrawal";
 import { normalizeWalletPhone } from "./djiwa-pay-transfer";
@@ -162,7 +163,7 @@ export async function readPpobCatalog(): Promise<PpobProduct[]> {
 
 export type PpobPurchaseResult = { success: boolean; status?: "success" | "pending" | "failed"; message?: string; error?: string; refId?: string; serialNumber?: string | null };
 export async function purchasePpob(productCode: string, customerNumber: string): Promise<PpobPurchaseResult> {
-  const response = await fetch("/api/pay-bridge/ppob/purchase", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productCode, customerNumber }) });
+  const response = await pinGuarded("Bayar dengan saldo Djiwa Pay", (pin) => fetch("/api/pay-bridge/ppob/purchase", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productCode, customerNumber, pin }) }));
   const payload = await response.json().catch(() => ({})) as PpobPurchaseResult;
   if (!response.ok && !payload.error) throw new Error("Pembayaran PPOB gagal diproses");
   return payload;
@@ -192,7 +193,8 @@ export async function checkTopupStatus(invoiceId: string): Promise<TopupStatusRe
 }
 
 export async function transferWallet(recipient: string, amount: number, note = ""): Promise<WalletTransferResult> {
-  const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "transfer", phone: normalizeWalletPhone(recipient), amount, note, idempotencyKey: `djiwapay-transfer-${crypto.randomUUID()}` }) });
+  const idempotencyKey = `djiwapay-transfer-${crypto.randomUUID()}`;
+  const response = await pinGuarded("Transfer saldo", (pin) => fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "transfer", phone: normalizeWalletPhone(recipient), amount, note, idempotencyKey, pin }) }));
   const payload = await response.json().catch(() => ({})) as WalletTransferResult;
   if (!response.ok || !payload.success) throw new Error(payload.error || "Transfer saldo gagal diproses");
   return payload;
@@ -207,7 +209,8 @@ export async function resolveWalletRecipient(phone: string): Promise<WalletRecip
 
 export type WalletWithdrawalResult = { success: boolean; error?: string; message?: string; request?: { request_id?: string; status?: string; amount?: number; requested_balance?: number } };
 export async function requestWalletWithdrawal(draft: WalletWithdrawalDraft): Promise<WalletWithdrawalResult> {
-  const response = await fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "withdrawal-request", ...draft, idempotencyKey: `djiwapay-withdrawal-${crypto.randomUUID()}` }) });
+  const idempotencyKey = `djiwapay-withdrawal-${crypto.randomUUID()}`;
+  const response = await pinGuarded("Tarik saldo", (pin) => fetch("/api/pay-bridge/wallet", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "withdrawal-request", ...draft, idempotencyKey, pin }) }));
   const payload = await response.json().catch(() => ({})) as WalletWithdrawalResult;
   if (!response.ok || !payload.success) throw new Error(payload.error || "WITHDRAWAL_REQUEST_FAILED");
   return payload;
@@ -235,7 +238,10 @@ export async function inquirePostpaid(serviceType: "pln" | "pdam", productCode: 
   return payload.data;
 }
 export async function payPostpaid(refId: string): Promise<PostpaidPaymentResult> {
-  return postpaidRequest<PostpaidPaymentResult>({ action: "payment", refId, paymentMethod: "wallet" });
+  const response = await pinGuarded("Bayar tagihan dengan saldo", (pin) => fetch("/api/pay-bridge/ppob/postpaid/payment", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "payment", refId, paymentMethod: "wallet", pin }) }));
+  const payload = await response.json().catch(() => ({})) as PostpaidPaymentResult;
+  if (!response.ok && !payload.error) throw new Error("PPOB pascabayar belum dapat diproses");
+  return payload;
 }
 export async function checkPostpaidStatus(refId: string): Promise<PostpaidPaymentResult> {
   return postpaidRequest<PostpaidPaymentResult>({ action: "status", refId });

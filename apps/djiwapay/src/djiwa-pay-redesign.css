@@ -891,3 +891,24 @@ html:has(.dpx-plain),body:has(.dpx-plain),#root:has(.dpx-plain){background:#f8f3
 .dpx .dpx-main .dpx-tx-badge{display:inline-block;width:auto;max-width:100%;vertical-align:1px}
 .dpx .dpx-tx-badge.dpx-new{background:var(--blue);color:#fff;margin-left:4px}
 .dpx .dpx-fresh .dpx-btn.dpx-sm{padding:8px 14px}
+
+/* ---------- PIN pad ---------- */
+.dpx.dpx-pin{position:fixed;inset:0;z-index:200;max-width:none;display:flex;align-items:flex-end;justify-content:center;background:rgba(36,31,26,.45)}
+.dpx-pin-card{position:relative;width:100%;max-width:480px;background:var(--canvas);border-radius:28px 28px 0 0;padding:22px 22px calc(env(safe-area-inset-bottom,0px) + 18px);display:grid;justify-items:center;gap:6px;text-align:center}
+.dpx-pin-card h2{margin:4px 0 0;font:800 22px var(--font);letter-spacing:-.03em}.dpx-pin-card .dpx-sub{margin:0;max-width:300px}
+.dpx-pin-x{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;background:#fff;display:grid;place-items:center}
+.dpx-pin-ic{width:54px;height:54px;border-radius:18px;background:var(--blue-soft);display:grid;place-items:center}.dpx-pin-ic img{width:34px;height:34px}
+.dpx-pin-dots{display:flex;gap:14px;margin:12px 0 2px}.dpx-pin-dots i{width:15px;height:15px;border-radius:50%;border:2px solid #c9b99c;background:transparent;transition:background .12s,transform .12s}.dpx-pin-dots i.on{background:var(--navy);border-color:var(--navy);transform:scale(1.08)}
+.dpx-pin-dots.bad{animation:dpx-shake .35s}.dpx-pin-dots.bad i{border-color:var(--danger)}
+@keyframes dpx-shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.dpx-pin-err{min-height:18px;margin:0;font:600 12.5px var(--font);color:var(--danger)}
+.dpx-pin-keys{display:grid;grid-template-columns:repeat(3,76px);gap:10px 18px;margin:4px 0 6px}
+.dpx-pin-key{width:76px;height:58px;border-radius:20px;background:#fff;font:700 24px var(--font);box-shadow:0 2px 8px rgba(43,38,32,.08)}.dpx-pin-key:active{background:var(--group)}
+@media (prefers-reduced-motion:reduce){.dpx-pin-dots.bad{animation:none}}
+
+/* ---------- Akun ---------- */
+.dpx .dpx-ac-group{display:grid;gap:12px;padding:14px;margin-bottom:6px}
+.dpx .dpx-ac-fld span{display:flex;justify-content:space-between;gap:8px}.dpx .dpx-ac-fld em{font-style:normal;margin-top:4px}
+.dpx .dpx-ac-clear{color:var(--blue);font:600 12px var(--font)}
+.dpx .dpx-ac-row{display:flex;align-items:center;gap:12px}.dpx .dpx-ac-row>div{flex:1;min-width:0}.dpx .dpx-ac-row b{display:block;font:700 14px var(--font)}
+.dpx .dpx-ac-panel{display:grid;gap:10px;padding-top:4px}
