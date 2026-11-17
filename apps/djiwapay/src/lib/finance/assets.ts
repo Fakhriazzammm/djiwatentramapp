@@ -39,7 +39,22 @@ export const SUB_LABEL: Record<AssetSub, string> = { batangan: "Emas batangan", 
 export const BUYBACK_CUT: Record<AssetSub, number> = { batangan: 0.05, koin: 0.05, perhiasan: 0.15, lainnya: 0.1 };
 
 /** Value that follows the gold price since the purchase date, keeping what was actually paid as the base. */
+/** Typical change per year, used as the starting guess. Market assets have no fixed rate, so they stay manual. */
+export const DEFAULT_RATE: Partial<Record<Asset["kind"], { rate: number; hint: string }>> = {
+  property: { rate: 6, hint: "Tanah dan rumah biasanya naik sekitar 6% per tahun." },
+  vehicle: { rate: -12, hint: "Kendaraan biasanya turun sekitar 12% per tahun." },
+  electronics: { rate: -25, hint: "Elektronik biasanya turun sekitar 25% per tahun." },
+  other: { rate: -10, hint: "Barang lain biasanya turun sekitar 10% per tahun." },
+};
+export const isEstimated = (a: Pick<Asset, "kind" | "est" | "rate" | "cost" | "boughtOn">) => a.kind !== "gold" && Boolean(a.est) && typeof a.rate === "number" && Number(a.cost) > 0 && Boolean(a.boughtOn);
+/** Estimated value on a day: purchase price grown or shrunk by the yearly rate, never below 5% of what was paid. */
+export function estimateOn(a: Pick<Asset, "cost" | "rate" | "boughtOn">, day: string): number {
+  const cost = a.cost ?? 0, years = Math.max(0, (Date.parse(`${day}T00:00:00`) - Date.parse(`${a.boughtOn}T00:00:00`)) / (365.25 * 864e5));
+  const v = cost * Math.pow(1 + (a.rate ?? 0) / 100, years);
+  return Math.round((a.rate ?? 0) < 0 ? Math.max(cost * 0.05, v) : v);
+}
 export function assetValue(a: Asset, points: GoldPoint[] | null = gold?.points ?? null): number {
+  if (isEstimated(a)) return estimateOn(a, new Date().toISOString().slice(0, 10));
   if (!isGoldAsset(a) || !points?.length) return a.value;
   const now = points[points.length - 1][1], weight = a.weight ?? 0, fine = weight * (a.purity ?? 0.9999);
   if (a.cost && a.boughtOn) return Math.round(a.cost * (now / priceOn(points, a.boughtOn)));
@@ -49,6 +64,11 @@ export function assetValue(a: Asset, points: GoldPoint[] | null = gold?.points ?
 export type Stats = { series: { day: string; value: number }[]; high: number; low: number; gain: number; gainPct: number; perYear: number | null; days: number };
 /** Value of a gold asset day by day from its purchase date. */
 export function assetSeries(a: Asset, points: GoldPoint[]): { day: string; value: number }[] {
+  if (isEstimated(a)) {
+    const start = Date.parse(`${a.boughtOn}T00:00:00`), end = Date.now(), n = Math.max(2, Math.min(60, Math.round((end - start) / (30 * 864e5)) + 1)), rows: { day: string; value: number }[] = [];
+    for (let i = 0; i < n; i += 1) { const day = new Date(start + ((end - start) * i) / (n - 1)).toISOString().slice(0, 10); rows.push({ day, value: estimateOn(a, day) }); }
+    return rows;
+  }
   if (!isGoldAsset(a) || !points.length) return [];
   const from = a.boughtOn ?? points[Math.max(0, points.length - 180)][0];
   const base = a.cost && a.boughtOn ? a.cost / priceOn(points, a.boughtOn) : (a.weight ?? 0) * (a.purity ?? 0.9999);

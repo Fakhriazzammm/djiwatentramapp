@@ -122,7 +122,7 @@ export function loan(principal: number, annualRate: number, months: number) {
 /* ---------- wealth ---------- */
 export const ASSET_KINDS: Record<Asset["kind"], { label: string; icon: string; tone: string }> = {
   gold: { label: "Emas", icon: "gift", tone: "amber" }, fund: { label: "Reksa dana", icon: "pie", tone: "blue" }, stock: { label: "Saham", icon: "trend", tone: "indigo" },
-  crypto: { label: "Kripto", icon: "flash", tone: "violet" }, property: { label: "Properti", icon: "home", tone: "cyan" }, vehicle: { label: "Kendaraan", icon: "car", tone: "slate" }, other: { label: "Lainnya", icon: "tag", tone: "slate" },
+  crypto: { label: "Kripto", icon: "flash", tone: "violet" }, property: { label: "Properti", icon: "home", tone: "cyan" }, vehicle: { label: "Kendaraan", icon: "car", tone: "slate" }, electronics: { label: "Elektronik", icon: "phone", tone: "cyan" }, other: { label: "Lainnya", icon: "tag", tone: "slate" },
 };
 export function netWorth(state: FinanceState, cash: number) {
   const assets = state.assets.reduce((s, a) => s + assetValue(a), 0), goals = state.goals.reduce((s, g) => s + goalSaved(g), 0), debt = debtTotals(state.debts);

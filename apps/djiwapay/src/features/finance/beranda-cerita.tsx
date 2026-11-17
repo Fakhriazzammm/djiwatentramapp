@@ -7,6 +7,7 @@ import { CAT_COLORS, DragRow, Donut, GoldSpark, HeatGrid, PaceChart, WealthChart
 import { FullPage } from "../kelola/asset-ui";
 import { NEWS_TOPICS, timeAgo, useNews, type NewsItem } from "../../lib/finance/news";
 import { GoogleNudge, ReviewChip, useInbound } from "../integrations/integrations-pages";
+import { markAutoSeen } from "../../lib/finance/integrations";
 import { short } from "../kelola/kelola-ui";
 import { budgetStatuses, buildInsights, goalProjection, goalSaved, inMonth, safeToSpend, totals } from "../../lib/finance/calc";
 import { FlowCard } from "./sankey";
@@ -25,11 +26,27 @@ function Card({ title, right, children, className = "" }: { title?: string; righ
 }
 const Sec = ({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) => <div className="dpx-sec dpx-st-sec"><h2>{title}</h2>{action ? <Btn type="button" onClick={onAction}>{action}</Btn> : null}</div>;
 
-const MENU: { label: string; icon: IconName; path?: string; news?: boolean }[] = [
-  { label: "Laporan", icon: "chart", path: "/ringkasan" }, { label: "Kalender", icon: "cal", path: "/kalender" }, { label: "Kesehatan", icon: "heart", path: "/kesehatan" }, { label: "Prakiraan", icon: "trend", path: "/prakiraan" },
-  { label: "Kantong", icon: "pie", path: "/rencana?bagian=kantong" }, { label: "Tujuan", icon: "target", path: "/rencana?bagian=tujuan" }, { label: "Hutang", icon: "users", path: "/rencana?bagian=hutang" }, { label: "Alat", icon: "grid", path: "/alat" },
-  { label: "Berita", icon: "book", news: true }, { label: "Tinjau", icon: "receipt", path: "/tinjau" }, { label: "Email", icon: "link", path: "/integrasi" }, { label: "Pengaturan", icon: "shield", path: "/pengaturan" },
+const MENU: { label: string; icon: IconName; path?: string; news?: boolean; all?: boolean }[] = [
+  { label: "Laporan", icon: "chart", path: "/ringkasan" }, { label: "Kalender", icon: "cal", path: "/kalender" }, { label: "Kesehatan", icon: "heart", path: "/kesehatan" }, { label: "Kantong", icon: "pie", path: "/rencana?bagian=kantong" },
+  { label: "Tujuan", icon: "target", path: "/rencana?bagian=tujuan" }, { label: "Hutang", icon: "users", path: "/rencana?bagian=hutang" }, { label: "Berita", icon: "book", news: true }, { label: "Lainnya", icon: "grid", all: true },
 ];
+type MenuGroup = { title: string; items: { label: string; sub: string; icon: IconName; path?: string; act?: "news" | "notif" | "catat" }[] };
+const ALL_MENU: MenuGroup[] = [
+  { title: "Keuangan", items: [{ label: "Laporan", sub: "Ringkasan, kategori, tren, arus uang", icon: "chart", path: "/ringkasan" }, { label: "Kalender tagihan", sub: "Tagihan rutin dan jatuh tempo", icon: "cal", path: "/kalender" }, { label: "Kesehatan keuangan", sub: "Skor dan langkah tercepat", icon: "heart", path: "/kesehatan" }, { label: "Prakiraan kas", sub: "Saldo sampai akhir bulan", icon: "trend", path: "/prakiraan" }] },
+  { title: "Rencana", items: [{ label: "Anggaran", sub: "Batas per kategori", icon: "chart", path: "/rencana" }, { label: "Kantong", sub: "Bagi pemasukan", icon: "pie", path: "/rencana?bagian=kantong" }, { label: "Tujuan", sub: "Tabungan dan targetnya", icon: "target", path: "/rencana?bagian=tujuan" }, { label: "Hutang & piutang", sub: "Cicilan dan jatuh tempo", icon: "users", path: "/rencana?bagian=hutang" }, { label: "Alat", sub: "Bisa beli, dana darurat, zakat, cicilan", icon: "grid", path: "/alat" }] },
+  { title: "Kekayaan", items: [{ label: "Kekayaan", sub: "Aset, dompet, kewajiban", icon: "wallet", path: "/kekayaan" }, { label: "Foto aset", sub: "Emas, kendaraan, rumah, lainnya", icon: "scan", act: "catat" }] },
+  { title: "Email & catatan", items: [{ label: "Tinjau email", sub: "Catatan yang perlu dicek", icon: "receipt", path: "/tinjau" }, { label: "Email & Google", sub: "Hubungkan email pembayaran", icon: "link", path: "/integrasi" }, { label: "Catatan", sub: "Semua transaksi", icon: "list", path: "/riwayat" }] },
+  { title: "Dompet & bayar", items: [{ label: "Isi saldo", sub: "Tambah saldo Djiwa Pay", icon: "plus", path: "/wallet/topup" }, { label: "Kirim", sub: "Transfer ke sesama pengguna", icon: "send", path: "/wallet/transfer" }, { label: "Scan QR", sub: "Bayar dengan QR", icon: "scan", path: "/wallet/transfer?mode=scan" }, { label: "Layanan", sub: "Pulsa, PLN, e-toll, dan lain-lain", icon: "flash", path: "/bayar" }] },
+  { title: "Lainnya", items: [{ label: "Berita keuangan", sub: "Emas, ekonomi, saham, kripto", icon: "book", act: "news" }, { label: "Notifikasi", sub: "Email, tagihan, anggaran", icon: "bell", act: "notif" }, { label: "Bantuan", sub: "Pertanyaan umum", icon: "help", path: "/wallet/help" }, { label: "Pengaturan", sub: "Dompet, kategori, data", icon: "shield", path: "/pengaturan" }, { label: "Akun", sub: "Profil dan keluar", icon: "user", path: "/akun" }] },
+];
+
+/** Every screen of the app in one list, for what does not fit in the Beranda menu. */
+function AllMenuPage({ onBack, run }: { onBack: () => void; run: (i: MenuGroup["items"][number]) => void }) {
+  return <FullPage title="Semua menu" onBack={onBack}>
+    <div className="dpx-st-npage">{ALL_MENU.map((g) => <div key={g.title} className="dpx-am-g"><div className="dpx-glabel">{g.title}</div>
+      <div className="dpx-st-nlist">{g.items.map((i) => <Btn key={i.label} type="button" className="dpx-st-nrow dpx-am-row" onClick={() => run(i)}><span className="dpx-st-mi" style={{ width: 40, height: 40 }}><Ic n={i.icon} /></span><div><b>{i.label}</b><span className="dpx-sub">{i.sub}</span></div><Ic n="chev" size="sm" /></Btn>)}</div></div>)}</div>
+  </FullPage>;
+}
 const TOPIC_ICON: Record<string, { icon: IconName; tone: string }> = { emas: { icon: "gift", tone: "amber" }, saham: { icon: "chart", tone: "blue" }, kripto: { icon: "flash", tone: "violet" }, ekonomi: { icon: "trend", tone: "emerald" } };
 const NewsCard = ({ n }: { n: NewsItem }) => <a className="dpx-st-card dpx-st-story dpx-st-news" href={n.url} target="_blank" rel="noopener noreferrer"><span className={`dpx-cat dpx-c-${TOPIC_ICON[n.topic].tone}`}><Ic n={TOPIC_ICON[n.topic].icon} /></span><b>{n.title}</b><span className="dpx-sub">{n.source} · {timeAgo(n.at)}</span></a>;
 
@@ -77,16 +94,15 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
     if (cal.calm > 0) out.push({ id: "calm", tone: "ok", icon: "heart", title: `${cal.calm} hari tenang bulan ini`, body: "Hari tanpa belanja. Setiap hari tenang memberi ruang pada tabunganmu." });
     return out.slice(0, 5);
   }, [st, statuses, month, prev, gold, cal.calm]);
-  const [feed, setFeed] = useState<string>("untukmu"), [newsOpen, setNewsOpen] = useState(false), news = useNews(feed, feed !== "untukmu");
+  const [feed, setFeed] = useState<string>("untukmu"), [newsOpen, setNewsOpen] = useState(false), [allOpen, setAllOpen] = useState(false), news = useNews(feed, feed !== "untukmu");
   const nameOf = (id: string) => (id === "_rest" ? "Lainnya" : catOf(state, id).name);
   const fav = st.fav && st.fav.n >= 2 ? st.fav : null;
 
   return <div className="dpx-st-body">
-    <ReviewChip count={inbound.data?.review ?? 0} importReady={inbound.data?.importReady ?? 0} autoRecent={inbound.data?.autoRecent ?? 0} onOpenAuto={() => nav.go("/riwayat")} onOpen={() => nav.go("/tinjau")} onOpenImport={() => nav.go("/integrasi?impor=1")} />
+    <ReviewChip count={inbound.data?.review ?? 0} importReady={inbound.data?.importReady ?? 0} autoRecent={inbound.data?.autoRecent ?? 0} onOpenAuto={() => { markAutoSeen(); void inbound.refresh(); nav.go("/riwayat"); }} onOpen={() => nav.go("/tinjau")} onOpenImport={() => nav.go("/integrasi?impor=1")} />
     <GoogleNudge onOpenIntegrations={() => nav.go("/integrasi")} />
     <section className="dpx-st-card dpx-st-menu-card" aria-label="Menu">
-      <div className="dpx-st-ch"><h2>Menu</h2><span className="dpx-sub">Fitur lain</span></div>
-      <div className="dpx-st-menu">{MENU.map((m) => <Btn key={m.label} type="button" className="dpx-st-mt" onClick={() => (m.news ? setNewsOpen(true) : nav.go(m.path!))}>
+      <div className="dpx-st-menu">{MENU.map((m) => <Btn key={m.label} type="button" className="dpx-st-mt" onClick={() => (m.all ? setAllOpen(true) : m.news ? setNewsOpen(true) : nav.go(m.path!))}>
         <span className="dpx-st-mi"><Ic n={m.icon} />{m.label === "Tinjau" && (inbound.data?.review ?? 0) > 0 ? <i className="dpx-st-mb">{inbound.data?.review}</i> : null}</span><span>{m.label}</span></Btn>)}</div>
     </section>
 
@@ -170,6 +186,7 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
 
     {empty ? null : <Btn type="button" className="dpx-st-tip dpx-st-calm" onClick={() => ctx.open({ k: "weekly" })}><span className="dpx-cat dpx-c-emerald"><Ic n="pie" /></span><div><b>Jeda mingguan</b><span className="dpx-sub">Lima menit melihat minggu ini. Tidak ada yang perlu dikejar.</span></div></Btn>}
     {newsOpen ? <NewsPage onBack={() => setNewsOpen(false)} /> : null}
+    {allOpen ? <AllMenuPage onBack={() => setAllOpen(false)} run={(i) => { setAllOpen(false); if (i.act === "news") setNewsOpen(true); else if (i.act === "notif") ctx.onOpenNotifications(); else if (i.act === "catat") ctx.open({ k: "asset-new" }); else if (i.path) nav.go(i.path); }} /> : null}
   </div>;
 }
 

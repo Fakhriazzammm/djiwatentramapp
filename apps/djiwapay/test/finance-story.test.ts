@@ -114,3 +114,19 @@ describe("financeNotes", () => {
   });
   test("is quiet when nothing needs attention", () => { expect(financeNotes(emptyState(), [], { review: 0, autoRecent: 0 }, now)).toEqual([]); });
 });
+
+import { assetValue, estimateOn, isEstimated } from "../src/lib/finance/assets";
+describe("asset estimates", () => {
+  test("a car loses value and a house gains it, never below 5% of the price", () => {
+    const car = { kind: "vehicle" as const, cost: 200_000_000, boughtOn: "2024-11-17", rate: -12, est: true };
+    expect(isEstimated(car)).toBe(true);
+    const v = estimateOn(car, "2026-11-17");
+    expect(v).toBeGreaterThan(150_000_000); expect(v).toBeLessThan(160_000_000);
+    expect(estimateOn({ ...car, rate: -90 }, "2040-11-17")).toBe(10_000_000);
+    expect(estimateOn({ cost: 1_000_000_000, boughtOn: "2024-11-17", rate: 6 }, "2026-11-17")).toBeGreaterThan(1_100_000_000);
+  });
+  test("manual assets keep their entered value", () => {
+    const a = { id: "x", name: "Saham", kind: "stock" as const, value: 5_000_000, cost: 4_000_000, boughtOn: "2025-01-01" };
+    expect(isEstimated(a)).toBe(false); expect(assetValue(a, null)).toBe(5_000_000);
+  });
+});

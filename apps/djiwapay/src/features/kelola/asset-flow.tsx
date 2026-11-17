@@ -4,14 +4,14 @@ import { MoneyInput, type Notify } from "../finance/fin-sheets";
 import { FullPage, PriceNote, Sticker } from "./asset-ui";
 import { uid } from "../../lib/finance/calc";
 import { ASSET_KINDS } from "../../lib/finance/kelola";
-import { KARAT, SUB_LABEL, assetValue, createSticker, fetchRaw, goldNow, makeStickerPng, priceOn, stickerUrl, uploadSticker, useGold, type StickerMode } from "../../lib/finance/assets";
+import { DEFAULT_RATE, KARAT, SUB_LABEL, assetValue, createSticker, fetchRaw, goldNow, makeStickerPng, priceOn, stickerUrl, uploadSticker, useGold, type StickerMode } from "../../lib/finance/assets";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import type { Asset, AssetKind, AssetSub } from "../../lib/finance/types";
 import type { Finance } from "../../lib/finance/use-finance";
 
 type Step = "shoot" | "work" | "sticker" | "form";
 const SUBS: AssetSub[] = ["batangan", "perhiasan", "koin", "lainnya"];
-const OTHER_KINDS: AssetKind[] = ["gold", "fund", "stock", "crypto", "property", "vehicle", "other"];
+const OTHER_KINDS: AssetKind[] = ["property", "vehicle", "electronics", "fund", "stock", "crypto", "other"];
 const today = () => new Date().toISOString().slice(0, 10);
 
 export function AssetFlow({ fin, asset, notify, onClose }: { fin: Finance; asset?: Asset; notify: Notify; onClose: () => void }) {
@@ -65,7 +65,10 @@ export function AssetFlow({ fin, asset, notify, onClose }: { fin: Finance; asset
 
   /* ----- form ----- */
   const [sub, setSub] = useState<AssetSub>(asset ? (asset.auto ? asset.sub ?? "batangan" : "lainnya") : "batangan");
-  const [kind, setKind] = useState<AssetKind>(asset ? asset.kind : "gold");
+  const [kind, setKind] = useState<AssetKind>(asset && asset.kind !== "gold" ? asset.kind : asset ? "other" : "property");
+  const [est, setEst] = useState<boolean>(asset ? Boolean(asset.est) : true), [rate, setRate] = useState<string>(asset && typeof asset.rate === "number" ? String(asset.rate).replace(".", ",") : asset ? "" : "6");
+  const rateNum = Number(rate.replace(",", ".")), canEst = Boolean(DEFAULT_RATE[kind]);
+  const chooseKind = (k: AssetKind) => { setKind(k); const d = DEFAULT_RATE[k]; setEst(Boolean(d)); setRate(d ? String(d.rate).replace(".", ",") : ""); };
   const isGold = sub !== "lainnya";
   const [name, setName] = useState(asset?.name ?? "");
   const [weight, setWeight] = useState(asset?.weight ? String(asset.weight).replace(".", ",") : "");
@@ -77,14 +80,14 @@ export function AssetFlow({ fin, asset, notify, onClose }: { fin: Finance; asset
   const [note, setNote] = useState(asset?.note ?? "");
   const w = Number(weight.replace(",", ".")) || 0;
   useEffect(() => { if (!asset) setPurity(sub === "perhiasan" ? 0.9167 : 0.9999); }, [sub, asset]);
-  const draft: Asset = useMemo(() => ({ id: asset?.id ?? "draft", name, kind: isGold ? "gold" : kind, value: isGold ? Number(cost) || 0 : Number(value) || 0, sub, ...(isGold ? { weight: w, purity, boughtOn, cost: Number(cost) || undefined, auto: true } : {}) }), [asset?.id, name, isGold, kind, value, sub, w, purity, boughtOn, cost]);
+  const draft: Asset = useMemo(() => ({ id: asset?.id ?? "draft", name, kind: isGold ? "gold" : kind, value: isGold ? Number(cost) || 0 : Number(value) || 0, sub, ...(isGold ? { weight: w, purity, boughtOn, cost: Number(cost) || undefined, auto: true } : { boughtOn, cost: Number(cost) || undefined, est: canEst && est, ...(Number.isFinite(rateNum) && rate.trim() !== "" ? { rate: rateNum } : {}) }) }), [asset?.id, name, isGold, kind, value, sub, w, purity, boughtOn, est, rate, canEst, cost]);
   const nowPrice = goldNow(), perGram = nowPrice ? Math.round(nowPrice * purity) : null, valueNow = assetValue(draft, gold?.points ?? null);
   const buyPrice = gold?.points.length && boughtOn ? priceOn(gold.points, boughtOn) : null;
-  const ok = name.trim().length > 0 && (isGold ? w > 0 : value !== "" && Number(value) >= 0);
+  const useEst = !isGold && canEst && est, ok = name.trim().length > 0 && (isGold ? w > 0 : useEst ? Number(cost) > 0 && Boolean(boughtOn) && Number.isFinite(rateNum) && rate.trim() !== "" : value !== "" && Number(value) >= 0);
   const save = () => {
     const out: Asset = {
-      id: asset?.id ?? uid(), name: name.trim(), kind: draft.kind, value: isGold ? valueNow || Number(cost) || 0 : Number(value), sub,
-      ...(isGold ? { weight: w, purity, boughtOn, auto: true, ...(Number(cost) > 0 ? { cost: Number(cost) } : {}) } : { boughtOn }),
+      id: asset?.id ?? uid(), name: name.trim(), kind: draft.kind, value: isGold ? valueNow || Number(cost) || 0 : useEst ? valueNow : Number(value), sub,
+      ...(isGold ? { weight: w, purity, boughtOn, auto: true, ...(Number(cost) > 0 ? { cost: Number(cost) } : {}) } : { boughtOn, ...(Number(cost) > 0 ? { cost: Number(cost) } : {}), ...(useEst ? { est: true, rate: rateNum } : {}) }),
       ...(shop.trim() ? { shop: shop.trim() } : {}), ...(note.trim() ? { note: note.trim() } : {}), ...(stickerId ? { stickerId } : {}),
     };
     fin.dispatch({ type: "asset/upsert", asset: out });
@@ -94,9 +97,9 @@ export function AssetFlow({ fin, asset, notify, onClose }: { fin: Finance; asset
   const back = step === "form" && !asset ? () => setStep(stickerId ? "sticker" : "shoot") : step === "sticker" ? () => setStep("shoot") : onClose;
   const title = step === "shoot" ? "Foto aset" : step === "work" ? "Membuat stiker" : step === "sticker" ? "Stiker aset" : "Data aset";
 
-  return <FullPage title={title} onBack={step === "work" ? () => {} : back} dark={step === "shoot"}>
+  return <FullPage title={title} onBack={step === "work" ? () => {} : back} dark={step === "shoot" && live}>
     {step === "shoot" && !live ? <div className="dpx-as-shoot dpx-as-start">
-      <div className="dpx-as-hero"><span className="dpx-as-hero-i"><Ic n="scan" /></span><b>Foto asetmu</b><p>Pakai kamera ponsel untuk hasil paling tajam. Latarnya kami potong jadi stiker.</p></div>
+      <div className="dpx-as-intro"><span className="dpx-as-intro-i"><Ic n="scan" /></span><b>Foto asetmu</b><p>Pakai kamera ponsel untuk hasil paling tajam. Latarnya kami potong jadi stiker.</p></div>
       <ul className="dpx-as-tips"><li>Taruh di tempat polos dan terang</li><li>Satu aset per foto, tepat di tengah</li><li>Hindari bayangan dan pantulan kuat</li></ul>
       {err ? <div className="dpx-as-err" role="alert">{err}</div> : null}
       <Btn type="button" className="dpx-btn" onClick={() => nativeCam.current?.click()}><Ic n="scan" size="sm" /> Buka kamera</Btn>
@@ -160,9 +163,18 @@ export function AssetFlow({ fin, asset, notify, onClose }: { fin: Finance; asset
         {buyPrice && Number(cost) > 0 && w > 0 ? <p className="dpx-sub dpx-as-note">Harga acuan saat beli {rupiah(Math.round(buyPrice * purity))}/gram. Harga beli Anda {rupiah(Math.round(Number(cost) / w))}/gram, selisihnya biasanya ongkos dan margin toko.</p> : null}
         <PriceNote gold={gold} />
       </> : <>
-        <div className="dpx-as-chips" role="group" aria-label="Golongan">{OTHER_KINDS.map((k) => <Btn key={k} type="button" className={`dpx-chip3 ${kind === k ? "dpx-on" : ""}`} aria-pressed={kind === k} onClick={() => setKind(k)}>{ASSET_KINDS[k].label}</Btn>)}</div>
-        <label className="dpx-field dpx-as-money"><span>Nilai sekarang <em>diperbarui manual</em></span><MoneyInput value={value} onChange={setValue} label="Nilai sekarang" /></label>
-        <label className="dpx-as-fld"><span>Tanggal beli</span><input id="as-date2" type="date" value={boughtOn} max={today()} onChange={(e) => setBoughtOn(e.target.value)} /></label>
+        <div className="dpx-as-chips" role="group" aria-label="Golongan">{OTHER_KINDS.map((k) => <Btn key={k} type="button" className={`dpx-chip3 ${kind === k ? "dpx-on" : ""}`} aria-pressed={kind === k} onClick={() => chooseKind(k)}>{ASSET_KINDS[k].label}</Btn>)}</div>
+        <div className="dpx-as-two">
+          <label className="dpx-as-fld"><span>Tanggal beli</span><input id="as-date2" type="date" value={boughtOn} max={today()} onChange={(e) => setBoughtOn(e.target.value)} /></label>
+          <label className="dpx-as-fld"><span>Tempat beli</span><input id="as-shop2" value={shop} maxLength={60} placeholder="Dealer, toko, developer" onChange={(e) => setShop(e.target.value)} /></label>
+        </div>
+        <label className="dpx-field dpx-as-money"><span>Harga beli <em>{useEst ? "wajib untuk perkiraan otomatis" : "untuk melihat untung rugi"}</em></span><MoneyInput value={cost} onChange={setCost} label="Harga beli" /></label>
+        {canEst ? <Btn type="button" className="dpx-opt" onClick={() => setEst((v) => !v)} aria-pressed={est}><span className="dpx-main"><b>Nilai sekarang diperkirakan otomatis</b><span>{est ? "Mengikuti perubahan per tahun di bawah" : "Isi nilai sekarang sendiri"}</span></span><span className="dpx-radio" style={est ? { borderColor: "var(--blue)", background: "var(--blue)" } : undefined} /></Btn> : null}
+        {useEst ? <>
+          <label className="dpx-as-fld"><span>Perubahan nilai per tahun (%)</span><input id="as-rate" inputMode="decimal" value={rate} placeholder={String(DEFAULT_RATE[kind]?.rate ?? 0)} onChange={(e) => setRate(e.target.value.replace(/[^0-9,.\-]/g, "").slice(0, 6))} /></label>
+          <p className="dpx-sub dpx-as-note">{DEFAULT_RATE[kind]?.hint} Ubah angkanya sesuai kondisi barangmu.</p>
+        </> : <label className="dpx-field dpx-as-money"><span>Nilai sekarang <em>diperbarui manual</em></span><MoneyInput value={value} onChange={setValue} label="Nilai sekarang" /></label>}
+        {(() => { const now = useEst ? valueNow : Number(value) || 0, base = Number(cost) || 0; return now > 0 ? <div className="dpx-as-live"><span>{useEst ? "Perkiraan nilai sekarang" : "Nilai sekarang"}<br /><b>{rupiah(now)}</b>{base > 0 ? <em className={now >= base ? "dpx-up" : "dpx-dn"}> {now >= base ? "▲ naik" : "▼ turun"} {rupiah(Math.abs(now - base))} ({now >= base ? "+" : "−"}{Math.abs(((now - base) / base) * 100).toFixed(1).replace(".", ",")}%)</em> : null}</span>{useEst ? <span className="dpx-as-pill">Otomatis</span> : null}</div> : null; })()}
       </>}
       <label className="dpx-as-fld"><span>Catatan (surat, nomor seri, lokasi simpan)</span><input id="as-note" value={note} maxLength={300} placeholder="Contoh: sertifikat ada di brankas" onChange={(e) => setNote(e.target.value)} /></label>
       <Btn type="button" className={`dpx-btn ${ok ? "" : "dpx-off"}`} disabled={!ok} onClick={save}>Simpan aset</Btn>
