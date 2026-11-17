@@ -222,7 +222,7 @@ export function extractPayment(subject: string, bodyText: string): Extracted {
   const at = parseWhen(whole);
   const details = paymentDetails(text);
   const picked = pickMerchant(text, "");
-  const merchant = picked && !/aplikasi|livin.*mandiri/i.test(picked) ? picked : details.description;
+  const merchant = picked && picked.length > 1 && !/aplikasi|livin.*mandiri|^(pan|qris|ref|id|nmid)\b/i.test(picked) ? picked : details.description;
   const missing: string[] = [];
   if (!amount) missing.push("amount");
   if (direction === "unknown") missing.push("direction");
