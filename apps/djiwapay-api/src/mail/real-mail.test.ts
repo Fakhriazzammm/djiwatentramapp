@@ -112,8 +112,8 @@ describe("livin' by mandiri", () => {
     expect(x.direction).toBe("out");
     expect(x.accountHint).toBe("4399");      // not the GoPay number ****9831
     expect(x.merchant).toBe("GoPay Customer");
-    // 15 Nov 2026 WIB (the mail prints the date and the hour on separate rows)
-    expect(new Date(x.at!).toISOString()).toBe("2026-11-14T17:00:00.000Z");
+    // 15 Nov 2026 22:12 WIB (the mail prints the date and the hour on separate rows; the hour is behind its "Jam" label)
+    expect(new Date(x.at!).toISOString()).toBe("2026-11-15T15:12:00.000Z");
   });
 
   test("an outgoing transfer names the recipient, not the bank", () => {

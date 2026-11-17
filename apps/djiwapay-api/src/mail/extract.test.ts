@@ -188,4 +188,9 @@ describe("shop grouping", () => {
     expect(groupKey("Kopi 99")).toBe("kopi 99");
     expect(groupKey("")).toBe("");
   });
+  test("the time printed behind a Jam label is read, not dropped to midnight", () => {
+    const at = parseWhen("Tanggal  17 Nov 2026 | Jam  20:31:01 WIB | Nominal Transaksi Rp 58.000,00");
+    expect(at).toBe(Date.UTC(2026, 10, 17, 13, 31));   // 20:31 WIB
+    expect(parseWhen("Tanggal 17 Nov 2026")).toBe(Date.UTC(2026, 10, 16, 17, 0));   // no time anywhere: midnight as before
+  });
 });
