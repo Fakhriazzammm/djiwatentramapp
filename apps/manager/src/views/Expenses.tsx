@@ -13,6 +13,7 @@ type Data = {
   role: "manager" | "supervisor";
 };
 const STATUS: Record<string, [string, string]> = { saved: ["Tercatat", "ok"], pending_approval: ["Menunggu", "md"], rejected: ["Ditolak", "hi"], draft: ["Draf", ""] };
+const VIA: Record<string, string> = { telegram: "Telegram", app: "Aplikasi", finance: "Admin/POS" };
 const METHODS = [["cash", "Tunai"], ["qris", "QRIS"], ["transfer", "Transfer"], ["debit", "Debit"], ["credit", "Kartu kredit"], ["ewallet", "Dompet digital"]];
 const todayLocal = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16); };
 const emptyItem = (category = "lainnya"): ExpenseItem => ({ name: "", qty: 1, unit: "pcs", price: 0, total: 0, category });
@@ -83,9 +84,9 @@ export function ExpensesView() {
 
 function History({ drafts, role }: { drafts: ExpenseDraft[]; role: string }) {
   return (
-    <Panel title="Riwayat pengeluaran" meta={role === "manager" ? "semua pengguna" : "semua via Telegram + milik Anda"}>
+    <Panel title="Riwayat pengeluaran" meta={role === "manager" ? "semua pengguna" : "semua pengeluaran + draft Anda"}>
       <div className="tw2"><table>
-        <thead><tr><th>Waktu</th><th>Toko</th><th>Item</th><th>Via</th><th style={{ textAlign: "right" }}>Total</th><th>Status</th><th /></tr></thead>
+        <thead><tr><th>Waktu</th><th>Toko</th><th>Item</th><th>Via</th><th style={{ textAlign: "right" }}>Total</th><th>Status</th><th>Struk</th></tr></thead>
         <tbody>{drafts.map((d) => {
           const items = Array.isArray(d.items) ? d.items : [];
           const st = STATUS[d.status] ?? [d.status, ""];
@@ -93,9 +94,19 @@ function History({ drafts, role }: { drafts: ExpenseDraft[]; role: string }) {
             <tr key={d.id}>
               <td className="mono">{wib(d.tx_date)}</td><td>{d.merchant || "Pengeluaran"}<div className="meta">{d.created_by_name}</div></td>
               <td>{items.slice(0, 3).map((i) => i.name).join(", ")}{items.length > 3 ? ` +${items.length - 3}` : ""}</td>
-              <td><span className="tg">{d.channel === "telegram" ? "Telegram" : "Aplikasi"}</span></td>
+              <td><span className="tg">{VIA[d.channel] ?? d.channel}</span></td>
               <td className="mono" style={{ textAlign: "right" }}>{rp(d.total)}</td><td><span className={`tg ${st[1]}`}>{st[0]}</span></td>
-              <td>{d.photo_url && <a className="btn s" href={img(d.photo_url)} target="_blank" rel="noopener noreferrer">Struk</a>}</td>
+              <td>{d.photo_url ? (
+                <a href={img(d.photo_url)} target="_blank" rel="noopener noreferrer" aria-label="Buka bukti struk">
+                  <img
+                    src={img(d.photo_url)}
+                    alt="Bukti struk"
+                    loading="lazy"
+                    style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 8, border: "1px solid var(--line)", display: "block" }}
+                    onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
+                  />
+                </a>
+              ) : <span className="meta">—</span>}</td>
             </tr>
           );
         })}</tbody>

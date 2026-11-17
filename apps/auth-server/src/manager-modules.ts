@@ -98,9 +98,14 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
       pool.query(`SELECT count(*)::int AS n FROM public.mgr_tasks WHERE status = 'open' AND assignee_role = $1`, [m.role]),
       pool.query(`SELECT count(*)::int AS n FROM public.mgr_tasks WHERE status = 'done' AND assignee_role = $1 AND done_at >= $2`, [m.role, new Date(day.start).toISOString()]),
       pool.query(
-        `SELECT id, merchant, total::text, status, tx_date FROM public.mgr_expense_drafts
-          WHERE ($1 = 'manager' OR channel = 'telegram' OR created_by = $2) ORDER BY created_at DESC LIMIT 5`,
-        [m.role, m.userId],
+        `SELECT f.source_id AS id, NULLIF(f.merchant, '') AS merchant, f.amount::text AS total,
+                'saved' AS status, to_timestamp(f.tx_date / 1000.0) AS tx_date
+           FROM pos.financial_transactions f
+          WHERE f.tx_type = 'expense' AND f.status = 'completed'
+            AND COALESCE(f.category, '') <> 'HPP'
+            AND f.tx_date >= (extract(epoch from timestamptz '2020-01-01 00:00:00+07') * 1000)::bigint
+            AND f.tx_date <= (extract(epoch from now() + interval '1 day') * 1000)::bigint
+          ORDER BY f.tx_date DESC LIMIT 5`,
       ),
     ]);
     return json({
@@ -198,12 +203,89 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
     const filter = EXPENSE_STATUS.has(status) ? status : "all";
     const [drafts, cats, policy, format] = await Promise.all([
       pool.query(
-        `SELECT id, channel, created_by, created_by_name, status, photo_url, merchant, tx_date, payment_method,
-                items, total::text, finance_source_id, decision_note, created_at
-           FROM public.mgr_expense_drafts
-          WHERE ($1::text = 'all' OR status = $1)
-            AND ($2 = 'manager' OR channel = 'telegram' OR created_by = $3)
-          ORDER BY created_at DESC LIMIT 100`,
+        `WITH finance_rows AS (
+           SELECT
+             f.source_id AS id,
+             COALESCE(d.channel, CASE WHEN f.metadata->>'source' = 'yumi_finance_agent' THEN 'telegram' ELSE 'finance' END) AS channel,
+             COALESCE(d.created_by, NULLIF(f.metadata->>'telegram_user_id', ''), 'finance') AS created_by,
+             COALESCE(
+               d.created_by_name,
+               NULLIF(regexp_replace(COALESCE(f.metadata->>'notes', ''), '^Diproses oleh:[[:space:]]*', ''), ''),
+               NULLIF(f.metadata->>'telegram_user_name', '')
+             ) AS created_by_name,
+             COALESCE(d.status, 'saved') AS status,
+             COALESCE(
+               d.photo_url,
+               doc.receipt_image_url,
+               NULLIF(f.metadata->>'receipt_image_url', ''),
+               NULLIF(f.metadata->>'receiptImageUrl', '')
+             ) AS photo_url,
+             COALESCE(NULLIF(d.merchant, ''), NULLIF(f.merchant, '')) AS merchant,
+             to_timestamp(f.tx_date / 1000.0) AS tx_date,
+             COALESCE(NULLIF(d.payment_method, ''), NULLIF(f.payment_method, ''), 'cash') AS payment_method,
+             CASE
+               WHEN d.items IS NOT NULL AND jsonb_typeof(d.items) = 'array' AND jsonb_array_length(d.items) > 0 THEN d.items
+               ELSE COALESCE(
+                 (
+                   SELECT jsonb_agg(jsonb_build_object(
+                     'name', COALESCE(NULLIF(i->>'name', ''), NULLIF(i->>'rawName', ''), 'Item'),
+                     'qty', COALESCE(NULLIF(i->>'quantity', '')::numeric, NULLIF(i->>'qty', '')::numeric, 1),
+                     'unit', COALESCE(NULLIF(i->>'unit', ''), 'pcs'),
+                     'price', COALESCE(NULLIF(i->>'price', '')::numeric, 0),
+                     'total', COALESCE(NULLIF(i->>'total', '')::numeric, NULLIF(i->>'subtotal', '')::numeric, 0),
+                     'category', f.category
+                   ))
+                   FROM jsonb_array_elements(
+                     CASE
+                       WHEN jsonb_typeof(f.metadata->'scanItems') = 'array' THEN f.metadata->'scanItems'
+                       WHEN jsonb_typeof(f.metadata->'items') = 'array' THEN f.metadata->'items'
+                       ELSE '[]'::jsonb
+                     END
+                   ) i
+                 ),
+                 jsonb_build_array(jsonb_build_object(
+                   'name', COALESCE(NULLIF(f.description, ''), NULLIF(f.merchant, ''), 'Pengeluaran'),
+                   'qty', 1, 'unit', 'pcs', 'price', f.amount, 'total', f.amount, 'category', f.category
+                 ))
+               )
+             END AS items,
+             f.amount::numeric AS total,
+             f.source_id AS finance_source_id,
+             d.decision_note,
+             to_timestamp(f.tx_date / 1000.0) AS created_at
+           FROM pos.financial_transactions f
+           LEFT JOIN public.mgr_expense_drafts d ON d.finance_source_id = f.source_id
+           LEFT JOIN LATERAL (
+             SELECT r.receipt_image_url
+             FROM pos.expense_receipt_documents r
+             WHERE r.financial_transaction_source_id = f.source_id
+             ORDER BY r.created_at DESC
+             LIMIT 1
+           ) doc ON true
+           WHERE f.tx_type = 'expense'
+             AND f.status = 'completed'
+             AND COALESCE(f.category, '') <> 'HPP'
+             AND f.tx_date >= (extract(epoch from timestamptz '2020-01-01 00:00:00+07') * 1000)::bigint
+             AND f.tx_date <= (extract(epoch from now() + interval '1 day') * 1000)::bigint
+         ),
+         draft_rows AS (
+           SELECT
+             d.id::text AS id, d.channel, d.created_by, d.created_by_name, d.status, d.photo_url,
+             d.merchant, d.tx_date, d.payment_method, d.items, d.total, d.finance_source_id,
+             d.decision_note, d.created_at
+           FROM public.mgr_expense_drafts d
+           WHERE NOT EXISTS (
+             SELECT 1 FROM pos.financial_transactions f WHERE f.source_id = d.finance_source_id
+           )
+         )
+         SELECT * FROM (
+           SELECT * FROM finance_rows
+           UNION ALL
+           SELECT * FROM draft_rows
+         ) x
+         WHERE ($1::text = 'all' OR status = $1)
+           AND ($2 = 'manager' OR channel IN ('telegram', 'finance') OR created_by = $3)
+         ORDER BY tx_date DESC`,
         [filter, m.role, m.userId],
       ),
       categories(),
