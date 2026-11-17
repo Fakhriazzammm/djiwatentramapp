@@ -1,4 +1,5 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { markAutoSeen, readAutoSeen } from "../../lib/finance/integrations";
 import { AnimatePresence, motion } from "framer-motion";
 import { CeritaBody } from "./beranda-cerita";
 import { wealthHistory } from "../../lib/finance/story";
@@ -38,12 +39,12 @@ const COLORS: Record<string, string> = { orange: "#e8833a", blue: "#d14b1a", vio
 export const useBalances = (state: FinanceState, entries: Entry[], payBalance: number) => useMemo(() => { const m: Record<string, number> = {}; for (const a of state.accounts) m[a.id] = accountBalance(a, entries, payBalance); m[PAY_ACCOUNT_ID] = payBalance; return m; }, [state.accounts, entries, payBalance]);
 const sourceBadge = (s: Entry["source"]) => s === "voice" ? <span className="dpx-tx-badge">Suara</span> : s === "email" ? <span className="dpx-tx-badge">Email</span> : s === "sheet" ? <span className="dpx-tx-badge">Sheets</span> : null;
 
-export function EntryRow({ entry, state, onOpen, i = 0 }: { entry: Entry; state: FinanceState; onOpen: (id: string) => void; i?: number }) {
+export function EntryRow({ entry, state, onOpen, i = 0, fresh = false }: { entry: Entry; state: FinanceState; onOpen: (id: string) => void; i?: number; fresh?: boolean }) {
   const c = catOf(state, entry.categoryId);
   const sign = entry.kind === "in" ? "+" : entry.kind === "out" ? "−" : "";
   return <Btn type="button" className="dpx-row" onClick={() => onOpen(entry.id)} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: Math.min(i, 10) * 0.04 }} whileTap={{ scale: 0.985, backgroundColor: "rgba(45,36,29,.04)" }}>
     <CatIcon cat={c} />
-    <span className="dpx-main"><b>{entry.note || c.name}</b><span>{entry.kind === "tf" ? "Transfer" : c.name} · {accName(state, entry.accountId)}{sourceBadge(entry.source)}</span></span>
+    <span className="dpx-main"><b>{entry.note || c.name}</b><span>{entry.kind === "tf" ? "Transfer" : c.name} · {accName(state, entry.accountId)}{sourceBadge(entry.source)}{fresh ? <span className="dpx-tx-badge dpx-new">Baru</span> : null}</span></span>
     <span className="dpx-trail"><b className={entry.kind === "in" ? "dpx-in" : ""}>{sign}{rupiah(entry.amount)}</b>{formatTime(entry.at)}</span>
   </Btn>;
 }
@@ -158,7 +159,11 @@ export function FinRecords({ ctx, selected }: { ctx: FinCtx; selected?: ReactNod
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
   const [sheet, setSheet] = useState<null | "filter">(null);
-  const month = entries.filter((e) => inMonth(e, cursor.y, cursor.m));
+  // Entries the person has not yet seen that came in by e-mail on their own; opened from the "catatan baru dari email" notice.
+  const [fresh] = useState(() => { const seen = readAutoSeen(); return new Set(entries.filter((e) => e.source === "email" && e.createdAt && Date.now() - Date.parse(e.createdAt) < 36 * 36e5 && (!seen || Date.parse(e.createdAt) > Date.parse(seen))).map((e) => e.id)); });
+  const [onlyNew, setOnlyNew] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("baru") === "1" && fresh.size > 0);
+  useEffect(() => { if (onlyNew) markAutoSeen(); }, [onlyNew]);
+  const month = onlyNew ? entries.filter((e) => fresh.has(e.id)) : entries.filter((e) => inMonth(e, cursor.y, cursor.m));
   const t = totals(month);
   const isCurrent = cursor.y === today.getFullYear() && cursor.m === today.getMonth();
   const shift = (d: number) => setCursor((c) => { const n = new Date(c.y, c.m + d, 1); return { y: n.getFullYear(), m: n.getMonth() }; });
@@ -172,13 +177,14 @@ export function FinRecords({ ctx, selected }: { ctx: FinCtx; selected?: ReactNod
     <div className="dpx-spread" style={{ margin: "2px 0 4px" }}><Btn type="button" className="dpx-rb" onClick={() => shift(-1)} aria-label="Bulan sebelumnya"><Ic n="back" size="sm" /></Btn><b style={{ fontSize: 17, textTransform: "capitalize" }}>{monthLabel(cursor.y, cursor.m)}</b><Btn type="button" className="dpx-rb" style={isCurrent ? { opacity: 0.4 } : undefined} disabled={isCurrent} onClick={() => shift(1)} aria-label="Bulan berikutnya"><Ic n="chev" size="sm" /></Btn></div>
     {showStrip ? <div className="dpx-chips dpx-mt8" role="group" aria-label="Bulan yang punya catatan">{monthsWith.slice(0, 24).map((x) => { const on = x.y === cursor.y && x.m === cursor.m; return <Btn key={`${x.y}-${x.m}`} type="button" className={`dpx-chip ${on ? "dpx-on" : ""}`} aria-pressed={on} onClick={() => setCursor({ y: x.y, m: x.m })}>{monthLabel(x.y, x.m)} · {x.n}</Btn>; })}</div> : null}
     {month.length === 0 && entries.length > 0 ? <div className="dpx-note dpx-info" style={{ marginTop: 8 }} role="status"><Ic n="info" /><div><b>Tidak ada catatan di {monthLabel(cursor.y, cursor.m)}.</b> Ada {entries.length} catatan di bulan lain.<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setCursor({ y: monthsWith[0].y, m: monthsWith[0].m })}>Lihat {monthLabel(monthsWith[0].y, monthsWith[0].m)}</Btn></div></div></div> : null}
+    {fresh.size > 0 ? <div className="dpx-note dpx-info dpx-fresh" role="status" style={{ marginTop: 8 }}><Ic n="receipt" /><div><b>{fresh.size} catatan baru dari email</b> tercatat otomatis. Ketuk satu untuk memeriksa atau mengurungkannya.<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className={`dpx-btn dpx-sm ${onlyNew ? "" : "dpx-soft"}`} style={{ margin: 0 }} onClick={() => setOnlyNew(true)}>Hanya yang baru</Btn><Btn type="button" className={`dpx-btn dpx-sm ${onlyNew ? "dpx-soft" : ""}`} style={{ margin: 0 }} onClick={() => setOnlyNew(false)}>Semua catatan</Btn></div></div></div> : null}
     <div className="dpx-kpi"><div className="dpx-group"><small>Masuk</small><b className="dpx-up">{ctx.visible ? rupiah(t.in) : "•••••"}</b></div><div className="dpx-group"><small>Keluar</small><b>{ctx.visible ? rupiah(t.out) : "•••••"}</b></div></div>
     <label className="dpx-search dpx-mt"><Ic n="search" size="sm" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari catatan, kategori, dompet" aria-label="Cari catatan" /></label>
     <div className="dpx-chips dpx-mt8"><Btn type="button" className={`dpx-chip ${cat !== "all" ? "dpx-on" : ""}`} onClick={() => setSheet("filter")}><Ic n="filter" size="sm" /> {cat === "all" ? "Kategori" : catOf(state, cat).name}</Btn></div>
     <div className="dpx-mt8"><Seg id="rec" label="Jenis catatan" value={seg} onChange={setSeg} options={[["all", "Semua"], ["in", "Masuk"], ["out", "Keluar"], ["tf", "Transfer"]] as const} /></div>
     <div aria-live="polite">{entries.length === 0 ? <Empty img="order-receipt" title="Belum ada catatan" text="Catat pengeluaran pertamamu — satu kalimat cukup. Pembayaran Djiwa Pay otomatis ikut tercatat."><Btn type="button" className="dpx-btn" style={{ maxWidth: 300 }} onClick={() => ctx.open({ k: "catat" })}><Ic n="plus" size="sm" /> Catat sekarang</Btn></Empty>
       : list.length === 0 ? <Empty img="restaurant-cafe" title="Tidak ada hasil" text="Coba ubah bulan, kata kunci, atau filter." />
-      : days.map((d) => { const items = list.filter((e) => dayLabel(e.at) === d); const spent = items.filter((e) => e.kind === "out").reduce((s, e) => s + e.amount, 0); return <div key={d}><div className="dpx-dayh"><span>{d}</span><span>{spent ? `−${rupiah(spent)}` : ""}</span></div><div className="dpx-group dpx-flush dpx-white">{items.map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div></div>; })}</div>
+      : days.map((d) => { const items = list.filter((e) => dayLabel(e.at) === d); const spent = items.filter((e) => e.kind === "out").reduce((s, e) => s + e.amount, 0); return <div key={d}><div className="dpx-dayh"><span>{d}</span><span>{spent ? `−${rupiah(spent)}` : ""}</span></div><div className="dpx-group dpx-flush dpx-white">{items.map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} fresh={fresh.has(e.id)} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div></div>; })}</div>
   </div></Sky>
   <AnimatePresence>{sheet === "filter" ? <CategorySheet key="f" categories={[{ id: "all", name: "Semua", icon: "grid", tone: "slate", income: false }, ...state.categories]} income={false} value={cat} onPick={setCat} onClose={() => setSheet(null)} /> : null}</AnimatePresence>
   {selected}</div>;

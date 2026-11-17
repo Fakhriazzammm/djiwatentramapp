@@ -25,8 +25,8 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 const AUTO_SEEN = "djiwa-auto-seen";
 /** The "new from e-mail" notice goes away once the person has looked at it. */
 export const markAutoSeen = () => { try { window.localStorage.setItem(AUTO_SEEN, new Date().toISOString()); } catch { /* storage blocked */ } };
-const autoSeen = () => { try { return window.localStorage.getItem(AUTO_SEEN); } catch { return null; } };
-export const getInbound = () => { const s = autoSeen(); return call<InboundSummary & { success: true }>(`/inbound${s ? `?autoSince=${encodeURIComponent(s)}` : ""}`); };
+export const readAutoSeen = () => { try { return window.localStorage.getItem(AUTO_SEEN); } catch { return null; } };
+export const getInbound = () => { const s = readAutoSeen(); return call<InboundSummary & { success: true }>(`/inbound${s ? `?autoSince=${encodeURIComponent(s)}` : ""}`); };
 export const createSource = (rotate = false) => call<{ source: InboundSource }>("/inbound/source", { method: "POST", body: JSON.stringify({ rotate }) });
 export const removeSource = (wipe: boolean) => call<object>(`/inbound/source${wipe ? "?wipe=1" : ""}`, { method: "DELETE" });
 export const getReview = (offset=0) => call<{ items: ReviewItem[];total:number }>(`/inbound/review?offset=${offset}`);

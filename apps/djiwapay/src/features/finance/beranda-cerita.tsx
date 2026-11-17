@@ -7,7 +7,6 @@ import { CAT_COLORS, DragRow, Donut, GoldSpark, HeatGrid, PaceChart, WealthChart
 import { FullPage } from "../kelola/asset-ui";
 import { NEWS_TOPICS, timeAgo, useNews, type NewsItem } from "../../lib/finance/news";
 import { GoogleNudge, ReviewChip, useInbound } from "../integrations/integrations-pages";
-import { markAutoSeen } from "../../lib/finance/integrations";
 import { short } from "../kelola/kelola-ui";
 import { budgetStatuses, buildInsights, goalProjection, goalSaved, inMonth, safeToSpend, totals } from "../../lib/finance/calc";
 import { FlowCard } from "./sankey";
@@ -99,7 +98,7 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
   const fav = st.fav && st.fav.n >= 2 ? st.fav : null;
 
   return <div className="dpx-st-body">
-    <ReviewChip count={inbound.data?.review ?? 0} importReady={inbound.data?.importReady ?? 0} autoRecent={inbound.data?.autoRecent ?? 0} onOpenAuto={() => { markAutoSeen(); void inbound.refresh(); nav.go("/riwayat"); }} onOpen={() => nav.go("/tinjau")} onOpenImport={() => nav.go("/integrasi?impor=1")} />
+    <ReviewChip count={inbound.data?.review ?? 0} importReady={inbound.data?.importReady ?? 0} autoRecent={inbound.data?.autoRecent ?? 0} onOpenAuto={() => nav.go("/riwayat?baru=1")} onOpen={() => nav.go("/tinjau")} onOpenImport={() => nav.go("/integrasi?impor=1")} />
     <GoogleNudge onOpenIntegrations={() => nav.go("/integrasi")} />
     <section className="dpx-st-card dpx-st-menu-card" aria-label="Menu">
       <div className="dpx-st-menu">{MENU.map((m) => <Btn key={m.label} type="button" className="dpx-st-mt" onClick={() => (m.all ? setAllOpen(true) : m.news ? setNewsOpen(true) : nav.go(m.path!))}>

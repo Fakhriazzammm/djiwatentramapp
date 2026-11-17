@@ -888,3 +888,6 @@ html:has(.dpx-plain),body:has(.dpx-plain),#root:has(.dpx-plain){background:#f8f3
 .dpx .dpx-st-hint.dpx-onsky,.dpx-night .dpx-st-hint.dpx-onsky{color:var(--ink)!important;text-shadow:none}
 .dpx .dpx-am-g{display:grid;gap:6px}.dpx .dpx-am-row{width:100%;text-align:left;align-items:center}.dpx .dpx-am-row>div{flex:1;min-width:0}
 .dpx .dpx-st-menu-card{padding:10px}
+.dpx .dpx-main .dpx-tx-badge{display:inline-block;width:auto;max-width:100%;vertical-align:1px}
+.dpx .dpx-tx-badge.dpx-new{background:var(--blue);color:#fff;margin-left:4px}
+.dpx .dpx-fresh .dpx-btn.dpx-sm{padding:8px 14px}

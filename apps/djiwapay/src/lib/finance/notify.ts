@@ -10,7 +10,7 @@ const WAIT = 3 * 864e5;
 export function financeNotes(state: FinanceState, entries: Entry[], inbound: { review: number; autoRecent: number } | null, now = new Date()): FinNote[] {
   const out: FinNote[] = [], iso = now.toISOString(), mk = monthKey(now);
   if (inbound && inbound.review > 0) out.push({ id: `fin-review:${inbound.review}`, title: `${inbound.review} email perlu ditinjau`, message: "Ada email pembayaran yang belum bisa dicatat otomatis. Ketuk untuk memeriksa dan menyetujui.", notification_type: "fin-email", created_at: iso, route: "/tinjau" });
-  if (inbound && inbound.autoRecent > 0) out.push({ id: `fin-auto:${inbound.autoRecent}`, title: `${inbound.autoRecent} catatan baru dari email`, message: "Tercatat otomatis. Ketuk untuk melihat atau mengurungkan.", notification_type: "fin-email", created_at: iso, route: "/riwayat" });
+  if (inbound && inbound.autoRecent > 0) out.push({ id: `fin-auto:${inbound.autoRecent}`, title: `${inbound.autoRecent} catatan baru dari email`, message: "Tercatat otomatis. Ketuk untuk melihat atau mengurungkan.", notification_type: "fin-email", created_at: iso, route: "/riwayat?baru=1" });
   for (const e of entries.filter((x) => x.source === "email" && +now - +new Date(x.at) < WAIT && x.kind !== undefined).slice(0, 8)) {
     const sign = e.kind === "in" ? "+" : e.kind === "out" ? "−" : "⇄";
     out.push({ id: `fin-em:${e.id}`, title: e.kind === "tf" ? `Top-up ${e.note.replace(/^Top-up\s*/i, "") || "dompet"} tercatat` : e.note || "Catatan dari email", message: `${e.kind === "tf" ? "Pindah dana" : "Tercatat dari email"} · ${sign}${rupiah(e.amount)}`, notification_type: "fin-email", created_at: new Date(e.at).toISOString(), route: "/riwayat" });
