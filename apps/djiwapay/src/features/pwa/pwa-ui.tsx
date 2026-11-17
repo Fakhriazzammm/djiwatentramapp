@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Btn, Ic, Sheet, spring } from "../shell/dpx-ui";
 import { GUIDE, applyUpdate, currentPlatform, disablePush, enablePush, getPushState, isIos, promptInstall, sendTestPush, usePwaState, type Platform, type PushState, type StepIcon } from "../../lib/pwa";
 import { enqueueIsland, islandFromPush, islandNavigate } from "../../lib/island";
+import { initSound, playSound, setSoundEnabled, soundEnabled } from "../../lib/sound";
 
 const STEP_SVG: Record<StepIcon, ReactNode> = {
   share: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>,
@@ -37,7 +38,7 @@ export function InstallGuide({ onClose, onInstall }: { onClose: () => void; onIn
 
 /** Everything about the installed app in one place: install, update, and notifications on this device. */
 export function PwaSheet({ onClose, notify }: { onClose: () => void; notify: (t: string) => void }) {
-  const st = usePwaState(), [push, setPush] = useState<PushState | null>(null), [busy, setBusy] = useState(false), [guide, setGuide] = useState(false);
+  const st = usePwaState(), [push, setPush] = useState<PushState | null>(null), [busy, setBusy] = useState(false), [guide, setGuide] = useState(false), [sound, setSound] = useState(soundEnabled());
   const refresh = () => getPushState().then(setPush);
   useEffect(() => { void refresh(); }, []);
   if (guide) return <InstallGuide onClose={() => setGuide(false)} onInstall={async () => { await promptInstall(); setGuide(false); }} />;
@@ -55,6 +56,8 @@ export function PwaSheet({ onClose, notify }: { onClose: () => void; notify: (t:
         ? <div className="dpx-pw-btns"><Btn type="button" className="dpx-btn" disabled={busy} onClick={() => void run(async () => { notify((await sendTestPush()) ? "Notifikasi uji dikirim" : "Belum bisa mengirim notifikasi uji"); })}>Kirim notifikasi uji</Btn><Btn type="button" className="dpx-btn dpx-soft" disabled={busy} onClick={() => void run(async () => { await disablePush(); notify("Notifikasi dimatikan"); })}>Matikan</Btn></div>
         : <Btn type="button" className="dpx-btn" disabled={busy} onClick={() => void turnOn()}>Aktifkan notifikasi</Btn>) : null}
       {push?.needsInstall ? <Btn type="button" className="dpx-btn dpx-soft" onClick={() => setGuide(true)}>Cara memasang di iPhone</Btn> : null}
+      <Btn type="button" className="dpx-opt" onClick={() => { const next = !sound; setSound(next); setSoundEnabled(next); if (next) playSound("in", { force: true }); }} aria-pressed={sound}><span className="dpx-main"><b>Suara notifikasi</b><span>{sound ? "Aktif: denting koin Djiwa di dalam aplikasi" : "Mati"}</span></span><span className="dpx-radio" style={sound ? { borderColor: "var(--blue)", background: "var(--blue)" } : undefined} /></Btn>
+      {sound ? <div className="dpx-as-chips">{([["in", "Pemasukan"], ["out", "Pengeluaran"], ["move", "Pindah dana"], ["warn", "Pengingat"]] as const).map(([k, l]) => <Btn key={k} type="button" className="dpx-chip3" onClick={() => playSound(k, { force: true })}>▶ {l}</Btn>)}</div> : null}
       <p className="dpx-sub" style={{ margin: 0 }}>Saat aplikasi terbuka, notifikasi tampil sebagai banner island di atas layar. Saat tertutup, muncul sebagai notifikasi ponsel.</p></div>
   </Sheet>;
 }
@@ -62,6 +65,7 @@ export function PwaSheet({ onClose, notify }: { onClose: () => void; notify: (t:
 /** Install invitation, update notice, and the bridge that turns pushes into island banners. Mounted once. */
 export function PwaHost() {
   const st = usePwaState(), [ask, setAsk] = useState(false), [guide, setGuide] = useState(false);
+  useEffect(() => { initSound(); }, []);
   useEffect(() => {   // count visits; invite on the second one, after a calm moment
     const n = Number(read(VISITS) || 0) + 1; write(VISITS, String(n));
     if (st.installed || n < 2) return;

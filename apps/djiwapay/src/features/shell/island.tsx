@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, type PanInfo } from "framer-motion";
 import { Ic } from "./dpx-ui";
+import { playSound } from "../../lib/sound";
 import { islandAmount, islandNavigate, islandShown, setIslandIdle, useIslandState, type IslandItem } from "../../lib/island";
 
 const SPRING = { type: "spring", stiffness: 420, damping: 32, mass: 0.9 } as const;
@@ -25,7 +26,7 @@ export function IslandHost() {
   // a fresh queue starts after a short beat
   useEffect(() => { clear(); if (exit.current) { clearTimeout(exit.current); exit.current = null; } setOpen(false); setHeld(false); setLeaving(false); setPos(-1); if (!queue.length) return; timer.current = setTimeout(() => setPos(0), START_MS); return () => { clear(); if (exit.current) clearTimeout(exit.current); }; }, [version]);   // eslint-disable-line react-hooks/exhaustive-deps
   // one banner: it arrives compact, opens by itself after a moment
-  useEffect(() => { if (pos < 0 || !queue[pos]) return; islandShown(queue[pos]); setOpen(false); clear(); timer.current = setTimeout(() => setOpen(true), COMPACT_MS); return clear; }, [pos]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (pos < 0 || !queue[pos]) return; islandShown(queue[pos]); playSound(queue[pos].tone); setOpen(false); clear(); timer.current = setTimeout(() => setOpen(true), COMPACT_MS); return clear; }, [pos]);   // eslint-disable-line react-hooks/exhaustive-deps
   // ... and folds away on its own unless a finger is on it
   useEffect(() => { if (!item || !open || held) return; clear(); timer.current = setTimeout(leave, EXPANDED_MS); return clear; }, [open, held, item, leave]);
 

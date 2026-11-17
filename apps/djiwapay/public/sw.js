@@ -41,7 +41,7 @@ self.addEventListener("push", (event) => {
     const open = wins.find((w) => w.visibilityState === "visible");
     if (open) { open.postMessage({ type: "djiwa-island", item: data }); return; }   // the app is on screen: show the in-app island, no second banner
     const amount = typeof data.amount === "number" ? ` ${data.sign === "+" ? "+" : data.sign === "−" ? "−" : ""}Rp ${data.amount.toLocaleString("id-ID")}` : "";
-    await self.registration.showNotification(`${data.title || "Djiwa Pay"}${amount}`, { body: data.message || "", icon: "/pwa-192.png", badge: "/favicon-32.png", tag: data.id || "djiwapay", data, lang: "id" });
+    await self.registration.showNotification(`${data.title || "Djiwa Pay"}${amount}`, { body: data.message || "", icon: "/pwa-192.png", badge: "/favicon-32.png", tag: data.id || "djiwapay", data, lang: "id", vibrate: data.tone === "warn" ? [70, 50, 70] : [60, 40, 60] });
   })());
 });
 self.addEventListener("notificationclick", (event) => {

@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { playSound } from "../../lib/sound";
 import { AnimatePresence, MotionConfig, animate, motion, useAnimation, useDragControls, useMotionValue, useReducedMotion, useTransform, type HTMLMotionProps } from "framer-motion";
 
 export const ICON_NAMES = ["back", "close", "bell", "eye", "eyeoff", "search", "filter", "cal", "up", "plus", "check", "chev", "share", "copy", "shield", "help", "user", "flash", "clock", "warn", "info", "chart", "phone", "wifi", "receipt", "drop", "heart", "tv", "game", "car", "repeat", "gift", "grid", "bank", "down", "send", "scan", "qr", "link", "bag", "mic", "edit", "trash", "tag", "target", "flame", "users", "dl", "split", "trend", "pie", "list", "spark", "del", "book", "cup", "card", "home", "undo", "refresh", "swap", "wallet"] as const;
@@ -37,7 +38,7 @@ export function MascotBuddy({ messages, px = 84, quotes = [] }: { messages: stri
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const busy = useRef(false);
   const say = (text: string, ms = 4200, quote = false) => {
-    setBubble(text); setIsQuote(quote); shown.current = true;
+    setBubble(text); setIsQuote(quote); shown.current = true; playSound("mascot");
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => { shown.current = false; setBubble(null); }, ms);
   };

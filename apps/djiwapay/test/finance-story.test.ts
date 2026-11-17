@@ -176,3 +176,16 @@ describe("pwa", () => {
     expect(islandFromPush({} as never)).toBeNull();
   });
 });
+
+import { soundPlan, vibration } from "../src/lib/sound";
+describe("sounds", () => {
+  test("every sound opens with the coin ting except the mascot's chirp, and stays short", () => {
+    for (const k of ["in", "out", "move", "mail", "warn", "info"] as const) { const plan = soundPlan(k); expect(plan[0].voice).toBe("coin"); expect(Math.max(...plan.map((n) => n.at + n.decay))).toBeLessThan(1.6); }
+    expect(soundPlan("mascot").every((n) => n.voice === "bell")).toBe(true);
+  });
+  test("money in rises and money out falls", () => {
+    const f = (k: "in" | "out") => soundPlan(k).filter((n) => n.voice === "bell").map((n) => n.freq);
+    expect(f("in")).toEqual([...f("in")].sort((a, b) => a - b)); expect(f("out")).toEqual([...f("out")].sort((a, b) => b - a));
+  });
+  test("a reminder buzzes twice", () => { expect(vibration("warn").length).toBe(3); });
+});
