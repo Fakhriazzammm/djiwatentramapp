@@ -1024,3 +1024,7 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 .dpx.dpx-pw-update{bottom:calc(env(safe-area-inset-bottom,0px) + 128px);z-index:300}
 .dpx .dpx-wd-panel{grid-template-columns:minmax(0,1fr)}.dpx .dpx-wd-panel>*{min-width:0}
 .dpx .dpx-wd-acts{grid-template-columns:repeat(auto-fit,minmax(64px,1fr))}
+.dpx .dpx-wd-swipe{margin:0 -12px;width:calc(100% + 24px)}
+.dpx .dpx-wd-card.swipe{transition:none;opacity:1;transform:none;box-shadow:0 8px 16px -10px rgba(20,16,12,.5);touch-action:pan-x pan-y;scroll-snap-stop:always}
+.dpx .dpx-wd-card.swipe .dpx-wd-sheen{display:none}
+.dpx .dpx-wd-track{scroll-behavior:auto;will-change:scroll-position}

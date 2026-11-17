@@ -42,7 +42,19 @@ export function WalletDeck({ ctx, accounts, balances }: { ctx: FinCtx; accounts:
   const scrollTo = (i: number, smooth = true) => { const el = track.current?.children[i] as HTMLElement | undefined; if (el && track.current) track.current.scrollTo({ left: el.offsetLeft - (track.current.clientWidth - el.offsetWidth) / 2, behavior: smooth ? "smooth" : "auto" }); };
   const go = (i: number) => { const n = (i + cards.length) % cards.length; setDir(n >= sel ? 1 : -1); setSel(n); setHint(false); if (view === "swipe") scrollTo(n); else setView("swipe"); };
   useEffect(() => { if (view === "swipe") scrollTo(sel, false); }, [view]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const onScroll = () => { const t = track.current; if (!t) return; const mid = t.scrollLeft + t.clientWidth / 2; let best = 0, d = Infinity; Array.from(t.children).forEach((c, i) => { const el = c as HTMLElement, dd = Math.abs(el.offsetLeft + el.offsetWidth / 2 - mid); if (dd < d) { d = dd; best = i; } }); if (best !== sel) { setDir(best > sel ? 1 : -1); setSel(best); } if (t.scrollLeft > 8) setHint(false); };
+  const hintOn = useRef(true); hintOn.current = hint;
+  useEffect(() => {   // nudge the row sideways a few times so people see it moves; stops at the first touch
+    if (view !== "swipe" || cards.length < 2) return;
+    let dead = false; const t = track.current; const timers: number[] = [];
+    const nudge = () => { if (dead || !t || !hintOn.current || t.scrollLeft > 4) return; const t0 = performance.now(); t.style.scrollSnapType = "none";
+      const step = (now: number) => { const k = Math.min(1, (now - t0) / 800); if (!hintOn.current || dead) { t.scrollLeft = 0; t.style.scrollSnapType = ""; return; } t.scrollLeft = Math.sin(k * Math.PI) * 56; if (k < 1) requestAnimationFrame(step); else { t.scrollLeft = 0; t.style.scrollSnapType = ""; } };
+      requestAnimationFrame(step); };
+    [900, 3400, 5900].forEach((d) => timers.push(window.setTimeout(nudge, d)));
+    return () => { dead = true; timers.forEach(clearTimeout); if (t) t.style.scrollSnapType = ""; };
+  }, [view, cards.length]);
+  const raf = useRef(0);
+  const onScroll = () => { if (raf.current) return; raf.current = requestAnimationFrame(() => { raf.current = 0; measure(); }); };
+  const measure = () => { const t = track.current; if (!t) return; const mid = t.scrollLeft + t.clientWidth / 2; let best = 0, d = Infinity; Array.from(t.children).forEach((c, i) => { const el = c as HTMLElement, dd = Math.abs(el.offsetLeft + el.offsetWidth / 2 - mid); if (dd < d) { d = dd; best = i; } }); if (best !== sel) { setDir(best > sel ? 1 : -1); setSel(best); } if (t.scrollLeft > 8) setHint(false); };
   const body = (c: Card, full: boolean) => { const st = statsOf.get(c.id) ?? { inn: 0, out: 0 }; return <>
     <motion.i className="dpx-wd-sheen" />
     <div className="dpx-wd-head">
@@ -61,11 +73,10 @@ export function WalletDeck({ ctx, accounts, balances }: { ctx: FinCtx; accounts:
       <div className="dpx-wd-tools"><Btn type="button" className={`dpx-wd-tool ${view === "stack" ? "on" : ""}`} onClick={() => setView((v) => (v === "swipe" ? "stack" : "swipe"))} aria-pressed={view === "stack"} aria-label={view === "stack" ? "Tampilan geser" : "Tampilan daftar"}><Ic n={view === "stack" ? "wallet" : "list"} size="sm" /></Btn>
         <Btn type="button" className="dpx-wd-tool" onClick={() => ctx.open({ k: "account" })} aria-label="Tambah dompet"><Ic n="plus" size="sm" /></Btn></div></div>
     {view === "swipe" ? <div className="dpx-wd-swipe">
-      <motion.div className="dpx-wd-track" ref={track} onScroll={onScroll} onPointerDown={() => setHint(false)}
-        animate={hint ? { x: [0, -46, 0, -26, 0] } : { x: 0 }} transition={hint ? { delay: 0.9, duration: 1.5, ease: "easeInOut", repeat: 2, repeatDelay: 2.2 } : { duration: 0.2 }}>
+      <div className="dpx-wd-track" ref={track} onScroll={onScroll} onPointerDown={() => setHint(false)} onTouchStart={() => setHint(false)}>
         {cards.map((c, i) => <div key={c.id} className={`dpx-wd-card swipe ${i === sel ? "front" : ""}`} style={{ background: `linear-gradient(145deg, ${c.skin.from}, ${c.skin.to})`, height: FOCUS_H }}
           role="group" aria-label={`${c.name}, saldo ${ctx.visible ? rupiah(c.balance) : "disembunyikan"}`} tabIndex={0} onKeyDown={(e) => { if (e.key === "ArrowRight") go(sel + 1); else if (e.key === "ArrowLeft") go(sel - 1); }}>{body(c, true)}</div>)}
-      </motion.div>
+      </div>
       <AnimatePresence>{hint && cards.length > 1 ? <motion.div className="dpx-wd-hint" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ delay: 0.5 }} aria-hidden="true"><motion.span animate={{ x: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 1 }}>‹</motion.span> Geser untuk dompet lain <motion.span animate={{ x: [0, 5, 0] }} transition={{ repeat: Infinity, duration: 1 }}>›</motion.span></motion.div> : null}</AnimatePresence>
     </div> : <div className="dpx-wd-deck" style={{ height: STACK_H }}>
       {cards.map((c, idx) => <motion.div key={c.id} className="dpx-wd-card" style={{ background: `linear-gradient(145deg, ${c.skin.from}, ${c.skin.to})`, zIndex: idx, height: STRIP_H + 18, top: idx * (STRIP_H - 18) }}
