@@ -135,7 +135,22 @@ export type Extracted = {
   confidence: number;
   missing: string[];
   details?: PaymentDetails;
+  /** A top-up moves money between the person's own accounts: it is not income or spending. */
+  transfer?: TopUp;
 };
+export type TopUp = { provider: string; side: "from-bank" | "to-wallet"; nominal: number; fee: number };
+const WALLETS: [RegExp, string][] = [[/gopay|go-pay/i, "GoPay"], [/shopee\s?pay/i, "ShopeePay"], [/\bovo\b/i, "OVO"], [/\bdana\b/i, "DANA"], [/link\s?aja/i, "LinkAja"], [/isaku|sakuku/i, "iSaku"]];
+/** "Top-up Berhasil" from a bank (money left an account for a wallet) or from the wallet itself (money arrived). */
+export function topUpOf(subject: string, text: string, x: { direction: Extracted["direction"]; amount: number; details?: PaymentDetails }, fromSource: boolean): TopUp | undefined {
+  const whole = `${subject}\n${text}`;
+  if (!/top[\s-]?up/i.test(whole) || !/top[\s-]?up\s*(berhasil|sukses)|nominal top[\s-]?up|top[\s-]?up\s+\w+\s+sebesar|top[\s-]?up .{0,30}berhasil/i.test(whole)) return undefined;
+  const near = whole.match(/(?:penyedia jasa|top[\s-]?up(?: ke)?|tujuan)\s*[:\-]?\s*([^\n]{0,40})/i)?.[1] ?? "";
+  const provider = WALLETS.find(([re]) => re.test(near) || re.test(x.details?.description ?? ""))?.[1] ?? WALLETS.find(([re]) => re.test(whole))?.[1] ?? "Dompet digital";
+  const item = x.details?.items?.[0]?.amount ?? 0, charged = (x.details?.charges ?? []).filter((c) => !c.included).reduce((n, c) => n + c.amount, 0);
+  const nominal = item > 0 && item <= x.amount ? item : charged > 0 && x.amount > charged ? x.amount - charged : 0;
+  const side: TopUp["side"] = fromSource || x.direction === "out" ? "from-bank" : "to-wallet";
+  return { provider, side, nominal, fee: nominal > 0 ? x.amount - nominal : 0 };
+}
 
 const OUT_RE = /(pembayaran|pembelian|bayar(?:an)?|membayar|dibayar|transfer (?:ke|keluar|berhasil ke)|dikirim|pengiriman dana|penarikan|tarik tunai|debit|belanja|top[- ]?up ke|payment|purchase|paid|withdraw)/gi;
 const IN_RE = /(diterima|dana masuk|uang masuk|menerima|kredit|pemasukan|received|refund|pengembalian dana|cashback|gaji|top[- ]?up berhasil|saldo (?:bertambah|masuk)|transfer masuk)/gi;
@@ -214,7 +229,8 @@ export function extractPayment(subject: string, bodyText: string): Extracted {
   if (!merchant) missing.push("merchant");
   if (at === null) missing.push("at");
   const confidence = Math.max(0, Math.min(1, (amount ? 0.4 : 0) + (direction !== "unknown" ? 0.25 : 0) + (merchant ? 0.15 : 0) + (at !== null ? 0.1 : 0) + (acct ? 0.05 : 0) + (ref ? 0.05 : 0) + (TXN_EVIDENCE.test(whole) ? 0 : -0.3)));
-  return { amount, direction, merchant, accountHint: acct?.[1] ?? "", ref: ref?.[1] ?? "", at, confidence, missing, details };
+  const transfer = topUpOf(subject, text, { direction, amount, details }, Boolean(srcAcct));
+  return { amount, direction, merchant, accountHint: acct?.[1] ?? "", ref: ref?.[1] ?? "", at, confidence, missing, details, ...(transfer ? { transfer } : {}) };
 }
 
 /** Deterministic read is trusted only when amount and direction are both clear. */

@@ -4,7 +4,7 @@ export type InboundSource = { forwarding: boolean; address: string; enabled: boo
 export type InboundSummary = { configured: boolean; filter: string; source: InboundSource | null; review: number; importReady: number; autoRecent: number };
 export type ReviewItem = {
   id: string; channel: string; status: "review" | "failed"; reason: string; confidence: number; createdAt: string;
-  parsed: { amount?: number; kind?: "out" | "in"; direction?: string; merchant?: string; categoryId?: string; accountId?: string; accountHint?: string; at?: string; subject?: string; issuer?: string; details?: PaymentDetails; flags?: string[] };
+  parsed: { amount?: number; kind?: "out" | "in" | "tf"; transfer?: { from: string; to: string; toName?: string; amount: number; fee?: number }; direction?: string; merchant?: string; categoryId?: string; accountId?: string; accountHint?: string; at?: string; subject?: string; issuer?: string; details?: PaymentDetails; flags?: string[] };
 };
 export type GoogleStatus = {
   configured: boolean; connected: boolean; email: string | null; features: { calendar: boolean; drive: boolean; gmail: boolean };

@@ -54,11 +54,23 @@ async function learnedCategory(q: Q, userId: string, merchant: string): Promise<
   return r.rows[0]?.category_id ?? null;
 }
 
-type Candidate = { kind: "out" | "in"; amount: number; categoryId: string; accountId: string; at: string; note: string };
+type Candidate = { kind: "out" | "in" | "tf"; amount: number; categoryId: string; accountId: string; toAccountId?: string; at: string; note: string };
+
+const slug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 30) || "dompet";
+async function ensureAcct(q: Q, userId: string, id: string, name: string, type: "bank" | "ewallet") {
+  await q.query("insert into finance.accounts(user_id,id,name,type,opening) values($1,$2,$3,$4,0) on conflict do nothing", [userId, id, name, type]);
+  return id;
+}
+/** A top-up fee is real spending, kept as its own small entry next to the transfer. */
+async function insertFee(q: Q, userId: string, fee: number, accountId: string, at: string, provider: string): Promise<string> {
+  const id = `em-fee-${randomUUID()}`;
+  await q.query("insert into finance.entries(user_id,id,kind,amount,category_id,account_id,at,note,tags,source) values($1,$2,'out',$3,'tagihan',$4,$5,$6,'{}','email')", [userId, id, fee, accountId, at, `Biaya top-up ${provider}`.slice(0, 100)]);
+  return id;
+}
 
 async function insertEntry(q: Q, userId: string, c: Candidate, inboundId: string): Promise<string> {
   const id = `em-${randomUUID()}`;
-  await q.query("insert into finance.entries(user_id,id,kind,amount,category_id,account_id,at,note,tags,source,inbound_id) values($1,$2,$3,$4,$5,$6,$7,$8,'{}','email',$9)", [userId, id, c.kind, c.amount, c.categoryId, c.accountId, c.at, c.note.slice(0, 200), inboundId]);
+  await q.query("insert into finance.entries(user_id,id,kind,amount,category_id,account_id,to_account_id,at,note,tags,source,inbound_id) values($1,$2,$3,$4,$5,$6,$7,$8,$9,'{}','email',$10)", [userId, id, c.kind, c.amount, c.categoryId, c.accountId, c.toAccountId ?? null, c.at, c.note.slice(0, 200), inboundId]);
   await bump(q, userId);
   return id;
 }
@@ -148,6 +160,27 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   const accountId = stage ? accountIdFor(issuer, x.accountHint) : await ensureAccount(d.db, userId, issuer, x.accountHint);
   const kind: "out" | "in" = x.direction === "in" ? "in" : "out";
 
+  // A top-up is the person moving their own money into a wallet: a transfer, never income or spending.
+  const tp = x.transfer;
+  if (tp && !stage && flags.length === 0 && x.amount > 0 && x.direction !== "unknown") {
+    const walletId = await ensureAcct(d.db, userId, `email-${slug(tp.provider)}`, tp.provider, "ewallet");
+    const nominal = tp.nominal || x.amount, fee = tp.nominal ? Math.max(0, x.amount - tp.nominal) : 0;
+    const from = tp.side === "from-bank" ? accountId : await ensureAcct(d.db, userId, "email-rekening-bank", "Rekening bank", "bank");
+    const to = tp.side === "from-bank" ? walletId : accountId;
+    const dupT = await d.db.query("select id from finance.entries where user_id=$1 and kind='tf' and amount=$2 and to_account_id=$3 and at between $4::timestamptz - interval '36 hours' and $4::timestamptz + interval '36 hours' limit 1", [userId, nominal, to, at]);
+    if (dupT.rows[0]) return finish("duplicate", "already-recorded", { parsed, confidence: x.confidence, entryId: dupT.rows[0].id, at });
+    const transfer = { from, to, toName: tp.provider, amount: nominal, fee };
+    if (isConfident(x) && nominal <= (d.autoCeiling ?? AUTO_CEILING)) {
+      const ids = await d.db.tx(async (q) => {
+        const entryId = await insertEntry(q, userId, { kind: "tf", amount: nominal, categoryId: "transfer", accountId: from, toAccountId: to, at, note: `Top-up ${tp.provider}` }, inboundId);
+        const feeEntryId = fee > 0 ? await insertFee(q, userId, fee, from, at, tp.provider) : null;
+        return { entryId, feeEntryId };
+      });
+      return finish("auto", "recorded", { parsed: { ...parsed, kind: "tf", transfer: { ...transfer, feeEntryId: ids.feeEntryId } }, confidence: x.confidence, entryId: ids.entryId, at });
+    }
+    return finish("review", "needs-check", { parsed: { ...parsed, kind: "tf", categoryId: "transfer", accountId: from, transfer }, confidence: x.confidence, at });
+  }
+
   // Same money already recorded (Djiwa Pay, scan, manual or another e-mail)?
   const same = await d.db.query("select id from finance.entries where user_id=$1 and amount=$2 and kind=$3 and account_id=$4 and at between $5::timestamptz - ($6 * interval '1 millisecond') and $5::timestamptz + ($6 * interval '1 millisecond') limit 1", [userId, x.amount, kind, accountId, at, CLOSE_MS]);
   if (same.rows[0]) return finish("duplicate", "already-recorded", { parsed, confidence: x.confidence, entryId: same.rows[0].id, at });
@@ -208,16 +241,22 @@ export async function approve(d: Tx, userId: string, inboundId: string, e: Edits
     const m = (await q.query("select id,parsed,status,channel from finance.inbound_messages where user_id=$1 and id=$2 and status in ('review','failed') for update", [userId, inboundId])).rows[0];
     if (!m) return null;
     const p = (m.parsed ?? {}) as Record<string, any>;
-    const amount = Number(e.amount ?? p.amount), kind = (e.kind ?? p.kind ?? (p.direction === "in" ? "in" : "out")) === "in" ? "in" : "out";
+    const tr = p.transfer && typeof p.transfer.to === "string" && typeof p.transfer.from === "string" ? p.transfer as { from: string; to: string; toName?: string; amount: number; fee?: number } : null;
+    const amount = Number(e.amount ?? (tr ? tr.amount : p.amount)), kind: "in" | "out" | "tf" = tr ? "tf" : (e.kind ?? p.kind ?? (p.direction === "in" ? "in" : "out")) === "in" ? "in" : "out";
     if (!(amount > 0)) return null;
     const atMs = Date.parse(String(e.at ?? p.at));
     const candidate: Candidate = {
-      kind, amount, categoryId: String(e.categoryId ?? p.categoryId ?? "lainnya").slice(0, 80),
-      accountId: String(e.accountId ?? p.accountId ?? "tunai").slice(0, 80), at: new Date(Number.isNaN(atMs) ? Date.now() : atMs).toISOString(), note: String(e.note ?? p.merchant ?? p.subject ?? "").slice(0, 200),
+      kind, amount, categoryId: tr ? "transfer" : String(e.categoryId ?? p.categoryId ?? "lainnya").slice(0, 80), ...(tr ? { toAccountId: tr.to } : {}),
+      accountId: String(tr ? tr.from : e.accountId ?? p.accountId ?? "tunai").slice(0, 80), at: new Date(Number.isNaN(atMs) ? Date.now() : atMs).toISOString(), note: String(e.note ?? p.merchant ?? p.subject ?? "").slice(0, 200),
     };
     if (typeof p.accountId === "string" && p.accountId.startsWith("email-") && p.accountId === candidate.accountId)   // imported items keep their account until approved
       await q.query("insert into finance.accounts(user_id,id,name,type,opening) values($1,$2,$3,$4,0) on conflict do nothing", [userId, p.accountId, String(p.accountName ?? p.issuer ?? "Dompet").slice(0, 60), ["bank", "ewallet"].includes(p.accountType) ? p.accountType : "other"]);
+    if (tr) {
+      await ensureAcct(q, userId, tr.to, String(tr.toName ?? "Dompet digital").slice(0, 60), "ewallet");
+      if (tr.from === "email-rekening-bank") await ensureAcct(q, userId, tr.from, "Rekening bank", "bank");
+    }
     const entryId = await insertEntry(q, userId, candidate, inboundId);
+    if (tr && Number(tr.fee) > 0) { const feeId = await insertFee(q, userId, Number(tr.fee), tr.from, candidate.at, String(tr.toName ?? "dompet digital")); await q.query("update finance.inbound_messages set parsed=jsonb_set(parsed,'{transfer,feeEntryId}',to_jsonb($2::text)) where id=$1", [inboundId, feeId]); }
     await q.query("update finance.inbound_messages set status='approved', entry_id=$2, reason='approved' where id=$1", [inboundId, entryId]);
     await q.query("update finance.inbound_sources set trusted_count=trusted_count+1 where user_id=$1", [userId]);
     const key = merchantKey(String(p.merchant ?? ""));
@@ -229,9 +268,9 @@ export async function approve(d: Tx, userId: string, inboundId: string, e: Edits
 /** Rejects a queued item, or undoes an automatic record (the entry is removed too). */
 export async function reject(d: Tx, userId: string, inboundId: string): Promise<boolean> {
   return d.tx(async (q) => {
-    const m = (await q.query("select entry_id,status from finance.inbound_messages where user_id=$1 and id=$2 and status in ('review','failed','auto') for update", [userId, inboundId])).rows[0];
+    const m = (await q.query("select entry_id,status,parsed->'transfer'->>'feeEntryId' as fee_id from finance.inbound_messages where user_id=$1 and id=$2 and status in ('review','failed','auto') for update", [userId, inboundId])).rows[0];
     if (!m) return false;
-    if (m.status === "auto" && m.entry_id) { await q.query("delete from finance.entries where user_id=$1 and id=$2 and source='email'", [userId, m.entry_id]); await bump(q, userId); }
+    if (m.status === "auto" && m.entry_id) { await q.query("delete from finance.entries where user_id=$1 and id in ($2,$3) and source='email'", [userId, m.entry_id, m.fee_id ?? m.entry_id]); await bump(q, userId); }
     await q.query("update finance.inbound_messages set status='rejected', reason='rejected' where id=$1", [inboundId]);
     if (m.status === "auto") await q.query("update finance.inbound_sources set trusted_count=greatest(trusted_count-2,0) where user_id=$1", [userId]);
     return true;

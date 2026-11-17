@@ -194,4 +194,12 @@ describe("the read must agree with the mail", () => {
     expect(isConfident(x)).toBe(true);
     expect(implausible("Pembayaran ke SPBU sebesar Rp 50.000 berhasil", x, Date.UTC(2026, 10, 15, 6))).toEqual([]);
   });
+
+  test("a top-up is a transfer into the wallet, with the fee kept apart", () => {
+    const x = extractPayment("Top-up Berhasil", "Penyedia Jasa\nGoPay Customer ****9831\nRekening Sumber ****4399\nNominal Top-up\nRp 41.000,00\nBiaya Transaksi\nRp 1.200,00\nTotal Transaksi\nRp 42.200,00\nNo. Referensi 702610060617361");
+    expect(x.transfer).toEqual({ provider: "GoPay", side: "from-bank", nominal: 41000, fee: 1200 });
+  });
+  test("a plain payment is not a transfer", () => {
+    expect(extractPayment("Pembayaran Berhasil", "Pembayaran ke Restoran sambal ijo Wood Rp 59.000 No. Referensi 2611171121557887297").transfer).toBeUndefined();
+  });
 });

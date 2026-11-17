@@ -20,7 +20,10 @@ const dayLabel = (key: string) => {
 };
 const timeOf = (iso?: string) => (iso ? new Date(iso).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }).replace(":", ".") : "");
 const titleOf = (it: ReviewItem) => tidyTitle(it.parsed.details?.description || it.parsed.merchant || it.parsed.subject || CHANNEL_NAME[it.channel] || "Email pembayaran");
-const kindOf = (it: ReviewItem): "in" | "out" => it.parsed.kind ?? (it.parsed.direction === "in" ? "in" : "out");
+const kindOf = (it: ReviewItem): "in" | "out" => (it.parsed.kind === "in" || (!it.parsed.kind && it.parsed.direction === "in") ? "in" : "out");
+/** A top-up moves the person's own money into a wallet: it is neither income nor spending. */
+const isMove = (it: ReviewItem) => Boolean(it.parsed.transfer);
+const moveAmount = (it: ReviewItem) => it.parsed.transfer?.amount ?? it.parsed.amount ?? 0;
 const sourceOf = (it: ReviewItem) => `${CHANNEL_NAME[it.channel] ?? it.parsed.issuer ?? "Email"}${it.parsed.accountHint ? ` ••${it.parsed.accountHint}` : ""}`;
 const needsLook = (it: ReviewItem) => Boolean(it.parsed.flags?.length) || (it.parsed.categoryId ?? "lainnya") === "lainnya";
 
@@ -33,9 +36,9 @@ function Row({ item, ctx, selecting, selected, onToggle, onOpen, onQuick, busy }
       <span className="dpx-rv-text">
         <b>{titleOf(item)}</b>
         <span className="dpx-rv-sub">{sourceOf(item)}{p.at ? ` · ${timeOf(p.at)}` : ""}</span>
-        <span className="dpx-rv-chips"><i>{cat.name}</i>{needsLook(item) ? <i className="is-warn">{(p.categoryId ?? "lainnya") === "lainnya" ? "Pilih kategori" : "Perlu dicek"}</i> : null}</span>
+        <span className="dpx-rv-chips"><i>{isMove(item) ? `Pindah dana ke ${p.transfer?.toName ?? "dompet"}` : cat.name}</i>{!isMove(item) && needsLook(item) ? <i className="is-warn">{(p.categoryId ?? "lainnya") === "lainnya" ? "Pilih kategori" : "Perlu dicek"}</i> : null}</span>
       </span>
-      <span className={`dpx-rv-amt ${kind === "in" ? "is-in" : ""}`}>{ok ? `${kind === "in" ? "+" : "−"}${rupiah(p.amount ?? 0)}` : <em style={{ fontSize: 12, fontStyle: "normal", color: "var(--warn, #b4691a)", fontWeight: 600 }}>Nominal belum terbaca</em>}</span>
+      <span className={`dpx-rv-amt ${kind === "in" && !isMove(item) ? "is-in" : ""}`}>{ok ? (isMove(item) ? `⇄ ${rupiah(moveAmount(item))}` : `${kind === "in" ? "+" : "−"}${rupiah(p.amount ?? 0)}`) : <em style={{ fontSize: 12, fontStyle: "normal", color: "var(--warn, #b4691a)", fontWeight: 600 }}>Nominal belum terbaca</em>}</span>
     </Btn>
     {!selecting && ok ? <Btn type="button" className="dpx-rv-ok" onClick={onQuick} disabled={busy} aria-label={`Setujui ${titleOf(item)}`}><Ic n="check" size="sm" /></Btn> : null}
   </div>;
@@ -45,7 +48,8 @@ function Row({ item, ctx, selecting, selected, onToggle, onOpen, onQuick, busy }
 function DetailSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: FinCtx; onClose: () => void; onDone: (message: string) => Promise<void> }) {
   const p = item.parsed, state = ctx.fin.state;
   const [kind, setKind] = useState<"in" | "out">(kindOf(item));
-  const [amount, setAmount] = useState(String(Math.round(p.amount ?? 0)));
+  const move = isMove(item);
+  const [amount, setAmount] = useState(String(Math.round(move ? moveAmount(item) : p.amount ?? 0)));
   const [note, setNote] = useState(tidyTitle(p.details?.description || p.merchant || p.subject || ""));
   const [cat, setCat] = useState(p.categoryId ?? (kind === "in" ? "bonus" : "lainnya"));
   const [account, setAccount] = useState(p.accountId ?? "tunai");
@@ -58,18 +62,19 @@ function DetailSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: Fi
   return <Sheet title="Tinjau catatan" onClose={onClose}>
     <div className="dpx-rv-hero"><CatIcon cat={catOf(state, cat)} size={56} /><div><b>{tidyTitle(p.details?.description || p.merchant || p.subject || "Email pembayaran")}</b><span>{sourceOf(item)}{p.at ? ` · ${new Date(p.at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}, ${timeOf(p.at)}` : ""}</span></div></div>
     {!((p.amount ?? 0) > 0) ? <div className="dpx-note" style={{ marginTop: 0 }}><Ic n="info" /><div><b>Nominal belum terbaca.</b> Email ini tidak memuat angka yang bisa dibaca otomatis. Coba &quot;Lengkapi dari isi email&quot; di bawah, atau isi nominal sendiri lalu setujui.</div></div> : null}
-    {needsLook(item) ? <div className="dpx-note" style={{ marginTop: 0 }}><Ic n="info" /><div>{p.flags?.length ? <><b>Perlu dicek.</b> {p.flags.join(", ")}</> : <><b>Kategori belum jelas.</b> Pilih yang paling pas di bawah.</>}</div></div> : null}
+    {move ? <div className="dpx-note" style={{ marginTop: 0 }}><Ic n="info" /><div><b>Top-up dicatat sebagai pindah dana.</b> Uang pindah dari akun asal ke {p.transfer?.toName ?? "dompet digital"}, jadi tidak dihitung sebagai pemasukan atau pengeluaran.{(p.transfer?.fee ?? 0) > 0 ? ` Biaya ${rupiah(p.transfer?.fee ?? 0)} dicatat sebagai pengeluaran terpisah.` : ""}</div></div> : null}
+    {!move && needsLook(item) ? <div className="dpx-note" style={{ marginTop: 0 }}><Ic n="info" /><div>{p.flags?.length ? <><b>Perlu dicek.</b> {p.flags.join(", ")}</> : <><b>Kategori belum jelas.</b> Pilih yang paling pas di bawah.</>}</div></div> : null}
     <div className="dpx-glabel">Rincian dari email</div>
     <div className="dpx-group dpx-white dpx-rv-details"><PaymentDetails details={p.details} /></div>
     <Btn type="button" className="dpx-linkbtn" disabled={busy} onClick={() => void act(() => rereadItem(item.id), "Rincian dibaca dari isi email")}>{p.details ? "Baca ulang isi email" : "Lengkapi dari isi email"}</Btn>
     <div className="dpx-glabel">Yang dicatat</div>
-    <Seg id="rv-kind" label="Jenis" value={kind} onChange={(v) => { setKind(v); setCat(v === "in" ? "bonus" : "lainnya"); }} options={[["out", "Pengeluaran"], ["in", "Pemasukan"]] as const} />
+    {move ? null : <Seg id="rv-kind" label="Jenis" value={kind} onChange={(v) => { setKind(v); setCat(v === "in" ? "bonus" : "lainnya"); }} options={[["out", "Pengeluaran"], ["in", "Pemasukan"]] as const} />}
     <div style={{ marginTop: 10 }}><MoneyInput value={amount} onChange={setAmount} label="Nominal" /></div>
     <div className="dpx-input" style={{ marginTop: 8 }}><input aria-label="Keterangan" value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="Nama toko atau tujuan" /></div>
-    <div className="dpx-glabel">Kategori</div>
-    <div className="dpx-rv-pick" role="group" aria-label="Kategori">{cats.map((c) => <Btn key={c.id} type="button" className={cat === c.id ? "is-on" : ""} aria-pressed={cat === c.id} onClick={() => setCat(c.id)}>{c.name}</Btn>)}</div>
-    <div className="dpx-glabel">Dompet</div>
-    <div className="dpx-rv-pick" role="group" aria-label="Dompet">{accountOptions.map((a) => <Btn key={a.id} type="button" className={account === a.id ? "is-on" : ""} aria-pressed={account === a.id} onClick={() => setAccount(a.id)}>{a.name}</Btn>)}</div>
+    {move ? null : <div className="dpx-glabel">Kategori</div>}
+    {move ? null : <div className="dpx-rv-pick" role="group" aria-label="Kategori">{cats.map((c) => <Btn key={c.id} type="button" className={cat === c.id ? "is-on" : ""} aria-pressed={cat === c.id} onClick={() => setCat(c.id)}>{c.name}</Btn>)}</div>}
+    {move ? null : <div className="dpx-glabel">Dompet</div>}
+    {move ? null : <div className="dpx-rv-pick" role="group" aria-label="Dompet">{accountOptions.map((a) => <Btn key={a.id} type="button" className={account === a.id ? "is-on" : ""} aria-pressed={account === a.id} onClick={() => setAccount(a.id)}>{a.name}</Btn>)}</div>}
     <Btn type="button" className="dpx-linkbtn" onClick={() => setSource((v) => !v)} aria-expanded={source}>{source ? "Sembunyikan asal email" : "Lihat asal email"}</Btn>
     {source ? <p className="dpx-sub dpx-rv-source">{p.subject || "Judul tidak tersedia"}</p> : null}
     <div className="dpx-rv-footer">
@@ -195,7 +200,7 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
     return [...m].sort(([a], [b]) => (a < b ? 1 : -1));
   }, [items]);
   const chosen = items.filter((i) => selected.has(i.id)), approvable = chosen.filter((i) => (i.parsed.amount ?? 0) > 0);
-  const outTotal = items.filter((i) => kindOf(i) === "out").reduce((n, i) => n + (i.parsed.amount ?? 0), 0), inTotal = items.filter((i) => kindOf(i) === "in").reduce((n, i) => n + (i.parsed.amount ?? 0), 0);
+  const outTotal = items.filter((i) => !isMove(i) && kindOf(i) === "out").reduce((n, i) => n + (i.parsed.amount ?? 0), 0), inTotal = items.filter((i) => !isMove(i) && kindOf(i) === "in").reduce((n, i) => n + (i.parsed.amount ?? 0), 0);
   const open = items.find((i) => i.id === openId) ?? null;
   const toggle = (id: string) => setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const leaveSelect = () => { setSelecting(false); setSelected(new Set()); setConfirm(null); };
@@ -203,7 +208,7 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
   const quick = async (it: ReviewItem) => {
     if (busy) return; setBusy(true);
     try {
-      const r = await approveItem(it.id, { amount: it.parsed.amount, kind: kindOf(it), categoryId: it.parsed.categoryId, accountId: it.parsed.accountId });
+      const r = await approveItem(it.id, { amount: isMove(it) ? moveAmount(it) : it.parsed.amount, kind: kindOf(it), categoryId: it.parsed.categoryId, accountId: it.parsed.accountId });
       await ctx.fin.retrySync(); markDone([it]); await load();
       ctx.notify(`${titleOf(it)} ${rupiah(it.parsed.amount ?? 0)} tercatat`, () => ctx.fin.dispatch({ type: "entry/delete", id: r.entryId }));
     } catch { ctx.notify("Gagal memproses. Coba lagi."); } finally { setBusy(false); }
