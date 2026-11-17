@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { AnimatedNumber, Btn, I3, Ic, spring, type IconName } from "../shell/dpx-ui";
 import type { FinCtx } from "./fin-pages";
 import { EntryRow } from "./fin-pages";
@@ -33,47 +33,45 @@ export function WalletDeck({ ctx, accounts, balances }: { ctx: FinCtx; accounts:
     { id: PAY_ACCOUNT_ID, name: "Djiwa Pay", type: "pay", balance: ctx.payBalance, skin: skinOf("Djiwa Pay", "pay"), pay: true, needsOpening: false },
     ...accounts.map((a) => ({ id: a.id, name: a.name, type: a.type, balance: balances[a.id] ?? 0, skin: skinOf(a.name, a.type), pay: false, account: a, needsOpening: a.opening === 0 && (balances[a.id] ?? 0) < 0 })),
   ], [accounts, balances, ctx.payBalance]);
-  const [sel, setSel] = useState(0), [view, setView] = useState<"focus" | "stack">("focus"), [dir, setDir] = useState(1);
+  const [sel, setSel] = useState(0), [view, setView] = useState<"swipe" | "stack">("swipe"), [dir, setDir] = useState(1), [hint, setHint] = useState(true);
   const cur = cards[Math.min(sel, cards.length - 1)];
-  const stats = useMemo(() => { let inn = 0, out = 0; for (const e of entries) if (e.accountId === cur.id && inMonth(e, now.getFullYear(), now.getMonth())) { if (e.kind === "in") inn += e.amount; else if (e.kind === "out") out += e.amount; } return { inn, out }; }, [entries, cur.id]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const statsOf = useMemo(() => { const m = new Map<string, { inn: number; out: number }>(); for (const e of entries) if (inMonth(e, now.getFullYear(), now.getMonth())) { const t = m.get(e.accountId) ?? { inn: 0, out: 0 }; if (e.kind === "in") t.inn += e.amount; else if (e.kind === "out") t.out += e.amount; m.set(e.accountId, t); } return m; }, [entries]);   // eslint-disable-line react-hooks/exhaustive-deps
   const recent = useMemo(() => entries.filter((e) => e.accountId === cur.id).slice(0, 3), [entries, cur.id]);
-  const go = (i: number) => { const n = (i + cards.length) % cards.length; setDir(i >= sel ? 1 : -1); setSel(n); setView("focus"); };
   const mask = (s: string) => (ctx.visible ? s : "•••••");
-  const order = view === "focus" ? [sel, ...cards.map((_, i) => i).filter((i) => i !== sel)] : cards.map((_, i) => i);
-
-  // tilt and sheen follow the finger or cursor over the front card
-  const px = useMotionValue(0), py = useMotionValue(0), sx = useSpring(px, { stiffness: 180, damping: 18 }), sy = useSpring(py, { stiffness: 180, damping: 18 });
-  const rotY = useTransform(sx, [-1, 1], [-7, 7]), rotX = useTransform(sy, [-1, 1], [6, -6]), sheen = useTransform(sx, [-1, 1], ["20%", "80%"]);
-  const frontRef = useRef<HTMLDivElement>(null);
-  const onMove = (e: React.PointerEvent) => { const r = frontRef.current?.getBoundingClientRect(); if (!r) return; px.set(((e.clientX - r.left) / r.width) * 2 - 1); py.set(((e.clientY - r.top) / r.height) * 2 - 1); };
-  const dragX = useMotionValue(0), dragRot = useTransform(dragX, [-200, 0, 200], [-9, 0, 9]);
+  const track = useRef<HTMLDivElement>(null);
+  const scrollTo = (i: number, smooth = true) => { const el = track.current?.children[i] as HTMLElement | undefined; if (el && track.current) track.current.scrollTo({ left: el.offsetLeft - (track.current.clientWidth - el.offsetWidth) / 2, behavior: smooth ? "smooth" : "auto" }); };
+  const go = (i: number) => { const n = (i + cards.length) % cards.length; setDir(n >= sel ? 1 : -1); setSel(n); setHint(false); if (view === "swipe") scrollTo(n); else setView("swipe"); };
+  useEffect(() => { if (view === "swipe") scrollTo(sel, false); }, [view]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const onScroll = () => { const t = track.current; if (!t) return; const mid = t.scrollLeft + t.clientWidth / 2; let best = 0, d = Infinity; Array.from(t.children).forEach((c, i) => { const el = c as HTMLElement, dd = Math.abs(el.offsetLeft + el.offsetWidth / 2 - mid); if (dd < d) { d = dd; best = i; } }); if (best !== sel) { setDir(best > sel ? 1 : -1); setSel(best); } if (t.scrollLeft > 8) setHint(false); };
+  const body = (c: Card, full: boolean) => { const st = statsOf.get(c.id) ?? { inn: 0, out: 0 }; return <>
+    <motion.i className="dpx-wd-sheen" />
+    <div className="dpx-wd-head">
+      <span className="dpx-wd-logo">{c.pay ? <I3 name="payment-wallet" px={26} /> : <Ic n={iconOf(c.type)} />}</span>
+      <span className="dpx-wd-name"><b>{c.name}</b><small>{c.pay ? "Saldo digital" : c.type === "bank" ? "Rekening bank" : c.type === "ewallet" ? "Dompet digital" : c.type === "card" ? "Kartu" : c.type === "cash" ? "Tunai" : "Dompet"}</small></span>
+      {full ? (c.needsOpening ? <span className="dpx-wd-warn">Saldo awal belum diisi</span> : null) : <span className={`dpx-wd-mini ${c.balance < 0 ? "neg" : ""}`}>{c.balance < 0 ? "−" : ""}{ctx.visible ? <>Rp {Math.abs(Math.round(c.balance)).toLocaleString("id-ID")}</> : "•••••"}</span>}
+    </div>
+    {full ? <>
+      <div className={`dpx-wd-amt ${c.balance < 0 ? "neg" : ""}`}><small>Rp</small>{ctx.visible ? <>{c.balance < 0 ? "−" : ""}<AnimatedNumber key={c.id} value={Math.abs(c.balance)} /></> : "•••••••"}</div>
+      <div className="dpx-wd-foot"><div><small>Masuk bulan ini</small><b>{mask(rupiah(st.inn))}</b></div><i /><div><small>Keluar bulan ini</small><b>{mask(rupiah(st.out))}</b></div></div>
+    </> : null}</>; };
+  const STACK_H = cards.length * (STRIP_H - 18) + 36;
 
   return <div className="dpx-wd">
     <div className="dpx-wd-top"><span className="dpx-sub">{cards.length} dompet</span>
-      <div className="dpx-wd-tools"><Btn type="button" className={`dpx-wd-tool ${view === "stack" ? "on" : ""}`} onClick={() => setView((v) => (v === "focus" ? "stack" : "focus"))} aria-pressed={view === "stack"} aria-label={view === "stack" ? "Kembali ke satu kartu" : "Lihat semua kartu"}><Ic n="list" size="sm" /></Btn>
+      <div className="dpx-wd-tools"><Btn type="button" className={`dpx-wd-tool ${view === "stack" ? "on" : ""}`} onClick={() => setView((v) => (v === "swipe" ? "stack" : "swipe"))} aria-pressed={view === "stack"} aria-label={view === "stack" ? "Tampilan geser" : "Tampilan daftar"}><Ic n={view === "stack" ? "wallet" : "list"} size="sm" /></Btn>
         <Btn type="button" className="dpx-wd-tool" onClick={() => ctx.open({ k: "account" })} aria-label="Tambah dompet"><Ic n="plus" size="sm" /></Btn></div></div>
-    <div className="dpx-wd-deck" style={{ height: view === "focus" ? FOCUS_H + Math.max(0, cards.length - 1) * (STRIP_H - 18) + 18 : cards.length * (STRIP_H - 18) + 36 }}>
-      {order.map((idx, pos) => {
-        const c = cards[idx], front = view === "focus" && idx === sel, y = view === "focus" ? (front ? 0 : FOCUS_H - 18 + (pos - 1) * (STRIP_H - 18)) : pos * (STRIP_H - 18);
-        return <motion.div key={c.id} className={`dpx-wd-card ${front ? "front" : ""}`} ref={front ? frontRef : undefined}
-          style={{ background: `linear-gradient(145deg, ${c.skin.from}, ${c.skin.to})`, zIndex: front ? 50 : pos, ...(front ? { x: dragX, rotate: dragRot, rotateX: rotX, rotateY: rotY } : {}) }}
-          initial={false} animate={{ y, height: front ? FOCUS_H : STRIP_H + 18, scale: front ? 1 : 1 - Math.min(pos, 6) * 0.0 }} transition={{ type: "spring", stiffness: 320, damping: 30 }}
-          drag={front ? "x" : false} dragConstraints={{ left: 0, right: 0 }} dragElastic={0.7} onDragEnd={(_, info) => { if (info.offset.x < -70 || info.velocity.x < -500) go(sel + 1); else if (info.offset.x > 70 || info.velocity.x > 500) go(sel - 1); }}
-          onPointerMove={front ? onMove : undefined} onPointerLeave={front ? () => { px.set(0); py.set(0); } : undefined}
-          role="button" tabIndex={0} aria-label={`${c.name}, saldo ${ctx.visible ? rupiah(c.balance) : "disembunyikan"}${front ? "" : ". Ketuk untuk membuka"}`} aria-current={front ? "true" : undefined}
-          onClick={() => { if (!front) go(idx); }} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (!front) go(idx); } else if (front && e.key === "ArrowRight") go(sel + 1); else if (front && e.key === "ArrowLeft") go(sel - 1); }} whileTap={front ? { scale: 0.985 } : { scale: 0.99 }}>
-          <motion.i className="dpx-wd-sheen" style={front ? { backgroundPositionX: sheen } : undefined} />
-          <div className="dpx-wd-head">
-            <span className="dpx-wd-logo">{c.pay ? <I3 name="payment-wallet" px={26} /> : <Ic n={iconOf(c.type)} />}</span>
-            <span className="dpx-wd-name"><b>{c.name}</b><small>{c.pay ? "Saldo digital" : c.type === "bank" ? "Rekening bank" : c.type === "ewallet" ? "Dompet digital" : c.type === "card" ? "Kartu" : c.type === "cash" ? "Tunai" : "Dompet"}</small></span>
-            {front ? (c.needsOpening ? <span className="dpx-wd-warn">Saldo awal belum diisi</span> : null) : <span className={`dpx-wd-mini ${c.balance < 0 ? "neg" : ""}`}>{c.balance < 0 ? "−" : ""}{ctx.visible ? <>Rp {Math.abs(Math.round(c.balance)).toLocaleString("id-ID")}</> : "•••••"}</span>}
-          </div>
-          {front ? <>
-            <div className={`dpx-wd-amt ${c.balance < 0 ? "neg" : ""}`}><small>Rp</small>{ctx.visible ? <>{c.balance < 0 ? "−" : ""}<AnimatedNumber key={c.id} value={Math.abs(c.balance)} /></> : "•••••••"}</div>
-            <div className="dpx-wd-foot"><div><small>Masuk bulan ini</small><b>{mask(rupiah(stats.inn))}</b></div><i /><div><small>Keluar bulan ini</small><b>{mask(rupiah(stats.out))}</b></div></div>
-          </> : null}
-        </motion.div>; })}
-    </div>
+    {view === "swipe" ? <div className="dpx-wd-swipe">
+      <motion.div className="dpx-wd-track" ref={track} onScroll={onScroll} onPointerDown={() => setHint(false)}
+        animate={hint ? { x: [0, -46, 0, -26, 0] } : { x: 0 }} transition={hint ? { delay: 0.9, duration: 1.5, ease: "easeInOut", repeat: 2, repeatDelay: 2.2 } : { duration: 0.2 }}>
+        {cards.map((c, i) => <div key={c.id} className={`dpx-wd-card swipe ${i === sel ? "front" : ""}`} style={{ background: `linear-gradient(145deg, ${c.skin.from}, ${c.skin.to})`, height: FOCUS_H }}
+          role="group" aria-label={`${c.name}, saldo ${ctx.visible ? rupiah(c.balance) : "disembunyikan"}`} tabIndex={0} onKeyDown={(e) => { if (e.key === "ArrowRight") go(sel + 1); else if (e.key === "ArrowLeft") go(sel - 1); }}>{body(c, true)}</div>)}
+      </motion.div>
+      <AnimatePresence>{hint && cards.length > 1 ? <motion.div className="dpx-wd-hint" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ delay: 0.5 }} aria-hidden="true"><motion.span animate={{ x: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 1 }}>‹</motion.span> Geser untuk dompet lain <motion.span animate={{ x: [0, 5, 0] }} transition={{ repeat: Infinity, duration: 1 }}>›</motion.span></motion.div> : null}</AnimatePresence>
+    </div> : <div className="dpx-wd-deck" style={{ height: STACK_H }}>
+      {cards.map((c, idx) => <motion.div key={c.id} className="dpx-wd-card" style={{ background: `linear-gradient(145deg, ${c.skin.from}, ${c.skin.to})`, zIndex: idx, height: STRIP_H + 18, top: idx * (STRIP_H - 18) }}
+        initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.025 }}
+        role="button" tabIndex={0} aria-label={`${c.name}, ketuk untuk membuka`} onClick={() => go(idx)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(idx); } }} whileTap={{ scale: 0.99 }}>{body(c, false)}</motion.div>)}
+    </div>}
     <div className="dpx-wd-dots" role="tablist" aria-label="Pilih dompet">{cards.map((c, i) => <button key={c.id} type="button" role="tab" aria-selected={i === sel} aria-label={c.name} className={i === sel ? "on" : ""} onClick={() => go(i)} />)}<button type="button" className="add" aria-label="Tambah dompet" onClick={() => ctx.open({ k: "account" })}>+</button></div>
     <AnimatePresence mode="wait" initial={false}>
       <motion.div key={cur.id} className="dpx-wd-panel" initial={{ opacity: 0, x: 24 * dir }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 * dir }} transition={{ duration: 0.2 }}>

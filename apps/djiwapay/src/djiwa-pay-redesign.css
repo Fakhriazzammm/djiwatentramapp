@@ -1003,3 +1003,12 @@ html:has(.dpx-plain),body:has(.dpx-plain),#root:has(.dpx-plain){background:#f8f3
 
 /* The app column is narrower than the screen: the page behind it uses the same cream, so there is no visible line at its edges. */
 html:has(.dpx),body:has(.dpx),#root:has(.dpx){background:#f8f3e9}
+
+/* Wallet cards: horizontal swipe by default */
+.dpx .dpx-wd-swipe{position:relative;margin:0 -12px}
+.dpx .dpx-wd-track{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 12px 18px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.dpx .dpx-wd-track::-webkit-scrollbar{display:none}
+.dpx .dpx-wd-card.swipe{position:relative;flex:0 0 86%;scroll-snap-align:center;cursor:grab;transform:none;transition:transform .25s,opacity .25s;opacity:.82;transform:scale(.97)}
+.dpx .dpx-wd-card.swipe.front{opacity:1;transform:scale(1)}
+.dpx .dpx-wd-hint{position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:5px 14px;border-radius:999px;background:rgba(30,24,18,.82);color:#fff;font-size:12px;font-weight:600;pointer-events:none;white-space:nowrap}
+.dpx .dpx-wd-hint span{font-size:16px;line-height:1}
