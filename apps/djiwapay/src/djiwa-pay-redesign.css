@@ -1012,3 +1012,15 @@ html:has(.dpx),body:has(.dpx),#root:has(.dpx){background:#f8f3e9}
 .dpx .dpx-wd-card.swipe.front{opacity:1;transform:scale(1)}
 .dpx .dpx-wd-hint{position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:5px 14px;border-radius:999px;background:rgba(30,24,18,.82);color:#fff;font-size:12px;font-weight:600;pointer-events:none;white-space:nowrap}
 .dpx .dpx-wd-hint span{font-size:16px;line-height:1}
+
+/* Wallet swipe must never widen the page on a phone */
+.dpx .dpx-wd,.dpx .dpx-wd-swipe{min-width:0;max-width:100%}
+.dpx .dpx-wd-swipe{margin:0 -14px;overflow:hidden;width:calc(100% + 28px)}
+.dpx .dpx-wd-track{width:100%;box-sizing:border-box;overscroll-behavior-x:contain}
+.dpx .dpx-wd-card.swipe{min-width:0;box-sizing:border-box;flex:0 0 84%}
+.dpx .dpx-wd-card.swipe .dpx-wd-amt{font-size:clamp(26px,8vw,34px)}
+html,body,#root{overflow-x:clip;max-width:100vw}
+.dpx{overflow-x:clip}
+.dpx.dpx-pw-update{bottom:calc(env(safe-area-inset-bottom,0px) + 128px);z-index:300}
+.dpx .dpx-wd-panel{grid-template-columns:minmax(0,1fr)}.dpx .dpx-wd-panel>*{min-width:0}
+.dpx .dpx-wd-acts{grid-template-columns:repeat(auto-fit,minmax(64px,1fr))}

@@ -60,7 +60,11 @@ export async function promptInstall(): Promise<"accepted" | "dismissed" | "unava
   const d = deferred; deferred = null; set({ canPrompt: false });
   await d.prompt(); const r = await d.userChoice.catch(() => ({ outcome: "dismissed" as const })); return r.outcome;
 }
-export const applyUpdate = () => { waiting?.postMessage({ type: "SKIP_WAITING" }); };
+export const applyUpdate = () => {
+  const go = (w: ServiceWorker | null | undefined) => { if (w) { w.postMessage({ type: "SKIP_WAITING" }); return true; } return false; };
+  if (go(waiting)) { setTimeout(() => window.location.reload(), 1500); return; }   // fallback if controllerchange never fires
+  navigator.serviceWorker?.getRegistration().then((r) => { if (!go(r?.waiting)) window.location.reload(); else setTimeout(() => window.location.reload(), 1500); }, () => window.location.reload());
+};
 
 /* ---- Web Push ---- */
 export type PushState = { supported: boolean; permission: NotificationPermission | "unsupported"; subscribed: boolean; needsInstall: boolean };
