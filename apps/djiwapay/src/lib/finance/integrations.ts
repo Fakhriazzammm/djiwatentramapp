@@ -16,6 +16,7 @@ export type GoogleFeature = "calendar" | "drive" | "gmail";
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api/finance${path}`, { credentials: "include", ...init, headers: { Accept: "application/json", ...(init.body ? { "Content-Type": "application/json" } : {}), ...(init.headers ?? {}) } });
+  if (res.status === 401) { const m = await import("../identity-adapter"); if (await m.recoverPaySession()) await new Promise<never>(() => {}); }
   const body = (await res.json().catch(() => ({}))) as T & { success?: boolean; error?: string };
   if (!res.ok || body.success === false) throw Object.assign(new Error(body.error || `HTTP ${res.status}`), { code: body.error, status: res.status });
   return body;

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { rereadMail } from "./mail/reread.js";
 import { makeLlm } from "./mail/llm.js";
 import { Hono } from "hono";
@@ -96,7 +97,7 @@ export function createApp(d: Deps) {
     if ("error" in analysis) return json(c, { success: false, error: analysis.error }, analysis.status);
     const read = analysis.read;
     // Server-generated IDs make scan documents/images immutable across retries.
-    const id = crypto.randomUUID();
+    const id = randomUUID();
     const rel = join(userId.replace(/[^\w-]/g, "_"), `${id}.${m[1] === "jpeg" ? "jpg" : m[1]}`);
     await mkdir(join(d.dir, rel, ".."), { recursive: true });
     await writeFile(join(d.dir, rel), bytes);

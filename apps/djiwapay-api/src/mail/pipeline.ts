@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import type { Q, Tx } from "../sync.js";
 import { auditQueue, auditSummary } from "./audit.js";
 import { domainOf, extractPayment, forwardingCode, guessCategory, implausible, isBillReminder, isConfident, isFailedMail, isNoticeMail, isPromo, isReportMail, isSecretMail, issuerFor, looksLikePayment, groupKey, merchantKey, redactForShare, RULES_VERSION, type Extracted, type Issuer } from "./extract.js";
@@ -57,7 +57,7 @@ async function learnedCategory(q: Q, userId: string, merchant: string): Promise<
 type Candidate = { kind: "out" | "in"; amount: number; categoryId: string; accountId: string; at: string; note: string };
 
 async function insertEntry(q: Q, userId: string, c: Candidate, inboundId: string): Promise<string> {
-  const id = `em-${crypto.randomUUID()}`;
+  const id = `em-${randomUUID()}`;
   await q.query("insert into finance.entries(user_id,id,kind,amount,category_id,account_id,at,note,tags,source,inbound_id) values($1,$2,$3,$4,$5,$6,$7,$8,'{}','email',$9)", [userId, id, c.kind, c.amount, c.categoryId, c.accountId, c.at, c.note.slice(0, 200), inboundId]);
   await bump(q, userId);
   return id;

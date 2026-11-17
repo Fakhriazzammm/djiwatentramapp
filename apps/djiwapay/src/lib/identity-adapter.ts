@@ -87,3 +87,21 @@ export async function resolveIdentity(): Promise<CustomerProfile | null> {
   }
   return null;
 }
+
+/**
+ * The Pay session lives 15 minutes on the server. When an API call comes back 401 while the person is still signed in,
+ * go through the bridge once to get a fresh session instead of leaving the page on an error. Returns true when the page is navigating away.
+ */
+export async function recoverPaySession(): Promise<boolean> {
+  try {
+    const last = Number(window.sessionStorage.getItem("djiwa-pay-recover") || 0);
+    if (Date.now() - last < 60_000) return false;
+    window.sessionStorage.setItem("djiwa-pay-recover", String(Date.now()));
+  } catch { /* storage blocked: still try once */ }
+  try {
+    const session = await authClient.getSession();
+    if (!session.data?.user) return false;
+    window.location.assign(buildPayBridgeStartUrl());
+    return true;
+  } catch { return false; }
+}
