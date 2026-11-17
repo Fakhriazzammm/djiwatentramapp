@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AnimatedNumber, Btn, I3, Ic, spring } from "../shell/dpx-ui";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import type { Entry } from "../../lib/finance/types";
+import { DragRow } from "./story-charts";
 import "./hero-data.css";
 
 type Safe = { limit: number; used: number; left: number; daysLeft: number; perDay: number; percent: number };
@@ -25,12 +26,12 @@ export function QuickAdd({ templates, onAdd }: { templates: Entry[]; onAdd: (e: 
   if (!templates.length) return null;
   return <div className="dpx-hd-quick">
     <div className="dpx-hd-quick-t">Catat ulang cepat</div>
-    <div className="dpx-hd-quick-row" role="list">
+    <DragRow className="dpx-hd-quick-row" role="list">
       {templates.map((e) => <Btn key={e.id} role="listitem" type="button" className={`dpx-hd-chip ${done === e.id ? "ok" : ""}`} onClick={() => { onAdd(e); setDone(e.id); setTimeout(() => setDone(null), 1400); }} aria-label={`Catat ulang ${e.note} ${rupiah(e.amount)}`}>
         <span className="dpx-hd-chip-i">{done === e.id ? <Ic n="check" size="sm" /> : <Ic n="plus" size="sm" />}</span>
         <span className="dpx-hd-chip-n">{e.note}</span><b>{short(e.amount)}</b>
       </Btn>)}
-    </div>
+    </DragRow>
   </div>;
 }
 

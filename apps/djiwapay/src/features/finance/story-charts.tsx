@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import { Btn } from "../shell/dpx-ui";
 import type { GoldPoint } from "../../lib/finance/assets";
 import type { HeatCell, WealthPoint } from "../../lib/finance/story";
@@ -7,7 +7,7 @@ import { short } from "../kelola/kelola-ui";
 /** Charts for the Cerita Beranda. Plain SVG, no chart library; every number is drawn on one scale. */
 const ACC = "#c9461b", OK = "#4f7a2b", NAVY = "#2b2620", GOLD = "#c9962e", GRID = "rgba(43,38,32,.1)";
 export const CAT_COLORS = [ACC, NAVY, GOLD, OK];
-const rp = (n: number) => `Rp ${short(n)}`;
+export const rpFull = (n: number) => `${n < 0 ? "−" : ""}Rp ${Math.abs(Math.round(n)).toLocaleString("id-ID")}`;
 const niceMax = (v: number) => { if (v <= 0) return 1; const p = 10 ** Math.floor(Math.log10(v)), n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; };
 
 /* ---------- kekayaan ---------- */
@@ -15,7 +15,7 @@ export function WealthChart({ history, visible }: { history: WealthPoint[]; visi
   const [range, setRange] = useState<3 | 6 | 12>(6), [scrub, setScrub] = useState<number | null>(null), gid = useId().replace(/:/g, "");
   const v = history.slice(-range), n = v.length;
   if (history.length < 2) return <p className="dpx-st-empty">Grafik muncul setelah ada catatan dari dua bulan. Sampai saat itu, angka kekayaanmu tetap dihitung di atas.</p>;
-  const W = 300, H = 140, pl = 34, pr = 10, pt = 10, pb = 20;
+  const W = 300, H = 140, pl = 54, pr = 10, pt = 10, pb = 20;
   const mn = Math.min(...v.map((p) => p.value)), mx = Math.max(...v.map((p) => p.value)), pad = (mx - mn) * 0.12 || Math.abs(mx) * 0.05 || 1, lo = mn - pad, hi = mx + pad;
   const X = (i: number) => pl + ((W - pl - pr) * i) / Math.max(1, n - 1), Y = (a: number) => pt + (H - pt - pb) * (1 - (a - lo) / (hi - lo));
   const i = scrub ?? n - 1, cur = v[i], d = cur.value - v[0].value, pct = v[0].value !== 0 ? (d / Math.abs(v[0].value)) * 100 : 0;
@@ -24,7 +24,7 @@ export function WealthChart({ history, visible }: { history: WealthPoint[]; visi
   const step = n > 8 ? 2 : 1, ticks = [0, 1, 2].map((g) => lo + ((hi - lo) * g) / 2);
   return <>
     <div className="dpx-st-seg" role="group" aria-label="Rentang grafik">{([3, 6, 12] as const).map((r) => <Btn key={r} type="button" aria-pressed={range === r} onClick={() => { setRange(r); setScrub(null); }}>{r === 12 ? "1T" : `${r}B`}</Btn>)}</div>
-    <div className="dpx-st-read"><b>{visible ? rp(cur.value) : "Rp •••••"}</b><span className="dpx-sub">{cur.label} · <span className={d >= 0 ? "dpx-up" : "dpx-dn"}>{visible ? `${d >= 0 ? "▲ +" : "▼ −"}${short(Math.abs(d))} (${d >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(1).replace(".", ",")}%)` : "•••"}</span></span></div>
+    <div className="dpx-st-read"><b>{visible ? rpFull(cur.value) : "Rp •••••"}</b><span className="dpx-sub">{cur.label} · <span className={d >= 0 ? "dpx-up" : "dpx-dn"}>{visible ? `${d >= 0 ? "▲ +" : "▼ −"}${rpFull(Math.abs(d))}${v[0].value > 0 && Math.abs(pct) < 1000 ? ` (${d >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(1).replace(".", ",")}%)` : ""}` : "•••"}</span></span></div>
     <svg className="dpx-st-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Grafik total kekayaan per bulan" onPointerMove={move} onPointerDown={move} onPointerLeave={() => setScrub(null)}>
       <defs><linearGradient id={gid} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={ACC} stopOpacity=".28" /><stop offset="1" stopColor={ACC} stopOpacity="0" /></linearGradient></defs>
       {ticks.map((g) => <g key={g}><line x1={pl} x2={W - pr} y1={Y(g)} y2={Y(g)} stroke={GRID} /><text x={pl - 5} y={Y(g) + 3} textAnchor="end">{visible ? short(g) : ""}</text></g>)}
@@ -40,7 +40,7 @@ export function WealthChart({ history, visible }: { history: WealthPoint[]; visi
 
 /* ---------- arus kas ---------- */
 export function CashflowChart({ rows }: { rows: { label: string; in: number; out: number }[] }) {
-  const W = 300, H = 150, pl = 30, pt = 10, pb = 20, mx = niceMax(Math.max(...rows.flatMap((r) => [r.in, r.out]), 1));
+  const W = 300, H = 150, pl = 40, pt = 10, pb = 20, mx = niceMax(Math.max(...rows.flatMap((r) => [r.in, r.out]), 1));
   const Y = (a: number) => pt + (H - pt - pb) * (1 - a / mx), bw = (W - 4 - pl) / rows.length;
   const nets = rows.map((r, k) => [pl + bw * k + bw / 2, Y(Math.max(0, r.in - r.out))] as const), last = rows[rows.length - 1];
   return <svg className="dpx-st-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Pemasukan dan pengeluaran per bulan">
@@ -75,7 +75,7 @@ export function HeatGrid({ cells, offset, today }: { cells: HeatCell[]; offset: 
 
 /* ---------- laju belanja ---------- */
 export function PaceChart({ cur, prev, projected, dim }: { cur: number[]; prev: number[]; projected: number; dim: number }) {
-  const W = 300, H = 140, pl = 34, pt = 10, pb = 18, mx = niceMax(Math.max(projected, ...cur, ...prev, 1));
+  const W = 300, H = 140, pl = 40, pt = 10, pb = 18, mx = niceMax(Math.max(projected, ...cur, ...prev, 1));
   const X = (d: number) => pl + ((W - pl - 4) * (d - 1)) / Math.max(1, dim - 1), Y = (a: number) => pt + (H - pt - pb) * (1 - a / mx);
   const line = (a: number[]) => a.map((v, k) => `${k ? "L" : "M"}${X(k + 1).toFixed(1)} ${Y(v).toFixed(1)}`).join(" "), n = cur.length;
   return <svg className="dpx-st-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Pengeluaran kumulatif bulan ini dibanding bulan lalu">
@@ -98,4 +98,14 @@ export function GoldSpark({ points }: { points: GoldPoint[] }) {
     <path d={`${p} L296 ${H} L4 ${H}Z`} fill={`url(#${gid})`} /><path d={p} fill="none" stroke={GOLD} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
     <circle cx={X(v.length - 1)} cy={Y(v[v.length - 1])} r="4.5" fill={GOLD} stroke="#fff" strokeWidth="2" />
   </svg>;
+}
+
+/** Horizontal row that swipes with a finger and drags with a mouse. A drag never counts as a click. */
+export function DragRow({ className = "", children, ...rest }: { className?: string; children: ReactNode } & React.HTMLAttributes<HTMLDivElement>) {
+  const ref = useRef<HTMLDivElement>(null), st = useRef({ x: 0, left: 0, down: false, moved: false }), [drag, setDrag] = useState(false);
+  return <div ref={ref} {...rest} className={`dpx-st-drag ${drag ? "drag" : ""} ${className}`}
+    onPointerDown={(e) => { if (e.pointerType !== "mouse" || !ref.current) return; st.current = { x: e.clientX, left: ref.current.scrollLeft, down: true, moved: false }; }}
+    onPointerMove={(e) => { const s = st.current; if (!s.down || !ref.current) return; const dx = e.clientX - s.x; if (!s.moved && Math.abs(dx) > 5) { s.moved = true; setDrag(true); } if (s.moved) ref.current.scrollLeft = s.left - dx; }}
+    onPointerUp={() => { st.current.down = false; setDrag(false); }} onPointerLeave={() => { st.current.down = false; setDrag(false); }}
+    onClickCapture={(e) => { if (st.current.moved) { e.preventDefault(); e.stopPropagation(); st.current.moved = false; } }}>{children}</div>;
 }

@@ -1,9 +1,11 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Btn, Ic, I3, payAsset, type IconName } from "../shell/dpx-ui";
 import { CatIcon, catOf } from "./fin-sheets";
 import { EntryRow, type FinCtx } from "./fin-pages";
 import { QuickAdd } from "./hero-day";
-import { CAT_COLORS, CashflowChart, Donut, GoldSpark, HeatGrid, PaceChart, WealthChart } from "./story-charts";
+import { CAT_COLORS, CashflowChart, DragRow, Donut, GoldSpark, HeatGrid, PaceChart, WealthChart } from "./story-charts";
+import { FullPage } from "../kelola/asset-ui";
+import { NEWS_TOPICS, timeAgo, useNews, type NewsItem } from "../../lib/finance/news";
 import { GoogleNudge, ReviewChip, useInbound } from "../integrations/integrations-pages";
 import { short } from "../kelola/kelola-ui";
 import { budgetStatuses, buildInsights, goalProjection, goalSaved, inMonth, monthlySeries, safeToSpend, totals } from "../../lib/finance/calc";
@@ -22,8 +24,24 @@ function Card({ title, right, children, className = "" }: { title?: string; righ
 }
 const Sec = ({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) => <div className="dpx-sec dpx-st-sec"><h2>{title}</h2>{action ? <Btn type="button" onClick={onAction}>{action}</Btn> : null}</div>;
 
+const TOPIC_ICON: Record<string, { icon: IconName; tone: string }> = { emas: { icon: "gift", tone: "amber" }, saham: { icon: "chart", tone: "blue" }, kripto: { icon: "flash", tone: "violet" }, ekonomi: { icon: "trend", tone: "emerald" } };
+const NewsCard = ({ n }: { n: NewsItem }) => <a className="dpx-st-card dpx-st-story dpx-st-news" href={n.url} target="_blank" rel="noopener noreferrer"><span className={`dpx-cat dpx-c-${TOPIC_ICON[n.topic].tone}`}><Ic n={TOPIC_ICON[n.topic].icon} /></span><b>{n.title}</b><span className="dpx-sub">{n.source} · {timeAgo(n.at)}</span></a>;
+
+/** Full list of today's headlines by topic. Each opens the article on the publisher's site. */
+function NewsPage({ onBack }: { onBack: () => void }) {
+  const [topic, setTopic] = useState<string>("semua"), { items, failed } = useNews(topic);
+  return <FullPage title="Berita keuangan" onBack={onBack}>
+    <div className="dpx-st-npage">
+      <DragRow className="dpx-st-tabs" role="tablist">{NEWS_TOPICS.map((t) => <Btn key={t.id} type="button" role="tab" aria-selected={topic === t.id} className={topic === t.id ? "on" : ""} onClick={() => setTopic(t.id)}>{t.label}</Btn>)}</DragRow>
+      {items === null && !failed ? <p className="dpx-st-empty">Memuat berita…</p> : failed ? <p className="dpx-st-empty">Berita belum bisa dimuat. Periksa koneksi lalu coba lagi.</p> : !items?.length ? <p className="dpx-st-empty">Belum ada berita untuk topik ini hari ini.</p> :
+        <div className="dpx-st-nlist">{items.map((n) => <a key={n.url} className="dpx-st-nrow" href={n.url} target="_blank" rel="noopener noreferrer"><span className={`dpx-cat dpx-c-${TOPIC_ICON[n.topic].tone}`}><Ic n={TOPIC_ICON[n.topic].icon} /></span><div><b>{n.title}</b><span className="dpx-sub">{n.source} · {timeAgo(n.at)}</span></div></a>)}</div>}
+      <p className="dpx-st-foot">Judul dari CNBC Indonesia dan Antara News, diperbarui otomatis. Artikel dibuka di situs penerbitnya.</p>
+    </div>
+  </FullPage>;
+}
+
 /** Everything under the sky on Beranda. No card sits on the scene: the sky block above ends where this begins. */
-export function CeritaBody({ mascot, ctx, entries, cash, gold, now, templates, onAddTemplate }: { mascot: ReactNode; ctx: FinCtx; entries: Entry[]; cash: number; gold: GoldData | null; now: Date; templates: Entry[]; onAddTemplate: (e: Entry) => void }) {
+export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemplate }: { ctx: FinCtx; entries: Entry[]; cash: number; gold: GoldData | null; now: Date; templates: Entry[]; onAddTemplate: (e: Entry) => void }) {
   const { nav, visible } = ctx, { state } = ctx.fin, inbound = useInbound();
   const y = now.getFullYear(), m = now.getMonth(), empty = entries.length === 0;
   const month = useMemo(() => entries.filter((e) => inMonth(e, y, m)), [entries]);
@@ -53,11 +71,11 @@ export function CeritaBody({ mascot, ctx, entries, cash, gold, now, templates, o
     if (cal.calm > 0) out.push({ id: "calm", tone: "ok", icon: "heart", title: `${cal.calm} hari tenang bulan ini`, body: "Hari tanpa belanja. Setiap hari tenang memberi ruang pada tabunganmu." });
     return out.slice(0, 5);
   }, [st, statuses, month, prev, gold, cal.calm]);
+  const [feed, setFeed] = useState<string>("untukmu"), [newsOpen, setNewsOpen] = useState(false), news = useNews(feed, feed !== "untukmu");
   const nameOf = (id: string) => (id === "_rest" ? "Lainnya" : catOf(state, id).name);
   const fav = st.fav && st.fav.n >= 2 ? st.fav : null;
 
   return <div className="dpx-st-body">
-    <div className="dpx-st-mascot">{mascot}</div>
     <ReviewChip count={inbound.data?.review ?? 0} importReady={inbound.data?.importReady ?? 0} autoRecent={inbound.data?.autoRecent ?? 0} onOpenAuto={() => nav.go("/riwayat")} onOpen={() => nav.go("/tinjau")} onOpenImport={() => nav.go("/integrasi?impor=1")} />
     <GoogleNudge onOpenIntegrations={() => nav.go("/integrasi")} />
     {templates.length ? <div className="dpx-st-card"><QuickAdd templates={templates} onAdd={onAddTemplate} /></div> : null}
@@ -68,7 +86,15 @@ export function CeritaBody({ mascot, ctx, entries, cash, gold, now, templates, o
         <p className="dpx-st-foot">Dihitung ulang dari catatanmu dan harga emas. Mengisi saldo awal dompet membuat grafik lebih akurat.</p>
       </Card>
 
-      {stories.length ? <><Sec title="Cerita bulan ini" /><div className="dpx-st-stories">{stories.map((s) => <div key={s.id} className="dpx-st-card dpx-st-story"><span className={`dpx-cat dpx-c-${s.tone === "warn" ? "amber" : s.tone === "ok" ? "emerald" : "violet"}`}><Ic n={s.icon} /></span><b>{s.title}</b><span className="dpx-sub">{s.body}</span></div>)}</div></> : null}
+      <Sec title="Cerita & berita" action="Semua berita" onAction={() => setNewsOpen(true)} />
+      <DragRow className="dpx-st-tabs" role="tablist" aria-label="Topik cerita dan berita">{[{ id: "untukmu", label: "Untukmu" }, ...NEWS_TOPICS.filter((t) => t.id !== "semua")].map((t) => <Btn key={t.id} type="button" role="tab" aria-selected={feed === t.id} className={feed === t.id ? "on" : ""} onClick={() => setFeed(t.id)}>{t.label}</Btn>)}</DragRow>
+      <DragRow className="dpx-st-stories">
+        {feed === "untukmu"
+          ? (stories.length ? stories.map((s) => <div key={s.id} className="dpx-st-card dpx-st-story"><span className={`dpx-cat dpx-c-${s.tone === "warn" ? "amber" : s.tone === "ok" ? "emerald" : "violet"}`}><Ic n={s.icon} /></span><b>{s.title}</b><span className="dpx-sub">{s.body}</span></div>) : <div className="dpx-st-card dpx-st-story"><b>Ceritamu menyusul</b><span className="dpx-sub">Catat beberapa transaksi lagi, insight pribadi muncul di sini.</span></div>)
+          : news.items === null ? <div className="dpx-st-card dpx-st-story"><b>{news.failed ? "Berita belum bisa dimuat" : "Memuat berita…"}</b><span className="dpx-sub">{news.failed ? "Periksa koneksi lalu pilih topik lagi." : "Sebentar ya."}</span></div>
+          : news.items.length ? <>{news.items.slice(0, 8).map((n) => <NewsCard key={n.url} n={n} />)}<button type="button" className="dpx-st-card dpx-st-story dpx-st-more" onClick={() => setNewsOpen(true)}><b>Lihat semua berita</b><span className="dpx-sub">Emas, ekonomi, saham, kripto</span></button></>
+          : <div className="dpx-st-card dpx-st-story"><b>Belum ada berita</b><span className="dpx-sub">Belum ada kabar untuk topik ini hari ini.</span></div>}
+      </DragRow>
 
       <Card title="Arus kas 6 bulan" right={<Btn type="button" className="dpx-st-link" onClick={() => nav.go("/ringkasan")}>Laporan</Btn>}>
         <CashflowChart rows={flow} />
@@ -98,7 +124,7 @@ export function CeritaBody({ mascot, ctx, entries, cash, gold, now, templates, o
         <div><span className="dpx-st-up">Rata-rata harian</span><b>{mk(visible, rupiah(Math.round(st.perDay)))}</b>{st.perDayChange !== null ? <span className={st.perDayChange <= 0 ? "dpx-up" : "dpx-dn"}>{st.perDayChange <= 0 ? "▼" : "▲"} {pctText(st.perDayChange)} dari bulan lalu</span> : <span className="dpx-sub">per hari</span>}</div>
         <div><span className="dpx-st-up">Hari terboros</span><b>{st.costly ? st.costly.day.toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short" }) : "-"}</b><span className="dpx-sub">{st.costly ? mk(visible, rupiah(st.costly.amount)) : "Belum ada"}</span></div>
         <div><span className="dpx-st-up">Transaksi keluar</span><b>{st.count}</b><span className="dpx-sub">{st.perDayCount.toLocaleString("id-ID", { maximumFractionDigits: 1 })} per hari</span></div>
-        <div><span className="dpx-st-up">Tempat favorit</span><b className="dpx-st-ell">{fav ? fav.name : "-"}</b><span className="dpx-sub">{fav ? `${fav.n} kali · ${mk(visible, short(fav.sum))}` : "Muncul setelah ada yang berulang"}</span></div>
+        <div><span className="dpx-st-up">Tempat favorit</span><b className="dpx-st-ell">{fav ? fav.name : "-"}</b><span className="dpx-sub">{fav ? `${fav.n} kali · ${mk(visible, rupiah(Math.round(fav.sum)))}` : "Muncul setelah ada yang berulang"}</span></div>
       </div>
 
       <Card title="Kesehatan keuangan" right={<Btn type="button" className="dpx-st-link" onClick={() => nav.go("/kesehatan")}>Detail</Btn>}>
@@ -131,6 +157,7 @@ export function CeritaBody({ mascot, ctx, entries, cash, gold, now, templates, o
       <div className="dpx-tile3 dpx-mt" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>{([["topup", "Isi saldo", "/wallet/topup"], ["send", "Kirim", "/wallet/transfer"], ["scan-qr", "Scan", "/wallet/transfer?mode=scan"], ["bills", "Layanan", "/bayar"]] as const).map(([a, l, p]) => <Btn key={a} type="button" className="dpx-q" onClick={() => nav.go(p)}><img src={payAsset(a)} width={38} height={38} alt="" />{l}</Btn>)}</div></Card>
 
     {empty ? null : <Btn type="button" className="dpx-st-tip dpx-st-calm" onClick={() => ctx.open({ k: "weekly" })}><span className="dpx-cat dpx-c-emerald"><Ic n="pie" /></span><div><b>Jeda mingguan</b><span className="dpx-sub">Lima menit melihat minggu ini. Tidak ada yang perlu dikejar.</span></div></Btn>}
+    {newsOpen ? <NewsPage onBack={() => setNewsOpen(false)} /> : null}
   </div>;
 }
 
