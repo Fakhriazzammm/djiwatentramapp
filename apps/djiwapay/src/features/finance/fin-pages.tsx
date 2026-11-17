@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { markAutoSeen, readAutoSeen } from "../../lib/finance/integrations";
 import { AnimatePresence, motion } from "framer-motion";
 import { CeritaBody } from "./beranda-cerita";
+import { WalletDeck } from "./wallet-deck";
 import { quoteDeck } from "../../lib/quotes";
 import { wealthHistory } from "../../lib/finance/story";
 import { Avatar, payAsset, AnimatedNumber, Bar, Mascot, MascotBuddy, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
@@ -300,12 +301,8 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
     </div> : null}
 
     {tab === "dompet" ? <div key="dompet" className="dpx-vt-pn">
-      <div className="dpx-group dpx-flush dpx-white">
-      <Btn type="button" className="dpx-row" onClick={() => nav.openSheet("pay")}><span className="dpx-ico dpx-c-violet" style={{ boxShadow: "none" }}><I3 name="payment-wallet" px={28} /></span><span className="dpx-main"><b>Djiwa Pay</b><span>Terhubung · transaksi otomatis tercatat</span></span><span className="dpx-trail"><b>{ctx.visible ? rupiah(ctx.payBalance) : "•••••"}</b></span></Btn>
-      {accounts.map((a) => <Btn key={a.id} type="button" className="dpx-row" onClick={() => ctx.open({ k: "account", id: a.id })}><span className={`dpx-ico dpx-c-${a.type === "bank" ? "blue" : a.type === "card" ? "rose" : a.type === "ewallet" ? "indigo" : "emerald"}`} style={{ boxShadow: "none" }}><Ic n={a.type === "bank" ? "bank" : a.type === "card" ? "card" : "wallet"} /></span><span className="dpx-main"><b>{a.name}</b><span>{needsOpening(a) ? <em className="dpx-vt-warn">Saldo awal belum diisi</em> : "Catat manual"}</span></span><span className="dpx-trail"><b className={(balances[a.id] ?? 0) < 0 ? "dpx-dn" : ""}>{ctx.visible ? `${(balances[a.id] ?? 0) < 0 ? "−" : ""}${rupiah(balances[a.id] ?? 0)}` : "•••••"}</b></span></Btn>)}
-      </div>
+      <WalletDeck ctx={ctx} accounts={accounts} balances={balances} />
       {missing.length ? <div className="dpx-vt-note"><Ic n="warn" /><span>{missing.length} rekening hanya berisi pengeluaran tercatat, jadi saldonya minus. Ketuk rekening lalu isi saldo awal agar kekayaan bersih akurat.</span></div> : null}
-      <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => ctx.open({ k: "account" })}><Ic n="plus" size="sm" /> Tambah dompet</Btn>
     <div className="dpx-sec"><h2>Bayar & layanan</h2><Btn type="button" onClick={() => nav.go("/bayar")}>Semua layanan</Btn></div>
     <div className="dpx-group"><div className="dpx-tile3" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>{acts.map(([a, l, p]) => <Btn key={a} type="button" className="dpx-q" onClick={() => nav.go(p)}><img src={payAsset(a)} width={42} height={42} alt="" />{l}</Btn>)}</div></div>
     <Btn type="button" className="dpx-group dpx-flex" style={{ width: "100%", marginTop: 12, textAlign: "left" }} onClick={() => nav.openSheet("card")}><img src={payAsset("card")} width={56} height={56} alt="" /><span style={{ flex: 1 }}><b style={{ fontSize: 16 }}>Kartu Djiwa</b><div className="dpx-sub">Kartu virtual untuk belanja online.</div></span><span className="dpx-tag">Segera</span></Btn>

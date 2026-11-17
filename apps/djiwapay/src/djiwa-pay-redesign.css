@@ -936,3 +936,28 @@ html:has(.dpx-plain),body:has(.dpx-plain),#root:has(.dpx-plain){background:#f8f3
 .dpx .dpx-vc-text .dpx-textarea{background:transparent;padding:0;min-height:70px;width:100%}
 .dpx .dpx-vc-interim{color:var(--mute);font-weight:500}.dpx .dpx-vc-hint{color:var(--mute);font:500 14px var(--font)}
 .dpx .dpx-vc-chips{display:flex;flex-wrap:wrap;gap:6px}.dpx .dpx-vc-chips span{padding:6px 11px;border-radius:99px;background:var(--blue-soft);font:500 12.5px var(--font)}.dpx .dpx-vc-chips span.in{background:var(--ok-soft)}.dpx .dpx-vc-chips b{font-weight:700}
+
+/* ---------- Wallet deck ---------- */
+.dpx .dpx-wd{display:grid;gap:10px;min-width:0}
+.dpx .dpx-wd-top{display:flex;align-items:center;justify-content:space-between;padding:0 4px}
+.dpx .dpx-wd-tools{display:flex;gap:8px}.dpx .dpx-wd-tool{width:36px;height:36px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 2px 8px rgba(43,38,32,.1)}.dpx .dpx-wd-tool.on{background:var(--navy)}.dpx .dpx-wd-tool.on img{filter:brightness(0) invert(1)}
+.dpx .dpx-wd-deck{position:relative;perspective:900px;transition:height .35s cubic-bezier(.32,.72,0,1)}
+.dpx .dpx-wd-card{position:absolute;left:0;right:0;top:0;border-radius:26px;padding:16px 18px;color:#fff;overflow:hidden;box-shadow:0 14px 30px -12px rgba(20,16,12,.55),0 0 0 1px rgba(255,255,255,.08) inset;cursor:pointer;touch-action:pan-y;user-select:none;transform-style:preserve-3d}
+.dpx .dpx-wd-card.front{cursor:grab}.dpx .dpx-wd-card.front:active{cursor:grabbing}
+.dpx .dpx-wd-card:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.dpx .dpx-wd-sheen{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.22) 48%,transparent 62%),repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 2px,transparent 2px 4px);background-size:220% 100%,auto;background-position:30% 0,0 0}
+.dpx .dpx-wd-head{position:relative;display:flex;align-items:center;gap:12px;min-height:38px}
+.dpx .dpx-wd-logo{width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.92);display:grid;place-items:center;flex:none;box-shadow:0 2px 6px rgba(0,0,0,.2)}.dpx .dpx-wd-logo img{width:26px;height:26px;object-fit:contain}
+.dpx .dpx-wd-name{display:grid;gap:1px;min-width:0;flex:1}.dpx .dpx-wd-name b{font:700 16px var(--font);color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dpx .dpx-wd-name small{font:500 12px var(--font);color:rgba(255,255,255,.72)}
+.dpx .dpx-wd-mini{font:700 15px var(--font);font-variant-numeric:tabular-nums;white-space:nowrap}.dpx .dpx-wd-mini.neg{color:#ffd0c8}
+.dpx .dpx-wd-warn{flex:none;font:700 10.5px var(--font);padding:5px 9px;border-radius:99px;background:rgba(255,226,170,.95);color:#7a4a00}
+.dpx .dpx-wd-amt{position:relative;margin-top:22px;font:800 38px/1 var(--font);letter-spacing:-.035em;font-variant-numeric:tabular-nums}.dpx .dpx-wd-amt small{font-size:.45em;font-weight:700;margin-right:4px;opacity:.85}.dpx .dpx-wd-amt.neg{color:#ffd9d2}
+.dpx .dpx-wd-foot{position:absolute;left:18px;right:18px;bottom:14px;display:flex;align-items:center;gap:14px}.dpx .dpx-wd-foot>div{flex:1;display:grid;gap:2px;min-width:0}.dpx .dpx-wd-foot i{width:1px;height:30px;background:rgba(255,255,255,.28)}
+.dpx .dpx-wd-foot small{font:500 11.5px var(--font);color:rgba(255,255,255,.7)}.dpx .dpx-wd-foot b{font:700 14px var(--font);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dpx .dpx-wd-dots{display:flex;gap:7px;justify-content:center;align-items:center;flex-wrap:wrap}
+.dpx .dpx-wd-dots button{width:8px;height:8px;border-radius:99px;background:rgba(43,38,32,.2);padding:0;transition:width .25s,background .25s}.dpx .dpx-wd-dots button.on{width:26px;background:var(--navy)}
+.dpx .dpx-wd-dots button.add{width:22px;height:22px;display:grid;place-items:center;background:#fff;color:var(--mute);font:700 14px var(--font);box-shadow:0 1px 4px rgba(43,38,32,.15)}
+.dpx .dpx-wd-panel{display:grid;gap:8px}
+.dpx .dpx-wd-acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:8px}
+.dpx .dpx-wd-act{display:grid;justify-items:center;gap:5px;padding:12px 4px;border-radius:18px;background:#fff;font:600 12px var(--font);box-shadow:0 2px 8px rgba(43,38,32,.07)}.dpx .dpx-wd-act img{width:28px;height:28px}
+@media (prefers-reduced-motion:reduce){.dpx .dpx-wd-deck{transition:none}}
