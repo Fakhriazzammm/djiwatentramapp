@@ -866,3 +866,11 @@ html:has(.dpx-plain),body:has(.dpx-plain),#root:has(.dpx-plain){background:#f8f3
 .dpx .dpx-pl-badge{display:inline-grid;place-items:center;min-width:16px;height:16px;margin-left:6px;padding:0 4px;border-radius:99px;background:var(--danger);color:#fff;font:700 10px var(--font);font-style:normal}
 .dpx .dpx-confirm{display:grid;gap:8px;text-align:center;font:13px var(--font);color:var(--mute)}
 .dpx .dpx-st-npage{grid-auto-rows:max-content}.dpx .dpx-st-npage>.dpx-st-tabs{min-height:44px;flex:none}
+
+/* ---------- Beranda menu ---------- */
+.dpx .dpx-st-menu{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.dpx .dpx-st-mt{display:grid;justify-items:center;gap:5px;padding:8px 2px;border-radius:16px;font:600 11.5px var(--font);color:var(--ink);text-align:center;min-width:0}
+.dpx .dpx-st-mt:active{background:var(--group)}
+.dpx .dpx-st-mi{position:relative;width:46px;height:46px;border-radius:15px;background:var(--blue-soft);display:grid;place-items:center}
+.dpx .dpx-st-mi img{width:30px;height:30px;object-fit:contain}
+.dpx .dpx-st-mb{position:absolute;top:-4px;right:-4px;min-width:17px;height:17px;padding:0 4px;border-radius:99px;background:var(--danger);color:#fff;font:700 10px/17px var(--font);font-style:normal;text-align:center}

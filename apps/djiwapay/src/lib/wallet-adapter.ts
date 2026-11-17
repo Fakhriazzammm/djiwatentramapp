@@ -24,7 +24,7 @@ export type WalletTransaction = {
   payment_method?: string | null;
 };
 export type DirectPayment = { id: string; app: string; title: string; amount: number; created_at: string; payment_method: string; status: string };
-export type WalletNotification = { id: string; title: string; message: string; notification_type: string; action_payload?: { transferId?: string }; created_at: string; unread: boolean };
+export type WalletNotification = { id: string; title: string; message: string; notification_type: string; action_payload?: { transferId?: string; route?: string }; created_at: string; unread: boolean };
 export type TopupStatusResponse = { status: "pending" | "success" | "expired"; message?: string; wallet?: WalletSummary; ledger?: WalletLedgerEntry[] };
 export type WalletTransferResult = { success: boolean; error?: string; transfer?: { transfer_id?: string; amount?: number; sender_balance?: number }; recipient?: { sourceId: string; name: string } };
 export type WalletRecipientResult = { success: boolean; error?: string; recipient?: { name: string; phone: string } };

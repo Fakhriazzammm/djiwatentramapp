@@ -153,12 +153,13 @@ export function AccountPage({ profile, unread, customerHome, onBack, nav, onOpen
   </div></Sky></div>;
 }
 
+const NOTE_LOOK: Record<string, { icon: IconName; tone: string }> = { "fin-email": { icon: "receipt", tone: "orange" }, "fin-bill": { icon: "cal", tone: "amber" }, "fin-budget": { icon: "warn", tone: "rose" }, "fin-debt": { icon: "users", tone: "violet" }, "fin-goal": { icon: "target", tone: "emerald" } };
 export function NotificationsPage({ items, loading, busy, onBack, onRead, onReadAll }: { items: WalletNotification[]; loading: boolean; busy: boolean; onBack: () => void; onRead: (n: WalletNotification) => void; onReadAll: () => void }) {
   const unread = items.filter((n) => n.unread).length;
   return <div className="dpx-page"><Sky><div className="dpx-pad dpx-nobar">
     <Header title="Notifikasi" onBack={onBack} right={<Btn type="button" className="dpx-linkbtn" style={{ width: 64, textAlign: "right", opacity: unread && !busy ? 1 : 0.4 }} disabled={busy || unread === 0} onClick={onReadAll}>{busy ? "Memproses" : "Baca"}</Btn>} />
-    {loading && items.length === 0 ? <SkeletonBlock h={160} /> : items.length === 0 ? <div className="dpx-empty"><I3 name="notifications-alerts" px={112} /><b>Belum ada notifikasi</b><p>Aktivitas saldo dan transfer akan muncul di sini.</p></div>
-      : <div className="dpx-group dpx-flush dpx-white">{items.map((n) => <Btn type="button" key={n.id} className="dpx-row" onClick={() => onRead(n)}><span className="dpx-cat dpx-c-blue"><Ic n="bell" /></span><span className="dpx-main"><b>{n.title}</b><span style={{ whiteSpace: "normal" }}>{n.message}</span></span><span className="dpx-trail">{formatTime(n.created_at)}{n.unread ? <div style={{ marginTop: 6 }}><span className="dpx-unread" aria-label="Belum dibaca" /></div> : null}</span></Btn>)}</div>}
+    {loading && items.length === 0 ? <SkeletonBlock h={160} /> : items.length === 0 ? <div className="dpx-empty"><I3 name="notifications-alerts" px={112} /><b>Belum ada notifikasi</b><p>Aktivitas saldo, transfer, email pembayaran, tagihan, dan anggaran akan muncul di sini.</p></div>
+      : <div className="dpx-group dpx-flush dpx-white">{items.map((n) => <Btn type="button" key={n.id} className="dpx-row" onClick={() => onRead(n)}><span className={`dpx-cat dpx-c-${NOTE_LOOK[n.notification_type]?.tone ?? "blue"}`}><Ic n={NOTE_LOOK[n.notification_type]?.icon ?? "bell"} /></span><span className="dpx-main"><b>{n.title}</b><span style={{ whiteSpace: "normal" }}>{n.message}</span></span><span className="dpx-trail">{formatTime(n.created_at)}{n.unread ? <div style={{ marginTop: 6 }}><span className="dpx-unread" aria-label="Belum dibaca" /></div> : null}</span></Btn>)}</div>}
   </div></Sky></div>;
 }
 

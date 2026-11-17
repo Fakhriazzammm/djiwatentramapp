@@ -25,6 +25,11 @@ function Card({ title, right, children, className = "" }: { title?: string; righ
 }
 const Sec = ({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) => <div className="dpx-sec dpx-st-sec"><h2>{title}</h2>{action ? <Btn type="button" onClick={onAction}>{action}</Btn> : null}</div>;
 
+const MENU: { label: string; icon: IconName; path?: string; news?: boolean }[] = [
+  { label: "Laporan", icon: "chart", path: "/ringkasan" }, { label: "Kalender", icon: "cal", path: "/kalender" }, { label: "Kesehatan", icon: "heart", path: "/kesehatan" }, { label: "Prakiraan", icon: "trend", path: "/prakiraan" },
+  { label: "Kantong", icon: "pie", path: "/rencana?bagian=kantong" }, { label: "Tujuan", icon: "target", path: "/rencana?bagian=tujuan" }, { label: "Hutang", icon: "users", path: "/rencana?bagian=hutang" }, { label: "Alat", icon: "grid", path: "/alat" },
+  { label: "Berita", icon: "book", news: true }, { label: "Tinjau", icon: "receipt", path: "/tinjau" }, { label: "Email", icon: "link", path: "/integrasi" }, { label: "Pengaturan", icon: "shield", path: "/pengaturan" },
+];
 const TOPIC_ICON: Record<string, { icon: IconName; tone: string }> = { emas: { icon: "gift", tone: "amber" }, saham: { icon: "chart", tone: "blue" }, kripto: { icon: "flash", tone: "violet" }, ekonomi: { icon: "trend", tone: "emerald" } };
 const NewsCard = ({ n }: { n: NewsItem }) => <a className="dpx-st-card dpx-st-story dpx-st-news" href={n.url} target="_blank" rel="noopener noreferrer"><span className={`dpx-cat dpx-c-${TOPIC_ICON[n.topic].tone}`}><Ic n={TOPIC_ICON[n.topic].icon} /></span><b>{n.title}</b><span className="dpx-sub">{n.source} · {timeAgo(n.at)}</span></a>;
 
@@ -79,9 +84,17 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
   return <div className="dpx-st-body">
     <ReviewChip count={inbound.data?.review ?? 0} importReady={inbound.data?.importReady ?? 0} autoRecent={inbound.data?.autoRecent ?? 0} onOpenAuto={() => nav.go("/riwayat")} onOpen={() => nav.go("/tinjau")} onOpenImport={() => nav.go("/integrasi?impor=1")} />
     <GoogleNudge onOpenIntegrations={() => nav.go("/integrasi")} />
-    {templates.length ? <div className="dpx-st-card"><QuickAdd templates={templates} onAdd={onAddTemplate} /></div> : null}
+    <section className="dpx-st-card dpx-st-menu-card" aria-label="Menu">
+      <div className="dpx-st-ch"><h2>Menu</h2><span className="dpx-sub">Fitur lain</span></div>
+      <div className="dpx-st-menu">{MENU.map((m) => <Btn key={m.label} type="button" className="dpx-st-mt" onClick={() => (m.news ? setNewsOpen(true) : nav.go(m.path!))}>
+        <span className="dpx-st-mi"><Ic n={m.icon} />{m.label === "Tinjau" && (inbound.data?.review ?? 0) > 0 ? <i className="dpx-st-mb">{inbound.data?.review}</i> : null}</span><span>{m.label}</span></Btn>)}</div>
+    </section>
 
     {empty ? <Card><div className="dpx-st-welcome"><I3 name="customer-benefit-wallet" px={88} /><b>Mulai ceritamu</b><span className="dpx-sub">Catat transaksi pertama. Grafik, statistik, dan kalender belanja muncul di sini setelah ada datanya.</span><Btn type="button" className="dpx-btn" onClick={() => ctx.open({ k: "catat" })}>Catat sekarang</Btn></div></Card> : <>
+      <Sec title="Catatan terbaru" action="Lihat semua" onAction={() => nav.go("/riwayat")} />
+      <div className="dpx-group dpx-flush">{entries.slice(0, 4).map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div>
+      {templates.length ? <div className="dpx-st-card"><QuickAdd templates={templates} onAdd={onAddTemplate} /></div> : null}
+
       <Card title="Perjalanan kekayaan" right={<Btn type="button" className="dpx-st-link" onClick={() => nav.go("/kekayaan")}>Kekayaan</Btn>}>
         <WealthChart history={history} visible={visible} />
         <p className="dpx-st-foot">Dihitung ulang dari catatanmu dan harga emas. Mengisi saldo awal dompet membuat grafik lebih akurat.</p>
@@ -149,8 +162,6 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
 
       {bills.length ? <><Sec title="Tagihan terdekat" action="Kalender" onAction={() => nav.go("/kalender")} /><section className="dpx-st-card dpx-st-group">{bills.map((v) => <div key={v.bill.id} className="dpx-st-line"><span className="dpx-cat dpx-c-amber"><Ic n="flash" /></span><div><b>{v.bill.name}</b><span className="dpx-sub">{v.due.toLocaleDateString("id-ID", { day: "numeric", month: "short" })} · {v.status === "late" ? "terlambat" : v.daysLeft === 0 ? "hari ini" : `${v.daysLeft} hari lagi`}</span></div><b>{mk(visible, rupiah(v.bill.amount))}</b></div>)}</section></> : null}
 
-      <Sec title="Catatan terbaru" action="Lihat semua" onAction={() => nav.go("/riwayat")} />
-      <div className="dpx-group dpx-flush">{entries.slice(0, 4).map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div>
     </>}
 
     <Sec title="Dompet & Bayar" action="Buka" onAction={() => nav.go("/dompet")} />

@@ -100,3 +100,17 @@ describe("rencana", () => {
     expect(reduce(b, { type: "budget/setMany", budgets: [{ categoryId: "makan", limit: 9000, rollover: false }] }).budgets.find((x) => x.categoryId === "makan")?.limit).toBe(9000);
   });
 });
+
+import { financeNotes } from "../src/lib/finance/notify";
+describe("financeNotes", () => {
+  const now = new Date(2026, 10, 17, 12);
+  test("tells about e-mail activity, bills and a top-up transfer", () => {
+    const st = { ...emptyState(), bills: [{ id: "b1", name: "Listrik", amount: 400_000, day: 20, icon: "flash", tone: "amber", paid: [] }] };
+    const entries = [e({ id: "t1", kind: "tf", source: "email", amount: 50_000, note: "Top-up ShopeePay", at: "2026-11-17T09:00:00+07:00" })];
+    const notes = financeNotes(st, entries, { review: 2, autoRecent: 3 }, now);
+    expect(notes.map((n) => n.id)).toEqual(expect.arrayContaining(["fin-review:2", "fin-auto:3", "fin-em:t1", `fin-bill:b1:2026-11:soon`]));
+    expect(notes.find((n) => n.id === "fin-em:t1")?.message).toContain("Pindah dana");
+    expect(notes.find((n) => n.id === "fin-review:2")?.route).toBe("/tinjau");
+  });
+  test("is quiet when nothing needs attention", () => { expect(financeNotes(emptyState(), [], { review: 0, autoRecent: 0 }, now)).toEqual([]); });
+});
