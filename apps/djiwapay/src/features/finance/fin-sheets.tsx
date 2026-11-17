@@ -82,7 +82,7 @@ const speechCtor = (): (new () => SpeechRecognitionLike) | null => { const w = w
 
 const atDaysAgo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); if (n > 0) d.setHours(12, 0, 0, 0); return d.toISOString(); };
 
-export function CatatSheet({ fin, notify, onClose, onManual, onPay, balances }: { fin: Finance; notify: Notify; onClose: () => void; onManual: (kind: "out" | "in") => void; onPay: () => void; balances: Record<string, number> }) {
+export function CatatSheet({ fin, notify, onClose, onManual, onPay, onAsset, balances }: { fin: Finance; notify: Notify; onClose: () => void; onManual: (kind: "out" | "in") => void; onPay: () => void; onAsset: () => void; balances: Record<string, number> }) {
   const { state, dispatch } = fin;
   const [text, setText] = useState("");
   const [items, setItems] = useState<(ParsedItem & { key: string })[] | null>(null);
@@ -157,6 +157,7 @@ export function CatatSheet({ fin, notify, onClose, onManual, onPay, balances }: 
       <Btn type="button" className="dpx-tile dpx-t-sky" style={{ minHeight: 84 }} onClick={() => gallery.current?.click()}><Ic n="receipt" size="lg" /><span style={{ fontSize: 13 }}>Unggah struk</span></Btn>
       <Btn type="button" className="dpx-tile dpx-t-mint" style={{ minHeight: 84 }} onClick={() => onManual("out")}><Ic n="edit" size="lg" /><span style={{ fontSize: 13 }}>Catat manual</span></Btn>
       <Btn type="button" className="dpx-tile dpx-t-lav" style={{ minHeight: 84 }} onClick={() => onManual("in")}><Ic n="down" size="lg" /><span style={{ fontSize: 13 }}>Pemasukan</span></Btn>
+      <Btn type="button" className="dpx-tile dpx-t-gold" style={{ minHeight: 84, gridColumn: "1 / -1", flexDirection: "row", gap: 12 }} onClick={onAsset}><Ic n="scan" size="lg" /><span style={{ fontSize: 14, textAlign: "left" }}><b style={{ display: "block" }}>Foto aset</b><span style={{ fontWeight: 500, opacity: 0.75 }}>Emas, perhiasan, aset lain. Dibuat jadi stiker dan dipantau nilainya</span></span></Btn>
     </div>
     <div className="dpx-group dpx-flush" style={{ marginTop: 12 }}><Btn type="button" className="dpx-row" onClick={onPay}><span className="dpx-ico"><I3 name="payment-wallet" px={30} /></span><span className="dpx-main"><b>Bayar atau isi saldo</b><span>Scan QR, pulsa, PLN — otomatis tercatat</span></span><Ic n="chev" size="sm" /></Btn></div>
   </Sheet>;

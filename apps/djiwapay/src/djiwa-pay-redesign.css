@@ -885,3 +885,4 @@ html:has(.dpx-plain),body:has(.dpx-plain),#root:has(.dpx-plain){background:#f8f3
 .dpx .dpx-as-start .dpx-btn{background:#fff6e6;color:#2b2620;max-width:340px;width:100%;margin-inline:auto}
 .dpx .dpx-as-start .dpx-btn.dpx-soft{background:rgba(255,246,230,.14);color:#fff6e6}
 .dpx .dpx-as-more{display:grid;justify-items:center;gap:2px}.dpx .dpx-as-more .dpx-linkbtn{color:#e8a15a}
+.dpx-t-gold{background:linear-gradient(135deg,#fbf0d4 0%,#f1d48a 100%);color:var(--ink);box-shadow:0 8px 20px rgba(201,150,46,.18)}
