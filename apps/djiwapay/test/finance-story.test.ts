@@ -67,3 +67,36 @@ describe("cashflowGraph", () => {
     expect(g.right.find((n) => n.id === "makan")?.change).toBe(100);
   });
 });
+
+import { debtRemaining, debtTotals, goalPlan } from "../src/lib/finance/calc";
+import { reduce } from "../src/lib/finance/store";
+import type { Debt, Goal } from "../src/lib/finance/types";
+describe("rencana", () => {
+  const debt: Debt = { id: "d1", person: "Budi", direction: "owed_to_me", amount: 100_000, note: "", settled: false, createdAt: "2026-11-01T00:00:00Z" };
+  test("repayments reduce what is owed and settle the debt at zero", () => {
+    let s = reduce({ ...emptyState(), debts: [debt] }, { type: "debt/pay", id: "d1", at: "2026-11-05T00:00:00Z", amount: 40_000 });
+    expect(debtRemaining(s.debts[0])).toBe(60_000); expect(debtTotals(s.debts).owedToMe).toBe(60_000); expect(s.debts[0].settled).toBe(false);
+    s = reduce(s, { type: "debt/pay", id: "d1", at: "2026-11-06T00:00:00Z", amount: 60_000 });
+    expect(s.debts[0].settled).toBe(true);
+    s = reduce(s, { type: "debt/payDelete", id: "d1", index: 1 });
+    expect(s.debts[0].settled).toBe(false); expect(debtRemaining(s.debts[0])).toBe(60_000);
+    expect(reduce(s, { type: "debt/settle", id: "d1" }).debts[0].settled).toBe(true);
+    expect(reduce(reduce(s, { type: "debt/settle", id: "d1" }), { type: "debt/unsettle", id: "d1" }).debts[0].settled).toBe(false);
+  });
+  test("a goal with a date says what to set aside each month", () => {
+    const g: Goal = { id: "g1", name: "Liburan", target: 12_000_000, deposits: [{ at: "2026-10-01T00:00:00Z", amount: 3_000_000 }], due: "2027-03-17", createdAt: "2026-10-01T00:00:00Z" };
+    const p = goalPlan(g, new Date(2026, 10, 17));
+    expect(p.left).toBe(9_000_000); expect(p.perMonthNeeded).toBe(1_800_000); expect(p.done).toBe(false);
+    expect(goalPlan({ ...g, due: undefined }, new Date(2026, 10, 17)).perMonthNeeded).toBeNull();
+  });
+  test("deposits can be edited and deleted; budgets set in bulk", () => {
+    const g: Goal = { id: "g1", name: "A", target: 1000, deposits: [{ at: "x", amount: 10 }, { at: "y", amount: 20 }], createdAt: "z" };
+    let s = reduce({ ...emptyState(), goals: [g] }, { type: "goal/depositEdit", id: "g1", index: 0, amount: 15 });
+    expect(s.goals[0].deposits[0].amount).toBe(15);
+    s = reduce(s, { type: "goal/depositDelete", id: "g1", index: 1 });
+    expect(s.goals[0].deposits).toHaveLength(1);
+    const b = reduce(s, { type: "budget/setMany", budgets: [{ categoryId: "makan", limit: 5000, rollover: false }, { categoryId: "belanja", limit: 3000, rollover: false }] });
+    expect(b.budgets).toHaveLength(2);
+    expect(reduce(b, { type: "budget/setMany", budgets: [{ categoryId: "makan", limit: 9000, rollover: false }] }).budgets.find((x) => x.categoryId === "makan")?.limit).toBe(9000);
+  });
+});

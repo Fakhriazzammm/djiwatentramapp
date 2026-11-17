@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Btn, I3, Ic, Seg, Sheet, bigAmountSize, iconOr, type IconName } from "../shell/dpx-ui";
-import { accountBalance, debtTotals, goalProjection, goalSaved, uid } from "../../lib/finance/calc";
+import { accountBalance, daysUntil, debtPaid, debtRemaining, debtTotals, goalPlan, goalProjection, goalSaved, uid } from "../../lib/finance/calc";
 import { CATEGORY_ICONS, PAY_ACCOUNT_ID, TONES } from "../../lib/finance/categories";
 import { parseEntries, type ParsedItem } from "../../lib/finance/parse";
 import { streak } from "../../lib/finance/calc";
 import { rupiah, formatDateTime } from "../../lib/djiwa-pay-format";
-import type { Account, AccountType, Budget, Category, Debt, Entry, FinanceState, Goal } from "../../lib/finance/types";
+import type { Account, AccountType, Budget, Category, Debt, Entry, FinanceState, Goal, Pocket } from "../../lib/finance/types";
 import type { Finance } from "../../lib/finance/use-finance";
 import { ReceiptAttachment, ReceiptFlow, ReceiptReview } from "./fin-receipt";
 import type { ScannedReceipt } from "../../lib/finance/receipt";
@@ -184,30 +184,47 @@ export function BudgetSheet({ fin, categoryId, suggested, onClose, notify }: { f
   </Sheet>;
 }
 
+const dateLabel = (iso: string) => new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const Confirm = ({ label, onYes }: { label: string; onYes: () => void }) => { const [ask, setAsk] = useState(false); return ask ? <div className="dpx-confirm"><span>Yakin? Ini tidak bisa dibatalkan.</span><Btn type="button" className="dpx-btn dpx-soft" onClick={() => setAsk(false)}>Batal</Btn><Btn type="button" className="dpx-btn" style={{ background: "var(--danger)" }} onClick={onYes}>Ya, hapus</Btn></div> : <Btn type="button" className="dpx-btn dpx-soft" onClick={() => setAsk(true)}>{label}</Btn>; };
+
 export function GoalSheet({ fin, goal, onClose, notify }: { fin: Finance; goal?: Goal; onClose: () => void; notify: Notify }) {
   const { dispatch } = fin;
   const [name, setName] = useState(goal?.name ?? "");
   const [target, setTarget] = useState(String(goal?.target ?? ""));
+  const [due, setDue] = useState(goal?.due ?? "");
   const ok = name.trim().length > 0 && Number(target) >= 1000;
+  const saved = goal ? goalSaved(goal) : 0;
   return <Sheet title={goal ? "Ubah tujuan" : "Tujuan baru"} onClose={onClose}>
     <label className="dpx-field" style={{ marginTop: 0 }}><span>Nama tujuan</span><div className="dpx-input"><input value={name} placeholder="Contoh: Dana darurat" maxLength={40} onChange={(e) => setName(e.target.value)} /></div></label>
+    <div className="dpx-chips" style={{ margin: "0 -18px 4px" }}>{["Dana darurat", "Liburan", "Gadget baru", "DP rumah", "Pendidikan"].map((n) => <Btn key={n} type="button" className={`dpx-chip ${name === n ? "dpx-on" : ""}`} onClick={() => setName(n)}>{n}</Btn>)}</div>
     <label className="dpx-field"><span>Target</span><MoneyInput value={target} onChange={setTarget} label="Target" /></label>
-    <Btn type="button" className={`dpx-btn ${ok ? "" : "dpx-off"}`} disabled={!ok} onClick={() => { dispatch({ type: "goal/upsert", goal: { id: goal?.id ?? uid(), name: name.trim(), target: Number(target), deposits: goal?.deposits ?? [], createdAt: goal?.createdAt ?? new Date().toISOString() } }); onClose(); notify("Tujuan disimpan"); }}>Simpan tujuan</Btn>
-    {goal ? <Btn type="button" className="dpx-btn dpx-soft" onClick={() => { dispatch({ type: "goal/delete", id: goal.id }); onClose(); notify("Tujuan dihapus"); }}>Hapus tujuan</Btn> : null}
+    <label className="dpx-field"><span>Target tanggal <em>opsional</em></span><div className="dpx-input"><input type="date" value={due} min={todayStr()} onChange={(e) => setDue(e.target.value)} /></div></label>
+    {goal && saved > 0 && Number(target) > 0 && Number(target) < saved ? <p className="dpx-hint">Target lebih kecil dari yang sudah ditabung ({rupiah(saved)}). Tujuan akan tampil tercapai.</p> : null}
+    <Btn type="button" className={`dpx-btn ${ok ? "" : "dpx-off"}`} disabled={!ok} onClick={() => { dispatch({ type: "goal/upsert", goal: { id: goal?.id ?? uid(), name: name.trim(), target: Number(target), deposits: goal?.deposits ?? [], ...(due ? { due } : {}), createdAt: goal?.createdAt ?? new Date().toISOString() } }); onClose(); notify("Tujuan disimpan"); }}>Simpan tujuan</Btn>
+    {goal ? <Confirm label="Hapus tujuan" onYes={() => { dispatch({ type: "goal/delete", id: goal.id }); onClose(); notify("Tujuan dihapus", () => dispatch({ type: "goal/upsert", goal })); }} /> : null}
   </Sheet>;
 }
 
 export function GoalDetailSheet({ fin, goal, onClose, onEdit, notify }: { fin: Finance; goal: Goal; onClose: () => void; onEdit: () => void; notify: Notify }) {
-  const [amount, setAmount] = useState("");
-  const saved = goalSaved(goal);
-  const pct = Math.min(100, Math.round((saved / goal.target) * 100));
-  const proj = goalProjection(goal);
+  const [amount, setAmount] = useState(""), [editing, setEditing] = useState<number | null>(null), [editAmount, setEditAmount] = useState("");
+  const plan = goalPlan(goal), saved = plan.saved, pct = Math.round(plan.pct);
+  const left = plan.left, hints = [plan.perMonthNeeded, Math.round(left / 4 / 10000) * 10000, 100_000, 500_000].filter((v): v is number => Boolean(v) && (v as number) >= 1000);
+  const presets = [...new Set(hints)].slice(0, 3);
+  const rows = goal.deposits.map((d, i) => ({ d, i })).reverse();
   return <Sheet title={goal.name} onClose={onClose}>
-    <div className="dpx-group dpx-white dpx-center" style={{ boxShadow: "none", background: "var(--group)" }}><div className="dpx-money">{rupiah(saved)}</div><div className="dpx-sub">dari {rupiah(goal.target)} · {pct}%</div><div className="dpx-bar" style={{ marginTop: 10 }}><i style={{ width: `${Math.max(2, pct)}%` }} /></div></div>
-    {proj.done ? <div className="dpx-note dpx-ok"><Ic n="check" /><div><b>Tujuan tercapai!</b></div></div> : proj.eta ? <div className="dpx-note dpx-info"><Ic n="spark" /><div>Rata-rata menabung <b>{rupiah(proj.perMonth)}/bulan</b> → tercapai sekitar <b>{proj.eta.toLocaleDateString("id-ID", { month: "long", year: "numeric" })}</b>.</div></div> : null}
+    <div className="dpx-group dpx-white dpx-center" style={{ boxShadow: "none", background: "var(--group)" }}><div className="dpx-money">{rupiah(saved)}</div><div className="dpx-sub">dari {rupiah(goal.target)} · {pct}%{goal.due ? ` · target ${dateLabel(goal.due)}` : ""}</div><div className="dpx-bar" style={{ marginTop: 10 }}><i style={{ width: `${Math.max(2, pct)}%` }} /></div></div>
+    {plan.done ? <div className="dpx-note dpx-ok"><Ic n="check" /><div><b>Tujuan tercapai!</b></div></div> : <>
+      {plan.perMonthNeeded ? <div className={`dpx-note ${plan.onTrack === false ? "dpx-warn" : "dpx-info"}`}><Ic n="target" /><div>Agar tepat waktu, sisihkan <b>{rupiah(plan.perMonthNeeded)}/bulan</b>. {plan.onTrack === false ? "Lajumu sekarang belum cukup." : plan.onTrack ? "Lajumu sekarang sudah di jalur." : ""}</div></div> : null}
+      {plan.eta ? <div className="dpx-note dpx-info"><Ic n="spark" /><div>Rata-rata menabung <b>{rupiah(plan.perMonth)}/bulan</b> → tercapai sekitar <b>{plan.eta.toLocaleDateString("id-ID", { month: "long", year: "numeric" })}</b>.</div></div> : null}</>}
     <label className="dpx-field"><span>Setor ke tujuan</span><MoneyInput value={amount} onChange={setAmount} label="Jumlah setoran" /></label>
+    {presets.length ? <div className="dpx-amt-presets">{presets.map((v) => <Btn key={v} type="button" className={`dpx-preset ${Number(amount) === v ? "dpx-on" : ""}`} onClick={() => setAmount(String(v))}>{v >= 1_000_000 ? `${(v / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt` : `${(v / 1000).toLocaleString("id-ID")} rb`}</Btn>)}</div> : null}
     <Btn type="button" className={`dpx-btn ${Number(amount) > 0 ? "" : "dpx-off"}`} disabled={!(Number(amount) > 0)} onClick={() => { fin.dispatch({ type: "goal/deposit", id: goal.id, at: new Date().toISOString(), amount: Number(amount) }); setAmount(""); notify(`Setoran ${rupiah(Number(amount))} dicatat`); }}>Setor</Btn>
-    {goal.deposits.length ? <><div className="dpx-glabel">Riwayat setoran</div><div className="dpx-group dpx-flush">{[...goal.deposits].reverse().slice(0, 5).map((d, i) => <div className="dpx-row" key={i}><span className="dpx-cat dpx-c-emerald"><Ic n="down" /></span><span className="dpx-main"><b>Setoran</b><span>{new Date(d.at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</span></span><span className="dpx-trail"><b className="dpx-in">+{rupiah(d.amount)}</b></span></div>)}</div></> : null}
+    {rows.length ? <><div className="dpx-glabel">Riwayat setoran ({rows.length})</div><div className="dpx-group dpx-flush">{rows.slice(0, 20).map(({ d, i }) => editing === i
+      ? <div className="dpx-row" key={i}><div style={{ flex: 1 }}><MoneyInput value={editAmount} onChange={setEditAmount} label="Jumlah setoran" /></div><Btn type="button" className="dpx-rb" aria-label="Simpan" onClick={() => { if (Number(editAmount) > 0) { fin.dispatch({ type: "goal/depositEdit", id: goal.id, index: i, amount: Number(editAmount) }); notify("Setoran diubah"); } setEditing(null); }}><Ic n="check" size="sm" /></Btn></div>
+      : <div className="dpx-row" key={i}><span className="dpx-cat dpx-c-emerald"><Ic n="down" /></span><span className="dpx-main"><b>{rupiah(d.amount)}</b><span>{dateLabel(d.at)}</span></span>
+        <Btn type="button" className="dpx-rb" aria-label="Ubah setoran" onClick={() => { setEditing(i); setEditAmount(String(d.amount)); }}><Ic n="edit" size="sm" /></Btn>
+        <Btn type="button" className="dpx-rb" aria-label="Hapus setoran" onClick={() => { fin.dispatch({ type: "goal/depositDelete", id: goal.id, index: i }); notify("Setoran dihapus", () => fin.dispatch({ type: "goal/upsert", goal })); }}><Ic n="del" size="sm" /></Btn></div>)}</div></> : null}
     <Btn type="button" className="dpx-btn dpx-ghost" onClick={onEdit}><Ic n="edit" size="sm" /> Ubah tujuan</Btn>
   </Sheet>;
 }
@@ -218,15 +235,55 @@ export function DebtSheet({ fin, debt, onClose, notify }: { fin: Finance; debt?:
   const [amount, setAmount] = useState(String(debt?.amount ?? ""));
   const [note, setNote] = useState(debt?.note ?? "");
   const [due, setDue] = useState(debt?.due ?? "");
+  const [pay, setPay] = useState(""), [editFields, setEditFields] = useState(!debt);
   const ok = person.trim() && Number(amount) > 0;
-  return <Sheet title={debt ? "Ubah catatan hutang" : "Hutang & piutang"} onClose={onClose}>
-    <Seg id="debt" label="Jenis" value={dir} onChange={setDir} options={[["owed_to_me", "Dia berutang"], ["i_owe", "Saya berutang"]] as const} />
-    <label className="dpx-field"><span>Nama</span><div className="dpx-input"><input value={person} onChange={(e) => setPerson(e.target.value)} placeholder="Contoh: Budi" maxLength={40} /></div></label>
-    <label className="dpx-field"><span>Jumlah</span><MoneyInput value={amount} onChange={setAmount} /></label>
-    <label className="dpx-field"><span>Keterangan <em>opsional</em></span><div className="dpx-input"><input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Makan bareng" maxLength={80} /></div></label>
-    <label className="dpx-field"><span>Jatuh tempo <em>opsional</em></span><div className="dpx-input"><input type="date" value={due} onChange={(e) => setDue(e.target.value)} /></div></label>
-    <Btn type="button" className={`dpx-btn ${ok ? "" : "dpx-off"}`} disabled={!ok} onClick={() => { fin.dispatch({ type: "debt/upsert", debt: { id: debt?.id ?? uid(), person: person.trim(), direction: dir, amount: Number(amount), note: note.trim(), due: due || undefined, settled: debt?.settled ?? false, createdAt: debt?.createdAt ?? new Date().toISOString() } }); onClose(); notify("Tersimpan"); }}>Simpan</Btn>
-    {debt ? <><Btn type="button" className="dpx-btn dpx-soft" onClick={() => { fin.dispatch({ type: "debt/settle", id: debt.id }); onClose(); notify("Ditandai lunas"); }}>Tandai lunas</Btn><Btn type="button" className="dpx-btn dpx-soft" onClick={() => { fin.dispatch({ type: "debt/delete", id: debt.id }); onClose(); notify("Catatan dihapus"); }}>Hapus</Btn></> : null}
+  const paid = debt ? debtPaid(debt) : 0, remaining = debt ? debtRemaining(debt) : 0, mine = (debt?.direction ?? dir) === "i_owe";
+  const pct = debt && debt.amount > 0 ? Math.min(100, (paid / debt.amount) * 100) : 0, late = daysUntil(debt?.due);
+  const payments = (debt?.payments ?? []).map((p, i) => ({ p, i })).reverse();
+  const save = () => { fin.dispatch({ type: "debt/upsert", debt: { id: debt?.id ?? uid(), person: person.trim(), direction: dir, amount: Number(amount), note: note.trim(), due: due || undefined, settled: debt?.settled ?? false, ...(debt?.payments?.length ? { payments: debt.payments } : {}), createdAt: debt?.createdAt ?? new Date().toISOString() } }); onClose(); notify("Tersimpan"); };
+  return <Sheet title={debt ? debt.person : "Hutang & piutang"} onClose={onClose}>
+    {debt ? <div className="dpx-group dpx-white dpx-center" style={{ boxShadow: "none", background: "var(--group)" }}>
+      <div className="dpx-sub">{mine ? "Kamu berutang ke" : "Berutang padamu"} {debt.person}</div>
+      <div className="dpx-money">{debt.settled ? "Lunas" : rupiah(remaining)}</div>
+      <div className="dpx-sub">dari {rupiah(debt.amount)}{paid > 0 ? ` · sudah ${mine ? "dibayar" : "diterima"} ${rupiah(paid)}` : ""}</div>
+      <div className="dpx-bar" style={{ marginTop: 10 }}><i className={debt.settled ? "dpx-ok" : ""} style={{ width: `${debt.settled ? 100 : Math.max(2, pct)}%` }} /></div>
+      {late !== null && !debt.settled ? <div className={late < 0 ? "dpx-dn" : "dpx-sub"} style={{ marginTop: 8, fontWeight: 600 }}>{late < 0 ? `Terlambat ${-late} hari` : late === 0 ? "Jatuh tempo hari ini" : `Jatuh tempo ${late} hari lagi`}</div> : null}</div> : null}
+    {debt && !debt.settled ? <>
+      <label className="dpx-field"><span>{mine ? "Catat pembayaran" : "Catat terima cicilan"}</span><MoneyInput value={pay} onChange={setPay} label="Jumlah" /></label>
+      <div className="dpx-amt-presets">{[remaining, Math.round(remaining / 2 / 1000) * 1000, Math.round(remaining / 4 / 1000) * 1000].filter((v, i, a) => v >= 1000 && a.indexOf(v) === i).map((v, k) => <Btn key={v} type="button" className={`dpx-preset ${Number(pay) === v ? "dpx-on" : ""}`} onClick={() => setPay(String(v))}>{k === 0 ? "Lunas" : v >= 1_000_000 ? `${(v / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt` : `${(v / 1000).toLocaleString("id-ID")} rb`}</Btn>)}</div>
+      <Btn type="button" className={`dpx-btn ${Number(pay) > 0 ? "" : "dpx-off"}`} disabled={!(Number(pay) > 0)} onClick={() => { const v = Math.min(Number(pay), remaining); fin.dispatch({ type: "debt/pay", id: debt.id, at: new Date().toISOString(), amount: v }); setPay(""); notify(v >= remaining ? "Lunas" : `${rupiah(v)} dicatat`); }}>Catat</Btn></> : null}
+    {payments.length ? <><div className="dpx-glabel">Riwayat pembayaran ({payments.length})</div><div className="dpx-group dpx-flush">{payments.map(({ p, i }) => <div className="dpx-row" key={i}><span className="dpx-cat dpx-c-emerald"><Ic n="down" /></span><span className="dpx-main"><b>{rupiah(p.amount)}</b><span>{dateLabel(p.at)}</span></span><Btn type="button" className="dpx-rb" aria-label="Hapus pembayaran" onClick={() => { fin.dispatch({ type: "debt/payDelete", id: debt!.id, index: i }); notify("Pembayaran dihapus"); }}><Ic n="del" size="sm" /></Btn></div>)}</div></> : null}
+    {debt && !editFields ? <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => setEditFields(true)}><Ic n="edit" size="sm" /> Ubah data</Btn> : <>
+      <Seg id="debt" label="Jenis" value={dir} onChange={setDir} options={[["owed_to_me", "Dia berutang"], ["i_owe", "Saya berutang"]] as const} />
+      <label className="dpx-field"><span>Nama</span><div className="dpx-input"><input value={person} onChange={(e) => setPerson(e.target.value)} placeholder="Contoh: Budi" maxLength={40} /></div></label>
+      <label className="dpx-field"><span>Jumlah awal</span><MoneyInput value={amount} onChange={setAmount} /></label>
+      <label className="dpx-field"><span>Keterangan <em>opsional</em></span><div className="dpx-input"><input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Makan bareng" maxLength={80} /></div></label>
+      <label className="dpx-field"><span>Jatuh tempo <em>opsional</em></span><div className="dpx-input"><input type="date" value={due} onChange={(e) => setDue(e.target.value)} /></div></label>
+      <Btn type="button" className={`dpx-btn ${ok ? "" : "dpx-off"}`} disabled={!ok} onClick={save}>Simpan</Btn></>}
+    {debt ? <>
+      {debt.settled ? <Btn type="button" className="dpx-btn dpx-soft" onClick={() => { fin.dispatch({ type: "debt/unsettle", id: debt.id }); onClose(); notify("Dibuka lagi"); }}>Buka lagi</Btn> : <Btn type="button" className="dpx-btn dpx-soft" onClick={() => { fin.dispatch({ type: "debt/settle", id: debt.id }); onClose(); notify("Ditandai lunas", () => fin.dispatch({ type: "debt/unsettle", id: debt.id })); }}>Tandai lunas</Btn>}
+      <Confirm label="Hapus catatan" onYes={() => { fin.dispatch({ type: "debt/delete", id: debt.id }); onClose(); notify("Catatan dihapus", () => fin.dispatch({ type: "debt/upsert", debt })); }} /></> : null}
+  </Sheet>;
+}
+
+/** One spending pocket: its share of income and which categories it covers. */
+export function PocketSheet({ fin, pocket, others, onClose, notify }: { fin: Finance; pocket?: Pocket; others: Pocket[]; onClose: () => void; notify: Notify }) {
+  const used = others.filter((p) => p.id !== pocket?.id).reduce((n, p) => n + p.percent, 0), free = Math.max(0, 100 - used);
+  const [name, setName] = useState(pocket?.name ?? ""), [percent, setPercent] = useState(String(pocket?.percent ?? Math.min(free, 10) ?? 10)), [cats, setCats] = useState<string[]>(pocket?.categoryIds ?? []);
+  const [tone, setTone] = useState(pocket?.tone ?? "blue"), [icon, setIcon] = useState(pocket?.icon ?? "pie");
+  const expense = fin.state.categories.filter((c) => !c.income), takenBy = (id: string) => others.find((p) => p.id !== pocket?.id && p.categoryIds.includes(id))?.name;
+  const pct = Math.round(Number(percent) || 0), ok = name.trim().length > 0 && pct >= 1 && pct <= 100;
+  const save = () => { const item: Pocket = { id: pocket?.id ?? uid(), name: name.trim(), percent: pct, categoryIds: cats, tone, icon }; const list = pocket ? others.map((p) => (p.id === item.id ? item : p)) : [...others, item]; fin.dispatch({ type: "pocket/set", pockets: list }); onClose(); notify("Kantong disimpan"); };
+  return <Sheet title={pocket ? "Ubah kantong" : "Kantong baru"} onClose={onClose}>
+    <label className="dpx-field" style={{ marginTop: 0 }}><span>Nama kantong</span><div className="dpx-input"><input value={name} maxLength={30} placeholder="Contoh: Sedekah" onChange={(e) => setName(e.target.value)} /></div></label>
+    <label className="dpx-field"><span>Porsi dari pemasukan (%)</span><div className="dpx-input"><input inputMode="numeric" value={percent} onChange={(e) => setPercent(e.target.value.replace(/\D/g, "").slice(0, 3))} /></div></label>
+    <p className={`dpx-hint ${used + pct > 100 ? "dpx-dn" : ""}`}>{used + pct > 100 ? `Total jadi ${used + pct}%, melebihi 100%.` : `Sisa yang belum dibagi: ${100 - used - pct}%`}</p>
+    <div className="dpx-glabel">Kategori yang dihitung <em>opsional</em></div>
+    <div className="dpx-rv-pick" role="group" aria-label="Kategori">{expense.map((c) => { const other = takenBy(c.id); return <Btn key={c.id} type="button" className={cats.includes(c.id) ? "is-on" : ""} aria-pressed={cats.includes(c.id)} disabled={Boolean(other)} title={other ? `Dipakai kantong ${other}` : undefined} onClick={() => setCats((l) => (l.includes(c.id) ? l.filter((x) => x !== c.id) : [...l, c.id]))}>{c.name}</Btn>; })}</div>
+    <div className="dpx-glabel">Warna</div>
+    <div className="dpx-chips" style={{ margin: "0 -18px 4px" }}>{(["blue", "emerald", "violet", "amber", "rose", "cyan"] as const).map((t) => <Btn key={t} type="button" className={`dpx-chip ${tone === t ? "dpx-on" : ""}`} onClick={() => setTone(t)}><span className={`dpx-cat dpx-c-${t}`} style={{ width: 22, height: 22, display: "inline-grid" }} /></Btn>)}</div>
+    <Btn type="button" className={`dpx-btn ${ok ? "" : "dpx-off"}`} disabled={!ok} onClick={save}>Simpan kantong</Btn>
+    {pocket ? <Confirm label="Hapus kantong" onYes={() => { fin.dispatch({ type: "pocket/set", pockets: others.filter((p) => p.id !== pocket.id) }); onClose(); notify("Kantong dihapus", () => fin.dispatch({ type: "pocket/set", pockets: others })); }} /> : null}
   </Sheet>;
 }
 

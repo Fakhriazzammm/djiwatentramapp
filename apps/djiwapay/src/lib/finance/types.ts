@@ -25,8 +25,8 @@ export type Account = { id: string; name: string; type: AccountType; opening: nu
 
 export type Category = { id: string; name: string; icon: string; tone: string; income: boolean; custom?: boolean };
 export type Budget = { categoryId: string; limit: number; rollover: boolean };
-export type Goal = { id: string; name: string; target: number; deposits: { at: string; amount: number }[]; createdAt: string };
-export type Debt = { id: string; person: string; direction: "owed_to_me" | "i_owe"; amount: number; note: string; due?: string; settled: boolean; createdAt: string };
+export type Goal = { id: string; name: string; target: number; deposits: { at: string; amount: number }[]; /** Target date, YYYY-MM-DD. */ due?: string; createdAt: string };
+export type Debt = { id: string; person: string; direction: "owed_to_me" | "i_owe"; amount: number; note: string; due?: string; settled: boolean; /** Repayments made so far (the debt itself keeps its original amount). */ payments?: { at: string; amount: number }[]; createdAt: string };
 
 /** Local-only management data (not synced yet): recurring bills, spending pockets and manual assets. */
 export type Bill = { id: string; name: string; amount: number; /** Day of month 1-31. */ day: number; icon: string; tone: string; /** "YYYY-MM" months already paid. */ paid: string[] };

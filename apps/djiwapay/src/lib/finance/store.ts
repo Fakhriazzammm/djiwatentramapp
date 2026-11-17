@@ -9,9 +9,9 @@ export type Action =
   | { type: "override/set"; id: string; override: Override }
   | { type: "account/upsert"; account: Account } | { type: "account/archive"; id: string }
   | { type: "category/upsert"; category: Category } | { type: "category/delete"; id: string }
-  | { type: "budget/set"; budget: Budget } | { type: "budget/delete"; categoryId: string }
-  | { type: "goal/upsert"; goal: Goal } | { type: "goal/delete"; id: string } | { type: "goal/deposit"; id: string; at: string; amount: number }
-  | { type: "debt/upsert"; debt: Debt } | { type: "debt/delete"; id: string } | { type: "debt/settle"; id: string }
+  | { type: "budget/set"; budget: Budget } | { type: "budget/setMany"; budgets: Budget[] } | { type: "budget/delete"; categoryId: string }
+  | { type: "goal/upsert"; goal: Goal } | { type: "goal/delete"; id: string } | { type: "goal/deposit"; id: string; at: string; amount: number } | { type: "goal/depositEdit"; id: string; index: number; amount: number } | { type: "goal/depositDelete"; id: string; index: number }
+  | { type: "debt/upsert"; debt: Debt } | { type: "debt/delete"; id: string } | { type: "debt/settle"; id: string } | { type: "debt/unsettle"; id: string } | { type: "debt/pay"; id: string; at: string; amount: number } | { type: "debt/payDelete"; id: string; index: number }
   | { type: "bill/upsert"; bill: Bill } | { type: "bill/delete"; id: string } | { type: "bill/pay"; id: string; month: string; paid: boolean }
   | { type: "pocket/set"; pockets: Pocket[] }
   | { type: "asset/upsert"; asset: Asset } | { type: "asset/delete"; id: string }
@@ -32,10 +32,16 @@ export function reduce(state: FinanceState, action: Action): FinanceState {
     case "category/upsert": return { ...state, categories: upsert(state.categories, action.category) };
     case "category/delete": return { ...state, categories: state.categories.filter((c) => c.id !== action.id || !c.custom), budgets: state.budgets.filter((b) => b.categoryId !== action.id), entries: state.entries.map((e) => (e.categoryId === action.id ? { ...e, categoryId: e.kind === "in" ? "bonus" : "lainnya" } : e)) };
     case "budget/set": return { ...state, budgets: state.budgets.some((b) => b.categoryId === action.budget.categoryId) ? state.budgets.map((b) => (b.categoryId === action.budget.categoryId ? action.budget : b)) : [...state.budgets, action.budget] };
+    case "budget/setMany": { const ids = new Set(action.budgets.map((b) => b.categoryId)); return { ...state, budgets: [...state.budgets.filter((b) => !ids.has(b.categoryId)), ...action.budgets] }; }
     case "budget/delete": return { ...state, budgets: state.budgets.filter((b) => b.categoryId !== action.categoryId) };
     case "goal/upsert": return { ...state, goals: upsert(state.goals, action.goal) };
     case "goal/delete": return { ...state, goals: state.goals.filter((g) => g.id !== action.id) };
     case "goal/deposit": return { ...state, goals: state.goals.map((g) => (g.id === action.id ? { ...g, deposits: [...g.deposits, { at: action.at, amount: action.amount }] } : g)) };
+    case "goal/depositEdit": return { ...state, goals: state.goals.map((g) => (g.id === action.id ? { ...g, deposits: g.deposits.map((d, i) => (i === action.index ? { ...d, amount: action.amount } : d)) } : g)) };
+    case "goal/depositDelete": return { ...state, goals: state.goals.map((g) => (g.id === action.id ? { ...g, deposits: g.deposits.filter((_, i) => i !== action.index) } : g)) };
+    case "debt/unsettle": return { ...state, debts: state.debts.map((d) => (d.id === action.id ? { ...d, settled: false } : d)) };
+    case "debt/pay": return { ...state, debts: state.debts.map((d) => { if (d.id !== action.id) return d; const payments = [...(d.payments ?? []), { at: action.at, amount: action.amount }]; return { ...d, payments, settled: payments.reduce((s, p) => s + p.amount, 0) >= d.amount }; }) };
+    case "debt/payDelete": return { ...state, debts: state.debts.map((d) => { if (d.id !== action.id) return d; const payments = (d.payments ?? []).filter((_, i) => i !== action.index); return { ...d, payments, settled: payments.reduce((s, p) => s + p.amount, 0) >= d.amount }; }) };
     case "debt/upsert": return { ...state, debts: upsert(state.debts, action.debt) };
     case "debt/delete": return { ...state, debts: state.debts.filter((d) => d.id !== action.id) };
     case "debt/settle": return { ...state, debts: state.debts.map((d) => (d.id === action.id ? { ...d, settled: true } : d)) };

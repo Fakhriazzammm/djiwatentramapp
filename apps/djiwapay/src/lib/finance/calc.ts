@@ -101,9 +101,26 @@ export function goalProjection(g: Goal, now = new Date()) {
   const need = Math.ceil((g.target - saved) / perMonth);
   return { done: false as const, perMonth, eta: new Date(now.getFullYear(), now.getMonth() + need, 1) };
 }
+export const debtPaid = (d: Debt) => (d.payments ?? []).reduce((s, p) => s + p.amount, 0);
+/** What is still owed: the original amount minus repayments so far. */
+export const debtRemaining = (d: Debt) => (d.settled ? 0 : Math.max(0, d.amount - debtPaid(d)));
 export function debtTotals(debts: Debt[]) {
   const open = debts.filter((d) => !d.settled);
-  return { owedToMe: open.filter((d) => d.direction === "owed_to_me").reduce((s, d) => s + d.amount, 0), iOwe: open.filter((d) => d.direction === "i_owe").reduce((s, d) => s + d.amount, 0) };
+  return { owedToMe: open.filter((d) => d.direction === "owed_to_me").reduce((s, d) => s + debtRemaining(d), 0), iOwe: open.filter((d) => d.direction === "i_owe").reduce((s, d) => s + debtRemaining(d), 0) };
+}
+/** Days until a due date (negative when late); null without one. */
+export function daysUntil(due: string | undefined, now = new Date()): number | null {
+  if (!due) return null;
+  const t = new Date(`${due.slice(0, 10)}T00:00:00`), n = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Number.isNaN(+t) ? null : Math.round((+t - +n) / 86_400_000);
+}
+/** Where a goal stands against its target date: what is left, and what to put aside each month to arrive on time. */
+export function goalPlan(g: Goal, now = new Date()) {
+  const saved = goalSaved(g), left = Math.max(0, g.target - saved), proj = goalProjection(g, now), days = daysUntil(g.due, now);
+  const monthsLeft = days === null ? null : Math.max(0, days / 30.4);
+  const perMonthNeeded = monthsLeft === null || left <= 0 ? null : Math.ceil(left / Math.max(1, Math.ceil(monthsLeft)));
+  const onTrack = left <= 0 ? true : days === null ? null : days < 0 ? false : !proj.done && proj.eta ? +proj.eta <= +new Date(`${g.due}T00:00:00`) + 31 * 864e5 : false;
+  return { saved, left, pct: g.target > 0 ? Math.min(100, (saved / g.target) * 100) : 0, days, perMonthNeeded, onTrack, perMonth: proj.done ? 0 : proj.perMonth, eta: proj.done ? null : proj.eta, done: left <= 0 };
 }
 
 /* ---------- habits & insights ---------- */

@@ -4,8 +4,8 @@ import { CeritaBody } from "./beranda-cerita";
 import { wealthHistory } from "../../lib/finance/story";
 import { Avatar, payAsset, AnimatedNumber, Bar, Mascot, MascotBuddy, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
 import type { Nav } from "../shell/dpx-pages";
-import { AccountEditSheet, AccountSheet, BudgetSheet, CatIcon, CategoryEditSheet, CategorySheet, DebtSheet, EntrySheet, GoalDetailSheet, GoalSheet, CatatSheet, SplitSheet, StreakSheet, MoneyInput, accName, catOf, type Notify } from "./fin-sheets";
-import { accountBalance, budgetStatuses, buildInsights, dailySpend, daysIn, debtTotals, detectSubscriptions, goalProjection, goalSaved, inMonth, monthlySeries, safeToSpend, spendByCategory, streak, toCsv, totals, uid } from "../../lib/finance/calc";
+import { AccountEditSheet, AccountSheet, BudgetSheet, CatIcon, CategoryEditSheet, CategorySheet, DebtSheet, EntrySheet, GoalDetailSheet, GoalSheet, PocketSheet, CatatSheet, SplitSheet, StreakSheet, MoneyInput, accName, catOf, type Notify } from "./fin-sheets";
+import { debtRemaining, accountBalance, budgetStatuses, buildInsights, dailySpend, daysIn, debtTotals, detectSubscriptions, goalProjection, goalSaved, inMonth, monthlySeries, safeToSpend, spendByCategory, streak, toCsv, totals, uid } from "../../lib/finance/calc";
 import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
 import { emptyState, normalize } from "../../lib/finance/store";
 import { dayLabel, daypart, firstName, formatTime, greeting, rupiah } from "../../lib/djiwa-pay-format";
@@ -27,7 +27,7 @@ import type { WalletTransaction } from "../../lib/wallet-adapter";
 export type FinSheet =
   | { k: "catat" } | { k: "entry"; id: string } | { k: "budget"; cid?: string } | { k: "goal"; id?: string } | { k: "goal-detail"; id: string }
   | { k: "debt"; id?: string } | { k: "split" } | { k: "streak" } | { k: "account"; id?: string } | { k: "category"; id?: string } | { k: "pay-category"; id: string }
-  | { k: "bill"; id?: string } | { k: "bill-pay"; id: string } | { k: "asset"; id?: string } | { k: "asset-new" } | { k: "asset-view"; id: string } | { k: "pockets" } | { k: "payoff" } | { k: "weekly" };
+  | { k: "bill"; id?: string } | { k: "bill-pay"; id: string } | { k: "asset"; id?: string } | { k: "asset-new" } | { k: "asset-view"; id: string } | { k: "pockets" } | { k: "pocket"; id?: string } | { k: "payoff" } | { k: "weekly" };
 
 export type FinCtx = {
   fin: Finance; notify: Notify; nav: Nav; profile: CustomerProfile; transactions: WalletTransaction[]; payBalance: number; loading: boolean;
@@ -233,41 +233,7 @@ export function ManualForm({ ctx, editId, initialKind, onDone }: { ctx: FinCtx; 
 }
 
 /* ---------- Anggaran, tujuan, hutang ---------- */
-export function FinBudget({ ctx }: { ctx: FinCtx }) {
-  const { fin, nav } = ctx; const { state, entries } = fin;
-  const [seg, setSeg] = useState<"bud" | "pocket" | "goal" | "debt">(() => { const q = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("bagian") : null; return q === "kantong" ? "pocket" : q === "tujuan" ? "goal" : q === "hutang" ? "debt" : "bud"; });
-  const now = new Date(); const month = entries.filter((e) => inMonth(e, now.getFullYear(), now.getMonth()));
-  const statuses = budgetStatuses(state.budgets, month);
-  const total = state.budgets.reduce((s, b) => s + b.limit, 0);
-  const used = statuses.reduce((s, x) => s + x.used, 0);
-  const pct = total > 0 ? (used / total) * 100 : 0;
-  const dt = debtTotals(state.debts);
-  const subs = useMemo(() => detectSubscriptions(state.entries), [state.entries]);
-  return <div className="dpx-page"><Sky><div className="dpx-pad">
-    <div className="dpx-hdr" style={{ paddingTop: 0 }}><h1 className="dpx-page-title" style={{ flex: 1 }}>Rencana</h1><Btn type="button" className="dpx-rb" onClick={() => nav.go("/kalender")} aria-label="Kalender tagihan"><Ic n="cal" /></Btn></div>
-    <div style={{ marginBottom: 14 }}><Seg id="bseg" label="Bagian" value={seg} onChange={setSeg} options={[["bud", "Anggaran"], ["pocket", "Kantong"], ["goal", "Tujuan"], ["debt", "Hutang"]] as const} /></div>
-    {seg === "pocket" ? <PocketsPanel ctx={ctx} /> : seg === "bud" ? <>
-      {state.budgets.length === 0 ? <Empty img="sales-report" title="Belum ada anggaran" text="Tentukan batas per kategori. Kami hitung berapa yang aman dibelanjakan setiap hari."><Btn type="button" className="dpx-btn" style={{ maxWidth: 300 }} onClick={() => ctx.open({ k: "budget" })}><Ic n="plus" size="sm" /> Atur anggaran</Btn></Empty> : <>
-        <div className="dpx-group dpx-white"><div className="dpx-flex" style={{ gap: 16 }}><Ring percent={Math.min(100, pct)} big={`${Math.round(pct)}%`} small="terpakai" color={pct > 100 ? "#d23a2a" : "#d14b1a"} /><div><div className="dpx-sub">Sisa anggaran</div><div className="dpx-money" style={{ fontSize: 26 }}>{rupiah(Math.max(0, total - used))}</div><div className="dpx-sub">dari {rupiah(total)}</div></div></div></div>
-        <div className="dpx-sec"><h2>Per kategori</h2></div><div className="dpx-group dpx-white">{statuses.map((s) => <BudgetRow key={s.budget.categoryId} status={s} state={state} onOpen={() => ctx.open({ k: "budget", cid: s.budget.categoryId })} />)}</div>
-        <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => ctx.open({ k: "budget" })}><Ic n="plus" size="sm" /> Tambah anggaran</Btn></>}
-    </> : seg === "goal" ? <>
-      {state.goals.length === 0 ? <Empty img="loyalty-points" title="Belum ada tujuan" text="Menabung untuk dana darurat, liburan, atau gadget baru — pantau progresnya di sini."><Btn type="button" className="dpx-btn" style={{ maxWidth: 300 }} onClick={() => ctx.open({ k: "goal" })}><Ic n="plus" size="sm" /> Tujuan baru</Btn></Empty> :
-        <>{state.goals.map((g) => { const saved = goalSaved(g); const p = Math.min(100, (saved / g.target) * 100); const proj = goalProjection(g); return <Btn key={g.id} type="button" className="dpx-group dpx-white" style={{ width: "100%", textAlign: "left", marginBottom: 10 }} onClick={() => ctx.open({ k: "goal-detail", id: g.id })}><div className="dpx-flex"><span className="dpx-cat dpx-c-emerald"><Ic n="target" /></span><div style={{ flex: 1 }}><b>{g.name}</b><div className="dpx-sub">{rupiah(saved)} dari {rupiah(g.target)}{proj.eta ? ` · ± ${proj.eta.toLocaleDateString("id-ID", { month: "short", year: "numeric" })}` : ""}</div></div><b>{Math.round(p)}%</b></div><div style={{ marginTop: 10 }}><Bar percent={p} /></div></Btn>; })}
-          <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => ctx.open({ k: "goal" })}><Ic n="plus" size="sm" /> Tujuan baru</Btn></>}
-    </> : <>
-      <div className="dpx-kpi"><div className="dpx-group dpx-white"><small>Orang berutang padamu</small><b className="dpx-up">{rupiah(dt.owedToMe)}</b></div><div className="dpx-group dpx-white"><small>Kamu berutang</small><b className="dpx-dn">{rupiah(dt.iOwe)}</b></div></div>
-      {dt.iOwe > 0 ? <Btn type="button" className="dpx-group dpx-flex" style={{ width: "100%", marginTop: 8, textAlign: "left" }} onClick={() => ctx.open({ k: "payoff" })}><span className="dpx-cat dpx-c-rose"><Ic n="trend" /></span><span style={{ flex: 1 }}><b>Rencana pelunasan</b><div className="dpx-sub">Hitung kapan bebas hutang</div></span><Ic n="chev" size="sm" /></Btn> : null}
-      <div className="dpx-glabel">Aktif <Btn type="button" onClick={() => ctx.open({ k: "debt" })}>+ Tambah</Btn></div>
-      {state.debts.filter((d) => !d.settled).length === 0 ? <div className="dpx-group dpx-white dpx-center"><p className="dpx-sub" style={{ margin: 0 }}>Belum ada hutang atau piutang aktif.</p></div> :
-        <div className="dpx-group dpx-flush dpx-white">{state.debts.filter((d) => !d.settled).map((d) => <Row key={d.id} icon={d.direction === "owed_to_me" ? "down" : "up"} tone={d.direction === "owed_to_me" ? "emerald" : "rose"} title={d.person} sub={`${d.direction === "owed_to_me" ? "Piutang" : "Hutang"}${d.note ? ` · ${d.note}` : ""}${d.due ? ` · jatuh tempo ${new Date(d.due).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}` : ""}`} trail={<b className={d.direction === "owed_to_me" ? "dpx-up" : "dpx-dn"}>{rupiah(d.amount)}</b>} onClick={() => ctx.open({ k: "debt", id: d.id })} />)}</div>}
-      <div className="dpx-glabel">Alat lain</div>
-      <div className="dpx-group dpx-flush dpx-white"><Row icon="split" tone="orange" title="Patungan / bagi tagihan" sub="Hitung bagian tiap orang" onClick={() => ctx.open({ k: "split" })} /></div>
-      <div className="dpx-glabel">Langganan terdeteksi</div>
-      {subs.length === 0 ? <div className="dpx-group dpx-white"><p className="dpx-sub" style={{ margin: 0 }}>Muncul otomatis bila pengeluaran dengan catatan yang sama berulang di 2 bulan berbeda.</p></div> : <><div className="dpx-group dpx-flush dpx-white">{subs.map((s) => <Row key={s.name} icon="repeat" tone="violet" title={s.name} sub={`Tiap tgl ${s.day} · ${s.months} bulan`} trail={<b>{rupiah(s.amount)}</b>} />)}</div><p className="dpx-sub dpx-center" style={{ marginTop: 8 }}>Total {rupiah(subs.reduce((s, x) => s + x.amount, 0))} per bulan</p></>}
-    </>}
-  </div></Sky></div>;
-}
+export { FinBudget } from "./fin-plan";
 
 /* ---------- Kekayaan (Brankas) ---------- */
 type VaultTab = "aset" | "dompet" | "kewajiban";
@@ -385,8 +351,9 @@ export function FinSheetHost({ ctx, sheet, close, goManual, openPaySheet }: { ct
     case "bill-pay": { const b = state.bills.find((x) => x.id === sheet.id); return b ? <BillPaySheet key="billpay" fin={fin} bill={b} notify={notify} onClose={close} goPay={() => ctx.nav.go("/bayar")} accounts={[{ id: PAY_ACCOUNT_ID, name: "Djiwa Pay" }, ...state.accounts.filter((a) => !a.archived).map((a) => ({ id: a.id, name: a.name }))]} /> : null; }
     case "asset": case "asset-new": return <AssetFlow key={`asset-${"id" in sheet ? sheet.id ?? "" : ""}`} fin={fin} asset={"id" in sheet ? state.assets.find((a) => a.id === sheet.id) : undefined} notify={notify} onClose={close} />;
     case "asset-view": { const a = state.assets.find((x) => x.id === sheet.id); if (!a) return null; return <AssetDetail key="asset-view" asset={a} visible={ctx.visible} onClose={close} onEdit={() => ctx.open({ k: "asset", id: a.id })} onDelete={() => { fin.dispatch({ type: "asset/delete", id: a.id }); close(); notify("Aset dihapus", () => fin.dispatch({ type: "asset/upsert", asset: a })); }} />; }
+    case "pocket": return <PocketSheet key={`pocket-${sheet.id ?? ""}`} fin={fin} pocket={pocketsOf(state).find((p) => p.id === sheet.id)} others={pocketsOf(state)} notify={notify} onClose={close} />;
     case "pockets": return <PocketRuleSheet key="pockets" fin={fin} current={pocketsOf(state)} notify={notify} onClose={close} />;
-    case "payoff": return <PayoffSheet key="payoff" debts={state.debts.filter((d) => !d.settled && d.direction === "i_owe")} onClose={close} />;
+    case "payoff": return <PayoffSheet key="payoff" debts={state.debts.filter((d) => !d.settled && d.direction === "i_owe").map((d) => ({ person: d.person, amount: debtRemaining(d) }))} onClose={close} />;
     case "weekly": return <WeeklySheet key="weekly" entries={entries} categoryName={(id) => catOf(state, id).name} onClose={close} />;
     case "split": return <SplitSheet key="split" notify={notify} onClose={close} />;
     case "streak": return <StreakSheet key="streak" entries={entries} onClose={close} onCatat={() => ctx.open({ k: "catat" })} />;
