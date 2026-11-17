@@ -865,3 +865,4 @@ html:has(.dpx-plain),body:has(.dpx-plain),#root:has(.dpx-plain){background:#f8f3
 .dpx .dpx-pl-stack{display:flex;height:14px;border-radius:99px;overflow:hidden;gap:2px}.dpx .dpx-pl-stack i{display:block;height:100%}
 .dpx .dpx-pl-badge{display:inline-grid;place-items:center;min-width:16px;height:16px;margin-left:6px;padding:0 4px;border-radius:99px;background:var(--danger);color:#fff;font:700 10px var(--font);font-style:normal}
 .dpx .dpx-confirm{display:grid;gap:8px;text-align:center;font:13px var(--font);color:var(--mute)}
+.dpx .dpx-st-npage{grid-auto-rows:max-content}.dpx .dpx-st-npage>.dpx-st-tabs{min-height:44px;flex:none}
