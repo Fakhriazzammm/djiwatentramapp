@@ -19,6 +19,7 @@ import { financeNotes, loadRead, saveRead } from "../../lib/finance/notify";
 import { PinHost } from "../auth/pin-ui";
 import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
 import { IslandHost } from "../shell/island";
+import { PwaHost, PwaSheet } from "../pwa/pwa-ui";
 import { buildIsland, loadSeen, registerIslandHandlers, saveSeen, startIsland } from "../../lib/island";
 import { ProfileEditPage, SecurityPage } from "../account/account-pages";
 import { FinBudget, FinHome, FinRecords, FinReport, FinSettings, FinSheetHost, FinWallet, ManualForm, Onboarding, type FinCtx, type FinSheet } from "../finance/fin-pages";
@@ -47,7 +48,7 @@ function PpobReceipt({ product, number, serialNumber, reference, onDone }: { pro
 }
 
 /** The wallet screen plus the PIN pad it can ask for from anywhere. */
-export function DjiwaPayScreen(props: Props) { return <><DjiwaPayScreenInner {...props} /><PinHost /><IslandHost /></>; }
+export function DjiwaPayScreen(props: Props) { return <><DjiwaPayScreenInner {...props} /><PinHost /><IslandHost /><PwaHost /></>; }
 
 function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh, onTopup, navigationContext, onNavigate, onPageReady, transitionId, previewOnly = false }: Props) {
   // Host apps (Djiwa Travel) already draw a bottom tab bar around the iframe.
@@ -204,6 +205,7 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   const visibleTransactions = activityFilter === "all" ? transactions : activityFilter === "transfer" ? transactions.filter((entry) => entry.category === "transfer") : transactions.filter((entry) => entry.direction === activityFilter && !entry.direct);
   const fin = useFinance(profile.source_id, transactions);
   const inboundSummary = useInbound();
+  const [pwaOpen, setPwaOpen] = useState(false);
   const [accountSub, setAccountSub] = useState<null | "profile" | "security">(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("keamanan") === "1" ? "security" : null));
   const [localRead, setLocalRead] = useState<Set<string>>(() => loadRead(profile.source_id));
   const finNotes = useMemo(() => financeNotes(fin.state, fin.entries, inboundSummary.data, new Date()), [fin.state, fin.entries, inboundSummary.data]);
@@ -588,7 +590,7 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   if (walletRoute?.page === "summary") return frameShell(<FinReport ctx={finCtx} onBack={() => goBack("/")} />, null);
   if (walletRoute?.page === "account" && accountSub === "profile") return frameShell(<ProfileEditPage onBack={() => setAccountSub(null)} notify={(t) => notify(t)} />, null);
   if (walletRoute?.page === "account" && accountSub === "security") return frameShell(<SecurityPage onBack={() => setAccountSub(null)} notify={(t) => notify(t)} />, null);
-  if (walletRoute?.page === "account") return frameShell(<AccountPage onOpenProfile={() => setAccountSub("profile")} onOpenSecurity={() => setAccountSub("security")} profile={profile} unread={unreadCount} customerHome={customerHome} embedded={embedded} onBack={() => goBack("/")} nav={payNav} onOpenNotifications={openNotifications} />, null);
+  if (walletRoute?.page === "account") return frameShell(<><AccountPage onOpenApp={() => setPwaOpen(true)} onOpenProfile={() => setAccountSub("profile")} onOpenSecurity={() => setAccountSub("security")} profile={profile} unread={unreadCount} customerHome={customerHome} embedded={embedded} onBack={() => goBack("/")} nav={payNav} onOpenNotifications={openNotifications} />{pwaOpen ? <PwaSheet onClose={() => setPwaOpen(false)} notify={(t) => notify(t)} /> : null}</>, null);
   if (walletRoute?.page === "settings") return frameShell(<FinSettings ctx={finCtx} onBack={() => goBack("/akun")} />, null);
   if (walletRoute?.page === "integrations") return frameShell(<IntegrationsPage ctx={finCtx} onBack={() => goBack("/pengaturan")} onReview={() => goPayRoute("/tinjau")} />, null);
   if (walletRoute?.page === "review") return frameShell(<ReviewPage ctx={finCtx} onBack={() => goBack("/")} onOpenIntegrations={() => goPayRoute("/integrasi")} />, "home");

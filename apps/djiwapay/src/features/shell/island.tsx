@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, type PanInfo } from "framer-motion";
 import { Ic } from "./dpx-ui";
-import { islandAmount, islandNavigate, islandShown, useIslandState, type IslandItem } from "../../lib/island";
+import { islandAmount, islandNavigate, islandShown, setIslandIdle, useIslandState, type IslandItem } from "../../lib/island";
 
 const SPRING = { type: "spring", stiffness: 420, damping: 32, mass: 0.9 } as const;
 const START_MS = 1400, COMPACT_MS = 1100, EXPANDED_MS = 4800, EXIT_MS = 520;
@@ -29,6 +29,7 @@ export function IslandHost() {
   // ... and folds away on its own unless a finger is on it
   useEffect(() => { if (!item || !open || held) return; clear(); timer.current = setTimeout(leave, EXPANDED_MS); return clear; }, [open, held, item, leave]);
 
+  useEffect(() => { setIslandIdle(pos < 0 && !leaving); }, [pos, leaving]);
   const onDragEnd = (_: unknown, info: PanInfo) => { if (info.offset.y < -22 || info.velocity.y < -380) leave(); else if (info.offset.y > 16 && !open) { setOpen(true); setHeld(true); } };
   const go = () => { if (item?.route) islandNavigate(item.route); leave(); };
   if (typeof document === "undefined") return null;

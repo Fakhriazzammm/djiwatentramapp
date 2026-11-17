@@ -3,7 +3,7 @@
   "short_name": "Djiwa Pay",
   "description": "Catat uang, atur anggaran, dan bayar dengan tenang.",
   "lang": "id",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -27,6 +27,61 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "id": "/",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "categories": [
+    "finance",
+    "productivity"
+  ],
+  "shortcuts": [
+    {
+      "name": "Catat",
+      "short_name": "Catat",
+      "url": "/catat?source=shortcut",
+      "icons": [
+        {
+          "src": "/pwa-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Catatan",
+      "short_name": "Catatan",
+      "url": "/riwayat?source=shortcut",
+      "icons": [
+        {
+          "src": "/pwa-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Kekayaan",
+      "short_name": "Kekayaan",
+      "url": "/kekayaan?source=shortcut",
+      "icons": [
+        {
+          "src": "/pwa-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Rencana",
+      "short_name": "Rencana",
+      "url": "/rencana?source=shortcut",
+      "icons": [
+        {
+          "src": "/pwa-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

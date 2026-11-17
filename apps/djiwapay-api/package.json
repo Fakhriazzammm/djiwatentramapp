@@ -13,12 +13,14 @@
     "mailauth": "^8.0.6",
     "mailparser": "^3.14.3",
     "pg": "^8.13.0",
-    "smtp-server": "^3.21.4"
+    "smtp-server": "^3.21.4",
+    "web-push": "^4.0.0"
   },
   "devDependencies": {
     "@types/bun": "^1.4.4",
     "@types/mailparser": "^3.9.0",
     "@types/pg": "^8.11.0",
-    "@types/smtp-server": "^3.5.13"
+    "@types/smtp-server": "^3.5.13",
+    "@types/web-push": "^3.6.4"
   }
 }

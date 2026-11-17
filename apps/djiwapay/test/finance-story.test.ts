@@ -155,3 +155,24 @@ describe("buildIsland", () => {
     expect(items.map((i) => i.id)).toEqual(["fin-review:2", "isl-e:b"]);
   });
 });
+
+import { GUIDE, detectPlatform } from "../src/lib/pwa";
+import { islandFromPush } from "../src/lib/island";
+describe("pwa", () => {
+  test("tells iPhone Safari from other iPhone browsers, Android browsers and desktops", () => {
+    expect(detectPlatform("Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1")).toBe("ios-safari");
+    expect(detectPlatform("Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/124.0 Mobile/15E148 Safari/604.1")).toBe("ios-other");
+    expect(detectPlatform("Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36")).toBe("android-chrome");
+    expect(detectPlatform("Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/24.0 Chrome/117.0 Mobile Safari/537.36")).toBe("android-samsung");
+    expect(detectPlatform("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36")).toBe("desktop-chromium");
+    expect(detectPlatform("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15")).toBe("desktop-safari");
+    expect(detectPlatform("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15", 5)).toBe("ios-safari");   // iPad asking for the desktop site
+  });
+  test("every platform has a guide with steps", () => { for (const g of Object.values(GUIDE)) { expect(g.title.length).toBeGreaterThan(3); expect(g.steps.length).toBeGreaterThan(0); } });
+  test("a push payload becomes a safe island item", () => {
+    const i = islandFromPush({ id: "mail-1", tone: "out", label: "Dari email", title: "Pengeluaran", message: "Kopi", amount: 25000, sign: "−", route: "/riwayat?baru=1", at: "2026-11-18T00:00:00Z" })!;
+    expect(i).toMatchObject({ tone: "out", icon: "down", amount: 25000, sign: "−", route: "/riwayat?baru=1" });
+    expect(islandFromPush({ title: "x", route: "https://evil.example" })!.route).toBeUndefined();
+    expect(islandFromPush({} as never)).toBeNull();
+  });
+});

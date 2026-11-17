@@ -47,7 +47,22 @@ type State = { queue: IslandItem[]; version: number };
 let state: State = { queue: [], version: 0 };
 const listeners = new Set<() => void>();
 let navigate: ((route: string) => void) | null = null, onShown: ((item: IslandItem) => void) | null = null;
-export const startIsland = (queue: IslandItem[]) => { if (!queue.length) return; state = { queue, version: state.version + 1 }; listeners.forEach((l) => l()); };
+let idle = true;
+export const setIslandIdle = (v: boolean) => { idle = v; };
+export const startIsland = (queue: IslandItem[]) => { if (!queue.length) return; idle = false; state = { queue, version: state.version + 1 }; listeners.forEach((l) => l()); };
+/** A push arrived or was tapped: show it now if the banner is quiet, otherwise line it up behind the current one. */
+export function enqueueIsland(item: IslandItem) {
+  if (state.queue.some((q) => q.id === item.id) && !idle) return;
+  if (idle) { startIsland([item]); return; }
+  state = { queue: [...state.queue, item], version: state.version }; listeners.forEach((l) => l());
+}
+const PUSH_ICON: Record<IslandTone, IconName> = { in: "up", out: "down", move: "swap", mail: "receipt", warn: "warn", info: "bell" };
+/** The notification payload the server sends is already island-shaped; this just makes sure it is safe to show. */
+export function islandFromPush(d: Partial<IslandItem> & { title?: string }): IslandItem | null {
+  if (!d || typeof d.title !== "string") return null;
+  const tone: IslandTone = (["in", "out", "move", "mail", "warn", "info"] as const).includes(d.tone as IslandTone) ? (d.tone as IslandTone) : "info";
+  return { id: String(d.id ?? `push-${Date.now()}`).slice(0, 80), tone, icon: PUSH_ICON[tone], label: String(d.label ?? "Djiwa Pay").slice(0, 30), title: d.title.slice(0, 80), message: String(d.message ?? "").slice(0, 160), ...(typeof d.amount === "number" ? { amount: d.amount, sign: d.sign === "+" || d.sign === "−" || d.sign === "⇄" ? d.sign : undefined } : {}), ...(typeof d.route === "string" && d.route.startsWith("/") ? { route: d.route } : {}), at: String(d.at ?? new Date().toISOString()) };
+}
 export const registerIslandHandlers = (nav: (route: string) => void, shown: (item: IslandItem) => void) => { navigate = nav; onShown = shown; };
 export const islandNavigate = (route: string) => navigate?.(route);
 export const islandShown = (item: IslandItem) => onShown?.(item);

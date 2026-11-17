@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
+import { notifyUser, type PushPayload } from "../push.js";
 import type { Q, Tx } from "../sync.js";
 import { auditQueue, auditSummary } from "./audit.js";
 import { domainOf, extractPayment, forwardingCode, guessCategory, implausible, isBillReminder, isConfident, isFailedMail, isNoticeMail, isPromo, isReportMail, isSecretMail, issuerFor, looksLikePayment, groupKey, merchantKey, redactForShare, RULES_VERSION, type Extracted, type Issuer } from "./extract.js";
@@ -11,6 +12,15 @@ export type RawMail = {
 export type Llm = (subject: string, text: string, from: string) => Promise<Extracted | null>;
 export type PipelineDeps = { db: Tx; llm?: Llm; domain: string; now?: () => Date; trustMin?: number; autoCeiling?: number };
 export type Outcome = { status: "auto" | "review" | "ignored" | "duplicate" | "failed" | "forwarding-code" | "staged"; reason: string; userId?: string };
+
+/** What the phone shows when a payment e-mail was read: the same words as the banner inside the app. */
+export function pushFor(status: "auto" | "review", p: Record<string, any>, id: string, at: string | null): PushPayload {
+  const amount = Number(p.transfer?.amount ?? p.amount) || undefined, kind = p.transfer ? "tf" : p.kind === "in" || (!p.kind && p.direction === "in") ? "in" : "out";
+  const who = String(p.details?.description || p.merchant || p.subject || "Email pembayaran").replace(/\s*·\s*PAN.*$/i, "").slice(0, 60);
+  const wallet = p.accountName || (p.issuer ? `${p.issuer}${p.accountHint ? " ••" + p.accountHint : ""}` : "");
+  if (status === "review") return { id: `mail-${id}`, tone: "mail", label: "Email", title: amount ? `Perlu ditinjau ${kind === "in" ? "+" : kind === "out" ? "−" : ""}Rp ${amount.toLocaleString("id-ID")}` : "Email perlu ditinjau", message: who, route: "/tinjau", at: at ?? new Date().toISOString(), ...(amount ? { amount, sign: kind === "in" ? "+" as const : kind === "out" ? "−" as const : "⇄" as const } : {}) };
+  return { id: `mail-${id}`, tone: kind === "in" ? "in" : kind === "out" ? "out" : "move", label: "Dari email", title: kind === "in" ? "Pemasukan" : kind === "out" ? "Pengeluaran" : "Pindah dana", message: `${who}${wallet ? " · " + wallet : ""}`, route: "/riwayat?baru=1", at: at ?? new Date().toISOString(), ...(amount ? { amount, sign: kind === "in" ? "+" as const : kind === "out" ? "−" as const : "⇄" as const } : {}) };
+}
 
 const TRUST_MIN = 10;               // no longer gates automatic recording; kept for the learning counter shown in the app
 const AUTO_CEILING = 50_000_000;    // an amount this large is more likely a misread number than a payment: a person looks
@@ -125,6 +135,7 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
 
   const finish = async (status: Outcome["status"], reason: string, extra: { parsed?: unknown; confidence?: number; entryId?: string | null; at?: string | null } = {}): Promise<Outcome> => {
     await d.db.query("update finance.inbound_messages set status=$2,reason=$3,parsed=coalesce($4::jsonb,parsed),confidence=coalesce($5,confidence),entry_id=$6,occurred_at=$7 where id=$1", [inboundId, status === "forwarding-code" ? "ignored" : status, reason, extra.parsed ? JSON.stringify(extra.parsed) : null, extra.confidence ?? null, extra.entryId ?? null, extra.at ?? null]);
+    if ((status === "auto" || status === "review") && extra.parsed) void notifyUser(d.db, userId, pushFor(status, extra.parsed as Record<string, any>, inboundId, extra.at ?? null));
     return { status, reason, userId };
   };
 
