@@ -6,6 +6,7 @@ import { join } from "node:path";
 import type { auth as defaultAuth } from "./auth.js";
 import { createGuards, json, text, ROLES } from "./manager-guards.js";
 import { loadSnapshot, wibDay } from "./manager-data.js";
+import { periodSeries, resolveManagerPeriod } from "./manager-period.js";
 import { runDailyPlan } from "./manager-ai.js";
 import { registerManagerPayroll } from "./manager-payroll.js";
 
@@ -130,20 +131,25 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
     const m = await member(c);
     if ("res" in m) return m.res;
     if (m.role !== "manager") return json({ success: false, error: "FORBIDDEN" }, 403);
-    const period = text(c.req.query("period"), 12);
-    const hourly = period === "today" || period === "yesterday";
-    const days = hourly ? 1 : Math.min(90, Math.max(1, Number(c.req.query("days") ?? 7) || 7));
     const now = Date.now();
-    const dayWin = wibDay(period === "yesterday" ? -1 : 0);
-    const start = hourly ? dayWin.start : now - days * 86_400_000;
-    const end = hourly ? (period === "today" ? now : dayWin.end) : now;
-    const series = hourly
-      ? Array.from({ length: 24 }, (_, h) => ({ key: String(h).padStart(2, "0") + ":00", start_ms: dayWin.start + h * 3_600_000, end_ms: dayWin.start + (h + 1) * 3_600_000 }))
-      : Array.from({ length: days }, (_, i) => {
-          const d = wibDay(i - days + 1);
-          return { key: d.date, start_ms: d.start, end_ms: d.end };
-        });
-    const wibDate = `to_char(to_timestamp(tx_date / 1000.0) AT TIME ZONE 'Asia/Jakarta', '${hourly ? 'HH24":00"' : 'YYYY-MM-DD'}')`;
+    const periodInput = text(c.req.query("period"), 20);
+    const fromInput = text(c.req.query("from"), 10);
+    const toInput = text(c.req.query("to"), 10);
+    let allStart: number | undefined;
+    if (periodInput === "all" || !periodInput) {
+      const min = await pool.query(
+        `SELECT min(tx_date)::bigint AS min FROM pos.financial_transactions WHERE tx_date >= $1 AND tx_date <= $2`,
+        [Date.parse("2020-01-01T00:00:00+07:00"), now],
+      );
+      const value = Number(min.rows[0]?.min ?? 0);
+      if (value > 0) allStart = value;
+    }
+    const range = resolveManagerPeriod(periodInput, fromInput, toInput, now, allStart);
+    const { start, end, hourly, bucket, period } = range;
+    const series = periodSeries(start, end, bucket);
+    const days = series.length;
+    const groupFormat = hourly ? 'HH24":00"' : bucket === "month" ? "YYYY-MM" : "YYYY-MM-DD";
+    const wibDate = `to_char(to_timestamp(tx_date / 1000.0) AT TIME ZONE 'Asia/Jakarta', '${groupFormat}')`;
     const [cash, sales, txs, byCategory, daily, channels, methods] = await Promise.all([
       pool.query(`SELECT public.admin_cashflow_summary($1,$2) AS r`, [start, end]),
       pool.query(`SELECT public.admin_sales_summary($1::jsonb) AS r`, [JSON.stringify(series)]),
@@ -185,6 +191,9 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
       success: true,
       days,
       hourly,
+      period,
+      bucket,
+      range: { start, end },
       cash: { income: Number(c0.income ?? 0), expense: Number(c0.expense ?? 0), net: Number(c0.net ?? 0) },
       sales: (sales.rows[0]?.r ?? []) as { key: string; orders: number; revenue: number }[],
       transactions: txs.rows,

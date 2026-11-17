@@ -2,11 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { api } from "../lib/api";
 import { CH, donutHTML, fmtRp, spark, svgArea, svgHBars } from "../charts";
-import { Empty, Ic, hm, rp } from "../ui";
+import { Empty, Ic, rp, wib } from "../ui";
+import { PERIODS, wibKey, type PeriodKey } from "../lib/period";
 
 type Data = {
   days: number;
   hourly?: boolean;
+  bucket?: "hour" | "day" | "month";
+  period?: string;
   cash: { income: number; expense: number; net: number };
   sales: { key: string; orders: number; revenue: number }[];
   transactions: { source_id: string; tx_type: string; amount: string; category: string | null; description: string | null; merchant: string | null; tx_date: number; payment_method: string | null }[];
@@ -19,18 +22,25 @@ const CHAN: Record<string, string> = { pos: "POS", app: "Djiwa App", booking: "B
 const sgn = (v: number) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1).replace(".", ",")}%`;
 
 export function FinanceView() {
-  const [period, setPeriod] = useState<"today" | "yesterday" | "7" | "30">("today");
+  const [period, setPeriod] = useState<PeriodKey>("all");
+  const [from, setFrom] = useState(() => `${wibKey(Date.now()).slice(0, 7)}-01`);
+  const [to, setTo] = useState(() => wibKey(Date.now()));
   const [data, setData] = useState<Data | null>(null);
   const [trend, setTrend] = useState<"both" | "in" | "out">("both");
 
   useEffect(() => {
     setData(null);
-    api<Data>(`/api/manager/finance?${period === "today" || period === "yesterday" ? `period=${period}` : `days=${period}`}`).then(setData).catch(() => toast.error("Keuangan belum bisa dimuat"));
-  }, [period]);
+    const query = period === "custom"
+      ? `period=custom&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+      : `period=${period}`;
+    api<Data>(`/api/manager/finance?${query}`).then(setData).catch(() => toast.error("Keuangan belum bisa dimuat"));
+  }, [period, from, to]);
 
   const v = useMemo(() => {
     if (!data) return null;
-    const labels = data.sales.map((s) => (data.hourly ? s.key : s.key.slice(5).replace("-", "/")));
+    const labels = data.sales.map((s) => data.bucket === "month"
+      ? new Date(`${s.key}-01T00:00:00+07:00`).toLocaleDateString("id-ID", { month: "short", year: "2-digit" })
+      : data.hourly ? s.key : s.key.slice(5).replace("-", "/"));
     const sum = (type: string, day: string) => data.daily.filter((d) => d.type === type && d.day === day).reduce((a, b) => a + b.total, 0);
     const inSeries = data.sales.map((s) => s.revenue);
     const outSeries = data.sales.map((s) => sum("expense", s.key));
@@ -55,7 +65,20 @@ export function FinanceView() {
   return (
     <div className="fin">
       <div className="fh">
-        <div className="tabs" style={{ margin: 0 }}>{[["today", "Hari ini"], ["yesterday", "Kemarin"], ["7", "7 hari"], ["30", "30 hari"]].map(([d, l]) => <button key={d} className={period === d ? "on" : ""} onClick={() => setPeriod(d as typeof period)}>{l}</button>)}</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+          <label style={{ margin: 0 }}>Filter</label>
+          <select className="f" value={period} onChange={(e) => setPeriod(e.target.value as PeriodKey)} style={{ width: "auto", minWidth: 170 }}>
+            {PERIODS.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
+          {period === "custom" && (
+            <>
+              <label style={{ margin: 0 }}>Dari</label>
+              <input className="f" type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: "auto" }} />
+              <label style={{ margin: 0 }}>s/d</label>
+              <input className="f" type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: "auto" }} />
+            </>
+          )}
+        </div>
         <span className="meta">data nyata · pos.orders &amp; pos.financial_transactions</span>
       </div>
       {!data && <div className="empty">Memuat…</div>}
@@ -68,7 +91,7 @@ export function FinanceView() {
         </div>
         <div className="fgrid">
           <div className="panel s8">
-            <div className="ph"><span className="lab">{data?.hourly ? "Tren per jam" : "Tren pemasukan dan pengeluaran"}</span>
+            <div className="ph"><span className="lab">{data?.bucket === "month" ? "Tren per bulan" : data?.hourly ? "Tren per jam" : "Tren pemasukan dan pengeluaran"}</span>
               <div className="tabs" style={{ margin: 0 }}>{[["both", "Keduanya"], ["in", "Pemasukan"], ["out", "Pengeluaran"]].map(([t, l]) => <button key={t} className={trend === t ? "on" : ""} onClick={() => setTrend(t as typeof trend)}>{l}</button>)}</div></div>
             <div className="pad" dangerouslySetInnerHTML={{ __html: svgArea(v.labels, series) }} />
           </div>
@@ -95,7 +118,7 @@ export function FinanceView() {
               <thead><tr><th>Waktu</th><th>Keterangan</th><th>Kategori</th><th>Metode</th><th style={{ textAlign: "right" }}>Nominal</th></tr></thead>
               <tbody>{data.transactions.slice(0, 30).map((t) => (
                 <tr key={t.source_id} className="txr">
-                  <td className="mono">{hm(t.tx_date)}</td><td>{t.merchant || t.description || "Transaksi"}</td><td><span className="tg">{t.category ?? "—"}</span></td><td className="mono">{t.payment_method ?? "—"}</td>
+                  <td className="mono">{wib(t.tx_date)}</td><td>{t.merchant || t.description || "Transaksi"}</td><td><span className="tg">{t.category ?? "—"}</span></td><td className="mono">{t.payment_method ?? "—"}</td>
                   <td className="mono" style={{ textAlign: "right", color: t.tx_type === "expense" ? "var(--red)" : "var(--ok)" }}>{t.tx_type === "expense" ? "−" : "+"}{rp(Number(t.amount))}</td>
                 </tr>))}
               </tbody>
