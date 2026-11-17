@@ -742,8 +742,8 @@ html:has(.dpx-plain),body:has(.dpx-plain),#root:has(.dpx-plain){background:#f8f3
 .djiwa-ppob-tips{margin:10px 0 0;padding:10px 12px 10px 28px;background:#fff7df;border-radius:14px;font-size:12.5px;line-height:1.5;color:#6b4a00;display:flex;flex-direction:column;gap:4px}
 
 /* ---------- Beranda "Cerita": sky block (text only, scene stays visible) + data cards below it ---------- */
-.dpx .dpx-st-sky{position:relative;min-height:404px;display:flex;flex-direction:column}
-.dpx .dpx-st-mascot{position:absolute;left:0;right:-4px;top:150px;pointer-events:none}
+.dpx .dpx-st-sky{position:relative;min-height:320px;display:flex;flex-direction:column}
+.dpx .dpx-st-mascot{position:relative;z-index:2;margin-bottom:-14px;pointer-events:none}
 .dpx .dpx-st-mascot .dpx-buddy{margin:0}
 .dpx .dpx-st-hint{margin-top:auto;padding-bottom:16px;font:600 12px var(--font);opacity:.8}
 .dpx .dpx-st-body{display:grid;gap:12px;padding-bottom:132px;min-width:0}

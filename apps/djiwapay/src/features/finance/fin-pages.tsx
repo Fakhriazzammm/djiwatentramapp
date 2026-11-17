@@ -123,15 +123,14 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
       <div className="dpx-onsky" style={{ marginTop: 6 }}><span className="dpx-display" style={{ fontSize: 40 }}><small>Rp</small>{ctx.visible ? <>{wealth.total < 0 ? "−" : ""}<AnimatedNumber value={Math.abs(wealth.total)} /></> : "•••••••"}</span></div>
       {ctx.visible && sinceStart !== null ? <div className="dpx-sub dpx-mt8 dpx-onsky" style={{ fontSize: 13 }}><b className={sinceStart >= 0 ? "dpx-up" : "dpx-dn"}>{sinceStart >= 0 ? "▲ +" : "▼ −"}{rupiah(Math.abs(sinceStart))}</b> sejak akhir bulan lalu</div> : null}
       {ctx.visible ? <div className="dpx-sub dpx-onsky" style={{ fontSize: 13, marginTop: 4 }}>Dompet {rupiah(wealth.cash)} · Aset {rupiah(wealth.assets)}{wealth.receivables ? ` · Piutang ${rupiah(wealth.receivables)}` : ""}{wealth.liabilities ? ` · Hutang −${rupiah(wealth.liabilities)}` : ""}</div> : null}
-      <div className="dpx-st-mascot"><MascotBuddy messages={[
+      <div className="dpx-st-hint dpx-onsky">Cerita {monthName} ada di bawah ↓</div>
+    </div>
+    <CeritaBody mascot={<MascotBuddy messages={[
         `Halo ${firstName(profile.name, profile.email)}! Ketuk aku kalau butuh tips.`,
         over ? "Anggaran bulan ini sudah terlampaui. Tahan belanja dulu ya." : safe ? `Aman dibelanjakan hari ini ${ctx.visible ? rupiah(safe.perDay) : "•••••"}.` : "Atur anggaran dulu, nanti aku hitung jatah harianmu.",
         st.count > 0 ? `Streak ${st.count} hari. Jangan putus ya!` : "Catat satu pengeluaran hari ini untuk mulai streak.",
         "Tulis “kopi 25rb” di kolom catat, aku bantu rapikan.",
-      ]} /></div>
-      <div className="dpx-st-hint dpx-onsky">Cerita {monthName} ada di bawah ↓</div>
-    </div>
-    <CeritaBody ctx={ctx} entries={entries} cash={cashNow} gold={goldData} now={now} templates={templates} onAddTemplate={addTemplate} />
+      ]} />} ctx={ctx} entries={entries} cash={cashNow} gold={goldData} now={now} templates={templates} onAddTemplate={addTemplate} />
   </div></Sky></div>;
 }
 

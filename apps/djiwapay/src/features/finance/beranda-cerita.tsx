@@ -23,7 +23,7 @@ function Card({ title, right, children, className = "" }: { title?: string; righ
 const Sec = ({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) => <div className="dpx-sec dpx-st-sec"><h2>{title}</h2>{action ? <Btn type="button" onClick={onAction}>{action}</Btn> : null}</div>;
 
 /** Everything under the sky on Beranda. No card sits on the scene: the sky block above ends where this begins. */
-export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemplate }: { ctx: FinCtx; entries: Entry[]; cash: number; gold: GoldData | null; now: Date; templates: Entry[]; onAddTemplate: (e: Entry) => void }) {
+export function CeritaBody({ mascot, ctx, entries, cash, gold, now, templates, onAddTemplate }: { mascot: ReactNode; ctx: FinCtx; entries: Entry[]; cash: number; gold: GoldData | null; now: Date; templates: Entry[]; onAddTemplate: (e: Entry) => void }) {
   const { nav, visible } = ctx, { state } = ctx.fin, inbound = useInbound();
   const y = now.getFullYear(), m = now.getMonth(), empty = entries.length === 0;
   const month = useMemo(() => entries.filter((e) => inMonth(e, y, m)), [entries]);
@@ -57,6 +57,7 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
   const fav = st.fav && st.fav.n >= 2 ? st.fav : null;
 
   return <div className="dpx-st-body">
+    <div className="dpx-st-mascot">{mascot}</div>
     <ReviewChip count={inbound.data?.review ?? 0} importReady={inbound.data?.importReady ?? 0} autoRecent={inbound.data?.autoRecent ?? 0} onOpenAuto={() => nav.go("/riwayat")} onOpen={() => nav.go("/tinjau")} onOpenImport={() => nav.go("/integrasi?impor=1")} />
     <GoogleNudge onOpenIntegrations={() => nav.go("/integrasi")} />
     {templates.length ? <div className="dpx-st-card"><QuickAdd templates={templates} onAdd={onAddTemplate} /></div> : null}
