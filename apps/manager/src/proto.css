@@ -7,7 +7,7 @@ button,input,select,textarea{font:inherit;color:inherit}button{cursor:pointer;tr
 .proto{height:34px;background:#18181c;color:#a8a8b3;display:flex;align-items:center;gap:12px;padding:0 16px;font:500 10px var(--mono);letter-spacing:.06em;text-transform:uppercase;overflow-x:auto;white-space:nowrap}
 .proto b{color:#fff;font-weight:600}.proto .sg{display:flex;background:#2a2a31;border-radius:7px;padding:2px;gap:2px}.proto .sg button{background:none;border:0;border-radius:5px;color:#b8b8c2;padding:3px 10px;font:inherit;letter-spacing:.06em;text-transform:uppercase}.proto .sg button.on{background:#fff;color:var(--ink);font-weight:600}
 .proto select{background:#2a2a31;color:#fff;border:0;border-radius:7px;font:inherit;padding:4px 8px;text-transform:uppercase;letter-spacing:.04em}
-.shell{display:grid;grid-template-columns:64px minmax(0,1fr);height:calc(100% - 34px)}
+.shell{display:grid;grid-template-columns:64px minmax(0,1fr);grid-template-rows:minmax(0,1fr);height:calc(100% - 34px)}
 .rail{background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:6px;overflow-y:auto}
 .logo{width:34px;height:34px;background:var(--ink);color:#fff;display:grid;place-items:center;font:700 14px var(--sans);margin-bottom:10px;border-radius:10px}
 .rb{width:42px;height:42px;border:0;background:none;display:grid;place-items:center;color:#4a4a55;position:relative;border-radius:11px}.rb:hover{background:var(--soft);color:var(--ink)}.rb.on,.rb.on:hover{background:var(--ink);color:#fff;box-shadow:0 4px 12px rgba(17,17,20,.22)}
@@ -225,3 +225,6 @@ label{display:block;font:500 10px var(--mono);letter-spacing:.08em;text-transfor
  .cal-more{display:none}
  .cal-day{padding:10px}
 }
+/* KOL: semua tab dibungkus satu kolom yang tidak menyusut, sehingga panel
+   setinggi kontennya dan .body.scroll yang menggulir (bukan panel terpotong). */
+.koltabs{display:flex;flex-direction:column;gap:12px;flex:none}

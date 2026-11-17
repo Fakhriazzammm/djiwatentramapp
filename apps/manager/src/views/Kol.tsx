@@ -264,7 +264,7 @@ export function KolView() {
   };
 
   return (
-    <>
+    <div className="koltabs">
       <Tabs items={TAB_ITEMS} value={tab} onChange={(v) => { setFocus(null); setTab(v); }} style={{ margin: 0 }} />
       {error && (
         <Panel title="Koneksi data KOL" meta="Gagal memuat" action={<button className="btn s" onClick={() => void load()}>Coba lagi</button>}>
@@ -278,7 +278,7 @@ export function KolView() {
       {data && tab === "visit" && <VisitView data={data} send={send} />}
       {data && tab === "komunitas" && <KomunitasView data={data} send={send} />}
       {data && tab === "inquiry" && <InquiryView data={data} send={send} />}
-    </>
+    </div>
   );
 }
 
