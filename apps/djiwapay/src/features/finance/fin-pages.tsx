@@ -168,15 +168,18 @@ export function FinRecords({ ctx, selected }: { ctx: FinCtx; selected?: ReactNod
   const [seg, setSeg] = useState<"all" | "in" | "out" | "tf">("all");
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
-  const [sheet, setSheet] = useState<null | "filter">(null);
+  const [acc, setAcc] = useState("all");
+  const [sheet, setSheet] = useState<null | "filter" | "wallet">(null);
+  const balances = useBalances(state, entries, ctx.payBalance);
   // Entries the person has not yet seen that came in by e-mail on their own; opened from the "catatan baru dari email" notice.
   const [fresh] = useState(() => { const seen = readAutoSeen(); return new Set(entries.filter((e) => e.source === "email" && e.createdAt && Date.now() - Date.parse(e.createdAt) < 36 * 36e5 && (!seen || Date.parse(e.createdAt) > Date.parse(seen))).map((e) => e.id)); });
   useEffect(() => { if (new URLSearchParams(window.location.search).get("baru") === "1") markAutoSeen(); }, []);   // opening from the e-mail notice counts as seen; rows keep their "Baru" mark for this visit
   const month = entries.filter((e) => inMonth(e, cursor.y, cursor.m));
-  const t = totals(month);
+  const inWallet = (e: Entry) => acc === "all" || e.accountId === acc || e.toAccountId === acc;
+  const t = totals(month.filter(inWallet));
   const isCurrent = cursor.y === today.getFullYear() && cursor.m === today.getMonth();
   const shift = (d: number) => setCursor((c) => { const n = new Date(c.y, c.m + d, 1); return { y: n.getFullYear(), m: n.getMonth() }; });
-  const list = month.filter((e) => (seg === "all" || e.kind === seg) && (cat === "all" || e.categoryId === cat) && (!q || `${e.note} ${catOf(state, e.categoryId).name} ${accName(state, e.accountId)} ${e.tags.join(" ")}`.toLowerCase().includes(q.toLowerCase())));
+  const list = month.filter((e) => inWallet(e) && (seg === "all" || e.kind === seg) && (cat === "all" || e.categoryId === cat) && (!q || `${e.note} ${catOf(state, e.categoryId).name} ${accName(state, e.accountId)} ${e.tags.join(" ")}`.toLowerCase().includes(q.toLowerCase())));
   const days = [...new Set(list.map((e) => dayLabel(e.at)))];
   // Which months hold records, newest first: imported mail lands in past months that the month view would otherwise hide.
   const monthsWith = useMemo(() => { const c = new Map<string, number>(); for (const e of entries) { const d = new Date(e.at); const k = `${d.getFullYear()}-${d.getMonth()}`; c.set(k, (c.get(k) ?? 0) + 1); } return [...c].map(([k, n]) => { const [y, mo] = k.split("-").map(Number); return { y, m: mo, n }; }).sort((a, b) => b.y * 12 + b.m - (a.y * 12 + a.m)); }, [entries]);
@@ -188,13 +191,13 @@ export function FinRecords({ ctx, selected }: { ctx: FinCtx; selected?: ReactNod
     {month.length === 0 && entries.length > 0 ? <div className="dpx-note dpx-info" style={{ marginTop: 8 }} role="status"><Ic n="info" /><div><b>Tidak ada catatan di {monthLabel(cursor.y, cursor.m)}.</b> Ada {entries.length} catatan di bulan lain.<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setCursor({ y: monthsWith[0].y, m: monthsWith[0].m })}>Lihat {monthLabel(monthsWith[0].y, monthsWith[0].m)}</Btn></div></div></div> : null}
     <div className="dpx-kpi"><div className="dpx-group"><small>Masuk</small><b className="dpx-up">{ctx.visible ? rupiah(t.in) : "•••••"}</b></div><div className="dpx-group"><small>Keluar</small><b>{ctx.visible ? rupiah(t.out) : "•••••"}</b></div></div>
     <label className="dpx-search dpx-mt"><Ic n="search" size="sm" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari catatan, kategori, dompet" aria-label="Cari catatan" /></label>
-    <div className="dpx-chips dpx-mt8"><Btn type="button" className={`dpx-chip ${cat !== "all" ? "dpx-on" : ""}`} onClick={() => setSheet("filter")}><Ic n="filter" size="sm" /> {cat === "all" ? "Kategori" : catOf(state, cat).name}</Btn></div>
+    <div className="dpx-chips dpx-mt8"><Btn type="button" className={`dpx-chip ${cat !== "all" ? "dpx-on" : ""}`} onClick={() => setSheet("filter")}><Ic n="filter" size="sm" /> {cat === "all" ? "Kategori" : catOf(state, cat).name}</Btn><Btn type="button" className={`dpx-chip ${acc !== "all" ? "dpx-on" : ""}`} onClick={() => setSheet("wallet")}><Ic n="wallet" size="sm" /> {acc === "all" ? "Dompet" : accName(state, acc)}</Btn>{cat !== "all" || acc !== "all" ? <Btn type="button" className="dpx-chip" onClick={() => { setCat("all"); setAcc("all"); }}>Reset filter</Btn> : null}</div>
     <div className="dpx-mt8"><Seg id="rec" label="Jenis catatan" value={seg} onChange={setSeg} options={[["all", "Semua"], ["in", "Masuk"], ["out", "Keluar"], ["tf", "Transfer"]] as const} /></div>
     <div aria-live="polite">{entries.length === 0 ? <Empty img="order-receipt" title="Belum ada catatan" text="Catat pengeluaran pertamamu — satu kalimat cukup. Pembayaran Djiwa Pay otomatis ikut tercatat."><Btn type="button" className="dpx-btn" style={{ maxWidth: 300 }} onClick={() => ctx.open({ k: "catat" })}><Ic n="plus" size="sm" /> Catat sekarang</Btn></Empty>
       : list.length === 0 ? <Empty img="restaurant-cafe" title="Tidak ada hasil" text="Coba ubah bulan, kata kunci, atau filter." />
       : days.map((d) => { const items = list.filter((e) => dayLabel(e.at) === d); const spent = items.filter((e) => e.kind === "out").reduce((s, e) => s + e.amount, 0); return <div key={d}><div className="dpx-dayh"><span>{d}</span><span>{spent ? `−${rupiah(spent)}` : ""}</span></div><div className="dpx-group dpx-flush dpx-white">{items.map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} fresh={fresh.has(e.id)} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div></div>; })}</div>
   </div></Sky>
-  <AnimatePresence>{sheet === "filter" ? <CategorySheet key="f" categories={[{ id: "all", name: "Semua", icon: "grid", tone: "slate", income: false }, ...state.categories]} income={false} value={cat} onPick={setCat} onClose={() => setSheet(null)} /> : null}</AnimatePresence>
+  <AnimatePresence>{sheet === "wallet" ? <AccountSheet key="w" state={state} balances={balances} value={acc} includePay allLabel="Semua dompet" title="Filter dompet" onPick={setAcc} onClose={() => setSheet(null)} /> : null}{sheet === "filter" ? <CategorySheet key="f" categories={[{ id: "all", name: "Semua", icon: "grid", tone: "slate", income: false }, ...state.categories]} income={false} value={cat} onPick={setCat} onClose={() => setSheet(null)} /> : null}</AnimatePresence>
   {selected}</div>;
 }
 

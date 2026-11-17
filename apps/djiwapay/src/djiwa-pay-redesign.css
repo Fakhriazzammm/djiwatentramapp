@@ -961,3 +961,16 @@ html:has(.dpx-plain),body:has(.dpx-plain),#root:has(.dpx-plain){background:#f8f3
 .dpx .dpx-wd-acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:8px}
 .dpx .dpx-wd-act{display:grid;justify-items:center;gap:5px;padding:12px 4px;border-radius:18px;background:#fff;font:600 12px var(--font);box-shadow:0 2px 8px rgba(43,38,32,.07)}.dpx .dpx-wd-act img{width:28px;height:28px}
 @media (prefers-reduced-motion:reduce){.dpx .dpx-wd-deck{transition:none}}
+
+/* ---------- Dynamic Island banner ---------- */
+.dpx.dpx-isl-wrap{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:0;right:0;z-index:300;display:flex;justify-content:center;pointer-events:none;max-width:none;overflow:visible}
+.dpx-isl{pointer-events:auto;background:#000;color:#fff;overflow:hidden;box-shadow:0 14px 36px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.08) inset;touch-action:none;cursor:pointer;will-change:transform,width,height}
+.dpx-isl-in{display:flex;gap:10px;height:100%;padding:0 6px 0 6px;align-items:center}.dpx-isl.open .dpx-isl-in{align-items:flex-start;padding:14px 16px;gap:12px}
+.dpx-isl-ic{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:#111}.dpx-isl-ic img{width:16px;height:16px;object-fit:contain}.dpx-isl.open .dpx-isl-ic{width:42px;height:42px;border-radius:14px}.dpx-isl.open .dpx-isl-ic img{width:26px;height:26px}
+.dpx-isl-c{flex:1;min-width:0;text-align:right;padding-right:8px}.dpx-isl-c b{font:700 13px var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.dpx-isl-body{flex:1;min-width:0;display:grid;gap:2px}
+.dpx-isl-top{display:flex;justify-content:space-between;gap:8px}.dpx-isl-top small{font:600 11px var(--font);color:rgba(255,255,255,.55);letter-spacing:.02em}
+.dpx-isl-body b{font:700 16px/1.25 var(--font);letter-spacing:-.02em}.dpx-isl-body .amt{font-variant-numeric:tabular-nums}.dpx-isl-body .amt.in{color:#34c759}.dpx-isl-body .amt.out{color:#ff8a6b}.dpx-isl-body .amt.move{color:#7bbcff}
+.dpx-isl-msg{font:500 13px/1.35 var(--font);color:rgba(255,255,255,.78);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dpx-isl-acts{display:flex;gap:8px;margin-top:6px}.dpx-isl-acts button{padding:6px 16px;border-radius:99px;background:#fff;color:#000;font:700 12.5px var(--font)}.dpx-isl-acts button.ghost{background:rgba(255,255,255,.16);color:#fff}
+@media (prefers-reduced-motion:reduce){.dpx-isl{will-change:auto}}

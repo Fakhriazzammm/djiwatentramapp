@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { checkPpobStatus, checkTopupStatus, checkPostpaidStatus, createPpobInvoice, inquirePostpaid, markAllWalletNotificationsRead, markWalletNotificationRead, payPostpaid, ppobProductName, purchasePpob, readPpobCatalog, readPostpaidCatalog, readWalletNotifications, type PpobProduct, type PpobPurchaseResult, type PostpaidInquiry, type PostpaidProduct, type WalletNotification, type WalletResponse, type WalletTransaction, transactionMethodLine } from "../../lib/wallet-adapter";
 import type { CustomerProfile, PayNavigationContext } from "../../lib/identity-adapter";
@@ -17,6 +17,9 @@ import { AssetOverview } from "../kelola/asset-overview";
 import { IntegrationsPage, ReviewPage, useInbound } from "../integrations/integrations-pages";
 import { financeNotes, loadRead, saveRead } from "../../lib/finance/notify";
 import { PinHost } from "../auth/pin-ui";
+import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
+import { IslandHost } from "../shell/island";
+import { buildIsland, loadSeen, registerIslandHandlers, saveSeen, startIsland } from "../../lib/island";
 import { ProfileEditPage, SecurityPage } from "../account/account-pages";
 import { FinBudget, FinHome, FinRecords, FinReport, FinSettings, FinSheetHost, FinWallet, ManualForm, Onboarding, type FinCtx, type FinSheet } from "../finance/fin-pages";
 import type { Notify } from "../finance/fin-sheets";
@@ -44,7 +47,7 @@ function PpobReceipt({ product, number, serialNumber, reference, onDone }: { pro
 }
 
 /** The wallet screen plus the PIN pad it can ask for from anywhere. */
-export function DjiwaPayScreen(props: Props) { return <><DjiwaPayScreenInner {...props} /><PinHost /></>; }
+export function DjiwaPayScreen(props: Props) { return <><DjiwaPayScreenInner {...props} /><PinHost /><IslandHost /></>; }
 
 function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh, onTopup, navigationContext, onNavigate, onPageReady, transitionId, previewOnly = false }: Props) {
   // Host apps (Djiwa Travel) already draw a bottom tab bar around the iframe.
@@ -205,6 +208,15 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   const [localRead, setLocalRead] = useState<Set<string>>(() => loadRead(profile.source_id));
   const finNotes = useMemo(() => financeNotes(fin.state, fin.entries, inboundSummary.data, new Date()), [fin.state, fin.entries, inboundSummary.data]);
   const allNotifications = useMemo<WalletNotification[]>(() => [...finNotes.map((n) => ({ id: n.id, title: n.title, message: n.message, notification_type: n.notification_type, created_at: n.created_at, unread: !localRead.has(n.id), action_payload: { route: n.route } })), ...walletNotifications].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)), [finNotes, localRead, walletNotifications]);
+  // On opening the app, money that moved and things that need a look appear one after another as an island banner.
+  const islandStarted = useRef(false), islandSeen = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (previewOnly || islandStarted.current || notificationsLoading || !inboundSummary.data) return;
+    islandStarted.current = true; islandSeen.current = loadSeen(profile.source_id);
+    const items = buildIsland({ entries: fin.entries, notes: finNotes, wallet: walletNotifications, seen: islandSeen.current, accountName: (id) => (id === PAY_ACCOUNT_ID ? "Djiwa Pay" : fin.state.accounts.find((a) => a.id === id)?.name ?? "Dompet") });
+    registerIslandHandlers((route) => goPayRoute(route), (item) => { islandSeen.current.add(item.id); saveSeen(profile.source_id, islandSeen.current); if (item.id.startsWith("fin-")) readLocal([item.id]); });
+    startIsland(items);
+  }, [previewOnly, notificationsLoading, inboundSummary.data]);   // eslint-disable-line react-hooks/exhaustive-deps
   const readLocal = (ids: string[]) => setLocalRead((cur) => { const next = new Set([...cur, ...ids]); saveRead(profile.source_id, next); return next; });
   const [fsheet, setFsheet] = useState<FinSheet | null>(null);
   const [snack, setSnack] = useState<{ id: number; text: string; undo?: () => void } | null>(null);

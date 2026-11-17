@@ -139,3 +139,19 @@ describe("quoteDeck", () => {
     expect(b[0]).toBe(a[3]); expect(a[0]).toContain("Buffett"); expect(a[1]).toContain("Lao Tzu");
   });
 });
+
+import { buildIsland } from "../src/lib/island";
+describe("buildIsland", () => {
+  const now = new Date("2026-11-18T10:00:00+07:00");
+  const entries = [e({ id: "a", kind: "in", source: "pay", amount: 50_000, note: "Transfer masuk", at: "2026-11-18T09:00:00+07:00" }), e({ id: "b", source: "email", amount: 59_000, note: "Sambal ijo", at: "2026-11-17T19:47:00+07:00" }), e({ id: "c", source: "manual", at: "2026-11-18T09:30:00+07:00" }), e({ id: "d", source: "email", at: "2026-11-10T09:00:00+07:00" })];
+  test("shows recent paid, mailed and scanned entries newest first, never manual or old ones", () => {
+    const items = buildIsland({ entries, notes: [], wallet: [], seen: new Set(), accountName: () => "Mandiri", now });
+    expect(items.map((i) => i.id)).toEqual(["isl-e:a", "isl-e:b"]);
+    expect(items[0]).toMatchObject({ tone: "in", sign: "+", label: "Djiwa Pay" }); expect(items[1]).toMatchObject({ tone: "out", sign: "−", label: "Dari email" });
+  });
+  test("skips what was already shown and mail entries duplicated by notes", () => {
+    const notes = [{ id: "fin-em:b", title: "x", message: "y", notification_type: "fin-email" as const, created_at: now.toISOString(), route: "/riwayat" }, { id: "fin-review:2", title: "2 email perlu ditinjau", message: "z", notification_type: "fin-email" as const, created_at: now.toISOString(), route: "/tinjau" }];
+    const items = buildIsland({ entries, notes, wallet: [], seen: new Set(["isl-e:a"]), accountName: () => "Mandiri", now });
+    expect(items.map((i) => i.id)).toEqual(["fin-review:2", "isl-e:b"]);
+  });
+});

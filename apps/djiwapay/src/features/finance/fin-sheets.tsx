@@ -36,10 +36,10 @@ export function CategorySheet({ categories, income, value, onPick, onClose, onAd
   </Sheet>;
 }
 
-export function AccountSheet({ state, balances, value, onPick, onClose, onAdd, includePay = false }: { state: FinanceState; balances: Record<string, number>; value?: string; onPick: (id: string) => void; onClose: () => void; onAdd?: () => void; includePay?: boolean }) {
+export function AccountSheet({ state, balances, value, onPick, onClose, onAdd, includePay = false, allLabel, title = "Dompet" }: { state: FinanceState; balances: Record<string, number>; value?: string; onPick: (id: string) => void; onClose: () => void; onAdd?: () => void; includePay?: boolean; allLabel?: string; title?: string }) {
   const list: Account[] = [...state.accounts.filter((a) => !a.archived), ...(includePay ? [{ id: PAY_ACCOUNT_ID, name: "Djiwa Pay", type: "ewallet" as const, opening: 0 }] : [])];
-  return <Sheet title="Dompet" onClose={onClose}>
-    <div className="dpx-group dpx-flush">{list.map((a) => <Btn key={a.id} type="button" className="dpx-row" onClick={() => { onPick(a.id); onClose(); }}><span className="dpx-ico"><Ic n={a.type === "bank" ? "bank" : a.type === "card" ? "card" : "wallet"} /></span><span className="dpx-main"><b>{a.name}</b><span>{rupiah(balances[a.id] ?? 0)}</span></span>{value === a.id ? <Ic n="check" size="sm" /> : null}</Btn>)}</div>
+  return <Sheet title={title} onClose={onClose}>
+    <div className="dpx-group dpx-flush">{allLabel ? <Btn type="button" className="dpx-row" onClick={() => { onPick("all"); onClose(); }}><span className="dpx-ico"><Ic n="grid" /></span><span className="dpx-main"><b>{allLabel}</b><span>Tidak difilter</span></span>{value === "all" ? <span className="dpx-trail"><Ic n="check" size="sm" /></span> : null}</Btn> : null}{list.map((a) => <Btn key={a.id} type="button" className="dpx-row" onClick={() => { onPick(a.id); onClose(); }}><span className="dpx-ico"><Ic n={a.type === "bank" ? "bank" : a.type === "card" ? "card" : "wallet"} /></span><span className="dpx-main"><b>{a.name}</b><span>{rupiah(balances[a.id] ?? 0)}</span></span>{value === a.id ? <Ic n="check" size="sm" /> : null}</Btn>)}</div>
     {onAdd ? <Btn type="button" className="dpx-btn dpx-ghost" onClick={onAdd}><Ic n="plus" size="sm" /> Tambah dompet</Btn> : null}
   </Sheet>;
 }
