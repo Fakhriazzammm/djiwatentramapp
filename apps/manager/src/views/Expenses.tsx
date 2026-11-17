@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { api, type ExpenseDraft, type ExpenseItem } from "../lib/api";
 import { API_BASE } from "../lib/auth";
@@ -16,6 +16,59 @@ const STATUS: Record<string, [string, string]> = { saved: ["Tercatat", "ok"], pe
 const VIA: Record<string, string> = { telegram: "Telegram", app: "Aplikasi", finance: "Admin/POS" };
 const METHODS = [["cash", "Tunai"], ["qris", "QRIS"], ["transfer", "Transfer"], ["debit", "Debit"], ["credit", "Kartu kredit"], ["ewallet", "Dompet digital"]];
 const todayLocal = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16); };
+
+// ── Filter periode (semua perhitungan dalam WIB) ──────────────────
+type PeriodKey = "all" | "today" | "yesterday" | "this_week" | "last_week" | "this_month" | "last_month" | "3m" | "6m" | "this_year" | "custom";
+const PERIODS: [PeriodKey, string][] = [
+  ["all", "Semua"], ["today", "Hari ini"], ["yesterday", "Kemarin"],
+  ["this_week", "Minggu ini"], ["last_week", "Minggu lalu"],
+  ["this_month", "Bulan ini"], ["last_month", "Bulan lalu"],
+  ["3m", "3 bulan ini"], ["6m", "6 bulan ini"], ["this_year", "Tahun ini"],
+  ["custom", "Rentang tanggal"],
+];
+const WIB_MS = 7 * 3600_000;
+const wibKey = (value: number | string | Date) => {
+  const d = new Date(new Date(value).getTime() + WIB_MS);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+};
+const wibStart = (key: string) => new Date(`${key}T00:00:00+07:00`).getTime();
+const wibEnd = (key: string) => new Date(`${key}T23:59:59.999+07:00`).getTime();
+const addDays = (key: string, days: number) => wibKey(wibStart(key) + days * 86_400_000);
+const addMonths = (key: string, months: number) => {
+  const [year, month] = key.split("-").map(Number);
+  const d = new Date(Date.UTC(year, month - 1 + months, 1));
+  return wibKey(d);
+};
+function periodRange(period: PeriodKey, from: string, to: string): { start: number; end: number } | null {
+  if (period === "all") return null;
+  const now = Date.now();
+  const today = wibKey(now);
+  if (period === "custom") {
+    if (!from || !to) return null;
+    const a = from <= to ? from : to;
+    const b = from <= to ? to : from;
+    return { start: wibStart(a), end: wibEnd(b) };
+  }
+  if (period === "today") return { start: wibStart(today), end: now };
+  if (period === "yesterday") {
+    const y = addDays(today, -1);
+    return { start: wibStart(y), end: wibEnd(y) };
+  }
+  const dow = new Date(`${today}T00:00:00Z`).getUTCDay();
+  const mondayOffset = (dow + 6) % 7;
+  if (period === "this_week") return { start: wibStart(addDays(today, -mondayOffset)), end: now };
+  if (period === "last_week") {
+    const thisMonday = addDays(today, -mondayOffset);
+    return { start: wibStart(addDays(thisMonday, -7)), end: wibEnd(addDays(thisMonday, -1)) };
+  }
+  if (period === "this_month") return { start: wibStart(`${today.slice(0, 7)}-01`), end: now };
+  if (period === "last_month") {
+    return { start: wibStart(addMonths(today, -1)), end: wibEnd(addDays(addMonths(today, 0), -1)) };
+  }
+  if (period === "3m") return { start: wibStart(addMonths(today, -3)), end: now };
+  if (period === "6m") return { start: wibStart(addMonths(today, -6)), end: now };
+  return { start: wibStart(`${today.slice(0, 4)}-01-01`), end: now };
+}
 const emptyItem = (category = "lainnya"): ExpenseItem => ({ name: "", qty: 1, unit: "pcs", price: 0, total: 0, category });
 const img = (u: string) => (u.startsWith("/") ? `${API_BASE}${u}` : u);
 
@@ -83,11 +136,37 @@ export function ExpensesView() {
 }
 
 function History({ drafts, role }: { drafts: ExpenseDraft[]; role: string }) {
+  const [period, setPeriod] = useState<PeriodKey>("all");
+  const [from, setFrom] = useState(() => `${wibKey(Date.now()).slice(0, 7)}-01`);
+  const [to, setTo] = useState(() => wibKey(Date.now()));
+  const filtered = useMemo(() => {
+    const range = periodRange(period, from, to);
+    if (!range) return drafts;
+    return drafts.filter((d) => {
+      const at = new Date(d.tx_date).getTime();
+      return Number.isFinite(at) && at >= range.start && at <= range.end;
+    });
+  }, [drafts, period, from, to]);
   return (
     <Panel title="Riwayat pengeluaran" meta={role === "manager" ? "semua pengguna" : "semua pengeluaran + draft Anda"}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", padding: "12px 16px", borderBottom: "1px solid var(--line)" }}>
+        <label style={{ margin: 0 }}>Filter</label>
+        <select className="f" value={period} onChange={(e) => setPeriod(e.target.value as PeriodKey)} style={{ width: "auto", minWidth: 170 }}>
+          {PERIODS.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+        </select>
+        {period === "custom" && (
+          <>
+            <label style={{ margin: 0 }}>Dari</label>
+            <input className="f" type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: "auto" }} />
+            <label style={{ margin: 0 }}>s/d</label>
+            <input className="f" type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: "auto" }} />
+          </>
+        )}
+        <span className="meta" style={{ marginLeft: "auto" }}>{filtered.length} dari {drafts.length} pengeluaran</span>
+      </div>
       <div className="tw2"><table>
         <thead><tr><th>Waktu</th><th>Toko</th><th>Item</th><th>Via</th><th style={{ textAlign: "right" }}>Total</th><th>Status</th><th>Struk</th></tr></thead>
-        <tbody>{drafts.map((d) => {
+        <tbody>{filtered.map((d) => {
           const items = Array.isArray(d.items) ? d.items : [];
           const st = STATUS[d.status] ?? [d.status, ""];
           return (
@@ -110,7 +189,7 @@ function History({ drafts, role }: { drafts: ExpenseDraft[]; role: string }) {
             </tr>
           );
         })}</tbody>
-      </table>{drafts.length === 0 && <Empty>BELUM ADA PENGELUARAN</Empty>}</div>
+      </table>{filtered.length === 0 && <Empty>{drafts.length === 0 ? "BELUM ADA PENGELUARAN" : "TIDAK ADA PENGELUARAN PADA PERIODE INI"}</Empty>}</div>
     </Panel>
   );
 }
