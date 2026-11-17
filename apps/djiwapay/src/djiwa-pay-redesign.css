@@ -1000,3 +1000,6 @@ html:has(.dpx-plain),body:has(.dpx-plain),#root:has(.dpx-plain){background:#f8f3
 .dpx-ib-reader img{width:calc(100% + 36px);margin:0 -18px;max-height:230px;object-fit:cover;display:block}.dpx-ib-reader small{font:600 12px var(--font);color:var(--mute);margin-top:6px}
 .dpx-ib-reader h1{margin:0;font:800 23px/1.2 var(--font);letter-spacing:-.03em}.dpx-ib-reader p{margin:0;font:15px/1.55 var(--font)}.dpx-ib-desc{font-weight:600}
 .dpx-ib-note{display:flex;gap:8px;align-items:flex-start;padding:12px 14px;border-radius:16px;background:var(--group);font:12.5px/1.45 var(--font);color:var(--mute)}
+
+/* The app column is narrower than the screen: the page behind it uses the same cream, so there is no visible line at its edges. */
+html:has(.dpx),body:has(.dpx),#root:has(.dpx){background:#f8f3e9}
