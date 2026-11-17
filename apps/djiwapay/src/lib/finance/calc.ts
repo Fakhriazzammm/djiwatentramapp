@@ -31,7 +31,7 @@ const regroup = (e: Entry): Entry => {
   const g = guessCategory(e.note);
   return g && g !== "gaji" && g !== "bonus" ? { ...e, categoryId: g } : e;
 };
-export const allEntries = (state: FinanceState, transactions: WalletTransaction[]): Entry[] => [...state.entries, ...payEntries(transactions, state.overrides)].map(regroup).sort((a, b) => +new Date(b.at) - +new Date(a.at));
+export const allEntries = (state: FinanceState, transactions: WalletTransaction[]): Entry[] => [...state.entries, ...payEntries(transactions, state.overrides)].map(regroup).sort((a, b) => +new Date(b.at) - +new Date(a.at) || +new Date(b.createdAt || 0) - +new Date(a.createdAt || 0));
 
 /* ---------- aggregates ---------- */
 export const inMonth = (entry: Entry, year: number, month: number) => { const d = new Date(entry.at); return d.getFullYear() === year && d.getMonth() === month; };
