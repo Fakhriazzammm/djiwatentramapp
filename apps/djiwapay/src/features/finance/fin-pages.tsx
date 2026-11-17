@@ -37,13 +37,20 @@ export type FinCtx = {
 
 const COLORS: Record<string, string> = { orange: "#e8833a", blue: "#d14b1a", violet: "#eeb866", amber: "#d9a21a", rose: "#e0568a", indigo: "#e45825", cyan: "#16a3b8", emerald: "#1f9d62", slate: "#958a7d" };
 export const useBalances = (state: FinanceState, entries: Entry[], payBalance: number) => useMemo(() => { const m: Record<string, number> = {}; for (const a of state.accounts) m[a.id] = accountBalance(a, entries, payBalance); m[PAY_ACCOUNT_ID] = payBalance; return m; }, [state.accounts, entries, payBalance]);
-const sourceBadge = (s: Entry["source"]) => s === "voice" ? <span className="dpx-tx-badge">Suara</span> : s === "email" ? <span className="dpx-tx-badge">Email</span> : s === "sheet" ? <span className="dpx-tx-badge">Sheets</span> : null;
+const SOURCE_LABEL: Record<Entry["source"], string> = { manual: "Manual", voice: "Suara", pay: "Djiwa Pay", receipt: "Scan struk", email: "Email", sheet: "Sheets" };
+const sourceBadge = (s: Entry["source"]) => <span className={`dpx-tx-badge dpx-src-${s}`}>{SOURCE_LABEL[s] ?? "Manual"}</span>;
+/** Corner mark on the category icon: up = money in, down = money out, ⇄ = moved between own accounts, ? = not sorted yet. */
+function DirMark({ entry }: { entry: Entry }) {
+  const unsorted = entry.kind !== "tf" && entry.categoryId === "lainnya";
+  const [glyph, cls, label] = unsorted ? ["?", "q", "Belum dikategorikan"] : entry.kind === "in" ? ["↑", "in", "Pemasukan"] : entry.kind === "out" ? ["↓", "out", "Pengeluaran"] : ["⇄", "tf", "Pindah dana"];
+  return <i className={`dpx-dir dpx-dir-${cls}`} role="img" aria-label={label} title={label}>{glyph}</i>;
+}
 
 export function EntryRow({ entry, state, onOpen, i = 0, fresh = false }: { entry: Entry; state: FinanceState; onOpen: (id: string) => void; i?: number; fresh?: boolean }) {
   const c = catOf(state, entry.categoryId);
   const sign = entry.kind === "in" ? "+" : entry.kind === "out" ? "−" : "";
   return <Btn type="button" className="dpx-row" onClick={() => onOpen(entry.id)} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: Math.min(i, 10) * 0.04 }} whileTap={{ scale: 0.985, backgroundColor: "rgba(45,36,29,.04)" }}>
-    <CatIcon cat={c} />
+    <span className="dpx-ent-av"><CatIcon cat={c} /><DirMark entry={entry} /></span>
     <span className="dpx-main"><b>{entry.note || c.name}</b><span>{entry.kind === "tf" ? "Transfer" : c.name} · {accName(state, entry.accountId)}{sourceBadge(entry.source)}{fresh ? <span className="dpx-tx-badge dpx-new">Baru</span> : null}</span></span>
     <span className="dpx-trail"><b className={entry.kind === "in" ? "dpx-in" : ""}>{sign}{rupiah(entry.amount)}</b>{formatTime(entry.at)}</span>
   </Btn>;

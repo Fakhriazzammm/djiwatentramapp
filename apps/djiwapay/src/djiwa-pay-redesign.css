@@ -912,3 +912,10 @@ html:has(.dpx-plain),body:has(.dpx-plain),#root:has(.dpx-plain){background:#f8f3
 .dpx .dpx-ac-clear{color:var(--blue);font:600 12px var(--font)}
 .dpx .dpx-ac-row{display:flex;align-items:center;gap:12px}.dpx .dpx-ac-row>div{flex:1;min-width:0}.dpx .dpx-ac-row b{display:block;font:700 14px var(--font)}
 .dpx .dpx-ac-panel{display:grid;gap:10px;padding-top:4px}
+
+/* ---------- Catatan rows: source badge on the subtitle line, direction mark on the icon ---------- */
+.dpx .dpx-main .dpx-tx-badge{display:inline-block;width:auto;max-width:100%;height:16px;padding:0 7px;line-height:16px;font-size:10.5px;vertical-align:top;margin-left:6px;border-radius:99px;background:var(--group);color:var(--mute)}
+.dpx .dpx-tx-badge.dpx-src-email{background:#fbe9dc;color:#a4411a}.dpx .dpx-tx-badge.dpx-src-receipt{background:#e3eefb;color:#2b5d94}.dpx .dpx-tx-badge.dpx-src-manual{background:#eee9df;color:#5f5547}.dpx .dpx-tx-badge.dpx-src-voice{background:#eee3f6;color:#6b3f8f}.dpx .dpx-tx-badge.dpx-src-pay{background:#e2f0e6;color:#2f6b45}.dpx .dpx-tx-badge.dpx-src-sheet{background:#e6f1e0;color:#4f7a2b}
+.dpx .dpx-ent-av{position:relative;display:inline-flex;flex:none}
+.dpx .dpx-dir{position:absolute;right:-3px;bottom:-3px;width:19px;height:19px;border-radius:50%;display:grid;place-items:center;font:800 11px/1 var(--font);font-style:normal;color:#fff;box-shadow:0 0 0 2px #fff}
+.dpx .dpx-dir-in{background:#4f7a2b}.dpx .dpx-dir-out{background:#c9461b}.dpx .dpx-dir-tf{background:#3b6ea5}.dpx .dpx-dir-q{background:#d9941a}
