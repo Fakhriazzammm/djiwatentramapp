@@ -73,7 +73,7 @@ export function ProfileEditPage({ onBack, notify }: { onBack: () => void; notify
 export function SecurityPage({ onBack, notify }: { onBack: () => void; notify: Notify }) {
   const [acc, setAcc] = useState<Account | null>(null), [err, setErr] = useState(""), [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<null | "password" | "reset" | "delete">(null);
-  const [pw, setPw] = useState({ current: "", next: "", again: "" }), [forgotPw, setForgotPw] = useState(""), [confirm, setConfirm] = useState("");
+  const [forgot, setForgot] = useState(false), [pw, setPw] = useState({ current: "", next: "", again: "" }), [forgotPw, setForgotPw] = useState(""), [confirm, setConfirm] = useState("");
   const reload = () => loadAccount().then(setAcc).catch((e) => setErr(errText(e, "Data akun belum bisa dimuat")));
   useEffect(() => { void reload(); }, []);
   const run = async (fn: () => Promise<void>) => { setBusy(true); setErr(""); try { await fn(); } catch (e) { setErr(errText(e, "Belum berhasil. Coba lagi.")); } finally { setBusy(false); } };
@@ -95,14 +95,17 @@ export function SecurityPage({ onBack, notify }: { onBack: () => void; notify: N
   const savePassword = () => run(async () => {
     if (pw.next.length < 8) { setErr(ERR.WEAK_PASSWORD); return; }
     if (pw.next !== pw.again) { setErr("Kata sandi baru tidak sama."); return; }
-    if (acc.methods.password) {
+    if (acc.methods.password && forgot) {
+      const res = await pinGuarded("Atur ulang kata sandi", (pin) => api("/account/password/reset", { method: "POST", body: JSON.stringify({ newPassword: pw.next, pin }) }));
+      const body = await res.json().catch(() => ({})); if (!res.ok) { setErr(ERR[body.error] ?? pinMessage(body)); return; }
+    } else if (acc.methods.password) {
       const r = await authClient.changePassword({ currentPassword: pw.current, newPassword: pw.next, revokeOtherSessions: false });
       if (r.error) { setErr(r.error.message ?? "Kata sandi lama salah."); return; }
     } else {
       const res = await pinGuarded("Atur kata sandi", (pin) => api("/account/password", { method: "POST", body: JSON.stringify({ newPassword: pw.next, pin }) }));
       const body = await res.json().catch(() => ({})); if (!res.ok) { setErr(ERR[body.error] ?? pinMessage(body)); return; }
     }
-    setPw({ current: "", next: "", again: "" }); setPanel(null); notify(acc.methods.password ? "Kata sandi diubah" : "Kata sandi dibuat. Sekarang kamu bisa masuk dengan email dan kata sandi."); await reload();
+    setPw({ current: "", next: "", again: "" }); setForgot(false); setPanel(null); notify(acc.methods.password ? "Kata sandi diubah" : "Kata sandi dibuat. Sekarang kamu bisa masuk dengan email dan kata sandi."); await reload();
   });
   const deleteAccount = () => run(async () => {
     if (confirm !== "HAPUS") { setErr(ERR.CONFIRM_REQUIRED); return; }
@@ -122,10 +125,12 @@ export function SecurityPage({ onBack, notify }: { onBack: () => void; notify: N
     </Section>
     <Section title="Cara masuk">
       <div className="dpx-ac-row"><span className="dpx-cat dpx-c-blue"><Ic n="link" /></span><div><b>Google</b><span className="dpx-sub">{acc.methods.google ? "Tersambung" : "Belum tersambung"}</span></div></div>
-      <div className="dpx-ac-row"><span className="dpx-cat dpx-c-amber"><Ic n="edit" /></span><div><b>Email dan kata sandi</b><span className="dpx-sub">{acc.methods.password ? `Aktif untuk ${acc.profile.email ?? "emailmu"}` : "Belum diatur. Atur kata sandi supaya bisa masuk tanpa Google."}</span></div></div>
+      <div className="dpx-ac-row"><span className="dpx-cat dpx-c-amber"><Ic n="edit" /></span><div><b>Email dan kata sandi</b><span className="dpx-sub">{acc.methods.password ? `Aktif untuk ${acc.profile.email ?? "emailmu"}. Kata sandi ini dibuat sebelumnya, misalnya saat mendaftar dengan email di Djiwa Tentram.` : "Belum diatur. Atur kata sandi supaya bisa masuk tanpa Google."}</span></div></div>
       <Btn type="button" className="dpx-btn dpx-soft" onClick={() => { setErr(""); setPanel(panel === "password" ? null : "password"); }}>{acc.methods.password ? "Ubah kata sandi" : "Atur kata sandi"}</Btn>
       {panel === "password" ? <div className="dpx-ac-panel">
-        {acc.methods.password ? <Field id="ac-pw-cur" label="Kata sandi sekarang" type="password" value={pw.current} onChange={(v) => setPw((p) => ({ ...p, current: v }))} /> : null}
+        {acc.methods.password && !forgot ? <Field id="ac-pw-cur" label="Kata sandi sekarang" type="password" value={pw.current} onChange={(v) => setPw((p) => ({ ...p, current: v }))} /> : null}
+        {acc.methods.password && acc.methods.google ? <Btn type="button" className="dpx-linkbtn" onClick={() => setForgot((f) => !f)}>{forgot ? "Saya ingat kata sandi sekarang" : "Lupa kata sandi sekarang? Atur ulang dengan PIN"}</Btn> : null}
+        {forgot ? <p className="dpx-sub" style={{ margin: 0 }}>Kamu masuk lewat Google, jadi emailmu sudah terverifikasi. Cukup pilih kata sandi baru, lalu konfirmasi dengan PIN.</p> : null}
         <Field id="ac-pw-new" label="Kata sandi baru" type="password" value={pw.next} onChange={(v) => setPw((p) => ({ ...p, next: v }))} hint="Minimal 8 karakter." />
         <Field id="ac-pw-again" label="Ulangi kata sandi baru" type="password" value={pw.again} onChange={(v) => setPw((p) => ({ ...p, again: v }))} />
         <Btn type="button" className={`dpx-btn ${busy ? "dpx-off" : ""}`} disabled={busy} onClick={() => void savePassword()}>Simpan kata sandi</Btn></div> : null}

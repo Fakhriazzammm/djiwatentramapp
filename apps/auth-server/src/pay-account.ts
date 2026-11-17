@@ -154,6 +154,24 @@ export function registerPayAccount(d: PayAccountDeps) {
   });
 
   /**
+   * Forgot the current password: someone who is signed in with Google (a verified e-mail) and knows their PIN may choose a new one.
+   * The PIN is what proves it is the owner of the phone, not just whoever holds an open session.
+   */
+  app.post("/api/pay-bridge/account/password/reset", async (c) => {
+    const s = await requirePaySession(c.req.raw.headers); if (!s) return json({ success: false, error: "UNAUTHORIZED" }, 401);
+    const b = await c.req.json().catch(() => ({})) as { newPassword?: unknown; pin?: unknown };
+    const v = await checkPin(pool, s.userId, b.pin); if (!v.ok) return pinResponse(json, v);
+    const pw = typeof b.newPassword === "string" ? b.newPassword : "";
+    if (pw.length < 8 || pw.length > 128) return json({ success: false, error: "WEAK_PASSWORD" }, 400);
+    const rows = (await pool.query(`SELECT "providerId" FROM public.account WHERE "userId" = $1`, [s.userId])).rows.map((r) => String(r.providerId));
+    if (!rows.includes("google")) return json({ success: false, error: "NO_GOOGLE" }, 409);
+    if (!rows.includes("credential")) return json({ success: false, error: "NO_PASSWORD" }, 409);
+    const hash = await (await auth.$context).password.hash(pw);
+    await pool.query(`UPDATE public.account SET password = $2, "updatedAt" = now() WHERE "userId" = $1 AND "providerId" = 'credential'`, [s.userId, hash]);
+    return json({ success: true });
+  });
+
+  /**
    * Closes the account for every Djiwa app. Needs the PIN and the word HAPUS, and an empty wallet. The row is deactivated and made
    * anonymous instead of deleted, so order history and receipts stay consistent.
    */
