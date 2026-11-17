@@ -5,6 +5,7 @@ import { EntryRow, type FinCtx } from "./fin-pages";
 import { QuickAdd } from "./hero-day";
 import { CAT_COLORS, DragRow, Donut, GoldSpark, HeatGrid, PaceChart, WealthChart } from "./story-charts";
 import { FullPage } from "../kelola/asset-ui";
+import { openArticle } from "../../lib/inapp";
 import { NEWS_TOPICS, timeAgo, useNews, type NewsItem } from "../../lib/finance/news";
 import { GoogleNudge, ReviewChip, useInbound } from "../integrations/integrations-pages";
 import { short } from "../kelola/kelola-ui";
@@ -47,7 +48,7 @@ function AllMenuPage({ onBack, run }: { onBack: () => void; run: (i: MenuGroup["
   </FullPage>;
 }
 const TOPIC_ICON: Record<string, { icon: IconName; tone: string }> = { emas: { icon: "gift", tone: "amber" }, saham: { icon: "chart", tone: "blue" }, kripto: { icon: "flash", tone: "violet" }, ekonomi: { icon: "trend", tone: "emerald" } };
-const NewsCard = ({ n }: { n: NewsItem }) => <a className="dpx-st-card dpx-st-story dpx-st-news" href={n.url} target="_blank" rel="noopener noreferrer"><span className={`dpx-cat dpx-c-${TOPIC_ICON[n.topic].tone}`}><Ic n={TOPIC_ICON[n.topic].icon} /></span><b>{n.title}</b><span className="dpx-sub">{n.source} · {timeAgo(n.at)}</span></a>;
+const NewsCard = ({ n }: { n: NewsItem }) => <a className="dpx-st-card dpx-st-story dpx-st-news" href={n.url} onClick={(e) => { e.preventDefault(); openArticle({ url: n.url, title: n.title, source: n.source }); }}><span className={`dpx-cat dpx-c-${TOPIC_ICON[n.topic].tone}`}><Ic n={TOPIC_ICON[n.topic].icon} /></span><b>{n.title}</b><span className="dpx-sub">{n.source} · {timeAgo(n.at)}</span></a>;
 
 /** Full list of today's headlines by topic. Each opens the article on the publisher's site. */
 function NewsPage({ onBack }: { onBack: () => void }) {
@@ -56,8 +57,8 @@ function NewsPage({ onBack }: { onBack: () => void }) {
     <div className="dpx-st-npage">
       <DragRow className="dpx-st-tabs" role="tablist">{NEWS_TOPICS.map((t) => <Btn key={t.id} type="button" role="tab" aria-selected={topic === t.id} className={topic === t.id ? "on" : ""} onClick={() => setTopic(t.id)}>{t.label}</Btn>)}</DragRow>
       {items === null && !failed ? <p className="dpx-st-empty">Memuat berita…</p> : failed ? <p className="dpx-st-empty">Berita belum bisa dimuat. Periksa koneksi lalu coba lagi.</p> : !items?.length ? <p className="dpx-st-empty">Belum ada berita untuk topik ini hari ini.</p> :
-        <div className="dpx-st-nlist">{items.map((n) => <a key={n.url} className="dpx-st-nrow" href={n.url} target="_blank" rel="noopener noreferrer"><span className={`dpx-cat dpx-c-${TOPIC_ICON[n.topic].tone}`}><Ic n={TOPIC_ICON[n.topic].icon} /></span><div><b>{n.title}</b><span className="dpx-sub">{n.source} · {timeAgo(n.at)}</span></div></a>)}</div>}
-      <p className="dpx-st-foot">Judul dari CNBC Indonesia dan Antara News, diperbarui otomatis. Artikel dibuka di situs penerbitnya.</p>
+        <div className="dpx-st-nlist">{items.map((n) => <a key={n.url} className="dpx-st-nrow" href={n.url} onClick={(e) => { e.preventDefault(); openArticle({ url: n.url, title: n.title, source: n.source }); }}><span className={`dpx-cat dpx-c-${TOPIC_ICON[n.topic].tone}`}><Ic n={TOPIC_ICON[n.topic].icon} /></span><div><b>{n.title}</b><span className="dpx-sub">{n.source} · {timeAgo(n.at)}</span></div></a>)}</div>}
+      <p className="dpx-st-foot">Judul dari CNBC Indonesia dan Antara News, diperbarui otomatis. Artikel dibuka di dalam aplikasi.</p>
     </div>
   </FullPage>;
 }
