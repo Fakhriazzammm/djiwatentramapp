@@ -153,7 +153,7 @@ export function AccountPage({ profile, unread, customerHome, onBack, nav, onOpen
     <div className="dpx-group dpx-flush dpx-white"><Row icon="bell" tone="amber" title="Notifikasi" sub="Aktivitas saldo & transfer" trail={unread ? <span className="dpx-tag dpx-info">{unread} baru</span> : undefined} onClick={onOpenNotifications} /><Row icon="tag" tone="violet" title="Pengaturan keuangan" sub="Kategori, ekspor, cadangan" onClick={() => nav.go("/pengaturan")} /><Row icon="help" tone="cyan" title="Bantuan" sub="FAQ & keamanan" onClick={() => nav.go("/wallet/help")} /></div>
     {embedded ? null : <><div className="dpx-glabel">Lainnya</div><div className="dpx-group dpx-flush dpx-white"><a className="dpx-row" href={customerHome}><span className="dpx-ico dpx-c-orange" style={{ boxShadow: "none" }}><Ic n="link" /></span><span className="dpx-main"><b>Kembali ke Djiwa Tentram</b><span>Pesan makanan & komunitas</span></span><Chev /></a><a className="dpx-row" href="https://djiwatravel.com"><span className="dpx-ico dpx-c-blue" style={{ boxShadow: "none" }}><Ic n="link" /></span><span className="dpx-main"><b>Kembali ke Djiwa Travel</b><span>Pesan perjalanan & tiket</span></span><Chev /></a></div></>}
     {embedded ? null : <Btn type="button" className="dpx-btn dpx-ghost" style={{ width: "100%", marginTop: 16, color: "var(--danger, #c0391b)" }} disabled={leaving} onClick={() => { if (window.confirm("Keluar dari Djiwa Pay di perangkat ini?")) { setLeaving(true); void logout(); } }}>{leaving ? "Keluar…" : "Keluar"}</Btn>}
-    <p className="dpx-sub dpx-center" style={{ marginTop: 16 }}>Djiwa Pay · Digital wallet</p>
+    <p className="dpx-sub dpx-center" style={{ marginTop: 16 }}>Djiwa Pay · Keuangan tertata, tagihan beres</p>
   </div></Sky></div>;
 }
 
