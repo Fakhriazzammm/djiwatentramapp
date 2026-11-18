@@ -29,8 +29,8 @@ export function DjiwaPayAuth({ error }: { error: string | null }) {
           <motion.div animate={{ y: [0, -9, 0] }} transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}><Mascot px={170} style={{ filter: "drop-shadow(0 16px 24px rgba(45,36,29,.22))" }} /></motion.div>
         </motion.div>
       </div>
-      <div className="dpx-auth-copy"><motion.h1 className="dpx-page-title" style={{ fontSize: 32 }} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>Catat uangmu,<br />bayar dengan tenang.</motion.h1>
-      <motion.p className="dpx-sub" style={{ maxWidth: 300, fontSize: 15, marginTop: 10 }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>Catat pengeluaran dengan satu kalimat, atur anggaran, lalu bayar tagihan dan isi pulsa — semuanya otomatis tercatat.</motion.p></div>
+      <div className="dpx-auth-copy"><motion.h1 className="dpx-page-title" style={{ fontSize: 32 }} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>Uangmu tertata rapi,<br />tagihan beres tanpa ribet.</motion.h1>
+      <motion.p className="dpx-sub" style={{ maxWidth: 300, fontSize: 15, marginTop: 10 }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>Catat pengeluaran cukup satu kalimat, atur anggaran, lalu bayar listrik, pulsa, dan tagihan harian — semuanya otomatis tercatat di satu aplikasi.</motion.p></div>
       <FeatureShowcase />
     </div>
     <Btn type="button" className="dpx-gbtn" disabled={busy} onClick={() => void signIn()}><GoogleMark />{busy ? "Menghubungkan..." : "Lanjutkan dengan Google"}</Btn>
@@ -42,6 +42,6 @@ export function DjiwaPayAuth({ error }: { error: string | null }) {
     </form> : null}
     {authError || error ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div>{authError || error}</div></div> : null}
     <p className="dpx-sub dpx-center" style={{ margin: "16px 20px 0", fontSize: 12 }}>Satu akun untuk catatan keuangan dan saldo Djiwa Pay.</p>
-    <p className="dpx-legal-links">Dengan melanjutkan, kamu menyetujui <a href="/syarat">Syarat Layanan</a> dan <a href="/privasi">Kebijakan Privasi</a> Djiwa Pay, termasuk cara kami memakai data Google yang kamu izinkan.</p>
+    <p className="dpx-legal-links">Dengan melanjutkan, kamu menyetujui <a href="/syarat">Syarat Layanan</a> dan <a href="/privasi">Kebijakan Privasi</a> Djiwa Pay.</p>
   </div></Sky></Screen>;
 }
