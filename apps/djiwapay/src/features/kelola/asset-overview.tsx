@@ -24,7 +24,7 @@ export function AssetOverview({ ctx, onBack }: { ctx: FinCtx; onBack: () => void
   const hasGold = Boolean(gold?.points.length) && assets.some((a) => a.kind === "gold");
   const goldSeries = useMemo(() => (gold?.points ?? []).map(([day, value]) => ({ day, value })), [gold]);
   let acc = 0;
-  return <div className="dpx-page"><Sky><div className="dpx-pad dpx-nobar">
+  return <div className="dpx-page"><Sky><div className="dpx-pad dpx-nobar" style={{ paddingBottom: "calc(200px + env(safe-area-inset-bottom, 0px))" }}>
     <Header title="Nilai aset" onBack={onBack} right={<Btn type="button" className="dpx-rb" onClick={() => ctx.open({ k: "asset-new" })} aria-label="Tambah aset"><Ic n="plus" size="sm" /></Btn>} />
     {rows.length === 0 ? <div className="dpx-empty"><Sticker size={72} /><b>Belum ada aset</b><p className="dpx-sub">Foto emas atau perhiasan Anda, jadikan stiker, dan pantau nilainya.</p><Btn type="button" className="dpx-btn" onClick={() => ctx.open({ k: "asset-new" })}>Foto aset pertama</Btn></div> : <>
       <motion.div className="dpx-group dpx-white" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
