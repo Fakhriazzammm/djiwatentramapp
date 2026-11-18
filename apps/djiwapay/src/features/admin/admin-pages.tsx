@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { DEFAULT_CATEGORIES } from "../../lib/finance/categories";
 import { ago, compact, dLong, dShort, dTime, nf, rp, useAdmin, adminFetch, type Overview } from "./admin-data";
 import { Delta, Donut, Empty, Kpis, Loading, Panel, Pill, Rank, Table, Tabs, TimeChart, COLORS } from "./admin-ui";
@@ -43,7 +44,7 @@ export function OverviewPage({ range, go }: { range: Q; go: (p: string) => void 
         <div><dt>Google terhubung</dt><dd>{nf(t.google)}</dd></div><div><dt>Sumber email</dt><dd>{nf(t.mailSources)}</dd></div><div><dt>Notifikasi push</dt><dd>{nf(t.pushUsers)} pengguna</dd></div></dl></Panel>
       <Panel title="Kualitas email" meta={rangeLabel(range)}><Donut rows={[{ label: "Otomatis/disetujui", value: c.mailsOk }, { label: "Perlu ditinjau", value: c.mailsReview }, { label: "Lainnya", value: Math.max(0, c.mails - c.mailsOk - c.mailsReview) }]} center={<><b>{nf(c.mails)}</b><small>email</small></>} /></Panel>
     </div>
-    <div className="adm-quick">{[["Lihat traffic lengkap", "/admin/traffic"], ["Kelola pengguna", "/admin/pengguna"], ["Statistik keuangan", "/admin/keuangan"], ["Dompet & saldo", "/admin/dompet"]].map(([l, p]) => <button key={p} type="button" onClick={() => go(p)}>{l} →</button>)}</div>
+    <div className="adm-quick">{[["Lihat traffic lengkap", "/admin/traffic"], ["Kelola pengguna", "/admin/pengguna"], ["Statistik keuangan", "/admin/keuangan"], ["Dompet & saldo", "/admin/dompet"]].map(([l, p], i) => <motion.button key={p} type="button" onClick={() => go(p)} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + i * 0.05 }} whileHover={{ y: -2 }} whileTap={{ scale: 0.96 }}>{l} →</motion.button>)}</div>
   </div>;
 }
 
@@ -145,9 +146,9 @@ export function SystemPage({ me }: { me: string }) {
     <Kpis items={[{ label: "API", value: s ? "Aktif" : "…", tone: s ? "ok" : undefined, hint: s ? `Bun · aktif ${up}` : "" }, { label: "Database pelanggan", value: s?.authDb ? "Terhubung" : "Tidak", tone: s?.authDb ? "ok" : "bad" }, { label: "Memori API", value: s ? `${s.memoryMb} MB` : "…" }, { label: "Page view tersimpan", value: nf(s?.pageViews ?? 0), hint: s?.trackingSince ? `sejak ${dLong(s.trackingSince.slice(0, 10))}` : "belum ada" }, { label: "Total baris tabel", value: compact(total) }]} />
     <div className="adm-grid2">
       <Panel title="Admin" meta="akses halaman ini">
-        <ul className="adm-admins">{(admins.data?.admins ?? []).map((a) => <li key={a.email}><div><b>{a.email}</b><small>{a.added_by === "env" || a.added_by === "seed" ? "admin utama" : `ditambah ${a.added_by ?? "—"}`} · {dLong(a.created_at.slice(0, 10))}</small></div>{a.email === me.toLowerCase() ? <Pill tone="info">Anda</Pill> : a.added_by === "env" || a.added_by === "seed" ? <Pill>utama</Pill> : <button type="button" className="adm-link dn" onClick={() => void del(a.email)}>Cabut</button>}</li>)}</ul>
+        <ul className="adm-admins"><AnimatePresence initial={false}>{(admins.data?.admins ?? []).map((a) => <motion.li key={a.email} layout initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}><div><b>{a.email}</b><small>{a.added_by === "env" || a.added_by === "seed" ? "admin utama" : `ditambah ${a.added_by ?? "—"}`} · {dLong(a.created_at.slice(0, 10))}</small></div>{a.email === me.toLowerCase() ? <Pill tone="info">Anda</Pill> : a.added_by === "env" || a.added_by === "seed" ? <Pill>utama</Pill> : <button type="button" className="adm-link dn" onClick={() => void del(a.email)}>Cabut</button>}</motion.li>)}</AnimatePresence></ul>
         <form className="adm-add" onSubmit={(e) => { e.preventDefault(); if (email.trim()) void add(); }}><input type="email" inputMode="email" placeholder="email@contoh.com" value={email} onChange={(e) => setEmail(e.target.value)} aria-label="Email admin baru" /><button type="submit" disabled={busy || !email.trim()}>Tambah admin</button></form>
-        {msg ? <p className="adm-err" role="alert">{msg}</p> : null}
+        <AnimatePresence>{msg ? <motion.p className="adm-err" role="alert" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{msg}</motion.p> : null}</AnimatePresence>
         <p className="adm-note">Admin harus masuk ke Djiwa Pay dengan email yang sama.</p>
       </Panel>
       <Panel title="Tabel keuangan" meta="perkiraan baris" flush><Table rowKey={(r) => r.t} rows={s?.tables ?? []} cols={[{ head: "Tabel", cell: (r) => <code>{r.t}</code> }, { head: "Baris", cell: (r) => nf(r.n), right: true }]} /></Panel>

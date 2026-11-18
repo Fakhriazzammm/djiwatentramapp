@@ -75,3 +75,14 @@ html.adm-root,html.adm-root body{background:#f4f4f6}
   .adm-kpi b{font-size:18px}.adm-tbl .sm{display:none}.adm-tbl th,.adm-tbl td{padding:8px 10px}.adm-range{gap:8px}.adm-dates{width:100%}.adm-dates input{flex:1}.adm-who b,.adm-who small{max-width:170px}
 }
 @media (max-width:380px){.adm-kpis{grid-template-columns:minmax(0,1fr)}}
+
+/* motion helpers */
+.adm-hl{position:absolute;inset:0;background:#111114;z-index:0}.adm-t{position:relative;z-index:1}
+.adm-chips button,.adm-tabs button{position:relative;overflow:hidden}.adm-chips button.on,.adm-tabs button.on{background:transparent;color:#fff}
+.adm-side nav a{position:relative;overflow:hidden}.adm-side nav a.on{background:transparent}.adm-side nav a .adm-ic{position:relative;z-index:1}
+.adm-mnav a{position:relative}.adm-ul{position:absolute;left:10px;right:10px;bottom:-1px;height:2px;background:#111114}.adm-mnav a.on{border-color:transparent}
+.adm-arrow{display:inline-block;font-style:normal}.adm-spin{display:inline-block}
+.adm-btn,.adm-quick button,.adm-pager button,.adm-add button{transition:border-color .15s,background .15s}.adm-btn:active,.adm-pager button:active,.adm-add button:active{background:#f0f0f3}
+.adm-rank li{will-change:transform}.adm-kpi{will-change:transform}.adm-tbl tr.click:active td{background:#f0f0f3}
+.adm-search{transition:border-color .15s,box-shadow .15s}.adm-search:focus,.adm-dates input:focus,.adm-add input:focus,.adm-toolbar select:focus{outline:0;border-color:#111114;box-shadow:0 0 0 3px rgba(17,17,20,.08)}
+.adm-tip{transition:none}

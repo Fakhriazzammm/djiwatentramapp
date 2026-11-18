@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { ago, dLong, dTime, nf, rp, useAdmin } from "./admin-data";
 import { Empty, Kpis, Loading, Panel, Pill, Table, Tabs } from "./admin-ui";
 
@@ -7,7 +8,7 @@ type List = { total: number; page: number; size: number; rows: Row[] };
 const SORTS = [["new", "Terbaru"], ["active", "Aktif terakhir"], ["spent", "Belanja terbanyak"], ["balance", "Saldo terbesar"], ["name", "Nama A–Z"], ["old", "Terlama"]] as const;
 const FILTERS = [["", "Semua"], ["wallet", "Ada saldo"], ["pin", "Punya PIN"], ["inactive", "Nonaktif"]] as const;
 
-const Av = ({ r, size = 34 }: { r: { name: string | null; photo_url: string | null }; size?: number }) => <span className="adm-av" style={{ width: size, height: size, fontSize: size * 0.42 }}>{r.photo_url ? <img src={r.photo_url} alt="" referrerPolicy="no-referrer" loading="lazy" /> : (r.name ?? "?").trim()[0]?.toUpperCase() ?? "?"}</span>;
+const Av = ({ r, size = 34 }: { r: { name: string | null; photo_url: string | null }; size?: number }) => <motion.span className="adm-av" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 380, damping: 20 }} style={{ width: size, height: size, fontSize: size * 0.42 }}>{r.photo_url ? <img src={r.photo_url} alt="" referrerPolicy="no-referrer" loading="lazy" /> : (r.name ?? "?").trim()[0]?.toUpperCase() ?? "?"}</motion.span>;
 
 export function UsersPage({ open }: { open: (id: string) => void }) {
   const [q, setQ] = useState(""), [term, setTerm] = useState(""), [sort, setSort] = useState<(typeof SORTS)[number][0]>("new"), [filter, setFilter] = useState<(typeof FILTERS)[number][0]>(""), [page, setPage] = useState(1);
@@ -16,7 +17,7 @@ export function UsersPage({ open }: { open: (id: string) => void }) {
   const pages = data ? Math.max(1, Math.ceil(data.total / data.size)) : 1;
   return <div className="adm-stack">
     <div className="adm-toolbar">
-      <input className="adm-search" type="search" placeholder="Cari nama, email, nomor HP, atau ID…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Cari pengguna" />
+      <motion.input whileFocus={{ scale: 1.01 }} className="adm-search" type="search" placeholder="Cari nama, email, nomor HP, atau ID…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Cari pengguna" />
       <select value={sort} onChange={(e) => { setSort(e.target.value as typeof sort); setPage(1); }} aria-label="Urutkan">{SORTS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
     </div>
     <Tabs items={FILTERS} value={filter} onChange={(f) => { setFilter(f); setPage(1); }} />
@@ -42,7 +43,7 @@ export function UserDetailPage({ id, back }: { id: string; back: () => void }) {
   const p = data.profile, f = data.finance, kind = (k: string) => data.kinds.find((x) => x.kind === k);
   const rows: [string, string][] = [["ID", p.source_id], ["Email", p.email || "—"], ["Nomor HP", p.phone || "—"], ["Username", p.username || "—"], ["Kota", [p.city, p.province].filter(Boolean).join(", ") || "—"], ["Jenis kelamin", p.gender || "—"], ["Terdaftar", dLong(String(p.created_at).slice(0, 10))], ["Aktif terakhir", dTime(p.last_active_at)], ["Kunjungan aplikasi", nf(p.djiwaapp_visit_count ?? 0)], ["Poin", nf(p.total_points ?? 0)], ["Member hingga", p.membership_expires_at ? dLong(String(p.membership_expires_at).slice(0, 10)) : "—"]];
   return <div className="adm-stack">
-    <button type="button" className="adm-back" onClick={back}>← Semua pengguna</button>
+    <motion.button type="button" className="adm-back" onClick={back} whileHover={{ x: -3 }} whileTap={{ scale: 0.96 }}>← Semua pengguna</motion.button>
     <Panel><div className="adm-prof"><Av r={p as any} size={56} /><div><h2>{p.name || "Tanpa nama"}</h2><span className="adm-sub">{p.email} {p.phone ? `· ${p.phone}` : ""}</span><div className="adm-tags">{p.is_active ? <Pill tone="ok">aktif</Pill> : <Pill tone="bad">nonaktif</Pill>}{p.has_pin ? <Pill tone="ok">PIN aktif</Pill> : <Pill>tanpa PIN</Pill>}{p.locked_until && new Date(p.locked_until) > new Date() ? <Pill tone="bad">PIN terkunci</Pill> : null}{data.google.connected ? <Pill tone="info">Google terhubung</Pill> : null}{data.push ? <Pill>push {data.push}</Pill> : null}</div></div></div></Panel>
     <Kpis items={[{ label: "Saldo dompet", value: rp(p.available_balance), hint: `tertahan ${rp(p.held_balance)}` }, { label: "Total masuk", value: rp(p.total_credited) }, { label: "Total keluar", value: rp(p.total_debited) }, { label: "Belanja pesanan", value: rp(p.total_spent), hint: `${nf(p.total_orders ?? 0)} pesanan` }, { label: "Catatan keuangan", value: nf(f.entries), hint: `${nf(f.accounts)} dompet` }, { label: "Hari aktif di Pay", value: nf(data.traffic.days), hint: `${nf(data.traffic.n)} tampilan` }]} />
     <Tabs items={[["ringkas", "Ringkasan"], ["dompet", "Dompet"], ["aktivitas", "Aktivitas"]] as const} value={tab} onChange={setTab} />
