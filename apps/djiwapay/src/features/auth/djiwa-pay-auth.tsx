@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Btn, Ic, Screen, Sky } from "../shell/dpx-ui";
-import { DayBackdrop, FeatureShowcase, FloatingStats, useDrift } from "./auth-showcase";
+import { FeatureShowcase, FloatingStats, useDrift } from "./auth-showcase";
 import { Mascot } from "../shell/dpx-ui";
 import { authClient, resolveIdentity, signInWithGoogle } from "../../lib/identity-adapter";
 
@@ -9,7 +9,7 @@ function GoogleMark() { return <svg viewBox="0 0 24 24" width="20" height="20" a
 
 export function DjiwaPayAuth({ error }: { error: string | null }) {
   const [busy, setBusy] = useState(false);
-  const { part, pick } = useDrift();
+  const { part } = useDrift();
   const [authError, setAuthError] = useState("");
   const [emailOpen, setEmailOpen] = useState(false), [email, setEmail] = useState(""), [password, setPassword] = useState("");
   const signInEmail = async (e: React.FormEvent) => {
@@ -22,16 +22,15 @@ export function DjiwaPayAuth({ error }: { error: string | null }) {
     setBusy(false);
   };
   const signIn = () => { setBusy(true); setAuthError(""); signInWithGoogle().catch((cause) => { setAuthError(cause instanceof Error ? cause.message : "Gagal membuka halaman masuk"); setBusy(false); }); };
-  return <Screen className="dpx-auth"><Sky deep scene={part}><DayBackdrop part={part} onPick={pick} /><div className="dpx-pad dpx-nobar" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
-    <div className="dpx-hdr"><Btn type="button" className="dpx-rb" onClick={() => window.history.back()} aria-label="Kembali"><Ic n="back" /></Btn></div>
+  return <Screen className="dpx-auth"><Sky deep scene={part}><div className="dpx-pad dpx-nobar" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
     <div className="dpx-auth-hero" style={{ flex: 1 }}>
       <div className="dpx-auth-mascot"><FloatingStats />
         <motion.div initial={{ opacity: 0, scale: 0.6, rotate: -8 }} animate={{ opacity: 1, scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 200, damping: 14 }} whileTap={{ scale: 0.92, rotate: 6 }}>
           <motion.div animate={{ y: [0, -9, 0] }} transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}><Mascot px={170} style={{ filter: "drop-shadow(0 16px 24px rgba(45,36,29,.22))" }} /></motion.div>
         </motion.div>
       </div>
-      <motion.h1 className="dpx-page-title" style={{ fontSize: 32 }} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>Catat uangmu,<br />bayar dengan tenang.</motion.h1>
-      <motion.p className="dpx-sub" style={{ maxWidth: 300, fontSize: 15, marginTop: 10 }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>Catat pengeluaran dengan satu kalimat, atur anggaran, lalu bayar tagihan dan isi pulsa — semuanya otomatis tercatat.</motion.p>
+      <div className="dpx-auth-copy"><motion.h1 className="dpx-page-title" style={{ fontSize: 32 }} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>Catat uangmu,<br />bayar dengan tenang.</motion.h1>
+      <motion.p className="dpx-sub" style={{ maxWidth: 300, fontSize: 15, marginTop: 10 }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>Catat pengeluaran dengan satu kalimat, atur anggaran, lalu bayar tagihan dan isi pulsa — semuanya otomatis tercatat.</motion.p></div>
       <FeatureShowcase />
     </div>
     <Btn type="button" className="dpx-gbtn" disabled={busy} onClick={() => void signIn()}><GoogleMark />{busy ? "Menghubungkan..." : "Lanjutkan dengan Google"}</Btn>
