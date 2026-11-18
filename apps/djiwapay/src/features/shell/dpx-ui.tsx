@@ -170,8 +170,18 @@ export function Sky({ children, deep = false, scene: sceneProp }: { children: Re
   </div>;
 }
 
+let scrollLocks = 0, lockedY = 0;
+/** Keeps the page behind an open sheet still, so a swipe scrolls the sheet (iOS ignores overflow:hidden on body). */
+function lockPageScroll() {
+  if (typeof document === "undefined") return () => {};
+  const b = document.body;
+  if (scrollLocks++ === 0) { lockedY = window.scrollY; b.style.position = "fixed"; b.style.top = `-${lockedY}px`; b.style.left = "0"; b.style.right = "0"; b.style.width = "100%"; }
+  return () => { if (--scrollLocks === 0) { b.style.position = ""; b.style.top = ""; b.style.left = ""; b.style.right = ""; b.style.width = ""; window.scrollTo(0, lockedY); } };
+}
+
 export function Sheet({ title, onClose, children, label }: { title?: string; onClose: () => void; children: ReactNode; label?: string }) {
   const controls = useDragControls();
+  useEffect(() => lockPageScroll(), []);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
