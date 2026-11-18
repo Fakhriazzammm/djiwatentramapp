@@ -3,7 +3,9 @@ import { toast } from "sonner";
 import { api } from "../lib/api";
 import { CH, donutHTML, fmtRp, spark, svgArea, svgHBars } from "../charts";
 import { Empty, Ic, rp, wib } from "../ui";
-import { PERIODS, wibKey, type PeriodKey } from "../lib/period";
+import { PERIODS, periodDateLabel, wibKey, type PeriodKey } from "../lib/period";
+import type { HeatmapPayload } from "../lib/analytics";
+import { FinanceHourly } from "./FinanceHourly";
 
 type Data = {
   days: number;
@@ -17,6 +19,7 @@ type Data = {
   daily: { day: string; type: string; total: number }[];
   channels: { name: string; total: number }[];
   methods: { name: string; total: number }[];
+  heatmap: HeatmapPayload;
 };
 const CHAN: Record<string, string> = { pos: "POS", app: "Djiwa App", booking: "Booking", gofood: "GoFood", grabfood: "GrabFood", shopeefood: "ShopeeFood", telegram: "Telegram", unknown: "Lainnya" };
 const sgn = (v: number) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1).replace(".", ",")}%`;
@@ -61,6 +64,7 @@ export function FinanceView() {
     ["Rata-rata / order", v.orders ? Math.round(v.revenue / v.orders) : 0, "", v.inSeries, CH.amber],
   ] as const : [];
   const series = v ? (trend === "in" ? [{ name: "Pemasukan", data: v.inSeries, color: CH.blue }] : trend === "out" ? [{ name: "Pengeluaran", data: v.outSeries, color: CH.red }] : [{ name: "Pemasukan", data: v.inSeries, color: CH.blue }, { name: "Pengeluaran", data: v.outSeries, color: CH.red }]) : [];
+  const periodLabel = period === "custom" ? `${periodDateLabel(from)} – ${periodDateLabel(to)}` : PERIODS.find(([key]) => key === period)?.[1] ?? "Semua";
 
   return (
     <div className="fin">
@@ -112,6 +116,7 @@ export function FinanceView() {
             <div className="mr"><span>Selisih kas</span><b>{rp(data.cash.net)}</b></div>
             <div className="mr"><span className="meta">Pemasukan dari POS, Djiwa App, dan aplikasi lain masuk otomatis ke sistem.</span></div>
           </div>
+          <div className="s12"><FinanceHourly heatmap={data.heatmap ?? { sampleDays: 0, cells: [] }} periodLabel={periodLabel} /></div>
           <div className="panel s12">
             <div className="ph"><span className="lab g">Transaksi terbaru</span><span className="meta"><span className="live" style={{ padding: "3px 9px" }}>LIVE</span></span></div>
             <div className="tw2"><table>

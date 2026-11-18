@@ -31,6 +31,7 @@ export const wibKey = (value: number | string | Date) => {
   const d = new Date(new Date(value).getTime() + WIB_MS);
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
 };
+export const periodDateLabel = (key: string) => new Date(`${key}T00:00:00+07:00`).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
 export const wibStart = (key: string) => new Date(`${key}T00:00:00+07:00`).getTime();
 export const wibEnd = (key: string) => new Date(`${key}T23:59:59.999+07:00`).getTime();
 const addDays = (key: string, days: number) => wibKey(wibStart(key) + days * 86_400_000);

@@ -150,7 +150,7 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
     const days = series.length;
     const groupFormat = hourly ? 'HH24":00"' : bucket === "month" ? "YYYY-MM" : "YYYY-MM-DD";
     const wibDate = `to_char(to_timestamp(tx_date / 1000.0) AT TIME ZONE 'Asia/Jakarta', '${groupFormat}')`;
-    const [cash, sales, txs, byCategory, daily, channels, methods] = await Promise.all([
+    const [cash, sales, txs, byCategory, daily, channels, methods, heatmap] = await Promise.all([
       pool.query(`SELECT public.admin_cashflow_summary($1,$2) AS r`, [start, end]),
       pool.query(`SELECT public.admin_sales_summary($1::jsonb) AS r`, [JSON.stringify(series)]),
       pool.query(
@@ -185,6 +185,8 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
            FROM pos.orders o WHERE o.status IN ('paid','completed') AND o.created_at >= $1 AND o.created_at < $2 GROUP BY 1 ORDER BY sum(o.total_amount) DESC`,
         [start, end],
       ).catch(() => ({ rows: [] as { name: string; total: string }[] })),
+      pool.query(`SELECT public.admin_sales_heatmap($1,$2) AS r`, [start, end])
+        .catch(() => ({ rows: [] as { r: unknown }[] })),
     ]);
     const c0 = (cash.rows[0]?.r ?? { income: 0, expense: 0, net: 0 }) as Record<string, number>;
     return json({
@@ -201,6 +203,7 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
       daily: (daily.rows as { day: string; tx_type: string; total: string }[]).map((r) => ({ day: r.day, type: r.tx_type, total: Number(r.total) })),
       channels: (channels.rows as { name: string; total: string }[]).map((r) => ({ name: r.name, total: Number(r.total) })),
       methods: (methods.rows as { name: string; total: string }[]).map((r) => ({ name: r.name, total: Number(r.total) })),
+      heatmap: (heatmap.rows[0]?.r ?? { sampleDays: 0, cells: [] }) as { sampleDays: number; cells: unknown[] },
     });
   });
 
