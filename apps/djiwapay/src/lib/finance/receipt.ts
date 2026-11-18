@@ -93,3 +93,11 @@ export async function rereadReceipt(id: string): Promise<ScannedReceipt> {
   if (!r.ok || !body?.receipt) throw new Error(SCAN_ERROR_TEXT[body?.error as ScanErrorCode] ?? "Foto struk belum dapat dibaca ulang. Coba lagi.");
   return { ...body.receipt, ...normalizeReceiptDocument(body.receipt) };
 }
+
+/** Adds the scanned receipt to an existing entry (e.g. from a payment e-mail) without changing what was paid. */
+export async function attachScannedReceipt(receipt: ScannedReceipt, entry: Entry): Promise<Entry> {
+  const r = await fetch(`/api/finance/receipts/${encodeURIComponent(receipt.id)}/attach`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ document: receipt, entryId: entry.id, reviewed: true }) });
+  const body = await r.json().catch(() => null);
+  if (!r.ok || !body?.entry) throw new Error(r.status === 401 ? SCAN_ERROR_TEXT.UNAUTHORIZED : RECEIPT_ERRORS[body?.error] ?? "Belum tersimpan. Periksa koneksi lalu coba lagi.");
+  return { ...entry, receiptId: receipt.id };
+}

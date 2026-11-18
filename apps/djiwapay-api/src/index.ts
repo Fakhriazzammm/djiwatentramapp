@@ -13,7 +13,7 @@ import { registerAssetRoutes } from "./assets.js";
 import { registerNewsRoutes } from "./news.js";
 import { registerPushRoutes } from "./push.js";
 export { poolTx };
-import { confirmReceipt, getReceipt, ReceiptProblem } from "./receipt-records.js";
+import { attachReceipt, confirmReceipt, getReceipt, ReceiptProblem } from "./receipt-records.js";
 import { isEmptyRead, readReceipt, type ReceiptRead } from "./receipt.js";
 import { disconnect as googleDisconnect, FEATURES, finishConnect, googleConfig, startConnect, status as googleStatus, syncCalendar, type Feature, type Fetch, type GoogleCfg } from "./google.js";
 import { confirmDriveRemovals, confirmSheetDeletes, requestSheet, touchDrive } from "./google-sync.js";
@@ -122,6 +122,11 @@ export function createApp(d: Deps) {
       const out = await confirmReceipt(d.db, uid(c), c.req.param("id"), await c.req.json().catch(()=>null));
       return json(c, { success: true, ...out });
     } catch (e) { if (e instanceof ReceiptProblem) return json(c, { success: false, error: e.code }, e.status); console.error("receipt confirmation failed"); return json(c, { success: false, error: "SAVE_FAILED" }, 500); }
+  });
+
+  app.post("/api/finance/receipts/:id/attach", async c => {
+    try { return json(c, { success: true, ...(await attachReceipt(d.db, uid(c), c.req.param("id"), await c.req.json().catch(()=>null))) }); }
+    catch (e) { if (e instanceof ReceiptProblem) return json(c, { success: false, error: e.code }, e.status); console.error("receipt attach failed"); return json(c, { success: false, error: "SAVE_FAILED" }, 500); }
   });
 
   app.post("/api/finance/receipts/:id/revise", async c => {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Btn, Ic, Sheet } from "../shell/dpx-ui";
 import { formatDateTime } from "../../lib/djiwa-pay-format";
-import { SCAN_ERROR_TEXT, ScanError, compressImage, receiptImageUrl, scanReceipt, fetchReceipt, rereadReceipt, confirmScannedReceipt, reconcileReceipt, receiptNumber, roundMoney, type ScannedReceipt, type ReceiptDocument } from "../../lib/finance/receipt";
+import { SCAN_ERROR_TEXT, ScanError, compressImage, receiptImageUrl, scanReceipt, fetchReceipt, rereadReceipt, confirmScannedReceipt, attachScannedReceipt, reconcileReceipt, receiptNumber, roundMoney, type ScannedReceipt, type ReceiptDocument } from "../../lib/finance/receipt";
 import { pushDiff } from "../../lib/finance/sync";
 import type { Entry } from "../../lib/finance/types";
 import type { Finance } from "../../lib/finance/use-finance";
@@ -15,7 +15,7 @@ const rupiah = (n: number) => `Rp ${n.toLocaleString("id-ID", { maximumFractionD
 const moneyText = (n: number | null) => n === null ? "Belum terbaca" : rupiah(n);
 const dateInput = (s: string | null) => { if (!s || !Number.isFinite(Date.parse(s))) return ""; const d = new Date(s); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16); };
 
-export function ReceiptFlow({ file, onRetry, ...props }: FlowProps & { file: File; onRetry: () => void }) {
+export function ReceiptFlow({ file, onRetry, ...props }: FlowProps & { file: File; onRetry: () => void; attach?: Entry }) {
   const [stage, setStage] = useState<Stage>({ s: "reading", preview: "" });
   const [step, setStep] = useState(0);
   const started = useRef(false);
@@ -43,15 +43,15 @@ function NumberField({ label, value, onChange }: { label: string; value: number 
 }
 
 /** Same editor for new camera/upload results and persistent receipt corrections. */
-export function ReceiptReview({ initial, preview, onRetry, entry, ...props }: FlowProps & { initial: ScannedReceipt; preview?: string; onRetry?: () => void; entry?: Entry }) {
+export function ReceiptReview({ initial, preview, onRetry, entry, attach, ...props }: FlowProps & { initial: ScannedReceipt; preview?: string; onRetry?: () => void; entry?: Entry; attach?: Entry }) {
   const { fin, notify, onClose, balances } = props;
-  const [doc, setDoc] = useState<ScannedReceipt>(()=>({ ...initial, items: initial.items.map(i=>({...i,components:i.components ?? []})), charges: initial.charges.map(c=>({...c})) }));
+  const [doc, setDoc] = useState<ScannedReceipt>(()=>({ ...initial, purchasedAt: initial.purchasedAt ?? attach?.at ?? null, items: initial.items.map(i=>({...i,components:i.components ?? []})), charges: initial.charges.map(c=>({...c})) }));
   const [accountId, setAccountId] = useState(()=>{
-    if(entry)return entry.accountId;
+    if(entry || attach)return (entry ?? attach)!.accountId;
     const method=(initial.paymentMethod ?? "").toLowerCase().replace(/[^a-z0-9]/g,"");
     return method ? fin.state.accounts.find(a=>!a.archived && a.name.toLowerCase().replace(/[^a-z0-9]/g,"").includes(method))?.id ?? "" : "";
   });
-  const [categoryId, setCategoryId] = useState(entry?.categoryId ?? "belanja");
+  const [categoryId, setCategoryId] = useState((entry ?? attach)?.categoryId ?? "belanja");
   const [pick, setPick] = useState<"account" | "category" | null>(null);
   const [checked, setChecked] = useState(false), [saving, setSaving] = useState(false), [error, setError] = useState("");
   const savingRef = useRef(false);
@@ -70,16 +70,16 @@ export function ReceiptReview({ initial, preview, onRetry, entry, ...props }: Fl
       if (!account || account.archived || !category || category.income) throw new Error("Pilih dompet dan kategori yang aktif.");
       // Make the selected local-first account/category available before the atomic receipt save.
       await pushDiff({ upserts: { accounts: [account], categories: [category] }, deletes: {} });
-      const saved = await confirmScannedReceipt(doc, accountId, categoryId, Boolean(entry));
+      const saved = attach ? await attachScannedReceipt(doc, attach) : await confirmScannedReceipt(doc, accountId, categoryId, Boolean(entry));
       fin.dispatch({ type: "entry/restore", entry: saved });
-      onClose(); notify(entry ? "Rincian struk dan nominal catatan diperbarui" : "Struk lengkap tersimpan sebagai 1 catatan");
+      onClose(); notify(attach ? "Rincian struk ditambahkan ke catatan" : entry ? "Rincian struk dan nominal catatan diperbarui" : "Struk lengkap tersimpan sebagai 1 catatan");
     } catch (e) { setError(e instanceof Error ? e.message : "Belum tersimpan. Coba lagi."); }
     finally { savingRef.current=false;setSaving(false); }
   };
   if (pick === "account") return <AccountSheet state={fin.state} balances={balances} value={accountId} onPick={id=>{setAccountId(id);setChecked(false);}} onClose={()=>setPick(null)} />;
   if (pick === "category") return <CategorySheet categories={fin.state.categories} income={false} value={categoryId} onPick={id=>{setCategoryId(id);setChecked(false);}} onClose={()=>setPick(null)} />;
-  return <Sheet title={entry ? "Ubah rincian struk" : "Periksa rincian struk"} onClose={()=>{if(!savingRef.current)onClose();}}>
-    <p className="dpx-sub">Satu struk, satu pengeluaran. Semua rincian tetap tersimpan.</p>
+  return <Sheet title={attach ? "Tambah rincian struk" : entry ? "Ubah rincian struk" : "Periksa rincian struk"} onClose={()=>{if(!savingRef.current)onClose();}}>
+    <p className="dpx-sub">{attach ? `Nominal bayar ${rupiah(attach.amount)}, dompet, dan waktu dari email tidak berubah. Struk menambahkan item, pajak, dan diskon.` : "Satu struk, satu pengeluaran. Semua rincian tetap tersimpan."}</p>
     <fieldset className="dpx-receipt-editor" disabled={saving}>
       <div className="dpx-rcs"><label className="dpx-receipt-field"><span>Toko / tempat</span><input value={doc.merchant} maxLength={160} onChange={e=>change({merchant:e.target.value})} /></label>
       <label className="dpx-receipt-field"><span>Tanggal dan waktu transaksi</span><input type="datetime-local" value={dateInput(doc.purchasedAt)} onChange={e=>change({purchasedAt:e.target.value ? new Date(e.target.value).toISOString() : null})} /></label>
@@ -111,12 +111,12 @@ export function ReceiptReview({ initial, preview, onRetry, entry, ...props }: Fl
       </div><div className={`dpx-rc-verdict ${totals.valid ? "ok" : "bad"}`} aria-live="polite"><div><small>Total hasil hitung</small><b>{rupiah(totals.computed)}</b></div><div><small>Selisih dengan struk</small><b>{rupiah(totals.difference)}</b></div><em>{totals.valid ? "Cocok dengan struk" : "Belum cocok"}</em></div>
       {totals.problems.length ? <div className="dpx-note dpx-warn" role="status"><div><b>Perlu diperiksa</b><ul>{totals.problems.map((p,k)=><li key={k}>{p}</li>)}</ul></div></div> : null}
       {doc.warnings.length ? <div className="dpx-note dpx-warn"><div><b>Catatan pembacaan</b><ul>{doc.warnings.map((w,k)=><li key={k}>{w}</li>)}</ul></div></div> : null}
-      <Btn type="button" className="dpx-walletpick" onClick={()=>setPick("account")}><Ic n="wallet" /><span><small>Dompet</small><b>{accountId ? accName(fin.state,accountId) : "Pilih dompet pembayaran"}</b></span><em>Ganti</em></Btn>
-      <Btn type="button" className="dpx-walletpick" onClick={()=>setPick("category")}><Ic n="tag" /><span><small>Kategori catatan</small><b>{catOf(fin.state,categoryId).name}</b></span><em>Ganti</em></Btn>
+      {attach ? null : <><Btn type="button" className="dpx-walletpick" onClick={()=>setPick("account")}><Ic n="wallet" /><span><small>Dompet</small><b>{accountId ? accName(fin.state,accountId) : "Pilih dompet pembayaran"}</b></span><em>Ganti</em></Btn>
+      <Btn type="button" className="dpx-walletpick" onClick={()=>setPick("category")}><Ic n="tag" /><span><small>Kategori catatan</small><b>{catOf(fin.state,categoryId).name}</b></span><em>Ganti</em></Btn></>}
     </fieldset>
     {error ? <div className="dpx-note dpx-danger" role="alert">{error}</div> : null}
     <div className="dpx-rc-bar"><label className="dpx-receipt-check"><input type="checkbox" checked={checked} onChange={e=>setChecked(e.target.checked)} /> Saya sudah memeriksa semua item, kuantitas, biaya, total, dan dompet pembayaran.</label>
-    <Btn type="button" className="dpx-btn" disabled={saving || !checked || !totals.valid || !metadataValid || !selectionValid} onClick={()=>void save()}>{saving ? "Menyimpan…" : entry ? "Simpan perubahan struk" : `Simpan 1 catatan · ${rupiah(doc.total)}`}</Btn>
+    <Btn type="button" className="dpx-btn" disabled={saving || !checked || !totals.valid || !metadataValid || !selectionValid} onClick={()=>void save()}>{saving ? "Menyimpan…" : attach ? "Simpan rincian struk" : entry ? "Simpan perubahan struk" : `Simpan 1 catatan · ${rupiah(doc.total)}`}</Btn>
     {onRetry ? <Btn type="button" className="dpx-btn dpx-soft" disabled={saving} onClick={onRetry}>Pilih foto lain</Btn> : null}
     </div>
   </Sheet>;

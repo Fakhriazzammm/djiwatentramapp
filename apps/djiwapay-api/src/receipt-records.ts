@@ -45,3 +45,28 @@ export async function confirmReceipt(db: Tx, userId: string, id: string, body: a
     return { receipt: receiptFromRow(saved.rows[0]), entry: entryFromRow(inserted.rows[0]), alreadySaved: false };
   });
 }
+
+/** Adds a scanned receipt to an entry that already exists (e.g. read from a payment e-mail): the paid amount, wallet and time stay as the bank reported them; the receipt supplies items, tax and discounts. */
+export async function attachReceipt(db: Tx, userId: string, id: string, body: any) {
+  if (!body || body.reviewed !== true || typeof body.entryId !== "string" || !body.document || typeof body.document !== "object") throw new ReceiptProblem("BAD_REQUEST", 400);
+  const document: ReceiptDocument = normalizeReceiptDocument(body.document);
+  if (!reconcileReceipt(document).valid || !document.merchant) throw new ReceiptProblem("RECEIPT_MISMATCH");
+  if (!document.purchasedAt || !Number.isFinite(Date.parse(document.purchasedAt))) document.purchasedAt = null as never; else document.purchasedAt = new Date(document.purchasedAt).toISOString();
+  return db.tx(async q => {
+    const found = await q.query("select * from finance.receipts where user_id=$1 and id=$2 for update", [userId, id]);
+    const r = found.rows[0];
+    if (!r) throw new ReceiptProblem("NOT_FOUND", 404);
+    const used = await q.query("select id from finance.entries where user_id=$1 and receipt_id=$2", [userId, id]);
+    if (used.rows.length && used.rows[0].id !== body.entryId) throw new ReceiptProblem("ALREADY_RECORDED", 409);
+    const entry = await q.query("select * from finance.entries where user_id=$1 and id=$2 for update", [userId, body.entryId]);
+    if (!entry.rows[0]) throw new ReceiptProblem("NOT_FOUND", 404);
+    if (entry.rows[0].receipt_id && entry.rows[0].receipt_id !== id) throw new ReceiptProblem("ALREADY_RECORDED", 409);
+    const details = { version: 2, original: r.details?.original ?? receiptFromRow(r), reviewed: document, attachedTo: body.entryId };
+    const tax = document.charges.filter(c => c.kind === "tax").reduce((s, c) => s + (c.amount ?? 0), 0);
+    const saved = await q.query("update finance.receipts set merchant=$3,purchased_at=$4,total=$5,tax=$6,items=$7::jsonb,details=$8::jsonb,confirmed_at=now() where user_id=$1 and id=$2 returning *", [userId, id, document.merchant, document.purchasedAt, document.total, tax, JSON.stringify(document.items), JSON.stringify(details)]);
+    const updated = await q.query("update finance.entries set receipt_id=$3 where user_id=$1 and id=$2 returning *", [userId, body.entryId, id]);
+    await q.query("insert into finance.profiles(user_id,version) values($1,1) on conflict(user_id) do update set version=finance.profiles.version+1,updated_at=now()", [userId]);
+    await q.query("update finance.google_sheet_exports set dirty=true,next_sync_at=least(next_sync_at,now()+interval '8 seconds') where user_id=$1", [userId]);
+    return { receipt: receiptFromRow(saved.rows[0]), entry: entryFromRow(updated.rows[0]), alreadySaved: false };
+  });
+}

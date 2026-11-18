@@ -52,7 +52,12 @@ export function EntrySheet({ entry, fin, notify, onClose, onEdit, onPickCategory
   const sign = entry.kind === "in" ? "+" : entry.kind === "out" ? "−" : "";
   const [confirm, setConfirm] = useState(false);
   const [receiptEdit, setReceiptEdit] = useState<ScannedReceipt | null>(null);
+  const [attachFile, setAttachFile] = useState<File | null>(null);
   const del = () => { const copy = entry; dispatch({ type: "entry/delete", id: entry.id }); onClose(); notify("Catatan dihapus", () => dispatch({ type: "entry/restore", entry: copy })); };
+  if (attachFile) {
+    const balances = Object.fromEntries(state.accounts.map(a=>[a.id, accountBalance(a, fin.entries)]));
+    return <ReceiptFlow key={attachFile.name + attachFile.size} file={attachFile} fin={fin} notify={notify} balances={balances} onClose={onClose} onRetry={() => setAttachFile(null)} attach={entry} />;
+  }
   if (receiptEdit) {
     const balances = Object.fromEntries(state.accounts.map(a=>[a.id, accountBalance(a, fin.entries)]));
     return <ReceiptReview fin={fin} notify={notify} onClose={onClose} balances={balances} initial={receiptEdit} entry={entry} />;
@@ -70,6 +75,7 @@ export function EntrySheet({ entry, fin, notify, onClose, onEdit, onPickCategory
       <p className="dpx-hint">{entry.source === "pay" ? "Transaksi Djiwa Pay otomatis." : "Dicatat manual. Untuk rincian per item, foto atau unggah strukanya."}</p>
     </Breakdown> : null}
     {entry.receiptId ? <ReceiptAttachment id={entry.receiptId} onEdit={setReceiptEdit} ledgerAmount={entry.amount} /> : null}
+    {entry.source === "email" && !entry.receiptId ? <label className="dpx-btn dpx-soft" style={{ display: "flex", justifyContent: "center", gap: 8, cursor: "pointer" }}><Ic n="scan" size="sm" /> Scan struk untuk rincian item, pajak, diskon<input type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) setAttachFile(f); }} /></label> : null}
     {entry.inboundId ? <EmailOrigin inboundId={entry.inboundId} onUndo={() => { const copy = entry; dispatch({ type: "entry/delete", id: entry.id }); onClose(); notify("Catatan dari email diurungkan", () => dispatch({ type: "entry/restore", entry: copy })); }} /> : null}
     {pay ? <><Btn type="button" className="dpx-btn dpx-ghost" onClick={() => onPickCategory(entry.categoryId)}><Ic n="tag" size="sm" /> Ubah kategori</Btn><p className="dpx-hint dpx-center">Nominal transaksi Djiwa Pay tidak dapat diubah. Kategori boleh.</p></>
       : <div className="dpx-flex dpx-mt">{!entry.receiptId ? <Btn type="button" className="dpx-btn dpx-ghost" style={{ margin: 0 }} onClick={onEdit}><Ic n="edit" size="sm" /> Ubah</Btn> : null}<Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} onClick={() => setConfirm(true)}><Ic n="trash" size="sm" /> Hapus</Btn></div>}
