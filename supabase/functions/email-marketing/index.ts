@@ -16,7 +16,7 @@ const pos = () => admin.schema("pos");
 
 const HELIPOD_BASE = "https://mail.helipod.io/api/email";
 const SEND_CHUNK = 25;
-const TIME_BUDGET_MS = 100_000;
+const TIME_BUDGET_MS = 45_000; // edge workers are killed after 60s (main/index.ts workerTimeoutMs)
 const CUSTOMER_COLUMNS = "source_id,email,name,nickname,marketing_consent,total_orders,total_spent,wallet_balance,last_active_at,last_order_at,membership_expires_at,created_at";
 /** Provider errors that mean "stop the whole campaign", not "this recipient is bad". */
 const CAMPAIGN_STOPPING = new Set(["DAILY_QUOTA_EXCEEDED", "MONTHLY_QUOTA_EXCEEDED", "PAYG_DISABLED", "INSUFFICIENT_BALANCE", "REPUTATION_SUSPENDED", "PLATFORM_REPUTATION", "TENANT_PAUSED", "SENDING_DISABLED", "DOMAIN_NOT_VERIFIED", "DOMAIN_NOT_FOUND", "INVALID_API_KEY", "API_KEY_EXPIRED", "NO_PLAN", "RATE_LIMITED"]);

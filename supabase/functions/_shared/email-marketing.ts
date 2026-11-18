@@ -177,7 +177,7 @@ export function wrapEmail(inner: string, preheader = "") {
 <span style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader)}</span>
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f4f6;padding:24px 12px;"><tr><td align="center">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #e6e6ea;">
-<tr><td style="padding:22px 28px;border-bottom:1px solid #e6e6ea;"><img src="${LOGO_URL}" alt="Djiwa Tentram" height="34" style="display:block;height:34px;border:0;"></td></tr>
+<tr><td style="padding:18px 28px;border-bottom:1px solid #e6e6ea;"><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td width="40" style="padding:0 10px 0 0;"><img src="${LOGO_URL}" alt="" width="36" height="36" style="display:block;width:36px;height:36px;border:0;border-radius:18px;"></td><td style="font-size:18px;font-weight:700;letter-spacing:-0.01em;color:#1a5dc6;">Djiwa Tentram</td></tr></table></td></tr>
 <tr><td style="padding:28px;font-size:15px;line-height:1.6;">${inner}</td></tr>
 <tr><td style="padding:18px 28px;border-top:1px solid #e6e6ea;background:#fafafb;font-size:12px;line-height:1.6;color:#6a6a76;">
 Kamu menerima email ini karena kamu terdaftar di Djiwa Tentram dan setuju menerima info promo.<br>
