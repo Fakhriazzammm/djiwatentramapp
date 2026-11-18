@@ -53,6 +53,7 @@ describe("KOL visit SOW + confirmation email contracts", () => {
     const worker = read("../../supabase/functions/kol-mail/index.ts");
     expect(worker).toContain("idempotencyKey: `kol-outbox-${row.id}`");
     expect(worker).toContain("x-cron-secret");
+    expect(worker).toContain("serviceRoleKey");
     expect(worker).toContain("MONTHLY_QUOTA_EXCEEDED");
     expect(worker).toContain("BACKOFF_MIN");
     expect(worker).toContain("kol_outbox_claim");

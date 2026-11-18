@@ -103,11 +103,19 @@ async function processQueue() {
   return totals;
 }
 
+/** Cron memakai service role key milik container ini (header Authorization), atau x-cron-secret bila CRON_SECRET diisi. */
+function authorized(req: Request) {
+  const same = (a: string, b: string) => a.length === b.length && a.length > 0 && [...a].reduce((diff, ch, i) => diff | (ch.charCodeAt(0) ^ b.charCodeAt(i)), 0) === 0;
+  const bearer = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  if (bearer && same(bearer, serviceRoleKey!)) return true;
+  const cronSecret = Deno.env.get("CRON_SECRET") || "";
+  return Boolean(cronSecret) && same(req.headers.get("x-cron-secret") ?? "", cronSecret);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return response({ success: false, error: "Method tidak diizinkan" }, 405);
-  const cronSecret = Deno.env.get("CRON_SECRET") || "";
-  if (!cronSecret || req.headers.get("x-cron-secret") !== cronSecret) return response({ success: false, error: "Unauthorized" }, 401);
+  if (!authorized(req)) return response({ success: false, error: "Unauthorized" }, 401);
   try {
     const body = await req.json().catch(() => ({}));
     const action = typeof body?.action === "string" ? body.action : "process";
