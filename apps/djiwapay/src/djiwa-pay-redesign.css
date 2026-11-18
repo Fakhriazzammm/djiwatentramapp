@@ -1097,3 +1097,4 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 .dpx-auth-found small{font:500 10.5px var(--font);color:var(--faint);margin-top:auto}
 
 .dpx .dpx-es-bar{display:flex;gap:10px;margin-top:14px}.dpx .dpx-es-bar .dpx-btn{margin-top:0;flex:1}
+.dpx .dpx-es-bar .dpx-btn{padding-left:8px;padding-right:8px;white-space:nowrap}
