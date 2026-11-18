@@ -1,5 +1,6 @@
 import type { Hono } from "hono";
 import type { Tx } from "./sync.js";
+import { userDeep, usersCsv, usersGrowth, usersList } from "./admin-users.js";
 
 /** Read-only access to the shared customer/wallet database (the auth server's). */
 export type AuthDb = { query: (text: string, params?: unknown[]) => Promise<{ rows: any[] }> };
@@ -111,44 +112,6 @@ export async function traffic(d: AdminDeps, from?: string, to?: string) {
   return { range: r, pages, referrers: refs, devices, browsers, hours, weekdays: dows, daily: daily.map((x: any) => ({ ...x, day: iso(x.day) })), recent, live: num(live), visitors: { fresh: num(fresh[0]?.fresh), returning: num(fresh[0]?.back) } };
 }
 
-export async function usersList(d: AdminDeps, o: { q?: string; page?: number; sort?: string; filter?: string }) {
-  if (!d.authDb) return { total: 0, page: 1, size: 25, rows: [] };
-  const page = Math.max(1, Math.floor(o.page || 1)), size = 25, q = (o.q || "").trim().toLowerCase().slice(0, 80);
-  const sort = ({ new: "c.created_at desc", old: "c.created_at asc", active: "c.last_active_at desc nulls last", spent: "c.total_spent desc nulls last", balance: "w.available_balance desc nulls last", name: "lower(c.name) asc" } as Record<string, string>)[o.sort || "new"] ?? "c.created_at desc";
-  const where: string[] = [], params: unknown[] = [];
-  if (q) { params.push(`%${q}%`); where.push(`(lower(c.name) like $${params.length} or lower(c.email) like $${params.length} or c.phone like $${params.length} or c.source_id like $${params.length})`); }
-  if (o.filter === "wallet") where.push("coalesce(w.available_balance,0) > 0"); else if (o.filter === "pin") where.push("p.customer_id is not null"); else if (o.filter === "inactive") where.push("c.is_active = false");
-  const from = "from pos.customers c left join pos.customer_wallets w on w.customer_id = c.source_id left join pos.customer_pins p on p.customer_id = c.source_id", cond = where.length ? ` where ${where.join(" and ")}` : "";
-  const [t, rows] = await Promise.all([
-    d.authDb.query(`select count(*)::int n ${from}${cond}`, params),
-    d.authDb.query(`select c.source_id id, c.name, c.email, c.phone, c.photo_url, c.is_active, c.created_at, c.last_active_at, c.total_orders, c.total_spent, w.available_balance balance, w.held_balance held, (p.customer_id is not null) has_pin ${from}${cond} order by ${sort} limit ${size} offset ${(page - 1) * size}`, params),
-  ]);
-  const ids = rows.rows.map((r: any) => r.id);
-  const fin = ids.length ? await d.db.query("select p.user_id, (select count(*)::int from finance.entries e where e.user_id = p.user_id) entries, (select count(*)::int from finance.google_connections g where g.user_id = p.user_id and g.refresh_enc is not null) google, (select max(at) from finance.page_views v where v.user_id = p.user_id) seen from finance.profiles p where p.user_id = any($1)", [ids]) : { rows: [] as any[] };
-  const fm = new Map<string, any>(fin.rows.map((x: any) => [x.user_id, x]));
-  return { total: num(t.rows[0].n), page, size, rows: rows.rows.map((r: any) => { const f = fm.get(r.id); return { ...r, balance: num(r.balance), held: num(r.held), total_spent: num(r.total_spent), finance: f ? { entries: f.entries, google: f.google > 0, seen: f.seen } : null }; }) };
-}
-
-export async function userDetail(d: AdminDeps, id: string) {
-  if (!d.authDb) return null;
-  const c = (await d.authDb.query("select c.*, w.available_balance, w.held_balance, w.total_credited, w.total_debited, w.status wallet_status, (p.customer_id is not null) has_pin, p.failed_attempts, p.locked_until from pos.customers c left join pos.customer_wallets w on w.customer_id = c.source_id left join pos.customer_pins p on p.customer_id = c.source_id where c.source_id = $1", [id])).rows[0];
-  if (!c) return null;
-  const { raw: _raw, ...profile } = c;
-  const [ledger, topups, fin, views, byKind, last, gc, push] = await Promise.all([
-    d.authDb.query("select id, amount, direction, status, transaction_type, balance_after, note, created_at, source_app from pos.customer_wallet_ledger where customer_id = $1 order by created_at desc limit 25", [id]),
-    d.authDb.query("select amount, status, created_at, paid_at from pos.customer_wallet_topups where customer_id = $1 order by created_at desc limit 10", [id]),
-    d.db.query("select (select count(*)::int from finance.entries where user_id=$1) entries, (select count(*)::int from finance.accounts where user_id=$1) accounts, (select count(*)::int from finance.budgets where user_id=$1) budgets, (select count(*)::int from finance.goals where user_id=$1) goals, (select count(*)::int from finance.debts where user_id=$1) debts, (select count(*)::int from finance.assets where user_id=$1) assets, (select count(*)::int from finance.receipts where user_id=$1) receipts, (select count(*)::int from finance.inbound_sources where user_id=$1) sources, (select created_at from finance.profiles where user_id=$1) joined", [id]),
-    d.db.query("select count(*)::int n, max(at) last, count(distinct (\"at\" at time zone 'Asia/Jakarta')::date)::int days from finance.page_views where user_id = $1", [id]),
-    d.db.query("select kind, count(*)::int n, coalesce(sum(amount),0) s from finance.entries where user_id = $1 group by 1", [id]),
-    d.db.query("select at, path, device, browser, standalone from finance.page_views where user_id = $1 order by at desc limit 15", [id]),
-    d.db.query("select granted_scopes from finance.google_connections where user_id = $1 and refresh_enc is not null", [id]),
-    d.db.query("select count(*)::int n from finance.push_subscriptions where user_id = $1", [id]),
-  ]);
-  return { profile: { ...profile, available_balance: num(c.available_balance), held_balance: num(c.held_balance), total_credited: num(c.total_credited), total_debited: num(c.total_debited), total_spent: num(c.total_spent) },
-    ledger: mapNum(ledger.rows, ["amount", "balance_after"]), topups: mapNum(topups.rows, ["amount"]), finance: fin.rows[0], kinds: mapNum(byKind.rows, ["s"]).map((x: any) => ({ kind: x.kind, n: x.n, sum: x.s })),
-    traffic: { ...views.rows[0], recent: last.rows }, google: gc.rows[0] ? { connected: true } : { connected: false }, push: push.rows[0].n };
-}
-
 export async function financeStats(d: AdminDeps, from?: string, to?: string) {
   const r = parseRange(from, to), q = (sql: string) => d.db.query(sql, [r.from, r.to]).then((x) => x.rows);
   const [byCat, bySource, kinds, topUsers, receipts, mail, mailChannels, assets, goals, sizes] = await Promise.all([
@@ -207,8 +170,11 @@ export function registerAdminRoutes(app: Hono, d: AdminDeps, json: (c: any, body
   app.get("/api/finance/admin/finance", guard((c) => financeStats(d, ...range(c))));
   app.get("/api/finance/admin/wallet", guard((c) => walletStats(d, ...range(c))));
   app.get("/api/finance/admin/system", guard(() => system(d)));
-  app.get("/api/finance/admin/users", guard((c) => usersList(d, { q: c.req.query("q"), page: Number(c.req.query("page")) || 1, sort: c.req.query("sort"), filter: c.req.query("filter") })));
-  app.get("/api/finance/admin/users/:id", async (c) => { try { const u = await userDetail(d, c.req.param("id")); return u ? json(c, { success: true, ...u }) : json(c, { success: false, error: "NOT_FOUND" }, 404); } catch (e) { console.error("admin user failed", e instanceof Error ? e.message : e); return json(c, { success: false, error: "QUERY_FAILED" }, 500); } });
+  const listOpts = (c: any) => ({ q: c.req.query("q"), page: Number(c.req.query("page")) || 1, sort: c.req.query("sort"), filter: c.req.query("filter"), cohort: c.req.query("cohort") });
+  app.get("/api/finance/admin/users", guard((c) => usersList(d, listOpts(c))));
+  app.get("/api/finance/admin/users/growth", guard(() => usersGrowth(d)));
+  app.get("/api/finance/admin/users/export", async (c) => { try { const body = await usersCsv(d, listOpts(c)); return new Response(body, { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": 'attachment; filename="pengguna-djiwa-pay.csv"', "Cache-Control": "no-store" } }); } catch (e) { console.error("admin export failed", e instanceof Error ? e.message : e); return json(c, { success: false, error: "QUERY_FAILED" }, 500); } });
+  app.get("/api/finance/admin/users/:id", async (c) => { try { const u = await userDeep(d, c.req.param("id")); return u ? json(c, { success: true, ...u }) : json(c, { success: false, error: "NOT_FOUND" }, 404); } catch (e) { console.error("admin user failed", e instanceof Error ? e.message : e); return json(c, { success: false, error: "QUERY_FAILED" }, 500); } });
   app.get("/api/finance/admin/admins", guard(async () => ({ admins: (await d.db.query("select email, added_by, created_at from finance.admins order by created_at")).rows })));
   app.post("/api/finance/admin/admins", async (c) => {
     const body = await c.req.json().catch(() => null) as { email?: string } | null, email = String(body?.email || "").trim().toLowerCase();
