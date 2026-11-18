@@ -1062,7 +1062,7 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 .dpx-auth-chip small{display:block;font:500 10.5px var(--font);color:var(--mute)}
 .dpx-auth-chip b{font:800 14px var(--font);color:var(--ink);font-variant-numeric:tabular-nums}
 .dpx-auth-chip.a{top:8px;left:0}.dpx-auth-chip.b{bottom:14px;right:0}.dpx-auth-chip.b b{color:#159447}
-.dpx-auth-show{margin:14px 0 14px;padding:10px;border-radius:24px;background:rgba(255,255,255,.86);backdrop-filter:blur(12px);box-shadow:0 10px 30px rgba(43,38,32,.12),0 0 0 1px rgba(43,38,32,.05);text-align:left}
+.dpx-auth-show{width:100%;box-sizing:border-box;margin:14px 0 14px;padding:10px;border-radius:24px;background:rgba(255,255,255,.86);backdrop-filter:blur(12px);box-shadow:0 10px 30px rgba(43,38,32,.12),0 0 0 1px rgba(43,38,32,.05);text-align:left}
 .dpx-auth-tabs{display:flex;gap:2px;padding:3px;border-radius:99px;background:rgba(43,38,32,.07)}
 .dpx-auth-tabs button{position:relative;flex:1;height:34px;border-radius:99px;font:700 13px var(--font);color:var(--mute)}.dpx-auth-tabs button.on{color:var(--ink)}
 .dpx-auth-pane{position:relative;min-height:158px;padding:12px 4px 6px;overflow:hidden}
