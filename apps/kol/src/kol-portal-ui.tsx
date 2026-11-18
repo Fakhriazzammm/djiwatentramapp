@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, FileText, Home, LogOut, Sparkles, UserCircle, Users } from "lucide-react";
 import { VisitPicker } from "./kol-visit";
 import { KxSheet } from "./kol-sheet";
 import { AvatarImg } from "./kol-avatar";
+import { SowCard, VisitDetails, useVisitInfo } from "./kol-sow";
 import { CONSENT_NO_SHOW, errorText, kolApi, logoutKol, longDate, dotTime, type VisitRow } from "./kol-lib";
 
 export type PortalTabKey = "home" | "community" | "campaigns" | "calendar" | "profile";
@@ -72,6 +73,7 @@ export function HomeTab({ session, profile, own, campaigns, onNavigate }: { sess
   const nextCampaign = campaigns.find(c => c.assignment_status === "invited") || campaigns.find(c => c.status === "published" && !c.assignment_id);
   return (
     <div>
+      <Notifications />
       <div className="kx-group" style={{ padding: 14 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}><b className="kx-h2">Lengkapi profilmu</b><span style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.03em" }}>{pct}%</span></div>
         <div className="kx-prog" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${pct}%` }} /></div>
@@ -91,7 +93,8 @@ export function HomeTab({ session, profile, own, campaigns, onNavigate }: { sess
         <div className="kx-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><b className="kx-h2">Jadwal visit-mu</b><span className={`kx-pill ${statusTone(own.status)}`}>{statusLabel(own.status)}</span></div>
           <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 10 }}><span className="kx-ico"><CalendarDays size={18} /></span><div className="kx-main"><b>{longDate(own.booking_date)}</b><small>Pukul {dotTime(own.booking_time)} WIB · review menu &amp; buat konten</small></div></div>
-          <button type="button" className="kx-btn kx-btn--ghost kx-btn--sm" style={{ marginTop: 12 }} onClick={() => onNavigate("calendar")}>Lihat jadwal &amp; KOL lain</button>
+          {own.status === "confirmed" && own.post_deadline && <p className="kx-sub" style={{ margin: "10px 0 0" }}>Batas tayang konten: <b style={{ color: "var(--kx-ink)" }}>{longDate(own.post_deadline)}</b></p>}
+          <button type="button" className={`kx-btn kx-btn--sm ${own.status === "confirmed" ? "" : "kx-btn--ghost"}`} style={{ marginTop: 12 }} onClick={() => onNavigate("calendar")}>{own.status === "confirmed" ? "Lihat SOW & detail visit" : "Lihat jadwal & KOL lain"}</button>
         </div>
       ) : (
         <div className="kx-card"><p style={{ margin: 0, fontSize: 14 }}>Kamu belum punya jadwal visit aktif.</p><button type="button" className="kx-btn kx-btn--sm" style={{ marginTop: 10 }} onClick={() => onNavigate("calendar")}>Pilih jadwal visit</button></div>
@@ -109,6 +112,30 @@ export function HomeTab({ session, profile, own, campaigns, onNavigate }: { sess
   );
 }
 
+
+/* ---------- Pemberitahuan (mis. "Visit terkonfirmasi") ---------- */
+type Notice = { id: number; type: string; title: string; body: string; read_at: string | null; created_at: string };
+function Notifications() {
+  const [items, setItems] = useState<Notice[]>([]);
+  useEffect(() => { let live = true; kolApi<Notice[]>("/portal/notifications").then(r => live && setItems(Array.isArray(r) ? r.filter(n => !n.read_at).slice(0, 3) : [])).catch(() => undefined); return () => { live = false; }; }, []);
+  if (!items.length) return null;
+  const dismiss = async (id?: number) => {
+    setItems(prev => (id ? prev.filter(n => n.id !== id) : []));
+    try { await kolApi("/portal/notifications/read", { method: "POST", body: JSON.stringify(id ? { id } : { all: true }) }); } catch { /* tampil lagi saat dimuat ulang */ }
+  };
+  return (
+    <div className="kx-group" style={{ marginBottom: 12 }} role="region" aria-label="Pemberitahuan">
+      {items.map(n => (
+        <div key={n.id} className="kx-grow" style={{ alignItems: "flex-start" }}>
+          <span className="kx-ico" aria-hidden>🔔</span>
+          <span className="kx-main"><b>{n.title}</b><small style={{ lineHeight: 1.45 }}>{n.body}</small></span>
+          <button type="button" className="kx-link" onClick={() => void dismiss(n.id)} aria-label={`Tandai dibaca: ${n.title}`}>OK</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ---------- Visit ---------- */
 export function VisitTab({ rows, own, invite, refresh }: { rows: VisitRow[]; own: VisitRow | undefined; invite?: string | null; refresh: () => Promise<void> }) {
   const [pick, setPick] = useState<{ date: string | null; time: string | null }>({ date: null, time: null });
@@ -117,6 +144,7 @@ export function VisitTab({ rows, own, invite, refresh }: { rows: VisitRow[]; own
   const [c3, setC3] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
+  const visitInfo = useVisitInfo(own?.status === "confirmed");
   const ready = Boolean(pick.date && pick.time && c1 && c2 && c3) && !busy;
   const submit = async () => {
     if (!pick.date || !pick.time) return;
@@ -140,7 +168,14 @@ export function VisitTab({ rows, own, invite, refresh }: { rows: VisitRow[]; own
         <div className="kx-card" style={{ marginBottom: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><b className="kx-h2">Jadwal visit-mu</b><span className={`kx-pill ${statusTone(own.status)}`}>{statusLabel(own.status)}</span></div>
           <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 10 }}><span className="kx-ico"><CalendarDays size={18} /></span><div className="kx-main"><b>{longDate(own.booking_date)}</b><small>Pukul {dotTime(own.booking_time)} WIB · review menu &amp; buat konten</small></div></div>
-          <p className="kx-sub" style={{ margin: "10px 0 0", lineHeight: 1.5 }}>Satu KOL satu jadwal aktif. Untuk mengubah jadwal, hubungi admin Djiwa Tentram.</p>
+          <p className="kx-sub" style={{ margin: "10px 0 0", lineHeight: 1.5 }}>{own.status === "confirmed" ? "Visit-mu sudah dikonfirmasi. Untuk mengubah jadwal, hubungi admin atau manager lewat WhatsApp di bawah." : "Menunggu konfirmasi tim. Scope of Work muncul di sini setelah jadwal dikonfirmasi."}</p>
+        </div>
+      )}
+      {own?.status === "confirmed" && (
+        <div style={{ marginBottom: 14 }}>
+          <VisitDetails visit={own} info={visitInfo} />
+          <div className="kx-section">Scope of Work</div>
+          {own.sow ? <SowCard sow={own.sow} /> : <div className="kx-card kx-sub">SOW untuk visit ini belum tersedia. Tim akan mengabari kamu.</div>}
         </div>
       )}
       {!own && <p className="kx-lead" style={{ margin: "0 0 14px" }}>Datang untuk mereview menu dan membuat kontenmu. Satu tanggal hanya untuk satu KOL. Booking mulai besok.</p>}

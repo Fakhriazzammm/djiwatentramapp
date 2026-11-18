@@ -48,7 +48,7 @@ export function registerManagerKol(app: Hono, auth: Auth, pool: Pool) {
   };
 
   const snapshot = async () => {
-    const [campaigns, assignments, submissions, badges, visits, inquiries, reports, creators, invites] = await Promise.all([
+    const [campaigns, assignments, submissions, badges, visits, inquiries, reports, creators, invites, sowVersions, settings, emails] = await Promise.all([
       pool.query(`select * from pos.kol_campaigns order by created_at desc`),
       pool.query(`select a.id, a.campaign_id, a.kol_id, a.status, a.admin_note, a.accepted_at, a.completed_at, a.created_at,
                          json_build_object('name', c.name, 'username', c.username) as kol_creators
@@ -129,6 +129,12 @@ export function registerManagerKol(app: Hono, auth: Auth, pool: Pool) {
                     from pos.kol_visit_invitations i
                     left join pos.kol_creators c on c.source_id = i.kol_id
                    order by i.created_at desc limit 500`),
+      pool.query(`select id, version, title, sections, closing, note, is_active, created_by, created_at
+                    from pos.kol_sow_versions order by version desc limit 50`),
+      pool.query(`select cafe_name, address, maps_url, wa_admin, wa_manager, post_deadline_days, updated_at
+                    from pos.kol_visit_settings where id = 1`),
+      pool.query(`select id, kind, booking_id, kol_id, to_email, status, attempts, last_error, scheduled_at, sent_at, created_at
+                    from pos.kol_email_outbox order by id desc limit 600`),
     ]);
     return {
       campaigns: campaigns.rows,
@@ -140,6 +146,9 @@ export function registerManagerKol(app: Hono, auth: Auth, pool: Pool) {
       reports: reports.rows,
       creators: creators.rows,
       invites: invites.rows,
+      sowVersions: sowVersions.rows,
+      settings: settings.rows[0] ?? null,
+      emails: emails.rows,
     };
   };
 
@@ -434,6 +443,13 @@ export function registerManagerKol(app: Hono, auth: Auth, pool: Pool) {
            values ($1, $2, 'booking_status_changed', 'admin', $3, $4::jsonb)`,
           [id, current.rows[0].kol_id, actor, JSON.stringify({ from, to: status, note })],
         );
+        if (b.skipEmail === true && status === "confirmed") {
+          await client.query(
+            `update pos.kol_email_outbox set status = 'skipped', last_error = 'DIBATALKAN_ADMIN', updated_at = now()
+              where booking_id = $1 and kind = 'visit_confirmed' and status = 'pending'`,
+            [id],
+          );
+        }
         await client.query("commit");
         return json({ success: true, data: updated.rows[0] });
       } catch (error) {
@@ -486,6 +502,71 @@ export function registerManagerKol(app: Hono, auth: Auth, pool: Pool) {
         client.release();
       }
       return json({ success: true, data: { id, decision } });
+    }
+
+    /* ---------- SOW, pengaturan kunjungan, dan email ---------- */
+    const sowErrors = new Set(["SOW_SECTIONS_INVALID", "SOW_SECTION_INVALID", "SOW_ITEM_INVALID", "SOW_TITLE_INVALID", "SOW_NOT_FOUND", "BOOKING_NOT_FOUND", "EMAIL_KIND_INVALID"]);
+    const dbGuard = async <T>(run: () => Promise<T>): Promise<T | Response> => {
+      try { return await run(); }
+      catch (error: any) {
+        if (error?.code === "P0001" && sowErrors.has(String(error.message))) return json({ success: false, error: String(error.message) }, 400);
+        throw error;
+      }
+    };
+
+    if (action === "sow_publish") {
+      if (!Array.isArray(b.sections)) return json({ success: false, error: "SOW_SECTIONS_INVALID" }, 400);
+      const out = await dbGuard(() => pool.query(`select * from pos.kol_sow_publish($1, $2::jsonb, $3, $4, $5, $6)`,
+        [text(b.title, 160), JSON.stringify(b.sections), text(b.closing, 1000), text(b.note, 500) || null, actor, b.apply !== false]));
+      if (out instanceof Response) return out;
+      return json({ success: true, data: out.rows[0] });
+    }
+
+    if (action === "booking_sow_set") {
+      const id = Number(b.id);
+      if (!Number.isInteger(id) || id < 1 || !Array.isArray(b.sections)) return json({ success: false, error: "SOW_SECTIONS_INVALID" }, 400);
+      const out = await dbGuard(() => pool.query(`select pos.kol_booking_sow_set($1, $2, $3::jsonb, $4, $5)`,
+        [id, text(b.title, 160) || "Scope of Work", JSON.stringify(b.sections), text(b.closing, 1000), b.notify !== false]));
+      if (out instanceof Response) return out;
+      return json({ success: true, data: { id } });
+    }
+
+    if (action === "booking_sow_sync") {
+      const id = Number(b.id);
+      if (!Number.isInteger(id) || id < 1) return json({ success: false, error: "BOOKING_NOT_FOUND" }, 400);
+      const out = await dbGuard(() => pool.query(`select pos.kol_booking_sow_sync($1, $2)`, [id, b.notify !== false]));
+      if (out instanceof Response) return out;
+      return json({ success: true, data: { id } });
+    }
+
+    if (action === "settings_save") {
+      const digits = (value: unknown) => String(value ?? "").replace(/[^\d+]/g, "").slice(0, 20);
+      const maps = text(b.mapsUrl, 500);
+      if (maps && !/^https:\/\//i.test(maps)) return json({ success: false, error: "INVALID_MAPS_URL" }, 400);
+      const days = Number(b.postDeadlineDays);
+      if (!Number.isInteger(days) || days < 1 || days > 60) return json({ success: false, error: "INVALID_DEADLINE_DAYS" }, 400);
+      const r = await pool.query(
+        `update pos.kol_visit_settings
+            set cafe_name = $1, address = $2, maps_url = $3, wa_admin = $4, wa_manager = $5, post_deadline_days = $6, updated_by = $7, updated_at = now()
+          where id = 1 returning cafe_name, address, maps_url, wa_admin, wa_manager, post_deadline_days, updated_at`,
+        [text(b.cafeName, 160) || "Djiwa Tentram Cafe & Resto - Tasikmalaya", text(b.address, 300), maps, digits(b.waAdmin), digits(b.waManager), days, actor],
+      );
+      return json({ success: true, data: r.rows[0] });
+    }
+
+    if (action === "email_resend") {
+      const bookingId = Number(b.bookingId);
+      if (!Number.isInteger(bookingId) || bookingId < 1) return json({ success: false, error: "BOOKING_NOT_FOUND" }, 400);
+      const out = await dbGuard(() => pool.query(`select pos.kol_email_resend($1, $2) as id`, [bookingId, text(b.kind, 30) || "visit_confirmed"]));
+      if (out instanceof Response) return out;
+      return json({ success: true, data: { id: out.rows[0]?.id ?? null } });
+    }
+
+    if (action === "email_skip") {
+      const id = Number(b.id);
+      if (!Number.isInteger(id) || id < 1) return json({ success: false, error: "BOOKING_NOT_FOUND" }, 400);
+      const r = await pool.query(`select pos.kol_email_skip($1) as skipped`, [id]);
+      return json({ success: true, data: { skipped: Boolean(r.rows[0]?.skipped) } });
     }
 
     return json({ success: false, error: "UNKNOWN_ACTION" }, 400);

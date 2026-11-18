@@ -42,16 +42,11 @@ describe("KOL Creator Portal contracts", () => {
     expect(migration).toContain("consent_attendance boolean");
     expect(migration).toContain("kol_request_shared_visit_booking");
     expect(migration).toContain("booking_eligibility_changed");
-    expect(source).toContain("/api/kol/admin/session");
-    expect(source).toContain("/api/kol/admin/creators");
-    expect(source).toContain("/api/kol/admin/visits");
+    // Admin kini lewat apps/admin (Edge Function) dan apps/manager; endpoint admin lama sudah dibuang.
+    expect(source).not.toContain("/api/kol/admin/");
+    expect(source).not.toContain("kolAdminContext");
     expect(source).toContain("kol_request_shared_visit_booking");
     expect(source).toContain("current.kol.visit_booking_eligible !== true");
-    expect(source).toContain("kolAdminContext(c, auth, pool)");
-    expect(source).toContain("session.user.emailVerified !== true");
-    expect(source).toContain("from auth.users au");
-    expect(source).toContain("u.auth_user_id = au.id::text");
-    expect(source).toContain("au.email_confirmed_at is not null");
     expect(source).not.toContain("where u.auth_user_id=$1");
     expect(source).not.toContain("body.kolId");
   });

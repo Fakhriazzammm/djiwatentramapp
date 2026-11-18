@@ -1,6 +1,6 @@
 // Visit KOL: jadwal booking dari portal creator, transisi status, dan undangan portal.
 // Transisi status mengikuti aturan server: requested → confirmed/cancelled, confirmed → cancelled/completed/no_show.
-import { CalendarDays, Clock3, Mail, MessageCircle, RefreshCw, Send, Trash2, UserPlus } from "lucide-react";
+import { CalendarDays, Clock3, FileText, Mail, MessageCircle, RefreshCw, Send, Trash2, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { requestAdminConfirm } from "@/lib/admin-dialogs";
@@ -9,8 +9,9 @@ import {
 } from "./kol-ui";
 import {
   VISIT_ACTION_LABEL, VISIT_STATUS, VISIT_TRANSITIONS, atUsername, creatorLabel, fmtDate, fmtDateTime, fmtDay, fmtTime, kolCall, one, useKolData, waUrl,
-  type Contact, type Visit,
+  EMAIL_STATUS, type Contact, type EmailRow, type Visit,
 } from "./kol-core";
+import { BookingEmails, BookingSow, SowSheet } from "./kol-sow";
 
 type Invite = {
   id: string; kol_id: string; status: string; expires_at: string; created_at?: string; updated_at?: string; linked_auth_user_id?: string | null;
@@ -34,6 +35,7 @@ export function KolVisitsPage() {
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<number | null>(null);
+  const [sowOpen, setSowOpen] = useState(false);
 
   const [invites, setInvites] = useState<Invite[] | null>(null);
   const [inviteError, setInviteError] = useState("");
@@ -71,6 +73,12 @@ export function KolVisitsPage() {
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [overview.visits, filter, query]);
 
+  // Email konfirmasi terbaru per booking, untuk lencana di daftar.
+  const confirmEmail = useMemo(() => {
+    const map = new Map<number, EmailRow>();
+    for (const e of overview.emails) if (e.kind === "visit_confirmed" && e.booking_id !== null && !map.has(e.booking_id)) map.set(e.booking_id, e);
+    return map;
+  }, [overview.emails]);
   const active = openId !== null ? overview.visits.find((v) => v.id === openId) ?? null : null;
   const counts = useMemo(() => {
     const map = new Map<string, number>();
@@ -137,7 +145,7 @@ export function KolVisitsPage() {
         title="Visit"
         description="Jadwal kunjungan creator ke Djiwa Tentram dan undangan portal untuk creator yang belum masuk dengan Google."
         count={<Tag color="#666672">{overview.visits.length} booking</Tag>}
-        actions={<Btn onClick={() => { void reload(); if (tab === "invites") void loadInvites(); }} disabled={loading || loadingInvites}><RefreshCw className={`h-3.5 w-3.5 ${loading || loadingInvites ? "animate-spin" : ""}`} />Muat ulang</Btn>}
+        actions={<><Btn onClick={() => setSowOpen(true)}><FileText className="h-3.5 w-3.5" />SOW &amp; Email</Btn><Btn onClick={() => { void reload(); if (tab === "invites") void loadInvites(); }} disabled={loading || loadingInvites}><RefreshCw className={`h-3.5 w-3.5 ${loading || loadingInvites ? "animate-spin" : ""}`} />Muat ulang</Btn></>}
       />
 
       {error && <ErrorBox message={error} onRetry={() => void reload()} />}
@@ -184,6 +192,7 @@ export function KolVisitsPage() {
                               </span>
                             </span>
                             <span className="flex items-center gap-2">
+                              {v.status === "confirmed" && (() => { const e = confirmEmail.get(v.id); const m = EMAIL_STATUS[e?.status ?? "skipped"] ?? { label: "Email", color: "#666672" }; return <span title="Email konfirmasi" className="inline-flex items-center gap-1"><Mail className="h-3.5 w-3.5 text-[#666672]" /><StatusTag color={e ? m.color : "#666672"}>{e ? m.label : "Belum ada email"}</StatusTag></span>; })()}
                               {wa && <a href={wa} target="_blank" rel="noreferrer" aria-label="WhatsApp creator" className="text-[#16a34a]" onClick={(e) => e.stopPropagation()}><MessageCircle className="h-4 w-4" /></a>}
                               <StatusTag color={meta.color}>{meta.label}</StatusTag>
                             </span>
@@ -253,14 +262,16 @@ export function KolVisitsPage() {
         </>
       )}
 
-      {active && <VisitPanel visit={active} token={token} onClose={() => setOpenId(null)} onSaved={() => void reload()} />}
+      {active && <VisitPanel visit={active} emails={overview.emails} token={token} onClose={() => setOpenId(null)} onSaved={() => void reload()} />}
+      {sowOpen && <SowSheet token={token} overview={overview} onClose={() => setSowOpen(false)} onSaved={() => void reload()} />}
     </Page>
   );
 }
 
-function VisitPanel({ visit, token, onClose, onSaved }: { visit: Visit; token: string | null; onClose: () => void; onSaved: () => void }) {
+function VisitPanel({ visit, emails, token, onClose, onSaved }: { visit: Visit; emails: EmailRow[]; token: string | null; onClose: () => void; onSaved: () => void }) {
   const [note, setNote] = useState(visit.admin_note ?? "");
   const [busy, setBusy] = useState("");
+  const [sendEmail, setSendEmail] = useState(true);
   const meta = VISIT_STATUS[visit.status] ?? { label: visit.status, color: "#666672" };
   const contact = one(visit.kol_creators?.kol_private_contacts as Contact | Contact[] | null | undefined);
   const wa = waUrl(contact?.whatsapp, `Halo ${visit.kol_creators?.name ?? "creator"}, soal jadwal visit di Djiwa Tentram.`);
@@ -269,7 +280,7 @@ function VisitPanel({ visit, token, onClose, onSaved }: { visit: Visit; token: s
   const move = async (status: string) => {
     setBusy(status);
     try {
-      await kolCall("kol-portal-admin", "visit_update", token, { id: visit.id, status, note });
+      await kolCall("kol-portal-admin", "visit_update", token, { id: visit.id, status, note, skipEmail: status === "confirmed" && !sendEmail });
       toast.success(`Booking ditandai ${VISIT_STATUS[status]?.label.toLowerCase() ?? status}.`);
       onSaved();
     } catch (e) {
@@ -312,6 +323,12 @@ function VisitPanel({ visit, token, onClose, onSaved }: { visit: Visit; token: s
       <SectionLabel>Catatan admin</SectionLabel>
       <textarea className={textareaCls} value={note} maxLength={1000} placeholder="Catatan internal, alasan perubahan status, atau info untuk tim." onChange={(e) => setNote(e.target.value)} />
 
+      {next.includes("confirmed") && (
+        <label className={`mt-3 flex items-start gap-2 border p-3 text-[12px] leading-5 ${contact?.email ? "border-[#e4e4e8] bg-[#fafafb]" : "border-[#f5c2bd] bg-[#fff5f4]"}`}>
+          <input type="checkbox" className="mt-1" checked={sendEmail && Boolean(contact?.email)} disabled={!contact?.email} onChange={(e) => setSendEmail(e.target.checked)} />
+          <span>{contact?.email ? <>Kirim email konfirmasi + SOW ke <strong>{contact.email}</strong></> : <>Creator belum punya email, jadi email tidak dikirim. Hubungi lewat WhatsApp.</>}</span>
+        </label>
+      )}
       <SectionLabel right={<Label>{next.length ? "Pilih tindakan" : "Tidak ada transisi"}</Label>}>Ubah status</SectionLabel>
       {next.length === 0 ? (
         <p className="text-[11.5px] text-[#666672]">Booking berstatus {meta.label.toLowerCase()} tidak bisa diubah lagi.</p>
@@ -328,6 +345,12 @@ function VisitPanel({ visit, token, onClose, onSaved }: { visit: Visit; token: s
           })}
         </div>
       )}
+
+      <SectionLabel>Scope of Work</SectionLabel>
+      <BookingSow visit={visit} token={token} onSaved={onSaved} />
+
+      <SectionLabel>Email ke creator</SectionLabel>
+      <BookingEmails visit={visit} emails={emails} token={token} onSaved={onSaved} />
     </Panel>
   );
 }

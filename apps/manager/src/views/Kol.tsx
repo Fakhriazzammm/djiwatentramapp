@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "../lib/api";
 import { Empty, Kpis, Panel, Tabs } from "../ui";
+import { BookingExtras, SowPanel, type EmailRow, type SowVersion, type VisitSettings } from "./KolSow";
 
 /* ------------------------------------------------------------------ */
 /* Tipe data — bentuknya disamakan dengan snapshot /api/manager/kol    */
@@ -40,6 +41,7 @@ type Visit = {
   id: number; kol_id: string; booking_date: string; booking_time: string | null; status: string;
   admin_note?: string | null; visit_note?: string | null;
   consent_version?: string | null; consented_at?: string | null; created_at?: string | null; updated_at?: string | null;
+  sow_version?: number | null; sow_snapshot?: { title: string; sections: Array<{ title: string; items: string[] }>; closing?: string; days?: number } | null; sow_customized?: boolean; post_deadline?: string | null;
   kol_creators?: { name: string; username: string; avatar_url?: string | null; kol_private_contacts?: Contact | Contact[] | null } | null;
 };
 type Inquiry = {
@@ -63,6 +65,7 @@ type Invite = {
 type Snapshot = {
   campaigns: Campaign[]; assignments: Assignment[]; submissions: Submission[]; badges: Badge[];
   visits: Visit[]; inquiries: Inquiry[]; reports: Report[]; creators: Creator[]; invites: Invite[];
+  sowVersions: SowVersion[]; settings: VisitSettings | null; emails: EmailRow[];
 };
 type Tab = "ringkasan" | "creator" | "kampanye" | "visit" | "komunitas" | "inquiry";
 type Send = (body: Record<string, unknown>, message?: string) => Promise<{ ok: boolean; data: unknown }>;
@@ -141,6 +144,14 @@ const ERR: Record<string, string> = {
   INVALID_STATUS_TRANSITION: "Transisi status visit ini tidak diizinkan.",
   INVALID_MODERATION_DECISION: "Keputusan moderasi tidak valid.",
   REPORT_NOT_FOUND: "Laporan tidak ditemukan.",
+  SOW_SECTIONS_INVALID: "SOW harus punya 1 sampai 12 bagian.",
+  SOW_SECTION_INVALID: "Tiap bagian SOW butuh judul dan 1 sampai 40 poin.",
+  SOW_ITEM_INVALID: "Tiap poin SOW harus berisi teks (maksimal 500 karakter).",
+  SOW_TITLE_INVALID: "Judul SOW harus 2 sampai 160 karakter.",
+  SOW_NOT_FOUND: "Belum ada SOW aktif.",
+  EMAIL_KIND_INVALID: "Jenis email tidak valid.",
+  INVALID_MAPS_URL: "Link Google Maps harus diawali https://",
+  INVALID_DEADLINE_DAYS: "Batas tayang harus 1 sampai 60 hari.",
   UNKNOWN_ACTION: "Aksi tidak dikenal.",
 };
 const errText = (e: unknown) => {
@@ -851,8 +862,9 @@ function SubmissionItem({ submission, send }: { submission: Submission; send: Se
 /* Visit                                                               */
 /* ------------------------------------------------------------------ */
 function VisitView({ data, send }: { data: Snapshot; send: Send }) {
-  const [sub, setSub] = useState<"schedule" | "invites">("schedule");
+  const [sub, setSub] = useState<"schedule" | "invites" | "sow">("schedule");
   const [filter, setFilter] = useState("all");
+  const [noMail, setNoMail] = useState<Record<number, boolean>>({});
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [createKol, setCreateKol] = useState("");
   const [days, setDays] = useState("7");
@@ -908,9 +920,11 @@ function VisitView({ data, send }: { data: Snapshot; send: Send }) {
       <Panel
         title="Visit creator"
         meta="konfirmasi jadwal dan undangan"
-        action={<Tabs items={[["schedule", "Jadwal"], ["invites", "Undangan"]]} value={sub} onChange={setSub} style={{ margin: 0 }} />}
+        action={<Tabs items={[["schedule", "Jadwal"], ["invites", "Undangan"], ["sow", "SOW & Email"]]} value={sub} onChange={setSub} style={{ margin: 0 }} />}
       >
-        {sub === "schedule" ? (
+        {sub === "sow" ? (
+          <SowPanel versions={data.sowVersions} settings={data.settings} visits={data.visits} send={send} />
+        ) : sub === "schedule" ? (
           <>
             <div className="pad" style={{ paddingBottom: 10 }}>
               <div className="crow" style={{ marginTop: 0 }}>
@@ -986,9 +1000,16 @@ function VisitView({ data, send }: { data: Snapshot; send: Send }) {
                           </div>
                           <input className="f" placeholder="Catatan admin" value={notes[v.id] ?? ""} maxLength={1000}
                             onChange={(e) => setNotes((prev) => ({ ...prev, [v.id]: e.target.value }))} />
+                          {(VISIT_TRANSITIONS[v.status] ?? []).includes("confirmed") && (
+                            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", margin: "6px 0 0", fontSize: 12 }}>
+                              <input type="checkbox" disabled={!contact?.email} checked={Boolean(contact?.email) && !noMail[v.id]} onChange={(e) => setNoMail((prev) => ({ ...prev, [v.id]: !e.target.checked }))} style={{ marginTop: 2 }} />
+                              <span>{contact?.email ? <>Kirim email konfirmasi + SOW ke <b>{contact.email}</b></> : "Creator belum punya email, jadi email tidak dikirim."}</span>
+                            </label>
+                          )}
                           <div className="crow" style={{ marginTop: 4 }}>
-                            <VisitButtons visit={v} onUpdate={(next) => void send({ action: "visit_update", id: v.id, status: next, note: notes[v.id] ?? "" }, "Status visit diperbarui")} />
+                            <VisitButtons visit={v} onUpdate={(next) => void send({ action: "visit_update", id: v.id, status: next, note: notes[v.id] ?? "", skipEmail: next === "confirmed" && Boolean(noMail[v.id]) }, next === "confirmed" && !noMail[v.id] ? "Visit dikonfirmasi. Email dikirim dalam ±1 menit" : "Status visit diperbarui")} />
                           </div>
+                          <BookingExtras visit={v} emails={data.emails} send={send} />
                         </div>
                       );
                     })}
@@ -1015,7 +1036,7 @@ function VisitView({ data, send }: { data: Snapshot; send: Send }) {
                         </td>
                         <td><St map={VISIT_STATUS} k={v.status} /></td>
                         <td style={{ whiteSpace: "nowrap" }}>
-                          <VisitButtons visit={v} onUpdate={(next) => void send({ action: "visit_update", id: v.id, status: next, note: notes[v.id] ?? "" }, "Status visit diperbarui")} />
+                          <VisitButtons visit={v} onUpdate={(next) => void send({ action: "visit_update", id: v.id, status: next, note: notes[v.id] ?? "", skipEmail: next === "confirmed" && Boolean(noMail[v.id]) }, next === "confirmed" && !noMail[v.id] ? "Visit dikonfirmasi. Email dikirim dalam ±1 menit" : "Status visit diperbarui")} />
                         </td>
                       </tr>
                     );

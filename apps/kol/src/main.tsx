@@ -1,8 +1,9 @@
-import { StrictMode, Suspense, lazy } from "react";
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import "./kx.css";
-const KolAdminApp = lazy(() => import("./kol-admin"));
-const isAdminRoute = window.location.pathname.replace(/\/+$/, "") === "/admin";
-createRoot(document.getElementById("root")!).render(<StrictMode><Suspense fallback={<div className="grid min-h-screen place-items-center bg-slate-50 text-sm text-slate-500">Memuat workspace admin...</div>}>{isAdminRoute ? <KolAdminApp /> : <App />}</Suspense></StrictMode>);
+
+// Admin KOL kini ada di admin.djiwatentram.web.id (dan manager.djiwatentram.web.id); halaman /admin lama dialihkan.
+if (window.location.pathname.replace(/\/+$/, "") === "/admin") window.location.replace("https://admin.djiwatentram.web.id/admin/kol-visits");
+else createRoot(document.getElementById("root")!).render(<StrictMode><App /></StrictMode>);

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { isAdminLevelRole } from "@/lib/admin-access";
+import type { KolMailKind, SowSection, SowSnapshot } from "../../../../../../supabase/functions/_shared/kol-mail";
 
 /* ---------- Tipe ---------- */
 export type Platform = { platform: string; username: string; followers: number; profile_url?: string | null };
@@ -16,6 +17,7 @@ export type Creator = {
 export type Visit = {
   id: number; kol_id: string; booking_date: string; booking_time: string | null; status: string; admin_note?: string | null; visit_note?: string | null;
   consent_version?: string | null; consented_at?: string | null; created_at?: string; updated_at?: string;
+  sow_version?: number | null; sow_snapshot?: SowSnapshot; sow_customized?: boolean; post_deadline?: string | null;
   kol_creators?: { name: string; username: string; avatar_url?: string | null; kol_private_contacts?: Contact | Contact[] | null } | null;
 };
 export type Campaign = {
@@ -36,7 +38,20 @@ export type Report = {
   kol_public_posts?: { id: number; kol_id: string; post_type: string; title: string; body: string; media_url?: string | null; visibility: string; moderation_status: string; kol_creators?: { name: string; username: string } | null } | null;
 };
 export type Badge = { kol_id: string; kol_badges?: { code: string; name: string } | null };
-export type Overview = { campaigns: Campaign[]; assignments: Assignment[]; submissions: Submission[]; badges: Badge[]; visits: Visit[]; inquiries: Inquiry[]; reports: Report[] };
+export type SowVersion = { id: number; version: number; title: string; sections: SowSection[]; closing: string; note?: string | null; is_active: boolean; created_by: string; created_at: string };
+export type VisitSettings = { cafe_name: string; address: string; maps_url: string; wa_admin: string; wa_manager: string; post_deadline_days: number; updated_at?: string };
+export type EmailRow = { id: number; kind: KolMailKind; booking_id: number | null; kol_id: string; to_email: string | null; status: string; attempts: number; last_error?: string | null; scheduled_at: string; sent_at?: string | null; created_at: string };
+export type Overview = {
+  campaigns: Campaign[]; assignments: Assignment[]; submissions: Submission[]; badges: Badge[]; visits: Visit[]; inquiries: Inquiry[]; reports: Report[];
+  sowVersions: SowVersion[]; settings: VisitSettings | null; emails: EmailRow[];
+};
+
+export const EMAIL_KIND: Record<KolMailKind, string> = { visit_confirmed: "Konfirmasi visit", visit_cancelled: "Pembatalan visit", visit_reminder: "Pengingat H-1", sow_updated: "SOW diperbarui" };
+export const EMAIL_STATUS: Record<string, { label: string; color: string }> = {
+  pending: { label: "Dalam antrean", color: "#b7791f" }, sending: { label: "Mengirim", color: "#2f6fdf" }, sent: { label: "Terkirim", color: "#16a34a" },
+  failed: { label: "Gagal", color: "#d92d20" }, skipped: { label: "Tidak dikirim", color: "#666672" },
+};
+export const EMAIL_NOTE: Record<string, string> = { EMAIL_TIDAK_ADA: "Creator belum punya email", EMAIL_TIDAK_VALID: "Alamat email tidak valid", BOOKING_DIBATALKAN: "Booking dibatalkan", DIBATALKAN_ADMIN: "Dibatalkan admin" };
 
 /* ---------- Konstanta (sama dengan apps/kol) ---------- */
 export const CATEGORIES = ["Food & Beverage", "Coffee", "Lifestyle", "Travel", "Fashion", "Beauty", "Entertainment", "Other"];
@@ -107,7 +122,7 @@ export async function kolCall<T = any>(fn: KolFunction, action: string, token: s
 /* ---------- Penyimpanan data bersama antar halaman ---------- */
 type Snapshot = { at: number; overview: Overview; creators: Creator[] };
 let cache: Snapshot | null = null;
-const emptyOverview: Overview = { campaigns: [], assignments: [], submissions: [], badges: [], visits: [], inquiries: [], reports: [] };
+const emptyOverview: Overview = { campaigns: [], assignments: [], submissions: [], badges: [], visits: [], inquiries: [], reports: [], sowVersions: [], settings: null, emails: [] };
 
 export function useKolData() {
   const { token, isAdmin, role } = useYumiAuth();

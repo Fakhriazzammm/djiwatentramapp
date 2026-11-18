@@ -1,4 +1,5 @@
 import { createAuthClient } from "better-auth/react";
+import type { SowSnapshot } from "../../../supabase/functions/_shared/kol-mail";
 export const AUTH_BASE = "https://api.djiwatentram.web.id/v1/auth";
 export const KOL_API = "https://api.djiwatentram.web.id/v1/kol";
 
@@ -41,7 +42,7 @@ export const VISIT_TIMES: string[] = (() => {
 })();
 export const dotTime = (t?: string | null) => (t ? String(t).slice(0, 5).replace(":", ".") : "");
 
-export type VisitRow = { booking_date: string; booking_time: string | null; status: string; own: boolean; creator_name?: string | null; category?: string | null; platform?: string | null };
+export type VisitRow = { booking_date: string; booking_time: string | null; status: string; own: boolean; creator_name?: string | null; category?: string | null; platform?: string | null; sow?: SowSnapshot; post_deadline?: string | null; note?: string | null };
 
 export const dayKey = (y: number, m: number, d: number) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 export const parseDay = (key: string) => { const [y = 0, m = 1, d = 1] = key.split("-").map(Number); return new Date(y, m - 1, d); };

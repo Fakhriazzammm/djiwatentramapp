@@ -136,3 +136,4 @@ textarea.kx-input{padding:11px 14px;min-height:88px;resize:none}
 .kx-clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .kx-kv{display:flex;justify-content:space-between;gap:16px;padding:10px 14px;border-top:1px solid var(--kx-line);font-size:14px}.kx-kv:first-child{border-top:0}.kx-kv span{color:var(--kx-muted)}.kx-kv b{text-align:right;font-weight:600}
 .kx .kx-input:focus-visible{outline:none}
+.kx-sow ul{margin:6px 0 0;padding-left:18px}.kx-sow li{margin:0 0 6px;font-size:14px;line-height:1.5}.kx-sow-h{display:block;font-size:14px;margin-top:14px}.kx-sow .kx-eyebrow{margin-bottom:-4px}
