@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { id } from "date-fns/locale/id";
-import { ArrowDown, ArrowUp, ArrowUpDown, CircleDot, Search, Star, User, ShoppingBag, DollarSign, Clock, Phone, CalendarDays, X, Wallet, Download } from "lucide-react";
+import { Search, User, X, Download } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import { createClient } from "@/lib/client";
@@ -9,6 +9,7 @@ import { invokeEdgeFunction } from "@/lib/api-helper";
 import { adminProtectedRead } from "@/lib/admin-protected-read";
 import { loadAllRows, loadCustomerRows } from "@/lib/customers-data";
 import { Skeleton } from "@/components/ui/skeleton";
+import { agoLabel, Avatar, Kpis, monoLabel, num, Panel, Pill, Rank, rupiah, SegmentBar, Tabs } from "@/components/djiwa-app/ui";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
@@ -184,11 +185,27 @@ function customerSortValue(customer: Customer, key: CustomerSortKey): string | n
 	return Number(customer[key] ?? 0);
 }
 
-function SortableHeader({ label, sortKey, activeKey, direction, onSort, align = "left" }: { label: string; sortKey: CustomerSortKey; activeKey: CustomerSortKey; direction: SortDirection; onSort: (key: CustomerSortKey) => void; align?: "left" | "right" | "center" }) {
-	const active = activeKey === sortKey;
-	return <button type="button" onClick={() => onSort(sortKey)} className={`inline-flex items-center gap-1 font-inherit hover:text-foreground ${align === "right" ? "ml-auto" : align === "center" ? "mx-auto" : ""}`} aria-label={`Urutkan ${label} ${active && direction === "desc" ? "terkecil ke terbesar" : "terbesar ke terkecil"}`}>
-		{label}{active ? (direction === "desc" ? <ArrowDown className="h-3 w-3" aria-hidden="true" /> : <ArrowUp className="h-3 w-3" aria-hidden="true" />) : <ArrowUpDown className="h-3 w-3 opacity-50" aria-hidden="true" />}
-	</button>;
+
+type CustomerFilter = "all" | "active" | "wallet" | "member" | "buyer" | "reactivate" | "new";
+const FILTERS = [["all", "Semua"], ["active", "Aktif ≤14 hari"], ["wallet", "Ada saldo"], ["member", "Member"], ["buyer", "Pernah belanja"], ["reactivate", "Perlu reaktivasi"], ["new", "Belum aktif"]] as const satisfies readonly (readonly [CustomerFilter, string])[];
+type SortPreset = "new" | "active" | "spent" | "balance" | "visits" | "inactive" | "name" | "old";
+const SORT_PRESETS = [["new", "Terbaru"], ["active", "Aktif terakhir"], ["spent", "Belanja terbanyak"], ["balance", "Saldo terbesar"], ["visits", "Kunjungan terbanyak"], ["inactive", "Paling lama tidak aktif"], ["name", "Nama A–Z"], ["old", "Terlama"]] as const satisfies readonly (readonly [SortPreset, string])[];
+const SORT_MAP: Record<SortPreset, [CustomerSortKey, SortDirection]> = { new: ["created_at", "desc"], active: ["last_active_at", "desc"], spent: ["total_spent", "desc"], balance: ["wallet_balance", "desc"], visits: ["djiwaapp_visit_count", "desc"], inactive: ["inactive_days", "desc"], name: ["name", "asc"], old: ["created_at", "asc"] };
+const PAGE_SIZE = 25;
+
+function retentionPillTone(segment: RetentionSegment): "ok" | "warn" | "bad" | "" {
+	return segment === "Aktif" ? "ok" : segment === "Perlu Diingatkan" ? "warn" : segment === "Belum Kembali" || segment === "Berisiko Hilang" ? "bad" : "";
+}
+
+function matchesFilter(customer: Customer, filter: CustomerFilter) {
+	const segment = retentionSegment(customer);
+	if (filter === "active") return segment === "Aktif";
+	if (filter === "wallet") return (customer.wallet_balance || 0) > 0;
+	if (filter === "member") return Boolean(customer.membership_expires_at && new Date(customer.membership_expires_at).getTime() > Date.now());
+	if (filter === "buyer") return customer.total_orders > 0;
+	if (filter === "reactivate") return segment === "Belum Kembali" || segment === "Berisiko Hilang";
+	if (filter === "new") return segment === "Belum Aktif";
+	return true;
 }
 
 function DetailField({ label, value, wide = false }: { label: string; value: unknown; wide?: boolean }) {
@@ -311,6 +328,10 @@ function AdminCustomers() {
 	const [selectedCustomerOrders, setSelectedCustomerOrders] = useState<any[]>([]);
 	const [customerOrdersLoading, setCustomerOrdersLoading] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
+	const [filter, setFilter] = useState<CustomerFilter>("all");
+	const [page, setPage] = useState(1);
+	const [sortPreset, setSortPreset] = useState<SortPreset>("spent");
+	const [showAnalysis, setShowAnalysis] = useState(true);
 	const [sortKey, setSortKey] = useState<CustomerSortKey>("total_spent");
 	const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -413,11 +434,13 @@ function AdminCustomers() {
 	}, [detailCustomer?.source_id]);
 
 	const filteredCustomers = customers?.filter((c) => {
-		const q = searchQuery.toLowerCase();
-		return (
+		const q = searchQuery.trim().toLowerCase();
+		return matchesFilter(c, filter) && (
+			!q ||
 			(c.name || "").toLowerCase().includes(q) ||
 			(c.email || "").toLowerCase().includes(q) ||
-			(c.phone || "").toLowerCase().includes(q)
+			(c.phone || "").toLowerCase().includes(q) ||
+			(c.source_id || "").toLowerCase().includes(q)
 		);
 	});
 	const sortedCustomers = [...(filteredCustomers ?? [])].sort((a, b) => {
@@ -426,9 +449,9 @@ function AdminCustomers() {
 		const comparison = typeof left === "string" && typeof right === "string" ? left.localeCompare(right, "id") : Number(left) - Number(right);
 		return (sortDirection === "desc" ? -comparison : comparison) || String(a.name ?? "").localeCompare(String(b.name ?? ""), "id");
 	});
-	const handleSort = (key: CustomerSortKey) => {
-		if (sortKey === key) setSortDirection((current) => current === "desc" ? "asc" : "desc");
-		else { setSortKey(key); setSortDirection("desc"); }
+	const applySortPreset = (preset: SortPreset) => {
+		const [key, direction] = SORT_MAP[preset];
+		setSortPreset(preset); setSortKey(key); setSortDirection(direction); setPage(1);
 	};
 
 	const toggleSelected = (sourceId: string) => {
@@ -436,16 +459,6 @@ function AdminCustomers() {
 			const next = new Set(current);
 			if (next.has(sourceId)) next.delete(sourceId);
 			else next.add(sourceId);
-			return next;
-		});
-	};
-
-	const toggleSelectAll = () => {
-		const visibleIds = filteredCustomers?.map((customer) => customer.source_id) ?? [];
-		setSelectedIds((current) => {
-			const next = new Set(current);
-			const allVisibleAreSelected = visibleIds.length > 0 && visibleIds.every((id) => next.has(id));
-			visibleIds.forEach((id) => allVisibleAreSelected ? next.delete(id) : next.add(id));
 			return next;
 		});
 	};
@@ -506,7 +519,6 @@ function AdminCustomers() {
 	};
 
 	const selectedCustomers = (customers ?? []).filter((customer) => selectedIds.has(customer.source_id));
-	const allVisibleSelected = Boolean(filteredCustomers?.length) && (filteredCustomers ?? []).every((customer) => selectedIds.has(customer.source_id));
 
 	const handleMembershipExpirySave = async () => {
 		if (!detailCustomer) return;
@@ -556,69 +568,64 @@ function AdminCustomers() {
 	// --- Loading state ---
 	if (customers === undefined) {
 		return (
-			<div className="fade-in slide-in-from-bottom-4 flex animate-in flex-col gap-3 duration-500">
-				<div className="space-y-2">
-					<Skeleton className="h-8 w-40" />
-					<Skeleton className="h-4 w-64" />
-				</div>
-				<Skeleton className="h-10 w-full" />
-				<div className="space-y-2">
-					{Array.from({ length: 6 }).map((_, i) => (
-						<div
-							key={i}
-							className="rounded-xl border border-border bg-card p-3 shadow-sm"
-						>
-							<div className="mb-2 flex items-center justify-between">
-								<Skeleton className="h-4 w-32" />
-								<Skeleton className="h-4 w-20" />
-							</div>
-							<Skeleton className="h-3 w-48" />
-						</div>
-					))}
-				</div>
+			<div className="flex flex-col gap-3.5" aria-busy="true">
+				<Skeleton className="h-8 w-48 rounded-none" />
+				<Skeleton className="h-20 w-full rounded-none" />
+				<Skeleton className="h-9 w-full rounded-none" />
+				<Skeleton className="h-96 w-full rounded-none" />
 			</div>
 		);
 	}
 
-	return (
-		<div className="fade-in slide-in-from-bottom-4 flex animate-in flex-col gap-2 duration-500 md:gap-2">
-			{/* Header */}
-			<div className="p-1 md:rounded-xl md:border md:border-border md:bg-card md:p-3 md:shadow-sm">
-				<div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-					<div>
-						<h2 className="font-bold text-xl tracking-tight md:text-2xl">
-							Pelanggan
-						</h2>
-						<p className="hidden text-muted-foreground text-xs md:block">
-							Daftar pelanggan terdaftar.
-						</p>
-					</div>
-					<div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground md:gap-2 md:text-[11px]">
-						<span className="rounded-md bg-muted px-2 py-1">
-							{filteredCustomers?.length ?? 0} dari {customers.length} pelanggan
-						</span>
-					</div>
-				</div>
-			</div>
+	const retentionColors: Record<RetentionSegment, string> = { "Belum Aktif": "#9a9aa6", Aktif: "#166534", "Perlu Diingatkan": "#9a6200", "Belum Kembali": "#c2570c", "Berisiko Hilang": "#c73822" };
+	const retentionCounts = RETENTION_ORDER.map((segment) => ({ label: segment, value: customers.filter((customer) => retentionSegment(customer) === segment).length, color: retentionColors[segment] }));
+	const now = Date.now();
+	const withBalance = customers.filter((customer) => (customer.wallet_balance || 0) > 0);
+	const members = customers.filter((customer) => customer.membership_expires_at && new Date(customer.membership_expires_at).getTime() > now);
+	const buyers = customers.filter((customer) => customer.total_orders > 0);
+	const totalSpent = customers.reduce((sum, customer) => sum + (customer.total_spent || 0), 0);
+	const totalBalance = customers.reduce((sum, customer) => sum + (customer.wallet_balance || 0), 0);
+	const activeNow = customers.filter((customer) => customerPresence(customer) === "online").length;
+	const joinedLast7 = customers.filter((customer) => now - new Date(customer.created_at).getTime() <= 7 * 86400000).length;
+	const joinedPrev7 = customers.filter((customer) => { const age = now - new Date(customer.created_at).getTime(); return age > 7 * 86400000 && age <= 14 * 86400000; }).length;
+	const needReactivation = customers.filter((customer) => ["Belum Kembali", "Berisiko Hilang"].includes(retentionSegment(customer)));
+	const reactivationBalance = needReactivation.reduce((sum, customer) => sum + (customer.wallet_balance || 0), 0);
+	const filterCounts: Record<CustomerFilter, number> = {
+		all: customers.length,
+		active: retentionCounts[1].value,
+		wallet: withBalance.length,
+		member: members.length,
+		buyer: buyers.length,
+		reactivate: needReactivation.length,
+		new: retentionCounts[0].value,
+	};
+	const topSpenders = [...customers].sort((a, b) => (b.total_spent || 0) - (a.total_spent || 0)).filter((customer) => customer.total_spent > 0).slice(0, 6);
+	const topBalances = [...withBalance].sort((a, b) => b.wallet_balance - a.wallet_balance).slice(0, 6);
+	const totalPages = Math.max(1, Math.ceil(sortedCustomers.length / PAGE_SIZE));
+	const currentPage = Math.min(page, totalPages);
+	const pageRows = sortedCustomers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+	const pageAllSelected = pageRows.length > 0 && pageRows.every((customer) => selectedIds.has(customer.source_id));
+	const togglePage = () => setSelectedIds((current) => {
+		const next = new Set(current);
+		pageRows.forEach((customer) => pageAllSelected ? next.delete(customer.source_id) : next.add(customer.source_id));
+		return next;
+	});
 
-			{/* Search */}
-			<div className="rounded-xl border border-border bg-card p-2.5 shadow-sm">
+	return (
+		<div className="flex min-w-0 flex-col gap-3.5 pb-24 md:pb-8">
+			<div className="flex items-end justify-between gap-3">
+				<div>
+					<div className="font-mono text-[10px] tracking-[0.04em] text-muted-foreground">DJIWA APP / PELANGGAN</div>
+					<h1 className="text-[19px] font-semibold leading-tight tracking-tight">Pelanggan</h1>
+				</div>
 				<div className="flex items-center gap-2">
-					<div className="relative min-w-0 flex-1">
-						<Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-						<Input
-							className="h-9 pl-9 text-sm"
-							onChange={(e) => setSearchQuery(e.target.value)}
-							placeholder="Cari nama, email, atau telepon..."
-							value={searchQuery}
-						/>
-					</div>
+					<button type="button" onClick={() => setShowAnalysis((value) => !value)} className="h-[34px] border border-border bg-card px-3 text-xs font-semibold hover:border-foreground/30">{showAnalysis ? "Sembunyikan analisis" : "Tampilkan analisis"}</button>
 					<DropdownMenu>
 						<DropdownMenuTrigger
 							render={(props) => (
-								<button {...props} type="button" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-xs font-bold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Buka menu export customer">
-									<Download className="h-3.5 w-3.5 text-primary" />
-									<span className="hidden sm:inline">Export</span>
+								<button {...props} type="button" className="inline-flex h-[34px] items-center gap-1.5 border border-border bg-card px-3 text-xs font-semibold hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Buka menu export customer">
+									<Download className="h-3.5 w-3.5" />
+									<span>Export</span>
 								</button>
 							)}
 						/>
@@ -626,11 +633,11 @@ function AdminCustomers() {
 							<DropdownMenuLabel className="px-2 py-1 text-[11px]">Export {selectedCustomers.length ? `${selectedCustomers.length} dipilih` : `${sortedCustomers.length} terlihat`}</DropdownMenuLabel>
 							<div className="space-y-1.5">
 								{(["email", "phone", "full"] as const).map((mode) => (
-									<div key={mode} className="rounded-lg bg-muted/40 px-2 py-1.5">
+									<div key={mode} className="bg-muted/40 px-2 py-1.5">
 										<p className="mb-1 text-[10px] font-bold text-muted-foreground">{mode === "email" ? "Email" : mode === "phone" ? "Nomor telepon" : "Semua data"}</p>
 										<div className="grid grid-cols-4 gap-1">
 											{(["xlsx", "csv", "vcf", "pdf"] as const).map((formatType) => (
-												<button key={formatType} type="button" onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, mode, formatType)} className="h-7 rounded-md border border-border bg-background px-1 text-[10px] font-bold uppercase text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{formatType === "xlsx" ? "Excel" : formatType}</button>
+												<button key={formatType} type="button" onClick={() => exportCustomers(selectedCustomers.length ? selectedCustomers : sortedCustomers, mode, formatType)} className="h-7 border border-border bg-background px-1 text-[10px] font-bold uppercase text-foreground transition-colors hover:bg-muted">{formatType}</button>
 											))}
 										</div>
 									</div>
@@ -641,172 +648,114 @@ function AdminCustomers() {
 				</div>
 			</div>
 
-			{selectedCustomers.length > 0 ? (
-				<div className="flex items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 p-2.5 text-red-900">
-					<span className="text-xs font-bold">{selectedCustomers.length} customer dipilih</span>
-					<button type="button" onClick={() => setConfirmDeleteCustomers(selectedCustomers)} className="h-10 rounded-lg bg-red-600 px-3 text-xs font-black text-white">Hapus terpilih</button>
+			<Kpis cols={6} items={[
+				{ label: "Total pelanggan", value: num(customers.length), hint: `${num(activeNow)} sedang aktif` },
+				{ label: "Pendaftar 7 hari", value: num(joinedLast7), delta: { cur: joinedLast7, prev: joinedPrev7 }, hint: "vs 7 hari lalu" },
+				{ label: "Aktif ≤14 hari", value: num(retentionCounts[1].value), hint: `${customers.length ? Math.round((retentionCounts[1].value / customers.length) * 100) : 0}% basis`, tone: "ok" },
+				{ label: "Pernah belanja", value: num(buyers.length), hint: `${customers.length ? Math.round((buyers.length / customers.length) * 100) : 0}% konversi` },
+				{ label: "Total belanja", value: rupiah(totalSpent), hint: buyers.length ? `rata-rata ${rupiah(totalSpent / buyers.length)}` : undefined },
+				{ label: "Saldo Djiwa Pay", value: rupiah(totalBalance), hint: `${num(withBalance.length)} pelanggan`, tone: "ok" },
+			]} />
+
+			{showAnalysis ? (
+				<div className="grid gap-3.5 lg:grid-cols-3">
+					<Panel title="Segmen retensi" meta={`${num(needReactivation.length)} perlu reaktivasi`}>
+						<SegmentBar rows={retentionCounts} />
+						{needReactivation.length ? <p className="mt-3 border-t border-border pt-2.5 text-[11.5px] text-muted-foreground">{num(needReactivation.length)} pelanggan tidak aktif &gt;30 hari menyimpan saldo {rupiah(reactivationBalance)}. Prioritaskan voucher/pesan pengingat.</p> : null}
+					</Panel>
+					<Panel title="Belanja terbesar" meta="seumur hidup">
+						<Rank color="#7c3aed" rows={topSpenders.map((customer) => ({ label: customer.name || customer.email || "Tanpa nama", value: customer.total_spent, text: rupiah(customer.total_spent), sub: `${num(customer.total_orders)} pesanan` }))} empty="Belum ada pelanggan yang berbelanja." />
+					</Panel>
+					<Panel title="Saldo terbesar" meta="dompet Djiwa Pay">
+						<Rank color="#166534" rows={topBalances.map((customer) => ({ label: customer.name || customer.email || "Tanpa nama", value: customer.wallet_balance, text: rupiah(customer.wallet_balance), sub: customer.wallet_held_balance ? `tertahan ${rupiah(customer.wallet_held_balance)}` : undefined }))} empty="Belum ada saldo tersimpan." />
+					</Panel>
 				</div>
 			) : null}
 
-			{/* Mobile: Card list */}
-			<div className="space-y-2 pb-24 md:hidden">
-				{filteredCustomers?.length === 0 ? (
-					<div className="rounded-xl border border-dashed border-border bg-card py-12 text-center text-muted-foreground text-sm">
-						Belum ada pelanggan.
-					</div>
-				) : (
-					sortedCustomers.map((c) => (
-						<div
-							key={c.source_id}
-							className="cursor-pointer rounded-xl border border-border bg-card p-3 shadow-sm transition hover:border-primary/30 hover:shadow-md"
-							onClick={() => setDetailCustomer(c)}
-						>
-							<div className="flex items-start gap-3">
-								<input type="checkbox" aria-label={`Pilih ${c.name || "customer"}`} checked={selectedIds.has(c.source_id)} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(c.source_id)} className="mt-1 h-5 w-5 shrink-0 accent-red-600" />
-								<div className="min-w-0 flex-1 space-y-1">
-									<div className="flex items-center gap-2">
-										<CustomerAvatar customer={c} />
-										<span className="truncate font-semibold text-sm">
-											{c.name || "Tanpa Nama"}
-										</span>
-									</div>
-									{c.email && (
-										<p className="truncate text-[11px] text-muted-foreground">
-											{c.email}
-										</p>
-									)}
-									{c.phone && (
-										<p className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
-											<Phone className="h-3 w-3 shrink-0" /> {c.phone}
-										</p>
-									)}
-									<div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
-										<span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-emerald-700">
-												<Wallet className="h-3 w-3" /> {formatRupiah(c.wallet_balance || 0)}
-										</span>
-										<span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-blue-700">
-											<ShoppingBag className="h-3 w-3" />
-											{c.total_orders} order DjiwaApp
-										</span>
-										<span className="inline-flex items-center gap-1 rounded-md bg-green-50 px-1.5 py-0.5 text-green-700">
-											<DollarSign className="h-3 w-3" />
-											{formatRupiah(c.total_spent)}
-										</span>
-									</div>
-									{c.last_order_at && (
-										<p className="flex items-center gap-1 text-[10px] text-muted-foreground">
-											<Clock className="h-3 w-3" />
-											Terakhir:{" "}
-											{format(new Date(c.last_order_at), "dd MMM yyyy HH:mm", {
-												locale: id,
-											})}
-										</p>
-									)}
-									<div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-										<Clock className="h-3 w-3" />
-										Tidak aktif selama: <span className="font-bold text-foreground">{formatInactiveDays(c)}</span>
-									</div>
-									<div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
-										<span className={`rounded-md px-1.5 py-0.5 font-bold ${retentionTone(retentionSegment(c))}`}>{retentionSegment(c)}</span>
-										<span className="rounded-md bg-violet-50 px-1.5 py-0.5 font-semibold text-violet-700">{marketingPriority(c)}</span>
-									</div>
-									<div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-										<CircleDot className={`h-3 w-3 ${customerPresence(c) === "online" ? "fill-emerald-500 text-emerald-500" : "text-slate-400"}`} />
-										<span className={customerPresence(c) === "online" ? "font-bold text-emerald-700" : ""}>{presenceLabel(c)}</span>
-										<span>· Terakhir aktif: {formatDate(c.last_active_at, true)} · {c.djiwaapp_visit_count ?? 0} kunjungan DjiwaApp</span>
-									</div>
-									<p className="flex items-center gap-1 text-[10px] text-muted-foreground">
-										<Star className="h-3 w-3" /> Exp Member {formatMembershipExpiry(c.membership_expires_at)}
-									</p>
-									<p className="flex items-center gap-1 text-[10px] text-muted-foreground">
-										<CalendarDays className="h-3 w-3" /> Bergabung {formatDate(c.created_at)}
-									</p>
-							</div>
-					</div>
-					</div>
-					))
-				)}
+			<div className="flex flex-wrap gap-2.5">
+				<div className="relative min-w-[240px] flex-1">
+					<Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+					<input className="h-[34px] w-full border border-border bg-card pr-3 pl-9 text-[13px] outline-none focus:border-foreground/40" type="search" placeholder="Cari nama, email, nomor HP, atau ID…" aria-label="Cari pelanggan" value={searchQuery} onChange={(event) => { setSearchQuery(event.target.value); setPage(1); }} />
+				</div>
+				<select aria-label="Urutkan" value={sortPreset} onChange={(event) => applySortPreset(event.target.value as SortPreset)} className="h-[34px] border border-border bg-card px-2.5 text-[13px]">{SORT_PRESETS.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
 			</div>
 
-			{/* Desktop: Compact table */}
-			<div className="hidden rounded-[20px] border border-border bg-card shadow-sm md:block">
-				<div className="overflow-x-auto">
-					<table className="w-full min-w-[1400px] text-left text-xs">
-						<thead className="sticky top-0 z-10 bg-muted/70 uppercase tracking-wider">
-							<tr className="text-[10px] text-muted-foreground">
-								<th className="whitespace-nowrap w-12 px-2.5 py-2 text-center"><input type="checkbox" aria-label="Pilih semua customer terlihat" checked={allVisibleSelected} onChange={toggleSelectAll} className="h-5 w-5 accent-red-600" /></th>
-								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Nama" sortKey="name" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Email" sortKey="email" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Telepon" sortKey="phone" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-								<th className="whitespace-nowrap px-2.5 py-2">Status</th>
-								<th className="whitespace-nowrap px-2.5 py-2">Exp Member</th>
-								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Bergabung" sortKey="created_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-								<th className="whitespace-nowrap px-2.5 py-2 text-right"><SortableHeader label="Saldo" sortKey="wallet_balance" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="right" /></th>
-								<th className="whitespace-nowrap px-2.5 py-2 text-center"><SortableHeader label="Kunjungan DjiwaApp" sortKey="djiwaapp_visit_count" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="center" /></th>
-								<th className="whitespace-nowrap px-2.5 py-2 text-center"><SortableHeader label="Order DjiwaApp" sortKey="total_orders" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="center" /></th>
-								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Terakhir Order" sortKey="last_order_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Terakhir Aktif" sortKey="last_active_at" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Tidak Aktif Selama" sortKey="inactive_days" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-								<th className="whitespace-nowrap px-2.5 py-2 text-right"><SortableHeader label="Total Spending" sortKey="total_spent" activeKey={sortKey} direction={sortDirection} onSort={handleSort} align="right" /></th>
-								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Segmen Retensi" sortKey="retention_segment" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-								<th className="whitespace-nowrap px-2.5 py-2"><SortableHeader label="Prioritas Marketing" sortKey="marketing_priority" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-							</tr>
-						</thead>
-						<tbody className="divide-y divide-border">
-							{filteredCustomers?.length === 0 ? (
-								<tr>
-									<td
-										className="h-32 text-center text-muted-foreground text-sm"
-										colSpan={16}
-									>
-										Belum ada pelanggan.
-									</td>
-								</tr>
-							) : (
-								sortedCustomers.map((c) => (
-									<tr
-										key={c.source_id}
-										className="cursor-pointer transition-colors hover:bg-muted/30"
-										onClick={() => setDetailCustomer(c)}
-									>
-										<td className="whitespace-nowrap w-12 px-2.5 py-2 text-center align-middle"><input type="checkbox" aria-label={`Pilih ${c.name || "customer"}`} checked={selectedIds.has(c.source_id)} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(c.source_id)} className="h-5 w-5 accent-red-600" /></td>
-										<td className="whitespace-nowrap px-2.5 py-2 align-middle">
-											<div className="flex items-center gap-2">
-												<CustomerAvatar customer={c} />
-												<span className="truncate font-medium text-xs">
-													{c.name || "Tanpa Nama"}
-												</span>
-											</div>
-										</td>
-										<td className="whitespace-nowrap max-w-[200px] truncate px-2.5 py-2 align-middle text-muted-foreground">
-											{c.email || "-"}
-										</td>
-										<td className="px-2.5 py-2 align-middle text-muted-foreground whitespace-nowrap">
-											{c.phone || "-"}
-										</td>
-										<td className="px-2.5 py-2 align-middle whitespace-nowrap">
-											<span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold ${customerPresence(c) === "online" ? "bg-emerald-50 text-emerald-700" : customerPresence(c) === "offline" ? "bg-slate-100 text-slate-600" : "bg-muted text-muted-foreground"}`}>
-												<CircleDot className={`h-2.5 w-2.5 ${customerPresence(c) === "online" ? "fill-emerald-500 text-emerald-500" : "text-slate-400"}`} /> {presenceLabel(c)}
-											</span>
-										</td>
-										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">{formatMembershipExpiry(c.membership_expires_at)}</td>
-										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">{formatDate(c.created_at)}</td>
-										<td className="whitespace-nowrap px-2.5 py-2 text-right align-middle tabular-nums font-semibold text-emerald-700">{formatRupiah(c.wallet_balance || 0)}</td>
-										<td className="whitespace-nowrap px-2.5 py-2 text-center align-middle tabular-nums">{c.djiwaapp_visit_count ?? 0}</td>
-										<td className="whitespace-nowrap px-2.5 py-2 text-center align-middle tabular-nums">{c.total_orders}</td>
-										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">{formatDate(c.last_order_at, true)}</td>
-										<td className="px-2.5 py-2 align-middle text-[10px] text-muted-foreground tabular-nums whitespace-nowrap">{formatDate(c.last_active_at, true)}</td>
-										<td className="px-2.5 py-2 align-middle text-[10px] font-semibold tabular-nums whitespace-nowrap"><span className={daysSinceCustomerActivity(c) !== null && (daysSinceCustomerActivity(c) ?? 0) > 30 ? "text-rose-700" : "text-muted-foreground"}>{formatInactiveDays(c)}</span></td>
-										<td className="whitespace-nowrap px-2.5 py-2 text-right align-middle tabular-nums font-medium">{formatRupiah(c.total_spent)}</td>
-										<td className="px-2.5 py-2 align-middle whitespace-nowrap"><span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-bold ${retentionTone(retentionSegment(c))}`}>{retentionSegment(c)}</span></td>
-										<td className="px-2.5 py-2 align-middle whitespace-nowrap text-[10px] font-semibold text-violet-700">{marketingPriority(c)}</td>
-									</tr>
-								))
-							)}
-						</tbody>
-					</table>
+			<Tabs items={FILTERS.map(([key, label]) => [key, label, filterCounts[key]] as const)} value={filter} onChange={(next) => { setFilter(next); setPage(1); }} />
+
+			{selectedCustomers.length > 0 ? (
+				<div className="flex items-center justify-between gap-2 border border-red-200 bg-red-50 p-2.5 text-red-900">
+					<span className="text-xs font-bold">{selectedCustomers.length} customer dipilih</span>
+					<div className="flex gap-2">
+						<button type="button" onClick={() => setSelectedIds(new Set())} className="h-9 border border-red-200 bg-white px-3 text-xs font-bold">Batal pilih</button>
+						<button type="button" onClick={() => setConfirmDeleteCustomers(selectedCustomers)} className="h-9 bg-red-600 px-3 text-xs font-black text-white">Nonaktifkan terpilih</button>
+					</div>
 				</div>
-			</div>
+			) : null}
+
+			<Panel title={`${num(sortedCustomers.length)} pelanggan`} meta={`halaman ${currentPage}/${totalPages}`} flush>
+				{pageRows.length === 0 ? (
+					<p className="py-14 text-center text-sm text-muted-foreground">Tidak ada pelanggan yang cocok.</p>
+				) : (
+					<>
+						{/* Mobile: card list */}
+						<div className="divide-y divide-border md:hidden">
+							{pageRows.map((c) => (
+								<div key={c.source_id} className="flex cursor-pointer items-start gap-3 px-3.5 py-3 active:bg-muted/50" onClick={() => setDetailCustomer(c)}>
+									<input type="checkbox" aria-label={`Pilih ${c.name || "customer"}`} checked={selectedIds.has(c.source_id)} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(c.source_id)} className="mt-2 h-4 w-4 shrink-0 accent-[#111114]" />
+									<Avatar name={c.name} photo={c.photo_url} />
+									<div className="min-w-0 flex-1">
+										<div className="flex items-baseline justify-between gap-2"><b className="truncate text-[13px]">{c.name || "Tanpa nama"}</b><span className="shrink-0 text-xs font-semibold text-emerald-700">{rupiah(c.wallet_balance)}</span></div>
+										<small className="block truncate text-[11.5px] text-muted-foreground">{c.email || c.phone || c.source_id.slice(0, 10)}</small>
+										<div className="mt-1 flex flex-wrap items-center gap-y-1 text-[11px] text-muted-foreground"><Pill tone={retentionPillTone(retentionSegment(c))}>{retentionSegment(c)}</Pill>{c.total_orders > 0 ? <span>{num(c.total_orders)} pesanan · {rupiah(c.total_spent)}</span> : null}<span className="ml-auto">{agoLabel(c.last_active_at)}</span></div>
+									</div>
+								</div>
+							))}
+						</div>
+						{/* Desktop: table */}
+						<div className="hidden overflow-x-auto md:block">
+							<table className="w-full border-collapse text-[12.5px]">
+								<thead>
+									<tr className="border-b border-border">
+										<th className="w-10 px-3.5 py-2.5"><input type="checkbox" aria-label="Pilih semua di halaman ini" checked={pageAllSelected} onChange={togglePage} className="h-4 w-4 accent-[#111114]" /></th>
+										<th className={`${monoLabel} px-3.5 py-2.5 text-left`}>Pelanggan</th>
+										<th className={`${monoLabel} px-3.5 py-2.5 text-right`}>Saldo</th>
+										<th className={`${monoLabel} px-3.5 py-2.5 text-right`}>Belanja</th>
+										<th className={`${monoLabel} px-3.5 py-2.5 text-right`}>Kunjungan</th>
+										<th className={`${monoLabel} px-3.5 py-2.5 text-left`}>Member</th>
+										<th className={`${monoLabel} px-3.5 py-2.5 text-left`}>Status</th>
+										<th className={`${monoLabel} px-3.5 py-2.5 text-right`}>Daftar</th>
+									</tr>
+								</thead>
+								<tbody>
+									{pageRows.map((c) => {
+										const segment = retentionSegment(c);
+										const memberActive = c.membership_expires_at && new Date(c.membership_expires_at).getTime() > now;
+										return (
+											<tr key={c.source_id} className="cursor-pointer border-b border-muted last:border-0 hover:bg-[#fafafb]" onClick={() => setDetailCustomer(c)}>
+												<td className="px-3.5 py-2.5" onClick={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`Pilih ${c.name || "customer"}`} checked={selectedIds.has(c.source_id)} onChange={() => toggleSelected(c.source_id)} className="h-4 w-4 accent-[#111114]" /></td>
+												<td className="px-3.5 py-2.5"><div className="flex min-w-0 items-center gap-2.5"><Avatar name={c.name} photo={c.photo_url} /><div className="min-w-0"><b className="block max-w-[260px] truncate">{c.name || "Tanpa nama"}</b><small className="block max-w-[260px] truncate text-[11.5px] text-muted-foreground">{c.email || c.phone || c.source_id.slice(0, 10)}</small></div></div></td>
+												<td className={`px-3.5 py-2.5 text-right tabular-nums ${c.wallet_balance > 0 ? "font-semibold text-emerald-700" : ""}`}>{rupiah(c.wallet_balance)}</td>
+												<td className="px-3.5 py-2.5 text-right tabular-nums">{rupiah(c.total_spent)}<small className="block text-[11.5px] text-muted-foreground">{num(c.total_orders)} pesanan</small></td>
+												<td className="px-3.5 py-2.5 text-right tabular-nums">{num(c.djiwaapp_visit_count ?? 0)}</td>
+												<td className="px-3.5 py-2.5">{memberActive ? <><Pill tone="ok">member</Pill><small className="block text-[11.5px] text-muted-foreground">s/d {formatMembershipExpiry(c.membership_expires_at)}</small></> : <span className="text-muted-foreground">—</span>}</td>
+												<td className="px-3.5 py-2.5"><Pill tone={retentionPillTone(segment)}>{segment}</Pill>{customerPresence(c) === "online" ? <Pill tone="ok">online</Pill> : null}<small className="block text-[11.5px] text-muted-foreground">{agoLabel(latestCustomerActivity(c) ? new Date(latestCustomerActivity(c)).toISOString() : null)}</small></td>
+												<td className="px-3.5 py-2.5 text-right tabular-nums">{formatDate(c.created_at)}</td>
+											</tr>
+										);
+									})}
+								</tbody>
+							</table>
+						</div>
+					</>
+				)}
+				{totalPages > 1 ? (
+					<div className="flex items-center justify-between border-t border-border px-3.5 py-2.5 text-muted-foreground">
+						<button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className="h-8 border border-border bg-card px-3 text-xs font-semibold text-foreground disabled:opacity-40">← Sebelumnya</button>
+						<span className="text-xs">{currentPage} / {totalPages}</span>
+						<button type="button" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)} className="h-8 border border-border bg-card px-3 text-xs font-semibold text-foreground disabled:opacity-40">Berikutnya →</button>
+					</div>
+				) : null}
+			</Panel>
 
 			{detailCustomer ? (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailCustomer(null); }}>

@@ -30,7 +30,17 @@ export type CustomerAnalytics = {
 	appSpending: number;
 	appVisits: number;
 	walletBalance: number;
-	trend: Array<{ label: string; orders: number; spending: number }>;
+	trend: Array<{ label: string; orders: number; spending: number; signups: number }>;
+	previous: { appOrders: number; appSpending: number; newCustomers: number; activeInPeriod: number };
+	averageOrderValue: number;
+	repeatCustomers: number;
+	buyingCustomers: number;
+	totalCustomers: number;
+	customersWithBalance: number;
+	hourly: number[];
+	weekday: number[];
+	retention: Array<{ label: string; value: number }>;
+	topWalletHolders: Array<{ id: string; name: string; email: string; balance: number }>;
 	topProducts: Array<{ name: string; quantity: number; spending: number }>;
 	topCustomers: Array<{
 		id: string;
@@ -147,8 +157,27 @@ function displayDateKey(value: string) {
 	return `${day ?? "-"}/${month ?? "-"}`;
 }
 
+function previousBounds(period: CustomerAnalyticsPeriod) {
+	const { start, endExclusive } = periodBounds(period);
+	const length = endExclusive.getTime() - start.getTime();
+	return { start: new Date(start.getTime() - length), endExclusive: start };
+}
+
+function retentionLabel(customer: CustomerRow) {
+	const stamps = [customer.last_active_at, customer.last_order_at].map((value) => toDate(value)?.getTime() ?? 0).filter((value) => value > 0);
+	if (!stamps.length) return "Belum aktif";
+	const days = Math.floor((Date.now() - Math.max(...stamps)) / 86400000);
+	return days <= 14 ? "Aktif" : days <= 30 ? "Perlu diingatkan" : days <= 60 ? "Belum kembali" : "Berisiko hilang";
+}
+
 function buildAnalytics(period: CustomerAnalyticsPeriod, customers: CustomerRow[], orders: OrderRow[]): CustomerAnalytics {
 	const { start, endExclusive } = periodBounds(period);
+	const prev = previousBounds(period);
+	const inPrev = (value: unknown) => {
+		const time = toDate(value)?.getTime() ?? 0;
+		return time >= prev.start.getTime() && time < prev.endExclusive.getTime();
+	};
+	const prevOrders = orders.filter((order) => isCustomerAppOrder(order) && isSettled(order) && inPrev(order.createdAt ?? order.created_at));
 	const startTime = start.getTime();
 	const endTime = endExclusive.getTime();
 	const inPeriod = (value: unknown) => {
@@ -164,8 +193,18 @@ function buildAnalytics(period: CustomerAnalyticsPeriod, customers: CustomerRow[
 	}
 	const settledOrders = [...appOrders.values()];
 	const trendMap = new Map<string, { orders: number; spending: number }>();
+	const hourly = Array.from({ length: 24 }, () => 0);
+	const weekday = Array.from({ length: 7 }, () => 0);
+	const signupMap = new Map<string, number>();
+	for (const customer of customers) {
+		if (!inPeriod(customer.created_at)) continue;
+		const key = dateKey(customer.created_at);
+		if (key) signupMap.set(key, (signupMap.get(key) ?? 0) + 1);
+	}
 	const productMap = new Map<string, { quantity: number; spending: number }>();
 	for (const order of settledOrders) {
+		const orderDate = toDate(order.createdAt ?? order.created_at);
+		if (orderDate) { hourly[orderDate.getHours()] += 1; weekday[(orderDate.getDay() + 6) % 7] += 1; }
 		const key = dateKey(order.createdAt ?? order.created_at);
 		if (key) {
 			const current = trendMap.get(key) ?? { orders: 0, spending: 0 };
@@ -185,7 +224,7 @@ function buildAnalytics(period: CustomerAnalyticsPeriod, customers: CustomerRow[
 	for (const cursor = new Date(start); cursor < endExclusive; cursor.setDate(cursor.getDate() + 1)) {
 		const key = dateKey(cursor);
 		const current = trendMap.get(key) ?? { orders: 0, spending: 0 };
-		trend.push({ label: displayDateKey(key), ...current });
+		trend.push({ label: displayDateKey(key), ...current, signups: signupMap.get(key) ?? 0 });
 	}
 	const activeInPeriod = customers.filter((customer) => inPeriod(customer.last_active_at)).length;
 	const newCustomers = customers.filter((customer) => inPeriod(customer.created_at)).length;
@@ -210,7 +249,30 @@ function buildAnalytics(period: CustomerAnalyticsPeriod, customers: CustomerRow[
 		.filter((customer) => customer.orders > 0 || customer.visits > 0)
 		.sort((a, b) => b.spending - a.spending || b.orders - a.orders)
 		.slice(0, 8);
+	const perCustomer = new Map<string, number>();
+	for (const order of settledOrders) {
+		const id = String(order.customerSourceId ?? order.customer_source_id ?? "");
+		if (id) perCustomer.set(id, (perCustomer.get(id) ?? 0) + 1);
+	}
+	const retentionMap = new Map<string, number>();
+	for (const customer of customers) retentionMap.set(retentionLabel(customer), (retentionMap.get(retentionLabel(customer)) ?? 0) + 1);
+	const totalSpending = settledOrders.reduce((sum, order) => sum + money(order.totalAmount ?? order.total_amount), 0);
 	return {
+		previous: {
+			appOrders: prevOrders.length,
+			appSpending: prevOrders.reduce((sum, order) => sum + money(order.totalAmount ?? order.total_amount), 0),
+			newCustomers: customers.filter((customer) => { const time = toDate(customer.created_at)?.getTime() ?? 0; return time >= prev.start.getTime() && time < prev.endExclusive.getTime(); }).length,
+			activeInPeriod: customers.filter((customer) => { const time = toDate(customer.last_active_at)?.getTime() ?? 0; return time >= prev.start.getTime() && time < prev.endExclusive.getTime(); }).length,
+		},
+		averageOrderValue: settledOrders.length ? totalSpending / settledOrders.length : 0,
+		repeatCustomers: [...perCustomer.values()].filter((count) => count > 1).length,
+		buyingCustomers: perCustomer.size,
+		totalCustomers: customers.length,
+		customersWithBalance: customers.filter((customer) => money(customer.wallet_balance) > 0).length,
+		hourly,
+		weekday,
+		retention: ["Aktif", "Perlu diingatkan", "Belum kembali", "Berisiko hilang", "Belum aktif"].map((label) => ({ label, value: retentionMap.get(label) ?? 0 })),
+		topWalletHolders: [...customers].filter((customer) => money(customer.wallet_balance) > 0).sort((a, b) => money(b.wallet_balance) - money(a.wallet_balance)).slice(0, 6).map((customer) => ({ id: String(customer.source_id), name: String(customer.name ?? "Tanpa Nama"), email: String(customer.email ?? customer.phone ?? "-"), balance: money(customer.wallet_balance) })),
 		period,
 		periodLabel:
 			period === "today" ? "Hari ini" :
@@ -242,12 +304,13 @@ export function useCustomerAppAnalytics(period: CustomerAnalyticsPeriod) {
 	const bounds = useMemo(() => periodBounds(period), [period]);
 	const load = useCallback(async () => {
 		const supabase = createClient();
-		const { start, endExclusive } = periodBounds(period);
+		const { endExclusive } = periodBounds(period);
+		const start = previousBounds(period).start;
 		const startMs = start.getTime();
 		const endMs = endExclusive.getTime();
-		const customerColumns = "source_id,name,email,phone,last_active_at,created_at,djiwaapp_visit_count,wallet_balance";
+		const customerColumns = "source_id,name,email,phone,last_active_at,last_order_at,created_at,djiwaapp_visit_count,wallet_balance";
 		const orderColumns = "_id,orderNumber,status,source,orderChannel,createdAt,totalAmount,customerSourceId,items";
-		const orderRequests = Array.from({ length: 3 }, (_, page) => adminProtectedRead("orders", { select: orderColumns, gte: { createdAt: startMs }, lt: { createdAt: endMs }, order: [{ column: "createdAt", ascending: false }], range: [page * 1000, page * 1000 + 999] }));
+		const orderRequests = Array.from({ length: 6 }, (_, page) => adminProtectedRead("orders", { select: orderColumns, gte: { createdAt: startMs }, lt: { createdAt: endMs }, order: [{ column: "createdAt", ascending: false }], range: [page * 1000, page * 1000 + 999] }));
 		const [{ data: customers, error: customersError }, ...orderPages] = await Promise.all([
 			supabase.from("pos_customers_view").select(customerColumns).order("total_spent", { ascending: false }),
 			...orderRequests,
