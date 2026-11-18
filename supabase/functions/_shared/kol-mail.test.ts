@@ -50,6 +50,10 @@ describe("buildKolEmail", () => {
     expect(mail.text).toContain("Tanggal: ");
     expect(mail.text).toContain("Peta: https://maps.app.goo.gl/");
     expect(mail.text).not.toMatch(/<[a-z]/i);
+    expect(mail.text).not.toContain("&amp;");
+    expect(mail.text).toContain("Lokasi: Djiwa Tentram Cafe & Resto - Tasikmalaya, Jalan Bojong Tengah No. 34, Tasikmalaya\n");
+    expect(mail.text).not.toContain("Buka di Google Maps");
+    expect(mail.html).toContain("Cafe &amp; Resto");
   });
   it("omits the manager line when no manager number is set", () => {
     const mail = buildKolEmail("visit_confirmed", sampleKolPayload({ waManager: "" }));

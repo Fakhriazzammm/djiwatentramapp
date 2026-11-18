@@ -77,15 +77,16 @@ const h1 = (text: string) => `<h1 style="margin:0 0 14px;font-size:22px;line-hei
 const button = (label: string, href: string, solid = true) => href
   ? `<a href="${escapeHtml(href)}" style="display:inline-block;margin:0 8px 8px 0;padding:12px 22px;border-radius:10px;font-weight:600;text-decoration:none;${solid ? `background:${BLUE};color:#ffffff;` : `border:1px solid ${BLUE};color:${BLUE};`}">${escapeHtml(label)}</a>` : "";
 
-function detailRows(payload: KolMailPayload) {
-  const rows: Array<[string, string]> = [["Tanggal", longDate(payload.date)], ["Jam datang", `${dotTime(payload.time)} WIB`]];
+/** Baris detail jadwal: [label, teks biasa, HTML]. Teks biasa dan HTML dipisah agar versi teks email tidak memuat entitas HTML. */
+function detailRows(payload: KolMailPayload): Array<[string, string, string]> {
   const where = [payload.cafeName, payload.address].filter(Boolean).join(", ");
   const maps = payload.mapsUrl ? ` <a href="${escapeHtml(payload.mapsUrl)}" style="color:${BLUE};">Buka di Google Maps</a>` : "";
-  rows.push(["Lokasi", `${escapeHtml(where)}${maps}`]);
-  return rows;
+  const date = longDate(payload.date);
+  const time = `${dotTime(payload.time)} WIB`;
+  return [["Tanggal", date, escapeHtml(date)], ["Jam datang", time, escapeHtml(time)], ["Lokasi", where, `${escapeHtml(where)}${maps}`]];
 }
 function detailHtml(payload: KolMailPayload) {
-  const rows = detailRows(payload).map(([k, v], i) => `<tr><td style="padding:9px 0;width:104px;color:#6a6a76;font-size:13px;vertical-align:top;${i ? "border-top:1px solid #e6e6ea;" : ""}">${escapeHtml(k)}</td><td style="padding:9px 0;font-weight:600;${i ? "border-top:1px solid #e6e6ea;" : ""}">${k === "Lokasi" ? v : escapeHtml(v)}</td></tr>`);
+  const rows = detailRows(payload).map(([k, , html], i) => `<tr><td style="padding:9px 0;width:104px;color:#6a6a76;font-size:13px;vertical-align:top;${i ? "border-top:1px solid #e6e6ea;" : ""}">${escapeHtml(k)}</td><td style="padding:9px 0;font-weight:600;${i ? "border-top:1px solid #e6e6ea;" : ""}">${html}</td></tr>`);
   if (payload.note?.trim()) rows.push(`<tr><td style="padding:9px 0;width:104px;color:#6a6a76;font-size:13px;vertical-align:top;border-top:1px solid #e6e6ea;">Catatan tim</td><td style="padding:9px 0;border-top:1px solid #e6e6ea;">${escapeHtml(payload.note)}</td></tr>`);
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:16px 0;padding:6px 16px;background:#f4f7fc;border-left:3px solid ${BLUE};display:block;">${rows.join("")}</table>`;
 }
@@ -131,7 +132,7 @@ function wrap(inner: string, preheader: string, payload: KolMailPayload) {
 export function buildKolEmail(kind: KolMailKind, payload: KolMailPayload): BuiltEmail {
   const greet = `Halo Kak ${firstName(payload.name) || "Creator"},`;
   const when = `${shortDate(payload.date)} · ${dotTime(payload.time)} WIB`;
-  const detailText = detailRows(payload).map(([k, v]) => `${k}: ${v.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim()}`).join("\n") + (payload.mapsUrl ? `\nPeta: ${payload.mapsUrl}` : "") + (payload.note?.trim() ? `\nCatatan tim: ${payload.note.trim()}` : "");
+  const detailText = detailRows(payload).map(([k, plain]) => `${k}: ${plain}`).join("\n") + (payload.mapsUrl ? `\nPeta: ${payload.mapsUrl}` : "") + (payload.note?.trim() ? `\nCatatan tim: ${payload.note.trim()}` : "");
   const calendar = googleCalendarUrl(payload);
 
   if (kind === "visit_cancelled") {
