@@ -5,7 +5,8 @@ import { Hono } from "hono";
 import { Pool } from "pg";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { authServerResolver, type Resolver } from "./auth.js";
+import { authServerEmailResolver, authServerResolver, type Resolver } from "./auth.js";
+import { registerAdminRoutes, registerTrackRoute, seedAdmins, type AuthDb } from "./admin.js";
 import { applySync, loadState, type Tx } from "./sync.js";
 import { poolTx } from "./db.js";
 import { registerAssetRoutes } from "./assets.js";
@@ -25,20 +26,22 @@ import { approveGroup, rejectGroup, reviewGroups, approve, ensureSource, getSour
 const DAILY_SCAN_LIMIT = Number(process.env.SCAN_DAILY_LIMIT || 30);
 const MAX_IMAGE_BYTES = 3_500_000;
 
-export type Deps = { db: Tx; resolve: Resolver; dir: string; aiKey?: string; read?: (dataUrl: string) => Promise<ReceiptRead>; google?: GoogleCfg | null; gfetch?: Fetch; mailDomain?: string; hook?: HookDeps; publicUrl?: string };
+export type Deps = { db: Tx; resolve: Resolver; authDb?: AuthDb | null; resolveEmail?: (cookie: string) => Promise<string | null>; dir: string; aiKey?: string; read?: (dataUrl: string) => Promise<ReceiptRead>; google?: GoogleCfg | null; gfetch?: Fetch; mailDomain?: string; hook?: HookDeps; publicUrl?: string };
 
 export function createApp(d: Deps) {
   const app = new Hono();
   const json = (c: any, body: unknown, status = 200) => c.body(JSON.stringify(body), status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
   app.get("/api/finance/health", (c) => json(c, { ok: true }));
   app.use("/api/finance/*", async (c, next) => {
-    if (c.req.path === "/api/finance/health" || c.req.path === "/api/finance/google/callback" || c.req.path.startsWith("/api/finance/assets/ref/") || c.req.path.startsWith("/api/finance/hook/")) return next();
+    if (c.req.path === "/api/finance/health" || c.req.path === "/api/finance/google/callback" || c.req.path.startsWith("/api/finance/assets/ref/") || c.req.path.startsWith("/api/finance/hook/") || c.req.path === "/api/finance/track") return next();
     const userId = await d.resolve(c.req.header("cookie") || "");
     if (!userId) return json(c, { success: false, error: "UNAUTHORIZED" }, 401);
     c.set("userId" as never, userId as never);
     return next();
   });
   const uid = (c: any) => c.get("userId") as string;
+  registerTrackRoute(app, { db: d.db, userOf: d.resolve });
+  registerAdminRoutes(app, { db: d.db, authDb: d.authDb ?? null, emailOf: d.resolveEmail ?? (async () => null) }, json);
   registerAssetRoutes(app, { db: d.db, dir: d.dir, aiKey: d.aiKey }, uid, json);
   registerNewsRoutes(app, json);
   registerPushRoutes(app, { db: d.db }, uid, json);
@@ -280,7 +283,9 @@ if (import.meta.main) {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is required");
   const pool = new Pool({ connectionString: url, max: 5, ssl: process.env.PGSSL === "off" ? undefined : { rejectUnauthorized: false } });
-  const app = createApp({ db: poolTx(pool), resolve: authServerResolver(), dir: process.env.RECEIPTS_DIR || "/var/lib/djiwapay-api/receipts", aiKey: process.env.HELIPOD_AI_KEY, google: googleConfig(), mailDomain: process.env.MAIL_DOMAIN || undefined, publicUrl: process.env.PUBLIC_URL || undefined,
+  const authPool = process.env.AUTH_DATABASE_URL ? new Pool({ connectionString: process.env.AUTH_DATABASE_URL, max: 3 }) : null;
+  await seedAdmins(poolTx(pool)).catch((e) => console.error("admin seed failed", e instanceof Error ? e.message : e));
+  const app = createApp({ db: poolTx(pool), resolve: authServerResolver(), resolveEmail: authServerEmailResolver(), authDb: authPool ? { query: (t, p) => authPool.query(t, p as any[]) } : null, dir: process.env.RECEIPTS_DIR || "/var/lib/djiwapay-api/receipts", aiKey: process.env.HELIPOD_AI_KEY, google: googleConfig(), mailDomain: process.env.MAIL_DOMAIN || undefined, publicUrl: process.env.PUBLIC_URL || undefined,
     hook: await (async () => { const { toRawMail } = await import("./mail/smtp.js"); const key = process.env.HELIPOD_AI_KEY; const db = poolTx(pool);
       return { db, toMail: toRawMail, pipeline: { db, domain: process.env.MAIL_DOMAIN || "catat.djiwapay.web.id", llm: key ? makeLlm({ key, model: process.env.MAIL_LLM_MODEL }) : undefined } }; })() });
   const port = Number(process.env.PORT || 3011);
