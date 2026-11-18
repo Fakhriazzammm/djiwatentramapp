@@ -16,7 +16,7 @@ const STEP_SVG: Record<StepIcon, ReactNode> = {
 };
 const PLATFORM_TABS: [Platform, string][] = [["ios-safari", "iPhone"], ["android-chrome", "Android"], ["desktop-chromium", "Komputer"]];
 const tabOf = (p: Platform): Platform => (p.startsWith("ios") ? "ios-safari" : p.startsWith("android") ? "android-chrome" : "desktop-chromium");
-const SNOOZE = "djiwa-pwa-snooze", VISITS = "djiwa-pwa-visits";
+const PUSH_SNOOZE = "djiwa-push-snooze", SNOOZE = "djiwa-pwa-snooze", VISITS = "djiwa-pwa-visits";
 const read = (k: string) => { try { return window.localStorage.getItem(k); } catch { return null; } };
 const write = (k: string, v: string) => { try { window.localStorage.setItem(k, v); } catch { /* storage blocked */ } };
 
@@ -88,6 +88,20 @@ export function PwaHost() {
     }
     return () => navigator.serviceWorker?.removeEventListener("message", onMsg);
   }, []);
+  const [pushAsk, setPushAsk] = useState(false), [pushBusy, setPushBusy] = useState(false);
+  useEffect(() => {   // installed app without notifications: re-subscribe quietly if already allowed, otherwise invite (iOS needs a tap)
+    if (!st.installed) return;
+    let t = 0, off = false;
+    void getPushState().then(async (ps) => {
+      if (off || !ps.supported || ps.needsInstall || ps.permission === "denied" || ps.subscribed) return;
+      if (ps.permission === "granted") { await enablePush(); return; }
+      const until = Number(read(PUSH_SNOOZE) || 0); if (until === -1 || until > Date.now()) return;
+      t = window.setTimeout(() => setPushAsk(true), 5000);
+    });
+    return () => { off = true; window.clearTimeout(t); };
+  }, [st.installed]);
+  const pushOn = async () => { setPushBusy(true); const r = await enablePush(); setPushBusy(false); if (r.ok) { setPushAsk(false); void sendTestPush(); } else if (r.reason === "denied") { write(PUSH_SNOOZE, "-1"); setPushAsk(false); } };
+  const pushLater = () => { write(PUSH_SNOOZE, String(Date.now() + 2 * 864e5)); setPushAsk(false); };
   const snooze = (days: number) => { write(SNOOZE, String(days < 0 ? -1 : Date.now() + days * 864e5)); setAsk(false); };
   const install = async () => { if (st.canPrompt) { const r = await promptInstall(); if (r !== "unavailable") { setAsk(false); return; } } setGuide(true); };
   const visible = ask && !st.installed && !guide;   // the invitation steps aside while the guide is open
@@ -97,6 +111,11 @@ export function PwaHost() {
       <div className="dpx-pw-copy"><b>Pasang Djiwa Pay di ponselmu</b><span>Buka dari layar utama, layar penuh, dan terima notifikasi pemasukan atau pengeluaran.</span></div>
       <div className="dpx-pw-acts"><Btn type="button" className="dpx-pw-go" onClick={() => void install()}>{st.canPrompt ? "Pasang" : isIos() ? "Lihat caranya" : "Cara pasang"}</Btn><Btn type="button" className="dpx-pw-later" onClick={() => snooze(3)}>Nanti</Btn></div>
       <Btn type="button" className="dpx-pw-never" onClick={() => snooze(-1)}>Jangan ingatkan lagi</Btn>
+    </motion.div> : null}</AnimatePresence>
+    <AnimatePresence>{pushAsk && !visible ? <motion.div key="pushask" className="dpx dpx-pw-invite" role="dialog" aria-label="Aktifkan notifikasi" initial={{ y: 140, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 140, opacity: 0 }} transition={spring}>
+      <img src="/pwa-192.png" alt="" width={52} height={52} />
+      <div className="dpx-pw-copy"><b>Aktifkan notifikasi</b><span>Dapat pemberitahuan di layar kunci saat ada pemasukan, pengeluaran, atau catatan baru dari email, walau aplikasi tertutup.</span></div>
+      <div className="dpx-pw-acts"><Btn type="button" className="dpx-pw-go" disabled={pushBusy} onClick={() => void pushOn()}>Aktifkan</Btn><Btn type="button" className="dpx-pw-later" onClick={pushLater}>Nanti</Btn></div>
     </motion.div> : null}</AnimatePresence>
     <AnimatePresence>{st.updateReady ? <motion.div key="upd" className="dpx dpx-pw-update" initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }} transition={spring}><span>Versi baru Djiwa Pay siap</span><Btn type="button" onClick={applyUpdate}>Perbarui</Btn></motion.div> : null}</AnimatePresence>
     {guide ? <InstallGuide onClose={() => { setGuide(false); setAsk(false); }} onInstall={async () => { await promptInstall(); setGuide(false); setAsk(false); }} /> : null}
