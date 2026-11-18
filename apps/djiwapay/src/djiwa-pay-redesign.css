@@ -1100,3 +1100,9 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 .dpx .dpx-es-bar .dpx-btn{padding-left:8px;padding-right:8px;white-space:nowrap}
 .dpx .dpx-sheet{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .dpx .dpx-scan-hint{display:flex;gap:10px;align-items:flex-start;margin:12px 0 0;padding:12px 14px;border-radius:16px;background:#fff6e6;color:#6b4a12;font-size:13px;line-height:1.45}
+
+.dpx .dpx-nt-chips{display:flex;gap:8px;margin:4px 0 10px}.dpx .dpx-nt-chip{padding:8px 14px;border-radius:99px;background:rgba(255,255,255,.7);font:600 13px var(--font);color:var(--ink);display:inline-flex;gap:6px;align-items:center}.dpx .dpx-nt-chip em{font-style:normal;font-size:11.5px;opacity:.6}.dpx .dpx-nt-chip.on{background:var(--ink,#2d241d);color:#fff}
+.dpx .dpx-nt-day{margin-top:6px}.dpx .dpx-nt-day .dpx-glabel{margin:10px 4px 6px}
+.dpx .dpx-nt-row{align-items:center}.dpx .dpx-nt-row .dpx-main b{display:block;font-size:14.5px;line-height:1.3;font-weight:600;white-space:normal;overflow:visible}.dpx .dpx-nt-row.unread .dpx-main b{font-weight:800}
+.dpx .dpx-nt-row .dpx-main>span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;font-size:12.5px;line-height:1.4}
+.dpx .dpx-nt-row:not(.unread){opacity:.72}.dpx .dpx-nt-row .dpx-trail{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:42px}.dpx .dpx-nt-row .dpx-trail small{font:600 11.5px var(--font);opacity:.65}
