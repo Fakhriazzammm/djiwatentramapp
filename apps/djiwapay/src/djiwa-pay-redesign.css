@@ -1049,19 +1049,17 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 
 /* ---- Halaman masuk: latar sepanjang hari, statistik melayang, pratinjau fitur ---- */
 .dpx-auth{position:relative;isolation:isolate;overflow-x:clip}
-.dpx-auth-bg{position:absolute;top:0;left:50%;width:100vw;height:min(62dvh,520px);transform:translateX(-50%);overflow:hidden;z-index:-1;pointer-events:none;
-  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 50%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 50%,transparent 100%)}
-.dpx-auth-bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:85% 0}
 .dpx-auth-parts{position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);right:16px;z-index:3;display:flex;gap:2px;padding:4px;border-radius:99px;background:rgba(255,255,255,.72);backdrop-filter:blur(10px);box-shadow:0 0 0 1px rgba(43,38,32,.06)}
 .dpx-auth-parts button{position:relative;min-width:32px;height:30px;padding:0 8px;border-radius:99px;font:600 12px var(--font);color:var(--ink)}
 .dpx-auth-part-pill,.dpx-auth-tab-pill{position:absolute;inset:0;border-radius:99px;background:#fff;box-shadow:0 2px 8px rgba(43,38,32,.14)}
 .dpx-auth-parts button span,.dpx-auth-tabs button span{position:relative;z-index:1}
 .dpx-auth-hero{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:6px}
-.dpx-auth-mascot{position:relative;display:flex;justify-content:center;width:100%;min-height:200px}
+.dpx-auth-mascot{position:relative;display:flex;justify-content:center;width:100%;min-height:250px;padding-top:24px}
+.dpx-auth-hero .dpx-page-title,.dpx-auth-hero .dpx-sub{text-shadow:0 0 14px #f8f3e9,0 0 4px #f8f3e9}
 .dpx-auth-chip{position:absolute;z-index:2;padding:8px 12px;border-radius:16px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);box-shadow:0 8px 22px rgba(43,38,32,.16);text-align:left;cursor:default}
 .dpx-auth-chip small{display:block;font:500 10.5px var(--font);color:var(--mute)}
 .dpx-auth-chip b{font:800 14px var(--font);color:var(--ink);font-variant-numeric:tabular-nums}
-.dpx-auth-chip.a{top:8px;left:0}.dpx-auth-chip.b{bottom:14px;right:0}.dpx-auth-chip.b b{color:#159447}
+.dpx-auth-chip.a{top:24px;left:0}.dpx-auth-chip.b{bottom:40px;right:0}.dpx-auth-chip.b b{color:#159447}
 .dpx-auth-show{width:100%;box-sizing:border-box;margin:14px 0 14px;padding:10px;border-radius:24px;background:rgba(255,255,255,.86);backdrop-filter:blur(12px);box-shadow:0 10px 30px rgba(43,38,32,.12),0 0 0 1px rgba(43,38,32,.05);text-align:left}
 .dpx-auth-tabs{display:flex;gap:2px;padding:3px;border-radius:99px;background:rgba(43,38,32,.07)}
 .dpx-auth-tabs button{position:relative;flex:1;height:34px;border-radius:99px;font:700 13px var(--font);color:var(--mute)}.dpx-auth-tabs button.on{color:var(--ink)}
@@ -1089,3 +1087,11 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 .dpx-auth-acts img{object-fit:contain}
 .dpx-auth-say{min-height:44px;margin-top:12px;padding:10px 12px;border-radius:14px;background:#fbf4e4}.dpx-auth-say p{margin:0;font:600 13px/1.4 var(--font);color:var(--ink)}
 @media (prefers-reduced-motion:reduce){.dpx-auth-caret{animation:none}}
+.dpx-auth-scan{display:flex;gap:12px;align-items:stretch;min-height:140px}
+.dpx-auth-paper{position:relative;flex:none;width:96px;padding:10px 9px;border-radius:6px;background:#fff;box-shadow:0 6px 16px rgba(43,38,32,.18),0 0 0 1px rgba(43,38,32,.06);display:flex;flex-direction:column;gap:7px;overflow:hidden;text-align:left}
+.dpx-auth-paper b{font:800 9px var(--font);letter-spacing:.08em;color:var(--ink)}.dpx-auth-paper i{display:block;height:5px;border-radius:3px;background:rgba(43,38,32,.12)}
+.dpx-auth-laser{position:absolute;left:0;right:0;height:3px;background:var(--blue);box-shadow:0 0 12px 3px rgba(201,70,27,.55)}
+.dpx-auth-found{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.dpx-auth-found .it{display:flex;justify-content:space-between;gap:8px;padding:7px 10px;border-radius:12px;background:#fbf4e4;font:600 12px var(--font);color:var(--ink)}.dpx-auth-found .it b{font-weight:800;white-space:nowrap}
+.dpx-auth-found .tot{padding:8px 10px;border-radius:12px;background:#e8f8ef;color:#159447;font:700 12.5px var(--font)}.dpx-auth-found .tot.ghost{background:transparent;color:var(--mute)}
+.dpx-auth-found small{font:500 10.5px var(--font);color:var(--faint);margin-top:auto}

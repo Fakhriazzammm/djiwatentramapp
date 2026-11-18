@@ -22,7 +22,7 @@ export function DjiwaPayAuth({ error }: { error: string | null }) {
     setBusy(false);
   };
   const signIn = () => { setBusy(true); setAuthError(""); signInWithGoogle().catch((cause) => { setAuthError(cause instanceof Error ? cause.message : "Gagal membuka halaman masuk"); setBusy(false); }); };
-  return <Screen className="dpx-auth"><Sky deep><DayBackdrop part={part} onPick={pick} /><div className="dpx-pad dpx-nobar" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
+  return <Screen className="dpx-auth"><Sky deep scene={part}><DayBackdrop part={part} onPick={pick} /><div className="dpx-pad dpx-nobar" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
     <div className="dpx-hdr"><Btn type="button" className="dpx-rb" onClick={() => window.history.back()} aria-label="Kembali"><Ic n="back" /></Btn></div>
     <div className="dpx-auth-hero" style={{ flex: 1 }}>
       <div className="dpx-auth-mascot"><FloatingStats />

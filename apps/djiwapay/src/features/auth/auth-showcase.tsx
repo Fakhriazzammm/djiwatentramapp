@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, animate, motion, useMotionValue, useMotionValueEvent, useReducedMotion, useTransform } from "framer-motion";
 import type { DayPart } from "../shell/dpx-ui";
+import { daypart } from "../../lib/djiwa-pay-format";
 
 const PARTS: { id: DayPart; label: string; emoji: string }[] = [
   { id: "pagi", label: "Pagi", emoji: "🌅" }, { id: "siang", label: "Siang", emoji: "☀️" },
@@ -9,20 +10,14 @@ const PARTS: { id: DayPart; label: string; emoji: string }[] = [
 const rp = (n: number) => "Rp" + Math.round(n).toLocaleString("id-ID");
 const ease = [0.32, 0.72, 0, 1] as const;
 
-/** Background that drifts through the day on its own; the dots let a visitor jump to any moment. */
+/** Picker for the day part; the scene itself is the shared Sky used by Beranda. */
 export function DayBackdrop({ part, onPick }: { part: DayPart; onPick: (p: DayPart) => void }) {
-  return <>
-    <div className="dpx-auth-bg" aria-hidden="true">
-      {PARTS.map((p) => <motion.img key={p.id} src={`/bg/${p.id}.webp`} alt="" decoding="async" initial={false}
-        animate={{ opacity: p.id === part ? 1 : 0, scale: p.id === part ? 1.06 : 1 }} transition={{ opacity: { duration: 1.4 }, scale: { duration: 9, ease: "linear" } }} />)}
-    </div>
-    <div className="dpx-auth-parts" role="group" aria-label="Waktu">
-      {PARTS.map((p) => <button key={p.id} type="button" className={p.id === part ? "on" : ""} onClick={() => onPick(p.id)} aria-pressed={p.id === part}>
-        {p.id === part ? <motion.i layoutId="auth-part" className="dpx-auth-part-pill" transition={{ type: "spring", stiffness: 420, damping: 34 }} /> : null}
-        <span>{p.emoji} {p.id === part ? p.label : ""}</span>
-      </button>)}
-    </div>
-  </>;
+  return <div className="dpx-auth-parts" role="group" aria-label="Waktu">
+    {PARTS.map((p) => <button key={p.id} type="button" className={p.id === part ? "on" : ""} onClick={() => onPick(p.id)} aria-pressed={p.id === part}>
+      {p.id === part ? <motion.i layoutId="auth-part" className="dpx-auth-part-pill" transition={{ type: "spring", stiffness: 420, damping: 34 }} /> : null}
+      <span>{p.emoji} {p.id === part ? p.label : ""}</span>
+    </button>)}
+  </div>;
 }
 
 function Count({ to, format = rp, delay = 0 }: { to: number; format?: (n: number) => string; delay?: number }) {
@@ -45,7 +40,7 @@ export function FloatingStats() {
 }
 
 const TABS = [
-  { id: "catat", label: "Catat" }, { id: "anggaran", label: "Anggaran" }, { id: "bayar", label: "Bayar" },
+  { id: "catat", label: "Catat" }, { id: "anggaran", label: "Anggaran" }, { id: "struk", label: "Scan Struk" },
 ] as const;
 type Tab = typeof TABS[number]["id"];
 
@@ -97,18 +92,26 @@ function AnggaranPane() {
   </div>;
 }
 
-const ACTIONS = [
-  { n: "Isi Saldo", i: "topup", msg: "Isi saldo lewat QRIS & VA" }, { n: "Tagihan", i: "bills", msg: "Listrik, air, BPJS, internet" },
-  { n: "Pulsa", i: "send", msg: "Pulsa & paket data semua operator" }, { n: "Scan QR", i: "scan-qr", msg: "Bayar di merchant mana pun" },
-];
-function BayarPane() {
-  const [pick, setPick] = useState(0);
-  return <div>
-    <div className="dpx-auth-acts">{ACTIONS.map((a, i) => <motion.button key={a.n} type="button" className={pick === i ? "on" : ""} onClick={() => setPick(i)}
-      initial={{ opacity: 0, y: 18, scale: 0.8 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: i * 0.08, type: "spring", stiffness: 340, damping: 18 }} whileHover={{ y: -4 }} whileTap={{ scale: 0.9 }}>
-      <img src={`/assets/djiwa-pay-actions/${a.i}.webp`} alt="" width={40} height={40} /><span>{a.n}</span>
-    </motion.button>)}</div>
-    <div className="dpx-auth-say"><AnimatePresence mode="wait"><motion.p key={pick} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.22 }}>✨ {ACTIONS[pick].msg} — otomatis tercatat.</motion.p></AnimatePresence></div>
+const ITEMS = [{ n: "Nasi ayam geprek", v: 28000 }, { n: "Es teh manis", v: 8000 }, { n: "Kerupuk", v: 4000 }];
+function StrukPane() {
+  const [run, setRun] = useState(0), [found, setFound] = useState(0), reduce = useReducedMotion();
+  useEffect(() => {
+    setFound(reduce ? 4 : 0); if (reduce) return;
+    const ts = [0, 1, 2, 3].map((i) => setTimeout(() => setFound(i + 1), 700 + i * 650));
+    return () => ts.forEach(clearTimeout);
+  }, [run, reduce]);
+  const total = ITEMS.reduce((a, x) => a + x.v, 0);
+  return <div className="dpx-auth-scan">
+    <motion.button type="button" className="dpx-auth-paper" onClick={() => setRun((n) => n + 1)} aria-label="Pindai ulang struk" whileTap={{ scale: 0.96, rotate: -2 }} whileHover={{ y: -3 }}>
+      <b>WARUNG DJIWA</b>
+      {[0, 1, 2, 3, 4, 5].map((i) => <i key={i} style={{ width: `${90 - i * 9}%` }} />)}
+      {reduce ? null : <motion.span key={run} className="dpx-auth-laser" initial={{ top: "0%" }} animate={{ top: ["0%", "100%", "0%"] }} transition={{ duration: 2.6, ease: "easeInOut" }} />}
+    </motion.button>
+    <div className="dpx-auth-found">
+      <AnimatePresence>{ITEMS.map((x, i) => found > i ? <motion.div key={`${run}-${x.n}`} className="it" initial={{ opacity: 0, x: 16, scale: 0.9 }} animate={{ opacity: 1, x: 0, scale: 1 }} transition={{ type: "spring", stiffness: 320, damping: 20 }}><span>{x.n}</span><b>{rp(x.v)}</b></motion.div> : null)}</AnimatePresence>
+      {found >= 4 ? <motion.div key={`t${run}`} className="tot" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 14 }}>✅ Tercatat · <b>{rp(total)}</b></motion.div> : <div className="tot ghost">Memindai…</div>}
+      <small>Ketuk struk untuk memindai ulang</small>
+    </div>
   </div>;
 }
 
@@ -126,7 +129,7 @@ export function FeatureShowcase() {
       {tab === t.id ? <motion.i layoutId="auth-tab" className="dpx-auth-tab-pill" transition={{ type: "spring", stiffness: 420, damping: 34 }} /> : null}<span>{t.label}</span></button>)}</div>
     <div className="dpx-auth-pane">
       <AnimatePresence mode="wait"><motion.div key={tab} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.26, ease }}>
-        {tab === "catat" ? <CatatPane /> : tab === "anggaran" ? <AnggaranPane /> : <BayarPane />}
+        {tab === "catat" ? <CatatPane /> : tab === "anggaran" ? <AnggaranPane /> : <StrukPane />}
       </motion.div></AnimatePresence>
       {!still && !reduce ? <motion.div key={tab} className="dpx-auth-timer" initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 6.5, ease: "linear" }} /> : null}
     </div>
@@ -135,9 +138,7 @@ export function FeatureShowcase() {
 
 /** Day part from the clock, then drifting through the rest. */
 export function useDrift() {
-  const h = new Date().getHours();
-  const start: DayPart = h < 5 ? "malam" : h < 11 ? "pagi" : h < 15 ? "siang" : h < 18 ? "sore" : "malam";
-  const [part, setPart] = useState<DayPart>(start), [held, setHeld] = useState(false), reduce = useReducedMotion();
+  const [part, setPart] = useState<DayPart>(() => daypart()), [held, setHeld] = useState(false), reduce = useReducedMotion();
   useEffect(() => {
     if (held || reduce) return;
     const t = setTimeout(() => setPart((p) => PARTS[(PARTS.findIndex((x) => x.id === p) + 1) % PARTS.length].id), 5000);
