@@ -3,7 +3,6 @@ import { Btn, I3, Ic, Sky, type IconName } from "../shell/dpx-ui";
 import { CatIcon, catOf } from "./fin-sheets";
 import type { FinCtx } from "./fin-pages";
 import { DragRow, DailyBars } from "./story-charts";
-import { short } from "../kelola/kelola-ui";
 import { budgetStatuses, daysIn, daysUntil, debtPaid, debtRemaining, debtTotals, detectSubscriptions, goalPlan, inMonth, safeToSpend, spendByCategory, totals, uid } from "../../lib/finance/calc";
 import { allocate, payday, pocketUsage, pocketsOf, payoffPlan } from "../../lib/finance/kelola";
 import { rpFull } from "./story-charts";
@@ -82,7 +81,7 @@ export function FinBudget({ ctx }: { ctx: FinCtx }) {
             <div className="dpx-pl-row-t"><CatIcon cat={c} /><div><b>{c.name}</b><span className="dpx-sub">{mk(visible, rupiah(s.used))} dari {mk(visible, rupiah(s.budget.limit))}{s.budget.rollover ? " · rollover" : ""}</span></div><Chip tone={s.level === "over" ? "bad" : s.level === "warn" ? "warn" : "ok"}>{s.level === "over" ? "Lewat" : s.level === "warn" ? "Mepet" : "Aman"} {Math.round(s.percent)}%</Chip></div>
             <Meter pct={s.percent} tone={s.level === "over" ? "bad" : s.level === "warn" ? "warn" : "ok"} mark={isCurrent && s.budget.limit > 0 ? (projC / s.budget.limit) * 100 : undefined} />
             <span className="dpx-sub">{s.level === "over" ? `Lewat ${mk(visible, rupiah(-left))}` : `Sisa ${mk(visible, rupiah(left))}`}{isCurrent && perD > 0 ? ` · ±${mk(visible, rupiah(Math.round(perD)))} per hari` : ""}{isCurrent && projC > s.budget.limit && s.level !== "over" ? " · diperkirakan lewat" : ""}</span></Btn>; })}</div>
-        {unbudgeted.length ? <Card title="Belum dianggarkan" right={<span className="dpx-sub">pengeluaran bulan ini</span>}><div className="dpx-rp-list">{unbudgeted.map(([id, v]) => { const c = catOf(state, id); return <div key={id} className="dpx-rp-row"><CatIcon cat={c} /><div><b>{c.name}</b><span className="dpx-sub">{mk(visible, rupiah(v))}{avg3.get(id) ? ` · rata-rata ${mk(visible, short(avg3.get(id) ?? 0))}` : ""}</span></div><Btn type="button" className="dpx-pl-mini" onClick={() => ctx.open({ k: "budget", cid: id })}>Atur</Btn></div>; })}</div></Card> : null}
+        {unbudgeted.length ? <Card title="Belum dianggarkan" right={<span className="dpx-sub">pengeluaran bulan ini</span>}><div className="dpx-rp-list">{unbudgeted.map(([id, v]) => { const c = catOf(state, id); return <div key={id} className="dpx-rp-row"><CatIcon cat={c} /><div><b>{c.name}</b><span className="dpx-sub">{mk(visible, rupiah(v))}{avg3.get(id) ? ` · rata-rata ${mk(visible, rupiah(avg3.get(id) ?? 0))}` : ""}</span></div><Btn type="button" className="dpx-pl-mini" onClick={() => ctx.open({ k: "budget", cid: id })}>Atur</Btn></div>; })}</div></Card> : null}
         <Btn type="button" className="dpx-btn dpx-ghost" onClick={autoFill}>Isi kategori lain dari rata-rata 3 bulan</Btn></>}
     </> : null}
 
