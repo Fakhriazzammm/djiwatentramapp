@@ -785,6 +785,11 @@ app.post("/api/pay-bridge/exchange", async (c) => {
   return new Response(JSON.stringify({ success: true, customer }), { status: 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "Set-Cookie": `djiwa_pay_session=${sessionId}; Max-Age=${PAY_SESSION_TTL_SECONDS}; Path=/; HttpOnly; Secure; SameSite=None; Partitioned` } });
 });
 
+app.post("/api/pay-bridge/logout", async (c) => {
+  payBridgeSessions.delete(paySessionId(c.req.raw.headers));
+  return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "Set-Cookie": "djiwa_pay_session=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=None; Partitioned" } });
+});
+
 app.get("/api/pay-bridge/profile", async (c) => {
   const session = await requirePaySession(c.req.raw.headers);
   if (!session) return privateJson({ success: false, error: "UNAUTHORIZED" }, 401);

@@ -105,3 +105,11 @@ export async function recoverPaySession(): Promise<boolean> {
     return true;
   } catch { return false; }
 }
+
+/** Sign out of Djiwa Pay: end the Pay session on the server, then the shared Better Auth session, then start over at "/". */
+export async function logout(): Promise<void> {
+  await fetch("/api/pay-bridge/logout", { method: "POST", credentials: "include" }).catch(() => undefined);
+  await authClient.signOut().catch(() => undefined);
+  try { window.sessionStorage.clear(); } catch { /* storage blocked */ }
+  window.location.replace("/");
+}

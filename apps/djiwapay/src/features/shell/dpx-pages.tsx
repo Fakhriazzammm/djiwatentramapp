@@ -5,7 +5,7 @@ import { dayLabel, firstName, formatDateTime, formatTime, greeting, rupiah, sign
 import { heatLevel, monthLabel, summarizeMonth, summaryCategory } from "../../lib/djiwa-pay-summary";
 import { paymentMethodLabel, transactionMethodLine, type WalletNotification, type WalletTransaction } from "../../lib/wallet-adapter";
 import { walletQuickActionState } from "../../lib/djiwa-pay-availability";
-import type { CustomerProfile } from "../../lib/identity-adapter";
+import { logout, type CustomerProfile } from "../../lib/identity-adapter";
 
 export const SERVICE_LIST = [
   ["pulsa", "Pulsa", "Semua operator"], ["data", "Paket Data", "Internet & kuota"], ["pln-token", "Token PLN", "Listrik prabayar"],
@@ -143,6 +143,7 @@ export function TxnSheet({ entry, onClose, onHelp }: { entry: WalletTransaction;
 /* ---------- Dompet ---------- */
 /* ---------- Akun, notifikasi, bantuan ---------- */
 export function AccountPage({ profile, unread, customerHome, onBack, nav, onOpenNotifications, embedded, onOpenProfile, onOpenSecurity, onOpenApp }: { profile: CustomerProfile; unread: number; customerHome: string; onBack: () => void; nav: Nav; onOpenNotifications: () => void; embedded: boolean; onOpenProfile?: () => void; onOpenSecurity?: () => void; onOpenApp?: () => void }) {
+  const [leaving, setLeaving] = useState(false);
   return <div className="dpx-page"><Sky><div className="dpx-pad">
     <Header title="Akun" onBack={onBack} />
     <div className="dpx-center" style={{ marginTop: 4 }}><div className="dpx-av" style={{ width: 84, height: 84, fontSize: 32, margin: "0 auto 10px" }}><Avatar url={profile.photo_url} initial={firstName(profile.name, profile.email)[0]?.toUpperCase() ?? ""} /></div><b style={{ fontSize: 22 }}>{profile.name || profile.email || "Pengguna Djiwa Pay"}</b><div className="dpx-sub">{[profile.phone, profile.email].filter(Boolean).join(" · ") || "Akun Djiwa Tentram"}</div><div className="dpx-flex" style={{ justifyContent: "center", marginTop: 8 }}><span className={`dpx-tag ${profile.wallet_status === "blocked" ? "dpx-danger" : "dpx-ok"}`}>{profile.wallet_status === "blocked" ? "Diblokir" : "Aktif"}</span></div></div>
@@ -151,6 +152,7 @@ export function AccountPage({ profile, unread, customerHome, onBack, nav, onOpen
     <div className="dpx-glabel">Preferensi</div>
     <div className="dpx-group dpx-flush dpx-white"><Row icon="bell" tone="amber" title="Notifikasi" sub="Aktivitas saldo & transfer" trail={unread ? <span className="dpx-tag dpx-info">{unread} baru</span> : undefined} onClick={onOpenNotifications} /><Row icon="tag" tone="violet" title="Pengaturan keuangan" sub="Kategori, ekspor, cadangan" onClick={() => nav.go("/pengaturan")} /><Row icon="help" tone="cyan" title="Bantuan" sub="FAQ & keamanan" onClick={() => nav.go("/wallet/help")} /></div>
     {embedded ? null : <><div className="dpx-glabel">Lainnya</div><div className="dpx-group dpx-flush dpx-white"><a className="dpx-row" href={customerHome}><span className="dpx-ico dpx-c-orange" style={{ boxShadow: "none" }}><Ic n="link" /></span><span className="dpx-main"><b>Kembali ke Djiwa Tentram</b><span>Pesan makanan & komunitas</span></span><Chev /></a><a className="dpx-row" href="https://djiwatravel.com"><span className="dpx-ico dpx-c-blue" style={{ boxShadow: "none" }}><Ic n="link" /></span><span className="dpx-main"><b>Kembali ke Djiwa Travel</b><span>Pesan perjalanan & tiket</span></span><Chev /></a></div></>}
+    {embedded ? null : <Btn type="button" className="dpx-btn dpx-ghost" style={{ width: "100%", marginTop: 16, color: "var(--danger, #c0391b)" }} disabled={leaving} onClick={() => { if (window.confirm("Keluar dari Djiwa Pay di perangkat ini?")) { setLeaving(true); void logout(); } }}>{leaving ? "Keluar…" : "Keluar"}</Btn>}
     <p className="dpx-sub dpx-center" style={{ marginTop: 16 }}>Djiwa Pay · Digital wallet</p>
   </div></Sky></div>;
 }
