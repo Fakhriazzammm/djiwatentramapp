@@ -619,6 +619,7 @@ function AdminCustomers() {
 					<h1 className="text-[19px] font-semibold leading-tight tracking-tight">Pelanggan</h1>
 				</div>
 				<div className="flex items-center gap-2">
+					<a href={`/admin/email-marketing?segment=${({ all: "all", active: "active", wallet: "wallet", member: "member", buyer: "buyer", reactivate: "reactivate", new: "never_bought" } as Record<CustomerFilter, string>)[filter]}`} className="inline-flex h-[34px] items-center border border-border bg-card px-3 text-xs font-semibold hover:border-foreground/30">Kirim email</a>
 					<button type="button" onClick={() => setShowAnalysis((value) => !value)} className="h-[34px] border border-border bg-card px-3 text-xs font-semibold hover:border-foreground/30">{showAnalysis ? "Sembunyikan analisis" : "Tampilkan analisis"}</button>
 					<DropdownMenu>
 						<DropdownMenuTrigger

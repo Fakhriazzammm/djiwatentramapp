@@ -52,6 +52,7 @@ import { Route as AdminKaryawanRouteImport } from './routes/admin/karyawan'
 import { Route as AdminJumatBerkahRouteImport } from './routes/admin/jumat-berkah'
 import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
 import { Route as AdminForecastingRouteImport } from './routes/admin/forecasting'
+import { Route as AdminEmailMarketingRouteImport } from './routes/admin/email-marketing'
 import { Route as AdminDjiwaRunRouteImport } from './routes/admin/djiwa-run'
 import { Route as AdminDjiwaAppRouteImport } from './routes/admin/djiwa-app'
 import { Route as AdminDiscountsRouteImport } from './routes/admin/discounts'
@@ -393,6 +394,13 @@ const AdminForecastingRoute = AdminForecastingRouteImport.update({
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() =>
   import('./routes/admin/forecasting.lazy').then((d) => d.Route),
+)
+const AdminEmailMarketingRoute = AdminEmailMarketingRouteImport.update({
+  id: '/email-marketing',
+  path: '/email-marketing',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/email-marketing.lazy').then((d) => d.Route),
 )
 const AdminDjiwaRunRoute = AdminDjiwaRunRouteImport.update({
   id: '/djiwa-run',
@@ -1016,6 +1024,7 @@ export interface FileRoutesByFullPath {
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/djiwa-app': typeof AdminDjiwaAppRoute
   '/admin/djiwa-run': typeof AdminDjiwaRunRoute
+  '/admin/email-marketing': typeof AdminEmailMarketingRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/jumat-berkah': typeof AdminJumatBerkahRoute
@@ -1133,6 +1142,7 @@ export interface FileRoutesByTo {
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/djiwa-app': typeof AdminDjiwaAppRoute
   '/admin/djiwa-run': typeof AdminDjiwaRunRoute
+  '/admin/email-marketing': typeof AdminEmailMarketingRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/jumat-berkah': typeof AdminJumatBerkahRoute
@@ -1244,6 +1254,7 @@ export interface FileRoutesById {
   '/admin/discounts': typeof AdminDiscountsRoute
   '/admin/djiwa-app': typeof AdminDjiwaAppRoute
   '/admin/djiwa-run': typeof AdminDjiwaRunRoute
+  '/admin/email-marketing': typeof AdminEmailMarketingRoute
   '/admin/forecasting': typeof AdminForecastingRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/jumat-berkah': typeof AdminJumatBerkahRoute
@@ -1367,6 +1378,7 @@ export interface FileRouteTypes {
     | '/admin/discounts'
     | '/admin/djiwa-app'
     | '/admin/djiwa-run'
+    | '/admin/email-marketing'
     | '/admin/forecasting'
     | '/admin/inventory'
     | '/admin/jumat-berkah'
@@ -1484,6 +1496,7 @@ export interface FileRouteTypes {
     | '/admin/discounts'
     | '/admin/djiwa-app'
     | '/admin/djiwa-run'
+    | '/admin/email-marketing'
     | '/admin/forecasting'
     | '/admin/inventory'
     | '/admin/jumat-berkah'
@@ -1594,6 +1607,7 @@ export interface FileRouteTypes {
     | '/admin/discounts'
     | '/admin/djiwa-app'
     | '/admin/djiwa-run'
+    | '/admin/email-marketing'
     | '/admin/forecasting'
     | '/admin/inventory'
     | '/admin/jumat-berkah'
@@ -2004,6 +2018,13 @@ declare module '@tanstack/react-router' {
       path: '/forecasting'
       fullPath: '/admin/forecasting'
       preLoaderRoute: typeof AdminForecastingRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/email-marketing': {
+      id: '/admin/email-marketing'
+      path: '/email-marketing'
+      fullPath: '/admin/email-marketing'
+      preLoaderRoute: typeof AdminEmailMarketingRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/djiwa-run': {
@@ -2897,6 +2918,7 @@ interface AdminRouteRouteChildren {
   AdminDiscountsRoute: typeof AdminDiscountsRoute
   AdminDjiwaAppRoute: typeof AdminDjiwaAppRoute
   AdminDjiwaRunRoute: typeof AdminDjiwaRunRoute
+  AdminEmailMarketingRoute: typeof AdminEmailMarketingRoute
   AdminForecastingRoute: typeof AdminForecastingRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminJumatBerkahRoute: typeof AdminJumatBerkahRoute
@@ -2939,6 +2961,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminDiscountsRoute: AdminDiscountsRoute,
   AdminDjiwaAppRoute: AdminDjiwaAppRoute,
   AdminDjiwaRunRoute: AdminDjiwaRunRoute,
+  AdminEmailMarketingRoute: AdminEmailMarketingRoute,
   AdminForecastingRoute: AdminForecastingRoute,
   AdminInventoryRoute: AdminInventoryRoute,
   AdminJumatBerkahRoute: AdminJumatBerkahRoute,

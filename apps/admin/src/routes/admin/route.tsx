@@ -54,7 +54,8 @@ import {
 	Megaphone,
 	MessageSquare,
 	Inbox,
-	CalendarCheck } from "lucide-react";
+	CalendarCheck,
+	Mail } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { filterCommandItems, type AdminCommandItem } from "@/lib/admin-command-search";
 import { AdminDialogHost } from "@/components/admin/admin-dialog-host";
@@ -142,6 +143,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/jumat-berkah": "Jumat Berkah",
 	"/admin/manager": "Manager & Supervisor",
 	"/admin/customers": "Pelanggan",
+	"/admin/email-marketing": "Email Marketing",
 	"/admin/djiwa-app": "Dashboard",
 	"/admin/kol": "KOL Marketing · Ringkasan",
 	"/admin/kol-creators": "Creator KOL",
@@ -196,6 +198,7 @@ const MORE_MENU_PATHS = [
 	"/admin/jumat-berkah",
 	"/admin/manager",
 	"/admin/customers",
+	"/admin/email-marketing",
 	"/admin/djiwa-app",
 	"/admin/kol",
 	"/admin/kol-creators",
@@ -286,6 +289,7 @@ const QUICK_MENU_SECTIONS = [
 		items: [
 			{ to: "/admin/djiwa-app", icon: LayoutDashboard, label: "Dashboard", permission: "analytics:view" },
 			{ to: "/admin/customers", icon: Users, label: "Pelanggan" },
+			{ to: "/admin/email-marketing", icon: Mail, label: "Email Marketing" },
 		],
 	},
 	{
@@ -366,6 +370,7 @@ const FINANCE_PATHS = [
 const DJIWA_APP_PATHS = [
 	"/admin/djiwa-app",
 	"/admin/customers",
+	"/admin/email-marketing",
 ];
 
 const MERCHANDISE_PATHS = [
@@ -1082,6 +1087,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 						<>
 							<DesktopNavLink icon={<LayoutDashboard />} isCollapsed={isCollapsed} label="Dashboard" to="/admin/djiwa-app" permission="analytics:view" />
 							<DesktopNavLink icon={<Users />} isCollapsed={isCollapsed} label="Pelanggan" to="/admin/customers" />
+							<DesktopNavLink icon={<Mail />} isCollapsed={isCollapsed} label="Email Marketing" to="/admin/email-marketing" />
 						</>
 					) : (
 						<>
@@ -1095,6 +1101,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 									<div className="ml-4 space-y-0.5 border-muted-foreground/20 border-l pl-3 pt-1">
 										<DesktopSubNavLink activeOptions={{ exact: true }} icon={<LayoutDashboard />} label="Dashboard" to="/admin/djiwa-app" permission="analytics:view" />
 										<DesktopSubNavLink icon={<Users />} label="Pelanggan" to="/admin/customers" />
+										<DesktopSubNavLink icon={<Mail />} label="Email Marketing" to="/admin/email-marketing" />
 									</div>
 								</motion.div>}
 							</AnimatePresence>
