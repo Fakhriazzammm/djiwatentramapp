@@ -1,31 +1,22 @@
 import { useMemo, useState } from "react";
 import { Btn, Ic, Seg } from "../shell/dpx-ui";
-import { AreaChart } from "./kelola-ui";
+import { TrendChart, assetDaily } from "./trend-chart";
 import { FullPage, GainText, PriceNote, Sticker } from "./asset-ui";
 import { BUYBACK_CUT, SUB_LABEL, assetStats, assetValue, holdingLabel, isEstimated, isGoldAsset, purityLabel, useGold } from "../../lib/finance/assets";
 import { ASSET_KINDS } from "../../lib/finance/kelola";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import type { Asset } from "../../lib/finance/types";
 
-type Range = "1b" | "3b" | "1t" | "all";
-const DAYS: Record<Range, number> = { "1b": 30, "3b": 90, "1t": 365, all: 100000 };
-const monthShort = (d: string) => new Date(d).toLocaleDateString("id-ID", { month: "short" });
 const dateLong = (d: string) => new Date(d).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
 const mask = (visible: boolean, s: string) => (visible ? s : "•••••");
 
 export function AssetDetail({ asset, visible, onClose, onEdit, onDelete }: { asset: Asset; visible: boolean; onClose: () => void; onEdit: () => void; onDelete: () => void }) {
-  const gold = useGold(), [range, setRange] = useState<Range>("3b"), [confirm, setConfirm] = useState(false);
+  const gold = useGold(), [confirm, setConfirm] = useState(false);
   const auto = isGoldAsset(asset), est = isEstimated(asset), value = assetValue(asset, gold?.points ?? null);
   const stats = useMemo(() => (est ? assetStats(asset, []) : auto && gold ? assetStats(asset, gold.points) : null), [asset, auto, est, gold]);
-  const shown = useMemo(() => {
-    if (!stats) return [];
-    const cut = new Date(Date.now() - DAYS[range] * 864e5).toISOString().slice(0, 10);
-    const rows = stats.series.filter((s) => s.day >= cut);
-    return rows.length >= 2 ? rows : stats.series.slice(-2);
-  }, [stats, range]);
+  const series = useMemo(() => (auto || est ? assetDaily(asset, gold?.points ?? null) : []), [asset, auto, est, gold]);
   const gain = asset.cost ? value - asset.cost : null, pct = asset.cost ? ((value - asset.cost) / asset.cost) * 100 : null;
   const cut = BUYBACK_CUT[asset.sub ?? "lainnya"], buyback = Math.round(value * (1 - cut));
-  const labels = shown.length ? [shown[0].day, shown[Math.floor(shown.length / 2)].day, shown[shown.length - 1].day] : [];
   return <FullPage title={asset.name} onBack={onClose} right={<Btn type="button" className="dpx-rb" onClick={onEdit} aria-label="Ubah aset"><Ic n="edit" size="sm" /></Btn>}>
     <div className="dpx-as-body">
       <div className="dpx-as-hero">
@@ -39,11 +30,7 @@ export function AssetDetail({ asset, visible, onClose, onEdit, onDelete }: { ass
       </div>
 
       {auto ? <>
-        {stats && shown.length >= 2 ? <>
-          <Seg id="as-range" label="Rentang grafik" value={range} onChange={setRange} options={[["1b", "1B"], ["3b", "3B"], ["1t", "1T"], ["all", "Semua"]] as const} />
-          <div className="dpx-as-chart"><AreaChart points={shown.map((s) => s.value)} height={120} color="#c9961b" label={`Grafik nilai ${asset.name}`} />
-            <div className="dpx-as-ax">{labels.map((l, i) => <span key={i}>{range === "1b" ? dateLong(l).slice(0, 6) : `${monthShort(l)} ${new Date(l).getFullYear().toString().slice(2)}`}</span>)}</div></div>
-        </> : <p className="dpx-sub dpx-as-note">{gold ? "Grafik muncul setelah ada lebih dari satu hari data sejak tanggal beli." : "Memuat harga emas…"}</p>}
+        <TrendChart id="as-gold" series={series} color="#c9961b" label={`Grafik nilai ${asset.name}`} visible={visible} />
         <div className="dpx-as-stats">
           <div><span>Harga beli</span><b>{asset.cost && asset.weight ? `${rupiah(Math.round(asset.cost / asset.weight))}/g` : "—"}</b></div>
           <div><span>Nilai per gram</span><b>{asset.weight ? `${rupiah(Math.round(value / asset.weight))}/g` : "—"}</b></div>
@@ -58,11 +45,7 @@ export function AssetDetail({ asset, visible, onClose, onEdit, onDelete }: { ass
         </div>
         <PriceNote gold={gold} />
       </> : est ? <>
-        {stats && shown.length >= 2 ? <>
-          <Seg id="as-range" label="Rentang grafik" value={range} onChange={setRange} options={[["1b", "1B"], ["3b", "3B"], ["1t", "1T"], ["all", "Semua"]] as const} />
-          <div className="dpx-as-chart"><AreaChart points={shown.map((s) => s.value)} height={120} color={(asset.rate ?? 0) >= 0 ? "#4f7a2b" : "#c9461b"} label={`Grafik nilai ${asset.name}`} />
-            <div className="dpx-as-ax">{labels.map((l, i) => <span key={i}>{range === "1b" ? dateLong(l).slice(0, 6) : `${monthShort(l)} ${new Date(l).getFullYear().toString().slice(2)}`}</span>)}</div></div>
-        </> : <p className="dpx-sub dpx-as-note">Grafik muncul setelah lebih dari satu hari sejak tanggal beli.</p>}
+        <TrendChart id="as-est" series={series} color={(asset.rate ?? 0) >= 0 ? "#4f7a2b" : "#c9461b"} label={`Grafik nilai ${asset.name}`} visible={visible} />
         <div className="dpx-as-stats">
           <div><span>Harga beli</span><b>{mask(visible, rupiah(asset.cost ?? 0))}</b></div>
           <div><span>Nilai sekarang</span><b>{mask(visible, rupiah(value))}</b></div>
