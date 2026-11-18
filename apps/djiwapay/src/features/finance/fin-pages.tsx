@@ -330,8 +330,6 @@ export function FinSettings({ ctx, onBack }: { ctx: FinCtx; onBack: () => void }
   return <div className="dpx-page"><Sky><div className="dpx-pad dpx-nobar">
     <Header title="Pengaturan keuangan" onBack={onBack} />
     <div className="dpx-note dpx-info" style={{ marginTop: 6 }} role="status"><Ic n="shield" /><div><b>{fin.sync.status === "ok" ? "Tersinkron ke akun Djiwa Pay." : fin.sync.status === "syncing" || fin.sync.status === "starting" ? "Menyinkronkan…" : "Belum tersinkron — data aman di perangkat ini."}</b> Catatan disimpan di perangkat dan dicadangkan otomatis ke server Djiwa Pay, jadi tetap ada saat ganti perangkat.{fin.sync.status === "offline" ? <> <Btn type="button" className="dpx-chip3" onClick={() => void fin.retrySync()}>Coba lagi</Btn></> : null}</div></div>
-    <div className="dpx-glabel">Integrasi</div>
-    <div className="dpx-group dpx-flush dpx-white"><Row icon="link" tone="orange" title="Integrasi" sub="Email pembayaran, Google Calendar, Drive, Sheets" onClick={() => ctx.nav.go("/integrasi")} /></div>
     <div className="dpx-glabel">Kategori <Btn type="button" onClick={() => ctx.open({ k: "category" })}>+ Tambah</Btn></div>
     <div className="dpx-group dpx-flush dpx-white">{state.categories.map((c) => <Row key={c.id} icon={iconOr(c.icon)} tone={c.tone} title={c.name} sub={`${c.income ? "Pemasukan" : "Pengeluaran"}${c.custom ? " · buatanmu" : ""}`} onClick={() => ctx.open({ k: "category", id: c.id })} />)}</div>
     <div className="dpx-glabel">Data</div>
