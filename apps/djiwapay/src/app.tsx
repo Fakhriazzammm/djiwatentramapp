@@ -10,6 +10,9 @@ import { DjiwaPaySplash } from "./components/djiwa-pay-splash";
 import { UpdateWatcher } from "./components/update-watcher";
 import { useDjiwaPaySplash } from "./hooks/use-djiwa-pay-splash";
 import { LegalPage } from "./features/legal/legal-pages";
+import { lazy, Suspense } from "react";
+import { startTracking } from "./lib/track";
+const AdminApp = lazy(() => import("./features/admin/admin-app").then((m) => ({ default: m.AdminApp })));
 import "./features/legal/legal.css";
 
 const localPreview = import.meta.env.DEV && new URLSearchParams(window.location.search).get("preview") === "1";
@@ -28,6 +31,8 @@ function DjiwaPayNotFound() {
 
 export function DjiwaPayApp() {
   const path = window.location.pathname.replace(/\/$/, "");
+  useEffect(() => startTracking(), []);
+  if (path === "/admin" || path.startsWith("/admin/")) return <Suspense fallback={null}><AdminApp /></Suspense>;
   if (path === "/privasi") return <LegalPage kind="privacy" />;   // public: Google and new users read these before signing in
   if (path === "/syarat") return <LegalPage kind="terms" />;
   if (!isKnownPayPath(window.location.pathname)) return <DjiwaPayNotFound />;
