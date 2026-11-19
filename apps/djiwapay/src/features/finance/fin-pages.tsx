@@ -24,13 +24,15 @@ import { AssetFlow } from "../kelola/asset-flow";
 import { AssetDetail } from "../kelola/asset-detail";
 import { BillPaySheet, BillSheet, PayoffSheet, PocketRuleSheet, WeeklySheet } from "../kelola/kelola-sheets";
 import { ASSET_KINDS, netWorth, pocketsOf } from "../../lib/finance/kelola";
+import { Onboard, SahamTab, StockActivate, StockAdd, StockDetail, StockFeeSheet, StockManualSheet, StockTradeSheet } from "./fin-saham";
+import { percent, portfolio, stockValue, useStocks } from "../../lib/finance/stocks";
 import type { CustomerProfile } from "../../lib/identity-adapter";
 import type { WalletTransaction } from "../../lib/wallet-adapter";
 
 export type FinSheet =
   | { k: "catat" } | { k: "entry"; id: string } | { k: "budget"; cid?: string } | { k: "goal"; id?: string } | { k: "goal-detail"; id: string }
   | { k: "debt"; id?: string } | { k: "split" } | { k: "streak" } | { k: "account"; id?: string } | { k: "category"; id?: string } | { k: "pay-category"; id: string }
-  | { k: "bill"; id?: string } | { k: "bill-pay"; id: string } | { k: "asset"; id?: string } | { k: "asset-new" } | { k: "asset-view"; id: string } | { k: "pockets" } | { k: "pocket"; id?: string } | { k: "payoff" } | { k: "weekly" };
+  | { k: "bill"; id?: string } | { k: "bill-pay"; id: string } | { k: "asset"; id?: string } | { k: "asset-new"; noPhoto?: boolean } | { k: "stock-activate" } | { k: "stock-add"; ticker?: string; side?: "buy" | "sell"; first?: boolean } | { k: "stock-view"; ticker: string } | { k: "stock-trade"; id: string } | { k: "stock-fee" } | { k: "stock-manual"; ticker: string } | { k: "asset-view"; id: string } | { k: "pockets" } | { k: "pocket"; id?: string } | { k: "payoff" } | { k: "weekly" };
 
 export type FinCtx = {
   fin: Finance; notify: Notify; nav: Nav; profile: CustomerProfile; transactions: WalletTransaction[]; payBalance: number; loading: boolean;
@@ -115,7 +117,7 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
   const remaining = t.in - t.out;
   const showIncomeBased = t.in > 0;
   const goldData = useGold();
-  const cashNow = useCash(ctx), wealth = netWorth(state, cashNow);
+  const cashNow = useCash(ctx), stocksNow = useStocks(), wealth = netWorth(state, cashNow, stockValue(stocksNow.state));
   const trend = pt.out > 0 ? Math.round(((t.out - pt.out) / pt.out) * 100) : null;
   const quotes = useMemo(() => quoteDeck(), []);
   const history = useMemo(() => wealthHistory(state, entries, cashNow, goldData?.points ?? null, 12, now), [state, entries, cashNow, goldData]);
@@ -253,7 +255,7 @@ export function ManualForm({ ctx, editId, initialKind, onDone }: { ctx: FinCtx; 
 export { FinBudget } from "./fin-plan";
 
 /* ---------- Kekayaan (Brankas) ---------- */
-type VaultTab = "aset" | "dompet" | "kewajiban";
+type VaultTab = "aset" | "saham" | "dompet" | "kewajiban";
 const needsOpening = (a: { opening: number }, bal?: number) => a.opening === 0 && (bal === undefined || bal < 0);
 
 export function FinWallet({ ctx }: { ctx: FinCtx }) {
@@ -261,16 +263,25 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
   const gold = useGold();
   const balances = useBalances(state, entries, ctx.payBalance);
   const accounts = state.accounts.filter((a) => !a.archived);
-  const cash = useCash(ctx); const nw = netWorth(state, cash), net = nw.total;
+  const stocks = useStocks(), stockPf = portfolio(stocks.state), hasStocks = Boolean(stocks.state?.activated && stockPf.rows.length);
+  const cash = useCash(ctx); const nw = netWorth(state, cash, stockValue(stocks.state)), net = nw.total;
   const debt = debtTotals(state.debts);
-  const [tab, setTab] = useState<VaultTab>(() => { try { const t = sessionStorage.getItem("dpx-vault-tab"); return t === "dompet" || t === "kewajiban" ? t : "aset"; } catch { return "aset"; } });
+  const [tab, setTab] = useState<VaultTab>(() => { try { const t = sessionStorage.getItem("dpx-vault-tab"); return t === "dompet" || t === "kewajiban" || t === "saham" ? t : "aset"; } catch { return "aset"; } });
   const pick = (t: VaultTab) => { setTab(t); try { sessionStorage.setItem("dpx-vault-tab", t); } catch { /* optional */ } };
+  useEffect(() => {   // back from Google's consent screen with the Drive permission: continue where the person left off
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("saham") !== "aktifkan") return;
+    window.history.replaceState({}, "", window.location.pathname);
+    pick("saham"); ctx.open({ k: "stock-activate" });
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   const change = useMemo(() => assetsChange(state.assets, gold?.points ?? null), [state.assets, gold]);
   const changePct = change && net - change.delta !== 0 ? (change.delta / Math.abs(net - change.delta)) * 100 : null;
   const rows = useMemo(() => state.assets.map((a) => ({ a, v: assetValue(a, gold?.points ?? null), g: gainOf(a) })), [state.assets, gold]);
+  const sv = hasStocks ? stockPf.value : 0, sc = hasStocks ? stockPf.cost : 0;
   const assetTotal = rows.reduce((s, r) => s + r.v, 0), cost = rows.reduce((s, r) => s + (r.a.cost ?? 0), 0), costed = rows.reduce((s, r) => s + (r.a.cost ? r.v : 0), 0);
-  const gainPct = cost > 0 ? ((costed - cost) / cost) * 100 : null;
-  const byKind = useMemo(() => { const m = new Map<string, number>(); for (const r of rows) m.set(r.a.kind, (m.get(r.a.kind) ?? 0) + r.v); return [...m.entries()].sort((x, y) => y[1] - x[1]); }, [rows]);
+  const costAll = cost + sc, valueAll = costed + (hasStocks ? (stockPf.priced ? sv : sc) : 0), gainPct = costAll > 0 ? ((valueAll - costAll) / costAll) * 100 : null;
+  const totalAll = assetTotal + sv;
+  const byKind = useMemo(() => { const m = new Map<string, number>(); for (const r of rows) m.set(r.a.kind, (m.get(r.a.kind) ?? 0) + r.v); if (sv > 0) m.set("stock", (m.get("stock") ?? 0) + sv); return [...m.entries()].sort((x, y) => y[1] - x[1]); }, [rows, sv]);
   const shelves: typeof rows[] = []; for (let i = 0; i < rows.length; i += 3) shelves.push(rows.slice(i, i + 3));
   const missing = accounts.filter((a) => needsOpening(a, balances[a.id]));
   const acts: [string, string, string][] = [["topup", "Isi saldo", "/wallet/topup"], ["send", "Kirim", "/wallet/transfer"], ["receive", "Terima", "/wallet/receive"], ["scan-qr", "Scan QR", "/wallet/transfer?mode=scan"]];
@@ -284,24 +295,34 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
         <div className="dpx-vt-amt"><small>Rp</small>{ctx.visible ? <>{net < 0 ? "−" : ""}<AnimatedNumber value={Math.abs(net)} /></> : "•••••••"}
           <Btn type="button" onClick={ctx.onToggleVisible} aria-label={ctx.visible ? "Sembunyikan saldo" : "Tampilkan saldo"} style={{ color: "var(--mute)" }}><IconSwap k={ctx.visible ? "eye" : "eyeoff"}><Ic n={ctx.visible ? "eye" : "eyeoff"} size="sm" /></IconSwap></Btn></div>
       </div>
-      {ctx.visible && change && changePct !== null ? <div style={{ textAlign: "right" }}><div className={change.delta >= 0 ? "dpx-up" : "dpx-dn"} style={{ fontWeight: 700 }}>{change.delta >= 0 ? "▲" : "▼"} {Math.abs(changePct).toFixed(1).replace(".", ",")}%</div><div className="dpx-sub">aset 30 hari</div></div> : null}
+      {ctx.visible && hasStocks && stockPf.priced ? <div style={{ textAlign: "right" }}><div className={stockPf.pl >= 0 ? "dpx-up" : "dpx-dn"} style={{ fontWeight: 700 }}>{percent(stockPf.plPct)}</div><div className="dpx-sub">saham</div></div> : ctx.visible && change && changePct !== null ? <div style={{ textAlign: "right" }}><div className={change.delta >= 0 ? "dpx-up" : "dpx-dn"} style={{ fontWeight: 700 }}>{change.delta >= 0 ? "▲" : "▼"} {Math.abs(changePct).toFixed(1).replace(".", ",")}%</div><div className="dpx-sub">aset 30 hari</div></div> : null}
     </motion.div>
-    <Seg id="vault-tab" label="Bagian kekayaan" value={tab} onChange={pick} options={[["aset", `Aset · ${state.assets.length}`], ["dompet", `Dompet · ${accounts.length + 1}`], ["kewajiban", "Kewajiban"]] as const} />
+    <Seg id="vault-tab" label="Bagian kekayaan" value={tab} onChange={pick} options={[["aset", `Aset · ${state.assets.length}`], ["saham", <>Saham{hasStocks ? ` · ${stockPf.rows.length}` : null}{stocks.loaded && !stocks.state?.activated ? <i className="dpx-st-dot" aria-label="baru" /> : null}</>], ["dompet", `Dompet · ${accounts.length + 1}`], ["kewajiban", "Kewajiban"]] as const} />
 
     {tab === "aset" ? <div key="aset" className="dpx-vt-pn">
+      {rows.length === 0 && !hasStocks ? <Onboard asset="scan" title="Simpan nilai aset Anda" desc="Foto emas, perhiasan, atau aset lain. Latarnya dipotong jadi stiker, lalu nilainya dipantau di sini."
+        bullets={[["Stiker di rak, ", "seperti koleksi pribadi."], ["Nilai emas otomatis ", "mengikuti harga pasar."], ["Ikut dihitung ", "ke kekayaan bersih."]]}
+        primary="Foto aset pertama" onPrimary={() => ctx.open({ k: "asset-new" })} secondary="Isi manual tanpa foto" onSecondary={() => ctx.open({ k: "asset-new", noPhoto: true })} /> : <>
       {shelves.map((row, si) => <div className="dpx-vt-shelf" key={si}>{row.map(({ a, v, g }, i) => <motion.button type="button" key={a.id} className="dpx-vt-slot" onClick={() => ctx.open({ k: "asset-view", id: a.id })} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: (si * 3 + i) * 0.05 }} whileTap={{ scale: 0.95 }}>
         <span className="dpx-vt-stk"><Sticker asset={a} size={72} /></span><b>{a.name}</b><span className="dpx-sub">{m(rupiah(v))}</span>{g ? <span className={g.pct >= 0 ? "dpx-up" : "dpx-dn"} style={{ fontSize: 10.5, fontWeight: 700 }}>{g.pct >= 0 ? "▲" : "▼"} {Math.abs(g.pct).toFixed(1).replace(".", ",")}%</span> : <span className="dpx-sub" style={{ fontSize: 10.5 }}>{ASSET_KINDS[a.kind].label}</span>}</motion.button>)}</div>)}
       <div className="dpx-vt-shelf"><button type="button" className="dpx-vt-slot dpx-vt-add" onClick={() => ctx.open({ k: "asset-new" })}><span className="dpx-vt-stk"><span className="dpx-vt-plus"><Ic n="plus" /></span></span><b style={{ color: "var(--mute)" }}>Foto aset</b></button></div>
-      {rows.length ? <div className="dpx-group dpx-white dpx-vt-sum">
-        <div className="dpx-sub">Nilai semua aset</div><div className="dpx-vt-sumamt">{m(rupiah(assetTotal))}</div>
-        <div className="dpx-sub">{cost > 0 && gainPct !== null ? <>Modal {m(rupiah(cost))} · {ctx.visible ? <span className={gainPct >= 0 ? "dpx-up" : "dpx-dn"} style={{ fontWeight: 700 }}>{gainPct >= 0 ? "▲ +" : "▼ −"}{Math.abs(gainPct).toFixed(1).replace(".", ",")}%</span> : "•••"}</> : `${rows.length} aset`}</div>
-        <div className="dpx-vt-bar" role="img" aria-label="Komposisi aset">{byKind.map(([k, v], i) => <i key={k} style={{ width: `${assetTotal ? (v / assetTotal) * 100 : 0}%`, background: KIND_COLORS[i % KIND_COLORS.length] }} />)}</div>
-        <div className="dpx-vt-leg">{byKind.map(([k, v], i) => <span key={k}><i style={{ background: KIND_COLORS[i % KIND_COLORS.length] }} />{ASSET_KINDS[k as keyof typeof ASSET_KINDS].label} {assetTotal ? Math.round((v / assetTotal) * 100) : 0}%</span>)}</div>
+      {rows.length || hasStocks ? <div className="dpx-group dpx-white dpx-vt-sum">
+        <div className="dpx-sub">Nilai semua aset</div><div className="dpx-vt-sumamt">{m(rupiah(totalAll))}</div>
+        <div className="dpx-sub">{costAll > 0 && gainPct !== null ? <>Modal {m(rupiah(costAll))} · {ctx.visible ? <span className={gainPct >= 0 ? "dpx-up" : "dpx-dn"} style={{ fontWeight: 700 }}>{gainPct >= 0 ? "▲ +" : "▼ −"}{Math.abs(gainPct).toFixed(1).replace(".", ",")}%</span> : "•••"}</> : `${rows.length} aset`}</div>
+        <div className="dpx-vt-bar" role="img" aria-label="Komposisi aset">{byKind.map(([k, v], i) => <i key={k} style={{ width: `${totalAll ? (v / totalAll) * 100 : 0}%`, background: KIND_COLORS[i % KIND_COLORS.length] }} />)}</div>
+        <div className="dpx-vt-leg">{byKind.map(([k, v], i) => <span key={k}><i style={{ background: KIND_COLORS[i % KIND_COLORS.length] }} />{ASSET_KINDS[k as keyof typeof ASSET_KINDS].label} {totalAll ? Math.round((v / totalAll) * 100) : 0}%</span>)}</div>
+        {hasStocks ? <Btn type="button" className="dpx-linkbtn" onClick={() => pick("saham")}>Lihat saham ›</Btn> : null}
         <Btn type="button" className="dpx-linkbtn" onClick={() => nav.go("/aset")}>Nilai &amp; grafik semua aset</Btn>
-      </div> : <p className="dpx-sub" style={{ margin: "4px 4px 0" }}>Foto emas, perhiasan, atau aset lain. Latarnya dipotong jadi stiker, lalu nilainya dipantau di sini.</p>}
+      </div> : null}
+      </>}
     </div> : null}
 
+    {tab === "saham" ? <SahamTab ctx={ctx} /> : null}
+
     {tab === "dompet" ? <div key="dompet" className="dpx-vt-pn">
+      {accounts.length === 0 ? <Onboard asset="wallet" title="Kumpulkan semua dompet" desc="Tunai, rekening bank, dan e-wallet dalam satu tempat, supaya saldo dan kekayaan bersih akurat."
+        bullets={[["Saldo awal ", "membuat angka kekayaan benar."], ["Djiwa Pay ", "sudah ada sebagai dompet utama."], ["Transfer antar dompet ", "tercatat otomatis."]]}
+        primary="Tambah dompet pertama" onPrimary={() => ctx.open({ k: "account" })} /> : null}
       <WalletDeck ctx={ctx} accounts={accounts} balances={balances} />
       {missing.length ? <div className="dpx-vt-note"><Ic n="warn" /><span>{missing.length} rekening hanya berisi pengeluaran tercatat, jadi saldonya minus. Ketuk rekening lalu isi saldo awal agar kekayaan bersih akurat.</span></div> : null}
     <div className="dpx-sec"><h2>Bayar & layanan</h2><Btn type="button" onClick={() => nav.go("/bayar")}>Semua layanan</Btn></div>
@@ -310,12 +331,16 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
     </div> : null}
 
     {tab === "kewajiban" ? <div key="kewajiban" className="dpx-vt-pn">
+      {state.debts.length === 0 ? <Onboard asset="users" title="Catat hutang dan piutang" desc="Siapa berhutang kepada Anda, dan sebaliknya, lengkap dengan jatuh tempo dan pengingat."
+        bullets={[["Hutang dan piutang ", "dipisah dengan jelas."], ["Jatuh tempo ", "bisa diingatkan lewat kalender."], ["Simulasi pelunasan ", "membantu menyusun rencana."]]}
+        primary="Catat hutang atau piutang" onPrimary={() => ctx.open({ k: "debt" })} secondary="Alat keuangan" onSecondary={() => nav.go("/alat")} /> : <>
       <div className="dpx-group dpx-flush dpx-white"><Row icon="down" tone="rose" title="Hutang saya" sub="Belum lunas" trail={<b className="dpx-dn">−{m(rupiah(debt.iOwe))}</b>} /><Row i={1} icon="up" tone="emerald" title="Piutang" sub="Orang berutang padamu" trail={<b className="dpx-up">{m(rupiah(debt.owedToMe))}</b>} /></div>
       <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => nav.go("/rencana?bagian=hutang")}>Kelola hutang dan piutang</Btn>
       <Btn type="button" className="dpx-group dpx-flex" style={{ width: "100%", marginTop: 4, textAlign: "left" }} onClick={() => nav.go("/alat")}><span className="dpx-cat dpx-c-violet"><Ic n="grid" /></span><span style={{ flex: 1 }}><b>Alat keuangan</b><div className="dpx-sub">Bisa beli?, dana darurat, zakat, simulasi cicilan</div></span><Ic n="chev" size="sm" /></Btn>
+      </>}
       <p className="dpx-sub" style={{ margin: "8px 4px 0" }}>Perkiraan berdasarkan catatanmu, bukan nasihat keuangan.</p>
     </div> : null}
-    <div className="dpx-vt-fab"><motion.button type="button" className="dpx-vt-photo" onClick={() => ctx.open({ k: "asset-new" })} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring} whileTap={{ scale: 0.95 }}><Ic n="scan" size="sm" /> Foto aset</motion.button></div>
+    {tab === "aset" ? <div className="dpx-vt-fab"><motion.button type="button" className="dpx-vt-photo" onClick={() => ctx.open({ k: "asset-new" })} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring} whileTap={{ scale: 0.95 }}><Ic n="scan" size="sm" /> Foto aset</motion.button></div> : tab === "saham" && hasStocks ? <div className="dpx-vt-fab"><motion.button type="button" className="dpx-vt-photo" onClick={() => ctx.open({ k: "stock-add" })} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring} whileTap={{ scale: 0.95 }}><Ic n="plus" size="sm" /> Catat saham</motion.button></div> : null}
   </div></Sky></div>;
 }
 
@@ -360,7 +385,13 @@ export function FinSheetHost({ ctx, sheet, close, goManual, openPaySheet }: { ct
     case "debt": return <DebtSheet key="debt" fin={fin} debt={state.debts.find((d) => d.id === sheet.id)} notify={notify} onClose={close} />;
     case "bill": return <BillSheet key="bill" fin={fin} bill={state.bills.find((b) => b.id === sheet.id)} notify={notify} onClose={close} />;
     case "bill-pay": { const b = state.bills.find((x) => x.id === sheet.id); return b ? <BillPaySheet key="billpay" fin={fin} bill={b} notify={notify} onClose={close} goPay={() => ctx.nav.go("/bayar")} accounts={[{ id: PAY_ACCOUNT_ID, name: "Djiwa Pay" }, ...state.accounts.filter((a) => !a.archived).map((a) => ({ id: a.id, name: a.name }))]} /> : null; }
-    case "asset": case "asset-new": return <AssetFlow key={`asset-${"id" in sheet ? sheet.id ?? "" : ""}`} fin={fin} asset={"id" in sheet ? state.assets.find((a) => a.id === sheet.id) : undefined} notify={notify} onClose={close} />;
+    case "asset": case "asset-new": return <AssetFlow key={`asset-${"id" in sheet ? sheet.id ?? "" : ""}`} fin={fin} asset={"id" in sheet ? state.assets.find((a) => a.id === sheet.id) : undefined} noPhoto={sheet.k === "asset-new" && sheet.noPhoto} notify={notify} onClose={close} />;
+    case "stock-activate": return <StockActivate key="st-act" ctx={ctx} onClose={close} />;
+    case "stock-add": return <StockAdd key={`st-add-${sheet.ticker ?? ""}-${sheet.side ?? ""}`} ctx={ctx} ticker={sheet.ticker} side={sheet.side} first={sheet.first} onClose={close} />;
+    case "stock-view": return <StockDetail key={`st-${sheet.ticker}`} ctx={ctx} ticker={sheet.ticker} onClose={close} />;
+    case "stock-trade": return <StockTradeSheet key="st-trade" id={sheet.id} notify={notify} onClose={close} />;
+    case "stock-fee": return <StockFeeSheet key="st-fee" notify={notify} onClose={close} />;
+    case "stock-manual": return <StockManualSheet key="st-man" ticker={sheet.ticker} notify={notify} onClose={close} />;
     case "asset-view": { const a = state.assets.find((x) => x.id === sheet.id); if (!a) return null; return <AssetDetail key="asset-view" asset={a} visible={ctx.visible} onClose={close} onEdit={() => ctx.open({ k: "asset", id: a.id })} onDelete={() => { fin.dispatch({ type: "asset/delete", id: a.id }); close(); notify("Aset dihapus", () => fin.dispatch({ type: "asset/upsert", asset: a })); }} />; }
     case "pocket": return <PocketSheet key={`pocket-${sheet.id ?? ""}`} fin={fin} pocket={pocketsOf(state).find((p) => p.id === sheet.id)} others={pocketsOf(state)} notify={notify} onClose={close} />;
     case "pockets": return <PocketRuleSheet key="pockets" fin={fin} current={pocketsOf(state)} notify={notify} onClose={close} />;

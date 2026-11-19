@@ -38,10 +38,10 @@ const wib = (d: Date) => new Date(d.getTime() + 7 * 3600_000);
 
 /* ---------------- Sheets ---------------- */
 
-const sheets = (f: Fetch, token: string, path: string, init: RequestInit = {}) => f(`https://sheets.googleapis.com/v4/spreadsheets${path}`, { ...init, headers: { authorization: `Bearer ${token}`, ...(init.body ? { "content-type": "application/json" } : {}) } });
-const drive = (f: Fetch, token: string, path: string, init: RequestInit = {}) => f(`https://www.googleapis.com/drive/v3${path}`, { ...init, headers: { authorization: `Bearer ${token}`, ...(init.body ? { "content-type": "application/json" } : {}), ...(init.headers ?? {}) } });
-class GoogleError extends Error { constructor(public status: number, what: string) { super(`${what}_${status}`); } }
-const must = async (res: Response, what: string) => { if (!res.ok) throw new GoogleError(res.status, what); return res; };
+export const sheets = (f: Fetch, token: string, path: string, init: RequestInit = {}) => f(`https://sheets.googleapis.com/v4/spreadsheets${path}`, { ...init, headers: { authorization: `Bearer ${token}`, ...(init.body ? { "content-type": "application/json" } : {}) } });
+export const drive = (f: Fetch, token: string, path: string, init: RequestInit = {}) => f(`https://www.googleapis.com/drive/v3${path}`, { ...init, headers: { authorization: `Bearer ${token}`, ...(init.body ? { "content-type": "application/json" } : {}), ...(init.headers ?? {}) } });
+export class GoogleError extends Error { constructor(public status: number, what: string) { super(`${what}_${status}`); } }
+export const must = async (res: Response, what: string) => { if (!res.ok) throw new GoogleError(res.status, what); return res; };
 
 async function staticData(db: Q, userId: string, n: Awaited<ReturnType<typeof loadNames>>, now: Date): Promise<Static> {
   const w = wib(now), ym = `${w.getUTCFullYear()}-${String(w.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -66,7 +66,7 @@ async function staticData(db: Q, userId: string, n: Awaited<ReturnType<typeof lo
   };
 }
 
-const writeValues = async (f: Fetch, token: string, id: string, data: { range: string; values: Cell[][] }[], mode: "RAW" | "USER_ENTERED") => {
+export const writeValues = async (f: Fetch, token: string, id: string, data: { range: string; values: Cell[][] }[], mode: "RAW" | "USER_ENTERED") => {
   if (!data.length) return;
   for (let i = 0; i < data.length; i += 40) await must(await sheets(f, token, `/${id}/values:batchUpdate`, { method: "POST", body: JSON.stringify({ valueInputOption: mode, data: data.slice(i, i + 40) }) }), "SHEETS_WRITE");
 };

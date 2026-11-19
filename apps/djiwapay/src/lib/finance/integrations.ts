@@ -14,7 +14,7 @@ export type GoogleStatus = {
 };
 export type GoogleFeature = "calendar" | "drive" | "gmail";
 
-async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api/finance${path}`, { credentials: "include", ...init, headers: { Accept: "application/json", ...(init.body ? { "Content-Type": "application/json" } : {}), ...(init.headers ?? {}) } });
   if (res.status === 401) { const m = await import("../identity-adapter"); if (await m.recoverPaySession()) await new Promise<never>(() => {}); }
   const body = (await res.json().catch(() => ({}))) as T & { success?: boolean; error?: string };
@@ -39,6 +39,10 @@ export type Origin = { id: string; channel: string; senderDomain: string; status
 export const getOrigin = (id: string) => call<{ origin: Origin }>(`/inbound/${encodeURIComponent(id)}/origin`);
 
 export const getGoogle = () => call<GoogleStatus & { success: true }>("/google/status");
+/** After Google's consent the browser lands on /integrasi; this remembers where the person was really headed. */
+const AFTER_GOOGLE = "dpx-after-google";
+export const rememberAfterGoogle = (path: string) => { try { sessionStorage.setItem(AFTER_GOOGLE, path); } catch { /* optional */ } };
+export const takeAfterGoogle = () => { try { const p = sessionStorage.getItem(AFTER_GOOGLE); sessionStorage.removeItem(AFTER_GOOGLE); return p; } catch { return null; } };
 export const connectGoogle = (features: GoogleFeature[]) => call<{ url: string }>("/google/connect", { method: "POST", body: JSON.stringify({ features }) });
 export const confirmSheetDeletes = () => call<object>("/google/sheets/confirm", { method: "POST" });
 export const confirmDriveRemovals = () => call<object>("/google/drive/confirm", { method: "POST" });

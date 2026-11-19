@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prototype Saham di Kekayaan · Djiwa Pay</title>
+<style>
+:root{--ink:#241f1a;--mute:#74695a;--faint:#a89c88;--line:rgba(43,38,32,.1);--group:#efe8d8;--acc:#c9461b;--accsoft:#fbe9dc;--ok:#13804a;--oksoft:#e3f3ea;--warn:#a05d00;--warnsoft:#fff4d6;--bad:#c42a1e;--badsoft:#fdeae4;--gold:#d9a21a;--ease:cubic-bezier(.32,.72,0,1)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:Inter,system-ui,-apple-system,sans-serif;background:#ece5d6;color:var(--ink)}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+input{font:inherit;color:inherit;border:0;outline:0;background:transparent;width:100%}
+.stage{max-width:1120px;margin:0 auto;padding:20px 16px 40px;display:grid;grid-template-columns:260px 410px 1fr;gap:28px;align-items:start}
+@media(max-width:1000px){.stage{grid-template-columns:1fr;justify-items:center}.side,.notes{width:100%;max-width:410px}}
+h1{font-size:19px;margin:0 0 4px}.sub{font-size:12px;color:var(--mute);margin:0 0 14px;line-height:1.5}
+.side{position:sticky;top:16px}
+.flow{display:flex;flex-direction:column;gap:3px}
+.flow h4,.states h4{margin:10px 11px 4px;font-size:10px;letter-spacing:.08em;color:var(--faint);text-transform:uppercase}
+.flow button{display:flex;gap:10px;align-items:center;text-align:left;padding:8px 11px;border-radius:12px;font-size:13px;font-weight:600;color:var(--mute);transition:.2s}
+.flow button i{font-style:normal;width:22px;height:22px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--faint);flex:none}
+.flow button.on{background:#fff;color:var(--ink);box-shadow:0 1px 0 var(--line)}.flow button.on i{background:var(--acc);color:#fff}
+.states{margin-top:14px;padding:12px;background:#fff;border-radius:16px}.states h4{margin:0 0 8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chips button{padding:6px 10px;border-radius:99px;background:#f4eee0;font-size:12px;font-weight:600;color:var(--mute)}.chips button.on{background:var(--ink);color:#fff}
+.phone{width:390px;height:812px;background:#fbf4e4;border-radius:46px;box-shadow:0 0 0 9px #1c1814,0 30px 60px -20px rgba(0,0,0,.45);position:relative;overflow:hidden}
+.notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:110px;height:28px;background:#1c1814;border-radius:20px;z-index:20}
+.status{height:44px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 28px 6px;font-size:13px;font-weight:700;position:relative;z-index:3}
+.screen{position:absolute;inset:44px 0 0 0;overflow-y:auto;scrollbar-width:none;background:linear-gradient(180deg,#f6dfb4 0,#f9e9c9 160px,#fbf4e4 360px);animation:in .4s var(--ease)}
+.screen::-webkit-scrollbar{display:none}
+.screen.noanim{animation:none}
+@keyframes in{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+@keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}}
+@keyframes pop{from{transform:scale(.3);opacity:0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pad{padding:8px 16px 190px}
+.title{font-size:30px;font-weight:800;letter-spacing:-.04em;margin:0}
+.top{display:flex;align-items:center;gap:10px;padding:6px 16px 8px}.top h2{margin:0;font-size:22px;flex:1;letter-spacing:-.03em}
+.ib{width:38px;height:38px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 0 var(--line);font-size:16px;flex:none}
+.net{display:flex;align-items:center;gap:10px;background:#fff;border-radius:20px;padding:12px 14px;margin:8px 0 10px;box-shadow:0 8px 22px rgba(43,38,32,.07)}
+.amt{display:flex;align-items:center;gap:6px;font-size:28px;font-weight:800;letter-spacing:-.045em;line-height:1.1;font-variant-numeric:tabular-nums}.amt small{font-size:15px;font-weight:700;color:var(--mute)}
+.subt{font-size:12px;color:var(--mute)}
+.up{color:var(--ok)}.dn{color:var(--bad)}.mute{color:var(--mute)}.faint{color:var(--faint)}
+.seg{position:relative;display:flex;background:rgba(45,36,29,.07);border-radius:999px;padding:2px;gap:2px}
+.seg button{flex:1;position:relative;z-index:1;border-radius:999px;padding:6px 4px;font:600 12.5px Inter,sans-serif;min-height:30px;color:var(--mute);transition:color .25s;white-space:nowrap}
+.seg button.on{color:var(--ink)}
+.seg .pill{position:absolute;top:2px;bottom:2px;border-radius:999px;background:#fff;box-shadow:0 1px 4px rgba(45,36,29,.12);transition:left .35s var(--ease),width .35s var(--ease)}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--acc);margin-left:4px;vertical-align:middle}
+.pn{display:flex;flex-direction:column;gap:12px;margin-top:12px;animation:up .4s var(--ease)}
+.group{background:#fff;border-radius:22px;padding:14px 16px;box-shadow:0 8px 22px rgba(43,38,32,.06)}
+.shelf{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:0 8px;padding:6px 6px 0;margin-bottom:4px}
+.shelf::after{content:"";position:absolute;left:-4px;right:-4px;bottom:0;height:12px;border-radius:6px;background:linear-gradient(180deg,#d8c8a4,#b79f72);box-shadow:0 8px 12px rgba(60,40,10,.18)}
+.slot{display:flex;flex-direction:column;align-items:center;gap:1px;padding:0 0 18px;text-align:center;min-width:0;position:relative;z-index:1;animation:up .45s var(--ease) both;transition:transform .15s}
+.slot:active{transform:scale(.95)}
+.stk{height:80px;display:grid;place-items:end center}
+.slot b{font-size:12px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile{width:72px;height:72px;border-radius:22px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;letter-spacing:.02em;box-shadow:0 6px 12px rgba(40,30,10,.22),inset 0 2px 0 rgba(255,255,255,.25);position:relative}
+.tile em{position:absolute;top:-6px;right:-8px;font-style:normal;background:#fff;color:var(--warn);font-size:9px;font-weight:800;border-radius:99px;padding:2px 6px;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.plus{width:52px;height:52px;border-radius:16px;border:2px dashed var(--line);display:grid;place-items:center;color:var(--mute);font-size:22px}
+.gold{width:62px;height:76px;border-radius:8px;background:linear-gradient(160deg,#cdb6c9,#9b6a8f);display:flex;align-items:center;justify-content:center;box-shadow:0 5px 10px rgba(60,20,50,.3)}.gold i{width:12px;height:22px;background:linear-gradient(#f3d16a,#c99a1c);border-radius:2px}
+.sumamt{font-size:22px;font-weight:800;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.bar{display:flex;height:9px;border-radius:99px;overflow:hidden;background:var(--group);margin-top:8px;gap:1px}.bar i{display:block;transition:flex .6s var(--ease)}
+.leg{display:flex;gap:4px 12px;flex-wrap:wrap;margin-top:6px;font-size:11.5px}.leg i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.link{color:var(--acc);font-weight:600;font-size:14px;text-align:center;width:100%;padding:8px 0 2px}
+.fab{position:absolute;right:14px;bottom:112px;z-index:6;animation:up .4s var(--ease)}
+.photo{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:linear-gradient(180deg,#d9552a,#b83f17);color:#fff;font-weight:700;font-size:14px;padding:12px 18px;box-shadow:0 10px 22px rgba(201,70,27,.4);white-space:nowrap;transition:transform .15s}.photo:active{transform:scale(.95)}
+.tabbar{position:absolute;bottom:14px;left:12px;right:12px;height:68px;display:flex;gap:8px;z-index:7}
+.tabbar .p{flex:1;background:rgba(255,255,255,.95);backdrop-filter:blur(14px);border-radius:34px;box-shadow:0 8px 24px rgba(43,38,32,.14);display:flex;padding:6px}
+.tabbar .p div{flex:1;text-align:center;font-size:10.5px;font-weight:700;color:var(--ink);border-radius:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}.tabbar .p div.on{background:#efe9dc}.tabbar b{font-size:20px;line-height:1}
+.catat{width:68px;height:68px;border-radius:50%;background:linear-gradient(160deg,#4a423a,#241f1a);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;font-weight:700;box-shadow:0 8px 20px rgba(0,0,0,.3)}.catat b{font-size:22px;color:#f1c24a;line-height:1}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:52px;border-radius:99px;background:var(--ink);color:#fff;font-weight:700;font-size:15px;transition:transform .15s}
+.btn:active{transform:scale(.97)}.btn.acc{background:linear-gradient(180deg,#d9552a,#b83f17)}.btn.soft{background:#efe8d8;color:var(--ink)}.btn[disabled]{opacity:.35;pointer-events:none}
+.row{display:flex;align-items:center;gap:12px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700}.chip.ok{background:var(--oksoft);color:var(--ok)}.chip.warn{background:var(--warnsoft);color:var(--warn)}.chip.bad{background:var(--badsoft);color:var(--bad)}.chip.gray{background:#efe8d8;color:var(--mute)}
+.note{display:flex;gap:8px;align-items:flex-start;background:var(--warnsoft);border-radius:14px;padding:10px 12px;font-size:12.5px;color:#6b4a00;line-height:1.4;animation:up .4s var(--ease)}.note.info{background:var(--accsoft);color:#8a3414}
+.note button{margin-left:auto;font-weight:800;text-decoration:underline;white-space:nowrap}
+.field{display:block;background:#f4eee0;border-radius:20px;padding:11px 15px;margin-bottom:10px;transition:box-shadow .2s}.field:focus-within{box-shadow:0 0 0 2px rgba(201,70,27,.35)}.field .l{display:block;font-size:11px;font-weight:700;color:var(--mute);margin-bottom:2px}.field input{font-size:22px;font-weight:800}.field .u{font-size:13px;color:var(--mute);font-weight:600}
+.steps{display:flex;gap:6px;margin:4px 0 14px}.steps i{flex:1;height:4px;border-radius:9px;background:#e8dfcc}.steps i.on{background:var(--acc)}
+.sw{display:flex;background:#f1eadb;border-radius:99px;padding:3px;margin-bottom:12px}.sw button{flex:1;padding:9px;border-radius:99px;font-weight:700;font-size:13px;color:var(--mute);transition:.25s}.sw button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}.sw button.on.buy{color:var(--ok)}.sw button.on.sell{color:var(--bad)}
+.list button{display:flex;gap:12px;align-items:center;padding:11px 4px;border-bottom:1px solid var(--line);text-align:left;width:100%}
+.mini{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;color:#fff;flex:none}
+.check{display:flex;gap:10px;font-size:13px;line-height:1.4;margin:9px 0}.check b.t{width:20px;height:20px;border-radius:50%;background:var(--oksoft);color:var(--ok);display:flex;align-items:center;justify-content:center;font-size:11px;flex:none;margin-top:1px}.check b.x{background:var(--badsoft);color:var(--bad)}
+.prog{display:flex;gap:11px;align-items:center;padding:9px 0;font-size:14px;font-weight:600;opacity:.35;transition:.4s}.prog.on{opacity:1}.prog i{width:22px;height:22px;border-radius:50%;border:2px solid #ddd4c2;display:flex;align-items:center;justify-content:center;font-size:11px;font-style:normal;flex:none}.prog.done i{background:var(--ok);border-color:var(--ok);color:#fff}.prog.on:not(.done) i{border-color:var(--acc);border-top-color:transparent;animation:spin .8s linear infinite}
+.over{position:absolute;inset:0;background:rgba(36,31,26,.4);z-index:30;display:flex;align-items:flex-end;animation:fade .25s}
+.sheet{background:#fff;border-radius:32px 32px 0 0;width:100%;padding:10px 20px 28px;animation:sheetin .45s var(--ease)}@keyframes sheetin{from{transform:translateY(100%)}}
+.grab{width:40px;height:5px;border-radius:9px;background:#ddd4c2;margin:0 auto 12px}
+.toast{position:absolute;left:18px;right:18px;bottom:100px;background:var(--ink);color:#fff;border-radius:18px;padding:12px 15px;font-size:13px;z-index:40;animation:up .35s var(--ease)}
+.gs{font-size:11px;background:#fff;min-height:100%}.gs .bar2{background:#f1f3f4;padding:9px 12px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #dadce0}.gs .fx{display:flex;border-bottom:1px solid #dadce0;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;padding:6px 10px;gap:8px;color:#3c4043;min-height:28px;overflow:hidden;white-space:nowrap}
+.gs table{border-collapse:collapse;width:max-content;min-width:100%}.gs td,.gs th{border:1px solid #e1e3e6;padding:5px 8px;white-space:nowrap;font-size:11px}.gs th{background:#f8f9fa;font-weight:600;color:#5f6368;text-align:center}.gs td.r{text-align:right;font-variant-numeric:tabular-nums}.gs .h td{background:#fbf6ec;font-weight:700}.gs td.f{background:#eef4ff;cursor:pointer}.gs td.sel{outline:2px solid #1a73e8;outline-offset:-2px}
+.gs .tabs{position:absolute;bottom:0;left:0;right:0;background:#f1f3f4;border-top:1px solid #dadce0;display:flex;gap:2px;padding:6px 8px 26px;z-index:5}.gs .tabs button{padding:6px 12px;border-radius:6px 6px 0 0;font-size:11px;font-weight:600;color:#5f6368}.gs .tabs button.on{background:#fff;color:#1a73e8;box-shadow:inset 0 -2px #1a73e8}
+.notes{position:sticky;top:16px}.nt{background:#fff;border-radius:20px;padding:16px;margin-bottom:12px;font-size:13px;line-height:1.55;animation:up .4s var(--ease)}.nt h3{margin:0 0 6px;font-size:14px}.nt ul{margin:6px 0 0;padding-left:18px;color:var(--mute)}
+.tag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px;background:var(--accsoft);color:var(--acc);margin-bottom:6px}
+</style>
+</head>
+<body>
+<div class="stage">
+  <aside class="side">
+    <h1>Saham di Kekayaan</h1>
+    <p class="sub">Versi 2: Saham menjadi tab di halaman Kekayaan yang sudah ada (djiwapay.web.id/kekayaan), memakai rak stiker, kartu nilai, dan tombol melayang yang sama. Data contoh.</p>
+    <div class="flow" id="flow"></div>
+    <div class="states">
+      <h4>Kondisi harga</h4><div class="chips" id="stPrice"></div>
+      <h4 style="margin-top:12px">Google Sheets Pay</h4><div class="chips" id="stGoogle"></div><h4 style="margin-top:12px">Isi tab Aset, Dompet, Kewajiban</h4><div class="chips" id="stEmpty"></div>
+    </div>
+  </aside>
+  <main><div class="phone"><div class="notch"></div><div class="status"><span>09:41</span><span>●●● 5G ▮</span></div><div id="scr"></div><div id="over"></div></div></main>
+  <aside class="notes" id="notes"></aside>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const rp=n=>"Rp"+Math.round(n).toLocaleString("id-ID");
+const rps=n=>(n>=0?"+":"−")+"Rp"+Math.abs(Math.round(n)).toLocaleString("id-ID");
+const pc=n=>(n>=0?"▲ ":"▼ ")+Math.abs(n).toFixed(1).replace(".",",")+"%";
+const TICK={BBCA:["Bank Central Asia","#1a5dc6"],BBRI:["Bank Rakyat Indonesia","#1c7ed6"],BMRI:["Bank Mandiri","#2b6cb0"],TLKM:["Telkom Indonesia","#c9461b"],ASII:["Astra International","#5b6b7f"],UNVR:["Unilever Indonesia","#2f7d6d"],ICBP:["Indofood CBP","#a05d00"],GOTO:["GoTo Gojek Tokopedia","#4f7a2b"],ANTM:["Aneka Tambang","#8a6d1d"],ADRO:["Alamtara Minerals","#6a4c93"],BBNI:["Bank Negara Indonesia","#d9480f"],KLBF:["Kalbe Farma","#37803f"]};
+const PRICE={BBCA:9725,BBRI:4310,BMRI:5120,TLKM:3290,ASII:5275,UNVR:1980,ICBP:11250,GOTO:58,ANTM:1680,ADRO:2470,BBNI:4890,KLBF:1520};
+const FEE={buy:.15,sell:.35};
+const BASE_NET=-65993592, GOLD=2192572, GOLD_COST=1800000;
+const S={empty:false,screen:"vault",tab:"aset",sub:"hold",price:"live",google:true,activated:false,googleBase:false,manual:{},built:0,sel:"BBCA",
+ trades:[],add:{},sheetTab:"Saham",cell:null,shownNet:BASE_NET};
+const seed=()=>[{t:"BBCA",side:"buy",lots:10,price:9200,at:"04 Agu 2026"},{t:"TLKM",side:"buy",lots:15,price:3420,at:"19 Agu 2026"},{t:"ASII",side:"buy",lots:10,price:5100,at:"11 Sep 2026"},{t:"GOTO",side:"buy",lots:200,price:64,at:"28 Sep 2026"},{t:"BBCA",side:"buy",lots:10,price:9700,at:"02 Okt 2026"}];
+const hasStocks=()=>S.activated&&S.trades.length>0;
+
+function priceOf(t){if(S.price==="na"&&t==="GOTO")return S.manual[t]??null;return PRICE[t]??null}
+function holdings(){
+  const m={};
+  S.trades.forEach(x=>{const h=m[x.t]??={t:x.t,sh:0,cost:0,real:0};const sh=x.lots*100;
+    if(x.side==="buy"){h.cost+=sh*x.price;h.sh+=sh}else{const avg=h.cost/h.sh;h.real+=sh*(x.price-avg);h.cost-=avg*sh;h.sh-=sh}});
+  return Object.values(m).filter(h=>h.sh>0).map(h=>{
+    const avg=h.cost/h.sh;let p=S.google?priceOf(h.t):null;const manual=S.google&&p==null;
+    if(p==null)p=avg;const value=h.sh*p;
+    return{...h,avg,p,value,pl:value-h.cost,plp:h.cost?(value-h.cost)/h.cost*100:0,manual};});
+}
+const tot=h=>({cost:h.reduce((a,x)=>a+x.cost,0),value:h.reduce((a,x)=>a+x.value,0)});
+const stockValue=()=>{const h=holdings();return S.google?tot(h).value:tot(h).cost};
+
+const STEPS=[
+ ["vault","Kekayaan · tab Aset","1"],["saham0","Tab Saham (belum aktif)","2"],["consent","Izin Google (hanya jika belum)","3"],["build","Mengaktifkan di spreadsheet","4"],
+ ["saham","Tab Saham (portofolio)","5"],["detail","Detail saham","6"],["add","Catat saham","7"],["sheet","Lihat di Google Sheets","8"],["fee","Pengaturan fee broker","9"]];
+const NOTES={
+ vault:["Integrasi di halaman yang sama","Saham jadi tab keempat di kontrol segmen, tepat setelah Aset. Urutan tab: Aset, Saham, Dompet, Kewajiban. Tiap tab yang masih kosong menampilkan kartu onboarding yang sama polanya (ganti 'Isi tab' di kiri ke Kosong). Setelah aktif, nilai saham ikut ke Kekayaan bersih dan ke komposisi di 'Nilai semua aset'.",["Titik oranye kecil pada tab Saham mengajak mencoba.","Bandingkan angka Kekayaan bersih sebelum dan sesudah fitur aktif."]],
+ saham0:["Kondisi kosong: Google yang sudah terhubung dipakai ulang","Pengguna yang sudah menghubungkan Google Sheets untuk Catatan tidak diminta izin lagi. Satu tombol 'Aktifkan Saham' menambah dua tab ke spreadsheet yang sama. Layar izin hanya muncul bagi yang belum pernah menghubungkan (ganti 'Google Sheets Pay' di kiri ke Belum terhubung).",["Pengecualian: bila koneksi lama hanya punya izin Kalender dan belum izin Drive, tetap muncul satu layar izin tambahan.","Pengguna juga bisa memilih mencatat dulu tanpa harga otomatis."]],
+ consent:["Persetujuan sederhana (hanya untuk yang belum terhubung)","Pola yang sama dengan integrasi Google Pay lain: yang bisa dan tidak bisa dilakukan, lalu layar Google. Scope hanya drive.file. Pengguna yang Google-nya sudah terhubung tidak melihat layar ini.",[]],
+ build:["Mengaktifkan di spreadsheet","Tab Saham dan Portofolio Saham ditambahkan ke spreadsheet keuangan yang sudah ada. Tidak ada file kedua, dan data Catatan tidak tersentuh.",[]],
+ saham:["Saham sebagai rak stiker","Setiap saham adalah 'stiker' di rak yang sama dengan aset foto, dengan nilai dan persen untung/rugi di bawahnya. Ketuk untuk detail.",["Kartu 'Nilai semua saham' memakai pola kartu 'Nilai semua aset'.","Riwayat dan pengaturan fee ada di tab ini.","Ganti 'Kondisi harga' di kiri untuk harga basi atau ticker tanpa data."]],
+ detail:["Detail saham","Rata-rata beli, lot, untung/rugi belum dan sudah terealisasi, dan riwayat. Harga manual bisa diubah bila Google tidak punya data.",[]],
+ add:["Catat saham","Tiga langkah: pilih saham, isi lot dan harga, konfirmasi. Fee mengikuti pengaturan broker. Setelah disimpan, baris langsung ditulis ke tab Saham di spreadsheet.",["Jual melebihi kepemilikan ditolak."]],
+ sheet:["Sheet yang sama","Tombol 'Buka di Google Sheets' membuka spreadsheet keuangan. Ketuk sel biru untuk melihat rumus GOOGLEFINANCE.",["Edit dua arah dari sheet menyusul di rilis berikutnya."]],
+ fee:["Fee broker","Default beli 0,15% dan jual 0,35% (sudah termasuk pajak). Bisa diubah sesuai broker pengguna, dan berlaku untuk transaksi berikutnya.",[]]};
+
+function renderSide(){
+  let h="<h4>Alur</h4>";STEPS.forEach(([k,l,n])=>h+=`<button class="${curStep()===k?"on":""}" onclick="jump('${k}')"><i>${n}</i>${l}</button>`);
+  $("#flow").innerHTML=h;
+  $("#stPrice").innerHTML=[["live","Terbaru"],["stale","Basi"],["na","Ticker N/A"]].map(([k,l])=>`<button class="${S.price===k?"on":""}" onclick="S.price='${k}';draw()">${l}</button>`).join("");
+  $("#stGoogle").innerHTML=[[true,"Sudah terhubung"],[false,"Belum terhubung"]].map(([k,l])=>`<button class="${S.google===k?"on":""}" onclick="S.google=${k};draw()">${l}</button>`).join("");
+  $("#stEmpty").innerHTML=[[false,"Ada data"],[true,"Kosong (onboarding)"]].map(([k,l])=>`<button class="${S.empty===k?"on":""}" onclick="S.empty=${k};draw()">${l}</button>`).join("");
+  const n=NOTES[curStep()];
+  $("#notes").innerHTML=`<div class="nt"><span class="tag">Catatan desain</span><h3>${n[0]}</h3>${n[1]}${n[2].length?`<ul>${n[2].map(x=>`<li>${x}</li>`).join("")}</ul>`:""}</div>`+
+  (["saham","detail"].includes(curStep())?`<div class="nt"><h3>Rumus</h3><span class="mute" style="font-size:12px">Modal = Σ lembar × harga beli (rata-rata tertimbang)<br>Nilai = lembar × harga sheet<br>Untung/rugi = nilai − modal (belum termasuk fee jual)</span></div>`:"");
+}
+function curStep(){
+  if(S.screen==="vault")return S.tab==="saham"?(hasStocks()?"saham":"saham0"):"vault";
+  return S.screen;
+}
+function jump(k){
+  S.overlay=null;
+  if(k==="vault"){S.screen="vault";S.tab="aset"}
+  else if(k==="saham0"){S.google=true;S.activated=false;S.trades=[];S.screen="vault";S.tab="saham"}
+  else if(k==="consent"){S.google=false;S.activated=false;S.trades=[];S.screen="vault";S.tab="saham"}
+  else if(k==="build"){S.google=true;S.activated=true;S.viaConsent=false;S.screen="build";runBuild()}
+  else{S.google=true;S.activated=true;if(!S.trades.length)S.trades=seed();
+    if(k==="saham"){S.screen="vault";S.tab="saham";S.sub="hold"}
+    else if(k==="detail"){S.screen="detail";S.sel="BBCA"}
+    else if(k==="add"){S.screen="add";S.add={step:1,side:"buy",t:null,lots:"",price:"",q:""}}
+    else if(k==="sheet"){S.screen="sheet"}
+    else if(k==="fee"){S.screen="vault";S.tab="saham";draw();openFee();return}}
+  draw();
+}
+function draw(){renderSide();$("#over").innerHTML="";render()}
+const toast=m=>{const t=document.createElement("div");t.className="toast";t.textContent=m;$("#over").appendChild(t);setTimeout(()=>t.remove(),2300)};
+const stamp=()=>S.price==="stale"?"kemarin 15:49":"09:41";
+const mini=(t,s=38)=>`<span class="mini" style="background:${TICK[t]?.[1]||"#777"};width:${s}px;height:${s}px">${t}</span>`;
+
+let netRaf;function animNet(to){const el=$("#netAmt");if(!el)return;const from=S.shownNet;cancelAnimationFrame(netRaf);const t0=performance.now();
+ const f=now=>{const k=Math.min(1,(now-t0)/700),e=1-Math.pow(1-k,3),v=from+(to-from)*e;const e2=$("#netAmt");if(!e2)return;e2.textContent=(v<0?"−":"")+Math.abs(Math.round(v)).toLocaleString("id-ID");S.shownNet=v;if(k<1)netRaf=requestAnimationFrame(f)};netRaf=requestAnimationFrame(f)}
+const netNow=()=>BASE_NET+(hasStocks()?stockValue():0);
+
+function render(){const el=$("#scr");el.innerHTML="";const d=document.createElement("div");d.className="screen"+(S.noanim?" noanim":"");S.noanim=false;d.innerHTML=VIEWS[S.screen]();el.appendChild(d);
+  if(S.screen==="vault")animNet(netNow());
+  if(S.screen==="add"&&S.add.step===1){const i=d.querySelector("#q");i&&i.focus({preventScroll:true})}
+  d.querySelectorAll(".seg").forEach(posPill)}
+function posPill(seg){const on=seg.querySelector("button.on"),p=seg.querySelector(".pill");if(on&&p){p.style.left=on.offsetLeft+"px";p.style.width=on.offsetWidth+"px"}}
+function pick(tab){S.tab=tab;S.sub="hold";S.noanim=true;const sc=$(".screen");const y=sc?sc.scrollTop:0;renderSide();$("#over").innerHTML="";render();const s2=$(".screen");if(s2)s2.scrollTop=y}
+
+const tabbar=()=>`<div class="tabbar"><div class="p"><div><b>🏠</b>Beranda</div><div><b>🧾</b>Catatan</div><div><b>📊</b>Rencana</div><div class="on"><b>👛</b>Kekayaan</div></div><div class="catat"><b>＋</b>Catat</div></div>`;
+function banner(){
+  if(!S.google)return `<div class="note info"><span style="font-size:17px">🔗</span><span><b>Harga belum otomatis.</b> Hubungkan Google agar harga terisi.</span><button onclick="S.screen='consent';draw()">Hubungkan</button></div>`;
+  if(S.price==="stale")return `<div class="note"><span style="font-size:17px">🕘</span><span><b>Harga per kemarin 15:49.</b> Sheet belum menghitung ulang.</span><button onclick="refresh()">Segarkan</button></div>`;
+  return "";}
+function refresh(){toast("Menyegarkan lewat Google Sheets…");setTimeout(()=>{S.price="live";draw();toast("Harga terbaru per 09:41")},1200)}
+
+function segHTML(){const n=holdings().length;const opts=[["aset","Aset · 1"],["saham",`Saham${hasStocks()?" · "+n:""}`+(!S.activated?'<span class="dot"></span>':"")],["dompet","Dompet · 10"],["kewajiban","Kewajiban"]];
+  return `<div class="seg"><span class="pill"></span>${opts.map(([k,l])=>`<button class="${S.tab===k?"on":""}" onclick="pick('${k}')">${l}</button>`).join("")}</div>`}
+
+function onboard(o){return `<div class="pn"><div class="group" style="text-align:center;padding:22px 18px"><div style="font-size:50px;animation:pop .6s cubic-bezier(.3,1.6,.5,1)">${o.icon}</div><h3 style="margin:8px 0 4px;font-size:20px;letter-spacing:-.03em">${o.title}</h3><p class="mute" style="font-size:13px;line-height:1.5;margin:0 0 14px">${o.desc}</p>
+ <div style="text-align:left">${o.bullets.map(([b,t])=>`<div class="check"><b class="t">✓</b><span><b>${b}</b>${t}</span></div>`).join("")}</div>
+ <div style="height:10px"></div>${o.extra||""}<button class="btn acc" onclick="${o.act}">${o.primary}</button>${o.secondary?`<div style="height:8px"></div><button class="btn soft" onclick="${o.act2||"toast('Contoh')"}">${o.secondary}</button>`:""}</div></div>`}
+const ONB={
+ aset:{icon:"📸",title:"Simpan nilai aset Anda",desc:"Foto emas, perhiasan, atau aset lain. Latarnya dipotong jadi stiker, lalu nilainya dipantau di sini.",bullets:[["Stiker di rak, ","seperti koleksi pribadi."],["Nilai emas otomatis ","mengikuti harga pasar."],["Ikut dihitung ","ke kekayaan bersih."]],primary:"Foto aset pertama",act:"toast('Buka kamera aset')",secondary:"Isi manual tanpa foto"},
+ dompet:{icon:"👛",title:"Kumpulkan semua dompet",desc:"Tunai, rekening bank, dan e-wallet dalam satu tempat, supaya saldo dan kekayaan bersih akurat.",bullets:[["Saldo awal ","membuat angka kekayaan benar."],["Djiwa Pay ","sudah ada sebagai dompet utama."],["Transfer antar dompet ","tercatat otomatis."]],primary:"Tambah dompet pertama",act:"toast('Buka form dompet')",secondary:"Lihat saldo Djiwa Pay"},
+ kewajiban:{icon:"🤝",title:"Catat hutang dan piutang",desc:"Siapa berhutang kepada Anda, dan sebaliknya, lengkap dengan jatuh tempo dan pengingat.",bullets:[["Hutang dan piutang ","dipisah dengan jelas."],["Jatuh tempo ","bisa diingatkan lewat kalender."],["Simulasi pelunasan ","membantu menyusun rencana."]],primary:"Catat hutang atau piutang",act:"toast('Buka form hutang')",secondary:"Alat keuangan"}
+};
+function asetTab(){if(S.empty)return onboard(ONB.aset);
+  const hv=hasStocks()?stockValue():0,sc=hasStocks()?tot(holdings()).cost:0,total=GOLD+hv;
+  const gain=((GOLD+(S.google?hv:sc))-(GOLD_COST+sc))/(GOLD_COST+sc)*100;
+  return `<div class="pn"><div class="shelf"><button class="slot" style="animation-delay:0ms"><span class="stk"><span class="gold"><i></i></span></span><b>Emas Antam 1 Gram</b><span class="subt">${rp(GOLD)}</span><span class="up" style="font-size:10.5px;font-weight:700">▲ 21,8%</span></button></div>
+  <div class="shelf"><button class="slot"><span class="stk"><span class="plus">＋</span></span><b style="color:var(--mute)">Foto aset</b></button></div>
+  <div class="group"><div class="subt">Nilai semua aset</div><div class="sumamt">${rp(total)}</div><div class="subt">Modal ${rp(GOLD_COST+sc)} · <b class="${gain>=0?"up":"dn"}">${pc(gain)}</b></div>
+  <div class="bar"><i style="flex:${GOLD};background:#d9a21a"></i>${hasStocks()?`<i style="flex:${hv};background:#c9461b"></i>`:""}</div>
+  <div class="leg"><span><i style="background:#d9a21a"></i>Emas ${Math.round(GOLD/total*100)}%</span>${hasStocks()?`<span><i style="background:#c9461b"></i>Saham ${Math.round(hv/total*100)}%</span>`:""}</div>
+  ${hasStocks()?`<button class="link" onclick="pick('saham')">Lihat saham ›</button>`:`<button class="link">Nilai &amp; grafik semua aset</button>`}</div></div>`}
+
+function sahamTab(){
+  if(!hasStocks())return onboard({icon:"📈",title:"Lacak saham Anda",desc:"Catat pembelian saham IDX. Harga dan untung rugi dihitung otomatis oleh Google Sheets milik Anda, dan ikut masuk ke kekayaan bersih.",bullets:[["Datanya di Drive Anda, ","bukan di server kami."],["Harga otomatis ","lewat GOOGLEFINANCE."],["Fee broker ","dihitung otomatis."]],
+   extra:S.google?`<div class="note info" style="margin-bottom:10px;text-align:left"><span style="font-size:16px">✅</span><span><b>Google Sheets Anda sudah terhubung</b> (fakhri@contoh.com). Cukup menambah 2 tab ke spreadsheet yang sama. Tanpa izin baru.</span></div>`:"",
+   primary:S.google?"Aktifkan Saham":"Hubungkan Google Sheets",act:S.google?"S.activated=true;S.viaConsent=false;S.built=0;S.screen='build';runBuild();draw()":"S.activated=true;S.screen='consent';draw()",
+   secondary:"Catat dulu tanpa harga otomatis",act2:"S.google=false;S.activated=true;S.screen='add';S.add={step:1,side:'buy',t:null,lots:'',price:'',q:''};draw()"});
+  const hs=holdings(),T=tot(hs),pl=T.value-T.cost,plp=pl/T.cost*100;
+  const items=[...hs,{add:true}];const rows=[];for(let i=0;i<items.length;i+=3)rows.push(items.slice(i,i+3));
+  const shelf=rows.map((r,ri)=>`<div class="shelf">${r.map((h,i)=>h.add?`<button class="slot" style="animation-delay:${(ri*3+i)*50}ms" onclick="S.screen='add';S.add={step:1,side:'buy',t:null,lots:'',price:'',q:''};draw()"><span class="stk"><span class="plus">＋</span></span><b style="color:var(--mute)">Catat saham</b></button>`:`<button class="slot" style="animation-delay:${(ri*3+i)*50}ms" onclick="S.sel='${h.t}';S.screen='detail';draw()"><span class="stk"><span class="tile" style="background:linear-gradient(160deg,${TICK[h.t][1]},${TICK[h.t][1]}cc)">${h.t}${h.manual?"<em>manual</em>":""}</span></span><b>${h.t}</b><span class="subt">${S.google?rp(h.value):rp(h.cost)}</span>${S.google?`<span class="${h.pl>=0?"up":"dn"}" style="font-size:10.5px;font-weight:700">${pc(h.plp)}</span>`:`<span class="subt" style="font-size:10.5px">modal</span>`}</button>`).join("")}</div>`).join("");
+  
+  const sub=`<div class="seg" style="margin-top:0"><span class="pill"></span><button class="${S.sub==="hold"?"on":""}" onclick="S.sub='hold';S.noanim=true;draw()">Kepemilikan</button><button class="${S.sub==="log"?"on":""}" onclick="S.sub='log';S.noanim=true;draw()">Riwayat</button></div>`;
+  if(S.sub==="log"){const tr=S.trades.slice().reverse();return `<div class="pn">${sub}<div class="group" style="padding:4px 16px">${tr.map(x=>`<div class="row" style="padding:12px 0;border-bottom:1px solid var(--line)">${mini(x.t,36)}<div style="flex:1"><b>${x.t} <span class="chip ${x.side==="buy"?"ok":"bad"}">${x.side==="buy"?"Beli":"Jual"}</span></b><div class="subt">${x.lots} lot @ ${rp(x.price)} · ${x.at}</div></div><b style="font-size:13px;font-variant-numeric:tabular-nums">${rp(x.lots*100*x.price)}</b></div>`).join("")}</div></div>`}
+  const alloc=hs.map(h=>`<i style="flex:${h.value};background:${TICK[h.t][1]}"></i>`).join("");
+  return `<div class="pn">${sub}${banner()}${shelf}
+  <div class="group"><div class="row"><div style="flex:1"><div class="subt">Nilai semua saham</div><div class="sumamt">${S.google?rp(T.value):rp(T.cost)}</div></div><button class="ib" style="width:34px;height:34px;background:#f4eee0;box-shadow:none" onclick="openFee()" aria-label="Pengaturan fee">⚙︎</button></div>
+  <div class="subt">${S.google?`Modal ${rp(T.cost)} · <b class="${pl>=0?"up":"dn"}">${pc(plp)} (${rps(pl)})</b>`:`Modal ${rp(T.cost)} · tanpa harga terkini`}</div>
+  <div class="bar">${alloc}</div><div class="leg">${hs.map(h=>`<span><i style="background:${TICK[h.t][1]}"></i>${h.t} ${Math.round((S.google?h.value:h.cost)/(S.google?T.value:T.cost)*100)}%</span>`).join("")}</div>
+  <div class="subt" style="margin-top:6px">${S.google?`Harga per ${stamp()} · dari Google Sheets`:""}</div>
+  <button class="link" onclick="S.screen='sheet';draw()">Buka di Google Sheets ›</button></div></div>`}
+
+function otherTab(t){if(S.empty)return onboard(ONB[t]);return `<div class="pn"><div class="group" style="text-align:center;color:var(--mute);font-size:13px;padding:30px 18px">${t==="dompet"?"Tab Dompet (tidak diubah)":"Tab Kewajiban (tidak diubah)"}</div></div>`}
+
+function fabHTML(){if(S.tab==="aset")return `<div class="fab"><button class="photo">📷 Foto aset</button></div>`;
+  if(S.tab==="saham"&&hasStocks())return `<div class="fab"><button class="photo" onclick="S.screen='add';S.add={step:1,side:'buy',t:null,lots:'',price:'',q:''};draw()">＋ Catat saham</button></div>`;return ""}
+
+const VIEWS={
+vault(){return `<div class="pad"><h1 class="title">Kekayaan</h1>
+ <div class="net"><div style="flex:1;min-width:0"><div class="subt">Kekayaan bersih</div><div class="amt"><small>Rp</small><span id="netAmt">${Math.round(S.shownNet).toLocaleString("id-ID")}</span><span style="color:var(--mute);font-size:16px">👁</span></div></div><div style="text-align:right">${hasStocks()?(()=>{const T=tot(holdings()),p=(T.value-T.cost)/T.cost*100;return `<div class="${p>=0?"up":"dn"}" style="font-weight:700">${pc(p)}</div><div class="subt">saham</div>`})():`<div class="dn" style="font-weight:700">▼ 0,3%</div><div class="subt">aset 30 hari</div>`}</div></div>
+ ${segHTML()}${S.tab==="aset"?asetTab():S.tab==="saham"?sahamTab():otherTab(S.tab)}</div>${fabHTML()}${tabbar()}`},
+
+consent(){return `<div class="top"><button class="ib" onclick="S.screen='vault';S.tab='saham';draw()">←</button><h2></h2></div><div class="pad" style="padding-bottom:40px"><div class="steps"><i class="on"></i><i></i><i></i></div>
+ <h2 style="font-size:23px;margin:0 0 6px;letter-spacing:-.03em">Sebelum menghubungkan</h2><p class="mute" style="font-size:12.5px;margin:0 0 12px;line-height:1.5">Djiwa Pay hanya menyentuh file yang dibuatnya sendiri.</p>
+ <div class="group"><b style="font-size:12.5px">Yang bisa dilakukan Djiwa Pay</b><div class="check"><b class="t">✓</b>Menambah tab Saham di spreadsheet keuangan Anda</div><div class="check"><b class="t">✓</b>Menulis transaksi yang Anda catat</div><div class="check"><b class="t">✓</b>Membaca harga dan hasil hitungan dari tab itu</div>
+ <hr style="border:0;border-top:1px solid var(--line);margin:10px 0"><b style="font-size:12.5px">Yang tidak bisa dilakukan</b><div class="check"><b class="t x">✕</b>Membuka file Drive lain milik Anda</div><div class="check"><b class="t x">✕</b>Membaca email atau kontak</div><div class="check"><b class="t x">✕</b>Menyimpan token di browser Anda</div></div>
+ <div style="height:14px"></div><button class="btn acc" onclick="showGoogle()">Lanjut ke Google</button><p class="faint" style="text-align:center;font-size:11px;margin-top:10px">Bisa diputuskan kapan saja di Pengaturan → Integrasi.</p></div>`},
+
+build(){const d=S.built>=4;return `<div class="pad" style="padding-top:60px;text-align:center"><div style="font-size:54px;animation:pop .6s cubic-bezier(.3,1.6,.5,1)">${d?"✅":"🧮"}</div><h2 style="font-size:23px;margin:10px 0 18px;letter-spacing:-.03em">${d?"Siap dipakai":"Menyiapkan spreadsheet…"}</h2>
+ <div class="group" style="text-align:left">${[S.viaConsent?"Terhubung ke Google":"Memakai koneksi Google Anda","Memeriksa spreadsheet Djiwa Pay","Menambah tab Saham dan Portofolio Saham","Memasang rumus harga otomatis"].map((t,i)=>`<div class="prog ${S.built>i?"on done":S.built===i?"on":""}"><i>${S.built>i?"✓":""}</i>${t}</div>`).join("")}</div>
+ <div style="height:16px"></div>${d?`<button class="btn acc" onclick="S.google=true;S.googleBase=true;S.screen='add';S.add={step:1,side:'buy',t:null,lots:'',price:'',q:'',first:true};draw()">Catat saham pertama</button>`:""}</div>`},
+
+detail(){const hs=holdings(),h=hs.find(x=>x.t===S.sel)||hs[0];if(!h)return `<div class="pad">–</div>`;S.sel=h.t;const tr=S.trades.filter(x=>x.t===h.t).slice().reverse();
+ return `<div class="top"><button class="ib" onclick="S.screen='vault';S.tab='saham';draw()">←</button><h2>${h.t}</h2></div><div class="pad" style="padding-bottom:120px">
+ <div class="row" style="margin-bottom:12px"><span class="tile" style="width:52px;height:52px;border-radius:16px;font-size:11px;background:${TICK[h.t][1]}">${h.t}</span><div><b style="font-size:16px">${TICK[h.t][0]}</b><div class="subt">IDX:${h.t}</div></div></div>
+ ${banner()}
+ <div class="group"><div class="subt">Harga ${h.manual?"manual":"terkini"}</div><div class="row" style="align-items:baseline"><b style="font-size:30px;flex:1;font-variant-numeric:tabular-nums;letter-spacing:-.04em">${rp(h.p)}</b>${h.manual?`<span class="chip warn">Tidak ada data Google</span>`:S.google?`<span class="subt" style="font-size:11px">per ${stamp()}</span>`:""}</div>
+ ${h.manual?`<button class="btn soft" style="min-height:40px;margin-top:10px;font-size:13px" onclick="openManual('${h.t}')">${S.manual[h.t]?"Ubah":"Isi"} harga manual</button>`:""}</div>
+ <div style="height:12px"></div>
+ <div class="group"><div class="row" style="gap:0">${[["Lot",h.sh/100],["Rata-rata",rp(h.avg)],["Modal",rp(h.cost)]].map(([a,b])=>`<div style="flex:1"><div class="subt">${a}</div><b style="font-size:14px;font-variant-numeric:tabular-nums">${b}</b></div>`).join("")}</div><hr style="border:0;border-top:1px solid var(--line);margin:12px 0">
+ <div class="row"><div style="flex:1"><div class="subt">Untung/rugi belum terealisasi</div><b class="${h.pl>=0?"up":"dn"}" style="font-size:18px">${S.google?rps(h.pl):"–"}</b></div>${S.google?`<span class="chip ${h.pl>=0?"ok":"bad"}">${pc(h.plp)}</span>`:""}</div>${h.real?`<div class="subt" style="margin-top:6px">Terealisasi: <b class="${h.real>=0?"up":"dn"}">${rps(h.real)}</b></div>`:""}</div>
+ <h3 style="margin:18px 2px 6px;font-size:15px">Riwayat</h3><div class="group" style="padding:4px 16px">${tr.map(x=>`<div class="row" style="padding:11px 0;border-bottom:1px solid var(--line)"><span class="chip ${x.side==="buy"?"ok":"bad"}">${x.side==="buy"?"Beli":"Jual"}</span><div style="flex:1"><b style="font-variant-numeric:tabular-nums">${x.lots} lot @ ${rp(x.price)}</b><div class="subt">${x.at}</div></div><b style="font-size:13px">${rp(x.lots*100*x.price)}</b></div>`).join("")}</div></div>
+ <div style="position:absolute;bottom:18px;left:16px;right:16px;z-index:6;display:flex;gap:10px"><button class="btn soft" onclick="S.add={step:2,side:'sell',t:'${h.t}',lots:'',price:'${Math.round(h.p)}',q:''};S.screen='add';draw()">Jual</button><button class="btn acc" onclick="S.add={step:2,side:'buy',t:'${h.t}',lots:'',price:'${Math.round(h.p)}',q:''};S.screen='add';draw()">Beli lagi</button></div>`},
+
+add(){const a=S.add;const back=`S.screen='vault';S.tab='saham';draw()`;
+ if(a.step===1){const q=a.q.toUpperCase();const list=Object.keys(TICK).filter(k=>!q||k.includes(q)||TICK[k][0].toUpperCase().includes(q));
+  return `<div class="top"><button class="ib" onclick="${back}">✕</button><h2>${a.first?"Saham pertama":"Pilih saham"}</h2></div><div class="pad" style="padding-bottom:40px"><div class="steps"><i class="on"></i><i></i><i></i></div>
+  <label class="field"><span class="l">Cari kode atau nama</span><input id="q" placeholder="mis. BBCA" value="${a.q}" oninput="S.add.q=this.value;sugg()"></label><div class="list" id="sg">${suggHTML(list)}</div></div>`}
+ if(a.step===2){const lots=+a.lots||0,price=+a.price||0,gross=lots*100*price,fee=gross*FEE[a.side]/100;const held=(holdings().find(h=>h.t===a.t)?.sh||0)/100;const over=a.side==="sell"&&lots>held;const net=a.side==="buy"?gross+fee:gross-fee;
+  return `<div class="top"><button class="ib" onclick="S.add.step=1;draw()">←</button><h2>${a.t}</h2></div><div class="pad" style="padding-bottom:40px"><div class="steps"><i class="on"></i><i class="on"></i><i></i></div>
+  <div class="sw"><button class="buy ${a.side==="buy"?"on":""}" onclick="S.add.side='buy';draw()">Beli</button><button class="sell ${a.side==="sell"?"on":""}" onclick="S.add.side='sell';draw()">Jual</button></div>
+  <label class="field"><span class="l">Jumlah lot ${a.side==="sell"?`· punya ${held} lot`:""}</span><div class="row"><input inputmode="numeric" placeholder="0" value="${a.lots}" oninput="S.add.lots=this.value.replace(/\\D/g,'');calc()"><span class="u">lot</span></div></label>
+  <label class="field"><span class="l">Harga per lembar</span><div class="row"><span class="u">Rp</span><input inputmode="numeric" placeholder="0" value="${a.price}" oninput="S.add.price=this.value.replace(/\\D/g,'');calc()"></div></label>
+  <div class="chips" style="margin:0 0 12px">${[1,5,10,20].map(n=>`<button style="background:#efe8d8;padding:7px 14px;border-radius:99px;font-weight:700;font-size:13px" onclick="S.add.lots='${n}';draw()">${n} lot</button>`).join("")}</div>
+  <div class="group" id="sum">${sumHTML(a,gross,fee,net,over)}</div><div style="height:14px"></div><button class="btn acc" id="go2" ${lots>0&&price>0&&!over?"":"disabled"} onclick="S.add.step=3;draw()">Lanjut</button></div>`}
+ if(a.step===3){const lots=+a.lots,price=+a.price,gross=lots*100*price,fee=gross*FEE[a.side]/100,net=a.side==="buy"?gross+fee:gross-fee;
+  return `<div class="top"><button class="ib" onclick="S.add.step=2;draw()">←</button><h2>Konfirmasi</h2></div><div class="pad" style="padding-bottom:40px"><div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+  <div class="group"><div class="row" style="margin-bottom:12px">${mini(a.t,46)}<div style="flex:1"><b>${a.t}</b><div class="subt">${TICK[a.t][0]}</div></div><span class="chip ${a.side==="buy"?"ok":"bad"}">${a.side==="buy"?"Beli":"Jual"}</span></div>
+  ${[["Tanggal","Hari ini, 19 Nov 2026"],["Jumlah",`${lots} lot (${lots*100} lembar)`],["Harga",rp(price)],["Nilai transaksi",rp(gross)],[`Fee ${FEE[a.side].toString().replace(".",",")}%`,rp(fee)]].map(([k,v])=>`<div class="row" style="justify-content:space-between;padding:7px 0;font-size:14px"><span class="mute">${k}</span><b style="font-variant-numeric:tabular-nums">${v}</b></div>`).join("")}
+  <hr style="border:0;border-top:1px solid var(--line);margin:8px 0"><div class="row" style="justify-content:space-between"><b>${a.side==="buy"?"Total dibayar":"Total diterima"}</b><b style="font-size:19px;font-variant-numeric:tabular-nums">${rp(net)}</b></div></div>
+  <div class="note info" style="margin:12px 0"><span>📄</span><span>${S.google?"Akan ditulis sebagai baris baru di tab <b>Saham</b> pada spreadsheet Anda.":"Disimpan di Djiwa Pay. Ditulis ke spreadsheet setelah Google terhubung."}</span></div>
+  <button class="btn acc" onclick="saveTrade()">Simpan transaksi</button></div>`}
+ return `<div class="pad" style="padding-top:80px;text-align:center"><div style="font-size:66px;animation:pop .6s cubic-bezier(.3,1.6,.5,1)">✅</div><h2 style="font-size:24px;margin:10px 0 4px;letter-spacing:-.03em">Tercatat</h2><p class="mute" style="font-size:13px;margin:0 0 20px">${a.msg}</p>
+  <div class="group" style="text-align:left"><div class="prog on done"><i>✓</i>Disimpan di Djiwa Pay</div><div class="prog ${S.google?"on done":""}"><i>${S.google?"✓":""}</i>${S.google?"Ditulis ke Google Sheets":"Menunggu Google terhubung"}</div><div class="prog on done"><i>✓</i>Kekayaan bersih diperbarui</div></div>
+  <div style="height:16px"></div><button class="btn acc" onclick="S.screen='vault';S.tab='saham';draw()">Lihat di Kekayaan</button><div style="height:8px"></div><button class="btn soft" onclick="S.add={step:1,side:'buy',t:null,lots:'',price:'',q:''};draw()">Catat lagi</button></div>`},
+
+sheet(){const tr=S.trades,hs=holdings(),tab=S.sheetTab;let table;
+ if(tab==="Saham")table=`<table><thead><tr><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th></tr></thead><tbody><tr class="h"><td>1</td><td>ID</td><td>Waktu</td><td>Ticker</td><td>Jenis</td><td>Lot</td><td>Harga</td></tr>${tr.map((x,i)=>`<tr><td style="color:#999;text-align:center">${i+2}</td><td style="color:#aaa;font-size:9px">t${i+1}x9</td><td>${x.at}</td><td><b>${x.t}</b></td><td>${x.side==="buy"?"Beli":"Jual"}</td><td class="r">${x.lots}</td><td class="r">${rp(x.price)}</td></tr>`).join("")}</tbody></table>`;
+ else table=`<table><thead><tr><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th></tr></thead><tbody><tr class="h"><td>1</td><td>Ticker</td><td>Lot</td><td>Rata-rata</td><td>Harga</td><td>Nilai</td></tr>${hs.map((h,i)=>{const r=i+2,na=S.price==="na"&&h.t==="GOTO";return `<tr><td style="color:#999;text-align:center">${r}</td><td><b>${h.t}</b></td><td class="r f" onclick="fxs('=SUMIFS(Saham!E:E,Saham!C:C,A${r},Saham!D:D,&quot;Beli&quot;)-SUMIFS(…Jual)')">${h.sh/100}</td><td class="r f" onclick="fxs('Rata-rata beli dihitung aplikasi (rata-rata tertimbang)')">${rp(h.avg)}</td><td class="r f sel" onclick="fxs('=GOOGLEFINANCE(&quot;IDX:&quot;&amp;A${r},&quot;price&quot;)')" ${na?'style="color:#d93025"':""}>${na?"#N/A":rp(h.p)}</td><td class="r f" onclick="fxs('=B${r}*100*D${r}')">${rp(h.value)}</td></tr>`}).join("")}</tbody></table>`;
+ return `<div class="gs"><div class="bar2"><button onclick="S.screen='vault';S.tab='saham';draw()" style="font-size:16px">←</button><b style="font-size:12px">Keuangan Djiwa Pay</b><span style="margin-left:auto;font-size:10px;color:#5f6368">Tersimpan di Drive</span></div><div class="fx" id="fx"><span style="color:#80868b">fx</span><span>${S.cell||"Ketuk sel biru di tab Portofolio Saham untuk melihat rumus"}</span></div><div style="overflow:auto;height:560px">${table}<div style="padding:12px;color:#5f6368;font-size:11px;line-height:1.5">Tab <b>Portofolio Saham</b> dihitung otomatis. Catat transaksi lewat aplikasi.</div></div>
+ <div class="tabs"><button class="${tab==="Saham"?"on":""}" onclick="S.sheetTab='Saham';S.cell=null;draw()">Saham</button><button class="${tab!=="Saham"?"on":""}" onclick="S.sheetTab='Portofolio Saham';S.cell=null;draw()">Portofolio Saham</button><button onclick="toast('Tab lain: Catatan, Aset, dst.')">Catatan</button><button onclick="toast('Tab lain: Catatan, Aset, dst.')">Aset</button></div></div>`}
+};
+function fxs(f){S.cell=f.replace(/&quot;/g,'"').replace(/&amp;/g,"&");$("#fx").innerHTML=`<span style="color:#80868b">fx</span><span>${S.cell}</span>`}
+function suggHTML(list){return list.map(k=>`<button onclick="S.add.t='${k}';S.add.price='${PRICE[k]??""}';S.add.step=2;draw()">${mini(k)}<div style="flex:1"><b>${k}</b><div class="subt">${TICK[k][0]}</div></div><span class="subt" style="font-variant-numeric:tabular-nums">${PRICE[k]?rp(PRICE[k]):"–"}</span></button>`).join("")||`<div class="mute" style="font-size:13px;padding:16px 4px">Tidak ketemu. Coba kode lain.</div>`}
+function sugg(){const q=S.add.q.toUpperCase();$("#sg").innerHTML=suggHTML(Object.keys(TICK).filter(k=>!q||k.includes(q)||TICK[k][0].toUpperCase().includes(q)))}
+function sumHTML(a,gross,fee,net,over){return over?`<div class="dn" style="font-size:13px"><b>Lot melebihi kepemilikan.</b></div>`:`<div class="row" style="justify-content:space-between;font-size:13px"><span class="mute">Nilai (${(+a.lots||0)*100} lembar)</span><b style="font-variant-numeric:tabular-nums">${rp(gross)}</b></div><div class="row" style="justify-content:space-between;font-size:13px;margin-top:6px"><span class="mute">Fee ${a.side==="buy"?"beli":"jual"} ${FEE[a.side].toString().replace(".",",")}%</span><b style="font-variant-numeric:tabular-nums">${rp(fee)}</b></div><div class="row" style="justify-content:space-between;margin-top:8px"><b>${a.side==="buy"?"Total":"Diterima"}</b><b style="font-size:18px;font-variant-numeric:tabular-nums">${rp(net)}</b></div>`}
+function calc(){const a=S.add,lots=+a.lots||0,price=+a.price||0,gross=lots*100*price,fee=gross*FEE[a.side]/100,net=a.side==="buy"?gross+fee:gross-fee;const held=(holdings().find(h=>h.t===a.t)?.sh||0)/100;const over=a.side==="sell"&&lots>held;$("#sum").innerHTML=sumHTML(a,gross,fee,net,over);$("#go2").disabled=!(lots>0&&price>0&&!over)}
+function saveTrade(){const a=S.add;if(!S.trades.length&&a.first)S.trades=[];S.trades.push({t:a.t,side:a.side,lots:+a.lots,price:+a.price,at:"19 Nov 2026"});S.activated=true;
+  a.msg=`${a.side==="buy"?"Pembelian":"Penjualan"} ${a.t} ${a.lots} lot @ ${rp(+a.price)} sudah masuk ke portofolio.`;a.step=4;draw()}
+function showGoogle(){$("#over").innerHTML=`<div class="over"><div class="sheet"><div class="grab"></div><div style="text-align:center;margin-bottom:10px"><span style="font:700 22px Arial"><span style="color:#4285f4">G</span><span style="color:#ea4335">o</span><span style="color:#fbbc05">o</span><span style="color:#4285f4">g</span><span style="color:#34a853">l</span><span style="color:#ea4335">e</span></span></div>
+ <h3 style="text-align:center;margin:0 0 4px;font-size:18px">Djiwa Pay ingin mengakses Akun Google Anda</h3><p class="mute" style="font-size:12px;text-align:center;margin:0 0 12px">fakhri@contoh.com</p>
+ <div style="border:1px solid #dadce0;border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.5"><b>Melihat, mengedit, membuat, dan menghapus hanya file Google Drive tertentu yang Anda gunakan dengan aplikasi ini</b></div>
+ <div style="display:flex;gap:10px;margin-top:16px"><button class="btn soft" style="min-height:46px" onclick="$('#over').innerHTML=''">Batal</button><button class="btn" style="min-height:46px;background:#1a73e8" onclick="S.googleBase=true;S.viaConsent=true;S.built=0;S.screen='build';runBuild();draw()">Izinkan</button></div></div></div>`}
+function runBuild(){S.built=0;let n=0;const t=setInterval(()=>{n++;S.built=n;if(S.screen!=="build"){clearInterval(t);return}S.noanim=true;render();if(n>=4)clearInterval(t)},750)}
+function openFee(){$("#over").innerHTML=`<div class="over" onclick="if(event.target===this)$('#over').innerHTML=''"><div class="sheet"><div class="grab"></div><h3 style="margin:0 0 4px;font-size:20px;letter-spacing:-.03em">Fee broker</h3><p class="mute" style="font-size:12.5px;margin:0 0 14px;line-height:1.45">Berlaku untuk transaksi berikutnya. Jual sudah termasuk pajak penghasilan final 0,1%.</p>
+ <div style="display:flex;gap:10px"><label class="field" style="flex:1"><span class="l">Fee beli</span><div class="row"><input id="fb" inputmode="decimal" value="${FEE.buy.toString().replace(".",",")}"><span class="u">%</span></div></label><label class="field" style="flex:1"><span class="l">Fee jual</span><div class="row"><input id="fs" inputmode="decimal" value="${FEE.sell.toString().replace(".",",")}"><span class="u">%</span></div></label></div>
+ <div class="chips" style="margin-bottom:12px">${[["Standar","0,15","0,35"],["Tanpa fee","0","0"]].map(([n,b,s])=>`<button style="background:#efe8d8;padding:7px 12px;border-radius:99px;font-weight:700;font-size:12px" onclick="$('#fb').value='${b}';$('#fs').value='${s}'">${n}</button>`).join("")}</div>
+ <button class="btn acc" onclick="FEE.buy=parseFloat($('#fb').value.replace(',','.'))||0;FEE.sell=parseFloat($('#fs').value.replace(',','.'))||0;$('#over').innerHTML='';toast('Fee disimpan')">Simpan</button></div></div>`}
+function openManual(t){$("#over").innerHTML=`<div class="over" onclick="if(event.target===this)$('#over').innerHTML=''"><div class="sheet"><div class="grab"></div><h3 style="margin:0 0 4px;font-size:20px;letter-spacing:-.03em">Harga manual ${t}</h3><p class="mute" style="font-size:12.5px;margin:0 0 14px;line-height:1.45">Google tidak punya data harga saham ini. Isi sendiri, dan ubah kapan saja.</p>
+ <label class="field"><span class="l">Harga per lembar</span><div class="row"><span class="u">Rp</span><input id="mp" inputmode="numeric" value="${S.manual[t]??""}" placeholder="0"></div></label>
+ <button class="btn acc" onclick="S.manual['${t}']=+($('#mp').value.replace(/\\D/g,''))||undefined;draw();toast('Harga manual disimpan')">Simpan</button></div></div>`}
+
+draw();
+</script>
+</body>
+</html>

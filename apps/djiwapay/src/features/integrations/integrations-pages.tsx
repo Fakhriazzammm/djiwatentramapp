@@ -5,7 +5,7 @@ import { CatIcon, MoneyInput, accName, catOf } from "../finance/fin-sheets";
 import type { FinCtx } from "../finance/fin-pages";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import {
-  CHANNEL_NAME, approveItem, cancelImport, commitImport, getImport, getImportItems, startImport, undoImport, connectGoogle, confirmDriveRemovals, confirmSheetDeletes, createSource, disconnectGoogle, getGoogle, gmailOff, pollGmailNow, getInbound, getReview, rejectItem, removeSource, syncGoogle,
+  CHANNEL_NAME, approveItem, cancelImport, commitImport, getImport, getImportItems, startImport, undoImport, connectGoogle, takeAfterGoogle, confirmDriveRemovals, confirmSheetDeletes, createSource, disconnectGoogle, getGoogle, gmailOff, pollGmailNow, getInbound, getReview, rejectItem, removeSource, syncGoogle,
   type GoogleFeature, type GoogleStatus, type ImportItem, type ImportState, type InboundSummary, type ReviewItem,
 } from "../../lib/finance/integrations";
 import { createHook, removeHook } from "../../lib/finance/integrations";
@@ -100,12 +100,13 @@ export function GoogleNudge({ onOpenIntegrations }: { onOpenIntegrations: () => 
 }
 
 /* ---------- Google: what Djiwa Pay can and cannot do, shown before Google's own screen ---------- */
-function ConsentSheet({ features, onClose, busy, onGo }: { features: GoogleFeature[]; onClose: () => void; busy: boolean; onGo: () => void }) {
+export function ConsentSheet({ features, onClose, busy, onGo, extra }: { features: GoogleFeature[]; onClose: () => void; busy: boolean; onGo: () => void; extra?: string[] }) {
   const can: string[] = [], cannot = ["Membaca atau menyimpan email lain", "Mengubah atau menghapus file yang tidak dibuat Djiwa Pay", "Menyimpan kata sandi Google-mu"];
   const gmail = features.includes("gmail");
   if (gmail) { can.push("Mencari email dari bank dan e-wallet yang terdaftar (BCA, Mandiri, GoPay, OVO, DANA, dan lainnya), lalu mencatat pembayarannya", "Menyimpan hanya nominal, toko, dan waktu. Isi email tidak disimpan"); cannot.unshift("Mengirim, menghapus, atau mengubah email-mu"); }
   if (features.includes("calendar")) can.push("Membuat acara pengingat tagihan di Google Calendar-mu");
   if (features.includes("drive")) { can.push("Membuat folder “Djiwa Pay / Struk” dan menyimpan setiap foto struk di sana", "Membuat satu Spreadsheet keuangan dan menyinkronkannya dua arah: ubah atau hapus di aplikasi atau di Sheets, keduanya ikut", "Memindahkan foto ke tempat sampah Drive saat struknya dihapus di aplikasi"); cannot.unshift("Membaca foto atau file lain di Drive-mu. Foto yang kamu taruh sendiri di folder itu tidak ikut terbaca"); }
+  if (extra) can.push(...extra);
   return <Sheet title="Izinkan akses Google" onClose={onClose}>
     <p className="dpx-sub" style={{ marginTop: -6 }}>Kamu akan diarahkan ke Google untuk menyetujui. Bisa dicabut kapan saja.</p>
     <div className="dpx-glabel" style={{ marginTop: 14 }}>Yang bisa dilakukan Djiwa Pay</div>
@@ -253,8 +254,10 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
     if (!q) return;
     window.history.replaceState({}, "", window.location.pathname);
     if (q === "ok") setAutoImport(true);
+    const after = q === "ok" ? takeAfterGoogle() : null;
     ctx.notify(q === "ok" ? "Google terhubung" : q === "denied" ? "Izin Google dibatalkan" : q === "unavailable" ? "Integrasi Google belum tersedia" : "Gagal menghubungkan Google. Coba lagi.");
     void loadG();
+    if (after) ctx.nav.go(after);
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {       // right after Gmail is connected, offer to bring in the old mail

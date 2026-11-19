@@ -124,10 +124,10 @@ export const ASSET_KINDS: Record<Asset["kind"], { label: string; icon: string; t
   gold: { label: "Emas", icon: "gift", tone: "amber" }, fund: { label: "Reksa dana", icon: "pie", tone: "blue" }, stock: { label: "Saham", icon: "trend", tone: "indigo" },
   crypto: { label: "Kripto", icon: "flash", tone: "violet" }, property: { label: "Properti", icon: "home", tone: "cyan" }, vehicle: { label: "Kendaraan", icon: "car", tone: "slate" }, electronics: { label: "Elektronik", icon: "phone", tone: "cyan" }, other: { label: "Lainnya", icon: "tag", tone: "slate" },
 };
-export function netWorth(state: FinanceState, cash: number) {
+export function netWorth(state: FinanceState, cash: number, stocks = 0) {
   const assets = state.assets.reduce((s, a) => s + assetValue(a), 0), goals = state.goals.reduce((s, g) => s + goalSaved(g), 0), debt = debtTotals(state.debts);
   const liabilities = debt.iOwe, receivables = debt.owedToMe;
-  return { cash, assets, goals, receivables, liabilities, total: cash + assets + receivables - liabilities };
+  return { cash, assets, stocks, goals, receivables, liabilities, total: cash + assets + stocks + receivables - liabilities };
 }
 export function assetMix(state: FinanceState, cash: number) {
   const parts = [{ id: "cash", label: "Kas & dompet", value: Math.max(0, cash) }, ...(Object.keys(ASSET_KINDS) as Asset["kind"][]).map((k) => ({ id: k, label: ASSET_KINDS[k].label, value: state.assets.filter((a) => a.kind === k).reduce((s, a) => s + assetValue(a), 0) }))].filter((p) => p.value > 0);

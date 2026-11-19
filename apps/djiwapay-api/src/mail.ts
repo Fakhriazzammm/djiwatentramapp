@@ -7,6 +7,7 @@ import { startSmtp, toRawMail } from "./mail/smtp.js";
 import { googleConfig } from "./google.js";
 import { runDue } from "./gmail.js";
 import { runGoogleDue } from "./google-sync.js";
+import { runStocksDue } from "./stocks/service.js";
 import { runImports } from "./gmail-import.js";
 
 const url = process.env.DATABASE_URL;
@@ -33,7 +34,7 @@ if (cfg) {
   // Sheets and Drive two-way sync share the same loop: the API only raises flags, this does the work.
   let busyG = false;
   const dir = process.env.RECEIPTS_DIR || "/var/lib/djiwapay-api/receipts";
-  setInterval(async () => { if (busyG) return; busyG = true; try { await runGoogleDue({ db, cfg, dir }); } catch (e) { console.error("google tick", e instanceof Error ? e.message : e); } finally { busyG = false; } }, 20_000);
+  setInterval(async () => { if (busyG) return; busyG = true; try { await runGoogleDue({ db, cfg, dir }); await runStocksDue({ db, cfg, dir }); } catch (e) { console.error("google tick", e instanceof Error ? e.message : e); } finally { busyG = false; } }, 20_000);
   console.log("google sheets/drive sync on");
   // Old-mail imports scan in short time-boxed steps so a long mailbox never blocks the other jobs.
   let busyI = false;

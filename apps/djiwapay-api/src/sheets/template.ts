@@ -8,12 +8,12 @@ export const TITLES = { ringkasan: "Ringkasan", catatan: "Catatan", anggaran: "A
 export const CATATAN_ROWS = 3000;            // grid rows reserved at creation; grown on demand
 export const GROW_BY = 2000;
 
-const hex = (h: string) => ({ red: parseInt(h.slice(1, 3), 16) / 255, green: parseInt(h.slice(3, 5), 16) / 255, blue: parseInt(h.slice(5, 7), 16) / 255 });
+export const hex = (h: string) => ({ red: parseInt(h.slice(1, 3), 16) / 255, green: parseInt(h.slice(3, 5), 16) / 255, blue: parseInt(h.slice(5, 7), 16) / 255 });
 export const C = { ink: "#2b2620", mute: "#74695a", faint: "#a89c88", line: "#e3d8c3", cream: "#f8f3e9", band: "#faf5ea", white: "#ffffff", accent: "#c9461b", accentSoft: "#fbe9dc", ok: "#4f7a2b", okSoft: "#eaf1d9", warn: "#a05d00", warnSoft: "#fff0c9", bad: "#b3261e", badSoft: "#fdeae4", slate: "#5b6b7f" };
 const FONT = "Inter";
 
-type Range = { sheetId: number; startRowIndex?: number; endRowIndex?: number; startColumnIndex?: number; endColumnIndex?: number };
-const R = (sheetId: number, r0: number, r1: number, c0: number, c1: number): Range => ({ sheetId, startRowIndex: r0, endRowIndex: r1, startColumnIndex: c0, endColumnIndex: c1 });
+export type Range = { sheetId: number; startRowIndex?: number; endRowIndex?: number; startColumnIndex?: number; endColumnIndex?: number };
+export const R = (sheetId: number, r0: number, r1: number, c0: number, c1: number): Range => ({ sheetId, startRowIndex: r0, endRowIndex: r1, startColumnIndex: c0, endColumnIndex: c1 });
 
 type Fmt = { bg?: string; color?: string; bold?: boolean; italic?: boolean; size?: number; mono?: boolean; align?: "LEFT" | "CENTER" | "RIGHT"; valign?: "TOP" | "MIDDLE" | "BOTTOM"; num?: { type: string; pattern: string }; wrap?: "WRAP" | "CLIP" | "OVERFLOW_CELL"; pad?: number };
 export function fmt(range: Range, f: Fmt) {
@@ -33,18 +33,18 @@ export function fmt(range: Range, f: Fmt) {
   if (f.pad !== undefined) { cell.padding = { top: 2, bottom: 2, left: f.pad, right: f.pad }; fields.push("padding"); }
   return { repeatCell: { range, cell: { userEnteredFormat: cell }, fields: `userEnteredFormat(${fields.join(",")})` } };
 }
-const width = (sheetId: number, c0: number, c1: number, px: number) => ({ updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: c0, endIndex: c1 }, properties: { pixelSize: px }, fields: "pixelSize" } });
-const height = (sheetId: number, r0: number, r1: number, px: number) => ({ updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: r0, endIndex: r1 }, properties: { pixelSize: px }, fields: "pixelSize" } });
-const merge = (range: Range) => ({ mergeCells: { range, mergeType: "MERGE_ALL" } });
-const bottomLine = (range: Range, color = C.line) => ({ updateBorders: { range, bottom: { style: "SOLID", width: 1, color: hex(color) } } });
-const cond = (range: Range, condition: { type: string; values?: string[] }, format: Record<string, unknown>) => ({ addConditionalFormatRule: { index: 0, rule: { ranges: [range], booleanRule: { condition: { type: condition.type, values: (condition.values ?? []).map((v) => ({ userEnteredValue: v })) }, format } } } });
-const list = (range: Range, source: string, message: string) => ({ setDataValidation: { range, rule: { condition: { type: "ONE_OF_RANGE", values: [{ userEnteredValue: source }] }, inputMessage: message, strict: true, showCustomUi: true } } });
-const IDR = { type: "NUMBER", pattern: '"Rp"#,##0' };
-const PCT = { type: "PERCENT", pattern: "0%" };
+export const width = (sheetId: number, c0: number, c1: number, px: number) => ({ updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: c0, endIndex: c1 }, properties: { pixelSize: px }, fields: "pixelSize" } });
+export const height = (sheetId: number, r0: number, r1: number, px: number) => ({ updateDimensionProperties: { range: { sheetId, dimension: "ROWS", startIndex: r0, endIndex: r1 }, properties: { pixelSize: px }, fields: "pixelSize" } });
+export const merge = (range: Range) => ({ mergeCells: { range, mergeType: "MERGE_ALL" } });
+export const bottomLine = (range: Range, color = C.line) => ({ updateBorders: { range, bottom: { style: "SOLID", width: 1, color: hex(color) } } });
+export const cond = (range: Range, condition: { type: string; values?: string[] }, format: Record<string, unknown>) => ({ addConditionalFormatRule: { index: 0, rule: { ranges: [range], booleanRule: { condition: { type: condition.type, values: (condition.values ?? []).map((v) => ({ userEnteredValue: v })) }, format } } } });
+export const list = (range: Range, source: string, message: string) => ({ setDataValidation: { range, rule: { condition: { type: "ONE_OF_RANGE", values: [{ userEnteredValue: source }] }, inputMessage: message, strict: true, showCustomUi: true } } });
+export const IDR = { type: "NUMBER", pattern: '"Rp"#,##0' };
+export const PCT = { type: "PERCENT", pattern: "0%" };
 const MONTH = { type: "DATE", pattern: "mmmm yyyy" };
 const MON = { type: "DATE", pattern: "mmm yy" };
 const DATE = { type: "DATE", pattern: "dd mmm yyyy" };
-const WHEN = { type: "DATE_TIME", pattern: "dd mmm yyyy, hh:mm" };
+export const WHEN = { type: "DATE_TIME", pattern: "dd mmm yyyy, hh:mm" };
 
 export function createBody(title: string, rows = CATATAN_ROWS + 1) {
   const tab = (id: number, name: string, color: string, rows = 200, cols = 12, extra: Record<string, unknown> = {}) => ({ properties: { sheetId: id, title: name, tabColorStyle: { rgbColor: hex(color) }, gridProperties: { rowCount: rows, columnCount: cols, ...extra } } });

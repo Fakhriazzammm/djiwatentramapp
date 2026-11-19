@@ -7,6 +7,7 @@ import { AreaChart, ScoreRing, short, toneColor } from "./kelola-ui";
 import { accountBalance, daysIn, debtTotals, goalSaved, inMonth, totals } from "../../lib/finance/calc";
 import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
 import { ASSET_KINDS, afford, allocate, assetMix, billsFor, dailyBurn, emergencyFund, forecast, healthScore, loan, netWorth, payday, pocketUsage, pocketsOf, unpaidTotal, zakatMaal, type AffordMode, type BillView } from "../../lib/finance/kelola";
+import { stockValue, useStocks } from "../../lib/finance/stocks";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import { Sticker } from "./asset-ui";
 import { assetValue, gainOf, useGold } from "../../lib/finance/assets";
@@ -76,7 +77,7 @@ export function PocketsPanel({ ctx }: { ctx: FinCtx }) {
 /* ---------- Kekayaan ---------- */
 export function WealthExtras({ ctx }: { ctx: FinCtx }) {
   useGold();
-  const { state } = ctx.fin, cash = useCash(ctx), nw = netWorth(state, cash), mix = assetMix(state, cash), debt = debtTotals(state.debts);
+  const { state } = ctx.fin, cash = useCash(ctx), nw = netWorth(state, cash, stockValue(useStocks().state)), mix = assetMix(state, cash), debt = debtTotals(state.debts);
   const colors = ["#13804a", "#d9a21a", "#d14b1a", "#e45825", "#eeb866", "#16a3b8", "#958a7d", "#e0568a"];
   return <>
     {mix.length ? <><div className="dpx-glabel">Komposisi</div>
@@ -197,7 +198,7 @@ function Emergency({ ctx }: { ctx: FinCtx }) {
     <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => ctx.open({ k: "goal" })}><Ic n="target" size="sm" /> Buat tujuan Dana darurat</Btn></div>;
 }
 function Zakat({ ctx }: { ctx: FinCtx }) {
-  const k = useKelola(ctx), nw = netWorth(k.state, k.cash).total;
+  const k = useKelola(ctx), nw = netWorth(k.state, k.cash, stockValue(useStocks().state)).total;
   const [wealth, setWealth] = useState(String(Math.max(0, Math.round(nw)))), [gold, setGold] = useState("1500000");
   const z = zakatMaal(Number(wealth) || 0, Number(gold) || 0);
   return <div className="dpx-group dpx-white"><label className="dpx-field" style={{ marginTop: 0 }}><span>Harta yang sudah dimiliki 1 tahun</span><MoneyInput value={wealth} onChange={setWealth} /></label>

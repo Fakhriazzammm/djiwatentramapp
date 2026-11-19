@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prototype Saham · Djiwa Pay</title>
+<style>
+:root{--paper:#fbf6ec;--card:#fffdf8;--ink:#241f1a;--mute:#75685a;--faint:#9d8f79;--line:rgba(43,38,32,.09);--acc:#c9461b;--accsoft:#fbe9dc;--ok:#4f7a2b;--oksoft:#eaf1d9;--warn:#a05d00;--warnsoft:#fff0c9;--bad:#c42a1e;--badsoft:#fdeae4;--slate:#5b6b7f;--ease:cubic-bezier(.32,.72,0,1)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:Inter,system-ui,-apple-system,sans-serif;background:#ece5d6;color:var(--ink)}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+input{font:inherit;color:inherit;border:0;outline:0;background:transparent;width:100%}
+.stage{max-width:1120px;margin:0 auto;padding:20px 16px 40px;display:grid;grid-template-columns:260px 410px 1fr;gap:28px;align-items:start}
+@media(max-width:1000px){.stage{grid-template-columns:1fr;justify-items:center}.side,.notes{width:100%;max-width:410px}}
+h1{font-size:19px;margin:0 0 4px}.sub{font-size:12px;color:var(--mute);margin:0 0 14px;line-height:1.5}
+.side{position:sticky;top:16px}
+.flow{display:flex;flex-direction:column;gap:4px}
+.flow button{display:flex;gap:10px;align-items:center;text-align:left;padding:9px 11px;border-radius:12px;font-size:13px;font-weight:600;color:var(--mute);transition:.2s}
+.flow button i{font-style:normal;width:22px;height:22px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--faint);flex:none}
+.flow button.on{background:#fff;color:var(--ink);box-shadow:0 1px 0 var(--line)}.flow button.on i{background:var(--acc);color:#fff}
+.flow h4{margin:12px 11px 4px;font-size:10px;letter-spacing:.08em;color:var(--faint);text-transform:uppercase}
+.states{margin-top:16px;padding:12px;background:#fff;border-radius:16px}
+.states h4{margin:0 0 8px;font-size:10px;letter-spacing:.08em;color:var(--faint);text-transform:uppercase}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chips button{padding:6px 10px;border-radius:99px;background:#f4eee0;font-size:12px;font-weight:600;color:var(--mute)}.chips button.on{background:var(--ink);color:#fff}
+/* phone */
+.phone{width:390px;height:812px;background:var(--paper);border-radius:46px;box-shadow:0 0 0 9px #1c1814,0 30px 60px -20px rgba(0,0,0,.45);position:relative;overflow:hidden}
+.status{height:44px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 28px 6px;font-size:13px;font-weight:700;position:relative;z-index:3}
+.notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:110px;height:28px;background:#1c1814;border-radius:20px;z-index:5}
+.screen{position:absolute;inset:44px 0 0 0;overflow-y:auto;scrollbar-width:none;animation:in .42s var(--ease)}
+.screen::-webkit-scrollbar{display:none}
+@keyframes in{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
+@keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.pad{padding:6px 18px 110px}
+.top{display:flex;align-items:center;gap:10px;padding:6px 18px 10px}
+.top h2{margin:0;font-size:22px;flex:1}
+.ib{width:38px;height:38px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 0 var(--line);font-size:16px}
+.card{background:var(--card);border-radius:24px;padding:16px;box-shadow:0 1px 0 var(--line)}
+.mute{color:var(--mute)}.faint{color:var(--faint)}.small{font-size:12px}.tiny{font-size:11px}
+.up{color:var(--ok)}.down{color:var(--bad)}
+.num{font-variant-numeric:tabular-nums}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:52px;border-radius:99px;background:var(--ink);color:#fff;font-weight:700;font-size:15px;transition:transform .15s}
+.btn:active{transform:scale(.97)}.btn.acc{background:var(--acc)}.btn.soft{background:#f1eadb;color:var(--ink)}.btn[disabled]{opacity:.35;pointer-events:none}
+.row{display:flex;align-items:center;gap:12px}
+.logo{width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;color:#fff;flex:none;letter-spacing:.02em}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700}
+.pill.ok{background:var(--oksoft);color:var(--ok)}.pill.warn{background:var(--warnsoft);color:var(--warn)}.pill.bad{background:var(--badsoft);color:var(--bad)}.pill.gray{background:#f1eadb;color:var(--mute)}
+.banner{display:flex;gap:10px;align-items:center;padding:11px 13px;border-radius:18px;font-size:12.5px;line-height:1.35;margin-bottom:12px;animation:up .4s var(--ease)}
+.banner.warn{background:var(--warnsoft);color:var(--warn)}.banner.info{background:var(--accsoft);color:#8a3414}.banner b{font-weight:700}
+.banner button{margin-left:auto;font-weight:800;text-decoration:underline;white-space:nowrap}
+.hold{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line);width:100%;text-align:left;animation:up .45s var(--ease) both}
+.hold:last-child{border:0}
+.seg{display:flex;background:#f1eadb;border-radius:99px;padding:3px;margin-bottom:12px}.seg button{flex:1;padding:9px;border-radius:99px;font-weight:700;font-size:13px;color:var(--mute);transition:.25s}.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}.seg button.on.buy{color:var(--ok)}.seg button.on.sell{color:var(--bad)}
+.field{display:block;background:#f4eee0;border-radius:20px;padding:11px 15px;margin-bottom:10px;transition:box-shadow .2s}
+.field:focus-within{box-shadow:0 0 0 2px rgba(201,70,27,.35)}.field span.l{display:block;font-size:11px;font-weight:700;color:var(--mute);margin-bottom:2px}
+.field input{font-size:22px;font-weight:800}.field .u{font-size:13px;color:var(--mute);font-weight:600}
+.tabbar{position:absolute;bottom:0;left:0;right:0;height:84px;background:rgba(255,253,248,.92);backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;padding:8px 14px 0;z-index:4}
+.tabbar div{flex:1;text-align:center;font-size:10px;font-weight:700;color:var(--faint)}.tabbar div.on{color:var(--acc)}.tabbar b{display:block;font-size:20px;margin-bottom:1px}
+.sheetwrap{position:absolute;inset:0;background:rgba(36,31,26,.4);z-index:8;display:flex;align-items:flex-end;animation:fade .25s}
+@keyframes fade{from{opacity:0}}
+.sheet{background:#fff;border-radius:32px 32px 0 0;width:100%;padding:10px 20px 28px;animation:sheet .45s var(--ease)}
+@keyframes sheet{from{transform:translateY(100%)}}
+.grab{width:40px;height:5px;border-radius:9px;background:#ddd4c2;margin:0 auto 12px}
+.steps{display:flex;gap:6px;margin:4px 0 14px}.steps i{flex:1;height:4px;border-radius:9px;background:#e8dfcc}.steps i.on{background:var(--acc)}
+.list{display:flex;flex-direction:column}.list button{display:flex;gap:12px;align-items:center;padding:11px 4px;border-bottom:1px solid var(--line);text-align:left;width:100%}
+.check{display:flex;gap:10px;font-size:13px;line-height:1.4;margin:9px 0}.check b.t{width:20px;height:20px;border-radius:50%;background:var(--oksoft);color:var(--ok);display:flex;align-items:center;justify-content:center;font-size:11px;flex:none;margin-top:1px}.check b.x{background:var(--badsoft);color:var(--bad)}
+.prog{display:flex;gap:11px;align-items:center;padding:9px 0;font-size:14px;font-weight:600;opacity:.35;transition:.4s}.prog.on{opacity:1}
+.prog i{width:22px;height:22px;border-radius:50%;border:2px solid #ddd4c2;display:flex;align-items:center;justify-content:center;font-size:11px;font-style:normal;flex:none}.prog.done i{background:var(--ok);border-color:var(--ok);color:#fff}.prog.on:not(.done) i{border-color:var(--acc);border-top-color:transparent;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.bars{display:flex;height:10px;border-radius:99px;overflow:hidden;gap:2px;margin:10px 0 8px}.bars i{display:block;transition:flex .6s var(--ease)}
+.pop{animation:pop .6s cubic-bezier(.3,1.6,.5,1)}@keyframes pop{from{transform:scale(.3);opacity:0}}
+/* gsheet */
+.gs{font-size:11px;background:#fff;height:100%}.gs .bar{background:#f1f3f4;padding:9px 12px;display:flex;gap:8px;align-items:center;border-bottom:1px solid #dadce0}
+.gs .fx{display:flex;border-bottom:1px solid #dadce0;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;padding:6px 10px;gap:8px;color:#3c4043;background:#fff;min-height:28px;overflow:hidden;white-space:nowrap}
+.gs table{border-collapse:collapse;width:max-content;min-width:100%}.gs td,.gs th{border:1px solid #e1e3e6;padding:5px 8px;white-space:nowrap;font-size:11px}.gs th{background:#f8f9fa;font-weight:600;color:#5f6368;text-align:center}.gs td.r{text-align:right;font-variant-numeric:tabular-nums}.gs thead td,.gs .h td{background:#fbf6ec;font-weight:700;color:var(--ink)}
+.gs td.sel{outline:2px solid #1a73e8;outline-offset:-2px;cursor:pointer}.gs td.f{background:#eef4ff;cursor:pointer}
+.gs .tabs{position:absolute;bottom:0;left:0;right:0;background:#f1f3f4;border-top:1px solid #dadce0;display:flex;gap:2px;padding:6px 8px 26px}.gs .tabs button{padding:6px 12px;border-radius:6px 6px 0 0;font-size:11px;font-weight:600;color:#5f6368}.gs .tabs button.on{background:#fff;color:#1a73e8;box-shadow:inset 0 -2px #1a73e8}
+.notes{position:sticky;top:16px}.note{background:#fff;border-radius:20px;padding:16px;margin-bottom:12px;font-size:13px;line-height:1.55;animation:up .4s var(--ease)}.note h3{margin:0 0 6px;font-size:14px}.note ul{margin:6px 0 0;padding-left:18px;color:var(--mute)}
+.tag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px;background:var(--accsoft);color:var(--acc);margin-bottom:6px}
+.toast{position:absolute;left:18px;right:18px;bottom:96px;background:var(--ink);color:#fff;border-radius:18px;padding:12px 15px;font-size:13px;z-index:9;animation:up .35s var(--ease)}
+</style>
+</head>
+<body>
+<div class="stage">
+  <aside class="side">
+    <h1>Saham · Djiwa Pay</h1>
+    <p class="sub">Prototype interaktif end to end. Klik langkah di bawah, atau jalani alurnya langsung di layar ponsel. Semua data contoh.</p>
+    <div class="flow" id="flow"></div>
+    <div class="states">
+      <h4>Kondisi harga</h4>
+      <div class="chips" id="stPrice"></div>
+      <h4 style="margin-top:12px">Koneksi Google</h4>
+      <div class="chips" id="stGoogle"></div>
+    </div>
+  </aside>
+  <main><div class="phone"><div class="notch"></div><div class="status"><span>09:41</span><span>●●● 5G ▮</span></div><div id="scr"></div><div id="over"></div></div></main>
+  <aside class="notes" id="notes"></aside>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const rp=n=>"Rp"+Math.round(n).toLocaleString("id-ID");
+const rps=n=>(n>=0?"+":"−")+"Rp"+Math.abs(Math.round(n)).toLocaleString("id-ID");
+const pc=n=>(n>=0?"+":"−")+Math.abs(n).toFixed(2).replace(".",",")+"%";
+const TICK={BBCA:["Bank Central Asia","#1a5dc6"],BBRI:["Bank Rakyat Indonesia","#1c7ed6"],BMRI:["Bank Mandiri","#2b6cb0"],TLKM:["Telkom Indonesia","#c9461b"],ASII:["Astra International","#5b6b7f"],UNVR:["Unilever Indonesia","#2f7d6d"],ICBP:["Indofood CBP","#a05d00"],GOTO:["GoTo Gojek Tokopedia","#4f7a2b"],ANTM:["Aneka Tambang","#8a6d1d"],ADRO:["Alamtara Minerals","#6a4c93"],BBNI:["Bank Negara Indonesia","#d9480f"],KLBF:["Kalbe Farma","#37803f"]};
+const PRICE={BBCA:9725,BBRI:4310,BMRI:5120,TLKM:3290,ASII:5275,UNVR:1980,ICBP:11250,GOTO:58,ANTM:1680,ADRO:2470,BBNI:4890,KLBF:1520};
+const FEE={buy:.0015,sell:.0035};
+
+const S={screen:"hub",price:"live",google:true,activated:false,sel:null,tab:"port",
+  trades:[],add:{step:1,side:"buy",t:null,lots:"",price:"",q:""},sheetTab:"Saham",sheetCell:null};
+function seed(){S.trades=[
+ {t:"BBCA",side:"buy",lots:10,price:9200,at:"04 Agu 2026"},{t:"BBCA",side:"buy",lots:10,price:9700,at:"02 Okt 2026"},
+ {t:"TLKM",side:"buy",lots:15,price:3420,at:"19 Agu 2026"},{t:"ASII",side:"buy",lots:10,price:5100,at:"11 Sep 2026"},
+ {t:"GOTO",side:"buy",lots:200,price:64,at:"28 Sep 2026"}]}
+seed();
+
+function livePrice(t){
+  if(S.price==="na"&&t==="GOTO")return null;
+  return PRICE[t]??null;
+}
+function holdings(){
+  const m={};
+  S.trades.forEach(x=>{const h=m[x.t]??={t:x.t,sh:0,cost:0,real:0};const sh=x.lots*100;
+    if(x.side==="buy"){h.cost+=sh*x.price;h.sh+=sh}else{const avg=h.sh?h.cost/h.sh:0;h.real+=sh*(x.price-avg);h.cost-=avg*sh;h.sh-=sh}});
+  return Object.values(m).filter(h=>h.sh>0).map(h=>{
+    const avg=h.cost/h.sh;let p=S.google?livePrice(h.t):null;const manual=p==null&&S.google;
+    if(p==null)p=manual?avg:avg;
+    const value=h.sh*p,pl=value-h.cost;
+    return{...h,avg,p,value,pl,plp:h.cost?pl/h.cost*100:0,manual,noPrice:!S.google};
+  });
+}
+const total=h=>({cost:h.reduce((a,x)=>a+x.cost,0),value:h.reduce((a,x)=>a+x.value,0)});
+
+const STEPS=[
+ ["hub","Kekayaan (titik masuk)","1"],["intro","Kenalan fitur Saham","2"],["consent","Izin Google","3"],["build","Menyiapkan spreadsheet","4"],
+ ["port","Portofolio","5"],["detail","Detail saham","6"],["add","Catat transaksi","7"],["sheet","Lihat di Google Sheets","8"]];
+const NOTES={
+ hub:["Titik masuk","Saham muncul sebagai kartu baru di halaman Kekayaan, di bawah Aset. Total saham otomatis ikut masuk ke Kekayaan bersih begitu fitur aktif.",["Belum aktif: kartu ajakan 'Lacak saham'.","Sudah aktif: kartu ringkasan nilai dan untung/rugi."]],
+ intro:["Kenalan dulu, belum minta izin","Layar ini menjelaskan nilainya sebelum Google disebut. Pengguna bisa mulai mencatat tanpa Google. Harga otomatis baru butuh koneksi.",["Tombol utama: Hubungkan Google Sheets.","Tombol kedua: Catat dulu tanpa harga otomatis."]],
+ consent:["Persetujuan dengan bahasa sederhana","Sama seperti pola integrasi Pay yang sudah ada: kami jelaskan yang bisa dan tidak bisa dilakukan sebelum layar Google muncul. Scope hanya drive.file, jadi hanya file buatan Djiwa Pay.",["Layar Google asli ditampilkan sebagai simulasi.","Bila Google sudah terhubung untuk Catatan, langkah ini dilewati."]],
+ build:["Menyiapkan spreadsheet","Bila pengguna sudah punya spreadsheet Djiwa Pay, dua tab baru ditambahkan ke spreadsheet yang sama. Tidak dibuat file kedua.",["Tab Saham dan Portofolio Saham.","Rumus GOOGLEFINANCE dipasang otomatis."]],
+ port:["Portofolio","Nilai total, untung/rugi, alokasi, dan daftar saham. Harga datang dari sheet, lengkap dengan waktunya.",["Ganti 'Kondisi harga' di kiri untuk melihat harga basi dan ticker tanpa data.","Coba 'Belum terhubung' untuk melihat mode catat saja."]],
+ detail:["Detail saham","Rata-rata beli, jumlah lot, riwayat transaksi, dan untung/rugi terealisasi. Dari sini bisa langsung tambah beli atau jual.",["Rata-rata tertimbang, fee beli/jual dihitung otomatis.","Harga manual bila GOOGLEFINANCE tidak punya data."]],
+ add:["Catat transaksi","Tiga langkah: pilih saham, isi lot dan harga, konfirmasi. Fee dihitung otomatis dari pengaturan broker. Setelah disimpan baris langsung ditulis ke tab Saham.",["Satuan lot (1 lot = 100 lembar).","Jual lebih dari kepemilikan ditolak."]],
+ sheet:["Sheet yang sama, bisa dibuka kapan saja","Pengguna melihat rumus GOOGLEFINANCE yang menghitung harga. Pengguna yang mahir boleh menambah kolom sendiri di luar area yang dikelola app.",["Ketuk sel berwarna biru untuk melihat rumusnya.","Edit dua arah menyusul di rilis berikutnya."]]
+};
+
+function renderSide(){
+  let h="<h4>Alur utama</h4>";
+  STEPS.forEach(([k,l,n])=>h+=`<button class="${S.screen===k?"on":""}" onclick="go('${k}')"><i>${n}</i>${l}</button>`);
+  $("#flow").innerHTML=h;
+  $("#stPrice").innerHTML=[["live","Terbaru"],["stale","Basi"],["na","Ticker N/A"]].map(([k,l])=>`<button class="${S.price===k?"on":""}" onclick="S.price='${k}';draw()">${l}</button>`).join("");
+  $("#stGoogle").innerHTML=[[true,"Terhubung"],[false,"Belum"]].map(([k,l])=>`<button class="${S.google===k?"on":""}" onclick="S.google=${k};draw()">${l}</button>`).join("");
+  const n=NOTES[S.screen];
+  $("#notes").innerHTML=`<div class="note"><span class="tag">Catatan desain</span><h3>${n[0]}</h3>${n[1]}<ul>${n[2].map(x=>`<li>${x}</li>`).join("")}</ul></div>`+
+   (S.screen==="port"||S.screen==="detail"?`<div class="note"><h3>Rumus yang dipakai</h3><span class="small mute">Modal = Σ lembar × harga beli (rata-rata tertimbang)<br>Nilai = lembar × harga sheet<br>Untung/rugi = nilai − modal<br>Belum termasuk fee jual (0,35%)</span></div>`:"");
+}
+function go(k){S.screen=k;if(["port","detail","sheet","add"].includes(k))S.activated=true;
+  if(k==="add")S.add={step:1,side:"buy",t:null,lots:"",price:"",q:""};
+  if(k==="detail"&&!S.sel)S.sel="BBCA";
+  if(k==="build")runBuild();draw()}
+function draw(){renderSide();$("#over").innerHTML="";render()}
+
+const logo=(t,s=42)=>`<span class="logo" style="background:${TICK[t]?.[1]||"#777"};width:${s}px;height:${s}px">${t.slice(0,4)}</span>`;
+const tabbar=()=>`<div class="tabbar"><div><b>🏠</b>Beranda</div><div><b>📒</b>Catatan</div><div class="on"><b>💎</b>Kekayaan</div><div><b>⚙️</b>Atur</div></div>`;
+
+function priceBanner(){
+  if(!S.google)return `<div class="banner info"><span style="font-size:18px">🔗</span><span><b>Harga belum otomatis.</b> Hubungkan Google agar harga terbaru terisi.</span><button onclick="go('consent')">Hubungkan</button></div>`;
+  if(S.price==="stale")return `<div class="banner warn"><span style="font-size:18px">🕘</span><span><b>Harga per kemarin 15:49.</b> Sheet belum menghitung ulang.</span><button onclick="refresh()">Segarkan</button></div>`;
+  return "";
+}
+function refresh(){toast("Menyegarkan lewat Google Sheets…");setTimeout(()=>{S.price="live";draw();toast("Harga terbaru per 09:41")},1200)}
+function toast(m){const t=document.createElement("div");t.className="toast";t.textContent=m;$("#over").appendChild(t);setTimeout(()=>t.remove(),2200)}
+function stamp(){return S.price==="stale"?"kemarin 15:49":"09:41"}
+
+function render(){const el=$("#scr");el.innerHTML="";const d=document.createElement("div");d.className="screen";d.innerHTML=VIEWS[S.screen]();el.appendChild(d);if(S.screen==="add"&&S.add.step===1){const i=d.querySelector("#q");i&&i.focus({preventScroll:true})}}
+
+const VIEWS={
+hub(){const a=S.trades.length&&S.google;const hs=holdings(),T=total(hs);
+ return `<div class="top"><h2>Kekayaan</h2><span class="ib">＋</span></div><div class="pad">
+ <div class="card" style="background:linear-gradient(160deg,#c9461b,#a53610);color:#fff"><div class="small" style="opacity:.8">Kekayaan bersih</div><div class="num" style="font-size:32px;font-weight:800;margin:2px 0">${rp(184500000+(a?T.value:0))}</div><div class="small" style="opacity:.85">Aset, saham, dikurangi hutang</div></div>
+ <div style="height:12px"></div>
+ <div class="card"><div class="row"><div style="flex:1"><b>Aset</b><div class="small mute">Emas, tabungan, kendaraan</div></div><b class="num">${rp(184500000)}</b></div></div>
+ <div style="height:12px"></div>
+ ${S.trades.length&&(S.google||true)&&S.activated?`<button class="card" style="width:100%;text-align:left;display:block" onclick="go('port')"><div class="row"><span class="logo" style="background:var(--ink)">📈</span><div style="flex:1"><b>Saham</b><div class="small ${T.value-T.cost>=0?"up":"down"} num">${rps(T.value-T.cost)} · ${pc((T.value-T.cost)/T.cost*100)}</div></div><div style="text-align:right"><b class="num">${rp(T.value)}</b><div class="tiny faint">${hs.length} saham</div></div></div></button>`:
+ `<div class="card" style="animation:up .5s var(--ease)"><span class="pill gray">Baru</span><h3 style="margin:8px 0 4px;font-size:18px">Lacak saham Anda</h3><div class="small mute" style="line-height:1.5">Catat pembelian saham, lihat untung rugi otomatis dari Google Sheets milik Anda.</div><div style="height:12px"></div><button class="btn acc" onclick="S.activated=true;go('intro')">Mulai lacak saham</button></div>`}
+ </div>${tabbar()}`},
+
+intro(){return `<div class="top"><button class="ib" onclick="go('hub')">←</button><h2></h2></div><div class="pad" style="text-align:center">
+ <div style="font-size:64px;margin:6px 0 4px;animation:up .5s var(--ease)">📈</div><h2 style="font-size:26px;margin:0 0 6px">Portofolio saham,<br>di spreadsheet Anda</h2><p class="mute" style="font-size:14px;line-height:1.55;margin:0 0 18px">Catat beli dan jual dalam hitungan detik. Harga dan untung rugi dihitung otomatis oleh Google Sheets.</p>
+ <div class="card" style="text-align:left"><div class="check"><b class="t">✓</b><span><b>Datanya milik Anda.</b> Tersimpan di Google Drive Anda sendiri.</span></div><div class="check"><b class="t">✓</b><span><b>Harga otomatis</b> lewat rumus GOOGLEFINANCE untuk saham IDX.</span></div><div class="check"><b class="t">✓</b><span><b>Masuk ke Kekayaan bersih</b> bersama aset dan hutang.</span></div></div>
+ <div style="height:16px"></div><button class="btn acc" onclick="go(S.googleBase?'build':'consent')">Hubungkan Google Sheets</button>
+ <div style="height:8px"></div><button class="btn soft" onclick="S.google=false;go('port')">Catat dulu tanpa harga otomatis</button></div>`},
+
+consent(){return `<div class="top"><button class="ib" onclick="go('intro')">←</button><h2></h2></div><div class="pad"><div class="steps"><i class="on"></i><i></i><i></i></div>
+ <h2 style="font-size:23px;margin:0 0 6px">Sebelum menghubungkan</h2><p class="mute small" style="margin:0 0 12px;line-height:1.5">Djiwa Pay hanya menyentuh file yang dibuatnya sendiri.</p>
+ <div class="card"><b class="small">Yang bisa dilakukan Djiwa Pay</b>
+ <div class="check"><b class="t">✓</b>Menambah tab Saham di spreadsheet keuangan Anda</div><div class="check"><b class="t">✓</b>Menulis transaksi yang Anda catat</div><div class="check"><b class="t">✓</b>Membaca harga dan hasil hitungan dari tab tersebut</div>
+ <hr style="border:0;border-top:1px solid var(--line);margin:10px 0"><b class="small">Yang tidak bisa dilakukan</b>
+ <div class="check"><b class="t x">✕</b>Membuka file Drive lain milik Anda</div><div class="check"><b class="t x">✕</b>Membaca email atau kontak</div><div class="check"><b class="t x">✕</b>Menyimpan token di browser Anda</div></div>
+ <div style="height:14px"></div><button class="btn acc" onclick="showGoogle()">Lanjut ke Google</button><p class="tiny faint" style="text-align:center;margin-top:10px">Anda bisa memutuskan kapan saja di Pengaturan → Integrasi.</p></div>`},
+
+build(){return `<div class="pad" style="padding-top:60px;text-align:center"><div style="font-size:54px" class="pop">${S.built>=4?"✅":"🧮"}</div><h2 style="font-size:23px;margin:10px 0 18px">${S.built>=4?"Siap dipakai":"Menyiapkan spreadsheet…"}</h2>
+ <div class="card" style="text-align:left">${["Terhubung ke Google","Memeriksa spreadsheet Djiwa Pay","Menambah tab Saham dan Portofolio Saham","Memasang rumus harga otomatis"].map((t,i)=>`<div class="prog ${S.built>i?"on done":S.built===i?"on":""}"><i>${S.built>i?"✓":""}</i>${t}</div>`).join("")}</div>
+ <div style="height:16px"></div>${S.built>=4?`<button class="btn acc" style="animation:up .4s var(--ease)" onclick="S.google=true;go('port')">Lihat portofolio</button>`:""}</div>`},
+
+port(){const hs=holdings(),T=total(hs),pl=T.value-T.cost;
+ const alloc=hs.map(h=>`<i style="flex:${Math.max(h.value,1)};background:${TICK[h.t]?.[1]}"></i>`).join("");
+ return `<div class="top"><button class="ib" onclick="go('hub')">←</button><h2>Saham</h2><button class="ib" onclick="go('sheet')" title="Buka sheet">▦</button></div><div class="pad">
+ ${priceBanner()}
+ <div class="card"><div class="small mute">Nilai portofolio</div><div class="num" style="font-size:34px;font-weight:800;margin:2px 0">${S.google?rp(T.value):rp(T.cost)}</div>
+ ${S.google?`<div class="${pl>=0?"up":"down"} num" style="font-weight:700;font-size:14px">${rps(pl)} <span class="pill ${pl>=0?"ok":"bad"}">${pc(pl/T.cost*100)}</span></div>`:`<div class="small mute">Modal ${rp(T.cost)} · tanpa harga terkini</div>`}
+ <div class="bars">${alloc}</div><div class="tiny faint">${S.google?`Harga per ${stamp()} · dari Google Sheets`:"Alokasi menurut modal"}</div></div>
+ <div style="height:12px"></div>
+ <div class="seg"><button class="on">Kepemilikan</button><button onclick="toast('Riwayat semua transaksi')">Riwayat</button><button onclick="toast('Dividen & imbal hasil')">Dividen</button></div>
+ <div class="card" style="padding:4px 16px">${hs.map((h,i)=>`<button class="hold" style="animation-delay:${i*60}ms" onclick="S.sel='${h.t}';go('detail')">${logo(h.t)}<div style="flex:1"><b>${h.t}</b><div class="tiny mute">${h.sh/100} lot · rata-rata ${rp(h.avg)}</div></div><div style="text-align:right">${S.google&&!h.manual||!S.google?`<b class="num">${S.google?rp(h.value):rp(h.cost)}</b><div class="tiny num ${S.google?(h.pl>=0?"up":"down"):"faint"}">${S.google?rps(h.pl)+" · "+pc(h.plp):"modal"}</div>`:`<b class="num">${rp(h.value)}</b><div class="tiny"><span class="pill warn">Harga manual</span></div>`}</div></button>`).join("")}</div>
+ <div style="height:14px"></div></div>
+ <div style="position:absolute;bottom:20px;left:18px;right:18px;z-index:6"><button class="btn acc" onclick="go('add')">＋ Catat transaksi</button></div>`},
+
+detail(){const hs=holdings(),h=hs.find(x=>x.t===S.sel)||hs[0];if(!h)return `<div class="pad">Tidak ada data</div>`;S.sel=h.t;
+ const tr=S.trades.filter(x=>x.t===h.t).slice().reverse();
+ return `<div class="top"><button class="ib" onclick="go('port')">←</button><h2>${h.t}</h2><span class="ib">${S.google?"⟳":""}</span></div><div class="pad">
+ <div class="row" style="margin-bottom:12px">${logo(h.t,52)}<div><b style="font-size:16px">${TICK[h.t]?.[0]||h.t}</b><div class="small mute">IDX:${h.t}</div></div></div>
+ ${priceBanner()}
+ <div class="card"><div class="small mute">Harga ${h.manual?"manual":"terkini"}</div><div class="row" style="align-items:baseline"><b class="num" style="font-size:30px;flex:1">${S.google||true?rp(h.p):"–"}</b>${h.manual?`<span class="pill warn">Tidak ada data Google</span>`:S.google?`<span class="tiny faint">per ${stamp()}</span>`:""}</div>
+ ${h.manual?`<button class="btn soft" style="min-height:40px;margin-top:10px;font-size:13px" onclick="toast('Isi harga manual (mock)')">Ubah harga manual</button>`:""}</div>
+ <div style="height:12px"></div>
+ <div class="card"><div class="row" style="gap:0">${[["Lot",h.sh/100],["Rata-rata",rp(h.avg)],["Modal",rp(h.cost)]].map(([a,b])=>`<div style="flex:1"><div class="tiny mute">${a}</div><b class="num" style="font-size:14px">${b}</b></div>`).join("")}</div><hr style="border:0;border-top:1px solid var(--line);margin:12px 0">
+ <div class="row"><div style="flex:1"><div class="tiny mute">Untung/rugi belum terealisasi</div><b class="num ${h.pl>=0?"up":"down"}" style="font-size:18px">${S.google?rps(h.pl):"–"}</b></div>${S.google?`<span class="pill ${h.pl>=0?"ok":"bad"}">${pc(h.plp)}</span>`:""}</div>
+ ${h.real?`<div class="small mute" style="margin-top:6px">Terealisasi: <b class="${h.real>=0?"up":"down"}">${rps(h.real)}</b></div>`:""}</div>
+ <h3 style="margin:18px 2px 6px;font-size:15px">Riwayat</h3><div class="card" style="padding:4px 16px">${tr.map(x=>`<div class="row" style="padding:11px 0;border-bottom:1px solid var(--line)"><span class="pill ${x.side==="buy"?"ok":"bad"}">${x.side==="buy"?"Beli":"Jual"}</span><div style="flex:1"><b class="num">${x.lots} lot @ ${rp(x.price)}</b><div class="tiny mute">${x.at}</div></div><b class="num small">${rp(x.lots*100*x.price)}</b></div>`).join("")}</div></div>
+ <div style="position:absolute;bottom:20px;left:18px;right:18px;z-index:6;display:flex;gap:10px"><button class="btn soft" onclick="S.add={step:2,side:'sell',t:'${h.t}',lots:'',price:'${h.p}',q:''};S.screen='add';draw()">Jual</button><button class="btn acc" onclick="S.add={step:2,side:'buy',t:'${h.t}',lots:'',price:'${Math.round(h.p)}',q:''};S.screen='add';draw()">Beli lagi</button></div>`},
+
+add(){const a=S.add;
+ if(a.step===1){const q=a.q.toUpperCase();const list=Object.keys(TICK).filter(k=>!q||k.includes(q)||TICK[k][0].toUpperCase().includes(q));
+ return `<div class="top"><button class="ib" onclick="go('port')">✕</button><h2>Pilih saham</h2></div><div class="pad"><div class="steps"><i class="on"></i><i></i><i></i></div>
+ <label class="field"><span class="l">Cari kode atau nama</span><input id="q" placeholder="mis. BBCA" value="${a.q}" oninput="S.add.q=this.value;sugg()"></label>
+ <div class="list" id="sg">${suggHTML(list)}</div></div>`}
+ if(a.step===2){const t=a.t,lots=+a.lots||0,price=+a.price||0,gross=lots*100*price,fee=gross*FEE[a.side];const held=(holdings().find(h=>h.t===t)?.sh||0)/100;
+  const over=a.side==="sell"&&lots>held;const ok=lots>0&&price>0&&!over;const net=a.side==="buy"?gross+fee:gross-fee;
+  return `<div class="top"><button class="ib" onclick="S.add.step=1;draw()">←</button><h2>${t}</h2></div><div class="pad"><div class="steps"><i class="on"></i><i class="on"></i><i></i></div>
+  <div class="seg"><button class="buy ${a.side==="buy"?"on":""}" onclick="S.add.side='buy';draw()">Beli</button><button class="sell ${a.side==="sell"?"on":""}" onclick="S.add.side='sell';draw()">Jual</button></div>
+  <label class="field"><span class="l">Jumlah lot ${a.side==="sell"?`· punya ${held} lot`:""}</span><div class="row"><input inputmode="numeric" id="f1" placeholder="0" value="${a.lots}" oninput="S.add.lots=this.value.replace(/\\D/g,'');calc()"><span class="u">lot</span></div></label>
+  <label class="field"><span class="l">Harga per lembar</span><div class="row"><span class="u">Rp</span><input inputmode="numeric" id="f2" placeholder="0" value="${a.price}" oninput="S.add.price=this.value.replace(/\\D/g,'');calc()"></div></label>
+  <div class="chips" style="margin:0 0 12px">${[1,5,10,20].map(n=>`<button style="background:#f1eadb;padding:7px 14px;border-radius:99px;font-weight:700;font-size:13px" onclick="S.add.lots='${n}';draw()">${n} lot</button>`).join("")}</div>
+  <div class="card" id="sum">${sumHTML(a,gross,fee,net,over)}</div>
+  <div style="height:14px"></div><button class="btn acc" id="go2" ${ok?"":"disabled"} onclick="S.add.step=3;draw()">Lanjut</button></div>`}
+ if(a.step===3){const lots=+a.lots,price=+a.price,gross=lots*100*price,fee=gross*FEE[a.side],net=a.side==="buy"?gross+fee:gross-fee;
+  return `<div class="top"><button class="ib" onclick="S.add.step=2;draw()">←</button><h2>Konfirmasi</h2></div><div class="pad"><div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+  <div class="card"><div class="row" style="margin-bottom:12px">${logo(a.t,46)}<div style="flex:1"><b>${a.t}</b><div class="tiny mute">${TICK[a.t][0]}</div></div><span class="pill ${a.side==="buy"?"ok":"bad"}">${a.side==="buy"?"Beli":"Jual"}</span></div>
+  ${[["Tanggal","Hari ini, 19 Nov 2026"],["Jumlah",`${lots} lot (${lots*100} lembar)`],["Harga",rp(price)],["Nilai transaksi",rp(gross)],["Fee",rp(fee)]].map(([k,v])=>`<div class="row" style="justify-content:space-between;padding:7px 0;font-size:14px"><span class="mute">${k}</span><b class="num">${v}</b></div>`).join("")}
+  <hr style="border:0;border-top:1px solid var(--line);margin:8px 0"><div class="row" style="justify-content:space-between"><b>${a.side==="buy"?"Total dibayar":"Total diterima"}</b><b class="num" style="font-size:19px">${rp(net)}</b></div></div>
+  <div class="banner info" style="margin-top:12px"><span>📄</span><span>Akan ditulis sebagai baris baru di tab <b>Saham</b> pada spreadsheet Anda.</span></div>
+  <button class="btn acc" onclick="saveTrade()">Simpan transaksi</button></div>`}
+ return `<div class="pad" style="padding-top:80px;text-align:center"><div style="font-size:66px" class="pop">✅</div><h2 style="font-size:24px;margin:10px 0 4px">Tercatat</h2><p class="mute small" style="margin:0 0 20px">${S.add.msg}</p>
+  <div class="card" style="text-align:left"><div class="prog on done"><i>✓</i>Disimpan di Djiwa Pay</div><div class="prog ${S.google?"on done":""}"><i>${S.google?"✓":""}</i>${S.google?"Ditulis ke Google Sheets":"Menunggu Google terhubung"}</div></div>
+  <div style="height:16px"></div><button class="btn acc" onclick="go('port')">Lihat portofolio</button><div style="height:8px"></div><button class="btn soft" onclick="go('add')">Catat lagi</button></div>`},
+
+sheet(){
+ const tr=S.trades,hs=holdings();
+ const tab=S.sheetTab;let table="",fx="";
+ const cell=S.sheetCell;
+ if(tab==="Saham"){
+  table=`<table><thead><tr><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th></tr></thead><tbody><tr class="h"><td style="color:#999">1</td><td>ID</td><td>Waktu</td><td>Ticker</td><td>Jenis</td><td>Lot</td><td>Harga</td></tr>${tr.map((x,i)=>`<tr><td style="color:#999;text-align:center">${i+2}</td><td style="color:#aaa;font-size:9px">t${i+1}x9</td><td>${x.at}</td><td><b>${x.t}</b></td><td>${x.side==="buy"?"Beli":"Jual"}</td><td class="r">${x.lots}</td><td class="r">${rp(x.price)}</td></tr>`).join("")}</tbody></table>`;
+  fx=`<span style="color:#80868b">fx</span><span>${cell||"Ketuk sel di tab Portofolio Saham untuk melihat rumus"}</span>`;
+ }else{
+  table=`<table><thead><tr><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th></tr></thead><tbody><tr class="h"><td style="color:#999">1</td><td>Ticker</td><td>Lot</td><td>Rata-rata</td><td>Harga</td><td>Nilai</td></tr>${hs.map((h,i)=>{const r=i+2;const pf=S.price==="na"&&h.t==="GOTO"?`#N/A`:rp(h.p);return `<tr><td style="color:#999;text-align:center">${r}</td><td><b>${h.t}</b></td><td class="r f" onclick="fxs('=SUMIFS(Saham!E:E;Saham!C:C;A${r};Saham!D:D;&quot;Beli&quot;)-SUMIFS(…Jual)')">${h.sh/100}</td><td class="r f" onclick="fxs('=SUMPRODUCT(modal)/SUMPRODUCT(lembar)')">${rp(h.avg)}</td><td class="r f sel" onclick="fxs('=GOOGLEFINANCE(&quot;IDX:&quot;&amp;A${r};&quot;price&quot;)')" ${pf==="#N/A"?'style="color:#d93025"':""}>${pf}</td><td class="r f" onclick="fxs('=B${r}*100*D${r}')">${rp(h.value)}</td></tr>`}).join("")}</tbody></table>`;
+  fx=`<span style="color:#80868b">fx</span><span>${cell||"Ketuk sel biru untuk melihat rumusnya"}</span>`;
+ }
+ return `<div class="gs"><div class="bar"><button onclick="go('port')" style="font-size:16px">←</button><b style="font-size:12px">Keuangan Djiwa Pay</b><span style="margin-left:auto;font-size:10px;color:#5f6368">Tersimpan di Drive</span></div><div class="fx">${fx}</div><div style="overflow:auto;height:560px">${table}<div style="padding:12px;color:#5f6368;font-size:11px;line-height:1.5">Tab <b>Portofolio Saham</b> dihitung otomatis. Jangan diubah. Catat transaksi lewat aplikasi.</div></div><div class="tabs"><button class="${tab==="Saham"?"on":""}" onclick="S.sheetTab='Saham';S.sheetCell=null;draw()">Saham</button><button class="${tab!=="Saham"?"on":""}" onclick="S.sheetTab='Portofolio Saham';S.sheetCell=null;draw()">Portofolio Saham</button><button onclick="toast('Tab lain: Catatan, Aset, dst.')">Catatan</button><button onclick="toast('Tab lain: Catatan, Aset, dst.')">Aset</button></div></div>`}
+};
+function fxs(f){S.sheetCell=f.replace(/&quot;/g,'"').replace(/&amp;/g,"&");document.querySelector(".gs .fx").innerHTML=`<span style="color:#80868b">fx</span><span>${S.sheetCell}</span>`}
+function suggHTML(list){return list.map(k=>`<button onclick="S.add.t='${k}';S.add.price='${PRICE[k]??''}';S.add.step=2;draw()">${logo(k,38)}<div style="flex:1"><b>${k}</b><div class="tiny mute">${TICK[k][0]}</div></div><span class="num small mute">${PRICE[k]?rp(PRICE[k]):"–"}</span></button>`).join("")||`<div class="small mute" style="padding:16px 4px">Tidak ketemu. Coba kode lain.</div>`}
+function sugg(){const q=S.add.q.toUpperCase();$("#sg").innerHTML=suggHTML(Object.keys(TICK).filter(k=>!q||k.includes(q)||TICK[k][0].toUpperCase().includes(q)))}
+function sumHTML(a,gross,fee,net,over){
+ return over?`<div class="small down"><b>Lot melebihi kepemilikan.</b></div>`:`<div class="row" style="justify-content:space-between;font-size:13px"><span class="mute">Nilai (${(+a.lots||0)*100} lembar)</span><b class="num">${rp(gross)}</b></div><div class="row" style="justify-content:space-between;font-size:13px;margin-top:6px"><span class="mute">Fee ${a.side==="buy"?"beli 0,15%":"jual 0,35%"}</span><b class="num">${rp(fee)}</b></div><div class="row" style="justify-content:space-between;margin-top:8px"><b>${a.side==="buy"?"Total":"Diterima"}</b><b class="num" style="font-size:18px">${rp(net)}</b></div>`}
+function calc(){const a=S.add,lots=+a.lots||0,price=+a.price||0,gross=lots*100*price,fee=gross*FEE[a.side],net=a.side==="buy"?gross+fee:gross-fee;
+ const held=(holdings().find(h=>h.t===a.t)?.sh||0)/100;const over=a.side==="sell"&&lots>held;
+ $("#sum").innerHTML=sumHTML(a,gross,fee,net,over);$("#go2").disabled=!(lots>0&&price>0&&!over)}
+function saveTrade(){const a=S.add;S.trades.push({t:a.t,side:a.side,lots:+a.lots,price:+a.price,at:"19 Nov 2026"});
+ a.msg=`${a.side==="buy"?"Pembelian":"Penjualan"} ${a.t} ${a.lots} lot @ ${rp(+a.price)} sudah masuk ke portofolio.`;a.step=4;draw()}
+function showGoogle(){$("#over").innerHTML=`<div class="sheetwrap"><div class="sheet"><div class="grab"></div>
+ <div style="text-align:center;margin-bottom:10px"><span style="font:700 22px Arial;letter-spacing:-.5px"><span style="color:#4285f4">G</span><span style="color:#ea4335">o</span><span style="color:#fbbc05">o</span><span style="color:#4285f4">g</span><span style="color:#34a853">l</span><span style="color:#ea4335">e</span></span></div>
+ <h3 style="text-align:center;margin:0 0 4px;font-size:18px">Djiwa Pay ingin mengakses Akun Google Anda</h3><p class="small mute" style="text-align:center;margin:0 0 12px">fakhri@contoh.com</p>
+ <div style="border:1px solid #dadce0;border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.5"><b>Melihat, mengedit, membuat, dan menghapus hanya file Google Drive tertentu yang Anda gunakan dengan aplikasi ini</b></div>
+ <div style="display:flex;gap:10px;margin-top:16px"><button class="btn soft" style="min-height:46px" onclick="$('#over').innerHTML=''">Batal</button><button class="btn" style="min-height:46px;background:#1a73e8" onclick="S.googleBase=true;S.built=0;go('build')">Izinkan</button></div></div></div>`}
+function runBuild(){S.built=0;let n=0;const t=setInterval(()=>{n++;S.built=n;if(S.screen!=="build"){clearInterval(t);return}render();if(n>=4)clearInterval(t)},750)}
+
+draw();
+</script>
+</body>
+</html>

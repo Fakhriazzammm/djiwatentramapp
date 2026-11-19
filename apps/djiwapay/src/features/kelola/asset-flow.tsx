@@ -14,8 +14,8 @@ const SUBS: AssetSub[] = ["batangan", "perhiasan", "koin", "lainnya"];
 const OTHER_KINDS: AssetKind[] = ["property", "vehicle", "electronics", "fund", "stock", "crypto", "other"];
 const today = () => new Date().toISOString().slice(0, 10);
 
-export function AssetFlow({ fin, asset, notify, onClose }: { fin: Finance; asset?: Asset; notify: Notify; onClose: () => void }) {
-  const [step, setStep] = useState<Step>(asset ? "form" : "shoot");
+export function AssetFlow({ fin, asset, notify, onClose, noPhoto }: { fin: Finance; asset?: Asset; notify: Notify; onClose: () => void; noPhoto?: boolean }) {
+  const [step, setStep] = useState<Step>(asset || noPhoto ? "form" : "shoot");
   const [stickerId, setStickerId] = useState<string | undefined>(asset?.stickerId);
   const gold = useGold();
 
