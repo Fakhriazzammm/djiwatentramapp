@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { computeLatePenalty } from "../_shared/attendance-report.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -278,6 +279,24 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // ── Denda telat (hanya absen masuk): dicatat di log agar rekap dan slip sama untuk semua jalur (bot, app) ──
+    let lateMinutes = 0;
+    let penaltyAmount = 0;
+    if (type === "check_in" && finalShiftName) {
+      try {
+        const { data: settings } = await supabase.schema("pos").from("site_settings").select("raw").limit(1).single();
+        const schedules = ((settings?.raw as Record<string, unknown>)?.shiftSettings as Record<string, unknown>)?.shiftSchedules as Array<Record<string, unknown>> ?? [];
+        const sched = schedules.find((x) => String(x.name ?? x.shiftName ?? x.shift_name ?? "").trim().toUpperCase() === finalShiftName.trim().toUpperCase());
+        const ot = String(sched?.openTime ?? sched?.open_time ?? "");
+        const ct = String(sched?.closeTime ?? sched?.close_time ?? "");
+        if (ot) {
+          const pen = await computeLatePenalty(supabase, userId, ot, ct, now);
+          lateMinutes = pen.lateMinutes;
+          penaltyAmount = pen.penaltyAmount;
+        }
+      } catch { /* tanpa denda bila gagal */ }
+    }
+
     // ── Write to legacy_mirror ──────────────────────────────────
     const doc: Record<string, unknown> = {
       userId,
@@ -288,6 +307,7 @@ Deno.serve(async (req: Request) => {
     if (finalShiftName) doc.shiftName = finalShiftName;
     if (roleName) doc.roleName = roleName;
     if (notes) doc.notes = notes;
+    if (type === "check_in") { doc.lateMinutes = lateMinutes; doc.penaltyAmount = penaltyAmount; }
 
     const { error: writeError } = await supabase
       .schema("legacy_mirror")

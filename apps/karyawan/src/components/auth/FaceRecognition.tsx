@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface FaceRecognitionProps {
   onMatch?: (d: number[]) => void;
-  onVerify?: (d: number[]) => Promise<void> | void;
+  /** Dipanggil saat wajah terdeteksi: descriptor + foto selfie (JPEG data URL) dari kamera. */
+  onVerify?: (d: number[], photo?: string | null) => Promise<void> | void;
   onCapture?: (d: number[]) => void;
   onModelError?: (e: string) => void;
   targetDescriptor?: number[];
@@ -181,7 +182,7 @@ export function FaceRecognition({
               const desc = Array.from(det.descriptor);
               if (onVerify) {
                 try {
-                  await onVerify(desc);
+                  await onVerify(desc, wRef.current?.getScreenshot() ?? null);
                   setSt("success");
                   onMatch?.(desc);
                 } catch {
@@ -234,7 +235,7 @@ export function FaceRecognition({
       if (!det) { setSt("fail"); setFace(false); return; }
       const desc = Array.from(det.descriptor);
       if (mode === "enroll") { onCapture?.(desc); setSt("success"); }
-      else if (mode === "verify" && onVerify) { await onVerify(desc); setSt("success"); onMatch?.(desc); }
+      else if (mode === "verify" && onVerify) { await onVerify(desc, wRef.current?.getScreenshot() ?? null); setSt("success"); onMatch?.(desc); }
       else if (mode === "verify" && targetDescriptor) {
         const d = faceapi.euclideanDistance(new Float32Array(desc), new Float32Array(targetDescriptor));
         d < 0.6 ? (setSt("success"), onMatch?.(desc)) : setSt("fail");

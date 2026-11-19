@@ -93,6 +93,7 @@ export function AbsenSheet({ isIn, token, onClose, onClosing, onHistory, onRecor
 				location: point, method: v.method,
 				pin: v.method === "pin" ? v.pin : undefined,
 				faceDescriptor: v.method === "face" ? v.faceDescriptor : undefined,
+				photo: v.method === "face" ? v.photo : undefined,
 				lateReason: reason ? `${reason}${note ? ` — ${note}` : ""}` : undefined,
 			});
 			setResult(res.log);
@@ -134,9 +135,11 @@ export function AbsenSheet({ isIn, token, onClose, onClosing, onHistory, onRecor
 					<p className="ds-sub kx-cen">{new Date(result.timestamp).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Jakarta" })} · {clock(result.timestamp)}</p>
 					<div className="ds-group" style={{ marginTop: 12 }}>
 						<div className="kx-kv"><span>Status</span><b><DsTag tone={result.onTime ? "ok" : "warn"}>{result.onTime ? "Tepat waktu" : `Telat ${result.lateMin} menit`}</DsTag></b></div>
+						{!!result.penaltyAmount && <div className="kx-kv"><span>Potongan shift</span><b>Rp{result.penaltyAmount.toLocaleString("id-ID")}</b></div>}
 						{result.shiftName && <div className="kx-kv"><span>Shift</span><b>{result.shiftName}</b></div>}
 						{result.distance != null && <div className="kx-kv"><span>Lokasi</span><b>{result.distance} m dari toko</b></div>}
 						<div className="kx-kv"><span>Verifikasi</span><b>{result.method === "face" ? "Wajah" : "PIN"}</b></div>
+						<div className="kx-kv"><span>Laporan grup</span><b>{result.reported ? "Terkirim ✓" : "Belum terkirim"}</b></div>
 					</div>
 					<DsNote tone="info" icon={<DsIcon name="shift-closing" />}><b>Jangan lupa closing shift</b>Opname dan kebersihan wajib sebelum absen keluar.</DsNote>
 					<DsButton block onClick={onClose}>Ke Beranda</DsButton>

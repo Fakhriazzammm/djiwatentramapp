@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import bcrypt from "npm:bcryptjs@2.4.3";
+import { computeLatePenalty, LATE_TOLERANCE_MIN, sendAttendanceReport, uploadAttendancePhoto } from "../_shared/attendance-report.ts";
 
 /**
  * Absen masuk langsung dari app Karyawan.
@@ -22,7 +23,6 @@ const WIB = 7 * 3600_000;
 const FACE_THRESHOLD = 0.55;
 const MAX_ACCURACY_M = 80;
 const WINDOW_OPEN_MIN = 30; // absen dibuka 30 menit sebelum shift
-const LATE_TOLERANCE_MIN = 10;
 const PIN_MAX_FAILS = 5;
 const PIN_LOCK_MIN = 15;
 const DEFAULT_RADIUS_M = 80;
@@ -222,13 +222,29 @@ Deno.serve(async (req) => {
 
       const ts = Date.now();
       const { data: role } = await db.from("yumi_roles").select("name").eq("source_id", user.role_source_id).maybeSingle();
+      const penalty = await computeLatePenalty(db, userId, c.shift?.start_time, c.shift?.end_time, ts);
+
+      // Foto selfie dari verifikasi wajah (opsional): disimpan dan ikut ke laporan grup.
+      let photo: { bytes: Uint8Array; contentType: string } | null = null;
+      let photoUrl: string | null = null;
+      if (typeof body.photo === "string" && /^data:image\/jpe?g;base64,/.test(body.photo) && body.photo.length < 700_000) {
+        try {
+          const bin = atob(body.photo.split(",")[1]);
+          const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
+          photo = { bytes, contentType: "image/jpeg" };
+          photoUrl = await uploadAttendancePhoto(db, userId, ts, bytes, "image/jpeg");
+        } catch { photo = null; }
+      }
+
       const note = [
         "Absen via app Karyawan",
         `metode: ${method}`,
         loc ? `lokasi: ${loc.lat},${loc.lng} (±${Math.round(loc.accuracy ?? 0)}m${c.geo.distance != null ? `, ${c.geo.distance}m dari toko` : ""})` : "",
-        c.lateMin > c.lateTolerance ? `terlambat ${c.lateMin}m: ${lateReason}` : "",
+        !penalty.onTime ? `terlambat ${penalty.lateMinutes}m${lateReason ? `: ${lateReason}` : ""}${penalty.penaltyAmount ? ` | denda Rp${penalty.penaltyAmount}` : ""}` : "",
+        photoUrl ? `foto: ${photoUrl}` : "",
       ].filter(Boolean).join(" | ");
-      const doc: Record<string, unknown> = { userId, type: "check_in", timestamp: ts, source: "karyawan_app", notes: note };
+      const doc: Record<string, unknown> = { userId, type: "check_in", timestamp: ts, source: "karyawan_app", notes: note, lateMinutes: penalty.lateMinutes, penaltyAmount: penalty.penaltyAmount };
+      if (photoUrl) doc.photoUrl = photoUrl;
       if (c.shift?.shift_name) doc.shiftName = c.shift.shift_name;
       if (role?.name) doc.roleName = role.name;
       const rnd = Array.from({ length: 20 }, () => "abcdef0123456789"[Math.floor(Math.random() * 16)]).join("");
@@ -239,9 +255,16 @@ Deno.serve(async (req) => {
         console.error("[staff-attendance] write error", error);
         return fail("DB_ERROR", "Gagal mencatat absen. Coba lagi.", 500);
       }
+
+      // Laporan ke grup [Report] Djiwa Tentram, format sama dengan bot HRD. Kegagalan Telegram tidak membatalkan absen.
+      const shiftLine = c.shift ? `${c.shift.shift_name}${c.shift.start_time ? ` (${c.shift.start_time.slice(0, 5)} - ${(c.shift.end_time ?? "").slice(0, 5)})` : ""}` : "";
+      const reported = await sendAttendanceReport({
+        type: "check_in", atMs: ts, name: String(user.name ?? ""), roleName: role?.name, shiftLine, penalty, photo,
+        extraLines: [`📱 Via app Karyawan · ${method === "face" ? "wajah" : "PIN"}${c.geo.distance != null ? ` · ${c.geo.distance} m dari toko` : ""}`, ...(penalty.onTime || !lateReason ? [] : [`📝 Alasan: ${lateReason}`])],
+      });
       return json({
         success: true,
-        log: { timestamp: ts, shiftName: c.shift?.shift_name ?? "", method, distance: c.geo.distance, lateMin: c.lateMin, onTime: c.lateMin <= c.lateTolerance },
+        log: { timestamp: ts, shiftName: c.shift?.shift_name ?? "", method, distance: c.geo.distance, lateMin: penalty.lateMinutes, onTime: penalty.onTime, penaltyAmount: penalty.penaltyAmount, reported },
       });
     }
 

@@ -3,7 +3,7 @@ import { DsButton } from "@djiwaapps/web-shared/components/ds";
 
 const FaceRecognition = lazy(() => import("@/components/auth/FaceRecognition").then((m) => ({ default: m.FaceRecognition })));
 
-export type VerifyPayload = { method: "face"; faceDescriptor: number[] } | { method: "pin"; pin: string };
+export type VerifyPayload = { method: "face"; faceDescriptor: number[]; photo?: string | null } | { method: "pin"; pin: string };
 
 /**
  * Verifikasi identitas untuk absen: wajah (kamera depan) atau PIN 6 digit.
@@ -57,8 +57,8 @@ export function VerifyIdentity({ hasFace, submit, locked, footer }: { hasFace: b
 							<FaceRecognition
 								key={faceKey}
 								mode="verify"
-								onVerify={async (d) => {
-									try { await run({ method: "face", faceDescriptor: d }); } catch (e) { setFaceFails((n) => n + 1); throw e; }
+								onVerify={async (d, photo) => {
+									try { await run({ method: "face", faceDescriptor: d, photo }); } catch (e) { setFaceFails((n) => n + 1); throw e; }
 								}}
 								onModelError={(m) => setError(m)}
 							/>

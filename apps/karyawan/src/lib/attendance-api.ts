@@ -50,8 +50,8 @@ async function call<T>(token: string | null, body: Record<string, unknown>): Pro
 
 export const preflight = (token: string | null, location: GeoPoint | null) => call<Preflight>(token, { action: "preflight", location });
 
-export type ClockInResult = { success: true; log: { timestamp: number; shiftName: string; method: "face" | "pin"; distance: number | null; lateMin: number; onTime: boolean } };
-export const clockIn = (token: string | null, p: { location: GeoPoint | null; method: "face" | "pin"; pin?: string; faceDescriptor?: number[]; lateReason?: string }) =>
+export type ClockInResult = { success: true; log: { timestamp: number; shiftName: string; method: "face" | "pin"; distance: number | null; lateMin: number; onTime: boolean; penaltyAmount?: number; reported?: boolean } };
+export const clockIn = (token: string | null, p: { location: GeoPoint | null; method: "face" | "pin"; pin?: string; faceDescriptor?: number[]; photo?: string | null; lateReason?: string }) =>
 	call<ClockInResult>(token, { action: "clockIn", ...p });
 
 export const enrollFace = (token: string | null, p: { faceDescriptor: number[]; pin: string }) => call<{ success: true }>(token, { action: "enrollFace", ...p });
