@@ -18,6 +18,17 @@ export function googleVerdict(headerLines: string[]): { dmarcPass: boolean; dmar
   return { dmarcPass: Boolean(dmarc), dmarcFrom: dmarc ? dmarc[1].toLowerCase() : null, dkimDomains };
 }
 
+/** DKIM signatures this server could not evaluate (an unsupported or unparsable key), not ones that failed.
+ *  Google checked them when the mail arrived; its verdict is believed for exactly those signing domains and no others. */
+export function unverifiableDomains(sigs: { signingDomain?: string; status?: { result?: string; comment?: string } }[], googleDomains: string[]): string[] {
+  const out: string[] = [];
+  for (const r of sigs) {
+    const d = String(r.signingDomain ?? "").toLowerCase();
+    if (d && r.status?.result === "neutral" && /\bkey\b/i.test(String(r.status?.comment ?? "")) && googleDomains.includes(d) && !out.includes(d)) out.push(d);
+  }
+  return out;
+}
+
 const stripTags = (html: string) => html.replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ").replace(/<br\s*\/?>|<\/(p|div|tr|li|h\d)>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#?\w+;/g, " ");
 
 /** Parses and authenticates one raw message into the shape the pipeline wants. */
@@ -26,14 +37,17 @@ export type MailCtx = { ip: string; helo: string; sender: string; host: string; 
 export async function toRawMail(raw: Buffer, ctx: MailCtx): Promise<RawMail> {
   const parsed = await simpleParser(raw, { skipImageLinks: true, skipHtmlToText: false });
   let dmarcPass = false, debug = ""; const dkimDomains: string[] = [];
+  let sigResults: { signingDomain?: string; status?: { result?: string; comment?: string } }[] = [];
   try {
     const a = await authenticate(raw, { ip: ctx.ip, helo: ctx.helo, sender: ctx.sender, mta: ctx.host, trustReceived: true, ...(ctx.resolver ? { resolver: ctx.resolver } : {}) } as any);
     dmarcPass = typeof a.dmarc === "object" && a.dmarc?.status?.result === "pass";
     for (const r of a.dkim?.results ?? []) if (r.status?.result === "pass" && r.signingDomain) dkimDomains.push(String(r.signingDomain).toLowerCase());
+    sigResults = (a.dkim?.results ?? []) as typeof sigResults;
     const sigs = (a.dkim?.results ?? []).map((r: any) => `${r.signingDomain ?? "?"}/${r.selector ?? "?"}:${r.status?.result ?? "?"}${r.status?.comment ? `(${String(r.status.comment).slice(0, 50)})` : ""}`);
     debug = `sigs=${sigs.length ? sigs.join(" ") : "none"} mailauth-dmarc=${typeof a.dmarc === "object" ? a.dmarc?.status?.result : "n/a"}`;
   } catch (e) { debug = `mailauth-error=${e instanceof Error ? e.message.slice(0, 80) : "?"}`; /* an unverifiable mail simply fails the gate */ }
-  { const g = googleVerdict(parsed.headerLines?.filter((h) => h.key === "authentication-results").map((h) => h.line) ?? []); debug += ` google-verdict=${g.dkimDomains.join(",") || (g.dmarcPass ? "dmarc" : "none")}`; }
+  { const g = googleVerdict(parsed.headerLines?.filter((h) => h.key === "authentication-results").map((h) => h.line) ?? []); debug += ` google-verdict=${g.dkimDomains.join(",") || (g.dmarcPass ? "dmarc" : "none")}`;
+    for (const d of unverifiableDomains(sigResults, g.dkimDomains)) if (!dkimDomains.includes(d)) dkimDomains.push(d); }
   if (ctx.trustGoogleVerdict) {
     const v = googleVerdict(parsed.headerLines?.filter((h) => h.key === "authentication-results").map((h) => h.line) ?? []);
     const fromDomain = (parsed.from?.value?.[0]?.address ?? "").split("@").pop()?.toLowerCase() ?? "";
