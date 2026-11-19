@@ -610,12 +610,12 @@
 
 /* Text fields use a neutral focus indicator across apps. Keep a visible
    keyboard focus without stacking browser and component-specific rings. */
-:is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select):focus {
+:is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select):not(.field-bare):focus {
 	outline: none !important;
 	box-shadow: none !important;
 	border-color: var(--border, #d4d4d8) !important;
 }
-:is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select):focus-visible {
+:is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select):not(.field-bare):focus-visible-visible {
 	/* Soft brand ring instead of a hard black box. Components that draw their own
 	   focus state on a wrapper (e.g. .dpx-input:focus-within) turn this off. */
 	outline: 2px solid color-mix(in srgb, var(--primary, #1a5dc6) 45%, transparent) !important;
@@ -625,6 +625,7 @@
 	outline-color: var(--destructive, #b91c1c) !important;
 }
 
+/* Opt-out for fields whose wrapper draws the focus state: add .field-bare to the input and focus-within styling on the wrapper. */
 *:focus:not(:focus-visible) { outline: none; }
 
 .skip-link {

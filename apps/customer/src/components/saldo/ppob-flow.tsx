@@ -71,7 +71,7 @@ export function PpobFlow({ open, balance, onClose, onTopup, onDone }: { open: bo
 
 						{isBill ? (
 							<div className="mt-3">
-								{bills.length > 1 && <select aria-label="Layanan" value={billCode} onChange={(e) => { setBillCode(e.target.value); setInquiry(null); }} className="mb-3 w-full rounded-2xl bg-[#f1f3f8] px-4 py-3 text-sm font-semibold outline-none">{bills.map((b) => <option key={b.code} value={b.code}>{b.name}</option>)}</select>}
+								{bills.length > 1 && <select aria-label="Layanan" value={billCode} onChange={(e) => { setBillCode(e.target.value); setInquiry(null); }} className="field-bare mb-3 w-full rounded-2xl bg-[#f1f3f8] px-4 py-3 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#1a5dc6]/40">{bills.map((b) => <option key={b.code} value={b.code}>{b.name}</option>)}</select>}
 								<AnimatePresence initial={false}>{inquiry && <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="divide-y divide-[#e4e8f1] rounded-3xl bg-[#f1f3f8] px-4">
 									{([["Pelanggan", inquiry.customerName || "-"], ["Periode", inquiry.period || "-"], ["Tagihan", currency(inquiry.billAmount)], ["Biaya admin", currency(inquiry.adminFee)], ["Total", currency(inquiry.totalAmount)]] as [string, string][]).map(([k, v]) => <div key={k} className="flex justify-between py-2.5 text-sm"><span className="text-[#6b7080]">{k}</span><b>{v}</b></div>)}
 								</motion.div>}</AnimatePresence>

@@ -121,6 +121,6 @@ export function PinStep({ title, summary, run, onResult }: { title: string; summ
 }
 
 export const Field = ({ label, children, hint }: { label: string; children: ReactNode; hint?: ReactNode }) => (
-	<div className="mt-3"><label className="block rounded-[20px] bg-[#f1f3f8] px-4 py-3"><span className="text-xs font-semibold text-[#6b7080]">{label}</span>{children}</label>{hint && <p className="mt-1.5 px-1 text-xs text-[#6b7080]">{hint}</p>}</div>
+	<div className="mt-3"><label className="block rounded-[20px] bg-[#f1f3f8] px-4 py-3 transition-shadow focus-within:shadow-[0_0_0_2px_rgba(26,93,198,.35)]"><span className="text-xs font-semibold text-[#6b7080]">{label}</span>{children}</label>{hint && <p className="mt-1.5 px-1 text-xs text-[#6b7080]">{hint}</p>}</div>
 );
-export const inputCls = "w-full bg-transparent text-[20px] font-bold text-[#0f2347] outline-none placeholder:text-[#9aa0ae]";
+export const inputCls = "field-bare w-full bg-transparent text-[20px] font-bold text-[#0f2347] outline-none placeholder:text-[#9aa0ae]";
