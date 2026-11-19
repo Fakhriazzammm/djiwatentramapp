@@ -1,6 +1,7 @@
-import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { useHybridAllPublicUsers } from "@/hooks/use-hybrid-attendance-data";
+import { createLazyFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { useYumiAuth } from "@/hooks/useYumiAuth";
+import { createClient } from "@/lib/client";
 import { useHybridStaffRoles } from "@/hooks/use-hybrid-pos-data";
 import { useHybridUpdateUser } from "@/hooks/use-hybrid-write-actions";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,22 @@ const MONTHS = [
 	"Jul", "Agu", "Sep", "Okt", "Nov", "Des",
 ];
 
+type EmployeeContract = {
+	id: string;
+	registrationNumber: string | null;
+	status: string;
+	pdfUrl: string | null;
+};
+
+type EmployeeDirectoryRow = {
+	_id: string;
+	name: string;
+	username: string;
+	roleName: string;
+	isActive: boolean;
+	raw: { contracts: EmployeeContract[] };
+};
+
 function fmtDate(val?: string | number) {
 	if (!val) return "\u2014";
 	const d = new Date(val);
@@ -58,7 +75,7 @@ function buildCsvRow(row: any, r: any): string {
 	return [
 		esc(row.name),
 		esc(row.username),
-		esc(r.roleName),
+		esc(row.roleName),
 		esc(r.phone),
 		esc(r.identityNumber),
 		esc(r.placeOfBirth),
@@ -94,6 +111,7 @@ const STATUS_OPTIONS = [
 
 function DetailRow({ row, expanded }: { row: any; expanded: boolean }) {
 	const r = (row as any).raw ?? {};
+	const contracts: EmployeeContract[] = r.contracts ?? [];
 	if (!expanded) return null;
 	return (
 		<tr className="border-b border-border/20 bg-muted/10">
@@ -173,6 +191,31 @@ function DetailRow({ row, expanded }: { row: any; expanded: boolean }) {
 							)}
 						</div>
 					</div>
+					{contracts.length > 0 && (
+						<section className="mt-2 rounded-lg border border-border/40 p-2">
+							<h3 className="mb-1 text-xs font-bold">Dokumen & Kontrak</h3>
+							{contracts.map((contract) => (
+								<div key={contract.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1 text-xs">
+									<span>{contract.registrationNumber || "Kontrak karyawan"}</span>
+									<span className="text-muted-foreground">{contract.status}</span>
+									{contract.registrationNumber && (
+										<Link
+											to="/admin/operational-team/register/application/$registrationNumber"
+											params={{ registrationNumber: contract.registrationNumber }}
+											className="text-primary underline"
+										>
+											Buka detail
+										</Link>
+									)}
+									{contract.pdfUrl?.startsWith("https://") && (
+										<a href={contract.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">
+											Buka PDF
+										</a>
+									)}
+								</div>
+							))}
+						</section>
+					)}
 				</div>
 			</td>
 		</tr>
@@ -182,7 +225,35 @@ function DetailRow({ row, expanded }: { row: any; expanded: boolean }) {
 export function DataKaryawanPage() {
 	const navigate = useNavigate();
 	const [usersRefreshTrigger, setUsersRefreshTrigger] = useState(0);
-	const allStaff = useHybridAllPublicUsers(usersRefreshTrigger);
+	const { token } = useYumiAuth();
+	const [directory, setDirectory] = useState<{ token: string; rows?: EmployeeDirectoryRow[]; error?: string }>();
+	const currentDirectory = directory?.token === token ? directory : undefined;
+	const allStaff = currentDirectory?.rows;
+	const directoryError = currentDirectory?.error;
+
+	useEffect(() => {
+		if (!token) return;
+		const controller = new AbortController();
+
+		async function loadDirectory(sessionToken: string) {
+			try {
+				const { data, error } = await createClient()
+					.rpc("admin_employee_directory", { session_token: sessionToken })
+					.abortSignal(controller.signal);
+				if (error) throw error;
+				if (!controller.signal.aborted) {
+					setDirectory({ token: sessionToken, rows: data as EmployeeDirectoryRow[] });
+				}
+			} catch {
+				if (!controller.signal.aborted) {
+					setDirectory({ token: sessionToken, error: "Gagal memuat data karyawan. Coba lagi atau masuk ulang." });
+				}
+			}
+		}
+
+		void loadDirectory(token);
+		return () => controller.abort();
+	}, [token, usersRefreshTrigger]);
 	const staffRoles = useHybridStaffRoles() ?? [];
 	const updateUserRole = useHybridUpdateUser();
 	const [savingRoleIds, setSavingRoleIds] = useState<Set<string>>(new Set());
@@ -344,7 +415,7 @@ export function DataKaryawanPage() {
 		}
 	};
 
-	const isLoading = allStaff === undefined;
+	const isLoading = !directoryError && allStaff === undefined;
 	const isEmpty = Array.isArray(allStaff) && allStaff.length === 0;
 
 	async function cascadeDeleteUsers(sourceIds: string[]) {
@@ -515,11 +586,11 @@ export function DataKaryawanPage() {
 					</div>
 				</div>
 				<div className="flex items-center gap-2">
-					<Button variant="outline" size="sm" className="h-9 rounded-lg text-[11px] font-bold px-2 gap-1.5" disabled={isExporting === "csv" || isLoading || isEmpty} onClick={exportCsv}>
+					<Button variant="outline" size="sm" className="h-9 rounded-lg text-[11px] font-bold px-2 gap-1.5" disabled={isExporting === "csv" || isLoading || isEmpty || !!directoryError} onClick={exportCsv}>
 						{isExporting === "csv" ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
 						CSV
 					</Button>
-					<Button variant="outline" size="sm" className="h-9 rounded-lg text-[11px] font-bold px-2 gap-1.5" disabled={isExporting === "pdf" || isLoading || isEmpty} onClick={exportPdf}>
+					<Button variant="outline" size="sm" className="h-9 rounded-lg text-[11px] font-bold px-2 gap-1.5" disabled={isExporting === "pdf" || isLoading || isEmpty || !!directoryError} onClick={exportPdf}>
 						{isExporting === "pdf" ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
 						PDF
 					</Button>
@@ -618,7 +689,12 @@ export function DataKaryawanPage() {
 
 			{/* Table */}
 			<div className="overflow-hidden rounded-xl border bg-card">
-				{isLoading ? (
+				{directoryError ? (
+					<div role="alert" className="flex items-center justify-between gap-3 p-4 text-sm">
+						<span>{directoryError}</span>
+						<Button variant="outline" size="sm" onClick={() => setUsersRefreshTrigger((value) => value + 1)}>Coba lagi</Button>
+					</div>
+				) : isLoading ? (
 					<div className="p-6 space-y-3">
 						{[1,2,3,4,5,6].map((i) => <Skeleton key={i} className="h-7 w-full rounded-lg" />)}
 					</div>
