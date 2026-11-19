@@ -1,9 +1,9 @@
-import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, Check, ChevronDown, Clock, CreditCard, Loader2, Plus, SquarePower, Trash2, Wallet, WalletCards, Banknote } from "lucide-react";
+import { motion } from "framer-motion";
+import { AlertTriangle, Check, Clock, CreditCard, Loader2, Plus, SquarePower, Trash2, Wallet, WalletCards, Banknote } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { SHIFT_PAYMENT_CHANNELS, type ShiftPaymentBreakdown, type ShiftPaymentChannelKey } from "@/lib/shift-payment-breakdown";
 import { cn } from "@/lib/utils";
-import { AnimatedNumber, formatRp, IOS_SPRING, IOS_SPRING_SOFT, IosChip, IosSheet, StatusPill } from "./ios-kit";
+import { AnimatedNumber, formatRp, IOS_SPRING, IosChip, IosSheet, StatusPill } from "./ios-kit";
 
 type Actual = Partial<Record<ShiftPaymentChannelKey, number | null>>;
 export interface ExtraExpense { id: number; category: string; amount: string; description: string; savedId?: string }
@@ -59,7 +59,6 @@ function ChannelIcon({ channel }: { channel: (typeof SHIFT_PAYMENT_CHANNELS)[num
 export function EndShiftScreen({ c }: { c: EndShiftController }) {
 	const [channelKey, setChannelKey] = useState<ShiftPaymentChannelKey | null>(null);
 	const [expenseOpen, setExpenseOpen] = useState(false);
-	const [zeroOpen, setZeroOpen] = useState(false);
 	const [cashTouched, setCashTouched] = useState(false);
 
 	const channels = SHIFT_PAYMENT_CHANNELS;
@@ -69,13 +68,20 @@ export function EndShiftScreen({ c }: { c: EndShiftController }) {
 	const required = useMemo(() => channels.filter((ch) => ch.key !== "djiwaapp_bayar_kasir" && expectedOf(ch.key) > 0), [channels, c.expected]);
 	const zero = useMemo(() => channels.filter((ch) => ch.key !== "djiwaapp_bayar_kasir" && expectedOf(ch.key) === 0), [channels, c.expected]);
 
-	// Kanal tanpa transaksi dikonfirmasi Rp 0 otomatis (tetap bisa diubah dari lipatan).
+	// Semua kanal non-tunai sudah tercatat sistem: aktual diisi otomatis sesuai sistem (tanpa cek ulang).
+	// Hanya uang tunai di laci yang dihitung manual.
+	const autoSig = channels.filter((ch) => ch.key !== "tunai_kasir").map((ch) => `${ch.key}:${ch.key === "djiwaapp_bayar_kasir" ? 0 : Number(c.expected[ch.key] || 0)}`).join(",");
 	useEffect(() => {
-		for (const ch of channels) if (ch.key !== "tunai_kasir" && Number(c.expected[ch.key] || 0) === 0 && (c.actual[ch.key] === null || c.actual[ch.key] === undefined)) c.onActual(ch.key, "0");
+		for (const ch of channels) {
+			if (ch.key === "tunai_kasir") continue;
+			if (ch.key === "djiwaapp_bayar_kasir") { if (Number(c.expected[ch.key] || 0) === 0 && c.actual[ch.key] !== 0) c.onActual(ch.key, "0"); continue; }
+			const exp = Number(c.expected[ch.key] || 0);
+			if (c.actual[ch.key] !== exp) c.onActual(ch.key, String(exp));
+		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [channels.filter((ch) => Number(c.expected[ch.key] || 0) === 0).map((ch) => ch.key).join(",")]);
+	}, [autoSig]);
 
-	const confirmed = (key: ShiftPaymentChannelKey) => (key === "tunai_kasir" ? cashTouched : c.actual[key] !== null && c.actual[key] !== undefined);
+	const confirmed = (key: ShiftPaymentChannelKey) => (key === "tunai_kasir" ? cashTouched : true);
 	const doneCount = required.filter((ch) => confirmed(ch.key)).length;
 	const totalExpected = channels.reduce((sum, ch) => sum + Number(c.expected[ch.key] || 0), 0);
 	const totalActual = channels.reduce((sum, ch) => sum + (c.actual[ch.key] == null ? 0 : Number(c.actual[ch.key])), 0);
@@ -146,15 +152,16 @@ export function EndShiftScreen({ c }: { c: EndShiftController }) {
 							<p className="px-1 pb-1.5 text-[12px] font-bold text-muted-foreground">{group === "direct" ? "Langsung" : "Online food"}</p>
 							{list.map((ch) => {
 								const exp = expectedOf(ch.key);
+								const isCash = ch.key === "tunai_kasir";
 								const isConfirmed = confirmed(ch.key);
-								const act = ch.key === "tunai_kasir" ? c.cashInRegister : Number(c.actual[ch.key] || 0);
+								const act = ch.key === "tunai_kasir" ? c.cashInRegister : exp;
 								return (
-									<motion.button key={ch.key} type="button" whileTap={{ scale: 0.985 }} onClick={() => setChannelKey(ch.key)} className="mb-2 flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 text-left">
+									<motion.button key={ch.key} type="button" disabled={!isCash} whileTap={isCash ? { scale: 0.985 } : undefined} onClick={() => isCash && setChannelKey(ch.key)} className="mb-2 flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 text-left disabled:cursor-default">
 										<ChannelIcon channel={ch} />
 										<div className="min-w-0 flex-1"><p className="truncate text-[14px] font-bold">{ch.label}</p><p className="text-[12px] text-muted-foreground">Sistem {formatRp(exp)}</p></div>
 										<div className="shrink-0 text-right">
 											<p className="text-[14px] font-extrabold tabular-nums">{isConfirmed ? formatRp(act) : "—"}</p>
-											<StatusPill tone={isConfirmed ? diffTone(act - exp) : "neutral"}>{isConfirmed ? diffLabel(act - exp) : "Belum diisi"}</StatusPill>
+											<StatusPill tone={isCash ? (isConfirmed ? diffTone(act - exp) : "neutral") : "ok"}>{isCash ? (isConfirmed ? diffLabel(act - exp) : "Belum dihitung") : "Otomatis sistem"}</StatusPill>
 										</div>
 									</motion.button>
 								);
@@ -163,19 +170,13 @@ export function EndShiftScreen({ c }: { c: EndShiftController }) {
 					);
 				})}
 				{zero.length > 0 ? (
-					<>
-						<button type="button" onClick={() => setZeroOpen((v) => !v)} aria-expanded={zeroOpen} className="flex w-full items-center justify-between px-1 py-2 text-[13px] font-semibold text-muted-foreground">Tanpa transaksi ({zero.length})<ChevronDown className={cn("h-4 w-4 transition-transform duration-300", zeroOpen && "rotate-180")} /></button>
-						<AnimatePresence initial={false}>
-							{zeroOpen ? (
-								<motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={IOS_SPRING_SOFT} className="overflow-hidden">
-									{zero.map((ch) => (
-										<button key={ch.key} type="button" onClick={() => setChannelKey(ch.key)} className="flex w-full items-center justify-between px-1 py-1.5 text-[13px] text-muted-foreground"><span>{ch.label}</span><span>{formatRp(Number(c.actual[ch.key] || 0))} · {diffLabel(Number(c.actual[ch.key] || 0))}</span></button>
-									))}
-									<p className="px-1 pb-2 pt-1 text-[11.5px] text-muted-foreground">Dikonfirmasi Rp 0 otomatis. Ketuk untuk mengubah jika ada uang masuk.</p>
-								</motion.div>
-							) : null}
-						</AnimatePresence>
-					</>
+					<div className="pt-1">
+						<p className="px-1 pb-1.5 text-[12px] font-bold text-muted-foreground">Tanpa transaksi ({zero.length})</p>
+						{zero.map((ch) => (
+							<div key={ch.key} className="flex w-full items-center justify-between px-1 py-1.5 text-[13px] text-muted-foreground"><span>{ch.label}</span><span>Rp 0 · Otomatis</span></div>
+						))}
+						<p className="px-1 pb-2 pt-1 text-[11.5px] text-muted-foreground">Terisi otomatis oleh sistem dari transaksi shift ini.</p>
+					</div>
 				) : null}
 
 				{/* Pengeluaran */}
