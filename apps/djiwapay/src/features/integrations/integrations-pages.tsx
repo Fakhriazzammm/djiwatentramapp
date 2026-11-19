@@ -259,7 +259,7 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
   const { data: inbound, refresh } = useInbound();
   const [g, setG] = useState<(GoogleStatus & { success: true }) | null>(null);
   const [loadingG, setLoadingG] = useState(true);
-  const [sheet, setSheet] = useState<null | "email" | "import" | "script" | "broad" | { consent: GoogleFeature[] }>(null);
+  const [sheet, setSheet] = useState<null | "email" | "import" | "script" | "broad" | "sources" | { consent: GoogleFeature[] }>(null);
   const { hook, refresh: refreshHook, setHook } = useHook();
   const [autoImport, setAutoImport] = useState(false);
   const [busy, setBusy] = useState("");
@@ -311,6 +311,7 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
   const cal = Boolean(g?.features.calendar), drive = Boolean(g?.features.drive);
   const gm = Boolean(g?.features.gmail && g?.gmail?.enabled), gmInfo = g?.gmail ?? null;
   const soon = <Tag tone="later">Segera</Tag>;
+  const active = [gm ? "Gmail langsung" : null, hook?.enabled ? "Apps Script" : null, src?.forwarding ? "Email terusan" : null].filter(Boolean) as string[];
   /** One tap for every Google sync that is on: bills to Calendar, and the workbook export. */
   const syncAll = async () => {
     setBusy("google-all");
@@ -326,34 +327,10 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
 
     <div className="dpx-glabel">Catat otomatis dari email{gm ? <Btn type="button" disabled={busy === "gmail-check"} onClick={() => void checkGmail()}>{busy === "gmail-check" ? "Memeriksa…" : "Periksa"}</Btn> : null}</div>
     <Reveal i={1}><div className="dpx-group dpx-white dpx-int">
-      <Row icon="spark" tone="orange" title="Gmail langsung" sub={gm ? (gmInfo?.error ? gmailError(gmInfo.error) : gmInfo?.lastPolledAt ? `Dicek ${ago(gmInfo.lastPolledAt)} · ${gmInfo.fetched} email dibaca` : "Memeriksa email pertama…") : "Satu ketukan. Email bank dan e-wallet tercatat sendiri"}
-        trail={loadingG ? undefined : !gReady ? soon : gm ? <Tag tone={gmInfo?.error ? "warn" : "ok"}>{gmInfo?.error ? "Perlu perhatian" : "Aktif"}</Tag> : <Tag tone="warn">Disarankan</Tag>}
-        onClick={gReady && !loadingG && !gm ? () => setSheet({ consent: ["gmail"] }) : undefined} />
+      {active.length ? <Row icon="check" tone="emerald" title={`Antrean tinjau${inbound && inbound.review ? ` (${inbound.review})` : ""}`} sub="Email baru tercatat otomatis. Di sini hanya yang perlu dicek" onClick={onReview} /> : null}
+      <Row icon="spark" tone="orange" title="Sumber email" sub={active.length ? active.join(" · ") : "Pilih cara termudah untuk menyambungkan email"} trail={loadingG ? undefined : active.length ? <Tag tone="ok">Aktif</Tag> : <Tag tone="warn">Sambungkan</Tag>} onClick={() => setSheet("sources")} />
+      <Row icon="user" tone="emerald" title="Deteksi dari pengirim lain" sub={inbound?.broad ? "Toko, marketplace, gaji, dan lainnya. Selalu kamu konfirmasi dulu" : "Bukan hanya bank. Kamu yang menentukan pemasukan atau pengeluaran"} trail={inbound ? (inbound.broad ? <Tag tone="ok">Aktif</Tag> : <Tag>Mati</Tag>) : undefined} onClick={() => setSheet("broad")} />
       {gm ? <Row icon="dl" tone="amber" title="Impor email lama" sub={inbound && inbound.importReady ? `${inbound.importReady} transaksi siap ditinjau` : "Catat pembayaran lama dari Gmail-mu, dengan pratinjau dulu"} onClick={() => setSheet("import")} /> : null}
-      {gm || (src && src.forwarding) ? <Row icon="check" tone="emerald" title={`Antrean tinjau${inbound && inbound.review ? ` (${inbound.review})` : ""}`} sub={"Email baru tercatat otomatis. Di sini hanya yang perlu dicek"} onClick={onReview} /> : null}
-      {gm ? <Row icon="trash" tone="rose" title="Matikan Gmail langsung" sub="Berhenti membaca email. Catatan yang sudah ada tetap" onClick={() => void turnGmailOff()} chev={false} /> : null}
-    </div></Reveal>
-
-    <div className="dpx-glabel">Alternatif tanpa izin Gmail</div>
-    <Reveal i={2}><div className="dpx-group dpx-white dpx-int">
-      <Row icon="spark" tone="orange" title="Apps Script" sub={hook?.enabled ? (hook.received ? `${hook.received} email · ${ago(hook.lastAt ?? null)}${hookStatusText(hook.lastStatus, hook.lastReason) ? ` · ${hookStatusText(hook.lastStatus, hook.lastReason)}` : ""}` : "Menunggu email pertama dari skripmu") : "Skrip kecil di akun Googlemu. Gratis, tanpa batas pengguna. Ada tutorialnya"}
-        trail={hook?.enabled ? <Tag tone="ok">Aktif</Tag> : hook && hook.available === false ? soon : <Tag>Mati</Tag>}
-        onClick={hook && hook.available === false ? undefined : () => setSheet("script")} />
-      {hook?.enabled ? <>
-        <Row icon="refresh" tone="slate" title="Buat alamat skrip baru" sub="Alamat lama langsung mati. Salin dan tempel skrip yang baru" onClick={async () => { setBusy("hook"); try { setHook(await createHook(true)); ctx.notify("Alamat baru dibuat. Tempel ulang skripnya."); setSheet("script"); } catch { ctx.notify("Gagal membuat alamat baru"); } finally { setBusy(""); } }} chev={false} />
-        <Row icon="trash" tone="rose" title="Matikan Apps Script" sub="Alamat dihapus. Catatan yang sudah ada tetap" onClick={() => setConfirmOff("script")} chev={false} />
-      </> : null}
-      <Row icon="bank" tone="slate" title="Email terusan" sub={src?.forwarding ? `${src.mailCount ? `${src.mailCount} email · ${ago(src.lastMailAt)}` : "Menunggu email pertama"}` : "Tanpa izin Gmail. Atur sekali di Gmail atau di aplikasi bank"} trail={src?.forwarding ? <Tag tone="ok">Aktif</Tag> : inbound && !inbound.configured ? soon : <Tag>Mati</Tag>}
-        onClick={inbound?.configured ? () => setSheet("email") : undefined} />
-      {src?.forwarding ? <>
-        <Row icon="refresh" tone="slate" title="Buat alamat baru" sub="Alamat lama berhenti menerima email" onClick={async () => { setBusy("rot"); try { await createSource(true); await refresh(); ctx.notify("Alamat baru dibuat. Perbarui terusan di Gmail."); setSheet("email"); } catch { ctx.notify("Gagal membuat alamat baru"); } finally { setBusy(""); } }} chev={false} />
-        <Row icon="trash" tone="rose" title="Matikan email terusan" sub="Hapus alamat dan antrean" onClick={() => setConfirmOff("email")} chev={false} />
-      </> : null}
-    </div></Reveal>
-
-    <div className="dpx-glabel">Pengirim lain</div>
-    <Reveal i={2}><div className="dpx-group dpx-white dpx-int">
-      <Row icon="spark" tone="emerald" title="Deteksi dari pengirim lain" sub={inbound?.broad ? "Toko, marketplace, gaji, dan lainnya. Selalu kamu konfirmasi dulu" : "Bukan hanya bank. Kamu yang menentukan pemasukan atau pengeluaran"} trail={inbound ? (inbound.broad ? <Tag tone="ok">Aktif</Tag> : <Tag>Mati</Tag>) : undefined} onClick={() => setSheet("broad")} />
       {inbound?.broad && hook?.enabled && (hook.scriptVersion ?? 1) < (hook.currentScriptVersion ?? 2) ? <div className="dpx-note" role="status" style={{ margin: "6px 12px 10px" }}><Ic n="info" /><div><b>Skrip Apps Script-mu versi lama.</b> Salin skrip yang baru agar email dari pengirim lain ikut terbaca.<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setSheet("script")}>Salin skrip baru</Btn></div></div></div> : null}
     </div></Reveal>
 
@@ -383,6 +360,32 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
     <AnimatePresence>
       {sheet === "import" ? <ImportSheet key="import" ctx={ctx} onClose={() => setSheet(null)} onChanged={() => void refresh()} /> : null}
       {sheet === "script" ? <AppsScriptSheet key="script" ctx={ctx} hook={hook} setHook={setHook} refresh={refreshHook} rotate={async () => { try { setHook(await createHook(true)); } catch { ctx.notify("Gagal membuat alamat baru"); } }} onClose={() => setSheet(null)} /> : null}
+      {sheet === "sources" ? <Sheet key="sources" title="Sumber email" onClose={() => setSheet(null)}>
+        <p className="dpx-sub" style={{ marginTop: -6 }}>Satu sumber saja sudah cukup. Boleh lebih dari satu: email yang sama tidak pernah tercatat dua kali.</p>
+        <div className="dpx-glabel">Satu ketukan</div>
+        <div className="dpx-group dpx-white dpx-int">
+      <Row icon="spark" tone="orange" title="Gmail langsung" sub={gm ? (gmInfo?.error ? gmailError(gmInfo.error) : gmInfo?.lastPolledAt ? `Dicek ${ago(gmInfo.lastPolledAt)} · ${gmInfo.fetched} email dibaca` : "Memeriksa email pertama…") : "Satu ketukan. Email bank dan e-wallet tercatat sendiri"}
+        trail={loadingG ? undefined : !gReady ? soon : gm ? <Tag tone={gmInfo?.error ? "warn" : "ok"}>{gmInfo?.error ? "Perlu perhatian" : "Aktif"}</Tag> : <Tag tone="warn">Disarankan</Tag>}
+        onClick={gReady && !loadingG && !gm ? () => setSheet({ consent: ["gmail"] }) : undefined} />
+      {gm ? <Row icon="trash" tone="rose" title="Matikan Gmail langsung" sub="Berhenti membaca email. Catatan yang sudah ada tetap" onClick={() => { setSheet(null); void turnGmailOff(); }} chev={false} /> : null}
+        </div>
+        <div className="dpx-glabel">Tanpa izin Gmail</div>
+        <div className="dpx-group dpx-white dpx-int">
+      <Row icon="spark" tone="orange" title="Apps Script" sub={hook?.enabled ? (hook.received ? `${hook.received} email · ${ago(hook.lastAt ?? null)}${hookStatusText(hook.lastStatus, hook.lastReason) ? ` · ${hookStatusText(hook.lastStatus, hook.lastReason)}` : ""}` : "Menunggu email pertama dari skripmu") : "Skrip kecil di akun Googlemu. Gratis, tanpa batas pengguna. Ada tutorialnya"}
+        trail={hook?.enabled ? <Tag tone="ok">Aktif</Tag> : hook && hook.available === false ? soon : <Tag>Mati</Tag>}
+        onClick={hook && hook.available === false ? undefined : () => setSheet("script")} />
+      {hook?.enabled ? <>
+        <Row icon="refresh" tone="slate" title="Buat alamat skrip baru" sub="Alamat lama langsung mati. Salin dan tempel skrip yang baru" onClick={async () => { setBusy("hook"); try { setHook(await createHook(true)); ctx.notify("Alamat baru dibuat. Tempel ulang skripnya."); setSheet("script"); } catch { ctx.notify("Gagal membuat alamat baru"); } finally { setBusy(""); } }} chev={false} />
+        <Row icon="trash" tone="rose" title="Matikan Apps Script" sub="Alamat dihapus. Catatan yang sudah ada tetap" onClick={() => { setSheet(null); setConfirmOff("script"); }} chev={false} />
+      </> : null}
+      <Row icon="bank" tone="slate" title="Email terusan" sub={src?.forwarding ? `${src.mailCount ? `${src.mailCount} email · ${ago(src.lastMailAt)}` : "Menunggu email pertama"}` : "Tanpa izin Gmail. Atur sekali di Gmail atau di aplikasi bank"} trail={src?.forwarding ? <Tag tone="ok">Aktif</Tag> : inbound && !inbound.configured ? soon : <Tag>Mati</Tag>}
+        onClick={inbound?.configured ? () => setSheet("email") : undefined} />
+      {src?.forwarding ? <>
+        <Row icon="refresh" tone="slate" title="Buat alamat baru" sub="Alamat lama berhenti menerima email" onClick={async () => { setBusy("rot"); try { await createSource(true); await refresh(); ctx.notify("Alamat baru dibuat. Perbarui terusan di Gmail."); setSheet("email"); } catch { ctx.notify("Gagal membuat alamat baru"); } finally { setBusy(""); } }} chev={false} />
+        <Row icon="trash" tone="rose" title="Matikan email terusan" sub="Hapus alamat dan antrean" onClick={() => { setSheet(null); setConfirmOff("email"); }} chev={false} />
+      </> : null}
+        </div>
+      </Sheet> : null}
       {sheet === "broad" ? <BroadSheet key="broad" on={Boolean(inbound?.broad)} hook={hook} onClose={() => setSheet(null)} onOpenScript={() => setSheet("script")} onChange={async (on) => { try { await setBroad(on); await refresh(); ctx.notify(on ? "Deteksi dari pengirim lain menyala" : "Deteksi dari pengirim lain dimatikan"); } catch { ctx.notify("Gagal menyimpan. Coba lagi."); } }} /> : null}
       {sheet === "email" ? <EmailSetupSheet key="email" ctx={ctx} summary={inbound} refresh={refresh} onClose={() => setSheet(null)} /> : null}
       {sheet && typeof sheet === "object" ? <ConsentSheet key="consent" features={sheet.consent} busy={busy === "connect"} onClose={() => setSheet(null)} onGo={() => void goGoogle(sheet.consent)} /> : null}
