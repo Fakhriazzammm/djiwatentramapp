@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prototipe Saldo Customer</title>
+<style>
+:root{--navy:#0f2347;--blue:#1a5dc6;--blue-soft:#e6efff;--canvas:#f6f7fb;--group:#f1f3f8;--line:#e4e8f1;--ink:#14161c;--mute:#6b7080;--ok:#13804a;--ok-soft:#e5f5ec;--warn:#a05d00;--warn-soft:#fff3dc;--bg:#e9eaee;--ease:cubic-bezier(.32,.72,0,1)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14161b}}
+*{box-sizing:border-box;margin:0}
+body{font-family:-apple-system,"SF Pro Text",Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);padding:28px 16px}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.intro{max-width:900px;margin:0 auto 22px}.intro h1{font-size:22px;font-weight:800}.intro p{color:var(--mute);font-size:14px;line-height:1.55;margin-top:6px}
+.row{display:flex;flex-wrap:wrap;gap:34px;justify-content:center;align-items:flex-start}
+.col{width:390px;max-width:100%}.col h2{font-size:15px;font-weight:800;margin-bottom:4px}.col>p{font-size:12.5px;color:var(--mute);margin-bottom:12px;line-height:1.5}
+.phone{position:relative;height:820px;border-radius:42px;background:var(--canvas);overflow:hidden;box-shadow:0 20px 50px rgba(15,35,71,.18),0 0 0 8px #14161c}
+.scroll{height:100%;overflow-y:auto;padding:54px 18px 120px;background:linear-gradient(#c6dafc 0,#dde8ff 160px,#f3f5fb 330px,var(--canvas) 330px)}
+.scroll::-webkit-scrollbar{display:none}
+.top{display:flex;justify-content:space-between;align-items:flex-start}
+.top small{font-size:12px;color:var(--mute);font-weight:600}.top h1{font-size:32px;font-weight:700;letter-spacing:-.02em;margin-top:2px}
+.rb{width:42px;height:42px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 4px 14px rgba(15,35,71,.08);position:relative}
+.rb img{width:22px;height:22px}.dot{position:absolute;top:9px;right:10px;width:9px;height:9px;border-radius:50%;background:#d23a2a;border:2px solid #fff}
+.hero{margin-top:18px;border-radius:34px;background:#fff;padding:22px 22px 18px;box-shadow:0 14px 40px rgba(15,35,71,.10),0 0 0 1px rgba(15,35,71,.04)}
+.hero .l{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--mute);font-weight:600}
+.pill{font-size:11px;font-weight:700;background:var(--ok-soft);color:var(--ok);padding:3px 9px;border-radius:99px}
+.bal{display:flex;align-items:center;gap:10px;margin:8px 0 2px}.bal b{font-size:40px;font-weight:700;letter-spacing:-.03em;color:var(--navy)}
+.bal button{width:34px;height:34px;border-radius:50%;background:var(--group);display:grid;place-items:center}.bal img{width:18px}
+.sub{font-size:12px;color:var(--mute)}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;border-radius:99px;background:var(--navy);color:#fff;font-weight:700;font-size:16px;width:100%;margin-top:16px;transition:transform .16s var(--ease)}.btn:active{transform:scale(.98)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.stat{background:#fff;border-radius:24px;padding:14px 16px;box-shadow:0 0 0 1px rgba(15,35,71,.05)}.stat span{font-size:12px;color:var(--mute);font-weight:600}.stat b{display:block;margin-top:4px;font-size:17px;color:var(--navy)}.in{color:var(--ok)!important}
+.lab{display:flex;justify-content:space-between;align-items:baseline;margin:24px 4px 10px;font-size:13px;font-weight:700;color:var(--mute)}.lab a{color:var(--blue);font-weight:600;font-size:13px}
+.group{background:var(--group);border-radius:30px;padding:8px}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;padding:12px 4px}
+.q{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px;font-weight:600;text-align:center}
+.ic{width:52px;height:52px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 2px 8px rgba(15,35,71,.05)}.ic img{width:30px;height:30px;object-fit:contain}
+.row2{display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 10px;border-bottom:1px solid var(--line)}.row2:last-child{border:0}
+.row2 .ic{width:44px;height:44px;flex:none}.row2 .ic img{width:26px;height:26px}
+.row2 .t{flex:1;min-width:0}.row2 .t b{display:block;font-size:15px;font-weight:600}.row2 .t span{font-size:12px;color:var(--mute)}
+.row2 .a{font-weight:700;font-size:15px}.row2 .a.p{color:var(--ok)}
+.soon{font-size:11px;font-weight:700;background:var(--warn-soft);color:var(--warn);padding:3px 9px;border-radius:99px}
+.chev{width:14px;opacity:.5}
+.tab{position:absolute;left:14px;right:14px;bottom:16px;height:66px;border-radius:99px;background:rgba(255,255,255,.92);backdrop-filter:blur(14px);box-shadow:0 10px 30px rgba(15,35,71,.16),0 0 0 1px rgba(15,35,71,.05);display:flex;justify-content:space-around;align-items:center;padding:0 6px}
+.tab div{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;font-weight:700;height:50px;min-width:54px;border-radius:99px;color:rgba(20,22,28,.65)}
+.tab div.on{background:var(--blue-soft);color:var(--blue);min-width:68px}.tab img{width:22px;height:22px;object-fit:contain}
+.seg{display:flex;background:var(--group);border-radius:99px;padding:4px;margin-bottom:10px}.seg span{flex:1;text-align:center;padding:8px;border-radius:99px;font-size:13px;font-weight:600;color:var(--mute)}.seg .on{background:#fff;color:var(--navy);box-shadow:0 1px 4px rgba(15,35,71,.1)}
+.sheet{position:absolute;inset:0;background:rgba(15,35,71,.35);display:flex;align-items:flex-end}
+.sh{width:100%;background:#fff;border-radius:34px 34px 0 0;padding:10px 20px 30px}.grab{width:40px;height:5px;border-radius:9px;background:#d5d9e3;margin:0 auto 14px}
+.sh h3{font-size:22px;font-weight:700}.sh p{font-size:13px;color:var(--mute);margin:4px 0 14px}
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}.chips span{padding:12px 0;text-align:center;border-radius:16px;background:var(--group);font-weight:700;font-size:14px}.chips .on{background:var(--blue-soft);color:var(--blue);box-shadow:inset 0 0 0 2px var(--blue)}
+.field{background:var(--group);border-radius:20px;padding:14px 16px;font-size:26px;font-weight:700;color:var(--navy)}.field small{display:block;font-size:12px;font-weight:600;color:var(--mute)}
+.note{background:var(--blue-soft);color:#1a4a9a;border-radius:16px;padding:10px 14px;font-size:12.5px;line-height:1.5;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="intro"><h1>Saldo in-app · djiwatentram.web.id/azzam/saldo</h1><p>Prototipe halaman Dompet di app customer, mengikuti pola Djiwa Travel tetapi memakai design system Djiwa Soft iOS dan ikon 3D Djiwa. Tab Saldo tidak lagi berpindah ke djiwapay.web.id. Tiga layar: Dompet, Riwayat, dan sheet Isi Saldo (opsi B).</p></div>
+<div class="row">
+
+<div class="col"><h2>1 · Dompet</h2><p>Kartu saldo, ringkasan, aksi cepat, dan pintu ke fitur lanjutan di Djiwa Pay.</p>
+<div class="phone"><div class="scroll">
+ <div class="top"><div><small>DJIWA TENTRAM</small><h1>Saldo</h1></div><div class="rb"><img src="assets/bell.webp" alt=""><i class="dot"></i></div></div>
+ <div class="hero">
+  <div class="l"><span>Saldo tersedia</span><span class="pill">Aktif</span></div>
+  <div class="bal"><b>Rp 125.000</b><button aria-label="Sembunyikan"><img src="assets/eye.webp" alt=""></button></div>
+  <div class="sub">Azzam · bisa dipakai untuk semua pesanan</div>
+  <button class="btn"><img src="assets/topup.webp" alt="" width="22">Isi Saldo</button>
+ </div>
+ <div class="stats"><div class="stat"><span>Total masuk</span><b class="in">Rp 450.000</b></div><div class="stat"><span>Total digunakan</span><b>Rp 325.000</b></div></div>
+ <div class="lab"><span>AKSI CEPAT</span></div>
+ <div class="group quick">
+  <div class="q"><div class="ic"><img src="assets/topup.webp" alt=""></div>Isi Saldo</div>
+  <div class="q"><div class="ic"><img src="assets/receipt.webp" alt=""></div>Riwayat</div>
+  <div class="q"><div class="ic"><img src="assets/order.webp" alt=""></div>Pesan</div>
+  <div class="q"><div class="ic"><img src="assets/help.webp" alt=""></div>Bantuan</div>
+ </div>
+ <div class="lab"><span>DI DJIWA PAY</span><a>Buka ›</a></div>
+ <div class="group">
+  <div class="row2"><div class="ic"><img src="assets/send.webp" alt=""></div><div class="t"><b>Kirim saldo</b><span>Ke pengguna Djiwa</span></div><img class="chev" src="assets/chev.webp" alt=""></div>
+  <div class="row2"><div class="ic"><img src="assets/scan.webp" alt=""></div><div class="t"><b>Scan QR</b><span>Bayar via QR</span></div><img class="chev" src="assets/chev.webp" alt=""></div>
+  <div class="row2"><div class="ic"><img src="assets/bills.webp" alt=""></div><div class="t"><b>Bayar &amp; beli (PPOB)</b><span>Pulsa, token PLN, tagihan</span></div><img class="chev" src="assets/chev.webp" alt=""></div>
+ </div>
+ <div class="lab"><span>RIWAYAT TERBARU</span><a>Lihat semua</a></div>
+ <div class="group">
+  <div class="row2"><div class="ic"><img src="assets/down.webp" alt=""></div><div class="t"><b>Top up saldo</b><span>Hari ini, 10.24</span></div><div class="a p">+Rp 100.000</div></div>
+  <div class="row2"><div class="ic"><img src="assets/payment-wallet.webp" alt=""></div><div class="t"><b>Pembayaran pesanan</b><span>Kemarin, 19.02</span></div><div class="a">−Rp 48.000</div></div>
+ </div>
+</div>
+<div class="tab"><div><img src="assets/home.webp" alt="">Home</div><div><img src="assets/order.webp" alt="">Pesan</div><div><img src="assets/community.webp" alt="">Komunitas</div><div class="on"><img src="assets/wallet.webp" alt="">Saldo</div><div><img src="assets/profile.webp" alt="">Profil</div></div>
+</div></div>
+
+<div class="col"><h2>2 · Riwayat saldo</h2><p>Dibuka dari "Riwayat" atau "Lihat semua". Data dari <code>customer-wallet</code> yang sudah ada.</p>
+<div class="phone"><div class="scroll">
+ <div class="top"><div><small>SALDO</small><h1>Riwayat</h1></div><div class="rb"><img src="assets/refresh.webp" alt=""></div></div>
+ <div style="margin-top:18px" class="seg"><span class="on">Semua</span><span>Masuk</span><span>Keluar</span></div>
+ <div class="lab"><span>HARI INI</span></div>
+ <div class="group">
+  <div class="row2"><div class="ic"><img src="assets/down.webp" alt=""></div><div class="t"><b>Top up saldo</b><span>10.24 · Berhasil</span></div><div class="a p">+Rp 100.000</div></div>
+ </div>
+ <div class="lab"><span>KEMARIN</span></div>
+ <div class="group">
+  <div class="row2"><div class="ic"><img src="assets/payment-wallet.webp" alt=""></div><div class="t"><b>Pembayaran dengan Djiwa Pay</b><span>19.02 · Pesanan #2841</span></div><div class="a">−Rp 48.000</div></div>
+  <div class="row2"><div class="ic"><img src="assets/receive.webp" alt=""></div><div class="t"><b>Saldo diterima dari Rina</b><span>14.10</span></div><div class="a p">+Rp 50.000</div></div>
+  <div class="row2"><div class="ic"><img src="assets/refresh.webp" alt=""></div><div class="t"><b>Saldo dikembalikan</b><span>11.30 · Refund</span></div><div class="a p">+Rp 22.000</div></div>
+ </div>
+ <div class="lab"><span>12 NOVEMBER</span></div>
+ <div class="group">
+  <div class="row2"><div class="ic"><img src="assets/payment-wallet.webp" alt=""></div><div class="t"><b>Pembayaran dengan Djiwa Pay</b><span>18.40</span></div><div class="a">−Rp 75.000</div></div>
+ </div>
+</div>
+<div class="tab"><div><img src="assets/home.webp" alt="">Home</div><div><img src="assets/order.webp" alt="">Pesan</div><div><img src="assets/community.webp" alt="">Komunitas</div><div class="on"><img src="assets/wallet.webp" alt="">Saldo</div><div><img src="assets/profile.webp" alt="">Profil</div></div>
+</div></div>
+
+<div class="col"><h2>3 · Isi Saldo (sheet)</h2><p>Opsi B: top up tanpa meninggalkan app. Hanya dikerjakan bila endpoint top up bisa dipanggil dari domain customer.</p>
+<div class="phone"><div class="scroll" style="filter:brightness(.97)">
+ <div class="top"><div><small>DJIWA TENTRAM</small><h1>Saldo</h1></div></div>
+ <div class="hero"><div class="l"><span>Saldo tersedia</span></div><div class="bal"><b>Rp 125.000</b></div></div>
+</div>
+<div class="sheet"><div class="sh"><div class="grab"></div><h3>Isi Saldo</h3><p>Pilih nominal, lalu bayar dengan QRIS.</p>
+ <div class="chips"><span>Rp 25.000</span><span>Rp 50.000</span><span class="on">Rp 100.000</span><span>Rp 200.000</span><span>Rp 500.000</span><span>Lainnya</span></div>
+ <div class="field"><small>Nominal top up</small>Rp 100.000</div>
+ <div class="note">Saldo masuk otomatis setelah pembayaran terkonfirmasi. Saldo bisa dipakai di semua channel Djiwa Tentram.</div>
+ <button class="btn" style="margin-top:18px">Lanjut ke pembayaran</button></div></div>
+</div></div>
+
+</div>
+</body>
+</html>

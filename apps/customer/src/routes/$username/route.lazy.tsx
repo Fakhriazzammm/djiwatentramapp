@@ -19,7 +19,6 @@ import { CustomerHomeHeader } from "@/components/customer/customer-home-sections
 import { JumatBerkahBanner } from "@/components/customer/jumat-berkah";
 import { HomeEditorialCard, HomePayAndCommunity, HomeReorderCard, HomeRestaurantInfo, HomeServiceShelf, HomeTopSellers, HomeWholesaleRow } from "@/components/customer/customer-home-editorial";
 import { CustomerLiveOrderCard } from "@/components/customer/customer-live-order-card";
-import { getCustomerPayPath } from "@/lib/customer-pay-navigation";
 
 type GuestData = {
 	name: string;
@@ -98,7 +97,7 @@ function MemberHomePage() {
 	};
 	const goDjiwaPay = () => {
 		if (typeof window === "undefined") return;
-		window.location.assign(isAuthenticated && customer ? getCustomerPayPath(username) : `/${encodeURIComponent(username)}/saldo`);
+		window.location.assign(`/${encodeURIComponent(username)}/saldo`);
 	};
 	const customerNav = [
 		{ label: "Home", icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname === `/${username}`, onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}`) },
