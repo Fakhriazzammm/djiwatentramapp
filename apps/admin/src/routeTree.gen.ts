@@ -12,7 +12,6 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RegisterRouteImport } from './routes/register'
-import { Route as MenuRouteImport } from './routes/menu'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BookingRouteImport } from './routes/booking'
@@ -150,11 +149,6 @@ const RegisterRoute = RegisterRouteImport.update({
   path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/register.lazy').then((d) => d.Route))
-const MenuRoute = MenuRouteImport.update({
-  id: '/menu',
-  path: '/menu',
-  getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/menu.lazy').then((d) => d.Route))
 const HomeRoute = HomeRouteImport.update({
   id: '/home',
   path: '/home',
@@ -1016,7 +1010,6 @@ export interface FileRoutesByFullPath {
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRouteWithChildren
-  '/menu': typeof MenuRoute
   '/register': typeof RegisterRouteWithChildren
   '/laporan': typeof LaporanLazyRoute
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
@@ -1137,7 +1130,6 @@ export interface FileRoutesByTo {
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRouteWithChildren
-  '/menu': typeof MenuRoute
   '/register': typeof RegisterRouteWithChildren
   '/laporan': typeof LaporanLazyRoute
   '/admin/ai-chat': typeof AdminAiChatRoute
@@ -1248,7 +1240,6 @@ export interface FileRoutesById {
   '/booking': typeof BookingRoute
   '/dashboard': typeof DashboardRoute
   '/home': typeof HomeRouteWithChildren
-  '/menu': typeof MenuRoute
   '/register': typeof RegisterRouteWithChildren
   '/laporan': typeof LaporanLazyRoute
   '/admin/finance': typeof AdminFinanceRouteRouteWithChildren
@@ -1373,7 +1364,6 @@ export interface FileRouteTypes {
     | '/booking'
     | '/dashboard'
     | '/home'
-    | '/menu'
     | '/register'
     | '/laporan'
     | '/admin/finance'
@@ -1494,7 +1484,6 @@ export interface FileRouteTypes {
     | '/booking'
     | '/dashboard'
     | '/home'
-    | '/menu'
     | '/register'
     | '/laporan'
     | '/admin/ai-chat'
@@ -1604,7 +1593,6 @@ export interface FileRouteTypes {
     | '/booking'
     | '/dashboard'
     | '/home'
-    | '/menu'
     | '/register'
     | '/laporan'
     | '/admin/finance'
@@ -1728,7 +1716,6 @@ export interface RootRouteChildren {
   BookingRoute: typeof BookingRoute
   DashboardRoute: typeof DashboardRoute
   HomeRoute: typeof HomeRouteWithChildren
-  MenuRoute: typeof MenuRoute
   RegisterRoute: typeof RegisterRouteWithChildren
   LaporanLazyRoute: typeof LaporanLazyRoute
   AuthGoogleRoute: typeof AuthGoogleRoute
@@ -1751,13 +1738,6 @@ declare module '@tanstack/react-router' {
       path: '/register'
       fullPath: '/register'
       preLoaderRoute: typeof RegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/menu': {
-      id: '/menu'
-      path: '/menu'
-      fullPath: '/menu'
-      preLoaderRoute: typeof MenuRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/home': {
@@ -3060,7 +3040,6 @@ const rootRouteChildren: RootRouteChildren = {
   BookingRoute: BookingRoute,
   DashboardRoute: DashboardRoute,
   HomeRoute: HomeRouteWithChildren,
-  MenuRoute: MenuRoute,
   RegisterRoute: RegisterRouteWithChildren,
   LaporanLazyRoute: LaporanLazyRoute,
   AuthGoogleRoute: AuthGoogleRoute,

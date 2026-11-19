@@ -1618,7 +1618,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 					<div className="flex items-stretch px-2">
 						<Link
 							className="flex flex-1 flex-col items-center justify-center gap-1 py-2 transition-colors active:scale-95"
-							to="/menu"
+							to="/dashboard"
 						>
 							<div className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground">
 								<ArrowLeft className="h-4 w-4" />

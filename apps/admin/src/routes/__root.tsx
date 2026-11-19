@@ -25,9 +25,9 @@ function RootContent() {
 
 		const isPublicPage =
 			location.pathname === "/admin/login" ||
+			location.pathname === "/auth/google" ||
 			location.pathname === "/karyawan/login" ||
 			location.pathname === "/kasir/login" ||
-			location.pathname === "/menu" ||
 			location.pathname === "/laporan" ||
 			location.pathname === "/register" ||
 			location.pathname.startsWith("/register/selesai/");

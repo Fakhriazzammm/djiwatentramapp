@@ -26,7 +26,7 @@ function GoogleCallbackPage() {
 				if (s.linked) {
 					login(s.token);
 					if (s.autoLinked) toast.success("Akun Google terhubung otomatis lewat emailmu.");
-					navigate({ to: readGoogleNext("/admin") as any, replace: true });
+					navigate({ to: readGoogleNext("/dashboard") as any, replace: true });
 					return;
 				}
 				setEmail(s.profile.email);

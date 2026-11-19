@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 import {
 	Bot,
 	BookOpen,
-	Receipt,
 	UserCheck,
 	Sparkles,
 	ChevronsRight,
@@ -27,12 +26,6 @@ const REPEAT_ITEMS: ReadonlyArray<RepeatItem> = [
 		label: "Buku Resep",
 		subtitle: "Resep & panduan",
 		icon: BookOpen,
-	},
-	{
-		to: "/menu",
-		label: "Menu POS",
-		subtitle: "Transaksi cepat",
-		icon: Receipt,
 	},
 	{
 		to: "/attendance",

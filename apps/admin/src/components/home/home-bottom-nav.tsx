@@ -1,7 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import {
 	LayoutDashboard,
-	Receipt,
 	ClipboardList,
 	Sparkles,
 } from "lucide-react";
@@ -21,12 +20,6 @@ const BOTTOM_TABS: ReadonlyArray<BottomTab> = [
 		label: "Home",
 		icon: LayoutDashboard,
 		iconName: "pos-home",
-	},
-	{
-		to: "/menu",
-		label: "POS",
-		icon: Receipt,
-		iconName: "pos-transactions",
 	},
 	{
 		to: "/admin/ai-chat",

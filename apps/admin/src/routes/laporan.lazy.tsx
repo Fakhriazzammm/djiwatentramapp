@@ -425,7 +425,7 @@ function LaporanPage() {
 				<header className="flex items-center gap-3 mb-5">
 					<button
 						type="button"
-						onClick={() => navigate({ to: "/menu" })}
+						onClick={() => navigate({ to: "/dashboard" })}
 						className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-foreground transition-colors hover:bg-muted/80"
 					>
 						<ArrowLeft className="h-5 w-5" />

@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 import {
 	ChevronsRight,
 	ClipboardList,
-	Receipt,
 	TrendingUp,
 	UserCheck,
 } from "lucide-react";
@@ -16,13 +15,6 @@ interface QuickActionItem {
 }
 
 const QUICK_ACTIONS: ReadonlyArray<QuickActionItem> = [
-	{
-		label: "POS",
-		subtitle: "Mulai transaksi",
-		icon: Receipt,
-		gradient: "from-rose-500 to-orange-400",
-		href: "/menu",
-	},
 	{
 		label: "Pesanan",
 		subtitle: "Monitor order",
