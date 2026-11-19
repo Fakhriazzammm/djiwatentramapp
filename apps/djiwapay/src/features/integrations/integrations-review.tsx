@@ -57,7 +57,7 @@ function DetailSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: Fi
   const [cat, setCat] = useState(generic && kind === "in" ? "bonus" : p.categoryId ?? (kind === "in" ? "bonus" : "lainnya"));   // a guessed spending category must not ride along with income
   const [account, setAccount] = useState(p.accountId ?? "tunai");
   const [busy, setBusy] = useState(false);
-  const [source, setSource] = useState(false);
+  const [detail, setDetail] = useState(Boolean(p.details?.items?.length));
   const cats = state.categories.filter((c) => c.income === (kind === "in")), accounts = state.accounts.filter((a) => !a.archived);
   const accountOptions = accounts.some((a) => a.id === account) ? accounts : [...accounts, { id: account, name: accName(state, account) } as (typeof accounts)[number]];
   const act = async (fn: () => Promise<unknown>, done: string) => { setBusy(true); try { await fn(); await onDone(done); } catch { ctx.notify("Gagal memproses. Datanya tetap aman. Coba lagi."); } finally { setBusy(false); } };
@@ -66,21 +66,26 @@ function DetailSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: Fi
     <div className="dpx-rv-hero"><CatIcon cat={catOf(state, cat)} size={56} /><div><b>{tidyTitle(p.details?.description || p.merchant || p.subject || "Email pembayaran")}</b><span>{sourceOf(item)}{p.at ? ` · ${new Date(p.at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}, ${timeOf(p.at)}` : ""}</span></div></div>
     {!((p.amount ?? 0) > 0) ? <div className="dpx-note" style={{ marginTop: 0 }}><Ic n="info" /><div><b>Nominal belum terbaca.</b> Email ini tidak memuat angka yang bisa dibaca otomatis. Coba &quot;Lengkapi dari isi email&quot; di bawah, atau isi nominal sendiri lalu setujui.</div></div> : null}
     {move ? <div className="dpx-note" style={{ marginTop: 0 }}><Ic n="info" /><div><b>Top-up dicatat sebagai pindah dana.</b> Uang pindah dari akun asal ke {p.transfer?.toName ?? "dompet digital"}, jadi tidak dihitung sebagai pemasukan atau pengeluaran.{(p.transfer?.fee ?? 0) > 0 ? ` Biaya ${rupiah(p.transfer?.fee ?? 0)} dicatat sebagai pengeluaran terpisah.` : ""}</div></div> : null}
-    {!move && needsLook(item) ? <div className="dpx-note" style={{ marginTop: 0 }}><Ic n="info" /><div>{p.flags?.length ? <><b>Perlu dicek.</b> {p.flags.join(", ")}</> : <><b>Kategori belum jelas.</b> Pilih yang paling pas di bawah.</>}</div></div> : null}
-    <div className="dpx-glabel">Rincian dari email</div>
-    <div className="dpx-group dpx-white dpx-rv-details"><PaymentDetails details={p.details} /></div>
-    <Btn type="button" className="dpx-linkbtn" disabled={busy} onClick={() => void act(() => rereadItem(item.id), "Rincian dibaca dari isi email")}>{p.details ? "Baca ulang isi email" : "Lengkapi dari isi email"}</Btn>
+    {!move && !generic && needsLook(item) ? <div className="dpx-note" style={{ marginTop: 0 }}><Ic n="info" /><div>{p.flags?.length ? <><b>Perlu dicek.</b> {p.flags.join(", ")}</> : <><b>Kategori belum jelas.</b> Pilih yang paling pas di bawah.</>}</div></div> : null}
     <div className="dpx-glabel">Yang dicatat</div>
-    {generic ? <div className="dpx-note" style={{ marginTop: 0 }}><Ic n="info" /><div><b>Pengirim baru: {p.issuer ?? "belum dikenal"}.</b> Djiwa Pay belum mengenal pengirim ini, jadi kamu yang menentukan: pemasukan atau pengeluaran?{p.suggestFrom === "hint" ? " Dugaan di bawah dari pilihanmu sebelumnya untuk pengirim ini." : p.suggestFrom === "mail" ? " Dugaan di bawah hanya dari kata-kata di email, periksa dulu." : ""}</div></div> : null}
-    {move ? null : <Seg id="rv-kind" label="Jenis" value={(kind ?? "") as "in" | "out"} onChange={(v) => { setKind(v); setCat(v === "in" ? "bonus" : "lainnya"); }} options={[["out", "Pengeluaran"], ["in", "Pemasukan"]] as const} />}
+    {generic ? <div className="dpx-rv-ask"><div className="dpx-rv-ask-h"><b>Pengirim baru: {p.issuer ?? "belum dikenal"}</b><span>Uang ini masuk atau keluar? Kamu yang menentukan.{p.suggestFrom === "hint" ? " Pilihan di bawah dari jawabanmu sebelumnya untuk pengirim ini." : p.suggestFrom === "mail" ? " Pilihan di bawah hanya dugaan dari kata-kata di email, periksa dulu." : ""}</span></div>
+      <div className="dpx-rv-kind" role="group" aria-label="Jenis catatan">
+        <Btn type="button" className={`dpx-rv-kbtn is-out ${kind === "out" ? "is-on" : ""}`} aria-pressed={kind === "out"} onClick={() => { setKind("out"); setCat("lainnya"); }}><Ic n="down" /><b>Pengeluaran</b><small>Uang keluar</small></Btn>
+        <Btn type="button" className={`dpx-rv-kbtn is-in ${kind === "in" ? "is-on" : ""}`} aria-pressed={kind === "in"} onClick={() => { setKind("in"); setCat("bonus"); }}><Ic n="up" /><b>Pemasukan</b><small>Uang masuk</small></Btn></div></div>
+    : move ? null : <Seg id="rv-kind" label="Jenis" value={(kind ?? "") as "in" | "out"} onChange={(v) => { setKind(v); setCat(v === "in" ? "bonus" : "lainnya"); }} options={[["out", "Pengeluaran"], ["in", "Pemasukan"]] as const} />}
     <div style={{ marginTop: 10 }}><MoneyInput value={amount} onChange={setAmount} label="Nominal" /></div>
     <div className="dpx-input" style={{ marginTop: 8 }}><input aria-label="Keterangan" value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="Nama toko atau tujuan" /></div>
     {move ? null : <div className="dpx-glabel">Kategori</div>}
     {move ? null : <div className="dpx-rv-pick" role="group" aria-label="Kategori">{cats.map((c) => <Btn key={c.id} type="button" className={cat === c.id ? "is-on" : ""} aria-pressed={cat === c.id} onClick={() => setCat(c.id)}>{c.name}</Btn>)}</div>}
     {move ? null : <div className="dpx-glabel">Dompet</div>}
     {move ? null : <div className="dpx-rv-pick" role="group" aria-label="Dompet">{accountOptions.map((a) => <Btn key={a.id} type="button" className={account === a.id ? "is-on" : ""} aria-pressed={account === a.id} onClick={() => setAccount(a.id)}>{a.name}</Btn>)}</div>}
-    <Btn type="button" className="dpx-linkbtn" onClick={() => setSource((v) => !v)} aria-expanded={source}>{source ? "Sembunyikan asal email" : "Lihat asal email"}</Btn>
-    {source ? <p className="dpx-sub dpx-rv-source">{p.subject || "Judul tidak tersedia"}</p> : null}
+    <Btn type="button" className="dpx-rv-disc" aria-expanded={detail} onClick={() => setDetail((v) => !v)}><span><b>Detail email</b><small>Rincian, pengirim, dan baca ulang</small></span><Ic n="chev" size="sm" /></Btn>
+    {detail ? <div className="dpx-rv-detail">
+      <div className="dpx-group dpx-white dpx-rv-details"><PaymentDetails details={p.details} /></div>
+      <div className="dpx-rv-tools">
+        <Btn type="button" className="dpx-rv-tool" disabled={busy} onClick={() => void act(() => rereadItem(item.id), "Rincian dibaca dari isi email")}><Ic n="refresh" size="sm" />{p.details ? "Baca ulang isi email" : "Lengkapi dari isi email"}</Btn>
+        <div className="dpx-rv-from"><span>Dari {p.issuer ?? "pengirim"}</span><b>{p.subject || "Judul tidak tersedia"}</b></div>
+      </div></div> : null}
     <div className="dpx-rv-footer">
       <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} disabled={busy} onClick={() => void act(() => rejectItem(item.id), "Email diabaikan")}>Abaikan</Btn>
       <Btn type="button" className="dpx-btn" style={{ margin: 0 }} disabled={busy || !(Number(amount) > 0) || (generic && !kind)} onClick={() => void approve()}>{busy ? "Memproses…" : generic && !kind ? "Pilih jenis dulu" : "Setujui"}</Btn>

@@ -54,12 +54,12 @@
 .dpx-rv-details dt{color:var(--mute)}.dpx-rv-details dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
 .dpx-rv-details .dpx-mail-charge{display:contents}
 .dpx-rv-details .dpx-mail-warning{color:var(--warn);font-size:12.5px}
-.dpx-rv-pick{display:flex;gap:8px;overflow-x:auto;margin:0 -18px;padding:2px 18px 6px;scrollbar-width:none}
+.dpx-rv-pick{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:2px 0 6px}
 .dpx-rv-pick::-webkit-scrollbar{display:none}
 .dpx-rv-pick button{flex:none;min-height:42px;padding:0 16px;border-radius:999px;background:var(--group);font:600 13.5px var(--font);color:var(--mute)}
 .dpx-rv-pick button.is-on{background:var(--navy);color:#fff}
 .dpx-rv-source{overflow-wrap:anywhere;margin:4px 2px 0}
-.dpx-rv-footer{position:sticky;bottom:0;display:grid;grid-template-columns:1fr 1.6fr;gap:10px;margin:16px -18px -6px;padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,rgba(255,255,255,0),#fff 28%)}
+.dpx-rv-footer{position:sticky;bottom:0;display:grid;grid-template-columns:1fr 1.6fr;gap:10px;margin:16px 0 -6px;padding:12px 0 calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,rgba(255,255,255,0),#fff 28%)}
 .dpx-rv-done{display:flex;align-items:center;gap:12px;margin:10px 0 2px;padding:12px 14px;border-radius:18px;background:var(--ok-soft);color:var(--ink)}
 .dpx-rv-done>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .dpx-rv-done b{font:700 14.5px var(--font)}
@@ -86,3 +86,28 @@
 .dpx-rv-shops{margin-top:10px}
 .dpx-rv-grow{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;min-height:80px;text-align:left;border-bottom:1px solid var(--hair)}
 .dpx-rv-grow:last-child{border-bottom:0}
+
+/* Tinjau: pertanyaan jenis untuk pengirim baru, dan detail email yang bisa dilipat */
+.dpx-rv-ask{background:var(--warn-soft,#fff0c9);border-radius:22px;padding:14px;margin:0 0 6px}
+.dpx-rv-ask-h b{display:block;font:700 15px var(--font);color:#5c3b00}
+.dpx-rv-ask-h span{display:block;margin-top:3px;font-size:12.5px;line-height:1.45;color:#6b4300}
+.dpx-rv-kind{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.dpx-rv-kbtn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:84px;padding:10px 6px;border-radius:18px;background:#fff;border:2px solid transparent;box-shadow:0 1px 0 rgba(43,38,32,.06);transition:border-color .2s,background .2s,transform .15s}
+.dpx-rv-kbtn:active{transform:scale(.97)}
+.dpx-rv-kbtn .dpx-ic{width:26px;height:26px;margin-bottom:2px}
+.dpx-rv-kbtn b{font:700 15px var(--font);color:var(--ink)}
+.dpx-rv-kbtn small{font-size:11.5px;color:var(--mute)}
+.dpx-rv-kbtn.is-on.is-out{border-color:var(--danger);background:var(--danger-soft)}
+.dpx-rv-kbtn.is-on.is-in{border-color:var(--ok);background:var(--ok-soft)}
+.dpx-rv-disc{display:flex;align-items:center;gap:10px;width:100%;min-height:54px;margin-top:18px;padding:8px 16px;border-radius:18px;background:var(--group);text-align:left}
+.dpx-rv-disc>span{flex:1;display:flex;flex-direction:column;min-width:0}
+.dpx-rv-disc b{font:700 14.5px var(--font)}
+.dpx-rv-disc small{font-size:12px;color:var(--mute)}
+.dpx-rv-disc .dpx-ic{transition:transform .25s var(--ease,ease)}
+.dpx-rv-disc[aria-expanded="true"] .dpx-ic{transform:rotate(90deg)}
+.dpx-rv-detail{margin-top:10px}
+.dpx-rv-tools{display:flex;flex-direction:column;gap:12px;margin-top:10px}
+.dpx-rv-tool{display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;border-radius:999px;background:#fff;box-shadow:0 0 0 1px var(--line);font:600 14px var(--font);color:var(--navy)}
+.dpx-rv-tool[disabled]{opacity:.5}
+.dpx-rv-from{padding:0 4px;font-size:12.5px;line-height:1.45;color:var(--mute);overflow-wrap:anywhere}
+.dpx-rv-from b{display:block;font-weight:600;color:var(--ink)}
