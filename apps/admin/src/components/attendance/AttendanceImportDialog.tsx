@@ -3,7 +3,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Upload, FileSpreadsheet, Image, FileText, AlertTriangle, Check, X, Loader2, Search, User } from "lucide-react";
 import { createClient } from "@/lib/client";
-import { createClient } from "@/lib/client";
 import { normalizeName } from "@/lib/attendance-schedule-import";
 import type { ParsedAttendanceImport, StaffMapping, ImportOptions, ResolvedImportRow } from "@/lib/attendance-schedule-import";
 import { parseSpreadsheetMatrix, resolveAllStaff, resolveShift } from "@/lib/attendance-schedule-import";
