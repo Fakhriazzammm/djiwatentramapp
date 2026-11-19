@@ -2,7 +2,7 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useHybridStaffLogs } from "@djiwaapps/web-shared";
 import { createClient } from "@djiwaapps/web-shared/lib/client";
-import { DsAvatar, DsGroup, DsGroupLabel, DsIcon, DsRow, DsSegmented, DsTag } from "@djiwaapps/web-shared/components/ds";
+import { DsAvatar, DsButton, DsGroup, DsGroupLabel, DsIcon, DsRow, DsSegmented, DsTag } from "@djiwaapps/web-shared/components/ds";
 import { useStaffProfile } from "../$username.lazy";
 import { hhmm, isOffShift, todayWib, useMonthSchedules } from "@/components/karyawan/use-staff-data";
 
@@ -37,6 +37,11 @@ function JadwalPage() {
 	const first = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
 	const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
 	const selSched = byDate.get(sel);
+	const weekDays = useMemo(() => {
+		const base = Date.parse(`${sel}T00:00:00Z`);
+		const dow = new Date(base).getUTCDay();
+		return Array.from({ length: 7 }, (_, i) => { const t = new Date(base + (i - dow) * 86_400_000); return { key: t.toISOString().slice(0, 10), day: t.getUTCDate(), dow: i }; });
+	}, [sel]);
 	const teamRows = (all ?? []).filter((s) => s.date === sel);
 
 	// Attendance history grouped by WIB date: first check-in, last check-out, late vs schedule.
@@ -72,7 +77,18 @@ function JadwalPage() {
 			<div className="ds-header" style={{ padding: "8px 0 14px" }}><h1 className="ds-grow" style={{ fontSize: 32, letterSpacing: "-.035em" }}>Jadwal</h1></div>
 			<DsSegmented value={tab} onChange={setTab} items={[["pribadi", "Pribadi"], ["tim", "Tim"]]} />
 
-			<div style={{ marginTop: 14 }}>
+			<div className="kx-week" role="group" aria-label="Minggu ini">
+				{weekDays.map((d) => {
+					const sc = byDate.get(d.key);
+					return (
+						<button key={d.key} type="button" data-today={d.key === today ? "" : undefined} data-sel={d.key === sel ? "" : undefined} onClick={() => { setSel(d.key); setMonth(+d.key.slice(5, 7)); setYear(+d.key.slice(0, 4)); }}>
+							<small>{DAYS[d.dow]}</small>{d.day}
+							<i style={{ background: !sc ? "transparent" : isOffShift(sc) ? "#aab0bf" : dot(sc.shift_name) }} />
+						</button>
+					);
+				})}
+			</div>
+			<div style={{ marginTop: 10 }}>
 				<DsGroup white>
 					<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4, marginBottom: 8 }}>
 						<div style={{ display: "flex", alignItems: "center" }}>
@@ -106,14 +122,23 @@ function JadwalPage() {
 					<DsGroup flush>
 						<DsRow icon={<DsIcon name="work-schedule" />} title={selSched ? selSched.shift_name : "Tidak ada jadwal"} sub={selSched && !isOffShift(selSched) ? `${hhmm(selSched.start_time)}${selSched.end_time ? ` – ${hhmm(selSched.end_time)}` : ""}` : "Hari libur"} trail={selSched && !isOffShift(selSched) ? <DsTag tone="ok">Shift</DsTag> : <DsTag>Off</DsTag>} />
 					</DsGroup>
+					<DsButton block variant="ghost" onClick={() => navigate({ to: "/$username/izin" as any, params: { username } } as any)}>Ajukan tukar shift</DsButton>
 				</>
 			) : (
 				<>
 					<DsGroupLabel>Tim · {new Date(sel).toLocaleDateString("id-ID", { day: "numeric", month: "long", timeZone: "UTC" })}</DsGroupLabel>
-					<DsGroup flush>
-						{teamRows.length === 0 && <div className="ds-sub" style={{ padding: "14px 0" }}>Belum ada jadwal tim untuk tanggal ini.</div>}
-						{teamRows.map((s) => <DsRow key={`${s.user_id}-${s.shift_name}`} icon={<DsAvatar name={names[s.user_id ?? ""] ?? "?"} size={40} />} title={names[s.user_id ?? ""] ?? "Karyawan"} trail={<DsTag tone={isOffShift(s) ? undefined : "ok"}>{s.shift_name}</DsTag>} />)}
-					</DsGroup>
+					{teamRows.length === 0 && <DsGroup flush><div className="ds-sub" style={{ padding: "14px 0" }}>Belum ada jadwal tim untuk tanggal ini.</div></DsGroup>}
+					{[...new Set(teamRows.map((r) => r.shift_name))].map((name) => {
+						const rows = teamRows.filter((r) => r.shift_name === name);
+						return (
+							<div key={name}>
+								<DsGroupLabel action={<span className="ds-sub">{rows.length} orang</span>}>{name}{rows[0] && !isOffShift(rows[0]) && rows[0].start_time ? ` ${hhmm(rows[0].start_time)} – ${hhmm(rows[0].end_time)}` : ""}</DsGroupLabel>
+								<DsGroup flush>
+									{rows.map((r) => <DsRow key={`${r.user_id}-${r.shift_name}`} icon={<DsAvatar name={names[r.user_id ?? ""] ?? "?"} size={38} />} title={names[r.user_id ?? ""] ?? "Karyawan"} trail={r.user_id === staff?._id ? <DsTag tone="info">Kamu</DsTag> : undefined} />)}
+								</DsGroup>
+							</div>
+						);
+					})}
 				</>
 			)}
 

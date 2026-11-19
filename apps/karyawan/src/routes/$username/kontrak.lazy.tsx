@@ -2,9 +2,7 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useStaffProfile } from "../$username.lazy";
 import { createClient } from "@djiwaapps/web-shared";
-import { Button } from "@djiwaapps/web-shared/components/ui/button";
-import { FileText, Download, ExternalLink } from "lucide-react";
-import { toast } from "sonner";
+import { DsEmpty, DsGroup, DsIcon, DsIconButton, DsNote, DsPageTitle, DsRow, DsTag, ds3d } from "@djiwaapps/web-shared/components/ds";
 
 function KontrakPage() {
 	const { staff, isUnlocked } = useStaffProfile();
@@ -41,68 +39,44 @@ function KontrakPage() {
 	const isActive = !isExpired && isContractSigned;
 	const registrationNumber = (contractData as any)?.raw?.registrationNumber;
 
+const fd = (d?: string | null) => (d ? new Date(d).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "—");
+	const emp = (contractData as any)?.employment ?? {};
+	const daysLeft = computedEndDate ? Math.max(0, Math.ceil((new Date(computedEndDate).getTime() - Date.now()) / 86_400_000)) : null;
 	return (
-		<div className="mx-auto max-w-lg py-4">
-			<div className="space-y-2">
-				<h3 className="flex items-center gap-1.5 px-2 font-bold uppercase tracking-wider text-[10px]">
-					<FileText className="h-3 w-3 text-emerald-500" />
-					Kontrak Kerja
-				</h3>
-				<div className="karyawan-card border bg-card p-5">
-					{isLoadingContract ? (
-						<div className="animate-pulse space-y-2">
-							<div className="h-3 w-40 rounded bg-muted" />
-							<div className="h-3 w-32 rounded bg-muted" />
-							<div className="h-8 w-full rounded-lg bg-muted mt-3" />
+		<>
+			<DsPageTitle left={<DsIconButton aria-label="Kembali" onClick={() => window.history.back()}>‹</DsIconButton>}>Kontrak</DsPageTitle>
+			{isLoadingContract ? (
+				<DsGroup white><DsRow title="Memuat kontrak…" /></DsGroup>
+			) : !contractData ? (
+				<DsEmpty icon={ds3d("employee-contract")}>Belum ada kontrak kerja. Kontrak aktif akan tersedia di sini.</DsEmpty>
+			) : (
+				<>
+					<DsGroup>
+						<div className="kx-cen">
+							<img src={ds3d("employee-contract")} alt="" style={{ width: 64, height: 64, objectFit: "contain", margin: "0 auto" }} />
+							<div style={{ margin: "4px 0" }}><DsTag tone={isActive ? "ok" : isAwaitingSignature ? "warn" : "danger"}>{isActive ? "Aktif" : isAwaitingSignature ? "Menunggu TTD" : "Berakhir"}</DsTag></div>
+							<h2 className="ds-title" style={{ margin: "4px 0 2px", fontSize: 20 }}>{emp.type || "PKWT"}{staff?.roleName ? ` · ${staff.roleName}` : ""}</h2>
+							<div className="ds-sub">{fd(startDate)} – {fd(computedEndDate)}{isActive && daysLeft !== null ? ` · sisa ${daysLeft} hari` : ""}</div>
 						</div>
-					) : contractData ? (
-						<>
-							<div className="space-y-2">
-								<div className="flex items-center justify-between">
-									<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Status</span>
-									<span className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${isActive ? "bg-emerald-100 text-emerald-700" : isAwaitingSignature ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`}>{isActive ? "Aktif" : isAwaitingSignature ? "Menunggu TTD" : "Berakhir"}</span>
-								</div>
-								<div className="flex items-center justify-between">
-									<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Jenis</span>
-									<span className="text-xs font-bold">{((contractData as any)?.employment?.type) || "PKWT - Full Time"}</span>
-								</div>
-								<div className="flex items-center justify-between">
-									<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Mulai</span>
-									<span className="text-xs font-bold">{((contractData as any)?.employment?.startDate) ? new Date((contractData as any).employment.startDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "—"}</span>
-								</div>
-								<div className="flex items-center justify-between">
-									<span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Berakhir</span>
-									<span className="text-xs font-bold">{computedEndDate ? new Date(computedEndDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : status === "expired" || status === "completed" ? "Selesai" : "—"}</span>
-								</div>
-							</div>
-							{contractData.contract_pdf_url ? (
-								<div className="mt-4 grid grid-cols-2 gap-2">
-									<Button variant="outline" size="sm" className="karyawan-control w-full text-xs font-bold" onClick={() => window.open(contractData.contract_pdf_url, "_blank", "noopener,noreferrer")}>
-										<ExternalLink className="mr-1.5 h-3 w-3" />
-										Baca Kontrak
-									</Button>
-									<a href={contractData.contract_pdf_url} target="_blank" rel="noopener noreferrer" download className="karyawan-control inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-3 text-xs font-bold">
-										<Download className="mr-1.5 h-3 w-3" />
-										Download PDF
-									</a>
-								</div>
-							) : isAwaitingSignature && registrationNumber ? (
-								<a href={`https://pos.djiwatentram.web.id/register/selesai/${registrationNumber}`} className="karyawan-control mt-4 inline-flex h-10 w-full items-center justify-center rounded-md bg-emerald-600 px-3 text-xs font-bold text-white">
-									<ExternalLink className="mr-1.5 h-3 w-3" />
-									Buka & Tanda Tangani Kontrak
-								</a>
-							) : (
-								<p className="mt-4 rounded-lg bg-muted/50 px-3 py-2 text-center text-[11px] text-muted-foreground">File PDF kontrak belum tersedia.</p>
-							)}
-						</>
-					) : (
-						<div className="py-8 text-center">
-							<FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" /><p className="text-sm font-bold">Belum ada kontrak kerja</p><p className="mt-1 text-xs text-muted-foreground">Kontrak aktif akan tersedia di halaman ini.</p>
-						</div>
+					</DsGroup>
+					<DsGroup>
+						{contractData.contract_pdf_url ? (
+							<>
+								<DsRow icon={<DsIcon name="employee-contract" />} title="Baca kontrak" sub="Buka dokumen PDF" chevron onClick={() => window.open(contractData.contract_pdf_url, "_blank", "noopener,noreferrer")} />
+								<DsRow icon={<DsIcon name="employee-payslip" />} title="Unduh PDF" sub="Simpan ke perangkat" chevron onClick={() => window.open(contractData.contract_pdf_url, "_blank", "noopener,noreferrer")} />
+							</>
+						) : isAwaitingSignature && registrationNumber ? (
+							<DsRow icon={<DsIcon name="employee-contract" />} title="Tanda tangani kontrak" sub="Buka halaman penandatanganan" chevron onClick={() => { window.location.href = `https://pos.djiwatentram.web.id/register/selesai/${registrationNumber}`; }} />
+						) : (
+							<DsRow icon={<DsIcon name="employee-contract" />} title="File PDF belum tersedia" sub="Hubungi manager bila perlu" />
+						)}
+					</DsGroup>
+					{isActive && daysLeft !== null && daysLeft <= 60 && (
+						<DsNote icon={<DsIcon name="employee-schedule" />}><b>Kontrak berakhir {fd(computedEndDate)}</b>Perpanjangan dibahas dengan manager.</DsNote>
 					)}
-				</div>
-			</div>
-		</div>
+				</>
+			)}
+		</>
 	);
 }
 

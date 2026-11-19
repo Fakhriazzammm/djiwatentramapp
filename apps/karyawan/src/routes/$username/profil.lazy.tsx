@@ -226,7 +226,7 @@ function ProfilPage() {
 					</DsGroup>
 					<DsGroupLabel>Keamanan</DsGroupLabel><DsGroup flush>
 						<DsRow icon={<DsIcon name="employee-profile" />} title="PIN absen" sub={requiresPinChange ? "Masih PIN default" : "Gunakan PIN untuk absensi"} trail={requiresPinChange ? <DsTag tone="warn">Ganti</DsTag> : undefined} onClick={() => { setSection("pin"); setShowChangePin(true); }} chevron />
-						<DsRow icon={<DsIcon name="employee-attendance-check-in" />} title="Scan wajah" sub="Daftar atau perbarui untuk absen" onClick={() => navigate({to:`/${username}/absensi`,search:{enroll:1}} as any)} chevron />
+						<DsRow icon={<DsIcon name="employee-attendance-check-in" />} title="Wajah" sub={authUser?.hasFace ? "Terdaftar · dipakai untuk absen" : "Belum terdaftar · absen memakai PIN"} trail={<DsTag tone={authUser?.hasFace ? "ok" : "warn"}>{authUser?.hasFace ? "Aktif" : "Daftar"}</DsTag>} onClick={() => navigate({to:`/${username}/absensi`,search:{enroll:1}} as any)} chevron />
 					</DsGroup>
 					<DsGroupLabel>Pekerjaan</DsGroupLabel><DsGroup flush>
 						<DsRow title="Status" trail={raw?.employmentType || "—"} />
@@ -235,7 +235,7 @@ function ProfilPage() {
 					<DsGroupLabel>Lainnya</DsGroupLabel><DsGroup flush>
 						<DsRow icon={<DsIcon name="employee-profile" />} title="Data pribadi" onClick={() => {setSection("data");setIsEditMode(false);}} chevron />
 						<DsRow icon={<DsIcon name="employee-contract" />} title="Kontrak kerja" onClick={() => navigate({to:`/${username}/kontrak`} as any)} chevron />
-						<DsRow icon={<DsIcon name="employee-telegram" />} title="Bot & grup Telegram" onClick={() => setSection("telegram")} chevron />
+						<DsRow icon={<DsIcon name="employee-telegram" />} title="Bot & grup Telegram" sub="Cadangan bila absen di app tak bisa" onClick={() => setSection("telegram")} chevron />
 					</DsGroup>
 					<DsButton variant="ghost" block style={{color:"var(--ds-danger)"}} onClick={async () => {await logoutYumi(); window.location.replace("/login");}}><LogOut size={18}/> Keluar</DsButton>
 				</>;

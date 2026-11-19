@@ -11,12 +11,8 @@ import {
 	generatePayslipPDF,
 } from "@djiwaapps/web-shared";
 import type { StaffRoleBonusConfig, PayslipBreakdown } from "@djiwaapps/web-shared";
-import { Button } from "@djiwaapps/web-shared/components/ui/button";
-import { cn } from "@djiwaapps/web-shared/lib/utils";
-import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
-import {
-	FileText, Download, ChevronDown, Calendar,
-} from "lucide-react";
+import { DsButton, DsEmpty, DsGroup, DsGroupLabel, DsIconButton, DsPageTitle, DsPills, DsTag, ds3d } from "@djiwaapps/web-shared/components/ds";
+import { Skeleton } from "@djiwaapps/web-shared";
 import { toast } from "sonner";
 
 const formatCurrency = (amount: number) => {
@@ -46,157 +42,48 @@ function normPeriod(p: string): string {
 	return lower;
 }
 
-// ── Payslip Detail Card ──
-function PayslipDetailCard({
-	payslip, onDownload,
-}: {
-	payslip: any;
-	onDownload: (p: any) => void;
-}) {
-	const [expandedBonus, setExpandedBonus] = useState(false);
-	const [expandedShifts, setExpandedShifts] = useState(false);
+// ── Payslip Detail Card (DS) ──
+const SLIP_TAG: Record<string, ["ok" | "warn" | "info" | "danger" | undefined, string]> = { generated: ["info", "Dibuat"], sent: ["ok", "Terkirim"], acknowledged: ["ok", "Diterima"], disputed: ["danger", "Dispute"], draft: [undefined, "Draf"] };
+
+function PayslipDetailCard({ payslip, onDownload }: { payslip: any; onDownload: (p: any) => void }) {
 	const b = payslip.breakdown ?? {};
-	const badgeMap: Record<string, { label: string; cls: string }> = {
-		generated: { label: "Generated", cls: "bg-gray-100 text-gray-600" },
-		live: { label: "Realtime", cls: "bg-blue-100 text-blue-600" },
-		sent: { label: "Dikirim", cls: "bg-blue-100 text-blue-600" },
-		acknowledged: { label: "Diterima", cls: "bg-emerald-100 text-emerald-600" },
-		disputed: { label: "Dispute", cls: "bg-red-100 text-red-600" },
-	};
-	const badge = badgeMap[payslip.status] ?? badgeMap.generated;
-
-	const items: { label: string; value: number; color?: string }[] = [];
-	if ((b.monthly_fixed_salary ?? 0) > 0) items.push({ label: "Gaji Tetap", value: b.monthly_fixed_salary });
-	const shiftWorkDates = b.shift_work_dates ?? [];
-	if ((b.total_allowance ?? 0) > 0) items.push({ label: "Tunjangan Transportasi", value: b.total_allowance });
-	const bonusTarget = b.bonus_target ?? {};
-	const bonusShifts = bonusTarget.shifts ?? [];
-	if ((b.total_penalty ?? 0) > 0) items.push({ label: "Denda Keterlambatan", value: -Math.abs(b.total_penalty), color: "text-red-600" });
-
+	const tag = SLIP_TAG[payslip.status] ?? SLIP_TAG.generated;
+	const income: [string, number][] = [];
+	if ((b.monthly_fixed_salary ?? 0) > 0) income.push(["Gaji pokok", b.monthly_fixed_salary]);
+	if ((b.total_shift_pay ?? 0) > 0) income.push([`Gaji shift (${b.shifts ?? 0})`, b.total_shift_pay]);
+	if ((b.total_allowance ?? 0) > 0) income.push(["Tunjangan", b.total_allowance]);
+	if ((b.total_overtime_pay ?? b.overtime_pay ?? 0) > 0) income.push(["Lembur", b.total_overtime_pay ?? b.overtime_pay]);
+	const bonus = b.bonus_target ?? {};
+	const bonusTotal = Number(bonus.total ?? bonus.total_bonus ?? b.total_bonus ?? 0);
+	if (bonusTotal > 0) income.push(["Bonus target", bonusTotal]);
+	const deductions = Number(payslip.deductions ?? 0);
+	const kv = (l: string, v: number, neg = false) => <div className="kx-kv" key={l}><span>{l}</span><b className="tabular-nums" style={neg ? { color: "var(--ds-danger)" } : undefined}>{neg ? "−" : ""}{formatCurrency(Math.abs(v))}</b></div>;
 	return (
-		<div className="karyawan-card group border bg-card p-5 transition-all hover:border-primary/30 hover:bg-primary/[0.02]">
-			<div className="flex items-start justify-between mb-3">
-				<div className="flex items-center gap-2 min-w-0">
-					<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-						<FileText className="h-4 w-4" />
-					</div>
-					<div className="min-w-0">
-						<h2 className="text-sm font-bold [overflow-wrap:anywhere]">{payslip.period_name}</h2>
-						<p className="truncate text-[10px] text-muted-foreground">{b.role_name ?? payslip.role_name ?? ""}</p>
-					</div>
+		<>
+			<DsGroup>
+				<div className="kx-cen">
+					<img src={ds3d("employee-payslip")} alt="" style={{ width: 64, height: 64, objectFit: "contain", margin: "0 auto" }} />
+					<DsTag tone={tag[0]}>{tag[1]}{payslip.acknowledged_at ? ` · ${new Date(payslip.acknowledged_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}` : payslip.sent_at ? ` · ${new Date(payslip.sent_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}` : ""}</DsTag>
+					<div className="ds-display" style={{ marginTop: 8 }}>{formatCurrency(payslip.net_pay ?? 0)}</div>
+					<div className="ds-sub">Gaji bersih · {payslip.period_name}{(b.role_name ?? payslip.role_name) ? ` · ${b.role_name ?? payslip.role_name}` : ""}</div>
 				</div>
-				<span className={`shrink-0 rounded-md px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider ${badge.cls}`}>
-					{badge.label}
-				</span>
-			</div>
-
-			{items.length > 0 && (
-				<div className="space-y-1 mb-3">
-					{items.map((item, i) => (
-						<div key={i} className="flex justify-between text-[11px]">
-							<span className="text-muted-foreground">{item.label}</span>
-							<span className={`font-semibold tabular-nums ${item.color ?? ""}`}>
-								{item.value < 0 ? `-${formatCurrency(Math.abs(item.value))}` : formatCurrency(item.value)}
-							</span>
-						</div>
-					))}
-				</div>
+			</DsGroup>
+			<DsGroupLabel>Pendapatan</DsGroupLabel>
+			<DsGroup>
+				{income.length === 0 ? kv("Total kotor", payslip.gross_pay ?? 0) : income.map(([l, v]) => kv(l, v))}
+				{income.length > 0 && kv("Total kotor", payslip.gross_pay ?? 0)}
+			</DsGroup>
+			{(deductions > 0 || (b.total_penalty ?? 0) > 0) && (
+				<>
+					<DsGroupLabel>Potongan</DsGroupLabel>
+					<DsGroup>{(b.total_penalty ?? 0) > 0 && kv("Denda keterlambatan", b.total_penalty, true)}{deductions > 0 && kv("Total potongan", deductions, true)}</DsGroup>
+				</>
 			)}
-
-			{(b.total_shift_pay ?? 0) > 0 && (
-				<div className="space-y-1 mb-3">
-					<button onClick={() => setExpandedShifts(!expandedShifts)} className="flex w-full items-center justify-between text-[11px] group/collapse">
-						<span className="flex items-center gap-1 text-muted-foreground">
-							Gaji Shift ({b.shifts ?? 0} shift)
-							{shiftWorkDates.length > 0 && <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${expandedShifts ? 'rotate-180' : ''}`} />}
-						</span>
-						<span className="font-semibold tabular-nums">{formatCurrency(b.total_shift_pay ?? 0)}</span>
-					</button>
-					<AnimatePresence initial={false}>
-						{expandedShifts && shiftWorkDates.length > 0 && (
-							<motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-								<div className="mt-1.5 pl-2 border-l-2 border-primary/30 space-y-1">
-									{shiftWorkDates.map((dateStr: string, i: number) => (
-										<div key={i} className="flex items-center justify-between text-[10px]">
-											<div className="flex items-center gap-1.5 min-w-0">
-												<span className="w-1 h-1 rounded-full bg-primary/40 shrink-0" />
-												<span className="text-muted-foreground">{dateStr}</span>
-											</div>
-											<span className="font-semibold shrink-0 ml-2">{formatCurrency(b.base_shift_rate ?? 0)}/shift</span>
-										</div>
-									))}
-								</div>
-							</motion.div>
-						)}
-					</AnimatePresence>
-				</div>
-			)}
-
-			{(bonusTarget.total_bonus ?? 0) > 0 && (
-				<div className="space-y-1 mb-3">
-					<button onClick={() => setExpandedBonus(!expandedBonus)} className="flex w-full items-center justify-between text-[11px] group/collapse">
-						<span className="flex items-center gap-1 text-muted-foreground">
-							Bonus Target
-							{bonusShifts.length > 0 && <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${expandedBonus ? 'rotate-180' : ''}`} />}
-						</span>
-						<span className="font-semibold tabular-nums text-emerald-600">{formatCurrency(bonusTarget.total_bonus ?? 0)}</span>
-					</button>
-					<AnimatePresence initial={false}>
-						{expandedBonus && bonusShifts.length > 0 && (
-							<motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-								<div className="mt-1.5 pl-2 border-l-2 border-emerald-200 space-y-1">
-									{bonusShifts.map((s: any, i: number) => (
-										<div key={i} className="flex items-center justify-between text-[10px]">
-											<div className="flex items-center gap-1.5 min-w-0">
-												<span className="w-1 h-1 rounded-full bg-emerald-400 shrink-0" />
-												<span className="text-muted-foreground truncate">{s.shiftName}</span>
-												<span className="text-muted-foreground/50 shrink-0">• {s.date}</span>
-											</div>
-											<span className="font-semibold text-emerald-600 shrink-0 ml-2">+{formatCurrency(s.bonus)}</span>
-										</div>
-									))}
-								</div>
-							</motion.div>
-						)}
-					</AnimatePresence>
-				</div>
-			)}
-
-			<div className="border-t border-border/50 my-2" />
-			<div className="space-y-1 mb-3">
-				<div className="flex justify-between text-[11px]">
-					<span className="text-muted-foreground">Total Gross</span>
-					<span className="font-semibold tabular-nums">{formatCurrency(payslip.gross_pay ?? 0)}</span>
-				</div>
-				{(payslip.deductions ?? 0) > 0 && (
-					<div className="flex justify-between text-[11px]">
-						<span className="text-muted-foreground">Potongan</span>
-						<span className="font-semibold tabular-nums text-red-600">-{formatCurrency(payslip.deductions)}</span>
-					</div>
-				)}
-				<div className="flex justify-between text-sm font-bold pt-1 border-t border-border/30">
-					<span>Net Diterima</span>
-					<span className="text-emerald-600 tabular-nums">{formatCurrency(payslip.net_pay ?? 0)}</span>
-				</div>
-			</div>
-
-			{(payslip.sent_at || payslip.acknowledged_at) && (
-				<p className="text-[11px] text-muted-foreground/60 mb-2">
-					{payslip.sent_at && `Dikirim: ${new Date(payslip.sent_at).toLocaleDateString("id-ID")}`}
-					{payslip.sent_at && payslip.acknowledged_at && " · "}
-					{payslip.acknowledged_at && `Diterima: ${new Date(payslip.acknowledged_at).toLocaleDateString("id-ID")}`}
-				</p>
-			)}
-
-			<Button variant="outline" size="sm" className="karyawan-control w-full text-xs font-bold" onClick={() => onDownload(payslip)}>
-				<Download className="mr-1.5 h-3 w-3" />
-				Download PDF
-			</Button>
-		</div>
+			<DsButton block onClick={() => onDownload(payslip)}>Unduh PDF</DsButton>
+		</>
 	);
 }
 
-// ── Slip Gaji Page ──
 function SlipGajiPage() {
 	const { staff, username, isUnlocked } = useStaffProfile();
 	const now = new Date();
@@ -376,115 +263,19 @@ function SlipGajiPage() {
 	}, [storeName, storeAddress]);
 
 	return (
-		<div className="space-y-4">
-			{/* Period Selector */}
-			<div className="flex items-center justify-between gap-2 px-2">
-				<div className="flex items-center gap-1.5">
-					<Calendar className="h-3 w-3 text-primary" />
-					<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Periode</span>
-				</div>
-				<div className="flex items-center gap-1.5">
-					<select 
-						className="bg-transparent text-xs font-black focus:outline-none py-0.5"
-						value={selectedMonth}
-						onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-					>
-						{MONTHS.map((m, i) => (<option key={m} value={i + 1}>{m}</option>))}
-					</select>
-					<select 
-						className="bg-transparent text-xs font-black focus:outline-none py-0.5"
-						value={selectedYear}
-						onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-					>
-						{[2024, 2025, 2026].map(y => (<option key={y} value={y}>{y}</option>))}
-					</select>
-				</div>
-			</div>
-
-			{/* Slip Gaji */}
-			<div className="space-y-2">
-				<div className="flex items-center justify-between px-2">
-					<h3 className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[10px]">
-						<FileText className="h-3 w-3 text-primary" />
-						Slip Gaji
-					</h3>
-				</div>
-				<div className="space-y-2">
-					{!myPayslips && !livePayslip ? (
-						<>
-							{[1, 2, 3].map((i) => (
-								<div key={i} className="animate-pulse rounded-xl border bg-card p-4 space-y-3">
-									<div className="flex items-center gap-2"><div className="h-8 w-8 rounded-lg bg-muted" /><div className="space-y-1 flex-1"><div className="h-3 w-32 rounded bg-muted" /><div className="h-2.5 w-20 rounded bg-muted" /></div><div className="h-5 w-16 rounded bg-muted" /></div>
-									{[1, 2, 3].map((j) => <div key={j} className="flex justify-between"><div className="h-3 w-28 rounded bg-muted" /><div className="h-3 w-16 rounded bg-muted" /></div>)}
-									<div className="h-8 w-full rounded-lg bg-muted" />
-								</div>
-							))}
-						</>
-					) : allPayslips.length === 0 ? (
-						<div className="karyawan-card border bg-card p-8 text-center">
-							<FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
-							<p className="text-sm font-bold">Belum ada slip gaji</p><p className="mt-1 text-xs text-muted-foreground">Slip yang tersedia akan tampil di sini.</p>
-						</div>
-					) : (
-						<>
-							{/* Timeline Chips */}
-							<LayoutGroup id="payslip-chips">
-								<div className="flex gap-1.5 overflow-x-auto [-webkit-overflow-scrolling:touch] scrollbar-none">
-									{allPayslips.map((p: any, i: number) => {
-										const isActive = selectedPayslipIdx === i;
-										const month = (p.period_name || "").split(" ")[0]?.substring(0, 3) || "";
-										const net = p.net_pay ?? 0;
-										const netShort = net >= 1_000_000
-											? `${(net / 1_000_000).toFixed(1)}jt`
-											: net >= 1_000
-												? `${(net / 1_000).toFixed(0)}rb`
-												: `${net}`;
-										return (
-											<motion.button
-												key={p.id || i}
-												layout
-												type="button"
-												onClick={() => setSelectedPayslipIdx(i)}
-												whileTap={{ scale: 0.92 }}
-												className={cn(
-													"relative flex min-h-11 shrink-0 flex-col items-center rounded-[14px] border px-3 py-1 transition-colors",
-													isActive
-														? "bg-primary/10 border-primary/30 text-primary"
-														: "bg-card border-border/50 text-muted-foreground hover:border-border"
-												)}
-											>
-												<span className="text-[10px] font-bold uppercase leading-tight">{month}</span>
-												<span className="text-[10px] font-black tabular-nums leading-tight">{netShort}</span>
-												{isActive && (
-													<motion.div
-														layoutId="chip-indicator"
-														className="absolute -bottom-px left-1 right-1 h-0.5 rounded-full bg-primary"
-														transition={{ type: "spring", stiffness: 500, damping: 35 }}
-													/>
-												)}
-											</motion.button>
-										);
-									})}
-								</div>
-							</LayoutGroup>
-
-							{/* Detail Card */}
-							<AnimatePresence mode="wait">
-								<motion.div
-									key={selectedPayslipIdx}
-									initial={{ opacity: 0, y: 6 }}
-									animate={{ opacity: 1, y: 0 }}
-									exit={{ opacity: 0, y: -6 }}
-									transition={{ duration: 0.15 }}
-								>
-									<PayslipDetailCard payslip={allPayslips[selectedPayslipIdx]} onDownload={handleDownloadPayslip} />
-								</motion.div>
-							</AnimatePresence>
-						</>
-					)}
-				</div>
-			</div>
-		</div>
+		<>
+			<DsPageTitle left={<DsIconButton aria-label="Kembali" onClick={() => window.history.back()}>‹</DsIconButton>}>Slip gaji</DsPageTitle>
+			{!myPayslips && !livePayslip ? (
+				<div className="space-y-2" role="status" aria-label="Memuat slip"><Skeleton className="h-40 rounded-3xl" /><Skeleton className="h-28 rounded-3xl" /></div>
+			) : allPayslips.length === 0 ? (
+				<DsEmpty icon={ds3d("employee-payslip")}>Belum ada slip gaji. Slip yang tersedia akan tampil di sini.</DsEmpty>
+			) : (
+				<>
+					<DsPills value={String(selectedPayslipIdx)} onChange={(v) => setSelectedPayslipIdx(Number(v))} items={allPayslips.map((p: any, i: number): [string, string] => [String(i), `${(p.period_name || "").split(" ")[0]?.substring(0, 3) || ""} · ${(p.net_pay ?? 0) >= 1_000_000 ? `${((p.net_pay ?? 0) / 1_000_000).toFixed(1)}jt` : `${Math.round((p.net_pay ?? 0) / 1000)}rb`}`])} />
+					<PayslipDetailCard payslip={allPayslips[selectedPayslipIdx]} onDownload={handleDownloadPayslip} />
+				</>
+			)}
+		</>
 	);
 }
 

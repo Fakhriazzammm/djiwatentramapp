@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useHybridCurrentlyInStore, useHybridStaffLogs, useHybridStaffStats } from "@djiwaapps/web-shared";
-import { DsAsk, DsAvatar, DsBar, DsButton, DsGroup, DsHeader, DsIcon, DsIconButton, DsNote, DsPromo, DsRow, DsSection, DsTag, DsTiles, ds3d } from "@djiwaapps/web-shared/components/ds";
+import { DsAsk, DsAvatar, DsButton, DsGroup, DsHeader, DsIcon, DsIconButton, DsNote, DsRow, DsSection, DsTag, ds3d } from "@djiwaapps/web-shared/components/ds";
 import { Bell, Eye, EyeOff } from "lucide-react";
 import { useStaffProfile } from "../$username.lazy";
 import { fmtClock, hhmm, isOffShift, rupiah, todayWib, useLatestRunItem, useMonthSchedules, useTopAnnouncement } from "@/components/karyawan/use-staff-data";
@@ -21,8 +21,7 @@ function BerandaPage() {
 	const prevMonth = month === 1 ? 12 : month - 1, prevYear = month === 1 ? year - 1 : year;
 
 	const stats = useHybridStaffStats(staff ? { userId: staff._id, month, year, refreshTrigger: refreshKey } : undefined);
-	const prevStats = useHybridStaffStats(staff ? { userId: staff._id, month: prevMonth, year: prevYear } : undefined);
-	const logs = useHybridStaffLogs(staff ? { userId: staff._id, month, year, refreshTrigger: refreshKey } : undefined);
+		const logs = useHybridStaffLogs(staff ? { userId: staff._id, month, year, refreshTrigger: refreshKey } : undefined);
 	const currentlyIn = useHybridCurrentlyInStore(refreshKey);
 	const run = useLatestRunItem(staff?._id);
 	const schedules = useMonthSchedules(year, month, staff?._id);
@@ -54,7 +53,10 @@ function BerandaPage() {
 	const go = (to: string) => navigate({ to: `/$username/${to}` as any, params: { username } });
 
 	const net = run ? run.net_pay || run.gross_pay : 0;
-	const rate = Number(stats?.attendanceRate ?? 0);
+	const lateCount = (Array.isArray(logs) ? logs : []).filter((l: any) => l.type === "check_in" && (Number(l.penaltyAmount ?? 0) > 0 || /terlambat \d+m/.test(String(l.notes ?? "")))).length;
+	const dayOf = (offset: number) => new Date(Date.parse(`${today}T00:00:00+07:00`) + offset * 86_400_000 + 7 * 3600_000).toISOString().slice(0, 10);
+	const week = [0, 1, 2].map((o) => ({ date: dayOf(o), s: schedules?.find((x) => x.date === dayOf(o)) ?? null }));
+	const tomorrow = week[1];
 
 	return (
 		<div>
@@ -72,8 +74,7 @@ function BerandaPage() {
 				</div>
 				<div className="ds-display">{run === undefined ? "…" : mask(rupiah(net))}</div>
 				<div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
-					{!!run?.bonus_pay && <DsTag tone="ok">+{rupiah(run.bonus_pay)} bonus</DsTag>}
-					<DsTag>{stats?.sessionCount ?? 0} shift</DsTag>
+					<span className="kx-pill">{stats?.sessionCount ?? 0} shift · {lateCount} terlambat</span>
 				</div>
 			</div>
 
@@ -117,6 +118,12 @@ function BerandaPage() {
 					<b>Belum absen keluar</b>Kamu absen masuk {new Date(att.forgotOut.date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })} tanpa absen keluar. Ajukan koreksi.
 				</DsNote>
 			)}
+			{!isIn && !finished && tomorrow && (
+				<DsNote tone="info" icon={<DsIcon name="employee-schedule" />}>
+					<b>{tomorrow.s && !isOffShift(tomorrow.s) ? `Besok ${tomorrow.s.shift_name}` : "Besok libur"}</b>
+					{week[2].s ? `${new Date(`${week[2].date}T00:00:00+07:00`).toLocaleDateString("id-ID", { weekday: "long", timeZone: "Asia/Jakarta" })}: ${isOffShift(week[2].s) ? "Off" : `${week[2].s.shift_name} ${hhmm(week[2].s.start_time)}`}` : "Cek menu Jadwal"}
+				</DsNote>
+			)}
 			<DsAsk onClick={() => go("izin")}>Butuh izin, cuti, atau tukar shift?</DsAsk>
 
 			{requiresPinChange && (
@@ -125,40 +132,28 @@ function BerandaPage() {
 				</DsNote>
 			)}
 
-			<DsSection title="Hari ini" action={<button type="button" onClick={() => go("jadwal")}>Jadwal</button>} />
-			<DsGroup>
-				<DsRow icon={<DsIcon name="work-schedule" />} title={sched ? sched.shift_name : "Tidak ada jadwal"} sub={sched ? `${sched.start_time ? `${hhmm(sched.start_time)} – ${hhmm(sched.end_time)}` : "Jam sesuai jadwal"}` : "Hari libur"} chevron onClick={() => go("jadwal")} />
-				<DsRow icon={<DsIcon name="notifications-alerts" />} title="Informasi penting" sub={announcement ? (announcement.subtitle || announcement.title) : "Belum ada pengumuman"} chevron onClick={() => go("notifikasi")} />
-				{isIn && <DsRow icon={<DsIcon name="stock-opname" />} title="Closing shift" sub="Opname & kebersihan · wajib sebelum absen keluar" trail={<DsTag tone="warn">Belum</DsTag>} onClick={() => go("absen-keluar")} />}
-			</DsGroup>
-
-			<DsSection title="Bulan ini" action={<button type="button" onClick={() => go("gaji")}>Rincian</button>} />
-			<DsGroup>
-				<DsTiles items={[{ value: stats?.sessionCount ?? 0, label: "Shift" }, { value: `${rate}%`, label: "Hadir" }, { value: stats?.daysWorked ?? 0, label: "Hari" }]} />
-				<div style={{ marginTop: 14 }}>
-					<div style={{ display: "flex", justifyContent: "space-between" }}><b>Kehadiran bulan ini</b><span className="ds-sub">{rate}%</span></div>
-					<div style={{ marginTop: 8 }}><DsBar value={rate} /></div>
-				</div>
-			</DsGroup>
-
-			{prevStats && Number(prevStats.sessionCount ?? 0) > 0 && (
-				<DsPromo
-					eyebrow={`Rekap ${MONTHS_ID[prevMonth - 1]}`}
-					title={`Kehadiranmu ${prevStats.attendanceRate ?? 0}%`}
-					sub={`${prevStats.sessionCount} shift · ${prevStats.daysWorked ?? 0} hari kerja`}
-					action={<DsButton onClick={() => go("rekap-absensi")}>Lihat rekap</DsButton>}
-					art={ds3d("employee-recap")}
-				/>
-			)}
-
 			<DsSection title="Akses cepat" />
-			<DsGroup flush>
-				<DsRow icon={<DsIcon name="employee-leave" />} title="Izin / Cuti / Sakit" sub="Ajukan dan lihat statusnya" chevron onClick={() => go("izin")} />
-				<DsRow icon={<DsIcon name="employee-payslip" />} title="Slip gaji" sub="Slip bulanan dari Manager" chevron onClick={() => go("slip-gaji")} />
-				<DsRow icon={<DsIcon name="employee-leaderboard" />} title="Leaderboard bonus" sub="Capaian target tim" chevron onClick={() => go("leaderboard")} />
-				<DsRow icon={<DsIcon name="employee-contract" />} title="Kontrak kerja" sub="Dokumen dan status tanda tangan" chevron onClick={() => go("kontrak")} />
-				<DsRow icon={<DsIcon name="employee-telegram" />} title="Bot & grup Telegram" sub="Cadangan bila absen di app tak bisa" chevron onClick={() => window.open("https://t.me/yumihrdbot", "_blank")} />
+			<div className="kx-quick">
+				{([["employee-leave", "Izin", "izin"], ["employee-recap", "Rekap", "rekap-absensi"], ["employee-payslip", "Slip", "slip-gaji"], ["employee-leaderboard", "Peringkat", "leaderboard"]] as const).map(([ic, l, to]) => (
+					<button key={to} type="button" onClick={() => go(to)}><span className="ic"><img src={ds3d(ic)} alt="" /></span>{l}</button>
+				))}
+			</div>
+
+			<DsSection title="Minggu ini" action={<button type="button" onClick={() => go("jadwal")}>Jadwal</button>} />
+			<DsGroup>
+				{week.map((d) => (
+					<DsRow key={d.date} icon={<DsIcon name="employee-schedule" />}
+						title={d.date === today ? `Hari ini${d.s && !isOffShift(d.s) ? ` · ${d.s.shift_name}` : ""}` : `${new Date(`${d.date}T00:00:00+07:00`).toLocaleDateString("id-ID", { weekday: "long", timeZone: "Asia/Jakarta" })}${d.s && !isOffShift(d.s) ? ` · ${d.s.shift_name}` : ""}`}
+						sub={d.s && !isOffShift(d.s) ? `${hhmm(d.s.start_time)} – ${hhmm(d.s.end_time)}` : "Off"}
+						trail={d.date === today ? (finished ? <DsTag tone="ok">Selesai</DsTag> : isIn ? <DsTag tone="info">Aktif</DsTag> : undefined) : undefined}
+						chevron onClick={() => go("jadwal")} />
+				))}
 			</DsGroup>
+			{isIn && (
+				<DsGroup>
+					<DsRow icon={<DsIcon name="stock-opname" />} title="Closing shift" sub="Opname & kebersihan · wajib sebelum absen keluar" trail={<DsTag tone="warn">Belum</DsTag>} onClick={() => go("absen-keluar")} />
+				</DsGroup>
+			)}
 		</div>
 	);
 }

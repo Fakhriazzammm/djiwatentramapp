@@ -1,6 +1,7 @@
 import { useManualStockMode } from "@djiwaapps/web-shared/lib/manual-stock";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useStaffProfile } from "../$username.lazy";
+import { DsButton, DsIconButton, DsPageTitle } from "@djiwaapps/web-shared/components/ds";
 import { VerifyIdentity, type VerifyPayload } from "@/components/karyawan/VerifyIdentity";
 import { getPosition } from "@/lib/attendance-api";
 import { useState, useEffect, useCallback, useMemo, useRef, forwardRef, useImperativeHandle } from "react";
@@ -132,6 +133,7 @@ function ClosingPage() {
   const { mode: stockMode } = useManualStockMode();
   const needsOpname = role !== null && stockMode === "integrated";
   useEffect(() => { if (!needsOpname) setActiveTab("kebersihan"); }, [needsOpname]);
+  const steps: ("opname" | "kebersihan")[] = needsOpname ? ["opname", "kebersihan"] : ["kebersihan"];
 
   // Refs to child sections for data extraction
   const opnameRef = useRef<{ getItems: () => OpnameItem[] }>(null);
@@ -173,21 +175,15 @@ function ClosingPage() {
         </div>
       )}
       {/* Header */}
-      <div className="shrink-0 mb-4">
-        <div className="flex items-center gap-2 mb-3">
-          <button
-            onClick={() => navigate({ to: `/${username}/beranda` })}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-border hover:bg-muted transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          <div>
-            <h1 className="font-black text-sm tracking-tight">Closing Shift</h1>
-            <p className="text-[10px] text-muted-foreground font-semibold">
-              {userName} • {shiftName}
-            </p>
-          </div>
-        </div>
+      <div className="shrink-0 mb-3">
+        <DsPageTitle left={<DsIconButton aria-label="Kembali" onClick={() => navigate({ to: `/${username}/beranda` })}>‹</DsIconButton>}>Closing shift</DsPageTitle>
+        <p className="ds-sub" style={{ margin: "-6px 4px 8px" }}>{userName} · {shiftName}</p>
+        {!submitDone && (
+          <>
+            <div className="ds-bar" style={{ margin: "0 4px 6px" }}><i style={{ width: `${((steps.indexOf(activeTab) + 1) / steps.length) * 100}%` }} /></div>
+            <div className="ds-label" style={{ margin: "0 6px" }}>{steps.indexOf(activeTab) + 1} dari {steps.length} · {activeTab === "opname" ? "Opname stok" : "Kebersihan"}</div>
+          </>
+        )}
 
         {/* Error Banner */}
         {submitError && (
@@ -210,32 +206,6 @@ function ClosingPage() {
       {!submitDone && (
         <>
           {stockMode === "manual" && <p className="mb-3 text-xs text-muted-foreground">Stok bahan dikelola terpisah di halaman Material. Closing tidak memerlukan opname.</p>}
-          {/* Tabs */}
-          <div className="flex gap-1 rounded-xl bg-muted/50 p-1 mb-4 shrink-0">
-            {needsOpname && (
-              <button
-                onClick={() => setActiveTab("opname")}
-                className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[14px] py-2 text-xs font-bold transition-all ${
-                  activeTab === "opname"
-                    ? "bg-background shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <ClipboardList className="h-4 w-4" /> Stock Opname
-              </button>
-            )}
-            <button
-              onClick={() => setActiveTab("kebersihan")}
-              className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[14px] py-2 text-xs font-bold transition-all ${
-                activeTab === "kebersihan"
-                  ? "bg-background shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Brush className="h-4 w-4" /> Kebersihan
-            </button>
-          </div>
-
           {/* Content */}
           <div className="flex-1 overflow-y-auto">
             <AnimatePresence mode="wait">
@@ -262,25 +232,14 @@ function ClosingPage() {
             </AnimatePresence>
           </div>
 
-          {/* Submit Button */}
-          <div className="shrink-0 pt-4 pb-2 border-t border-border mt-4">
-            <button
-              disabled={isSubmitting}
-              onClick={handleSubmit}
-              className="w-full rounded-[14px] bg-gradient-to-r from-emerald-500 to-emerald-600 py-3.5 text-sm font-black text-white shadow-lg shadow-emerald-200/50 transition-all hover:shadow-xl hover:shadow-emerald-200/60 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? (
-                <span className="inline-flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Menyimpan...
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-2">
-                  <Check className="h-4 w-4" />
-                  Kirim Laporan Closing
-                </span>
-              )}
-            </button>
+          {/* Aksi */}
+          <div className="shrink-0 pt-2 pb-2">
+            {activeTab === "opname" && steps.length > 1 ? (
+              <DsButton block onClick={() => setActiveTab("kebersihan")}>Lanjut</DsButton>
+            ) : (
+              <DsButton block disabled={isSubmitting} onClick={handleSubmit}>{isSubmitting ? "Menyimpan…" : "Kirim laporan & verifikasi"}</DsButton>
+            )}
+            {activeTab === "kebersihan" && steps.length > 1 && <DsButton block variant="ghost" onClick={() => setActiveTab("opname")}>Kembali ke opname</DsButton>}
           </div>
         </>
       )}

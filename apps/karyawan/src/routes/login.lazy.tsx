@@ -321,10 +321,10 @@ function KaryawanLoginPage() {
               <DsButton block disabled={!canInputPin || !isPinComplete || isVerifying} onClick={submitPin}>{isVerifying ? "Memverifikasi…" : "Masuk"}</DsButton>
             </div>
 
-            <div style={{ textAlign: "center", marginTop: 18 }}>
-              <DsButton variant="ghost" size="md" onClick={() => navigate({ to: "/register" as any })}>Daftar karyawan baru</DsButton>
+            <div style={{ marginTop: 14 }}>
+              <DsButton block variant="ghost" onClick={() => navigate({ to: "/register" as any })}>Daftar karyawan baru</DsButton>
             </div>
-            <p className="ds-sub" style={{ textAlign: "center", marginTop: 18, opacity: 0.7 }}>Djiwa Tentram — Kehadiran Karyawan</p>
+            <p className="ds-sub" style={{ textAlign: "center", marginTop: 12 }}>Lupa PIN? Hubungi supervisor.</p>
           </section>
         </motion.div>
       </main>
