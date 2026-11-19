@@ -6,6 +6,7 @@ import { createClient } from "@djiwaapps/web-shared/lib/client";
 import { toast } from "sonner";
 import { useStaffProfile } from "../$username.lazy";
 import { hhmm, isOffShift, todayWib, type Schedule } from "@/components/karyawan/use-staff-data";
+import { cancelSwap, requestSwap, respondSwap } from "@/lib/schedule-api";
 
 export const Route = createLazyFileRoute("/$username/izin")({ component: IzinPage });
 
@@ -19,8 +20,10 @@ const fmt = (d: string) => new Date(`${d}T00:00:00+07:00`).toLocaleDateString("i
 const days = (a: string, b: string) => Math.max(1, Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000) + 1);
 
 function IzinPage() {
-	const { staff, username, navigate } = useStaffProfile();
+	const { staff, username, navigate, token } = useStaffProfile();
 	const [rows, setRows] = useState<Req[] | null>(null);
+	const [incoming, setIncoming] = useState<(Req & { user_name?: string })[]>([]);
+	const [busyId, setBusyId] = useState<string | null>(null);
 	const [open, setOpen] = useState(false);
 
 	const load = useCallback(async () => {
@@ -29,7 +32,25 @@ function IzinPage() {
 			.select("id,leave_type,start_date,end_date,reason,status,review_notes,metadata,created_at")
 			.eq("user_id", staff._id).order("created_at", { ascending: false }).limit(50);
 		setRows((data as Req[]) ?? []);
+		// Permintaan tukar shift dari rekan yang menunggu jawabanku.
+		const { data: inc } = await createClient().from("attendance_leave_requests")
+			.select("id,user_name,leave_type,start_date,end_date,reason,status,review_notes,metadata,created_at")
+			.eq("leave_type", "tukar_shift").eq("status", "pending").contains("metadata", { partner_id: staff._id }).order("created_at", { ascending: false });
+		setIncoming((inc as any[]) ?? []);
 	}, [staff?._id]);
+
+	const answer = async (id: string, accept: boolean) => {
+		setBusyId(id);
+		try {
+			const r = await respondSwap(token, id, accept);
+			toast.success(accept ? `Jadwal bertukar otomatis. Shiftmu sekarang: ${r.yourNewShift ?? "diperbarui"}` : "Permintaan ditolak");
+			void load();
+		} catch (e: any) { toast.error(e?.message || "Gagal"); } finally { setBusyId(null); }
+	};
+	const cancel = async (id: string) => {
+		setBusyId(id);
+		try { await cancelSwap(token, id); toast.success("Permintaan dibatalkan"); void load(); } catch (e: any) { toast.error(e?.message || "Gagal"); } finally { setBusyId(null); }
+	};
 	useEffect(() => { void load(); }, [load]);
 
 	const monthKey = todayWib().slice(0, 7);
@@ -42,6 +63,21 @@ function IzinPage() {
 	return (
 		<>
 			<DsPageTitle left={<DsIconButton aria-label="Kembali" onClick={() => navigate({ to: "/$username/beranda" as any, params: { username } } as any)}>‹</DsIconButton>} right={<DsIconButton aria-label="Ajukan baru" style={{ background: "var(--ds-navy)", color: "#fff" }} onClick={() => setOpen(true)}>+</DsIconButton>}>Izin &amp; cuti</DsPageTitle>
+			{incoming.length > 0 && (
+				<>
+					<DsGroupLabel>Menunggu jawabanmu</DsGroupLabel>
+					{incoming.map((r) => (
+						<DsGroup key={r.id}>
+							<DsRow icon={<DsIcon name="employee-schedule" />} title={`${r.user_name ?? "Rekan"} ingin tukar shift`} sub={`${fmt(r.start_date)} · ${r.metadata?.partner_shift ?? ""} → jadi ${r.metadata?.my_shift ?? ""}`} />
+							<p className="ds-sub" style={{ margin: "0 2px 8px" }}>“{r.reason}” · Bila diterima, jadwal kalian langsung bertukar otomatis.</p>
+							<div style={{ display: "flex", gap: 8 }}>
+								<DsButton block disabled={busyId === r.id} onClick={() => answer(r.id, true)}>Terima</DsButton>
+								<DsButton block variant="ghost" disabled={busyId === r.id} onClick={() => answer(r.id, false)}>Tolak</DsButton>
+							</div>
+						</DsGroup>
+					))}
+				</>
+			)}
 			<DsGroup>
 				<DsTiles items={[{ value: stats.pending, label: "Menunggu" }, { value: stats.approved, label: "Disetujui" }, { value: stats.month, label: "Bulan ini" }]} />
 			</DsGroup>
@@ -55,7 +91,7 @@ function IzinPage() {
 					{rows.map((r) => (
 						<DsRow key={r.id} icon={<DsIcon name="employee-leave" />} title={LABEL[r.leave_type] ?? r.leave_type}
 							sub={r.leave_type === "koreksi_absen" ? `${fmt(r.start_date)} · ${r.metadata?.type === "check_in" ? "masuk" : "keluar"} ${r.metadata?.time ?? ""}` : r.leave_type === "tukar_shift" ? `${fmt(r.start_date)} · dengan ${r.metadata?.partner_name ?? "rekan"}` : `${fmt(r.start_date)}${r.end_date !== r.start_date ? ` – ${fmt(r.end_date)}` : ""} · ${days(r.start_date, r.end_date)} hari`}
-							trail={<DsTag tone={STATUS[r.status].tone}>{STATUS[r.status].label}</DsTag>} />
+							trail={r.leave_type === "tukar_shift" && r.status === "pending" ? <DsButton size="sm" variant="ghost" disabled={busyId === r.id} onClick={() => cancel(r.id)}>Batalkan</DsButton> : <DsTag tone={STATUS[r.status].tone}>{r.leave_type === "tukar_shift" && r.status === "approved" ? "Sudah bertukar" : r.leave_type === "tukar_shift" && r.status === "pending" ? "Menunggu rekan" : STATUS[r.status].label}</DsTag>} />
 					))}
 				</DsGroup>
 			)}
@@ -68,7 +104,7 @@ function IzinPage() {
 }
 
 function RequestSheet({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
-	const { staff } = useStaffProfile();
+	const { staff, token } = useStaffProfile();
 	const users = useHybridPublicUsers();
 	const [type, setType] = useState("cuti");
 	const [start, setStart] = useState(todayWib());
@@ -89,19 +125,26 @@ function RequestSheet({ onClose, onDone }: { onClose: () => void; onDone: () => 
 	}, [isSwap, start]);
 
 	const mine = day?.find((s) => s.user_id === staff?._id) ?? null;
-	const candidates = useMemo(() => (day ?? []).filter((s) => s.user_id !== staff?._id && !isOffShift(s) && (!mine || s.shift_name !== mine.shift_name)), [day, staff?._id, mine]);
+	const activeIds = useMemo(() => new Set((Array.isArray(users) ? users : []).filter((u: any) => u.isActive !== false).map((u: any) => String(u._id))), [users]);
+	// Rekan yang bisa ditukar: aktif, punya jadwal di tanggal itu (libur pun boleh), shift berbeda, dan bukan sama-sama libur.
+	const candidates = useMemo(() => (day ?? []).filter((c) => c.user_id !== staff?._id && (activeIds.size === 0 || activeIds.has(String(c.user_id)))
+		&& (!mine || c.shift_name !== mine.shift_name || c.start_time !== mine.start_time) && !(mine && isOffShift(mine) && isOffShift(c))), [day, staff?._id, mine, activeIds]);
 	const nameOf = (id?: string) => (Array.isArray(users) ? users.find((u: any) => String(u._id) === String(id))?.name : undefined) ?? "Rekan";
-	const valid = !!reason.trim() && start && end >= start && (!isSwap || (!!partner && !!mine && !isOffShift(mine)));
+	const valid = !!reason.trim() && start && end >= start && (!isSwap || (!!partner && !!mine));
 
 	const send = async () => {
 		if (!valid || !staff?._id) return;
 		setBusy(true);
 		try {
-			const p = candidates.find((c) => c.user_id === partner);
+			if (isSwap) {
+				await requestSwap(token, { date: start, partnerId: partner, reason: reason.trim() });
+				toast.success(`Permintaan dikirim ke ${nameOf(partner).split(" ")[0]}. Bila diterima, jadwal bertukar otomatis.`);
+				onDone();
+				return;
+			}
 			const { error } = await createClient().from("attendance_leave_requests").insert({
 				user_id: staff._id, user_name: staff.name, leave_type: type,
-				start_date: start, end_date: isSwap ? start : end, reason: reason.trim(), status: "pending",
-				metadata: isSwap ? { partner_id: partner, partner_name: nameOf(partner), my_shift: mine?.shift_name, partner_shift: p?.shift_name } : {},
+				start_date: start, end_date: end, reason: reason.trim(), status: "pending", metadata: {},
 			});
 			if (error) throw error;
 			toast.success("Pengajuan terkirim");
@@ -119,9 +162,9 @@ function RequestSheet({ onClose, onDone }: { onClose: () => void; onDone: () => 
 			<label className="kx-field"><span>{isSwap ? "Tanggal shift" : "Mulai"}</span><input id="izin-start" className="kx-input" type="date" min={todayWib()} value={start} onChange={(e) => { setStart(e.target.value); if (e.target.value > end) setEnd(e.target.value); setPartner(""); }} /></label>
 			{!isSwap && <label className="kx-field"><span>Sampai</span><input id="izin-end" className="kx-input" type="date" min={start} value={end} onChange={(e) => setEnd(e.target.value)} /></label>}
 			{isSwap && (
-				<div className="kx-field"><span>Tukar dengan</span>
-					{day === null ? <p className="ds-sub">Memuat jadwal…</p> : !mine || isOffShift(mine) ? <p className="ds-sub">Kamu tidak punya shift di tanggal ini.</p> : candidates.length === 0 ? <p className="ds-sub">Belum ada rekan dengan shift berbeda di tanggal ini.</p> : (
-						<DsGroup>{candidates.map((c) => <DsRow key={c.user_id} title={nameOf(c.user_id)} sub={`${c.shift_name} ${hhmm(c.start_time)} – ${hhmm(c.end_time)}`} trail={partner === c.user_id ? <DsTag tone="ok">Dipilih</DsTag> : undefined} onClick={() => setPartner(c.user_id!)} />)}</DsGroup>
+				<div className="kx-field"><span>Tukar dengan{mine ? ` · shiftmu: ${isOffShift(mine) ? "Libur" : `${mine.shift_name} ${hhmm(mine.start_time)}–${hhmm(mine.end_time)}`}` : ""}</span>
+					{day === null ? <p className="ds-sub">Memuat jadwal…</p> : !mine ? <p className="ds-sub">Kamu belum punya jadwal di tanggal ini.</p> : candidates.length === 0 ? <p className="ds-sub">Belum ada rekan dengan shift berbeda di tanggal ini.</p> : (
+						<DsGroup>{candidates.map((c) => <DsRow key={c.user_id} title={nameOf(c.user_id)} sub={isOffShift(c) ? "Libur" : `${c.shift_name} ${hhmm(c.start_time)} – ${hhmm(c.end_time)}`} trail={partner === c.user_id ? <DsTag tone="ok">Dipilih</DsTag> : undefined} onClick={() => setPartner(c.user_id!)} />)}</DsGroup>
 					)}
 				</div>
 			)}

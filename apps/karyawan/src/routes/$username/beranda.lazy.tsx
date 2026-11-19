@@ -5,6 +5,7 @@ import { DsAsk, DsAvatar, DsButton, DsGroup, DsHeader, DsIcon, DsIconButton, DsN
 import { Bell, Eye, EyeOff } from "lucide-react";
 import { useStaffProfile } from "../$username.lazy";
 import { openGuide } from "@/components/karyawan/OnboardingGuide";
+import { createClient } from "@djiwaapps/web-shared/lib/client";
 import { fmtClock, hhmm, isOffShift, rupiah, todayWib, useLatestRunItem, useMonthSchedules, useTopAnnouncement } from "@/components/karyawan/use-staff-data";
 
 export const Route = createLazyFileRoute("/$username/beranda")({
@@ -50,6 +51,12 @@ function BerandaPage() {
 	const dateStr = now.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" });
 	const firstName = (staff?.name ?? "").split(" ")[0] || "—";
 	const requiresPinChange = Boolean(authUser?.requiresPinChange && authUser.slug === username);
+	const [swapIn, setSwapIn] = useState<{ n: number; from?: string }>({ n: 0 });
+	useEffect(() => {
+		if (!staff?._id) return;
+		void createClient().from("attendance_leave_requests").select("user_name").eq("leave_type", "tukar_shift").eq("status", "pending").contains("metadata", { partner_id: staff._id })
+			.then(({ data }) => setSwapIn({ n: data?.length ?? 0, from: (data?.[0] as any)?.user_name }), () => undefined);
+	}, [staff?._id, refreshKey]);
 	const [botNotice, setBotNotice] = useState(() => { try { return localStorage.getItem("kx_bot_notice_v1") !== "1"; } catch { return true; } });
 	const mask = (v: string) => (hide ? "••••••" : v);
 	const go = (to: string) => navigate({ to: `/$username/${to}` as any, params: { username } });
@@ -115,6 +122,11 @@ function BerandaPage() {
 				</div>
 			)}
 
+			{swapIn.n > 0 && (
+				<DsNote icon={<DsIcon name="employee-schedule" />} action={<DsButton size="sm" onClick={() => go("izin")}>Jawab</DsButton>}>
+					<b>Permintaan tukar shift</b>{swapIn.from ?? "Rekan"} ingin bertukar shift denganmu{swapIn.n > 1 ? ` (+${swapIn.n - 1} lagi)` : ""}.
+				</DsNote>
+			)}
 			{botNotice && (
 				<DsNote tone="info" icon={<DsIcon name="employee-telegram" />} action={<DsButton size="sm" variant="ghost" onClick={() => { try { localStorage.setItem("kx_bot_notice_v1", "1"); } catch { /* */ } setBotNotice(false); }}>Mengerti</DsButton>}>
 					<b>Absen kini lewat aplikasi ini</b>Bot Telegram tidak dipakai lagi untuk absen masuk dan keluar. <button type="button" onClick={openGuide} style={{ background: "none", border: 0, padding: 0, color: "var(--ds-blue)", font: "600 13px var(--ds-font)" }}>Lihat panduan</button>
