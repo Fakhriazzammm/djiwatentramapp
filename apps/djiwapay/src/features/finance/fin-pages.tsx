@@ -299,7 +299,7 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
       </div>
       {ctx.visible && hasStocks && stockPf.priced ? <div style={{ textAlign: "right" }}><div className={stockPf.pl >= 0 ? "dpx-up" : "dpx-dn"} style={{ fontWeight: 700 }}>{percent(stockPf.plPct)}</div><div className="dpx-sub">saham</div></div> : ctx.visible && change && changePct !== null ? <div style={{ textAlign: "right" }}><div className={change.delta >= 0 ? "dpx-up" : "dpx-dn"} style={{ fontWeight: 700 }}>{change.delta >= 0 ? "▲" : "▼"} {Math.abs(changePct).toFixed(1).replace(".", ",")}%</div><div className="dpx-sub">aset 30 hari</div></div> : null}
     </motion.div>
-    <Seg id="vault-tab" label="Bagian kekayaan" fit value={tab} onChange={pick} options={[["aset", `Aset · ${state.assets.length}`], ["saham", <>Saham{hasStocks ? ` · ${stockPf.rows.length}` : null}{stocks.loaded && !stocks.state?.activated ? <i className="dpx-st-dot" aria-label="baru" /> : null}</>], ["dompet", `Dompet · ${accounts.length + 1}`], ["kewajiban", "Kewajiban"]] as const} />
+    <Seg id="vault-tab" label="Bagian kekayaan" fit value={tab} onChange={pick} options={[["aset", `Aset · ${state.assets.length}`], ["saham", <>Saham{hasStocks ? ` · ${stockPf.rows.length}` : null}{stocks.loaded && !stocks.state?.activated ? <i className="dpx-sk-dot" aria-label="baru" /> : null}</>], ["dompet", `Dompet · ${accounts.length + 1}`], ["kewajiban", "Kewajiban"]] as const} />
 
     {tab === "aset" ? <div key="aset" className="dpx-vt-pn">
       {rows.length === 0 && !hasStocks ? <Onboard asset="scan" title="Simpan nilai aset Anda" desc="Foto emas, perhiasan, atau aset lain. Latarnya dipotong jadi stiker, lalu nilainya dipantau di sini."
