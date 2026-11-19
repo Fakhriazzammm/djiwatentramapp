@@ -131,7 +131,7 @@ export async function syncStocks(d: SyncDeps, userId: string): Promise<StockOutc
     const got = await readPrices(f, token, id, held.map((h) => h.ticker));
     if (got.length) await d.db.query(`insert into finance.stock_prices(user_id,ticker,price,as_of,checked_at)
       select $1,x.ticker,x.price,x.as_of,now() from jsonb_to_recordset($2::jsonb) as x(ticker text,price numeric,as_of timestamptz)
-      on conflict(user_id,ticker) do update set price=coalesce(excluded.price,finance.stock_prices.price), as_of=coalesce(excluded.as_of,finance.stock_prices.as_of), checked_at=now()`, [userId, JSON.stringify(got)]);
+      on conflict(user_id,ticker) do update set price=coalesce(excluded.price,finance.stock_prices.price), as_of=coalesce(excluded.as_of,finance.stock_prices.as_of), checked_at=now()`, [userId, JSON.stringify(got.map((g) => ({ ticker: g.ticker, price: g.price, as_of: g.asOf })))]);
 
     // Formulas need a moment after a write: look again shortly while any price is still missing.
     const settle = write || was.was_recalc ? 2 : Number(was.settle ?? 0), missing = held.length > 0 && got.length < held.length || got.some((g) => g.price === null);

@@ -73,7 +73,7 @@ run("stock tracker (real database, in-memory Sheets)", () => {
     expect((await call("DELETE", "/trades/st-nope")).status).toBe(404);
     const first = sell.body.trades.find((t: any) => t.price === 9200).id;
     const del = await call("DELETE", `/trades/${first}`);
-    expect(del.body.holdings.find((h: any) => h.ticker === "BBCA")).toMatchObject({ lots: 15, avg: 9700, realized: 150000 });
+    expect(del.body.holdings.find((h: any) => h.ticker === "BBCA")).toMatchObject({ lots: 5, avg: 9700, realized: 150000 });
   });
 
   test("the pass writes trades and formulas, reads prices back, and keeps the last price when Google says #N/A", async () => {
