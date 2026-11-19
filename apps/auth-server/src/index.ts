@@ -745,10 +745,23 @@ function paySessionId(headers: Headers) {
   return match?.[1] || "";
 }
 
+// The customer storefront (djiwatentram.web.id) reaches the same wallet/PPOB/PIN endpoints with its own
+// Better Auth session instead of a Pay bridge cookie. Same identity, so the PIN still guards every payment.
+// Browsers must prove the request is not cross-site: Origin (when sent) has to be a trusted customer origin.
+async function customerSessionForPay(headers: Headers) {
+  const origin = headers.get("origin");
+  if (origin && !customerOrigins.includes(origin)) return null;
+  if (headers.get("sec-fetch-site") === "cross-site") return null;
+  const session = await requireCustomerSession(headers);
+  if (!session?.user?.id) return null;
+  const customer = await customerForUser(session.user.id);
+  return customer ? { userId: session.user.id, customer } : null;
+}
+
 async function requirePaySession(headers: Headers) {
   prunePayBridgeState();
   const current = payBridgeSessions.get(paySessionId(headers));
-  if (!current || current.expiresAt <= Date.now()) return null;
+  if (!current || current.expiresAt <= Date.now()) return customerSessionForPay(headers);
   const customer = await customerForUser(current.userId);
   return customer ? { userId: current.userId, customer } : null;
 }

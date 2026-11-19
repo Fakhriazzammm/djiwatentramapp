@@ -8,6 +8,9 @@ import { useCustomerWallet, type CustomerWalletLedgerEntry } from "@/hooks/use-c
 import { currency } from "@/components/customer/types";
 import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
 import { getCustomerPayPath } from "@/lib/customer-pay-navigation";
+import { PpobFlow } from "@/components/saldo/ppob-flow";
+import { ScanFlow } from "@/components/saldo/scan-flow";
+import { SendFlow } from "@/components/saldo/send-flow";
 
 export const Route = createLazyFileRoute("/$username/saldo")({ component: SaldoPage });
 
@@ -53,6 +56,8 @@ function SaldoPage() {
 	const [timedOut, setTimedOut] = useState(false);
 	const [filter, setFilter] = useState<"all" | "in" | "out">("all");
 	const [showAll, setShowAll] = useState(false);
+	const [flow, setFlow] = useState<"send" | "scan" | "ppob" | null>(null);
+	const [sendPhone, setSendPhone] = useState<string | undefined>();
 
 	const pendingKey = customer?.sourceId ? `${PENDING_KEY}:${customer.sourceId}` : PENDING_KEY;
 	const missing = getMissingCustomerFields(customer);
@@ -119,10 +124,11 @@ function SaldoPage() {
 		{ label: "Pesan", icon: "send", onClick: () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }) },
 		{ label: "Bantuan", icon: "help", onClick: () => navigate({ to: "/$username/notifikasi", params: { username } }) },
 	];
+	const openTopup = () => { setFlow(null); setFormError(null); setSheet(true); };
 	const inPay = [
-		{ label: "Kirim saldo", sub: "Ke pengguna Djiwa", icon: "send" },
-		{ label: "Scan QR", sub: "Bayar via QR", icon: "scan-qr" },
-		{ label: "Bayar & beli (PPOB)", sub: "Pulsa, token PLN, tagihan", icon: "bills" },
+		{ label: "Kirim saldo", sub: "Ke pengguna Djiwa", icon: "send", onClick: () => { setSendPhone(undefined); setFlow("send"); } },
+		{ label: "Scan QR", sub: "Kirim lewat QR penerima", icon: "scan-qr", onClick: () => setFlow("scan") },
+		{ label: "Bayar & beli", sub: "Pulsa, data, token PLN, tagihan", icon: "bills", onClick: () => setFlow("ppob") },
 	];
 
 	return (
@@ -165,9 +171,9 @@ function SaldoPage() {
 				</motion.section>
 
 				<motion.section {...fade(4)}>
-					<div className="mb-2.5 ml-1 mt-6 flex items-baseline justify-between"><p className="text-[13px] font-bold text-[#6b7080]">DI DJIWA PAY</p><button type="button" onClick={openPay} className="mr-1 text-[13px] font-semibold text-[#1a5dc6]">Buka ›</button></div>
+					<div className="mb-2.5 ml-1 mt-6 flex items-baseline justify-between"><p className="text-[13px] font-bold text-[#6b7080]">KIRIM & BAYAR</p></div>
 					<div className="rounded-[30px] bg-[#f1f3f8] p-2">
-						{inPay.map((r, i) => <motion.button {...press} key={r.label} type="button" onClick={openPay} className={`flex min-h-16 w-full items-center gap-3 px-2.5 py-2 text-left ${i ? "border-t border-[#e4e8f1]" : ""}`}><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white"><img src={ICON(r.icon)} alt="" className="h-[26px] w-[26px] object-contain" /></span><span className="min-w-0 flex-1"><b className="block text-[15px] font-semibold">{r.label}</b><span className="text-xs text-[#6b7080]">{r.sub}</span></span><ChevronRight className="h-4 w-4 text-[#9aa0ae]" /></motion.button>)}
+						{inPay.map((r, i) => <motion.button {...press} key={r.label} type="button" onClick={r.onClick} className={`flex min-h-16 w-full items-center gap-3 px-2.5 py-2 text-left ${i ? "border-t border-[#e4e8f1]" : ""}`}><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white"><img src={ICON(r.icon)} alt="" className="h-[26px] w-[26px] object-contain" /></span><span className="min-w-0 flex-1"><b className="block text-[15px] font-semibold">{r.label}</b><span className="text-xs text-[#6b7080]">{r.sub}</span></span><ChevronRight className="h-4 w-4 text-[#9aa0ae]" /></motion.button>)}
 					</div>
 				</motion.section>
 
@@ -192,6 +198,10 @@ function SaldoPage() {
 					</div>
 				</motion.section>
 			</div>
+
+			<SendFlow open={flow === "send"} initialPhone={sendPhone} balance={balance} onClose={() => setFlow(null)} onScan={() => setFlow("scan")} onTopup={openTopup} onDone={() => void refetch()} />
+			<ScanFlow open={flow === "scan"} onClose={() => setFlow(null)} onPhone={(phone) => { setSendPhone(phone); setFlow("send"); }} onManual={() => { setSendPhone(undefined); setFlow("send"); }} />
+			<PpobFlow open={flow === "ppob"} balance={balance} onClose={() => setFlow(null)} onTopup={openTopup} onDone={() => void refetch()} />
 
 			<AnimatePresence>
 				{sheet && (
