@@ -4,6 +4,7 @@ import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
 import { auth, pool } from "./auth.js";
 import { staffAuth } from "./staff-auth.js";
+import { registerStaffGoogleRoutes } from "./staff-google.js";
 import { registerKolPortalRoutes } from "./kol-portal.js";
 import { investorAuth, registerInvestorPortalRoutes } from "./investor-portal.js";
 import { managerOrigins, registerManagerPortalRoutes } from "./manager-portal.js";
@@ -95,6 +96,9 @@ app.get("/api/auth/recruitment-session", async (c) => {
 });
 
 // Better Auth handler (customer)
+// Google → sesi Yumi (karyawan & internal). HARUS sebelum catch-all Better Auth /api/auth/*.
+registerStaffGoogleRoutes(app, { pool, getSession: (headers) => auth.api.getSession({ headers }) as never, signInSocial: (o) => auth.api.signInSocial(o as never) as never, json: privateJson as never });
+
 app.on(["POST", "GET"], "/api/auth/*", (c) => {
   return auth.handler(c.req.raw);
 });
@@ -206,6 +210,9 @@ const RECRUITMENT_BRIDGE_SECRET = process.env.REKRUTMEN_AUTH_BRIDGE_SECRET || ""
 const staffOrigins = [
   "https://karyawan.djiwatentram.web.id",
   "https://rekrutmen.djiwatentram.web.id",
+  "https://admin.djiwatentram.web.id",
+  "https://pos.djiwatentram.web.id",
+  "https://manager.djiwatentram.web.id",
   "http://localhost:5173",
   "http://localhost:5174",
 ];
@@ -236,6 +243,7 @@ app.get("/api/staff-auth/recruitment-session", async (c) => {
   const signature = createHmac("sha256", RECRUITMENT_BRIDGE_SECRET).update(payload).digest("base64url");
   return c.json({ success: true, token: `${payload}.${signature}`, role: "HRD" });
 });
+
 
 app.on(["POST", "GET"], "/api/staff-auth/*", (c) => {
   return staffAuth.handler(c.req.raw);

@@ -1,6 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useStaffProfile } from "../$username.lazy";
+import { getGoogleLinkStatus, startGoogleLogin } from "@djiwaapps/web-shared/lib/staff-google";
 import { useYumiAuth } from "@djiwaapps/web-shared";
 import {
 	useHybridPrivateStaffData,
@@ -100,6 +101,8 @@ function ProfilPage() {
 	const storeName = settings?.storeName || "TENTREM KOFFIE";
 
 	const requiresPinChange = Boolean(authUser?.requiresPinChange && authUser.slug === username);
+	const [googleLinked, setGoogleLinked] = useState<boolean | null>(null);
+	useEffect(() => { if (token) void getGoogleLinkStatus(token).then((r) => setGoogleLinked(r.linked)).catch(() => setGoogleLinked(null)); }, [token]);
 
 	// Telegram Bot status
 	const [telegramStatus, setTelegramStatus] = useState<any>(null);
@@ -226,6 +229,7 @@ function ProfilPage() {
 					</DsGroup>
 					<DsGroupLabel>Keamanan</DsGroupLabel><DsGroup flush>
 						<DsRow icon={<DsIcon name="employee-profile" />} title="PIN absen" sub={requiresPinChange ? "Masih PIN default" : "Gunakan PIN untuk absensi"} trail={requiresPinChange ? <DsTag tone="warn">Ganti</DsTag> : undefined} onClick={() => { setSection("pin"); setShowChangePin(true); }} chevron />
+						<DsRow icon={<DsIcon name="employee-profile" />} title="Akun Google" sub={googleLinked ? "Terhubung · bisa masuk dengan Google" : "Hubungkan agar bisa masuk dengan Google"} trail={googleLinked === null ? undefined : <DsTag tone={googleLinked ? "ok" : "warn"}>{googleLinked ? "Terhubung" : "Hubungkan"}</DsTag>} onClick={googleLinked ? undefined : () => startGoogleLogin("link")} chevron={!googleLinked} />
 						<DsRow icon={<DsIcon name="employee-attendance-check-in" />} title="Wajah" sub={authUser?.hasFace ? "Terdaftar · dipakai untuk absen" : "Belum terdaftar · absen memakai PIN"} trail={<DsTag tone={authUser?.hasFace ? "ok" : "warn"}>{authUser?.hasFace ? "Aktif" : "Daftar"}</DsTag>} onClick={() => navigate({to:`/${username}/absensi`,search:{enroll:1}} as any)} chevron />
 					</DsGroup>
 					<DsGroupLabel>Pekerjaan</DsGroupLabel><DsGroup flush>

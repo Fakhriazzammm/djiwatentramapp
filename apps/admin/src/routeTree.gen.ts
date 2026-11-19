@@ -25,6 +25,7 @@ import { Route as KasirLoginRouteImport } from './routes/kasir/login'
 import { Route as KaryawanLoginRouteImport } from './routes/karyawan/login'
 import { Route as KaryawanUsernameRouteImport } from './routes/karyawan.$username'
 import { Route as HomeSectionRouteImport } from './routes/home.$section'
+import { Route as AuthGoogleRouteImport } from './routes/auth.google'
 import { Route as AttendanceStockOpnameRouteImport } from './routes/attendance/stock-opname'
 import { Route as AdminStockOverviewRouteImport } from './routes/admin/stock-overview'
 import { Route as AdminShiftClosingRouteImport } from './routes/admin/shift-closing'
@@ -220,6 +221,11 @@ const HomeSectionRoute = HomeSectionRouteImport.update({
   path: '/$section',
   getParentRoute: () => HomeRoute,
 } as any)
+const AuthGoogleRoute = AuthGoogleRouteImport.update({
+  id: '/auth/google',
+  path: '/auth/google',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/auth.google.lazy').then((d) => d.Route))
 const AttendanceStockOpnameRoute = AttendanceStockOpnameRouteImport.update({
   id: '/stock-opname',
   path: '/stock-opname',
@@ -1052,6 +1058,7 @@ export interface FileRoutesByFullPath {
   '/admin/shift-closing': typeof AdminShiftClosingRoute
   '/admin/stock-overview': typeof AdminStockOverviewRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
+  '/auth/google': typeof AuthGoogleRoute
   '/home/$section': typeof HomeSectionRoute
   '/karyawan/$username': typeof KaryawanUsernameRoute
   '/karyawan/login': typeof KaryawanLoginRoute
@@ -1165,6 +1172,7 @@ export interface FileRoutesByTo {
   '/admin/shift-closing': typeof AdminShiftClosingRoute
   '/admin/stock-overview': typeof AdminStockOverviewRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
+  '/auth/google': typeof AuthGoogleRoute
   '/home/$section': typeof HomeSectionRoute
   '/karyawan/$username': typeof KaryawanUsernameRoute
   '/karyawan/login': typeof KaryawanLoginRoute
@@ -1282,6 +1290,7 @@ export interface FileRoutesById {
   '/admin/shift-closing': typeof AdminShiftClosingRoute
   '/admin/stock-overview': typeof AdminStockOverviewRoute
   '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
+  '/auth/google': typeof AuthGoogleRoute
   '/home/$section': typeof HomeSectionRoute
   '/karyawan/$username': typeof KaryawanUsernameRoute
   '/karyawan/login': typeof KaryawanLoginRoute
@@ -1406,6 +1415,7 @@ export interface FileRouteTypes {
     | '/admin/shift-closing'
     | '/admin/stock-overview'
     | '/attendance/stock-opname'
+    | '/auth/google'
     | '/home/$section'
     | '/karyawan/$username'
     | '/karyawan/login'
@@ -1519,6 +1529,7 @@ export interface FileRouteTypes {
     | '/admin/shift-closing'
     | '/admin/stock-overview'
     | '/attendance/stock-opname'
+    | '/auth/google'
     | '/home/$section'
     | '/karyawan/$username'
     | '/karyawan/login'
@@ -1635,6 +1646,7 @@ export interface FileRouteTypes {
     | '/admin/shift-closing'
     | '/admin/stock-overview'
     | '/attendance/stock-opname'
+    | '/auth/google'
     | '/home/$section'
     | '/karyawan/$username'
     | '/karyawan/login'
@@ -1719,6 +1731,7 @@ export interface RootRouteChildren {
   MenuRoute: typeof MenuRoute
   RegisterRoute: typeof RegisterRouteWithChildren
   LaporanLazyRoute: typeof LaporanLazyRoute
+  AuthGoogleRoute: typeof AuthGoogleRoute
   KaryawanUsernameRoute: typeof KaryawanUsernameRoute
   KaryawanLoginRoute: typeof KaryawanLoginRoute
   KasirLoginRoute: typeof KasirLoginRoute
@@ -1830,6 +1843,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/home/$section'
       preLoaderRoute: typeof HomeSectionRouteImport
       parentRoute: typeof HomeRoute
+    }
+    '/auth/google': {
+      id: '/auth/google'
+      path: '/auth/google'
+      fullPath: '/auth/google'
+      preLoaderRoute: typeof AuthGoogleRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/attendance/stock-opname': {
       id: '/attendance/stock-opname'
@@ -3043,6 +3063,7 @@ const rootRouteChildren: RootRouteChildren = {
   MenuRoute: MenuRoute,
   RegisterRoute: RegisterRouteWithChildren,
   LaporanLazyRoute: LaporanLazyRoute,
+  AuthGoogleRoute: AuthGoogleRoute,
   KaryawanUsernameRoute: KaryawanUsernameRoute,
   KaryawanLoginRoute: KaryawanLoginRoute,
   KasirLoginRoute: KasirLoginRoute,

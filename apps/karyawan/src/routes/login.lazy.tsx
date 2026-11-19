@@ -4,7 +4,8 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { AlertCircle, ChevronDown, Search } from "lucide-react";
-import { DsAvatar, DsButton, DsRoot, ds3d } from "@djiwaapps/web-shared/components/ds";
+import { DsAvatar, DsButton, DsGoogleButton, DsRoot, ds3d } from "@djiwaapps/web-shared/components/ds";
+import { startGoogleLogin } from "@djiwaapps/web-shared/lib/staff-google";
 import { useYumiAuth, listPublicYumiUsers, loginWithYumiPin, type YumiPublicUser } from "@djiwaapps/web-shared";
 import { toast } from "sonner";
 
@@ -319,6 +320,8 @@ function KaryawanLoginPage() {
               </div>
 
               <DsButton block disabled={!canInputPin || !isPinComplete || isVerifying} onClick={submitPin}>{isVerifying ? "Memverifikasi…" : "Masuk"}</DsButton>
+              <div className="kx-or" aria-hidden="true"><span>atau</span></div>
+              <DsGoogleButton onClick={() => startGoogleLogin("login")}>Masuk dengan Google</DsGoogleButton>
             </div>
 
             <div style={{ marginTop: 14 }}>

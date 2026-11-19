@@ -110,3 +110,8 @@ textarea.kx-input{resize:vertical;min-height:70px}
 
 .ds-group .kx-reasons button{background:#fff}
 .ds-group .kx-reasons button[aria-pressed=true]{background:var(--ds-navy);color:#fff}
+
+.kx-pickrow{display:flex;align-items:center;gap:10px;width:100%;padding:9px 6px;background:none;border:0;border-top:1px solid var(--ds-hair);font:500 14.5px var(--ds-font);color:var(--ds-ink);text-align:left}
+
+.kx-or{display:flex;align-items:center;gap:10px;margin:12px 4px;color:var(--ds-faint);font:500 12px var(--ds-font)}
+.kx-or::before,.kx-or::after{content:"";flex:1;height:1px;background:var(--ds-line)}

@@ -5,8 +5,17 @@ import { pool } from "./auth.js";
 export const staffAuth = betterAuth({
   database: pool,
   basePath: '/api/staff-auth',
-  baseURL: process.env.CUSTOMER_APP_URL,
-  trustedOrigins: (process.env.STAFF_ALLOWED_ORIGINS ?? "").split(",").map((value) => value.trim()).filter(Boolean),
+  baseURL: process.env.CUSTOMER_APP_URL ?? "https://djiwatentram.web.id",
+  trustedOrigins: [
+    "https://karyawan.djiwatentram.web.id",
+    "https://rekrutmen.djiwatentram.web.id",
+    "https://admin.djiwatentram.web.id",
+    "https://pos.djiwatentram.web.id",
+    "https://manager.djiwatentram.web.id",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    ...(process.env.STAFF_ALLOWED_ORIGINS ?? "").split(",").map((value) => value.trim()).filter(Boolean),
+  ],
   advanced: {
     cookiePrefix: "djiwa_staff",
     defaultCookieAttributes: {

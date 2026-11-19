@@ -2,7 +2,8 @@
 
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { DsButton, DsGroup, DsGroupLabel, DsNote, DsRoot, DsSegmented, ds3d } from "@djiwaapps/web-shared/components/ds";
+import { DsButton, DsGoogleButton, DsGroup, DsGroupLabel, DsNote, DsRoot, DsSegmented, ds3d } from "@djiwaapps/web-shared/components/ds";
+import { getGoogleSession, linkGoogle, startGoogleLogin } from "@djiwaapps/web-shared/lib/staff-google";
 import { useYumiAuth, loginWithYumiPin } from "@djiwaapps/web-shared";
 import { toast } from "sonner";
 
@@ -162,6 +163,15 @@ function RegisterPage() {
   const [openPasal, setOpenPasal] = useState<number | null>(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
+  const [googleEmail, setGoogleEmail] = useState<string | null>(null);
+
+  // Datang dari "Daftar dengan Google": isi nama + email dari akun Google, hubungkan setelah akun jadi.
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).get("google")) return;
+    void getGoogleSession().then((s) => {
+      if (s.authenticated && !s.linked) { setGoogleEmail(s.profile.email); setName((n) => n || s.profile.name); setEmail((e) => e || s.profile.email); }
+    }).catch(() => undefined);
+  }, []);
 
   const pinOk = /^\d{6}$/.test(pin) && pin === pin2;
   const step0Ok = name.trim().length >= 3 && /^\+?\d[\d\s-]{7,}$/.test(phone.trim()) && !!jabatan && pinOk;
@@ -208,10 +218,16 @@ function RegisterPage() {
         if (["NAME_TAKEN", "NAME_INVALID", "PHONE_INVALID", "PIN_WEAK", "PIN_INVALID", "ROLE_INVALID"].includes(data?.error?.code)) setStep(0);
         return;
       }
-      // Akun sudah aktif: masuk otomatis dengan PIN yang baru dibuat.
+      // Akun sudah aktif: masuk otomatis dengan PIN yang baru dibuat. Bila daftar lewat Google, hubungkan sekarang.
       try {
-        const session = await loginWithYumiPin(data.userId, pin);
-        login(session.token);
+        let token: string;
+        if (googleEmail) {
+          try { token = (await linkGoogle({ userId: data.userId, pin })).token; }
+          catch { toast.error("Akun dibuat, tapi Google belum terhubung. Hubungkan nanti dari Profil."); token = (await loginWithYumiPin(data.userId, pin)).token; }
+        } else {
+          token = (await loginWithYumiPin(data.userId, pin)).token;
+        }
+        login(token);
         toast.success(`Selamat datang, ${String(data.name).split(" ")[0]}!`);
         navigate({ to: "/$username/beranda" as any, params: { username: data.slug } } as any);
       } catch {
@@ -240,6 +256,14 @@ function RegisterPage() {
 
         {step === 0 && (
           <>
+            {googleEmail ? (
+              <DsNote tone="ok"><b>Terhubung dengan Google</b>{googleEmail} · lengkapi data di bawah, akunmu langsung aktif.</DsNote>
+            ) : (
+              <>
+                <DsGoogleButton onClick={() => startGoogleLogin("register")}>Daftar dengan Google</DsGoogleButton>
+                <div className="kx-or" aria-hidden="true"><span>atau isi manual</span></div>
+              </>
+            )}
             <DsGroup>
               <Field id="reg-name" label="Nama lengkap" req><input id="reg-name" className="kx-input" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Sesuai KTP" /></Field>
               <div className="kx-field"><span>Jabatan <b style={{ color: "var(--ds-danger)" }}>*</b></span>

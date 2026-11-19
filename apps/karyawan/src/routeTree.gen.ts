@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AbsenKeluarMiniRouteImport } from './routes/absen-keluar-mini'
 import { Route as UsernameRouteImport } from './routes/$username'
 import { Route as UsernameIndexRouteImport } from './routes/$username/index'
+import { Route as AuthGoogleRouteImport } from './routes/auth.google'
 import { Route as UsernameSlipGajiRouteImport } from './routes/$username/slip-gaji'
 import { Route as UsernameRekapAbsensiRouteImport } from './routes/$username/rekap-absensi'
 import { Route as UsernameProfilRouteImport } from './routes/$username/profil'
@@ -66,6 +67,11 @@ const UsernameIndexRoute = UsernameIndexRouteImport.update({
 } as any).lazy(() =>
   import('./routes/$username/index.lazy').then((d) => d.Route),
 )
+const AuthGoogleRoute = AuthGoogleRouteImport.update({
+  id: '/auth/google',
+  path: '/auth/google',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/auth.google.lazy').then((d) => d.Route))
 const UsernameSlipGajiRoute = UsernameSlipGajiRouteImport.update({
   id: '/slip-gaji',
   path: '/slip-gaji',
@@ -177,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/$username/profil': typeof UsernameProfilRoute
   '/$username/rekap-absensi': typeof UsernameRekapAbsensiRoute
   '/$username/slip-gaji': typeof UsernameSlipGajiRoute
+  '/auth/google': typeof AuthGoogleRoute
   '/$username/': typeof UsernameIndexRoute
 }
 export interface FileRoutesByTo {
@@ -197,6 +204,7 @@ export interface FileRoutesByTo {
   '/$username/profil': typeof UsernameProfilRoute
   '/$username/rekap-absensi': typeof UsernameRekapAbsensiRoute
   '/$username/slip-gaji': typeof UsernameSlipGajiRoute
+  '/auth/google': typeof AuthGoogleRoute
   '/$username': typeof UsernameIndexRoute
 }
 export interface FileRoutesById {
@@ -219,6 +227,7 @@ export interface FileRoutesById {
   '/$username/profil': typeof UsernameProfilRoute
   '/$username/rekap-absensi': typeof UsernameRekapAbsensiRoute
   '/$username/slip-gaji': typeof UsernameSlipGajiRoute
+  '/auth/google': typeof AuthGoogleRoute
   '/$username/': typeof UsernameIndexRoute
 }
 export interface FileRouteTypes {
@@ -242,6 +251,7 @@ export interface FileRouteTypes {
     | '/$username/profil'
     | '/$username/rekap-absensi'
     | '/$username/slip-gaji'
+    | '/auth/google'
     | '/$username/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/$username/profil'
     | '/$username/rekap-absensi'
     | '/$username/slip-gaji'
+    | '/auth/google'
     | '/$username'
   id:
     | '__root__'
@@ -283,6 +294,7 @@ export interface FileRouteTypes {
     | '/$username/profil'
     | '/$username/rekap-absensi'
     | '/$username/slip-gaji'
+    | '/auth/google'
     | '/$username/'
   fileRoutesById: FileRoutesById
 }
@@ -292,6 +304,7 @@ export interface RootRouteChildren {
   AbsenKeluarMiniRoute: typeof AbsenKeluarMiniRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  AuthGoogleRoute: typeof AuthGoogleRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -337,6 +350,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/$username/'
       preLoaderRoute: typeof UsernameIndexRouteImport
       parentRoute: typeof UsernameRoute
+    }
+    '/auth/google': {
+      id: '/auth/google'
+      path: '/auth/google'
+      fullPath: '/auth/google'
+      preLoaderRoute: typeof AuthGoogleRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/$username/slip-gaji': {
       id: '/$username/slip-gaji'
@@ -476,6 +496,7 @@ const rootRouteChildren: RootRouteChildren = {
   AbsenKeluarMiniRoute: AbsenKeluarMiniRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  AuthGoogleRoute: AuthGoogleRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
