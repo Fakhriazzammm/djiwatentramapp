@@ -23,7 +23,7 @@ function BerandaPage() {
 	const stats = useHybridStaffStats(staff ? { userId: staff._id, month, year, refreshTrigger: refreshKey } : undefined);
 		const logs = useHybridStaffLogs(staff ? { userId: staff._id, month, year, refreshTrigger: refreshKey } : undefined);
 	const currentlyIn = useHybridCurrentlyInStore(refreshKey);
-	const run = useLatestRunItem(staff?._id);
+	const run = useLatestRunItem(staff?._id, refreshKey);
 	const schedules = useMonthSchedules(year, month, staff?._id);
 	const announcement = useTopAnnouncement();
 

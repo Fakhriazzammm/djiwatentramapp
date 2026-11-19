@@ -8,17 +8,26 @@ const wibDate = (offsetDays = 0) => new Date(Date.now() + 7 * 3600_000 + offsetD
 export const todayWib = () => wibDate(0);
 
 /** Latest payroll run item for the staff (live accrual: trigger updates it on every check-out). */
-export function useLatestRunItem(staffId?: string) {
+export function useLatestRunItem(staffId?: string, refreshKey = 0) {
 	const [item, setItem] = useState<RunItem | null | undefined>(undefined);
 	useEffect(() => {
 		if (!staffId) return;
 		let off = false;
-		createClient().schema("pos").from("payroll_run_items")
+		const sb = createClient();
+		const load = () => sb.schema("pos").from("payroll_run_items")
 			.select("shift_pay,daily_allowance_total,overtime_pay,bonus_pay,fixed_salary,gross_pay,deductions,net_pay,total_shifts,attendance_days,overtime_hours")
 			.eq("user_id", staffId).order("created_at", { ascending: false }).limit(1)
-			.then(({ data }) => { if (!off) setItem((data?.[0] as RunItem | undefined) ?? null); }, () => { if (!off) setItem(null); });
-		return () => { off = true; };
-	}, [staffId]);
+			.then(({ data }) => { if (!off) setItem((data?.[0] as RunItem | undefined) ?? null); }, () => { if (!off) setItem((v) => v ?? null); });
+		void load();
+		// Realtime: perubahan baris gaji sendiri (dipicu absen) + cadangan polling 20 detik dan saat tab kembali aktif.
+		const ch = sb.channel(`payroll-live-${staffId}`)
+			.on("postgres_changes", { event: "*", schema: "pos", table: "payroll_run_items", filter: `user_id=eq.${staffId}` }, () => { void load(); })
+			.subscribe();
+		const iv = setInterval(() => { if (document.visibilityState === "visible") void load(); }, 20_000);
+		const vis = () => { if (document.visibilityState === "visible") void load(); };
+		document.addEventListener("visibilitychange", vis);
+		return () => { off = true; clearInterval(iv); document.removeEventListener("visibilitychange", vis); void sb.removeChannel(ch); };
+	}, [staffId, refreshKey]);
 	return item;
 }
 

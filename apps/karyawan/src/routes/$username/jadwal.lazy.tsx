@@ -28,12 +28,33 @@ function JadwalPage() {
 	const all = useMonthSchedules(year, month, tab === "tim" ? undefined : "__none__");
 	const logs = useHybridStaffLogs(isUnlocked && staff ? { userId: staff._id, month, year, refreshTrigger: refreshKey } : undefined);
 	const [names, setNames] = useState<Record<string, string>>({});
+	const [roles, setRoles] = useState<Record<string, string>>({});
 	useEffect(() => {
 		if (tab !== "tim") return;
-		createClient().from("pos_users_public").select("_id,name").then(({ data }) => setNames(Object.fromEntries((data ?? []).map((u: any) => [u._id, u.name]))), () => undefined);
+		createClient().from("pos_users_public").select("_id,name,roleName").then(({ data }) => {
+			setNames(Object.fromEntries((data ?? []).map((u: any) => [u._id, u.name])));
+			setRoles(Object.fromEntries((data ?? []).map((u: any) => [u._id, u.roleName ?? ""])));
+		}, () => undefined);
 	}, [tab]);
 
 	const byDate = useMemo(() => new Map((mine ?? []).map((s) => [s.date, s])), [mine]);
+	// Titik kalender: Pribadi = shift sendiri; Tim = warna shift yang ada di tanggal itu (maks 3).
+	const teamDots = useMemo(() => {
+		const m = new Map<string, string[]>();
+		for (const r of all ?? []) {
+			if (isOffShift(r)) continue;
+			const c = dot(r.shift_name);
+			const arr = m.get(r.date) ?? [];
+			if (!arr.includes(c)) arr.push(c);
+			m.set(r.date, arr);
+		}
+		return m;
+	}, [all]);
+	const dotsFor = (key: string): string[] => {
+		if (tab === "tim") return teamDots.get(key) ?? [];
+		const sc = byDate.get(key);
+		return sc ? [isOffShift(sc) ? "#aab0bf" : dot(sc.shift_name)] : [];
+	};
 	const first = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
 	const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
 	const selSched = byDate.get(sel);
@@ -79,11 +100,10 @@ function JadwalPage() {
 
 			<div className="kx-week" role="group" aria-label="Minggu ini">
 				{weekDays.map((d) => {
-					const sc = byDate.get(d.key);
 					return (
 						<button key={d.key} type="button" data-today={d.key === today ? "" : undefined} data-sel={d.key === sel ? "" : undefined} onClick={() => { setSel(d.key); setMonth(+d.key.slice(5, 7)); setYear(+d.key.slice(0, 4)); }}>
 							<small>{DAYS[d.dow]}</small>{d.day}
-							<i style={{ background: !sc ? "transparent" : isOffShift(sc) ? "#aab0bf" : dot(sc.shift_name) }} />
+							<span className="kx-dots">{dotsFor(d.key).map((c) => <i key={c} style={{ background: c }} />)}</span>
 						</button>
 					);
 				})}
@@ -108,7 +128,7 @@ function JadwalPage() {
 							return (
 								<button key={key} type="button" onClick={() => setSel(key)} style={{ position: "relative", minHeight: 44, border: 0, borderRadius: 14, font: `${isToday ? 700 : 500} 15px var(--ds-font)`, background: isToday ? "var(--ds-navy)" : "none", color: isToday ? "#fff" : "inherit", boxShadow: key === sel ? "inset 0 0 0 2px var(--ds-navy)" : undefined }}>
 									{d}
-									{s && <i style={{ position: "absolute", left: "50%", bottom: 5, width: 5, height: 5, borderRadius: "50%", transform: "translateX(-50%)", background: isOffShift(s) ? "#aab0bf" : dot(s.shift_name) }} />}
+									<span className="kx-dots" style={{ position: "absolute", left: 0, right: 0, bottom: 4 }}>{dotsFor(key).map((c) => <i key={c} style={{ background: c }} />)}</span>
 								</button>
 							);
 						})}
@@ -120,7 +140,7 @@ function JadwalPage() {
 				<>
 					<DsGroupLabel>{new Date(sel).toLocaleDateString("id-ID", { day: "numeric", month: "long", timeZone: "UTC" })}</DsGroupLabel>
 					<DsGroup flush>
-						<DsRow icon={<DsIcon name="work-schedule" />} title={selSched ? selSched.shift_name : "Tidak ada jadwal"} sub={selSched && !isOffShift(selSched) ? `${hhmm(selSched.start_time)}${selSched.end_time ? ` – ${hhmm(selSched.end_time)}` : ""}` : "Hari libur"} trail={selSched && !isOffShift(selSched) ? <DsTag tone="ok">Shift</DsTag> : <DsTag>Off</DsTag>} />
+						<DsRow icon={<DsIcon name="work-schedule" />} title={selSched ? selSched.shift_name : "Tidak ada jadwal"} sub={selSched && !isOffShift(selSched) ? `${hhmm(selSched.start_time)}${selSched.end_time ? ` – ${hhmm(selSched.end_time)}` : ""}${staff?.roleName ? ` · ${staff.roleName}` : ""}` : "Hari libur"} trail={selSched && !isOffShift(selSched) ? <DsTag tone="ok">Shift</DsTag> : <DsTag>Off</DsTag>} />
 					</DsGroup>
 					<DsButton block variant="ghost" onClick={() => navigate({ to: "/$username/izin" as any, params: { username } } as any)}>Ajukan tukar shift</DsButton>
 				</>
@@ -134,7 +154,7 @@ function JadwalPage() {
 							<div key={name}>
 								<DsGroupLabel action={<span className="ds-sub">{rows.length} orang</span>}>{name}{rows[0] && !isOffShift(rows[0]) && rows[0].start_time ? ` ${hhmm(rows[0].start_time)} – ${hhmm(rows[0].end_time)}` : ""}</DsGroupLabel>
 								<DsGroup flush>
-									{rows.map((r) => <DsRow key={`${r.user_id}-${r.shift_name}`} icon={<DsAvatar name={names[r.user_id ?? ""] ?? "?"} size={38} />} title={names[r.user_id ?? ""] ?? "Karyawan"} trail={r.user_id === staff?._id ? <DsTag tone="info">Kamu</DsTag> : undefined} />)}
+									{rows.map((r) => <DsRow key={`${r.user_id}-${r.shift_name}`} icon={<DsAvatar name={names[r.user_id ?? ""] ?? "?"} size={38} />} title={names[r.user_id ?? ""] ?? "Karyawan"} sub={roles[r.user_id ?? ""] || undefined} trail={r.user_id === staff?._id ? <DsTag tone="info">Kamu</DsTag> : undefined} />)}
 								</DsGroup>
 							</div>
 						);

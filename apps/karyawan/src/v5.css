@@ -91,7 +91,6 @@
 .kx-week small{display:block;font:600 10px var(--ds-font);color:var(--ds-faint)}
 .kx-week button[data-today]{background:var(--ds-navy);color:#fff}.kx-week button[data-today] small{color:rgba(255,255,255,.7)}
 .kx-week button[data-sel]:not([data-today]){box-shadow:inset 0 0 0 2px var(--ds-navy)}
-.kx-week i{display:block;width:5px;height:5px;border-radius:50%;margin:3px auto 0}
 
 /* ── Peringkat: podium ───────────────────────────────────────── */
 .kx-podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;padding-bottom:4px}
@@ -100,3 +99,8 @@
 .kx-pod>div:last-child{width:100%;background:#fff;border-radius:12px 12px 0 0;margin-top:5px;font:700 20px var(--ds-font);display:grid;place-items:center}
 .kx-pod[data-me]>div:last-child{background:var(--ds-blue-soft);color:var(--ds-blue)}
 .kx-rank{font:700 14px var(--ds-font)}
+
+/* ── Titik jadwal (maks 3) ───────────────────────────────────── */
+.kx-dots{display:flex;justify-content:center;gap:2px;min-height:5px;margin-top:3px}
+.kx-dots i{display:block;width:5px;height:5px;border-radius:50%}
+.kx-week .kx-dots{margin-top:3px}

@@ -3,6 +3,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Upload, FileSpreadsheet, Image, FileText, AlertTriangle, Check, X, Loader2, Search, User } from "lucide-react";
 import { createClient } from "@/lib/client";
+import { createClient } from "@/lib/client";
+import { normalizeName } from "@/lib/attendance-schedule-import";
 import type { ParsedAttendanceImport, StaffMapping, ImportOptions, ResolvedImportRow } from "@/lib/attendance-schedule-import";
 import { parseSpreadsheetMatrix, resolveAllStaff, resolveShift } from "@/lib/attendance-schedule-import";
 import type { AttendanceSchedule } from "@/hooks/use-hybrid-attendance-schedules";
@@ -320,6 +322,7 @@ export default function AttendanceImportDialog({
 
     // Build ResolvedImportRow[]
     const resolvedRows: ResolvedImportRow[] = [];
+    const pendingRows: Record<string, unknown>[] = [];
     const mappedUserIds = mappings
       .filter((m) => m.status === "mapped" && m.matchedUserId)
       .map((m) => m.matchedUserId!)
@@ -329,7 +332,21 @@ export default function AttendanceImportDialog({
       const mapping = mappings.find(
         (m) => m.rawName === row.rawStaffName && m.matchedUserId
       );
-      if (!mapping?.matchedUserId) continue;
+      if (!mapping?.matchedUserId) {
+        // Nama belum punya akun: simpan sementara, otomatis tersambung saat akun dengan nama sama dibuat.
+        const unmapped = mappings.find((m) => m.rawName === row.rawStaffName);
+        if (unmapped && unmapped.status !== "placeholder") {
+          let st = row.startTime, et = row.endTime;
+          if (row.status === "off" && !importOptions.includeOff) continue;
+          pendingRows.push({
+            raw_name: row.rawStaffName, norm_name: normalizeName(row.rawStaffName), date: row.date, shift_name: row.shiftName,
+            start_time: st ?? null, end_time: et ?? null, status: row.status === "off" ? "off" : "scheduled",
+            note: `Imported from ${importData.source.title || "roster"}`,
+            raw: { source: "attendance_import", rawShiftText: row.rawShiftText, sourceTitle: importData.source.title },
+          });
+        }
+        continue;
+      }
 
       // Skip OFF if not included
       if (row.status === "off" && !importOptions.includeOff) continue;
@@ -378,6 +395,11 @@ export default function AttendanceImportDialog({
       mappings,
     } as unknown as ImportOptions);
 
+    if (pendingRows.length > 0) {
+      const { error: pendingError } = await createClient().schema("pos").from("attendance_schedule_pending").upsert(pendingRows, { onConflict: "norm_name,date" });
+      if (pendingError) toast.error("Jadwal untuk nama tanpa akun gagal disimpan sementara");
+      else toast.info(`${new Set(pendingRows.map((r) => r.raw_name)).size} nama belum punya akun; ${pendingRows.length} jadwal disimpan dan tersambung otomatis saat akunnya dibuat`);
+    }
     toast.success(`Berhasil mengimport ${resolvedRows.length} jadwal`);
     onClose();
   }, [importData, mappings, importOptions, shiftTemplates, month, year, onImport, onClose]);

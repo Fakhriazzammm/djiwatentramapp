@@ -20,7 +20,7 @@ function GajiPage() {
 	const [hide, setHide] = useState(() => typeof window !== "undefined" && localStorage.getItem("saldo_visible") === "false");
 	const [sel, setSel] = useState<string>("now");
 
-	const run = useLatestRunItem(staff?._id);
+	const run = useLatestRunItem(staff?._id, refreshKey);
 	const stats = useHybridStaffStats(isUnlocked && staff ? { userId: staff._id, month, year, refreshTrigger: refreshKey } : undefined);
 	const logs = useHybridStaffLogs(isUnlocked && staff ? { userId: staff._id, month, year, refreshTrigger: refreshKey } : undefined);
 	const slips = useHybridPayslips(isUnlocked && staff ? { userId: staff._id } : undefined);

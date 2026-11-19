@@ -215,7 +215,7 @@ function ProfilPage() {
 						<DsAvatar name={staff.name} size={84} />
 						<h1 style={{margin:"12px 0 2px", fontSize:26, fontWeight:700, letterSpacing:"-.03em"}}>{staff.name}</h1>
 						<div style={{fontSize:13, color:"var(--ds-mute)"}}>@{staff.slug}{privateData?.email ? ` · ${privateData.email}` : ""}</div>
-						<div style={{marginTop:8}}><DsTag tone="info">{isAdmin ? "Admin" : "Karyawan"}</DsTag></div>
+						<div style={{marginTop:8}}><DsTag tone="info">{staff.roleName || (isAdmin ? "Admin" : "Karyawan")}</DsTag></div>
 					</div>
 					{requiresPinChange && <DsNote icon={<KeyRound size={20} />} action={<DsButton size="sm" onClick={() => { setSection("pin"); setShowChangePin(true); }}>Ganti</DsButton>}><b>PIN default masih aktif</b>Ganti agar tidak ada yang absen atas namamu.</DsNote>}
 					<DsGroup style={{marginTop:18}}>
