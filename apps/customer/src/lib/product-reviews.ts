@@ -78,3 +78,21 @@ export async function createProductReview(input: CreateProductReviewInput): Prom
   const response = await invokeEdgeFunction<CreateResponse>("product-reviews", { action: "create", productSourceId: input.productSourceId, orderSourceId: input.orderSourceId, rating: input.rating, ...(comment ? { comment } : {}) });
   return { review: response.review ? mapReview(response.review, input.productSourceId) : null, status: String(response.status ?? (response.pending === false ? "published" : "pending")) };
 }
+
+export type MyProductReview = {
+  orderSourceId: string;
+  productSourceId: string;
+};
+
+type MineResponse = { reviews?: Array<Record<string, unknown>> };
+
+/** Pasangan pesanan+menu yang sudah pernah diulas customer ini (semua status moderasi). */
+export async function listMyProductReviews(): Promise<MyProductReview[]> {
+  const response = await invokeEdgeFunction<MineResponse>("product-reviews", { action: "mine" });
+  return (response.reviews ?? [])
+    .map((row) => ({
+      orderSourceId: String(row.orderSourceId ?? row.order_source_id ?? ""),
+      productSourceId: String(row.productSourceId ?? row.product_source_id ?? ""),
+    }))
+    .filter((row) => row.orderSourceId && row.productSourceId);
+}

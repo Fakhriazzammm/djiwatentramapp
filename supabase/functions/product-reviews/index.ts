@@ -150,6 +150,23 @@ async function listPublic(body: Json) {
   return { reviews: (data ?? []).map((row) => publicReview(row as Json)), limit: limitValue, offset: offsetValue, has_more: (data ?? []).length === limitValue };
 }
 
+async function myReviews(actor: Actor) {
+  if (!actor.customerId) return { reviews: [] as Json[] };
+  const admin = ensureDb();
+  const { data, error } = await admin.schema("pos").from("product_reviews")
+    .select("order_source_id,product_source_id")
+    .eq("customer_user_id", actor.customerId)
+    .order("created_at", { ascending: false })
+    .limit(1000);
+  if (error) throw error;
+  return {
+    reviews: (data ?? []).map((row) => ({
+      order_source_id: row.order_source_id,
+      product_source_id: row.product_source_id,
+    })),
+  };
+}
+
 async function createReview(body: Json, actor: Actor) {
   const productId = requiredText(body.product_source_id ?? body.productSourceId, "product_source_id", 160);
   const orderId = requiredText(body.order_source_id ?? body.orderSourceId, "order_source_id", 160);
@@ -236,6 +253,11 @@ Deno.serve(async (req) => {
     const action = text(body.action, 40);
     if (action === "summary") return response({ success: true, ...(await summary(body)) });
     if (action === "list") return response({ success: true, ...(await listPublic(body)) });
+    if (action === "mine") {
+      const actor = await customerActor(req);
+      if (!actor) return fail("UNAUTHORIZED", "Sesi customer tidak valid", 401);
+      return response({ success: true, ...(await myReviews(actor)) });
+    }
     if (action === "create") {
       const actor = await customerActor(req);
       if (!actor) return fail("UNAUTHORIZED", "Sesi customer tidak valid", 401);

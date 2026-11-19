@@ -18,6 +18,7 @@ import { HomeFriendActivity, HomeTopSellersToday, HomeGuestWallet, HomeQuickPick
 import { CustomerStoryRail } from "@/features/stories/customer-story-rail";
 import { useDayPeriod } from "@/lib/day-period";
 import { JumatBerkahBanner } from "@/components/customer/jumat-berkah";
+import { ReviewPromptCarousel } from "@/components/customer/review-prompt-carousel";
 import { HomeRestaurantInfo, useLiveShift } from "@/components/customer/customer-home-editorial";
 import { CustomerLiveOrderCard } from "@/components/customer/customer-live-order-card";
 
@@ -359,6 +360,7 @@ function MemberHomePage() {
 							<HomeWalletCard customer={customer} onOpen={goDjiwaPay} onAction={goWalletAction} />
 							<HomeServiceRail {...serviceHandlers} />
 							<div className="mt-3 space-y-3">
+								<ReviewPromptCarousel orders={customerOrders} />
 								<JumatBerkahBanner onOpen={openJumatBerkah} onDonate={donateJumatBerkah} />
 								<HomeQuickPicks username={username} />
 								<CustomerStoryRail onOpenCommunity={goCommunity} />

@@ -8,6 +8,7 @@ import { currency } from "@/components/customer/types";
 import { getDisplayOrderNumber } from "@djiwaapps/web-shared/lib/order-number";
 import { CustomerSectionSkeleton } from "@/components/customer/customer-states";
 import { CustomerPushActivation } from "@/components/customer/customer-push-activation";
+import { ReviewPromptCarousel } from "@/components/customer/review-prompt-carousel";
 import { markAllCustomerWalletNotificationsRead, markCustomerWalletNotificationRead, readCustomerWalletNotifications, type CustomerWalletNotification } from "@/lib/customer-wallet-adapter";
 
 export const Route = createLazyFileRoute("/$username/notifikasi")({
@@ -133,6 +134,7 @@ function NotifikasiPage() {
 
 				<main className="px-3 py-4">
 					<CustomerPushActivation />
+					<ReviewPromptCarousel orders={orders} className="mb-3" />
 					{authLoading ? (
 						<CustomerSectionSkeleton label="Memeriksa akun" />
 					) : !isAuthenticated ? (
