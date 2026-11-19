@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import {
 	useHybridSiteSettings,
-	useHybridStaffUsers,
+	useHybridActiveStaffUsers,
 } from "@/hooks/use-hybrid-pos-data";
 import {
 	useHybridUpdateSiteSettings,
@@ -84,7 +84,7 @@ function AttendancePengaturanPage() {
 	const [pickerGroupIndex, setPickerGroupIndex] = useState(0);
 	const [staffSearchQuery, setStaffSearchQuery] = useState("");
 	const [selectedStaffIds, setSelectedStaffIds] = useState<Set<string>>(new Set());
-	const staffUsers = useHybridStaffUsers();
+	const staffUsers = useHybridActiveStaffUsers();
 
 	useEffect(() => {
 		if (siteSettings) {

@@ -2316,6 +2316,12 @@ export function useHybridStaffUsers(refreshTrigger?: number) {
 	return supabaseData as StaffUserRecord[] | undefined;
 }
 
+/** Karyawan aktif saja — untuk semua input/pemilih (kasir, tim shift, jadwal, pengaturan). Halaman manajemen karyawan memakai useHybridStaffUsers (semua). */
+export function useHybridActiveStaffUsers(refreshTrigger?: number) {
+	const all = useHybridStaffUsers(refreshTrigger);
+	return useMemo(() => (all ? all.filter((u) => u.isActive) : all), [all]);
+}
+
 export function useHybridShiftStatus(refreshTrigger?: number) {
 	const supabaseData = useSupabaseValue("shift-status", fetchShiftStatus, [], 
 		refreshTrigger !== undefined 

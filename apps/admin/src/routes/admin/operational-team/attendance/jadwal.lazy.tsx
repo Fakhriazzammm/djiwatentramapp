@@ -16,7 +16,7 @@ import {
   useHybridDeleteAttendanceSchedule,
 } from "@/hooks/use-hybrid-attendance-schedules";
 import type { AttendanceSchedule, SchedulesByDate, CreateScheduleInput } from "@/hooks/use-hybrid-attendance-schedules";
-import { useHybridStaffUsers } from "@/hooks/use-hybrid-pos-data";
+import { useHybridActiveStaffUsers } from "@/hooks/use-hybrid-pos-data";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import {
   DndContext,
@@ -930,7 +930,7 @@ function AttendanceJadwalPage() {
     year,
     refreshTrigger
   );
-  const users = useHybridStaffUsers(refreshTrigger);
+  const users = useHybridActiveStaffUsers(refreshTrigger);
   const siteSettings = useHybridSiteSettings();
   const shiftTemplates =
     siteSettings?.shiftSettings?.shiftSchedules ?? [];
