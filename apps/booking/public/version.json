@@ -1,7 +1,7 @@
 {
-  "version": "0.2.571",
-  "commitHash": "3e04b3a",
-  "message": "feat(djiwapay): pinjaman/KPR calculator, loan tracker, and BI-Rate alerts",
+  "version": "0.2.572",
+  "commitHash": "79818ce",
+  "message": "fix(booking): flat choice list, hide empty categories, stable disabled action button",
   "buildDate": "2026-11-19",
-  "generatedAt": "2026-11-19T18:57:21.146Z"
+  "generatedAt": "2026-11-19T18:59:42.106Z"
 }

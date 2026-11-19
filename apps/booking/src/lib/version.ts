@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.571",
+	semantic: "0.2.572",
 	// Git/deploy commit hash (short)
-	commitHash: "3e04b3a",
-	message: "feat(djiwapay): pinjaman/KPR calculator, loan tracker, and BI-Rate alerts",
+	commitHash: "79818ce",
+	message: "fix(booking): flat choice list, hide empty categories, stable disabled action button",
 	// Commit subject for the update prompt
-	commitMessage: "feat(djiwapay): pinjaman/KPR calculator, loan tracker, and BI-Rate alerts",
+	commitMessage: "fix(booking): flat choice list, hide empty categories, stable disabled action button",
 	// Build timestamp
 	buildDate: "2026-11-19",
 	// Full version string for display

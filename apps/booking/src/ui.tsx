@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, CalendarDays, Check, CircleAlert } from "lucide-react";
 import { Djiwa3DIcon, OwnerFooter, type Djiwa3DIconName } from "@djiwaapps/web-shared";
+import { createPortal } from "react-dom";
 import type { CSSProperties, ReactNode } from "react";
 import { BOOKING_STEPS, type BookingStep } from "./lib/booking-constants";
 import type { BookingSettings } from "./lib/client";
@@ -57,7 +58,8 @@ export function Icon3D({ name, size = "sm" }: { name: Djiwa3DIconName; size?: "m
 }
 
 export function Dock({ children, show = true }: { children: ReactNode; show?: boolean }) {
-  return <AnimatePresence>{show && <motion.div className="bk-dock" initial={{ y: 90, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 90, opacity: 0 }} transition={SOFT}><div>{children}</div></motion.div>}</AnimatePresence>;
+  // Portal: the page transition applies a transform, which would turn position:fixed into position:relative.
+  return createPortal(<AnimatePresence>{show && <motion.div className="bk-dock" initial={{ y: 110 }} animate={{ y: 0 }} exit={{ y: 110 }} transition={SOFT}><div>{children}</div></motion.div>}</AnimatePresence>, document.body);
 }
 
 export function Button({ children, onClick, disabled, loading, variant, small, type = "button" }: { children: ReactNode; onClick?: () => void; disabled?: boolean; loading?: boolean; variant?: "ghost"; small?: boolean; type?: "button" | "submit" }) {
