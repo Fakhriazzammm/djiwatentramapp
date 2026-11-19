@@ -118,7 +118,7 @@ function BerandaPage() {
 					<b>Belum absen keluar</b>Kamu absen masuk {new Date(att.forgotOut.date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })} tanpa absen keluar. Ajukan koreksi.
 				</DsNote>
 			)}
-			{!isIn && !finished && tomorrow && (
+			{!isIn && !finished && tomorrow?.s && (
 				<DsNote tone="info" icon={<DsIcon name="employee-schedule" />}>
 					<b>{tomorrow.s && !isOffShift(tomorrow.s) ? `Besok ${tomorrow.s.shift_name}` : "Besok libur"}</b>
 					{week[2].s ? `${new Date(`${week[2].date}T00:00:00+07:00`).toLocaleDateString("id-ID", { weekday: "long", timeZone: "Asia/Jakarta" })}: ${isOffShift(week[2].s) ? "Off" : `${week[2].s.shift_name} ${hhmm(week[2].s.start_time)}`}` : "Cek menu Jadwal"}
