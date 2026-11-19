@@ -5,7 +5,7 @@ import { Btn, Ic, Seg, Sheet, payAsset, spring, type IconName } from "../shell/d
 import { FullPage } from "../kelola/asset-ui";
 import { ConsentSheet, useGoogle } from "../integrations/integrations-pages";
 import { connectGoogle, rememberAfterGoogle } from "../../lib/finance/integrations";
-import { IDX_TICKERS, TICKER_NAME, isTicker, tickerColor } from "../../lib/finance/idx-tickers";
+import { IDX_TICKERS, TICKER_NAME, hasLogo, isTicker, logoSrc, tickerColor } from "../../lib/finance/idx-tickers";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import {
   DEFAULT_FEES, activateStocks, addStockTrade, deleteStockTrade, feeFor, grossOf, isStale, percent, portfolio, refreshStockPrices, reloadStocks, saveManualPrice, saveStockFees, signedRupiah, stampLabel,
@@ -13,6 +13,8 @@ import {
 } from "../../lib/finance/stocks";
 import type { FinCtx } from "./fin-pages";
 
+/** Bar segments are told apart by position, not by ticker, so neighbours never share a colour. */
+const BAR = ["#c9461b", "#1a5dc6", "#d9a21a", "#13804a", "#6a4c93", "#16a3b8", "#e0568a", "#958a7d"];
 const CONSENT_EXTRA = ["Menambah tab Saham dan Portofolio Saham di Spreadsheet itu, dengan rumus GOOGLEFINANCE untuk harga saham"];
 const mask = (visible: boolean, s: string) => (visible ? s : "•••••");
 const num = (digits: string) => Number(digits || 0).toLocaleString("id-ID");
@@ -33,7 +35,13 @@ export function Onboard({ asset, title, desc, bullets, notice, primary, onPrimar
   </motion.div>;
 }
 
-const Mini = ({ t, size = 38 }: { t: string; size?: number }) => <span className="dpx-st-mini" style={{ background: tickerColor(t), width: size, height: size }}>{t}</span>;
+/** The company's own logo; a coloured tile with the code when we do not have one. */
+function Logo({ t, size = 38 }: { t: string; size?: number }) {
+  const [bad, setBad] = useState(false);
+  if (hasLogo(t) && !bad) return <img className="dpx-st-logo" src={logoSrc(t)} alt="" width={size} height={size} loading="lazy" decoding="async" onError={() => setBad(true)} style={{ width: size, height: size }} />;
+  return <span className="dpx-st-mini" style={{ background: tickerColor(t), width: size, height: size, borderRadius: Math.round(size * 0.3), fontSize: Math.max(8, Math.round(size / 4)) }}>{t}</span>;
+}
+const Mini = Logo;
 
 function Banners({ s, onConnect }: { s: StockState; onConnect: () => void }) {
   const pf = portfolio(s);
@@ -90,7 +98,7 @@ export function SahamTab({ ctx }: { ctx: FinCtx }) {
       <Banners s={s} onConnect={() => setConsent(true)} />
       {shelves.map((row, si) => <div className="dpx-vt-shelf" key={si}>{row.map((r, i) => r
         ? <motion.button type="button" key={r.ticker} className="dpx-vt-slot" onClick={() => ctx.open({ k: "stock-view", ticker: r.ticker })} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: (si * 3 + i) * 0.05 }} whileTap={{ scale: 0.95 }}>
-          <span className="dpx-vt-stk"><span className="dpx-st-tile" style={{ background: `linear-gradient(160deg, ${tickerColor(r.ticker)}, ${tickerColor(r.ticker)}cc)` }}>{r.ticker}{pf.priced && r.source !== "sheet" ? <em>manual</em> : null}</span></span>
+          <span className="dpx-vt-stk"><span className="dpx-st-tile"><Logo t={r.ticker} size={68} />{pf.priced && r.source !== "sheet" ? <em>manual</em> : null}</span></span>
           <b>{r.ticker}</b><span className="dpx-sub">{mask(visible, rupiah(pf.priced ? r.value : r.cost))}</span>
           {pf.priced ? <span className={r.pl >= 0 ? "dpx-up" : "dpx-dn"} style={{ fontSize: 10.5, fontWeight: 700 }}>{percent(r.plPct)}</span> : <span className="dpx-sub" style={{ fontSize: 10.5 }}>modal</span>}
         </motion.button>
@@ -99,8 +107,8 @@ export function SahamTab({ ctx }: { ctx: FinCtx }) {
         <div className="dpx-st-sumrow"><div style={{ flex: 1 }}><div className="dpx-sub">Nilai semua saham</div><div className="dpx-vt-sumamt">{mask(visible, rupiah(total))}</div></div>
           <Btn type="button" className="dpx-st-gear" onClick={() => ctx.open({ k: "stock-fee" })} aria-label="Pengaturan fee broker"><Ic n="edit" size="sm" /></Btn></div>
         <div className="dpx-sub">{pf.priced ? <>Modal {mask(visible, rupiah(pf.cost))} · {visible ? <span className={pf.pl >= 0 ? "dpx-up" : "dpx-dn"} style={{ fontWeight: 700 }}>{percent(pf.plPct)} ({signedRupiah(pf.pl)})</span> : "•••"}</> : <>Modal {mask(visible, rupiah(pf.cost))} · tanpa harga terkini</>}</div>
-        <div className="dpx-vt-bar" role="img" aria-label="Komposisi saham">{pf.rows.map((r) => <i key={r.ticker} style={{ width: `${total ? ((pf.priced ? r.value : r.cost) / total) * 100 : 0}%`, background: tickerColor(r.ticker) }} />)}</div>
-        <div className="dpx-vt-leg">{pf.rows.map((r) => <span key={r.ticker}><i style={{ background: tickerColor(r.ticker) }} />{r.ticker} {total ? Math.round(((pf.priced ? r.value : r.cost) / total) * 100) : 0}%</span>)}</div>
+        <div className="dpx-vt-bar" role="img" aria-label="Komposisi saham">{pf.rows.map((r, i) => <i key={r.ticker} style={{ width: `${total ? ((pf.priced ? r.value : r.cost) / total) * 100 : 0}%`, background: BAR[i % BAR.length] }} />)}</div>
+        <div className="dpx-vt-leg">{pf.rows.map((r, i) => <span key={r.ticker}><i style={{ background: BAR[i % BAR.length] }} />{r.ticker} {total ? Math.round(((pf.priced ? r.value : r.cost) / total) * 100) : 0}%</span>)}</div>
         {pf.priced && pf.asOf ? <div className="dpx-sub" style={{ marginTop: 6 }}>Harga per {stampLabel(pf.asOf)} · dari Google Sheets</div> : null}
         {s.sheet.url ? <a className="dpx-linkbtn" style={{ textAlign: "center", padding: "8px 0 2px" }} href={s.sheet.url} target="_blank" rel="noreferrer">Buka di Google Sheets ›</a> : null}
       </div>

@@ -19,3 +19,6 @@ export const isTicker = (v: string) => /^[A-Z]{4}$/.test(v);
 const PALETTE = ["#1a5dc6", "#c9461b", "#5b6b7f", "#4f7a2b", "#a05d00", "#6a4c93", "#16a3b8", "#e0568a", "#2f7d6d", "#d9480f"];
 /** A stable colour per ticker, so a stock keeps its sticker colour everywhere. */
 export const tickerColor = (t: string) => PALETTE[[...t].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % PALETTE.length];
+/** Company logos are shipped for the listed codes (public/assets/idx-logos, 160px, round). Any other code falls back to a coloured tile. */
+export const hasLogo = (t: string) => TICKER_NAME.has(t);
+export const logoSrc = (t: string) => `/assets/idx-logos/${t}.png`;

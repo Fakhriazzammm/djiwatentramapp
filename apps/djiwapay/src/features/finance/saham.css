@@ -10,8 +10,9 @@
 .dpx .dpx-onb .dpx-note{width:100%;text-align:left;margin:6px 0 4px}
 .dpx .dpx-onb .dpx-btn{margin-top:10px}
 .dpx .dpx-onb-go{background:linear-gradient(180deg,#d9552a,#b83f17);box-shadow:0 8px 18px rgba(201,70,27,.28)}
-.dpx .dpx-st-tile{position:relative;display:grid;place-items:center;width:72px;height:72px;border-radius:22px;color:#fff;font:800 14px var(--font);letter-spacing:.02em;box-shadow:0 6px 12px rgba(40,30,10,.22),inset 0 2px 0 rgba(255,255,255,.25)}
-.dpx .dpx-st-tile em{position:absolute;top:-6px;right:-10px;font:800 9px var(--font);font-style:normal;background:#fff;color:var(--warn);border-radius:99px;padding:2px 6px;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.dpx .dpx-st-tile{position:relative;display:grid;place-items:center;width:72px;height:72px}
+.dpx .dpx-st-tile em{position:absolute;top:-4px;right:-8px;font:800 9px var(--font);font-style:normal;background:#fff;color:var(--warn);border-radius:99px;padding:2px 6px;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.dpx .dpx-st-logo{display:block;flex:none;border-radius:50%;object-fit:cover;background:#fff;box-shadow:0 6px 12px rgba(40,30,10,.2),0 0 0 2px #fff}
 .dpx .dpx-st-mini{display:grid;place-items:center;flex:none;border-radius:12px;color:#fff;font:800 10px var(--font)}
 .dpx .dpx-st-note{display:flex;gap:10px;align-items:center;padding:11px 13px;border-radius:18px;font-size:12.5px;line-height:1.35;background:var(--warn-soft);color:#6b4a00}
 .dpx .dpx-st-note.dpx-info{background:var(--blue-soft);color:#8a3414}
