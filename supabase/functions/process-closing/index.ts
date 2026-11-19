@@ -591,6 +591,9 @@ Deno.serve(async (req: Request) => {
     };
 
     if (source === "telegram_mini_app") {
+      return fail("BOT_ATTENDANCE_DISABLED", "Closing & absen keluar lewat bot Telegram sudah tidak digunakan. Buka https://karyawan.djiwatentram.web.id lalu ketuk tombol absen.", 410);
+    }
+    if (source === "telegram_mini_app") {
       if (!linkUid || !linkTimestamp || !linkSignature) {
         return fail("AUTH_REQUIRED", "Link Mini App tidak lengkap. Buka ulang dari bot.", 401);
       }

@@ -522,12 +522,41 @@ async def _find_shift_at_time(timestamp_ms: int) -> dict:
 def _main_keyboard(is_registered: bool = True) -> ReplyKeyboardMarkup:
     if is_registered:
         return ReplyKeyboardMarkup(
-            [["✅ Absen Masuk", "📤 Absen Keluar"], ["📋 Status Saya", "📊 Rekap Bulanan"], ["📅 Jadwal Saya"], ["📱 Buka Aplikasi Karyawan"]],
+            [["📱 Buka Aplikasi Karyawan"], ["📋 Status Saya", "📊 Rekap Bulanan"], ["📅 Jadwal Saya"]],
             resize_keyboard=True,
         )
     return ReplyKeyboardMarkup(
         [["🔑 Daftar / Hubungkan"]],
         resize_keyboard=True,
+    )
+
+
+KARYAWAN_APP_URL = "https://karyawan.djiwatentram.web.id"
+
+ABSEN_MOVED_TEXT = (
+    "📱 *Absen sekarang lewat Aplikasi Karyawan*\n\n"
+    "Absen masuk & keluar lewat bot ini sudah *tidak bisa dipakai lagi*.\n"
+    "Pakai web app agar lokasi, wajah/PIN, dan laporan ke grup tercatat otomatis.\n\n"
+    "*Cara absen masuk:*\n"
+    "1️⃣ Buka " + KARYAWAN_APP_URL + "\n"
+    "2️⃣ Masuk (nama + PIN, atau Google)\n"
+    "3️⃣ Ketuk tombol hijau di tengah bawah\n"
+    "4️⃣ Izinkan lokasi → pastikan di area toko\n"
+    "5️⃣ Verifikasi wajah atau PIN → selesai ✅\n\n"
+    "*Cara absen keluar:*\n"
+    "Ketuk tombol merah di tengah → isi closing shift → verifikasi → selesai.\n\n"
+    "Pertama kali? Aplikasi akan menampilkan panduan langkah demi langkah."
+)
+
+async def _absen_moved(update: Update):
+    """Absen lewat bot dinonaktifkan: arahkan ke Aplikasi Karyawan."""
+    if not update.message:
+        return
+    await update.message.reply_text(
+        ABSEN_MOVED_TEXT,
+        parse_mode="Markdown",
+        disable_web_page_preview=True,
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📱 Buka Aplikasi Karyawan", url=KARYAWAN_APP_URL)]]),
     )
 
 def _location_keyboard() -> ReplyKeyboardMarkup:
@@ -664,10 +693,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         name = emp.get("employee_name", "Karyawan")
         await update.message.reply_text(
             f"👋 *Selamat datang kembali, {name}!*\n\n"
-            f"Kamu sudah terdaftar dan bisa langsung absen menggunakan tombol di bawah.\n\n"
+            f"📱 *Absen masuk & keluar sekarang lewat Aplikasi Karyawan:*\n{KARYAWAN_APP_URL}\n"
+            f"Bot ini tidak lagi dipakai untuk absen.\n\n"
             f"📌 *Tombol yang tersedia:*\n"
-            f"✅ *Absen Masuk* — Catat kedatangan\n"
-            f"📤 *Absen Keluar* — Catat pulang\n"
             f"📋 *Status Saya* — Cek absensi hari ini\n"
             f"📊 *Log Hari Ini* — Detail absensi, denda & bonus",
             parse_mode="Markdown",
@@ -685,9 +713,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "   Lalu ketik kode registrasi kamu\n\n"
             "━━━ *LANGKAH 3 — Mulai Absen* ━━━\n"
             "✅ Setelah terdaftar, kamu bisa langsung:\n"
-            "   • ✅ Absen Masuk\n"
-            "   • 📤 Absen Keluar\n"
-            "   • 📋 Cek Status Absensi\n\n"
+            "   • 📋 Cek status, jadwal, dan rekap\n"
+            "   • 📱 Absen masuk/keluar dilakukan di Aplikasi Karyawan\n\n"
             "💡 *Tips:* Kode unik hanya kamu yang punya — jangan bagikan ke orang lain!",
             parse_mode="Markdown",
             reply_markup=_main_keyboard(is_registered=False))
@@ -698,10 +725,9 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "1️⃣ *Daftar*\n"
         "   Klik tombol 🔑 Daftar / Hubungkan lalu ketik kode.\n"
         "   Kode ada di profil karyawan website.\n\n"
-        "2️⃣ *Absen Masuk*\n"
-        "   Tekan tombol ✅ Absen Masuk\n\n"
-        "3️⃣ *Absen Keluar*\n"
-        "   Tekan tombol 📤 Absen Keluar\n\n"
+        "2️⃣ *Absen Masuk & Keluar*\n"
+        "   Sudah pindah ke Aplikasi Karyawan: " + KARYAWAN_APP_URL + "\n"
+        "   Ketuk tombol di tengah bawah, ikuti langkahnya.\n\n"
         "4️⃣ *Cek Status*\n"
         "   Tekan tombol 📋 Status Saya\n\n"
         "5️⃣ *Rekap Bulanan*\n"
@@ -794,10 +820,8 @@ async def cmd_daftar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📌 *{emp_role}*\n"
         f"🔑 Kode: {emp_code}\n\n"
         f"✅ *Langkah Selanjutnya:*\n"
-        f"Tekan tombol **✅ Absen Masuk** untuk mulai absen hari ini!\n\n"
+        f"📱 Absen masuk & keluar dilakukan di *Aplikasi Karyawan*:\n{KARYAWAN_APP_URL}\n\n"
         f"📌 Tombol yang tersedia:\n"
-        f"   • ✅ Absen Masuk — Catat kedatangan\n"
-        f"   • 📤 Absen Keluar — Catat pulang\n"
         f"   • 📋 Status Saya — Cek absensi hari ini\n"
         f"   • 📊 Rekap Bulanan — Rekap absensi bulan ini, denda & bonus, estimasi gaji\n\n"
         f"Selamat bekerja! 🎯",
@@ -805,6 +829,9 @@ async def cmd_daftar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=_main_keyboard())
 
 async def cmd_clockin(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _absen_moved(update)
+    return
+    # --- jalur lama (dinonaktifkan) ---
     emp = await _require_employee(update)
     if not emp:
         return
@@ -842,6 +869,9 @@ async def cmd_clockin(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=_location_keyboard())
 
 async def cmd_clockout(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _absen_moved(update)
+    return
+    # --- jalur lama (dinonaktifkan) ---
     emp = await _require_employee(update)
     if not emp:
         return
@@ -1296,6 +1326,9 @@ async def cmd_mylog(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ── Location Handler ──
 
 async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _absen_moved(update)
+    return
+    # --- jalur lama (dinonaktifkan) ---
     tg_id = update.effective_user.id if update.effective_user else 0
     state = _get_state(tg_id)
     if not state or state.get("state") != "awaiting_location":
@@ -1342,6 +1375,9 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ── Photo Handler ──
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await _absen_moved(update)
+    return
+    # --- jalur lama (dinonaktifkan) ---
     tg_id = update.effective_user.id if update.effective_user else 0
     state = _get_state(tg_id)
     if not state or state.get("state") != "awaiting_photo":

@@ -115,3 +115,10 @@ textarea.kx-input{resize:vertical;min-height:70px}
 
 .kx-or{display:flex;align-items:center;gap:10px;margin:12px 4px;color:var(--ds-faint);font:500 12px var(--ds-font)}
 .kx-or::before,.kx-or::after{content:"";flex:1;height:1px;background:var(--ds-line)}
+
+/* ── Panduan (onboarding) ────────────────────────────────────── */
+.kx-step{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--ds-hair)}
+.kx-step:first-child{border-top:0}
+.kx-step .n{flex:none;width:26px;height:26px;border-radius:50%;background:var(--ds-navy);color:#fff;display:grid;place-items:center;font:700 13px var(--ds-font);margin-top:1px}
+.kx-step b{display:block;font:600 14.5px var(--ds-font)}
+.kx-step span:not(.n){display:block;color:var(--ds-mute);font-size:13px;margin-top:2px;line-height:1.45}

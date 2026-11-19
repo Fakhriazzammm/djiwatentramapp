@@ -74,6 +74,11 @@ Deno.serve(async (req: Request) => {
       roleName?: string;
     };
 
+    // Absen lewat bot Telegram HRD sudah dinonaktifkan: gunakan Aplikasi Karyawan.
+    if (source === "telegram_hrd") {
+      return fail("BOT_ATTENDANCE_DISABLED", "Absen lewat bot Telegram sudah tidak digunakan. Buka https://karyawan.djiwatentram.web.id untuk absen.", 410);
+    }
+
     // ── Validation ──────────────────────────────────────────────
     if (!userId || !type) {
       return fail("VALIDATION_ERROR", "userId and type are required");

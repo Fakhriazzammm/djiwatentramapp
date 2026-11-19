@@ -4,6 +4,7 @@ import { useHybridCurrentlyInStore, useHybridStaffLogs, useHybridStaffStats } fr
 import { DsAsk, DsAvatar, DsButton, DsGroup, DsHeader, DsIcon, DsIconButton, DsNote, DsRow, DsSection, DsTag, ds3d } from "@djiwaapps/web-shared/components/ds";
 import { Bell, Eye, EyeOff } from "lucide-react";
 import { useStaffProfile } from "../$username.lazy";
+import { openGuide } from "@/components/karyawan/OnboardingGuide";
 import { fmtClock, hhmm, isOffShift, rupiah, todayWib, useLatestRunItem, useMonthSchedules, useTopAnnouncement } from "@/components/karyawan/use-staff-data";
 
 export const Route = createLazyFileRoute("/$username/beranda")({
@@ -49,6 +50,7 @@ function BerandaPage() {
 	const dateStr = now.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" });
 	const firstName = (staff?.name ?? "").split(" ")[0] || "—";
 	const requiresPinChange = Boolean(authUser?.requiresPinChange && authUser.slug === username);
+	const [botNotice, setBotNotice] = useState(() => { try { return localStorage.getItem("kx_bot_notice_v1") !== "1"; } catch { return true; } });
 	const mask = (v: string) => (hide ? "••••••" : v);
 	const go = (to: string) => navigate({ to: `/$username/${to}` as any, params: { username } });
 
@@ -113,6 +115,11 @@ function BerandaPage() {
 				</div>
 			)}
 
+			{botNotice && (
+				<DsNote tone="info" icon={<DsIcon name="employee-telegram" />} action={<DsButton size="sm" variant="ghost" onClick={() => { try { localStorage.setItem("kx_bot_notice_v1", "1"); } catch { /* */ } setBotNotice(false); }}>Mengerti</DsButton>}>
+					<b>Absen kini lewat aplikasi ini</b>Bot Telegram tidak dipakai lagi untuk absen masuk dan keluar. <button type="button" onClick={openGuide} style={{ background: "none", border: 0, padding: 0, color: "var(--ds-blue)", font: "600 13px var(--ds-font)" }}>Lihat panduan</button>
+				</DsNote>
+			)}
 			{att.forgotOut && (
 				<DsNote tone="danger" icon={<DsIcon name="employee-attendance-check-out" />} action={<DsButton size="sm" variant="danger" onClick={() => navigate({ to: "/$username/koreksi-absen" as any, params: { username }, search: { date: att.forgotOut!.date, type: "check_out" } } as any)}>Koreksi</DsButton>}>
 					<b>Belum absen keluar</b>Kamu absen masuk {new Date(att.forgotOut.date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })} tanpa absen keluar. Ajukan koreksi.

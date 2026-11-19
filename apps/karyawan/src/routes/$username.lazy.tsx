@@ -5,6 +5,7 @@ import { useYumiAuth, useHybridStaffBySlug, useHybridCurrentlyInStore } from "@d
 import { DsRoot, DsTabBar, ds3d } from "@djiwaapps/web-shared/components/ds";
 import { AbsenSheet } from "@/components/karyawan/AbsenSheet";
 import { PermissionGate } from "@/components/karyawan/PermissionGate";
+import { OnboardingGuide, guideSeen } from "@/components/karyawan/OnboardingGuide";
 import { useTodayAttendance, type TodayAttendance } from "@/components/karyawan/use-staff-data";
 import { createClient } from "@djiwaapps/web-shared/lib/client";
 import { HomeClockOutBanner } from "@djiwaapps/web-shared/components/home/home-clockout-banner";
@@ -257,6 +258,8 @@ function StaffProfileLayout() {
 
 	const staff = useHybridStaffBySlug(username);
 	const today = useTodayAttendance(authUser?._id ?? staff?._id, refreshKey);
+	const [, bump] = useState(0);
+	useEffect(() => { const h = () => bump((n) => n + 1); window.addEventListener("kx-guide-closed", h); return () => window.removeEventListener("kx-guide-closed", h); }, []);
 
 	// Read notification unread count from localStorage
 	useEffect(() => {
@@ -363,7 +366,8 @@ function StaffProfileLayout() {
 						</button>
 					}
 				/>
-				{authUser?.slug === username && <PermissionGate hasFace={Boolean(authUser?.hasFace)} onEnroll={() => navigate({ to: "/$username/absensi" as any, params: { username }, search: { enroll: 1 } } as any)} />}
+				{authUser?.slug === username && <OnboardingGuide userId={authUser._id} autoOpen />}
+				{authUser?.slug === username && guideSeen(authUser._id) && <PermissionGate hasFace={Boolean(authUser?.hasFace)} onEnroll={() => navigate({ to: "/$username/absensi" as any, params: { username }, search: { enroll: 1 } } as any)} />}
 				{absenOpen && (
 					<AbsenSheet
 						isIn={isIn}

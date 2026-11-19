@@ -328,6 +328,7 @@ function KaryawanLoginPage() {
               <DsButton block variant="ghost" onClick={() => navigate({ to: "/register" as any })}>Daftar karyawan baru</DsButton>
             </div>
             <p className="ds-sub" style={{ textAlign: "center", marginTop: 12 }}>Lupa PIN? Hubungi supervisor.</p>
+            <div className="ds-note ds-note--info" style={{ marginTop: 14 }}><div style={{ flex: 1 }}><b>Absen sekarang lewat aplikasi ini</b>Bot Telegram tidak lagi dipakai untuk absen masuk dan keluar. Masuk di sini, lalu ketuk tombol di tengah bawah.</div></div>
           </section>
         </motion.div>
       </main>
