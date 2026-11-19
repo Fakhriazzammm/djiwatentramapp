@@ -104,15 +104,15 @@ function BillSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: FinC
   const act = async (fn: () => Promise<unknown>, done: string) => { setBusy(true); try { await fn(); await ctx.fin.retrySync(); await onDone(done); } catch { ctx.notify("Gagal memproses. Datanya tetap aman. Coba lagi."); } finally { setBusy(false); } };
   return <Sheet title="Tagihan dari email" onClose={onClose}>
     <div className="dpx-rv-hero"><CatIcon cat={catOf(ctx.fin.state, "tagihan")} size={56} /><div><b>Tagihan {name}</b><span>{p.issuer ?? "Email"} · jatuh tempo {dueLabel(due || null)}</span></div></div>
-    <div className="dpx-note dpx-info" style={{ marginTop: 0 }}><Ic n="info" /><div><b>Belum dibayar, jadi belum jadi pengeluaran.</b> Setelah kamu setujui, tagihan ini masuk ke Rencana → Hutang sebagai “Kamu berutang”. Saat pembayarannya tercatat dari email, otomatis ditandai lunas.</div></div>
-    <div className="dpx-glabel">Tagihan</div>
+    <div className="dpx-note dpx-info" style={{ marginTop: 0 }}><Ic n="info" /><div><b>Belum dibayar, jadi belum jadi pengeluaran.</b> Setelah kamu setujui, tagihan ini masuk ke Kekayaan → Kewajiban → Tagihan bulanan, lengkap dengan jatuh tempo dan pengingat. Saat pembayarannya tercatat dari email, bulan itu otomatis ditandai lunas.</div></div>
+    <div className="dpx-glabel">Tagihan bulanan</div>
     <div className="dpx-input"><input aria-label="Nama tagihan" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} placeholder="Nama tagihan" /></div>
     <div style={{ marginTop: 8 }}><MoneyInput value={amount} onChange={setAmount} label="Nominal tagihan" /></div>
     <label className="dpx-chip3 dpx-datefield" style={{ cursor: "pointer", marginTop: 8, display: "inline-flex" }}><Ic n="cal" size="sm" /> {due ? new Date(`${due}T12:00:00+07:00`).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "Pilih jatuh tempo"}<input type="date" value={due} onChange={(e) => setDue(e.target.value)} aria-label="Jatuh tempo" /></label>
     <p className="dpx-sub dpx-rv-from" style={{ marginTop: 10 }}><b>{p.subject || "Judul tidak tersedia"}</b></p>
     <div className="dpx-rv-footer">
       <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} disabled={busy} onClick={() => void act(() => rejectItem(item.id), "Email diabaikan")}>Abaikan</Btn>
-      <Btn type="button" className="dpx-btn" style={{ margin: 0 }} disabled={busy || !(Number(amount) > 0) || !name.trim()} onClick={() => void act(() => approveItem(item.id, { amount: Number(amount), note: name.trim(), at: due || undefined }), `Tagihan ${name.trim()} masuk ke Hutang`)}>{busy ? "Memproses…" : "Jadikan tagihan"}</Btn>
+      <Btn type="button" className="dpx-btn" style={{ margin: 0 }} disabled={busy || !(Number(amount) > 0) || !name.trim()} onClick={() => void act(() => approveItem(item.id, { amount: Number(amount), note: name.trim(), at: due || undefined }), `Tagihan ${name.trim()} masuk ke Tagihan bulanan`)}>{busy ? "Memproses…" : "Jadikan tagihan"}</Btn>
     </div>
   </Sheet>;
 }
@@ -244,7 +244,7 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
       if (isBill(it)) {
         await approveItem(it.id, { amount: it.parsed.amount, note: it.parsed.merchant, at: it.parsed.due ?? undefined });
         await ctx.fin.retrySync(); await load();
-        ctx.notify(`${titleOf(it)} ${rupiah(it.parsed.amount ?? 0)} masuk ke Hutang`);
+        ctx.notify(`${titleOf(it)} ${rupiah(it.parsed.amount ?? 0)} masuk ke Tagihan`);
         return;
       }
       const r = await approveItem(it.id, { amount: isMove(it) ? moveAmount(it) : it.parsed.amount, kind: kindOf(it), categoryId: it.parsed.categoryId, accountId: it.parsed.accountId });

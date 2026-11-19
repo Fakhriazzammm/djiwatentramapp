@@ -88,7 +88,7 @@ export function WealthExtras({ ctx }: { ctx: FinCtx }) {
     {state.assets.length ? <div className="dpx-as-grid">{state.assets.map((a, i) => { const g = gainOf(a); return <motion.button type="button" key={a.id} className="dpx-as-card" onClick={() => ctx.open({ k: "asset-view", id: a.id })} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: i * 0.05 }} whileTap={{ scale: 0.97 }}>
       <span className="dpx-as-cardimg"><Sticker asset={a} size={72} /></span><b>{a.name}</b><span className="dpx-sub">{mask(ctx, rupiah(assetValue(a)))}</span>{g ? <span className={g.pct >= 0 ? "dpx-up" : "dpx-dn"} style={{ fontSize: 12, fontWeight: 700 }}>{g.pct >= 0 ? "▲" : "▼"} {Math.abs(g.pct).toFixed(1).replace(".", ",")}%</span> : <span className="dpx-sub" style={{ fontSize: 11 }}>{ASSET_KINDS[a.kind].label}</span>}</motion.button>; })}
       <button type="button" className="dpx-as-card dpx-as-add" onClick={() => ctx.open({ k: "asset-new" })}><Ic n="scan" /><b>Foto aset baru</b></button></div> : null}
-    <div className="dpx-sec"><h2>Kewajiban</h2><Btn type="button" onClick={() => ctx.nav.go("/rencana?bagian=hutang")}>Kelola</Btn></div>
+    <div className="dpx-sec"><h2>Kewajiban</h2><Btn type="button" onClick={() => ctx.nav.go("/kekayaan?bagian=kewajiban")}>Kelola</Btn></div>
     <div className="dpx-group dpx-flush dpx-white"><Row icon="down" tone="rose" title="Hutang saya" sub="Belum lunas" trail={<b className="dpx-dn">−{mask(ctx, rupiah(debt.iOwe))}</b>} /><Row i={1} icon="up" tone="emerald" title="Piutang" sub="Orang berutang padamu" trail={<b className="dpx-up">{mask(ctx, rupiah(debt.owedToMe))}</b>} /></div>
     <Btn type="button" className="dpx-group dpx-flex" style={{ width: "100%", marginTop: 12, textAlign: "left" }} onClick={() => ctx.nav.go("/alat")}><span className="dpx-cat dpx-c-violet"><Ic n="grid" /></span><span style={{ flex: 1 }}><b>Alat keuangan</b><div className="dpx-sub">Bisa beli?, dana darurat, zakat, simulasi cicilan</div></span><Ic n="chev" size="sm" /></Btn>
     <Disclaimer />
@@ -137,7 +137,7 @@ export function HealthPage({ ctx, onBack }: { ctx: FinCtx; onBack: () => void })
     <div className="dpx-sec"><h2>Lima pilar</h2></div>
     <div className="dpx-group dpx-white">{k.health.pillars.map((p, i) => { const t = p.score >= 75 ? "ok" : p.score >= 55 ? "warn" : "bad"; return <motion.div key={p.id} className="dpx-bud" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: i * 0.06 }}><div className="dpx-top"><div className="dpx-main"><b>{p.name}</b><span>{p.note}</span></div><b style={{ color: toneColor(t) }}>{p.score}</b></div><Bar percent={p.score} delay={0.1 + i * 0.08} /></motion.div>; })}</div>
     <div className="dpx-sec"><h2>Cara menaikkan skor</h2></div>
-    <div className="dpx-group dpx-flush dpx-white">{worst.map((p, i) => <Row key={p.id} i={i} icon="spark" tone="emerald" title={p.action} sub={`Memperbaiki: ${p.name}`} onClick={() => ctx.nav.go(p.id === "habit" ? "/catat" : p.id === "emergency" ? "/rencana?bagian=tujuan" : p.id === "debt" ? "/rencana?bagian=hutang" : "/rencana")} />)}</div>
+    <div className="dpx-group dpx-flush dpx-white">{worst.map((p, i) => <Row key={p.id} i={i} icon="spark" tone="emerald" title={p.action} sub={`Memperbaiki: ${p.name}`} onClick={() => ctx.nav.go(p.id === "habit" ? "/catat" : p.id === "emergency" ? "/rencana?bagian=tujuan" : p.id === "debt" ? "/kekayaan?bagian=kewajiban" : "/rencana")} />)}</div>
     <Disclaimer />
   </div></Sky></div>;
 }

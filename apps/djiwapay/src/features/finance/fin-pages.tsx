@@ -24,6 +24,7 @@ import { AssetFlow } from "../kelola/asset-flow";
 import { AssetDetail } from "../kelola/asset-detail";
 import { BillPaySheet, BillSheet, PayoffSheet, PocketRuleSheet, WeeklySheet } from "../kelola/kelola-sheets";
 import { ASSET_KINDS, netWorth, pocketsOf } from "../../lib/finance/kelola";
+import { KewajibanPanel } from "./fin-plan";
 import { Onboard, SahamTab, StockActivate, StockAdd, StockDetail, StockFeeSheet, StockManualSheet, StockTradeSheet } from "./fin-saham";
 import { percent, portfolio, stockValue, useStocks } from "../../lib/finance/stocks";
 import type { CustomerProfile } from "../../lib/identity-adapter";
@@ -269,7 +270,8 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
   const [tab, setTab] = useState<VaultTab>(() => { try { const t = sessionStorage.getItem("dpx-vault-tab"); return t === "dompet" || t === "kewajiban" || t === "saham" ? t : "aset"; } catch { return "aset"; } });
   const pick = (t: VaultTab) => { setTab(t); try { sessionStorage.setItem("dpx-vault-tab", t); } catch { /* optional */ } };
   useEffect(() => {   // back from Google's consent screen with the Drive permission: continue where the person left off
-    const q = new URLSearchParams(window.location.search);
+    const q = new URLSearchParams(window.location.search), part = q.get("bagian");
+    if (part === "aset" || part === "saham" || part === "dompet" || part === "kewajiban") { window.history.replaceState({}, "", window.location.pathname); pick(part); return; }
     if (q.get("saham") !== "aktifkan") return;
     window.history.replaceState({}, "", window.location.pathname);
     pick("saham"); ctx.open({ k: "stock-activate" });
@@ -331,13 +333,9 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
     </div> : null}
 
     {tab === "kewajiban" ? <div key="kewajiban" className="dpx-vt-pn">
-      {state.debts.length === 0 ? <Onboard asset="users" title="Catat hutang dan piutang" desc="Siapa berhutang kepada Anda, dan sebaliknya, lengkap dengan jatuh tempo dan pengingat."
-        bullets={[["Hutang dan piutang ", "dipisah dengan jelas."], ["Jatuh tempo ", "bisa diingatkan lewat kalender."], ["Simulasi pelunasan ", "membantu menyusun rencana."]]}
-        primary="Catat hutang atau piutang" onPrimary={() => ctx.open({ k: "debt" })} secondary="Alat keuangan" onSecondary={() => nav.go("/alat")} /> : <>
-      <div className="dpx-group dpx-flush dpx-white"><Row icon="down" tone="rose" title="Hutang saya" sub="Belum lunas" trail={<b className="dpx-dn">−{m(rupiah(debt.iOwe))}</b>} /><Row i={1} icon="up" tone="emerald" title="Piutang" sub="Orang berutang padamu" trail={<b className="dpx-up">{m(rupiah(debt.owedToMe))}</b>} /></div>
-      <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => nav.go("/rencana?bagian=hutang")}>Kelola hutang dan piutang</Btn>
-      <Btn type="button" className="dpx-group dpx-flex" style={{ width: "100%", marginTop: 4, textAlign: "left" }} onClick={() => nav.go("/alat")}><span className="dpx-cat dpx-c-violet"><Ic n="grid" /></span><span style={{ flex: 1 }}><b>Alat keuangan</b><div className="dpx-sub">Bisa beli?, dana darurat, zakat, simulasi cicilan</div></span><Ic n="chev" size="sm" /></Btn>
-      </>}
+      {state.debts.length === 0 && state.bills.length === 0 ? <Onboard asset="users" title="Catat hutang, piutang, dan tagihan" desc="Semua yang harus kamu bayar atau akan kamu terima, di satu tempat: pinjaman, cicilan, dan tagihan bulanan."
+        bullets={[["Hutang dan piutang ", "dipisah dengan jelas, cicilan dicatat sebagian-sebagian."], ["Tagihan bulanan ", "(listrik, internet, kartu) lengkap dengan jatuh tempo."], ["Dari email ", "tagihan baru diusulkan otomatis, kamu yang menyetujui."]]}
+        primary="Catat hutang atau piutang" onPrimary={() => ctx.open({ k: "debt" })} secondary="Tambah tagihan bulanan" onSecondary={() => ctx.open({ k: "bill" })} /> : <KewajibanPanel ctx={ctx} />}
       <p className="dpx-sub" style={{ margin: "8px 4px 0" }}>Perkiraan berdasarkan catatanmu, bukan nasihat keuangan.</p>
     </div> : null}
     {tab === "aset" ? <div className="dpx-vt-fab"><motion.button type="button" className="dpx-vt-photo" onClick={() => ctx.open({ k: "asset-new" })} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring} whileTap={{ scale: 0.95 }}><Ic n="scan" size="sm" /> Foto aset</motion.button></div> : tab === "saham" && hasStocks ? <div className="dpx-vt-fab"><motion.button type="button" className="dpx-vt-photo" onClick={() => ctx.open({ k: "stock-add" })} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring} whileTap={{ scale: 0.95 }}><Ic n="plus" size="sm" /> Catat saham</motion.button></div> : null}

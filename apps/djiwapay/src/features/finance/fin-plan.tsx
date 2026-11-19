@@ -1,17 +1,17 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Btn, I3, Ic, Sky, type IconName } from "../shell/dpx-ui";
 import { CatIcon, catOf } from "./fin-sheets";
 import type { FinCtx } from "./fin-pages";
 import { DragRow, DailyBars } from "./story-charts";
 import { budgetStatuses, daysIn, daysUntil, debtPaid, debtRemaining, debtTotals, detectSubscriptions, goalPlan, inMonth, safeToSpend, spendByCategory, totals, uid } from "../../lib/finance/calc";
-import { allocate, payday, pocketUsage, pocketsOf, payoffPlan } from "../../lib/finance/kelola";
+import { allocate, billsFor, payday, pocketUsage, pocketsOf, payoffPlan, unpaidTotal } from "../../lib/finance/kelola";
 import { rpFull } from "./story-charts";
 import { monthLabel } from "../../lib/djiwa-pay-summary";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import type { Budget, Debt } from "../../lib/finance/types";
 
-type Tab = "bud" | "pocket" | "goal" | "debt";
-const TABS: [Tab, string][] = [["bud", "Anggaran"], ["pocket", "Kantong"], ["goal", "Tujuan"], ["debt", "Hutang"]];
+type Tab = "bud" | "pocket" | "goal";
+const TABS: [Tab, string][] = [["bud", "Anggaran"], ["pocket", "Kantong"], ["goal", "Tujuan"]];
 const mk = (v: boolean, t: string) => (v ? t : "•••••");
 const COLORS = ["#c9461b", "#2b2620", "#c9962e", "#4f7a2b", "#3b6ea5", "#8a5ba8"];
 const dateShort = (iso: string) => new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
@@ -26,9 +26,9 @@ const Meter = ({ pct, tone, mark }: { pct: number; tone?: "ok" | "warn" | "bad";
 /** Rencana: budgets, pockets, goals and debts. Every list can be created, opened, edited and deleted. */
 export function FinBudget({ ctx }: { ctx: FinCtx }) {
   const { fin, nav, visible } = ctx, { state, entries } = fin, today = new Date();
-  const [tab, setTab] = useState<Tab>(() => { const q = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("bagian") : null; return q === "kantong" ? "pocket" : q === "tujuan" ? "goal" : q === "hutang" ? "debt" : "bud"; });
+  const [tab, setTab] = useState<Tab>(() => { const q = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("bagian") : null; return q === "kantong" ? "pocket" : q === "tujuan" ? "goal" : "bud"; });
+  useEffect(() => { if (new URLSearchParams(window.location.search).get("bagian") === "hutang") nav.go("/kekayaan?bagian=kewajiban"); }, []);   // eslint-disable-line react-hooks/exhaustive-deps   // debts and bills live under Kekayaan → Kewajiban now
   const [cursor, setCursor] = useState({ y: today.getFullYear(), m: today.getMonth() });
-  const [debtView, setDebtView] = useState<"all" | "i_owe" | "owed_to_me">("all"), [showSettled, setShowSettled] = useState(false);
   const isCurrent = cursor.y === today.getFullYear() && cursor.m === today.getMonth();
   const shift = (d: number) => setCursor((c) => { const n = new Date(c.y, c.m + d, 1); return { y: n.getFullYear(), m: n.getMonth() }; });
   const dim = daysIn(cursor.y, cursor.m), elapsed = isCurrent ? today.getDate() : dim, daysLeft = isCurrent ? dim - today.getDate() + 1 : 0;
@@ -49,13 +49,9 @@ export function FinBudget({ ctx }: { ctx: FinCtx }) {
     fin.dispatch({ type: "budget/setMany", budgets: picks.map(([categoryId, v]) => ({ categoryId, limit: Math.max(50_000, Math.round((v * 1.05) / 10_000) * 10_000), rollover: false }) satisfies Budget) });
     ctx.notify(`${picks.length} anggaran dibuat dari rata-rata 3 bulan`, () => { for (const [id] of picks) if (!before.some((b) => b.categoryId === id)) fin.dispatch({ type: "budget/delete", categoryId: id }); });
   };
-  const dt = debtTotals(state.debts), subs = useMemo(() => detectSubscriptions(state.entries), [state.entries]);
-  const activeDebts = state.debts.filter((d) => !d.settled), doneDebts = state.debts.filter((d) => d.settled);
-  const listDebts = activeDebts.filter((d) => debtView === "all" || d.direction === debtView).sort((a, b) => (daysUntil(a.due) ?? 9999) - (daysUntil(b.due) ?? 9999));
-  const dueSoon = activeDebts.filter((d) => { const n = daysUntil(d.due); return n !== null && n <= 7; });
   const income = Math.max(totals(month).in, payday(entries)?.amount ?? 0), pockets = pocketsOf(state), alloc = allocate(income, pockets), pctSum = pockets.reduce((n, p) => n + p.percent, 0);
   const goals = state.goals.map((g) => ({ g, p: goalPlan(g) })), goalSum = goals.reduce((n, x) => ({ saved: n.saved + x.p.saved, target: n.target + x.g.target }), { saved: 0, target: 0 });
-  const badge: Record<Tab, number> = { bud: statuses.filter((s) => s.level !== "ok").length, pocket: 0, goal: 0, debt: dueSoon.length };
+  const badge: Record<Tab, number> = { bud: statuses.filter((s) => s.level !== "ok").length, pocket: 0, goal: 0 };
 
   return <div className="dpx-page"><Sky><div className="dpx-pad">
     <div className="dpx-hdr" style={{ paddingTop: 0 }}><h1 className="dpx-page-title" style={{ flex: 1 }}>Rencana</h1><Btn type="button" className="dpx-rb" onClick={() => nav.go("/kalender")} aria-label="Kalender tagihan"><Ic n="cal" /></Btn></div>
@@ -111,7 +107,21 @@ export function FinBudget({ ctx }: { ctx: FinCtx }) {
         <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => ctx.open({ k: "goal" })}><Ic n="plus" size="sm" /> Tujuan baru</Btn></>}
     </> : null}
 
-    {tab === "debt" ? <>
+    </div>
+  </div></Sky></div>;
+}
+
+/** Everything owed or receivable, in one place (Kekayaan → Kewajiban): debts and receivables (instalments are recorded as partial payments inside each),
+ *  monthly bills, detected subscriptions, the payoff plan and the tools around them. */
+export function KewajibanPanel({ ctx }: { ctx: FinCtx }) {
+  const { nav, visible, fin } = ctx, { state } = fin;
+  const [debtView, setDebtView] = useState<"all" | "i_owe" | "owed_to_me">("all"), [showSettled, setShowSettled] = useState(false);
+  const dt = debtTotals(state.debts), subs = useMemo(() => detectSubscriptions(state.entries), [state.entries]);
+  const activeDebts = state.debts.filter((d) => !d.settled), doneDebts = state.debts.filter((d) => d.settled);
+  const listDebts = activeDebts.filter((d) => debtView === "all" || d.direction === debtView).sort((a, b) => (daysUntil(a.due) ?? 9999) - (daysUntil(b.due) ?? 9999));
+  const dueSoon = activeDebts.filter((d) => { const n = daysUntil(d.due); return n !== null && n <= 7; });
+  const bills = useMemo(() => billsFor(state.bills), [state.bills]), unpaid = unpaidTotal(bills);
+  return <>
       <div className="dpx-st-stats"><div><span className="dpx-st-up">Orang berutang padamu</span><b className="dpx-up">{mk(visible, rpFull(dt.owedToMe))}</b></div><div><span className="dpx-st-up">Kamu berutang</span><b className="dpx-dn">{mk(visible, rpFull(dt.iOwe))}</b></div></div>
       {dueSoon.length ? <Card title="Perlu perhatian"><div className="dpx-rp-list">{dueSoon.map((d) => { const n = daysUntil(d.due) ?? 0; return <Btn key={d.id} type="button" className="dpx-rp-row" onClick={() => ctx.open({ k: "debt", id: d.id })}><span className={`dpx-cat dpx-c-${n < 0 ? "rose" : "amber"}`}><Ic n="warn" /></span><div><b>{d.person}</b><span className="dpx-sub">{d.direction === "i_owe" ? "Kamu harus bayar" : "Dia harus bayar"} · {n < 0 ? `terlambat ${-n} hari` : n === 0 ? "hari ini" : `${n} hari lagi`}</span></div><b>{mk(visible, rupiah(debtRemaining(d)))}</b></Btn>; })}</div></Card> : null}
       <div className="dpx-sec dpx-st-sec"><h2>Aktif ({activeDebts.length})</h2><Btn type="button" onClick={() => ctx.open({ k: "debt" })}>+ Tambah</Btn></div>
@@ -120,13 +130,25 @@ export function FinBudget({ ctx }: { ctx: FinCtx }) {
         <div className="dpx-pl-list">{listDebts.map((d) => <DebtRow key={d.id} d={d} visible={visible} onOpen={() => ctx.open({ k: "debt", id: d.id })} />)}{listDebts.length === 0 ? <p className="dpx-st-empty">Tidak ada catatan di filter ini.</p> : null}</div>}
       {dt.iOwe > 0 ? <Btn type="button" className="dpx-st-tip" onClick={() => ctx.open({ k: "payoff" })}><span className="dpx-cat dpx-c-rose"><Ic n="trend" /></span><div><b>Rencana pelunasan</b><span className="dpx-sub">Hitung kapan bebas hutang dengan cicilan per bulan.</span></div></Btn> : null}
       {doneDebts.length ? <><div className="dpx-sec dpx-st-sec"><h2>Lunas ({doneDebts.length})</h2><Btn type="button" onClick={() => setShowSettled((v) => !v)}>{showSettled ? "Sembunyikan" : "Lihat"}</Btn></div>{showSettled ? <div className="dpx-pl-list">{doneDebts.map((d) => <DebtRow key={d.id} d={d} visible={visible} onOpen={() => ctx.open({ k: "debt", id: d.id })} />)}</div> : null}</> : null}
+      <div className="dpx-sec dpx-st-sec"><h2>Tagihan bulanan ({bills.length})</h2><Btn type="button" onClick={() => ctx.open({ k: "bill" })}>+ Tambah</Btn></div>
+      {bills.length === 0 ? <Card><p className="dpx-sub" style={{ margin: 0 }}>Listrik, internet, kartu kredit, dan tagihan rutin lain. Tambahkan sendiri, atau terima usulan dari email yang kamu setujui.</p></Card> :
+        <><div className="dpx-pl-list">{bills.map((v) => <BillRow key={v.bill.id} v={v} visible={visible} onOpen={() => ctx.open({ k: "bill", id: v.bill.id })} onPay={() => ctx.open({ k: "bill-pay", id: v.bill.id })} />)}</div>
+          {unpaid > 0 ? <p className="dpx-sub" style={{ margin: "2px 4px 0" }}>Belum lunas bulan ini: {mk(visible, rupiah(unpaid))}</p> : null}</>}
+      <Btn type="button" className="dpx-st-card dpx-pl-row" onClick={() => nav.go("/kalender")}><div className="dpx-pl-row-t"><span className="dpx-cat dpx-c-blue"><Ic n="cal" /></span><div><b>Kalender tagihan</b><span className="dpx-sub">Lihat jatuh tempo hutang dan tagihan per tanggal</span></div></div></Btn>
       <div className="dpx-sec dpx-st-sec"><h2>Alat lain</h2></div>
+      <Btn type="button" className="dpx-st-card dpx-pl-row" onClick={() => nav.go("/alat")}><div className="dpx-pl-row-t"><span className="dpx-cat dpx-c-violet"><Ic n="grid" /></span><div><b>Simulasi cicilan</b><span className="dpx-sub">Hitung cicilan, bisa beli atau tidak, dan dana darurat</span></div></div></Btn>
       <Btn type="button" className="dpx-st-card dpx-pl-row" onClick={() => ctx.open({ k: "split" })}><div className="dpx-pl-row-t"><span className="dpx-cat dpx-c-orange"><Ic n="split" /></span><div><b>Patungan / bagi tagihan</b><span className="dpx-sub">Hitung bagian tiap orang</span></div></div></Btn>
       <Card title="Langganan terdeteksi" right={subs.length ? <span className="dpx-sub">{mk(visible, rupiah(subs.reduce((s, x) => s + x.amount, 0)))}/bulan</span> : undefined}>
         {subs.length === 0 ? <p className="dpx-sub" style={{ margin: 0 }}>Muncul otomatis bila pengeluaran dengan catatan yang sama berulang di 2 bulan berbeda.</p> : <div className="dpx-rp-list">{subs.map((s) => { const has = state.bills.some((b) => b.name.trim().toLowerCase() === s.name.trim().toLowerCase()); return <div key={s.name} className="dpx-rp-row"><span className="dpx-cat dpx-c-violet"><Ic n="repeat" /></span><div><b>{s.name}</b><span className="dpx-sub">Tiap tgl {s.day} · {s.months} bulan</span></div><div className="dpx-rp-amt"><b>{mk(visible, rupiah(s.amount))}</b>{has ? <span className="dpx-sub">Sudah jadi tagihan</span> : <Btn type="button" className="dpx-pl-mini" onClick={() => { fin.dispatch({ type: "bill/upsert", bill: { id: uid(), name: s.name, amount: s.amount, day: s.day, icon: "repeat", tone: "violet", paid: [] } }); ctx.notify(`${s.name} masuk kalender tagihan`); }}>Jadikan tagihan</Btn>}</div></div>; })}</div>}</Card>
-    </> : null}
-    </div>
-  </div></Sky></div>;
+  </>;
+}
+
+const BILL_CHIP: Record<string, [string, "ok" | "warn" | "bad" | "mute"]> = { paid: ["Lunas bulan ini", "ok"], late: ["Terlambat", "bad"], today: ["Hari ini", "warn"], soon: ["Segera", "warn"], later: ["Belum jatuh tempo", "mute"] };
+function BillRow({ v, visible, onOpen, onPay }: { v: ReturnType<typeof billsFor>[number]; visible: boolean; onOpen: () => void; onPay: () => void }) {
+  const [label, tone] = BILL_CHIP[v.status], when = v.status === "late" ? `terlambat ${-v.daysLeft} hari` : v.status === "today" ? "jatuh tempo hari ini" : v.status === "paid" ? `tiap tgl ${v.bill.day}` : `tgl ${v.bill.day} · ${v.daysLeft} hari lagi`;
+  return <div className="dpx-st-card dpx-pl-row"><Btn type="button" className="dpx-pl-row-t" style={{ width: "100%", textAlign: "left" }} onClick={onOpen}><span className={`dpx-cat dpx-c-${v.bill.tone}`}><Ic n={v.bill.icon as IconName} /></span><div><b>{v.bill.name}</b><span className="dpx-sub">{when}</span></div>
+    <div className="dpx-rp-amt"><b>{mk(visible, rupiah(v.bill.amount))}</b><Chip tone={tone}>{label}</Chip></div></Btn>
+    {v.status === "paid" ? null : <Btn type="button" className="dpx-btn dpx-soft dpx-sm" style={{ margin: "8px 0 0", width: "100%" }} onClick={onPay}>Bayar tagihan</Btn>}</div>;
 }
 
 function DebtRow({ d, visible, onOpen }: { d: Debt; visible: boolean; onOpen: () => void }) {

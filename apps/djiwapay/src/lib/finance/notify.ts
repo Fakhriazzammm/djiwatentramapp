@@ -25,7 +25,7 @@ export function financeNotes(state: FinanceState, entries: Entry[], inbound: { r
   }
   for (const d of state.debts.filter((x) => !x.settled)) {
     const n = daysUntil(d.due, now); if (n === null || n > 3) continue;
-    out.push({ id: `fin-debt:${d.id}:${d.due}`, title: n < 0 ? `${d.direction === "i_owe" ? "Hutang ke" : "Piutang dari"} ${d.person} terlambat` : `${d.direction === "i_owe" ? "Hutang ke" : "Piutang dari"} ${d.person} jatuh tempo ${n === 0 ? "hari ini" : `${n} hari lagi`}`, message: `Sisa ${rupiah(debtRemaining(d))}.`, notification_type: "fin-debt", created_at: iso, route: "/rencana?bagian=hutang" });
+    out.push({ id: `fin-debt:${d.id}:${d.due}`, title: n < 0 ? `${d.direction === "i_owe" ? "Hutang ke" : "Piutang dari"} ${d.person} terlambat` : `${d.direction === "i_owe" ? "Hutang ke" : "Piutang dari"} ${d.person} jatuh tempo ${n === 0 ? "hari ini" : `${n} hari lagi`}`, message: `Sisa ${rupiah(debtRemaining(d))}.`, notification_type: "fin-debt", created_at: iso, route: "/kekayaan?bagian=kewajiban" });
   }
   for (const g of state.goals) { if (goalPlan(g, now).done && g.deposits.length) out.push({ id: `fin-goal:${g.id}`, title: `Tujuan ${g.name} tercapai`, message: "Selamat, targetmu terpenuhi.", notification_type: "fin-goal", created_at: new Date(g.deposits[g.deposits.length - 1].at).toISOString(), route: "/rencana?bagian=tujuan" }); }
   return out;
