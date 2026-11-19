@@ -235,7 +235,7 @@ export function HomeWalletCard({ customer, onOpen, onAction }: { customer: Custo
         <button type="button" onClick={onOpen} className="block text-left focus-visible:outline-none" aria-label="Buka saldo Djiwa Pay">
           <span className="block font-display text-[21px] font-black leading-[1.1] tracking-tight tabular-nums text-foreground">{hidden ? "Rp ••••••" : currency(shown)}</span>
           <span className="mt-0.5 block whitespace-nowrap text-[11px] text-muted-foreground">
-            {Number(customer.totalPoints ?? 0).toLocaleString("id-ID")} poin · <span className="font-bold text-emerald-700">+Rp1.000/top up</span>
+            {Number(customer.totalPoints ?? 0).toLocaleString("id-ID")} poin · <span className="font-bold text-emerald-700">+Rp1.000/transaksi</span>
           </span>
         </button>
       </div>
