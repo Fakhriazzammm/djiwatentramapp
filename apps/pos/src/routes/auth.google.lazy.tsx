@@ -2,7 +2,7 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
-import { clearGoogleIntent, getGoogleSession } from "@djiwaapps/web-shared/lib/staff-google";
+import { clearGoogleIntent, getGoogleSession, readGoogleNext } from "@djiwaapps/web-shared/lib/staff-google";
 
 export const Route = createLazyFileRoute("/auth/google")({ component: GoogleCallbackPage });
 
@@ -26,7 +26,7 @@ function GoogleCallbackPage() {
 				if (s.linked) {
 					login(s.token);
 					if (s.autoLinked) toast.success("Akun Google terhubung otomatis lewat emailmu.");
-					navigate({ to: "/admin" as any, replace: true });
+					navigate({ to: readGoogleNext("/admin") as any, replace: true });
 					return;
 				}
 				setEmail(s.profile.email);

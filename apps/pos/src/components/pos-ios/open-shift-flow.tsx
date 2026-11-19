@@ -25,6 +25,9 @@ export interface OpenShiftController {
 	teamSearch: string;
 	setTeamSearch: (value: string) => void;
 	toggleVisibleTeam: () => void;
+	/** Id karyawan yang sudah absen masuk (app Karyawan). */
+	presentIds?: Set<string>;
+	selectPresent?: () => void;
 	amount: string;
 	setAmount: (value: string) => void;
 	submitting: boolean;
@@ -110,6 +113,7 @@ export function OpenShiftFlow({ c }: { c: OpenShiftController }) {
 							<div className="mt-4" /><Label>TIM BERTUGAS (OPSIONAL)</Label>
 							<div className="rounded-2xl bg-muted/50 p-2.5">
 								<div className="flex items-center gap-2"><Search className="ml-1 h-4 w-4 text-muted-foreground" /><input value={c.teamSearch} onChange={(event) => c.setTeamSearch(event.target.value)} placeholder="Cari anggota tim" aria-label="Cari anggota tim" className="h-10 min-w-0 flex-1 bg-transparent text-[14px] outline-none" /><button type="button" onClick={c.toggleVisibleTeam} className="shrink-0 px-2 text-[12.5px] font-bold text-primary">Pilih semua</button></div>
+								{c.selectPresent && c.presentIds && c.presentIds.size > 0 ? <button type="button" onClick={c.selectPresent} className="mt-1 flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-emerald-500/10 text-[13px] font-bold text-emerald-700">Pilih yang sudah absen masuk ({c.presentIds.size})</button> : null}
 								<div className="mt-1 max-h-44 overflow-y-auto">
 									{!c.teamSections ? <p className="px-1 py-2 text-[13px] italic text-muted-foreground">Memuat anggota tim…</p> : c.teamSections.length === 0 ? <p className="px-1 py-2 text-[13px] text-muted-foreground">Tidak ada anggota yang cocok.</p> : c.teamSections.map(({ role, users }) => (
 										<div key={role}>
@@ -118,7 +122,7 @@ export function OpenShiftFlow({ c }: { c: OpenShiftController }) {
 												const on = c.teamMembers.includes(user.name);
 												return (
 													<button key={user._id} type="button" onClick={() => c.setTeamMembers((prev) => (on ? prev.filter((n) => n !== user.name) : [...new Set([...prev, user.name])]))} aria-pressed={on} className="flex min-h-10 w-full items-center gap-3 rounded-xl px-1.5 text-left text-[14px]">
-														<span className={cn("flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors", on ? "border-primary bg-primary text-primary-foreground" : "border-border")}>{on ? <Check className="h-3 w-3" /> : null}</span>{user.name}
+														<span className={cn("flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors", on ? "border-primary bg-primary text-primary-foreground" : "border-border")}>{on ? <Check className="h-3 w-3" /> : null}</span>{user.name}{c.presentIds?.has(String(user._id)) ? <span className="ml-auto rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-700">Hadir</span> : null}
 													</button>
 												);
 											})}

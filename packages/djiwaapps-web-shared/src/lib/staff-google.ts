@@ -7,6 +7,7 @@
 const AUTH_ORIGIN = "https://djiwatentram.web.id";
 const BASE = `${AUTH_ORIGIN}/api/auth/staff-google`;
 const INTENT_KEY = "kx_google_intent";
+const NEXT_KEY = "kx_google_next";
 
 export type GoogleIntent = "login" | "register" | "link";
 export type GoogleSessionResult =
@@ -26,8 +27,9 @@ async function post<T>(path: string, body: Record<string, unknown> = {}): Promis
 }
 
 /** Mulai login Google: pindah halaman penuh ke server, lalu kembali ke `/auth/google` di app ini. */
-export function startGoogleLogin(intent: GoogleIntent = "login") {
-	try { sessionStorage.setItem(INTENT_KEY, intent); } catch { /* abaikan */ }
+/** `next`: halaman tujuan setelah masuk (mis. "/menu" untuk kasir). */
+export function startGoogleLogin(intent: GoogleIntent = "login", next?: string) {
+	try { sessionStorage.setItem(INTENT_KEY, intent); if (next) sessionStorage.setItem(NEXT_KEY, next); else sessionStorage.removeItem(NEXT_KEY); } catch { /* abaikan */ }
 	window.location.assign(`${BASE}/start?to=${encodeURIComponent(window.location.origin)}`);
 }
 
@@ -35,6 +37,7 @@ export function readGoogleIntent(): GoogleIntent {
 	try { return (sessionStorage.getItem(INTENT_KEY) as GoogleIntent) || "login"; } catch { return "login"; }
 }
 export function clearGoogleIntent() { try { sessionStorage.removeItem(INTENT_KEY); } catch { /* abaikan */ } }
+export function readGoogleNext(fallback: string): string { try { const n = sessionStorage.getItem(NEXT_KEY); sessionStorage.removeItem(NEXT_KEY); return n && n.startsWith("/") ? n : fallback; } catch { return fallback; } }
 
 export const getGoogleSession = () => post<GoogleSessionResult & { success: true }>("session");
 

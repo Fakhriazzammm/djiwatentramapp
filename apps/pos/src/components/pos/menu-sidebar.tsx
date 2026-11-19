@@ -107,6 +107,7 @@ import {
 	fetchShiftStatus,
 	triggerHybridRefresh,
 } from "@/hooks/use-hybrid-pos-data";
+import { useHybridCurrentlyInStore } from "@/hooks/use-hybrid-attendance-data";
 import {
 	useHybridAllTransactions,
 	useHybridFinancialSummary,
@@ -1408,10 +1409,14 @@ function KasTab() {
 function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const { user: currentUser } = useYumiAuth();
 	const allUsers = useHybridStaffUsers();
+	// Karyawan yang sudah absen masuk (dari app Karyawan) — ditandai "Hadir" di daftar tim.
+	const currentlyIn = useHybridCurrentlyInStore();
+	const presentIds = useMemo(() => new Set<string>((Array.isArray(currentlyIn) ? currentlyIn : []).map((x: any) => String(x._id))), [currentlyIn]);
 
 	const staffUsers = useMemo(() =>
 		(allUsers || []).filter(
-			(u: any) => u.isActive && (u.roleName || "").toLowerCase() !== "admin"
+			// Kasir/tim shift: semua karyawan operasional. Admin, akun demo (CLIENT_VIEWER), dan HRD tidak masuk daftar.
+			(u: any) => u.isActive && !["admin", "client_viewer", "hrd"].includes((u.roleName || "").trim().toLowerCase())
 		).sort((a: any, b: any) => a.name.localeCompare(b.name)),
 		[allUsers]
 	);
@@ -1742,6 +1747,11 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			: Array.from(new Set([...current, ...visibleNames]))
 		);
 	}, [visibleStaffSections]);
+
+	const selectPresentTeam = useCallback(() => {
+		const names = (staffUsers as any[]).filter((u) => presentIds.has(String(u._id))).map((u) => u.name);
+		setTeamMembers((current) => Array.from(new Set([...current, ...names])));
+	}, [staffUsers, presentIds]);
 
 	// ── Helper: Kirim notifikasi Telegram ──
 	const sendTelegramNotif = useCallback(async (title: string, details: Record<string, string>, timeExtras?: { startTime?: number; endTime?: number }) => {
@@ -2233,6 +2243,8 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 		teamSearch,
 		setTeamSearch,
 		toggleVisibleTeam: toggleVisibleTeamMembers,
+		presentIds,
+		selectPresent: selectPresentTeam,
 		amount,
 		setAmount,
 		submitting: isSubmitting,
