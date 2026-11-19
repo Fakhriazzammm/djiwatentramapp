@@ -35,14 +35,15 @@ export function useProductReviews(productSourceId: string | null) {
 }
 
 export function useCreateProductReview() {
+  const { sessionToken } = useCustomerAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submit = useCallback(async (input: CreateProductReviewInput) => {
     setIsSaving(true); setError(null);
-    try { return await createProductReview(input); }
+    try { return await createProductReview(input, sessionToken); }
     catch (cause) { const message = cause instanceof Error ? cause.message : "Gagal mengirim ulasan"; setError(message); throw cause; }
     finally { setIsSaving(false); }
-  }, []);
+  }, [sessionToken]);
   return { submit, isSaving, error };
 }
 
@@ -92,7 +93,7 @@ function readSnoozes(): Record<string, number> {
  * ulasan milik customer gagal dimuat (fail closed, agar tidak memicu duplikat).
  */
 export function useReviewablePurchases(orders: CustomerOrder[]) {
-  const { isAuthenticated, isLoading: authLoading, customer } = useCustomerAuth();
+  const { isAuthenticated, isLoading: authLoading, customer, sessionToken } = useCustomerAuth();
   const [reviewedPairs, setReviewedPairs] = useState<Set<string> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [snoozes, setSnoozes] = useState<Record<string, number>>(() => readSnoozes());
@@ -104,10 +105,15 @@ export function useReviewablePurchases(orders: CustomerOrder[]) {
       setError(null);
       return;
     }
+    if (!sessionToken) {
+      // Tunggu token sesi Better Auth; jangan fail closed permanen.
+      setReviewedPairs(null);
+      return;
+    }
     let cancelled = false;
     setReviewedPairs(null);
     setError(null);
-    void listMyProductReviews()
+    void listMyProductReviews(sessionToken)
       .then((rows) => {
         if (cancelled) return;
         setReviewedPairs(new Set(rows.map((row) => reviewPairKey(row.orderSourceId, row.productSourceId))));
@@ -118,7 +124,7 @@ export function useReviewablePurchases(orders: CustomerOrder[]) {
         setError(cause instanceof Error ? cause.message : "Daftar ulasan belum dapat dimuat");
       });
     return () => { cancelled = true; };
-  }, [isAuthenticated, sourceId]);
+  }, [isAuthenticated, sessionToken, sourceId]);
 
   const items = useMemo<ReviewablePurchase[]>(() => {
     if (!isAuthenticated || !reviewedPairs) return [];

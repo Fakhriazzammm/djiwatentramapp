@@ -73,9 +73,9 @@ export async function listProductReviews(productSourceId: string, cursor?: strin
   return { reviews: rows.map((row) => mapReview(row, productSourceId)), hasMore: response.hasMore === true, nextCursor: response.nextCursor ?? null };
 }
 
-export async function createProductReview(input: CreateProductReviewInput): Promise<{ review: ProductReview | null; status: string }> {
+export async function createProductReview(input: CreateProductReviewInput, sessionToken?: string | null): Promise<{ review: ProductReview | null; status: string }> {
   const comment = input.comment?.trim() || undefined;
-  const response = await invokeEdgeFunction<CreateResponse>("product-reviews", { action: "create", productSourceId: input.productSourceId, orderSourceId: input.orderSourceId, rating: input.rating, ...(comment ? { comment } : {}) });
+  const response = await invokeEdgeFunction<CreateResponse>("product-reviews", { action: "create", productSourceId: input.productSourceId, orderSourceId: input.orderSourceId, rating: input.rating, ...(comment ? { comment } : {}) }, customerSessionOptions(sessionToken));
   return { review: response.review ? mapReview(response.review, input.productSourceId) : null, status: String(response.status ?? (response.pending === false ? "published" : "pending")) };
 }
 
@@ -86,9 +86,15 @@ export type MyProductReview = {
 
 type MineResponse = { reviews?: Array<Record<string, unknown>> };
 
+/** Header sesi Better Auth; edge function memvalidasinya ke public.session. */
+function customerSessionOptions(sessionToken?: string | null) {
+  const token = sessionToken?.trim();
+  return token ? { headers: { "x-customer-session": token } } : undefined;
+}
+
 /** Pasangan pesanan+menu yang sudah pernah diulas customer ini (semua status moderasi). */
-export async function listMyProductReviews(): Promise<MyProductReview[]> {
-  const response = await invokeEdgeFunction<MineResponse>("product-reviews", { action: "mine" });
+export async function listMyProductReviews(sessionToken?: string | null): Promise<MyProductReview[]> {
+  const response = await invokeEdgeFunction<MineResponse>("product-reviews", { action: "mine" }, customerSessionOptions(sessionToken));
   return (response.reviews ?? [])
     .map((row) => ({
       orderSourceId: String(row.orderSourceId ?? row.order_source_id ?? ""),

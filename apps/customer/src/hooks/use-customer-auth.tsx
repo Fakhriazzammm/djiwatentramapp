@@ -54,6 +54,7 @@ interface CustomerAuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   session: CustomerSession | null;
+  sessionToken: string | null;
   customer: CustomerUser | undefined;
   registrationNeedsEmailConfirm: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -250,6 +251,8 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       ? { user: customer }
       : null;
   const isAuthenticated = !!session;
+  // Token sesi Better Auth untuk edge function yang memerlukan identitas customer.
+  const sessionToken: string | null = betterSession?.session?.token ?? null;
 
   // ── login ────────────────────────────────────────────────────
   const login = useCallback(async (email: string, password: string) => {
@@ -374,6 +377,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isAuthenticated,
         session,
+        sessionToken,
         customer,
         registrationNeedsEmailConfirm,
         login,

@@ -10,13 +10,12 @@ const db = SUPABASE_URL && SERVICE_ROLE_KEY
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-customer-session",
   "Access-Control-Max-Age": "86400",
 };
 const REVIEW_STATUSES = new Set(["pending", "published", "hidden", "reported"]);
 const ADMIN_ROLES = new Set(["admin", "administrator", "owner", "superadmin", "super admin"]);
 const COMPLETED_ORDER_STATUSES = new Set(["completed", "settled", "paid"]);
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type Json = Record<string, unknown>;
 type Actor = { sourceId: string; name: string; customerId: string | null };
@@ -51,7 +50,28 @@ function bearer(req: Request) {
   return value.toLowerCase().startsWith("bearer ") ? value.slice(7).trim() : "";
 }
 
+async function betterAuthActor(token: string): Promise<Actor | null> {
+  if (!token) return null;
+  const admin = ensureDb();
+  // Better Auth (customer web app) menyimpan sesi di public.session.
+  const { data: session } = await admin.from("session")
+    .select("userId,expiresAt").eq("token", token)
+    .gt("expiresAt", new Date().toISOString()).maybeSingle();
+  if (!session?.userId) return null;
+  const sourceId = String(session.userId);
+  const { data: customer } = await admin.schema("pos").from("customers")
+    .select("source_id,name,is_active").eq("source_id", sourceId).maybeSingle();
+  if (!customer || customer.is_active === false) return null;
+  return { sourceId, name: text(customer.name, 160) || "Customer", customerId: sourceId };
+}
+
 async function customerActor(req: Request): Promise<Actor | null> {
+  const headerToken = (req.headers.get("x-customer-session") ?? "").trim();
+  if (headerToken) {
+    const actor = await betterAuthActor(headerToken);
+    if (actor) return actor;
+  }
+
   const token = bearer(req);
   if (!token) return null;
   const admin = ensureDb();
@@ -65,6 +85,10 @@ async function customerActor(req: Request): Promise<Actor | null> {
       .select("source_id,name,is_active").eq("source_id", sourceId).maybeSingle();
     if (customer && customer.is_active !== false) return { sourceId, name: text(customer.name, 160) || "Customer", customerId: sourceId };
   }
+
+  // Better Auth session token sent as a bearer token.
+  const betterActor = await betterAuthActor(token);
+  if (betterActor) return betterActor;
 
   // Also accept a real Supabase Auth JWT for migrated customer accounts.
   const { data, error } = await admin.auth.getUser(token);
@@ -174,7 +198,7 @@ async function createReview(body: Json, actor: Actor) {
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) throw new RequestError("INVALID_RATING", "Rating harus berupa bilangan bulat 1 sampai 5");
   const commentRaw = typeof body.comment === "string" ? body.comment.trim() : "";
   if (commentRaw.length > 500) throw new RequestError("COMMENT_TOO_LONG", "Komentar maksimal 500 karakter");
-  if (!actor.customerId || !UUID_RE.test(actor.customerId)) throw new RequestError("CUSTOMER_ID_UNSUPPORTED", "Akun customer belum memiliki identitas yang kompatibel", 403);
+  if (!actor.customerId) throw new RequestError("CUSTOMER_ID_UNSUPPORTED", "Akun customer belum memiliki identitas yang kompatibel", 403);
   const admin = ensureDb();
 
   const { data: product, error: productError } = await admin.schema("pos").from("products").select("source_id").eq("source_id", productId).maybeSingle();
@@ -185,9 +209,10 @@ async function createReview(body: Json, actor: Actor) {
   if (orderError) throw orderError;
   if (!order || String(order.customer_source_id ?? "") !== actor.customerId || !COMPLETED_ORDER_STATUSES.has(String(order.status ?? "").toLowerCase())) throw new RequestError("ORDER_NOT_ELIGIBLE", "Review hanya dapat dibuat untuk order milik customer yang sudah selesai atau lunas", 403);
   const { data: item, error: itemError } = await admin.schema("pos").from("order_items")
-    .select("product_source_id,status").eq("order_source_id", orderId).eq("product_source_id", productId).neq("status", "cancelled").limit(1).maybeSingle();
+    .select("product_source_id,status").eq("order_source_id", orderId).eq("product_source_id", productId).limit(1).maybeSingle();
   if (itemError) throw itemError;
-  if (!item) throw new RequestError("PRODUCT_NOT_IN_ORDER", "Produk tidak terdapat pada order tersebut", 403);
+  // Status item lama sering NULL; jangan pakai neq() karena NULL ikut terbuang.
+  if (!item || String(item.status ?? "").toLowerCase() === "cancelled") throw new RequestError("PRODUCT_NOT_IN_ORDER", "Produk tidak terdapat pada order tersebut", 403);
 
   const { data: duplicate, error: duplicateError } = await admin.schema("pos").from("product_reviews")
     .select("id,status").eq("order_source_id", orderId).eq("product_source_id", productId).eq("customer_user_id", actor.customerId).maybeSingle();

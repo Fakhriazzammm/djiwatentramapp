@@ -131,10 +131,14 @@ export function parseEdgeFunctionResponse<T>(
  */
 export async function invokeEdgeFunction<T = Record<string, unknown>>(
 	fnName: string,
-	body: Record<string, unknown>
+	body: Record<string, unknown>,
+	options?: { headers?: Record<string, string> }
 ): Promise<T> {
 	const supabase = createClient();
-	const { data, error } = await supabase.functions.invoke(fnName, { body });
+	const { data, error } = await supabase.functions.invoke(fnName, {
+		body,
+		...(options?.headers ? { headers: options.headers } : {}),
+	});
 
 	if (error) {
 		// FunctionsHttpError — try to extract body for structured error
