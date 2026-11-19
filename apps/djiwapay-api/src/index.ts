@@ -19,7 +19,8 @@ import { isEmptyRead, readReceipt, type ReceiptRead } from "./receipt.js";
 import { disconnect as googleDisconnect, FEATURES, finishConnect, googleConfig, startConnect, status as googleStatus, syncCalendar, type Feature, type Fetch, type GoogleCfg } from "./google.js";
 import { confirmDriveRemovals, confirmSheetDeletes, requestSheet, touchDrive } from "./google-sync.js";
 import { ISSUERS } from "./mail/extract.js";
-import { ensureHook, getHook, hookConfig, hookScript, HOOK_MAX_BYTES, receiveHook, removeHook, type HookDeps } from "./hook.js";
+import { ensureHook, getHook, hookConfig, hookScript, HOOK_MAX_BYTES, receiveHook, removeHook, SCRIPT_VERSION, type HookDeps } from "./hook.js";
+import { broadQuery } from "./mail/generic.js";
 import { disableGmail, enableGmail, pollSoon } from "./gmail.js";
 import { cancelImport, commitImport, createImport, importCheckItems, importState, undoImport } from "./gmail-import.js";
 import { approveGroup, rejectGroup, reviewGroups, approve, ensureSource, getSource, originOf, reject, removeSource, reviewCount, reviewList } from "./mail/pipeline.js";
@@ -215,10 +216,10 @@ export function createApp(d: Deps) {
 
   /* ---------- Apps Script hook (alternative to Gmail OAuth): public, authenticated by its URL token ---------- */
   const hookBase = (d.publicUrl ?? "https://djiwapay.web.id").replace(/\/$/, "");
-  const hookView = (h: any) => h ? { enabled: true, url: `${hookBase}/api/finance/hook/${h.token}`, script: hookScript(`${hookBase}/api/finance/hook/${h.token}`), lastAt: h.last_at ? new Date(h.last_at).toISOString() : null, lastStatus: h.last_status ?? null, lastReason: h.last_reason ?? null, received: Number(h.received) } : { enabled: false };
+  const hookView = (h: any) => h ? { enabled: true, url: `${hookBase}/api/finance/hook/${h.token}`, script: hookScript(`${hookBase}/api/finance/hook/${h.token}`), scriptVersion: Number(h.script_version ?? 1), currentScriptVersion: SCRIPT_VERSION, lastAt: h.last_at ? new Date(h.last_at).toISOString() : null, lastStatus: h.last_status ?? null, lastReason: h.last_reason ?? null, received: Number(h.received) } : { enabled: false };
   const hits = new Map<string, { n: number; t: number }>();
   const hookLimited = (key: string) => { const now = Date.now(), h = hits.get(key); if (!h || now - h.t > 600_000) { hits.set(key, { n: 1, t: now }); return false; } h.n++; return h.n > 400; };
-  app.get("/api/finance/hook/:token", async (c) => { const cfg = await hookConfig(d.db, c.req.param("token")); return cfg ? json(c, { success: true, ...cfg }) : json(c, { success: false, error: "TOKEN_INVALID" }, 404); });
+  app.get("/api/finance/hook/:token", async (c) => { const cfg = await hookConfig(d.db, c.req.param("token"), Number(c.req.query("v")) || undefined); return cfg ? json(c, { success: true, ...cfg }) : json(c, { success: false, error: "TOKEN_INVALID" }, 404); });
   app.post("/api/finance/hook/:token", async (c) => {
     if (!d.hook) return json(c, { success: false, error: "NOT_CONFIGURED" }, 503);
     const token = c.req.param("token");
@@ -239,7 +240,14 @@ export function createApp(d: Deps) {
 
   /* ---------- Payment e-mail inbox ---------- */
   const sourceView = (s: any) => s && mailDomain ? { forwarding: Boolean(s.forwarding), address: `${s.token}@${mailDomain}`, enabled: Boolean(s.enabled), mailCount: Number(s.mail_count), lastMailAt: s.last_mail_at ? new Date(s.last_mail_at).toISOString() : null, trusted: Number(s.trusted_count), forwardCode: s.forward_code && s.forward_code_at && Date.now() - new Date(s.forward_code_at).getTime() < 3 * 3600_000 ? String(s.forward_code) : null } : null;
-  app.get("/api/finance/inbound", async (c) => json(c, { success: true, importReady: Number((await d.db.query("select coalesce(max(staged),0)::int n from finance.gmail_import where user_id=$1 and status='ready'", [uid(c)])).rows[0]?.n ?? 0), autoRecent: Number((await d.db.query("select count(*)::int n from finance.inbound_messages where user_id=$1 and status='auto' and created_at > greatest(now() - interval '24 hours', $2::timestamptz) and import_id is null", [uid(c), (() => { const t = Date.parse(c.req.query("autoSince") ?? ""); return Number.isFinite(t) ? new Date(t).toISOString() : "1970-01-01T00:00:00Z"; })()])).rows[0]?.n ?? 0), configured: Boolean(mailDomain), filter: `from:(${ISSUERS.flatMap((i) => i.domains).join(" OR ")})`, source: sourceView(await getSource(d.db, uid(c))), review: await reviewCount(d.db, uid(c)) }));
+  app.get("/api/finance/inbound", async (c) => json(c, { success: true, importReady: Number((await d.db.query("select coalesce(max(staged),0)::int n from finance.gmail_import where user_id=$1 and status='ready'", [uid(c)])).rows[0]?.n ?? 0), autoRecent: Number((await d.db.query("select count(*)::int n from finance.inbound_messages where user_id=$1 and status='auto' and created_at > greatest(now() - interval '24 hours', $2::timestamptz) and import_id is null", [uid(c), (() => { const t = Date.parse(c.req.query("autoSince") ?? ""); return Number.isFinite(t) ? new Date(t).toISOString() : "1970-01-01T00:00:00Z"; })()])).rows[0]?.n ?? 0), configured: Boolean(mailDomain), broad: ((await d.db.query("select broad from finance.inbound_sources where user_id=$1", [uid(c)])).rows[0]?.broad === true), broadFilter: broadQuery(), filter: `from:(${ISSUERS.flatMap((i) => i.domains).join(" OR ")})`, source: sourceView(await getSource(d.db, uid(c))), review: await reviewCount(d.db, uid(c)) }));
+  // Opt in (or out) of recognising money movements from senders that are not on the bank list. Nothing found this way is recorded without a tap.
+  app.post("/api/finance/inbound/broad", async (c) => {
+    const b = await c.req.json().catch(() => ({})) as { enabled?: unknown };
+    await ensureSource(d.db, uid(c));
+    await d.db.query("update finance.inbound_sources set broad=$2 where user_id=$1", [uid(c), b.enabled === true]);
+    return json(c, { success: true, broad: b.enabled === true });
+  });
   app.post("/api/finance/inbound/source", async (c) => {
     if (!mailDomain) return json(c, { success: false, error: "NOT_CONFIGURED" }, 503);
     const body = await c.req.json().catch(() => ({})) as { rotate?: unknown };

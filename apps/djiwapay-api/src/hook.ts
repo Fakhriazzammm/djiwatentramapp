@@ -3,6 +3,7 @@
  *  (sender allowlist, DKIM / DMARC, OTP filter, dedupe), so a leaked token can at worst replay genuine bank mail. */
 import { randomBytes } from "node:crypto";
 import { ISSUERS } from "./mail/extract.js";
+import { broadQuery } from "./mail/generic.js";
 import { ensureSource, processForUser, type PipelineDeps, type RawMail } from "./mail/pipeline.js";
 import type { MailCtx } from "./mail/smtp.js";
 import type { Q, Tx } from "./sync.js";
@@ -14,7 +15,7 @@ export const issuerDomains = () => [...new Set(ISSUERS.flatMap((i) => i.domains)
 export const hookQuery = () => `from:(${issuerDomains().join(" OR ")})`;
 
 export async function getHook(db: Q, userId: string) {
-  return (await db.query("select token,created_at,last_at,last_status,last_reason,received from finance.inbound_hooks where user_id=$1", [userId])).rows[0] ?? null;
+  return (await db.query("select token,created_at,last_at,last_status,last_reason,received,script_version from finance.inbound_hooks where user_id=$1", [userId])).rows[0] ?? null;
 }
 export async function ensureHook(db: Q, userId: string, rotate = false) {
   const have = await getHook(db, userId);
@@ -26,8 +27,14 @@ export const removeHook = (db: Q, userId: string) => db.query("delete from finan
 const userOf = async (db: Q, token: string) => /^[A-Za-z0-9]{32,64}$/.test(token) ? ((await db.query("select user_id from finance.inbound_hooks where token=$1", [token])).rows[0]?.user_id as string | undefined) ?? null : null;
 
 /** What the script asks before each run: which senders to look for. Kept on the server so the list can grow without the user re-pasting. */
-export async function hookConfig(db: Q, token: string) {
-  return (await userOf(db, token)) ? { query: hookQuery(), domains: issuerDomains(), version: 1 } : null;
+export const SCRIPT_VERSION = 2;
+export async function hookConfig(db: Q, token: string, scriptVersion?: number) {
+  const userId = await userOf(db, token);
+  if (!userId) return null;
+  if (scriptVersion && Number.isInteger(scriptVersion) && scriptVersion > 0 && scriptVersion < 100) await db.query("update finance.inbound_hooks set script_version=$2 where user_id=$1", [userId, scriptVersion]);
+  const broad = (await db.query("select broad from finance.inbound_sources where user_id=$1", [userId])).rows[0]?.broad === true;
+  // broadQuery is only sent when the person has opted in; a script that does not know the field simply ignores it.
+  return { query: hookQuery(), domains: issuerDomains(), version: SCRIPT_VERSION, ...(broad ? { broadQuery: broadQuery() } : {}) };
 }
 
 export type HookDeps = { db: Tx; pipeline: PipelineDeps; toMail: (raw: Buffer, ctx: MailCtx) => Promise<RawMail> };
@@ -48,12 +55,17 @@ export async function receiveHook(d: HookDeps, token: string, raw: Buffer): Prom
 /** The script the user pastes. Plain, readable and commented in Indonesian: people should be able to see exactly what it does. */
 export function hookScript(url: string): string {
   return `/**
- * Djiwa Pay - penerus email pembayaran
+ * Djiwa Pay - penerus email pembayaran (versi ${SCRIPT_VERSION})
  *
  * Skrip ini berjalan di akun Google-mu sendiri. Tiap 5 menit ia mencari email dari bank dan
  * e-wallet (daftar pengirimnya diambil dari Djiwa Pay), lalu mengirim email itu ke alamat
- * rahasiamu di bawah. Email dari pengirim lain tidak pernah dikirim. Skrip tidak membalas,
- * menghapus, atau mengubah email apa pun.
+ * rahasiamu di bawah. Skrip tidak membalas, menghapus, atau mengubah email apa pun.
+ *
+ * Jika kamu menyalakan "Deteksi dari pengirim lain" di Djiwa Pay, skrip juga mengirim email dari
+ * pengirim mana pun yang subjeknya memuat kata seperti pembayaran, transaksi, struk, invoice
+ * atau refund (bukan promosi, bukan spam). Email yang bukan transaksi dibuang server, isinya
+ * tidak disimpan, dan yang tersisa selalu menunggu konfirmasimu: pemasukan atau pengeluaran.
+ * Email yang kamu kirim sendiri tidak pernah dikirim.
  *
  * Cara berhenti: jalankan fungsi "berhenti", atau hapus proyek skrip ini.
  */
@@ -77,22 +89,33 @@ function sinkron() {
   var props = PropertiesService.getScriptProperties();
   var mulai = Date.now();
   var sejak = Number(props.getProperty("sejak")) || (mulai - HARI_AWAL * 86400000);
-  var cek = UrlFetchApp.fetch(DJIWA_URL, { muteHttpExceptions: true });
+  var cek = UrlFetchApp.fetch(DJIWA_URL + "?v=${SCRIPT_VERSION}", { muteHttpExceptions: true });
   if (cek.getResponseCode() === 404) throw new Error("Alamat tidak berlaku lagi. Buka Djiwa Pay > Integrasi dan salin skrip yang baru.");
   if (cek.getResponseCode() !== 200) return;                       // coba lagi 5 menit lagi
   var cfg = JSON.parse(cek.getContentText());
   var batas = Math.floor((sejak - 3600000) / 1000);                // tumpang tindih 1 jam; Djiwa Pay membuang email ganda
-  var utas = GmailApp.search(cfg.query + " after:" + batas, 0, 50);
-  var surat = [];
-  utas.forEach(function (u) {
-    u.getMessages().forEach(function (m) {
-      if (m.getDate().getTime() < sejak - 3600000) return;
-      var dari = (m.getFrom().match(/<([^>]+)>/) || [null, m.getFrom()])[1].toLowerCase();
-      var domain = dari.split("@").pop();
-      var cocok = cfg.domains.some(function (d) { return domain === d || domain.slice(-d.length - 1) === "." + d; });
-      if (cocok) surat.push(m);
+  var saya = "";
+  try { saya = Session.getEffectiveUser().getEmail().toLowerCase(); } catch (e) { saya = ""; }
+  var surat = [], sudah = {};
+  function kumpulkan(query, hanyaDaftar) {
+    GmailApp.search(query + " after:" + batas, 0, 50).forEach(function (u) {
+      u.getMessages().forEach(function (m) {
+        var id = m.getId();
+        if (sudah[id] || m.getDate().getTime() < sejak - 3600000) return;
+        var dari = (m.getFrom().match(/<([^>]+)>/) || [null, m.getFrom()])[1].toLowerCase();
+        if (saya && dari === saya) return;                         // email yang kamu kirim sendiri tidak pernah dikirim
+        if (hanyaDaftar) {
+          var domain = dari.split("@").pop();
+          var cocok = cfg.domains.some(function (d) { return domain === d || domain.slice(-d.length - 1) === "." + d; });
+          if (!cocok) return;
+        }
+        sudah[id] = true;
+        surat.push(m);
+      });
     });
-  });
+  }
+  kumpulkan(cfg.query, true);
+  if (cfg.broadQuery) kumpulkan(cfg.broadQuery, false);            // hanya ada bila "Deteksi dari pengirim lain" menyala
   surat.sort(function (a, b) { return a.getDate() - b.getDate(); });
   var lengkap = surat.length <= MAKS_PER_JALAN, terakhir = sejak;
   for (var i = 0; i < surat.length && i < MAKS_PER_JALAN; i++) {

@@ -3,6 +3,7 @@
 import { accessToken, googleReason, type Fetch, type GoogleCfg } from "./google.js";
 import { ensureSource, processForUser, type Outcome, type PipelineDeps, type RawMail } from "./mail/pipeline.js";
 import { ISSUERS } from "./mail/extract.js";
+import { broadQuery } from "./mail/generic.js";
 import type { MailCtx } from "./mail/smtp.js";
 import type { Q, Tx } from "./sync.js";
 
@@ -11,7 +12,7 @@ const BACKFILL_DAYS = 7;
 const MAX_PER_POLL = 60;
 
 export const senderQuery = () => `from:(${ISSUERS.flatMap((i) => i.domains).join(" OR ")})`;
-export const gmailQuery = (since: Date) => `${senderQuery()} after:${Math.floor(since.getTime() / 1000)}`;
+export const gmailQuery = (since: Date, broad = false) => `${broad ? `(${senderQuery()}) OR (${broadQuery()})` : senderQuery()} after:${Math.floor(since.getTime() / 1000)}`;
 
 export type PollDeps = { db: Tx; cfg: GoogleCfg; pipeline: PipelineDeps; toMail: (raw: Buffer, ctx: MailCtx) => Promise<RawMail>; f?: Fetch; now?: () => Date; test?: boolean };
 export type PollResult = { ok: boolean; processed: number; outcomes: Record<string, number>; error?: string };
@@ -41,11 +42,12 @@ export async function pollGmail(d: PollDeps, userId: string): Promise<PollResult
   if (!conn || !(conn.granted_scopes as string[]).includes("https://www.googleapis.com/auth/gmail.readonly")) return done("SCOPE_MISSING", 0, false);
   const since = state.last_polled_at ? new Date(new Date(state.last_polled_at).getTime() - 15 * 60_000) : new Date(now.getTime() - BACKFILL_DAYS * 86400_000);
   const auth = { authorization: `Bearer ${token}` };
+  const broad = (await d.db.query("select broad from finance.inbound_sources where user_id=$1", [userId])).rows[0]?.broad === true;
 
   const ids: string[] = [];
   let page: string | undefined;
   for (let i = 0; i < 3 && ids.length < MAX_PER_POLL; i++) {
-    const res = await f(`https://gmail.googleapis.com/gmail/v1/users/me/messages?${new URLSearchParams({ q: gmailQuery(since), maxResults: "30", ...(page ? { pageToken: page } : {}) })}`, { headers: auth });
+    const res = await f(`https://gmail.googleapis.com/gmail/v1/users/me/messages?${new URLSearchParams({ q: gmailQuery(since, broad), maxResults: "30", ...(page ? { pageToken: page } : {}) })}`, { headers: auth });
     if (res.status === 403 || res.status === 401) return done(res.status === 403 ? `GMAIL_FORBIDDEN:${await googleReason(res)}` : "NOT_CONNECTED", 0, false);
     if (!res.ok) return done(`GMAIL_${res.status}`, 0, false);
     const j = (await res.json()) as { messages?: { id: string }[]; nextPageToken?: string };

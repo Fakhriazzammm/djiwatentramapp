@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { notifyUser, type PushPayload } from "../push.js";
 import type { Q, Tx } from "../sync.js";
 import { auditQueue, auditSummary } from "./audit.js";
+import { GENERIC_DAILY_LIMIT, genericIssuer, senderAuthentic } from "./generic.js";
 import { domainOf, extractPayment, forwardingCode, guessCategory, implausible, isBillReminder, isConfident, isFailedMail, isNoticeMail, isPromo, isReportMail, isSecretMail, issuerFor, looksLikePayment, groupKey, merchantKey, redactForShare, RULES_VERSION, type Extracted, type Issuer } from "./extract.js";
 
 export type RawMail = {
@@ -119,9 +120,13 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
     return { status: "ignored", reason, userId };
   };
   // Gate 1: only listed issuers. Gate 2: the mail must really come from them (DKIM aligned or DMARC pass).
-  const issuer = issuerFor(fromDomain);
-  if (!issuer) return skip("sender-not-allowed");
-  const aligned = mail.auth.dmarcPass || mail.auth.dkimDomains.some((x) => issuer.domains.some((dom) => x === dom || x.endsWith("." + dom)));
+  let issuer = issuerFor(fromDomain), generic = false;
+  if (!issuer) {                                                    // not a listed bank / e-wallet: only when the person opted in, and then never without their say-so
+    const broad = (await d.db.query("select broad from finance.inbound_sources where user_id=$1", [userId])).rows[0]?.broad === true;
+    if (!broad) return skip("sender-not-allowed");
+    issuer = genericIssuer(fromDomain); generic = true;
+  }
+  const aligned = generic ? senderAuthentic(fromDomain, mail.auth) : mail.auth.dmarcPass || mail.auth.dkimDomains.some((x) => issuer!.domains.some((dom) => x === dom || x.endsWith("." + dom)));
   if (!aligned) return skip("auth-failed", issuer.id, true, `dmarc=${mail.auth.dmarcPass} dkim=[${mail.auth.dkimDomains.join(",")}] ${mail.auth.debug ?? ""}`);
   // Gate 3: codes, PINs and resets are never read or stored.
   if (isSecretMail(mail.subject, mail.text)) return skip("secret", issuer.id, false);
@@ -133,6 +138,11 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   if (isBillReminder(mail.subject, mail.text)) return skip("bill", issuer.id);
   // Gate 6: a warning or a fee schedule names rupiah without any money moving.
   if (isNoticeMail(mail.subject, mail.text)) return skip("notice", issuer.id);
+  if (generic) {                                                    // an unknown sender must at least read like a payment, and may only queue so much per day
+    if (!looksLikePayment(mail.subject, mail.text)) return skip("not-payment", issuer.id);
+    const today = Number((await d.db.query("select count(*)::int n from finance.inbound_messages where user_id=$1 and channel='other' and created_at > now() - interval '1 day'", [userId])).rows[0]?.n ?? 0);
+    if (today >= GENERIC_DAILY_LIMIT) return skip("limit", issuer.id);
+  }
 
   const claimed = await d.db.query("insert into finance.inbound_messages(user_id,message_id,sender_domain,channel,status,import_id) values($1,$2,$3,$4,'review',$5) on conflict(user_id,message_id) do nothing returning id", [userId, messageId, fromDomain, issuer.id, stage?.importId ?? null]);
   if (!claimed.rows[0]) return { status: "duplicate", reason: "same-message", userId };
@@ -161,6 +171,7 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   // Gate 7: the read must agree with the mail it came from. A shape nobody has taught the parser yet
   // then waits for a person instead of being recorded, for every user and not only the one who reported it.
   const flags = implausible(`${mail.subject}\n${mail.text}`, x, mail.date?.getTime() ?? null);
+  if (!(x.amount > 0) && generic) return finish("ignored", "unreadable", { confidence: x.confidence });   // an unknown sender with no readable amount is not worth the person's attention
   if (!(x.amount > 0)) return stage ? finish("ignored", "unreadable", { confidence: x.confidence }) : looksLikePayment(mail.subject, mail.text) ? finish("failed", "unreadable", { parsed, confidence: x.confidence }) : finish("ignored", "unreadable", { confidence: x.confidence });
   // Gate 6b: an announcement can print a rupiah figure ("Limit Baru Kartu Jago", "kenaikan limit
   // transaksi dari Rp50 juta jadi Rp150 juta") without paying anything. No transaction wording at all
@@ -173,12 +184,12 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
     if (dup.rows[0]) return finish("duplicate", "same-reference", { parsed, confidence: x.confidence, entryId: dup.rows[0].entry_id, at });
   }
 
-  const accountId = stage ? accountIdFor(issuer, x.accountHint) : await ensureAccount(d.db, userId, issuer, x.accountHint);
+  const accountId = generic ? "tunai" : stage ? accountIdFor(issuer, x.accountHint) : await ensureAccount(d.db, userId, issuer, x.accountHint);
   const kind: "out" | "in" = x.direction === "in" ? "in" : "out";
 
   // A top-up is the person moving their own money into a wallet: a transfer, never income or spending.
   const tp = x.transfer;
-  if (tp && !stage && flags.length === 0 && x.amount > 0 && x.direction !== "unknown") {
+  if (tp && !stage && !generic && flags.length === 0 && x.amount > 0 && x.direction !== "unknown") {
     const walletId = await ensureAcct(d.db, userId, `email-${slug(tp.provider)}`, tp.provider, "ewallet");
     const nominal = tp.nominal || x.amount, fee = tp.nominal ? Math.max(0, x.amount - tp.nominal) : 0;
     const from = tp.side === "from-bank" ? accountId : await ensureAcct(d.db, userId, "email-rekening-bank", "Rekening bank", "bank");
@@ -198,7 +209,9 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   }
 
   // Same money already recorded (Djiwa Pay, scan, manual or another e-mail)?
-  const same = await d.db.query("select id from finance.entries where user_id=$1 and amount=$2 and kind=$3 and account_id=$4 and at between $5::timestamptz - ($6 * interval '1 millisecond') and $5::timestamptz + ($6 * interval '1 millisecond') limit 1", [userId, x.amount, kind, accountId, at, CLOSE_MS]);
+  const same = generic
+    ? await d.db.query("select id from finance.entries where user_id=$1 and amount=$2 and at between $3::timestamptz - ($4 * interval '1 millisecond') and $3::timestamptz + ($4 * interval '1 millisecond') limit 1", [userId, x.amount, at, CLOSE_MS])
+    : await d.db.query("select id from finance.entries where user_id=$1 and amount=$2 and kind=$3 and account_id=$4 and at between $5::timestamptz - ($6 * interval '1 millisecond') and $5::timestamptz + ($6 * interval '1 millisecond') limit 1", [userId, x.amount, kind, accountId, at, CLOSE_MS]);
   if (same.rows[0]) return finish("duplicate", "already-recorded", { parsed, confidence: x.confidence, entryId: same.rows[0].id, at });
 
   if (stage) {   // an import: keep it aside until the user has seen the preview. Accounts, transfers and entries come with the commit.
@@ -226,6 +239,12 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
 
   // New mail is recorded straight away once the gates above agree and the read is clear: money in or out, an amount, and nothing
   // implausible about it. What stays for a person is only what the parser itself is unsure of. Every automatic record can be undone.
+  if (generic) {
+    // Nothing from an unknown sender is recorded by itself. The person is asked, and what they answered last time for this sender is the suggestion.
+    const hint = (await d.db.query("select direction from finance.sender_hints where user_id=$1 and sender_domain=$2", [userId, fromDomain])).rows[0]?.direction as "in" | "out" | undefined;
+    const suggest = hint ?? (x.direction === "in" || x.direction === "out" ? x.direction : null);
+    return finish("review", "new-sender", { parsed: { ...parsed, generic: true, suggest, suggestFrom: hint ? "hint" : suggest ? "mail" : null, categoryId: guessCategory(x.merchant, mail.subject, x.direction), accountId, flags: ["Pengirim baru: pilih pemasukan atau pengeluaran", ...flags] }, confidence: x.confidence, at });
+  }
   const clear = isConfident(x) || agreed;
   const auto = flags.length === 0 && clear && x.direction !== "unknown" && x.amount <= (d.autoCeiling ?? AUTO_CEILING);
   if (auto) {
@@ -254,9 +273,10 @@ export async function reviewCount(db: Q, userId: string) {
 export type Edits = { amount?: unknown; kind?: unknown; categoryId?: unknown; accountId?: unknown; note?: unknown; at?: unknown };
 export async function approve(d: Tx, userId: string, inboundId: string, e: Edits): Promise<{ entryId: string } | null> {
   return d.tx(async (q) => {
-    const m = (await q.query("select id,parsed,status,channel from finance.inbound_messages where user_id=$1 and id=$2 and status in ('review','failed') for update", [userId, inboundId])).rows[0];
+    const m = (await q.query("select id,parsed,status,channel,sender_domain from finance.inbound_messages where user_id=$1 and id=$2 and status in ('review','failed') for update", [userId, inboundId])).rows[0];
     if (!m) return null;
     const p = (m.parsed ?? {}) as Record<string, any>;
+    if (p.generic && e.kind !== "in" && e.kind !== "out") return null;   // an unknown sender is only recorded once the person has said what it was
     const tr = p.transfer && typeof p.transfer.to === "string" && typeof p.transfer.from === "string" ? p.transfer as { from: string; to: string; toName?: string; amount: number; fee?: number } : null;
     const amount = Number(e.amount ?? (tr ? tr.amount : p.amount)), kind: "in" | "out" | "tf" = tr ? "tf" : (e.kind ?? p.kind ?? (p.direction === "in" ? "in" : "out")) === "in" ? "in" : "out";
     if (!(amount > 0)) return null;
@@ -272,6 +292,7 @@ export async function approve(d: Tx, userId: string, inboundId: string, e: Edits
       if (tr.from === "email-rekening-bank") await ensureAcct(q, userId, tr.from, "Rekening bank", "bank");
     }
     const entryId = await insertEntry(q, userId, candidate, inboundId);
+    if (p.generic && m.sender_domain) await q.query("insert into finance.sender_hints(user_id,sender_domain,direction) values($1,$2,$3) on conflict(user_id,sender_domain) do update set direction=excluded.direction, uses=finance.sender_hints.uses+1, updated_at=now()", [userId, String(m.sender_domain), candidate.kind]);
     if (tr && Number(tr.fee) > 0) { const feeId = await insertFee(q, userId, Number(tr.fee), tr.from, candidate.at, String(tr.toName ?? "dompet digital")); await q.query("update finance.inbound_messages set parsed=jsonb_set(parsed,'{transfer,feeEntryId}',to_jsonb($2::text)) where id=$1", [inboundId, feeId]); }
     await q.query("update finance.inbound_messages set status='approved', entry_id=$2, reason='approved' where id=$1", [inboundId, entryId]);
     await q.query("update finance.inbound_sources set trusted_count=trusted_count+1 where user_id=$1", [userId]);
@@ -324,7 +345,7 @@ export type ReviewGroup = { key: string; name: string; kind: "out" | "in"; count
 async function groupRows(q: Q, userId: string) {
   const r = await q.query(`select id, parsed->'details'->>'description' as dsc, parsed->>'merchant' as m, parsed->>'subject' as s, (parsed->>'amount')::numeric as amt,
       parsed->>'kind' as kind, parsed->>'direction' as dir, parsed->>'categoryId' as cat, parsed->>'at' as at_, jsonb_array_length(coalesce(parsed->'flags','[]'::jsonb)) as nflags
-    from finance.inbound_messages where user_id=$1 and status='review' and (parsed->>'amount')::numeric > 0`, [userId]);
+    from finance.inbound_messages where user_id=$1 and status='review' and coalesce(parsed->>'generic','false') <> 'true' and (parsed->>'amount')::numeric > 0`, [userId]);
   return r.rows.map((x) => {
     const name = String(x.dsc || x.m || x.s || "Email pembayaran"), kind: "out" | "in" = (x.kind ?? (x.dir === "in" ? "in" : "out")) === "in" ? "in" : "out";
     return { id: x.id as string, name, key: `${groupKey(name) || "lainnya"}|${kind}`, kind, amount: Number(x.amt), cat: String(x.cat || "lainnya"), at: (x.at_ as string | null) ?? null, flagged: Number(x.nflags) > 0 };

@@ -1,3 +1,4 @@
+import {genericIssuer,senderAuthentic} from "./generic.js";
 import { accessToken,type GoogleCfg,type Fetch } from '../google.js';
 import { toRawMail } from './smtp.js';
 import { extractPayment,issuerFor,domainOf } from './extract.js';
@@ -15,9 +16,10 @@ export async function rereadMail(db:Tx,userId:string,id:string,cfg:GoogleCfg,f:F
  const found=(await res.json() as any).messages?.[0]?.id;if(!found)throw Error('EMAIL_NOT_FOUND');
  const raw=await f(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(found)}?format=raw`,{headers});if(!raw.ok)throw Error(`GMAIL_${raw.status}`);
  const mail=await toRawMail(Buffer.from((await raw.json() as any).raw,'base64url'),{ip:'',helo:'',sender:'',host:'gmail',recipients:[],trustGoogleVerdict:true});
- const issuer=issuerFor(domainOf(mail.from));
+ const fromDomain=domainOf(mail.from),generic=row.parsed?.generic===true;
+ const issuer=issuerFor(fromDomain)??(generic?genericIssuer(fromDomain):null);
  if(!issuer||mail.messageId!==row.message_id)throw Error('SENDER_NOT_ALLOWED');
- if(!mail.auth.dmarcPass&&!mail.auth.dkimDomains.some(d=>issuer.domains.some(i=>d===i||d.endsWith('.'+i))))throw Error('AUTH_FAILED');
+ if(generic?!senderAuthentic(fromDomain,mail.auth):!mail.auth.dmarcPass&&!mail.auth.dkimDomains.some(d=>issuer.domains.some(i=>d===i||d.endsWith('.'+i))))throw Error('AUTH_FAILED');
  let x=extractPayment(mail.subject,mail.text);
  if(llm){const m=await llm(mail.subject,mail.text,mail.from);if(m?.details)x={...x,details:validatedDetails(m.details,mail.text),merchant:m.details.description||x.merchant};}
  const details=x.details!;
