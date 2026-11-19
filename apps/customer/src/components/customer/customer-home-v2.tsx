@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { animate, AnimatePresence, motion, useReducedMotion, useScroll, useTransform, type Variants } from "framer-motion";
-import { ArrowRight, ChevronRight, Eye, EyeOff, HeartHandshake, Search } from "lucide-react";
+import { ArrowRight, BadgeCheck, ChevronRight, Eye, EyeOff, HeartHandshake, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Djiwa3DIcon } from "@djiwaapps/web-shared";
 import { currency } from "@/components/customer/types";
 import type { CustomerUser } from "@/hooks/use-customer-auth";
 import { useCustomerOrders } from "@/hooks/use-customer-data";
 import { useJumatBerkah } from "@/hooks/use-jumat-berkah";
+import { communityClient } from "@/features/community/community-client";
+import type { CommunityPurchaseActivity } from "@/features/community/community-types";
 import { HERO_IMAGES } from "@/components/customer/customer-home-hero";
 import { isFridayInJakarta, useHomeCatalog, useQuickAdd } from "@/components/customer/customer-home-editorial";
 import { buildReorderCart, formatOrderDate, pickLastCompletedOrder, pickTopSellers, summarizeOrderItems, type FeaturedProduct } from "@/lib/home-feed";
@@ -133,13 +135,13 @@ export function HomeTop({
       </div>
       <motion.div
         key={period}
-        initial={{ opacity: 0, y: 10, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ ...SPRING, delay: 0.15 }}
-        className="mt-2.5 inline-block rounded-[13px] bg-white/90 px-3 py-1.5 shadow-[0_4px_14px_rgba(20,60,110,0.14)] backdrop-blur-xl"
+        className="mt-3 text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.45),0_2px_16px_rgba(0,0,0,0.45)]"
       >
-        <p className="font-display text-[15px] font-black leading-tight tracking-tight text-foreground">{greetingForPeriod(period)}</p>
-        <p className="text-[11px] font-semibold leading-tight text-muted-foreground">{name ? `${name}, mau pesan apa?` : "Pesan tanpa antre"}</p>
+        <p className="font-display text-[22px] font-black leading-tight tracking-tight">{greetingForPeriod(period)}</p>
+        <p className="text-[13px] font-semibold leading-tight text-white/95">{name ? `${name}, mau pesan apa?` : "Pesan tanpa antre"}</p>
       </motion.div>
     </header>
   );
@@ -451,15 +453,140 @@ function SectionDivider({ children }: { children: ReactNode }) {
   );
 }
 
+/** Menu terlaris hari ini; bila belum ada penjualan hari ini, pakai terlaris sepanjang waktu. */
+function useTopSellersToday(limit: number) {
+  const { bestSellers, productMap, ready } = useHomeCatalog();
+  const list = useMemo(() => {
+    const rows = bestSellers ?? [];
+    const today = rows.filter((row) => row.period === "today");
+    const source = today.length > 0 ? today : rows.filter((row) => !row.period || row.period === "all");
+    return { items: pickTopSellers(source, productMap, limit), isToday: today.length > 0 };
+  }, [bestSellers, productMap, limit]);
+  return { ...list, ready };
+}
+
+const RANK_TINT = ["bg-[#EAD8C0]", "bg-[#E8D9C8]", "bg-[#DCE9D8]"];
+
+export function HomeTopSellersToday({ username }: { username: string }) {
+  const { items, isToday, ready } = useTopSellersToday(3);
+  const { addProduct, openMenu } = useQuickAdd(username);
+  if (!ready) return <div className="h-[200px] animate-pulse rounded-[20px] bg-muted" role="status" aria-label="Memuat menu terlaris" />;
+  if (items.length === 0) return null;
+  return (
+    <section aria-labelledby="home-top-today-title">
+      <div className="flex items-baseline justify-between px-1">
+        <h2 id="home-top-today-title" className="font-display text-[17px] font-black tracking-tight text-foreground">Menu terlaris hari ini</h2>
+        <button type="button" onClick={openMenu} className="min-h-9 px-1 text-xs font-bold text-primary focus-visible:outline-none focus-visible:underline">Lihat semua</button>
+      </div>
+      {!isToday ? <p className="px-1 text-[11px] text-muted-foreground">Belum ada penjualan hari ini, ini terlaris sepanjang waktu.</p> : null}
+      <motion.ol variants={listVariants} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-40px" }} className="mt-1.5 divide-y divide-border/60 rounded-[20px] bg-card px-3 py-0.5 shadow-[0_0_0_1px_hsl(var(--border)),0_4px_12px_rgba(20,60,110,0.05)]">
+        {items.map((item, index) => (
+          <motion.li key={item.productId} variants={popVariants} className="flex items-center gap-2.5 py-2.5">
+            <span className="w-4 text-center font-display text-base font-black text-muted-foreground" aria-hidden="true">{index + 1}</span>
+            <span className={cn("h-12 w-12 shrink-0 overflow-hidden rounded-[14px]", RANK_TINT[index] ?? "bg-muted")}>
+              {item.image ? <img src={item.image} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="line-clamp-2 block text-[13px] font-bold leading-snug text-foreground">{item.name}</span>
+              <span className="block text-[11.5px] text-muted-foreground">{item.price != null ? currency(item.price) : "Harga belum tersedia"}{item.totalSold ? ` · Terjual ${item.totalSold}x` : ""}</span>
+            </span>
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.92 }}
+              disabled={!item.isAvailable}
+              onClick={() => addProduct(item)}
+              aria-label={item.isAvailable ? `Pesan ${item.name}` : `${item.name} tidak tersedia`}
+              className="min-h-10 shrink-0 rounded-full bg-primary/10 px-3.5 text-[12.5px] font-extrabold text-primary disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            >
+              {item.isAvailable ? "Pesan" : "Habis"}
+            </motion.button>
+          </motion.li>
+        ))}
+      </motion.ol>
+    </section>
+  );
+}
+
+function relativeTime(value: string) {
+  const ms = Date.now() - Date.parse(value);
+  if (!Number.isFinite(ms) || ms < 60_000) return "baru saja";
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 60) return `${minutes} menit lalu`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} jam lalu`;
+  return new Date(value).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+}
+
+function ActivityAvatar({ name, url }: { name: string; url: string | null }) {
+  const [failed, setFailed] = useState(false);
+  const generic = !name.trim() || ["teman djiwa", "member", "user"].includes(name.trim().toLowerCase());
+  return (
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-[11px] font-black text-primary" aria-hidden="true">
+      {url && !failed ? <img src={url} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} /> : generic ? "T" : name.trim().slice(0, 1).toUpperCase()}
+    </span>
+  );
+}
+
+type ActivityGroup = CommunityPurchaseActivity & { products: CommunityPurchaseActivity[] };
+
+/** Aktivitas belanja teman Djiwa (sama dengan feed Komunitas); disembunyikan bila belum ada atau gagal dimuat. */
+export function HomeFriendActivity({ onOpenCommunity }: { onOpenCommunity: () => void }) {
+  const [activities, setActivities] = useState<CommunityPurchaseActivity[] | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    communityClient.listPurchaseActivity(undefined, controller.signal)
+      .then((page) => { if (!controller.signal.aborted) setActivities(page.activities); })
+      .catch(() => { if (!controller.signal.aborted) setActivities([]); });
+    return () => controller.abort();
+  }, []);
+  const groups = useMemo(() => {
+    const map = new Map<string, ActivityGroup>();
+    for (const activity of activities ?? []) {
+      const key = `${activity.displayName}|${activity.orderSettledAt}`;
+      const current = map.get(key);
+      if (current) current.products.push(activity);
+      else map.set(key, { ...activity, products: [activity] });
+    }
+    return Array.from(map.values()).slice(0, 4);
+  }, [activities]);
+
+  if (activities === null) return <div className="h-[150px] animate-pulse rounded-[20px] bg-muted" role="status" aria-label="Memuat aktivitas teman" />;
+  if (groups.length === 0) return null;
+  return (
+    <section aria-labelledby="home-activity-title">
+      <div className="flex items-baseline justify-between px-1">
+        <h2 id="home-activity-title" className="font-display text-[17px] font-black tracking-tight text-foreground">Aktivitas belanja teman Djiwa</h2>
+        <button type="button" onClick={onOpenCommunity} className="min-h-9 px-1 text-xs font-bold text-primary focus-visible:outline-none focus-visible:underline">Lihat semua</button>
+      </div>
+      <motion.ul variants={listVariants} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-40px" }} className="mt-1.5 divide-y divide-border/60 rounded-[20px] bg-card px-3 py-0.5 shadow-[0_0_0_1px_hsl(var(--border)),0_4px_12px_rgba(20,60,110,0.05)]">
+        {groups.map((group) => (
+          <motion.li key={group.id} variants={popVariants} className="flex items-center gap-2.5 py-2.5">
+            <ActivityAvatar name={group.displayName} url={group.avatarUrl} />
+            <span className="min-w-0 flex-1 text-[12.5px] leading-snug text-foreground">
+              <span className="flex items-center gap-1">
+                <span className="truncate font-bold">{group.displayName}</span>
+                {group.verified ? <BadgeCheck className="h-3 w-3 shrink-0 text-cyan-600" aria-label="Pembelian terverifikasi" /> : null}
+                <span className="shrink-0 text-[11px] text-muted-foreground">· {relativeTime(group.orderSettledAt)}</span>
+              </span>
+              <span className="line-clamp-1 block">baru saja membeli <span className="font-bold">{group.products.map((product) => product.productName).join(", ")}</span></span>
+            </span>
+            {group.productImageUrl ? <img src={group.productImageUrl} alt="" className="h-9 w-9 shrink-0 rounded-lg bg-muted object-contain p-0.5" loading="lazy" decoding="async" /> : null}
+          </motion.li>
+        ))}
+      </motion.ul>
+    </section>
+  );
+}
+
 type QuickCard = { key: string; kicker: string; title: string; price: string; image: string | null; disabled?: boolean; onClick: () => void };
 
 /** "Pilihan cepat buatmu": pesan ulang pesanan terakhir dan menu terlaris, satu ketukan ke keranjang. */
 export function HomeQuickPicks({ username, signedIn }: { username: string; signedIn: boolean }) {
-  const { bestSellers, productMap, ready } = useHomeCatalog();
+  const { productMap } = useHomeCatalog();
+  const { items: top, ready } = useTopSellersToday(3);
   const { orders } = useCustomerOrders();
   const { addProduct, openMenu, setCart } = useQuickAdd(username);
   const lastOrder = useMemo(() => (signedIn ? pickLastCompletedOrder(orders) : null), [orders, signedIn]);
-  const top = useMemo(() => pickTopSellers(bestSellers, productMap, 3), [bestSellers, productMap]);
 
   const reorder = useCallback(() => {
     if (!lastOrder) return;

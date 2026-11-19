@@ -14,11 +14,11 @@ import { invokeEdgeFunction } from "@/lib/api-helper";
 import { CustomerSplash } from "@/components/customer/customer-entry";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
-import { HomeGuestWallet, HomeQuickPicks, HomeServiceRail, HomeShortcuts, HomeSky, HomeTop, HomeWalletCard, type WalletAction } from "@/components/customer/customer-home-v2";
+import { HomeFriendActivity, HomeTopSellersToday, HomeGuestWallet, HomeQuickPicks, HomeServiceRail, HomeShortcuts, HomeSky, HomeTop, HomeWalletCard, type WalletAction } from "@/components/customer/customer-home-v2";
 import { CustomerStoryRail } from "@/features/stories/customer-story-rail";
 import { useDayPeriod } from "@/lib/day-period";
 import { JumatBerkahBanner } from "@/components/customer/jumat-berkah";
-import { HomeRestaurantInfo, HomeWholesaleRow, useLiveShift } from "@/components/customer/customer-home-editorial";
+import { HomeRestaurantInfo, useLiveShift } from "@/components/customer/customer-home-editorial";
 import { CustomerLiveOrderCard } from "@/components/customer/customer-live-order-card";
 
 type GuestData = {
@@ -86,7 +86,6 @@ function MemberHomePage() {
 	const period = useDayPeriod();
 	const isLive = useLiveShift();
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
-	const b2bChannelHref = isAuthenticated && customer ? `https://b2b.djiwatentram.web.id/${encodeURIComponent(username)}/order?step=menu` : "https://b2b.djiwatentram.web.id/daftar";
 	const merchandiseChannelHref = isAuthenticated && customer ? `https://merchandise.djiwatentram.web.id/${encodeURIComponent(username)}/order?step=menu` : "https://merchandise.djiwatentram.web.id/daftar";
 
 	const matches = useMatches();
@@ -315,7 +314,8 @@ function MemberHomePage() {
 							<div className="mt-3 space-y-3">
 								<JumatBerkahBanner onOpen={openJumatBerkah} onDonate={donateJumatBerkahAsGuest} />
 								<HomeQuickPicks username={username} signedIn={false} />
-								<HomeWholesaleRow href={b2bChannelHref} />
+								<HomeTopSellersToday username={username} />
+								<HomeFriendActivity onOpenCommunity={goCommunity} />
 								<HomeRestaurantInfo />
 								{!isCurrentGuest ? <p className="text-center text-[10px] text-muted-foreground">Halaman ini milik {guestData.name}. <button type="button" className="font-bold underline" onClick={() => navigate({ to: "/daftar" })}>Mulai sebagai dirimu</button></p> : null}
 							</div>
@@ -362,7 +362,8 @@ function MemberHomePage() {
 								<JumatBerkahBanner onOpen={openJumatBerkah} onDonate={donateJumatBerkah} />
 								<HomeQuickPicks username={username} signedIn />
 								<CustomerStoryRail onOpenCommunity={goCommunity} />
-								<HomeWholesaleRow href={b2bChannelHref} />
+								<HomeTopSellersToday username={username} />
+								<HomeFriendActivity onOpenCommunity={goCommunity} />
 								<HomeRestaurantInfo />
 							</div>
 						</main>
