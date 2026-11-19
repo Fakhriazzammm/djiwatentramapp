@@ -126,8 +126,9 @@ export const ASSET_KINDS: Record<Asset["kind"], { label: string; icon: string; t
 };
 export function netWorth(state: FinanceState, cash: number, stocks = 0) {
   const assets = state.assets.reduce((s, a) => s + assetValue(a), 0), goals = state.goals.reduce((s, g) => s + goalSaved(g), 0), debt = debtTotals(state.debts);
-  const liabilities = debt.iOwe, receivables = debt.owedToMe;
-  return { cash, assets, stocks, goals, receivables, liabilities, total: cash + assets + stocks + receivables - liabilities };
+  const loans = state.loans.reduce((s, l) => s + Math.max(0, l.balance), 0);
+  const liabilities = debt.iOwe + loans, receivables = debt.owedToMe;
+  return { cash, assets, stocks, goals, receivables, liabilities, loans, total: cash + assets + stocks + receivables - liabilities };
 }
 export function assetMix(state: FinanceState, cash: number) {
   const parts = [{ id: "cash", label: "Kas & dompet", value: Math.max(0, cash) }, ...(Object.keys(ASSET_KINDS) as Asset["kind"][]).map((k) => ({ id: k, label: ASSET_KINDS[k].label, value: state.assets.filter((a) => a.kind === k).reduce((s, a) => s + assetValue(a), 0) }))].filter((p) => p.value > 0);

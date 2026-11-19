@@ -59,3 +59,22 @@ run("BI-Rate sync (real database, fake Bank Indonesia page)", () => {
     expect((await biRateView(db, new Date("2027-03-01T00:00:00Z"), code)).stale).toBe(true);
   });
 });
+
+run("BI-Rate notification (real database, fake push sender)", () => {
+  test("only people with a floating loan are told, once per device, with their own numbers", async () => {
+    const { notifyBiChange } = await import("./notify");
+    const u1 = `itest-bn-${crypto.randomUUID().slice(0, 6)}`, u2 = `itest-bn-${crypto.randomUUID().slice(0, 6)}`;
+    try {
+      await pool.query("insert into finance.loans(user_id,id,name,kind,model,principal,months,due_day,fixed_rate,fixed_months,float_rate,balance,paid) values($1,'a','KPR','kpr','anuitas',500000000,180,20,7,60,11,500000000,0),($2,'b','Motor','kendaraan','flat',20000000,36,5,10,36,10,15000000,10)", [u1, u2]);
+      await pool.query("insert into finance.push_subscriptions(user_id,endpoint,p256dh,auth) values($1,'https://push.test/1','k','a'),($1,'https://push.test/2','k','a'),($2,'https://push.test/3','k','a')", [u1, u2]);
+      const sent: { endpoint: string; body: string }[] = [];
+      const n = await notifyBiChange(db, { day: "2026-11-18", rate: 6 }, { day: "2026-10-21", rate: 5.75 }, (async (sub: { endpoint: string }, body: string) => { sent.push({ endpoint: sub.endpoint, body }); return {}; }) as never, true);
+      expect(n).toBe(2);                                                    // two devices of the KPR owner; the flat motor loan and its owner are left alone
+      expect(sent.map((s) => s.endpoint).sort()).toEqual(["https://push.test/1", "https://push.test/2"]);
+      const p = JSON.parse(sent[0].body); expect(p.title).toBe("BI-Rate naik 25 bps ke 6,00%"); expect(p.message).toMatch(/Rp[\d.]+ per bulan/);
+      expect(await notifyBiChange(db, { day: "2026-12-16", rate: 6 }, { day: "2026-11-18", rate: 6 }, (async () => ({})) as never, true)).toBe(0);
+    } finally {
+      for (const t of ["loans", "push_subscriptions"]) await pool.query(`delete from finance.${t} where user_id = any($1)`, [[u1, u2]]);
+    }
+  });
+});

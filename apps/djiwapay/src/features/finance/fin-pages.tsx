@@ -25,6 +25,7 @@ import { AssetDetail } from "../kelola/asset-detail";
 import { BillPaySheet, BillSheet, PayoffSheet, PocketRuleSheet, WeeklySheet } from "../kelola/kelola-sheets";
 import { ASSET_KINDS, netWorth, pocketsOf } from "../../lib/finance/kelola";
 import { KewajibanPanel } from "./fin-plan";
+import { LoanDetail, LoanPaySheet, LoanRateSheet, LoanSheet } from "../kelola/loan-ui";
 import { Onboard, SahamTab, StockActivate, StockAdd, StockDetail, StockFeeSheet, StockManualSheet, StockTradeSheet } from "./fin-saham";
 import { percent, portfolio, stockValue, useStocks } from "../../lib/finance/stocks";
 import type { CustomerProfile } from "../../lib/identity-adapter";
@@ -33,7 +34,7 @@ import type { WalletTransaction } from "../../lib/wallet-adapter";
 export type FinSheet =
   | { k: "catat" } | { k: "entry"; id: string } | { k: "budget"; cid?: string } | { k: "goal"; id?: string } | { k: "goal-detail"; id: string }
   | { k: "debt"; id?: string } | { k: "split" } | { k: "streak" } | { k: "account"; id?: string } | { k: "category"; id?: string } | { k: "pay-category"; id: string }
-  | { k: "bill"; id?: string } | { k: "bill-pay"; id: string } | { k: "asset"; id?: string } | { k: "asset-new"; noPhoto?: boolean } | { k: "stock-activate" } | { k: "stock-add"; ticker?: string; side?: "buy" | "sell"; first?: boolean } | { k: "stock-view"; ticker: string } | { k: "stock-trade"; id: string } | { k: "stock-fee" } | { k: "stock-manual"; ticker: string } | { k: "asset-view"; id: string } | { k: "pockets" } | { k: "pocket"; id?: string } | { k: "payoff" } | { k: "weekly" };
+  | { k: "bill"; id?: string } | { k: "bill-pay"; id: string } | { k: "asset"; id?: string } | { k: "asset-new"; noPhoto?: boolean } | { k: "loan"; id?: string; draft?: import("../../lib/finance/loans").LoanInput } | { k: "loan-view"; id: string } | { k: "loan-pay"; id: string; extra?: boolean } | { k: "loan-rate"; id: string } | { k: "stock-activate" } | { k: "stock-add"; ticker?: string; side?: "buy" | "sell"; first?: boolean } | { k: "stock-view"; ticker: string } | { k: "stock-trade"; id: string } | { k: "stock-fee" } | { k: "stock-manual"; ticker: string } | { k: "asset-view"; id: string } | { k: "pockets" } | { k: "pocket"; id?: string } | { k: "payoff" } | { k: "weekly" };
 
 export type FinCtx = {
   fin: Finance; notify: Notify; nav: Nav; profile: CustomerProfile; transactions: WalletTransaction[]; payBalance: number; loading: boolean;
@@ -333,9 +334,9 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
     </div> : null}
 
     {tab === "kewajiban" ? <div key="kewajiban" className="dpx-vt-pn">
-      {state.debts.length === 0 && state.bills.length === 0 ? <Onboard asset="users" title="Catat hutang, piutang, dan tagihan" desc="Semua yang harus kamu bayar atau akan kamu terima, di satu tempat: pinjaman, cicilan, dan tagihan bulanan."
+      {state.debts.length === 0 && state.bills.length === 0 && state.loans.length === 0 ? <Onboard asset="users" title="Catat hutang, piutang, dan tagihan" desc="Semua yang harus kamu bayar atau akan kamu terima, di satu tempat: pinjaman, KPR, cicilan, dan tagihan bulanan."
         bullets={[["Hutang dan piutang ", "dipisah dengan jelas, cicilan dicatat sebagian-sebagian."], ["Tagihan bulanan ", "(listrik, internet, kartu) lengkap dengan jatuh tempo."], ["Dari email ", "tagihan baru diusulkan otomatis, kamu yang menyetujui."]]}
-        primary="Catat hutang atau piutang" onPrimary={() => ctx.open({ k: "debt" })} secondary="Tambah tagihan bulanan" onSecondary={() => ctx.open({ k: "bill" })} /> : <KewajibanPanel ctx={ctx} />}
+        notice={<Btn type="button" className="dpx-linkbtn" style={{ margin: "4px 0 2px" }} onClick={() => ctx.open({ k: "loan" })}>Punya KPR atau cicilan? Tambah pinjaman ›</Btn>} primary="Catat hutang atau piutang" onPrimary={() => ctx.open({ k: "debt" })} secondary="Tambah tagihan bulanan" onSecondary={() => ctx.open({ k: "bill" })} /> : <KewajibanPanel ctx={ctx} />}
       <p className="dpx-sub" style={{ margin: "8px 4px 0" }}>Perkiraan berdasarkan catatanmu, bukan nasihat keuangan.</p>
     </div> : null}
     {tab === "aset" ? <div className="dpx-vt-fab"><motion.button type="button" className="dpx-vt-photo" onClick={() => ctx.open({ k: "asset-new" })} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring} whileTap={{ scale: 0.95 }}><Ic n="scan" size="sm" /> Foto aset</motion.button></div> : tab === "saham" && hasStocks ? <div className="dpx-vt-fab"><motion.button type="button" className="dpx-vt-photo" onClick={() => ctx.open({ k: "stock-add" })} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring} whileTap={{ scale: 0.95 }}><Ic n="plus" size="sm" /> Catat saham</motion.button></div> : null}
@@ -381,9 +382,13 @@ export function FinSheetHost({ ctx, sheet, close, goManual, openPaySheet }: { ct
     case "goal": return <GoalSheet key="goal" fin={fin} goal={state.goals.find((g) => g.id === sheet.id)} notify={notify} onClose={close} />;
     case "goal-detail": { const g = state.goals.find((x) => x.id === sheet.id); return g ? <GoalDetailSheet key="gd" fin={fin} goal={g} notify={notify} onClose={close} onEdit={() => ctx.open({ k: "goal", id: g.id })} /> : null; }
     case "debt": return <DebtSheet key="debt" fin={fin} debt={state.debts.find((d) => d.id === sheet.id)} notify={notify} onClose={close} />;
-    case "bill": return <BillSheet key="bill" fin={fin} bill={state.bills.find((b) => b.id === sheet.id)} notify={notify} onClose={close} />;
-    case "bill-pay": { const b = state.bills.find((x) => x.id === sheet.id); return b ? <BillPaySheet key="billpay" fin={fin} bill={b} notify={notify} onClose={close} goPay={() => ctx.nav.go("/bayar")} accounts={[{ id: PAY_ACCOUNT_ID, name: "Djiwa Pay" }, ...state.accounts.filter((a) => !a.archived).map((a) => ({ id: a.id, name: a.name }))]} /> : null; }
+    case "bill": { const loan = state.loans.find((l) => (l.billId ?? `ln-${l.id}`) === sheet.id); if (loan) return <LoanDetail key={`lv-${loan.id}`} ctx={ctx} id={loan.id} onClose={close} />; return <BillSheet key="bill" fin={fin} bill={state.bills.find((b) => b.id === sheet.id)} notify={notify} onClose={close} />; }
+    case "bill-pay": { const loan = state.loans.find((l) => (l.billId ?? `ln-${l.id}`) === sheet.id); if (loan) return <LoanPaySheet key={`lp-${loan.id}`} ctx={ctx} loan={loan} extra={false} onClose={close} />; const b = state.bills.find((x) => x.id === sheet.id); return b ? <BillPaySheet key="billpay" fin={fin} bill={b} notify={notify} onClose={close} goPay={() => ctx.nav.go("/bayar")} accounts={[{ id: PAY_ACCOUNT_ID, name: "Djiwa Pay" }, ...state.accounts.filter((a) => !a.archived).map((a) => ({ id: a.id, name: a.name }))]} /> : null; }
     case "asset": case "asset-new": return <AssetFlow key={`asset-${"id" in sheet ? sheet.id ?? "" : ""}`} fin={fin} asset={"id" in sheet ? state.assets.find((a) => a.id === sheet.id) : undefined} noPhoto={sheet.k === "asset-new" && sheet.noPhoto} notify={notify} onClose={close} />;
+    case "loan": return <LoanSheet key={`loan-${sheet.id ?? "new"}`} fin={fin} loan={state.loans.find((l) => l.id === sheet.id)} draft={sheet.draft} notify={notify} onClose={close} />;
+    case "loan-view": return <LoanDetail key={`lv-${sheet.id}`} ctx={ctx} id={sheet.id} onClose={close} />;
+    case "loan-pay": { const l = state.loans.find((x) => x.id === sheet.id); return l ? <LoanPaySheet key={`lp-${sheet.id}-${sheet.extra ? "x" : "r"}`} ctx={ctx} loan={l} extra={Boolean(sheet.extra)} onClose={() => ctx.open({ k: "loan-view", id: l.id })} /> : null; }
+    case "loan-rate": { const l = state.loans.find((x) => x.id === sheet.id); return l ? <LoanRateSheet key="lr" fin={fin} loan={l} notify={notify} onClose={() => ctx.open({ k: "loan-view", id: l.id })} /> : null; }
     case "stock-activate": return <StockActivate key="st-act" ctx={ctx} onClose={close} />;
     case "stock-add": return <StockAdd key={`st-add-${sheet.ticker ?? ""}-${sheet.side ?? ""}`} ctx={ctx} ticker={sheet.ticker} side={sheet.side} first={sheet.first} onClose={close} />;
     case "stock-view": return <StockDetail key={`st-${sheet.ticker}`} ctx={ctx} ticker={sheet.ticker} onClose={close} />;

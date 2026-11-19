@@ -6,6 +6,7 @@ import type { FinCtx } from "../finance/fin-pages";
 import { AreaChart, ScoreRing, short, toneColor } from "./kelola-ui";
 import { accountBalance, daysIn, debtTotals, goalSaved, inMonth, totals } from "../../lib/finance/calc";
 import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
+import { LoanCalc } from "./loan-calc";
 import { ASSET_KINDS, afford, allocate, assetMix, billsFor, dailyBurn, emergencyFund, forecast, healthScore, loan, netWorth, payday, pocketUsage, pocketsOf, unpaidTotal, zakatMaal, type AffordMode, type BillView } from "../../lib/finance/kelola";
 import { stockValue, useStocks } from "../../lib/finance/stocks";
 import { rupiah } from "../../lib/djiwa-pay-format";
@@ -170,9 +171,9 @@ export function ToolsPage({ ctx, onBack }: { ctx: FinCtx; onBack: () => void }) 
   const [tool, setTool] = useState<Tool>("afford");
   return <div className="dpx-page"><Sky><div className="dpx-pad dpx-nobar">
     <Header title="Alat keuangan" onBack={onBack} />
-    <div className="dpx-chips" style={{ marginBottom: 6 }}>{([["afford", "Bisa beli?"], ["emergency", "Dana darurat"], ["zakat", "Zakat"], ["loan", "Cicilan"]] as const).map(([k, l]) => <Btn key={k} type="button" className={`dpx-chip ${tool === k ? "dpx-on" : ""}`} aria-pressed={tool === k} onClick={() => setTool(k)}>{l}</Btn>)}</div>
+    <div className="dpx-chips" style={{ marginBottom: 6 }}>{([["afford", "Bisa beli?"], ["emergency", "Dana darurat"], ["zakat", "Zakat"], ["loan", "Pinjaman"]] as const).map(([k, l]) => <Btn key={k} type="button" className={`dpx-chip ${tool === k ? "dpx-on" : ""}`} aria-pressed={tool === k} onClick={() => setTool(k)}>{l}</Btn>)}</div>
     <AnimatePresence mode="wait" initial={false}><motion.div key={tool} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-      {tool === "afford" ? <Afford ctx={ctx} /> : tool === "emergency" ? <Emergency ctx={ctx} /> : tool === "zakat" ? <Zakat ctx={ctx} /> : <Loan />}
+      {tool === "afford" ? <Afford ctx={ctx} /> : tool === "emergency" ? <Emergency ctx={ctx} /> : tool === "zakat" ? <Zakat ctx={ctx} /> : <LoanCalc ctx={ctx} />}
     </motion.div></AnimatePresence>
     <Disclaimer />
   </div></Sky></div>;

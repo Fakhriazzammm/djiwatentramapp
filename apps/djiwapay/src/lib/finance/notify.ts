@@ -1,10 +1,11 @@
 import { billsFor, monthKey } from "./kelola";
 import { budgetStatuses, daysUntil, debtRemaining, goalPlan, inMonth } from "./calc";
 import { rupiah } from "../djiwa-pay-format";
+import { fixedLeft, inFixedPeriod, isDone } from "./loans";
 import type { Entry, FinanceState } from "./types";
 
 /** Notifications derived from the person's own records: e-mail activity, bills, budgets, debts and goals. */
-export type FinNote = { id: string; title: string; message: string; notification_type: "fin-email" | "fin-bill" | "fin-budget" | "fin-debt" | "fin-goal"; created_at: string; route: string };
+export type FinNote = { id: string; title: string; message: string; notification_type: "fin-email" | "fin-bill" | "fin-budget" | "fin-debt" | "fin-goal" | "fin-loan"; created_at: string; route: string };
 const WAIT = 3 * 864e5;
 
 export function financeNotes(state: FinanceState, entries: Entry[], inbound: { review: number; autoRecent: number } | null, now = new Date()): FinNote[] {
@@ -26,6 +27,10 @@ export function financeNotes(state: FinanceState, entries: Entry[], inbound: { r
   for (const d of state.debts.filter((x) => !x.settled)) {
     const n = daysUntil(d.due, now); if (n === null || n > 3) continue;
     out.push({ id: `fin-debt:${d.id}:${d.due}`, title: n < 0 ? `${d.direction === "i_owe" ? "Hutang ke" : "Piutang dari"} ${d.person} terlambat` : `${d.direction === "i_owe" ? "Hutang ke" : "Piutang dari"} ${d.person} jatuh tempo ${n === 0 ? "hari ini" : `${n} hari lagi`}`, message: `Sisa ${rupiah(debtRemaining(d))}.`, notification_type: "fin-debt", created_at: iso, route: "/kekayaan?bagian=kewajiban" });
+  }
+  for (const l of (state.loans ?? []).filter((x) => x.model === "anuitas" && !isDone(x) && x.fixedMonths < x.months && inFixedPeriod(x))) {
+    const left = fixedLeft(l); if (left > 3) continue;
+    out.push({ id: `fin-loan-fixed:${l.id}:${left}`, title: left <= 0 ? `Masa bunga tetap ${l.name} berakhir` : `Bunga tetap ${l.name} berakhir ${left} bulan lagi`, message: "Setelah itu bunga mengambang dan cicilan bisa berubah. Ketuk untuk melihat perkiraannya.", notification_type: "fin-loan", created_at: iso, route: "/kekayaan?bagian=kewajiban" });
   }
   for (const g of state.goals) { if (goalPlan(g, now).done && g.deposits.length) out.push({ id: `fin-goal:${g.id}`, title: `Tujuan ${g.name} tercapai`, message: "Selamat, targetmu terpenuhi.", notification_type: "fin-goal", created_at: new Date(g.deposits[g.deposits.length - 1].at).toISOString(), route: "/rencana?bagian=tujuan" }); }
   return out;

@@ -1,0 +1,27 @@
+/* Pinjaman: kalkulator di Alat, kartu di Kewajiban, halaman detail. Awalan dpx-ln- agar tidak bertabrakan dengan kelas lain. */
+.dpx .dpx-ln-bi{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:18px;background:#fff;box-shadow:0 0 0 1px var(--line);margin-bottom:10px;text-align:left;width:100%}
+.dpx .dpx-ln-bi b{font:800 18px var(--font);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.dpx .dpx-ln-bi small{display:block;font-size:11.5px;color:var(--mute);line-height:1.35}
+.dpx .dpx-ln-bi .dpx-ln-tag{margin-left:auto;font:700 11px var(--font);padding:3px 9px;border-radius:99px;white-space:nowrap}
+.dpx .dpx-ln-up{background:var(--danger-soft);color:var(--danger)}.dpx .dpx-ln-down{background:var(--ok-soft);color:var(--ok)}.dpx .dpx-ln-flat{background:var(--group);color:var(--mute)}
+.dpx .dpx-ln-hero{font:800 32px var(--font);letter-spacing:-.04em;color:var(--navy);font-variant-numeric:tabular-nums}
+.dpx .dpx-ln-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.dpx .dpx-ln-grid>div{background:var(--group);border-radius:16px;padding:10px 12px}
+.dpx .dpx-ln-grid small{display:block;font-size:11.5px;color:var(--mute)}.dpx .dpx-ln-grid b{font:700 15px var(--font);font-variant-numeric:tabular-nums}
+.dpx .dpx-ln-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;font-size:13.5px;border-top:1px solid var(--hair)}.dpx .dpx-ln-row:first-child{border-top:0}
+.dpx .dpx-ln-row span{color:var(--mute)}.dpx .dpx-ln-row b{font-variant-numeric:tabular-nums;text-align:right}
+.dpx .dpx-ln-chart{display:flex;align-items:flex-end;gap:3px;height:120px;margin-top:10px}
+.dpx .dpx-ln-chart>i{flex:1;min-width:3px;display:flex;flex-direction:column;justify-content:flex-end;border-radius:4px 4px 0 0;overflow:hidden;background:var(--group)}
+.dpx .dpx-ln-chart>i>u{display:block;background:var(--navy)}.dpx .dpx-ln-chart>i>s{display:block;background:var(--blue)}
+.dpx .dpx-ln-legend{display:flex;gap:14px;margin-top:6px;font-size:11.5px;color:var(--mute)}.dpx .dpx-ln-legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.dpx .dpx-ln-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}.dpx .dpx-ln-table th{font:600 11px var(--font);color:var(--mute);text-align:right;padding:4px 0}.dpx .dpx-ln-table th:first-child,.dpx .dpx-ln-table td:first-child{text-align:left}
+.dpx .dpx-ln-table td{padding:6px 0;border-top:1px solid var(--hair);text-align:right;font-variant-numeric:tabular-nums}
+.dpx .dpx-ln-scn{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:baseline;margin-top:8px;font-size:13.5px}
+.dpx .dpx-ln-scn .dpx-ln-d{font-weight:700;font-variant-numeric:tabular-nums}.dpx .dpx-ln-scn .dpx-dn,.dpx .dpx-ln-scn .dpx-up{font-size:12.5px}
+.dpx .dpx-ln-sec{margin:16px 2px 6px;font:700 15px var(--font)}
+.dpx .dpx-ln-card{display:block;width:100%;text-align:left;background:#fff;border-radius:22px;padding:14px 16px;box-shadow:var(--soft)}
+.dpx .dpx-ln-card .dpx-ln-top{display:flex;align-items:center;gap:12px}
+.dpx .dpx-ln-meter{height:8px;border-radius:99px;background:var(--group);overflow:hidden;margin:10px 0 6px}.dpx .dpx-ln-meter>i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),#e0713f);border-radius:99px}
+.dpx .dpx-ln-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.dpx .dpx-ln-chips>span{font:600 11.5px var(--font);padding:3px 9px;border-radius:99px;background:var(--group);color:var(--mute)}
+.dpx .dpx-ln-chips>span.dpx-warn{background:var(--warn-soft);color:var(--warn)}
+.dpx .dpx-ln-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
