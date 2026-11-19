@@ -87,14 +87,15 @@ async function insertEntry(q: Q, userId: string, c: Candidate, inboundId: string
   return id;
 }
 
-/** The payment of a bill suggested from e-mail arrived: the same amount, to the same biller. The debt is marked paid, once. */
+/** The payment of a monthly bill arrived by e-mail: same amount, same biller. That month of the bill is marked paid, once. */
 async function settleBill(q: Q, userId: string, amount: number, note: string, at: string) {
-  const open = (await q.query("select id,person from finance.debts where user_id=$1 and direction='i_owe' and settled=false and id like 'bl-%' and amount=$2 and (case when due ~ '^\\d{4}-\\d{2}-\\d{2}$' then due::date between ($3::timestamptz - interval '45 days')::date and ($3::timestamptz + interval '20 days')::date else true end)", [userId, amount, at])).rows;
+  const ym = (await q.query("select to_char(($1::timestamptz at time zone 'Asia/Jakarta'), 'YYYY-MM') ym", [at])).rows[0].ym as string;
+  const open = (await q.query("select id,name from finance.bills where user_id=$1 and abs(amount-$2) < 1 and not (paid ? $3::text)", [userId, amount, ym])).rows;
   if (!open.length) return;
   const text = note.toLowerCase();
-  const hit = open.length === 1 ? open[0] : open.find((r) => text.includes(String(r.person).toLowerCase()) || String(r.person).toLowerCase().includes(text));
+  const hit = open.length === 1 ? open[0] : open.find((r) => text.includes(String(r.name).toLowerCase()) || (text && String(r.name).toLowerCase().includes(text)));
   if (!hit) return;
-  await q.query("update finance.debts set settled=true, payments=coalesce(payments,'[]'::jsonb) || jsonb_build_array(jsonb_build_object('at',$3::text,'amount',$4::numeric)) where user_id=$1 and id=$2", [userId, hit.id, at, amount]);
+  await q.query("update finance.bills set paid = paid || to_jsonb($3::text) where user_id=$1 and id=$2", [userId, hit.id, ym]);
 }
 
 /* ---------------- the pipeline ---------------- */
@@ -171,7 +172,8 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
 
   if (billInfo) {
     const parsedBill = { bill: true, amount: billInfo.amount, due: billInfo.due, merchant: billInfo.name, subject: mail.subject.slice(0, 80), issuer: issuer.name, direction: "out", at: now.toISOString() };
-    const have = await d.db.query(`select id from finance.debts where user_id=$1 and direction='i_owe' and settled=false and lower(person)=lower($2) and amount=$3 and coalesce(due,'')=coalesce($4,'') limit 1`, [userId, billInfo.name, billInfo.amount, billInfo.due]);
+    const dayOfDue = billInfo.due ? Number(billInfo.due.slice(8, 10)) : null;
+    const have = await d.db.query(`select id from finance.bills where user_id=$1 and lower(name)=lower($2) and amount=$3 and ($4::int is null or day=$4::int) limit 1`, [userId, billInfo.name, billInfo.amount, dayOfDue]);
     const waiting = await d.db.query(`select id from finance.inbound_messages where user_id=$1 and id<>$2 and status='review' and parsed->>'bill'='true' and parsed->>'merchant'=$3 and (parsed->>'amount')::numeric=$4 and coalesce(parsed->>'due','')=coalesce($5,'') limit 1`, [userId, inboundId, billInfo.name, billInfo.amount, billInfo.due]);
     if (have.rows[0] || waiting.rows[0]) return finish("duplicate", "bill-exists", { parsed: parsedBill });
     return finish("review", "bill", { parsed: parsedBill, confidence: 0.8, at: parsedBill.at });
@@ -299,15 +301,17 @@ export async function approve(d: Tx, userId: string, inboundId: string, e: Edits
     const m = (await q.query("select id,parsed,status,channel,sender_domain from finance.inbound_messages where user_id=$1 and id=$2 and status in ('review','failed') for update", [userId, inboundId])).rows[0];
     if (!m) return null;
     const p = (m.parsed ?? {}) as Record<string, any>;
-    if (p.bill) {                                                  // a bill reminder becomes a debt the person owes, with its due date; no entry until it is paid
-      const owed = Number(e.amount ?? p.amount), name = String(e.note ?? p.merchant ?? "Tagihan").trim().slice(0, 80) || "Tagihan";
+    if (p.bill) {                                                  // a bill reminder becomes a monthly bill (Tagihan); nothing is spent until it is paid
+      const owed = Number(e.amount ?? p.amount), name = String(e.note ?? p.merchant ?? "Tagihan").trim().slice(0, 40) || "Tagihan";
       const dueRaw = String(e.at ?? p.due ?? ""), due = /^\d{4}-\d{2}-\d{2}$/.test(dueRaw) ? dueRaw : null;
       if (!(owed > 0)) return null;
-      const debtId = `bl-${inboundId}`;
-      await q.query("insert into finance.debts(user_id,id,person,direction,amount,note,due,settled) values($1,$2,$3,'i_owe',$4,'Tagihan dari email',$5,false) on conflict do nothing", [userId, debtId, name, owed, due]);
+      const day = due ? Number(due.slice(8, 10)) : new Date(Date.now() + 7 * 3600_000).getUTCDate();
+      const same = (await q.query("select id from finance.bills where user_id=$1 and lower(name)=lower($2) limit 1", [userId, name])).rows[0];
+      if (same) await q.query("update finance.bills set amount=$3, day=$4 where user_id=$1 and id=$2", [userId, same.id, owed, day]);   // the biller changed the amount or date: keep one bill
+      else await q.query("insert into finance.bills(user_id,id,name,amount,day,icon,tone,paid) values($1,$2,$3,$4,$5,'receipt','amber','[]'::jsonb)", [userId, `bl-${inboundId}`, name, owed, day]);
       await bump(q, userId);
       await q.query("update finance.inbound_messages set status='approved', reason='approved' where id=$1", [inboundId]);
-      return { entryId: debtId };
+      return { entryId: same?.id ?? `bl-${inboundId}` };
     }
     if (p.generic && e.kind !== "in" && e.kind !== "out") return null;   // an unknown sender is only recorded once the person has said what it was
     const tr = p.transfer && typeof p.transfer.to === "string" && typeof p.transfer.from === "string" ? p.transfer as { from: string; to: string; toName?: string; amount: number; fee?: number } : null;

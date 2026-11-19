@@ -18,19 +18,19 @@ const telkom = (over: Partial<RawMail> = {}): RawMail => ({
   auth: { dmarcPass: true, dkimDomains: ["telkomsel.com"] }, ...over,
 });
 const send = (m: RawMail) => processForUser(deps(), user, 0, m);
-const debts = async () => (await pool.query("select id,person,direction,amount,due,settled,note from finance.debts where user_id=$1", [user])).rows.map((r) => ({ ...r, amount: Number(r.amount) }));
+const bills = async () => (await pool.query("select id,name,amount,day,icon,paid from finance.bills where user_id=$1", [user])).rows.map((r) => ({ ...r, amount: Number(r.amount), day: Number(r.day) }));
 const entries = async () => (await pool.query("select id,kind,amount from finance.entries where user_id=$1", [user])).rows;
 
 afterAll(async () => {
   if (!pool) return;
-  for (const t of ["inbound_messages", "inbound_skips", "inbound_sources", "sender_hints", "merchant_rules", "entries", "accounts", "debts", "profiles"]) await pool.query(`delete from finance.${t} where user_id=$1`, [user]);
+  for (const t of ["inbound_messages", "inbound_skips", "inbound_sources", "sender_hints", "merchant_rules", "entries", "accounts", "bills", "profiles"]) await pool.query(`delete from finance.${t} where user_id=$1`, [user]);
   await pool.end();
 });
 
-run("bill reminders become suggested bills (real database)", () => {
-  test("a reminder is queued as a bill to confirm; it records no spending and no debt yet", async () => {
+run("bill reminders become monthly bills after confirmation (real database)", () => {
+  test("a reminder is queued as a bill to confirm; it records no spending and no bill yet", async () => {
     expect(await send(telkom())).toMatchObject({ status: "review", reason: "bill" });
-    expect(await entries()).toHaveLength(0); expect(await debts()).toHaveLength(0);
+    expect(await entries()).toHaveLength(0); expect(await bills()).toHaveLength(0);
     const item = (await reviewList(db, user)).find((i) => i.parsed.bill)!;
     expect(item.parsed).toMatchObject({ bill: true, amount: 340215, due: "2026-11-20", merchant: "IndiHome", issuer: expect.stringContaining("Telkom") });
   });
@@ -45,23 +45,30 @@ run("bill reminders become suggested bills (real database)", () => {
     expect(groups.some((g) => g.name.toLowerCase().includes("indihome"))).toBe(false);
   });
 
-  test("approving makes it a debt the person owes, with its due date", async () => {
+  test("approving makes it a monthly bill on its due day", async () => {
     const item = (await reviewList(db, user)).find((i) => i.parsed.bill)!;
     expect(await approve(db, user, item.id, {})).not.toBeNull();
-    expect(await debts()).toEqual([expect.objectContaining({ person: "IndiHome", direction: "i_owe", amount: 340215, due: "2026-11-20", settled: false })]);
+    expect(await bills()).toEqual([expect.objectContaining({ name: "IndiHome", amount: 340215, day: 20, paid: [] })]);
     expect(await entries()).toHaveLength(0);
-    expect(await send(telkom())).toMatchObject({ status: "duplicate" });                       // now it exists as a debt
+    expect(await send(telkom())).toMatchObject({ status: "duplicate" });                       // now it exists as a bill
   });
 
-  test("the payment arriving from e-mail settles that debt and records the spending once", async () => {
+  test("the payment arriving from e-mail marks that month of the bill paid and records the spending once", async () => {
     const paid = await send(telkom({ subject: "Pembayaran Berhasil!", from: "no-reply@livin.id", auth: { dmarcPass: true, dkimDomains: ["livin.id"] },
       text: "Pembayaran berhasil. Pembayaran IndiHome sebesar Rp 340.215 berhasil pada 20/11/2026 09:10. No. Referensi: LV2011260910X1" }));
     expect(paid.status).toBe("auto");
     expect((await entries()).filter((e) => e.kind === "out")).toHaveLength(1);
-    expect((await debts())[0]).toMatchObject({ settled: true });
+    expect((await bills())[0].paid).toEqual(["2026-11"]);
   });
 
   test("a reminder without any amount is dropped", async () => {
     expect(await send(telkom({ text: "Segera lunasi tagihan Anda. Jatuh tempo tgl 22-NOV-26." }))).toMatchObject({ status: "ignored", reason: "bill" });
+  });
+
+  test("a changed amount next month updates the one bill instead of adding another", async () => {
+    await send(telkom({ text: "Plgn Yth, tagihan IndiHome bulan ini Rp355000. Jatuh tempo tgl 20-DES-26, bayar dengan klik: tsel.id/bayarindihome Terimakasih jika sudah bayar", messageId: `<c-${user}@x>` }));
+    const item = (await reviewList(db, user)).find((i) => i.parsed.bill && i.parsed.amount === 355000)!;
+    expect(await approve(db, user, item.id, {})).not.toBeNull();
+    expect(await bills()).toEqual([expect.objectContaining({ name: "IndiHome", amount: 355000, day: 20 })]);
   });
 });
