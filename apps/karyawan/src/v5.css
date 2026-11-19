@@ -104,3 +104,6 @@
 .kx-dots{display:flex;justify-content:center;gap:2px;min-height:5px;margin-top:3px}
 .kx-dots i{display:block;width:5px;height:5px;border-radius:50%}
 .kx-week .kx-dots{margin-top:3px}
+
+.kx-field>label{display:block;font:600 12px var(--ds-font);color:var(--ds-mute);margin:0 4px 4px}
+textarea.kx-input{resize:vertical;min-height:70px}

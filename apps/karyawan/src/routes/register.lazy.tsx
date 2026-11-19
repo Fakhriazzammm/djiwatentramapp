@@ -1,10 +1,9 @@
 "use client";
 
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useRef, useCallback } from "react";
-import { motion } from "framer-motion";
-import { UserPlus, ArrowLeft, ArrowRight, Loader2, Check, CheckCircle2, FileText, Pen, Eraser } from "lucide-react";
-import { createClient } from "@djiwaapps/web-shared/lib/client";
+import { useEffect, useRef, useState } from "react";
+import { DsButton, DsGroup, DsGroupLabel, DsNote, DsRoot, DsSegmented, ds3d } from "@djiwaapps/web-shared/components/ds";
+import { useYumiAuth, loginWithYumiPin } from "@djiwaapps/web-shared";
 import { toast } from "sonner";
 
 export const Route = createLazyFileRoute("/register")({
@@ -17,7 +16,7 @@ const JABATAN_LIST = [
   { value: "kasir", label: "Kasir" },
 ] as const;
 
-const STAFF_ROLE_ID = "role_4f72262209bd";
+const FN_URL = `${import.meta.env.VITE_SUPABASE_URL ?? "https://supabase.djiwatentram.web.id"}/functions/v1/staff-register`;
 
 // ── Template Kontrak Profesional (13 Pasal + 2 Lampiran) ──
 const CONTRACT_TEMPLATE = `Perjanjian Kerja Waktu Tertentu (PKWT) [{JABATAN}]
@@ -130,623 +129,185 @@ function parsePasal(text: string): { title: string; body: string }[] {
     });
 }
 
+
+function Field({ id, label, req, hint, children }: { id: string; label: string; req?: boolean; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="kx-field"><label htmlFor={id}><span>{label}{req && <b style={{ color: "var(--ds-danger)" }}> *</b>}</span></label>{children}{hint && <p className="ds-sub" style={{ margin: "4px 4px 0" }}>{hint}</p>}</div>
+  );
+}
+
+type Step = 0 | 1 | 2 | 3;
+const STEPS = ["Data diri", "Tambahan", "Kontrak"];
+
 function RegisterPage() {
   const navigate = useNavigate();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [step, setStep] = useState(0); // 0=form, 1=contract, 2=done
+  const { login } = useYumiAuth();
+  const [step, setStep] = useState<Step>(0);
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
   const [jabatan, setJabatan] = useState("");
+  const [pin, setPin] = useState("");
+  const [pin2, setPin2] = useState("");
+  const [email, setEmail] = useState("");
   const [identityNumber, setIdentityNumber] = useState("");
   const [address, setAddress] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [birthPlace, setBirthPlace] = useState("");
-  const [employmentType, setEmploymentType] = useState("full_time");
-  const [signatureData, setSignatureData] = useState<string | null>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [employmentType, setEmploymentType] = useState<"full_time" | "part_time">("full_time");
+  const [consent, setConsent] = useState(false);
+  const [website, setWebsite] = useState(""); // honeypot
+  const [signature, setSignature] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [openPasal, setOpenPasal] = useState<number | null>(0);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
 
-  const canNext = name.trim() && phone.trim() && jabatan;
-  const canSubmit = signatureData !== null;
+  const pinOk = /^\d{6}$/.test(pin) && pin === pin2;
+  const step0Ok = name.trim().length >= 3 && /^\+?\d[\d\s-]{7,}$/.test(phone.trim()) && !!jabatan && pinOk;
+  const pinHint = pin.length > 0 && pin.length < 6 ? "PIN harus 6 digit" : pin2 && pin !== pin2 ? "PIN belum sama" : "Dipakai untuk masuk dan absen. Jangan dibagikan.";
 
-  const contractVars = {
-    NAMA: name.trim() || "(nama karyawan)",
-    NIK: identityNumber.trim() || "(belum diisi)",
-    ALAMAT: address.trim() || "(belum diisi)",
-    TGL_LAHIR: birthDate || "(belum diisi)",
-    TEMPAT_LAHIR: birthPlace.trim() || "(belum diisi)",
-    JABATAN: jabatan.toUpperCase(),
-    TIPE: { full_time: "PKWT - Penuh Waktu", part_time: "PKWT - Paruh Waktu" }[employmentType] ?? "PKWT - Penuh Waktu",
+  const vars = {
+    NAMA: name.trim() || "(nama karyawan)", NIK: identityNumber.trim() || "(belum diisi)", ALAMAT: address.trim() || "(belum diisi)",
+    TGL_LAHIR: birthDate || "(belum diisi)", TEMPAT_LAHIR: birthPlace.trim() || "(belum diisi)", JABATAN: jabatan.toUpperCase(),
+    TIPE: employmentType === "part_time" ? "PKWT - Paruh Waktu" : "PKWT - Penuh Waktu",
   };
+  const contractText = `${interpolate(CONTRACT_TEMPLATE, vars)}\n\nDibuat di Tasikmalaya, pada tanggal ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}\n\nDengan menandatangani perjanjian ini, Para Pihak menyatakan telah membaca, memahami, dan menyetujui seluruh isi perjanjian tanpa paksaan dari pihak mana pun.`;
+  const pasal = parsePasal(contractText);
 
-  const contractText = `${interpolate(CONTRACT_TEMPLATE, contractVars)}\n\nDibuat di Tasikmalaya, pada tanggal ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}\n\nDengan menandatangani perjanjian ini, Para Pihak menyatakan telah membaca, memahami, dan menyetujui seluruh isi perjanjian tanpa paksaan dari pihak mana pun.`;
-  const pasalBlocks = parsePasal(contractText);
-
-  // ── Signature pad handlers ──
-  const getCanvasPoint = useCallback(
-    (clientX: number, clientY: number) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return { x: 0, y: 0 };
-      const rect = canvas.getBoundingClientRect();
-      return {
-        x: clientX - rect.left,
-        y: clientY - rect.top,
-      };
-    },
-    []
-  );
-
-  const startDrawing = useCallback(
-    (e: React.MouseEvent | React.TouchEvent) => {
-      setIsDrawing(true);
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      let point: { x: number; y: number };
-      if ("touches" in e) {
-        const touch = e.touches[0];
-        point = getCanvasPoint(touch.clientX, touch.clientY);
-      } else {
-        point = getCanvasPoint(e.clientX, e.clientY);
-      }
-
-      ctx.beginPath();
-      ctx.moveTo(point.x, point.y);
-      ctx.strokeStyle = "#1e3a5f";
-      ctx.lineWidth = 2;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-    },
-    [getCanvasPoint]
-  );
-
-  const draw = useCallback(
-    (e: React.MouseEvent | React.TouchEvent) => {
-      if (!isDrawing) return;
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      // Prevent scrolling on touch devices while drawing
-      if ("touches" in e) e.preventDefault();
-
-      let point: { x: number; y: number };
-      if ("touches" in e) {
-        const touch = e.touches[0];
-        point = getCanvasPoint(touch.clientX, touch.clientY);
-      } else {
-        point = getCanvasPoint(e.clientX, e.clientY);
-      }
-
-      ctx.lineTo(point.x, point.y);
-      ctx.stroke();
-    },
-    [isDrawing, getCanvasPoint]
-  );
-
-  const stopDrawing = useCallback(() => {
-    if (!isDrawing) return;
-    setIsDrawing(false);
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.closePath();
-
-    // Check if canvas has actual drawing content
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const hasPixels = imageData.data.some((v) => v !== 0);
-    if (hasPixels) {
-      setSignatureData(canvas.toDataURL("image/png"));
-    }
-  }, [isDrawing]);
-
-  const clearSignature = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setSignatureData(null);
-  }, []);
+  // ── Tanda tangan (pointer events: mouse, sentuh, pena) ──
+  useEffect(() => {
+    const c = canvasRef.current;
+    if (!c || step !== 2) return;
+    const ratio = window.devicePixelRatio || 1;
+    const w = c.clientWidth, h = c.clientHeight;
+    c.width = w * ratio; c.height = h * ratio;
+    const ctx = c.getContext("2d");
+    if (ctx) { ctx.scale(ratio, ratio); ctx.strokeStyle = "#0f2347"; ctx.lineWidth = 2.2; ctx.lineCap = "round"; ctx.lineJoin = "round"; }
+  }, [step]);
+  const pt = (e: React.PointerEvent<HTMLCanvasElement>) => { const r = e.currentTarget.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  const down = (e: React.PointerEvent<HTMLCanvasElement>) => { const ctx = e.currentTarget.getContext("2d"); if (!ctx) return; e.currentTarget.setPointerCapture(e.pointerId); drawing.current = true; const p = pt(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+  const move = (e: React.PointerEvent<HTMLCanvasElement>) => { if (!drawing.current) return; const ctx = e.currentTarget.getContext("2d"); if (!ctx) return; const p = pt(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+  const up = (e: React.PointerEvent<HTMLCanvasElement>) => { if (!drawing.current) return; drawing.current = false; setSignature(e.currentTarget.toDataURL("image/png")); };
+  const clearSig = () => { const c = canvasRef.current; const ctx = c?.getContext("2d"); if (!c || !ctx) return; ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, c.width, c.height); ctx.restore(); setSignature(null); };
 
   const submit = async () => {
-    if (!canNext || !canSubmit || submitting) return;
-    setSubmitting(true);
+    if (!signature || !consent || busy) return;
+    setBusy(true); setError(null);
     try {
-      const slug = name
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
-      const supabase = createClient();
-      const { error } = await supabase.from("employee_onboarding_applications").insert({
-        full_name: name.trim(),
-        email: email.trim() || null,
-        phone: phone.trim(),
-        identity_number: identityNumber.trim() || null,
-        address: address.trim() || null,
-        birth_date: birthDate || null,
-        birth_place: birthPlace.trim() || null,
-        status: "pending",
-        employment: {
-          roleId: STAFF_ROLE_ID,
-          roleName: "STAFF",
-          slug,
-          username: slug,
-          jabatan,
-          selfRegistered: true,
-          employmentType,
-          registeredAt: new Date().toISOString(),
-        },
-        contract: {
-          title: `Perjanjian Kerja Waktu Tertentu (PKWT) [${jabatan.toUpperCase()}]`,
-          agreedAt: new Date().toISOString(),
-          templateUsed: "__default__",
-          signature: signatureData,
-        },
-        emergency_contact: {},
-        attachments: {},
-        raw: { password },
+      const res = await fetch(FN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? import.meta.env.VITE_SUPABASE_ANON_KEY ?? "" },
+        body: JSON.stringify({ name, phone, jabatan, pin, email, identityNumber, address, birthDate, birthPlace, employmentType, signature, consent, website }),
       });
-      if (error) throw error;
-      setStep(2);
-      toast.success("Pendaftaran berhasil! Admin akan meninjau data kamu.");
-    } catch (err: any) {
-      toast.error(err?.message || "Gagal mendaftar, coba lagi.");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success) {
+        const msg = data?.error?.message ?? "Gagal mendaftar. Coba lagi.";
+        setError(msg);
+        // Salah di data diri → kembali ke langkah itu
+        if (["NAME_TAKEN", "NAME_INVALID", "PHONE_INVALID", "PIN_WEAK", "PIN_INVALID", "ROLE_INVALID"].includes(data?.error?.code)) setStep(0);
+        return;
+      }
+      // Akun sudah aktif: masuk otomatis dengan PIN yang baru dibuat.
+      try {
+        const session = await loginWithYumiPin(data.userId, pin);
+        login(session.token);
+        toast.success(`Selamat datang, ${String(data.name).split(" ")[0]}!`);
+        navigate({ to: "/$username/beranda" as any, params: { username: data.slug } } as any);
+      } catch {
+        setStep(3);
+      }
+    } catch {
+      setError("Tidak bisa terhubung ke server. Periksa koneksi lalu coba lagi.");
     } finally {
-      setSubmitting(false);
+      setBusy(false);
     }
   };
 
-  // ── Done ──
-  if (step === 2) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center bg-gradient-to-br from-sky-50 via-white to-blue-50 p-4">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-sm text-center"
-        >
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100">
-            <CheckCircle2 className="h-8 w-8 text-emerald-600" />
-          </div>
-          <h2 className="text-lg font-bold text-foreground">Pendaftaran Terkirim</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Data kamu akan ditinjau oleh admin. Kamu akan diberi PIN setelah disetujui.
-          </p>
-          <button
-            onClick={() => navigate({ to: "/login" as any })}
-            className="mt-6 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-5 py-2.5 text-sm font-medium text-primary"
-          >
-            <ArrowLeft className="h-4 w-4" /> Kembali ke Login
-          </button>
-        </motion.div>
-      </div>
-    );
-  }
-
-  // ── Step indicator ──
-  const steps = ["Data Diri", "Kontrak"];
   return (
-    <div
-      className={`flex min-h-dvh bg-gradient-to-br from-sky-50 via-white to-blue-50 p-4 ${
-        step === 1 ? "items-start" : "items-center justify-center"
-      }`}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 }}
-        className={`w-full ${step === 1 ? "max-w-sm mt-4" : "max-w-sm"}`}
-      >
-        {/* Step dots */}
-        <div className="mb-4 flex items-center justify-center gap-2">
-          {steps.map((s, i) => (
-            <div key={s} className="flex items-center gap-2">
-              <div
-                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors ${
-                  i === step
-                    ? "bg-primary text-white"
-                    : i < step
-                      ? "bg-emerald-500 text-white"
-                      : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {i < step ? <Check aria-hidden="true" className="h-3.5 w-3.5" /> : i + 1}
-              </div>
-              <span
-                className={`text-xs ${i === step ? "font-medium text-foreground" : "text-muted-foreground"}`}
-              >
-                {s}
-              </span>
-              {i < steps.length - 1 && <div className="h-px w-6 bg-border" />}
+    <DsRoot className="ds-screen" >
+      <main className="kx-full-in" style={{ minHeight: "100dvh" }}>
+        {step < 3 && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0 6px" }}>
+              <button type="button" className="ds-iconbtn" aria-label="Kembali" onClick={() => (step === 0 ? navigate({ to: "/login" as any }) : setStep((step - 1) as Step))}><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg></button>
+              <h1 className="ds-page" style={{ margin: 0, fontSize: 28 }}>Daftar karyawan</h1>
             </div>
-          ))}
-        </div>
+            <div className="ds-bar" style={{ margin: "6px 4px 6px" }}><i style={{ width: `${((step + 1) / 3) * 100}%` }} /></div>
+            <div className="ds-label" style={{ margin: "0 6px 4px" }}>Langkah {step + 1} dari 3 · {STEPS[step]}</div>
+          </>
+        )}
 
-        <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-lg">
-          {/* Header */}
-          <div className="mb-5 text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-              {step === 0 ? (
-                <UserPlus className="h-6 w-6 text-primary" />
-              ) : (
-                <FileText className="h-6 w-6 text-primary" />
-              )}
-            </div>
-            <h1 className="text-lg font-bold text-foreground">
-              {step === 0 ? "Daftar Karyawan Baru" : "Perjanjian Kerja"}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {step === 0
-                ? "Isi data diri untuk mendaftar"
-                : "Baca, tanda tangani, dan setujui kontrak kerja"}
-            </p>
+        {step === 0 && (
+          <>
+            <DsGroup>
+              <Field id="reg-name" label="Nama lengkap" req><input id="reg-name" className="kx-input" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Sesuai KTP" /></Field>
+              <div className="kx-field"><span>Jabatan <b style={{ color: "var(--ds-danger)" }}>*</b></span>
+                <div className="kx-reasons" role="group" aria-label="Jabatan">{JABATAN_LIST.map((j) => <button key={j.value} type="button" aria-pressed={jabatan === j.value} onClick={() => setJabatan(j.value)}>{j.label}</button>)}</div>
+              </div>
+              <Field id="reg-phone" label="Nomor HP (WhatsApp)" req><input id="reg-phone" className="kx-input" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08xx xxxx xxxx" /></Field>
+            </DsGroup>
+            <DsGroupLabel>Buat PIN</DsGroupLabel>
+            <DsGroup>
+              <Field id="reg-pin" label="PIN 6 digit" req><input id="reg-pin" className="kx-input" type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="••••••" /></Field>
+              <Field id="reg-pin2" label="Ulangi PIN" req hint={pinHint}><input id="reg-pin2" className="kx-input" type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={pin2} onChange={(e) => setPin2(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="••••••" /></Field>
+            </DsGroup>
+            <input aria-hidden="true" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }} />
+            <DsNote tone="info" icon={<img src={ds3d("employee-attendance-check-in")} alt="" style={{ width: 34, height: 34, objectFit: "contain" }} />}><b>Langsung aktif</b>Tidak perlu menunggu persetujuan. Setelah daftar, kamu langsung masuk dan bisa absen.</DsNote>
+            <DsButton block disabled={!step0Ok} onClick={() => setStep(1)}>Lanjut</DsButton>
+            <DsButton block variant="ghost" onClick={() => navigate({ to: "/login" as any })}>Sudah punya akun? Masuk</DsButton>
+          </>
+        )}
+
+        {step === 1 && (
+          <>
+            <DsNote tone="info"><b>Boleh dilewati</b>Data ini dipakai untuk kontrak dan gaji. Bisa dilengkapi nanti di Profil.</DsNote>
+            <DsGroup>
+              <div className="kx-field"><span>Status kerja</span><DsSegmented value={employmentType} onChange={setEmploymentType} items={[["full_time", "Penuh waktu"], ["part_time", "Paruh waktu"]]} /></div>
+              <Field id="reg-email" label="Email"><input id="reg-email" className="kx-input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@email.com" /></Field>
+              <Field id="reg-nik" label="NIK / No. identitas"><input id="reg-nik" className="kx-input" inputMode="numeric" value={identityNumber} onChange={(e) => setIdentityNumber(e.target.value.replace(/\D/g, "").slice(0, 16))} placeholder="16 digit" /></Field>
+              <Field id="reg-address" label="Alamat"><textarea id="reg-address" className="kx-input" rows={2} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Alamat lengkap" /></Field>
+              <Field id="reg-birthplace" label="Tempat lahir"><input id="reg-birthplace" className="kx-input" value={birthPlace} onChange={(e) => setBirthPlace(e.target.value)} /></Field>
+              <Field id="reg-birthdate" label="Tanggal lahir"><input id="reg-birthdate" className="kx-input" type="date" max={new Date().toISOString().slice(0, 10)} value={birthDate} onChange={(e) => setBirthDate(e.target.value)} /></Field>
+            </DsGroup>
+            <DsButton block onClick={() => setStep(2)}>Lanjut ke kontrak</DsButton>
+            <DsButton block variant="ghost" onClick={() => setStep(2)}>Lewati</DsButton>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <p className="ds-sub" style={{ margin: "0 4px 6px" }}>Baca perjanjian kerja {jabatan.toUpperCase()}, lalu tanda tangan.</p>
+            <DsGroup>
+              {pasal.map((p, i) => (
+                <div key={i} style={{ borderTop: i ? "1px solid var(--ds-hair)" : 0 }}>
+                  <button type="button" onClick={() => setOpenPasal(openPasal === i ? null : i)} aria-expanded={openPasal === i} style={{ width: "100%", textAlign: "left", background: "none", border: 0, padding: "12px 0", font: "600 14px var(--ds-font)", display: "flex", justifyContent: "space-between", gap: 8, color: "var(--ds-ink)" }}>
+                    <span>{p.title}</span><span aria-hidden="true">{openPasal === i ? "−" : "+"}</span>
+                  </button>
+                  {openPasal === i && <p className="ds-sub" style={{ whiteSpace: "pre-line", margin: "0 0 12px", lineHeight: 1.55 }}>{p.body}</p>}
+                </div>
+              ))}
+            </DsGroup>
+            <DsGroupLabel action={signature ? <button type="button" onClick={clearSig}>Ulangi</button> : undefined}>Tanda tangan</DsGroupLabel>
+            <canvas ref={canvasRef} aria-label="Area tanda tangan" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} style={{ width: "100%", height: 150, background: "#fff", borderRadius: 24, touchAction: "none", boxShadow: "inset 0 0 0 1px var(--ds-line)" }} />
+            <label style={{ display: "flex", gap: 10, alignItems: "flex-start", margin: "14px 4px 0", fontSize: 13.5 }}>
+              <input id="reg-consent" type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ width: 20, height: 20, marginTop: 1, accentColor: "var(--ds-navy)" }} />
+              <span>Saya sudah membaca dan menyetujui perjanjian kerja ini serta pemrosesan data pribadi untuk administrasi kerja.</span>
+            </label>
+            {error && <div className="kx-err" role="alert">{error}</div>}
+            <DsButton block disabled={!signature || !consent || busy} onClick={submit}>{busy ? "Membuat akun…" : "Daftar & mulai"}</DsButton>
+          </>
+        )}
+
+        {step === 3 && (
+          <div className="kx-cen" style={{ paddingTop: 60 }}>
+            <div className="kx-ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></div>
+            <h2 className="ds-title" style={{ margin: "4px 0 2px" }}>Akunmu sudah aktif</h2>
+            <p className="ds-sub">Masuk dengan nama dan PIN yang tadi kamu buat.</p>
+            <DsButton block onClick={() => navigate({ to: "/login" as any })}>Masuk sekarang</DsButton>
           </div>
-
-          {/* ── STEP 0: Form ── */}
-          {step === 0 && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setStep(1);
-              }}
-              className="space-y-3"
-            >
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Nama Lengkap <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Nama lengkap kamu"
-                  className="w-full rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="email@contoh.com"
-                  className="w-full rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Nomor HP <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="0812xxxxxxxx"
-                  className="w-full rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Password</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                />
-                <p className="mt-0.5 text-[10px] text-muted-foreground/60">
-                  Disimpan untuk pengembangan sistem login di masa depan
-                </p>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  NIK / No. Identitas
-                </label>
-                <input
-                  type="text"
-                  value={identityNumber}
-                  onChange={(e) => setIdentityNumber(e.target.value.replace(/\D/g, ""))}
-                  placeholder="3275xxxxxxxxxxxx"
-                  className="w-full rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                  inputMode="numeric"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Alamat</label>
-                <textarea
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Alamat lengkap"
-                  className="w-full resize-none rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                  rows={2}
-                />
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Tgl Lahir</label>
-                  <input
-                    type="date"
-                    value={birthDate}
-                    onChange={(e) => setBirthDate(e.target.value)}
-                    className="w-full rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                    Tempat Lahir
-                  </label>
-                  <input
-                    type="text"
-                    value={birthPlace}
-                    onChange={(e) => setBirthPlace(e.target.value)}
-                    placeholder="Jakarta"
-                    className="w-full rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Status Kerja <span className="text-red-400">*</span>
-                </label>
-                <select
-                  value={employmentType}
-                  onChange={(e) => setEmploymentType(e.target.value)}
-                  className="w-full rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                  required
-                >
-                  <option value="full_time">PKWT - Penuh Waktu</option>
-                  <option value="part_time">Paruh Waktu (Part-Time)</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Jabatan <span className="text-red-400">*</span>
-                </label>
-                <select
-                  value={jabatan}
-                  onChange={(e) => setJabatan(e.target.value)}
-                  className="w-full rounded-xl border border-border/60 bg-background px-3.5 py-2.5 text-sm outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                  required
-                >
-                  <option value="" disabled>
-                    Pilih jabatan...
-                  </option>
-                  {JABATAN_LIST.map((j) => (
-                    <option key={j.value} value={j.value}>
-                      {j.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <button
-                type="submit"
-                disabled={!canNext}
-                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-sm font-bold text-white transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Lanjut ke Kontrak <ArrowRight className="h-4 w-4" />
-              </button>
-            </form>
-          )}
-
-          {/* ── STEP 1: Contract — Paper Document ── */}
-          {step === 1 && (
-            <div className="space-y-3" style={{ perspective: "1200px" }}>
-              {/* Paper document with page-flip animation */}
-              <motion.div
-                initial={{ rotateY: 80, opacity: 0, scale: 0.92 }}
-                animate={{ rotateY: 0, opacity: 1, scale: 1 }}
-                transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
-                style={{ transformOrigin: "left center" }}
-                className="relative overflow-hidden rounded-lg border border-amber-200/50 bg-[#fefcf6] shadow-[0_8px_30px_-6px_rgba(120,80,30,0.15)]"
-              >
-                {/* Paper grain texture */}
-                <div
-                  className="pointer-events-none absolute inset-0 opacity-[0.025]"
-                  style={{
-                    backgroundImage:
-                      "repeating-linear-gradient(0deg, transparent, transparent 3px, #8b6914 3px, #8b6914 3.5px)",
-                  }}
-                />
-
-                {/* Decorative header */}
-                <div className="relative border-b border-double border-amber-200/50 px-5 pb-4 pt-5 text-center">
-                  <div className="mx-auto mb-2 flex items-center justify-center gap-2">
-                    <div className="h-px w-8 bg-amber-300/50" />
-                    <span className="font-serif text-[11px] uppercase tracking-[0.2em] text-amber-600/50">
-                      Djiwa Tentram
-                    </span>
-                    <div className="h-px w-8 bg-amber-300/50" />
-                  </div>
-                  <h3 className="font-serif text-sm font-bold tracking-wide text-amber-900">
-                    PERJANJIAN KERJA
-                  </h3>
-                  <p className="mt-0.5 font-serif text-[10px] italic text-amber-700/50">
-                    {jabatan.toUpperCase()}
-                  </p>
-                </div>
-
-                {/* Contract body — tall scrollable for mobile reading */}
-                <div className="relative max-h-[calc(100dvh-420px)] overflow-y-auto px-5 py-3 scrollbar-thin">
-                  {pasalBlocks.map((pasal, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.45 + i * 0.06, duration: 0.35 }}
-                      className="mb-3"
-                    >
-                      <h4 className="font-serif text-[11px] font-bold leading-tight text-amber-900">
-                        {pasal.title}
-                      </h4>
-                      {pasal.body && (
-                        <p className="mt-0.5 font-serif text-[10px] leading-[1.65] text-stone-600 whitespace-pre-wrap">
-                          {pasal.body}
-                        </p>
-                      )}
-                    </motion.div>
-                  ))}
-
-                  {/* Page fold shadow at bottom */}
-                  <div className="pointer-events-none sticky bottom-0 -mx-5 h-6 bg-gradient-to-t from-[#fefcf6] to-transparent" />
-                </div>
-
-                {/* Signature block — live from canvas */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 1.0, duration: 0.5 }}
-                  className="relative border-t border-double border-amber-200/50 px-5 pb-4 pt-3"
-                >
-                  <div className="flex items-end justify-between">
-                    {/* Pihak Pertama */}
-                    <div className="text-center min-w-0 flex-1">
-                      <div className="mb-5 font-serif text-[10px] font-medium text-stone-400">PIHAK PERTAMA</div>
-                      <div className="font-serif text-[11px] font-semibold text-stone-500">Fakhri Azzam</div>
-                      <div className="font-serif text-[10px] text-stone-400">Owner</div>
-                    </div>
-
-                    {/* Seal / Stamp */}
-                    <div className="mx-1 flex-shrink-0">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-amber-300/30 bg-amber-50/80">
-                        <span className="font-serif text-[7px] font-bold uppercase tracking-widest text-amber-400/50">
-                          SEAL
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Pihak Kedua */}
-                    <div className="text-center min-w-0 flex-1">
-                      <div className="mb-5 font-serif text-[10px] font-medium text-stone-400">PIHAK KEDUA</div>
-                      <div className="font-serif text-[11px] font-semibold text-stone-500 truncate">
-                        {name.trim() || "(nama)"}
-                      </div>
-                      <div className="font-serif text-[10px] text-stone-400">{jabatan.toUpperCase()}</div>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Bottom decorative line */}
-                <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-amber-300/30 to-transparent" />
-              </motion.div>
-
-              {/* ── Signature Pad ── */}
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.1, duration: 0.3 }}
-                className="space-y-2.5"
-              >
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                    <Pen className="h-3.5 w-3.5" />
-                    Tanda Tangan Digital
-                  </label>
-                  {signatureData && (
-                    <button
-                      type="button"
-                      onClick={clearSignature}
-                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-red-500 transition-colors"
-                    >
-                      <Eraser className="h-3 w-3" />
-                      Hapus
-                    </button>
-                  )}
-                </div>
-
-                <div className="relative rounded-xl border-2 border-dashed border-border/60 bg-white/80 overflow-hidden">
-                  <canvas
-                    ref={canvasRef}
-                    width={300}
-                    height={100}
-                    className="w-full h-[100px] touch-none cursor-crosshair"
-                    onMouseDown={startDrawing}
-                    onMouseMove={draw}
-                    onMouseUp={stopDrawing}
-                    onMouseLeave={stopDrawing}
-                    onTouchStart={startDrawing}
-                    onTouchMove={draw}
-                    onTouchEnd={stopDrawing}
-                  />
-
-                  {/* Placeholder text */}
-                  {!signatureData && !isDrawing && (
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                      <span className="text-xs text-muted-foreground/40 font-serif italic">
-                        Tanda tangani di sini
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Guide line */}
-                  <div className="absolute bottom-4 left-4 right-4 h-px bg-border/40 pointer-events-none" />
-                </div>
-
-                <p className="text-[10px] text-muted-foreground/50 leading-relaxed">
-                  Dengan membubuhkan tanda tangan digital di atas, PIHAK KEDUA menyatakan telah membaca,
-                  memahami, dan menyetujui seluruh isi Perjanjian Kerja tanpa paksaan dari pihak mana pun.
-                </p>
-              </motion.div>
-
-              {/* Buttons */}
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.2, duration: 0.3 }}
-                className="flex gap-2"
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    clearSignature();
-                    setStep(0);
-                  }}
-                  className="flex items-center gap-1 rounded-xl border border-border/60 bg-background px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted transition-colors"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" /> Kembali
-                </button>
-                <button
-                  type="button"
-                  onClick={submit}
-                  disabled={!canSubmit || submitting}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary py-2.5 text-sm font-bold text-white transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" /> Mengirim...
-                    </>
-                  ) : !canSubmit ? (
-                    <>
-                      <Pen className="h-3.5 w-3.5" /> Tanda Tangani Dulu
-                    </>
-                  ) : (
-                    "Kirim Pendaftaran"
-                  )}
-                </button>
-              </motion.div>
-            </div>
-          )}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => navigate({ to: "/login" as any })}
-          className="mt-3 flex w-full items-center justify-center gap-1 text-sm text-muted-foreground/70 transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" /> Kembali ke Login
-        </button>
-
-        <p className="mt-6 text-center text-xs text-muted-foreground/40">Djiwa Tentram — Registrasi Karyawan</p>
-      </motion.div>
-    </div>
+        )}
+      </main>
+    </DsRoot>
   );
 }
