@@ -12,7 +12,7 @@ export const Route = createLazyFileRoute("/$username/jadwal")({
 
 const MONTHS = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const DAYS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
-const dot = (name: string) => (/sore|siang/i.test(name) ? "#e6890e" : /general|full/i.test(name) ? "#8b5cf6" : "#2fa66a");
+const dot = (name: string) => (/sore|siang/i.test(name) ? "#e6890e" : /general|full|middle/i.test(name) ? "#8b5cf6" : "#2fa66a");
 const pad = (n: number) => String(n).padStart(2, "0");
 
 function JadwalPage() {
@@ -97,7 +97,7 @@ function JadwalPage() {
 							<button type="button" onClick={() => shift(1)} aria-label="Bulan berikutnya" style={{ minHeight: 44, minWidth: 30, background: "none", border: 0, fontSize: 20 }}>›</button>
 						</div>
 						<div className="ds-sub" style={{ display: "flex", gap: 7, flexWrap: "wrap", justifyContent: "flex-end", fontSize: 11 }}>
-							{[["#2fa66a", "Pagi"], ["#e6890e", "Sore"], ["#aab0bf", "Off"]].map(([color, label]) => <span key={label} style={{ whiteSpace: "nowrap" }}><i style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: color, marginRight: 3 }} />{label}</span>)}
+							{[["#2fa66a", "Pagi"], ["#e6890e", "Sore"], ["#8b5cf6", "Middle"], ["#aab0bf", "Off"]].map(([color, label]) => <span key={label} style={{ whiteSpace: "nowrap" }}><i style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: color, marginRight: 3 }} />{label}</span>)}
 						</div>
 					</div>
 					<div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2, textAlign: "center" }}>

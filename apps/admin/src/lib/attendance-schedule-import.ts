@@ -19,6 +19,8 @@ export type ParsedAttendanceImport = {
 
 export type ParsedStaffColumn = {
   rawName: string;
+  /** Indeks kolom di sheet (nama staf bisa tidak berurutan). */
+  col?: number;
   outlet?: string;
   role?: string;
   contractLabel?: string;
@@ -123,9 +125,9 @@ export function normalizeTime(input: string): string | null {
 
 export function normalizeTimeRange(input: string): { start: string | null; end: string | null } | null {
   const cleaned = input.trim();
-  // Try HH.mm - HH.mm or HH:mm - HH:mm or various separators
+  // HH.mm - HH.mm atau HH:mm - HH:mm, berdiri sendiri atau di dalam teks ("PAGI (06.30 - 14.00)")
   const rangeMatch = cleaned.match(
-    /^(\d{1,2})[.:](\d{2})\s*[-–—]\s*(\d{1,2})[.:](\d{2})$/
+    /(\d{1,2})[.:](\d{2})\s*[-–—]\s*(\d{1,2})[.:](\d{2})/
   );
   if (rangeMatch) {
     const start = `${rangeMatch[1].padStart(2, "0")}:${rangeMatch[2]}`;
@@ -182,9 +184,12 @@ export function resolveShift(
         };
       }
 
+      // Jam di sheet adalah sumber kebenaran per orang/hari. Jam pengaturan admin hanya dipakai
+      // bila sheet tidak menulis jam, atau bila operator memilih "gunakan jam admin" saat impor.
+      const fileTime = timeFromInput && timeFromInput.start && timeFromInput.end ? { start: timeFromInput.start, end: timeFromInput.end } : undefined;
       return {
         shiftName: schedule.name,
-        normalizedTime: scheduledTime.start ? { start: scheduledTime.start, end: scheduledTime.end } : undefined,
+        normalizedTime: fileTime ?? (scheduledTime.start ? { start: scheduledTime.start, end: scheduledTime.end } : undefined),
         status: "scheduled",
         warning,
       };
@@ -269,7 +274,18 @@ export function resolveStaff(
     }
   }
 
-  // 3. Fuzzy token match
+  // 3a. Singkatan/nama panggilan: token sheet adalah subsequence token nama akun
+  //     (ISAN ⊂ IKHSAN, DILA ⊂ DILLA, ANIDA ⊂ ANNIDA). Hanya bila rasio panjang >= 0.6.
+  const isSubseq = (small: string, big: string) => { let i = 0; for (const ch of big) if (ch === small[i]) i++; return i === small.length; };
+  const nick = n.split(" ").filter((t) => t.length >= 3);
+  if (nick.length === 1) {
+    const hits = liveStaff.filter((u) => normalizeName(u.name).split(" ").some((ut) => ut.length >= nick[0].length && nick[0].length / ut.length >= 0.6 && isSubseq(nick[0], ut)));
+    if (hits.length === 1) {
+      return { rawName, matchedUserId: hits[0]._id, matchedUserName: hits[0].name, matchedRoleName: hits[0].roleName, status: "mapped" };
+    }
+  }
+
+  // 3b. Fuzzy token match
   const tokens = n.split(" ").filter(Boolean);
   const fuzzyMatches = liveStaff
     .map((u) => {
@@ -315,24 +331,47 @@ export function resolveAllStaff(
 
 // ─── Spreadsheet matrix parser ────────────────────────────────
 
+const MONTH_NAMES = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
+/** Indeks bulan (0-11) dari nama penuh atau singkatan (OKT, NOV, DES, AGU, ...). */
+function monthIndexFromName(raw: string): number {
+  const u = raw.toUpperCase().replace(/[^A-Z]/g, "");
+  if (u.length < 3) return -1;
+  const alias: Record<string, number> = { OCT: 9, OKT: 9, DEC: 11, DES: 11, AUG: 7, AGS: 7, AGU: 7, MAY: 4, JUN: 5, JUL: 6 };
+  if (alias[u.slice(0, 3)] !== undefined && u.length <= 4) return alias[u.slice(0, 3)];
+  return MONTH_NAMES.findIndex((m) => m.startsWith(u.slice(0, 3)));
+}
+
 export function detectMonthYear(
   rows: string[][],
-  titlePattern?: string
+  _titlePattern?: string
 ): { month: number; year: number } | null {
   for (const row of rows) {
     const joined = row.join(" ").toUpperCase();
-    // Pattern: JADWAL <MONTH> <YEAR>
+    // Pola: JADWAL <BULAN> <TAHUN>, bulan boleh disingkat (mis. "okt")
     const match = joined.match(/JADWAL\s+([A-Z]+)\s+(\d{4})/);
     if (match) {
-      const monthNames = [
-        "JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI",
-        "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"
-      ];
-      const monthIdx = monthNames.indexOf(match[1]);
-      if (monthIdx >= 0) {
-        return { month: monthIdx + 1, year: parseInt(match[2]) };
-      }
+      const idx = monthIndexFromName(match[1]);
+      if (idx >= 0) return { month: idx + 1, year: parseInt(match[2]) };
     }
+  }
+  return null;
+}
+
+/** Tanggal dari sel: serial Excel (46327), ISO, "1 MEI 2026", atau angka hari saja. */
+export function parseDateCell(cell: string, month: number, year: number): string | null {
+  const c = cell.trim();
+  if (!c) return null;
+  if (/^\d{5}(\.0+)?$/.test(c)) {
+    const serial = Math.floor(Number(c));
+    if (serial > 30000 && serial < 80000) return new Date(Date.UTC(1899, 11, 30) + serial * 86_400_000).toISOString().slice(0, 10);
+  }
+  const iso = c.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  if (month > 0) return parseDateFromRow([c], 0, month, year);
+  const full = c.match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
+  if (full) {
+    const m = monthIndexFromName(full[2]);
+    if (m >= 0) return `${full[3]}-${String(m + 1).padStart(2, "0")}-${String(+full[1]).padStart(2, "0")}`;
   }
   return null;
 }
@@ -382,103 +421,87 @@ function getWeekLabel(dateStr: string, month: number): string {
   return `Minggu Ke ${weekNo}`;
 }
 
+/** Label di baris header yang bukan nama staf. */
+const NON_STAFF = /^(MINGGU\s*KE|HARI|TANGGAL|NO|JADWAL.*|DJIWA TENTRAM|TB WARMAN|MANAGEMENT.*|CEO.*)$/i;
+const CONTRACT_LABEL = /(FULL\s*TIME|PART\s*TIME|\d\s*-\s*\d+\s*H)/i;
+
 export function parseSpreadsheetMatrix(
   aoaRows: unknown[][],
   shiftSchedules: ShiftSchedule[]
 ): ParsedAttendanceImport {
   const rows = aoaRows.map((r) => r.map((c) => String(c ?? "")));
-
-  // Detect month/year
-  const detected = detectMonthYear(rows);
-  if (!detected) {
-    return {
-      source: { fileType: "xlsx", month: 0, year: 0 },
-      staffColumns: [],
-      rows: [],
-      warnings: [{ type: "date_mismatch", message: "Tidak dapat mendeteksi bulan/tahun dari file. Pastikan file memiliki judul seperti 'JADWAL MEI 2026'." }],
-    };
-  }
-
-  const { month, year } = detected;
   const warnings: ImportWarning[] = [];
+  const titled = detectMonthYear(rows);
 
-  // Find header rows — scan first ~10 rows
-  const headerRowIndex = rows.findIndex(
-    (r, i) => i < 10 && r.some((c) => c.trim().toUpperCase().includes("TANGGAL"))
-  );
-
+  // Header: baris yang memuat TANGGAL. Nama staf ada di baris yang sama (format roster Djiwa)
+  // atau, pada template lama, dua baris di bawahnya.
+  const headerRowIndex = rows.findIndex((r, i) => i < 12 && r.some((c) => c.trim().toUpperCase() === "TANGGAL"));
   if (headerRowIndex < 0) {
     return {
-      source: { fileType: "xlsx", month, year },
-      staffColumns: [],
-      rows: [],
+      source: { fileType: "xlsx", month: titled?.month ?? 0, year: titled?.year ?? 0 },
+      staffColumns: [], rows: [],
       warnings: [{ type: "unreadable_cell", message: "Header tidak ditemukan. Harus ada kolom TANGGAL." }],
     };
   }
+  const headerRow = rows[headerRowIndex];
+  const dateCol = headerRow.findIndex((c) => c.trim().toUpperCase() === "TANGGAL");
 
-  // Find date column index
-  const headerRow = rows[headerRowIndex].map((c) => c.trim().toUpperCase());
-  const dateCol = headerRow.findIndex((c) => c.includes("TANGGAL"));
-  if (dateCol < 0) {
+  const readStaff = (rowIdx: number) => {
+    const row = rows[rowIdx] ?? [];
+    const out: ParsedStaffColumn[] = [];
+    for (let i = dateCol + 1; i < row.length; i++) {
+      const name = row[i]?.trim();
+      if (!name || NON_STAFF.test(name) || CONTRACT_LABEL.test(name)) continue;
+      // Label peran (baris di atas header) jadi keterangan kolom.
+      const role = (rows[headerRowIndex - 1]?.[i] ?? "").trim() || undefined;
+      out.push({ rawName: name, col: i, role });
+    }
+    return out;
+  };
+  let staffColumns = readStaff(headerRowIndex);
+  if (staffColumns.length === 0) staffColumns = readStaff(headerRowIndex + 2);
+  // Nama ganda (mis. dua kolom "ISAN"): pertahankan kolom pertama.
+  const seen = new Set<string>();
+  staffColumns = staffColumns.filter((c) => (seen.has(normalizeName(c.rawName)) ? false : (seen.add(normalizeName(c.rawName)), true)));
+
+  // Baca tanggal tiap baris. Bulan/tahun diambil dari tanggal itu sendiri bila sel
+  // berisi tanggal lengkap (serial Excel atau ISO); judul hanya dipakai untuk angka hari polos.
+  const provisionalMonth = titled?.month ?? 0, provisionalYear = titled?.year ?? 0;
+  const dated: { rowIdx: number; date: string }[] = [];
+  for (let i = headerRowIndex + 1; i < rows.length; i++) {
+    const d = parseDateCell(rows[i][dateCol] ?? "", provisionalMonth, provisionalYear);
+    if (d) dated.push({ rowIdx: i, date: d });
+  }
+  if (dated.length === 0) {
     return {
-      source: { fileType: "xlsx", month, year },
-      staffColumns: [],
-      rows: [],
-      warnings: [{ type: "unreadable_cell", message: "Kolom TANGGAL tidak ditemukan di header." }],
+      source: { fileType: "xlsx", month: provisionalMonth, year: provisionalYear },
+      staffColumns, rows: [],
+      warnings: [{ type: "date_mismatch", message: "Tidak ada tanggal yang terbaca. Pastikan kolom TANGGAL berisi tanggal atau judul seperti 'JADWAL MEI 2026'." }],
     };
   }
-
-  // Detect staff columns: everything after dateCol + 2 columns (MINGGU KE, HARI, TANGGAL)
-  const firstStaffCol = dateCol > 2 ? dateCol - 2 : 0; // try left of tanggal
-  const staffHeaderRow3 = rows[headerRowIndex + 2] ?? [];
-  const staffNames: string[] = [];
-  for (let i = firstStaffCol; i < staffHeaderRow3.length; i++) {
-    const name = staffHeaderRow3[i]?.trim();
-    // Skip week/hari/tanggal columns
-    if (i < dateCol + 2 && (i <= 2 || name === "MINGGU KE" || name === "HARI" || name === "TANGGAL")) continue;
-    // Skip empty and likely header labels
-    if (name === "" || name === "BARISTA" || name === "CHEF" || name === "7-9H (Full Time)" || name === "CEO / ADMIN") continue;
-    if (name.startsWith("JADWAL") || name === "DJIWA TENTRAM" || name === "TB WARMAN" || name === "Management / Lainnya") continue;
-    staffNames.push(name);
+  // Bulan dominan menurut tanggal.
+  const tally = new Map<string, number>();
+  for (const d of dated) tally.set(d.date.slice(0, 7), (tally.get(d.date.slice(0, 7)) ?? 0) + 1);
+  const dominant = [...tally.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  const year = +dominant.slice(0, 4), month = +dominant.slice(5, 7);
+  if (titled && (titled.month !== month || titled.year !== year)) {
+    warnings.push({ type: "date_mismatch", message: `Judul menyebut ${MONTH_NAMES[titled.month - 1]} ${titled.year}, tetapi tanggalnya ${MONTH_NAMES[month - 1]} ${year}. Memakai tanggal di sheet.` });
   }
 
-  // Remove duplicates
-  const uniqueStaff = [...new Set(staffNames)];
-
-  // Parse date rows
   const parsedRows: ParsedAttendanceRow[] = [];
-  const monthDays = new Date(year, month, 0).getDate();
-
-  for (let i = headerRowIndex + 3; i < rows.length; i++) {
-    const row = rows[i];
-    const dateStr = parseDateFromRow(row, dateCol, month, year);
-    if (!dateStr) continue;
-
-    // Check if date is within expected range
-    const day = parseInt(dateStr.split("-")[2]);
-    if (day < 1 || day > monthDays) continue;
-
-    const dayName = getDayName(dateStr);
-    const weekLabel = getWeekLabel(dateStr, month);
-
-    // Parse shift for each staff column
-    for (let s = 0; s < uniqueStaff.length; s++) {
-      const staffName = uniqueStaff[s];
-      const colIdx = dateCol + (s + 1);
-      const shiftCell = row[colIdx]?.trim() ?? "";
+  for (const { rowIdx, date } of dated) {
+    // Baris ringkasan di luar bulan dominan (mis. sisa hari bulan berikutnya) tetap diikutkan: tanggalnya valid.
+    const row = rows[rowIdx];
+    for (const col of staffColumns) {
+      const shiftCell = row[col.col ?? -1]?.trim() ?? "";
       if (!shiftCell) continue;
-
       const resolved = resolveShift(shiftCell, shiftSchedules);
-
-      if (resolved.warning) {
-        warnings.push({ ...resolved.warning, rawStaffName: staffName, date: dateStr });
-      }
-
+      if (resolved.warning) warnings.push({ ...resolved.warning, rawStaffName: col.rawName, date });
       parsedRows.push({
-        date: dateStr,
-        dayName,
-        weekLabel,
-        rawStaffName: staffName,
+        date,
+        dayName: getDayName(date),
+        weekLabel: getWeekLabel(date, +date.slice(5, 7)),
+        rawStaffName: col.rawName,
         rawShiftText: shiftCell,
         shiftName: resolved.shiftName,
         startTime: resolved.normalizedTime?.start,
@@ -489,8 +512,8 @@ export function parseSpreadsheetMatrix(
   }
 
   return {
-    source: { fileType: "xlsx", month, year, title: `JADWAL ${["", "JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"][month]} ${year}` },
-    staffColumns: uniqueStaff.map((n) => ({ rawName: n })),
+    source: { fileType: "xlsx", month, year, title: `JADWAL ${MONTH_NAMES[month - 1]} ${year}` },
+    staffColumns,
     rows: parsedRows,
     warnings,
   };

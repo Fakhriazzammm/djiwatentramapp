@@ -68,7 +68,9 @@ export default function AttendanceImportDialog({
   year,
 }: ImportDialogProps) {
   const [step, setStep] = useState<ImportStep>("upload");
-  const [tab, setTab] = useState<"upload" | "paste">("upload");
+  const [tab, setTab] = useState<"upload" | "paste" | "link">("upload");
+  const [sheetUrl, setSheetUrl] = useState("");
+  const [sheetBusy, setSheetBusy] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importData, setImportData] = useState<ParsedAttendanceImport | null>(null);
@@ -82,7 +84,8 @@ export default function AttendanceImportDialog({
     mode: "replace",
     includeOff: false,
     includeGeneral: true,
-    useAdminTime: true,
+    // Default: pakai jam yang tertulis di file (mis. PAGI 06.30–14.00 untuk Chef). Centang untuk memaksa jam admin.
+    useAdminTime: false,
   });
   const [filter, setFilter] = useState<"all" | "unmapped" | "warning">("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -98,6 +101,26 @@ export default function AttendanceImportDialog({
       setFilter("all");
     }
   }, [open]);
+
+  /** Ambil Google Sheets publik (siapa pun dengan tautan) sebagai .xlsx lalu proses seperti file upload. */
+  const handleSheetLink = useCallback(async () => {
+    const id = sheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1];
+    if (!id) { toast.error("Tautan bukan Google Sheets. Contoh: https://docs.google.com/spreadsheets/d/…"); return; }
+    setSheetBusy(true);
+    try {
+      const res = await fetch(`https://docs.google.com/spreadsheets/d/${id}/export?format=xlsx`);
+      if (!res.ok) throw new Error(String(res.status));
+      const blob = await res.blob();
+      if (!/sheet|excel|octet/i.test(blob.type) && blob.size < 1000) throw new Error("bukan xlsx");
+      const file = new File([blob], `google-sheet-${id.slice(0, 6)}.xlsx`, { type: blob.type });
+      setSelectedFile(file);
+      await processFile(file);
+    } catch {
+      toast.error("Gagal mengambil sheet. Pastikan akses umum “Siapa saja yang memiliki link” (Lihat) aktif.");
+    } finally {
+      setSheetBusy(false);
+    }
+  }, [sheetUrl]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -416,7 +439,32 @@ export default function AttendanceImportDialog({
                   <FileText className="mr-1 inline h-4 w-4" />
                   Paste Spreadsheet
                 </button>
+                <button
+                  className={`rounded-t px-4 py-1.5 text-sm font-medium transition-colors ${
+                    tab === "link" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  onClick={() => setTab("link")}
+                >
+                  <FileSpreadsheet className="mr-1 inline h-4 w-4" />
+                  Google Sheets
+                </button>
               </div>
+
+              {tab === "link" && (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">Tempel tautan Google Sheets jadwal. Akses harus “Siapa saja yang memiliki link”. Sheet pertama dibaca.</p>
+                  <input
+                    id="schedule-sheet-url"
+                    value={sheetUrl}
+                    onChange={(e) => setSheetUrl(e.target.value)}
+                    placeholder="https://docs.google.com/spreadsheets/d/…"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                  <Button className="w-full" onClick={handleSheetLink} disabled={!sheetUrl.trim() || sheetBusy}>
+                    {sheetBusy ? "Mengambil…" : "Ambil & baca jadwal"}
+                  </Button>
+                </div>
+              )}
 
               {tab === "upload" && (
                 <div className="space-y-4">
