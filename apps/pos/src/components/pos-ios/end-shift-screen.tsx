@@ -63,14 +63,17 @@ export function EndShiftScreen({ c }: { c: EndShiftController }) {
 	const [cashTouched, setCashTouched] = useState(false);
 
 	const channels = SHIFT_PAYMENT_CHANNELS;
-	const required = useMemo(() => channels.filter((ch) => Number(c.expected[ch.key] || 0) > 0), [channels, c.expected]);
-	const zero = useMemo(() => channels.filter((ch) => Number(c.expected[ch.key] || 0) === 0), [channels, c.expected]);
+	// Uang laci dihitung sekali: tunai POS + Djiwa App "Bayar Tunai di Kasir" digabung di kartu Tunai Kasir.
+	const cashExpected = Number(c.expected.tunai_kasir || 0) + Number(c.expected.djiwaapp_bayar_kasir || 0);
+	const expectedOf = (key: ShiftPaymentChannelKey) => (key === "tunai_kasir" ? cashExpected : Number(c.expected[key] || 0));
+	const required = useMemo(() => channels.filter((ch) => ch.key !== "djiwaapp_bayar_kasir" && expectedOf(ch.key) > 0), [channels, c.expected]);
+	const zero = useMemo(() => channels.filter((ch) => ch.key !== "djiwaapp_bayar_kasir" && expectedOf(ch.key) === 0), [channels, c.expected]);
 
 	// Kanal tanpa transaksi dikonfirmasi Rp 0 otomatis (tetap bisa diubah dari lipatan).
 	useEffect(() => {
-		for (const ch of zero) if (ch.key !== "tunai_kasir" && (c.actual[ch.key] === null || c.actual[ch.key] === undefined)) c.onActual(ch.key, "0");
+		for (const ch of channels) if (ch.key !== "tunai_kasir" && Number(c.expected[ch.key] || 0) === 0 && (c.actual[ch.key] === null || c.actual[ch.key] === undefined)) c.onActual(ch.key, "0");
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [zero.map((ch) => ch.key).join(",")]);
+	}, [channels.filter((ch) => Number(c.expected[ch.key] || 0) === 0).map((ch) => ch.key).join(",")]);
 
 	const confirmed = (key: ShiftPaymentChannelKey) => (key === "tunai_kasir" ? cashTouched : c.actual[key] !== null && c.actual[key] !== undefined);
 	const doneCount = required.filter((ch) => confirmed(ch.key)).length;
@@ -80,7 +83,7 @@ export function EndShiftScreen({ c }: { c: EndShiftController }) {
 
 	const activeStaff = c.attendance.filter((member) => member.status === "active");
 	const hasUnfinished = c.closing.unpaid > 0 || c.closing.inProduction > 0;
-	const paymentIncomplete = Object.keys(c.expected).some((key) => c.actual[key as ShiftPaymentChannelKey] === null || c.actual[key as ShiftPaymentChannelKey] === undefined);
+	const paymentIncomplete = !allConfirmed || Object.keys(c.expected).some((key) => c.actual[key as ShiftPaymentChannelKey] === null || c.actual[key as ShiftPaymentChannelKey] === undefined);
 	const disabled = c.submitting || c.ordersLoading || !navigator.onLine || c.queuedCount > 0 || (hasUnfinished && !c.handover) || c.attendanceLoading || Boolean(c.attendanceError) || c.gate.blocked || paymentIncomplete;
 
 	const reasons: string[] = [];
@@ -142,7 +145,7 @@ export function EndShiftScreen({ c }: { c: EndShiftController }) {
 						<div key={group} className="mb-1">
 							<p className="px-1 pb-1.5 text-[12px] font-bold text-muted-foreground">{group === "direct" ? "Langsung" : "Online food"}</p>
 							{list.map((ch) => {
-								const exp = Number(c.expected[ch.key] || 0);
+								const exp = expectedOf(ch.key);
 								const isConfirmed = confirmed(ch.key);
 								const act = ch.key === "tunai_kasir" ? c.cashInRegister : Number(c.actual[ch.key] || 0);
 								return (
@@ -212,7 +215,7 @@ export function EndShiftScreen({ c }: { c: EndShiftController }) {
 				<p className="mt-1.5 min-h-4 text-center text-[12px] text-muted-foreground">{disabled && reasons.length ? `Lengkapi: ${reasons.join(", ")}` : disabled ? "" : "Semua siap ditutup"}</p>
 			</div>
 
-			<ChannelSheet channel={channel} onClose={() => setChannelKey(null)} c={c} expected={channel ? Number(c.expected[channel.key] || 0) : 0} onCashTouched={() => setCashTouched(true)} />
+			<ChannelSheet channel={channel} onClose={() => setChannelKey(null)} c={c} expected={channel ? expectedOf(channel.key) : 0} onCashTouched={() => setCashTouched(true)} />
 			<ExpenseSheet open={expenseOpen} onClose={() => setExpenseOpen(false)} onAdd={(row) => { c.setExtraExpenses((prev) => [...prev, row]); setExpenseOpen(false); }} />
 			<IosSheet open={c.showConfirm} onClose={() => c.setShowConfirm(false)} title="Konfirmasi tutup shift" heightClass="max-h-[80dvh]" footer={
 				<div className="flex gap-2.5">

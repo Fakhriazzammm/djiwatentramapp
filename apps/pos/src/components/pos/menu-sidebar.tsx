@@ -1628,8 +1628,9 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		});
 
 		const shiftOrdersData = todayOrders?.filter((o: Doc<"orders">) => o.createdAt >= shiftStatus.latestMulai) || [];
+		// Tunai di laci = tunai POS + pesanan Djiwa App yang dibayar tunai di kasir.
 		shiftCash = shiftOrdersData
-			.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && o.paymentMethod === 'cash')
+			.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && ['cash', 'tunai'].includes(String(o.paymentMethod ?? '').toLowerCase()))
 			.reduce((acc: number, o: Doc<"orders">) => acc + o.totalAmount, 0);
 		shiftQris = shiftOrdersData
 			.filter((o: Doc<"orders">) => (o.status === 'completed' || o.status === 'paid') && (o.paymentMethod === 'qris' || o.paymentMethod === 'transfer'))
@@ -1654,8 +1655,11 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	useEffect(() => {
 		const total = calculateBreakdownTotal();
 		setCashInRegister(total.toString());
-		setPaymentActual((previous) => ({ ...previous, tunai_kasir: total }));
-	}, [breakdown]);
+		// Uang laci dihitung sekali; dialokasikan dulu ke "Bayar Tunai di Kasir" (Djiwa App), sisanya tunai POS.
+		const appCashExpected = Number(expectedPaymentBreakdown.djiwaapp_bayar_kasir || 0);
+		const appCash = Math.min(total, appCashExpected);
+		setPaymentActual((previous) => ({ ...previous, tunai_kasir: total - appCash, ...(appCashExpected > 0 ? { djiwaapp_bayar_kasir: appCash } : {}) }));
+	}, [breakdown, expectedPaymentBreakdown.djiwaapp_bayar_kasir]);
 
 	// Auto-fill nonCashConfirmed from shiftQris
 	useEffect(() => {
