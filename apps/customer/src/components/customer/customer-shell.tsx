@@ -147,9 +147,13 @@ export function CustomerPrimaryCta({
 	);
 }
 
+const NAV_ORDER = ["Home", "Pesan", "Saldo", "Komunitas", "Profil"];
+const NAV_LABEL: Record<string, string> = { Home: "Beranda", Saldo: "Bayar" };
+const NAV_CENTER = "Saldo";
+
+/** Tab bawah: Beranda, Pesan, Bayar (tengah, buka pemindai QR di Djiwa Pay), Komunitas, Profil. */
 export function CustomerBottomNav({
 	items,
-	primaryLabel = "Pesan",
 }: {
 	items: Array<{
 		active?: boolean;
@@ -158,31 +162,55 @@ export function CustomerBottomNav({
 		label: string;
 		onSelect?: () => void;
 	}>;
-	/** Item dengan label ini tampil sebagai tombol aksi bulat terpisah (pola tab bar iOS 26). */
-	primaryLabel?: string;
 }) {
 	const shouldReduceMotion = useReducedMotion();
 	const spring = { type: "spring" as const, stiffness: 420, damping: 28, mass: 0.7 };
 	const shiftStatus = useHybridShiftStatus();
 	const isLive = Boolean(shiftStatus?.isOpen && shiftStatus?.ongoingShift);
-	const primary = items.find((item) => item.label === primaryLabel);
-	const tabs = items.filter((item) => item.label !== primaryLabel);
+	const tabs = [...items].sort((a, b) => {
+		const ia = NAV_ORDER.indexOf(a.label);
+		const ib = NAV_ORDER.indexOf(b.label);
+		return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+	});
+	const openScan = () => {
+		const username = window.location.pathname.split("/")[1];
+		if (username) window.location.assign(`/${encodeURIComponent(decodeURIComponent(username))}/saldo?aksi=scan`);
+	};
 
 	return (
-		<nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3.5 pb-[max(1rem,var(--safe-area-bottom))]" aria-label="Navigasi utama">
-			<div className="pointer-events-auto mx-auto flex max-w-md items-center gap-2.5">
-				<div
-					className="flex h-[62px] min-w-0 flex-1 items-center gap-0.5 rounded-full border border-white/80 bg-background/75 p-1.5 shadow-[0_8px_28px_rgba(20,32,63,0.18)] backdrop-blur-2xl backdrop-saturate-[1.8] [@media(prefers-reduced-transparency:reduce)]:bg-background [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none"
-					style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(tabs.length, 1)}, minmax(0, 1fr))` }}
-				>
-					{tabs.map((item) => (
+		<nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(1rem,var(--safe-area-bottom))]" aria-label="Navigasi utama">
+			<div
+				className="pointer-events-auto mx-auto grid h-[58px] max-w-md items-center gap-0.5 rounded-full border border-white/80 bg-background/80 p-1.5 shadow-[0_8px_28px_rgba(20,32,63,0.18)] backdrop-blur-2xl backdrop-saturate-[1.8] [@media(prefers-reduced-transparency:reduce)]:bg-background [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none"
+				style={{ gridTemplateColumns: `repeat(${Math.max(tabs.length, 1)}, minmax(0, 1fr))` }}
+			>
+				{tabs.map((item) => {
+					const label = NAV_LABEL[item.label] ?? item.label;
+					if (item.label === NAV_CENTER) {
+						return (
+							<motion.button
+								key={item.label}
+								type="button"
+								whileTap={shouldReduceMotion ? undefined : { scale: 0.92 }}
+								transition={spring}
+								onClick={openScan}
+								aria-label="Bayar: pindai QR dengan Djiwa Pay"
+								className="relative -mt-3 flex h-[52px] min-w-[72px] flex-col items-center justify-center gap-0.5 justify-self-center rounded-full border border-white/70 bg-primary px-3 text-[10px] font-extrabold text-white shadow-[0_8px_20px_rgba(11,99,184,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							>
+								<span className="flex h-6 w-6 items-center justify-center rounded-full bg-white p-0.5">
+									<img src="/assets/djiwa-pay-actions/scan-qr.webp" alt="" className="h-full w-full object-contain" />
+								</span>
+								<span>{label}</span>
+							</motion.button>
+						);
+					}
+					return (
 						<motion.button
 							key={item.label}
 							type="button"
 							whileTap={shouldReduceMotion ? undefined : { scale: 0.92 }}
 							transition={spring}
 							className={cn(
-								"relative flex h-[50px] min-w-11 flex-col items-center justify-center gap-0.5 rounded-full px-1 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+								"relative flex h-[46px] min-w-11 flex-col items-center justify-center gap-0.5 rounded-full px-1 text-[10px] font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
 								item.active ? "text-primary" : "text-foreground/70 hover:text-foreground"
 							)}
 							onClick={item.onSelect}
@@ -190,28 +218,12 @@ export function CustomerBottomNav({
 						>
 							{item.active ? <motion.span layoutId="customer-bottom-nav-active" transition={spring} className="absolute inset-0 rounded-full bg-primary/12" aria-hidden="true" /> : null}
 							{item.badge ? <span className="absolute right-1/4 top-0.5 z-[1]">{item.badge}</span> : null}
+							{item.label === "Pesan" && !isLive ? <span className="absolute right-[26%] top-1 z-[1] h-2 w-2 rounded-full border border-background bg-amber-500" title="Layanan sedang offline, menu tetap bisa dilihat" aria-hidden="true" /> : null}
 							<span className="relative z-[1] flex h-5 items-center justify-center">{item.icon}</span>
-							<span className="relative z-[1] max-w-full truncate">{item.label}</span>
+							<span className="relative z-[1] max-w-full truncate">{label}</span>
 						</motion.button>
-					))}
-				</div>
-				{primary ? (
-					<motion.button
-						type="button"
-						whileTap={shouldReduceMotion ? undefined : { scale: 0.92 }}
-						transition={spring}
-						onClick={primary.onSelect}
-						aria-current={primary.active ? "page" : undefined}
-						aria-label={isLive ? primary.label : `${primary.label} (layanan sedang offline, lihat menu)`}
-						className={cn(
-							"relative flex h-[62px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-full border border-white/60 text-[10px] font-extrabold text-white shadow-[0_8px_24px_rgba(11,99,184,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-							isLive ? "bg-primary" : "bg-[#7C8CA3] shadow-[0_8px_24px_rgba(85,101,125,0.3)]"
-						)}
-					>
-						<span className="flex h-5 items-center justify-center rounded-md bg-white/90 px-0.5">{primary.icon}</span>
-						<span>{primary.label}</span>
-					</motion.button>
-				) : null}
+					);
+				})}
 			</div>
 		</nav>
 	);

@@ -1,6 +1,5 @@
 import { createLazyFileRoute, Outlet, useLocation, useMatches, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { LogIn, ShieldCheck } from "lucide-react";
 import { Djiwa3DIcon } from "@djiwaapps/web-shared";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useCustomerSplashGate } from "@/hooks/use-customer-splash-gate";
@@ -15,9 +14,11 @@ import { invokeEdgeFunction } from "@/lib/api-helper";
 import { CustomerSplash } from "@/components/customer/customer-entry";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
 import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
-import { CustomerHomeHeader } from "@/components/customer/customer-home-sections";
+import { HomeGuestWallet, HomeQuickPicks, HomeServiceRail, HomeShortcuts, HomeSky, HomeTop, HomeWalletCard, type WalletAction } from "@/components/customer/customer-home-v2";
+import { CustomerStoryRail } from "@/features/stories/customer-story-rail";
+import { useDayPeriod } from "@/lib/day-period";
 import { JumatBerkahBanner } from "@/components/customer/jumat-berkah";
-import { HomeEditorialCard, HomePayAndCommunity, HomeReorderCard, HomeRestaurantInfo, HomeServiceShelf, HomeTopSellers, HomeWholesaleRow } from "@/components/customer/customer-home-editorial";
+import { HomeRestaurantInfo, HomeWholesaleRow, useLiveShift } from "@/components/customer/customer-home-editorial";
 import { CustomerLiveOrderCard } from "@/components/customer/customer-live-order-card";
 
 type GuestData = {
@@ -82,8 +83,9 @@ function MemberHomePage() {
 		return () => window.removeEventListener("storage", handleStorage);
 	}, []);
 
+	const period = useDayPeriod();
+	const isLive = useLiveShift();
 	const storeName = import.meta.env.VITE_BRAND_NAME || "Djiwatentram";
-	const logoUrl = siteSettings?.logoUrl || "/logo-djiwa.png";
 	const b2bChannelHref = isAuthenticated && customer ? `https://b2b.djiwatentram.web.id/${encodeURIComponent(username)}/order?step=menu` : "https://b2b.djiwatentram.web.id/daftar";
 	const merchandiseChannelHref = isAuthenticated && customer ? `https://merchandise.djiwatentram.web.id/${encodeURIComponent(username)}/order?step=menu` : "https://merchandise.djiwatentram.web.id/daftar";
 
@@ -98,6 +100,10 @@ function MemberHomePage() {
 	const goDjiwaPay = () => {
 		if (typeof window === "undefined") return;
 		window.location.assign(`/${encodeURIComponent(username)}/saldo`);
+	};
+	const goWalletAction = (action: WalletAction) => {
+		if (typeof window === "undefined") return;
+		window.location.assign(`/${encodeURIComponent(username)}/saldo?aksi=${action}`);
 	};
 	const customerNav = [
 		{ label: "Home", icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname === `/${username}`, onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}`) },
@@ -298,21 +304,23 @@ function MemberHomePage() {
 		return (
 			<div className="app-page min-h-app">
 				<div className="app-shell mx-auto flex min-h-app max-w-md flex-col bg-background">
-					<CustomerHomeHeader logoUrl={logoUrl} storeName={storeName} title={guestData.name} />
-					<main className="flex-1 px-3 pb-32">
-						<div className="relative -mt-6 space-y-[18px]">
-							{activeOrderCards}
-							<HomeEditorialCard username={username} />
-							<HomePayAndCommunity customer={null} onWallet={goDjiwaPay} onLogin={() => navigate({ to: "/masuk" })} onCommunity={goCommunity} />
-							<JumatBerkahBanner onOpen={openJumatBerkah} onDonate={donateJumatBerkahAsGuest} />
-							<HomeServiceShelf {...serviceHandlers} />
-							<HomeTopSellers username={username} />
-							<HomeReorderCard username={username} />
-							<HomeWholesaleRow href={b2bChannelHref} />
-							<HomeRestaurantInfo />
-							{!isCurrentGuest ? <p className="text-center text-[10px] text-muted-foreground">Halaman ini milik {guestData.name}. <button type="button" className="font-bold underline" onClick={() => navigate({ to: "/daftar" })}>Mulai sebagai dirimu</button></p> : null}
-						</div>
-					</main>
+					<div className="relative isolate">
+						<HomeSky period={period} />
+						<HomeTop period={period} name={guestData.name} points={null} onSearch={goMenu} onPoints={() => navigate({ to: "/masuk" })} />
+						<main className="px-3 pb-32">
+							<HomeShortcuts isLive={isLive} onOrder={goMenu} onPromo={serviceHandlers.onPromo} onBooking={serviceHandlers.onBooking} />
+							{activeOrderCards.length > 0 ? <div className="mt-2.5 space-y-2.5">{activeOrderCards}</div> : null}
+							<HomeGuestWallet onLogin={() => navigate({ to: "/masuk" })} />
+							<HomeServiceRail {...serviceHandlers} />
+							<div className="mt-3 space-y-3">
+								<JumatBerkahBanner onOpen={openJumatBerkah} onDonate={donateJumatBerkahAsGuest} />
+								<HomeQuickPicks username={username} signedIn={false} />
+								<HomeWholesaleRow href={b2bChannelHref} />
+								<HomeRestaurantInfo />
+								{!isCurrentGuest ? <p className="text-center text-[10px] text-muted-foreground">Halaman ini milik {guestData.name}. <button type="button" className="font-bold underline" onClick={() => navigate({ to: "/daftar" })}>Mulai sebagai dirimu</button></p> : null}
+							</div>
+						</main>
+					</div>
 				</div>
 				<CustomerBottomNav items={customerNav} />
 				{authModal}
@@ -333,50 +341,32 @@ function MemberHomePage() {
 		<>
 			<div className="app-page min-h-app">
 				<div className="app-shell mx-auto flex min-h-app max-w-md flex-col bg-background">
-					<CustomerHomeHeader
-						logoUrl={logoUrl}
-						storeName={storeName}
-						title={displayName}
-						action={
-						<div className="flex items-center gap-1.5">
-							<button
-									type="button"
-									onClick={() => navigate({ to: "/$username/profile", params: { username } })}
-									aria-label="Member Djiwa Tentram — Kartu member berlaku sampai Desember 2026. Buka profil."
-									className="flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-[#f4d27a]/45 bg-[#0b1740] px-3 text-white shadow-sm transition-transform duration-[180ms] active:scale-[.97]"
-								>
-									<ShieldCheck className="h-3.5 w-3.5 text-[#f4d27a]" aria-hidden="true" />
-									<span className="text-left leading-none">
-										<span className="block text-[9px] font-black uppercase tracking-[0.14em] text-[#f4d27a]">Member</span>
-										<span className="mt-0.5 block text-[9px] font-semibold text-blue-100/90">s/d Des 2026</span>
-									</span>
-								</button>
-								<button
-									type="button"
-									onClick={() => navigate({ to: "/$username/notifikasi", params: { username } })}
-									aria-label="Buka notifikasi"
-									className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/35 bg-white/20 text-white shadow-[0_2px_12px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-transform duration-[180ms] active:scale-[.97] ${unreadNotificationCount > 0 ? "animate-djiwa-notification-bell" : ""}`}
-								>
-									<Djiwa3DIcon name="notifications-alerts" size="micro" alt="" className="h-5 w-5 object-contain" />
-									{unreadNotificationCount > 0 ? <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-background bg-red-500 px-1 text-[9px] font-black leading-none text-white" aria-label={`${unreadNotificationCount} notifikasi belum dibaca`}>{unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}</span> : null}
-								</button>
+					<div className="relative isolate">
+						<HomeSky period={period} />
+						<HomeTop
+							period={period}
+							name={displayName}
+							points={Number(customer.totalPoints ?? 0)}
+							unread={unreadNotificationCount}
+							onSearch={goMenu}
+							onPoints={() => navigate({ to: "/$username/poin", params: { username } })}
+							onBell={() => navigate({ to: "/$username/notifikasi", params: { username } })}
+						/>
+						<main className="px-3 pb-32">
+							<HomeShortcuts isLive={isLive} onOrder={goMenu} onPromo={serviceHandlers.onPromo} onBooking={serviceHandlers.onBooking} />
+							{!isContactComplete && missingContactFields.length > 0 ? <div className="mx-3 mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-amber-950 shadow-sm" role="alert"><div className="flex items-start gap-2.5"><span className="mt-0.5 text-base">!</span><div className="min-w-0 flex-1"><p className="text-xs font-black">Lengkapi data akun</p><p className="mt-0.5 text-[11px] leading-relaxed text-amber-900/80">{getCustomerContactMessage(missingContactFields)}</p></div><button className="min-h-11 shrink-0 rounded-xl bg-amber-600 px-3 py-2 text-[11px] font-black text-white active:scale-[.97]" onClick={() => navigate({ to: "/$username/profile", params: { username } })} type="button">Lengkapi</button></div></div> : null}
+							{activeOrderCards.length > 0 ? <div className="mt-2.5 space-y-2.5">{activeOrderCards}</div> : null}
+							<HomeWalletCard customer={customer} onOpen={goDjiwaPay} onAction={goWalletAction} />
+							<HomeServiceRail {...serviceHandlers} />
+							<div className="mt-3 space-y-3">
+								<JumatBerkahBanner onOpen={openJumatBerkah} onDonate={donateJumatBerkah} />
+								<HomeQuickPicks username={username} signedIn />
+								<CustomerStoryRail onOpenCommunity={goCommunity} />
+								<HomeWholesaleRow href={b2bChannelHref} />
+								<HomeRestaurantInfo />
 							</div>
-						}
-					/>
-					{!isContactComplete && missingContactFields.length > 0 ? <div className="mx-3 mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-amber-950 shadow-sm" role="alert"><div className="flex items-start gap-2.5"><span className="mt-0.5 text-base">!</span><div className="min-w-0 flex-1"><p className="text-xs font-black">Lengkapi data akun</p><p className="mt-0.5 text-[11px] leading-relaxed text-amber-900/80">{getCustomerContactMessage(missingContactFields)}</p></div><button className="min-h-11 shrink-0 rounded-xl bg-amber-600 px-3 py-2 text-[11px] font-black text-white active:scale-[.97]" onClick={() => navigate({ to: "/$username/profile", params: { username } })} type="button">Lengkapi</button></div></div> : null}
-					<main className="flex-1 px-3 pb-32">
-						<div className="relative -mt-6 space-y-[18px]">
-							{activeOrderCards}
-							<HomeEditorialCard username={username} />
-							<HomePayAndCommunity customer={customer} onWallet={goDjiwaPay} onLogin={() => navigate({ to: "/masuk" })} onCommunity={goCommunity} />
-							<JumatBerkahBanner onOpen={openJumatBerkah} onDonate={donateJumatBerkah} />
-							<HomeServiceShelf {...serviceHandlers} />
-							<HomeTopSellers username={username} />
-							<HomeReorderCard username={username} />
-							<HomeWholesaleRow href={b2bChannelHref} />
-							<HomeRestaurantInfo />
-						</div>
-					</main>
+						</main>
+					</div>
 				</div>
 			</div>
 			<CustomerBottomNav items={customerNav} />

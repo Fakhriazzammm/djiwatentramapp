@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Prototipe Beranda Customer</title>
+<style>
+:root{--sans:-apple-system,"SF Pro Display","SF Pro Text",Inter,system-ui,sans-serif;--ease:cubic-bezier(.32,.72,0,1)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0}
+body{font:15px/1.4 var(--sans);background:#d9dce4;color:#14161c;display:flex;gap:34px;justify-content:center;align-items:flex-start;flex-wrap:wrap;padding:28px 16px;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}img{display:block}
+.ctl{width:300px;background:#14161c;color:#c9cdd8;border-radius:20px;padding:18px;font-size:12px;line-height:1.5}
+.ctl h3{font-size:14px;color:#fff;margin-bottom:2px}.ctl p{color:#8b90a0;margin-bottom:10px}
+.ctl b{display:block;margin:14px 0 6px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#7f8596}
+.ctl .seg{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}.ctl .seg.two{grid-template-columns:1fr 1fr}
+.ctl .seg button{background:#242733;border-radius:9px;padding:8px 4px}.ctl .seg button.on{background:#fff;color:#14161c;font-weight:600}
+.ctl .clock{font:700 26px var(--sans);color:#fff;font-variant-numeric:tabular-nums}
+.ctl input[type=range]{width:100%;accent-color:#6aa8ff}
+.ctl li{margin:0 0 4px 16px}
+
+/* ===== telepon ===== */
+.phone{position:relative;width:390px;height:844px;border-radius:46px;overflow:hidden;isolation:isolate;box-shadow:0 0 0 10px #14161c,0 30px 80px rgba(20,22,28,.4);
+ --canvas:#f2f2f7;--ink:#14161c;--mute:#5f6270;--card:#fff;--line:rgba(60,60,67,.12);--accent:#0a67bd;--accent-soft:#e3effb;--ok:#13804a;
+ background:var(--canvas);color:var(--ink);transition:background-color 1.2s,color 1.2s}
+.phone[data-p=malam]{--canvas:#12141c;--ink:#f1f2f6;--mute:#a3a7b6;--card:#1d2030;--line:rgba(255,255,255,.1);--accent:#7db6ff;--accent-soft:rgba(125,182,255,.16);--ok:#5fd596}
+.phone[data-p=sore]{--accent:#b4570f;--accent-soft:#fbeadb}
+
+/* Latar hari: tetap di belakang, tidak pernah ditutup konten (konten mulai di bawah area ilustrasi) */
+.sky{position:absolute;left:0;right:0;top:0;height:372px;z-index:0;overflow:hidden;
+ -webkit-mask-image:linear-gradient(#000 70%,transparent 100%);mask-image:linear-gradient(#000 70%,transparent 100%)}
+.sky .ly{position:absolute;inset:0;opacity:0;transition:opacity 1.3s}.sky .ly.on{opacity:1}
+.sky img{width:100%;height:100%;object-fit:cover;object-position:50% 40%}
+.sky:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.5),rgba(0,0,0,.12) 22%,transparent 40%)}
+.sb{position:absolute;top:0;left:0;right:0;height:46px;z-index:30;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 6px;font-weight:600;font-size:14px;color:#fff}
+.homebar{position:absolute;bottom:7px;left:50%;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:var(--ink);opacity:.35;z-index:60}
+
+.scroll{position:absolute;inset:0;z-index:2;overflow-y:auto;scrollbar-width:none;padding:52px 14px 190px}
+.scroll::-webkit-scrollbar{display:none}
+
+.glass{background:rgba(255,255,255,.78);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.9),0 6px 20px rgba(0,0,0,.1)}
+.phone[data-p=malam] .glass{background:rgba(29,32,48,.72);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.14),0 6px 20px rgba(0,0,0,.3)}
+
+/* header */
+.head{display:flex;gap:10px;align-items:center}
+.search{flex:1;height:46px;border-radius:99px;display:flex;align-items:center;gap:10px;padding:0 16px;color:var(--mute)}
+.search svg{width:20px;height:20px;flex:none}
+.poin{height:46px;border-radius:99px;display:flex;align-items:center;gap:7px;padding:0 14px 0 8px;font-weight:700;font-size:13px;line-height:1.1;background:#ffe487;color:#5a3a00;box-shadow:0 6px 18px rgba(0,0,0,.14)}
+.poin img{width:30px;height:30px;object-fit:contain}
+.poin small{display:block;font-size:11px;font-weight:600;opacity:.75}
+
+/* sapaan: di area ilustrasi, tidak menutupi tokoh */
+.greet{margin-top:16px;display:inline-block;max-width:200px;padding:10px 16px;border-radius:16px;background:rgba(22,70,40,.78);color:#fff;font-weight:800;font-size:19px;line-height:1.15;letter-spacing:-.02em;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.phone[data-p=malam] .greet{background:rgba(10,16,40,.72)}.phone[data-p=sore] .greet{background:rgba(92,40,10,.74)}
+.greet small{display:block;font-size:12px;font-weight:600;opacity:.85;margin-top:3px;letter-spacing:0}
+
+/* 3 kartu besar — mulai di bawah ilustrasi */
+.big{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:176px}
+.bc{position:relative;border-radius:24px;background:var(--card);padding:10px 6px 12px;text-align:center;box-shadow:0 0 0 3px var(--accent-soft),0 8px 20px rgba(0,0,0,.08);transition:transform .25s}
+.bc:active{transform:scale(.95)}
+.bc img{width:62px;height:62px;object-fit:contain;margin:0 auto}
+.bc .tag{display:inline-block;margin-top:-8px;position:relative;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:800;padding:1px 10px;border-radius:99px;white-space:nowrap}
+.bc b{display:block;margin-top:6px;font-size:15px;font-weight:700;letter-spacing:-.01em}
+
+.card{margin-top:12px;border-radius:26px;background:var(--card);box-shadow:0 0 0 1px var(--line),0 6px 18px rgba(0,0,0,.05)}
+/* layanan */
+.svc{display:flex;gap:2px;padding:12px 6px 10px}
+.sv{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:12px;font-weight:600;min-width:0;position:relative}
+.sv img{width:46px;height:46px;object-fit:contain}
+.sv i{position:absolute;top:-4px;right:2px;font-style:normal;font-size:9px;font-weight:800;background:#e5484d;color:#fff;padding:1px 6px;border-radius:99px}
+.more{width:46px;height:46px;border-radius:15px;background:var(--accent-soft);display:grid;place-items:center}
+.more span{width:20px;height:20px;background:radial-gradient(circle,var(--accent) 38%,transparent 40%) 0 0/10px 10px}
+
+/* saldo */
+.pay{padding:14px 14px 12px;background:linear-gradient(135deg,rgba(10,103,189,.10),rgba(10,103,189,0) 60%),var(--card);display:flex;justify-content:space-between;gap:10px;align-items:stretch}
+.pay .l{min-width:0}
+.pay .lab{display:flex;align-items:center;gap:8px;font-weight:800;color:var(--accent);font-size:16px;letter-spacing:-.02em}
+.pay .lab button{width:26px;height:26px;display:grid;place-items:center}.pay .lab button img{width:18px;opacity:.7}
+.pay .amt{font-size:27px;font-weight:800;letter-spacing:-.03em;margin-top:2px;font-variant-numeric:tabular-nums}
+.pay .pt{white-space:nowrap;font-size:12px;color:var(--mute);margin-top:1px;display:flex;gap:6px;align-items:center}
+.pay .pt u{text-decoration:none;font-weight:700;color:var(--ok)}
+.acts{display:flex;gap:2px;align-items:flex-end}
+.ac{width:58px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;font-weight:600}
+.ac span{width:42px;height:42px;border-radius:50%;background:var(--accent-soft);display:grid;place-items:center}
+.ac img{width:26px;height:26px;object-fit:contain}
+.guestpay{padding:16px;display:flex;align-items:center;gap:12px}
+.guestpay img{width:54px;height:54px;object-fit:contain}.guestpay b{display:block;font-size:16px;letter-spacing:-.01em}.guestpay span{font-size:12.5px;color:var(--mute)}
+.guestpay .cta{margin-left:auto;background:var(--accent);color:#fff;font-weight:700;font-size:14px;padding:10px 16px;border-radius:99px;white-space:nowrap}
+
+/* section */
+.sec{display:flex;align-items:center;gap:10px;margin:24px 0 12px;font-size:19px;font-weight:800;letter-spacing:-.02em;justify-content:center}
+.sec:before,.sec:after{content:"";flex:1;border-top:1.5px dotted var(--line)}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.qc{border-radius:22px;background:var(--card);padding:12px;box-shadow:0 0 0 1px var(--line),0 6px 16px rgba(0,0,0,.05);text-align:left}
+.qc .t{display:flex;gap:10px;align-items:flex-start}
+.qc .t div:first-child{width:46px;height:46px;border-radius:14px;background:var(--accent-soft);display:grid;place-items:center;flex:none}
+.qc .t img{width:34px;height:34px;object-fit:contain}
+.qc small{font-size:12px;color:var(--mute);display:block}.qc b{font-size:14.5px;line-height:1.2;display:block}
+.qc .f{display:flex;justify-content:space-between;align-items:center;border-top:1.5px dotted var(--line);margin-top:10px;padding-top:9px;font-weight:700;font-size:13.5px;color:var(--accent)}
+.qc .f i{width:30px;height:30px;border-radius:50%;background:var(--accent-soft);display:grid;place-items:center;font-style:normal}
+
+/* rating / ajakan */
+.rate{position:relative;margin-top:14px;padding:12px 14px;display:flex;gap:12px;align-items:center}
+.rate img{width:48px;height:48px;object-fit:contain}.rate b{display:block;font-size:14.5px}.rate small{font-size:12px;color:var(--mute)}
+.stars{margin-left:auto;display:flex;gap:2px;font-size:22px;color:#c7c9d1}
+.x{position:absolute;right:-6px;top:-8px;width:28px;height:28px;border-radius:50%;background:var(--card);box-shadow:0 0 0 1px var(--line);display:grid;place-items:center;font-size:13px;color:var(--mute)}
+
+/* live order + nav */
+.dock{position:absolute;left:0;right:0;bottom:0;z-index:40;padding:0 14px 22px;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+.dock>*{pointer-events:auto}
+.live{display:flex;align-items:center;gap:12px;background:#17181d;color:#fff;border-radius:24px;padding:12px 12px 12px 16px;box-shadow:0 12px 30px rgba(0,0,0,.3);animation:rise .7s var(--ease) both}
+.phone[data-p=malam] .live{background:#2a2e44}
+.live img{width:44px;height:44px;object-fit:contain}.live b{display:block;font-size:17px;letter-spacing:-.01em}.live small{font-size:13px;opacity:.75}
+.live .go{margin-left:auto;background:#1fa35a;color:#fff;font-weight:700;padding:11px 18px;border-radius:99px;font-size:15px}
+.live.off{display:none}
+@keyframes rise{from{opacity:0;transform:translateY(24px)}}
+.nav{height:70px;border-radius:99px;display:flex;align-items:center;justify-content:space-between;padding:0 8px}
+.ni{height:54px;min-width:60px;padding:0 6px;border-radius:99px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:700;color:var(--mute);position:relative}
+.ni img{width:24px;height:24px;object-fit:contain}
+.ni.on{background:var(--accent-soft);color:var(--accent);min-width:78px}
+.ni .dot{position:absolute;top:7px;right:14px;width:10px;height:10px;border-radius:50%;background:#e5484d;border:2px solid var(--card)}
+.ni.pay-b{min-width:88px;height:58px;background:var(--accent);color:#fff;box-shadow:0 8px 20px rgba(10,103,189,.4);margin-top:-6px;transition:transform .2s}
+.ni.pay-b:active{transform:scale(.94)}.phone[data-p=sore] .ni.pay-b{box-shadow:0 8px 20px rgba(180,87,15,.4)}
+.phone[data-p=malam] .ni.pay-b{color:#0b1220}
+.ni.pay-b img{background:#fff;border-radius:50%;padding:3px;width:28px;height:28px}
+
+.guestbar{display:none;margin-top:12px;gap:8px}
+.phone[data-u=guest] .guestbar{display:flex}
+.btnp{flex:1;min-height:50px;border-radius:16px;background:var(--accent);color:#fff;font-weight:700;font-size:16px}
+.phone[data-u=guest] .member-only{display:none}.phone[data-u=member] .guest-only{display:none}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01s!important}}
+</style></head><body>
+
+<aside class="ctl">
+ <h3>Beranda Customer · djiwatentram.web.id</h3>
+ <p>Pola layar mengikuti referensi (pencarian, pintasan besar, layanan, saldo, pilihan cepat, status pesanan, tab bawah), tetapi dengan identitas dan aset Djiwa.</p>
+ <div class="clock" id="clk">--:--</div>
+ <b>Jam</b><input id="rng" type="range" min="0" max="1439">
+ <b>Waktu hari (latar ilustrasi)</b>
+ <div class="seg"><button data-p="pagi">Pagi</button><button data-p="siang">Siang</button><button data-p="sore">Sore</button><button data-p="malam">Malam</button></div>
+ <b>Status pengguna</b>
+ <div class="seg two"><button data-u="member" class="on">Member</button><button data-u="guest">Tamu</button></div>
+ <b>Pesanan aktif</b>
+ <div class="seg two"><button data-l="1" class="on">Ada</button><button data-l="0">Tidak</button></div>
+ <b>Catatan desain</b>
+ <ul><li>Ilustrasi pagi/siang/sore/malam tetap di lapisan paling belakang, ganti otomatis mengikuti jam perangkat.</li><li>Isi halaman baru dimulai di bawah area ilustrasi (±190px kosong), jadi tokoh dan kafe tidak tertutup. Hanya pencarian dan sapaan di atasnya.</li><li>Kartu Saldo Djiwa Pay tampil di depan: saldo, poin, Top up / Kirim / Scan / Tagihan. Ketuk "Saldo" membuka /saldo.</li><li>Tab bawah: Beranda, Pesan, <b style="display:inline;margin:0;letter-spacing:0;text-transform:none;color:#fff">Bayar</b> (tengah), Komunitas, Profil. Saldo tidak lagi butuh tab sendiri.</li></ul>
+</aside>
+
+<div class="phone" id="ph" data-p="siang" data-u="member">
+ <div class="sky" id="sky">
+  <div class="ly" data-p="pagi"><img src="assets/hero-pagi.webp" alt=""></div>
+  <div class="ly" data-p="siang"><img src="assets/hero-siang.webp" alt=""></div>
+  <div class="ly" data-p="sore"><img src="assets/hero-sore.webp" alt=""></div>
+  <div class="ly" data-p="malam"><img src="assets/hero-malam.webp" alt=""></div>
+ </div>
+ <div class="sb"><span id="sbt">9:41</span><span>5G ▮▮▮</span></div>
+
+ <div class="scroll">
+  <div class="head">
+   <div class="search glass"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Cari menu, mis. “Kopi susu”</span></div>
+   <div class="poin"><img src="assets/loyalty-points.webp" alt=""><span><small>Ambil</small>Poin</span></div>
+  </div>
+  <div class="greet"><span id="gt">Selamat siang</span><small class="member-only">Azzam, mau pesan apa?</small><small class="guest-only">Pesan tanpa antre</small></div>
+
+  <div class="big">
+   <button class="bc"><img src="assets/menu.webp" alt=""><span class="tag">Favorit</span><b>Pesan</b></button>
+   <button class="bc"><img src="assets/promo.webp" alt=""><span class="tag">50%</span><b>Promo</b></button>
+   <button class="bc"><img src="assets/booking.webp" alt=""><span class="tag">Acara</span><b>Booking</b></button>
+  </div>
+
+  <!-- SALDO di depan -->
+  <div class="card pay member-only" id="pay">
+   <div class="l">
+    <div class="lab">Djiwa Pay <button id="eye" aria-label="Sembunyikan saldo"><img id="eyei" src="assets/eye.webp" alt=""></button></div>
+    <div class="amt" id="amt">Rp88.800</div>
+    <div class="pt"><img src="assets/loyalty-points.webp" width="16" alt=""> 240 poin · <u>+Rp1.000/top up</u></div>
+   </div>
+   <div class="acts">
+    <button class="ac"><span><img src="assets/topup.webp" alt=""></span>Top up</button>
+    <button class="ac"><span><img src="assets/send.webp" alt=""></span>Kirim</button>
+    <button class="ac"><span><img src="assets/bills.webp" alt=""></span>Tagihan</button>
+   </div>
+  </div>
+  <div class="card guestpay guest-only">
+   <img src="assets/pay.webp" alt=""><div><b>Djiwa Pay</b><span>Daftar member, saldo bonus menanti</span></div><button class="cta">Masuk</button>
+  </div>
+
+  <div class="card svc">
+   <button class="sv"><img src="assets/community.webp" alt=""><span>Komunitas</span></button>
+   <button class="sv"><img src="assets/merchandise.webp" alt=""><i>Baru</i><span>Merch</span></button>
+   <button class="sv"><img src="assets/run.webp" alt=""><i>Baru</i><span>Djiwa Run</span></button>
+   <button class="sv"><img src="assets/history.webp" alt=""><span>Riwayat</span></button>
+   <button class="sv"><div class="more"><span></span></div><span>Lainnya</span></button>
+  </div>
+
+  <div class="sec">✨ Pilihan cepat buatmu</div>
+  <div class="quick">
+   <button class="qc"><div class="t"><div><img src="assets/menu.webp" alt=""></div><div><small>Pesan ulang</small><b>Kopi Susu Aren + Roti Bakar</b></div></div><div class="f"><span>Rp32.000</span><i>→</i></div></button>
+   <button class="qc"><div class="t"><div><img src="assets/promo.webp" alt=""></div><div><small>Terlaris</small><b>Nasi Ayam Sambal Matah</b></div></div><div class="f"><span>Rp15.000</span><i>→</i></div></button>
+  </div>
+
+  <div class="card rate member-only"><img src="assets/order-tracking.webp" alt=""><div><b>Beri nilai pesananmu</b><small>15 Nov · 2 menu</small></div><div class="stars">★★★★★</div><span class="x">✕</span></div>
+  <div class="guestbar"><button class="btnp">Masuk / Daftar Member</button></div>
+ </div>
+
+ <div class="dock">
+  <div class="live" id="live"><img src="assets/order-tracking.webp" alt=""><div><b>Pesanan siap jam 13:53</b><small>Djiwa Tentram · #A-27</small></div><button class="go">Pantau</button></div>
+  <nav class="nav glass">
+   <button class="ni on"><img src="assets/home.webp" alt=""><span>Beranda</span></button>
+   <button class="ni"><img src="assets/menu.webp" alt=""><span>Pesan</span></button>
+   <button class="ni pay-b"><img src="assets/scan.webp" alt=""><span>Bayar</span></button>
+   <button class="ni"><img src="assets/community.webp" alt=""><span>Komunitas</span><i class="dot"></i></button>
+   <button class="ni"><img src="assets/profile.webp" alt=""><span>Profil</span></button>
+  </nav>
+ </div>
+ <div class="homebar"></div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],ph=$('#ph');
+const per=h=>h>=18||h<5?'malam':h>=15?'sore':h>=11?'siang':'pagi';
+let auto=true;
+function setP(p){ph.dataset.p=p;$$('.sky .ly').forEach(l=>l.classList.toggle('on',l.dataset.p===p));$('#gt').textContent='Selamat '+p;$$('.ctl [data-p]').forEach(b=>b.classList.toggle('on',b.dataset.p===p))}
+function setT(min){const h=Math.floor(min/60),m=min%60,t=h+':'+String(m).padStart(2,'0');$('#clk').textContent=t.padStart(5,'0');$('#sbt').textContent=t;$('#rng').value=min;setP(per(h))}
+const n=new Date();setT(n.getHours()*60+n.getMinutes());
+$('#rng').oninput=e=>setT(+e.target.value);
+$$('.ctl [data-p]').forEach(b=>b.onclick=()=>{const m={pagi:8,siang:12,sore:16,malam:20}[b.dataset.p]*60;setT(m)});
+$$('.ctl [data-u]').forEach(b=>b.onclick=()=>{ph.dataset.u=b.dataset.u;$$('.ctl [data-u]').forEach(x=>x.classList.toggle('on',x===b))});
+$$('.ctl [data-l]').forEach(b=>b.onclick=()=>{$('#live').classList.toggle('off',b.dataset.l==='0');$$('.ctl [data-l]').forEach(x=>x.classList.toggle('on',x===b))});
+let hid=false;$('#eye').onclick=()=>{hid=!hid;$('#amt').textContent=hid?'Rp ••••••':'Rp88.800';$('#eyei').src=hid?'assets/eyeoff.webp':'assets/eye.webp'};
+</script>
+</body></html>

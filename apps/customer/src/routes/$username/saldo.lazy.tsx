@@ -129,6 +129,19 @@ function SaldoPage() {
 		{ label: "Bantuan", icon: "help", onClick: () => setFlow("help") },
 	];
 	const openTopup = () => { setFlow(null); setFormError(null); setSheet(true); };
+
+	// Pintasan dari beranda/tab Bayar: /saldo?aksi=scan|kirim|tagihan|topup membuka alur terkait sekali.
+	useEffect(() => {
+		if (authLoading || !customer) return;
+		const aksi = new URLSearchParams(window.location.search).get("aksi");
+		if (!aksi) return;
+		window.history.replaceState(window.history.state, "", window.location.pathname);
+		if (aksi === "scan") setFlow("scan");
+		else if (aksi === "kirim") setFlow("send");
+		else if (aksi === "tagihan") setFlow("ppob");
+		else if (aksi === "topup") openTopup();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [authLoading, customer]);
 	const inPay = [
 		{ label: "Kirim saldo", sub: "Ke pengguna Djiwa", icon: "send", onClick: () => { setSendPhone(undefined); setFlow("send"); } },
 		{ label: "Scan QR", sub: "Kirim lewat QR penerima", icon: "scan-qr", onClick: () => setFlow("scan") },

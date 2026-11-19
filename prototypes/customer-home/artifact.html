@@ -1,0 +1,210 @@
+<title>Beranda Djiwa Tentram</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: ilustrasi waktu hari di atas (tidak tertutup), isi ringkas mulai di bawahnya; tampilan cerah di semua waktu. */
+:root{--sans:-apple-system,"SF Pro Text",Inter,system-ui,sans-serif;--canvas:#f4f8fc;--card:#fff;--ink:#14202e;--mute:#5d6b7c;--line:rgba(20,40,70,.10);--accent:#0a7be0;--accent-soft:#e4f1fe;--ok:#12864e;--warn:#ffe08a;--ease:cubic-bezier(.32,.72,0,1)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0}
+body{background:#dfe9f4;color:var(--ink);font:14px/1.35 var(--sans);-webkit-font-smoothing:antialiased;padding-block:20px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}img{display:block}
+.stage{display:flex;flex-wrap:wrap;gap:24px;justify-content:center;align-items:flex-start}
+.ctl{width:min(100%,290px);background:#fff;border-radius:20px;padding:16px;box-shadow:0 8px 28px rgba(20,60,110,.12);font-size:12.5px}
+.ctl h1{font-size:15px;letter-spacing:-.01em}.ctl p{color:var(--mute);margin:3px 0 8px}
+.ctl h2{margin:12px 0 5px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}.seg.two{grid-template-columns:1fr 1fr}
+.seg button{background:#eef3f9;border-radius:9px;padding:7px 2px;font-weight:600}.seg button.on{background:var(--accent);color:#fff}
+.clock{font:700 24px var(--sans);font-variant-numeric:tabular-nums}
+.ctl input[type=range]{width:100%;accent-color:var(--accent)}
+.ctl ul{margin:0 0 0 16px;color:var(--mute)}.ctl li{margin-bottom:4px}
+
+.phone{position:relative;width:min(100%,390px);height:844px;border-radius:44px;overflow:hidden;isolation:isolate;background:var(--canvas);box-shadow:0 0 0 9px #1b2430,0 24px 60px rgba(20,60,110,.28)}
+.sky{position:absolute;left:0;right:0;top:0;height:300px;z-index:0;overflow:hidden;-webkit-mask-image:linear-gradient(#000 78%,transparent);mask-image:linear-gradient(#000 78%,transparent)}
+.sky .ly{position:absolute;inset:0;opacity:0;transition:opacity 1.3s}.sky .ly.on{opacity:1}
+.sky img{width:100%;height:100%;object-fit:cover;object-position:50% 38%}
+.sky .ly[data-p=malam] img{filter:brightness(1.45) saturate(1.15) contrast(.95)}
+.sky .ly[data-p=sore] img{filter:brightness(1.1) saturate(1.05)}
+.sky:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.28),transparent 30%)}
+.sb{position:absolute;top:0;left:0;right:0;height:44px;z-index:30;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 5px;font-weight:700;font-size:14px;color:#10202f}
+.homebar{position:absolute;bottom:6px;left:50%;width:128px;height:5px;margin-left:-64px;border-radius:3px;background:#10202f;opacity:.4;z-index:60}
+.scroll{position:absolute;inset:0;z-index:2;overflow-y:auto;scrollbar-width:none;padding:48px 12px 170px}.scroll::-webkit-scrollbar{display:none}
+
+.glass{background:rgba(255,255,255,.88);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:0 4px 14px rgba(20,60,110,.12)}
+.head{display:flex;gap:8px;align-items:center}
+.search{flex:1;height:40px;border-radius:99px;display:flex;align-items:center;gap:8px;padding:0 13px;color:var(--mute);font-size:13.5px;min-width:0}
+.search svg{width:17px;height:17px;flex:none}.search span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.poin{height:40px;border-radius:99px;display:flex;align-items:center;gap:5px;padding:0 12px 0 7px;font-weight:800;font-size:12.5px;line-height:1.05;background:var(--warn);color:#5a3a00;box-shadow:0 4px 14px rgba(160,110,0,.25)}
+.poin img{width:24px;height:24px;object-fit:contain}.poin small{display:block;font-size:10px;font-weight:600;opacity:.75}
+.greet{margin-top:10px;display:inline-block;padding:7px 12px;border-radius:13px;background:rgba(255,255,255,.9);box-shadow:0 4px 14px rgba(20,60,110,.14);font-weight:800;font-size:15px;line-height:1.15;letter-spacing:-.02em}
+.greet small{display:block;font-size:11px;font-weight:600;color:var(--mute);letter-spacing:0;margin-top:1px}
+
+.big{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:150px}
+.bc{position:relative;border-radius:18px;background:var(--card);padding:7px 4px 8px;text-align:center;box-shadow:0 0 0 2px var(--accent-soft),0 5px 14px rgba(20,60,110,.09);transition:transform .2s}
+.bc:active{transform:scale(.95)}
+.bc img{width:42px;height:42px;object-fit:contain;margin:0 auto}
+.bc .tag{display:inline-block;margin-top:-5px;position:relative;background:var(--accent-soft);color:var(--accent);font-size:10.5px;font-weight:800;padding:0 7px;border-radius:99px;line-height:15px}
+.bc b{display:block;margin-top:3px;font-size:13px;font-weight:700}
+
+.card{margin-top:9px;border-radius:20px;background:var(--card);box-shadow:0 0 0 1px var(--line),0 4px 12px rgba(20,60,110,.05)}
+/* saldo */
+.pay{padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:6px;background:linear-gradient(120deg,#e6f2ff,#fff 62%)}
+.pay .lab{display:flex;align-items:center;gap:5px;font-weight:800;font-size:13px;color:var(--accent)}
+.pay .lab button{width:22px;height:22px;display:grid;place-items:center}.pay .lab img{width:15px;opacity:.65}
+.pay .amt{font-size:21px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.15}
+.pay .pt{font-size:11px;color:var(--mute);white-space:nowrap}.pay .pt u{text-decoration:none;font-weight:700;color:var(--ok)}
+.acts{display:flex;gap:0}.ac{width:52px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600}
+.ac span{width:36px;height:36px;border-radius:50%;background:var(--accent-soft);display:grid;place-items:center}.ac img{width:23px;height:23px;object-fit:contain}
+.guestpay{padding:10px 12px;display:flex;align-items:center;gap:10px}.guestpay img{width:40px;height:40px;object-fit:contain}
+.guestpay b{display:block;font-size:14px}.guestpay span{font-size:11.5px;color:var(--mute)}
+.guestpay .cta{margin-left:auto;background:var(--accent);color:#fff;font-weight:700;font-size:13px;padding:8px 14px;border-radius:99px}
+
+/* layanan: digeser, tanpa "Lainnya" */
+.svwrap{position:relative;overflow:hidden;border-radius:20px}
+.svc{display:flex;gap:6px;overflow-x:auto;scroll-snap-type:x proximity;padding:9px 12px 4px;scrollbar-width:none;overscroll-behavior-x:contain}
+.svc::-webkit-scrollbar{display:none}
+.sv{flex:none;width:60px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;position:relative}
+.sv img{width:38px;height:38px;object-fit:contain}.sv span{max-width:100%;white-space:nowrap}
+.sv i{position:absolute;top:-3px;right:3px;font-style:normal;font-size:8.5px;font-weight:800;background:#e5484d;color:#fff;padding:0 5px;border-radius:99px;line-height:13px}
+.fade{position:absolute;top:0;bottom:0;right:0;width:56px;background:linear-gradient(90deg,transparent,#fff 70%);pointer-events:none;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;transition:opacity .4s}
+.fade .arr{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:800;box-shadow:0 3px 10px rgba(10,123,224,.4);animation:nudge 1.3s ease-in-out infinite}
+@keyframes nudge{0%,100%{transform:translateX(-4px)}50%{transform:translateX(3px)}}
+.track{height:3px;margin:4px 40px 7px;border-radius:3px;background:var(--accent-soft);position:relative;overflow:hidden}
+.track b{position:absolute;left:0;top:0;bottom:0;width:35%;border-radius:3px;background:var(--accent);transition:left .1s linear}
+.hint{position:absolute;right:10px;top:-1px;font-size:9.5px;font-weight:800;color:var(--accent);letter-spacing:.04em;text-transform:uppercase;opacity:0;animation:hint 2.6s ease .6s 2 both;pointer-events:none}
+@keyframes hint{0%,100%{opacity:0}20%,70%{opacity:1}}
+.svwrap.done .fade,.svwrap.done .hint{opacity:0;animation:none}
+
+.sec{display:flex;align-items:center;gap:8px;margin:14px 0 8px;font-size:15px;font-weight:800;letter-spacing:-.02em;justify-content:center}
+.sec:before,.sec:after{content:"";flex:1;border-top:1.5px dotted rgba(20,40,70,.18)}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.qc{border-radius:16px;background:var(--card);padding:8px 9px;box-shadow:0 0 0 1px var(--line),0 4px 12px rgba(20,60,110,.05);text-align:left}
+.qc .t{display:flex;gap:8px;align-items:center}.qc .ic{width:36px;height:36px;border-radius:11px;background:var(--accent-soft);display:grid;place-items:center;flex:none}
+.qc img{width:27px;height:27px;object-fit:contain}.qc small{display:block;font-size:10.5px;color:var(--mute)}
+.qc b{display:block;font-size:12.5px;line-height:1.2}
+.qc .f{display:flex;justify-content:space-between;align-items:center;border-top:1.5px dotted var(--line);margin-top:6px;padding-top:5px;font-weight:700;font-size:12px;color:var(--accent)}
+.rate{position:relative;margin-top:10px;padding:8px 12px;display:flex;gap:10px;align-items:center}
+.rate img{width:36px;height:36px;object-fit:contain}.rate b{display:block;font-size:13px}.rate small{font-size:11px;color:var(--mute)}
+.stars{margin-left:auto;font-size:18px;letter-spacing:1px;color:#c3cad4}
+.x{position:absolute;right:-4px;top:-6px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px var(--line);display:grid;place-items:center;font-size:10px;color:var(--mute)}
+.guestbar{display:none;margin-top:10px}.btnp{width:100%;min-height:44px;border-radius:14px;background:var(--accent);color:#fff;font-weight:700;font-size:15px}
+.phone[data-u=guest] .guestbar{display:block}.phone[data-u=guest] .member-only{display:none}.phone[data-u=member] .guest-only{display:none}
+
+.dock{position:absolute;left:0;right:0;bottom:0;z-index:40;padding:0 12px 18px;display:flex;flex-direction:column;gap:8px;pointer-events:none}.dock>*{pointer-events:auto}
+.live{display:flex;align-items:center;gap:10px;background:#1b2634;color:#fff;border-radius:18px;padding:8px 8px 8px 12px;box-shadow:0 10px 24px rgba(20,40,70,.28);animation:rise .6s var(--ease) both}
+.live.off{display:none}.live img{width:34px;height:34px;object-fit:contain}.live b{display:block;font-size:14px}.live small{font-size:11.5px;opacity:.75}
+.live .go{margin-left:auto;background:#1fa35a;font-weight:700;padding:8px 15px;border-radius:99px;font-size:13.5px;color:#fff}
+@keyframes rise{from{opacity:0;transform:translateY(20px)}}
+.nav{height:58px;border-radius:99px;display:flex;align-items:center;justify-content:space-between;padding:0 6px}
+.ni{height:46px;min-width:52px;border-radius:99px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:10px;font-weight:700;color:var(--mute);position:relative}
+.ni img{width:21px;height:21px;object-fit:contain}.ni.on{background:var(--accent-soft);color:var(--accent);min-width:70px}
+.ni .dot{position:absolute;top:5px;right:12px;width:9px;height:9px;border-radius:50%;background:#e5484d;border:2px solid #fff}
+.ni.pay-b{min-width:78px;height:50px;background:var(--accent);color:#fff;margin-top:-5px;box-shadow:0 7px 16px rgba(10,123,224,.4)}
+.ni.pay-b img{background:#fff;border-radius:50%;padding:2px;width:24px;height:24px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01s!important}}
+</style>
+
+<div class="stage">
+<aside class="ctl">
+ <h1>Beranda Customer</h1>
+ <p>Versi ringkas dan cerah. Latar ilustrasi tetap di atas dan tidak tertutup kartu.</p>
+ <div class="clock" id="clk">--:--</div>
+ <input id="rng" type="range" min="0" max="1439" aria-label="Jam">
+ <h2>Waktu hari</h2>
+ <div class="seg" id="sp"><button data-p="pagi">Pagi</button><button data-p="siang">Siang</button><button data-p="sore">Sore</button><button data-p="malam">Malam</button></div>
+ <h2>Pengguna</h2>
+ <div class="seg two" id="su"><button data-u="member" class="on">Member</button><button data-u="guest">Tamu</button></div>
+ <h2>Pesanan aktif</h2>
+ <div class="seg two" id="sl"><button data-l="1" class="on">Ada</button><button data-l="0">Tidak</button></div>
+ <h2>Yang berubah</h2>
+ <ul><li>UI selalu terang; malam hanya mengganti ilustrasi (dicerahkan).</li><li>Layanan digeser: panah bergerak, tulisan "Geser", dan baris menggeser sendiri sekali. Penanda hilang setelah digeser.</li><li>Saldo Djiwa Pay satu baris, terlihat tanpa scroll.</li></ul>
+</aside>
+
+<div class="phone" id="ph" data-u="member">
+ <div class="sky">
+  <div class="ly" data-p="pagi"><img src="assets/hero-pagi.webp" alt=""></div>
+  <div class="ly" data-p="siang"><img src="assets/hero-siang.webp" alt=""></div>
+  <div class="ly" data-p="sore"><img src="assets/hero-sore.webp" alt=""></div>
+  <div class="ly" data-p="malam"><img src="assets/hero-malam.webp" alt=""></div>
+ </div>
+ <div class="sb"><span id="sbt">9:41</span><span>5G ▮▮▮</span></div>
+ <div class="scroll">
+  <div class="head">
+   <div class="search glass"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Cari menu, mis. “Kopi susu”</span></div>
+   <div class="poin"><img src="assets/loyalty-points.webp" alt=""><span><small>Ambil</small>Poin</span></div>
+  </div>
+  <div class="greet"><span id="gt">Selamat siang</span><small class="member-only">Azzam, mau pesan apa?</small><small class="guest-only">Pesan tanpa antre</small></div>
+
+  <div class="big">
+   <button class="bc"><img src="assets/menu.webp" alt=""><span class="tag">Favorit</span><b>Pesan</b></button>
+   <button class="bc"><img src="assets/promo.webp" alt=""><span class="tag">50%</span><b>Promo</b></button>
+   <button class="bc"><img src="assets/booking.webp" alt=""><span class="tag">Acara</span><b>Booking</b></button>
+  </div>
+
+  <div class="card pay member-only">
+   <div>
+    <div class="lab">Djiwa Pay <button id="eye" aria-label="Sembunyikan saldo"><img id="eyei" src="assets/eye.webp" alt=""></button></div>
+    <div class="amt" id="amt">Rp88.800</div>
+    <div class="pt">240 poin · <u>+Rp1.000/top up</u></div>
+   </div>
+   <div class="acts">
+    <button class="ac"><span><img src="assets/topup.webp" alt=""></span>Top up</button>
+    <button class="ac"><span><img src="assets/send.webp" alt=""></span>Kirim</button>
+    <button class="ac"><span><img src="assets/bills.webp" alt=""></span>Tagihan</button>
+   </div>
+  </div>
+  <div class="card guestpay guest-only"><img src="assets/pay.webp" alt=""><div><b>Djiwa Pay</b><span>Daftar member, ada saldo bonus</span></div><button class="cta">Masuk</button></div>
+
+  <div class="card svwrap" id="svw">
+   <div class="svc" id="svc">
+    <button class="sv"><img src="assets/community.webp" alt=""><span>Komunitas</span></button>
+    <button class="sv"><img src="assets/history.webp" alt=""><span>Riwayat</span></button>
+    <button class="sv"><img src="assets/merchandise.webp" alt=""><i>Baru</i><span>Merch</span></button>
+    <button class="sv"><img src="assets/run.webp" alt=""><i>Baru</i><span>Djiwa Run</span></button>
+    <button class="sv"><img src="assets/pay.webp" alt=""><span>Djiwa Pay</span></button>
+    <button class="sv"><img src="assets/loyalty-points.webp" alt=""><span>Poin</span></button>
+    <button class="sv"><img src="assets/promo-voucher.webp" alt=""><span>Voucher</span></button>
+    <button class="sv"><img src="assets/order-tracking.webp" alt=""><span>Lacak</span></button>
+   </div>
+   <div class="track"><b id="trk"></b></div>
+   <span class="hint">Geser</span>
+   <div class="fade"><span class="arr">›</span></div>
+  </div>
+
+  <div class="sec">✨ Pilihan cepat buatmu</div>
+  <div class="quick">
+   <button class="qc"><div class="t"><div class="ic"><img src="assets/menu.webp" alt=""></div><div><small>Pesan ulang</small><b>Kopi Susu Aren + Roti Bakar</b></div></div><div class="f"><span>Rp32.000</span><span>→</span></div></button>
+   <button class="qc"><div class="t"><div class="ic"><img src="assets/promo.webp" alt=""></div><div><small>Terlaris</small><b>Nasi Ayam Sambal Matah</b></div></div><div class="f"><span>Rp15.000</span><span>→</span></div></button>
+  </div>
+  <div class="card rate member-only"><img src="assets/order-tracking.webp" alt=""><div><b>Beri nilai pesananmu</b><small>15 Nov · 2 menu</small></div><div class="stars">★★★★★</div><span class="x">✕</span></div>
+  <div class="guestbar"><button class="btnp">Masuk / Daftar Member</button></div>
+ </div>
+
+ <div class="dock">
+  <div class="live" id="live"><img src="assets/order-tracking.webp" alt=""><div><b>Pesanan siap jam 13:53</b><small>Djiwa Tentram · #A-27</small></div><button class="go">Pantau</button></div>
+  <nav class="nav glass">
+   <button class="ni on"><img src="assets/home.webp" alt=""><span>Beranda</span></button>
+   <button class="ni"><img src="assets/menu.webp" alt=""><span>Pesan</span></button>
+   <button class="ni pay-b"><img src="assets/scan.webp" alt=""><span>Bayar</span></button>
+   <button class="ni"><img src="assets/community.webp" alt=""><span>Komunitas</span><i class="dot"></i></button>
+   <button class="ni"><img src="assets/profile.webp" alt=""><span>Profil</span></button>
+  </nav>
+ </div>
+ <div class="homebar"></div>
+</div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],ph=$('#ph');
+const per=h=>h>=18||h<5?'malam':h>=15?'sore':h>=11?'siang':'pagi';
+function setP(p){$$('.sky .ly').forEach(l=>l.classList.toggle('on',l.dataset.p===p));$('#gt').textContent='Selamat '+p;$$('#sp button').forEach(b=>b.classList.toggle('on',b.dataset.p===p))}
+function setT(m){const h=Math.floor(m/60),t=h+':'+String(m%60).padStart(2,'0');$('#clk').textContent=t.padStart(5,'0');$('#sbt').textContent=t;$('#rng').value=m;setP(per(h))}
+const n=new Date();setT(n.getHours()*60+n.getMinutes());
+$('#rng').oninput=e=>setT(+e.target.value);
+$$('#sp button').forEach(b=>b.onclick=()=>setT({pagi:8,siang:12,sore:16,malam:20}[b.dataset.p]*60));
+$$('#su button').forEach(b=>b.onclick=()=>{ph.dataset.u=b.dataset.u;$$('#su button').forEach(x=>x.classList.toggle('on',x===b))});
+$$('#sl button').forEach(b=>b.onclick=()=>{$('#live').classList.toggle('off',b.dataset.l==='0');$$('#sl button').forEach(x=>x.classList.toggle('on',x===b))});
+let hid=false;$('#eye').onclick=()=>{hid=!hid;$('#amt').textContent=hid?'Rp ••••••':'Rp88.800';$('#eyei').src=hid?'assets/eyeoff.webp':'assets/eye.webp'};
+// geser layanan: penanda + nudge sekali
+const sc=$('#svc'),w=$('#svw'),tk=$('#trk');let touched=false,nudging=false;
+const upd=()=>{const max=sc.scrollWidth-sc.clientWidth,r=max?sc.scrollLeft/max:0;tk.style.left=(r*65)+'%';tk.style.width=(sc.clientWidth/sc.scrollWidth*100)+'%';tk.style.left=(r*(100-sc.clientWidth/sc.scrollWidth*100))+'%';if(sc.scrollLeft>24&&!touched&&!nudging){touched=true;w.classList.add('done')}};
+sc.addEventListener('scroll',upd,{passive:true});['pointerdown','wheel','touchstart'].forEach(e=>sc.addEventListener(e,()=>{touched=true},{passive:true}));upd();
+if(!matchMedia('(prefers-reduced-motion:reduce)').matches){const nudge=()=>{if(touched)return;nudging=true;sc.scrollTo({left:70,behavior:'smooth'});setTimeout(()=>{sc.scrollTo({left:0,behavior:'smooth'});setTimeout(()=>{nudging=false},600)},750)};setTimeout(nudge,1200);setTimeout(nudge,4200)}
+</script>
