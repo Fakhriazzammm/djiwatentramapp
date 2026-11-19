@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { animate, AnimatePresence, motion, useReducedMotion, useScroll, useTransform, type Variants } from "framer-motion";
-import { ArrowRight, BadgeCheck, ChevronRight, Eye, EyeOff, HeartHandshake, Search } from "lucide-react";
-import { toast } from "sonner";
+import { BadgeCheck, ChevronRight, Eye, EyeOff, HeartHandshake, Search } from "lucide-react";
 import { Djiwa3DIcon } from "@djiwaapps/web-shared";
 import { currency } from "@/components/customer/types";
 import type { CustomerUser } from "@/hooks/use-customer-auth";
-import { useCustomerOrders } from "@/hooks/use-customer-data";
 import { useJumatBerkah } from "@/hooks/use-jumat-berkah";
 import { communityClient } from "@/features/community/community-client";
 import type { CommunityPurchaseActivity } from "@/features/community/community-types";
 import { HERO_IMAGES } from "@/components/customer/customer-home-hero";
 import { isFridayInJakarta, useHomeCatalog, useQuickAdd } from "@/components/customer/customer-home-editorial";
-import { buildReorderCart, formatOrderDate, pickLastCompletedOrder, pickTopSellers, summarizeOrderItems, type FeaturedProduct } from "@/lib/home-feed";
+import { pickTopSellers } from "@/lib/home-feed";
 import { greetingForPeriod, type DayPeriod } from "@/lib/day-period";
 import { cn } from "@/lib/utils";
 
@@ -578,100 +576,21 @@ export function HomeFriendActivity({ onOpenCommunity }: { onOpenCommunity: () =>
   );
 }
 
-type QuickCard = { key: string; kicker: string; title: string; price: string; image: string | null; disabled?: boolean; onClick: () => void };
-
-/** "Pilihan cepat buatmu": pesan ulang pesanan terakhir dan menu terlaris, satu ketukan ke keranjang. */
-export function HomeQuickPicks({ username, signedIn }: { username: string; signedIn: boolean }) {
-  const { productMap } = useHomeCatalog();
-  const { items: top, ready } = useTopSellersToday(3);
-  const { orders } = useCustomerOrders();
-  const { addProduct, openMenu, setCart } = useQuickAdd(username);
-  const lastOrder = useMemo(() => (signedIn ? pickLastCompletedOrder(orders) : null), [orders, signedIn]);
-
-  const reorder = useCallback(() => {
-    if (!lastOrder) return;
-    const { items, missing } = buildReorderCart(lastOrder, productMap);
-    if (items.length === 0) {
-      toast.error("Menu pada pesanan ini sudah tidak tersedia");
-      return;
-    }
-    setCart((current) => {
-      const next = [...current];
-      for (const item of items) {
-        const index = next.findIndex((entry) => entry.productId === item.productId && entry.variant === item.variant);
-        if (index >= 0) next[index] = { ...next[index], quantity: next[index].quantity + item.quantity };
-        else next.push(item);
-      }
-      return next;
-    });
-    toast.success(`${items.length} menu ditambahkan ke keranjang`);
-    if (missing > 0) toast.warning(`${missing} menu tidak tersedia lagi dan dilewati`);
-    openMenu();
-  }, [lastOrder, openMenu, productMap, setCart]);
-
-  const cards = useMemo<QuickCard[]>(() => {
-    const list: QuickCard[] = [];
-    if (lastOrder) {
-      const image = productMap.get(lastOrder.items[0]?.productId)?.image;
-      list.push({
-        key: "reorder",
-        kicker: `Pesan ulang · ${formatOrderDate(lastOrder.createdAt)}`,
-        title: summarizeOrderItems(lastOrder),
-        price: currency(lastOrder.totalAmount),
-        image: typeof image === "string" && /^https?:\/\//.test(image) ? image : null,
-        onClick: reorder,
-      });
-    }
-    const fill: FeaturedProduct[] = top.slice(0, 2 - list.length);
-    for (const item of fill) {
-      list.push({
-        key: item.productId,
-        kicker: "Terlaris",
-        title: item.name,
-        price: item.price != null ? currency(item.price) : "Harga belum tersedia",
-        image: item.image,
-        disabled: !item.isAvailable,
-        onClick: () => addProduct(item),
-      });
-    }
-    return list;
-  }, [addProduct, lastOrder, productMap, reorder, top]);
-
-  if (!ready && cards.length === 0) return <div className="mt-4 h-[104px] animate-pulse rounded-[18px] bg-muted" role="status" aria-label="Memuat pilihan cepat" />;
-  if (cards.length === 0) return null;
-
+/** "Lihat lebih banyak!": pintasan ke daftar menu lengkap. */
+export function HomeQuickPicks({ username }: { username: string }) {
+  const { openMenu } = useQuickAdd(username);
   return (
-    <section aria-label="Pilihan cepat buatmu">
+    <section aria-label="Lihat lebih banyak menu">
       <SectionDivider>
-        <span aria-hidden="true">✨</span> Pilihan cepat buatmu
+        <button
+          type="button"
+          onClick={openMenu}
+          className="flex min-h-9 items-center gap-1.5 rounded-lg text-primary focus-visible:outline-none focus-visible:underline"
+        >
+          <span aria-hidden="true">✨</span> Lihat lebih banyak!
+          <ChevronRight className="h-4 w-4" strokeWidth={3} aria-hidden="true" />
+        </button>
       </SectionDivider>
-      <motion.div variants={listVariants} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-40px" }} className="grid grid-cols-2 gap-2">
-        {cards.map((card) => (
-          <motion.button
-            key={card.key}
-            type="button"
-            variants={popVariants}
-            whileTap={{ scale: 0.96 }}
-            disabled={card.disabled}
-            onClick={card.onClick}
-            className={cn("rounded-2xl bg-card p-2 text-left shadow-[0_0_0_1px_hsl(var(--border)),0_4px_12px_rgba(20,60,110,0.05)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50", card.disabled && "opacity-55")}
-          >
-            <span className="flex items-center gap-2">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[11px] bg-primary/10">
-                {card.image ? <img src={card.image} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <img src="/assets/djiwa-services/menu.webp" alt="" className="h-[27px] w-[27px] object-contain" />}
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-[10.5px] text-muted-foreground">{card.kicker}</span>
-                <span className="line-clamp-2 block text-[12.5px] font-bold leading-[1.2] text-foreground">{card.title}</span>
-              </span>
-            </span>
-            <span className="mt-1.5 flex items-center justify-between border-t-[1.5px] border-dotted border-border pt-1.5 text-xs font-bold text-primary">
-              <span>{card.disabled ? "Habis" : card.price}</span>
-              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-            </span>
-          </motion.button>
-        ))}
-      </motion.div>
     </section>
   );
 }

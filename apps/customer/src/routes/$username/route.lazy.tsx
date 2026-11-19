@@ -313,7 +313,7 @@ function MemberHomePage() {
 							<HomeServiceRail {...serviceHandlers} />
 							<div className="mt-3 space-y-3">
 								<JumatBerkahBanner onOpen={openJumatBerkah} onDonate={donateJumatBerkahAsGuest} />
-								<HomeQuickPicks username={username} signedIn={false} />
+								<HomeQuickPicks username={username} />
 								<HomeTopSellersToday username={username} />
 								<HomeFriendActivity onOpenCommunity={goCommunity} />
 								<HomeRestaurantInfo />
@@ -360,7 +360,7 @@ function MemberHomePage() {
 							<HomeServiceRail {...serviceHandlers} />
 							<div className="mt-3 space-y-3">
 								<JumatBerkahBanner onOpen={openJumatBerkah} onDonate={donateJumatBerkah} />
-								<HomeQuickPicks username={username} signedIn />
+								<HomeQuickPicks username={username} />
 								<CustomerStoryRail onOpenCommunity={goCommunity} />
 								<HomeTopSellersToday username={username} />
 								<HomeFriendActivity onOpenCommunity={goCommunity} />
