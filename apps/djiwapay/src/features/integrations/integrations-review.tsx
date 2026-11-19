@@ -19,11 +19,14 @@ const dayLabel = (key: string) => {
   return new Date(`${key}T12:00:00+07:00`).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" });
 };
 const timeOf = (iso?: string) => (iso ? new Date(iso).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }).replace(":", ".") : "");
-const titleOf = (it: ReviewItem) => tidyTitle(it.parsed.details?.description || it.parsed.merchant || it.parsed.subject || CHANNEL_NAME[it.channel] || "Email pembayaran");
+const titleOf = (it: ReviewItem) => it.parsed.bill ? `Tagihan ${it.parsed.merchant ?? CHANNEL_NAME[it.channel] ?? ""}`.trim() : tidyTitle(it.parsed.details?.description || it.parsed.merchant || it.parsed.subject || CHANNEL_NAME[it.channel] || "Email pembayaran");
 const kindOf = (it: ReviewItem): "in" | "out" => (it.parsed.kind === "in" || (!it.parsed.kind && it.parsed.direction === "in") ? "in" : "out");
 /** A top-up moves the person's own money into a wallet: it is neither income nor spending. */
 const isMove = (it: ReviewItem) => Boolean(it.parsed.transfer);
 /** A sender we have no template for: nothing is recorded until the person says whether it was income or spending. */
+/** A reminder that something is owed: it becomes a bill under "Kamu berutang", not an expense. */
+const isBill = (it: ReviewItem) => Boolean(it.parsed.bill);
+const dueLabel = (due?: string | null) => (due ? new Date(`${due}T12:00:00+07:00`).toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : "tanpa tanggal");
 const isGeneric = (it: ReviewItem) => Boolean(it.parsed.generic) && !it.parsed.kind;
 const moveAmount = (it: ReviewItem) => it.parsed.transfer?.amount ?? it.parsed.amount ?? 0;
 const sourceOf = (it: ReviewItem) => `${CHANNEL_NAME[it.channel] ?? it.parsed.issuer ?? "Email"}${it.parsed.accountHint ? ` ••${it.parsed.accountHint}` : ""}`;
@@ -38,11 +41,11 @@ function Row({ item, ctx, selecting, selected, onToggle, onOpen, onQuick, busy }
       <span className="dpx-rv-text">
         <b>{titleOf(item)}</b>
         <span className="dpx-rv-sub">{sourceOf(item)}{p.at ? ` · ${timeOf(p.at)}` : ""}</span>
-        <span className="dpx-rv-chips"><i>{isMove(item) ? `Pindah dana ke ${p.transfer?.toName ?? "dompet"}` : cat.name}</i>{isGeneric(item) ? <i className="is-warn">Pemasukan atau pengeluaran?</i> : !isMove(item) && needsLook(item) ? <i className="is-warn">{(p.categoryId ?? "lainnya") === "lainnya" ? "Pilih kategori" : "Perlu dicek"}</i> : null}</span>
+        <span className="dpx-rv-chips"><i>{isBill(item) ? "Belum dibayar" : isMove(item) ? `Pindah dana ke ${p.transfer?.toName ?? "dompet"}` : cat.name}</i>{isBill(item) ? <i className="is-warn">Jatuh tempo {dueLabel(p.due)}</i> : isGeneric(item) ? <i className="is-warn">Pemasukan atau pengeluaran?</i> : !isMove(item) && needsLook(item) ? <i className="is-warn">{(p.categoryId ?? "lainnya") === "lainnya" ? "Pilih kategori" : "Perlu dicek"}</i> : null}</span>
       </span>
-      <span className={`dpx-rv-amt ${kind === "in" && !isMove(item) && !isGeneric(item) ? "is-in" : ""}`}>{ok ? (isMove(item) ? `⇄ ${rupiah(moveAmount(item))}` : isGeneric(item) ? rupiah(p.amount ?? 0) : `${kind === "in" ? "+" : "−"}${rupiah(p.amount ?? 0)}`) : <em style={{ fontSize: 12, fontStyle: "normal", color: "var(--warn, #b4691a)", fontWeight: 600 }}>Nominal belum terbaca</em>}</span>
+      <span className={`dpx-rv-amt ${kind === "in" && !isMove(item) && !isGeneric(item) && !isBill(item) ? "is-in" : ""}`}>{ok ? (isMove(item) ? `⇄ ${rupiah(moveAmount(item))}` : isGeneric(item) || isBill(item) ? rupiah(p.amount ?? 0) : `${kind === "in" ? "+" : "−"}${rupiah(p.amount ?? 0)}`) : <em style={{ fontSize: 12, fontStyle: "normal", color: "var(--warn, #b4691a)", fontWeight: 600 }}>Nominal belum terbaca</em>}</span>
     </Btn>
-    {!selecting && ok && !isGeneric(item) ? <Btn type="button" className="dpx-rv-ok" onClick={onQuick} disabled={busy} aria-label={`Setujui ${titleOf(item)}`}><Ic n="check" size="sm" /></Btn> : null}
+    {!selecting && ok && !isGeneric(item) ? <Btn type="button" className="dpx-rv-ok" onClick={onQuick} disabled={busy} aria-label={`${isBill(item) ? "Jadikan tagihan" : "Setujui"} ${titleOf(item)}`}><Ic n="check" size="sm" /></Btn> : null}
   </div>;
 }
 
@@ -89,6 +92,27 @@ function DetailSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: Fi
     <div className="dpx-rv-footer">
       <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} disabled={busy} onClick={() => void act(() => rejectItem(item.id), "Email diabaikan")}>Abaikan</Btn>
       <Btn type="button" className="dpx-btn" style={{ margin: 0 }} disabled={busy || !(Number(amount) > 0) || (generic && !kind)} onClick={() => void approve()}>{busy ? "Memproses…" : generic && !kind ? "Pilih jenis dulu" : "Setujui"}</Btn>
+    </div>
+  </Sheet>;
+}
+
+/* ---------- a bill reminder: confirm it as something owed ---------- */
+function BillSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: FinCtx; onClose: () => void; onDone: (message: string) => Promise<void> }) {
+  const p = item.parsed;
+  const [name, setName] = useState(p.merchant ?? CHANNEL_NAME[item.channel] ?? "Tagihan"), [amount, setAmount] = useState(String(Math.round(p.amount ?? 0))), [due, setDue] = useState(p.due ?? "");
+  const [busy, setBusy] = useState(false);
+  const act = async (fn: () => Promise<unknown>, done: string) => { setBusy(true); try { await fn(); await ctx.fin.retrySync(); await onDone(done); } catch { ctx.notify("Gagal memproses. Datanya tetap aman. Coba lagi."); } finally { setBusy(false); } };
+  return <Sheet title="Tagihan dari email" onClose={onClose}>
+    <div className="dpx-rv-hero"><CatIcon cat={catOf(ctx.fin.state, "tagihan")} size={56} /><div><b>Tagihan {name}</b><span>{p.issuer ?? "Email"} · jatuh tempo {dueLabel(due || null)}</span></div></div>
+    <div className="dpx-note dpx-info" style={{ marginTop: 0 }}><Ic n="info" /><div><b>Belum dibayar, jadi belum jadi pengeluaran.</b> Setelah kamu setujui, tagihan ini masuk ke Rencana → Hutang sebagai “Kamu berutang”. Saat pembayarannya tercatat dari email, otomatis ditandai lunas.</div></div>
+    <div className="dpx-glabel">Tagihan</div>
+    <div className="dpx-input"><input aria-label="Nama tagihan" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} placeholder="Nama tagihan" /></div>
+    <div style={{ marginTop: 8 }}><MoneyInput value={amount} onChange={setAmount} label="Nominal tagihan" /></div>
+    <label className="dpx-chip3 dpx-datefield" style={{ cursor: "pointer", marginTop: 8, display: "inline-flex" }}><Ic n="cal" size="sm" /> {due ? new Date(`${due}T12:00:00+07:00`).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "Pilih jatuh tempo"}<input type="date" value={due} onChange={(e) => setDue(e.target.value)} aria-label="Jatuh tempo" /></label>
+    <p className="dpx-sub dpx-rv-from" style={{ marginTop: 10 }}><b>{p.subject || "Judul tidak tersedia"}</b></p>
+    <div className="dpx-rv-footer">
+      <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} disabled={busy} onClick={() => void act(() => rejectItem(item.id), "Email diabaikan")}>Abaikan</Btn>
+      <Btn type="button" className="dpx-btn" style={{ margin: 0 }} disabled={busy || !(Number(amount) > 0) || !name.trim()} onClick={() => void act(() => approveItem(item.id, { amount: Number(amount), note: name.trim(), at: due || undefined }), `Tagihan ${name.trim()} masuk ke Hutang`)}>{busy ? "Memproses…" : "Jadikan tagihan"}</Btn>
     </div>
   </Sheet>;
 }
@@ -208,8 +232,8 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
     for (const it of items) { const k = dayKey(it.parsed.at ?? it.createdAt); m.set(k, [...(m.get(k) ?? []), it]); }
     return [...m].sort(([a], [b]) => (a < b ? 1 : -1));
   }, [items]);
-  const chosen = items.filter((i) => selected.has(i.id)), approvable = chosen.filter((i) => (i.parsed.amount ?? 0) > 0 && !isGeneric(i));
-  const outTotal = items.filter((i) => !isMove(i) && !isGeneric(i) && kindOf(i) === "out").reduce((n, i) => n + (i.parsed.amount ?? 0), 0), inTotal = items.filter((i) => !isMove(i) && !isGeneric(i) && kindOf(i) === "in").reduce((n, i) => n + (i.parsed.amount ?? 0), 0);
+  const chosen = items.filter((i) => selected.has(i.id)), approvable = chosen.filter((i) => (i.parsed.amount ?? 0) > 0 && !isGeneric(i) && !isBill(i));
+  const outTotal = items.filter((i) => !isMove(i) && !isGeneric(i) && !isBill(i) && kindOf(i) === "out").reduce((n, i) => n + (i.parsed.amount ?? 0), 0), inTotal = items.filter((i) => !isMove(i) && !isGeneric(i) && !isBill(i) && kindOf(i) === "in").reduce((n, i) => n + (i.parsed.amount ?? 0), 0);
   const open = items.find((i) => i.id === openId) ?? null;
   const toggle = (id: string) => setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const leaveSelect = () => { setSelecting(false); setSelected(new Set()); setConfirm(null); };
@@ -217,6 +241,12 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
   const quick = async (it: ReviewItem) => {
     if (busy) return; setBusy(true);
     try {
+      if (isBill(it)) {
+        await approveItem(it.id, { amount: it.parsed.amount, note: it.parsed.merchant, at: it.parsed.due ?? undefined });
+        await ctx.fin.retrySync(); await load();
+        ctx.notify(`${titleOf(it)} ${rupiah(it.parsed.amount ?? 0)} masuk ke Hutang`);
+        return;
+      }
       const r = await approveItem(it.id, { amount: isMove(it) ? moveAmount(it) : it.parsed.amount, kind: kindOf(it), categoryId: it.parsed.categoryId, accountId: it.parsed.accountId });
       await ctx.fin.retrySync(); markDone([it]); await load();
       ctx.notify(`${titleOf(it)} ${rupiah(it.parsed.amount ?? 0)} tercatat`, () => ctx.fin.dispatch({ type: "entry/delete", id: r.entryId }));
@@ -225,7 +255,7 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
   const run = async (action: "approve" | "reject") => {
     if (busy) return; setBusy(true); setConfirm(null);
     try {
-      const ids = chosen.filter((i) => action === "reject" || ((i.parsed.amount ?? 0) > 0 && !isGeneric(i))).map((i) => i.id), results: { id: string; ok: boolean }[] = [];
+      const ids = chosen.filter((i) => action === "reject" || ((i.parsed.amount ?? 0) > 0 && !isGeneric(i) && !isBill(i))).map((i) => i.id), results: { id: string; ok: boolean }[] = [];
       for (let at = 0; at < ids.length; at += 200) results.push(...(await bulkReview(ids.slice(at, at + 200), action)).results);
       const ok = new Set(results.filter((x) => x.ok).map((x) => x.id));
       setSelected((prev) => new Set([...prev].filter((id) => !ok.has(id))));
@@ -273,7 +303,8 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
         onApproved={async (r) => { setOpenGroup(null); const latest = r.months[0]; if (latest) setDone((cur) => ({ count: (cur?.count ?? 0) + r.count, y: latest.y, m: latest.m })); setResult({ ...r, remaining: Math.max(0, total - r.count) }); await Promise.all([load(), loadGroups()]); }}
         onRejected={async (n) => { setOpenGroup(null); ctx.notify(`${n} email diabaikan`); await Promise.all([load(), loadGroups()]); }} /> : null}
       {result ? <ResultSheet key="result" r={result} ctx={ctx} onClose={() => setResult(null)} /> : null}
-      {open ? <DetailSheet key={open.id + JSON.stringify(open.parsed.details)} item={open} ctx={ctx} onClose={() => setOpenId(null)} onDone={async (message) => { const it = open; setOpenId(null); const recorded = Boolean(it && message.includes("tercatat")); if (it && recorded) { markDone([it]); setResult(resultOf([it], total - 1)); } await load(); if (!recorded) ctx.notify(message); }} /> : null}
+      {open && isBill(open) ? <BillSheet key={open.id} item={open} ctx={ctx} onClose={() => setOpenId(null)} onDone={async (message) => { setOpenId(null); await load(); ctx.notify(message); }} /> : null}
+      {open && !isBill(open) ? <DetailSheet key={open.id + JSON.stringify(open.parsed.details)} item={open} ctx={ctx} onClose={() => setOpenId(null)} onDone={async (message) => { const it = open; setOpenId(null); const recorded = Boolean(it && message.includes("tercatat")); if (it && recorded) { markDone([it]); setResult(resultOf([it], total - 1)); } await load(); if (!recorded) ctx.notify(message); }} /> : null}
     </AnimatePresence>
   </div></Sky></div>;
 }
