@@ -107,3 +107,6 @@
 
 .kx-field>label{display:block;font:600 12px var(--ds-font);color:var(--ds-mute);margin:0 4px 4px}
 textarea.kx-input{resize:vertical;min-height:70px}
+
+.ds-group .kx-reasons button{background:#fff}
+.ds-group .kx-reasons button[aria-pressed=true]{background:var(--ds-navy);color:#fff}
