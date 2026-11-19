@@ -3,7 +3,7 @@ import { notifyUser, type PushPayload } from "../push.js";
 import type { Q, Tx } from "../sync.js";
 import { auditQueue, auditSummary } from "./audit.js";
 import { GENERIC_DAILY_LIMIT, genericIssuer, senderAuthentic } from "./generic.js";
-import { domainOf, extractPayment, forwardingCode, guessCategory, implausible, isBillReminder, isConfident, isFailedMail, isNoticeMail, isPromo, isReportMail, isSecretMail, issuerFor, looksLikePayment, groupKey, merchantKey, redactForShare, RULES_VERSION, type Extracted, type Issuer } from "./extract.js";
+import { domainOf, extractBill, extractPayment, forwardingCode, guessCategory, implausible, isBillReminder, isConfident, isFailedMail, isNoticeMail, isPromo, isReportMail, isSecretMail, issuerFor, looksLikePayment, groupKey, merchantKey, redactForShare, RULES_VERSION, type Extracted, type Issuer } from "./extract.js";
 
 export type RawMail = {
   messageId: string; from: string; to: string[]; subject: string; text: string; date: Date | null;
@@ -82,8 +82,19 @@ async function insertFee(q: Q, userId: string, fee: number, accountId: string, a
 async function insertEntry(q: Q, userId: string, c: Candidate, inboundId: string): Promise<string> {
   const id = `em-${randomUUID()}`;
   await q.query("insert into finance.entries(user_id,id,kind,amount,category_id,account_id,to_account_id,at,note,tags,source,inbound_id) values($1,$2,$3,$4,$5,$6,$7,$8,$9,'{}','email',$10)", [userId, id, c.kind, c.amount, c.categoryId, c.accountId, c.toAccountId ?? null, c.at, c.note.slice(0, 200), inboundId]);
+  if (c.kind === "out" && !c.toAccountId) await settleBill(q, userId, c.amount, c.note, c.at);
   await bump(q, userId);
   return id;
+}
+
+/** The payment of a bill suggested from e-mail arrived: the same amount, to the same biller. The debt is marked paid, once. */
+async function settleBill(q: Q, userId: string, amount: number, note: string, at: string) {
+  const open = (await q.query("select id,person from finance.debts where user_id=$1 and direction='i_owe' and settled=false and id like 'bl-%' and amount=$2 and (case when due ~ '^\\d{4}-\\d{2}-\\d{2}$' then due::date between ($3::timestamptz - interval '45 days')::date and ($3::timestamptz + interval '20 days')::date else true end)", [userId, amount, at])).rows;
+  if (!open.length) return;
+  const text = note.toLowerCase();
+  const hit = open.length === 1 ? open[0] : open.find((r) => text.includes(String(r.person).toLowerCase()) || String(r.person).toLowerCase().includes(text));
+  if (!hit) return;
+  await q.query("update finance.debts set settled=true, payments=coalesce(payments,'[]'::jsonb) || jsonb_build_array(jsonb_build_object('at',$3::text,'amount',$4::numeric)) where user_id=$1 and id=$2", [userId, hit.id, at, amount]);
 }
 
 /* ---------------- the pipeline ---------------- */
@@ -136,11 +147,14 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   if (isReportMail(mail.subject)) return skip("report", issuer.id);
   // Gate 5: a failed transfer moved nothing, and a bill that asks to be paid has not been paid yet.
   if (isFailedMail(mail.subject)) return skip("failed", issuer.id);
-  if (isBillReminder(mail.subject, mail.text)) return skip("bill", issuer.id);
+  // A bill reminder moved no money. When it names an amount it becomes a suggested bill ("Kamu berutang") to confirm; otherwise it is dropped.
+  const reminder = isBillReminder(mail.subject, mail.text);
+  const billInfo = reminder && !stage ? extractBill(mail.subject, mail.text, issuer.name, now) : null;
+  if (reminder && (!billInfo || (generic && !billInfo.due))) return skip("bill", issuer.id);
   // Gate 6: a warning or a fee schedule names rupiah without any money moving.
   if (isNoticeMail(mail.subject, mail.text)) return skip("notice", issuer.id);
   if (generic) {                                                    // an unknown sender must at least read like a payment, and may only queue so much per day
-    if (!looksLikePayment(mail.subject, mail.text)) return skip("not-payment", issuer.id);
+    if (!billInfo && !looksLikePayment(mail.subject, mail.text)) return skip("not-payment", issuer.id);
     const today = Number((await d.db.query("select count(*)::int n from finance.inbound_messages where user_id=$1 and channel='other' and created_at > now() - interval '1 day'", [userId])).rows[0]?.n ?? 0);
     if (today >= GENERIC_DAILY_LIMIT) return skip("limit", issuer.id);
   }
@@ -154,6 +168,14 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
     if ((status === "auto" || status === "review") && extra.parsed) void notifyUser(d.db, userId, pushFor(status, extra.parsed as Record<string, any>, inboundId, extra.at ?? null));
     return { status, reason, userId };
   };
+
+  if (billInfo) {
+    const parsedBill = { bill: true, amount: billInfo.amount, due: billInfo.due, merchant: billInfo.name, subject: mail.subject.slice(0, 80), issuer: issuer.name, direction: "out", at: now.toISOString() };
+    const have = await d.db.query(`select id from finance.debts where user_id=$1 and direction='i_owe' and settled=false and lower(person)=lower($2) and amount=$3 and coalesce(due,'')=coalesce($4,'') limit 1`, [userId, billInfo.name, billInfo.amount, billInfo.due]);
+    const waiting = await d.db.query(`select id from finance.inbound_messages where user_id=$1 and id<>$2 and status='review' and parsed->>'bill'='true' and parsed->>'merchant'=$3 and (parsed->>'amount')::numeric=$4 and coalesce(parsed->>'due','')=coalesce($5,'') limit 1`, [userId, inboundId, billInfo.name, billInfo.amount, billInfo.due]);
+    if (have.rows[0] || waiting.rows[0]) return finish("duplicate", "bill-exists", { parsed: parsedBill });
+    return finish("review", "bill", { parsed: parsedBill, confidence: 0.8, at: parsedBill.at });
+  }
 
   try {
   // Read it: rules first, model only when the rules are unsure.
@@ -277,6 +299,16 @@ export async function approve(d: Tx, userId: string, inboundId: string, e: Edits
     const m = (await q.query("select id,parsed,status,channel,sender_domain from finance.inbound_messages where user_id=$1 and id=$2 and status in ('review','failed') for update", [userId, inboundId])).rows[0];
     if (!m) return null;
     const p = (m.parsed ?? {}) as Record<string, any>;
+    if (p.bill) {                                                  // a bill reminder becomes a debt the person owes, with its due date; no entry until it is paid
+      const owed = Number(e.amount ?? p.amount), name = String(e.note ?? p.merchant ?? "Tagihan").trim().slice(0, 80) || "Tagihan";
+      const dueRaw = String(e.at ?? p.due ?? ""), due = /^\d{4}-\d{2}-\d{2}$/.test(dueRaw) ? dueRaw : null;
+      if (!(owed > 0)) return null;
+      const debtId = `bl-${inboundId}`;
+      await q.query("insert into finance.debts(user_id,id,person,direction,amount,note,due,settled) values($1,$2,$3,'i_owe',$4,'Tagihan dari email',$5,false) on conflict do nothing", [userId, debtId, name, owed, due]);
+      await bump(q, userId);
+      await q.query("update finance.inbound_messages set status='approved', reason='approved' where id=$1", [inboundId]);
+      return { entryId: debtId };
+    }
     if (p.generic && e.kind !== "in" && e.kind !== "out") return null;   // an unknown sender is only recorded once the person has said what it was
     const tr = p.transfer && typeof p.transfer.to === "string" && typeof p.transfer.from === "string" ? p.transfer as { from: string; to: string; toName?: string; amount: number; fee?: number } : null;
     const amount = Number(e.amount ?? (tr ? tr.amount : p.amount)), kind: "in" | "out" | "tf" = tr ? "tf" : (e.kind ?? p.kind ?? (p.direction === "in" ? "in" : "out")) === "in" ? "in" : "out";
@@ -346,7 +378,7 @@ export type ReviewGroup = { key: string; name: string; kind: "out" | "in"; count
 async function groupRows(q: Q, userId: string) {
   const r = await q.query(`select id, parsed->'details'->>'description' as dsc, parsed->>'merchant' as m, parsed->>'subject' as s, (parsed->>'amount')::numeric as amt,
       parsed->>'kind' as kind, parsed->>'direction' as dir, parsed->>'categoryId' as cat, parsed->>'at' as at_, jsonb_array_length(coalesce(parsed->'flags','[]'::jsonb)) as nflags
-    from finance.inbound_messages where user_id=$1 and status='review' and coalesce(parsed->>'generic','false') <> 'true' and (parsed->>'amount')::numeric > 0`, [userId]);
+    from finance.inbound_messages where user_id=$1 and status='review' and coalesce(parsed->>'generic','false') <> 'true' and coalesce(parsed->>'bill','false') <> 'true' and (parsed->>'amount')::numeric > 0`, [userId]);
   return r.rows.map((x) => {
     const name = String(x.dsc || x.m || x.s || "Email pembayaran"), kind: "out" | "in" = (x.kind ?? (x.dir === "in" ? "in" : "out")) === "in" ? "in" : "out";
     return { id: x.id as string, name, key: `${groupKey(name) || "lainnya"}|${kind}`, kind, amount: Number(x.amt), cat: String(x.cat || "lainnya"), at: (x.at_ as string | null) ?? null, flagged: Number(x.nflags) > 0 };

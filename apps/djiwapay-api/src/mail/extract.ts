@@ -77,6 +77,44 @@ export const looksLikePayment = (subject: string, text: string) => TXN_EVIDENCE.
 /** A periodic report (merchant settlement, monthly statement, transaction history) is not one transaction, even when it carries a total. */
 export const isReportMail = (subject: string) => /\b(laporan|statement|rekap\w*|ringkasan|mutasi|riwayat|settlement)\b/i.test(subject);
 
+/* ---------------- bill reminders ---------------- */
+
+export type BillInfo = { amount: number; due: string | null; name: string };
+const pad2 = (n: number) => String(n).padStart(2, "0");
+/** "20-NOV-26", "20 November 2026", "20/11/2026", "2026-11-20", or only "tgl 20" (the next such day). Returns YYYY-MM-DD (WIB calendar day). */
+export function parseDueDate(raw: string, now: Date): string | null {
+  const t = raw.trim();
+  let m = t.match(/(\d{4})-(\d{2})-(\d{2})/);
+  const ok = (y: number, mo: number, d: number) => (mo >= 0 && mo < 12 && d >= 1 && d <= 31 ? `${y}-${pad2(mo + 1)}-${pad2(d)}` : null);
+  const year = (y: string) => (y.length === 2 ? 2000 + Number(y) : Number(y));
+  if (m) return ok(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  m = t.match(/(\d{1,2})[\s\-\/.]([A-Za-z]{3,9})[\s\-\/.,]*(\d{2,4})/);
+  if (m && MONTHS[m[2].toLowerCase()] !== undefined) return ok(year(m[3]), MONTHS[m[2].toLowerCase()], Number(m[1]));
+  m = t.match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/);
+  if (m) return ok(year(m[3]), Number(m[2]) - 1, Number(m[1]));
+  m = t.match(/(?:tgl\.?|tanggal)?\s*(\d{1,2})\b/i);
+  if (m && Number(m[1]) >= 1 && Number(m[1]) <= 31) {
+    const w = new Date(now.getTime() + 7 * 3600_000), d = Number(m[1]);
+    let y = w.getUTCFullYear(), mo = w.getUTCMonth();
+    if (d < w.getUTCDate()) { mo += 1; if (mo > 11) { mo = 0; y += 1; } }
+    return ok(y, mo, d);
+  }
+  return null;
+}
+
+/** A bill reminder ("tagihan IndiHome bulan ini Rp340215, jatuh tempo tgl 20-NOV-26"): what is owed, to whom, and by when. Null when there is no amount. */
+export function extractBill(subject: string, text: string, issuerName: string, now: Date): BillInfo | null {
+  const whole = `${subject}\n${flat(text)}`;
+  const amount = extractPayment(subject, text).amount;
+  if (!(amount > 0)) return null;
+  const dueAt = whole.match(/(?:jatuh tempo|due date|paling lambat|bayar sebelum|batas (?:waktu )?pembayaran)[^0-9A-Za-z]{0,14}(\d{4}-\d{2}-\d{2}|(?:tgl\.?|tanggal)?\s*\d{1,2}(?:[\s\-\/.][A-Za-z0-9]{2,9}(?:[\s\-\/.,]+\d{2,4})?)?)/i);
+  const due = dueAt ? parseDueDate(dueAt[1], now) : null;
+  const named = whole.match(/tagihan\s+([A-Za-z][A-Za-z0-9&.' -]{1,28}?)\s+(?:bulan|periode|anda|kamu|sebesar|senilai|rp|untuk|sudah|telah|jatuh|sebelum)/i);
+  const generic = /^(?:ini|anda|kamu|listrik|air|internet|kartu|baru|tertunggak)$/i;
+  const name = named && !generic.test(named[1].trim()) ? named[1].trim() : issuerName;
+  return { amount, due, name: name.slice(0, 80) };
+}
+
 /** "Transfer Tidak Berhasil", "Top-up gagal": the money never left, so there is nothing to record. */
 export const isFailedMail = (subject: string) => /\b(tidak berhasil|gagal|dibatalkan|cancelled|canceled|ditolak|unsuccessful|failed)\b/i.test(subject);
 
