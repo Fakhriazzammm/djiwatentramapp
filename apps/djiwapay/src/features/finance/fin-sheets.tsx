@@ -49,6 +49,7 @@ export function EntrySheet({ entry, fin, notify, onClose, onEdit, onPickCategory
   const { state, dispatch } = fin;
   const c = catOf(state, entry.categoryId);
   const pay = entry.source === "pay";
+  const loanReceipt = entry.tags.includes("loan-receipt");
   const sign = entry.kind === "in" ? "+" : entry.kind === "out" ? "−" : "";
   const [confirm, setConfirm] = useState(false);
   const [receiptEdit, setReceiptEdit] = useState<ScannedReceipt | null>(null);
@@ -67,7 +68,7 @@ export function EntrySheet({ entry, fin, notify, onClose, onEdit, onPickCategory
     <div className="dpx-group">
       <div className="dpx-kv"><span>Kategori</span><b>{c.name}</b></div><div className="dpx-kv"><span>Dompet</span><b>{accName(state, entry.accountId)}</b></div>
       <div className="dpx-kv"><span>Waktu</span><b>{formatDateTime(entry.at)}</b></div><div className="dpx-kv"><span>Sumber</span><b>{pay ? "Djiwa Pay (otomatis)" : entry.source === "voice" ? "Suara / teks" : entry.source === "receipt" ? "Scan struk" : entry.source === "email" ? "Email pembayaran" : entry.source === "sheet" ? "Spreadsheet" : "Manual"}</b></div>
-      {entry.tags.length ? <div className="dpx-kv"><span>Tag</span><b>{entry.tags.map((t) => `#${t}`).join(" ")}</b></div> : null}
+      {entry.tags.some((t) => t !== "loan-receipt" && !t.startsWith("loan:")) ? <div className="dpx-kv"><span>Tag</span><b>{entry.tags.filter((t) => t !== "loan-receipt" && !t.startsWith("loan:")).map((t) => `#${t}`).join(" ")}</b></div> : null}
     </div>
     {!entry.receiptId && !entry.inboundId ? <Breakdown title="Rincian" count="1 item"
       lines={[{ name: entry.note || c.name, sub: [c.name, ...entry.tags.map((t) => `#${t}`)].join(" \u00b7 "), amount: rupiah(entry.amount) }]}
@@ -75,10 +76,10 @@ export function EntrySheet({ entry, fin, notify, onClose, onEdit, onPickCategory
       <p className="dpx-hint">{entry.source === "pay" ? "Transaksi Djiwa Pay otomatis." : "Dicatat manual. Untuk rincian per item, foto atau unggah strukanya."}</p>
     </Breakdown> : null}
     {entry.receiptId ? <ReceiptAttachment id={entry.receiptId} onEdit={setReceiptEdit} ledgerAmount={entry.amount} /> : null}
-    {entry.source === "email" && !entry.receiptId ? <div className="dpx-scan-hint"><Ic n="scan" size="sm" /><span><b>Scan struknya</b> agar tercatat detail item, diskon, dan pajak. Email pembayaran biasanya tidak memuat rinciannya.</span></div> : null}
-    {entry.inboundId ? <EmailOrigin inboundId={entry.inboundId} onUndo={() => { const copy = entry; dispatch({ type: "entry/delete", id: entry.id }); onClose(); notify("Catatan dari email diurungkan", () => dispatch({ type: "entry/restore", entry: copy })); }} /> : null}
+    {entry.source === "email" && !entry.receiptId && !loanReceipt ? <div className="dpx-scan-hint"><Ic n="scan" size="sm" /><span><b>Scan struknya</b> agar tercatat detail item, diskon, dan pajak. Email pembayaran biasanya tidak memuat rinciannya.</span></div> : null}
+    {entry.inboundId ? <EmailOrigin inboundId={entry.inboundId} loanReceipt={loanReceipt} onUndo={() => { if (loanReceipt) { void fin.retrySync(); onClose(); notify("Catatan dan pelunasan angsuran diurungkan"); return; } const copy = entry; dispatch({ type: "entry/delete", id: entry.id }); onClose(); notify("Catatan dari email diurungkan", () => dispatch({ type: "entry/restore", entry: copy })); }} /> : null}
     {pay ? <><Btn type="button" className="dpx-btn dpx-ghost" onClick={() => onPickCategory(entry.categoryId)}><Ic n="tag" size="sm" /> Ubah kategori</Btn><p className="dpx-hint dpx-center">Nominal transaksi Djiwa Pay tidak dapat diubah. Kategori boleh.</p></>
-      : <div className="dpx-flex dpx-mt dpx-rc-bar dpx-es-bar">{entry.source === "email" && !entry.receiptId ? <label className="dpx-btn dpx-ghost" style={{ margin: 0, display: "flex", justifyContent: "center", gap: 6, cursor: "pointer" }}><Ic n="scan" size="sm" /> Scan struk<input type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) setAttachFile(f); }} /></label> : null}{!entry.receiptId ? <Btn type="button" className="dpx-btn dpx-ghost" style={{ margin: 0 }} onClick={onEdit}><Ic n="edit" size="sm" /> Ubah</Btn> : null}<Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} onClick={() => setConfirm(true)}><Ic n="trash" size="sm" /> Hapus</Btn></div>}
+      : loanReceipt ? null : <div className="dpx-flex dpx-mt dpx-rc-bar dpx-es-bar">{entry.source === "email" && !entry.receiptId && !loanReceipt ? <label className="dpx-btn dpx-ghost" style={{ margin: 0, display: "flex", justifyContent: "center", gap: 6, cursor: "pointer" }}><Ic n="scan" size="sm" /> Scan struk<input type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) setAttachFile(f); }} /></label> : null}{!entry.receiptId ? <Btn type="button" className="dpx-btn dpx-ghost" style={{ margin: 0 }} onClick={onEdit}><Ic n="edit" size="sm" /> Ubah</Btn> : null}<Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} onClick={() => setConfirm(true)}><Ic n="trash" size="sm" /> Hapus</Btn></div>}
     {confirm ? <div className="dpx-note dpx-danger" role="alert" style={{ marginTop: 12 }}><Ic n="warn" /><div><b>Hapus catatan ini?</b> Saldo dan anggaran dihitung ulang.<div className="dpx-flex" style={{ marginTop: 10 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" onClick={del}>Hapus</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => setConfirm(false)}>Batal</Btn></div></div></div> : null}
   </Sheet>;
 }

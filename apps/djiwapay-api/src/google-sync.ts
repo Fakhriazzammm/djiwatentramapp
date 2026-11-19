@@ -8,6 +8,7 @@ import { SHEET_DELETE_GUARD, hashOf, planSync, rowOf, type Cell, type EntryRow, 
 import { CATATAN_ROWS, GROW_BY, SHEET, TEMPLATE_VERSION, catatanRows, contentData, createBody, styleRequests, type Static } from "./sheets/template.js";
 import type { Q, Tx } from "./sync.js";
 
+const LOAN_EXPORT_VERSION = 1;
 const SYNC_EVERY_MS = 2 * 60_000, DRIVE_EVERY_MS = 3 * 60_000, DRIVE_REMOVAL_GUARD = 5;
 export type SyncDeps = { db: Tx; cfg: GoogleCfg; f?: Fetch; dir: string; now?: () => Date; newId?: () => string; test?: boolean };
 
@@ -30,7 +31,7 @@ export async function loadNames(db: Q, userId: string) {
 }
 
 const loadEntries = async (db: Q, userId: string): Promise<EntryRow[]> =>
-  (await db.query("select e.*, exists(select 1 from finance.receipts r where r.user_id=e.user_id and r.id=e.receipt_id and r.confirmed_at is not null) as receipt_locked from finance.entries e where user_id=$1 order by at desc limit 20000", [userId])).rows.map((r) => ({ id: r.id, kind: r.kind, amount: Number(r.amount), categoryId: r.category_id, accountId: r.account_id, toAccountId: r.to_account_id, at: new Date(r.at).toISOString(), note: r.note ?? "", source: r.source, receiptLocked: Boolean(r.receipt_locked) }));
+  (await db.query("select e.*, exists(select 1 from finance.receipts r where r.user_id=e.user_id and r.id=e.receipt_id and r.confirmed_at is not null) as receipt_locked from finance.entries e where user_id=$1 order by at desc limit 20000", [userId])).rows.map((r) => ({ id: r.id, kind: r.kind, amount: Number(r.amount), categoryId: r.category_id, accountId: r.account_id, toAccountId: r.to_account_id, at: new Date(r.at).toISOString(), note: r.note ?? "", source: r.source, receiptLocked: Boolean(r.receipt_locked), loanReceipt: Array.isArray(r.tags) && r.tags.includes("loan-receipt") }));
 
 const bump = async (q: Q, userId: string) => { await q.query("insert into finance.profiles(user_id) values($1) on conflict do nothing", [userId]); await q.query("update finance.profiles set version=version+1, updated_at=now() where user_id=$1", [userId]); };
 const monthSerial = (y: number, m: number) => Date.UTC(y, m, 1) / 86400000 + 25569;
@@ -46,12 +47,15 @@ export const must = async (res: Response, what: string) => { if (!res.ok) throw 
 async function staticData(db: Q, userId: string, n: Awaited<ReturnType<typeof loadNames>>, now: Date): Promise<Static> {
   const w = wib(now), ym = `${w.getUTCFullYear()}-${String(w.getUTCMonth() + 1).padStart(2, "0")}`;
   const months = Array.from({ length: 24 }, (_, i) => monthSerial(w.getUTCFullYear(), w.getUTCMonth() - 18 + i));
-  const [bu, bi, go, de, as] = await Promise.all([
+  const [bu, bi, go, de, as, loans] = await Promise.all([
     db.query("select category_id,limit_amount from finance.budgets where user_id=$1 order by category_id", [userId]),
     db.query("select name,amount,day,paid from finance.bills where user_id=$1 order by day,name", [userId]),
     db.query("select name,target,deposits from finance.goals where user_id=$1 order by created_at", [userId]),
     db.query("select person,direction,amount,due,settled,note from finance.debts where user_id=$1 order by created_at", [userId]),
     db.query("select name,kind,value from finance.assets where user_id=$1 order by name", [userId]),
+    db.query(`select l.name,l.lender,l.balance,l.due_day,b.amount as installment
+      from finance.loans l left join finance.bills b on b.user_id=l.user_id and b.id=coalesce(l.bill_id,'ln-' || l.id)
+      where l.user_id=$1 order by l.created_at,l.id`, [userId]),
   ]);
   const ASSET: Record<string, string> = { gold: "Emas", fund: "Reksa dana", stock: "Saham", crypto: "Kripto", property: "Properti", vehicle: "Kendaraan", other: "Lainnya" };
   const dueSerial = (s: unknown) => { const t = Date.parse(String(s ?? "")); return Number.isNaN(t) ? String(s ?? "") : Math.floor((t + 7 * 3600_000) / 86400_000) + 25569; };
@@ -61,6 +65,7 @@ async function staticData(db: Q, userId: string, n: Awaited<ReturnType<typeof lo
     bills: bi.rows.map((r) => { const paid = (r.paid as string[]).slice().sort(); return [r.name, Number(r.amount), Number(r.day), paid.includes(ym) ? "Lunas" : "Belum", paid.length ? paid[paid.length - 1] : "-"]; }),
     goals: go.rows.map((r) => { const dep = (r.deposits as { at: string; amount: number }[]) ?? []; const last = dep.map((d) => d.at).sort().pop(); return [r.name, Number(r.target), dep.reduce((s, d) => s + Number(d.amount || 0), 0), last ? new Date(last).toISOString().slice(0, 10) : "-"]; }),
     debts: de.rows.map((r) => [r.person, r.direction === "i_owe" ? "Hutang" : "Piutang", Number(r.amount), r.due ? dueSerial(r.due) : "", r.settled ? "Lunas" : "Belum lunas", r.note ?? ""]),
+    loans: loans.rows.map((r) => [r.name, r.lender, Number(r.balance), Number(r.due_day), r.installment === null ? null : Number(r.installment)]),
     assets: as.rows.map((r) => [r.name, ASSET[r.kind] ?? r.kind, Number(r.value)]),
     now: new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Jakarta" }).format(now) + " WIB",
   };
@@ -76,11 +81,12 @@ export async function buildWorkbook(d: SyncDeps, userId: string, token: string) 
   const f = d.f ?? fetch, now = (d.now ?? (() => new Date()))();
   const [n, entries] = [await loadNames(d.db, userId), await loadEntries(d.db, userId)];
   const rows = Math.max(CATATAN_ROWS + 1, entries.length + 1000);
-  const made = await must(await sheets(f, token, "", { method: "POST", body: JSON.stringify(createBody("Djiwa Pay · Keuangan", rows)) }), "SHEETS_CREATE");
+  const staticRows = await staticData(d.db, userId, n, now);
+  const made = await must(await sheets(f, token, "", { method: "POST", body: JSON.stringify(createBody("Djiwa Pay · Keuangan", rows, Math.max(60, staticRows.debts.length + (staticRows.loans?.length ?? 0) + 7))) }), "SHEETS_CREATE");
   const { spreadsheetId: id, spreadsheetUrl: url } = (await made.json()) as { spreadsheetId: string; spreadsheetUrl: string };
   try {
     await must(await sheets(f, token, `/${id}:batchUpdate`, { method: "POST", body: JSON.stringify({ requests: styleRequests(rows) }) }), "SHEETS_STYLE");
-    await writeValues(f, token, id, contentData(await staticData(d.db, userId, n, now), true), "USER_ENTERED");
+    await writeValues(f, token, id, contentData(staticRows, true), "USER_ENTERED");
     const table: Cell[][] = entries.map((e) => rowOf(e, n.names));
     const chunks: { range: string; values: Cell[][] }[] = [];
     for (let i = 0; i < table.length; i += 1000) chunks.push({ range: `Catatan!A${2 + i}:J${1 + i + Math.min(1000, table.length - i)}`, values: table.slice(i, i + 1000) });
@@ -97,7 +103,7 @@ export type SheetOutcome = { ok: boolean; action: "built" | "synced" | "idle" | 
 
 export async function syncSheet(d: SyncDeps, userId: string, opts: { force?: boolean } = {}): Promise<SheetOutcome> {
   const f = d.f ?? fetch, now = (d.now ?? (() => new Date()))(), newId = d.newId ?? (() => `sh-${randomBytes(8).toString("hex")}`);
-  const ex = (await d.db.query("select * from finance.google_sheet_exports where user_id=$1", [userId])).rows[0];
+  const ex = (await d.db.query("select *, clock_timestamp()::text as sync_started from finance.google_sheet_exports where user_id=$1", [userId])).rows[0];
   if (!ex) return { ok: false, action: "idle", error: "NO_EXPORT" };
   const schedule = (ms: number) => d.db.query("update finance.google_sheet_exports set next_sync_at=now()+($2 * interval '1 millisecond') where user_id=$1", [userId, ms]);
   const fail = async (code: string): Promise<SheetOutcome> => { await d.db.query("update finance.google_sheet_exports set status=case when status='missing' then status else 'failed' end, last_error=$2, next_sync_at=now()+interval '5 minutes' where user_id=$1", [userId, code]); return { ok: false, action: "failed", error: code }; };
@@ -110,7 +116,7 @@ export async function syncSheet(d: SyncDeps, userId: string, opts: { force?: boo
     // 1. A workbook that does not exist yet, or an older design, is (re)built from the app's data.
     if (!ex.spreadsheet_id || ex.template_version < TEMPLATE_VERSION || (opts.force && ex.status === "missing")) {
       const b = await buildWorkbook(d, userId, token);
-      await d.db.query("update finance.google_sheet_exports set spreadsheet_id=$2, spreadsheet_url=$3, template_version=$4, grid_rows=$5, status='synced', last_synced_at=now(), last_error=null, hold=null, dirty=false, next_sync_at=now()+interval '2 minutes', sheet_modified=null, last_stats=$6::jsonb where user_id=$1", [userId, b.id, b.url, TEMPLATE_VERSION, b.rows, JSON.stringify({ toSheet: b.count })]);
+      await d.db.query("update finance.google_sheet_exports set spreadsheet_id=$2, spreadsheet_url=$3, template_version=$4, grid_rows=$5, status='synced', last_synced_at=now(), last_error=null, hold=null, dirty=coalesce((select updated_at > $7::timestamptz from finance.profiles where user_id=$1), false), next_sync_at=now()+interval '2 minutes', sheet_modified=null, last_stats=$6::jsonb where user_id=$1", [userId, b.id, b.url, TEMPLATE_VERSION, b.rows, JSON.stringify({ toSheet: b.count, loanExportVersion: LOAN_EXPORT_VERSION }), ex.sync_started]);
       const meta0 = await drive(f, token, `/files/${b.id}?fields=modifiedTime`).then((r) => (r.ok ? r.json() : null)) as { modifiedTime?: string } | null;
       if (meta0?.modifiedTime) await d.db.query("update finance.google_sheet_exports set sheet_modified=$2 where user_id=$1", [userId, meta0.modifiedTime]);
       return { ok: true, action: "built" };
@@ -123,7 +129,8 @@ export async function syncSheet(d: SyncDeps, userId: string, opts: { force?: boo
     if (meta.status === 404) throw new GoogleError(404, "SHEET");
     const m = (await must(meta, "DRIVE_META").then((r) => r.json())) as { modifiedTime: string; trashed?: boolean };
     if (m.trashed) throw new GoogleError(404, "SHEET");
-    if (!ex.dirty && !opts.force && m.modifiedTime === ex.sheet_modified) { await schedule(SYNC_EVERY_MS); return { ok: true, action: "idle" }; }
+    const refreshContent = ex.dirty || opts.force || ex.last_stats?.loanExportVersion !== LOAN_EXPORT_VERSION;
+    if (!refreshContent && m.modifiedTime === ex.sheet_modified) { await schedule(SYNC_EVERY_MS); return { ok: true, action: "idle" }; }
 
     // 3. Read the sheet, compare with the app, decide.
     const read = await must(await sheets(f, token, `/${id}/values/${encodeURIComponent("Catatan!A2:J")}?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER`), "SHEETS_READ");
@@ -160,19 +167,29 @@ export async function syncSheet(d: SyncDeps, userId: string, opts: { force?: boo
       const del = [...new Set(plan.toSheet.deletes)].sort((a, b) => b - a).map((row) => ({ deleteDimension: { range: { sheetId: SHEET.catatan, dimension: "ROWS", startIndex: row - 1, endIndex: row } } }));
       await must(await sheets(f, token, `/${id}:batchUpdate`, { method: "POST", body: JSON.stringify({ requests: del }) }), "SHEETS_DELETE");
     }
-    if (ex.dirty || opts.force) {          // the other sheets and the pick-lists follow the app
-      const clears = ["Anggaran!B5:G60", "Tagihan!B5:F60", "Tujuan!B5:G60", "Hutang!B5:G60", "Aset!B5:D60", "Referensi!C2:F41", "Referensi!H2:H25"];
+    if (refreshContent) {          // the other sheets and the pick-lists follow the app
+      const staticRows = await staticData(d.db, userId, n, now);
+      const needed = staticRows.debts.length + (staticRows.loans?.length ?? 0) + 7;
+      if (needed > 60) {
+        const res = await must(await sheets(f, token, `/${id}?fields=sheets(properties(sheetId,gridProperties(rowCount)))`), "SHEETS_INFO");
+        const info = await res.json() as { sheets: { properties: { sheetId: number; gridProperties: { rowCount: number } } }[] };
+        const current = info.sheets.find((tab) => tab.properties.sheetId === SHEET.hutang)?.properties.gridProperties.rowCount ?? 60;
+        if (needed > current) await must(await sheets(f, token, `/${id}:batchUpdate`, { method: "POST", body: JSON.stringify({
+          requests: [{ appendDimension: { sheetId: SHEET.hutang, dimension: "ROWS", length: needed - current } }],
+        }) }), "SHEETS_GROW");
+      }
+      const clears = ["Anggaran!B5:G60", "Tagihan!B5:F60", "Tujuan!B5:G60", "Hutang!B5:G", "Aset!B5:D60", "Referensi!C2:F41", "Referensi!H2:H25"];
       await must(await sheets(f, token, `/${id}/values:batchClear`, { method: "POST", body: JSON.stringify({ ranges: clears }) }), "SHEETS_CLEAR");
-      await writeValues(f, token, id, contentData(await staticData(d.db, userId, n, now), false), "USER_ENTERED");
+      await writeValues(f, token, id, contentData(staticRows, false), "USER_ENTERED");
     }
 
     await d.db.tx(async (q) => {
       const up = plan.toApp.upserts;
       if (up.length) await q.query(`insert into finance.entries(user_id,id,kind,amount,category_id,account_id,to_account_id,at,note,tags,source)
         select $1,x.id,x.kind,x.amount,x.category_id,x.account_id,x.to_account_id,x.at,x.note,'{}',x.source from jsonb_to_recordset($2::jsonb) as x(id text,kind text,amount numeric,category_id text,account_id text,to_account_id text,at timestamptz,note text,source text)
-        on conflict(user_id,id) do update set kind=excluded.kind,amount=excluded.amount,category_id=excluded.category_id,account_id=excluded.account_id,to_account_id=excluded.to_account_id,at=excluded.at,note=excluded.note`,
+        on conflict(user_id,id) do update set kind=excluded.kind,amount=excluded.amount,category_id=excluded.category_id,account_id=excluded.account_id,to_account_id=excluded.to_account_id,at=excluded.at,note=excluded.note where not ('loan-receipt' = any(finance.entries.tags))`,
         [userId, JSON.stringify(up.map((e) => ({ id: e.id, kind: e.kind, amount: e.amount, category_id: e.categoryId, account_id: e.accountId, to_account_id: e.toAccountId ?? null, at: e.at, note: e.note, source: e.source })))]);
-      if (plan.toApp.deletes.length) await q.query("delete from finance.entries where user_id=$1 and id = any($2::text[])", [userId, plan.toApp.deletes]);
+      if (plan.toApp.deletes.length) await q.query("delete from finance.entries where user_id=$1 and id = any($2::text[]) and not ('loan-receipt' = any(tags))", [userId, plan.toApp.deletes]);
       // accounts a typed row used must exist for the app to show it (they come from Referensi, so they already do)
       await q.query("delete from finance.sheet_rows where user_id=$1", [userId]);
       const map = [...plan.mapping].filter(([, h]) => h).map(([id2, h]) => ({ id: id2, h }));
@@ -181,8 +198,8 @@ export async function syncSheet(d: SyncDeps, userId: string, opts: { force?: boo
     });
 
     const after = await drive(f, token, `/files/${id}?fields=modifiedTime`).then((r) => (r.ok ? r.json() : null)) as { modifiedTime?: string } | null;
-    await d.db.query("update finance.google_sheet_exports set status=$2, last_synced_at=now(), last_error=null, hold=$3, confirm_deletes=false, dirty=false, grid_rows=$4, sheet_modified=$5, last_stats=$6::jsonb, next_sync_at=now()+($7 * interval '1 millisecond') where user_id=$1",
-      [userId, hold ? "held" : "synced", hold, gridRows, after?.modifiedTime ?? m.modifiedTime, JSON.stringify(plan.stats), hold ? 60_000 : SYNC_EVERY_MS]);
+    await d.db.query("update finance.google_sheet_exports set status=$2, last_synced_at=now(), last_error=null, hold=$3, confirm_deletes=false, dirty=coalesce((select updated_at > $8::timestamptz from finance.profiles where user_id=$1), false), grid_rows=$4, sheet_modified=$5, last_stats=$6::jsonb, next_sync_at=now()+($7 * interval '1 millisecond') where user_id=$1",
+      [userId, hold ? "held" : "synced", hold, gridRows, after?.modifiedTime ?? m.modifiedTime, JSON.stringify({ ...plan.stats, loanExportVersion: LOAN_EXPORT_VERSION }), hold ? 60_000 : SYNC_EVERY_MS, ex.sync_started]);
     return { ok: true, action: hold ? "held" : "synced", stats: plan.stats };
   } catch (e) {
     if (existing && e instanceof GoogleError && e.status === 404) {

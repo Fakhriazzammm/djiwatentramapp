@@ -7,7 +7,7 @@ export const TABLES: Table[] = ["accounts", "categories", "entries", "budgets", 
 const keyOf: Record<Table, (x: any) => string> = { accounts: (x) => x.id, categories: (x) => x.id, entries: (x) => x.id, budgets: (x) => x.categoryId, goals: (x) => x.id, debts: (x) => x.id, loans: (x) => x.id, bills: (x) => x.id, assets: (x) => x.id };
 
 export type Snapshot = Record<Table, Record<string, string>> & { profile: string };
-export type SyncBody = { upserts: Partial<Record<Table, unknown[]>>; deletes: Partial<Record<Table, string[]>>; profile?: { onboarded: boolean; overrides: FinanceState["overrides"]; pockets: FinanceState["pockets"] } };
+export type SyncBody = { loanRevisions?: Record<string, number>; upserts: Partial<Record<Table, unknown[]>>; deletes: Partial<Record<Table, string[]>>; profile?: { onboarded: boolean; overrides: FinanceState["overrides"]; pockets: FinanceState["pockets"] } };
 
 const profileOf = (s: FinanceState) => JSON.stringify([s.onboarded, s.overrides, s.pockets]);
 export const emptySnapshot = (): Snapshot => ({ accounts: {}, categories: {}, entries: {}, budgets: {}, goals: {}, debts: {}, loans: {}, bills: {}, assets: {}, profile: "" });
@@ -26,11 +26,38 @@ export function diffState(snap: Snapshot, state: FinanceState): SyncBody | null 
     const seen = new Set<string>(), up: unknown[] = [];
     for (const item of state[t] as unknown[]) { const k = keyOf[t](item); seen.add(k); if ((snap[t] ?? {})[k] !== JSON.stringify(item)) up.push(item); }
     const del = Object.keys(snap[t] ?? {}).filter((k) => !seen.has(k));
+    if (t === "loans" && (up.length || del.length)) {
+      body.loanRevisions = Object.fromEntries([
+        ...up.map((item) => keyOf.loans(item)), ...del,
+      ].map((key) => [key, JSON.parse(snap.loans?.[key] ?? "{}").mailRevision ?? 0]));
+    }
     if (up.length) { body.upserts[t] = up; dirty = true; }
     if (del.length) { body.deletes[t] = del; dirty = true; }
   }
   if (snap.profile !== profileOf(state)) { body.profile = { onboarded: state.onboarded, overrides: state.overrides, pockets: state.pockets }; dirty = true; }
   return dirty ? body : null;
+}
+
+/** A server-recorded instalment wins over edits made from the older loan history. */
+export function rebaseLoanChanges(local: FinanceState, server: FinanceState, stored: Snapshot) {
+  const stale = server.loans.filter((loan) => (loan.mailRevision ?? 0) !== (JSON.parse(stored.loans?.[loan.id] ?? "{}").mailRevision ?? 0));
+  const touched = diffState(stored, local);
+  const localEdits = (touched?.upserts.loans ?? []) as FinanceState["loans"];
+  const conflicts = stale.filter((loan) => localEdits.some((edit) => edit.id === loan.id) || touched?.deletes.loans?.includes(loan.id));
+  if (!stale.length) return { state: local, conflict: false };
+  const liveEntries = new Set(server.entries.map((entry) => entry.id));
+  const bills = new Set(stale.map((loan) => loan.billId ?? `ln-${loan.id}`));
+  return {
+    state: {
+      ...local,
+      // Let the server supply the matching bill, including its removal after the final payment.
+      bills: local.bills.filter((bill) => !bills.has(bill.id)),
+      entries: local.entries.filter((entry) => entry.tags.includes("loan-receipt")
+        ? liveEntries.has(entry.id)
+        : stored.entries[entry.id] || !stale.some((loan) => entry.tags.includes(`loan:${loan.id}`))),
+    },
+    conflict: conflicts.length > 0,
+  };
 }
 
 /** First contact between a device's local data and the server's: union by id, the server wins on conflicts. */
@@ -52,6 +79,10 @@ export class Unauthorized extends Error {}
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { credentials: "include", ...init, headers: { "Content-Type": "application/json", ...init?.headers } });
   if (res.status === 401) { const m = await import("../identity-adapter"); if (await m.recoverPaySession()) await new Promise<never>(() => {}); throw new Unauthorized(); }
+  if (path === "/sync" && res.status === 409) {
+    const conflict = await res.json().catch(() => null);
+    if (conflict?.error === "LOAN_CHANGED_BY_EMAIL") throw new Error(conflict.error);
+  }
   if (!res.ok) throw new Error(`HTTP_${res.status}`);
   return res.json() as Promise<T>;
 }

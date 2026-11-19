@@ -8,7 +8,7 @@ export const CATATAN_HEADERS = ["ID", "Waktu", "Jenis", "Kategori", "Dompet", "K
 export const OK = "✓ Tersinkron";
 const WIB_MS = 7 * 3600_000, DAY = 86400_000, EPOCH = 25569;   // Sheets serial 25569 = 1970-01-01
 
-export type EntryRow = { id: string; kind: "out" | "in" | "tf"; amount: number; categoryId: string; accountId: string; toAccountId?: string | null; at: string; note: string; source: string; receiptLocked?: boolean };
+export type EntryRow = { id: string; kind: "out" | "in" | "tf"; amount: number; categoryId: string; accountId: string; toAccountId?: string | null; at: string; note: string; source: string; loanReceipt?: boolean; receiptLocked?: boolean };
 export type Names = { catName: Record<string, string>; accName: Record<string, string> };
 export type SheetRow = { row: number; cells: unknown[] };          // row = 1-based sheet row number
 export type Cell = string | number;
@@ -104,8 +104,8 @@ export function planSync(input: { entries: EntryRow[]; mapping: Map<string, stri
       continue;
     }
     const dbHash = hashOf(entry), sheetHash = parsed.ok ? hashOf(parsed.entry) : null;
-    if (entry.receiptLocked) {
-      if (sheetHash !== dbHash) { writeApp(entry, row); status(row, current, "Ubah melalui rincian struk di Djiwa Pay"); }
+    if (entry.receiptLocked || entry.loanReceipt) {
+      if (sheetHash !== dbHash) { writeApp(entry, row); status(row, current, entry.loanReceipt ? "Angsuran KPR dari email · urungkan di Djiwa Pay" : "Ubah melalui rincian struk di Djiwa Pay"); }
       else { plan.mapping.set(id, dbHash); status(row, current, OK); }
       continue;
     }
@@ -130,7 +130,7 @@ export function planSync(input: { entries: EntryRow[]; mapping: Map<string, stri
   for (const e of entries) {
     if (onSheet.has(e.id)) continue;
     const known = mapping.get(e.id);
-    if (known !== undefined && hashOf(e) === known) { plan.toApp.deletes.push(e.id); plan.stats.deletedInApp++; continue; }   // row removed in the sheet
+    if (!e.loanReceipt && known !== undefined && hashOf(e) === known) { plan.toApp.deletes.push(e.id); plan.stats.deletedInApp++; continue; }   // row removed in the sheet
     plan.toSheet.appends.push(rowOf(e, names)); plan.mapping.set(e.id, hashOf(e)); plan.stats.toSheet++;                        // new in the app, or edited after its row was removed
   }
   return plan;

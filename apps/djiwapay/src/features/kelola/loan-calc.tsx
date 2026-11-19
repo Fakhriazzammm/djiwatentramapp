@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Btn, Ic, Seg, AnimatedNumber } from "../shell/dpx-ui";
 import { MoneyInput } from "../finance/fin-sheets";
 import type { FinCtx } from "../finance/fin-pages";
+import { KprOffers, KprRates } from "./kpr-offers";
 import { BiRateChip } from "./loan-parts";
 import { DEFAULT_PASS_THROUGH, biScenario, dsr, prepaymentGain, schedule, summarize, upfront, yearly, type Terms, type LoanInput } from "../../lib/finance/loans";
 import { pct2, useBiRate } from "../../lib/finance/rates";
@@ -20,6 +21,7 @@ export function LoanCalc({ ctx }: { ctx: FinCtx }) {
   const [years, setYears] = useState("15"), [months, setMonths] = useState("36"), [sharia, setSharia] = useState<"konv" | "syariah">("konv"), [model, setModel] = useState<"anuitas" | "flat">("anuitas");
   const [fixRate, setFixRate] = useState("7"), [fixYears, setFixYears] = useState("3"), [floatRate, setFloatRate] = useState(""), [margin, setMargin] = useState("8"), [rate, setRate] = useState("12");
   const [income, setIncome] = useState(""), [extraMonthly, setExtraMonthly] = useState(""), [lumpAmount, setLumpAmount] = useState(""), [lumpYear, setLumpYear] = useState("5");
+  const [costInputs, setCostInputs] = useState<Record<string, string>>({});
   const [pass, setPass] = useState<"0" | "0.5" | "1">("0.5"), [showTable, setShowTable] = useState(false), [showCosts, setShowCosts] = useState(false);
 
   const pick = (k: Kind) => { setKind(k); if (k === "kpr") { setPrice("1000000000"); setDpPct("20"); setDpMode("pct"); } else if (k === "kendaraan") { setPrice("250000000"); setDpPct("20"); setDpMode("pct"); setMonths("36"); setModel("flat"); setRate("6"); } else { setPrice("12000000"); setDpPct("0"); setDpMode("pct"); setMonths("12"); setModel("anuitas"); setRate("12"); } };
@@ -40,6 +42,12 @@ export function LoanCalc({ ctx }: { ctx: FinCtx }) {
   }, [ok, terms, extraMonthly, lumpAmount, lumpYear]);
   const ratio = num(income) > 0 ? dsr(s.firstPayment, num(income)) : null;
   const costs = kpr ? upfront(p, dp) : null;
+  const fees: [key: string, label: string, fallback: number][] = costs ? [
+    ["provisi", "Provisi bank", costs.provisi], ["admin", "Administrasi", 0],
+    ["asuransi", "Asuransi jiwa dan kebakaran", costs.asuransi], ["notaris", "Notaris dan PPAT", costs.notaris],
+    ["bphtb", "BPHTB", costs.bphtb], ["appraisal", "Appraisal", costs.appraisal],
+  ] : [];
+  const upfrontTotal = dp + fees.reduce((sum, [key, , fallback]) => sum + (costInputs[key] ? Number(costInputs[key]) : fallback), 0);
   const scn = useMemo(() => (floats && ok ? [-50, -25, 0, 25, 50].map((d) => ({ d, ...biScenario(terms, d, Number(pass)) })) : []), [floats, ok, terms, pass]);
   const draft = (): LoanInput => ({ name: kpr ? "KPR" : kind === "kendaraan" ? "Cicilan kendaraan" : "Pinjaman", kind: kpr ? "kpr" : kind === "kendaraan" ? "kendaraan" : "lainnya", lender: "", model: terms.model, principal, months: terms.months, dueDay: new Date().getDate(), fixedRate: terms.fixedRate, fixedMonths: terms.fixedMonths, floatRate: terms.floatRate, installment: null });
   const lvl = ratio?.level;
@@ -57,7 +65,7 @@ export function LoanCalc({ ctx }: { ctx: FinCtx }) {
       </> : null}
       {kpr ? <>
         <div className="dpx-glabel" style={{ marginTop: 8 }}>Tenor</div>
-        <Seg id="ln-yr" label="Tenor tahun" value={years} onChange={setYears} options={[["10", "10 th"], ["15", "15 th"], ["20", "20 th"], ["25", "25 th"], ["30", "30 th"]] as const} />
+        <Seg id="ln-yr" label="Tenor tahun" value={years} onChange={setYears} options={[["5", "5 th"], ["10", "10 th"], ["15", "15 th"], ["20", "20 th"], ["25", "25 th"], ["30", "30 th"]] as const} />
         <div className="dpx-glabel" style={{ marginTop: 8 }}>Jenis KPR</div>
         <Seg id="ln-sh" label="Konvensional atau syariah" value={sharia} onChange={setSharia} options={[["konv", "Konvensional"], ["syariah", "Syariah"]] as const} />
         {konv ? <>
@@ -75,6 +83,7 @@ export function LoanCalc({ ctx }: { ctx: FinCtx }) {
       {kpr ? <label className="dpx-field"><span>Penghasilan bulanan (opsional)</span><MoneyInput value={income} onChange={setIncome} /></label> : null}
     </div>
 
+    {kpr ? <KprRates /> : null}
     {ok ? <>
       <div className="dpx-group dpx-white" style={{ marginTop: 12 }}>
         <div className="dpx-sub">Angsuran per bulan{floats ? ` (${Math.round(terms.fixedMonths / 12)} tahun pertama)` : ""}</div>
@@ -85,8 +94,14 @@ export function LoanCalc({ ctx }: { ctx: FinCtx }) {
       </div>
 
       {costs ? <div className="dpx-group dpx-white" style={{ marginTop: 12 }}>
-        <Btn type="button" className="dpx-linkbtn" style={{ width: "100%", textAlign: "left", display: "flex", justifyContent: "space-between" }} aria-expanded={showCosts} onClick={() => setShowCosts((v) => !v)}><b style={{ color: "var(--ink)" }}>Biaya di awal (perkiraan)</b><b>{rupiah(costs.total)}</b></Btn>
-        {showCosts ? <div style={{ marginTop: 6 }}>{([["DP", costs.dp], ["Provisi bank (1%)", costs.provisi], ["Asuransi jiwa dan kebakaran (0,5%)", costs.asuransi], ["Notaris dan PPAT (1%)", costs.notaris], ["BPHTB (5% setelah Rp80 juta)", costs.bphtb], ["Appraisal", costs.appraisal]] as [string, number][]).map(([k, v]) => <div className="dpx-ln-row" key={k}><span>{k}</span><b>{rupiah(v)}</b></div>)}<p className="dpx-sub" style={{ margin: "8px 0 0" }}>Angka ini perkiraan umum. Batas bebas BPHTB dan biaya bank berbeda tiap daerah dan bank, tanyakan rinciannya sebelum akad.</p></div> : null}
+        <Btn type="button" className="dpx-linkbtn" style={{ width: "100%", textAlign: "left", display: "flex", justifyContent: "space-between" }} aria-expanded={showCosts} onClick={() => setShowCosts((v) => !v)}><b style={{ color: "var(--ink)" }}>Biaya di awal (perkiraan)</b><b>{rupiah(upfrontTotal)}</b></Btn>
+        {showCosts ? <div style={{ marginTop: 6 }}>
+          <div className="dpx-ln-row"><span>DP</span><b>{rupiah(dp)}</b></div>
+          <div className="dpx-ln-two">{fees.map(([key, label, fallback]) => <label className="dpx-field" key={key}>
+            <span>{label}</span><MoneyInput value={costInputs[key] ?? ""} onChange={(value) => setCostInputs((current) => ({ ...current, [key]: value }))} placeholder={fallback.toLocaleString("id-ID")} />
+          </label>)}</div>
+          <p className="dpx-sub">Isi biaya penawaran bank jika sudah tersedia. BPHTB dan biaya lain bisa berbeda menurut wilayah, bank, dan produk.</p>
+        </div> : null}
       </div> : null}
 
       <div className="dpx-group dpx-white" style={{ marginTop: 12 }}>
@@ -113,6 +128,7 @@ export function LoanCalc({ ctx }: { ctx: FinCtx }) {
         <p className="dpx-sub" style={{ margin: "8px 0 0" }}>Angsuran setelah masa bunga tetap. Asumsi bawaan {Math.round(DEFAULT_PASS_THROUGH * 100)}% diteruskan; bunga sebenarnya mengikuti keputusan bank.</p>
       </div> : null}
 
+      {kpr && konv ? <KprOffers terms={terms} propertyPrice={p} initialFees={upfrontTotal - dp} /> : null}
       <Btn type="button" className="dpx-btn" onClick={() => ctx.open({ k: "loan", draft: draft() })}><Ic n="plus" size="sm" /> Simpan sebagai pinjaman saya</Btn>
     </> : <p className="dpx-sub" style={{ margin: "12px 4px" }}>Isi harga dan tenor untuk melihat angsurannya.</p>}
   </div>;

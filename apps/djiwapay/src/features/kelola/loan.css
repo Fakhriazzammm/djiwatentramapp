@@ -25,3 +25,9 @@
 .dpx .dpx-ln-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.dpx .dpx-ln-chips>span{font:600 11.5px var(--font);padding:3px 9px;border-radius:99px;background:var(--group);color:var(--mute)}
 .dpx .dpx-ln-chips>span.dpx-warn{background:var(--warn-soft);color:var(--warn)}
 .dpx .dpx-ln-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.dpx-ln-panel { margin-top: 12px; }
+.dpx-ln-panel summary { cursor: pointer; margin: 0; }
+.dpx-ln-panel .dpx-ln-table th { overflow-wrap: anywhere; }
+.dpx-ln-panel .dpx-ln-table th[scope="row"] { text-align: left; }
+.dpx-ln-panel .dpx-ln-table a { color: var(--blue); text-decoration: underline; }

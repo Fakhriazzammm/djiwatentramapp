@@ -10,6 +10,7 @@ export const ISSUERS: Issuer[] = [
   { id: "blu", name: "blu", kind: "bank", domains: ["blubybcadigital.id", "blu.co.id"] },
   { id: "mandiri", name: "Mandiri", kind: "bank", domains: ["bankmandiri.co.id", "livin.id"] },
   { id: "bri", name: "BRI", kind: "bank", domains: ["bri.co.id", "bri.id"] },
+  { id: "btn", name: "BTN", kind: "bank", domains: ["btn.co.id"] },
   { id: "bni", name: "BNI", kind: "bank", domains: ["bni.co.id", "bni.id"] },
   { id: "cimb", name: "CIMB Niaga", kind: "bank", domains: ["cimbniaga.co.id", "cimb.id"] },
   { id: "jago", name: "Jago", kind: "bank", domains: ["jago.com", "bankjago.com"] },

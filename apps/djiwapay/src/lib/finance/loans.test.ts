@@ -93,3 +93,13 @@ describe("state plumbing", () => {
     expect(billOf({ ...kpr(), balance: 0 }).amount).toBeGreaterThan(0);
   });
 });
+
+
+test("property equity subtracts only mortgages linked to that property", async () => {
+  const { homeEquity } = await import("./loans");
+  const input = { name: "Rumah", kind: "kpr", lender: "BTN", model: "anuitas", principal: 200, months: 12, dueDay: 15, fixedRate: 0, fixedMonths: 12, floatRate: 0 } as const;
+  const linked = newLoan("house", { ...input, assetId: "a", balance: 180 });
+  const other = newLoan("other", { ...input, assetId: "b", balance: 100 });
+  expect(homeEquity("a", 150, [linked, other])).toEqual({ value: -30, balance: 180 });
+  expect(homeEquity("c", 150, [linked, other])).toBeNull();
+});

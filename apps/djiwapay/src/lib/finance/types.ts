@@ -39,7 +39,7 @@ export type Loan = {
   /** Annual percentages. The fixed rate applies to the first `fixedMonths` instalments, the floating rate afterwards. */
   fixedRate: number; fixedMonths: number; floatRate: number;
   balance: number; paid: number; /** The instalment the bank actually charges, when it differs from the computed one. */ installment: number | null;
-  payments: LoanPayment[]; billId?: string; note: string; createdAt: string;
+  payments: LoanPayment[]; billId?: string; assetId?: string; mailRevision?: number; note: string; createdAt: string;
 };
 export type Pocket = { id: string; name: string; percent: number; categoryIds: string[]; tone: string; icon: string };
 export type AssetKind = "gold" | "fund" | "stock" | "crypto" | "property" | "vehicle" | "electronics" | "other";

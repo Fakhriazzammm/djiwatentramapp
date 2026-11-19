@@ -1,3 +1,5 @@
+import { lockLoanChanges } from "./loans/reconcile.js";
+
 export type Q = { query: (text: string, params?: unknown[]) => Promise<{ rows: any[] }> };
 export type Tx = Q & { tx: <T>(fn: (q: Q) => Promise<T>) => Promise<T> };
 
@@ -7,12 +9,12 @@ const iso = (v: unknown) => { const t = Date.parse(String(v)); return Number.isN
 const arr = (v: unknown, max = 5000): any[] => (Array.isArray(v) ? v.slice(0, max) : []);
 const ids = (v: unknown) => arr(v).filter((x) => typeof x === "string" && x.length > 0 && x.length <= 80) as string[];
 
-export type SyncBody = { upserts?: Record<string, unknown>; deletes?: Record<string, unknown>; profile?: { onboarded?: unknown; overrides?: unknown; pockets?: unknown } };
+export type SyncBody = { loanRevisions?: Record<string, number>; upserts?: Record<string, unknown>; deletes?: Record<string, unknown>; profile?: { onboarded?: unknown; overrides?: unknown; pockets?: unknown } };
 
 const sanitize = {
   accounts: (a: any) => a && a.id && a.name ? { id: str(a.id, 80), name: str(a.name, 60), type: ["cash", "bank", "ewallet", "card", "other"].includes(a.type) ? a.type : "other", opening: money(a.opening), archived: Boolean(a.archived) } : null,
   categories: (c: any) => c && c.id && c.name ? { id: str(c.id, 80), name: str(c.name, 60), icon: str(c.icon || "tag", 20), tone: str(c.tone || "slate", 20), income: Boolean(c.income), custom: Boolean(c.custom) } : null,
-  entries: (e: any) => e && e.id && ["out", "in", "tf"].includes(e.kind) && money(e.amount) > 0 && iso(e.at) ? { id: str(e.id, 80), kind: e.kind, amount: money(e.amount), category_id: str(e.categoryId, 80), account_id: str(e.accountId, 80), to_account_id: e.toAccountId ? str(e.toAccountId, 80) : null, at: iso(e.at), note: str(e.note, 500), tags: arr(e.tags, 20).map((t) => str(t, 30)), source: ["manual", "voice", "pay", "receipt", "email", "sheet"].includes(e.source) ? e.source : "manual", receipt_id: e.receiptId ? str(e.receiptId, 80) : null, inbound_id: e.inboundId ? str(e.inboundId, 80) : null, created_at: iso(e.createdAt) ?? new Date().toISOString() } : null,
+  entries: (e: any) => e && e.id && ["out", "in", "tf"].includes(e.kind) && money(e.amount) > 0 && iso(e.at) ? { id: str(e.id, 80), kind: e.kind, amount: money(e.amount), category_id: str(e.categoryId, 80), account_id: str(e.accountId, 80), to_account_id: e.toAccountId ? str(e.toAccountId, 80) : null, at: iso(e.at), note: str(e.note, 500), tags: arr(e.tags, 20).map((t) => str(t, 30)).filter((tag) => tag !== "loan-receipt"), source: ["manual", "voice", "pay", "receipt", "email", "sheet"].includes(e.source) ? e.source : "manual", receipt_id: e.receiptId ? str(e.receiptId, 80) : null, inbound_id: e.inboundId ? str(e.inboundId, 80) : null, created_at: iso(e.createdAt) ?? new Date().toISOString() } : null,
   budgets: (b: any) => b && b.categoryId && money(b.limit) > 0 ? { category_id: str(b.categoryId, 80), limit_amount: money(b.limit), rollover: Boolean(b.rollover) } : null,
   goals: (g: any) => g && g.id && g.name ? { id: str(g.id, 80), name: str(g.name, 80), target: money(g.target), deposits: arr(g.deposits, 2000).map((d) => ({ at: iso(d?.at) ?? new Date().toISOString(), amount: money(d?.amount) })), due: /^\d{4}-\d{2}-\d{2}$/.test(String(g.due ?? "")) ? String(g.due) : null, created_at: iso(g.createdAt) ?? new Date().toISOString() } : null,
   bills: (b: any) => b && b.id && b.name && money(b.amount) > 0 && Number(b.day) >= 1 && Number(b.day) <= 31 ? { id: str(b.id, 80), name: str(b.name, 60), amount: money(b.amount), day: Math.round(Number(b.day)), icon: str(b.icon || "receipt", 20), tone: str(b.tone || "amber", 20), paid: arr(b.paid, 120).map((m) => str(m, 7)) } : null,
@@ -24,6 +26,7 @@ const sanitize = {
     fixed_rate: Math.max(0, Math.min(60, Math.round((Number(l.fixedRate) || 0) * 1000) / 1000)), fixed_months: Math.max(0, Math.min(600, Math.round(Number(l.fixedMonths) || 0))), float_rate: Math.max(0, Math.min(60, Math.round((Number(l.floatRate) || 0) * 1000) / 1000)),
     balance: Math.max(0, money(l.balance)), paid: Math.max(0, Math.min(600, Math.round(Number(l.paid) || 0))), installment: money(l.installment) > 0 ? money(l.installment) : null,
     payments: arr(l.payments, 1200).map((p) => ({ at: iso(p?.at) ?? new Date().toISOString(), amount: money(p?.amount), interest: money(p?.interest), principal: money(p?.principal), ...(p?.extra ? { extra: true } : {}) })).filter((p) => p.amount > 0),
+    asset_id: typeof l.assetId === "string" && l.kind === "kpr" ? str(l.assetId, 80) : null,
     bill_id: l.billId ? str(l.billId, 80) : null, note: str(l.note, 300), created_at: iso(l.createdAt) ?? new Date().toISOString() } : null,
 } as const;
 
@@ -36,13 +39,19 @@ const SQL: Record<keyof typeof sanitize, { cols: string; def: string; key: strin
   bills: { cols: "id,name,amount,day,icon,tone,paid", def: "id text,name text,amount numeric,day smallint,icon text,tone text,paid jsonb", key: "id", update: "name=excluded.name,amount=excluded.amount,day=excluded.day,icon=excluded.icon,tone=excluded.tone,paid=excluded.paid" },
   assets: { cols: "id,name,kind,value,sub,weight,purity,bought_on,cost,shop,note,sticker_id,auto,est,rate", def: "id text,name text,kind text,value numeric,sub text,weight numeric,purity numeric,bought_on text,cost numeric,shop text,note text,sticker_id text,auto boolean,est boolean,rate numeric", key: "id", update: "name=excluded.name,kind=excluded.kind,value=excluded.value,sub=excluded.sub,weight=excluded.weight,purity=excluded.purity,bought_on=excluded.bought_on,cost=excluded.cost,shop=excluded.shop,note=excluded.note,sticker_id=excluded.sticker_id,auto=excluded.auto,est=excluded.est,rate=excluded.rate" },
   debts: { cols: "id,person,direction,amount,note,due,settled,payments,created_at", def: "id text,person text,direction text,amount numeric,note text,due text,settled boolean,payments jsonb,created_at timestamptz", key: "id", update: "person=excluded.person,direction=excluded.direction,amount=excluded.amount,note=excluded.note,due=excluded.due,settled=excluded.settled,payments=excluded.payments" },
-  loans: { cols: "id,name,kind,lender,model,principal,months,start_date,due_day,fixed_rate,fixed_months,float_rate,balance,paid,installment,payments,bill_id,note,created_at", def: "id text,name text,kind text,lender text,model text,principal numeric,months integer,start_date text,due_day smallint,fixed_rate numeric,fixed_months integer,float_rate numeric,balance numeric,paid integer,installment numeric,payments jsonb,bill_id text,note text,created_at timestamptz", key: "id", update: "name=excluded.name,kind=excluded.kind,lender=excluded.lender,model=excluded.model,principal=excluded.principal,months=excluded.months,start_date=excluded.start_date,due_day=excluded.due_day,fixed_rate=excluded.fixed_rate,fixed_months=excluded.fixed_months,float_rate=excluded.float_rate,balance=excluded.balance,paid=excluded.paid,installment=excluded.installment,payments=excluded.payments,bill_id=excluded.bill_id,note=excluded.note" },
+  loans: { cols: "id,name,kind,lender,model,principal,months,start_date,due_day,fixed_rate,fixed_months,float_rate,balance,paid,installment,payments,bill_id,asset_id,note,created_at", def: "id text,name text,kind text,lender text,model text,principal numeric,months integer,start_date text,due_day smallint,fixed_rate numeric,fixed_months integer,float_rate numeric,balance numeric,paid integer,installment numeric,payments jsonb,bill_id text,asset_id text,note text,created_at timestamptz", key: "id", update: "name=excluded.name,kind=excluded.kind,lender=excluded.lender,model=excluded.model,principal=excluded.principal,months=excluded.months,start_date=excluded.start_date,due_day=excluded.due_day,fixed_rate=excluded.fixed_rate,fixed_months=excluded.fixed_months,float_rate=excluded.float_rate,balance=excluded.balance,paid=excluded.paid,installment=excluded.installment,payments=excluded.payments,bill_id=excluded.bill_id,asset_id=case when excluded.kind<>'kpr' then null else coalesce(excluded.asset_id,finance.loans.asset_id) end,note=excluded.note" },
 };
 const TABLES = Object.keys(SQL) as (keyof typeof SQL)[];
 
 /** Applies one client diff atomically and returns the new profile version. */
 export async function applySync(db: Tx, userId: string, body: SyncBody): Promise<{ version: number }> {
   return db.tx(async (q) => {
+    await lockLoanChanges(q, userId);
+    const touchedLoans = [...arr(body.upserts?.loans).map((l) => str(l?.id, 80)), ...ids(body.deletes?.loans)];
+    if (touchedLoans.length) {
+      const loans = (await q.query("select id,mail_revision from finance.loans where user_id=$1 and id=any($2::text[])", [userId, touchedLoans])).rows;
+      if (loans.some((l) => l.mail_revision !== (body.loanRevisions?.[l.id] ?? 0))) throw new Error("LOAN_CHANGED_BY_EMAIL");
+    }
     await q.query("insert into finance.profiles(user_id) values($1) on conflict do nothing", [userId]);
     for (const t of TABLES) {
       const s = SQL[t];
@@ -53,9 +62,9 @@ export async function applySync(db: Tx, userId: string, body: SyncBody): Promise
         const blocked = await q.query("select 1 from jsonb_to_recordset($2::jsonb) as x(id text,receipt_id text) where coalesce(x.receipt_id,'')<>'' and exists(select 1 from finance.receipts r where r.user_id=$1 and r.id=x.receipt_id) and not exists(select 1 from finance.entries e where e.user_id=$1 and e.id=x.id) limit 1", [userId, JSON.stringify(rows)]);
         if (blocked.rows.length) throw new Error("RECEIPT_CONFIRMATION_REQUIRED");
       }
-      if (rows.length) await q.query(`insert into finance.${t}(user_id,${s.cols}) select $1,${s.cols} from jsonb_to_recordset($2::jsonb) as x(${s.def}) on conflict(user_id,${s.key}) do update set ${s.update}${t === "entries" ? " where not exists(select 1 from finance.receipts r where r.user_id=finance.entries.user_id and r.id=finance.entries.receipt_id and r.confirmed_at is not null)" : ""}`, [userId, JSON.stringify(rows)]);
+      if (rows.length) await q.query(`insert into finance.${t}(user_id,${s.cols}) select $1,${s.cols} from jsonb_to_recordset($2::jsonb) as x(${s.def}) on conflict(user_id,${s.key}) do update set ${s.update}${t === "entries" ? " where not ('loan-receipt' = any(finance.entries.tags)) and not exists(select 1 from finance.receipts r where r.user_id=finance.entries.user_id and r.id=finance.entries.receipt_id and r.confirmed_at is not null)" : ""}`, [userId, JSON.stringify(rows)]);
       const del = ids(body.deletes?.[t]);
-      if (del.length) await q.query(`delete from finance.${t} where user_id=$1 and ${s.key} = any($2::text[])`, [userId, del]);
+      if (del.length) await q.query(`delete from finance.${t} where user_id=$1 and ${s.key} = any($2::text[])${t === "entries" ? " and not ('loan-receipt' = any(tags))" : ""}`, [userId, del]);
     }
     const p = body.profile ?? {};
     const overrides = p.overrides && typeof p.overrides === "object" && !Array.isArray(p.overrides) ? JSON.stringify(p.overrides).slice(0, 200_000) : null;
@@ -79,7 +88,7 @@ export async function loadState(db: Q, userId: string) {
     db.query("select id,merchant,purchased_at,total,confidence,items,status from finance.receipts where user_id=$1 order by created_at desc limit 500", [userId]),
     db.query("select id,name,amount,day,icon,tone,paid from finance.bills where user_id=$1 order by day,id", [userId]),
     db.query("select id,name,kind,value,sub,weight,purity,bought_on,cost,shop,note,sticker_id,auto,est,rate from finance.assets where user_id=$1 order by id", [userId]),
-    db.query("select id,name,kind,lender,model,principal,months,start_date,due_day,fixed_rate,fixed_months,float_rate,balance,paid,installment,payments,bill_id,note,created_at from finance.loans where user_id=$1 order by created_at,id", [userId]),
+    db.query("select id,name,kind,lender,model,principal,months,start_date,due_day,fixed_rate,fixed_months,float_rate,balance,paid,installment,payments,bill_id,asset_id,mail_revision,note,created_at from finance.loans where user_id=$1 order by created_at,id", [userId]),
   ]);
   const p = pr.rows[0];
   return {
@@ -88,7 +97,7 @@ export async function loadState(db: Q, userId: string) {
       v: 1 as const, onboarded: Boolean(p?.onboarded), overrides: p?.overrides ?? {}, pockets: p?.pockets ?? [],
       bills: bi.rows.map((r) => ({ id: r.id, name: r.name, amount: n(r.amount), day: Number(r.day), icon: r.icon, tone: r.tone, paid: r.paid })),
       assets: as.rows.map((r) => ({ id: r.id, name: r.name, kind: r.kind, value: n(r.value), ...(r.sub ? { sub: r.sub } : {}), ...(r.weight !== null ? { weight: n(r.weight) } : {}), ...(r.purity !== null ? { purity: n(r.purity) } : {}), ...(r.bought_on ? { boughtOn: r.bought_on } : {}), ...(r.cost !== null ? { cost: n(r.cost) } : {}), ...(r.shop ? { shop: r.shop } : {}), ...(r.note ? { note: r.note } : {}), ...(r.sticker_id ? { stickerId: r.sticker_id } : {}), ...(r.auto ? { auto: true } : {}), ...(r.est ? { est: true } : {}), ...(r.rate !== null && r.rate !== undefined ? { rate: n(r.rate) } : {}) })),
-      loans: ln.rows.map((r) => ({ id: r.id, name: r.name, kind: r.kind, lender: r.lender, model: r.model, principal: n(r.principal), months: Number(r.months), ...(r.start_date ? { startDate: r.start_date } : {}), dueDay: Number(r.due_day), fixedRate: n(r.fixed_rate), fixedMonths: Number(r.fixed_months), floatRate: n(r.float_rate), balance: n(r.balance), paid: Number(r.paid), installment: r.installment === null ? null : n(r.installment), payments: Array.isArray(r.payments) ? r.payments : [], ...(r.bill_id ? { billId: r.bill_id } : {}), note: r.note, createdAt: new Date(r.created_at).toISOString() })),
+      loans: ln.rows.map((r) => ({ id: r.id, name: r.name, kind: r.kind, lender: r.lender, model: r.model, principal: n(r.principal), months: Number(r.months), ...(r.start_date ? { startDate: r.start_date } : {}), dueDay: Number(r.due_day), fixedRate: n(r.fixed_rate), fixedMonths: Number(r.fixed_months), floatRate: n(r.float_rate), balance: n(r.balance), paid: Number(r.paid), installment: r.installment === null ? null : n(r.installment), payments: Array.isArray(r.payments) ? r.payments : [], ...(r.bill_id ? { billId: r.bill_id } : {}), ...(r.asset_id ? { assetId: r.asset_id } : {}), ...(r.mail_revision ? { mailRevision: r.mail_revision } : {}), note: r.note, createdAt: new Date(r.created_at).toISOString() })),
       accounts: ac.rows.map((r) => ({ id: r.id, name: r.name, type: r.type, opening: n(r.opening), ...(r.archived ? { archived: true } : {}) })),
       categories: ca.rows.map((r) => ({ id: r.id, name: r.name, icon: r.icon, tone: r.tone, income: r.income, ...(r.custom ? { custom: true } : {}) })),
       entries: en.rows.map((r) => ({ id: r.id, kind: r.kind, amount: n(r.amount), categoryId: r.category_id, accountId: r.account_id, ...(r.to_account_id ? { toAccountId: r.to_account_id } : {}), at: new Date(r.at).toISOString(), note: r.note, tags: r.tags, source: r.source, ...(r.receipt_id ? { receiptId: r.receipt_id } : {}), ...(r.inbound_id ? { inboundId: r.inbound_id } : {}), createdAt: new Date(r.created_at).toISOString() })),

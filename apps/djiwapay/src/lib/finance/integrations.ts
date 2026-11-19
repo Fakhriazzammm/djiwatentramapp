@@ -4,7 +4,7 @@ export type InboundSource = { forwarding: boolean; address: string; enabled: boo
 export type InboundSummary = { configured: boolean; broad?: boolean; broadFilter?: string; filter: string; source: InboundSource | null; review: number; importReady: number; autoRecent: number };
 export type ReviewItem = {
   id: string; channel: string; status: "review" | "failed"; reason: string; confidence: number; createdAt: string;
-  parsed: { amount?: number; kind?: "out" | "in" | "tf"; transfer?: { from: string; to: string; toName?: string; amount: number; fee?: number }; direction?: string; merchant?: string; categoryId?: string; accountId?: string; accountHint?: string; at?: string; subject?: string; issuer?: string; details?: PaymentDetails; flags?: string[]; bill?: boolean; due?: string | null; generic?: boolean; suggest?: "in" | "out" | null; suggestFrom?: "hint" | "mail" | null };
+  parsed: { loanMail?: "reminder" | "receipt"; amount?: number; kind?: "out" | "in" | "tf"; transfer?: { from: string; to: string; toName?: string; amount: number; fee?: number }; direction?: string; merchant?: string; categoryId?: string; accountId?: string; accountHint?: string; at?: string; subject?: string; issuer?: string; details?: PaymentDetails; flags?: string[]; bill?: boolean; due?: string | null; generic?: boolean; suggest?: "in" | "out" | null; suggestFrom?: "hint" | "mail" | null };
 };
 export type GoogleStatus = {
   configured: boolean; connected: boolean; email: string | null; features: { calendar: boolean; drive: boolean; gmail: boolean };
@@ -34,7 +34,7 @@ export const removeSource = (wipe: boolean) => call<object>(`/inbound/source${wi
 export const getReview = (offset=0) => call<{ items: ReviewItem[];total:number }>(`/inbound/review?offset=${offset}`);
 export const bulkReview = (ids:string[],action:"approve"|"reject")=>call<{results:{id:string;ok:boolean}[]}>("/inbound/bulk",{method:"POST",body:JSON.stringify({ids,action})});
 export const rereadItem = (id:string)=>call<{details:PaymentDetails}>(`/inbound/${encodeURIComponent(id)}/reread`,{method:"POST"});
-export type ReviewEdits = { amount?: number; kind?: "out" | "in"; categoryId?: string; accountId?: string; note?: string; /** Due date (YYYY-MM-DD) for a bill reminder. */ at?: string };
+export type ReviewEdits = { loanId?: string; amount?: number; kind?: "out" | "in"; categoryId?: string; accountId?: string; note?: string; /** Due date (YYYY-MM-DD) for a bill reminder. */ at?: string };
 export const approveItem = (id: string, edits: ReviewEdits = {}) => call<{ entryId: string }>(`/inbound/${encodeURIComponent(id)}/approve`, { method: "POST", body: JSON.stringify(edits) });
 export const rejectItem = (id: string) => call<object>(`/inbound/${encodeURIComponent(id)}/reject`, { method: "POST" });
 export type Origin = { id: string; channel: string; senderDomain: string; status: string; issuer: string; subject: string; receivedAt: string; details?: PaymentDetails };
@@ -54,7 +54,7 @@ export const disconnectGoogle = () => call<object>("/google/disconnect", { metho
 export const syncGoogle = (what: "calendar" | "drive" | "sheets") => call<Record<string, unknown>>(what === "sheets" ? "/google/sheets/export" : `/google/${what}/sync`, { method: "POST" });
 
 /** What the review card needs to show a channel. */
-export const CHANNEL_NAME: Record<string, string> = { bca: "BCA", blu: "blu", mandiri: "Mandiri", bri: "BRI", bni: "BNI", cimb: "CIMB Niaga", jago: "Jago", jenius: "Jenius", seabank: "SeaBank", gopay: "GoPay", ovo: "OVO", dana: "DANA", shopeepay: "ShopeePay", linkaja: "LinkAja", grab: "Grab", tokopedia: "Tokopedia", pln: "PLN", telkom: "Telkom", bpjs: "BPJS" };
+export const CHANNEL_NAME: Record<string, string> = { bca: "BCA", blu: "blu", mandiri: "Mandiri", bri: "BRI", btn: "BTN", bni: "BNI", cimb: "CIMB Niaga", jago: "Jago", jenius: "Jenius", seabank: "SeaBank", gopay: "GoPay", ovo: "OVO", dana: "DANA", shopeepay: "ShopeePay", linkaja: "LinkAja", grab: "Grab", tokopedia: "Tokopedia", pln: "PLN", telkom: "Telkom", bpjs: "BPJS" };
 
 /* ---- Import of old Gmail mail ---- */
 export type ImportPreview = {

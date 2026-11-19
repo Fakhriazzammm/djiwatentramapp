@@ -28,7 +28,7 @@ export const paidShare = (l: Loan) => (l.principal > 0 ? Math.max(0, Math.min(1,
 export const totalInterestLeft = (l: Loan) => Math.round(remainingRows(l).reduce((s, r) => s + r.interest, 0));
 export const lastPayment = (l: Loan) => l.payments.filter((p) => !p.extra).slice(-1)[0] ?? null;
 
-export const monthKeyOf = (iso: string) => { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
+export { jakartaMonth as monthKeyOf } from "../../../../djiwapay-api/src/loans/mail-rules";
 
 /** A regular instalment: the interest part comes from the balance and the rate, the rest reduces what is owed. */
 export function payRegular(l: Loan, amount: number, at: string): Loan {
@@ -55,9 +55,17 @@ export function billOf(l: Loan, paid: string[] = []): Bill {
   return { id: l.billId ?? `ln-${l.id}`, name: l.name, amount: Math.max(1, Math.round(amount)), day: Math.max(1, Math.min(31, l.dueDay)), icon: m.icon, tone: m.tone, paid };
 }
 
-export type LoanInput = { name: string; kind: LoanKind; lender: string; model: Loan["model"]; principal: number; months: number; startDate?: string; dueDay: number; fixedRate: number; fixedMonths: number; floatRate: number; balance?: number; paid?: number; installment?: number | null; note?: string };
+export type LoanInput = { name: string; kind: LoanKind; lender: string; model: Loan["model"]; principal: number; months: number; startDate?: string; dueDay: number; fixedRate: number; fixedMonths: number; floatRate: number; balance?: number; paid?: number; installment?: number | null; assetId?: string; note?: string };
 export const newLoan = (id: string, i: LoanInput, now = new Date().toISOString()): Loan => ({
   id, name: i.name, kind: i.kind, lender: i.lender, model: i.model, principal: i.principal, months: i.months, ...(i.startDate ? { startDate: i.startDate } : {}), dueDay: i.dueDay,
   fixedRate: i.fixedRate, fixedMonths: i.model === "anuitas" ? i.fixedMonths : i.months, floatRate: i.model === "anuitas" ? i.floatRate : i.fixedRate,
-  balance: i.balance ?? i.principal, paid: i.paid ?? 0, installment: i.installment ?? null, payments: [], note: i.note ?? "", createdAt: now,
+  balance: i.balance ?? i.principal, paid: i.paid ?? 0, installment: i.installment ?? null, payments: [], ...(i.assetId ? { assetId: i.assetId } : {}), note: i.note ?? "", createdAt: now,
 });
+
+/** A property can secure more than one loan. Its full value still counts as an asset. */
+export function homeEquity(assetId: string, value: number, loans: Loan[]) {
+  const linked = loans.filter((loan) => loan.kind === "kpr" && loan.assetId === assetId);
+  if (!linked.length) return null;
+  const balance = linked.reduce((total, loan) => total + loan.balance, 0);
+  return { balance, value: value - balance };
+}

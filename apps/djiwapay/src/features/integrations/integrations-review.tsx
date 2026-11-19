@@ -45,7 +45,7 @@ function Row({ item, ctx, selecting, selected, onToggle, onOpen, onQuick, busy }
       </span>
       <span className={`dpx-rv-amt ${kind === "in" && !isMove(item) && !isGeneric(item) && !isBill(item) ? "is-in" : ""}`}>{ok ? (isMove(item) ? `⇄ ${rupiah(moveAmount(item))}` : isGeneric(item) || isBill(item) ? rupiah(p.amount ?? 0) : `${kind === "in" ? "+" : "−"}${rupiah(p.amount ?? 0)}`) : <em style={{ fontSize: 12, fontStyle: "normal", color: "var(--warn, #b4691a)", fontWeight: 600 }}>Nominal belum terbaca</em>}</span>
     </Btn>
-    {!selecting && ok && !isGeneric(item) ? <Btn type="button" className="dpx-rv-ok" onClick={onQuick} disabled={busy} aria-label={`${isBill(item) ? "Jadikan tagihan" : "Setujui"} ${titleOf(item)}`}><Ic n="check" size="sm" /></Btn> : null}
+    {!selecting && ok && !isGeneric(item) && !p.loanMail ? <Btn type="button" className="dpx-rv-ok" onClick={onQuick} disabled={busy} aria-label={`${isBill(item) ? "Jadikan tagihan" : "Setujui"} ${titleOf(item)}`}><Ic n="check" size="sm" /></Btn> : null}
   </div>;
 }
 
@@ -114,6 +114,58 @@ function BillSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: FinC
       <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} disabled={busy} onClick={() => void act(() => rejectItem(item.id), "Email diabaikan")}>Abaikan</Btn>
       <Btn type="button" className="dpx-btn" style={{ margin: 0 }} disabled={busy || !(Number(amount) > 0) || !name.trim()} onClick={() => void act(() => approveItem(item.id, { amount: Number(amount), note: name.trim(), at: due || undefined }), `Tagihan ${name.trim()} masuk ke Tagihan bulanan`)}>{busy ? "Memproses…" : "Jadikan tagihan"}</Btn>
     </div>
+  </Sheet>;
+}
+
+function LoanMailSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: FinCtx; onClose: () => void; onDone: (message: string) => Promise<void> }) {
+  const parsed = item.parsed;
+  const reminder = parsed.loanMail === "reminder";
+  const loans = ctx.fin.state.loans.filter((loan) => loan.kind === "kpr" && loan.balance > 0);
+  const [loanId, setLoanId] = useState("");
+  const [account, setAccount] = useState(parsed.accountId ?? "tunai");
+  const [amount, setAmount] = useState(parsed.amount ? String(Math.round(parsed.amount)) : "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const act = async (reject: boolean) => {
+    setBusy(true);
+    setError("");
+    try {
+      if (reject) await rejectItem(item.id);
+      else await approveItem(item.id, { loanId, accountId: account, amount: Number(amount) });
+      await ctx.fin.retrySync();
+      await onDone(reject ? "Email diabaikan" : reminder ? "Email ditautkan ke KPR" : "Angsuran KPR tercatat");
+    } catch {
+      setError("Email belum diproses. Periksa pinjaman, riwayat angsuran, dan nominalnya.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return <Sheet title={reminder ? "Tagihan KPR dari email" : "Bukti bayar KPR dari email"} onClose={onClose}>
+    <p className="dpx-sub">{parsed.issuer} · {parsed.subject}</p>
+    {reminder ? <p className="dpx-sub">Tagihan {rupiah(parsed.amount ?? 0)} · jatuh tempo {dueLabel(parsed.due)}. Pilih KPR untuk menautkan pengingat ke tagihan yang sudah ada.</p> : <p className="dpx-sub">Pilih KPR dan dompet pencatatan. Angsuran akan ditandai lunas dan porsi pokok mengurangi sisa pinjaman.</p>}
+    <label className="dpx-field"><span>Pinjaman KPR</span><div className="dpx-input"><select value={loanId} onChange={(e) => setLoanId(e.target.value)}>
+      <option value="">Pilih KPR</option>{loans.map((loan) => <option value={loan.id} key={loan.id}>{loan.name}</option>)}
+    </select></div></label>
+    {!reminder ? <>
+      <label className="dpx-field"><span>Nominal angsuran</span><MoneyInput value={amount} onChange={setAmount} /></label>
+      <label className="dpx-field"><span>Dompet pencatatan</span><div className="dpx-input"><select value={account} onChange={(e) => setAccount(e.target.value)}>
+        {ctx.fin.state.accounts.some((a) => a.id === account) ? null : <option value={account}>{accName(ctx.fin.state, account)}</option>}
+        {ctx.fin.state.accounts.filter((a) => !a.archived || a.id === account).map((a) => <option value={a.id} key={a.id}>{a.name}</option>)}
+      </select></div></label>
+    </> : null}
+    {error ? <p role="alert" className="dpx-error">{error}</p> : null}
+    <div className="dpx-rv-footer">
+      <Btn type="button" className="dpx-btn dpx-soft" disabled={busy} onClick={() => void act(true)}>Abaikan</Btn>
+      <Btn type="button" className="dpx-btn" disabled={busy || !loanId || (!reminder && !(Number(amount) > 0))} onClick={() => void act(false)}>{reminder ? "Tautkan ke KPR" : "Catat angsuran"}</Btn>
+    </div>
+    <Btn type="button" className="dpx-linkbtn" onClick={() => {
+      onClose();
+      ctx.open({ k: "loan", draft: {
+        name: `KPR ${parsed.issuer ?? ""}`.trim(), kind: "kpr", lender: parsed.issuer ?? "", model: "anuitas",
+        principal: 0, months: 0, dueDay: parsed.due ? Number(parsed.due.slice(-2)) : 0,
+        fixedRate: 0, fixedMonths: 0, floatRate: 0, installment: parsed.amount ?? null,
+      } });
+    }}>Jadikan KPR baru</Btn>
   </Sheet>;
 }
 
@@ -232,8 +284,8 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
     for (const it of items) { const k = dayKey(it.parsed.at ?? it.createdAt); m.set(k, [...(m.get(k) ?? []), it]); }
     return [...m].sort(([a], [b]) => (a < b ? 1 : -1));
   }, [items]);
-  const chosen = items.filter((i) => selected.has(i.id)), approvable = chosen.filter((i) => (i.parsed.amount ?? 0) > 0 && !isGeneric(i) && !isBill(i));
-  const outTotal = items.filter((i) => !isMove(i) && !isGeneric(i) && !isBill(i) && kindOf(i) === "out").reduce((n, i) => n + (i.parsed.amount ?? 0), 0), inTotal = items.filter((i) => !isMove(i) && !isGeneric(i) && !isBill(i) && kindOf(i) === "in").reduce((n, i) => n + (i.parsed.amount ?? 0), 0);
+  const chosen = items.filter((i) => selected.has(i.id)), approvable = chosen.filter((i) => (i.parsed.amount ?? 0) > 0 && !isGeneric(i) && !i.parsed.loanMail && !isBill(i));
+  const outTotal = items.filter((i) => !isMove(i) && !isGeneric(i) && !i.parsed.loanMail && !isBill(i) && kindOf(i) === "out").reduce((n, i) => n + (i.parsed.amount ?? 0), 0), inTotal = items.filter((i) => !isMove(i) && !isGeneric(i) && !i.parsed.loanMail && !isBill(i) && kindOf(i) === "in").reduce((n, i) => n + (i.parsed.amount ?? 0), 0);
   const open = items.find((i) => i.id === openId) ?? null;
   const toggle = (id: string) => setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const leaveSelect = () => { setSelecting(false); setSelected(new Set()); setConfirm(null); };
@@ -255,7 +307,7 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
   const run = async (action: "approve" | "reject") => {
     if (busy) return; setBusy(true); setConfirm(null);
     try {
-      const ids = chosen.filter((i) => action === "reject" || ((i.parsed.amount ?? 0) > 0 && !isGeneric(i) && !isBill(i))).map((i) => i.id), results: { id: string; ok: boolean }[] = [];
+      const ids = chosen.filter((i) => action === "reject" || ((i.parsed.amount ?? 0) > 0 && !isGeneric(i) && !i.parsed.loanMail && !isBill(i))).map((i) => i.id), results: { id: string; ok: boolean }[] = [];
       for (let at = 0; at < ids.length; at += 200) results.push(...(await bulkReview(ids.slice(at, at + 200), action)).results);
       const ok = new Set(results.filter((x) => x.ok).map((x) => x.id));
       setSelected((prev) => new Set([...prev].filter((id) => !ok.has(id))));
@@ -303,8 +355,9 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
         onApproved={async (r) => { setOpenGroup(null); const latest = r.months[0]; if (latest) setDone((cur) => ({ count: (cur?.count ?? 0) + r.count, y: latest.y, m: latest.m })); setResult({ ...r, remaining: Math.max(0, total - r.count) }); await Promise.all([load(), loadGroups()]); }}
         onRejected={async (n) => { setOpenGroup(null); ctx.notify(`${n} email diabaikan`); await Promise.all([load(), loadGroups()]); }} /> : null}
       {result ? <ResultSheet key="result" r={result} ctx={ctx} onClose={() => setResult(null)} /> : null}
-      {open && isBill(open) ? <BillSheet key={open.id} item={open} ctx={ctx} onClose={() => setOpenId(null)} onDone={async (message) => { setOpenId(null); await load(); ctx.notify(message); }} /> : null}
-      {open && !isBill(open) ? <DetailSheet key={open.id + JSON.stringify(open.parsed.details)} item={open} ctx={ctx} onClose={() => setOpenId(null)} onDone={async (message) => { const it = open; setOpenId(null); const recorded = Boolean(it && message.includes("tercatat")); if (it && recorded) { markDone([it]); setResult(resultOf([it], total - 1)); } await load(); if (!recorded) ctx.notify(message); }} /> : null}
+      {open?.parsed.loanMail ? <LoanMailSheet key={open.id} item={open} ctx={ctx} onClose={() => setOpenId(null)} onDone={async (message) => { setOpenId(null); await load(); ctx.notify(message); }} /> : null}
+      {open && !open.parsed.loanMail && isBill(open) ? <BillSheet key={open.id} item={open} ctx={ctx} onClose={() => setOpenId(null)} onDone={async (message) => { setOpenId(null); await load(); ctx.notify(message); }} /> : null}
+      {open && !open.parsed.loanMail && !isBill(open) ? <DetailSheet key={open.id + JSON.stringify(open.parsed.details)} item={open} ctx={ctx} onClose={() => setOpenId(null)} onDone={async (message) => { const it = open; setOpenId(null); const recorded = Boolean(it && message.includes("tercatat")); if (it && recorded) { markDone([it]); setResult(resultOf([it], total - 1)); } await load(); if (!recorded) ctx.notify(message); }} /> : null}
     </AnimatePresence>
   </div></Sky></div>;
 }

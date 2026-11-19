@@ -5,14 +5,16 @@ import { FullPage, GainText, PriceNote, Sticker } from "./asset-ui";
 import { BUYBACK_CUT, SUB_LABEL, assetStats, assetValue, holdingLabel, isEstimated, isGoldAsset, purityLabel, useGold } from "../../lib/finance/assets";
 import { ASSET_KINDS } from "../../lib/finance/kelola";
 import { rupiah } from "../../lib/djiwa-pay-format";
-import type { Asset } from "../../lib/finance/types";
+import { homeEquity } from "../../lib/finance/loans";
+import type { Asset, Loan } from "../../lib/finance/types";
 
 const dateLong = (d: string) => new Date(d).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
 const mask = (visible: boolean, s: string) => (visible ? s : "•••••");
 
-export function AssetDetail({ asset, visible, onClose, onEdit, onDelete }: { asset: Asset; visible: boolean; onClose: () => void; onEdit: () => void; onDelete: () => void }) {
+export function AssetDetail({ asset, loans, visible, onClose, onEdit, onDelete }: { asset: Asset; loans: Loan[]; visible: boolean; onClose: () => void; onEdit: () => void; onDelete: () => void }) {
   const gold = useGold(), [confirm, setConfirm] = useState(false);
   const auto = isGoldAsset(asset), est = isEstimated(asset), value = assetValue(asset, gold?.points ?? null);
+  const equity = asset.kind === "property" ? homeEquity(asset.id, value, loans) : null;
   const stats = useMemo(() => (est ? assetStats(asset, []) : auto && gold ? assetStats(asset, gold.points) : null), [asset, auto, est, gold]);
   const series = useMemo(() => (auto || est ? assetDaily(asset, gold?.points ?? null) : []), [asset, auto, est, gold]);
   const gain = asset.cost ? value - asset.cost : null, pct = asset.cost ? ((value - asset.cost) / asset.cost) * 100 : null;
@@ -29,6 +31,10 @@ export function AssetDetail({ asset, visible, onClose, onEdit, onDelete }: { ass
         <div className="dpx-as-tags"><i>{asset.sub ? SUB_LABEL[asset.sub] : ASSET_KINDS[asset.kind].label}</i>{asset.weight ? <i>{String(asset.weight).replace(".", ",")} g</i> : null}{asset.purity ? <i>{purityLabel(asset.purity)}</i> : null}{asset.shop ? <i>{asset.shop}</i> : null}</div>
       </div>
 
+      {equity ? <div className="dpx-group dpx-white dpx-flush dpx-as-rows">
+        <div className="dpx-kv"><span>Sisa pokok KPR</span><b>{mask(visible, rupiah(equity.balance))}</b></div>
+        <div className="dpx-kv"><span>Ekuitas rumah</span><b>{mask(visible, rupiah(equity.value))}</b></div>
+      </div> : null}
       {auto ? <>
         <TrendChart id="as-gold" series={series} color="#c9961b" label={`Grafik nilai ${asset.name}`} visible={visible} />
         <div className="dpx-as-stats">

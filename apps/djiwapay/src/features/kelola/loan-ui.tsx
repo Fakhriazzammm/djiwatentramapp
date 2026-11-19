@@ -23,13 +23,19 @@ const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(
 /* ---------- the card in Kewajiban ---------- */
 const pctShare = (l: Loan) => { const v = paidShare(l) * 100; return `${(v < 10 && v > 0 ? Math.round(v * 10) / 10 : Math.round(v)).toString().replace(".", ",")}%`; };
 export function LoanCard({ loan, visible, onOpen }: { loan: Loan; visible: boolean; onOpen: () => void }) {
+  const bi = useBiRate();
   const m = KIND_META[loan.kind], done = isDone(loan), next = nextInstallment(loan), left = fixedLeft(loan);
+  const lastChange = bi?.current?.lastChange;
+  const impact = loan.kind === "kpr" && !done && floatsAfter(loan) && !inFixedPeriod(loan) && lastChange
+    ? biScenario(termsOf(loan), lastChange.bps, DEFAULT_PASS_THROUGH, progressOf(loan)).deltaPayment : null;
   return <Btn type="button" className="dpx-ln-card" onClick={onOpen} aria-label={`Buka ${loan.name}`}>
     <div className="dpx-ln-top"><span className={`dpx-cat dpx-c-${m.tone}`}><Ic n={m.icon as IconName} /></span><div style={{ flex: 1, minWidth: 0 }}><b>{loan.name}</b><div className="dpx-sub">{loan.lender ? `${loan.lender} · ` : ""}{m.label}</div></div>
       <div style={{ textAlign: "right" }}><b style={{ fontVariantNumeric: "tabular-nums" }}>{done ? "Lunas" : mask(visible, rupiah(loan.balance))}</b>{done ? null : <div className="dpx-sub">sisa pokok</div>}</div></div>
     {done ? null : <><div className="dpx-ln-meter" role="img" aria-label={`${Math.round(paidShare(loan) * 100)}% pokok terbayar`}><i style={{ width: `${Math.max(2, paidShare(loan) * 100)}%` }} /></div>
       <div className="dpx-ln-chips"><span>Angsuran {mask(visible, rupiah(next))} · tgl {loan.dueDay}</span><span>{loan.paid} dari {loan.months} bulan</span>
-        {inFixedPeriod(loan) ? <span className={left <= 6 ? "dpx-warn" : ""}>Bunga tetap {left} bln lagi</span> : floatsAfter(loan) ? <span className="dpx-warn">Bunga mengambang {pct2(currentRate(loan))}</span> : null}</div></>}
+        {inFixedPeriod(loan) ? <span className={left <= 6 ? "dpx-warn" : ""}>Bunga tetap {left} bln lagi</span> : floatsAfter(loan) ? <span className="dpx-warn">Bunga mengambang {pct2(currentRate(loan))}</span> : null}</div>
+      {impact !== null && lastChange ? <div className="dpx-sub">BI-Rate {bpsLabel(lastChange.bps)} · dampak perkiraan {mask(visible, `${impact >= 0 ? "+" : "−"}${rupiah(Math.abs(impact))}/bulan`)}</div> : null}
+    </>}
   </Btn>;
 }
 
@@ -38,14 +44,16 @@ export function LoanSheet({ fin, loan, draft, notify, onClose }: { fin: Finance;
   const base = loan ?? draft;
   const [name, setName] = useState(base?.name ?? ""), [kind, setKind] = useState<LoanKind>(base?.kind ?? "kpr"), [lender, setLender] = useState(base?.lender ?? "");
   const [model, setModel] = useState<Loan["model"]>(base?.model ?? "anuitas"), [principal, setPrincipal] = useState(base?.principal ? String(Math.round(base.principal)) : "");
-  const [tenor, setTenor] = useState(base?.months ? String(base.months) : ""), [dueDay, setDueDay] = useState(String(base?.dueDay ?? new Date().getDate()));
+  const [tenor, setTenor] = useState(base?.months ? String(base.months) : ""), [dueDay, setDueDay] = useState(String(base?.dueDay || (draft ? "" : new Date().getDate())));
   const [fixedRate, setFixedRate] = useState(base?.fixedRate !== undefined ? String(base.fixedRate).replace(".", ",") : ""), [fixedMonths, setFixedMonths] = useState(base?.fixedMonths ? String(base.fixedMonths) : "");
   const [floatRate, setFloatRate] = useState(base?.floatRate !== undefined ? String(base.floatRate).replace(".", ",") : "");
-  const [paid, setPaid] = useState(loan ? String(loan.paid) : ""), [balance, setBalance] = useState(loan ? String(Math.round(loan.balance)) : ""), [installment, setInstallment] = useState(loan?.installment ? String(Math.round(loan.installment)) : "");
+  const [paid, setPaid] = useState(base?.paid === undefined ? "" : String(base.paid)), [balance, setBalance] = useState(base?.balance === undefined ? "" : String(Math.round(base.balance))), [installment, setInstallment] = useState(base?.installment ? String(Math.round(base.installment)) : "");
+  const properties = fin.state.assets.filter((asset) => asset.kind === "property");
+  const [assetId, setAssetId] = useState(base?.assetId ?? "");
   const anuitas = model === "anuitas", months = Math.round(num(tenor)), day = Math.round(num(dueDay));
   const ok = name.trim() && num(principal) > 0 && months >= 1 && months <= 600 && day >= 1 && day <= 31;
   const save = () => {
-    const input: LoanInput = { name: name.trim(), kind, lender: lender.trim(), model, principal: num(principal), months, dueDay: day, fixedRate: num(fixedRate), fixedMonths: anuitas ? Math.min(months, Math.round(num(fixedMonths))) : months, floatRate: anuitas ? num(floatRate) : num(fixedRate), installment: num(installment) > 0 ? num(installment) : null };
+    const input: LoanInput = { name: name.trim(), kind, assetId: kind === "kpr" && properties.some((asset) => asset.id === assetId) ? assetId : "", lender: lender.trim(), model, principal: num(principal), months, dueDay: day, fixedRate: num(fixedRate), fixedMonths: anuitas ? Math.min(months, Math.round(num(fixedMonths))) : months, floatRate: anuitas ? num(floatRate) : num(fixedRate), installment: num(installment) > 0 ? num(installment) : null };
     if (loan) { fin.dispatch({ type: "loan/upsert", loan: { ...loan, ...input, startDate: loan.startDate, balance: balance === "" ? loan.balance : num(balance), paid: paid === "" ? loan.paid : Math.round(num(paid)) } }); notify("Pinjaman diperbarui"); }
     else {
       const n = Math.round(num(paid)), l0 = newLoan(uid(), { ...input, paid: n });
@@ -58,6 +66,9 @@ export function LoanSheet({ fin, loan, draft, notify, onClose }: { fin: Finance;
     <Seg id="ls-kind" label="Jenis" value={kind} onChange={(k) => { setKind(k); if (!loan && !name) setName(KIND_META[k].label); }} options={[["kpr", "KPR"], ["kendaraan", "Kendaraan"], ["multiguna", "Multiguna"], ["lainnya", "Lainnya"]] as const} />
     <label className="dpx-field"><span>Nama</span><div className="dpx-input"><input value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="Contoh: KPR BTN rumah" aria-label="Nama pinjaman" /></div></label>
     <label className="dpx-field"><span>Bank atau pemberi pinjaman</span><div className="dpx-input"><input value={lender} maxLength={60} onChange={(e) => setLender(e.target.value)} placeholder="Contoh: BTN" aria-label="Pemberi pinjaman" /></div></label>
+    {kind === "kpr" ? <label className="dpx-field"><span>Properti terkait</span><div className="dpx-input"><select value={properties.some((asset) => asset.id === assetId) ? assetId : ""} onChange={(e) => setAssetId(e.target.value)}>
+      <option value="">Tanpa tautan properti</option>{properties.map((property) => <option key={property.id} value={property.id}>{property.name}</option>)}
+    </select></div>{properties.length ? null : <small>Tambahkan properti di Kekayaan → Aset untuk melihat ekuitas rumah.</small>}</label> : null}
     <Seg id="ls-model" label="Jenis bunga" value={model} onChange={setModel} options={[["anuitas", "Anuitas"], ["flat", "Flat"], ["syariah", "Syariah"]] as const} />
     <label className="dpx-field"><span>Plafon atau pokok awal</span><MoneyInput value={principal} onChange={setPrincipal} /></label>
     <div className="dpx-ln-two"><label className="dpx-field"><span>Tenor (bulan)</span><div className="dpx-input"><input inputMode="numeric" value={tenor} onChange={(e) => setTenor(e.target.value.replace(/\D/g, "").slice(0, 3))} aria-label="Tenor bulan" placeholder="180" /></div></label>
@@ -80,19 +91,20 @@ export function LoanPaySheet({ ctx, loan, extra, onClose }: { ctx: FinCtx; loan:
   const { fin, notify } = ctx, accounts = fin.state.accounts.filter((a) => !a.archived);
   const [amount, setAmount] = useState(extra ? "" : String(nextInstallment(loan))), [date, setDate] = useState(today()), [account, setAccount] = useState(accounts[0]?.id ?? "tunai");
   const [mode, setMode] = useState<"shorter" | "lower">("shorter"), [record, setRecord] = useState(true);
-  const amt = num(amount), ok = amt > 0 && (!extra || amt <= loan.balance + 0.5);
-  const at = date === today() ? new Date().toISOString() : new Date(`${date}T12:00:00`).toISOString();
+  const at = date === today() ? new Date().toISOString() : new Date(`${date}T12:00:00+07:00`).toISOString();
+  const alreadyPaid = !extra && (loan.payments.some((p) => !p.extra && monthKeyOf(p.at) === monthKeyOf(at)) ||
+    fin.state.bills.find((bill) => bill.id === (loan.billId ?? `ln-${loan.id}`))?.paid.includes(monthKeyOf(at)));
+  const amt = num(amount), ok = amt > 0 && !alreadyPaid && (!extra || amt <= loan.balance + 0.5);
   const save = () => {
     const prev = loan, entryId = uid(), month = monthKeyOf(at);
     fin.dispatch({ type: "loan/pay", id: loan.id, at, amount: amt, extra, mode });
-    if (record) fin.dispatch({ type: "entry/add", entry: { id: entryId, kind: "out", amount: amt, categoryId: "tagihan", accountId: account, at, note: extra ? `Pelunasan sebagian ${loan.name}` : `Angsuran ${loan.name}`, tags: [], source: "manual", createdAt: new Date().toISOString() } });
+    if (record) fin.dispatch({ type: "entry/add", entry: { id: entryId, kind: "out", amount: amt, categoryId: "tagihan", accountId: account, at, note: extra ? `Pelunasan sebagian ${loan.name}` : `Angsuran ${loan.name}`, tags: [`loan:${loan.id}`], source: "manual", createdAt: new Date().toISOString() } });
     notify(extra ? `Pelunasan sebagian ${rupiah(amt)} tercatat` : `Angsuran ${loan.name} ${rupiah(amt)} tercatat`, () => {
       fin.dispatch({ type: "loan/upsert", loan: prev }); if (record) fin.dispatch({ type: "entry/delete", id: entryId });
       if (!extra) fin.dispatch({ type: "bill/pay", id: prev.billId ?? `ln-${prev.id}`, month, paid: false });
     });
     onClose();
   };
-  const after = ok ? (extra ? null : null) : null; void after;
   return <Sheet title={extra ? "Pelunasan sebagian" : "Bayar angsuran"} onClose={onClose}>
     <p className="dpx-sub" style={{ marginTop: -6 }}>{loan.name} · sisa pokok {rupiah(loan.balance)}</p>
     <label className="dpx-field"><span>{extra ? "Jumlah tambahan untuk pokok" : "Jumlah dibayar"}</span><MoneyInput value={amount} onChange={setAmount} /></label>
@@ -102,6 +114,7 @@ export function LoanPaySheet({ ctx, loan, extra, onClose }: { ctx: FinCtx; loan:
     <label className="dpx-field"><span>Tanggal</span><div className="dpx-input"><input type="date" value={date} max={today()} onChange={(e) => e.target.value && setDate(e.target.value)} aria-label="Tanggal pembayaran" /></div></label>
     <label className="dpx-ln-row" style={{ cursor: "pointer", alignItems: "center", borderTop: 0 }}><span style={{ color: "var(--ink)" }}>Catat juga sebagai pengeluaran</span><input type="checkbox" checked={record} onChange={(e) => setRecord(e.target.checked)} aria-label="Catat sebagai pengeluaran" /></label>
     {record ? <><div className="dpx-glabel">Dari dompet</div><div className="dpx-chips2">{accounts.map((a) => <Btn key={a.id} type="button" className={`dpx-chip3 ${account === a.id ? "dpx-on" : ""}`} aria-pressed={account === a.id} onClick={() => setAccount(a.id)}>{a.name}</Btn>)}</div></> : null}
+    {alreadyPaid ? <p className="dpx-sub" role="status">Angsuran untuk bulan ini sudah tercatat.</p> : null}
     <Btn type="button" className={`dpx-btn ${ok ? "" : "dpx-off"}`} disabled={!ok} onClick={save}>{extra ? "Catat pelunasan" : "Catat pembayaran"}</Btn>
   </Sheet>;
 }
@@ -137,6 +150,8 @@ export function LoanDetail({ ctx, id, onClose }: { ctx: FinCtx; id: string; onCl
     return { last, effect, c };
   })() : null;
   const shown = all ? rows : rows.slice(0, 12);
+  const biYear = bi?.history.filter((point) => Date.parse(point.day) >= Date.parse(bi.current?.day ?? "") - 365 * 86400_000).reverse() ?? [];
+  const yearEnd = rows.filter((row, index) => (index + 1) % 12 === 0 || index === rows.length - 1);
   return <FullPage title={loan.name} onBack={onClose} right={<Btn type="button" className="dpx-rb" onClick={() => ctx.open({ k: "loan", id: loan.id })} aria-label="Ubah pinjaman"><Ic n="edit" size="sm" /></Btn>}>
     <div className="dpx-sk-body" style={{ padding: "6px 16px 24px" }}>
       <div className="dpx-group dpx-white">
@@ -154,11 +169,22 @@ export function LoanDetail({ ctx, id, onClose }: { ctx: FinCtx; id: string; onCl
           {inFixedPeriod(loan) ? <div className="dpx-note" style={{ marginTop: 0, background: left <= 6 ? "var(--warn-soft)" : "var(--group)", color: left <= 6 ? "#6b4300" : "var(--ink)" }}><Ic n="info" /><div><b>Bunga tetap berakhir dalam {left} bulan.</b> Setelah itu bunga mengambang (perkiraan {pct2(loan.floatRate)}) dan angsuran menjadi sekitar {rupiah(rows.find((r) => r.n === loan.fixedMonths + 1)?.payment ?? 0)}.</div></div>
             : <div className="dpx-note dpx-info" style={{ marginTop: 0 }}><Ic n="info" /><div><b>Bunga mengambang {pct2(currentRate(loan))}.</b> Bila bank mengumumkan bunga baru, ubah di bawah supaya angsuran dihitung ulang.</div></div>}
           {biNote ? <p className="dpx-sub" style={{ margin: "8px 2px 0" }}>{biNote.last ? `BI-Rate ${bpsLabel(biNote.last.bps)} ke ${pct2(biNote.last.to)} pada ${dayLabel(biNote.last.day)}. ` : ""}{biNote.effect} Ini perkiraan, bunga sebenarnya mengikuti keputusan bank.</p> : null}
+          {biYear.length ? <>
+            <div className="dpx-ln-chart" role="img" aria-label="Riwayat BI-Rate selama 12 bulan">
+              {biYear.map((point) => <i key={point.day} title={`${dayLabel(point.day)} · ${pct2(point.rate)}`}><s style={{ height: `${point.rate / Math.max(...biYear.map((p) => p.rate)) * 100}%` }} /></i>)}
+            </div>
+            <div className="dpx-ln-legend"><span>BI-Rate · 12 bulan</span><span>Bunga KPR sekarang {pct2(currentRate(loan))}</span></div>
+          </> : null}
           <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => ctx.open({ k: "loan-rate", id: loan.id })}>Ubah bunga</Btn>
         </div></div> : null}
 
       {!done ? <><div className="dpx-ln-sec">Jadwal berikutnya</div>
-        <div className="dpx-group dpx-white"><table className="dpx-ln-table"><thead><tr><th>Ke-</th><th>Angsuran</th><th>Bunga</th><th>Sisa pokok</th></tr></thead><tbody>{shown.map((r) => <tr key={r.n}><td>{r.n}</td><td>{mask(visible, rupiah(r.payment))}</td><td>{mask(visible, rupiah(r.interest))}</td><td>{mask(visible, rupiah(r.balance))}</td></tr>)}</tbody></table>
+        <div className="dpx-group dpx-white">
+          {yearEnd.length > 1 && visible ? <>
+            <div className="dpx-ln-chart" role="img" aria-label="Perkiraan penurunan sisa pokok per tahun">{yearEnd.map((row) => <i key={row.n} title={`Angsuran ke-${row.n}: ${rupiah(row.balance)}`}><u style={{ height: `${row.balance / loan.balance * 100}%` }} /></i>)}</div>
+            <div className="dpx-ln-legend"><span>Sisa pokok per tahun</span></div>
+          </> : null}
+          <table className="dpx-ln-table"><thead><tr><th>Ke-</th><th>Angsuran</th><th>Bunga</th><th>Sisa pokok</th></tr></thead><tbody>{shown.map((r) => <tr key={r.n}><td>{r.n}</td><td>{mask(visible, rupiah(r.payment))}</td><td>{mask(visible, rupiah(r.interest))}</td><td>{mask(visible, rupiah(r.balance))}</td></tr>)}</tbody></table>
           {rows.length > 12 ? <Btn type="button" className="dpx-linkbtn" style={{ marginTop: 8 }} onClick={() => setAll((v) => !v)}>{all ? "Tampilkan 12 bulan saja" : `Lihat semua (${rows.length} bulan)`}</Btn> : null}
           <p className="dpx-sub" style={{ margin: "8px 0 0" }}>Perkiraan. Bank bisa membulatkan dan menghitung hari sedikit berbeda.</p></div></> : null}
 

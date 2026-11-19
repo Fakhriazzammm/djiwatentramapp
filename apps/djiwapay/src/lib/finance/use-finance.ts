@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { allEntries } from "./calc";
 import { load, reduce, save, storageKey, type Action } from "./store";
-import { diffState, emptySnapshot, fetchServerState, loadSnapshot, mergeStates, pushDiff, saveSnapshot, snapshotOf, type Snapshot } from "./sync";
+import { diffState, emptySnapshot, fetchServerState, loadSnapshot, mergeStates, pushDiff, rebaseLoanChanges, saveSnapshot, snapshotOf, type Snapshot } from "./sync";
 import type { Entry, FinanceState } from "./types";
 import type { WalletTransaction } from "../wallet-adapter";
 
-export type SyncStatus = "starting" | "syncing" | "ok" | "offline";
+export type SyncStatus = "starting" | "syncing" | "ok" | "offline" | "loan-conflict";
 
 /** Local-first finance data mirrored to the Djiwa Pay Postgres through /api/finance. Works fully offline; syncs when it can. */
 export function useFinance(profileId: string, transactions: WalletTransaction[]) {
   const [state, setState] = useState<FinanceState>(() => load(profileId));
   const [sync, setSync] = useState<{ status: SyncStatus; at?: number }>({ status: "starting" });
+  const [loanConflict, setLoanConflict] = useState(false);
   const first = useRef(true);
   const stateRef = useRef(state); stateRef.current = state;
   const snap = useRef<Snapshot | null>(loadSnapshot(profileId));
@@ -31,12 +32,16 @@ export function useFinance(profileId: string, transactions: WalletTransaction[])
     const sent = stateRef.current, body = diffState(snap.current, sent);
     if (!body) { setSync({ status: "ok", at: Date.now() }); return; }
     busy.current = true; setSync((s) => ({ ...s, status: "syncing" }));
+    let conflict = false;
     try {
       await pushDiff(body);
       snap.current = snapshotOf(sent); saveSnapshot(profileId, snap.current);
       setSync({ status: "ok", at: Date.now() });
-    } catch { setSync((s) => ({ ...s, status: "offline" })); }
-    finally { busy.current = false; if (diffState(snap.current!, stateRef.current)) timer.current = setTimeout(push, 1500); }
+    } catch (error) {
+      conflict = error instanceof Error && error.message === "LOAN_CHANGED_BY_EMAIL";
+      setSync((s) => ({ ...s, status: conflict ? "loan-conflict" : "offline" }));
+    }
+    finally { busy.current = false; if (!conflict && diffState(snap.current!, stateRef.current)) timer.current = setTimeout(push, 1500); }
   }, [profileId]);
 
   const pull = useCallback(async () => {
@@ -46,7 +51,9 @@ export function useFinance(profileId: string, transactions: WalletTransaction[])
       const server = await fetchServerState();
       const local = stateRef.current, stored = snap.current;
       const pending = !stored || diffState(stored, local) !== null;
-      const merged = server.exists ? (pending ? mergeStates(local, server.state) : server.state) : local;
+      const rebased = server.exists && stored && pending ? rebaseLoanChanges(local, server.state, stored) : null;
+      if (rebased?.conflict) setLoanConflict(true);
+      const merged = server.exists ? (pending ? mergeStates(rebased?.state ?? local, server.state) : server.state) : local;
       snap.current = server.exists ? snapshotOf(server.state) : emptySnapshot();
       saveSnapshot(profileId, snap.current);
       if (merged !== local) setState(merged);
@@ -63,6 +70,6 @@ export function useFinance(profileId: string, transactions: WalletTransaction[])
 
   const dispatch = useCallback((action: Action) => setState((current) => reduce(current, action)), []);
   const entries: Entry[] = useMemo(() => allEntries(state, transactions), [state, transactions]);
-  return { state, dispatch, entries, sync, retrySync: pull };
+  return { state, dispatch, entries, sync, loanConflict, retrySync: pull };
 }
 export type Finance = ReturnType<typeof useFinance>;

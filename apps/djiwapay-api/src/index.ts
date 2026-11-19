@@ -60,7 +60,13 @@ export function createApp(d: Deps) {
   registerStockRoutes(app, { db: d.db }, uid, json, { driveConnected: (userId) => connected(userId, "drive") });
   registerRateRoutes(app, { db: d.db }, json);
 
-  app.get("/api/finance/state", async (c) => json(c, { success: true, ...(await loadState(d.db, uid(c))) }));
+  app.get("/api/finance/state", async (c) => {
+    const state = await d.db.tx(async (q) => {
+      await q.query("set transaction isolation level repeatable read read only");
+      return loadState(q, uid(c));
+    });
+    return json(c, { success: true, ...state });
+  });
 
   app.post("/api/finance/sync", async (c) => {
     const body = await c.req.json().catch(() => null);
@@ -72,7 +78,7 @@ export function createApp(d: Deps) {
       return json(c, { success: true, ...out });
     }
     catch (e) {
-      if (e instanceof Error && e.message === "RECEIPT_CONFIRMATION_REQUIRED") return json(c, { success: false, error: e.message }, 409);
+      if (e instanceof Error && ["RECEIPT_CONFIRMATION_REQUIRED", "LOAN_CHANGED_BY_EMAIL"].includes(e.message)) return json(c, { success: false, error: e.message }, 409);
       console.error("sync failed", e instanceof Error ? e.message : e); return json(c, { success: false, error: "SYNC_FAILED" }, 500);
     }
   });

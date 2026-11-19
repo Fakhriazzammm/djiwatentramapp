@@ -46,7 +46,7 @@ const MON = { type: "DATE", pattern: "mmm yy" };
 const DATE = { type: "DATE", pattern: "dd mmm yyyy" };
 export const WHEN = { type: "DATE_TIME", pattern: "dd mmm yyyy, hh:mm" };
 
-export function createBody(title: string, rows = CATATAN_ROWS + 1) {
+export function createBody(title: string, rows = CATATAN_ROWS + 1, debtRows = 60) {
   const tab = (id: number, name: string, color: string, rows = 200, cols = 12, extra: Record<string, unknown> = {}) => ({ properties: { sheetId: id, title: name, tabColorStyle: { rgbColor: hex(color) }, gridProperties: { rowCount: rows, columnCount: cols, ...extra } } });
   return {
     properties: { title, locale: "en_US", timeZone: "Asia/Jakarta", defaultFormat: { textFormat: { fontFamily: FONT, fontSize: 10 }, verticalAlignment: "MIDDLE" } },
@@ -56,7 +56,7 @@ export function createBody(title: string, rows = CATATAN_ROWS + 1) {
       tab(SHEET.anggaran, TITLES.anggaran, C.warn, 60, 8, { hideGridlines: true }),
       tab(SHEET.tagihan, TITLES.tagihan, C.slate, 60, 8, { hideGridlines: true }),
       tab(SHEET.tujuan, TITLES.tujuan, C.ok, 60, 8, { hideGridlines: true }),
-      tab(SHEET.hutang, TITLES.hutang, C.bad, 60, 8, { hideGridlines: true }),
+      tab(SHEET.hutang, TITLES.hutang, C.bad, debtRows, 8, { hideGridlines: true }),
       tab(SHEET.aset, TITLES.aset, C.slate, 60, 8, { hideGridlines: true }),
       tab(SHEET.referensi, TITLES.referensi, C.faint, 80, 10, { frozenRowCount: 1 }),
       tab(SHEET.panduan, TITLES.panduan, C.faint, 60, 4, { hideGridlines: true }),
@@ -168,7 +168,7 @@ export function styleRequests(rows = CATATAN_ROWS + 1) {
 export type Static = {
   catNames: { expense: string[]; income: string[]; all: string[] }; accountNames: string[]; months: number[]; monthNow: number;
   budgets: [string, number][]; bills: [string, number, number, string, string][]; goals: [string, number, number, string][];
-  debts: [string, string, number, number | string, string, string][]; assets: [string, string, number][]; now: string;
+  debts: [string, string, number, number | string, string, string][]; loans?: [string, string, number, number, number | null][]; assets: [string, string, number][]; now: string;
 };
 type Cell = string | number;
 
@@ -220,19 +220,25 @@ export function contentData(d: Static, initial = true): { range: string; values:
   const goals: Cell[][] = d.goals.length ? d.goals.map(([name, target, saved, last], i) => { const n = 5 + i; return [name, target, saved, `=MAX(C${n}-D${n},0)`, `=IFERROR(D${n}/C${n},0)`, last]; }) : [["Belum ada tujuan. Buat di aplikasi: Rencana → Tujuan", "", "", "", "", ""]];
   put("Tujuan", `B5:G${4 + goals.length}`, goals);
 
-  put("Hutang", "B2", [["Hutang dan piutang"]]); put("Hutang", "B3", [["Piutang = orang lain berutang kepadamu. Hutang = kamu berutang."]]);
-  put("Hutang", "B4:G4", [["Orang", "Arah", "Jumlah", "Jatuh tempo", "Status", "Catatan"]]);
-  const debts: Cell[][] = d.debts.length ? d.debts.map(([person, dir, amount, due, status, note]) => [person, dir, amount, due, status, note]) : [["Belum ada catatan hutang atau piutang", "", "", "", "", ""]];
+  put("Hutang", "B2", [["Hutang, piutang, dan pinjaman"]]); put("Hutang", "B3", [["Untuk pinjaman, jumlah menunjukkan sisa pokok dan jatuh tempo menunjukkan tanggal setiap bulan."]]);
+  put("Hutang", "B4:G4", [["Nama", "Jenis", "Jumlah", "Jatuh tempo", "Status", "Catatan"]]);
+  const displayText = (value: string) => "'" + value; // USER_ENTERED parses formulas unless user text is escaped.
+  const debts: Cell[][] = d.debts.map(([person, dir, amount, due, status, note]) => [person, dir, amount, due, status, note]);
+  for (const [name, lender, balance, due, installment] of d.loans ?? []) {
+    const payment = installment === null ? "" : `Angsuran Rp${installment.toLocaleString("id-ID")}`;
+    debts.push([displayText(name), "Pinjaman", balance, `Tanggal ${due}`, balance > 0 ? "Belum lunas" : "Lunas", displayText([lender, payment].filter(Boolean).join(" · "))]);
+  }
+  if (!debts.length) debts.push(["Belum ada hutang, piutang, atau pinjaman", "", "", "", "", ""]);
   put("Hutang", `B5:G${4 + debts.length}`, debts);
   const dl = 4 + debts.length;
-  put("Hutang", `B${dl + 2}:D${dl + 3}`, [["Piutang aktif", "", `=SUMIFS(D5:D${dl},C5:C${dl},"Piutang",F5:F${dl},"Belum lunas")`], ["Hutang aktif", "", `=SUMIFS(D5:D${dl},C5:C${dl},"Hutang",F5:F${dl},"Belum lunas")`]]);
+  put("Hutang", `B${dl + 2}:D${dl + 3}`, [["Piutang aktif", "", `=SUMIFS(D5:D${dl},C5:C${dl},"Piutang",F5:F${dl},"Belum lunas")`], ["Hutang aktif", "", `=SUMIFS(D5:D${dl},C5:C${dl},"Hutang",F5:F${dl},"Belum lunas")+SUMIFS(D5:D${dl},C5:C${dl},"Pinjaman",F5:F${dl},"Belum lunas")`]]);
 
   put("Aset", "B2", [["Aset dan kekayaan bersih"]]); put("Aset", "B3", [["Nilai aset diisi di aplikasi: Kekayaan → Aset."]]);
   put("Aset", "B4:D4", [["Aset", "Jenis", "Nilai"]]);
   const assets: Cell[][] = d.assets.length ? d.assets : [["Belum ada aset", "", ""]];
   put("Aset", `B5:D${4 + assets.length}`, assets);
   const al = 4 + assets.length;
-  put("Aset", `B${al + 2}:D${al + 5}`, [["Total aset", "", `=SUM(D5:D${al})`], ["Piutang aktif", "", `=Hutang!D${dl + 2}`], ["Hutang aktif", "", `=-Hutang!D${dl + 3}`], ["Kekayaan bersih", "", `=SUM(D${al + 2}:D${al + 4})`]]);
+  put("Aset", `B${al + 2}:D${al + 5}`, [["Total aset", "", `=SUM(D5:D${al})`], ["Piutang aktif", "", `=Hutang!D${dl + 2}`], ["Hutang dan pinjaman aktif", "", `=-Hutang!D${dl + 3}`], ["Kekayaan bersih", "", `=SUM(D${al + 2}:D${al + 4})`]]);
 
   const pad = (a: string[], n: number) => [...a, ...Array(Math.max(0, n - a.length)).fill("")];
   put("Referensi", "A1:H1", [["Jenis", "", "Kategori pengeluaran", "Kategori pemasukan", "Semua kategori", "Dompet", "", "Bulan"]]);

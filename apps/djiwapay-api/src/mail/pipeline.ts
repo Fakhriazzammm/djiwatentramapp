@@ -1,3 +1,5 @@
+import { classifyLoanMail, jakartaMonth } from "../loans/mail-rules.js";
+import { lockLoanChanges, loansForIssuer, recordLoanReceipt, undoLoanReceipt } from "../loans/reconcile.js";
 import { randomBytes, randomUUID } from "node:crypto";
 import { notifyUser, type PushPayload } from "../push.js";
 import type { Q, Tx } from "../sync.js";
@@ -67,6 +69,8 @@ async function learnedCategory(q: Q, userId: string, merchant: string): Promise<
 
 type Candidate = { kind: "out" | "in" | "tf"; amount: number; categoryId: string; accountId: string; toAccountId?: string; at: string; note: string };
 
+const dayOfBill = (due: string | null) => due ? Number(due.slice(8, 10)) : null;
+
 const slug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 30) || "dompet";
 async function ensureAcct(q: Q, userId: string, id: string, name: string, type: "bank" | "ewallet") {
   await q.query("insert into finance.accounts(user_id,id,name,type,opening) values($1,$2,$3,$4,0) on conflict do nothing", [userId, id, name, type]);
@@ -90,7 +94,7 @@ async function insertEntry(q: Q, userId: string, c: Candidate, inboundId: string
 /** The payment of a monthly bill arrived by e-mail: same amount, same biller. That month of the bill is marked paid, once. */
 async function settleBill(q: Q, userId: string, amount: number, note: string, at: string) {
   const ym = (await q.query("select to_char(($1::timestamptz at time zone 'Asia/Jakarta'), 'YYYY-MM') ym", [at])).rows[0].ym as string;
-  const open = (await q.query("select id,name from finance.bills where user_id=$1 and abs(amount-$2) < 1 and not (paid ? $3::text)", [userId, amount, ym])).rows;
+  const open = (await q.query("select b.id,b.name from finance.bills b where b.user_id=$1 and abs(b.amount-$2) < 1 and not (b.paid ? $3::text) and not exists(select 1 from finance.loans l where l.user_id=b.user_id and coalesce(l.bill_id, 'ln-' || l.id)=b.id)", [userId, amount, ym])).rows;
   if (!open.length) return;
   const text = note.toLowerCase();
   const hit = open.length === 1 ? open[0] : open.find((r) => text.includes(String(r.name).toLowerCase()) || (text && String(r.name).toLowerCase().includes(text)));
@@ -150,6 +154,7 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   if (isFailedMail(mail.subject)) return skip("failed", issuer.id);
   // A bill reminder moved no money. When it names an amount it becomes a suggested bill ("Kamu berutang") to confirm; otherwise it is dropped.
   const reminder = isBillReminder(mail.subject, mail.text);
+  const loanMail = issuer.kind === "bank" ? classifyLoanMail(mail.subject, mail.text, reminder) : null;
   const billInfo = reminder && !stage ? extractBill(mail.subject, mail.text, issuer.name, now) : null;
   if (reminder && (!billInfo || (generic && !billInfo.due))) return skip("bill", issuer.id);
   // Gate 6: a warning or a fee schedule names rupiah without any money moving.
@@ -172,7 +177,14 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
 
   if (billInfo) {
     const parsedBill = { bill: true, amount: billInfo.amount, due: billInfo.due, merchant: billInfo.name, subject: mail.subject.slice(0, 80), issuer: issuer.name, direction: "out", at: now.toISOString() };
-    const dayOfDue = billInfo.due ? Number(billInfo.due.slice(8, 10)) : null;
+    if (loanMail === "reminder") {
+      const loans = await loansForIssuer(d.db, userId, issuer.name);
+      const billId = loans.length === 1 ? loans[0].bill_id ?? `ln-${loans[0].id}` : null;
+      const bill = billId && (await d.db.query("select amount,day from finance.bills where user_id=$1 and id=$2", [userId, billId])).rows[0];
+      if (bill && Number(bill.amount) === billInfo.amount && (!dayOfBill(billInfo.due) || bill.day === dayOfBill(billInfo.due))) return finish("ignored", "loan-reminder-linked", { parsed: { ...parsedBill, loanMail, loanId: loans[0].id }, at: parsedBill.at });
+      return finish("review", "loan-reminder", { parsed: { ...parsedBill, loanMail }, confidence: 0.8, at: parsedBill.at });
+    }
+    const dayOfDue = dayOfBill(billInfo.due);
     const have = await d.db.query(`select id from finance.bills where user_id=$1 and lower(name)=lower($2) and amount=$3 and ($4::int is null or day=$4::int) limit 1`, [userId, billInfo.name, billInfo.amount, dayOfDue]);
     const waiting = await d.db.query(`select id from finance.inbound_messages where user_id=$1 and id<>$2 and status='review' and parsed->>'bill'='true' and parsed->>'merchant'=$3 and (parsed->>'amount')::numeric=$4 and coalesce(parsed->>'due','')=coalesce($5,'') limit 1`, [userId, inboundId, billInfo.name, billInfo.amount, billInfo.due]);
     if (have.rows[0] || waiting.rows[0]) return finish("duplicate", "bill-exists", { parsed: parsedBill });
@@ -192,9 +204,12 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   }
   const atMs = x.at ?? mail.date?.getTime() ?? now.getTime();
   const at = new Date(Number.isFinite(atMs) ? atMs : now.getTime()).toISOString();
-  const parsed = { amount: x.amount, direction: x.direction, merchant: x.merchant, accountHint: x.accountHint, ref: x.ref, at, subject: mail.subject.slice(0, 80), issuer: issuer.name, rulesVersion: RULES_VERSION, details: x.details };
+  const parsed = { amount: x.amount, direction: x.direction, merchant: x.merchant, accountHint: x.accountHint, ref: x.ref, at, subject: mail.subject.slice(0, 80), issuer: issuer.name, rulesVersion: RULES_VERSION, details: x.details, ...(loanMail ? { loanMail } : {}) };
   // Gate 7: the read must agree with the mail it came from. A shape nobody has taught the parser yet
   // then waits for a person instead of being recorded, for every user and not only the one who reported it.
+  if (loanMail === "receipt" && !(x.amount > 0) && !stage) {
+    return finish("review", "loan-payment-review", { parsed: { ...parsed, kind: "out", categoryId: "tagihan" }, at });
+  }
   const flags = implausible(`${mail.subject}\n${mail.text}`, x, mail.date?.getTime() ?? null);
   if (!(x.amount > 0) && generic) return finish("ignored", "unreadable", { confidence: x.confidence });   // an unknown sender with no readable amount is not worth the person's attention
   if (!(x.amount > 0)) return stage ? finish("ignored", "unreadable", { confidence: x.confidence }) : looksLikePayment(mail.subject, mail.text) ? finish("failed", "unreadable", { parsed, confidence: x.confidence }) : finish("ignored", "unreadable", { confidence: x.confidence });
@@ -206,11 +221,38 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   // A bank reference seen before is the same payment.
   if (x.ref) {
     const dup = await d.db.query("select id,entry_id from finance.inbound_messages where user_id=$1 and id<>$2 and parsed->>'ref'=$3 and created_at > now() - interval '3 days' limit 1", [userId, inboundId, x.ref]);
-    if (dup.rows[0]) return finish("duplicate", "same-reference", { parsed, confidence: x.confidence, entryId: dup.rows[0].entry_id, at });
+    if (dup.rows[0] && (!loanMail || dup.rows[0].entry_id)) return finish("duplicate", "same-reference", { parsed, confidence: x.confidence, entryId: dup.rows[0].entry_id, at });
   }
 
   const accountId = generic ? "tunai" : stage ? accountIdFor(issuer, x.accountHint) : await ensureAccount(d.db, userId, issuer, x.accountHint);
   const kind: "out" | "in" = x.direction === "in" ? "in" : "out";
+  if (loanMail === "receipt" && !stage) {
+    const details = { ...parsed, loanMail, kind: "out", categoryId: "tagihan", accountId };
+    const allowAuto = flags.length === 0 && rules.amount === x.amount && x.direction !== "in" &&
+      !x.transfer && x.amount <= (d.autoCeiling ?? AUTO_CEILING) && atMs <= now.getTime() + 5 * 60_000 &&
+      jakartaMonth(at) === jakartaMonth(now.toISOString());
+    if (allowAuto) {
+      const posted = await d.db.tx(async (q) => {
+        await lockLoanChanges(q, userId);
+        const loans = await loansForIssuer(q, userId, parsed.issuer);
+        if (loans.length !== 1) return null;
+        const result = await recordLoanReceipt(q, userId, loans[0], { inboundId, at, amount: x.amount, accountId, confirmed: false });
+        if (result.status !== "posted") return result;
+        await bump(q, userId);
+        await q.query(`update finance.inbound_messages set status='auto',reason='loan-payment',entry_id=$2,
+          parsed=$3::jsonb,confidence=$4,occurred_at=$5 where id=$1`,
+          [inboundId, result.entryId, JSON.stringify({ ...details, loanPosting: result.posting }), x.confidence, at]);
+        return result;
+      });
+      if (posted?.status === "posted") {
+        void notifyUser(d.db, userId, pushFor("auto", details, inboundId, at));
+        return { status: "auto", reason: "loan-payment", userId };
+      }
+      if (posted?.status === "duplicate") return finish("duplicate", "loan-month-already-paid", { parsed: details, at });
+    }
+    return finish("review", "loan-payment-review", { parsed: details, confidence: x.confidence, at });
+  }
+
 
   // A top-up is the person moving their own money into a wallet: a transfer, never income or spending.
   const tp = x.transfer;
@@ -243,13 +285,13 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
     const learnedS = await learnedCategory(d.db, userId, x.merchant);
     const categoryS = learnedS ?? guessCategory(x.merchant, mail.subject, x.direction);
     const knownS = Boolean(learnedS) || (categoryS !== "lainnya" && Boolean(x.merchant)) || (kind === "in" && Boolean(x.merchant));
-    const sure = flags.length === 0 && (isConfident(rules) || agreed) && x.direction !== "unknown" && knownS && issuer.kind !== "service" && x.amount <= (d.autoCeiling ?? AUTO_CEILING);
+    const sure = !loanMail && flags.length === 0 && (isConfident(rules) || agreed) && x.direction !== "unknown" && knownS && issuer.kind !== "service" && x.amount <= (d.autoCeiling ?? AUTO_CEILING);
     return finish("staged", sure ? "sure" : "check", { confidence: x.confidence, at, parsed: { ...parsed, kind, categoryId: categoryS, accountId, accountName: `${issuer.name}${x.accountHint ? " ••" + x.accountHint : ""}`, accountType: issuer.kind === "bank" ? "bank" : issuer.kind === "ewallet" ? "ewallet" : "other", sure, ...(sure ? {} : { sample: redactForShare(`${mail.subject}\n${mail.text}`) }) } });
   }
 
   // The other half of a move between the user's own accounts becomes one transfer.
   if (flags.length === 0 && isConfident(x) && x.direction !== "unknown") {
-    const other = await d.db.query("select id,account_id from finance.entries where user_id=$1 and source='email' and kind=$2 and amount=$3 and account_id<>$4 and at between $5::timestamptz - ($6 * interval '1 millisecond') and $5::timestamptz + ($6 * interval '1 millisecond') limit 1", [userId, kind === "in" ? "out" : "in", x.amount, accountId, at, TRANSFER_MS]);
+    const other = await d.db.query("select id,account_id from finance.entries where user_id=$1 and source='email' and not ('loan-receipt' = any(tags)) and kind=$2 and amount=$3 and account_id<>$4 and at between $5::timestamptz - ($6 * interval '1 millisecond') and $5::timestamptz + ($6 * interval '1 millisecond') limit 1", [userId, kind === "in" ? "out" : "in", x.amount, accountId, at, TRANSFER_MS]);
     if (other.rows[0]) {
       const from = kind === "in" ? other.rows[0].account_id : accountId, to = kind === "in" ? accountId : other.rows[0].account_id;
       await d.db.query("update finance.entries set kind='tf', account_id=$3, to_account_id=$4, category_id='transfer', note='Transfer antar akun' where user_id=$1 and id=$2", [userId, other.rows[0].id, from, to]);
@@ -295,12 +337,30 @@ export async function reviewCount(db: Q, userId: string) {
   return Number(r.rows[0]?.n ?? 0);
 }
 
-export type Edits = { amount?: unknown; kind?: unknown; categoryId?: unknown; accountId?: unknown; note?: unknown; at?: unknown };
+export type Edits = { amount?: unknown; kind?: unknown; categoryId?: unknown; accountId?: unknown; note?: unknown; at?: unknown; loanId?: unknown };
 export async function approve(d: Tx, userId: string, inboundId: string, e: Edits): Promise<{ entryId: string } | null> {
   return d.tx(async (q) => {
     const m = (await q.query("select id,parsed,status,channel,sender_domain from finance.inbound_messages where user_id=$1 and id=$2 and status in ('review','failed') for update", [userId, inboundId])).rows[0];
     if (!m) return null;
     const p = (m.parsed ?? {}) as Record<string, any>;
+    if (p.loanMail) {
+      if (typeof e.loanId !== "string") return null;
+      await lockLoanChanges(q, userId);
+      const loan = (await q.query("select * from finance.loans where user_id=$1 and id=$2 and kind='kpr'", [userId, e.loanId])).rows[0];
+      if (!loan) return null;
+      if (p.loanMail === "reminder") {
+        await q.query("update finance.inbound_messages set status='approved', reason='loan-reminder-linked', parsed=parsed || jsonb_build_object('loanId',$2::text) where id=$1", [inboundId, loan.id]);
+        return { entryId: loan.bill_id ?? `ln-${loan.id}` };
+      }
+      const accountId = String(e.accountId ?? p.accountId ?? "tunai").slice(0, 80);
+      const result = await recordLoanReceipt(q, userId, loan, { inboundId, at: p.at, amount: Number(e.amount ?? p.amount), accountId, confirmed: true });
+      if (result.status !== "posted") return null;
+      await bump(q, userId);
+      await q.query(`update finance.inbound_messages set status='auto',reason='loan-payment',entry_id=$2,
+        parsed=parsed || $3::jsonb where id=$1`, [inboundId, result.entryId, JSON.stringify({ loanPosting: result.posting })]);
+      return { entryId: result.entryId };
+    }
+
     if (p.bill) {                                                  // a bill reminder becomes a monthly bill (Tagihan); nothing is spent until it is paid
       const owed = Number(e.amount ?? p.amount), name = String(e.note ?? p.merchant ?? "Tagihan").trim().slice(0, 40) || "Tagihan";
       const dueRaw = String(e.at ?? p.due ?? ""), due = /^\d{4}-\d{2}-\d{2}$/.test(dueRaw) ? dueRaw : null;
@@ -342,8 +402,12 @@ export async function approve(d: Tx, userId: string, inboundId: string, e: Edits
 /** Rejects a queued item, or undoes an automatic record (the entry is removed too). */
 export async function reject(d: Tx, userId: string, inboundId: string): Promise<boolean> {
   return d.tx(async (q) => {
-    const m = (await q.query("select entry_id,status,parsed->'transfer'->>'feeEntryId' as fee_id from finance.inbound_messages where user_id=$1 and id=$2 and status in ('review','failed','auto') for update", [userId, inboundId])).rows[0];
+    const m = (await q.query("select entry_id,status,parsed->'loanPosting' as loan_posting,parsed->'transfer'->>'feeEntryId' as fee_id from finance.inbound_messages where user_id=$1 and id=$2 and status in ('review','failed','auto') for update", [userId, inboundId])).rows[0];
     if (!m) return false;
+    if (m.loan_posting) {
+      await lockLoanChanges(q, userId);
+      if (!(await undoLoanReceipt(q, userId, m.loan_posting))) return false;
+    }
     if (m.status === "auto" && m.entry_id) { await q.query("delete from finance.entries where user_id=$1 and id in ($2,$3) and source='email'", [userId, m.entry_id, m.fee_id ?? m.entry_id]); await bump(q, userId); }
     await q.query("update finance.inbound_messages set status='rejected', reason='rejected' where id=$1", [inboundId]);
     if (m.status === "auto") await q.query("update finance.inbound_sources set trusted_count=greatest(trusted_count-2,0) where user_id=$1", [userId]);
@@ -382,7 +446,7 @@ export type ReviewGroup = { key: string; name: string; kind: "out" | "in"; count
 async function groupRows(q: Q, userId: string) {
   const r = await q.query(`select id, parsed->'details'->>'description' as dsc, parsed->>'merchant' as m, parsed->>'subject' as s, (parsed->>'amount')::numeric as amt,
       parsed->>'kind' as kind, parsed->>'direction' as dir, parsed->>'categoryId' as cat, parsed->>'at' as at_, jsonb_array_length(coalesce(parsed->'flags','[]'::jsonb)) as nflags
-    from finance.inbound_messages where user_id=$1 and status='review' and coalesce(parsed->>'generic','false') <> 'true' and coalesce(parsed->>'bill','false') <> 'true' and (parsed->>'amount')::numeric > 0`, [userId]);
+    from finance.inbound_messages where user_id=$1 and status='review' and coalesce(parsed->>'generic','false') <> 'true' and coalesce(parsed->>'bill','false') <> 'true' and not (parsed ? 'loanMail') and (parsed->>'amount')::numeric > 0`, [userId]);
   return r.rows.map((x) => {
     const name = String(x.dsc || x.m || x.s || "Email pembayaran"), kind: "out" | "in" = (x.kind ?? (x.dir === "in" ? "in" : "out")) === "in" ? "in" : "out";
     return { id: x.id as string, name, key: `${groupKey(name) || "lainnya"}|${kind}`, kind, amount: Number(x.amt), cat: String(x.cat || "lainnya"), at: (x.at_ as string | null) ?? null, flagged: Number(x.nflags) > 0 };
