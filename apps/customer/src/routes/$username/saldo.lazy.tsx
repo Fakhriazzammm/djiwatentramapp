@@ -1,6 +1,6 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
-import { Bell, CheckCircle2, ChevronRight, CircleAlert, Clock3, Eye, EyeOff, RefreshCw, X } from "lucide-react";
+import { ArrowUpRight, Bell, CheckCircle2, ChevronRight, CircleAlert, Clock3, Eye, EyeOff, RefreshCw, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
@@ -171,7 +171,13 @@ function SaldoPage() {
 					</div>
 				</motion.section>
 
-				<motion.section {...fade(5)} id="saldo-riwayat" className="scroll-mt-4">
+				<motion.button {...fade(5)} {...press} type="button" onClick={openPay} className="mt-3 flex w-full items-center gap-3 rounded-[30px] bg-white p-3 pr-4 text-left shadow-[0_0_0_1px_rgba(15,35,71,.05)]">
+					<span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#e6efff]"><img src={ICON("card")} alt="" className="h-7 w-7 object-contain" /></span>
+					<span className="min-w-0 flex-1"><b className="block text-[15px] font-semibold">Keuangan di Djiwa Pay</b><span className="text-xs text-[#6b7080]">Pencatatan, anggaran, dan fitur lengkap</span></span>
+					<span className="flex items-center gap-1 rounded-full bg-[#0f2347] px-3 py-2 text-xs font-bold text-white">Buka <ArrowUpRight className="h-3.5 w-3.5" /></span>
+				</motion.button>
+
+				<motion.section {...fade(6)} id="saldo-riwayat" className="scroll-mt-4">
 					<p className="mb-2.5 ml-1 mt-6 text-[13px] font-bold text-[#6b7080]">RIWAYAT</p>
 					<div className="relative mb-2.5 flex rounded-full bg-[#f1f3f8] p-1">
 						{([["all", "Semua"], ["in", "Masuk"], ["out", "Keluar"]] as const).map(([k, l]) => <button key={k} type="button" onClick={() => { setFilter(k); setShowAll(false); }} className="relative flex-1 rounded-full py-2 text-[13px] font-semibold"><AnimatePresence>{filter === k && <motion.span layoutId="seg" className="absolute inset-0 rounded-full bg-white shadow-[0_1px_4px_rgba(15,35,71,.1)]" transition={{ type: "spring", stiffness: 500, damping: 36 }} />}</AnimatePresence><span className={`relative ${filter === k ? "text-[#0f2347]" : "text-[#6b7080]"}`}>{l}</span></button>)}
