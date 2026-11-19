@@ -76,8 +76,8 @@ export function DsButton({ variant, size, block, ...p }: ButtonHTMLAttributes<HT
 export function DsAsk({ children, onClick }: { children: ReactNode; onClick?: () => void }) {
 	return <button type="button" className="ds-ask" onClick={onClick}><span>{children}</span><i>↗</i></button>;
 }
-export function DsNote({ icon, children, action, tone }: { icon?: ReactNode; children: ReactNode; action?: ReactNode; tone?: "info" }) {
-	return <div className={cx("ds-note", tone === "info" && "ds-note--info")}>{icon}<div style={{ flex: 1 }}>{children}</div>{action}</div>;
+export function DsNote({ icon, children, action, tone }: { icon?: ReactNode; children: ReactNode; action?: ReactNode; tone?: "info" | "danger" | "ok" }) {
+	return <div className={cx("ds-note", tone === "info" && "ds-note--info", tone === "danger" && "ds-note--danger", tone === "ok" && "ds-note--ok")}>{icon}<div style={{ flex: 1 }}>{children}</div>{action}</div>;
 }
 export function DsSegmented<T extends string>({ items, value, onChange }: { items: [T, string][]; value: T; onChange: (v: T) => void }) {
 	return <div className="ds-seg">{items.map(([k, l]) => <button key={k} type="button" aria-pressed={value === k} onClick={() => onChange(k)}>{l}</button>)}</div>;

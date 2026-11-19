@@ -651,7 +651,7 @@ Deno.serve(async (req: Request) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    if (source === "pos_web") {
+    if (source === "pos_web" || source === "karyawan_app") {
       try {
         await verifyPosClosingIdentity(supabase, userId, pinCode, faceDescriptor);
         await validatePosClosingGeofence(supabase, location);

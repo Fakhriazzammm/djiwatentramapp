@@ -1,0 +1,120 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Karyawan v5 — alur pengguna</title>
+<style>
+:root{--ink:#14161c;--mute:#6b7080;--line:#dfe3ec;--bg:#f4f5f8;--navy:#0f2347;--blue:#1a5dc6;--bls:#e6efff;--ok:#13804a;--oks:#e3f4ea;--warn:#a05d00;--ws:#fcf1d8;--red:#d23a2a;--reds:#fdecea}
+*{box-sizing:border-box}body{margin:0;font:14.5px/1.5 -apple-system,"SF Pro Text",Inter,system-ui,sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+main{max-width:1180px;margin:0 auto;padding:30px 20px 90px}a{color:var(--blue)}
+h1{font:700 30px/1.15 inherit;letter-spacing:-.025em;margin:0 0 6px}h2{font:700 21px inherit;letter-spacing:-.02em;margin:46px 0 4px}h3{font:700 14.5px inherit;margin:0 0 4px}
+.lead{color:var(--mute);max-width:780px;margin:0 0 10px}
+.card{background:#fff;border-radius:18px;padding:16px 18px;box-shadow:0 1px 2px rgba(20,22,28,.05),0 8px 24px rgba(20,22,28,.04)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.flow{display:flex;align-items:stretch;overflow-x:auto;padding:14px 4px 18px;gap:0}
+.n{flex:none;width:176px;background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:11px 12px;font-size:12.5px;position:relative}.n b{display:block;font-size:13.5px;margin-bottom:2px}.n small{color:var(--mute);display:block}
+.n.s{background:var(--navy);color:#fff;border-color:var(--navy)}.n.s small{color:#c5cbe0}
+.n.d{background:var(--ws);border-color:#ecd49a}.n.k{background:var(--bls);border-color:#bcd2f7}.n.g{background:var(--oks);border-color:#b7e0c8}.n.r{background:var(--reds);border-color:#f2bcb5}
+.n i{position:absolute;top:-9px;left:10px;background:var(--ink);color:#fff;font:600 10px/1 inherit;font-style:normal;border-radius:99px;padding:3px 7px}
+.ar{flex:none;width:30px;display:grid;place-items:center;color:#9aa0ae;font-size:18px}.ar.t{position:relative}.ar small{position:absolute;top:2px;font-size:9.5px;color:var(--mute);white-space:nowrap}
+.branch{display:grid;gap:10px;flex:none}.branch .n{width:190px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:8px 10px;border-top:1px solid var(--line);vertical-align:top}th{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.06em;border-top:0}
+.tag{display:inline-block;padding:1px 8px;border-radius:99px;font:600 11px inherit;background:var(--bls);color:var(--blue)}.tag.o{background:var(--oks);color:var(--ok)}.tag.w{background:var(--ws);color:var(--warn)}.tag.r{background:var(--reds);color:var(--red)}
+.ia{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.ia .col{background:#fff;border-radius:16px;padding:12px;border:1.5px solid var(--line)}.ia .col h3{color:var(--blue)}.ia li{margin:2px 0;font-size:13px}.ia ul{margin:4px 0 0;padding-left:16px}
+.st{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}.st .card{padding:12px 14px}
+code{background:#eceff5;border-radius:6px;padding:1px 5px;font-size:12.5px}
+.top{margin-bottom:22px;font-size:13px}
+@media(max-width:820px){.g2,.g3,.ia,.st{grid-template-columns:1fr}}
+</style></head><body><main>
+<div class="top"><a href="v5.html">← Semua halaman (prototipe)</a></div>
+<h1>Karyawan v5 — alur pengguna</h1>
+<p class="lead">Peta navigasi, alur absen di dalam app, semua jalur gagal, dan apa yang perlu berubah di sistem. Nomor layar (mis. <b>#10</b>) merujuk ke prototipe <a href="v5.html">v5.html</a>. Prototipe desain saja; belum ada kode produksi yang diubah.</p>
+
+<h2>1 · Peta navigasi</h2>
+<p class="lead">Lima tab, satu tombol aksi di tengah. Notifikasi lewat lonceng di header, bukan tab.</p>
+<div class="ia">
+<div class="col"><h3>Beranda</h3><ul><li>Status shift + hero aksi</li><li>Gaji berjalan</li><li>Izin / tukar shift</li><li>Akses cepat</li><li>Notifikasi (lonceng)</li></ul></div>
+<div class="col"><h3>Jadwal</h3><ul><li>Pribadi (minggu + bulan)</li><li>Tim</li><li>Tukar shift</li><li>Izin &amp; cuti → ajukan</li></ul></div>
+<div class="col"><h3>Absen (tengah)</h3><ul><li>Cek lokasi/jadwal/perangkat</li><li>Verifikasi wajah / PIN</li><li>Hasil</li><li>Closing shift (keluar)</li></ul></div>
+<div class="col"><h3>Gaji</h3><ul><li>Gaji berjalan + rincian</li><li>Slip per periode</li><li>Rekap kehadiran → detail hari → koreksi</li></ul></div>
+<div class="col"><h3>Profil</h3><ul><li>Kelengkapan data</li><li>Keamanan absen (PIN, wajah, perangkat)</li><li>Kontrak</li><li>Peringkat</li><li>Telegram (cadangan)</li></ul></div>
+</div>
+
+<h2>2 · Masuk &amp; onboarding</h2>
+<div class="flow">
+<div class="n s"><i>MULAI</i><b>Buka app</b><small>Sesi ada? langsung Beranda</small></div><div class="ar">→</div>
+<div class="n"><i>#01</i><b>Login</b><small>Nama + PIN 6 digit, “ingat perangkat”</small></div><div class="ar t"><small>PIN default / baru</small>→</div>
+<div class="n k"><i>#03</i><b>Izin perangkat</b><small>Lokasi → Kamera → Notifikasi, satu per satu</small></div><div class="ar">→</div>
+<div class="n k"><b>Daftar wajah</b><small>±20 detik, sekali. Bisa dilewati (PIN saja)</small></div><div class="ar">→</div>
+<div class="n g"><i>#04</i><b>Beranda</b><small>Banner “Ganti PIN default”</small></div>
+</div>
+<div class="flow">
+<div class="n"><i>#01</i><b>Belum punya akun</b><small>Daftar karyawan baru</small></div><div class="ar">→</div>
+<div class="n"><i>#02</i><b>Daftar 3 langkah</b><small>Data diri → PIN &amp; wajah → selesai</small></div><div class="ar">→</div>
+<div class="n d"><b>Menunggu persetujuan</b><small>Supervisor/manager aktifkan. Push + WhatsApp saat disetujui</small></div><div class="ar">→</div>
+<div class="n g"><b>Login pertama</b><small>Ke alur di atas</small></div>
+</div>
+
+<h2>3 · Absen masuk di dalam app <span class="tag">inti perubahan</span></h2>
+<div class="flow">
+<div class="n s"><i>#04</i><b>Beranda</b><small>Tombol tengah hijau, atau “Absen masuk” di hero. Aktif mulai 30 mnt sebelum shift</small></div><div class="ar">→</div>
+<div class="n k"><i>#07</i><b>Cek otomatis</b><small>① Lokasi dalam radius ② Ada jadwal &amp; jendela waktu ③ Perangkat aman</small></div><div class="ar t"><small>semua hijau</small>→</div>
+<div class="n"><i>#08</i><b>Verifikasi wajah</b><small>Liveness (kedip). Cocok ≥ ambang</small></div>
+<div class="ar t"><small>gagal 3×</small>→</div>
+<div class="n"><i>#09</i><b>PIN</b><small>Salah 5× → kunci 15 mnt + beri tahu supervisor</small></div><div class="ar">→</div>
+<div class="n g"><i>#10</i><b>Tercatat</b><small>Jam server, status tepat/telat, ke Beranda (#05)</small></div>
+</div>
+<div class="g2">
+<div class="card"><h3>Telat &gt; toleransi (10 mnt)</h3><p style="margin:0;color:var(--mute)">Cek → <b>#13 alasan wajib</b> → verifikasi → tercatat “Telat”. Alasan tampil di rekap supervisor.</p></div>
+<div class="card"><h3>Wajah belum terdaftar</h3><p style="margin:0;color:var(--mute)">Langsung PIN. Beranda menawarkan “Daftarkan wajah” sampai selesai (tidak memblokir absen).</p></div>
+</div>
+
+<h2>4 · Absen keluar &amp; closing shift</h2>
+<div class="flow">
+<div class="n s"><i>#05</i><b>Sedang shift</b><small>Tombol tengah merah. Keluar baru aktif setelah closing terkirim</small></div><div class="ar">→</div>
+<div class="n k"><i>#14</i><b>Opname stok</b><small>Stepper, selisih ditandai, draf otomatis</small></div><div class="ar">→</div>
+<div class="n k"><i>#15</i><b>Kebersihan</b><small>Centang + foto area wajib</small></div><div class="ar">→</div>
+<div class="n k"><b>Catatan &amp; kirim</b><small>Langkah 3, ringkasan selisih</small></div><div class="ar">→</div>
+<div class="n"><i>#16</i><b>Cek + verifikasi</b><small>Pola sama dengan masuk</small></div><div class="ar">→</div>
+<div class="n g"><i>#17</i><b>Ringkasan</b><small>Jam kerja, gaji hari ini, poin</small></div>
+</div>
+
+<h2>5 · Jalur gagal &amp; pengecualian</h2>
+<div class="card"><table><tr><th>Situasi</th><th>Yang terjadi</th><th>Jalan keluar</th><th>Layar</th></tr>
+<tr><td>Di luar radius toko</td><td>Peta + jarak, tombol absen mati</td><td>Cek ulang lokasi · atau <b>Ajukan absen di luar area</b> (belanja, event) → supervisor menyetujui</td><td>#11</td></tr>
+<tr><td>Izin lokasi ditolak/dimatikan</td><td>Langkah 1-2-3 buka Pengaturan</td><td>Buka Pengaturan · cadangan Telegram</td><td>#12</td></tr>
+<tr><td>Lokasi palsu / jam HP diubah</td><td>Cek perangkat merah, absen ditahan</td><td>Notifikasi ke supervisor; absen manual lewat koreksi</td><td>#07</td></tr>
+<tr><td>Tidak ada jadwal hari ini</td><td>Tombol tengah abu + penjelasan</td><td>Hubungi supervisor / lihat Jadwal</td><td>#06</td></tr>
+<tr><td>Terlambat</td><td>Alasan wajib</td><td>Pilih alasan → lanjut</td><td>#13</td></tr>
+<tr><td>Offline saat absen</td><td>Verifikasi lokal tetap jalan; absen <b>diantre</b> dengan jam perangkat + jam server terakhir</td><td>Kirim otomatis saat online; supervisor melihat tanda “diantre”</td><td>—</td></tr>
+<tr><td>Lupa absen keluar</td><td>Banner merah esok hari</td><td>Form koreksi → supervisor</td><td>#18, #28</td></tr>
+<tr><td>Salah catat</td><td>Detail hari → Ajukan koreksi</td><td>Jam benar + alasan + bukti</td><td>#27, #28</td></tr>
+<tr><td>App error / HP rusak</td><td>—</td><td>Bot Telegram sebagai cadangan terakhir</td><td>#07, #12</td></tr></table></div>
+
+<h2>6 · Izin, cuti, tukar shift</h2>
+<div class="flow">
+<div class="n s"><b>Beranda / Jadwal</b><small>“Butuh izin, cuti, atau tukar shift?”</small></div><div class="ar">→</div>
+<div class="n"><i>#23</i><b>Pilih jenis</b><small>Cuti · Sakit · Izin · Tukar</small></div>
+<div class="ar t"><small>tukar</small>→</div>
+<div class="n k"><i>#21</i><b>Pilih rekan</b><small>Daftar rekan yang cocok (posisi &amp; jadwal)</small></div><div class="ar t"><small>rekan setuju</small>→</div>
+<div class="n d"><b>Supervisor menyetujui</b><small>Push ke pengaju &amp; rekan</small></div><div class="ar">→</div>
+<div class="n g"><i>#22</i><b>Status di riwayat</b><small>Menunggu · Disetujui · Ditolak. Jadwal ikut berubah</small></div>
+</div>
+
+<h2>7 · Perubahan di sistem (usulan)</h2>
+<p class="lead">Perlu dicek terhadap skema dan Edge Function yang ada sebelum implementasi; di bawah ini kebutuhan, bukan nama final.</p>
+<div class="card"><table><tr><th>Kebutuhan</th><th>Isi</th><th>Catatan</th></tr>
+<tr><td>RPC absen</td><td>Satu RPC atomik <code>attendance_clock(in|out)</code>: cek jadwal, jendela waktu, radius, perangkat, lalu tulis kehadiran dengan <b>jam server</b></td><td>Klien tidak pernah mengirim jam sendiri. Telegram memanggil RPC yang sama agar aturan satu sumber.</td></tr>
+<tr><td>Geofence</td><td>Koordinat + radius per lokasi toko (default 80 m), akurasi GPS maksimum (mis. ≤ 50 m)</td><td>Tabel lokasi, bisa diatur manager di panel.</td></tr>
+<tr><td>Wajah</td><td>Pakai pendaftaran wajah yang sudah ada (menu “Scan wajah”); tambah liveness</td><td>Perlu dicek: layanan pencocokan wajah yang dipakai sekarang. Foto absen disimpan terbatas (retensi).</td></tr>
+<tr><td>PIN</td><td>Percobaan dibatasi, kunci sementara, hash di server</td><td>PIN default wajib diganti dalam 7 hari.</td></tr>
+<tr><td>Perangkat</td><td>Satu perangkat utama per karyawan; ganti perangkat butuh persetujuan</td><td>Deteksi lokasi palsu hanya sebagian di web/PWA; jangan dijanjikan mutlak.</td></tr>
+<tr><td>Koreksi absen</td><td>Tabel pengajuan: hari, jenis, jam benar, alasan, bukti, status, penyetuju</td><td>Persetujuan di panel Manager (v20).</td></tr>
+<tr><td>Absen diantre</td><td>Antrean lokal (IndexedDB) + kirim ulang</td><td>Ditandai di rekap supervisor.</td></tr>
+<tr><td>Notifikasi</td><td>Push: pengingat shift, persetujuan, jadwal terbit</td><td>Mengikuti pengaturan PWA yang ada.</td></tr></table></div>
+
+<h2>8 · Prinsip desain yang dipakai</h2>
+<div class="st">
+<div class="card"><h3>Compact</h3>Baris 54px, ikon 38px, hero lebih pendek dari v4. Muat di 360px tanpa gulir untuk aksi utama.</div>
+<div class="card"><h3>iOS</h3>Langit biru, grup abu radius besar, sheet dengan grabber, tab bar melayang, pil navy.</div>
+<div class="card"><h3>Satu aksi</h3>Tiap layar punya satu tombol utama; sisanya ghost atau teks.</div>
+<div class="card"><h3>Tidak buntu</h3>Setiap kegagalan punya tombol berikutnya, termasuk koreksi dan Telegram.</div>
+</div>
+<p class="lead" style="margin-top:18px">Catatan: panduan Djiwa Soft iOS menyebut gaya “lapang”; v5 sengaja lebih rapat atas permintaan compact. Bila disetujui, panduan perlu diberi varian padat.</p>
+</main></body></html>

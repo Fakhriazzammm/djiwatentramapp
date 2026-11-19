@@ -1,162 +1,132 @@
-import { useState, useCallback } from "react";
-import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import { motion } from "framer-motion";
-
-const spring = { type: "spring" as const, stiffness: 300, damping: 25, mass: 0.8 };
-import { ArrowLeft, Check, AlertCircle, Clock, ClipboardList, Plane, Stethoscope, MoreHorizontal, type LucideIcon } from "lucide-react";
-import { Button } from "@djiwaapps/web-shared/components/ui/button";
-import { Input } from "@djiwaapps/web-shared/components/ui/input";
-import { toast } from "sonner";
+import { createLazyFileRoute } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useHybridPublicUsers } from "@djiwaapps/web-shared";
+import { DsButton, DsEmpty, DsGroup, DsGroupLabel, DsIcon, DsIconButton, DsNote, DsPageTitle, DsRow, DsSheet, DsTag, DsTiles, ds3d } from "@djiwaapps/web-shared/components/ds";
 import { createClient } from "@djiwaapps/web-shared/lib/client";
+import { toast } from "sonner";
 import { useStaffProfile } from "../$username.lazy";
+import { hhmm, isOffShift, todayWib, type Schedule } from "@/components/karyawan/use-staff-data";
 
-const LEAVE_TYPES = [
-  { value: "izin", label: "Izin", icon: ClipboardList, desc: "Keperluan pribadi" },
-  { value: "cuti", label: "Cuti", icon: Plane, desc: "Cuti tahunan" },
-  { value: "sakit", label: "Sakit", icon: Stethoscope, desc: "Surat dokter menyusul" },
-  { value: "other", label: "Lainnya", icon: MoreHorizontal, desc: "Alasan lainnya" },
-] satisfies Array<{ value: string; label: string; icon: LucideIcon; desc: string }>;
+export const Route = createLazyFileRoute("/$username/izin")({ component: IzinPage });
 
-export const Route = createLazyFileRoute("/$username/izin")({
-  component: IzinCutiSakitPage,
-});
+type Req = { id: string; leave_type: string; start_date: string; end_date: string; reason: string; status: "pending" | "approved" | "rejected" | "cancelled"; review_notes: string | null; metadata: Record<string, any> | null; created_at: string };
+const TYPES: [string, string][] = [["cuti", "Cuti"], ["sakit", "Sakit"], ["izin", "Izin"], ["tukar_shift", "Tukar shift"]];
+const LABEL: Record<string, string> = { cuti: "Cuti", sakit: "Sakit", izin: "Izin", other: "Lainnya", koreksi_absen: "Koreksi absen", tukar_shift: "Tukar shift" };
+const STATUS: Record<Req["status"], { label: string; tone?: "ok" | "warn" | "danger" }> = {
+	pending: { label: "Menunggu", tone: "warn" }, approved: { label: "Disetujui", tone: "ok" }, rejected: { label: "Ditolak", tone: "danger" }, cancelled: { label: "Dibatalkan" },
+};
+const fmt = (d: string) => new Date(`${d}T00:00:00+07:00`).toLocaleDateString("id-ID", { day: "numeric", month: "short", timeZone: "Asia/Jakarta" });
+const days = (a: string, b: string) => Math.max(1, Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000) + 1);
 
-function IzinCutiSakitPage() {
-  const navigate = useNavigate();
-  const { staff, username } = useStaffProfile();
+function IzinPage() {
+	const { staff, username, navigate } = useStaffProfile();
+	const [rows, setRows] = useState<Req[] | null>(null);
+	const [open, setOpen] = useState(false);
 
-  const [leaveType, setLeaveType] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [reason, setReason] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+	const load = useCallback(async () => {
+		if (!staff?._id) return;
+		const { data } = await createClient().from("attendance_leave_requests")
+			.select("id,leave_type,start_date,end_date,reason,status,review_notes,metadata,created_at")
+			.eq("user_id", staff._id).order("created_at", { ascending: false }).limit(50);
+		setRows((data as Req[]) ?? []);
+	}, [staff?._id]);
+	useEffect(() => { void load(); }, [load]);
 
-  const todayStr = new Date().toISOString().split("T")[0];
-  const canSubmit = leaveType && startDate && endDate && reason;
+	const monthKey = todayWib().slice(0, 7);
+	const stats = useMemo(() => ({
+		pending: rows?.filter((r) => r.status === "pending").length ?? 0,
+		approved: rows?.filter((r) => r.status === "approved").length ?? 0,
+		month: rows?.filter((r) => r.start_date.startsWith(monthKey)).length ?? 0,
+	}), [rows, monthKey]);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!canSubmit || !staff?._id) return;
+	return (
+		<>
+			<DsPageTitle left={<DsIconButton aria-label="Kembali" onClick={() => navigate({ to: "/$username/beranda" as any, params: { username } } as any)}>‹</DsIconButton>} right={<DsIconButton aria-label="Ajukan baru" style={{ background: "var(--ds-navy)", color: "#fff" }} onClick={() => setOpen(true)}>+</DsIconButton>}>Izin &amp; cuti</DsPageTitle>
+			<DsGroup>
+				<DsTiles items={[{ value: stats.pending, label: "Menunggu" }, { value: stats.approved, label: "Disetujui" }, { value: stats.month, label: "Bulan ini" }]} />
+			</DsGroup>
+			<DsGroupLabel>Riwayat</DsGroupLabel>
+			{rows === null ? (
+				<DsGroup><DsRow title="Memuat…" /></DsGroup>
+			) : rows.length === 0 ? (
+				<DsEmpty icon={ds3d("employee-leave")}>Belum ada pengajuan. Ketuk + untuk mengajukan.</DsEmpty>
+			) : (
+				<DsGroup>
+					{rows.map((r) => (
+						<DsRow key={r.id} icon={<DsIcon name="employee-leave" />} title={LABEL[r.leave_type] ?? r.leave_type}
+							sub={r.leave_type === "koreksi_absen" ? `${fmt(r.start_date)} · ${r.metadata?.type === "check_in" ? "masuk" : "keluar"} ${r.metadata?.time ?? ""}` : r.leave_type === "tukar_shift" ? `${fmt(r.start_date)} · dengan ${r.metadata?.partner_name ?? "rekan"}` : `${fmt(r.start_date)}${r.end_date !== r.start_date ? ` – ${fmt(r.end_date)}` : ""} · ${days(r.start_date, r.end_date)} hari`}
+							trail={<DsTag tone={STATUS[r.status].tone}>{STATUS[r.status].label}</DsTag>} />
+					))}
+				</DsGroup>
+			)}
+			{rows?.some((r) => r.status === "rejected" && r.review_notes) && (
+				<DsNote icon={<DsIcon name="notifications-alerts" />}><b>Ada yang ditolak</b>{rows.find((r) => r.status === "rejected" && r.review_notes)?.review_notes}</DsNote>
+			)}
+			{open && <RequestSheet onClose={() => setOpen(false)} onDone={() => { setOpen(false); void load(); }} />}
+		</>
+	);
+}
 
-    setIsSubmitting(true);
-    try {
-      const supabase = createClient();
-      const { error } = await supabase.from("attendance_leave_requests").insert({
-        user_id: staff._id,
-        user_name: staff.name,
-        leave_type: leaveType,
-        start_date: startDate,
-        end_date: endDate,
-        reason: reason,
-        status: "pending",
-      });
-      if (error) throw error;
-      toast.success("Pengajuan berhasil dikirim!");
-      navigate({ to: "/$username/beranda" as any, params: { username } });
-    } catch (err: any) {
-      toast.error(err.message || "Gagal mengirim pengajuan");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [canSubmit, staff, leaveType, startDate, endDate, reason, navigate, username]);
+function RequestSheet({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+	const { staff } = useStaffProfile();
+	const users = useHybridPublicUsers();
+	const [type, setType] = useState("cuti");
+	const [start, setStart] = useState(todayWib());
+	const [end, setEnd] = useState(todayWib());
+	const [reason, setReason] = useState("");
+	const [partner, setPartner] = useState<string>("");
+	const [day, setDay] = useState<Schedule[] | null>(null);
+	const [busy, setBusy] = useState(false);
+	const isSwap = type === "tukar_shift";
 
-  return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={spring} className="min-w-0 bg-background">
-      <header className="sticky top-0 z-10 border-b bg-background/80 px-0 py-3 backdrop-blur-md">
-        <div className="mx-auto flex max-w-2xl items-center gap-3">
-          <Button aria-label="Kembali ke beranda" variant="ghost" size="icon" onClick={() => navigate({ to: "/$username/beranda" as any, params: { username } })} className="h-11 w-11 rounded-[14px]">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-sm font-black tracking-tight">Izin / Cuti / Sakit</h1>
-        </div>
-      </header>
+	useEffect(() => {
+		if (!isSwap) return;
+		let off = false;
+		setDay(null);
+		createClient().schema("pos").from("attendance_schedules").select("user_id,date,shift_name,start_time,end_time,status").eq("date", start)
+			.then(({ data }) => { if (!off) setDay((data as Schedule[]) ?? []); }, () => { if (!off) setDay([]); });
+		return () => { off = true; };
+	}, [isSwap, start]);
 
-      <div className="mt-4 space-y-5">
-        {/* Staff Info */}
-        <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
-          {staff?.photoUrl ? (
-            <img src={staff.photoUrl} alt={staff.name} className="h-10 w-10 rounded-lg object-cover" />
-          ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-base font-black text-primary">
-              {staff?.name?.charAt(0) || "?"}
-            </div>
-          )}
-          <div>
-            <p className="font-bold text-sm">{staff?.name || "Memuat..."}</p>
-            <p className="text-[10px] text-muted-foreground">{staff?.roleName || ""}</p>
-          </div>
-        </div>
+	const mine = day?.find((s) => s.user_id === staff?._id) ?? null;
+	const candidates = useMemo(() => (day ?? []).filter((s) => s.user_id !== staff?._id && !isOffShift(s) && (!mine || s.shift_name !== mine.shift_name)), [day, staff?._id, mine]);
+	const nameOf = (id?: string) => (Array.isArray(users) ? users.find((u: any) => String(u._id) === String(id))?.name : undefined) ?? "Rekan";
+	const valid = !!reason.trim() && start && end >= start && (!isSwap || (!!partner && !!mine && !isOffShift(mine)));
 
-        {/* Info Banner */}
-        <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-blue-800">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            <p className="text-[11px] font-medium">
-              Pengajuan akan ditinjau oleh admin. Pastikan data yang diisi benar.
-            </p>
-          </div>
-        </div>
+	const send = async () => {
+		if (!valid || !staff?._id) return;
+		setBusy(true);
+		try {
+			const p = candidates.find((c) => c.user_id === partner);
+			const { error } = await createClient().from("attendance_leave_requests").insert({
+				user_id: staff._id, user_name: staff.name, leave_type: type,
+				start_date: start, end_date: isSwap ? start : end, reason: reason.trim(), status: "pending",
+				metadata: isSwap ? { partner_id: partner, partner_name: nameOf(partner), my_shift: mine?.shift_name, partner_shift: p?.shift_name } : {},
+			});
+			if (error) throw error;
+			toast.success("Pengajuan terkirim");
+			onDone();
+		} catch (e: any) {
+			toast.error(e?.message || "Gagal mengirim pengajuan");
+		} finally {
+			setBusy(false);
+		}
+	};
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Leave Type */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground ml-1">
-              Tipe Pengajuan
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {LEAVE_TYPES.map((lt, i) => (
-                <motion.button key={lt.value} type="button"
-                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ ...spring, delay: i * 0.05 }} whileTap={{ scale: 0.95 }}
-                onClick={() => setLeaveType(lt.value)}
-                  aria-pressed={leaveType === lt.value}
-                  className={`karyawan-card flex min-h-28 flex-col items-center justify-center gap-1 border-2 p-3 transition-all ${
-                    leaveType === lt.value
-                      ? "border-primary bg-primary/5 shadow-sm"
-                      : "border-transparent bg-card hover:border-border"
-                  }`}
-                >
-                  <lt.icon aria-hidden="true" className="h-5 w-5 text-primary" strokeWidth={2} />
-                  <span className={`text-xs font-bold ${leaveType === lt.value ? "text-primary" : "text-foreground"}`}>
-                    {lt.label}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">{lt.desc}</span>
-                </motion.button>
-              ))}
-            </div>
-          </div>
-
-          {/* Date Range */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Tanggal Mulai</label>
-              <Input aria-label="Tanggal mulai" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} min={todayStr} className="karyawan-control font-bold text-xs" required />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Tanggal Selesai</label>
-              <Input aria-label="Tanggal selesai" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} min={startDate || todayStr} className="karyawan-control font-bold text-xs" required />
-            </div>
-          </div>
-
-          {/* Reason */}
-          <div className="space-y-1">
-            <label className="text-[11px] font-black text-muted-foreground uppercase ml-1">Alasan</label>
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Jelaskan alasan pengajuan..."
-              className="min-h-[112px] w-full rounded-[14px] border bg-card px-3 py-3 text-sm font-medium placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/20"
-              required
-            />
-          </div>
-
-          {/* Submit */}
-          <Button type="submit" className="h-12 w-full rounded-[14px] text-sm font-bold shadow-lg shadow-primary/20 active:scale-[.97]" disabled={!canSubmit || isSubmitting}>
-            {isSubmitting ? <Clock className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            {isSubmitting ? "MENGIRIM..." : "AJUKAN SEKARANG"}
-          </Button>
-        </form>
-      </div>
-    </motion.div>
-  );
+	return (
+		<DsSheet title="Ajukan" onClose={onClose}>
+			<div className="kx-reasons" role="group" aria-label="Jenis pengajuan">{TYPES.map(([v, l]) => <button key={v} type="button" aria-pressed={type === v} onClick={() => setType(v)}>{l}</button>)}</div>
+			<label className="kx-field"><span>{isSwap ? "Tanggal shift" : "Mulai"}</span><input id="izin-start" className="kx-input" type="date" min={todayWib()} value={start} onChange={(e) => { setStart(e.target.value); if (e.target.value > end) setEnd(e.target.value); setPartner(""); }} /></label>
+			{!isSwap && <label className="kx-field"><span>Sampai</span><input id="izin-end" className="kx-input" type="date" min={start} value={end} onChange={(e) => setEnd(e.target.value)} /></label>}
+			{isSwap && (
+				<div className="kx-field"><span>Tukar dengan</span>
+					{day === null ? <p className="ds-sub">Memuat jadwal…</p> : !mine || isOffShift(mine) ? <p className="ds-sub">Kamu tidak punya shift di tanggal ini.</p> : candidates.length === 0 ? <p className="ds-sub">Belum ada rekan dengan shift berbeda di tanggal ini.</p> : (
+						<DsGroup>{candidates.map((c) => <DsRow key={c.user_id} title={nameOf(c.user_id)} sub={`${c.shift_name} ${hhmm(c.start_time)} – ${hhmm(c.end_time)}`} trail={partner === c.user_id ? <DsTag tone="ok">Dipilih</DsTag> : undefined} onClick={() => setPartner(c.user_id!)} />)}</DsGroup>
+					)}
+				</div>
+			)}
+			<label className="kx-field"><span>Alasan</span><textarea id="izin-reason" className="kx-input" rows={3} value={reason} maxLength={400} onChange={(e) => setReason(e.target.value)} placeholder={isSwap ? "Contoh: ada keperluan keluarga" : "Tulis alasan singkat"} /></label>
+			<DsButton block disabled={!valid || busy} onClick={send}>{busy ? "Mengirim…" : "Kirim pengajuan"}</DsButton>
+		</DsSheet>
+	);
 }

@@ -13,7 +13,7 @@ export const Route = createLazyFileRoute("/$username/beranda")({
 const MONTHS_ID = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
 function BerandaPage() {
-	const { staff, navigate, username, authUser, notifCount, openAbsen, refreshKey } = useStaffProfile();
+	const { staff, navigate, username, authUser, notifCount, openAbsen, refreshKey, today: att } = useStaffProfile();
 	const now = new Date();
 	const [secs, setSecs] = useState(() => Math.floor(Date.now() / 1000));
 	const [hide, setHide] = useState(() => typeof window !== "undefined" && localStorage.getItem("saldo_visible") === "false");
@@ -28,16 +28,15 @@ function BerandaPage() {
 	const schedules = useMonthSchedules(year, month, staff?._id);
 	const announcement = useTopAnnouncement();
 
-	const isIn = currentlyIn?.some((s: any) => s._id === staff?._id) ?? false;
+	const isIn = att.loading ? (currentlyIn?.some((s: any) => s._id === staff?._id) ?? false) : att.isIn;
 	const today = todayWib();
 	const sched = schedules?.find((s) => s.date === today && !isOffShift(s)) ?? null;
 	const nextSched = schedules?.filter((s) => s.date > today && !isOffShift(s)).sort((a, b) => a.date.localeCompare(b.date))[0];
 
-	// Today's logs (WIB) → clock-in time and whether the shift is already finished.
-	const todayLogs = useMemo(() => (Array.isArray(logs) ? logs : []).filter((l: any) => new Date(l.timestamp + 7 * 3600_000).toISOString().slice(0, 10) === today).sort((a: any, b: any) => a.timestamp - b.timestamp), [logs, today]);
-	const lastIn = [...todayLogs].reverse().find((l: any) => l.type === "check_in");
-	const lastOut = [...todayLogs].reverse().find((l: any) => l.type === "check_out");
-	const finished = !isIn && !!lastIn && !!lastOut && lastOut.timestamp > lastIn.timestamp;
+	// Status hari ini datang dari konteks (sumber tunggal dengan tombol tengah tab bar).
+	const lastIn = att.lastIn ? { timestamp: att.lastIn } : undefined;
+	const lastOut = att.lastOut ? { timestamp: att.lastOut } : undefined;
+	const finished = att.finished && !!lastIn && !!lastOut;
 	const clock = (ts: number) => new Date(ts).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(".", ":");
 
 	useEffect(() => {
@@ -80,25 +79,28 @@ function BerandaPage() {
 
 			{/* Shift hari ini */}
 			{isIn ? (
-				<div className="ds-hero">
-					<img className="ds-hero-art" src={ds3d("employee-attendance-check-out")} alt="" />
-					<small>{sched?.shift_name ?? "Shift"} · masuk {lastIn ? clock(lastIn.timestamp) : "—"} · sedang bekerja</small>
-					<div className="ds-timer">{fmtClock(elapsed)}</div>
-					<DsButton block onClick={openAbsen}>Absen keluar · closing dulu</DsButton>
+				<div className="ds-hero ds-hero-go">
+					<small>Sedang shift · masuk {lastIn ? clock(lastIn.timestamp) : "—"}</small>
+					<div className="kx-timer">{fmtClock(elapsed)}</div>
+					<small>{sched?.end_time ? `Sampai ${hhmm(sched.end_time)} · ${sched.shift_name}` : sched?.shift_name ?? "Shift"}</small>
+					<div className="kx-chips"><span className="kx-chip">Closing shift: belum</span></div>
+					<DsButton block className="kx-btn-w" onClick={openAbsen}>Closing shift &amp; absen keluar</DsButton>
 				</div>
 			) : finished ? (
 				<div className="ds-hero">
 					<img className="ds-hero-art" src={ds3d("shift-closing")} alt="" />
 					<small>{sched?.shift_name ?? "Shift"} selesai · {clock(lastIn!.timestamp)} – {clock(lastOut!.timestamp)}</small>
-					<h3>Kerja bagus hari ini</h3>
+					<h3>Terima kasih, {firstName}</h3>
 					<small>Gaji berjalan diperbarui setelah absen keluar.</small>
+					<DsButton block variant="ghost" onClick={() => go("rekap-absensi")}>Lihat rekap hari ini</DsButton>
 				</div>
 			) : sched ? (
-				<div className="ds-hero">
-					<img className="ds-hero-art" src={ds3d("employee-attendance-check-in")} alt="" />
-					<small>{sched.shift_name}{sched.start_time ? ` · ${hhmm(sched.start_time)} – ${hhmm(sched.end_time)}` : ""}</small>
-					<h3>Belum absen masuk</h3>
-					<DsButton block onClick={openAbsen}>Absen masuk</DsButton>
+				<div className="ds-hero ds-hero-go">
+					<small>Shift {sched.shift_name.toLowerCase()}</small>
+					<h3>{sched.start_time ? `Mulai pukul ${hhmm(sched.start_time)}` : "Belum absen masuk"}</h3>
+					<small>Absen dibuka 30 menit sebelum shift · lokasi toko</small>
+					<div className="kx-chips">{sched.start_time && <span className="kx-chip">{hhmm(sched.start_time)} – {hhmm(sched.end_time)}</span>}<span className="kx-chip">Wajah / PIN</span></div>
+					<DsButton block className="kx-btn-w" onClick={openAbsen}>Absen masuk</DsButton>
 				</div>
 			) : (
 				<div className="ds-hero">
@@ -110,6 +112,11 @@ function BerandaPage() {
 				</div>
 			)}
 
+			{att.forgotOut && (
+				<DsNote tone="danger" icon={<DsIcon name="employee-attendance-check-out" />} action={<DsButton size="sm" variant="danger" onClick={() => navigate({ to: "/$username/koreksi-absen" as any, params: { username }, search: { date: att.forgotOut!.date, type: "check_out" } } as any)}>Koreksi</DsButton>}>
+					<b>Belum absen keluar</b>Kamu absen masuk {new Date(att.forgotOut.date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })} tanpa absen keluar. Ajukan koreksi.
+				</DsNote>
+			)}
 			<DsAsk onClick={() => go("izin")}>Butuh izin, cuti, atau tukar shift?</DsAsk>
 
 			{requiresPinChange && (
@@ -150,7 +157,7 @@ function BerandaPage() {
 				<DsRow icon={<DsIcon name="employee-payslip" />} title="Slip gaji" sub="Slip bulanan dari Manager" chevron onClick={() => go("slip-gaji")} />
 				<DsRow icon={<DsIcon name="employee-leaderboard" />} title="Leaderboard bonus" sub="Capaian target tim" chevron onClick={() => go("leaderboard")} />
 				<DsRow icon={<DsIcon name="employee-contract" />} title="Kontrak kerja" sub="Dokumen dan status tanda tangan" chevron onClick={() => go("kontrak")} />
-				<DsRow icon={<DsIcon name="employee-telegram" />} title="Bot & grup Telegram" sub="Absen dan rekap lewat Telegram" chevron onClick={() => window.open("https://t.me/yumihrdbot", "_blank")} />
+				<DsRow icon={<DsIcon name="employee-telegram" />} title="Bot & grup Telegram" sub="Cadangan bila absen di app tak bisa" chevron onClick={() => window.open("https://t.me/yumihrdbot", "_blank")} />
 			</DsGroup>
 		</div>
 	);

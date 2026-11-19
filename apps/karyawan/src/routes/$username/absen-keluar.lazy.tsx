@@ -1,6 +1,8 @@
 import { useManualStockMode } from "@djiwaapps/web-shared/lib/manual-stock";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useStaffProfile } from "../$username.lazy";
+import { VerifyIdentity, type VerifyPayload } from "@/components/karyawan/VerifyIdentity";
+import { getPosition } from "@/lib/attendance-api";
 import { useState, useEffect, useCallback, useMemo, useRef, forwardRef, useImperativeHandle } from "react";
 import { createClient } from "@djiwaapps/web-shared/lib/client";
 import { z } from "zod";
@@ -12,6 +14,7 @@ import {
 } from "lucide-react";
 import {
   submitClosingViaEdge,
+  type KebersihanSubmitArea,
   prepareKebersihanPhoto,
   type OpnameItem,
   type ClosingEdgeResponse,
@@ -84,7 +87,7 @@ export const Route = createLazyFileRoute("/$username/absen-keluar")({
 // ═══════════════════════════════════════════
 
 function ClosingPage() {
-  const { staff, username } = useStaffProfile();
+  const { staff, username, authUser, today } = useStaffProfile();
   const search = useSearch({ from: Route.id as any });
   const navigate = useNavigate();
 
@@ -115,6 +118,8 @@ function ClosingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitDone, setSubmitDone] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const pendingRef = useRef<{ items: OpnameItem[]; kebersihan: KebersihanSubmitArea[] } | null>(null);
 
   // Detect role for stock opname
   const role = useMemo<"bar" | "kitchen" | null>(() => {
@@ -138,6 +143,35 @@ function ClosingPage() {
 
   return (
     <div className="flex flex-col min-h-full">
+      {verifying && !submitDone && (
+        <div className="kx-full" role="dialog" aria-modal="true" aria-label="Verifikasi absen keluar">
+          <div className="kx-full-in">
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0 10px" }}>
+              <button type="button" className="ds-iconbtn" aria-label="Kembali" onClick={() => setVerifying(false)}><ArrowLeft className="h-4 w-4" /></button>
+              <h1 className="ds-page" style={{ margin: 0, fontSize: 26 }}>Verifikasi</h1>
+            </div>
+            <p className="ds-sub" style={{ margin: "0 4px 6px" }}>Absen keluar · closing sudah terisi</p>
+            <VerifyIdentity hasFace={Boolean(authUser?.hasFace)} submit={finishClosing} />
+          </div>
+        </div>
+      )}
+      {submitDone && (
+        <div className="kx-full" role="dialog" aria-modal="true" aria-label="Absen keluar tercatat">
+          <div className="kx-full-in">
+            <div className="kx-ok"><Check /></div>
+            <h2 className="ds-title kx-cen" style={{ margin: "4px 0 2px" }}>Absen keluar tercatat</h2>
+            <p className="ds-sub kx-cen">{new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Jakarta" })} · {new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(".", ":")}</p>
+            <div className="ds-group" style={{ marginTop: 12 }}>
+              {today.lastIn && <div className="kx-kv"><span>Masuk</span><b>{new Date(today.lastIn).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(".", ":")}</b></div>}
+              <div className="kx-kv"><span>Shift</span><b>{shiftName}</b></div>
+              {today.lastIn && <div className="kx-kv"><span>Jam kerja</span><b>{(() => { const m = Math.max(0, Math.round((Date.now() - today.lastIn) / 60000)); return `${Math.floor(m / 60)}j ${m % 60}m`; })()}</b></div>}
+              <div className="kx-kv"><span>Closing</span><b>Opname &amp; kebersihan terkirim</b></div>
+            </div>
+            <button type="button" className="ds-btn ds-btn--block" onClick={() => navigate({ to: `/${username}/beranda` })}>Ke Beranda</button>
+            <button type="button" className="ds-btn ds-btn--ghost ds-btn--block" style={{ marginTop: 8 }} onClick={() => navigate({ to: `/${username}/rekap-absensi` })}>Lihat rekap</button>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="shrink-0 mb-4">
         <div className="flex items-center gap-2 mb-3">
@@ -154,29 +188,6 @@ function ClosingPage() {
             </p>
           </div>
         </div>
-
-        {/* Status Banner */}
-        {submitDone && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-center mb-4"
-          >
-            <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 mb-2">
-              <Check className="h-5 w-5 text-emerald-600" />
-            </div>
-            <p className="font-bold text-emerald-800 text-sm">Laporan Closing Terkirim!</p>
-            <p className="text-xs text-emerald-600 mt-1">
-              Laporan closing tersimpan. Absen keluar berhasil.
-            </p>
-            <button
-              onClick={() => navigate({ to: `/${username}/beranda` })}
-              className="mt-3 inline-flex min-h-11 items-center gap-1 rounded-[14px] bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition-colors"
-            >
-              <ArrowLeft className="h-3 w-3" /> Kembali ke Beranda
-            </button>
-          </motion.div>
-        )}
 
         {/* Error Banner */}
         {submitError && (
@@ -278,6 +289,29 @@ function ClosingPage() {
 
   // ── Handle Submit ──────────────────────────────────────────
 
+  async function finishClosing(v: VerifyPayload) {
+    const pending = pendingRef.current;
+    if (!pending) throw new Error("Data closing hilang. Kirim ulang laporan.");
+    const geo = await getPosition();
+    if (!geo.ok) throw new Error(geo.reason === "denied" ? "Izin lokasi ditolak. Aktifkan lokasi lalu coba lagi." : "Lokasi tidak tersedia. Aktifkan GPS lalu coba lagi.");
+    try {
+      await submitClosingViaEdge({
+        userId, userName, roleName, shiftName, role,
+        items: pending.items,
+        source: "karyawan_app",
+        kebersihan: pending.kebersihan,
+        pinCode: v.method === "pin" ? v.pin : undefined,
+        faceDescriptor: v.method === "face" ? v.faceDescriptor : undefined,
+        location: geo.point,
+      });
+    } catch (err: any) {
+      throw new Error(err?.message || "Gagal memproses closing");
+    }
+    setVerifying(false);
+    setSubmitDone(true);
+    today.reload();
+  }
+
   async function handleSubmit() {
     setSubmitError(null);
     setIsSubmitting(true);
@@ -301,19 +335,9 @@ function ClosingPage() {
         })),
       );
 
-      // 3. Submit ALL via Edge Function (atomic — handles lock, opname, last-person check, inventory update, check-out)
-      const result = await submitClosingViaEdge({
-        userId,
-        userName,
-        roleName,
-        shiftName,
-        role,
-        items: markedChanged.length > 0 ? markedChanged : opnameItems,
-        source: "karyawan_web",
-        kebersihan,
-      });
-
-      setSubmitDone(true);
+      // 3. Simpan payload, lalu minta verifikasi (wajah/PIN) + lokasi sebelum absen keluar.
+      pendingRef.current = { items: markedChanged.length > 0 ? markedChanged : opnameItems, kebersihan };
+      setVerifying(true);
     } catch (err: any) {
       const msg = err?.message || err?.toString() || "Terjadi kesalahan";
       setSubmitError(msg);

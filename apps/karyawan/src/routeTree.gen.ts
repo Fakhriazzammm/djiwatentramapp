@@ -21,6 +21,7 @@ import { Route as UsernameRekapAbsensiRouteImport } from './routes/$username/rek
 import { Route as UsernameProfilRouteImport } from './routes/$username/profil'
 import { Route as UsernameNotifikasiRouteImport } from './routes/$username/notifikasi'
 import { Route as UsernameLeaderboardRouteImport } from './routes/$username/leaderboard'
+import { Route as UsernameKoreksiAbsenRouteImport } from './routes/$username/koreksi-absen'
 import { Route as UsernameKontrakRouteImport } from './routes/$username/kontrak'
 import { Route as UsernameJadwalRouteImport } from './routes/$username/jadwal'
 import { Route as UsernameIzinRouteImport } from './routes/$username/izin'
@@ -100,6 +101,13 @@ const UsernameLeaderboardRoute = UsernameLeaderboardRouteImport.update({
 } as any).lazy(() =>
   import('./routes/$username/leaderboard.lazy').then((d) => d.Route),
 )
+const UsernameKoreksiAbsenRoute = UsernameKoreksiAbsenRouteImport.update({
+  id: '/koreksi-absen',
+  path: '/koreksi-absen',
+  getParentRoute: () => UsernameRoute,
+} as any).lazy(() =>
+  import('./routes/$username/koreksi-absen.lazy').then((d) => d.Route),
+)
 const UsernameKontrakRoute = UsernameKontrakRouteImport.update({
   id: '/kontrak',
   path: '/kontrak',
@@ -163,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/$username/izin': typeof UsernameIzinRoute
   '/$username/jadwal': typeof UsernameJadwalRoute
   '/$username/kontrak': typeof UsernameKontrakRoute
+  '/$username/koreksi-absen': typeof UsernameKoreksiAbsenRoute
   '/$username/leaderboard': typeof UsernameLeaderboardRoute
   '/$username/notifikasi': typeof UsernameNotifikasiRoute
   '/$username/profil': typeof UsernameProfilRoute
@@ -182,6 +191,7 @@ export interface FileRoutesByTo {
   '/$username/izin': typeof UsernameIzinRoute
   '/$username/jadwal': typeof UsernameJadwalRoute
   '/$username/kontrak': typeof UsernameKontrakRoute
+  '/$username/koreksi-absen': typeof UsernameKoreksiAbsenRoute
   '/$username/leaderboard': typeof UsernameLeaderboardRoute
   '/$username/notifikasi': typeof UsernameNotifikasiRoute
   '/$username/profil': typeof UsernameProfilRoute
@@ -203,6 +213,7 @@ export interface FileRoutesById {
   '/$username/izin': typeof UsernameIzinRoute
   '/$username/jadwal': typeof UsernameJadwalRoute
   '/$username/kontrak': typeof UsernameKontrakRoute
+  '/$username/koreksi-absen': typeof UsernameKoreksiAbsenRoute
   '/$username/leaderboard': typeof UsernameLeaderboardRoute
   '/$username/notifikasi': typeof UsernameNotifikasiRoute
   '/$username/profil': typeof UsernameProfilRoute
@@ -225,6 +236,7 @@ export interface FileRouteTypes {
     | '/$username/izin'
     | '/$username/jadwal'
     | '/$username/kontrak'
+    | '/$username/koreksi-absen'
     | '/$username/leaderboard'
     | '/$username/notifikasi'
     | '/$username/profil'
@@ -244,6 +256,7 @@ export interface FileRouteTypes {
     | '/$username/izin'
     | '/$username/jadwal'
     | '/$username/kontrak'
+    | '/$username/koreksi-absen'
     | '/$username/leaderboard'
     | '/$username/notifikasi'
     | '/$username/profil'
@@ -264,6 +277,7 @@ export interface FileRouteTypes {
     | '/$username/izin'
     | '/$username/jadwal'
     | '/$username/kontrak'
+    | '/$username/koreksi-absen'
     | '/$username/leaderboard'
     | '/$username/notifikasi'
     | '/$username/profil'
@@ -359,6 +373,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsernameLeaderboardRouteImport
       parentRoute: typeof UsernameRoute
     }
+    '/$username/koreksi-absen': {
+      id: '/$username/koreksi-absen'
+      path: '/koreksi-absen'
+      fullPath: '/$username/koreksi-absen'
+      preLoaderRoute: typeof UsernameKoreksiAbsenRouteImport
+      parentRoute: typeof UsernameRoute
+    }
     '/$username/kontrak': {
       id: '/$username/kontrak'
       path: '/kontrak'
@@ -419,6 +440,7 @@ interface UsernameRouteChildren {
   UsernameIzinRoute: typeof UsernameIzinRoute
   UsernameJadwalRoute: typeof UsernameJadwalRoute
   UsernameKontrakRoute: typeof UsernameKontrakRoute
+  UsernameKoreksiAbsenRoute: typeof UsernameKoreksiAbsenRoute
   UsernameLeaderboardRoute: typeof UsernameLeaderboardRoute
   UsernameNotifikasiRoute: typeof UsernameNotifikasiRoute
   UsernameProfilRoute: typeof UsernameProfilRoute
@@ -435,6 +457,7 @@ const UsernameRouteChildren: UsernameRouteChildren = {
   UsernameIzinRoute: UsernameIzinRoute,
   UsernameJadwalRoute: UsernameJadwalRoute,
   UsernameKontrakRoute: UsernameKontrakRoute,
+  UsernameKoreksiAbsenRoute: UsernameKoreksiAbsenRoute,
   UsernameLeaderboardRoute: UsernameLeaderboardRoute,
   UsernameNotifikasiRoute: UsernameNotifikasiRoute,
   UsernameProfilRoute: UsernameProfilRoute,

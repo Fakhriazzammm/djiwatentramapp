@@ -1,240 +1,116 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Skeleton, useHybridStaffLogs } from "@djiwaapps/web-shared";
+import { DsButton, DsEmpty, DsGroup, DsGroupLabel, DsIcon, DsIconButton, DsNote, DsPageTitle, DsPills, DsRow, DsSheet, DsTag, DsTiles, ds3d } from "@djiwaapps/web-shared/components/ds";
 import { useStaffProfile } from "../$username.lazy";
-import { Skeleton, useHybridStaffLogs, useHybridStaffStats, useHybridSiteSettings } from "@djiwaapps/web-shared";
-import { Calendar, Clock, AlertTriangle, TrendingUp, CheckCircle, XCircle } from "lucide-react";
-import { motion } from "framer-motion";
 
-export const Route = createLazyFileRoute("/$username/rekap-absensi")({
-	component: RekapAbsensiPage,
-});
+export const Route = createLazyFileRoute("/$username/rekap-absensi")({ component: RekapAbsensiPage });
 
-const formatCurrency = (amount: number) => {
-	return new Intl.NumberFormat("id-ID", {
-		style: "currency",
-		currency: "IDR",
-		minimumFractionDigits: 0,
-	}).format(amount);
-};
+const MONTHS = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+const DAYS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+const SOURCE: Record<string, string> = { karyawan_app: "App Karyawan", telegram: "Bot Telegram", correction: "Koreksi disetujui", karyawan_web: "Web" };
 
-const MONTHS = [
-	"Januari", "Februari", "Maret", "April", "Mei", "Juni",
-	"Juli", "Agustus", "September", "Oktober", "November", "Desember",
-];
+const wib = (ts: number) => new Date(ts + 7 * 3600_000);
+const hhmm = (ts: number) => `${String(wib(ts).getUTCHours()).padStart(2, "0")}:${String(wib(ts).getUTCMinutes()).padStart(2, "0")}`;
+const dateKey = (ts: number) => wib(ts).toISOString().slice(0, 10);
+const dayLabel = (ts: number) => `${DAYS[wib(ts).getUTCDay()]} ${wib(ts).getUTCDate()}`;
 
-const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-
-function formatTime(ts: number): string {
-	const d = new Date(ts + 7 * 3600_000);
-	return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
-}
-
-function formatDate(ts: number): string {
-	const d = new Date(ts + 7 * 3600_000);
-	return `${d.getUTCDate()} ${MONTHS_SHORT[d.getUTCMonth()]}`;
-}
-
-interface AttendanceSession {
-	date: number;
-	shiftName: string;
+interface Session {
 	checkIn: number;
 	checkOut: number | null;
-	penaltyAmount: number;
+	shiftName: string;
+	penalty: number;
+	notes: string;
+	source: string;
 }
 
-function buildSessions(logs: any[] | null): AttendanceSession[] {
-	if (!logs || logs.length === 0) return [];
-
-	// Sort ascending for pairing
-	const asc = [...logs].sort((a: any, b: any) => Number(a.timestamp ?? 0) - Number(b.timestamp ?? 0));
-
-	const sessions: AttendanceSession[] = [];
+function buildSessions(logs: any[] | null): Session[] {
+	if (!logs?.length) return [];
+	const asc = [...logs].sort((a, b) => Number(a.timestamp ?? 0) - Number(b.timestamp ?? 0));
+	const out: Session[] = [];
 	for (let i = 0; i < asc.length; i++) {
-		const entry = asc[i] as any;
-		if (entry.type === "check_in") {
-			const checkOut = (i + 1 < asc.length && asc[i + 1].type === "check_out") ? Number(asc[i + 1].timestamp ?? 0) : null;
-			sessions.push({
-				date: Number(entry.timestamp ?? 0),
-				shiftName: entry.shiftName || entry.shift_name || "—",
-				checkIn: Number(entry.timestamp ?? 0),
-				checkOut,
-				penaltyAmount: Number(entry.penaltyAmount ?? entry.penalty_amount ?? 0),
-			});
-			if (checkOut !== null) i++; // skip the paired check_out
-		}
+		const e = asc[i];
+		if (e.type !== "check_in") continue;
+		const next = asc[i + 1];
+		const co = next?.type === "check_out" ? Number(next.timestamp ?? 0) : null;
+		out.push({
+			checkIn: Number(e.timestamp ?? 0), checkOut: co, shiftName: e.shiftName || e.shift_name || "—",
+			penalty: Number(e.penaltyAmount ?? e.penalty_amount ?? 0), notes: String(e.notes ?? ""), source: String(e.source ?? e.raw?.source ?? ""),
+		});
+		if (co !== null) i++;
 	}
-	// Reverse to descending for display
-	return sessions.reverse();
+	return out.reverse();
 }
+
+const rupiah = (n: number) => `Rp${Math.round(n).toLocaleString("id-ID")}`;
+const duration = (a: number, b: number) => { const m = Math.max(0, Math.round((b - a) / 60000)); return `${Math.floor(m / 60)}j ${m % 60}m`; };
+const fromNotes = (n: string, key: string) => n.split("|").map((x) => x.trim()).find((x) => x.startsWith(`${key}:`))?.slice(key.length + 1).trim();
 
 function RekapAbsensiPage() {
-	const { staff, isUnlocked } = useStaffProfile();
+	const { staff, isUnlocked, navigate, username } = useStaffProfile();
 	const now = new Date();
-	const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
-	const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+	const [month, setMonth] = useState(now.getMonth() + 1);
+	const [year, setYear] = useState(now.getFullYear());
+	const [detail, setDetail] = useState<Session | null>(null);
 
-	const logs = useHybridStaffLogs(
-		isUnlocked && staff
-			? { userId: staff._id, month: selectedMonth, year: selectedYear }
-			: (undefined as any)
-	);
-	const stats = useHybridStaffStats(
-		isUnlocked && staff
-			? { userId: staff._id, month: selectedMonth, year: selectedYear }
-			: (undefined as any)
-	);
-	const settings = useHybridSiteSettings() as any;
-
+	const logs = useHybridStaffLogs(isUnlocked && staff ? { userId: staff._id, month, year } : (undefined as any));
 	const sessions = useMemo(() => buildSessions(logs), [logs]);
+	const late = sessions.filter((s) => s.penalty > 0 || /terlambat \d+m/.test(s.notes)).length;
+	const open = sessions.filter((s) => s.checkOut === null).length;
 
-	const totalLate = useMemo(() => sessions.filter((s) => s.penaltyAmount > 0).length, [sessions]);
-	const onTimeRate = sessions.length > 0
-		? Math.round(((sessions.length - totalLate) / sessions.length) * 100)
-		: 0;
-
-	const years = useMemo(() => {
-		const current = now.getFullYear();
-		const list = [];
-		for (let y = current - 3; y <= current; y++) list.push(y);
+	const periods = useMemo(() => {
+		const list: [string, string][] = [];
+		for (let i = 0; i < 4; i++) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); list.push([`${d.getFullYear()}-${d.getMonth() + 1}`, `${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`]); }
 		return list;
 	}, []);
 
-	const isLoading = !logs;
+	const correct = (s: Session, type: "check_in" | "check_out") => {
+		setDetail(null);
+		navigate({ to: "/$username/koreksi-absen" as any, params: { username }, search: { date: dateKey(s.checkIn), type } } as any);
+	};
 
 	return (
-		<div className="space-y-3">
-			{/* Header */}
-			<div className="flex items-center gap-2">
-				<div className="flex h-8 w-8 items-center justify-center rounded-xl border border-border/50 bg-card text-primary shadow-sm">
-					<Calendar className="h-4 w-4" />
-				</div>
-				<h1 className="text-lg font-bold tracking-tight">Rekap Absensi</h1>
-			</div>
+		<>
+			<DsPageTitle left={<DsIconButton aria-label="Kembali" onClick={() => window.history.back()}>‹</DsIconButton>}>Rekap kehadiran</DsPageTitle>
+			<DsPills items={periods} value={`${year}-${month}`} onChange={(v) => { const [y, m] = v.split("-").map(Number); setYear(y); setMonth(m); }} />
+			<DsGroup>
+				<DsTiles items={[{ value: sessions.length, label: "Hadir" }, { value: late, label: "Terlambat" }, { value: open, label: "Belum keluar" }]} />
+			</DsGroup>
+			<DsGroupLabel>Riwayat</DsGroupLabel>
+			{!logs ? (
+				<div className="space-y-2" role="status" aria-label="Memuat rekap"><Skeleton className="h-14 rounded-3xl" /><Skeleton className="h-14 rounded-3xl" /></div>
+			) : sessions.length === 0 ? (
+				<DsEmpty icon={ds3d("employee-recap")}>Belum ada data kehadiran untuk {MONTHS[month - 1]}.</DsEmpty>
+			) : (
+				<DsGroup>
+					{sessions.map((s) => {
+						const isLate = s.penalty > 0 || /terlambat \d+m/.test(s.notes);
+						return (
+							<DsRow key={s.checkIn} icon={<DsIcon name="employee-recap" />} title={dayLabel(s.checkIn)}
+								sub={`${hhmm(s.checkIn)} – ${s.checkOut ? hhmm(s.checkOut) : "belum keluar"} · ${s.shiftName}`}
+								trail={s.checkOut === null ? <DsTag tone="warn">Belum keluar</DsTag> : <DsTag tone={isLate ? "warn" : "ok"}>{isLate ? "Telat" : "Tepat"}</DsTag>}
+								chevron onClick={() => setDetail(s)} />
+						);
+					})}
+				</DsGroup>
+			)}
+			<DsNote tone="info" icon={<DsIcon name="notifications-alerts" />}><b>Ada yang keliru?</b>Ketuk harinya lalu pilih “Ajukan koreksi”.</DsNote>
 
-			{/* Period selector */}
-			<div className="flex gap-2">
-				<select
-					value={selectedMonth}
-					onChange={(e) => setSelectedMonth(Number(e.target.value))}
-					aria-label="Pilih bulan rekap"
-					className="karyawan-control border bg-card px-3 text-xs font-semibold"
-				>
-					{MONTHS.map((m, i) => (
-						<option key={i} value={i + 1}>{m}</option>
-					))}
-				</select>
-				<select
-					value={selectedYear}
-					onChange={(e) => setSelectedYear(Number(e.target.value))}
-					aria-label="Pilih tahun rekap"
-					className="karyawan-control border bg-card px-3 text-xs font-semibold"
-				>
-					{years.map((y) => (
-						<option key={y} value={y}>{y}</option>
-					))}
-				</select>
-			</div>
-
-			{/* Stats cards */}
-			<div className="grid grid-cols-2 gap-2">
-				<StatsCard
-					icon={<CheckCircle className="h-3.5 w-3.5 text-emerald-500" />}
-					label="Hari Kerja"
-					value={stats ? `${stats.daysWorked ?? 0}` : "—"}
-				/>
-				<StatsCard
-					icon={<AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
-					label="Keterlambatan"
-					value={`${totalLate}`}
-				/>
-				<StatsCard
-					icon={<Clock className="h-3.5 w-3.5 text-blue-500" />}
-					label="Total Durasi"
-					value={stats ? `${stats.totalHours ?? 0} jam` : "—"}
-				/>
-				<StatsCard
-					icon={<TrendingUp className="h-3.5 w-3.5 text-violet-500" />}
-					label="On-Time Rate"
-					value={`${onTimeRate}%`}
-				/>
-			</div>
-
-			{/* Log table */}
-			<div className="karyawan-card overflow-hidden border">
-				{isLoading ? (
-					<div className="p-4 space-y-2">
-						{Array.from({ length: 5 }).map((_, i) => (
-							<Skeleton key={i} className="h-6 rounded-lg" />
-						))}
-					</div>
-				) : sessions.length === 0 ? (
-					<div className="flex flex-col items-center justify-center py-12 text-center">
-						<XCircle className="h-8 w-8 text-muted-foreground/40 mb-2" />
-						<p className="text-[11px] text-muted-foreground">Belum ada data absensi untuk bulan ini</p>
-					</div>
-				) : (
-					<div className="overflow-x-auto" role="region" aria-label="Tabel rekap absensi" tabIndex={0}>
-					<table className="min-w-[640px] w-full text-xs">
-						<thead>
-							<tr className="border-b bg-muted/50 text-left text-[10px] font-semibold text-muted-foreground">
-								<th className="px-3 py-2">Tanggal</th>
-								<th className="px-3 py-2">Shift</th>
-								<th className="px-3 py-2">Check-in</th>
-								<th className="px-3 py-2">Check-out</th>
-								<th className="px-3 py-2">Status</th>
-								<th className="px-3 py-2 text-right">Denda</th>
-							</tr>
-						</thead>
-						<tbody>
-							{sessions.map((s, i) => (
-								<motion.tr
-									key={i}
-									initial={{ opacity: 0, y: 4 }}
-									animate={{ opacity: 1, y: 0 }}
-									transition={{ delay: i * 0.02 }}
-									className="border-b last:border-0 hover:bg-muted/30"
-								>
-									<td className="px-3 py-2 font-medium">{formatDate(s.date)}</td>
-									<td className="px-3 py-2">{s.shiftName}</td>
-									<td className="px-3 py-2 tabular-nums">{formatTime(s.checkIn)}</td>
-									<td className="px-3 py-2 tabular-nums">{s.checkOut ? formatTime(s.checkOut) : "—"}</td>
-									<td className="px-3 py-2">
-										{s.penaltyAmount > 0 ? (
-											<span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[11px] font-semibold text-red-600">
-												Terlambat
-											</span>
-										) : (
-											<span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-600">
-												On Time
-											</span>
-										)}
-									</td>
-									<td className="px-3 py-2 text-right tabular-nums font-semibold">
-										{s.penaltyAmount > 0 ? (
-											<span className="text-red-600">{formatCurrency(s.penaltyAmount)}</span>
-										) : (
-											<span className="text-muted-foreground">—</span>
-										)}
-									</td>
-								</motion.tr>
-							))}
-						</tbody>
-					</table>
-					</div>
-				)}
-			</div>
-		</div>
-	);
-}
-
-function StatsCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-	return (
-		<div className="karyawan-card border bg-card p-4">
-			<div className="flex items-center gap-1.5 mb-1">
-				{icon}
-				<span className="text-[10px] text-muted-foreground">{label}</span>
-			</div>
-			<p className="text-sm font-bold tabular-nums">{value}</p>
-		</div>
+			{detail && (
+				<DsSheet title={`${DAYS[wib(detail.checkIn).getUTCDay()]}, ${wib(detail.checkIn).getUTCDate()} ${MONTHS[wib(detail.checkIn).getUTCMonth()]}`} onClose={() => setDetail(null)}>
+					<DsGroup>
+						<div className="kx-kv"><span>Masuk</span><b>{hhmm(detail.checkIn)}{detail.notes.match(/terlambat (\d+)m/) ? ` · telat ${detail.notes.match(/terlambat (\d+)m/)![1]}m` : ""}</b></div>
+						<div className="kx-kv"><span>Keluar</span><b>{detail.checkOut ? hhmm(detail.checkOut) : "Belum"}</b></div>
+						{detail.checkOut && <div className="kx-kv"><span>Jam kerja</span><b>{duration(detail.checkIn, detail.checkOut)}</b></div>}
+						<div className="kx-kv"><span>Shift</span><b>{detail.shiftName}</b></div>
+						{detail.source && <div className="kx-kv"><span>Dicatat lewat</span><b>{SOURCE[detail.source] ?? detail.source}</b></div>}
+						{fromNotes(detail.notes, "metode") && <div className="kx-kv"><span>Verifikasi</span><b>{fromNotes(detail.notes, "metode") === "face" ? "Wajah" : "PIN"}</b></div>}
+						{fromNotes(detail.notes, "lokasi") && <div className="kx-kv"><span>Lokasi</span><b>{fromNotes(detail.notes, "lokasi")}</b></div>}
+						{detail.penalty > 0 && <div className="kx-kv"><span>Denda</span><b>{rupiah(detail.penalty)}</b></div>}
+					</DsGroup>
+					<DsButton block variant="ghost" onClick={() => correct(detail, detail.checkOut ? "check_in" : "check_out")}>Ajukan koreksi</DsButton>
+				</DsSheet>
+			)}
+		</>
 	);
 }

@@ -1,57 +1,93 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
-import { Skeleton, useHybridCurrentlyInStore, useHybridPublicUsers, useYumiAuth } from "@djiwaapps/web-shared";
-import { DsButton, DsGroup, DsGroupLabel, DsIcon, DsPageTitle, DsRow, DsTag, ds3d } from "@djiwaapps/web-shared/components/ds";
+import { createLazyFileRoute, useSearch } from "@tanstack/react-router";
+import { lazy, Suspense, useState } from "react";
+import { DsButton, DsGroup, DsGroupLabel, DsIcon, DsIconButton, DsNote, DsPageTitle, DsRow, DsTag, ds3d } from "@djiwaapps/web-shared/components/ds";
+import { toast } from "sonner";
 import { useStaffProfile } from "../$username.lazy";
+import { AttendanceError, enrollFace } from "@/lib/attendance-api";
 
-export const Route = createLazyFileRoute("/$username/absensi")({
-  component: KaryawanAttendancePage,
-});
+const FaceRecognition = lazy(() => import("@/components/auth/FaceRecognition").then((m) => ({ default: m.FaceRecognition })));
 
-function KaryawanAttendancePage() {
-  const { username, staff, navigate, openAbsen } = useStaffProfile();
-  const { user: authUser } = useYumiAuth();
-  const allStaff = useHybridPublicUsers();
-  const currentlyIn = useHybridCurrentlyInStore();
-  // The attendance action has always belonged to the signed-in user, including
-  // when an administrator is viewing another staff profile.
-  const selectedUser = Array.isArray(allStaff) && authUser
-    ? allStaff.find((s: any) =>
-      (authUser._id && String(s._id) === String(authUser._id)) ||
-      (authUser.slug && s.slug && String(s.slug) === String(authUser.slug)) ||
-      (authUser.username && s.username && String(s.username) === String(authUser.username)))
-    : undefined;
-  const isIn = selectedUser && currentlyIn?.some((s: any) => s._id === selectedUser._id);
+export const Route = createLazyFileRoute("/$username/absensi")({ component: AbsensiPage });
 
-  return (
-    <>
-      <DsPageTitle>Absensi</DsPageTitle>
-      {selectedUser ? (
-        <>
-          <div className="ds-hero">
-            <img className="ds-hero-art" src={ds3d(isIn ? "employee-attendance-check-out" : "employee-attendance-check-in")} alt="" />
-            <small>{selectedUser.name}</small>
-            <h3>{!currentlyIn ? "Status belum tersedia" : isIn ? "Sedang bertugas" : "Tidak sedang bertugas"}</h3>
-            <DsButton block onClick={() => {
-              if (currentlyIn && String(staff?._id) === String(selectedUser._id)) openAbsen();
-              else window.open("https://t.me/yumihrdbot", "_blank");
-            }}>{!currentlyIn ? "Buka bot Telegram" : isIn ? "Absen keluar · closing dulu" : "Absen masuk"}</DsButton>
-          </div>
-          <DsGroupLabel>Status kehadiran</DsGroupLabel>
-          <DsGroup white>
-            <DsRow icon={<DsIcon name="employee-attendance-check-in" />} title={selectedUser.name} sub={!currentlyIn ? "Status belum tersedia" : isIn ? "Sedang bertugas" : "Sedang off"} trail={<DsTag tone={isIn ? "ok" : undefined}>{!currentlyIn ? "Tidak tersedia" : isIn ? "Masuk" : "Off"}</DsTag>} />
-            <DsRow icon={<DsIcon name="employee-telegram" />} title="Bot Telegram" sub="Absen dan rekap lewat Telegram" chevron onClick={() => window.open("https://t.me/yumihrdbot", "_blank")} />
-          </DsGroup>
-          <DsGroupLabel>Riwayat kehadiran</DsGroupLabel>
-          <DsGroup white>
-            <DsRow icon={<DsIcon name="employee-recap" />} title="Rekap absensi" sub="Lihat riwayat kehadiran" chevron onClick={() => navigate({ to: "/$username/rekap-absensi", params: { username } } as any)} />
-          </DsGroup>
-        </>
-      ) : (
-        <div role="status" aria-label="Memuat data absensi" className="space-y-3">
-          <Skeleton className="h-36 rounded-3xl" />
-          <Skeleton className="h-28 rounded-3xl" />
-        </div>
-      )}
-    </>
-  );
+function AbsensiPage() {
+	const { username, navigate, authUser, today, openAbsen } = useStaffProfile();
+	const search = useSearch({ strict: false }) as { enroll?: number };
+	const [enrolling, setEnrolling] = useState(search.enroll === 1);
+	const hasFace = Boolean(authUser?.hasFace);
+	const go = (to: string) => navigate({ to: `/$username/${to}` as any, params: { username } } as any);
+
+	if (enrolling) return <Enroll onClose={() => setEnrolling(false)} />;
+
+	const label = today.isIn ? "Sedang bertugas" : today.finished ? "Absen hari ini selesai" : "Belum absen";
+	return (
+		<>
+			<DsPageTitle>Absensi</DsPageTitle>
+			<div className="ds-hero">
+				<img className="ds-hero-art" src={ds3d(today.isIn ? "employee-attendance-check-out" : "employee-attendance-check-in")} alt="" />
+				<small>{authUser?.name}</small>
+				<h3>{label}</h3>
+				{!today.finished && <DsButton block onClick={openAbsen}>{today.isIn ? "Closing shift & absen keluar" : "Absen masuk"}</DsButton>}
+			</div>
+			<DsGroupLabel>Verifikasi</DsGroupLabel>
+			<DsGroup white>
+				<DsRow icon={<DsIcon name="employee-profile" />} title="Wajah" sub={hasFace ? "Terdaftar · dipakai untuk absen" : "Belum terdaftar · absen memakai PIN"} trail={<DsTag tone={hasFace ? "ok" : "warn"}>{hasFace ? "Aktif" : "Daftar"}</DsTag>} chevron onClick={() => setEnrolling(true)} />
+				<DsRow icon={<DsIcon name="employee-contract" />} title="PIN absen" sub="Ganti PIN di Profil" chevron onClick={() => go("profil")} />
+			</DsGroup>
+			<DsGroupLabel>Riwayat</DsGroupLabel>
+			<DsGroup white>
+				<DsRow icon={<DsIcon name="employee-recap" />} title="Rekap kehadiran" sub="Hari, jam, dan koreksi" chevron onClick={() => go("rekap-absensi")} />
+				<DsRow icon={<DsIcon name="employee-telegram" />} title="Bot Telegram" sub="Cadangan bila absen di app tak bisa" chevron onClick={() => window.open("https://t.me/yumihrdbot", "_blank")} />
+			</DsGroup>
+		</>
+	);
+}
+
+/** Daftar / perbarui wajah: pindai → konfirmasi PIN → simpan di server. */
+function Enroll({ onClose }: { onClose: () => void }) {
+	const { token, navigate, username } = useStaffProfile();
+	const [desc, setDesc] = useState<number[] | null>(null);
+	const [pin, setPin] = useState("");
+	const [busy, setBusy] = useState(false);
+	const [err, setErr] = useState<string | null>(null);
+
+	const save = async () => {
+		if (!desc || pin.length !== 6) return;
+		setBusy(true); setErr(null);
+		try {
+			await enrollFace(token, { faceDescriptor: desc, pin });
+			toast.success("Wajah tersimpan");
+			// Sesi menyimpan hasFace saat login; muat ulang agar status baru terbaca.
+			window.location.assign(`/${username}/absensi`);
+		} catch (e) {
+			setErr(e instanceof AttendanceError || e instanceof Error ? e.message : "Gagal menyimpan wajah");
+			setPin("");
+		} finally {
+			setBusy(false);
+		}
+	};
+
+	return (
+		<>
+			<DsPageTitle left={<DsIconButton aria-label="Kembali" onClick={onClose}>‹</DsIconButton>}>Daftarkan wajah</DsPageTitle>
+			{!desc ? (
+				<>
+					<p className="ds-sub" style={{ margin: "0 4px 8px" }}>Hadap kamera di tempat terang. Pemindaian berjalan otomatis.</p>
+					<div className="kx-cam">
+						<Suspense fallback={<div style={{ height: "100%", display: "grid", placeItems: "center", color: "#fff", fontSize: 13 }}>Menyiapkan kamera…</div>}>
+							<FaceRecognition mode="enroll" onCapture={(d) => setDesc(d)} onModelError={(m) => setErr(m)} />
+						</Suspense>
+					</div>
+					{err && <div className="kx-err" role="alert">{err}</div>}
+				</>
+			) : (
+				<>
+					<DsNote tone="ok" icon={<DsIcon name="employee-profile" />}><b>Wajah terbaca</b>Masukkan PIN untuk menyimpan.</DsNote>
+					<label className="kx-field"><span>PIN absen (6 digit)</span><input id="enroll-pin" className="kx-input" inputMode="numeric" autoComplete="off" type="password" maxLength={6} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))} /></label>
+					{err && <div className="kx-err" role="alert">{err}</div>}
+					<DsButton block disabled={pin.length !== 6 || busy} onClick={save}>{busy ? "Menyimpan…" : "Simpan wajah"}</DsButton>
+					<DsButton block variant="ghost" onClick={() => { setDesc(null); setPin(""); setErr(null); }}>Ulangi pemindaian</DsButton>
+				</>
+			)}
+		</>
+	);
 }

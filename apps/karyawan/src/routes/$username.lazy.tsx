@@ -4,6 +4,8 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo } 
 import { useYumiAuth, useHybridStaffBySlug, useHybridCurrentlyInStore } from "@djiwaapps/web-shared";
 import { DsRoot, DsTabBar, ds3d } from "@djiwaapps/web-shared/components/ds";
 import { AbsenSheet } from "@/components/karyawan/AbsenSheet";
+import { PermissionGate } from "@/components/karyawan/PermissionGate";
+import { useTodayAttendance, type TodayAttendance } from "@/components/karyawan/use-staff-data";
 import { createClient } from "@djiwaapps/web-shared/lib/client";
 import { HomeClockOutBanner } from "@djiwaapps/web-shared/components/home/home-clockout-banner";
 import { Button } from "@djiwaapps/web-shared/components/ui/button";
@@ -26,6 +28,8 @@ export interface StaffProfileContext {
 	refreshKey: number;
 	notifCount: number;
 	openAbsen: () => void;
+	/** Status absen hari ini (sumber tunggal untuk tombol tengah dan Beranda). */
+	today: TodayAttendance;
 }
 
 export const StaffProfileCtx = createContext<StaffProfileContext | null>(null);
@@ -252,6 +256,7 @@ function StaffProfileLayout() {
 	}, [isAuthLoading, isUnlocked, isAuthenticated, authUser, username, navigate]);
 
 	const staff = useHybridStaffBySlug(username);
+	const today = useTodayAttendance(authUser?._id ?? staff?._id, refreshKey);
 
 	// Read notification unread count from localStorage
 	useEffect(() => {
@@ -306,7 +311,8 @@ function StaffProfileLayout() {
 		);
 	}
 
-	const isIn = currentlyIn?.some((x: any) => x._id === staff?._id) ?? false;
+	const isIn = today.loading ? (currentlyIn?.some((x: any) => x._id === staff?._id) ?? false) : today.isIn;
+	const fabState = isIn ? "out" : today.finished ? "done" : "in";
 	// Context shared with child routes
 	const outletContext: StaffProfileContext = {
 		username,
@@ -320,6 +326,7 @@ function StaffProfileLayout() {
 		refreshKey,
 		notifCount,
 		openAbsen: () => setAbsenOpen(true),
+		today,
 	};
 
 	const path = location.pathname;
@@ -347,16 +354,21 @@ function StaffProfileLayout() {
 						{ id: "profil", label: "Profil", icon: ds3d("employee-nav-profile") },
 					]}
 					center={
-						<button type="button" className="ds-fab" data-state={isIn ? "in" : undefined} aria-label={isIn ? "Absen keluar" : "Absen masuk"} onClick={() => setAbsenOpen(true)}>
-							{isIn
+						<button type="button" className="ds-fab" data-state={fabState} aria-label={isIn ? "Absen keluar" : today.finished ? "Absen hari ini selesai" : "Absen masuk"} disabled={today.finished && !isIn} onClick={() => setAbsenOpen(true)}>
+							{today.finished && !isIn
+								? <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+								: isIn
 								? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /></svg>
 								: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 11v4" /><path d="M8 15a4 4 0 0 1 8 0" /><path d="M5 12a7 7 0 0 1 14 0" /><path d="M12 3a9 9 0 0 1 9 9" /></svg>}
 						</button>
 					}
 				/>
+				{authUser?.slug === username && <PermissionGate hasFace={Boolean(authUser?.hasFace)} onEnroll={() => navigate({ to: "/$username/absensi" as any, params: { username }, search: { enroll: 1 } } as any)} />}
 				{absenOpen && (
 					<AbsenSheet
 						isIn={isIn}
+						token={token}
+						onRecorded={() => { today.reload(); setRefreshKey((k) => k + 1); }}
 						onClose={() => setAbsenOpen(false)}
 						onClosing={() => { setAbsenOpen(false); go("absen-keluar"); }}
 						onHistory={() => { setAbsenOpen(false); go("jadwal"); }}
