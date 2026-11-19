@@ -1,7 +1,7 @@
 {
-  "version": "0.2.574",
-  "commitHash": "e23ad1f",
+  "version": "0.2.575",
+  "commitHash": "5c59444",
   "message": "fix(booking): send login to djiwatentram.web.id/masuk (api host returned 404)",
   "buildDate": "2026-11-19",
-  "generatedAt": "2026-11-19T19:06:29.605Z"
+  "generatedAt": "2026-11-19T19:19:01.116Z"
 }

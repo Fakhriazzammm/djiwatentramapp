@@ -3,9 +3,9 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.574",
+	semantic: "0.2.575",
 	// Git/deploy commit hash (short)
-	commitHash: "e23ad1f",
+	commitHash: "5c59444",
 	message: "fix(booking): send login to djiwatentram.web.id/masuk (api host returned 404)",
 	// Commit subject for the update prompt
 	commitMessage: "fix(booking): send login to djiwatentram.web.id/masuk (api host returned 404)",

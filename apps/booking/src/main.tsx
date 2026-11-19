@@ -2,7 +2,7 @@ import { createRoot } from "react-dom/client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MotionConfig } from "framer-motion";
 import { BOOKING_STEPS, type BookingOption, type BookingStep } from "./lib/booking-constants";
-import { type BookingDraft, type BookingResult, type Capacity, type Category, type Product, type BookingSettings, createBooking, createBookingPayment, loadBookingData, lookupBooking } from "./lib/client";
+import { type BookingDraft, type BookingResult, type Capacity, type ScheduleEntry, type Category, type Product, type BookingSettings, createBooking, createBookingPayment, loadBookingData, lookupBooking } from "./lib/client";
 import { validateCustomer } from "./lib/booking-validation";
 import { EMPTY_CUSTOMER, normalizeBookingDraft, type BookingCart, type BookingDraftState, type BookingScreen } from "./lib/booking-state";
 import { BookingTypeStep, Checkout, DateStep, EventTypeStep, Landing, MenuStep, Review, Status, Success, overCapacity, requiredFieldErrors } from "./screens";
@@ -64,7 +64,7 @@ function loadDraft(): DraftState {
 export default function App() {
   const customerSlugPath = isCustomerSlugPath();
   const [screen, setScreen] = useState<Screen>(readScreen);
-  const [data, setData] = useState<{ settings: BookingSettings | null; capacities: Capacity[]; products: Product[]; categories: Category[] } | null>(null);
+  const [data, setData] = useState<{ settings: BookingSettings | null; capacities: Capacity[]; schedule: ScheduleEntry[]; products: Product[]; categories: Category[] } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState>(loadDraft);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -171,7 +171,7 @@ export default function App() {
     {screen === "landing" && <Landing settings={settings} loading={false} error={loadError} retry={reload} onStart={() => navigate(hasBookingType ? "type" : "date")} onStatus={() => navigate("status")} showCustomerPromo={customerSlugPath} />}
     {screen === "type" && <BookingTypeStep settings={settings} selected={draft.bookingType} onSelect={(key) => updateDraft({ bookingType: key })} onNext={nextFromType} />}
     {screen === "event-type" && <EventTypeStep settings={settings} selected={draft.eventType} customText={draft.eventTypeOther} onSelect={(key) => updateDraft({ eventType: key })} onCustomText={(value) => updateDraft({ eventTypeOther: value })} onNext={nextFromEvent} />}
-    {screen === "date" && <DateStep settings={settings} capacities={capacities} bookingType={selectedType} eventType={selectedEvent} selectedDate={draft.selectedDate} setSelectedDate={(value) => updateDraft({ selectedDate: value })} arrivalTime={draft.arrivalTime} setArrivalTime={(value) => updateDraft({ arrivalTime: value })} guests={draft.guests} setGuests={(value) => updateDraft({ guests: value })} onNext={nextFromDate} />}
+    {screen === "date" && <DateStep settings={settings} capacities={capacities} schedule={data.schedule} bookingType={selectedType} eventType={selectedEvent} selectedDate={draft.selectedDate} setSelectedDate={(value) => updateDraft({ selectedDate: value })} arrivalTime={draft.arrivalTime} setArrivalTime={(value) => updateDraft({ arrivalTime: value })} guests={draft.guests} setGuests={(value) => updateDraft({ guests: value })} onNext={nextFromDate} />}
     {screen === "menu" && <MenuStep products={products} categories={data.categories} cart={draft.cart} setQuantity={setQuantity} total={total} onNext={nextFromMenu} />}
     {screen === "review" && <Review hasType={hasBookingType} bookingType={selectedType} eventType={selectedEvent} eventTypeOther={draft.eventTypeOther} date={draft.selectedDate} arrivalTime={draft.arrivalTime} guests={draft.guests} tableCount={tableCount} items={cartItems} total={total} onEdit={(step) => navigate(step)} onNext={() => navigate("checkout")} />}
     {screen === "checkout" && <Checkout settings={settings} bookingType={selectedType} eventType={selectedEvent} date={draft.selectedDate} arrivalTime={draft.arrivalTime} guests={draft.guests} items={cartItems} total={total} customer={draft.customer} setCustomer={(next) => updateDraft({ customer: next })} customAnswers={draft.customAnswers} setCustomAnswers={(customAnswers) => updateDraft({ customAnswers })} error={submitError} submitting={submitting} signedIn={isAuthenticated} onNext={nextFromCheckout} />}

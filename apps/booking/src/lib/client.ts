@@ -20,7 +20,8 @@ export type BookingSettings = {
   defaultMaxTables: number;
   defaultPeoplePerTable: number;
 };
-export type Capacity = { date: string; maxPeople: number; maxTables: number; peoplePerTable: number; notes: string | null; isClosed?: boolean };
+export type Capacity = { date: string; maxPeople: number; maxTables: number; peoplePerTable: number; notes: string | null; isClosed?: boolean; usedPeople?: number; usedTables?: number };
+export type ScheduleEntry = { date: string; arrivalTime: string | null; guestCount: number; tableCount: number; customerName: string; purpose: string; status: "confirmed" | "pending" };
 export type Category = { id: string; name: string; parentId: string | null; displayOrder: number };
 export type Product = { id: string; name: string; description: string | null; imageUrl: string | null; price: number; promoPrice: number | null; categoryId: string | null; category: string | null; menuNumber: string | number | null };
 export type BookingDraft = {
@@ -127,8 +128,21 @@ export async function loadBookingData() {
       generated.push(override ? { date: override.date, maxPeople: override.maxPeople, maxTables: override.maxTables, peoplePerTable: override.peoplePerTable, notes: override.notes, isClosed: false } : { date: dateKey, maxPeople: settingsValue.defaultMaxPeople, maxTables: settingsValue.defaultMaxTables, peoplePerTable: settingsValue.defaultPeoplePerTable, notes: null });
     }
   }
+  let schedule: ScheduleEntry[] = [];
+  if (BOOKING_API_URL && generated.length > 0) {
+    try {
+      const rows = await callBookingApi("schedule", { slug: BOOKING_SLUG, from: generated[0]!.date, to: generated[generated.length - 1]!.date }) as unknown;
+      if (Array.isArray(rows)) schedule = rows.map((row: any) => ({ date: String(row.date), arrivalTime: row.arrivalTime ? String(row.arrivalTime) : null, guestCount: Number(row.guestCount ?? 0), tableCount: Number(row.tableCount ?? 0), customerName: String(row.customerName ?? ""), purpose: String(row.purpose ?? "Booking"), status: row.status === "pending" ? "pending" as const : "confirmed" as const }));
+    } catch { /* jadwal bersifat tambahan; booking tetap bisa berjalan tanpa daftar */ }
+  }
+  for (const entry of generated) {
+    const rows = schedule.filter((row) => row.date === entry.date);
+    entry.usedPeople = rows.reduce((sum, row) => sum + row.guestCount, 0);
+    entry.usedTables = rows.reduce((sum, row) => sum + row.tableCount, 0);
+  }
   return {
     settings: settingsValue,
+    schedule,
     capacities: generated,
     categories: (categories.data ?? []).map((row: any) => ({
       id: String(row._id ?? row.id ?? row.sourceId),
@@ -176,7 +190,7 @@ function getPublishableKey() {
   return import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 }
 
-async function callBookingApi(action: "create" | "status" | "attach-payment", body: Record<string, unknown>) {
+async function callBookingApi(action: "create" | "status" | "attach-payment" | "schedule", body: Record<string, unknown>) {
   const key = getPublishableKey();
   const response = await fetch(BOOKING_API_URL, { method: "POST", headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` }, body: JSON.stringify({ action, ...body }) });
   const result = await response.json().catch(() => null) as { success?: boolean; data?: unknown; error?: { message?: string } } | null;

@@ -210,6 +210,35 @@ textarea.bk-in { resize: none; line-height: 1.4; }
 
 @media (prefers-reduced-motion: reduce) { .bk-skel, .bk-spin { animation-duration: 2s; } }
 
+/* ── Jadwal diperkaya ─────────────────────────────────── */
+.bk-meter { font-style: normal; position: absolute; bottom: 5px; left: 50%; width: 24px; height: 4px; margin-left: -12px; border-radius: 4px; background: #e6e9f1; overflow: hidden; z-index: 1; }
+.bk-meter u { display: block; height: 100%; border-radius: 4px; background: var(--ds-ok); }
+.bk-meter.mid u { background: #e0a21b; } .bk-meter.hi u { background: var(--ds-danger); }
+.bk-day.sel .bk-meter { background: rgba(255,255,255,.28); } .bk-day.sel .bk-meter u { background: #fff; }
+.bk-day.full { color: #c3c8d4; font-weight: 500; }
+.bk-legend i.lo, .bk-legend i.mid, .bk-legend i.hi { width: 14px; height: 4px; border-radius: 4px; }
+.bk-legend i.lo { background: var(--ds-ok); } .bk-legend i.mid { background: #e0a21b; } .bk-legend i.hi { background: var(--ds-danger); }
+.bk-sec-h { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.bk-sec-h b { display: block; font-size: 16.5px; letter-spacing: -.02em; line-height: 1.25; }
+.bk-sec-h small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--ds-mute); }
+.bk-tag.ok, .bk-tag.warn, .bk-tag.bad { flex: none; }
+.bk-cap { margin-top: 12px; display: grid; gap: 10px; }
+.bk-cap-l { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
+.bk-cap-l span { color: var(--ds-mute); } .bk-cap-l b { font-weight: 700; font-family: var(--ds-font); }
+.bk-cap-bar { height: 10px; border-radius: 10px; background: #fff; overflow: hidden; display: flex; }
+.bk-cap-bar i { display: block; height: 100%; background: var(--ds-navy); }
+.bk-cap-bar i.me { background: var(--bk-accent); opacity: .5; }
+.bk-who { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+.bk-who + .bk-who { border-top: 1px solid var(--ds-hair); }
+.bk-av { width: 40px; height: 40px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 14px; font-weight: 700; color: #fff; }
+.bk-who-r { text-align: right; flex: none; } .bk-who-r b { display: block; font-size: 14px; font-variant-numeric: tabular-nums; font-family: var(--ds-font); } .bk-who-r small { font-size: 12.5px; color: var(--ds-mute); }
+.bk-slot { position: relative; flex: none; min-width: 78px; padding: 8px 10px 9px; border-radius: 18px; background: #fff; box-shadow: 0 0 0 1px var(--ds-line); text-align: center; font-size: 14px; font-weight: 600; color: var(--ds-ink); }
+.bk-slot span, .bk-slot small { position: relative; display: block; }
+.bk-slot small { margin-top: 2px; font-size: 10.5px; font-weight: 600; color: var(--ds-ok); }
+.bk-slot.mid small { color: var(--ds-warn); } .bk-slot.hi small { color: var(--ds-danger); }
+.bk-slot.on { color: #fff; box-shadow: none; } .bk-slot.on small { color: #cfe0ff; }
+.bk-slot .bk-pill-bg { position: absolute; inset: 0; border-radius: 18px; background: var(--ds-navy); }
+
 /* ── Footer ────────────────────────────────────────────── */
 .bk-foot .owner-footer { margin: 0; padding: 10px 8px 2px; color: var(--ds-faint); text-align: center; font-size: 11px; line-height: 16px; background: none; border: 0; }
 .bk-foot .owner-footer a { color: var(--ds-mute); text-decoration: none; font-weight: 600; }

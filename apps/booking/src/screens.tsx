@@ -5,7 +5,7 @@ import { tableCount as sharedTableCount } from "@djiwaapps/web-shared/booking/ca
 import type { Djiwa3DIconName } from "@djiwaapps/web-shared";
 import type { BookingOption, BookingStep } from "./lib/booking-constants";
 import { currency, formatDate, todayIso } from "./lib/booking-formatters";
-import type { BookingCustomField, BookingResult, BookingSettings, Capacity, Category, Product } from "./lib/client";
+import type { BookingCustomField, BookingResult, BookingSettings, Capacity, Category, Product, ScheduleEntry } from "./lib/client";
 import { validateCustomer, type CustomerForm } from "./lib/booking-validation";
 import type { BookingCart } from "./lib/booking-state";
 import { Button, Dock, EASE, Field, Head, Icon3D, Loading, Note, Num, Radio, Rise, SPRING, StickyAction } from "./ui";
@@ -18,7 +18,11 @@ const OPTION_ICON: Record<string, Djiwa3DIconName> = {
   "users-round": "navigation-community", "graduation-cap": "employee-leaderboard", handshake: "suppliers-purchase-order", sparkles: "customer-benefit-promo",
 };
 const iconFor = (name?: string): Djiwa3DIconName => OPTION_ICON[name || ""] ?? "restaurant-cafe";
-export const overCapacity = (guests: number, c: Capacity) => Boolean((c.maxPeople > 0 && guests > c.maxPeople) || (c.maxTables > 0 && sharedTableCount(guests, c.peoplePerTable) > c.maxTables));
+export const overCapacity = (guests: number, c: Capacity) => {
+  const leftPeople = c.maxPeople > 0 ? c.maxPeople - (c.usedPeople ?? 0) : Infinity;
+  const leftTables = c.maxTables > 0 ? c.maxTables - (c.usedTables ?? 0) : Infinity;
+  return guests > leftPeople || sharedTableCount(guests, c.peoplePerTable) > leftTables;
+};
 const unitPrice = (p: Product) => p.promoPrice ?? p.price;
 export function requiredFieldErrors(fields: BookingCustomField[], values: Record<string, unknown>) {
   return fields.filter((f) => f.required && !f.isBookingEventOption && !String(values[f.id] ?? "").trim()).reduce<Record<string, string>>((e, f) => { e[f.id] = `${f.label} wajib diisi.`; return e; }, {});
@@ -88,8 +92,13 @@ function Crumbs({ items }: { items: Array<string | undefined | false> }) {
 
 /* ── Tanggal ───────────────────────────────────────────── */
 const TIMES = ["10:00", "12:00", "14:00", "16:00", "18:00", "19:00"];
+const AVATAR = ["#1a5dc6", "#13804a", "#a05d00", "#8a3ffc", "#d23a2a", "#0f2347"];
+const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
+const hash = (text: string) => [...text].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+const slotOf = (time: string | null) => { if (!time) return ""; const hour = Number(time.slice(0, 2)); return [...TIMES].reverse().find((slot) => Number(slot.slice(0, 2)) <= hour) ?? TIMES[0]!; };
+const levelOf = (ratio: number) => ratio >= .85 ? "hi" : ratio >= .55 ? "mid" : "lo";
 
-export function DateStep({ settings, capacities, bookingType, eventType, selectedDate, setSelectedDate, arrivalTime, setArrivalTime, guests, setGuests, onNext }: { settings?: BookingSettings | null; capacities: Capacity[]; bookingType?: BookingOption; eventType?: BookingOption; selectedDate: string; setSelectedDate: (v: string) => void; arrivalTime: string; setArrivalTime: (v: string) => void; guests: number; setGuests: (v: number) => void; onNext: () => void }) {
+export function DateStep({ settings, capacities, schedule, bookingType, eventType, selectedDate, setSelectedDate, arrivalTime, setArrivalTime, guests, setGuests, onNext }: { settings?: BookingSettings | null; capacities: Capacity[]; schedule: ScheduleEntry[]; bookingType?: BookingOption; eventType?: BookingOption; selectedDate: string; setSelectedDate: (v: string) => void; arrivalTime: string; setArrivalTime: (v: string) => void; guests: number; setGuests: (v: number) => void; onNext: () => void }) {
   const today = todayIso();
   const available = capacities.filter((e) => e.date >= today && !e.isClosed);
   const months = [...new Set(available.map((e) => e.date.slice(0, 7)))].sort();
@@ -103,14 +112,23 @@ export function DateStep({ settings, capacities, bookingType, eventType, selecte
   const dim = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
   const lead = first.getDay();
   const byDate = new Map(available.filter((e) => e.date.slice(0, 7) === month).map((e) => [e.date, e]));
-  const state = (e?: Capacity) => !e || overCapacity(guests, e) ? "full" : e.maxPeople > 0 && e.maxPeople - guests <= Math.max(1, Math.ceil(e.maxPeople * .2)) ? "limited" : "available";
+  const fill = (e: Capacity) => Math.max(e.maxPeople > 0 ? (e.usedPeople ?? 0) / e.maxPeople : 0, e.maxTables > 0 ? (e.usedTables ?? 0) / e.maxTables : 0);
   const move = (d: -1 | 1) => { const n = months[mi + d]; if (n) { setDir(d); setMonth(n); } };
   const perTable = selectedCap?.peoplePerTable ?? settings?.defaultPeoplePerTable ?? 4;
   const cells = Array.from({ length: lead + dim }, (_, i) => i < lead ? null : `${month}-${String(i - lead + 1).padStart(2, "0")}`);
   const ready = Boolean(selectedDate && arrivalTime && selectedCap && !tooMany);
+  const dayRows = useMemo(() => schedule.filter((row) => row.date === selectedDate), [schedule, selectedDate]);
+  const myTables = sharedTableCount(guests, perTable);
+  const usedP = selectedCap?.usedPeople ?? 0, usedT = selectedCap?.usedTables ?? 0;
+  const leftP = selectedCap && selectedCap.maxPeople > 0 ? selectedCap.maxPeople - usedP : null;
+  const leftT = selectedCap && selectedCap.maxTables > 0 ? selectedCap.maxTables - usedT : null;
+  const ratio = selectedCap ? fill(selectedCap) : 0;
+  const status: [string, string] = tooMany ? ["bad", "Tidak cukup"] : ratio >= .85 ? ["bad", "Hampir penuh"] : ratio >= .55 ? ["warn", "Mulai penuh"] : ["ok", "Masih longgar"];
+  const slotGuests = (slot: string) => dayRows.filter((row) => slotOf(row.arrivalTime) === slot).reduce((sum, row) => sum + row.guestCount, 0);
+  const slotScale = Math.max(1, (selectedCap?.maxPeople || 100) / 2);
 
   return <section className="bk-page">
-    <Head title="Kapan datang?" detail="Pilih tanggal, jumlah tamu, dan jam tiba." />
+    <Head title="Kapan datang?" detail="Lihat kapasitas dan siapa saja yang sudah booking." />
     <Crumbs items={[bookingType?.label, eventType?.label]} />
     {available.length === 0 ? <Note tone="warn">Belum ada tanggal tersedia dalam {settings?.bookingWindowDays ?? 0} hari ke depan.</Note> : <>
       <div className="bk-cal">
@@ -123,40 +141,63 @@ export function DateStep({ settings, capacities, bookingType, eventType, selecte
           <motion.div key={month} className="bk-days" custom={dir} variants={{ in: (d: number) => ({ opacity: 0, x: d * 36 }), on: { opacity: 1, x: 0 }, out: (d: number) => ({ opacity: 0, x: d * -36 }) }} initial="in" animate="on" exit="out" transition={{ duration: .24, ease: EASE }}>
             {cells.map((date, i) => {
               if (!date) return <span key={`e${i}`} />;
-              const entry = byDate.get(date); const st = entry ? state(entry) : "none"; const sel = selectedDate === date;
-              return <motion.button key={date} className={`bk-day ${st}${sel ? " sel" : ""}${date === today ? " today" : ""}`} disabled={!entry || st === "full"} onClick={() => setSelectedDate(date)} whileTap={{ scale: .88 }} aria-label={formatDate(date)} aria-pressed={sel}>
+              const entry = byDate.get(date); const sel = selectedDate === date; const r = entry ? fill(entry) : 0;
+              const full = !entry || (entry.maxPeople > 0 && (entry.usedPeople ?? 0) >= entry.maxPeople) || (entry.maxTables > 0 && (entry.usedTables ?? 0) >= entry.maxTables);
+              return <motion.button key={date} className={`bk-day ${entry ? (full ? "full" : "") : "none"}${sel ? " sel" : ""}${date === today ? " today" : ""}`} disabled={!entry || full} onClick={() => setSelectedDate(date)} whileTap={{ scale: .88 }} aria-label={formatDate(date)} aria-pressed={sel}>
                 {sel && <motion.b className="bk-dot" layoutId="day" transition={SPRING} />}
-                <span>{Number(date.slice(8))}</span>{entry && <i />}
+                <span>{Number(date.slice(8))}</span>{entry && <em className={`bk-meter ${full ? "hi" : levelOf(r)}`}><u style={{ width: `${Math.max(8, Math.min(100, (full ? 1 : r) * 100))}%` }} /></em>}
               </motion.button>;
             })}
           </motion.div>
         </AnimatePresence>
         {byDate.size === 0 && <p className="bk-sub" style={{ textAlign: "center", padding: "10px 0" }}>Belum ada tanggal di bulan ini.</p>}
-        <div className="bk-legend"><span><i /> Tersedia</span><span><i className="limited" /> Terbatas</span><span><i className="full" /> Penuh</span></div>
+        <div className="bk-legend"><span><i className="lo" /> Longgar</span><span><i className="mid" /> Mulai penuh</span><span><i className="hi" /> Hampir penuh</span></div>
       </div>
 
-      <AnimatePresence initial={false}>{selectedDate && <motion.div key="ctrl" className="bk-ctrl" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: .34, ease: EASE }}>
-        <div className="bk-group" style={{ marginTop: 12, paddingTop: 8, paddingBottom: 10 }}>
-          <div className="bk-field-row">
-            <div><b>{formatDate(selectedDate)}</b><small>{sharedTableCount(guests, perTable)} meja · {perTable} orang per meja</small></div>
+      <AnimatePresence initial={false} mode="wait">{selectedDate && selectedCap && <motion.div key={selectedDate} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: .28, ease: EASE }}>
+        <div className="bk-group" style={{ marginTop: 12, padding: "16px 18px" }}>
+          <div className="bk-sec-h"><div><b>{formatDate(selectedDate)}</b><small>{dayRows.length} booking · kapasitas {selectedCap.maxPeople || "∞"} tamu{selectedCap.maxTables ? ` / ${selectedCap.maxTables} meja` : ""}</small></div><span className={`bk-tag ${status[0]}`}>{status[1]}</span></div>
+          <div className="bk-cap">
+            <CapRow label="Tamu" used={usedP} max={selectedCap.maxPeople} mine={guests} left={leftP} />
+            {selectedCap.maxTables > 0 && <CapRow label="Meja" used={usedT} max={selectedCap.maxTables} mine={myTables} left={leftT} />}
           </div>
+          <div className={`bk-note${tooMany ? " err" : ""}`} style={{ marginTop: 12 }}>{tooMany
+            ? `Bookingmu (${guests} tamu, ${myTables} meja) melebihi sisa kapasitas. Kurangi tamu atau pilih tanggal lain.`
+            : `Satu hari bisa dipakai beberapa booking selama kapasitas masih ada.${leftP != null ? ` Setelah bookingmu tersisa ${Math.max(0, leftP - guests)} tamu${leftT != null ? ` dan ${Math.max(0, leftT - myTables)} meja` : ""}.` : ""}`}</div>
+        </div>
+
+        <div className="bk-label"><span>Sudah booking di tanggal ini</span><span>{dayRows.length}</span></div>
+        <div className="bk-group white pad" style={{ paddingTop: 2, paddingBottom: 2 }}>
+          {dayRows.length === 0 ? <p className="bk-sub" style={{ textAlign: "center", padding: "18px 0" }}>Belum ada booking. Kamu yang pertama di tanggal ini.</p> : dayRows.map((row, i) => <motion.div key={`${row.customerName}-${row.arrivalTime}-${i}`} className="bk-who" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .3, ease: EASE, delay: Math.min(i, 8) * .04 }}>
+            <span className="bk-av" style={{ background: AVATAR[hash(row.customerName) % AVATAR.length] }}>{initials(row.customerName)}</span>
+            <div className="bk-main-t"><b>{row.customerName}</b><small>{row.purpose}{row.status === "pending" ? " · menunggu pembayaran" : ""}</small></div>
+            <div className="bk-who-r"><b>{row.arrivalTime ?? "—"}</b><small>{row.guestCount} tamu</small></div>
+          </motion.div>)}
+        </div>
+
+        <div className="bk-group" style={{ marginTop: 12, paddingTop: 8, paddingBottom: 12 }}>
           <div className="bk-field-row">
-            <div><b>Jumlah tamu</b></div>
+            <div><b>Jumlah tamu</b><small>{myTables} meja · {perTable} orang per meja</small></div>
             <div className="bk-stepper"><button aria-label="Kurangi tamu" disabled={guests <= 1} onClick={() => setGuests(Math.max(1, guests - 1))}><Minus size={16} /></button><Num value={guests} /><button aria-label="Tambah tamu" disabled={guests >= 100} onClick={() => setGuests(Math.min(100, guests + 1))}><Plus size={16} /></button></div>
           </div>
           <div style={{ paddingTop: 10 }}>
-            <div className="bk-field-row" style={{ paddingBottom: 4 }}><div><b>Jam tiba</b></div><span className="ds-tag" style={{ background: "#fff" }}>WIB</span></div>
+            <div className="bk-field-row" style={{ paddingBottom: 4 }}><div><b>Jam tiba</b><small>Kepadatan tiap jam di tanggal ini</small></div><span className="ds-tag" style={{ background: "#fff" }}>WIB</span></div>
             <LayoutGroup id="times"><div className="bk-times">
-              {TIMES.map((t) => <button key={t} className={`bk-pill${arrivalTime === t ? " on" : ""}`} onClick={() => setArrivalTime(t)}>{arrivalTime === t && <motion.i className="bk-pill-bg" layoutId="time" transition={SPRING} />}<span>{t}</span></button>)}
+              {TIMES.map((t) => { const g = slotGuests(t); return <button key={t} className={`bk-slot ${levelOf(g / slotScale)}${arrivalTime === t ? " on" : ""}`} onClick={() => setArrivalTime(t)}>{arrivalTime === t && <motion.i className="bk-pill-bg" layoutId="time" transition={SPRING} />}<span>{t}</span><small>{g === 0 ? "Kosong" : `${g} tamu`}</small></button>; })}
               <input className="bk-time-in" type="time" aria-label="Jam lain" value={TIMES.includes(arrivalTime) ? "" : arrivalTime} onChange={(e) => setArrivalTime(e.target.value)} />
             </div></LayoutGroup>
           </div>
         </div>
-        <AnimatePresence>{tooMany && <div style={{ marginTop: 10 }}><Note tone="err">Jumlah tamu atau meja melebihi kapasitas tanggal ini.</Note></div>}</AnimatePresence>
       </motion.div>}</AnimatePresence>
-      <StickyAction disabled={!ready} onClick={onNext}>{!selectedDate ? "Pilih tanggal dulu" : !arrivalTime ? "Pilih jam tiba" : <>Lanjut <ChevronRight size={18} /></>}</StickyAction>
+      <StickyAction disabled={!ready} onClick={onNext}>{!selectedDate ? "Pilih tanggal dulu" : tooMany ? "Kapasitas tidak cukup" : !arrivalTime ? "Pilih jam tiba" : <>Lanjut <ChevronRight size={18} /></>}</StickyAction>
     </>}
   </section>;
+}
+
+function CapRow({ label, used, max, mine, left }: { label: string; used: number; max: number; mine: number; left: number | null }) {
+  const pct = (n: number) => max > 0 ? Math.min(100, (n / max) * 100) : 0;
+  return <div className="bk-cap-row"><div className="bk-cap-l"><span>{label}</span><b>{used} terisi{left != null ? ` · sisa ${Math.max(0, left)}` : ""}</b></div>
+    <div className="bk-cap-bar"><motion.i animate={{ width: `${pct(used)}%` }} transition={{ duration: .5, ease: EASE }} /><motion.i className="me" animate={{ width: `${pct(Math.min(mine, left ?? mine))}%` }} transition={{ duration: .5, ease: EASE }} /></div></div>;
 }
 
 /* ── Menu ──────────────────────────────────────────────── */

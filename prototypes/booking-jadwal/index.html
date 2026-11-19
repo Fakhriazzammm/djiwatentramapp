@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prototype Booking · Jadwal diperkaya</title>
+<style>
+:root{--navy:#0f2347;--blue:#1a5dc6;--blue-soft:#e6efff;--canvas:#f6f7fb;--group:#f1f3f8;--ink:#14161c;--mute:#6b7080;--faint:#9aa0ae;--ok:#13804a;--ok-soft:#e5f5ec;--warn:#a05d00;--warn-soft:#fff3dc;--bad:#d23a2a;--bad-soft:#fdecea;--hair:rgba(15,35,71,.08);--ease:cubic-bezier(.32,.72,0,1)}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"SF Pro Text",Inter,system-ui,sans-serif;color:var(--ink)}
+button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer}
+.wrap{display:flex;flex-direction:column;align-items:center;gap:12px;padding:4px}
+.toggle{display:flex;gap:6px;font-size:12px;color:var(--mute);align-items:center}
+.toggle button{padding:5px 11px;border-radius:99px;background:rgba(127,127,127,.15);font-weight:600;font-size:12px}
+.toggle button.on{background:var(--navy);color:#fff}
+.phone{width:390px;max-width:100%;border-radius:36px;overflow:hidden;background:linear-gradient(180deg,#c6dafc 0,#dde8ff 190px,#f3f5fb 400px,#f6f7fb 100%);box-shadow:0 20px 60px rgba(15,35,71,.18);padding:0 16px 24px;position:relative}
+.bar{display:flex;align-items:center;gap:10px;padding:14px 0 8px}
+.back{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.8);display:grid;place-items:center}
+.id b{display:block;font-size:14.5px;font-weight:700;letter-spacing:-.015em}.id small{font-size:11.5px;color:var(--mute)}
+.chip{margin-left:auto;padding:6px 12px;border-radius:99px;background:rgba(255,255,255,.8);font-size:12px;font-weight:700;color:var(--navy)}
+.prog{height:3px;border-radius:3px;background:rgba(15,35,71,.08);margin-bottom:14px}.prog i{display:block;height:100%;width:40%;border-radius:3px;background:var(--blue)}
+h1{margin:0;font-size:27px;line-height:1.1;font-weight:800;letter-spacing:-.035em;color:var(--navy)}
+.sub{margin:5px 0 14px;font-size:14px;color:var(--mute)}
+.cal{background:#fff;border-radius:30px;padding:14px 12px 12px;box-shadow:0 10px 30px rgba(15,35,71,.07)}
+.top{display:flex;justify-content:space-between;align-items:center;padding:0 4px 8px}.top b{font-size:17px;font-weight:700;letter-spacing:-.02em}
+.nav{display:flex;gap:6px}.nav span{width:34px;height:34px;border-radius:50%;background:var(--group);display:grid;place-items:center;font-size:15px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);row-gap:2px}
+.wd{padding:4px 0 6px;text-align:center;font-size:11px;font-weight:600;color:var(--faint)}
+.d{height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border-radius:16px;font-size:15.5px;font-weight:600;position:relative;transition:background .2s var(--ease),transform .15s}
+.d:active{transform:scale(.92)}.d.off{color:#c3c8d4;font-weight:500;pointer-events:none}.d.today{color:var(--blue)}
+.d.sel{background:var(--navy);color:#fff}
+.meter{width:26px;height:4px;border-radius:4px;background:#e6e9f1;overflow:hidden}.meter i{display:block;height:100%;border-radius:4px;background:var(--ok)}
+.meter.mid i{background:#e0a21b}.meter.hi i{background:var(--bad)}.d.sel .meter{background:rgba(255,255,255,.25)}.d.sel .meter i{background:#fff}
+.legend{display:flex;gap:14px;justify-content:center;padding:8px 0 2px;font-size:11.5px;color:var(--mute)}.legend span{display:inline-flex;align-items:center;gap:5px}.legend i{width:14px;height:4px;border-radius:4px;background:var(--ok)}.legend i.m{background:#e0a21b}.legend i.h{background:var(--bad)}
+.sec{margin-top:14px;background:var(--group);border-radius:30px;padding:16px 18px;animation:rise .35s var(--ease)}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.sec-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.sec-h b{font-size:17px;letter-spacing:-.02em;display:block}.sec-h small{font-size:12.5px;color:var(--mute)}
+.tag{padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:700;white-space:nowrap;background:#fff;color:var(--mute)}.tag.ok{background:var(--ok-soft);color:var(--ok)}.tag.warn{background:var(--warn-soft);color:var(--warn)}.tag.bad{background:var(--bad-soft);color:var(--bad)}
+.cap{margin-top:12px;display:grid;gap:10px}
+.cap-row .l{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}.cap-row .l span{color:var(--mute)}.cap-row .l b{font-weight:700}
+.bar2{height:10px;border-radius:10px;background:#fff;overflow:hidden;display:flex}.bar2 i{display:block;height:100%;background:var(--navy);transition:width .5s var(--ease)}.bar2 i.me{background:var(--blue);opacity:.55}
+.note{margin-top:12px;padding:11px 13px;border-radius:20px;background:var(--blue-soft);color:#14407f;font-size:12.5px;line-height:1.42}
+.note.warn{background:var(--warn-soft);color:#6b4300}.note.bad{background:var(--bad-soft);color:#8e2418}
+.lab{display:flex;justify-content:space-between;margin:18px 6px 8px;font-size:13px;font-weight:600;color:var(--mute)}
+.list{background:#fff;border-radius:26px;padding:4px 14px;box-shadow:0 10px 30px rgba(15,35,71,.05)}
+.bk{display:flex;gap:12px;align-items:center;padding:12px 0;animation:rise .35s var(--ease) both}.bk+.bk{border-top:1px solid var(--hair)}
+.av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;color:#fff;flex:none}
+.bk .m{flex:1;min-width:0}.bk .m b{display:block;font-size:15px;font-weight:600}.bk .m small{display:block;font-size:12.5px;color:var(--mute);margin-top:1px}
+.bk .r{text-align:right;font-size:12.5px;color:var(--mute)}.bk .r b{display:block;font-size:14px;color:var(--ink);font-variant-numeric:tabular-nums}
+.empty{padding:22px 8px;text-align:center;color:var(--mute);font-size:13.5px}
+.times{display:flex;gap:8px;overflow-x:auto;margin:0 -18px;padding:2px 18px 4px;scrollbar-width:none}.times::-webkit-scrollbar{display:none}
+.t{flex:none;min-width:76px;padding:8px 10px 9px;border-radius:18px;background:#fff;box-shadow:0 0 0 1px #e4e8f1;text-align:center;font-weight:600;font-size:14px}
+.t small{display:block;font-size:10.5px;font-weight:600;margin-top:2px;color:var(--ok)}.t.mid small{color:var(--warn)}.t.hi small{color:var(--bad)}
+.t.on{background:var(--navy);color:#fff;box-shadow:none}.t.on small{color:#cfe0ff}
+.step{display:flex;align-items:center;justify-content:space-between;padding:8px 0}.step b{font-size:15px}
+.stp{display:inline-flex;align-items:center;background:#fff;border-radius:99px;padding:3px;box-shadow:0 0 0 1px #e4e8f1}.stp button{width:36px;height:36px;border-radius:50%;background:var(--group);font-size:18px}.stp span{width:46px;text-align:center;font-weight:700;font-size:17px}
+.cta{margin-top:16px;width:100%;min-height:54px;border-radius:99px;background:var(--navy);color:#fff;font-size:16px;font-weight:600;box-shadow:0 10px 24px rgba(15,35,71,.22)}.cta[disabled]{background:#b9c1d3;box-shadow:none}
+.faq{margin-top:12px;font-size:12px;color:var(--mute);text-align:center;line-height:1.5}
+</style></head><body>
+<div class="wrap">
+  <div class="toggle">Nama pemesan lain: <button id="m1" class="on">Disamarkan</button><button id="m2">Lengkap</button></div>
+  <div class="phone" id="app"></div>
+</div>
+<script>
+const MAXP=100,MAXT=25,PER=4,TODAY=20;
+const DAYS=["Min","Sen","Sel","Rab","Kam","Jum","Sab"];
+const COL=["#1a5dc6","#13804a","#a05d00","#8a3ffc","#d23a2a","#0f2347"];
+const B={
+21:[["Dimas Prakoso","Rapat tim",["12:00"],8,"ok"]],
+22:[["Salsa Putri","Ulang tahun",["18:00"],20,"ok"],["Budi Hartono","Arisan keluarga",["12:00"],16,"ok"]],
+24:[["Komunitas Kopi Sasi","Kopdar komunitas",["16:00"],40,"ok"],["Nadia Lestari","Makan bersama",["19:00"],6,"warn"]],
+25:[["Rani Anggraini","Photo yearbook SMA",["10:00"],36,"ok"],["Fikri Maulana","Buka bersama",["18:00"],30,"ok"],["Yuli Astuti","Pernikahan sederhana",["12:00"],28,"warn"]],
+27:[["Rani Anggraini","Photo yearbook SMA",["10:00"],36,"ok"],["Tim Kampus UIN","Seminar kecil",["14:00"],30,"ok"],["Citra Dewi","Baby shower",["16:00"],25,"ok"],["Agus Salim","Rapat RT",["19:00"],17,"ok"]],
+28:[["Rani Anggraini","Photo yearbook SMA",["10:00"],36,"ok"],["Keluarga Hendra","Reuni keluarga",["12:00"],24,"ok"],["Mega Putri","Kolaborasi konten",["14:00"],12,"ok"],["Ardi Nugroho","Ulang tahun",["18:00"],14,"ok"]],
+29:[["Sinta Marlina","Arisan",["12:00"],10,"warn"]]
+};
+let sel=null,guests=2,time=null,mask=true;
+const used=d=>(B[d]||[]).reduce((s,b)=>s+b[3],0);
+const tables=g=>Math.ceil(g/PER);
+const usedT=d=>(B[d]||[]).reduce((s,b)=>s+tables(b[3]),0);
+const lvl=r=>r>=.85?"hi":r>=.55?"mid":"";
+const nm=n=>{if(!mask)return n;const p=n.split(" ");return p.length>1&&!/^(Komunitas|Tim|Keluarga)$/.test(p[0])?p[0]+" "+p[1][0]+".":n};
+const ini=n=>n.split(" ").slice(0,2).map(x=>x[0]).join("");
+const slotLoad=(d,t)=>(B[d]||[]).filter(b=>b[2].includes(t)).reduce((s,b)=>s+b[3],0);
+function render(){
+ let h=`<div class="bar"><div class="back">←</div><div class="id"><b>Booking Djiwa Tentram</b><small>Djiwa Tentram</small></div><span class="chip">Jadwal · 2/5</span></div><div class="prog"><i></i></div>
+ <h1>Kapan datang?</h1><p class="sub">Lihat kapasitas dan siapa saja yang sudah booking.</p>
+ <div class="cal"><div class="top"><b>November 2026</b><div class="nav"><span>←</span><span>→</span></div></div>
+ <div class="grid">${DAYS.map(d=>`<div class="wd">${d}</div>`).join("")}`;
+ for(let i=0;i<0;i++)h+="<span></span>";
+ for(let d=1;d<=30;d++){const off=d<TODAY;const r=Math.max(used(d)/MAXP,usedT(d)/MAXT);
+  h+=`<button class="d${off?" off":""}${d===TODAY?" today":""}${sel===d?" sel":""}" data-d="${d}">${d}${off?"":`<span class="meter ${lvl(r)}"><i style="width:${Math.max(6,Math.min(100,r*100))}%"></i></span>`}</button>`}
+ h+=`</div><div class="legend"><span><i></i>Longgar</span><span><i class="m"></i>Mulai penuh</span><span><i class="h"></i>Hampir penuh</span></div></div>`;
+ if(sel){
+  const u=used(sel),ut=usedT(sel),r=Math.max(u/MAXP,ut/MAXT);const sisaP=MAXP-u,sisaT=MAXT-ut;
+  const myT=tables(guests);const over=guests>sisaP||myT>sisaT;
+  const status=over?["bad","Tidak cukup"]:r>=.85?["bad","Hampir penuh"]:r>=.55?["warn","Mulai penuh"]:["ok","Masih longgar"];
+  const bs=B[sel]||[];
+  h+=`<div class="sec"><div class="sec-h"><div><b>${DAYS[new Date(2026,10,sel).getDay()]}, ${sel} November</b><small>${bs.length} booking · kapasitas ${MAXP} tamu / ${MAXT} meja</small></div><span class="tag ${status[0]}">${status[1]}</span></div>
+  <div class="cap">
+   <div class="cap-row"><div class="l"><span>Tamu</span><b>${u} terisi · sisa ${sisaP}</b></div><div class="bar2"><i style="width:${u/MAXP*100}%"></i><i class="me" style="width:${Math.min(guests,sisaP)/MAXP*100}%"></i></div></div>
+   <div class="cap-row"><div class="l"><span>Meja</span><b>${ut} terisi · sisa ${sisaT}</b></div><div class="bar2"><i style="width:${ut/MAXT*100}%"></i><i class="me" style="width:${Math.min(myT,sisaT)/MAXT*100}%"></i></div></div>
+  </div>
+  <div class="note${over?" bad":""}">${over?`Bookingmu (${guests} tamu, ${myT} meja) melebihi sisa kapasitas hari ini. Kurangi tamu atau pilih tanggal lain.`:`Satu hari bisa dipakai banyak booking selama kapasitas masih ada. Bookingmu menghabiskan ${guests} tamu dan ${myT} meja, tersisa ${sisaP-guests} tamu dan ${sisaT-myT} meja.`}</div></div>
+
+  <div class="lab"><span>Sudah booking hari ini</span><span>${mask?"Nama disamarkan":"Nama lengkap"}</span></div>
+  <div class="list">${bs.length?bs.map((b,i)=>`<div class="bk" style="animation-delay:${i*50}ms"><div class="av" style="background:${COL[(b[0].length+i)%COL.length]}">${ini(b[0])}</div><div class="m"><b>${nm(b[0])}</b><small>${b[1]}</small></div><div class="r"><b>${b[2][0]}</b>${b[3]} tamu</div></div>`).join(""):`<div class="empty">Belum ada booking. Kamu yang pertama di tanggal ini.</div>`}</div>
+
+  <div class="sec" style="margin-top:14px"><div class="step"><b>Jumlah tamu</b><div class="stp"><button data-g="-1">−</button><span>${guests}</span><button data-g="1">+</button></div></div>
+  <div class="sec-h" style="margin-top:6px"><div><b style="font-size:15px">Jam tiba</b><small>Kepadatan tiap jam di tanggal ini</small></div><span class="tag">WIB</span></div>
+  <div class="times" style="margin-top:8px">${["10:00","12:00","14:00","16:00","18:00","19:00"].map(t=>{const l=slotLoad(sel,t);const rr=l/50;const c=lvl(rr);return `<button class="t ${c}${time===t?" on":""}" data-t="${t}">${t}<small>${l===0?"Kosong":l>=45?"Ramai":l+" tamu"}</small></button>`}).join("")}</div></div>
+  <button class="cta" ${(!time||over)?"disabled":""}>${over?"Kapasitas tidak cukup":!time?"Pilih jam tiba":"Lanjut →"}</button>`;
+ }else h+=`<div class="sec"><div class="sec-h"><div><b>Pilih tanggal</b><small>Garis kecil di bawah tanggal menunjukkan seberapa penuh harinya.</small></div></div></div>`;
+ h+=`<p class="faq">Prototype · data contoh</p>`;
+ document.getElementById("app").innerHTML=h;
+}
+document.getElementById("app").addEventListener("click",e=>{
+ const d=e.target.closest("[data-d]"),g=e.target.closest("[data-g]"),t=e.target.closest("[data-t]");
+ if(d){sel=+d.dataset.d;time=null;render()}
+ else if(g){guests=Math.max(1,Math.min(100,guests+ +g.dataset.g));render()}
+ else if(t){time=t.dataset.t;render()}
+});
+m1.onclick=()=>{mask=true;m1.className="on";m2.className="";render()};m2.onclick=()=>{mask=false;m2.className="on";m1.className="";render()};
+sel=28;render();
+</script></body></html>
