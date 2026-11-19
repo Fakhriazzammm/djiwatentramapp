@@ -18,7 +18,7 @@ const mail = (over: Partial<RawMail> = {}): RawMail => ({
   auth: { dmarcPass: true, dkimDomains: ["warungkopi.id"] }, ...over,
 });
 const send = (m: RawMail) => processForUser(deps(), user, 0, m);
-const entries = async () => (await pool.query("select id,kind,amount from finance.entries where user_id=$1", [user])).rows;
+const entries = async () => (await pool.query("select id,kind,amount from finance.entries where user_id=$1", [user])).rows.map((r) => ({ ...r, amount: Number(r.amount) }));
 const skip = async (reason: string) => Number((await pool.query("select count(*)::int n from finance.inbound_skips where user_id=$1 and reason=$2", [user, reason])).rows[0].n);
 
 afterAll(async () => {

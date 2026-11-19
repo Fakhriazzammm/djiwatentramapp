@@ -1,10 +1,10 @@
 export type PaymentDetails = { description: string; items: {name:string;qty:number|null;unitPrice:number|null;amount:number|null}[]; subtotal:number|null; discount:number|null; charges:{label:string;amount:number;included:boolean}[]; total:number|null; warnings:string[] };
 /** Browser side of the Google and payment-e-mail integrations. Tokens never reach the browser; this only talks to /api/finance. */
 export type InboundSource = { forwarding: boolean; address: string; enabled: boolean; mailCount: number; lastMailAt: string | null; trusted: number; forwardCode: string | null };
-export type InboundSummary = { configured: boolean; filter: string; source: InboundSource | null; review: number; importReady: number; autoRecent: number };
+export type InboundSummary = { configured: boolean; broad?: boolean; broadFilter?: string; filter: string; source: InboundSource | null; review: number; importReady: number; autoRecent: number };
 export type ReviewItem = {
   id: string; channel: string; status: "review" | "failed"; reason: string; confidence: number; createdAt: string;
-  parsed: { amount?: number; kind?: "out" | "in" | "tf"; transfer?: { from: string; to: string; toName?: string; amount: number; fee?: number }; direction?: string; merchant?: string; categoryId?: string; accountId?: string; accountHint?: string; at?: string; subject?: string; issuer?: string; details?: PaymentDetails; flags?: string[] };
+  parsed: { amount?: number; kind?: "out" | "in" | "tf"; transfer?: { from: string; to: string; toName?: string; amount: number; fee?: number }; direction?: string; merchant?: string; categoryId?: string; accountId?: string; accountHint?: string; at?: string; subject?: string; issuer?: string; details?: PaymentDetails; flags?: string[]; generic?: boolean; suggest?: "in" | "out" | null; suggestFrom?: "hint" | "mail" | null };
 };
 export type GoogleStatus = {
   configured: boolean; connected: boolean; email: string | null; features: { calendar: boolean; drive: boolean; gmail: boolean };
@@ -27,6 +27,8 @@ const AUTO_SEEN = "djiwa-auto-seen";
 export const markAutoSeen = () => { try { window.localStorage.setItem(AUTO_SEEN, new Date().toISOString()); } catch { /* storage blocked */ } };
 export const readAutoSeen = () => { try { return window.localStorage.getItem(AUTO_SEEN); } catch { return null; } };
 export const getInbound = () => { const s = readAutoSeen(); return call<InboundSummary & { success: true }>(`/inbound${s ? `?autoSince=${encodeURIComponent(s)}` : ""}`); };
+/** Opt in (or out) of recognising money movements from senders outside the bank / e-wallet list. Everything found this way waits for a tap. */
+export const setBroad = (enabled: boolean) => call<{ broad: boolean }>("/inbound/broad", { method: "POST", body: JSON.stringify({ enabled }) });
 export const createSource = (rotate = false) => call<{ source: InboundSource }>("/inbound/source", { method: "POST", body: JSON.stringify({ rotate }) });
 export const removeSource = (wipe: boolean) => call<object>(`/inbound/source${wipe ? "?wipe=1" : ""}`, { method: "DELETE" });
 export const getReview = (offset=0) => call<{ items: ReviewItem[];total:number }>(`/inbound/review?offset=${offset}`);
@@ -79,7 +81,7 @@ export const approveReviewGroup = (key: string, categoryId: string, accountId?: 
 export const rejectReviewGroup = (key: string) => call<{ rejected: number }>("/inbound/groups/reject", { method: "POST", body: JSON.stringify({ key }) });
 
 /** Apps Script alternative: a script the user pastes into their own Google account posts bank mail to a private URL. No Google permission for Djiwa Pay is involved. */
-export type HookInfo = { available?: boolean; enabled: boolean; url?: string; script?: string; lastAt?: string | null; lastStatus?: string | null; lastReason?: string | null; received?: number };
+export type HookInfo = { available?: boolean; enabled: boolean; url?: string; script?: string; lastAt?: string | null; lastStatus?: string | null; lastReason?: string | null; received?: number; scriptVersion?: number; currentScriptVersion?: number };
 export const getHook = () => call<HookInfo & { success: true }>("/inbound/hook");
 export const createHook = (rotate = false) => call<HookInfo & { success: true }>("/inbound/hook", { method: "POST", body: JSON.stringify({ rotate }) });
 export const removeHook = () => call<object>("/inbound/hook", { method: "DELETE" });

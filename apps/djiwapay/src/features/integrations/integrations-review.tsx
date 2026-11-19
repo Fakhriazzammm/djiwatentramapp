@@ -23,6 +23,8 @@ const titleOf = (it: ReviewItem) => tidyTitle(it.parsed.details?.description || 
 const kindOf = (it: ReviewItem): "in" | "out" => (it.parsed.kind === "in" || (!it.parsed.kind && it.parsed.direction === "in") ? "in" : "out");
 /** A top-up moves the person's own money into a wallet: it is neither income nor spending. */
 const isMove = (it: ReviewItem) => Boolean(it.parsed.transfer);
+/** A sender we have no template for: nothing is recorded until the person says whether it was income or spending. */
+const isGeneric = (it: ReviewItem) => Boolean(it.parsed.generic) && !it.parsed.kind;
 const moveAmount = (it: ReviewItem) => it.parsed.transfer?.amount ?? it.parsed.amount ?? 0;
 const sourceOf = (it: ReviewItem) => `${CHANNEL_NAME[it.channel] ?? it.parsed.issuer ?? "Email"}${it.parsed.accountHint ? ` ••${it.parsed.accountHint}` : ""}`;
 const needsLook = (it: ReviewItem) => Boolean(it.parsed.flags?.length) || (it.parsed.categoryId ?? "lainnya") === "lainnya";
@@ -36,29 +38,30 @@ function Row({ item, ctx, selecting, selected, onToggle, onOpen, onQuick, busy }
       <span className="dpx-rv-text">
         <b>{titleOf(item)}</b>
         <span className="dpx-rv-sub">{sourceOf(item)}{p.at ? ` · ${timeOf(p.at)}` : ""}</span>
-        <span className="dpx-rv-chips"><i>{isMove(item) ? `Pindah dana ke ${p.transfer?.toName ?? "dompet"}` : cat.name}</i>{!isMove(item) && needsLook(item) ? <i className="is-warn">{(p.categoryId ?? "lainnya") === "lainnya" ? "Pilih kategori" : "Perlu dicek"}</i> : null}</span>
+        <span className="dpx-rv-chips"><i>{isMove(item) ? `Pindah dana ke ${p.transfer?.toName ?? "dompet"}` : cat.name}</i>{isGeneric(item) ? <i className="is-warn">Pemasukan atau pengeluaran?</i> : !isMove(item) && needsLook(item) ? <i className="is-warn">{(p.categoryId ?? "lainnya") === "lainnya" ? "Pilih kategori" : "Perlu dicek"}</i> : null}</span>
       </span>
-      <span className={`dpx-rv-amt ${kind === "in" && !isMove(item) ? "is-in" : ""}`}>{ok ? (isMove(item) ? `⇄ ${rupiah(moveAmount(item))}` : `${kind === "in" ? "+" : "−"}${rupiah(p.amount ?? 0)}`) : <em style={{ fontSize: 12, fontStyle: "normal", color: "var(--warn, #b4691a)", fontWeight: 600 }}>Nominal belum terbaca</em>}</span>
+      <span className={`dpx-rv-amt ${kind === "in" && !isMove(item) && !isGeneric(item) ? "is-in" : ""}`}>{ok ? (isMove(item) ? `⇄ ${rupiah(moveAmount(item))}` : isGeneric(item) ? rupiah(p.amount ?? 0) : `${kind === "in" ? "+" : "−"}${rupiah(p.amount ?? 0)}`) : <em style={{ fontSize: 12, fontStyle: "normal", color: "var(--warn, #b4691a)", fontWeight: 600 }}>Nominal belum terbaca</em>}</span>
     </Btn>
-    {!selecting && ok ? <Btn type="button" className="dpx-rv-ok" onClick={onQuick} disabled={busy} aria-label={`Setujui ${titleOf(item)}`}><Ic n="check" size="sm" /></Btn> : null}
+    {!selecting && ok && !isGeneric(item) ? <Btn type="button" className="dpx-rv-ok" onClick={onQuick} disabled={busy} aria-label={`Setujui ${titleOf(item)}`}><Ic n="check" size="sm" /></Btn> : null}
   </div>;
 }
 
 /* ---------- detail sheet ---------- */
 function DetailSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: FinCtx; onClose: () => void; onDone: (message: string) => Promise<void> }) {
   const p = item.parsed, state = ctx.fin.state;
-  const [kind, setKind] = useState<"in" | "out">(kindOf(item));
+  const generic = isGeneric(item);
+  const [kind, setKind] = useState<"in" | "out" | null>(generic ? p.suggest ?? null : kindOf(item));   // an unknown sender starts on the guess, if there is one, and still waits for "Setujui"
   const move = isMove(item);
   const [amount, setAmount] = useState(String(Math.round(move ? moveAmount(item) : p.amount ?? 0)));
   const [note, setNote] = useState(tidyTitle(p.details?.description || p.merchant || p.subject || ""));
-  const [cat, setCat] = useState(p.categoryId ?? (kind === "in" ? "bonus" : "lainnya"));
+  const [cat, setCat] = useState(generic && kind === "in" ? "bonus" : p.categoryId ?? (kind === "in" ? "bonus" : "lainnya"));   // a guessed spending category must not ride along with income
   const [account, setAccount] = useState(p.accountId ?? "tunai");
   const [busy, setBusy] = useState(false);
   const [source, setSource] = useState(false);
   const cats = state.categories.filter((c) => c.income === (kind === "in")), accounts = state.accounts.filter((a) => !a.archived);
   const accountOptions = accounts.some((a) => a.id === account) ? accounts : [...accounts, { id: account, name: accName(state, account) } as (typeof accounts)[number]];
   const act = async (fn: () => Promise<unknown>, done: string) => { setBusy(true); try { await fn(); await onDone(done); } catch { ctx.notify("Gagal memproses. Datanya tetap aman. Coba lagi."); } finally { setBusy(false); } };
-  const approve = () => act(async () => { await approveItem(item.id, { amount: Number(amount), kind, categoryId: cat, accountId: account, note: note || undefined }); await ctx.fin.retrySync(); }, `${note || "Catatan"} ${rupiah(Number(amount))} tercatat`);
+  const approve = () => act(async () => { await approveItem(item.id, { amount: Number(amount), kind: kind ?? undefined, categoryId: cat, accountId: account, note: note || undefined }); await ctx.fin.retrySync(); }, `${note || "Catatan"} ${rupiah(Number(amount))} tercatat`);
   return <Sheet title="Tinjau catatan" onClose={onClose}>
     <div className="dpx-rv-hero"><CatIcon cat={catOf(state, cat)} size={56} /><div><b>{tidyTitle(p.details?.description || p.merchant || p.subject || "Email pembayaran")}</b><span>{sourceOf(item)}{p.at ? ` · ${new Date(p.at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}, ${timeOf(p.at)}` : ""}</span></div></div>
     {!((p.amount ?? 0) > 0) ? <div className="dpx-note" style={{ marginTop: 0 }}><Ic n="info" /><div><b>Nominal belum terbaca.</b> Email ini tidak memuat angka yang bisa dibaca otomatis. Coba &quot;Lengkapi dari isi email&quot; di bawah, atau isi nominal sendiri lalu setujui.</div></div> : null}
@@ -68,7 +71,8 @@ function DetailSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: Fi
     <div className="dpx-group dpx-white dpx-rv-details"><PaymentDetails details={p.details} /></div>
     <Btn type="button" className="dpx-linkbtn" disabled={busy} onClick={() => void act(() => rereadItem(item.id), "Rincian dibaca dari isi email")}>{p.details ? "Baca ulang isi email" : "Lengkapi dari isi email"}</Btn>
     <div className="dpx-glabel">Yang dicatat</div>
-    {move ? null : <Seg id="rv-kind" label="Jenis" value={kind} onChange={(v) => { setKind(v); setCat(v === "in" ? "bonus" : "lainnya"); }} options={[["out", "Pengeluaran"], ["in", "Pemasukan"]] as const} />}
+    {generic ? <div className="dpx-note" style={{ marginTop: 0 }}><Ic n="info" /><div><b>Pengirim baru: {p.issuer ?? "belum dikenal"}.</b> Djiwa Pay belum mengenal pengirim ini, jadi kamu yang menentukan: pemasukan atau pengeluaran?{p.suggestFrom === "hint" ? " Dugaan di bawah dari pilihanmu sebelumnya untuk pengirim ini." : p.suggestFrom === "mail" ? " Dugaan di bawah hanya dari kata-kata di email, periksa dulu." : ""}</div></div> : null}
+    {move ? null : <Seg id="rv-kind" label="Jenis" value={(kind ?? "") as "in" | "out"} onChange={(v) => { setKind(v); setCat(v === "in" ? "bonus" : "lainnya"); }} options={[["out", "Pengeluaran"], ["in", "Pemasukan"]] as const} />}
     <div style={{ marginTop: 10 }}><MoneyInput value={amount} onChange={setAmount} label="Nominal" /></div>
     <div className="dpx-input" style={{ marginTop: 8 }}><input aria-label="Keterangan" value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="Nama toko atau tujuan" /></div>
     {move ? null : <div className="dpx-glabel">Kategori</div>}
@@ -79,7 +83,7 @@ function DetailSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: Fi
     {source ? <p className="dpx-sub dpx-rv-source">{p.subject || "Judul tidak tersedia"}</p> : null}
     <div className="dpx-rv-footer">
       <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} disabled={busy} onClick={() => void act(() => rejectItem(item.id), "Email diabaikan")}>Abaikan</Btn>
-      <Btn type="button" className="dpx-btn" style={{ margin: 0 }} disabled={busy || !(Number(amount) > 0)} onClick={() => void approve()}>{busy ? "Memproses…" : "Setujui"}</Btn>
+      <Btn type="button" className="dpx-btn" style={{ margin: 0 }} disabled={busy || !(Number(amount) > 0) || (generic && !kind)} onClick={() => void approve()}>{busy ? "Memproses…" : generic && !kind ? "Pilih jenis dulu" : "Setujui"}</Btn>
     </div>
   </Sheet>;
 }
@@ -199,8 +203,8 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
     for (const it of items) { const k = dayKey(it.parsed.at ?? it.createdAt); m.set(k, [...(m.get(k) ?? []), it]); }
     return [...m].sort(([a], [b]) => (a < b ? 1 : -1));
   }, [items]);
-  const chosen = items.filter((i) => selected.has(i.id)), approvable = chosen.filter((i) => (i.parsed.amount ?? 0) > 0);
-  const outTotal = items.filter((i) => !isMove(i) && kindOf(i) === "out").reduce((n, i) => n + (i.parsed.amount ?? 0), 0), inTotal = items.filter((i) => !isMove(i) && kindOf(i) === "in").reduce((n, i) => n + (i.parsed.amount ?? 0), 0);
+  const chosen = items.filter((i) => selected.has(i.id)), approvable = chosen.filter((i) => (i.parsed.amount ?? 0) > 0 && !isGeneric(i));
+  const outTotal = items.filter((i) => !isMove(i) && !isGeneric(i) && kindOf(i) === "out").reduce((n, i) => n + (i.parsed.amount ?? 0), 0), inTotal = items.filter((i) => !isMove(i) && !isGeneric(i) && kindOf(i) === "in").reduce((n, i) => n + (i.parsed.amount ?? 0), 0);
   const open = items.find((i) => i.id === openId) ?? null;
   const toggle = (id: string) => setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const leaveSelect = () => { setSelecting(false); setSelected(new Set()); setConfirm(null); };
@@ -216,7 +220,7 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
   const run = async (action: "approve" | "reject") => {
     if (busy) return; setBusy(true); setConfirm(null);
     try {
-      const ids = chosen.filter((i) => action === "reject" || (i.parsed.amount ?? 0) > 0).map((i) => i.id), results: { id: string; ok: boolean }[] = [];
+      const ids = chosen.filter((i) => action === "reject" || ((i.parsed.amount ?? 0) > 0 && !isGeneric(i))).map((i) => i.id), results: { id: string; ok: boolean }[] = [];
       for (let at = 0; at < ids.length; at += 200) results.push(...(await bulkReview(ids.slice(at, at + 200), action)).results);
       const ok = new Set(results.filter((x) => x.ok).map((x) => x.id));
       setSelected((prev) => new Set([...prev].filter((id) => !ok.has(id))));
@@ -257,7 +261,7 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
 
     <AnimatePresence>
       {confirm ? <Sheet key="confirm" title={confirm === "approve" ? "Setujui yang dipilih?" : "Abaikan yang dipilih?"} onClose={() => setConfirm(null)}>
-        <p className="dpx-sub" style={{ marginTop: -6 }}>{confirm === "approve" ? `${approvable.length} transaksi dicatat sesuai nominal, kategori, dan dompet yang tampil di daftar.` : `${chosen.length} email tidak akan dicatat.`}</p>
+        <p className="dpx-sub" style={{ marginTop: -6 }}>{confirm === "approve" ? `${approvable.length} transaksi dicatat sesuai nominal, kategori, dan dompet yang tampil di daftar.${chosen.length > approvable.length && chosen.some(isGeneric) ? ` ${chosen.filter(isGeneric).length} dari pengirim baru tidak ikut: pilih pemasukan atau pengeluaran satu per satu.` : ""}` : `${chosen.length} email tidak akan dicatat.`}</p>
         <div className="dpx-flex dpx-mt"><Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} onClick={() => setConfirm(null)}>Batal</Btn><Btn type="button" className={`dpx-btn ${confirm === "reject" ? "dpx-danger" : ""}`} style={{ margin: 0 }} disabled={busy} onClick={() => void run(confirm)}>{confirm === "approve" ? "Ya, setujui" : "Ya, abaikan"}</Btn></div>
       </Sheet> : null}
       {openGroup && shops.find((x) => x.key === openGroup) ? <GroupSheet key={openGroup} g={shops.find((x) => x.key === openGroup)!} ctx={ctx} onClose={() => setOpenGroup(null)}
