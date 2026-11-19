@@ -67,6 +67,7 @@ export function AppsScriptSheet({ onClose, ctx, hook, setHook, refresh, rotate }
     </> : null}
 
     {step === 1 ? <>
+      <div className="dpx-note dpx-info"><Ic n="shield" /><div><b>Satu skrip untuk semua.</b> Selain bank dan e-wallet, skrip ini juga mengenali pembayaran dari toko, marketplace, gaji, dan pengirim lain. Semua yang bukan dari bank selalu kamu konfirmasi dulu: pemasukan atau pengeluaran. Promosi, spam, kode OTP, dan email yang kamu kirim sendiri tidak ikut, dan isi email tidak disimpan.</div></div>
       <p className="dpx-sub">Tempel skrip ke proyek Apps Script baru. Pakai akun Google yang sama dengan Gmail tempat email bank masuk.</p>
       <ol className="dpx-howto">
         <li>Tekan <b>Buka Apps Script</b> di bawah. Halaman baru terbuka dengan proyek kosong.</li>

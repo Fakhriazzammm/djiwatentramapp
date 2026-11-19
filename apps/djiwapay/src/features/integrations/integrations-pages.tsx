@@ -5,7 +5,7 @@ import { CatIcon, MoneyInput, accName, catOf } from "../finance/fin-sheets";
 import type { FinCtx } from "../finance/fin-pages";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import {
-  CHANNEL_NAME, approveItem, cancelImport, commitImport, getImport, getImportItems, startImport, undoImport, connectGoogle, setBroad, takeAfterGoogle, type HookInfo, confirmDriveRemovals, confirmSheetDeletes, createSource, disconnectGoogle, getGoogle, gmailOff, pollGmailNow, getInbound, getReview, rejectItem, removeSource, syncGoogle,
+  CHANNEL_NAME, approveItem, cancelImport, commitImport, getImport, getImportItems, startImport, undoImport, connectGoogle, takeAfterGoogle, type HookInfo, confirmDriveRemovals, confirmSheetDeletes, createSource, disconnectGoogle, getGoogle, gmailOff, pollGmailNow, getInbound, getReview, rejectItem, removeSource, syncGoogle,
   type GoogleFeature, type GoogleStatus, type ImportItem, type ImportState, type InboundSummary, type ReviewItem,
 } from "../../lib/finance/integrations";
 import { createHook, removeHook } from "../../lib/finance/integrations";
@@ -116,24 +116,6 @@ export function ConsentSheet({ features, onClose, busy, onGo, extra }: { feature
     {gmail ? <div className="dpx-note"><Ic n="info" /><div><b>Google akan menampilkan “belum diverifikasi”.</b> Ketuk <b>Lanjutan</b>, lalu <b>Buka Djiwa Pay</b>, dan centang izin Gmail. Layar itu muncul karena izin baca Gmail memerlukan verifikasi tambahan dari Google, dan kamu bisa mencabutnya kapan saja.</div></div> : null}
     <p className="dpx-hint dpx-center">Cara data Google dipakai dijelaskan di <a href="/privasi" target="_blank" rel="noreferrer">Kebijakan Privasi</a>.</p>
     <Btn type="button" className="dpx-btn" disabled={busy} onClick={onGo}>{busy ? "Membuka Google…" : "Lanjut ke Google"}</Btn>
-  </Sheet>;
-}
-
-/* ---------- Money movements from senders outside the bank list: opt-in, and always asked ---------- */
-function BroadSheet({ on, hook, onClose, onChange, onOpenScript }: { on: boolean; hook: HookInfo | null; onClose: () => void; onChange: (on: boolean) => Promise<void>; onOpenScript: () => void }) {
-  const [busy, setBusy] = useState(false);
-  const old = Boolean(hook?.enabled && (hook.scriptVersion ?? 1) < (hook.currentScriptVersion ?? 2));
-  const can = ["Email dari pengirim mana pun yang subjeknya memuat kata seperti pembayaran, transaksi, struk, invoice, refund, atau gaji", "Pengirimnya harus terbukti asli lewat pemeriksaan DKIM atau DMARC", "Yang terbaca muncul di “Perlu ditinjau” dengan satu pertanyaan: pemasukan atau pengeluaran?"];
-  const cannot = ["Mencatat sendiri tanpa kamu pilih pemasukan atau pengeluaran", "Mengirim email promosi, spam, atau yang kamu kirim sendiri", "Menyimpan isi email atau kode OTP. Yang tersimpan hanya nominal, waktu, dan nama pengirim"];
-  return <Sheet title="Deteksi dari pengirim lain" onClose={onClose}>
-    <p className="dpx-sub" style={{ marginTop: -6 }}>Secara bawaan hanya email bank dan e-wallet yang dikenali. Nyalakan ini bila pemasukan atau pengeluaranmu juga datang dari toko online, marketplace, gaji, atau invoice.</p>
-    <div className="dpx-glabel" style={{ marginTop: 14 }}>Yang terjadi</div>
-    <div className="dpx-group dpx-white dpx-checks">{can.map((t) => <div key={t} className="dpx-chk dpx-yes"><Ic n="check" size="sm" /><span>{t}</span></div>)}</div>
-    <div className="dpx-glabel">Yang tidak terjadi</div>
-    <div className="dpx-group dpx-white dpx-checks">{cannot.map((t) => <div key={t} className="dpx-chk dpx-no"><Ic n="close" size="sm" /><span>{t}</span></div>)}</div>
-    <div className="dpx-note dpx-info"><Ic n="info" /><div><b>Berlaku untuk Apps Script, Gmail langsung, dan email terusan.</b> Apps Script perlu skrip versi terbaru: salin ulang setelah menyalakan ini.</div></div>
-    {on && old ? <div className="dpx-note"><Ic n="warn" /><div><b>Skrip yang terpasang masih versi lama.</b> Pengirim lain baru terbaca setelah skrip diganti.<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={onOpenScript}>Salin skrip baru</Btn></div></div></div> : null}
-    <Btn type="button" className={`dpx-btn ${on ? "dpx-soft" : ""}`} disabled={busy} onClick={async () => { setBusy(true); try { await onChange(!on); if (!on && hook?.enabled) onOpenScript(); else onClose(); } finally { setBusy(false); } }}>{busy ? "Menyimpan…" : on ? "Matikan deteksi" : "Nyalakan deteksi"}</Btn>
   </Sheet>;
 }
 
@@ -259,7 +241,7 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
   const { data: inbound, refresh } = useInbound();
   const [g, setG] = useState<(GoogleStatus & { success: true }) | null>(null);
   const [loadingG, setLoadingG] = useState(true);
-  const [sheet, setSheet] = useState<null | "email" | "import" | "script" | "broad" | "sources" | { consent: GoogleFeature[] }>(null);
+  const [sheet, setSheet] = useState<null | "email" | "import" | "script" | "sources" | { consent: GoogleFeature[] }>(null);
   const { hook, refresh: refreshHook, setHook } = useHook();
   const [autoImport, setAutoImport] = useState(false);
   const [busy, setBusy] = useState("");
@@ -329,9 +311,8 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
     <Reveal i={1}><div className="dpx-group dpx-white dpx-int">
       {active.length ? <Row icon="check" tone="emerald" title={`Antrean tinjau${inbound && inbound.review ? ` (${inbound.review})` : ""}`} sub="Email baru tercatat otomatis. Di sini hanya yang perlu dicek" onClick={onReview} /> : null}
       <Row icon="spark" tone="orange" title="Sumber email" sub={active.length ? active.join(" · ") : "Pilih cara termudah untuk menyambungkan email"} trail={loadingG ? undefined : active.length ? <Tag tone="ok">Aktif</Tag> : <Tag tone="warn">Sambungkan</Tag>} onClick={() => setSheet("sources")} />
-      <Row icon="user" tone="emerald" title="Deteksi dari pengirim lain" sub={inbound?.broad ? "Toko, marketplace, gaji, dan lainnya. Selalu kamu konfirmasi dulu" : "Bukan hanya bank. Kamu yang menentukan pemasukan atau pengeluaran"} trail={inbound ? (inbound.broad ? <Tag tone="ok">Aktif</Tag> : <Tag>Mati</Tag>) : undefined} onClick={() => setSheet("broad")} />
       {gm ? <Row icon="dl" tone="amber" title="Impor email lama" sub={inbound && inbound.importReady ? `${inbound.importReady} transaksi siap ditinjau` : "Catat pembayaran lama dari Gmail-mu, dengan pratinjau dulu"} onClick={() => setSheet("import")} /> : null}
-      {inbound?.broad && hook?.enabled && (hook.scriptVersion ?? 1) < (hook.currentScriptVersion ?? 2) ? <div className="dpx-note" role="status" style={{ margin: "6px 12px 10px" }}><Ic n="info" /><div><b>Skrip Apps Script-mu versi lama.</b> Salin skrip yang baru agar email dari pengirim lain ikut terbaca.<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setSheet("script")}>Salin skrip baru</Btn></div></div></div> : null}
+      {hook?.enabled && (hook.scriptVersion ?? 1) < (hook.currentScriptVersion ?? 2) ? <div className="dpx-note" role="status" style={{ margin: "6px 12px 10px" }}><Ic n="info" /><div><b>Skrip Apps Script-mu versi lama.</b> Salin skrip yang baru agar pembayaran dari toko, marketplace, dan pengirim lain ikut terbaca.<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setSheet("script")}>Salin skrip baru</Btn></div></div></div> : null}
     </div></Reveal>
 
     <div className="dpx-glabel">Google{cal || drive ? <Btn type="button" disabled={busy === "google-all"} onClick={() => void syncAll()}>{busy === "google-all" ? "Menyinkronkan…" : "Sinkronkan"}</Btn> : null}</div>
@@ -386,7 +367,6 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
       </> : null}
         </div>
       </Sheet> : null}
-      {sheet === "broad" ? <BroadSheet key="broad" on={Boolean(inbound?.broad)} hook={hook} onClose={() => setSheet(null)} onOpenScript={() => setSheet("script")} onChange={async (on) => { try { await setBroad(on); await refresh(); ctx.notify(on ? "Deteksi dari pengirim lain menyala" : "Deteksi dari pengirim lain dimatikan"); } catch { ctx.notify("Gagal menyimpan. Coba lagi."); } }} /> : null}
       {sheet === "email" ? <EmailSetupSheet key="email" ctx={ctx} summary={inbound} refresh={refresh} onClose={() => setSheet(null)} /> : null}
       {sheet && typeof sheet === "object" ? <ConsentSheet key="consent" features={sheet.consent} busy={busy === "connect"} onClose={() => setSheet(null)} onGo={() => void goGoogle(sheet.consent)} /> : null}
     </AnimatePresence>

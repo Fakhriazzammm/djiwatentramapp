@@ -32,9 +32,8 @@ export async function hookConfig(db: Q, token: string, scriptVersion?: number) {
   const userId = await userOf(db, token);
   if (!userId) return null;
   if (scriptVersion && Number.isInteger(scriptVersion) && scriptVersion > 0 && scriptVersion < 100) await db.query("update finance.inbound_hooks set script_version=$2 where user_id=$1", [userId, scriptVersion]);
-  const broad = (await db.query("select broad from finance.inbound_sources where user_id=$1", [userId])).rows[0]?.broad === true;
-  // broadQuery is only sent when the person has opted in; a script that does not know the field simply ignores it.
-  return { query: hookQuery(), domains: issuerDomains(), version: SCRIPT_VERSION, ...(broad ? { broadQuery: broadQuery() } : {}) };
+  // Version 2 of the script reads payment mail from any sender; it is told what to look for here. An older script ignores the field.
+  return { query: hookQuery(), domains: issuerDomains(), version: SCRIPT_VERSION, broadQuery: broadQuery() };
 }
 
 export type HookDeps = { db: Tx; pipeline: PipelineDeps; toMail: (raw: Buffer, ctx: MailCtx) => Promise<RawMail> };
@@ -61,9 +60,9 @@ export function hookScript(url: string): string {
  * e-wallet (daftar pengirimnya diambil dari Djiwa Pay), lalu mengirim email itu ke alamat
  * rahasiamu di bawah. Skrip tidak membalas, menghapus, atau mengubah email apa pun.
  *
- * Jika kamu menyalakan "Deteksi dari pengirim lain" di Djiwa Pay, skrip juga mengirim email dari
- * pengirim mana pun yang subjeknya memuat kata seperti pembayaran, transaksi, struk, invoice
- * atau refund (bukan promosi, bukan spam). Email yang bukan transaksi dibuang server, isinya
+ * Skrip juga mengirim email dari pengirim mana pun (toko, marketplace, gaji, dan lainnya) yang
+ * subjeknya memuat kata seperti pembayaran, transaksi, struk, invoice atau refund (bukan promosi,
+ * bukan spam). Email yang bukan transaksi dibuang server, isinya
  * tidak disimpan, dan yang tersisa selalu menunggu konfirmasimu: pemasukan atau pengeluaran.
  * Email yang kamu kirim sendiri tidak pernah dikirim.
  *
@@ -115,7 +114,7 @@ function sinkron() {
     });
   }
   kumpulkan(cfg.query, true);
-  if (cfg.broadQuery) kumpulkan(cfg.broadQuery, false);            // hanya ada bila "Deteksi dari pengirim lain" menyala
+  if (cfg.broadQuery) kumpulkan(cfg.broadQuery, false);            // pembayaran dari pengirim mana pun, bukan hanya bank
   surat.sort(function (a, b) { return a.getDate() - b.getDate(); });
   var lengkap = surat.length <= MAKS_PER_JALAN, terakhir = sejak;
   for (var i = 0; i < surat.length && i < MAKS_PER_JALAN; i++) {

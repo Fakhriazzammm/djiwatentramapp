@@ -122,7 +122,8 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   // Gate 1: only listed issuers. Gate 2: the mail must really come from them (DKIM aligned or DMARC pass).
   let issuer = issuerFor(fromDomain), generic = false;
   if (!issuer) {                                                    // not a listed bank / e-wallet: only when the person opted in, and then never without their say-so
-    const broad = (await d.db.query("select broad from finance.inbound_sources where user_id=$1", [userId])).rows[0]?.broad === true;
+    // Built into the Apps Script (version 2 and later): once that script is in use, payment mail from any sender is read. The older per-user flag still works.
+    const broad = (await d.db.query("select (coalesce((select broad from finance.inbound_sources where user_id=$1), false) or exists(select 1 from finance.inbound_hooks where user_id=$1 and script_version >= 2)) as ok", [userId])).rows[0]?.ok === true;
     if (!broad) return skip("sender-not-allowed");
     issuer = genericIssuer(fromDomain); generic = true;
   }

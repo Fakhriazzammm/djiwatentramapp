@@ -23,7 +23,7 @@ const skip = async (reason: string) => Number((await pool.query("select count(*)
 
 afterAll(async () => {
   if (!pool) return;
-  for (const t of ["inbound_messages", "inbound_skips", "inbound_sources", "sender_hints", "merchant_rules", "entries", "accounts", "profiles"]) await pool.query(`delete from finance.${t} where user_id=$1`, [user]);
+  for (const t of ["inbound_hooks", "inbound_messages", "inbound_skips", "inbound_sources", "sender_hints", "merchant_rules", "entries", "accounts", "profiles"]) await pool.query(`delete from finance.${t} where user_id=$1`, [user]);
   await pool.end();
 });
 
@@ -74,5 +74,14 @@ run("detecting money movements from unknown senders (real database)", () => {
   test("the same money already recorded is not asked about again", async () => {
     const dup = await send(mail({ text: "Pembayaran sebesar Rp 85.000 untuk pesanan #1099 berhasil pada 19/11/2026 13:45. No. Referensi: WK1099", date: NOW }));
     expect(["duplicate", "review"]).toContain(dup.status);
+  });
+
+  test("built into the Apps Script: version 2 reads other senders, an older script does not, no separate switch", async () => {
+    await pool.query("update finance.inbound_sources set broad=false where user_id=$1", [user]);
+    const token = Array.from({ length: 40 }, () => "abcdefghijkmnpqrstuvwxyz23456789"[Math.floor(Math.random() * 32)]).join("");
+    await pool.query("insert into finance.inbound_hooks(user_id,token,script_version) values($1,$2,1)", [user, token]);
+    expect(await send(mail({ text: "Pembayaran sebesar Rp 33.000 untuk pesanan #2001 berhasil pada 19/11/2026 15:00. No. Referensi: WK2001" }))).toMatchObject({ status: "ignored", reason: "sender-not-allowed" });
+    await pool.query("update finance.inbound_hooks set script_version=2 where user_id=$1", [user]);
+    expect(await send(mail({ text: "Pembayaran sebesar Rp 34.000 untuk pesanan #2002 berhasil pada 19/11/2026 15:05. No. Referensi: WK2002" }))).toMatchObject({ status: "review", reason: "new-sender" });
   });
 });
