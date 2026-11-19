@@ -1,8 +1,9 @@
-import { motion } from "framer-motion";
-import { AlertTriangle, Check, Clock, CreditCard, Loader2, Plus, SquarePower, Trash2, Wallet, WalletCards, Banknote } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertTriangle, Camera, Check, ChevronLeft, Clock, Loader2, Lock, Plus, RotateCcw, Send, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { SHIFT_PAYMENT_CHANNELS, type ShiftPaymentBreakdown, type ShiftPaymentChannelKey } from "@/lib/shift-payment-breakdown";
 import { cn } from "@/lib/utils";
+import { CashProofCamera } from "./cash-proof-camera";
 import { AnimatedNumber, formatRp, IOS_SPRING, IosChip, IosSheet, StatusPill } from "./ios-kit";
 
 type Actual = Partial<Record<ShiftPaymentChannelKey, number | null>>;
@@ -42,246 +43,257 @@ export interface EndShiftController {
 	cashInRegister: number;
 	nonCash: number;
 	shiftCash: number;
+	startingCash: number;
+	cashPhoto: string | null;
+	setCashPhoto: (value: string | null) => void;
+	staffName: string;
 }
 
 const BILLS = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100];
 const EXPENSE_CATS = ["Token Listrik", "Bahan Baku", "Operasional", "Lainnya"];
-const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "000", "0", "del"] as const;
+const STEPS = ["CEK", "TUNAI", "KIRIM"] as const;
+const EASE = [0.3, 0.9, 0.3, 1] as const;
 
-const diffTone = (d: number) => (d === 0 ? "ok" : d < 0 ? "warn" : "info") as "ok" | "warn" | "info";
-const diffLabel = (d: number) => (d === 0 ? "Cocok" : d < 0 ? `Kurang ${formatRp(-d)}` : `Lebih ${formatRp(d)}`);
-
-function ChannelIcon({ channel }: { channel: (typeof SHIFT_PAYMENT_CHANNELS)[number] }) {
-	const Icon = channel.key === "tunai_kasir" ? Banknote : channel.key === "djiwa_pay" ? WalletCards : channel.group === "online" ? Wallet : CreditCard;
-	return <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="h-[18px] w-[18px]" aria-hidden="true" /></span>;
-}
+const diffTone = (d: number) => (d === 0 ? "ok" : d < 0 ? "bad" : "warn") as "ok" | "bad" | "warn";
+const diffLabel = (d: number) => (d === 0 ? "✓ Cocok" : d < 0 ? `Kurang ${formatRp(-d)}` : `Lebih ${formatRp(d)}`);
 
 export function EndShiftScreen({ c }: { c: EndShiftController }) {
-	const [channelKey, setChannelKey] = useState<ShiftPaymentChannelKey | null>(null);
+	const [step, setStep] = useState(1);
+	const [dir, setDir] = useState(1);
 	const [expenseOpen, setExpenseOpen] = useState(false);
-	const [cashTouched, setCashTouched] = useState(false);
+	const [cameraOpen, setCameraOpen] = useState(false);
+
+	const go = (next: number) => { setDir(next > step ? 1 : -1); setStep(next); };
 
 	const channels = SHIFT_PAYMENT_CHANNELS;
-	// Uang laci dihitung sekali: tunai POS + Djiwa App "Bayar Tunai di Kasir" digabung di kartu Tunai Kasir.
-	const cashExpected = Number(c.expected.tunai_kasir || 0) + Number(c.expected.djiwaapp_bayar_kasir || 0);
-	const expectedOf = (key: ShiftPaymentChannelKey) => (key === "tunai_kasir" ? cashExpected : Number(c.expected[key] || 0));
-	const required = useMemo(() => channels.filter((ch) => ch.key !== "djiwaapp_bayar_kasir" && expectedOf(ch.key) > 0), [channels, c.expected]);
-	const zero = useMemo(() => channels.filter((ch) => ch.key !== "djiwaapp_bayar_kasir" && expectedOf(ch.key) === 0), [channels, c.expected]);
+	const cashSalesExpected = Number(c.expected.tunai_kasir || 0) + Number(c.expected.djiwaapp_bayar_kasir || 0);
+	const autoChannels = useMemo(() => channels.filter((ch) => ch.key !== "tunai_kasir" && ch.key !== "djiwaapp_bayar_kasir" && Number(c.expected[ch.key] || 0) > 0), [channels, c.expected]);
+	const zeroChannels = useMemo(() => channels.filter((ch) => ch.key !== "tunai_kasir" && ch.key !== "djiwaapp_bayar_kasir" && Number(c.expected[ch.key] || 0) === 0), [channels, c.expected]);
+	const nonCashTotal = autoChannels.reduce((sum, ch) => sum + Number(c.expected[ch.key] || 0), 0);
+	const systemTotal = nonCashTotal + cashSalesExpected;
 
-	// Semua kanal non-tunai sudah tercatat sistem: aktual diisi otomatis sesuai sistem (tanpa cek ulang).
-	// Hanya uang tunai di laci yang dihitung manual.
-	const autoSig = channels.filter((ch) => ch.key !== "tunai_kasir").map((ch) => `${ch.key}:${ch.key === "djiwaapp_bayar_kasir" ? 0 : Number(c.expected[ch.key] || 0)}`).join(",");
+	// Semua kanal non-tunai tercatat sistem: aktual diisi otomatis. Hanya uang laci yang dihitung manual.
+	const autoSig = channels.filter((ch) => ch.key !== "tunai_kasir").map((ch) => `${ch.key}:${Number(c.expected[ch.key] || 0)}`).join(",");
 	useEffect(() => {
 		for (const ch of channels) {
 			if (ch.key === "tunai_kasir") continue;
-			if (ch.key === "djiwaapp_bayar_kasir") { if (Number(c.expected[ch.key] || 0) === 0 && c.actual[ch.key] !== 0) c.onActual(ch.key, "0"); continue; }
 			const exp = Number(c.expected[ch.key] || 0);
+			if (ch.key === "djiwaapp_bayar_kasir") { if (exp === 0 && c.actual[ch.key] !== 0) c.onActual(ch.key, "0"); continue; }
 			if (c.actual[ch.key] !== exp) c.onActual(ch.key, String(exp));
 		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [autoSig]);
 
-	const confirmed = (key: ShiftPaymentChannelKey) => (key === "tunai_kasir" ? cashTouched : true);
-	const doneCount = required.filter((ch) => confirmed(ch.key)).length;
-	const totalExpected = channels.reduce((sum, ch) => sum + Number(c.expected[ch.key] || 0), 0);
-	const totalActual = channels.reduce((sum, ch) => sum + (c.actual[ch.key] == null ? 0 : Number(c.actual[ch.key])), 0);
-	const allConfirmed = doneCount === required.length;
+	const extraTotal = c.extraExpenses.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+	const expenseTotal = c.shiftExpense + extraTotal;
+	const drawerExpected = c.startingCash + c.shiftCash - expenseTotal;
+	const counted = c.cashInRegister;
+	const diff = counted - drawerExpected;
 
 	const activeStaff = c.attendance.filter((member) => member.status === "active");
 	const hasUnfinished = c.closing.unpaid > 0 || c.closing.inProduction > 0;
-	const paymentIncomplete = !allConfirmed || Object.keys(c.expected).some((key) => c.actual[key as ShiftPaymentChannelKey] === null || c.actual[key as ShiftPaymentChannelKey] === undefined);
-	const disabled = c.submitting || c.ordersLoading || !navigator.onLine || c.queuedCount > 0 || (hasUnfinished && !c.handover) || c.attendanceLoading || Boolean(c.attendanceError) || c.gate.blocked || paymentIncomplete;
+	const step1Issues: string[] = [];
+	if (c.ordersLoading) step1Issues.push("pesanan masih dimuat");
+	if (c.queuedCount > 0) step1Issues.push("sinkronkan pesanan offline");
+	if (hasUnfinished && !c.handover) step1Issues.push("centang serah terima pesanan");
+	if (c.attendanceLoading) step1Issues.push("absensi masih dimuat");
+	if (c.attendanceError) step1Issues.push("absensi gagal dimuat");
+	if (activeStaff.length > 0) step1Issues.push(`${activeStaff.length} belum absen keluar`);
+	const step2Issues: string[] = [];
+	if (counted <= 0) step2Issues.push("hitung uang di laci");
+	if (!c.cashPhoto) step2Issues.push("ambil foto bukti tunai");
+	const step3Issues: string[] = [];
+	if (c.gate.blocked) step3Issues.push(c.closeTime ? `tunggu ${c.closeTime} WIB` : "belum jadwal tutup");
+	if (!navigator.onLine) step3Issues.push("butuh koneksi internet");
+	const issues = step === 1 ? step1Issues : step === 2 ? step2Issues : step3Issues;
+	const disabled = c.submitting || issues.length > 0;
 
-	const reasons: string[] = [];
-	if (c.gate.blocked) reasons.push(c.closeTime ? `tunggu ${c.closeTime} WIB` : "jadwal tutup");
-	if (c.queuedCount > 0) reasons.push("sinkronkan pesanan offline");
-	if (hasUnfinished && !c.handover) reasons.push("konfirmasi serah terima");
-	if (activeStaff.length > 0) reasons.push(`${activeStaff.length} belum absen keluar`);
-	if (!allConfirmed) reasons.push(`${required.length - doneCount} kanal`);
-	if (!navigator.onLine) reasons.push("butuh koneksi");
-
-	const channel = channelKey ? channels.find((ch) => ch.key === channelKey) ?? null : null;
-	const checks = [
-		{ ok: c.queuedCount === 0 && !(hasUnfinished && !c.handover), title: "Pesanan", sub: c.ordersLoading ? "Memuat pesanan shift…" : `${c.queuedCount} belum sinkron · ${c.closing.unpaid} belum lunas · ${c.closing.inProduction} produksi` },
-		{ ok: !c.attendanceLoading && !c.attendanceError && activeStaff.length === 0, title: "Absensi tim", sub: c.attendanceError ? c.attendanceError : c.attendanceLoading ? "Memuat absensi…" : activeStaff.length ? `${activeStaff.length} belum absen keluar` : c.attendance.length ? "Semua sudah absen keluar" : "Tidak ada data tim" },
-		{ ok: allConfirmed, title: "Pembayaran", sub: `${doneCount}/${required.length} kanal terkonfirmasi` },
-	];
+	const onCta = () => { if (step < 3) go(step + 1); else c.onEnd(); };
+	const stampText = `${new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "short", timeStyle: "medium" })} WIB · ${c.staffName || c.cashierName || "Kasir"} · ${formatRp(counted)}`;
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
-			<div className="min-h-0 flex-1 overflow-y-auto pb-4">
-				<div className="px-0.5 pb-3">
-					<h3 className="text-[22px] font-extrabold tracking-tight">Akhiri shift</h3>
-					<p className="text-[13px] text-muted-foreground">{c.shiftName || "Shift berjalan"} · {c.cashierName || "Kasir"}</p>
+			{/* Stepper */}
+			<div className="shrink-0 pb-2">
+				<div className="flex items-center gap-2">
+					<AnimatePresence initial={false}>
+						{step > 1 ? <motion.button key="back" type="button" initial={{ width: 0, opacity: 0 }} animate={{ width: 32, opacity: 1 }} exit={{ width: 0, opacity: 0 }} onClick={() => go(step - 1)} aria-label="Langkah sebelumnya" className="flex h-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted"><ChevronLeft className="h-5 w-5" /></motion.button> : null}
+					</AnimatePresence>
+					<div className="min-w-0 flex-1"><p className="truncate text-[15px] font-extrabold tracking-tight">Tutup kasir</p><p className="truncate text-[12px] text-muted-foreground">{c.shiftName || "Shift berjalan"} · {c.cashierName || "Kasir"}</p></div>
 				</div>
+				<div className="mt-2.5 flex gap-1.5">{STEPS.map((_, i) => <span key={i} className="relative h-[5px] flex-1 overflow-hidden rounded-full bg-border"><motion.span initial={false} animate={{ scaleX: i < step ? 1 : 0 }} transition={{ duration: 0.5, ease: EASE }} className="absolute inset-0 origin-left rounded-full bg-primary" /></span>)}</div>
+				<div className="mt-1.5 flex">{STEPS.map((label, i) => <span key={label} className={cn("flex-1 text-[11px] font-bold tracking-wide transition-colors", i + 1 === step ? "text-primary" : "text-muted-foreground")}>{i + 1} · {label}</span>)}</div>
+			</div>
 
-				{c.closeTime ? (
-					<div className={cn("mb-3 flex items-start gap-2.5 rounded-2xl px-3.5 py-3 text-[12.5px] font-semibold", c.gate.blocked ? "bg-amber-50 text-amber-900" : "bg-emerald-50 text-emerald-800")}>
-						<Clock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-						<span>{c.gate.blocked ? c.gate.message : `Jadwal tutup ${c.closeTime} WIB sudah tercapai.`}</span>
-					</div>
-				) : c.gate.blocked ? <div className="mb-3 flex items-start gap-2.5 rounded-2xl bg-amber-50 px-3.5 py-3 text-[12.5px] font-semibold text-amber-900"><Clock className="mt-0.5 h-4 w-4 shrink-0" />{c.gate.message}</div> : null}
+			{/* Halaman */}
+			<div className="relative min-h-0 flex-1 overflow-x-hidden">
+				<AnimatePresence mode="wait" initial={false} custom={dir}>
+					<motion.div key={step} custom={dir} initial={{ opacity: 0, x: dir * 36 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: dir * -36 }} transition={{ duration: 0.28, ease: EASE }} className="h-full overflow-y-auto pb-3">
+						{step === 1 ? (
+							<div>
+								{c.gate.blocked ? <div className="mb-2.5 flex items-start gap-2 rounded-2xl bg-amber-50 px-3 py-2.5 text-[12.5px] font-semibold text-amber-900"><Clock className="mt-0.5 h-4 w-4 shrink-0" />{c.gate.message}</div> : null}
+								<div className="grid grid-cols-2 gap-2">
+									<div className="rounded-2xl bg-primary px-3.5 py-3 text-primary-foreground"><p className="text-[10.5px] font-bold tracking-wider opacity-80">PEMASUKAN SISTEM</p><AnimatedNumber value={systemTotal} className="text-[20px] font-extrabold tracking-tight" /></div>
+									<div className="rounded-2xl border border-border bg-card px-3.5 py-3"><p className="text-[10.5px] font-bold tracking-wider text-muted-foreground">NON-TUNAI</p><AnimatedNumber value={nonCashTotal} className="text-[20px] font-extrabold tracking-tight" /></div>
+								</div>
 
-				{/* Kesiapan */}
-				<div className="overflow-hidden rounded-[20px] border border-border bg-card">
-					{checks.map((item, index) => (
-						<div key={item.title} className={cn("flex items-center gap-3 px-3.5 py-3", index > 0 && "border-t border-border/70")}>
-							<motion.span layout initial={false} animate={{ scale: item.ok ? [1, 1.25, 1] : 1 }} transition={IOS_SPRING} className={cn("flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full", item.ok ? "bg-emerald-500 text-white" : "bg-amber-50 text-amber-700")}>
-								{item.ok ? <Check className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-							</motion.span>
-							<div className="min-w-0 flex-1"><p className="text-[14px] font-bold">{item.title}</p><p className="text-[12px] text-muted-foreground">{item.sub}</p></div>
-						</div>
-					))}
-					{c.queuedCount > 0 ? <p role="alert" className="border-t border-border/70 bg-amber-50 px-3.5 py-2.5 text-[12px] font-semibold text-amber-800">Kirim pesanan offline lewat Pusat sinkronisasi sebelum melanjutkan.</p> : null}
-					{hasUnfinished ? (
-						<label className="flex cursor-pointer items-start gap-3 border-t border-border/70 px-3.5 py-3 text-[13px]">
-							<input type="checkbox" checked={c.handover} onChange={(event) => c.setHandover(event.target.checked)} className="mt-0.5 h-5 w-5 shrink-0" />
-							<span>Ada {c.closing.unpaid} pesanan belum lunas dan {c.closing.inProduction} dalam produksi. Saya konfirmasi sudah serah terima ke shift berikutnya.</span>
-						</label>
-					) : null}
-					{activeStaff.length > 0 ? <div className="border-t border-border/70 bg-amber-50 px-3.5 py-2.5 text-[12px] font-semibold text-amber-800">Belum absen keluar: {activeStaff.map((member) => member.name).join(", ")}</div> : null}
-				</div>
-
-				{/* Pembayaran */}
-				<p className="px-1 pb-2 pt-5 text-[11px] font-bold tracking-[0.08em] text-muted-foreground">KONFIRMASI PEMBAYARAN</p>
-				{(["direct", "online"] as const).map((group) => {
-					const list = required.filter((ch) => ch.group === group);
-					if (!list.length) return null;
-					return (
-						<div key={group} className="mb-1">
-							<p className="px-1 pb-1.5 text-[12px] font-bold text-muted-foreground">{group === "direct" ? "Langsung" : "Online food"}</p>
-							{list.map((ch) => {
-								const exp = expectedOf(ch.key);
-								const isCash = ch.key === "tunai_kasir";
-								const isConfirmed = confirmed(ch.key);
-								const act = ch.key === "tunai_kasir" ? c.cashInRegister : exp;
-								return (
-									<motion.button key={ch.key} type="button" disabled={!isCash} whileTap={isCash ? { scale: 0.985 } : undefined} onClick={() => isCash && setChannelKey(ch.key)} className="mb-2 flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 text-left disabled:cursor-default">
-										<ChannelIcon channel={ch} />
-										<div className="min-w-0 flex-1"><p className="truncate text-[14px] font-bold">{ch.label}</p><p className="text-[12px] text-muted-foreground">Sistem {formatRp(exp)}</p></div>
-										<div className="shrink-0 text-right">
-											<p className="text-[14px] font-extrabold tabular-nums">{isConfirmed ? formatRp(act) : "—"}</p>
-											<StatusPill tone={isCash ? (isConfirmed ? diffTone(act - exp) : "neutral") : "ok"}>{isCash ? (isConfirmed ? diffLabel(act - exp) : "Belum dihitung") : "Otomatis sistem"}</StatusPill>
+								<p className="px-1 pb-1.5 pt-4 text-[11px] font-bold tracking-[0.08em] text-muted-foreground">KESIAPAN</p>
+								<div className="overflow-hidden rounded-[18px] border border-border bg-card">
+									{[
+										{ ok: !c.ordersLoading && c.queuedCount === 0 && !(hasUnfinished && !c.handover), title: "Pesanan", sub: c.ordersLoading ? "Memuat pesanan…" : `${c.queuedCount} belum sinkron · ${c.closing.unpaid} belum lunas`, tag: `${c.closing.inProduction} produksi` },
+										{ ok: !c.attendanceLoading && !c.attendanceError && activeStaff.length === 0, title: "Absensi tim", sub: c.attendanceError ?? (c.attendanceLoading ? "Memuat absensi…" : activeStaff.length ? `Belum absen keluar: ${activeStaff.map((m) => m.name).join(", ")}` : c.attendance.length ? "Semua sudah absen keluar" : "Tidak ada data tim"), tag: "" },
+									].map((item, index) => (
+										<div key={item.title} className={cn("flex items-center gap-3 px-3.5 py-2.5", index > 0 && "border-t border-border/70")}>
+											<motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={IOS_SPRING} className={cn("flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full", item.ok ? "bg-emerald-500 text-white" : "bg-amber-50 text-amber-700")}>{item.ok ? <Check className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}</motion.span>
+											<div className="min-w-0 flex-1"><p className="text-[14px] font-bold">{item.title}</p><p className="text-[12px] text-muted-foreground">{item.sub}</p></div>
+											{item.tag ? <StatusPill tone="neutral">{item.tag}</StatusPill> : null}
 										</div>
-									</motion.button>
-								);
-							})}
-						</div>
-					);
-				})}
-				{zero.length > 0 ? (
-					<div className="pt-1">
-						<p className="px-1 pb-1.5 text-[12px] font-bold text-muted-foreground">Tanpa transaksi ({zero.length})</p>
-						{zero.map((ch) => (
-							<div key={ch.key} className="flex w-full items-center justify-between px-1 py-1.5 text-[13px] text-muted-foreground"><span>{ch.label}</span><span>Rp 0 · Otomatis</span></div>
-						))}
-						<p className="px-1 pb-2 pt-1 text-[11.5px] text-muted-foreground">Terisi otomatis oleh sistem dari transaksi shift ini.</p>
-					</div>
-				) : null}
+									))}
+									{c.queuedCount > 0 ? <p role="alert" className="border-t border-border/70 bg-amber-50 px-3.5 py-2 text-[12px] font-semibold text-amber-800">Kirim pesanan offline lewat Pusat sinkronisasi dulu.</p> : null}
+									{hasUnfinished ? (
+										<label className="flex cursor-pointer items-start gap-3 border-t border-border/70 px-3.5 py-2.5 text-[13px]">
+											<input type="checkbox" checked={c.handover} onChange={(event) => c.setHandover(event.target.checked)} className="mt-0.5 h-5 w-5 shrink-0" />
+											<span>{c.closing.unpaid} belum lunas dan {c.closing.inProduction} dalam produksi. Saya sudah serah terima ke shift berikutnya.</span>
+										</label>
+									) : null}
+								</div>
 
-				{/* Pengeluaran */}
-				<p className="px-1 pb-2 pt-4 text-[11px] font-bold tracking-[0.08em] text-muted-foreground">PENGELUARAN</p>
-				{c.shiftExpense > 0 ? (
-					<div className="mb-2 rounded-2xl bg-rose-50 px-3.5 py-2.5">
-						<div className="flex justify-between text-[12px] font-bold text-rose-700"><span>Pengeluaran shift</span><span className="tabular-nums">{formatRp(c.shiftExpense)}</span></div>
-						{c.expenseRows.map((row, i) => <div key={i} className="mt-1 flex justify-between gap-3 text-[12px] text-rose-700/90"><span className="truncate">{row.category || "Lainnya"}{row.description ? ` — ${row.description}` : ""}</span><span className="shrink-0 tabular-nums">{formatRp(row.amount)}</span></div>)}
-					</div>
-				) : null}
-				{c.extraExpenses.map((exp, index) => (
-					<div key={exp.id} className="mb-2 flex items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-2.5">
-						<div className="min-w-0 flex-1"><p className="truncate text-[14px] font-bold">{exp.category}{exp.description ? ` — ${exp.description}` : ""}</p><p className="text-[12px] text-muted-foreground">{exp.savedId ? "Sudah tersimpan" : `Pengeluaran #${index + 1} · dicatat saat tutup`}</p></div>
-						<b className="tabular-nums text-rose-600">{formatRp(Number(exp.amount) || 0)}</b>
-						{!exp.savedId ? <button type="button" aria-label="Hapus pengeluaran" onClick={() => c.setExtraExpenses((prev) => prev.filter((e) => e.id !== exp.id))} className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-600"><Trash2 className="h-4 w-4" /></button> : null}
-					</div>
-				))}
-				<button type="button" onClick={() => setExpenseOpen(true)} className="flex h-11 w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border text-[13px] font-bold text-muted-foreground"><Plus className="h-4 w-4" />Tambah pengeluaran</button>
+								<div className="flex items-center justify-between px-1 pb-1.5 pt-4"><p className="text-[11px] font-bold tracking-[0.08em] text-muted-foreground">PEMBAYARAN</p><span className="flex items-center gap-1.5 text-[10.5px] font-extrabold text-emerald-600"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />TERISI OTOMATIS</span></div>
+								<div className="overflow-hidden rounded-[18px] border border-border bg-card">
+									{autoChannels.map((ch, index) => (
+										<motion.div key={ch.key} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className={cn("flex items-center gap-3 px-3.5 py-2.5", index > 0 && "border-t border-border/70")}>
+											<span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white"><Check className="h-3.5 w-3.5" /></span>
+											<p className="min-w-0 flex-1 truncate text-[14px] font-bold">{ch.label}</p>
+											<p className="text-[14px] font-extrabold tabular-nums">{formatRp(Number(c.expected[ch.key] || 0))}</p>
+										</motion.div>
+									))}
+									<div className={cn("flex items-center gap-3 px-3.5 py-2.5", autoChannels.length > 0 && "border-t border-border/70")}>
+										<span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><Lock className="h-3.5 w-3.5" /></span>
+										<div className="min-w-0 flex-1"><p className="text-[14px] font-bold">Tunai (POS + Djiwa App di kasir)</p><p className="text-[12px] text-muted-foreground">Dihitung manual di langkah 2</p></div>
+										<p className="text-[14px] font-extrabold tabular-nums">{formatRp(cashSalesExpected)}</p>
+									</div>
+									{zeroChannels.length > 0 ? (
+										<div className="border-t border-border/70 px-3.5 py-2.5">
+											<p className="pb-1.5 text-[12px] font-bold text-muted-foreground">Tanpa transaksi · Rp 0 terisi otomatis</p>
+											<div className="flex flex-wrap gap-1.5">{zeroChannels.map((ch) => <span key={ch.key} className="rounded-full bg-emerald-50 px-2.5 py-1 text-[12px] font-semibold text-emerald-700">✓ {ch.label.split(" — ")[0]}</span>)}</div>
+										</div>
+									) : null}
+								</div>
 
-				<p className="px-1 pb-2 pt-5 text-[11px] font-bold tracking-[0.08em] text-muted-foreground">CATATAN / KENDALA</p>
-				<textarea value={c.notes} onChange={(event) => c.setNotes(event.target.value)} placeholder="Contoh: selisih uang Rp 2.000, barang rusak…" rows={2} className="w-full resize-none rounded-[14px] bg-muted px-3.5 py-3 text-[15px] outline-none placeholder:text-muted-foreground focus:bg-background focus:shadow-[0_0_0_1px_var(--border)]" />
-				{c.notice ? <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2.5 text-[12px] font-semibold text-amber-800">{c.notice}</p> : null}
-				{c.error ? <p role="alert" className="mt-2 rounded-xl bg-rose-50 px-3 py-2.5 text-[12px] font-semibold text-rose-700">{c.error}</p> : null}
-			</div>
-
-			{/* Bar total menempel */}
-			<div className="shrink-0 border-t border-border bg-background pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2.5">
-				<div className="mb-2 flex rounded-2xl bg-muted py-2.5 text-center">
-					<div className="flex-1"><p className="text-[10.5px] font-bold tracking-wider text-muted-foreground">SISTEM</p><p className="text-[14px] font-extrabold tabular-nums">{formatRp(totalExpected)}</p></div>
-					<div className="flex-1"><p className="text-[10.5px] font-bold tracking-wider text-muted-foreground">AKTUAL</p><AnimatedNumber value={totalActual} className="text-[14px] font-extrabold" /></div>
-					<div className="flex-1"><p className="text-[10.5px] font-bold tracking-wider text-muted-foreground">BEDA</p><p className={cn("text-[14px] font-extrabold tabular-nums", allConfirmed ? (totalActual === totalExpected ? "text-emerald-600" : totalActual < totalExpected ? "text-amber-700" : "text-primary") : "text-muted-foreground")}>{allConfirmed ? formatRp(totalActual - totalExpected) : "—"}</p></div>
-				</div>
-				<motion.button type="button" whileTap={{ scale: disabled ? 1 : 0.97 }} disabled={disabled} onClick={() => c.setShowConfirm(true)} className="flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-rose-600 text-[15px] font-bold text-white transition-colors disabled:bg-muted disabled:text-muted-foreground">
-					{c.submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : c.gate.blocked ? <Clock className="h-5 w-5" /> : <SquarePower className="h-5 w-5" />}
-					{c.gate.blocked && c.closeTime ? `Tunggu sampai ${c.closeTime} WIB` : "Akhiri & kirim laporan"}
-				</motion.button>
-				<p className="mt-1.5 min-h-4 text-center text-[12px] text-muted-foreground">{disabled && reasons.length ? `Lengkapi: ${reasons.join(", ")}` : disabled ? "" : "Semua siap ditutup"}</p>
-			</div>
-
-			<ChannelSheet channel={channel} onClose={() => setChannelKey(null)} c={c} expected={channel ? expectedOf(channel.key) : 0} onCashTouched={() => setCashTouched(true)} />
-			<ExpenseSheet open={expenseOpen} onClose={() => setExpenseOpen(false)} onAdd={(row) => { c.setExtraExpenses((prev) => [...prev, row]); setExpenseOpen(false); }} />
-			<IosSheet open={c.showConfirm} onClose={() => c.setShowConfirm(false)} title="Konfirmasi tutup shift" heightClass="max-h-[80dvh]" footer={
-				<div className="flex gap-2.5">
-					<button type="button" onClick={() => c.setShowConfirm(false)} className="h-12 flex-1 rounded-2xl bg-muted text-[15px] font-bold">Kembali</button>
-					<motion.button type="button" whileTap={{ scale: 0.97 }} disabled={c.submitting} onClick={c.onEnd} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-rose-600 text-[15px] font-bold text-white disabled:opacity-60">{c.submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}Akhiri shift</motion.button>
-				</div>
-			}>
-				<div className="space-y-2 pb-2 text-[14px]">
-					<div className="flex justify-between"><span className="text-muted-foreground">Shift</span><b>{c.shiftName}</b></div>
-					<div className="flex justify-between"><span className="text-muted-foreground">Kasir</span><b>{c.cashierName}</b></div>
-					<div className="flex justify-between"><span className="text-muted-foreground">Uang fisik</span><b className="tabular-nums">{formatRp(c.cashInRegister)}</b></div>
-					<div className="flex justify-between"><span className="text-muted-foreground">QRIS / EDC</span><b className="tabular-nums">{formatRp(c.nonCash)}</b></div>
-					{(() => { const diff = c.cashInRegister - c.shiftCash; return <div className={cn("flex justify-between", diff === 0 ? "text-emerald-600" : diff > 0 ? "text-amber-600" : "text-rose-600")}><span>Selisih tunai</span><b className="tabular-nums">{diffLabel(diff)}</b></div>; })()}
-					{c.shiftExpense > 0 ? <div className="flex justify-between"><span className="text-muted-foreground">Pengeluaran</span><b className="tabular-nums">{formatRp(c.shiftExpense)}</b></div> : null}
-					{c.notes ? <p className="border-t border-border pt-2 text-[13px] text-muted-foreground">Catatan: {c.notes}</p> : null}
-				</div>
-			</IosSheet>
-		</div>
-	);
-}
-
-function ChannelSheet({ channel, onClose, c, expected, onCashTouched }: { channel: (typeof SHIFT_PAYMENT_CHANNELS)[number] | null; onClose: () => void; c: EndShiftController; expected: number; onCashTouched: () => void }) {
-	const [text, setText] = useState("");
-	const [lastKey, setLastKey] = useState<string | null>(null);
-	if ((channel?.key ?? null) !== lastKey) {
-		setLastKey(channel?.key ?? null);
-		if (channel && channel.key !== "tunai_kasir") setText(c.actual[channel.key] ? String(c.actual[channel.key]) : "");
-	}
-	const isCash = channel?.key === "tunai_kasir";
-	const value = isCash ? c.cashInRegister : Number(text) || 0;
-	const press = (key: (typeof KEYS)[number]) => setText((cur) => (key === "del" ? cur.slice(0, -1) : `${cur}${key}`.replace(/^0+(?=\d)/, "").slice(0, 10)));
-	const save = () => {
-		if (!channel) return;
-		if (isCash) onCashTouched();
-		else c.onActual(channel.key, text === "" ? "0" : text);
-		onClose();
-	};
-	return (
-		<IosSheet open={Boolean(channel)} onClose={onClose} title={channel?.label} heightClass="max-h-[92dvh]" footer={<motion.button type="button" whileTap={{ scale: 0.97 }} onClick={save} className="h-[52px] w-full rounded-2xl bg-primary text-[16px] font-bold text-primary-foreground">Simpan</motion.button>}>
-			<div className="flex items-center justify-between text-[13px] text-muted-foreground"><span>Menurut sistem <b className="text-foreground">{formatRp(expected)}</b></span><StatusPill tone={diffTone(value - expected)}>{diffLabel(value - expected)}</StatusPill></div>
-			{isCash ? (
-				<div className="pb-2">
-					<div className="flex items-center justify-between pb-1 pt-2"><p className="text-[28px] font-extrabold tabular-nums">{formatRp(c.cashInRegister)}</p><button type="button" onClick={() => { c.onAutoFillCash(); onCashTouched(); }} className="h-9 rounded-full bg-primary/10 px-3.5 text-[12.5px] font-bold text-primary">Isi sesuai estimasi</button></div>
-					{BILLS.map((bill) => {
-						const key = `bill${bill}`;
-						const count = c.breakdown[key] || 0;
-						return (
-							<div key={bill} className="flex items-center gap-3 border-b border-border/60 py-2">
-								<span className="w-24 text-[14px] font-bold">{formatRp(bill)}</span>
-								<span className="flex items-center rounded-full bg-muted"><button type="button" aria-label={`Kurangi ${bill}`} onClick={() => { c.onBreakdown(key, count - 1); onCashTouched(); }} className="h-9 w-9 text-[18px] font-bold text-primary">−</button><b className="min-w-7 text-center tabular-nums">{count}</b><button type="button" aria-label={`Tambah ${bill}`} onClick={() => { c.onBreakdown(key, count + 1); onCashTouched(); }} className="h-9 w-9 text-[18px] font-bold text-primary">+</button></span>
-								<span className="flex-1 text-right text-[13px] tabular-nums text-muted-foreground">{formatRp(bill * count)}</span>
+								<p className="px-1 pb-1.5 pt-4 text-[11px] font-bold tracking-[0.08em] text-muted-foreground">PENGELUARAN</p>
+								{c.shiftExpense > 0 ? (
+									<div className="mb-2 rounded-2xl bg-rose-50 px-3.5 py-2.5">
+										<div className="flex justify-between text-[12px] font-bold text-rose-700"><span>Pengeluaran shift</span><span className="tabular-nums">{formatRp(c.shiftExpense)}</span></div>
+										{c.expenseRows.map((row, i) => <div key={i} className="mt-1 flex justify-between gap-3 text-[12px] text-rose-700/90"><span className="truncate">{row.category || "Lainnya"}{row.description ? ` — ${row.description}` : ""}</span><span className="shrink-0 tabular-nums">{formatRp(row.amount)}</span></div>)}
+									</div>
+								) : null}
+								{c.extraExpenses.map((exp, index) => (
+									<div key={exp.id} className="mb-2 flex items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-2.5">
+										<div className="min-w-0 flex-1"><p className="truncate text-[14px] font-bold">{exp.category}{exp.description ? ` — ${exp.description}` : ""}</p><p className="text-[12px] text-muted-foreground">{exp.savedId ? "Sudah tersimpan" : `Pengeluaran #${index + 1} · dicatat saat tutup`}</p></div>
+										<b className="tabular-nums text-rose-600">{formatRp(Number(exp.amount) || 0)}</b>
+										{!exp.savedId ? <button type="button" aria-label="Hapus pengeluaran" onClick={() => c.setExtraExpenses((prev) => prev.filter((e) => e.id !== exp.id))} className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-600"><Trash2 className="h-4 w-4" /></button> : null}
+									</div>
+								))}
+								<button type="button" onClick={() => setExpenseOpen(true)} className="flex h-11 w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border bg-card text-[13px] font-bold text-muted-foreground"><Plus className="h-4 w-4" />Tambah pengeluaran</button>
 							</div>
-						);
-					})}
+						) : null}
+
+						{step === 2 ? (
+							<div>
+								<div className="rounded-[18px] border border-border bg-card px-3 py-3 text-center">
+									<p className="text-[11px] font-bold tracking-wider text-muted-foreground">SEHARUSNYA ADA DI LACI</p>
+									<p className="my-0.5 text-[30px] font-extrabold leading-tight tracking-tight tabular-nums">{formatRp(drawerExpected)}</p>
+									<p className="text-[11.5px] text-muted-foreground">Modal {formatRp(c.startingCash)} + tunai {formatRp(c.shiftCash)} − pengeluaran {formatRp(expenseTotal)}</p>
+								</div>
+
+								<p className="px-1 pb-1.5 pt-4 text-[11px] font-bold tracking-[0.08em] text-muted-foreground">HITUNG UANG DI LACI</p>
+								<div className="mb-2 rounded-[18px] border border-border bg-card px-3 py-3 text-center">
+									<p className="text-[11px] font-bold tracking-wider text-muted-foreground">TOTAL DIHITUNG</p>
+									<AnimatedNumber value={counted} className="my-0.5 block text-[34px] font-extrabold leading-tight tracking-tight" />
+									<motion.span key={counted === 0 ? "none" : diffLabel(diff)} initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={IOS_SPRING} className="inline-block"><StatusPill tone={counted === 0 ? "neutral" : diffTone(diff)}>{counted === 0 ? "Belum dihitung" : diffLabel(diff)}</StatusPill></motion.span>
+								</div>
+								<div className="grid grid-cols-2 gap-2">
+									{BILLS.map((bill) => {
+										const key = `bill${bill}`;
+										const count = c.breakdown[key] || 0;
+										return (
+											<div key={bill} className={cn("flex items-center gap-1.5 rounded-2xl border px-2.5 py-2 transition-colors", count > 0 ? "border-primary bg-primary/10" : "border-border bg-card")}>
+												<div className="min-w-0 flex-1"><p className="text-[13px] font-extrabold tabular-nums">{bill.toLocaleString("id-ID")}</p><p className="text-[11px] font-semibold tabular-nums text-muted-foreground">{formatRp(bill * count)}</p></div>
+												<motion.button type="button" whileTap={{ scale: 0.8 }} aria-label={`Kurangi ${bill}`} onClick={() => { c.onBreakdown(key, count - 1); navigator.vibrate?.(8); }} className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-[19px] font-bold text-primary">−</motion.button>
+												<motion.b key={count} initial={{ scale: 1.3 }} animate={{ scale: 1 }} className="min-w-5 text-center tabular-nums">{count}</motion.b>
+												<motion.button type="button" whileTap={{ scale: 0.8 }} aria-label={`Tambah ${bill}`} onClick={() => { c.onBreakdown(key, count + 1); navigator.vibrate?.(8); }} className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-[19px] font-bold text-primary">+</motion.button>
+											</div>
+										);
+									})}
+								</div>
+								<div className="mt-2.5 flex justify-center gap-2"><IosChip onClick={() => c.onAutoFillCash()}>Pas sesuai sistem</IosChip><IosChip onClick={() => BILLS.forEach((bill) => c.onBreakdown(`bill${bill}`, 0))}>Reset</IosChip></div>
+
+								<p className="px-1 pb-1.5 pt-4 text-[11px] font-bold tracking-[0.08em] text-muted-foreground">FOTO BUKTI TUNAI <span className="text-rose-600">WAJIB</span></p>
+								{c.cashPhoto ? (
+									<div className="relative overflow-hidden rounded-[18px] border-2 border-emerald-500">
+										<img src={c.cashPhoto} alt="Foto bukti tunai" className="block w-full" />
+										<span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-1 text-[11px] font-bold text-white"><Check className="h-3 w-3" />Foto tersimpan</span>
+										<button type="button" onClick={() => { c.setCashPhoto(null); setCameraOpen(true); }} className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/60 px-3 py-1.5 text-[12px] font-bold text-white"><RotateCcw className="h-3.5 w-3.5" />Ulangi</button>
+									</div>
+								) : (
+									<motion.button type="button" whileTap={{ scale: 0.98 }} onClick={() => setCameraOpen(true)} className="flex min-h-[130px] w-full flex-col items-center justify-center gap-1 rounded-[18px] border-2 border-dashed border-border bg-card px-4 text-center">
+										<Camera className="h-8 w-8 text-primary" />
+										<b className="text-[14px]">Ambil foto uang tunai</b>
+										<span className="text-[12px] text-muted-foreground">Hanya lewat kamera, tidak bisa dari galeri. Susun semua uang dalam satu frame.</span>
+									</motion.button>
+								)}
+								<p className="px-1 pt-2 text-[11.5px] text-muted-foreground">🔒 Foto otomatis diberi cap waktu, kasir, dan nominal.</p>
+
+								<p className="px-1 pb-1.5 pt-4 text-[11px] font-bold tracking-[0.08em] text-muted-foreground">CATATAN / KENDALA</p>
+								<textarea value={c.notes} onChange={(event) => c.setNotes(event.target.value)} placeholder="Contoh: selisih uang Rp 2.000, barang rusak…" rows={2} className="w-full resize-none rounded-[14px] bg-muted px-3.5 py-3 text-[15px] outline-none placeholder:text-muted-foreground focus:bg-background focus:shadow-[0_0_0_1px_var(--border)]" />
+							</div>
+						) : null}
+
+						{step === 3 ? (
+							<div>
+								<div className="overflow-hidden rounded-[18px] border border-border bg-card text-[14px]">
+									{[
+										["Pendapatan sistem", formatRp(systemTotal)],
+										["Non-tunai (otomatis)", formatRp(nonCashTotal)],
+										["Tunai seharusnya di laci", formatRp(drawerExpected)],
+										["Tunai dihitung kasir", formatRp(counted)],
+									].map(([label, value], i) => <div key={label} className={cn("flex justify-between px-3.5 py-2.5", i > 0 && "border-t border-border/70")}><span className="text-muted-foreground">{label}</span><b className="tabular-nums">{value}</b></div>)}
+									<div className="flex items-center justify-between border-t border-border/70 px-3.5 py-2.5"><span className="text-muted-foreground">Selisih tunai</span><StatusPill tone={diffTone(diff)}>{diffLabel(diff)}</StatusPill></div>
+								</div>
+								<p className="px-1 pb-1.5 pt-4 text-[11px] font-bold tracking-[0.08em] text-muted-foreground">DIKIRIM OTOMATIS KE TELEGRAM</p>
+								<div className="rounded-[18px] bg-[#17212b] p-3 text-[#e8eef5]">
+									<div className="mb-2 flex items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-violet-500 text-[12px] font-extrabold text-white">K</span><div><p className="text-[12.5px] font-bold">Kaelis | Supervisor Djiwa Tentram</p><p className="text-[11px] text-[#7f93a6]">@YummeSupervisorAIbot</p></div></div>
+									<div className="rounded-xl rounded-bl-sm bg-[#2b5278] p-2.5 text-[12.5px] leading-relaxed">
+										{c.cashPhoto ? <img src={c.cashPhoto} alt="" className="mb-2 block w-full rounded-lg" /> : null}
+										<p className="font-bold">📊 LAPORAN TUTUP SHIFT</p>
+										<p>🏪 Djiwa Tentram · {c.shiftName}</p>
+										<p>💰 Sistem {formatRp(systemTotal)} · 💵 Laci {formatRp(counted)}</p>
+										<p>{diff === 0 ? "✅ Tunai cocok" : diff < 0 ? `⬇️ Kurang ${formatRp(-diff)}` : `⬆️ Lebih ${formatRp(diff)}`}</p>
+									</div>
+								</div>
+								<p className="px-1 pt-2 text-[12px] text-muted-foreground">📨 Terkirim ke grup <b>Report</b>, <b>Transaksi</b>, <b>Bar</b>, dan <b>Kitchen</b> beserta foto tunai.</p>
+								{c.notice ? <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2.5 text-[12px] font-semibold text-amber-800">{c.notice}</p> : null}
+								{c.error ? <p role="alert" className="mt-2 rounded-xl bg-rose-50 px-3 py-2.5 text-[12px] font-semibold text-rose-700">{c.error}</p> : null}
+							</div>
+						) : null}
+					</motion.div>
+				</AnimatePresence>
+			</div>
+
+			{/* Bar bawah */}
+			<div className="shrink-0 border-t border-border bg-background pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2">
+				<div className="mb-2 flex gap-1.5">
+					{[["SISTEM", formatRp(systemTotal)], ["TUNAI", formatRp(counted)], ["BEDA TUNAI", counted === 0 ? "—" : diff === 0 ? "Cocok" : `${diff < 0 ? "−" : "+"}${formatRp(Math.abs(diff))}`]].map(([label, value]) => <div key={label} className="flex-1 rounded-xl bg-muted py-1.5 text-center"><p className="text-[10px] font-extrabold tracking-wider text-muted-foreground">{label}</p><p className="text-[13px] font-extrabold tabular-nums">{value}</p></div>)}
 				</div>
-			) : (
-				<>
-					<motion.p key={text} initial={{ scale: 1.05 }} animate={{ scale: 1 }} transition={IOS_SPRING} className="my-3 text-center text-[36px] font-extrabold tabular-nums">{formatRp(Number(text) || 0)}</motion.p>
-					<div className="flex justify-center pb-2"><IosChip onClick={() => setText(String(expected))}>Sama dengan sistem</IosChip></div>
-					<div className="grid grid-cols-3 gap-2 pb-1">
-						{KEYS.map((key) => <motion.button key={key} type="button" whileTap={{ scale: 0.92 }} transition={IOS_SPRING} onClick={() => press(key)} className="flex h-[50px] items-center justify-center rounded-2xl bg-muted text-[21px] font-semibold">{key === "del" ? "⌫" : key}</motion.button>)}
-					</div>
-				</>
-			)}
-		</IosSheet>
+				<motion.button type="button" whileTap={{ scale: disabled ? 1 : 0.97 }} disabled={disabled} onClick={onCta} className={cn("flex h-[50px] w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-bold text-white transition-colors disabled:bg-muted disabled:text-muted-foreground", step === 3 ? "bg-rose-600" : "bg-primary")}>
+					{c.submitting ? <><Loader2 className="h-5 w-5 animate-spin" />Mengirim laporan & foto…</> : step === 1 ? "Lanjut hitung tunai →" : step === 2 ? "Lanjut tinjau & kirim →" : <><Send className="h-5 w-5" />Akhiri & kirim laporan</>}
+				</motion.button>
+				<p className="mt-1 min-h-4 text-center text-[12px] text-muted-foreground">{issues.length ? `Lengkapi: ${issues.join(", ")}` : ""}</p>
+			</div>
+
+			<CashProofCamera open={cameraOpen} stampText={stampText} onClose={() => setCameraOpen(false)} onCapture={(dataUrl) => { c.setCashPhoto(dataUrl); setCameraOpen(false); }} />
+			<ExpenseSheet open={expenseOpen} onClose={() => setExpenseOpen(false)} onAdd={(row) => { c.setExtraExpenses((prev) => [...prev, row]); setExpenseOpen(false); }} />
+		</div>
 	);
 }
 

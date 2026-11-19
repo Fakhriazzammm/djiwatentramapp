@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Prototype Tutup Kasir</title>
+<style>
+:root{color-scheme:light;--bg:#f6f8fc;--card:#fff;--fg:#1b2030;--mut:#7a8194;--line:#e6e8ee;--pri:#2f5fd0;--pri-s:#e8eefc;--ok:#13a86b;--ok-s:#e3f6ee;--warn:#b5620a;--warn-s:#fff4e0;--bad:#d9304a;--bad-s:#fde8ec;--r:18px}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#e9eef8;font:15px/1.4 -apple-system,"SF Pro Text",system-ui,sans-serif;color:var(--fg);display:flex;justify-content:center;}
+.phone{width:100%;max-width:430px;height:860px;background:var(--bg);position:relative;display:flex;flex-direction:column;overflow:hidden;margin:auto}
+@media(min-width:500px){.phone{border-radius:34px;box-shadow:0 20px 60px #0004;height:860px}}
+header{padding:14px 16px 10px;background:var(--card);border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;gap:10px}
+.back,.x{width:34px;height:34px;border-radius:50%;background:var(--bg);border:0;color:var(--fg);font-size:17px;cursor:pointer;transition:transform .15s}
+.back:active,.x:active{transform:scale(.9)}
+.top h1{font-size:17px;margin:0;flex:1;letter-spacing:-.2px}
+.top small{display:block;color:var(--mut);font-weight:500;font-size:12px}
+.steps{display:flex;gap:6px;margin-top:12px}
+.steps i{flex:1;height:5px;border-radius:5px;background:var(--line);position:relative;overflow:hidden}
+.steps i::after{content:"";position:absolute;inset:0;background:var(--pri);transform:scaleX(0);transform-origin:left;transition:transform .5s cubic-bezier(.3,.9,.3,1)}
+.steps i.on::after{transform:scaleX(1)}
+.labels{display:flex;margin-top:6px;font-size:11px;font-weight:700;color:var(--mut);letter-spacing:.03em}
+.labels span{flex:1;transition:color .3s}.labels span.on{color:var(--pri)}
+main{flex:1;overflow:hidden;position:relative}
+.page{position:absolute;inset:0;overflow-y:auto;padding:14px 16px 20px;transform:translateX(40px);opacity:0;pointer-events:none;transition:transform .45s cubic-bezier(.3,.9,.3,1),opacity .3s}
+.page.on{transform:none;opacity:1;pointer-events:auto}
+.page.past{transform:translateX(-40px)}
+.card{background:var(--card);border-radius:var(--r);border:1px solid var(--line);overflow:hidden}
+.sec{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--mut);margin:16px 4px 8px}
+.row{display:flex;align-items:center;gap:11px;padding:11px 14px}
+.row+.row{border-top:1px solid var(--line)}
+.dot{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--ok);color:#fff;font-size:14px;flex:none;animation:pop .5s cubic-bezier(.3,1.6,.5,1) both}
+.dot.w{background:var(--warn-s);color:var(--warn)}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+.grow{flex:1;min-width:0}.t{font-weight:700;font-size:14px}.s{font-size:12px;color:var(--mut)}
+.amt{font-weight:800;font-variant-numeric:tabular-nums;font-size:14px;text-align:right}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--ok-s);color:var(--ok)}
+.pill.w{background:var(--warn-s);color:var(--warn)}.pill.b{background:var(--bad-s);color:var(--bad)}.pill.n{background:var(--bg);color:var(--mut)}
+.hero{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.stat b{display:block;font-size:20px;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.stat span{font-size:11px;color:var(--mut);font-weight:700}
+.stat.pri{background:var(--pri);border-color:var(--pri);color:#fff}.stat.pri span{color:#ffffffc0}
+
+.auto-tag{font-size:10.5px;font-weight:800;color:var(--ok);display:flex;align-items:center;gap:4px}
+.auto-tag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{opacity:.25;transform:scale(1.6)}}
+.zero{display:flex;flex-wrap:wrap;gap:6px;padding:12px 14px}
+.zero{display:block}.zero p{margin:0 0 8px;font-size:12px;font-weight:700;color:var(--mut)}.zero div{display:flex;flex-wrap:wrap;gap:6px}.zero span{font-size:12px;padding:4px 10px 4px 8px;border-radius:99px;background:var(--ok-s);color:var(--ok);font-weight:600}.zero span::before{content:"✓ ";font-weight:800}
+/* cash */
+.cashhead{text-align:center;padding:14px 10px 12px}
+.cashhead small{color:var(--mut);font-weight:700;font-size:12px}
+.big{font-size:38px;font-weight:800;letter-spacing:-1.5px;font-variant-numeric:tabular-nums;line-height:1.1;margin:4px 0}
+.diff{transition:all .3s}
+.bills{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bill{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:9px 10px;display:flex;align-items:center;gap:6px;transition:border-color .2s,background .2s}
+.bill.has{border-color:var(--pri);background:var(--pri-s)}
+.bill .v{flex:1;font-weight:800;font-size:13px}.bill .v em{display:block;font-style:normal;color:var(--mut);font-size:11px;font-weight:600}
+.bill button{width:32px;height:32px;border-radius:50%;border:0;background:var(--bg);color:var(--pri);font-size:19px;font-weight:700;cursor:pointer;transition:transform .12s}
+.bill button:active{transform:scale(.8)}
+.bill b{min-width:20px;text-align:center;font-variant-numeric:tabular-nums}
+.quick{display:flex;gap:6px;margin:10px 0 0;justify-content:center}
+.chip{border:0;border-radius:99px;background:var(--pri-s);color:var(--pri);font-weight:700;font-size:12.5px;padding:8px 13px;cursor:pointer}
+.cam{border:2px dashed var(--line);border-radius:var(--r);background:var(--card);min-height:150px;display:grid;place-items:center;text-align:center;cursor:pointer;position:relative;overflow:hidden;transition:border-color .2s}
+.cam:hover{border-color:var(--pri)}
+.cam .ic{font-size:32px}.cam p{margin:4px 0 0;font-size:12px;color:var(--mut)}
+.cam.done{border:2px solid var(--ok);min-height:0}
+.shot{width:100%;display:block}
+.stamp{position:absolute;left:8px;bottom:8px;background:#000a;color:#fff;font-size:10.5px;padding:4px 8px;border-radius:8px}
+.retake{position:absolute;right:8px;top:8px;background:#000a;color:#fff;border:0;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}.flash.go{animation:fl .4s}
+@keyframes fl{0%{opacity:.9}100%{opacity:0}}
+.note{font-size:12px;color:var(--mut);margin:8px 4px 0;display:flex;gap:6px}
+textarea{width:100%;border:0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 13px;font:inherit;resize:none;color:var(--fg)}
+/* telegram */
+.tg{background:#17212b;border-radius:var(--r);padding:12px;color:#e8eef5;font-size:12.5px}
+.tg .bot{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#6aa8ff,#8b6bff);display:grid;place-items:center;font-weight:800;font-size:12px;color:#fff}
+.tg .bot b{display:block;font-size:12.5px}.tg .bot span{color:#7f93a6;font-size:11px}
+.bubble{background:#2b5278;border-radius:12px 12px 12px 3px;padding:9px 11px;line-height:1.5}
+.bubble img{width:100%;border-radius:8px;margin-bottom:7px;display:block}
+.bubble pre{margin:0;font:inherit;white-space:pre-wrap}
+.sendbar{padding:10px 16px calc(12px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line)}
+.sums{display:flex;gap:6px;margin-bottom:9px}
+.sums div{flex:1;background:var(--bg);border-radius:12px;padding:6px 0;text-align:center}
+.sums span{font-size:10px;font-weight:800;color:var(--mut);letter-spacing:.05em;display:block}
+.sums b{font-size:13px;font-variant-numeric:tabular-nums}
+.cta{width:100%;height:52px;border:0;border-radius:16px;background:var(--pri);color:#fff;font-weight:800;font-size:15.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .15s,background .3s}
+
+.cta:active{transform:scale(.97)}.cta:disabled{background:var(--line);color:var(--mut);cursor:not-allowed}
+.cta.send{background:var(--bad)}.cta.sent{background:var(--ok)}
+.hint{text-align:center;font-size:12px;color:var(--mut);margin-top:6px;min-height:16px}
+.spin{width:18px;height:18px;border:3px solid #fff5;border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+.shake{animation:shake .4s}@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.done-screen{position:absolute;inset:0;background:var(--bg);display:grid;place-items:center;text-align:center;padding:30px;opacity:0;pointer-events:none;transition:opacity .4s;z-index:5}
+.done-screen.on{opacity:1;pointer-events:auto}
+.check{width:84px;height:84px;border-radius:50%;background:var(--ok);display:grid;place-items:center;margin:0 auto 14px;transform:scale(0)}
+.done-screen.on .check{animation:pop .6s .15s cubic-bezier(.3,1.6,.5,1) forwards}
+.check svg{width:44px;stroke:#fff;stroke-width:5;fill:none;stroke-dasharray:50;stroke-dashoffset:50}
+.done-screen.on .check svg{animation:dr .5s .6s forwards}@keyframes dr{to{stroke-dashoffset:0}}
+</style>
+</head>
+<body>
+<div class="phone" id="app">
+  <header>
+    <div class="top">
+      <button class="back" id="back" aria-label="Kembali">‹</button>
+      <h1>Tutup Kasir<small>Shift Sore · IKHSAN EVERYDAY</small></h1>
+      <button class="x" aria-label="Tutup">✕</button>
+    </div>
+    <div class="steps"><i class="on"></i><i></i><i></i></div>
+    <div class="labels"><span class="on">1 · CEK</span><span>2 · TUNAI</span><span>3 · KIRIM</span></div>
+  </header>
+
+  <main>
+    <!-- STEP 1 -->
+    <section class="page on" id="p1">
+      <div class="hero">
+        <div class="stat pri"><span>TOTAL PEMASUKAN SISTEM</span><b data-count="405000">Rp 0</b></div>
+        <div class="stat"><span>PESANAN SHIFT</span><b data-count="5" data-plain>0</b></div>
+      </div>
+
+      <div class="sec">KESIAPAN</div>
+      <div class="card">
+        <div class="row"><span class="dot">✓</span><div class="grow"><div class="t">Pesanan</div><div class="s">0 belum sinkron · 0 belum lunas</div></div><span class="pill n">5 produksi</span></div>
+        <div class="row"><span class="dot">✓</span><div class="grow"><div class="t">Absensi tim</div><div class="s">Semua sudah absen keluar</div></div></div>
+        <label class="row" style="cursor:pointer"><input type="checkbox" id="handover" style="width:20px;height:20px"><div class="grow s" style="color:var(--fg)">5 pesanan masih produksi. Saya sudah serah terima ke shift berikutnya.</div></label>
+      </div>
+
+      <div class="sec" style="display:flex;justify-content:space-between"><span>PEMBAYARAN</span><span class="auto-tag">TERISI OTOMATIS</span></div>
+      <div class="card">
+        <div class="row"><span class="dot">✓</span><div class="grow"><div class="t">QRIS Kasir</div><div class="s">3 transaksi</div></div><div class="amt">Rp 360.000</div></div>
+        <div class="row"><span class="dot">✓</span><div class="grow"><div class="t">Djiwa App · Bayar di Kasir</div><div class="s">2 transaksi · masuk hitungan tunai</div></div><div class="amt">Rp 45.000</div></div>
+        <div class="zero"><p>Tanpa transaksi · Rp 0 terisi otomatis oleh sistem</p><div><span>Djiwa Pay Rp 0</span><span>Djiwa App QRIS Rp 0</span><span>GoFood Rp 0</span><span>GrabFood Rp 0</span><span>ShopeeFood Rp 0</span></div></div>
+      </div>
+
+      <div class="sec">PENGELUARAN</div>
+      <button class="chip" style="width:100%;padding:12px;background:var(--card);border:1px dashed var(--line);color:var(--mut)">＋ Tambah pengeluaran</button>
+    </section>
+
+    <!-- STEP 2 -->
+    <section class="page" id="p2">
+      <div class="card cashhead">
+        <small>UANG TUNAI YANG HARUS ADA</small>
+        <div class="big" id="expected">Rp 45.000</div>
+        <small>Tunai POS Rp 0 + Djiwa App bayar di kasir Rp 45.000</small>
+      </div>
+
+      <div class="sec">HITUNG UANG DI LACI</div>
+      <div class="card cashhead" style="margin-bottom:10px">
+        <small>TOTAL DIHITUNG</small>
+        <div class="big" id="counted">Rp 0</div>
+        <span class="pill n diff" id="diff">Belum dihitung</span>
+      </div>
+      <div class="bills" id="bills"></div>
+      <div class="quick"><button class="chip" id="fill">Pas sesuai sistem</button><button class="chip" id="clear" style="background:var(--bg);color:var(--mut)">Reset</button></div>
+
+      <div class="sec">FOTO BUKTI TUNAI <span style="color:var(--bad)">WAJIB</span></div>
+      <label class="cam" id="cam">
+        <input type="file" id="file" accept="image/*" capture="environment" hidden>
+        <div id="camEmpty"><div class="ic">📷</div><b>Ambil foto uang tunai</b><p>Hanya lewat kamera, tidak bisa dari galeri.<br>Susun uang dengan jelas dalam satu frame.</p></div>
+        <div id="camDone" hidden style="width:100%;position:relative"><img class="shot" id="shot" alt="Foto tunai"><span class="stamp" id="stamp"></span><button class="retake" type="button" id="retake">Ulangi</button></div>
+        <div class="flash" id="flash"></div>
+      </label>
+      <div class="note"><span>🔒</span><span>Foto diberi cap waktu, nama kasir, dan nominal otomatis agar tidak bisa dipakai ulang.</span></div>
+
+      <div class="sec">CATATAN / KENDALA</div>
+      <textarea rows="2" id="notes" placeholder="Contoh: selisih Rp 2.000, barang rusak…"></textarea>
+    </section>
+
+    <!-- STEP 3 -->
+    <section class="page" id="p3">
+      <div class="sec" style="margin-top:2px">PREVIEW LAPORAN KE GRUP REPORT</div>
+      <div class="tg">
+        <div class="bot"><div class="av">A</div><div><b>Auren | General Manager Djiwa Tentram</b><span>@yummeaibot · bot</span></div></div>
+        <div class="bubble"><img id="tgimg" alt=""><pre id="tgtxt"></pre></div>
+      </div>
+      <div class="note"><span>📨</span><span>Terkirim ke grup <b>Report</b> beserta foto tunai. Kasir tidak perlu menyalin apa pun.</span></div>
+    </section>
+
+    <div class="done-screen" id="done">
+      <div><div class="check"><svg viewBox="0 0 50 50"><path d="M10 26l10 10 20-22"/></svg></div>
+        <h2 style="margin:0 0 6px">Shift ditutup</h2>
+        <p class="s">Laporan + foto tunai sudah terkirim ke grup Report oleh @yummeaibot.</p></div>
+    </div>
+  </main>
+
+  <div class="sendbar">
+    <div class="sums"><div><span>SISTEM</span><b>Rp 405.000</b></div><div><span>TUNAI</span><b id="sumCash">Rp 0</b></div><div><span>BEDA TUNAI</span><b id="sumDiff">—</b></div></div>
+    <button class="cta" id="cta" disabled>Lanjut</button>
+    <div class="hint" id="hint"></div>
+  </div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s), fmt=n=>"Rp "+Math.round(n).toLocaleString("id-ID");
+const EXPECTED=45000, BILLS=[100000,50000,20000,10000,5000,2000,1000,500];
+let step=1, counts={}, photo=null, sending=false;
+BILLS.forEach(b=>counts[b]=0);
+
+// count-up
+function countUp(el){const to=+el.dataset.count,plain="plain"in el.dataset,t0=performance.now();(function f(t){const p=Math.min(1,(t-t0)/900),e=1-Math.pow(1-p,3),v=to*e;el.textContent=plain?Math.round(v):fmt(v);if(p<1)requestAnimationFrame(f)})(t0)}
+document.querySelectorAll("[data-count]").forEach(countUp);
+
+// bills
+$("#bills").innerHTML=BILLS.map(b=>`<div class="bill" id="b${b}"><div class="v">${fmt(b).replace("Rp ","")}<em id="s${b}">Rp 0</em></div><button data-b="${b}" data-d="-1">−</button><b id="c${b}">0</b><button data-b="${b}" data-d="1">+</button></div>`).join("");
+$("#bills").addEventListener("click",e=>{const b=e.target.dataset.b;if(!b)return;counts[b]=Math.max(0,counts[b]+ +e.target.dataset.d);if(navigator.vibrate)navigator.vibrate(8);render()});
+$("#fill").onclick=()=>{BILLS.forEach(b=>counts[b]=0);let r=EXPECTED;BILLS.forEach(b=>{counts[b]=Math.floor(r/b);r%=b});render()};
+$("#clear").onclick=()=>{BILLS.forEach(b=>counts[b]=0);render()};
+
+let shown=0;
+function total(){return BILLS.reduce((s,b)=>s+b*counts[b],0)}
+function tween(from,to,el){const t0=performance.now();(function f(t){const p=Math.min(1,(t-t0)/350);el.textContent=fmt(from+(to-from)*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(f)})(t0)}
+function render(){
+  BILLS.forEach(b=>{$("#c"+b).textContent=counts[b];$("#s"+b).textContent=fmt(b*counts[b]);$("#b"+b).classList.toggle("has",counts[b]>0)});
+  const t=total();tween(shown,t,$("#counted"));shown=t;
+  const d=t-EXPECTED,p=$("#diff");
+  p.className="pill diff "+(t===0?"n":d===0?"":d<0?"b":"w");
+  p.textContent=t===0?"Belum dihitung":d===0?"✓ Cocok":d<0?"Kurang "+fmt(-d):"Lebih "+fmt(d);
+  $("#sumCash").textContent=fmt(t);$("#sumDiff").textContent=t===0?"—":d===0?"Cocok":(d<0?"−":"+")+fmt(Math.abs(d));
+  update();
+}
+
+// camera (kamera saja: capture=environment; prototipe juga menyediakan simulasi)
+$("#cam").addEventListener("click",e=>{if(photo&&e.target.id!=="retake")e.preventDefault()});
+$("#retake").onclick=e=>{e.preventDefault();e.stopPropagation();photo=null;$("#camEmpty").hidden=false;$("#camDone").hidden=true;$("#cam").classList.remove("done");update()};
+$("#file").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>setPhoto(r.result);r.readAsDataURL(f);e.target.value=""};
+function fakeShot(){ // gambar contoh uang untuk prototipe di desktop
+  const c=document.createElement("canvas");c.width=600;c.height=400;const g=c.getContext("2d");
+  g.fillStyle="#3a3f4a";g.fillRect(0,0,600,400);
+  const cols=["#c9d6ea","#e8c3c3","#cbe4cf"];
+  [[60,80,-.08],[220,120,.05],[380,70,.12]].forEach((p,i)=>{g.save();g.translate(p[0]+100,p[1]+60);g.rotate(p[2]);g.fillStyle=cols[i%3];g.fillRect(-100,-55,200,110);g.fillStyle="#0003";g.fillRect(-90,-45,60,90);g.restore()});
+  return c.toDataURL("image/jpeg",.8)}
+function setPhoto(src){
+  $("#flash").classList.remove("go");void $("#flash").offsetWidth;$("#flash").classList.add("go");
+  photo=src;$("#shot").src=src;$("#tgimg").src=src;
+  const now=new Date().toLocaleString("id-ID",{dateStyle:"short",timeStyle:"medium"});
+  $("#stamp").textContent=`${now} · IKHSAN · ${fmt(total())}`;
+  $("#camEmpty").hidden=true;$("#camDone").hidden=false;$("#cam").classList.add("done");update()}
+// di perangkat nyata <input capture> membuka kamera; di prototipe desktop pakai simulasi bila tidak ada kamera
+$("#cam").addEventListener("click",e=>{if(!photo&&!/Android|iPhone|iPad/i.test(navigator.userAgent)){e.preventDefault();setPhoto(fakeShot())}});
+
+// telegram preview
+function tgText(){const t=total(),d=t-EXPECTED;
+ return `🔴 TUTUP SHIFT · Sore
+👤 Kasir: IKHSAN EVERYDAY
+💰 Sistem: ${fmt(405000)}
+ • QRIS Kasir: ${fmt(360000)}
+ • Djiwa App bayar kasir: ${fmt(45000)}
+💵 Tunai di laci: ${fmt(t)}
+${d===0?"✅ Cocok":(d<0?"⚠️ Kurang ":"⚠️ Lebih ")+fmt(Math.abs(d))}
+📸 Foto tunai terlampir`+($("#notes").value?`\n📝 ${$("#notes").value}`:"")}
+
+// navigation
+const pages=[null,$("#p1"),$("#p2"),$("#p3")];
+function go(n){step=n;pages.forEach((p,i)=>{if(!p)return;p.classList.toggle("on",i===n);p.classList.toggle("past",i<n)});
+ document.querySelectorAll(".steps i").forEach((el,i)=>el.classList.toggle("on",i<n));
+ document.querySelectorAll(".labels span").forEach((el,i)=>el.classList.toggle("on",i===n-1));
+ if(n===3)$("#tgtxt").textContent=tgText();
+ $("#back").style.visibility=n===1?"hidden":"visible";update()}
+$("#back").onclick=()=>go(step-1);
+$("#handover").onchange=update;$("#notes").oninput=update;
+
+function update(){
+  const cta=$("#cta"),h=$("#hint");cta.className="cta";
+  let ok=true,msg="";
+  if(step===1){ok=$("#handover").checked;msg=ok?"":"Centang serah terima pesanan produksi";cta.textContent="Lanjut hitung tunai →"}
+  if(step===2){ok=total()>0&&!!photo;msg=total()===0?"Hitung uang di laci dulu":!photo?"Ambil foto bukti tunai":"";cta.textContent="Lanjut tinjau & kirim →"}
+  if(step===3){ok=!sending;cta.classList.add("send");cta.innerHTML="📨 Akhiri & kirim ke grup Report";msg=""}
+  cta.disabled=!ok;h.textContent=msg}
+$("#cta").onclick=()=>{
+  if(step<3)return go(step+1);
+  sending=true;$("#cta").disabled=true;$("#cta").innerHTML='<span class="spin"></span> Mengirim laporan & foto…';
+  setTimeout(()=>{$("#cta").className="cta sent";$("#cta").textContent="✓ Terkirim";$("#done").classList.add("on")},1600)};
+document.querySelector(".sendbar").addEventListener("click",e=>{if(e.target.closest("#cta")&&$("#cta").disabled){$(".hint").classList.remove("shake");void $(".hint").offsetWidth;$(".hint").classList.add("shake")}});
+go(1);render();
+</script>
+</body>
+</html>

@@ -136,6 +136,7 @@ import {
   calculateShiftPaymentBreakdown,
   EMPTY_SHIFT_PAYMENT_ACTUAL,
   EMPTY_SHIFT_PAYMENT_BREAKDOWN,
+  formatShiftPaymentChannelLabel,
   type ShiftPaymentBreakdown,
 } from "@/lib/shift-payment-breakdown";
 import { createClient } from "@/lib/client";
@@ -1445,6 +1446,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [submitNotice, setSubmitNotice] = useState<string | null>(null);
+	const [cashPhoto, setCashPhoto] = useState<string | null>(null);
 	const [showEndConfirm, setShowEndConfirm] = useState(false);
 	const [startStep, setStartStep] = useState<1 | 2 | 3 | 4>(1);
 	const [startSuccess, setStartSuccess] = useState<{ cashierName: string; shiftName: string; amount: number } | null>(null);
@@ -1652,14 +1654,18 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	};
 
 	// When breakdown changes, update cashInRegister
+	const startingCashValue = Number(shiftStatus?.ongoingShift?.startingCash || 0);
+	const extraExpenseTotal = endShiftExpenses.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
 	useEffect(() => {
 		const total = calculateBreakdownTotal();
 		setCashInRegister(total.toString());
-		// Uang laci dihitung sekali; dialokasikan dulu ke "Bayar Tunai di Kasir" (Djiwa App), sisanya tunai POS.
+		// Uang laci dihitung sekali (termasuk modal awal). Penerimaan tunai = laci - modal + pengeluaran tunai;
+		// dialokasikan dulu ke "Bayar Tunai di Kasir" (Djiwa App), sisanya tunai POS.
+		const received = Math.max(0, total - startingCashValue + Number(shiftExpense || 0) + extraExpenseTotal);
 		const appCashExpected = Number(expectedPaymentBreakdown.djiwaapp_bayar_kasir || 0);
-		const appCash = Math.min(total, appCashExpected);
-		setPaymentActual((previous) => ({ ...previous, tunai_kasir: total - appCash, ...(appCashExpected > 0 ? { djiwaapp_bayar_kasir: appCash } : {}) }));
-	}, [breakdown, expectedPaymentBreakdown.djiwaapp_bayar_kasir]);
+		const appCash = Math.min(received, appCashExpected);
+		setPaymentActual((previous) => ({ ...previous, tunai_kasir: received - appCash, ...(appCashExpected > 0 ? { djiwaapp_bayar_kasir: appCash } : {}) }));
+	}, [breakdown, expectedPaymentBreakdown.djiwaapp_bayar_kasir, startingCashValue, shiftExpense, extraExpenseTotal]);
 
 	// Auto-fill nonCashConfirmed from shiftQris
 	useEffect(() => {
@@ -1669,7 +1675,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	}, [shiftQris]);
 
 	const handleAutofill = () => {
-		const expectedTotal = (shiftStatus?.ongoingShift?.startingCash || 0) + shiftCash - shiftExpense;
+		const expectedTotal = (shiftStatus?.ongoingShift?.startingCash || 0) + shiftCash - shiftExpense - extraExpenseTotal;
 		if (expectedTotal <= 0) return;
 
 		const denominations = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100];
@@ -1758,7 +1764,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	}, [staffUsers, presentIds]);
 
 	// ── Helper: Kirim notifikasi Telegram ──
-	const sendTelegramNotif = useCallback(async (title: string, details: Record<string, string>, timeExtras?: { startTime?: number; endTime?: number }) => {
+	const sendTelegramNotif = useCallback(async (title: string, details: Record<string, string>, timeExtras?: { startTime?: number; endTime?: number }, extra?: { photoDataUrl?: string | null; shiftId?: string; text?: string }) => {
 		const supabase = createClient();
 		const fmtTime3 = (ms?: number) => {
 			if (!ms) return "";
@@ -1781,9 +1787,15 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			timeLine,
 		];
 		try {
-			const targetChatIds = [-1003991897388, -1003927364523];
+			// Laporan tutup shift (ada teks kustom): Report + Transaksi + Bar + Kitchen. Lainnya: Report + Transaksi.
+			const REPORT_GROUP = -1003991897388;
+			const targetChatIds = extra?.text ? [REPORT_GROUP, -1003927364523, -1003549250968, -1003953908854] : [REPORT_GROUP, -1003927364523];
+			const photoMatch = extra?.photoDataUrl?.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
 			const results = await Promise.allSettled(targetChatIds.map((chat_id) => supabase.functions.invoke("send-telegram-report", {
-				body: { text: lines.join("\n"), chat_id, sender: chat_id === -1003927364523 ? "supervisor" : "report" }
+				body: {
+					text: extra?.text ?? lines.join("\n"), chat_id, sender: chat_id === REPORT_GROUP ? "report" : "supervisor",
+					...(photoMatch ? { photo_base64: photoMatch[2], photo_mime: photoMatch[1], photo_filename: "bukti-tunai.jpg", ...(chat_id === REPORT_GROUP ? { shift_id: extra?.shiftId } : {}) } : {}),
+				},
 			})));
 			const delivered = results.every((result) => result.status === "fulfilled" && !result.value.error);
 			results.forEach((result, index) => {
@@ -1838,6 +1850,11 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			const message = `Lengkapi nominal aktual: ${missingChannels.join(", ")}.`;
 			setSubmitNotice(message);
 			toast.info(message);
+			return;
+		}
+		if (!cashPhoto) {
+			setSubmitNotice("Ambil foto bukti uang tunai dengan kamera sebelum menutup shift.");
+			toast.info("Foto bukti tunai wajib diambil dengan kamera.");
 			return;
 		}
 		if (closingAttendanceLoading) {
@@ -1969,31 +1986,46 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				Object.entries(ofp2).filter(([_, v]) => Number(v) > 0).forEach(([p]) => ntLabelParts2.push(pfLabels2[p] || p));
 				const ntLabel2 = ntLabelParts2.length ? ` (${ntLabelParts2.join(" + ")})` : "";
 				const totalNonTunaiStr = `Rp ${totalNonTunai.toLocaleString("id-ID")}${ntLabel2}${sourcePaymentLines.length ? `\n${sourcePaymentLines.join("\n")}` : ""}`;
-				const diffTunai = cashInRegisterVal - s.cashRevenue;
-				const fmtSelisih = (v: number) => v === 0 ? "✅ Rp 0" : v > 0 ? `⬆️ Rp ${v.toLocaleString("id-ID")}` : `⬇️ Rp ${Math.abs(v).toLocaleString("id-ID")}`;
+				const expectedDrawer = modalKasir + s.cashRevenue - s.totalExpenses;
+				const diffTunai = cashInRegisterVal - expectedDrawer;
+				const fmtSelisih = (v: number) => v === 0 ? "✅ Cocok (Rp 0)" : v > 0 ? `⬆️ Lebih Rp ${v.toLocaleString("id-ID")}` : `⬇️ Kurang Rp ${Math.abs(v).toLocaleString("id-ID")}`;
 				
-				sendTelegramNotif("📊 LAPORAN SHIFT", {
-					"🏪": "Djiwa Tentram",
-					"🔄 Shift": si.shiftName || shiftName || "-",
-					"👥 Tim": `\n${teamIndented}`,
-					"━━━ DI SISTEM ━━━": "━━━",
-					"💰 Modal Kasir": `Rp ${Number(si.startingCash ?? 0).toLocaleString("id-ID")}`,
-					"💵 Penjualan Tunai": `Rp ${s.cashRevenue.toLocaleString("id-ID")}${sourcePaymentLines.filter((line) => line.includes("Tunai")).length ? `\n${sourcePaymentLines.filter((line) => line.includes("Tunai")).join("\n")}` : ""}`,
-					"💳 Non-Tunai:": totalNonTunaiStr,
-					"💸 Pengeluaran": `Rp ${s.totalExpenses.toLocaleString("id-ID")}`,
-					"📦 Item Terjual": `${s.totalItemsSold}`,
-					"🏷 Diskon": `Rp ${s.totalDiscount.toLocaleString("id-ID")}`,
-					"━━━ DI LACI ━━━": "━━━",
-					"💰 Modal (Laci)": `Rp ${modalKasir.toLocaleString("id-ID")}`,
-					"💵 Uang (Laci)": `Rp ${cashInRegisterVal.toLocaleString("id-ID")}`,
-					"🔢 Pecahan:": `
-${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
-					"━━━ SELISIH ━━━": "━━━",
-					"💵 Penjualan (Laci)": `Rp ${s.cashRevenue.toLocaleString("id-ID")}`,
-					"💵 Uang (Fisik)": `Rp ${cashInRegisterVal.toLocaleString("id-ID")}`,
-					"📊 Selisih:": fmtSelisih(diffTunai),
-					"📝 Catatan:": notes || "-",
-				}, { startTime: si.startTime || undefined, endTime: Date.now() });
+				const rp = (n: number) => `Rp ${Math.round(n).toLocaleString("id-ID")}`;
+				const wibTime = (ms: number) => new Date(ms).toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", hour12: false }).replace(".", ":");
+				const wibDate = new Date(si.startTime || Date.now()).toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", weekday: "long", day: "numeric", month: "long", year: "numeric" });
+				const channelLines = Object.entries(sourcePb as Record<string, number>)
+					.filter(([key, value]) => key !== "tunai_kasir" && key !== "djiwaapp_bayar_kasir" && Number(value) > 0)
+					.map(([key, value]) => `   ├ ${formatShiftPaymentChannelLabel(key)}: ${rp(Number(value))}`);
+				const cashIn = Number((sourcePb as any).tunai_kasir ?? 0) + Number((sourcePb as any).djiwaapp_bayar_kasir ?? 0);
+				const systemTotal = Object.values(sourcePb as Record<string, number>).reduce((sum, v) => sum + Number(v || 0), 0);
+				const cashierLabel = si.cashierName || cashierName || "-";
+				const teamLines = teamIndented.split("\n").filter(Boolean).map((ln: string) => ln.trim()).filter((ln: string) => !/^Kasir\b/i.test(ln));
+				const reportText = [
+					"📊 LAPORAN TUTUP SHIFT",
+					"━━━━━━━━━━━━━━━━",
+					`🏪 Djiwa Tentram · ${si.shiftName || shiftName || "-"}`,
+					`👤 Kasir: ${cashierLabel}`,
+					...(teamLines.length ? [`👥 Tim:`, ...teamLines.map((ln: string) => `   ${ln}`)] : []),
+					`🕐 ${wibDate} · ${wibTime(si.startTime || Date.now())}–${wibTime(Date.now())} WIB`,
+					"",
+					`💰 PENDAPATAN SISTEM: ${rp(systemTotal)}`,
+					...channelLines,
+					`   └ Tunai: ${rp(cashIn)}${Number((sourcePb as any).djiwaapp_bayar_kasir ?? 0) > 0 ? ` (Djiwa App bayar kasir ${rp(Number((sourcePb as any).djiwaapp_bayar_kasir))})` : ""}`,
+					`🧾 ${s.totalItemsSold} pesanan · 🏷 Diskon ${rp(s.totalDiscount)} · 💸 Pengeluaran ${rp(s.totalExpenses)}`,
+					"",
+					"💵 UANG TUNAI DI LACI",
+					`   Modal awal: ${rp(modalKasir)}`,
+					`   + Tunai masuk: ${rp(s.cashRevenue)}`,
+					`   − Pengeluaran: ${rp(s.totalExpenses)}`,
+					`   = Seharusnya: ${rp(expectedDrawer)}`,
+					`   Dihitung kasir: ${rp(cashInRegisterVal)}`,
+					`   Selisih: ${fmtSelisih(diffTunai)}`,
+					...(pecahanTxt.length ? ["🔢 Pecahan:", ...pecahanTxt.map((ln) => `   ${ln}`)] : []),
+					...(notes ? ["", `📝 Catatan: ${notes}`] : []),
+					"",
+					"📸 Foto bukti tunai ada di pesan berikutnya",
+				].join("\n");
+				void sendTelegramNotif("📊 LAPORAN TUTUP SHIFT", {}, { startTime: si.startTime || undefined, endTime: Date.now() }, { text: reportText, photoDataUrl: cashPhoto, shiftId: String(shiftStatus?.shiftInfo?.shiftId ?? "") });
 				console.log("[shift-notif] End shift notification sent successfully");
 				
 				// Generate HTML laporan & upload ke Supabase Storage (best-effort)
@@ -2052,6 +2084,7 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 			setNonCashConfirmed("");
 			setPaymentActual({ ...EMPTY_SHIFT_PAYMENT_ACTUAL });
 			setNotes("");
+			setCashPhoto(null);
 			setEndShiftExpenses([]);
 			setCashierName("");
 			setTeamMembers([]);
@@ -2223,6 +2256,10 @@ ${pecahanTxt.length ? pecahanTxt.join("\n") : "(tidak diisi)"}`,
 		cashInRegister: Number(cashInRegister || 0),
 		nonCash: Number(nonCashConfirmed || 0),
 		shiftCash,
+		startingCash: startingCashValue,
+		cashPhoto,
+		setCashPhoto,
+		staffName: String(shiftStatus?.shiftInfo?.cashierName || cashierName || ""),
 	};
 	if (isClosingShift) return <EndShiftScreen c={endController} />;
 
