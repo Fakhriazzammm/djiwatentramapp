@@ -75,6 +75,10 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+[functions.attendance-reminders]
+enabled = true
+verify_jwt = false
+
 [functions.staff-register]
 enabled = true
 verify_jwt = false
