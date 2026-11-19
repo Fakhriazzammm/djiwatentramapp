@@ -49,3 +49,7 @@
 .dpx .dpx-st-chip{display:inline-flex;align-items:center;padding:3px 9px;border-radius:99px;font:700 11px var(--font)}
 .dpx .dpx-st-chip.dpx-ok{background:var(--ok-soft);color:var(--ok)}.dpx .dpx-st-chip.dpx-bad{background:var(--danger-soft);color:var(--danger)}.dpx .dpx-st-chip.dpx-warn{background:var(--warn-soft);color:var(--warn)}
 .dpx .dpx-st-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--blue);margin-left:4px;vertical-align:middle}
+/* Empat tab dalam satu baris: lebar mengikuti isi, tidak pernah membungkus. */
+.dpx .dpx-seg.dpx-seg-fit button{flex:1 1 auto;white-space:nowrap;min-width:0;padding-inline:8px}
+@media (max-width:370px){.dpx .dpx-seg.dpx-seg-fit button{font-size:11.5px;padding-inline:5px}}
+@media (max-width:330px){.dpx .dpx-seg.dpx-seg-fit button{font-size:10.5px;padding-inline:3px}}

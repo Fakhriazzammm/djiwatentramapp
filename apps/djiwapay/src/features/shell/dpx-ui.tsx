@@ -108,8 +108,8 @@ export function AnimatedNumber({ value, format = (n: number) => Math.round(n).to
 }
 
 /** Segmented control with a sliding highlight. */
-export function Seg<T extends string>({ id, value, options, onChange, label }: { id: string; value: T; options: readonly (readonly [T, ReactNode])[]; onChange: (value: T) => void; label: string }) {
-  return <div className="dpx-seg" role="group" aria-label={label}>
+export function Seg<T extends string>({ id, value, options, onChange, label, fit = false }: { id: string; value: T; options: readonly (readonly [T, ReactNode])[]; onChange: (value: T) => void; label: string; fit?: boolean }) {
+  return <div className={`dpx-seg ${fit ? "dpx-seg-fit" : ""}`} role="group" aria-label={label}>
     {options.map(([key, text]) => <Btn key={key} type="button" className={value === key ? "dpx-on" : ""} aria-pressed={value === key} onClick={() => onChange(key)}>
       {value === key ? <motion.span layoutId={`seg-${id}`} className="dpx-seg-pill" transition={spring} /> : null}
       <span style={{ position: "relative" }}>{text}</span>
