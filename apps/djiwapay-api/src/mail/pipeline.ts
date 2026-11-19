@@ -112,23 +112,28 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
     return { status: "forwarding-code", reason: "gmail-confirmation", userId };
   }
 
+  const messageId = (mail.messageId || `${fromDomain}:${mail.subject}:${mail.date?.toISOString() ?? ""}`).slice(0, 300);
+  // Every early "no" is remembered briefly (never for imports), so a missing payment can be explained.
+  const skip = async (reason: string, channel = "", withSubject = true): Promise<Outcome> => {
+    if (!stage) await d.db.query("insert into finance.inbound_skips(user_id,message_id,reason,channel,sender_domain,subject) values($1,$2,$3,$4,$5,$6) on conflict(user_id,message_id) do nothing", [userId, messageId, reason, channel, fromDomain.slice(0, 120), withSubject ? mail.subject.slice(0, 80) : ""]).catch(() => {});
+    return { status: "ignored", reason, userId };
+  };
   // Gate 1: only listed issuers. Gate 2: the mail must really come from them (DKIM aligned or DMARC pass).
   const issuer = issuerFor(fromDomain);
-  if (!issuer) return { status: "ignored", reason: "sender-not-allowed", userId };
+  if (!issuer) return skip("sender-not-allowed");
   const aligned = mail.auth.dmarcPass || mail.auth.dkimDomains.some((x) => issuer.domains.some((dom) => x === dom || x.endsWith("." + dom)));
-  if (!aligned) return { status: "ignored", reason: "auth-failed", userId };
+  if (!aligned) return skip("auth-failed", issuer.id);
   // Gate 3: codes, PINs and resets are never read or stored.
-  if (isSecretMail(mail.subject, mail.text)) return { status: "ignored", reason: "secret", userId };
+  if (isSecretMail(mail.subject, mail.text)) return skip("secret", issuer.id, false);
   // Gate 4: a campaign or a periodic report is not one movement of money, whatever rupiah it prints.
-  if (isPromo(mail.subject, mail.text)) return { status: "ignored", reason: "promo", userId };
-  if (isReportMail(mail.subject)) return { status: "ignored", reason: "report", userId };
+  if (isPromo(mail.subject, mail.text)) return skip("promo", issuer.id);
+  if (isReportMail(mail.subject)) return skip("report", issuer.id);
   // Gate 5: a failed transfer moved nothing, and a bill that asks to be paid has not been paid yet.
-  if (isFailedMail(mail.subject)) return { status: "ignored", reason: "failed", userId };
-  if (isBillReminder(mail.subject, mail.text)) return { status: "ignored", reason: "bill", userId };
+  if (isFailedMail(mail.subject)) return skip("failed", issuer.id);
+  if (isBillReminder(mail.subject, mail.text)) return skip("bill", issuer.id);
   // Gate 6: a warning or a fee schedule names rupiah without any money moving.
-  if (isNoticeMail(mail.subject, mail.text)) return { status: "ignored", reason: "notice", userId };
+  if (isNoticeMail(mail.subject, mail.text)) return skip("notice", issuer.id);
 
-  const messageId = (mail.messageId || `${fromDomain}:${mail.subject}:${mail.date?.toISOString() ?? ""}`).slice(0, 300);
   const claimed = await d.db.query("insert into finance.inbound_messages(user_id,message_id,sender_domain,channel,status,import_id) values($1,$2,$3,$4,'review',$5) on conflict(user_id,message_id) do nothing returning id", [userId, messageId, fromDomain, issuer.id, stage?.importId ?? null]);
   if (!claimed.rows[0]) return { status: "duplicate", reason: "same-message", userId };
   const inboundId = claimed.rows[0].id as string;
@@ -298,6 +303,7 @@ export async function originOf(db: Q, userId: string, inboundId: string) {
 export async function sweep(db: Q) {
   await db.query("delete from finance.inbound_messages where status in ('ignored','duplicate','rejected','failed') and created_at < now() - interval '30 days'");
   await db.query("delete from finance.inbound_messages where status in ('review') and created_at < now() - interval '90 days'");
+  await db.query("delete from finance.inbound_skips where created_at < now() - interval '14 days'");
   await auditPending(db);
 }
 
