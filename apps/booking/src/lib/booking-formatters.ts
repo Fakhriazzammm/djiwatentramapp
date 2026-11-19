@@ -4,7 +4,7 @@ export const currency = (value: number) =>
 export const formatDate = (value: string) =>
   new Intl.DateTimeFormat("id-ID", { dateStyle: "full" }).format(new Date(`${value}T12:00:00`));
 
-export const todayIso = () => new Date().toISOString().slice(0, 10);
+export const todayIso = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(new Date());
 
 export const estimatedTables = (guests: number, peoplePerTable: number) =>
   Math.max(1, Math.ceil(guests / Math.max(1, peoplePerTable)));

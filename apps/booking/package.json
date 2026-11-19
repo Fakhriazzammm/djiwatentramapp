@@ -13,6 +13,7 @@
     "@supabase/supabase-js": "^2.103.3",
     "@tailwindcss/vite": "^4.0.15",
     "@djiwaapps/web-shared": "workspace:*",
+    "framer-motion": "^12.29.0",
     "lucide-react": "^0.473.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",

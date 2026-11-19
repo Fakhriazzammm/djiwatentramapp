@@ -1,3 +1,4 @@
+import { todayIso } from "./booking-formatters";
 import { createClient as createSharedClient } from "@djiwaapps/web-shared/lib/client";
 import { BOOKING_API_URL, BOOKING_SLUG, DEV_FALLBACK, SUPABASE_URL, type BookingOption } from "./booking-constants";
 
@@ -116,7 +117,7 @@ export async function loadBookingData() {
   const overrideByDate = new Map(overrides.map((entry) => [entry.date, entry]));
   const generated: Capacity[] = [];
   if (settingsValue) {
-    const start = new Date(`${new Date().toISOString().slice(0, 10)}T12:00:00`);
+    const start = new Date(`${todayIso()}T12:00:00`);
     for (let offset = 0; offset < settingsValue.bookingWindowDays; offset += 1) {
       const date = new Date(start);
       date.setDate(start.getDate() + offset);
