@@ -1,5 +1,6 @@
-import { createLazyFileRoute, Navigate } from "@tanstack/react-router";
+import { createLazyFileRoute } from "@tanstack/react-router";
+import Page from "@/components/karyawan/pages/PayrollPage";
 
 export const Route = createLazyFileRoute("/admin/karyawan/payroll/")({
-  component: () => <Navigate replace to="/admin/operational-team/payroll" />,
+  component: Page,
 });
