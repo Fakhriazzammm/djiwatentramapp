@@ -1,7 +1,7 @@
 {
-  "version": "0.2.572",
-  "commitHash": "79818ce",
-  "message": "fix(booking): flat choice list, hide empty categories, stable disabled action button",
+  "version": "0.2.573",
+  "commitHash": "9b66e7d",
+  "message": "fix(booking): render action dock in a portal so it slides up from the bottom",
   "buildDate": "2026-11-19",
-  "generatedAt": "2026-11-19T18:59:42.106Z"
+  "generatedAt": "2026-11-19T19:05:57.840Z"
 }

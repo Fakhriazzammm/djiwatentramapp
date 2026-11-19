@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.572",
+	semantic: "0.2.573",
 	// Git/deploy commit hash (short)
-	commitHash: "79818ce",
-	message: "fix(booking): flat choice list, hide empty categories, stable disabled action button",
+	commitHash: "9b66e7d",
+	message: "fix(booking): render action dock in a portal so it slides up from the bottom",
 	// Commit subject for the update prompt
-	commitMessage: "fix(booking): flat choice list, hide empty categories, stable disabled action button",
+	commitMessage: "fix(booking): render action dock in a portal so it slides up from the bottom",
 	// Build timestamp
 	buildDate: "2026-11-19",
 	// Full version string for display
