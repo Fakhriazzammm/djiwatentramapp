@@ -1,7 +1,7 @@
 {
-  "version": "0.2.573",
-  "commitHash": "9b66e7d",
-  "message": "fix(booking): render action dock in a portal so it slides up from the bottom",
+  "version": "0.2.574",
+  "commitHash": "e23ad1f",
+  "message": "fix(booking): send login to djiwatentram.web.id/masuk (api host returned 404)",
   "buildDate": "2026-11-19",
-  "generatedAt": "2026-11-19T19:05:57.840Z"
+  "generatedAt": "2026-11-19T19:06:29.605Z"
 }

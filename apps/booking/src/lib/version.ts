@@ -3,12 +3,12 @@
 export const APP_VERSION = {
 	// Release version: MAJOR.MINOR.BUILD_COUNTER
 	// Contoh: 0.2.1, 0.2.2 — clean semver, auto-increment tiap build
-	semantic: "0.2.573",
+	semantic: "0.2.574",
 	// Git/deploy commit hash (short)
-	commitHash: "9b66e7d",
-	message: "fix(booking): render action dock in a portal so it slides up from the bottom",
+	commitHash: "e23ad1f",
+	message: "fix(booking): send login to djiwatentram.web.id/masuk (api host returned 404)",
 	// Commit subject for the update prompt
-	commitMessage: "fix(booking): render action dock in a portal so it slides up from the bottom",
+	commitMessage: "fix(booking): send login to djiwatentram.web.id/masuk (api host returned 404)",
 	// Build timestamp
 	buildDate: "2026-11-19",
 	// Full version string for display

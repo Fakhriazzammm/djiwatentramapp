@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 const AUTH_BASE = "https://api.djiwatentram.web.id";
-const LOGIN_URL = `${AUTH_BASE}/masuk`;
+const LOGIN_URL = "https://djiwatentram.web.id/masuk";
 
 type BookingCustomer = { sourceId: string; name: string; email: string; phone: string };
 
