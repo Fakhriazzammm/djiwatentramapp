@@ -11,6 +11,7 @@ import { applySync, loadState, type Tx } from "./sync.js";
 import { poolTx } from "./db.js";
 import { registerAssetRoutes } from "./assets.js";
 import { registerStockRoutes } from "./stocks/service.js";
+import { registerRateRoutes } from "./rates/service.js";
 import { registerNewsRoutes } from "./news.js";
 import { registerPushRoutes } from "./push.js";
 export { poolTx };
@@ -57,6 +58,7 @@ export function createApp(d: Deps) {
   };
   const later = (fn: () => Promise<unknown>) => void fn().catch((e) => console.error("background sync", e instanceof Error ? e.message : e));
   registerStockRoutes(app, { db: d.db }, uid, json, { driveConnected: (userId) => connected(userId, "drive") });
+  registerRateRoutes(app, { db: d.db }, json);
 
   app.get("/api/finance/state", async (c) => json(c, { success: true, ...(await loadState(d.db, uid(c))) }));
 

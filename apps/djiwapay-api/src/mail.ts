@@ -8,6 +8,7 @@ import { googleConfig } from "./google.js";
 import { runDue } from "./gmail.js";
 import { runGoogleDue } from "./google-sync.js";
 import { runStocksDue } from "./stocks/service.js";
+import { runRatesDue } from "./rates/service.js";
 import { runImports } from "./gmail-import.js";
 
 const url = process.env.DATABASE_URL;
@@ -24,6 +25,11 @@ startSmtp(
 // Run once after restart as well: deploying a fix must expose old queued reads immediately.
 void auditPending(db).catch((e) => console.error("mail audit", e));
 setInterval(() => void sweep(db).catch((e) => console.error("mail sweep", e)), 6 * 3600_000);
+
+// BI-Rate: no Google needed. Cheap when nothing is due (one indexed lookup); fetches Bank Indonesia's page hourly, every 10 minutes around the monthly decision.
+let busyR = false;
+setInterval(async () => { if (busyR) return; busyR = true; try { await runRatesDue({ db }); } catch (e) { console.error("rates tick", e instanceof Error ? e.message : e); } finally { busyR = false; } }, 20_000);
+console.log("bi-rate watcher on");
 
 // Gmail direct: every 20 s look for users whose turn has come (each user is polled every ~5 min, or right away on request).
 const cfg = googleConfig();
