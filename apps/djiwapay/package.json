@@ -8,7 +8,8 @@
     "dev": "vite dev",
     "build": "node ../../scripts/write-version-manifest.mjs && vite build",
     "serve": "vite preview",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "bun test"
   },
   "dependencies": {
     "@better-auth/infra": "^0.3.6",

@@ -30,6 +30,17 @@ export type Debt = { id: string; person: string; direction: "owed_to_me" | "i_ow
 
 /** Local-only management data (not synced yet): recurring bills, spending pockets and manual assets. */
 export type Bill = { id: string; name: string; amount: number; /** Day of month 1-31. */ day: number; icon: string; tone: string; /** "YYYY-MM" months already paid. */ paid: string[] };
+/** Instalment credit: KPR, vehicle, multi-purpose and other loans. `balance` is the principal still owed; `paid` the instalments paid so far. */
+export type LoanKind = "kpr" | "kendaraan" | "multiguna" | "lainnya";
+export type LoanModel = "anuitas" | "flat" | "syariah";
+export type LoanPayment = { at: string; amount: number; interest: number; principal: number; extra?: boolean };
+export type Loan = {
+  id: string; name: string; kind: LoanKind; lender: string; model: LoanModel; principal: number; months: number; startDate?: string; dueDay: number;
+  /** Annual percentages. The fixed rate applies to the first `fixedMonths` instalments, the floating rate afterwards. */
+  fixedRate: number; fixedMonths: number; floatRate: number;
+  balance: number; paid: number; /** The instalment the bank actually charges, when it differs from the computed one. */ installment: number | null;
+  payments: LoanPayment[]; billId?: string; note: string; createdAt: string;
+};
 export type Pocket = { id: string; name: string; percent: number; categoryIds: string[]; tone: string; icon: string };
 export type AssetKind = "gold" | "fund" | "stock" | "crypto" | "property" | "vehicle" | "electronics" | "other";
 export type AssetSub = "batangan" | "perhiasan" | "koin" | "lainnya";
@@ -46,6 +57,7 @@ export type FinanceState = {
   budgets: Budget[];
   goals: Goal[];
   debts: Debt[];
+  loans: Loan[];
   /** Edits to read-only Djiwa Pay entries, keyed by `pay:<transaction id>`. */
   overrides: Record<string, Override>;
   bills: Bill[];

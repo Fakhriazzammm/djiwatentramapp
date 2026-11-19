@@ -18,7 +18,7 @@ export function annuity(balance: number, annualPct: number, months: number): num
 }
 
 /** How many instalments of `pay` it takes to clear `balance` (the loan-term inverse of annuity). */
-function periods(balance: number, annualPct: number, pay: number): number {
+export function periods(balance: number, annualPct: number, pay: number): number {
   const r = monthly(annualPct);
   if (r === 0) return balance / pay;
   const x = 1 - (balance * r) / pay;
