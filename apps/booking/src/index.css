@@ -48,10 +48,9 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 0; 
 
 /* ── Dock (aksi utama melayang) ─────────────────────────── */
 .bk-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; justify-content: center; pointer-events: none; padding: 0 16px calc(12px + env(safe-area-inset-bottom)); }
-.bk-dock::before { content: ""; position: absolute; inset: -26px 0 0; background: linear-gradient(180deg, transparent, var(--ds-canvas) 62%); pointer-events: none; }
 .bk-dock > * { position: relative; width: min(100%, 488px); pointer-events: auto; }
-.bk-btn { width: 100%; min-height: 54px; padding: 0 22px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 99px; background: var(--ds-navy); color: #fff; font-size: 16px; font-weight: 600; letter-spacing: -.01em; box-shadow: 0 10px 24px rgba(15,35,71,.22); transition: opacity .2s, background .2s; }
-.bk-btn[disabled] { opacity: .4; box-shadow: none; }
+.bk-btn { width: 100%; min-height: 54px; padding: 0 22px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 99px; background: var(--ds-navy); color: #fff; font-size: 16px; font-weight: 600; letter-spacing: -.01em; box-shadow: 0 10px 24px rgba(15,35,71,.22); transition: background .2s; }
+.bk-btn[disabled] { background: #b9c1d3; color: #fff; box-shadow: none; }
 .bk-btn.ghost { background: #fff; color: var(--ds-navy); box-shadow: 0 0 0 1px var(--ds-line); }
 .bk-btn.sm { min-height: 40px; width: auto; padding: 0 18px; font-size: 14px; box-shadow: none; }
 .bk-btn small { font-size: 13px; opacity: .72; font-weight: 500; }
@@ -62,6 +61,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 0; 
 
 /* ── Group / rows ──────────────────────────────────────── */
 .bk-group { background: var(--ds-group); border-radius: var(--ds-r-lg); padding: 4px 16px; }
+.bk-group.flat { background: none; padding: 0; }
 .bk-group.pad { padding: 16px; }
 .bk-group.white { background: #fff; box-shadow: var(--ds-soft); }
 .bk-row { position: relative; display: flex; align-items: center; gap: 13px; width: 100%; min-height: 62px; padding: 12px 0; text-align: left; }
@@ -73,8 +73,9 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 0; 
 .bk-main-t small { display: block; margin-top: 2px; font-size: 13px; line-height: 1.35; color: var(--ds-mute); }
 .bk-radio { width: 24px; height: 24px; flex: none; border-radius: 50%; display: grid; place-items: center; border: 2px solid #c7cddb; color: #fff; transition: background .2s, border-color .2s; }
 .bk-radio.on { background: var(--bk-accent); border-color: var(--bk-accent); }
-.bk-pick { width: calc(100% + 32px); margin: 0 -16px; padding: 0 16px; border-radius: 22px; }
-.bk-pick > .bk-hl { position: absolute; inset: 3px 0; border-radius: 20px; background: #fff; box-shadow: 0 2px 10px rgba(15,35,71,.07); }
+.bk-pick { width: 100%; margin: 0; padding: 0 12px; border-radius: 22px; }
+.bk-pick + .bk-pick { border-top: 0; }
+.bk-pick > .bk-hl { position: absolute; inset: 0; border-radius: 20px; background: #fff; box-shadow: 0 2px 10px rgba(15,35,71,.07); }
 .bk-pick > *:not(.bk-hl) { position: relative; }
 .bk-pick + .bk-pick { border-top-color: transparent; }
 

@@ -1,7 +1,7 @@
 {
-  "version": "0.2.570",
-  "commitHash": "73abf0d",
-  "message": "feat(booking): iOS-style rebuild of the booking flow with framer-motion",
+  "version": "0.2.571",
+  "commitHash": "3e04b3a",
+  "message": "feat(djiwapay): pinjaman/KPR calculator, loan tracker, and BI-Rate alerts",
   "buildDate": "2026-11-19",
-  "generatedAt": "2026-11-19T18:53:05.528Z"
+  "generatedAt": "2026-11-19T18:57:21.146Z"
 }

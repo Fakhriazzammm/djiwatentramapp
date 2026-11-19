@@ -50,7 +50,7 @@ export function Landing({ settings, loading, error, retry, onStart, onStatus, sh
 
 /* ── Pilihan satu-dari-banyak (jenis booking / acara) ──── */
 function ChoiceList({ options, selected, onSelect, group }: { options: BookingOption[]; selected: string; onSelect: (key: string) => void; group: string }) {
-  return <LayoutGroup id={group}><div className="bk-group">{options.map((o) => {
+  return <LayoutGroup id={group}><div className="bk-group flat">{options.map((o) => {
     const on = selected === o.key;
     return <motion.button key={o.key} className="bk-row bk-pick" onClick={() => onSelect(o.key)} whileTap={{ scale: .98 }} transition={SPRING} aria-pressed={on}>
       {on && <motion.i className="bk-hl" layoutId="hl" transition={SPRING} />}
@@ -172,9 +172,10 @@ export function MenuStep({ products, categories, cart, setQuantity, total, onNex
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState("all");
   const [sub, setSub] = useState("all");
-  const roots = useMemo(() => categories.filter((c) => !c.parentId).sort((a, b) => a.displayOrder - b.displayOrder), [categories]);
-  const subs = useMemo(() => categories.filter((c) => c.parentId === cat).sort((a, b) => a.displayOrder - b.displayOrder), [categories, cat]);
   const tree = (id: string) => { const ids = new Set([id]); let changed = true; while (changed) { changed = false; categories.forEach((c) => { if (c.parentId && ids.has(c.parentId) && !ids.has(c.id)) { ids.add(c.id); changed = true; } }); } return ids; };
+  const filled = (id: string) => { const ids = tree(id); return products.some((p) => p.categoryId != null && ids.has(p.categoryId)); };
+  const roots = useMemo(() => categories.filter((c) => !c.parentId && filled(c.id)).sort((a, b) => a.displayOrder - b.displayOrder), [categories, products]);
+  const subs = useMemo(() => categories.filter((c) => c.parentId === cat && filled(c.id)).sort((a, b) => a.displayOrder - b.displayOrder), [categories, products, cat]);
   const filtered = useMemo(() => {
     const scope = sub !== "all" ? tree(sub) : cat !== "all" ? tree(cat) : null;
     const q = query.trim().toLowerCase();
