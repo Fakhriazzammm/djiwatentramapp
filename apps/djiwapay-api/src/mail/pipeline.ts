@@ -7,7 +7,7 @@ import { domainOf, extractPayment, forwardingCode, guessCategory, implausible, i
 export type RawMail = {
   messageId: string; from: string; to: string[]; subject: string; text: string; date: Date | null;
   /** From mailauth: DMARC verdict and the domains whose DKIM signature verified. */
-  auth: { dmarcPass: boolean; dkimDomains: string[] };
+  auth: { dmarcPass: boolean; dkimDomains: string[]; /** How the verdict came about (signature results), for explaining a refusal. */ debug?: string };
 };
 export type Llm = (subject: string, text: string, from: string) => Promise<Extracted | null>;
 export type PipelineDeps = { db: Tx; llm?: Llm; domain: string; now?: () => Date; trustMin?: number; autoCeiling?: number };
@@ -114,15 +114,15 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
 
   const messageId = (mail.messageId || `${fromDomain}:${mail.subject}:${mail.date?.toISOString() ?? ""}`).slice(0, 300);
   // Every early "no" is remembered briefly (never for imports), so a missing payment can be explained.
-  const skip = async (reason: string, channel = "", withSubject = true): Promise<Outcome> => {
-    if (!stage) await d.db.query("insert into finance.inbound_skips(user_id,message_id,reason,channel,sender_domain,subject) values($1,$2,$3,$4,$5,$6) on conflict(user_id,message_id) do nothing", [userId, messageId, reason, channel, fromDomain.slice(0, 120), withSubject ? mail.subject.slice(0, 80) : ""]).catch(() => {});
+  const skip = async (reason: string, channel = "", withSubject = true, detail = ""): Promise<Outcome> => {
+    if (!stage) await d.db.query("insert into finance.inbound_skips(user_id,message_id,reason,channel,sender_domain,subject,detail) values($1,$2,$3,$4,$5,$6,$7) on conflict(user_id,message_id) do nothing", [userId, messageId, reason, channel, fromDomain.slice(0, 120), withSubject ? mail.subject.slice(0, 80) : "", detail.slice(0, 300)]).catch(() => {});
     return { status: "ignored", reason, userId };
   };
   // Gate 1: only listed issuers. Gate 2: the mail must really come from them (DKIM aligned or DMARC pass).
   const issuer = issuerFor(fromDomain);
   if (!issuer) return skip("sender-not-allowed");
   const aligned = mail.auth.dmarcPass || mail.auth.dkimDomains.some((x) => issuer.domains.some((dom) => x === dom || x.endsWith("." + dom)));
-  if (!aligned) return skip("auth-failed", issuer.id);
+  if (!aligned) return skip("auth-failed", issuer.id, true, `dmarc=${mail.auth.dmarcPass} dkim=[${mail.auth.dkimDomains.join(",")}] ${mail.auth.debug ?? ""}`);
   // Gate 3: codes, PINs and resets are never read or stored.
   if (isSecretMail(mail.subject, mail.text)) return skip("secret", issuer.id, false);
   // Gate 4: a campaign or a periodic report is not one movement of money, whatever rupiah it prints.

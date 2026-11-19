@@ -25,12 +25,15 @@ export type MailCtx = { ip: string; helo: string; sender: string; host: string; 
   /** Old Gmail mail: its DKIM key may have been rotated away, so also accept Google's own verdict recorded when the mail arrived. */ trustGoogleVerdict?: boolean };
 export async function toRawMail(raw: Buffer, ctx: MailCtx): Promise<RawMail> {
   const parsed = await simpleParser(raw, { skipImageLinks: true, skipHtmlToText: false });
-  let dmarcPass = false; const dkimDomains: string[] = [];
+  let dmarcPass = false, debug = ""; const dkimDomains: string[] = [];
   try {
     const a = await authenticate(raw, { ip: ctx.ip, helo: ctx.helo, sender: ctx.sender, mta: ctx.host, trustReceived: true, ...(ctx.resolver ? { resolver: ctx.resolver } : {}) } as any);
     dmarcPass = typeof a.dmarc === "object" && a.dmarc?.status?.result === "pass";
     for (const r of a.dkim?.results ?? []) if (r.status?.result === "pass" && r.signingDomain) dkimDomains.push(String(r.signingDomain).toLowerCase());
-  } catch { /* an unverifiable mail simply fails the gate */ }
+    const sigs = (a.dkim?.results ?? []).map((r: any) => `${r.signingDomain ?? "?"}/${r.selector ?? "?"}:${r.status?.result ?? "?"}${r.status?.comment ? `(${String(r.status.comment).slice(0, 50)})` : ""}`);
+    debug = `sigs=${sigs.length ? sigs.join(" ") : "none"} mailauth-dmarc=${typeof a.dmarc === "object" ? a.dmarc?.status?.result : "n/a"}`;
+  } catch (e) { debug = `mailauth-error=${e instanceof Error ? e.message.slice(0, 80) : "?"}`; /* an unverifiable mail simply fails the gate */ }
+  { const g = googleVerdict(parsed.headerLines?.filter((h) => h.key === "authentication-results").map((h) => h.line) ?? []); debug += ` google-verdict=${g.dkimDomains.join(",") || (g.dmarcPass ? "dmarc" : "none")}`; }
   if (ctx.trustGoogleVerdict) {
     const v = googleVerdict(parsed.headerLines?.filter((h) => h.key === "authentication-results").map((h) => h.line) ?? []);
     const fromDomain = (parsed.from?.value?.[0]?.address ?? "").split("@").pop()?.toLowerCase() ?? "";
@@ -39,7 +42,7 @@ export async function toRawMail(raw: Buffer, ctx: MailCtx): Promise<RawMail> {
   }
   return {
     messageId: parsed.messageId ?? "", from: parsed.from?.value?.[0]?.address ?? ctx.sender, to: ctx.recipients, subject: parsed.subject ?? "",
-    text: (parsed.text && parsed.text.trim() ? parsed.text : stripTags(parsed.html || "")).slice(0, 20_000), date: parsed.date ?? null, auth: { dmarcPass, dkimDomains },
+    text: (parsed.text && parsed.text.trim() ? parsed.text : stripTags(parsed.html || "")).slice(0, 20_000), date: parsed.date ?? null, auth: { dmarcPass, dkimDomains, debug },
   };
 }
 
