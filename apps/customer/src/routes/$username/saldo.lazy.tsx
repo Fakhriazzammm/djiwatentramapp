@@ -8,6 +8,8 @@ import { useCustomerWallet, type CustomerWalletLedgerEntry } from "@/hooks/use-c
 import { currency } from "@/components/customer/types";
 import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
 import { getCustomerPayPath } from "@/lib/customer-pay-navigation";
+import { HelpSheet } from "@/components/saldo/help-sheet";
+import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { PpobFlow } from "@/components/saldo/ppob-flow";
 import { ScanFlow } from "@/components/saldo/scan-flow";
 import { SendFlow } from "@/components/saldo/send-flow";
@@ -45,6 +47,8 @@ function SaldoPage() {
 	const reduce = useReducedMotion();
 	const { isAuthenticated, customer, isLoading: authLoading } = useCustomerAuth();
 	const { wallet, ledger, isLoading, error, refetch } = useCustomerWallet();
+	const siteSettings = useHybridSiteSettings();
+	const storePhone = typeof siteSettings?.storePhone === "string" ? siteSettings.storePhone.trim() : "";
 	const [hidden, setHidden] = useState(false);
 	const [refreshing, setRefreshing] = useState(false);
 	const [sheet, setSheet] = useState(false);
@@ -56,7 +60,7 @@ function SaldoPage() {
 	const [timedOut, setTimedOut] = useState(false);
 	const [filter, setFilter] = useState<"all" | "in" | "out">("all");
 	const [showAll, setShowAll] = useState(false);
-	const [flow, setFlow] = useState<"send" | "scan" | "ppob" | null>(null);
+	const [flow, setFlow] = useState<"send" | "scan" | "ppob" | "help" | null>(null);
 	const [sendPhone, setSendPhone] = useState<string | undefined>();
 
 	const pendingKey = customer?.sourceId ? `${PENDING_KEY}:${customer.sourceId}` : PENDING_KEY;
@@ -122,7 +126,7 @@ function SaldoPage() {
 		{ label: "Isi Saldo", icon: "topup", onClick: () => { setFormError(null); setSheet(true); } },
 		{ label: "Riwayat", icon: "history", onClick: () => document.getElementById("saldo-riwayat")?.scrollIntoView({ behavior: "smooth", block: "start" }) },
 		{ label: "Pesan", icon: "send", onClick: () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }) },
-		{ label: "Bantuan", icon: "help", onClick: () => navigate({ to: "/$username/notifikasi", params: { username } }) },
+		{ label: "Bantuan", icon: "help", onClick: () => setFlow("help") },
 	];
 	const openTopup = () => { setFlow(null); setFormError(null); setSheet(true); };
 	const inPay = [
@@ -201,6 +205,7 @@ function SaldoPage() {
 
 			<SendFlow open={flow === "send"} initialPhone={sendPhone} balance={balance} onClose={() => setFlow(null)} onScan={() => setFlow("scan")} onTopup={openTopup} onDone={() => void refetch()} />
 			<ScanFlow open={flow === "scan"} onClose={() => setFlow(null)} onPhone={(phone) => { setSendPhone(phone); setFlow("send"); }} onManual={() => { setSendPhone(undefined); setFlow("send"); }} />
+			<HelpSheet open={flow === "help"} onClose={() => setFlow(null)} username={username} phone={storePhone} />
 			<PpobFlow open={flow === "ppob"} balance={balance} onClose={() => setFlow(null)} onTopup={openTopup} onDone={() => void refetch()} />
 
 			<AnimatePresence>
