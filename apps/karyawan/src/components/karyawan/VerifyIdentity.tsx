@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { DsButton } from "@djiwaapps/web-shared/components/ds";
 
-const FaceRecognition = lazy(() => import("@/components/auth/FaceRecognition").then((m) => ({ default: m.FaceRecognition })));
+const FaceScanner = lazy(() => import("@/components/karyawan/FaceScanner").then((m) => ({ default: m.FaceScanner })));
 
 export type VerifyPayload = { method: "face"; faceDescriptor: number[]; photo?: string | null } | { method: "pin"; pin: string };
 
@@ -16,6 +16,7 @@ export function VerifyIdentity({ hasFace, submit, locked, footer }: { hasFace: b
 	const [error, setError] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
 	const [faceKey, setFaceKey] = useState(0);
+	const [camProblem, setCamProblem] = useState<string | null>(null);
 	const [faceFails, setFaceFails] = useState(0);
 	const busyRef = useRef(false);
 
@@ -52,21 +53,18 @@ export function VerifyIdentity({ hasFace, submit, locked, footer }: { hasFace: b
 		<div>
 			{method === "face" ? (
 				<>
-					<div className="kx-cam">
-						<Suspense fallback={<div style={{ height: "100%", display: "grid", placeItems: "center", color: "#fff", fontSize: 13 }}>Menyiapkan kamera…</div>}>
-							<FaceRecognition
-								key={faceKey}
-								mode="verify"
-								onVerify={async (d, photo) => {
-									try { await run({ method: "face", faceDescriptor: d, photo }); } catch (e) { setFaceFails((n) => n + 1); throw e; }
-								}}
-								onModelError={(m) => setError(m)}
-							/>
-						</Suspense>
-					</div>
-					{error && <div className="kx-err" role="alert">{error}</div>}
+					<Suspense fallback={<div className="kx-cam" style={{ display: "grid", placeItems: "center", color: "#fff", fontSize: 13 }}>Menyiapkan kamera…</div>}>
+						<FaceScanner
+							key={faceKey}
+							mode="verify"
+							onDone={async (d, photo) => {
+								try { await run({ method: "face", faceDescriptor: d, photo }); } catch (e) { setFaceFails((n) => n + 1); throw e; }
+							}}
+							onUnavailable={(p) => setCamProblem(p.message)}
+						/>
+					</Suspense>
+					{camProblem && <div className="ds-note ds-note--info" style={{ marginTop: 10 }}><div style={{ flex: 1 }}>Kamu tetap bisa absen dengan PIN.</div></div>}
 					<div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-						{error && <DsButton block onClick={() => { setError(null); setFaceKey((k) => k + 1); }}>Coba lagi</DsButton>}
 						<DsButton block variant="ghost" onClick={() => { setError(null); setMethod("pin"); }}>Pakai PIN</DsButton>
 					</div>
 				</>

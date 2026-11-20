@@ -252,7 +252,7 @@ function ClosingPage() {
     const pending = pendingRef.current;
     if (!pending) throw new Error("Data closing hilang. Kirim ulang laporan.");
     const geo = await getPosition();
-    if (!geo.ok) throw new Error(geo.reason === "denied" ? "Izin lokasi ditolak. Aktifkan lokasi lalu coba lagi." : "Lokasi tidak tersedia. Aktifkan GPS lalu coba lagi.");
+    if (!geo.ok) throw new Error(geo.reason === "denied" ? "Izin lokasi ditolak atau terblokir. Izinkan lokasi untuk situs ini; jika muncul “Situs ini tidak dapat meminta izin Anda”, tutup gelembung/overlay di layar lalu coba lagi." : "Lokasi belum terbaca. Nyalakan GPS dan mode akurasi tinggi, lalu coba lagi.");
     try {
       await submitClosingViaEdge({
         userId, userName, roleName, shiftName, role,

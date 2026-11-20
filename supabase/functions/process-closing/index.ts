@@ -85,7 +85,7 @@ async function verifyPosClosingIdentity(
   }
   const { data: user, error } = await supabase
     .from("yumi_users")
-    .select("source_id,is_active,home_pin_fingerprint,raw")
+    .select("source_id,is_active,home_pin_fingerprint,face_descriptor,raw")
     .eq("source_id", userId)
     .maybeSingle();
   if (error) throw error;
@@ -100,10 +100,14 @@ async function verifyPosClosingIdentity(
   let faceVerified = false;
   if (face.length > 0) {
     const raw = (user.raw ?? {}) as Record<string, unknown>;
-    const stored = Array.isArray(raw.faceDescriptor)
+    const fromRaw = Array.isArray(raw.faceDescriptor)
       ? raw.faceDescriptor.filter((value): value is number => typeof value === "number")
       : [];
-    faceVerified = euclideanDistance(face, stored) <= 0.6;
+    // Pendaftaran lama hanya mengisi kolom face_descriptor, pendaftaran baru mengisi keduanya: cocokkan ke yang tersedia.
+    const fromColumn = Array.isArray((user as Record<string, unknown>).face_descriptor)
+      ? ((user as Record<string, unknown>).face_descriptor as unknown[]).filter((value): value is number => typeof value === "number")
+      : [];
+    faceVerified = [fromRaw, fromColumn].some((stored) => stored.length > 0 && euclideanDistance(face, stored) <= 0.6);
   }
   if (!pinVerified && !faceVerified) {
     throw new Error("Verifikasi identitas gagal: PIN atau wajah tidak cocok");
@@ -112,7 +116,7 @@ async function verifyPosClosingIdentity(
 
 async function validatePosClosingGeofence(
   supabase: ReturnType<typeof createClient>,
-  location?: { lat: number; lng: number } | null,
+  location?: { lat: number; lng: number; accuracy?: number } | null,
 ): Promise<void> {
   if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) {
     throw new Error("Lokasi tidak tersedia — aktifkan GPS dan coba lagi");
@@ -127,7 +131,7 @@ async function validatePosClosingGeofence(
   const raw = data.raw as Record<string, unknown>;
   const storeLat = Number(raw.attendanceLat);
   const storeLng = Number(raw.attendanceLng);
-  const radius = Number(raw.attendanceRadius) || 50;
+  const radius = Number(raw.attendanceRadius) || 100;
   if (!Number.isFinite(storeLat) || !Number.isFinite(storeLng)) return;
   const earthRadius = 6371e3;
   const phi1 = (location.lat * Math.PI) / 180;
@@ -136,7 +140,10 @@ async function validatePosClosingGeofence(
   const dLambda = ((storeLng - location.lng) * Math.PI) / 180;
   const a = Math.sin(dPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) ** 2;
   const distance = earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  if (distance > radius) {
+  // Toleransi galat GPS perangkat (maks 60 m), sama dengan absen masuk. Galat > 250 m tidak bisa dipercaya.
+  const accuracy = Number(location.accuracy ?? 0);
+  if (accuracy > 250) throw new Error("Sinyal GPS kurang akurat. Pindah ke area terbuka lalu coba lagi.");
+  if (distance > radius + Math.min(accuracy, 60)) {
     throw new Error(`Anda berada di luar radius kafe (${Math.round(distance)}m dari ${radius}m yang diizinkan)`);
   }
 }
@@ -587,7 +594,7 @@ Deno.serve(async (req: Request) => {
       linkSignature?: string;
       pinCode?: string;
       faceDescriptor?: number[];
-      location?: { lat: number; lng: number } | null;
+      location?: { lat: number; lng: number; accuracy?: number } | null;
     };
 
     if (source === "telegram_mini_app") {

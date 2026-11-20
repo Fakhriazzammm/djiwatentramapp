@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
 import { DsButton, DsIcon, DsNote, DsSheet, DsTag } from "@djiwaapps/web-shared/components/ds";
-import { AttendanceError, clockIn, getPosition, preflight, type ClockInResult, type GeoPoint, type Preflight } from "@/lib/attendance-api";
+import { AttendanceError, clockIn, getPosition, preflight, reportEvent, type ClockInResult, type GeoPoint, type Preflight } from "@/lib/attendance-api";
 import { VerifyIdentity, type VerifyPayload } from "@/components/karyawan/VerifyIdentity";
 
 type CheckState = "ok" | "bad" | "wait" | "idle";
@@ -56,7 +56,7 @@ export function AbsenSheet({ isIn, token, onClose, onClosing, onHistory, onRecor
 		if (my !== seq.current) return;
 		const p = g.ok ? g.point : null;
 		setPoint(p);
-		if (!g.ok) setGeoErr(g.reason);
+		if (!g.ok) { setGeoErr(g.reason); reportEvent("location", g.reason); }
 		try {
 			const r = await preflight(token, p);
 			if (my === seq.current) setPre(r);
@@ -196,7 +196,10 @@ export function AbsenSheet({ isIn, token, onClose, onClosing, onHistory, onRecor
 			<Check s={scheduleState} title={pre?.noSchedule ? "Tidak ada jadwal" : "Ada jadwal"} sub={scheduleSub} />
 			<Check s={loading ? "wait" : fatal ? "bad" : pre?.isIn ? "bad" : "ok"} title="Perangkat & sesi" sub={fatal ?? (pre?.isIn ? "Kamu sudah absen masuk" : loading ? "Memeriksa…" : "Siap")} />
 			{geoErr === "denied" && (
-				<DsNote icon={<DsIcon name="employee-attendance-check-in" />}><b>Aktifkan lokasi</b>Pengaturan → Karyawan/Browser → Lokasi → izinkan saat app dipakai, lalu cek ulang.</DsNote>
+				<DsNote icon={<DsIcon name="employee-attendance-check-in" />}><b>Aktifkan lokasi</b>Izinkan lokasi untuk situs ini (ikon gembok di address bar → Izin → Lokasi). Jika muncul “Situs ini tidak dapat meminta izin Anda”, tutup gelembung/overlay di layar (chat head, perekam layar, filter cahaya biru) lalu cek ulang.</DsNote>
+			)}
+			{(geoErr === "timeout" || geoErr === "unavailable") && (
+				<DsNote icon={<DsIcon name="employee-attendance-check-in" />}><b>Lokasi belum terbaca</b>Nyalakan GPS/Layanan Lokasi dan mode akurasi tinggi, lalu cek ulang. Di dalam gedung, dekati jendela atau pintu.</DsNote>
 			)}
 			{!loading && pre && !pre.hasFace && ready && <DsNote tone="info"><b>Wajah belum terdaftar</b>Kamu akan absen dengan PIN. Daftarkan wajah di Profil › Scan wajah.</DsNote>}
 			<DsButton block disabled={loading} onClick={() => (ready ? setPhase(needReason ? "late" : "verify") : void run())}>

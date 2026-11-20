@@ -2,7 +2,7 @@ import { createLazyFileRoute, Outlet, useLocation, useNavigate, useParams } from
 /* HERMES: rebuild trigger — live payslip + bonus target + attendance reminder */
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { useYumiAuth, useHybridStaffBySlug, useHybridCurrentlyInStore } from "@djiwaapps/web-shared";
-import { DsRoot, DsTabBar, ds3d } from "@djiwaapps/web-shared/components/ds";
+import { DsButton, DsNote, DsRoot, DsTabBar, ds3d } from "@djiwaapps/web-shared/components/ds";
 import { AbsenSheet } from "@/components/karyawan/AbsenSheet";
 import { PermissionGate } from "@/components/karyawan/PermissionGate";
 import { OnboardingGuide, guideSeen } from "@/components/karyawan/OnboardingGuide";
@@ -67,138 +67,55 @@ function formatDateId(iso: string): string {
   return `${d} ${months[m - 1]}`;
 }
 
-function AttendanceReminder({ userId, userName, username: routeUsername }: { userId?: string; userName?: string; username?: string }) {
-  const [state, setState] = useState<"loading" | "none" | "show">("loading");
-  const [missedDates, setMissedDates] = useState<string[]>([]);
+function AttendanceReminder({ userId, username: routeUsername }: { userId?: string; userName?: string; username?: string }) {
+  const [missed, setMissed] = useState<string[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!userId) { setState("none"); return; }
+    if (!userId) return;
+    let off = false;
     (async () => {
       try {
         const supabase = createClient();
         const nowWib = new Date(Date.now() + 7 * 3600_000);
+        const today = wibTodayStr();
+        const startStr = `${today.slice(0, 8)}01`;
+        const endStr = new Date(nowWib.getTime() - 86400_000).toISOString().slice(0, 10);
+        if (endStr < startStr) return; // hari pertama bulan
+        try { const st = localStorage.getItem(`${DISMISS_KEY_MISSED}${userId}`); if (st && st >= endStr) return; } catch { /* */ }
 
-        // Rentang: 1 bulan berjalan → kemarin (WIB)
-        const startStr = `${nowWib.getUTCFullYear()}-${String(nowWib.getUTCMonth() + 1).padStart(2, "0")}-01`;
-        const yesterdayWib = new Date(nowWib.getTime() - 86400_000);
-        const endStr = `${yesterdayWib.getUTCFullYear()}-${String(yesterdayWib.getUTCMonth() + 1).padStart(2, "0")}-${String(yesterdayWib.getUTCDate()).padStart(2, "0")}`;
-
-        // Cek dismiss — simpan tanggal terakhir dismissed
-        try {
-          const stored = localStorage.getItem(`${DISMISS_KEY_MISSED}${userId}`);
-          if (stored && stored >= endStr) {
-            setState("none"); return;
-          }
-        } catch { /* */ }
-
-        // Skip jika masih 1 Juni dan belum ada hari kemarin (masih di hari pertama)
-        if (startStr === wibTodayStr()) {
-          setState("none"); return;
-        }
-
-        // 1. Ambil semua jadwal (non-OFF) dalam rentang
-        const { data: schedules } = await supabase
-          .schema("pos")
-          .from("attendance_schedules")
-          .select("date, shift_name")
-          .eq("user_id", userId)
-          .gte("date", startStr)
-          .lte("date", endStr)
-          .not("shift_name", "ilike", "%off%");
-
-        if (!schedules || schedules.length === 0) {
-          setState("none"); return;
-        }
-
-        // 2. Ambil semua check-in dalam rentang
-        const startTs = Date.UTC(nowWib.getUTCFullYear(), nowWib.getUTCMonth(), 1) - 7 * 3600_000;
-        const endTs = yesterdayWib.getTime() + 86400_000 - 1;
-
-        const { data: logs } = await supabase
-          .from("pos_attendance_logs")
-          .select("timestamp")
-          .eq("userName", userName)
-          .eq("type", "check_in")
-          .gte("timestamp", startTs)
-          .lt("timestamp", endTs);
-
-        // Set of dates where user DID check in
-        const checkedInDates = new Set<string>();
-        if (logs) {
-          for (const log of logs) {
-            checkedInDates.add(tsToWibDateStr(log.timestamp));
-          }
-        }
-
-        // 3. Cari jadwal tanpa check-in
-        const missed: string[] = [];
-        for (const s of schedules) {
-          if (!checkedInDates.has(s.date)) {
-            missed.push(s.date);
-          }
-        }
-
-        if (missed.length === 0) {
-          setState("none"); return;
-        }
-
-        setMissedDates(missed);
-        setState("show");
-      } catch {
-        setState("none");
-      }
+        const [{ data: schedules }, { data: logs }, { data: reqs }] = await Promise.all([
+          supabase.schema("pos").from("attendance_schedules").select("date, shift_name, status").eq("user_id", userId).gte("date", startStr).lte("date", endStr).not("shift_name", "ilike", "%off%"),
+          supabase.from("pos_attendance_logs").select("timestamp").eq("userId", userId).eq("type", "check_in").gte("timestamp", Date.parse(`${startStr}T00:00:00+07:00`)).lt("timestamp", Date.parse(`${today}T00:00:00+07:00`)),
+          // Hari yang sudah diajukan izin/cuti/sakit/koreksi (menunggu atau disetujui) tidak dianggap terlewat.
+          supabase.from("attendance_leave_requests").select("leave_type,start_date,end_date,status").eq("user_id", userId).in("status", ["pending", "approved"]).lte("start_date", endStr).gte("end_date", startStr),
+        ]);
+        const worked = new Set((logs ?? []).map((l: any) => tsToWibDateStr(l.timestamp)));
+        const covered = (d: string) => (reqs ?? []).some((r: any) => r.leave_type !== "tukar_shift" && r.start_date <= d && r.end_date >= d);
+        const list = (schedules ?? []).filter((x: any) => x.status !== "off" && !worked.has(x.date) && !covered(x.date)).map((x: any) => x.date as string).sort();
+        if (!off) setMissed(list);
+      } catch { /* diam: pengingat bukan fitur kritis */ }
     })();
-  }, [userId, userName]);
-
-  const dismiss = useCallback(() => {
-    setState("none");
-    const nowWib = new Date(Date.now() + 7 * 3600_000);
-    const yesterdayWib = new Date(nowWib.getTime() - 86400_000);
-    const endStr = `${yesterdayWib.getUTCFullYear()}-${String(yesterdayWib.getUTCMonth() + 1).padStart(2, "0")}-${String(yesterdayWib.getUTCDate()).padStart(2, "0")}`;
-    try { localStorage.setItem(`${DISMISS_KEY_MISSED}${userId}`, endStr); } catch { /* */ }
+    return () => { off = true; };
   }, [userId]);
 
-  if (state !== "show") return null;
+  const dismiss = useCallback(() => {
+    setMissed([]);
+    const y = new Date(Date.now() + 7 * 3600_000 - 86400_000).toISOString().slice(0, 10);
+    try { localStorage.setItem(`${DISMISS_KEY_MISSED}${userId}`, y); } catch { /* */ }
+  }, [userId]);
 
-  const count = missedDates.length;
-  const label = count > 3
-    ? `${count} hari (${formatDateId(missedDates[0])} – ${formatDateId(missedDates[missedDates.length - 1])})`
-    : missedDates.map(formatDateId).join(", ");
+  if (missed.length === 0) return null;
+  const label = missed.length > 3 ? `${missed.length} hari (${formatDateId(missed[0])} – ${formatDateId(missed[missed.length - 1])})` : missed.map(formatDateId).join(", ");
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        className="mx-auto w-full max-w-2xl px-4 pt-2"
-      >
-        <section aria-labelledby="attendance-reminder-title" className="karyawan-card relative flex items-start gap-3 border border-rose-200 bg-rose-50 p-4 text-rose-900">
-          <BellRing aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
-          <div className="min-w-0 flex-1">
-            <h2 id="attendance-reminder-title" className="text-sm font-bold">Absensi Terlewat</h2>
-            <p className="mt-0.5 text-xs leading-relaxed text-rose-800">
-              Kamu tidak check-in sebanyak <strong>{count} hari</strong>: {label}.
-              Data absensi ini memengaruhi penggajian. Silakan hubungi atasan jika ada kendala.
-            </p>
-            <button
-              onClick={() => navigate({ to: "/$username/absensi" as any, params: { username: routeUsername! } })}
-              className="karyawan-control mt-2 bg-rose-600 px-4 text-xs font-semibold text-white transition-colors hover:bg-rose-700 active:scale-[.97]"
-            >
-              Buka Riwayat Absensi
-            </button>
-          </div>
-          <button
-            onClick={dismiss}
-            aria-label="Tutup pengingat absensi"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-rose-500 transition-colors hover:bg-rose-100 hover:text-rose-700"
-          >
-            <X aria-hidden="true" className="h-4 w-4" />
-          </button>
-        </section>
-      </motion.div>
-    </AnimatePresence>
+    <div className="mx-auto w-full max-w-2xl px-4 pt-2">
+      <DsNote tone="danger" icon={<BellRing aria-hidden="true" size={22} />} action={<DsButton size="sm" variant="danger" onClick={() => navigate({ to: "/$username/koreksi-absen" as any, params: { username: routeUsername! }, search: { date: missed[0], type: "check_in" } } as any)}>Koreksi</DsButton>}>
+        <b>Absen masuk terlewat · {label}</b>
+        Ada jadwal tapi tidak ada catatan absen masuk, dan ini memengaruhi gaji. Ajukan koreksi bila kamu sebenarnya masuk.{" "}
+        <button type="button" onClick={dismiss} style={{ background: "none", border: 0, padding: 0, color: "inherit", textDecoration: "underline", font: "inherit" }}>Tutup</button>
+      </DsNote>
+    </div>
   );
 }
 

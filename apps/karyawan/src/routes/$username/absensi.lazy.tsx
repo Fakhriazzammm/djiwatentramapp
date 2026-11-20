@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useStaffProfile } from "../$username.lazy";
 import { AttendanceError, enrollFace } from "@/lib/attendance-api";
 
-const FaceRecognition = lazy(() => import("@/components/auth/FaceRecognition").then((m) => ({ default: m.FaceRecognition })));
+const FaceScanner = lazy(() => import("@/components/karyawan/FaceScanner").then((m) => ({ default: m.FaceScanner })));
 
 export const Route = createLazyFileRoute("/$username/absensi")({ component: AbsensiPage });
 
@@ -71,12 +71,10 @@ function Enroll({ onClose }: { onClose: () => void }) {
 			<DsPageTitle left={<DsIconButton aria-label="Kembali" onClick={onClose}>‹</DsIconButton>}>Daftarkan wajah</DsPageTitle>
 			{!desc ? (
 				<>
-					<p className="ds-sub" style={{ margin: "0 4px 8px" }}>Hadap kamera di tempat terang. Pemindaian berjalan otomatis.</p>
-					<div className="kx-cam">
-						<Suspense fallback={<div style={{ height: "100%", display: "grid", placeItems: "center", color: "#fff", fontSize: 13 }}>Menyiapkan kamera…</div>}>
-							<FaceRecognition mode="enroll" onCapture={(d) => setDesc(d)} onModelError={(m) => setErr(m)} />
-						</Suspense>
-					</div>
+					<p className="ds-sub" style={{ margin: "0 4px 8px" }}>Hadap kamera di tempat terang, wajah di dalam lingkaran. Tahan sebentar sampai terbaca (±5 detik).</p>
+					<Suspense fallback={<div className="kx-cam" style={{ display: "grid", placeItems: "center", color: "#fff", fontSize: 13 }}>Menyiapkan kamera…</div>}>
+						<FaceScanner mode="enroll" onDone={async (d) => { setDesc(d); }} onUnavailable={(p) => setErr(p.message)} />
+					</Suspense>
 					{err && <div className="kx-err" role="alert">{err}</div>}
 				</>
 			) : (

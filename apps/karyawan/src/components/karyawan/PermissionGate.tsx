@@ -63,7 +63,7 @@ export function PermissionGate({ hasFace, onEnroll }: { hasFace: boolean; onEnro
 					<DsRow icon={<DsIcon name="notifications-alerts" />} title="Notifikasi" sub="Pengingat shift & persetujuan" trail={tag(note)} />
 				</DsGroup>
 				{!hasFace && <DsNote tone="info" icon={<DsIcon name="employee-profile" />}><b>Wajah belum terdaftar</b>Daftarkan sekali (±20 detik). Tanpa itu kamu tetap bisa absen dengan PIN.</DsNote>}
-				{(loc === "denied" || cam === "denied") && <DsNote icon={<DsIcon name="notifications-alerts" />}><b>Izin ditolak</b>Buka Pengaturan browser/app untuk situs ini, izinkan lokasi dan kamera, lalu muat ulang.</DsNote>}
+				{(loc === "denied" || cam === "denied") && <DsNote icon={<DsIcon name="notifications-alerts" />}><b>Izin ditolak atau terblokir</b>Izinkan lokasi dan kamera untuk situs ini di pengaturan browser. Jika muncul “Situs ini tidak dapat meminta izin Anda”, tutup gelembung/overlay di layar (chat head, perekam layar, filter cahaya biru) lalu coba lagi.</DsNote>}
 				{!decided
 					? <DsButton block onClick={grant}>Izinkan lokasi &amp; kamera</DsButton>
 					: <DsButton block onClick={() => { done(); if (!hasFace && cam === "granted") onEnroll(); }}>{!hasFace && cam === "granted" ? "Daftarkan wajah" : "Selesai"}</DsButton>}

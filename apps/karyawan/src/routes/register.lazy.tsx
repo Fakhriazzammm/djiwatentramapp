@@ -13,9 +13,21 @@ export const Route = createLazyFileRoute("/register")({
 
 const JABATAN_LIST = [
   { value: "barista", label: "Barista" },
-  { value: "kitchen", label: "Kitchen" },
+  { value: "kitchen", label: "Kitchen / Chef" },
   { value: "kasir", label: "Kasir" },
+  { value: "pelayan", label: "Pelayan / Waiter" },
+  { value: "helper_dapur", label: "Helper Dapur" },
+  { value: "steward", label: "Steward / Dishwasher" },
+  { value: "runner", label: "Food Runner" },
+  { value: "host", label: "Host / Greeter" },
+  { value: "cleaning", label: "Cleaning Service" },
+  { value: "gudang", label: "Staff Gudang" },
+  { value: "driver", label: "Driver / Kurir" },
+  { value: "security", label: "Security" },
+  { value: "admin", label: "Staff Administrasi" },
+  { value: "marketing", label: "Marketing & Konten" },
 ] as const;
+const jabatanLabel = (value: string) => JABATAN_LIST.find((j) => j.value === value)?.label ?? value;
 
 const FN_URL = `${import.meta.env.VITE_SUPABASE_URL ?? "https://supabase.djiwatentram.web.id"}/functions/v1/staff-register`;
 
@@ -179,7 +191,7 @@ function RegisterPage() {
 
   const vars = {
     NAMA: name.trim() || "(nama karyawan)", NIK: identityNumber.trim() || "(belum diisi)", ALAMAT: address.trim() || "(belum diisi)",
-    TGL_LAHIR: birthDate || "(belum diisi)", TEMPAT_LAHIR: birthPlace.trim() || "(belum diisi)", JABATAN: jabatan.toUpperCase(),
+    TGL_LAHIR: birthDate || "(belum diisi)", TEMPAT_LAHIR: birthPlace.trim() || "(belum diisi)", JABATAN: jabatanLabel(jabatan).toUpperCase(),
     TIPE: employmentType === "part_time" ? "PKWT - Paruh Waktu" : "PKWT - Penuh Waktu",
   };
   const contractText = `${interpolate(CONTRACT_TEMPLATE, vars)}\n\nDibuat di Tasikmalaya, pada tanggal ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}\n\nDengan menandatangani perjanjian ini, Para Pihak menyatakan telah membaca, memahami, dan menyetujui seluruh isi perjanjian tanpa paksaan dari pihak mana pun.`;
@@ -301,7 +313,7 @@ function RegisterPage() {
 
         {step === 2 && (
           <>
-            <p className="ds-sub" style={{ margin: "0 4px 6px" }}>Baca perjanjian kerja {jabatan.toUpperCase()}, lalu tanda tangan.</p>
+            <p className="ds-sub" style={{ margin: "0 4px 6px" }}>Baca perjanjian kerja {jabatanLabel(jabatan).toUpperCase()}, lalu tanda tangan.</p>
             <DsGroup>
               {pasal.map((p, i) => (
                 <div key={i} style={{ borderTop: i ? "1px solid var(--ds-hair)" : 0 }}>

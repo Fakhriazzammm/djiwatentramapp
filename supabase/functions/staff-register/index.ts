@@ -5,7 +5,7 @@ import bcrypt from "npm:bcryptjs@2.4.3";
 /**
  * Pendaftaran karyawan mandiri TANPA persetujuan manual.
  * Satu panggilan: validasi → buat akun aktif (PIN pilihan sendiri) → catat aplikasi + kontrak yang sudah ditandatangani.
- * Akun langsung bisa dipakai di app Karyawan. Peran dibatasi ke BARISTA / CHEF / KASIR (tanpa hak istimewa).
+ * Akun langsung bisa dipakai di app Karyawan. Peran dibatasi ke BARISTA / CHEF / KASIR / WAITERS / STAFF (tanpa hak istimewa); label jabatan disimpan terpisah.
  * Anti-penyalahgunaan: batas per IP, honeypot, nama ganda ditolak, PIN lemah ditolak.
  */
 
@@ -18,8 +18,27 @@ const CORS = {
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...CORS, "Content-Type": "application/json" } });
 const fail = (code: string, message: string, status = 400) => json({ success: false, error: { code, message } }, status);
 
-const ROLE_BY_JABATAN: Record<string, string> = { barista: "BARISTA", kitchen: "CHEF", kasir: "KASIR" };
-const NIP_PREFIX: Record<string, string> = { BARISTA: "BRT", CHEF: "CHF", KASIR: "KSR" };
+// Jabatan yang boleh didaftarkan mandiri. Semua dipetakan ke peran sistem TANPA hak istimewa:
+// BARISTA/CHEF/KASIR/WAITERS (hak operasional dasar) atau STAFF (tanpa hak akses admin/POS).
+// Label jabatan disimpan di raw.jabatan agar tetap tampil di Data Karyawan.
+const JABATAN: Record<string, { role: string; label: string; prefix: string }> = {
+  barista: { role: "BARISTA", label: "Barista", prefix: "BRT" },
+  kitchen: { role: "CHEF", label: "Kitchen / Chef", prefix: "CHF" },
+  kasir: { role: "KASIR", label: "Kasir", prefix: "KSR" },
+  pelayan: { role: "WAITERS", label: "Pelayan / Waiter", prefix: "WTR" },
+  helper_dapur: { role: "STAFF", label: "Helper Dapur", prefix: "HLP" },
+  steward: { role: "STAFF", label: "Steward / Dishwasher", prefix: "STW" },
+  runner: { role: "STAFF", label: "Food Runner", prefix: "RUN" },
+  host: { role: "STAFF", label: "Host / Greeter", prefix: "HST" },
+  cleaning: { role: "STAFF", label: "Cleaning Service", prefix: "CLN" },
+  gudang: { role: "STAFF", label: "Staff Gudang", prefix: "GDG" },
+  driver: { role: "STAFF", label: "Driver / Kurir", prefix: "DRV" },
+  security: { role: "STAFF", label: "Security", prefix: "SCR" },
+  admin: { role: "STAFF", label: "Staff Administrasi", prefix: "ADM" },
+  marketing: { role: "STAFF", label: "Marketing & Konten", prefix: "MKT" },
+};
+const ROLE_BY_JABATAN: Record<string, string> = Object.fromEntries(Object.entries(JABATAN).map(([k, v]) => [k, v.role]));
+const NIP_PREFIX: Record<string, string> = { BARISTA: "BRT", CHEF: "CHF", KASIR: "KSR", WAITERS: "WTR", STAFF: "STF" };
 const MAX_PER_IP_PER_HOUR = 5;
 
 const norm = (s: string) => s.toUpperCase().replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
@@ -53,7 +72,7 @@ Deno.serve(async (req) => {
 
     if (name.length < 3 || name.length > 80) return fail("NAME_INVALID", "Nama lengkap 3–80 karakter.");
     if (!/^\+?\d{8,15}$/.test(phone)) return fail("PHONE_INVALID", "Nomor HP tidak valid.");
-    if (!ROLE_BY_JABATAN[jabatan]) return fail("ROLE_INVALID", "Pilih jabatan: Barista, Kitchen, atau Kasir.");
+    if (!ROLE_BY_JABATAN[jabatan]) return fail("ROLE_INVALID", "Pilih jabatan dari daftar yang tersedia.");
     if (!/^\d{6}$/.test(pin)) return fail("PIN_INVALID", "PIN harus 6 digit angka.");
     if (weakPin(pin)) return fail("PIN_WEAK", "PIN terlalu mudah ditebak. Hindari 123456 atau angka kembar.");
     if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail("EMAIL_INVALID", "Format email tidak valid.");
@@ -91,7 +110,7 @@ Deno.serve(async (req) => {
       requiresPinChange: false, selfRegistered: true, registeredAt: now,
       phone, email, identityNumber: String(b.identityNumber ?? "").trim() || undefined,
       address: String(b.address ?? "").trim() || undefined, birthDate: b.birthDate || undefined,
-      placeOfBirth: String(b.birthPlace ?? "").trim() || undefined, employmentType,
+      placeOfBirth: String(b.birthPlace ?? "").trim() || undefined, employmentType, jabatan: JABATAN[jabatan].label,
     };
     const { error: userErr } = await db.from("yumi_users").insert({
       source_id: sourceId, username: slug, name, slug, role_source_id: role.source_id, is_active: true,
@@ -105,7 +124,7 @@ Deno.serve(async (req) => {
     // NIP (opsional, tidak menggagalkan pendaftaran)
     let nip = "";
     try {
-      const { data } = await db.rpc("next_registration_number", { p_category: NIP_PREFIX[roleName], p_prefix: NIP_PREFIX[roleName] });
+      const { data } = await db.rpc("next_registration_number", { p_category: JABATAN[jabatan].prefix, p_prefix: JABATAN[jabatan].prefix });
       if (typeof data === "string" && data) {
         nip = data;
         await db.from("yumi_users").update({ employee_nip: nip }).eq("source_id", sourceId);
@@ -118,8 +137,8 @@ Deno.serve(async (req) => {
       identity_number: String(b.identityNumber ?? "").trim() || null, address: String(b.address ?? "").trim() || null,
       birth_date: b.birthDate || null, birth_place: String(b.birthPlace ?? "").trim() || null,
       status: "pending",
-      employment: { roleId: role.source_id, roleName, jabatan, slug, username: slug, selfRegistered: true, employmentType, startDate: now.slice(0, 10), registeredAt: now },
-      contract: { title: `Perjanjian Kerja Waktu Tertentu (PKWT) [${jabatan.toUpperCase()}]`, agreedAt: now, templateUsed: "__default__", signature },
+      employment: { roleId: role.source_id, roleName, jabatan: JABATAN[jabatan].label, jabatanKey: jabatan, slug, username: slug, selfRegistered: true, employmentType, startDate: now.slice(0, 10), registeredAt: now },
+      contract: { title: `Perjanjian Kerja Waktu Tertentu (PKWT) [${JABATAN[jabatan].label.toUpperCase()}]`, agreedAt: now, templateUsed: "__default__", signature },
       emergency_contact: {}, attachments: {}, raw: { ip, autoApproved: true },
     }).select("id").single();
     if (appErr || !app) {

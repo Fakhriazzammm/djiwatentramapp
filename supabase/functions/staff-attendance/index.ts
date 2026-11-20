@@ -20,8 +20,8 @@ const CORS = {
 };
 
 const WIB = 7 * 3600_000;
-const FACE_THRESHOLD = 0.55;
-const MAX_ACCURACY_M = 80;
+const FACE_THRESHOLD = 0.6; // default face-api; deskriptor pendaftaran dirata-rata dari 3 bingkai
+const MAX_ACCURACY_M = 250;
 const WINDOW_OPEN_MIN = 30; // absen dibuka 30 menit sebelum shift
 const PIN_MAX_FAILS = 5;
 const PIN_LOCK_MIN = 15;
@@ -66,6 +66,12 @@ const minutesOfDay = (hhmm: string) => {
   return h * 60 + m;
 };
 
+async function logEvent(db: Db, userId: string | null, stage: string, code: string, detail?: string, req?: Request) {
+  try {
+    await db.from("attendance_client_events").insert({ user_id: userId, stage, code, detail: detail?.slice(0, 300) ?? null, user_agent: req?.headers.get("user-agent")?.slice(0, 200) ?? null });
+  } catch { /* log gagal tidak boleh mengganggu absen */ }
+}
+
 async function authenticate(db: Db, req: Request) {
   const token = bearer(req);
   if (!token) return null;
@@ -96,8 +102,11 @@ function geofence(raw: Record<string, unknown>, loc: Loc) {
   if (!configured) return { state: "ok" as const, radius, configured, distance: null as number | null };
   const distance = Math.round(distanceM(loc.lat, loc.lng, lat, lng));
   const accuracy = Math.round(loc.accuracy ?? 0);
+  // GPS di dalam gedung sering kurang akurat. Toleransi: sebagian dari galat yang dilaporkan perangkat (maks 60 m).
+  // Galat sangat besar (> 250 m) tetap ditolak karena posisi tidak bisa dipercaya.
   if (accuracy > MAX_ACCURACY_M) return { state: "inaccurate" as const, radius, configured, distance, accuracy };
-  return { state: distance <= radius ? ("ok" as const) : ("far" as const), radius, configured, distance, accuracy };
+  const tolerance = Math.min(accuracy, 60);
+  return { state: distance <= radius + tolerance ? ("ok" as const) : ("far" as const), radius, configured, distance, accuracy };
 }
 
 async function todaySchedule(db: Db, userId: string) {
@@ -193,9 +202,15 @@ Deno.serve(async (req) => {
     const userId = String(user.source_id);
 
     const body = await req.json().catch(() => ({})) as Record<string, any>;
+    const rej = async (code: string, message: string, status = 400, extra: Record<string, unknown> = {}) => { await logEvent(db, userId, String(body.action ?? "clock_in"), code, message, req); return fail(code, message, status, extra); };
     const loc: Loc = body.location && Number.isFinite(Number(body.location.lat))
       ? { lat: Number(body.location.lat), lng: Number(body.location.lng), accuracy: Number(body.location.accuracy) || 0 }
       : null;
+
+    if (body.action === "report") {
+      await logEvent(db, userId, String(body.stage ?? "client").slice(0, 30), String(body.code ?? "unknown").slice(0, 60), String(body.detail ?? ""), req);
+      return json({ success: true });
+    }
 
     if (body.action === "preflight") {
       const c = await checks(db, user, loc);
@@ -204,21 +219,21 @@ Deno.serve(async (req) => {
 
     if (body.action === "clockIn") {
       const c = await checks(db, user, loc);
-      if (c.isIn) return fail("ALREADY_IN", "Kamu sudah absen masuk. Selesaikan closing untuk absen keluar.");
-      if (c.geo.state === "unknown") return fail("LOCATION_REQUIRED", "Lokasi tidak tersedia. Aktifkan GPS lalu coba lagi.");
-      if (c.geo.state === "inaccurate") return fail("LOCATION_INACCURATE", "Sinyal GPS kurang akurat. Pindah ke area terbuka lalu coba lagi.", 400, { geo: c.geo });
-      if (c.geo.state === "far") return fail("OUTSIDE_RADIUS", `Kamu ${c.geo.distance} m dari toko (batas ${c.geo.radius} m).`, 403, { geo: c.geo });
-      if (c.noSchedule) return fail("NO_SCHEDULE", "Tidak ada jadwal untukmu hari ini. Hubungi supervisor.", 403);
-      if (c.win === "early") return fail("TOO_EARLY", `Absen dibuka ${WINDOW_OPEN_MIN} menit sebelum shift mulai.`, 403);
+      if (c.isIn) return await rej("ALREADY_IN", "Kamu sudah absen masuk. Selesaikan closing untuk absen keluar.");
+      if (c.geo.state === "unknown") return await rej("LOCATION_REQUIRED", "Lokasi tidak tersedia. Aktifkan GPS lalu coba lagi.");
+      if (c.geo.state === "inaccurate") return await rej("LOCATION_INACCURATE", "Sinyal GPS kurang akurat. Pindah ke area terbuka lalu coba lagi.", 400, { geo: c.geo });
+      if (c.geo.state === "far") return await rej("OUTSIDE_RADIUS", `Kamu ${c.geo.distance} m dari toko (batas ${c.geo.radius} m).`, 403, { geo: c.geo });
+      if (c.noSchedule) return await rej("NO_SCHEDULE", "Tidak ada jadwal untukmu hari ini. Hubungi supervisor.", 403);
+      if (c.win === "early") return await rej("TOO_EARLY", `Absen dibuka ${WINDOW_OPEN_MIN} menit sebelum shift mulai.`, 403);
 
       const lateReason = String(body.lateReason ?? "").trim().slice(0, 300);
-      if (c.needsLateReason && !lateReason) return fail("LATE_REASON_REQUIRED", `Kamu terlambat ${c.lateMin} menit. Pilih alasan.`);
+      if (c.needsLateReason && !lateReason) return await rej("LATE_REASON_REQUIRED", `Kamu terlambat ${c.lateMin} menit. Pilih alasan.`);
 
       const method = body.method === "face" ? "face" : "pin";
-      if (method === "pin" && c.lockedPin) return fail("PIN_LOCKED", `PIN terkunci ${PIN_LOCK_MIN} menit karena terlalu banyak salah.`, 429);
+      if (method === "pin" && c.lockedPin) return await rej("PIN_LOCKED", `PIN terkunci ${PIN_LOCK_MIN} menit karena terlalu banyak salah.`, 429);
       const verdict = await verifyIdentity(db, user, method, String(body.pin ?? ""), Array.isArray(body.faceDescriptor) ? body.faceDescriptor.map(Number) : []);
       await db.from("attendance_verify_attempts").insert({ user_id: userId, ok: verdict.ok, method });
-      if (!verdict.ok) return fail((verdict as any).code, (verdict as any).message, 403);
+      if (!verdict.ok) return await rej((verdict as any).code, (verdict as any).message, 403);
 
       const ts = Date.now();
       const { data: role } = await db.from("yumi_roles").select("name").eq("source_id", user.role_source_id).maybeSingle();
@@ -253,7 +268,7 @@ Deno.serve(async (req) => {
       });
       if (error) {
         console.error("[staff-attendance] write error", error);
-        return fail("DB_ERROR", "Gagal mencatat absen. Coba lagi.", 500);
+        return await rej("DB_ERROR", "Gagal mencatat absen. Coba lagi.", 500);
       }
 
       // Laporan ke grup [Report] Djiwa Tentram, format sama dengan bot HRD. Kegagalan Telegram tidak membatalkan absen.
@@ -270,15 +285,15 @@ Deno.serve(async (req) => {
 
     if (body.action === "enrollFace") {
       const desc: number[] = Array.isArray(body.faceDescriptor) ? body.faceDescriptor.map(Number) : [];
-      if (desc.length !== 128 || desc.some((v) => !Number.isFinite(v))) return fail("FACE_INVALID", "Data wajah tidak valid. Ulangi pemindaian.");
+      if (desc.length !== 128 || desc.some((v) => !Number.isFinite(v))) return await rej("FACE_INVALID", "Data wajah tidak valid. Ulangi pemindaian.");
       // Pendaftaran wajah wajib konfirmasi PIN, supaya sesi yang dibajak tidak bisa mengganti wajah.
-      if (await pinLocked(db, userId)) return fail("PIN_LOCKED", `PIN terkunci ${PIN_LOCK_MIN} menit karena terlalu banyak salah.`, 429);
+      if (await pinLocked(db, userId)) return await rej("PIN_LOCKED", `PIN terkunci ${PIN_LOCK_MIN} menit karena terlalu banyak salah.`, 429);
       const verdict = await verifyIdentity(db, user, "pin", String(body.pin ?? ""), []);
       await db.from("attendance_verify_attempts").insert({ user_id: userId, ok: verdict.ok, method: "enroll" });
-      if (!verdict.ok) return fail((verdict as any).code, (verdict as any).message, 403);
+      if (!verdict.ok) return await rej((verdict as any).code, (verdict as any).message, 403);
       const raw = { ...(user.raw && typeof user.raw === "object" ? user.raw : {}), faceDescriptor: desc };
       const { error } = await db.from("yumi_users").update({ face_descriptor: desc, raw }).eq("source_id", userId);
-      if (error) return fail("DB_ERROR", "Gagal menyimpan wajah. Coba lagi.", 500);
+      if (error) return await rej("DB_ERROR", "Gagal menyimpan wajah. Coba lagi.", 500);
       return json({ success: true });
     }
 
