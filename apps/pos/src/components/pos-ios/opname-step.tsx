@@ -70,11 +70,20 @@ export function OpnameStep({ opname }: { opname: OpnameController }) {
 									<AnimatePresence initial={false}>
 										{isFlag && variance !== null ? <motion.span key="flag" initial={{ opacity: 0, scale: 0.85, height: 0 }} animate={{ opacity: 1, scale: 1, height: "auto" }} exit={{ opacity: 0, scale: 0.85, height: 0 }} transition={IOS_SPRING} className="mt-0.5 inline-block rounded-[7px] bg-amber-100 px-1.5 py-0.5 text-[11px] font-bold text-amber-700">Selisih {Math.round(variance * 100)}%</motion.span> : null}
 									</AnimatePresence>
+									<AnimatePresence initial={false}>
+										{row.mode !== "count" && entry?.status === "available" ? (
+											<motion.label key="qty" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={IOS_SPRING} className="mt-1.5 flex items-center gap-1.5 overflow-hidden text-[11.5px] text-muted-foreground">
+												<span>Sisa (opsional)</span>
+												<input inputMode="numeric" aria-label={`Sisa ${row.name} (opsional)`} placeholder="—" value={typeof entry?.quantity === "number" ? String(entry.quantity) : ""} onChange={(event) => { const digits = event.target.value.replace(/\D/g, "").slice(0, 7); opname.setEntry(row.inventoryId, { status: "available", quantity: digits ? Number(digits) : null }); }} className="h-[28px] w-[64px] rounded-[9px] border border-border bg-card text-center text-[13px] font-bold tabular-nums text-foreground outline-none focus:border-primary" />
+												<span>{row.unit}</span>
+											</motion.label>
+										) : null}
+									</AnimatePresence>
 								</div>
 								{row.mode === "count" ? (
 									<CountStepper value={entry?.quantity} unit={row.unit} label={row.name} todo={todo} onChange={(next) => opname.setEntry(row.inventoryId, { quantity: next })} />
 								) : (
-									<AdaHabisSwitch id={row.inventoryId} value={entry?.status === undefined ? undefined : entry.status === "available"} label={`Status ${row.name}`} onChange={(next) => opname.setEntry(row.inventoryId, { status: next ? "available" : "out" })} />
+									<AdaHabisSwitch id={row.inventoryId} value={entry?.status === undefined ? undefined : entry.status === "available"} label={`Status ${row.name}`} onChange={(next) => opname.setEntry(row.inventoryId, { status: next ? "available" : "out", quantity: next ? entry?.quantity ?? null : null })} />
 								)}
 							</GateRow>
 						);

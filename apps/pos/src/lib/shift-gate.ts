@@ -118,7 +118,11 @@ export function opnameSummary(rows: ShiftOpnameMaterial[], entries: OpnameEntrie
 export function buildOpnameSubmitItems(rows: ShiftOpnameMaterial[], entries: OpnameEntries, notes: Record<string, string>): ShiftOpnameSubmitItem[] {
 	return rows.map((row) => {
 		const entry = entries[row.inventoryId]!;
-		const quantity = row.mode === "count" ? Math.max(0, Math.round(Number(entry.quantity ?? 0))) : null;
+		const quantity = row.mode === "count"
+			? Math.max(0, Math.round(Number(entry.quantity ?? 0)))
+			: entry.status === "available" && typeof entry.quantity === "number" && Number.isFinite(entry.quantity) && entry.quantity >= 0
+				? Math.round(entry.quantity)
+				: null;
 		const status = row.mode === "count" ? (quantity === 0 ? "out" : "available") : (entry.status as "available" | "out");
 		return {
 			inventoryId: row.inventoryId,
