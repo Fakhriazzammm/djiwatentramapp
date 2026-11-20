@@ -199,3 +199,13 @@ textarea.kx-input{padding:11px 14px;min-height:88px;resize:none}
 .kx-sharelink{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:0 14px;border-radius:99px;border:0;background:#e6efff;color:#1a5dc6;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
 .kx-sharenets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .kx-sharenets a{display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:14px;background:#f1f3f8;color:#14161c;font-size:13px;font-weight:700;text-decoration:none}
+
+.kx-btn--soft{background:#e4e8f1!important;color:var(--kx-muted)!important;box-shadow:none!important}
+.kx-todo{margin:14px 0 12px;padding:12px 14px;border-radius:16px;background:#fff8e6;color:#7a4700;font-size:13.5px}
+.kx-todo ul{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
+.kx-todo li{display:flex;gap:8px;align-items:flex-start;line-height:1.4}
+.kx-todo li span{flex:none;width:16px;font-weight:800}
+.kx-todo li.is-done{color:#0d6b3c;text-decoration:line-through;text-decoration-color:#0d6b3c66}
+.kx-todo--err{background:#fdecea;color:#9b1c12;animation:kx-shake .35s}
+.kx-todo--ok{background:#e5f5ec;color:#0d6b3c}
+@keyframes kx-shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}

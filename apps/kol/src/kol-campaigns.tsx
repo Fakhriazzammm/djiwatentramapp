@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CONSENT_NO_SHOW, dotTime, errorText, kolApi, longDate, parseDay, type VisitRow } from "./kol-lib";
 import { VisitPicker } from "./kol-visit";
 import { SowCard } from "./kol-sow";
@@ -95,6 +95,8 @@ export function CampaignDetail({ campaign: c, calendar = [], refresh, login }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
+  const [tried, setTried] = useState(false);
+  const [formInView, setFormInView] = useState(false);
   const visit = c.application_mode === "visit";
   const existing = calendar.find((row) => row.own && ["requested", "confirmed"].includes(row.status));
   const applyingAgain = c.application_status === "cancelled";
@@ -104,6 +106,21 @@ export function CampaignDetail({ campaign: c, calendar = [], refresh, login }: {
   const visibleSow = !applyingAgain && c.sow_snapshot ? c.sow_snapshot : c.sow;
   const visibleTerms = !applyingAgain && c.terms_snapshot?.length ? c.terms_snapshot : c.terms;
   const [label, tone] = statusOf(c);
+  const applyRef = useRef<HTMLElement | null>(null);
+  const steps = [
+    ...(visit ? [{ key: "date", label: existing ? "Jadwal kunjungan sudah ada" : "Pilih tanggal kunjungan di kalender", done: Boolean(existing || picked.date) }] : []),
+    ...(visit && !existing ? [{ key: "time", label: "Pilih jam datang (11.00–17.00)", done: Boolean(picked.time) }] : []),
+    { key: "terms", label: "Setujui SOW serta syarat dan ketentuan", done: terms },
+    ...(visit ? [{ key: "attend", label: "Setujui komitmen hadir", done: attend }, { key: "noshow", label: "Setujui konsekuensi bila tidak hadir", done: noShow }] : []),
+  ];
+  const missing = steps.filter(step => !step.done);
+  useEffect(() => {
+    const el = applyRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([entry]) => setFormInView(Boolean(entry?.isIntersecting)), { threshold: 0.1 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [canApply, sent]);
   const change = async (action: () => Promise<void>) => {
     setBusy(true);
     setError("");
@@ -132,6 +149,16 @@ export function CampaignDetail({ campaign: c, calendar = [], refresh, login }: {
     setSent(true);
     await refresh?.();
   });
+
+  const submitApply = () => {
+    if (missing.length) {
+      setTried(true);
+      const first = missing[0]!.key;
+      document.getElementById(first === "date" || first === "time" ? "apply-date" : "apply-consent")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    void apply();
+  };
 
   return (
     <article className="kx-campaign-detail">
@@ -168,28 +195,36 @@ export function CampaignDetail({ campaign: c, calendar = [], refresh, login }: {
       {error && <p role="alert" className="kx-note kx-note--err">{error}</p>}
       {sent && c.application_status && !applyingAgain && <p role="status" className="kx-note">Pengajuanmu tersimpan.</p>}
       {canApply && refresh && !sent && (
-        <section id="apply" style={{ scrollMarginTop: 12 }}>
-          {visit && <><h3 className="kx-section">Jadwal kunjungan</h3>
+        <section id="apply" ref={applyRef} style={{ scrollMarginTop: 12 }}>
+          <h3 className="kx-section" style={{ marginTop: 4 }}>Daftar kampanye</h3>
+          {visit && <div id="apply-date" style={{ scrollMarginTop: 12 }}><h3 className="kx-section">1 · Jadwal kunjungan</h3>
             {existing ? <p className="kx-note">Gunakan jadwalmu yang sudah ada, {longDate(existing.booking_date)} pukul {dotTime(existing.booking_time)} WIB.</p>
               : <VisitPicker rows={calendar} date={picked.date} time={picked.time} onChange={setPicked} startDate={c.start_date} endDate={c.end_date} />}
-          </>}
-          <h3 className="kx-section">Persetujuan</h3>
+          </div>}
+          <div id="apply-consent" style={{ scrollMarginTop: 12 }}>
+          <h3 className="kx-section">{visit ? "2 · Persetujuan" : "Persetujuan"}</h3>
           <label className="kx-check"><input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)} /><span>Saya menyetujui SOW serta syarat dan ketentuan kampanye ini.</span></label>
           {visit && <>
             <label className="kx-check"><input type="checkbox" checked={attend} onChange={e => setAttend(e.target.checked)} /><span>Saya berkomitmen hadir sesuai jadwal dan akan memberi kabar jika berhalangan.</span></label>
             <label className="kx-check"><input type="checkbox" checked={noShow} onChange={e => setNoShow(e.target.checked)} /><span>{CONSENT_NO_SHOW}</span></label>
           </>}
-          <button type="button" className="kx-btn" onClick={() => void apply()} disabled={busy || !terms || (visit && (!attend || !noShow || (!existing && (!picked.date || !picked.time))))}>
-            {busy ? "Mengirim…" : existing && visit ? "Ajukan dengan jadwal ini" : inviteWithTerms ? "Setujui dan terima undangan" : "Ajukan kampanye"}
+          </div>
+          <div className={`kx-todo ${tried && missing.length ? "kx-todo--err" : missing.length ? "" : "kx-todo--ok"}`} role="status">
+            <b>{missing.length ? `Lengkapi ${missing.length} hal lagi untuk mendaftar` : "Semua sudah lengkap, siap dikirim"}</b>
+            <ul>{steps.map(step => <li key={step.key} className={step.done ? "is-done" : ""}><span aria-hidden>{step.done ? "✓" : "○"}</span>{step.label}</li>)}</ul>
+          </div>
+          <button type="button" className={`kx-btn ${missing.length ? "kx-btn--soft" : ""}`} aria-disabled={Boolean(missing.length) || busy} disabled={busy} onClick={submitApply}>
+            {busy ? "Mengirim…" : existing && visit ? "Kirim pendaftaran dengan jadwal ini" : inviteWithTerms ? "Setujui dan terima undangan" : "Kirim pendaftaran"}
           </button>
         </section>
       )}
-      {canApply && !sent && (
+      {canApply && !sent && !(refresh && formInView) && (
         <div className={`kx-cta ${refresh ? "kx-cta--tabbed" : ""}`}>
-          {refresh ? <a className="kx-btn" href="#apply">Daftar{c.reward ? ` · ${rupiah(c.reward.ratePer1000)} / 1.000 view` : ""}</a> : null}
+          {refresh
+            ? <a className="kx-btn" href="#apply" onClick={(e) => { e.preventDefault(); document.getElementById("apply")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>Daftar sekarang{c.reward ? ` · ${rupiah(c.reward.ratePer1000)} / 1.000 view` : ""}</a>
+            : login ? <button type="button" className="kx-btn" disabled={busy} onClick={() => void change(login)}>{busy ? "Membuka…" : `Masuk untuk daftar${c.reward ? ` · ${rupiah(c.reward.ratePer1000)} / 1.000 view` : ""}`}</button> : null}
         </div>
       )}
-      {canApply && !refresh && login && <button type="button" className="kx-btn" disabled={busy} onClick={() => void change(login)}>{busy ? "Membuka…" : "Masuk untuk daftar"}</button>}
       {refresh && c.assignment_status === "invited" && c.application_mode === "invite" && (
         <div className="kx-row2">
           {(["declined", "accepted"] as const).filter(status => status === "declined" || !inviteWithTerms).map(status => (
