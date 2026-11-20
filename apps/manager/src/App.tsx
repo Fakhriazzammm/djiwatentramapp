@@ -10,7 +10,7 @@ import { GuideView } from "./views/Guide";
 import { FinanceView } from "./views/Finance";
 import { ExpensesView } from "./views/Expenses";
 import { StockView } from "./views/Stock";
-import { TeamView } from "./views/Team";
+import { KaryawanView } from "./views/KaryawanView";
 import { PurchasingView } from "./views/Purchasing";
 import { KolView } from "./views/Kol";
 
@@ -25,7 +25,7 @@ const RAIL: Record<Role, [Page, string, string, string, string][]> = {
     ["keuangan", "chart", "Keuangan", "Transaksi & analitik", "Keuangan"],
     ["expense", "receipt", "Pengeluaran", "Scan struk & input", "Biaya"],
     ["opset", "sl", "Stok & Opname", "Satuan, jadwal, toleransi", "Stok"],
-    ["sdm", "users", "Tim & Gaji", "Absensi, gaji, bonus, slip", "Tim"],
+    ["sdm", "users", "Karyawan App", "Absensi, jadwal, gaji, cuti, kontrak", "Karyawan"],
     ["purch", "cart", "Pantau Purchasing", "Supervisor & PO", "Purchasing"],
     ["laporan", "file", "Laporan", "Kirim & terima laporan", "Laporan"],
   ],
@@ -45,7 +45,7 @@ const FIRST_KEY = "mgr_seen_guide";
 export function App() {
   const { data: session, isPending } = managerAuth.useSession();
   const [access, setAccess] = useState<Access | null>(null);
-  const [page, setPage] = useState<Page | null>(() => { const h = window.location.hash.slice(1); return (["guide", "dash", "keuangan", "expense", "opset", "sdm", "purch", "belanja", "laporan", "kol"] as string[]).includes(h) ? (h as Page) : null; });
+  const [page, setPage] = useState<Page | null>(() => { const h = window.location.hash.slice(1).split("/")[0]; return (["guide", "dash", "keuangan", "expense", "opset", "sdm", "purch", "belanja", "laporan", "kol"] as string[]).includes(h) ? (h as Page) : null; });
   const [sheet, setSheet] = useState(false);
   const [bug, setBug] = useState(0);
 
@@ -105,7 +105,7 @@ export function App() {
             {cur === "keuangan" && role === "manager" && <FinanceView />}
             {cur === "expense" && <ExpensesView />}
             {cur === "opset" && <StockView role={role} />}
-            {cur === "sdm" && role === "manager" && <TeamView role={role} />}
+            {cur === "sdm" && role === "manager" && <KaryawanView />}
             {(cur === "purch" || cur === "belanja") && <PurchasingView role={role} />}
             {cur === "laporan" && <ReportsView role={role} bugKey={bug} />}
           </div>

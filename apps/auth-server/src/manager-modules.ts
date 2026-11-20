@@ -9,6 +9,7 @@ import { loadSnapshot, wibDay } from "./manager-data.js";
 import { periodSeries, resolveManagerPeriod } from "./manager-period.js";
 import { runDailyPlan } from "./manager-ai.js";
 import { registerManagerPayroll } from "./manager-payroll.js";
+import { registerManagerKaryawan } from "./manager-karyawan.js";
 
 /**
  * Manager/Supervisor operational modules. All reads reuse the same tables and
@@ -952,6 +953,7 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
   });
 
   registerManagerPayroll(app, auth, pool);
+  registerManagerKaryawan(app, auth, pool);
 
   // Roles are exported for the app's own gating (kept in sync with guards).
   void ROLES;

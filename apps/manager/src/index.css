@@ -1,4 +1,21 @@
-@import "./proto.css";
+@layer theme, base, components, utilities;
+/* proto.css masuk layer "base" agar utilitas Tailwind (dipakai halaman Karyawan) tidak kalah oleh aturan elemen global. */
+@import "./proto.css" layer(base);
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+.font-display{font-family:var(--sans)}
+/* Reset ringan untuk halaman Karyawan (Tailwind preflight tidak dipakai); layer base agar utilitas tetap menang. */
+@layer base{
+  .kk-root button{background:transparent;border:0;padding:0;margin:0;font:inherit;color:inherit;text-align:inherit}
+  .kk-root input,.kk-root select,.kk-root textarea{margin:0;font:inherit;color:inherit;background:#fff;border-radius:0}
+  .kk-root ul,.kk-root ol{list-style:none;margin:0;padding:0}
+  .kk-root h1,.kk-root h2,.kk-root h3,.kk-root h4,.kk-root p,.kk-root dl,.kk-root dd,.kk-root figure{margin:0}
+  .kk-root *,.kk-root *::before,.kk-root *::after{box-sizing:border-box}
+  .kk-root label{display:inline;font:inherit;letter-spacing:normal;text-transform:none;color:inherit;margin:0}
+  .kk-root table{border-collapse:collapse}
+  .kk-root th,.kk-root td{padding:0;border:0;text-transform:none;letter-spacing:normal}
+  .kk-root summary{cursor:pointer}
+}
 /* Pratinjau-only elements of the prototype are not used in production. */
 .proto{display:none}
 .shell{height:100%}
