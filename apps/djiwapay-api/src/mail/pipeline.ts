@@ -13,7 +13,7 @@ export type RawMail = {
   auth: { dmarcPass: boolean; dkimDomains: string[]; /** How the verdict came about (signature results), for explaining a refusal. */ debug?: string };
 };
 export type Llm = (subject: string, text: string, from: string) => Promise<Extracted | null>;
-export type PipelineDeps = { db: Tx; llm?: Llm; categorize?: (userId: string, items: { key: string; text: string; amount?: number; kind: "in" | "out" }[]) => Promise<Map<string, { categoryId: string; confidence: number }>>; domain: string; now?: () => Date; trustMin?: number; autoCeiling?: number };
+export type PipelineDeps = { db: Tx; llm?: Llm; categorize?: (userId: string, items: { key: string; text: string; amount?: number; kind: "in" | "out" }[]) => Promise<Map<string, { categoryId: string; confidence: number; source: "rule" | "ai" }>>; domain: string; now?: () => Date; trustMin?: number; autoCeiling?: number };
 export type Outcome = { status: "auto" | "review" | "ignored" | "duplicate" | "failed" | "forwarding-code" | "staged"; reason: string; userId?: string };
 
 /** What the phone shows when a payment e-mail was read: the same words as the banner inside the app. */
@@ -67,7 +67,7 @@ async function learnedCategory(q: Q, userId: string, merchant: string): Promise<
   return r.rows[0]?.category_id ?? null;
 }
 
-type Candidate = { kind: "out" | "in" | "tf"; amount: number; categoryId: string; accountId: string; toAccountId?: string; at: string; note: string };
+type Candidate = { kind: "out" | "in" | "tf"; amount: number; categoryId: string; accountId: string; toAccountId?: string; at: string; note: string; /** "kategori-ai" when the model chose the category. */ tags?: string[] };
 
 const dayOfBill = (due: string | null) => due ? Number(due.slice(8, 10)) : null;
 
@@ -85,7 +85,7 @@ async function insertFee(q: Q, userId: string, fee: number, accountId: string, a
 
 async function insertEntry(q: Q, userId: string, c: Candidate, inboundId: string): Promise<string> {
   const id = `em-${randomUUID()}`;
-  await q.query("insert into finance.entries(user_id,id,kind,amount,category_id,account_id,to_account_id,at,note,tags,source,inbound_id) values($1,$2,$3,$4,$5,$6,$7,$8,$9,'{}','email',$10)", [userId, id, c.kind, c.amount, c.categoryId, c.accountId, c.toAccountId ?? null, c.at, c.note.slice(0, 200), inboundId]);
+  await q.query("insert into finance.entries(user_id,id,kind,amount,category_id,account_id,to_account_id,at,note,tags,source,inbound_id) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$11,'email',$10)", [userId, id, c.kind, c.amount, c.categoryId, c.accountId, c.toAccountId ?? null, c.at, c.note.slice(0, 200), inboundId, c.tags ?? []]);
   if (c.kind === "out" && !c.toAccountId) await settleBill(q, userId, c.amount, c.note, c.at);
   await bump(q, userId);
   return id;
@@ -301,13 +301,13 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   }
 
   const learned = await learnedCategory(d.db, userId, x.merchant);
-  let categoryId = learned ?? guessCategory(x.merchant, mail.subject, x.direction);
+  let categoryId = learned ?? guessCategory(x.merchant, mail.subject, x.direction), byAi = false;
   // Nothing the person taught us: let the model pick the specific sub category (only when it is confident).
   if (!learned && d.categorize && x.amount > 0 && x.direction !== "unknown") {
     const ai = (await d.categorize(userId, [{ key: "m", text: [x.merchant, mail.subject].filter(Boolean).join(" · "), amount: x.amount, kind: x.direction === "in" ? "in" : "out" }]).catch(() => null))?.get("m");
-    if (ai) categoryId = ai.categoryId;
+    if (ai) { categoryId = ai.categoryId; byAi = ai.source === "ai"; }
   }
-  const candidate: Candidate = { kind, amount: x.amount, categoryId, accountId, at, note: x.merchant || mail.subject.slice(0, 60) || issuer.name };
+  const candidate: Candidate = { kind, amount: x.amount, categoryId, accountId, at, note: x.merchant || mail.subject.slice(0, 60) || issuer.name, ...(byAi ? { tags: ["kategori-ai"] } : {}) };
 
   // New mail is recorded straight away once the gates above agree and the read is clear: money in or out, an amount, and nothing
   // implausible about it. What stays for a person is only what the parser itself is unsure of. Every automatic record can be undone.

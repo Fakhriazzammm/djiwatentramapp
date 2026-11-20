@@ -35,8 +35,9 @@ export function buildPrompt(cats: CatDef[], examples: Example[]) {
     }
   }
   const shots = examples.filter((e) => code.has(e.categoryId)).slice(0, 15).map((e) => `"${clean(e.text).slice(0, 50)}" -> ${code.get(e.categoryId)}`);
-  const system = `Kamu mengategorikan transaksi keuangan pribadi di Indonesia. Pilih SATU kategori paling spesifik (sub kategori bila ada) dari daftar. Balas HANYA JSON tanpa teks lain, tanpa markdown: {"results":[{"key":string,"categoryId":kode seperti "c12","confidence":angka 0 sampai 1}]}. Pengeluaran hanya boleh memakai kategori PENGELUARAN dan pemasukan hanya PEMASUKAN. Beri confidence paling tinggi 0.5 bila teks hanya berisi nama orang, kata "transfer", atau terlalu umum untuk ditebak; jangan menebak.${shots.length ? `\n\nContoh pilihan pengguna ini (ikuti kebiasaannya):\n${shots.join("\n")}` : ""}\n\n${lines.join("\n")}`;
-  return { system, byCode, code };
+  const system = `Kamu mengategorikan transaksi keuangan pribadi di Indonesia. Pilih SATU kategori paling spesifik (sub kategori bila ada) dari daftar. Balas HANYA JSON tanpa teks lain, tanpa markdown: {"results":[{"key":string,"categoryId":kode seperti "c12","confidence":angka 0 sampai 1}]}. Pengeluaran hanya boleh memakai kategori PENGELUARAN dan pemasukan hanya PEMASUKAN. Bila ada contoh_pilihan_pengguna, ikuti kebiasaan itu. Beri confidence paling tinggi 0.5 bila teks hanya berisi nama orang, kata "transfer", atau terlalu umum untuk ditebak; jangan menebak.\n\n${lines.join("\n")}`;
+  // The category list is the long, stable part, so it leads and is identical from call to call (the gateway can reuse it from its cache). The person's own examples change, so they ride with the items.
+  return { system, byCode, code, shots };
 }
 
 /** Accepts {"results":[...]} or a bare array; keeps only known keys, codes of the right kind, and clamps confidence. */
@@ -57,9 +58,9 @@ export function parseCategorization(text: string, items: Item[], byCode: Map<str
 }
 
 export type AiOpts = { key: string; base?: string; fetchImpl?: typeof fetch };
-async function ask(o: AiOpts, model: string, system: string, items: Item[]): Promise<string> {
+async function ask(o: AiOpts, model: string, system: string, items: Item[], shots: string[]): Promise<string> {
   const f = o.fetchImpl ?? fetch, base = o.base ?? "https://ai.helipod.io/v1";
-  const user = JSON.stringify({ items: items.map((i) => ({ key: i.key, text: clean(i.text), ...(i.amount ? { amount: Math.round(i.amount) } : {}), kind: i.kind })) });
+  const user = JSON.stringify({ ...(shots.length ? { contoh_pilihan_pengguna: shots } : {}), items: items.map((i) => ({ key: i.key, text: clean(i.text), ...(i.amount ? { amount: Math.round(i.amount) } : {}), kind: i.kind })) });
   const res = await f(`${base}/chat/completions`, { method: "POST", signal: AbortSignal.timeout(30_000), headers: { "Content-Type": "application/json", Authorization: `Bearer ${o.key}` }, body: JSON.stringify({ model, temperature: 0, max_tokens: 1500, ...(model === CATEGORIZE_MODEL ? { enable_thinking: false } : {}), messages: [{ role: "system", content: system }, { role: "user", content: user }] }) });
   if (!res.ok) throw new Error(`AI_${res.status}`);
   const body = (await res.json()) as { choices?: { message?: { content?: unknown } }[] };
@@ -68,10 +69,10 @@ async function ask(o: AiOpts, model: string, system: string, items: Item[]): Pro
 }
 /** One batch to the model; if it fails or answers nothing usable, once more with the fallback model. */
 export async function aiCategorize(o: AiOpts, items: Item[], cats: CatDef[], examples: Example[]) {
-  const { system, byCode } = buildPrompt(cats, examples);
+  const { system, byCode, shots } = buildPrompt(cats, examples);
   for (const model of [CATEGORIZE_MODEL, CATEGORIZE_FALLBACK]) {
     try {
-      const got = parseCategorization(await ask(o, model, system, items), items, byCode);
+      const got = parseCategorization(await ask(o, model, system, items, shots), items, byCode);
       if (got.size) return got;
     } catch (e) { if (e instanceof Error && (e.message === "AI_401" || e.message === "AI_402")) throw e; }
   }
@@ -140,9 +141,9 @@ export async function learnRule(db: Q, userId: string, text: string, categoryId:
 
 /** For the e-mail pipeline: confident picks only, nothing thrown. */
 export function makeCategorizer(d: CategorizeDeps) {
-  return async (userId: string, items: Item[]): Promise<Map<string, { categoryId: string; confidence: number }>> => {
-    const out = new Map<string, { categoryId: string; confidence: number }>();
-    try { for (const r of (await categorizeItems(d, userId, items)).results) if (r.categoryId && r.confidence >= MIN_CONFIDENCE) out.set(r.key, { categoryId: r.categoryId, confidence: r.confidence }); } catch (e) { console.error("categorize", e instanceof Error ? e.message : e); }
+  return async (userId: string, items: Item[]): Promise<Map<string, { categoryId: string; confidence: number; source: "rule" | "ai" }>> => {
+    const out = new Map<string, { categoryId: string; confidence: number; source: "rule" | "ai" }>();
+    try { for (const r of (await categorizeItems(d, userId, items)).results) if (r.categoryId && r.confidence >= MIN_CONFIDENCE && r.source !== "none") out.set(r.key, { categoryId: r.categoryId, confidence: r.confidence, source: r.source }); } catch (e) { console.error("categorize", e instanceof Error ? e.message : e); }
     return out;
   };
 }

@@ -10,9 +10,11 @@ const items: Item[] = [{ key: "a", text: "Kopi Kenangan", kind: "out", amount: 3
 
 describe("prompt", () => {
   test("lists categories under short codes, never offers transfer, includes the person's own examples", () => {
-    const { system, byCode } = buildPrompt(cats, [{ text: "Warteg Bu Tini", categoryId: "makan-warung" }, { text: "x", categoryId: "tidak-ada" }]);
+    const { system, byCode, shots } = buildPrompt(cats, [{ text: "Warteg Bu Tini", categoryId: "makan-warung" }, { text: "x", categoryId: "tidak-ada" }]);
     expect(system).toContain("PENGELUARAN:"); expect(system).toContain("PEMASUKAN:"); expect(system).not.toContain("Transfer");
-    expect(system).toMatch(/c1 = Makan & minum: c2 = Kopi & minuman; c3 = Restoran & warung/); expect(system).toContain('"Warteg Bu Tini" -> c3'); expect(system).not.toContain("tidak-ada");
+    expect(system).toMatch(/c1 = Makan & minum: c2 = Kopi & minuman; c3 = Restoran & warung/);
+    expect(shots).toEqual(['"Warteg Bu Tini" -> c3']);   // examples ride with the items so the long category list stays identical between calls
+    expect(system).not.toContain("Warteg"); expect(buildPrompt(cats, []).system).toBe(system);
     expect(byCode.get("c2")!.id).toBe("makan-kopi"); expect(system.length).toBeLessThan(2000);
   });
 });

@@ -137,4 +137,15 @@ run("mail pipeline (real database)", () => {
     expect(await rejectGroup(db, user, "kopilogi tasikmalaya|out")).toBe(1);
     expect((await reviewGroups(db, user)).groups.some((g) => g.key.startsWith("kopilogi"))).toBe(false);
   });
+
+  test("a shop nobody taught gets the model's sub category and the AI tag; a taught rule gets neither", async () => {
+    const ai = { categorize: async (_u: string, items: { key: string; text: string }[]) => new Map([[items[0].key, { categoryId: /Starbucks/.test(items[0].text) ? "makan-kopi-dan-minuman" : "makan", confidence: 0.93, source: (/Starbucks/.test(items[0].text) ? "ai" : "rule") as "ai" | "rule" }]]) };
+    const d = () => ({ ...deps(), ...ai });
+    await processMail(d(), mail({ body: "Pembayaran ke Starbucks Senayan sebesar Rp 62.000 berhasil pada 15/11/2026 14:10. No. Referensi: GP2611151410B2" }));
+    await processMail(d(), mail({ body: "Pembayaran ke Warung Taught sebesar Rp 21.000 berhasil pada 15/11/2026 14:20. No. Referensi: GP2611151420C3" }));
+    const rows = (await pool.query("select note,category_id,tags from finance.entries where user_id=$1 and note in ('Starbucks Senayan','Warung Taught')", [user])).rows;
+    const by = (n: string) => rows.find((r) => r.note === n);
+    expect(by("Starbucks Senayan")).toMatchObject({ category_id: "makan-kopi-dan-minuman", tags: ["kategori-ai"] });
+    expect(by("Warung Taught")).toMatchObject({ category_id: "makan", tags: [] });
+  });
 });

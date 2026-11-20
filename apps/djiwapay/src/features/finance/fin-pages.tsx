@@ -242,7 +242,7 @@ export function ManualForm({ ctx, editId, initialKind, onDone }: { ctx: FinCtx; 
     fin.dispatch({ type: existing ? "entry/update" : "entry/add", entry });
     ctx.notify(existing ? "Perubahan disimpan" : "Catatan tersimpan", existing ? undefined : () => fin.dispatch({ type: "entry/delete", id: entry.id }));
     if (entry.kind !== "tf" && touched && entry.note && (!existing || existing.categoryId !== entry.categoryId)) learnRemote(entry.note, entry.categoryId);   // the person chose: remember it for this shop
-    else if (!touched && entry.kind === "out" && entry.note.length >= 3) void refineEntries(fin, ctx.notify, [entry], { force: true });
+    else if (!touched && entry.kind !== "tf" && entry.note.length >= 3) void refineEntries(fin, ctx.notify, [entry], { force: true });   // expenses and income alike
     onDone();
   };
   return <div className="dpx-page"><Sky><div className="dpx-pad dpx-nobar" style={{ paddingBottom: 20 }}>
