@@ -16,7 +16,7 @@ const hhmm = (t: string) => t.slice(0, 5);
 
 async function tg(token: string, method: string, body: Record<string, unknown>) {
   try {
-    const r = await fetch(`https://api.telegram.org/bot${token}/${method}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const r = await fetch(`https://api.telegram.org/bot${token}/${method}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(10_000) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || !d?.ok) console.warn("[attendance-reminders] telegram", method, r.status, JSON.stringify(d).slice(0, 200));
     return !!d?.ok;
