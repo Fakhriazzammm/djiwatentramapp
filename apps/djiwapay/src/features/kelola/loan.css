@@ -24,7 +24,9 @@
 .dpx .dpx-ln-meter{height:8px;border-radius:99px;background:var(--group);overflow:hidden;margin:10px 0 6px}.dpx .dpx-ln-meter>i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),#e0713f);border-radius:99px}
 .dpx .dpx-ln-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.dpx .dpx-ln-chips>span{font:600 11.5px var(--font);padding:3px 9px;border-radius:99px;background:var(--group);color:var(--mute)}
 .dpx .dpx-ln-chips>span.dpx-warn{background:var(--warn-soft);color:var(--warn)}
-.dpx .dpx-ln-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dpx .dpx-ln-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.dpx .dpx-ln-two>*,.dpx .dpx-ln-two .dpx-input{min-width:0}.dpx .dpx-ln-two input{min-width:0;width:100%}
+.dpx .dpx-ln-sheet{overflow-x:hidden;max-width:100%}.dpx .dpx-ln-sheet .dpx-seg{max-width:100%}.dpx .dpx-ln-sheet .dpx-seg button{min-width:0;flex:1 1 0;padding-inline:4px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dpx .dpx-ln-sheet .dpx-field,.dpx .dpx-ln-sheet .dpx-input{min-width:0;max-width:100%}
 
 .dpx-ln-panel { margin-top: 12px; }
 .dpx-ln-panel summary { cursor: pointer; margin: 0; }

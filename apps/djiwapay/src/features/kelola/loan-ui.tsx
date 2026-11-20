@@ -62,7 +62,7 @@ export function LoanSheet({ fin, loan, draft, notify, onClose }: { fin: Finance;
     }
     onClose();
   };
-  return <Sheet title={loan ? "Ubah pinjaman" : "Pinjaman baru"} onClose={onClose}>
+  return <Sheet title={loan ? "Ubah pinjaman" : "Pinjaman baru"} onClose={onClose}><div className="dpx-ln-sheet">
     <Seg id="ls-kind" label="Jenis" value={kind} onChange={(k) => { setKind(k); if (!loan && !name) setName(KIND_META[k].label); }} options={[["kpr", "KPR"], ["kendaraan", "Kendaraan"], ["multiguna", "Multiguna"], ["lainnya", "Lainnya"]] as const} />
     <label className="dpx-field"><span>Nama</span><div className="dpx-input"><input value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="Contoh: KPR BTN rumah" aria-label="Nama pinjaman" /></div></label>
     <label className="dpx-field"><span>Bank atau pemberi pinjaman</span><div className="dpx-input"><input value={lender} maxLength={60} onChange={(e) => setLender(e.target.value)} placeholder="Contoh: BTN" aria-label="Pemberi pinjaman" /></div></label>
@@ -83,7 +83,7 @@ export function LoanSheet({ fin, loan, draft, notify, onClose }: { fin: Finance;
     <p className="dpx-sub" style={{ margin: "0 4px" }}>Hitungan di aplikasi perkiraan. Isi angsuran dan sisa pokok dari mutasi bank bila angkanya berbeda.</p>
     <Btn type="button" className={`dpx-btn ${ok ? "" : "dpx-off"}`} disabled={!ok} onClick={save}>Simpan</Btn>
     {loan ? <Btn type="button" className="dpx-btn dpx-soft" onClick={() => { fin.dispatch({ type: "loan/delete", id: loan.id }); onClose(); notify("Pinjaman dihapus", () => fin.dispatch({ type: "loan/upsert", loan })); }}>Hapus pinjaman</Btn> : null}
-  </Sheet>;
+  </div></Sheet>;
 }
 
 /* ---------- pay an instalment or prepay ---------- */
