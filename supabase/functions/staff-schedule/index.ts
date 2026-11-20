@@ -6,6 +6,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  *   requestSwap → rekan menerima notifikasi (app + Telegram)
  *   respondSwap → rekan terima: kedua jadwal langsung bertukar (tanpa supervisor); tolak: selesai
  *   cancelSwap  → pemohon membatalkan selama belum dijawab
+ *   coverOptions / requestCover → izin/sakit/cuti: minta rekan yang libur menggantikan shift; respondSwap dipakai untuk menjawab
  * Identitas dari token sesi (`yumi_sessions`).
  */
 
@@ -102,9 +103,42 @@ Deno.serve(async (req) => {
       return json({ success: true, id: created.id });
     }
 
+
+    if (body.action === "coverOptions") {
+      const date = String(body.date ?? "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < today) return fail("DATE_INVALID", "Pilih tanggal hari ini atau setelahnya.");
+      const { data: mine } = await db.schema("pos").from("attendance_schedules").select("shift_name,start_time,end_time,status").eq("user_id", me.source_id).eq("date", date).maybeSingle();
+      if (!mine || isOff(mine)) return json({ success: true, myShift: null, candidates: [] });
+      const { data: candidates } = await db.schema("pos").rpc("cover_candidates", { p_absent: me.source_id, p_date: date });
+      return json({ success: true, myShift: label({ ...mine, shift_name: mine.shift_name }), candidates: candidates ?? [] });
+    }
+
+    if (body.action === "requestCover") {
+      const date = String(body.date ?? ""), partnerId = String(body.partnerId ?? ""), reason = String(body.reason ?? "").trim().slice(0, 400);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < today) return fail("DATE_INVALID", "Pilih tanggal hari ini atau setelahnya.");
+      if (!partnerId || partnerId === me.source_id) return fail("PARTNER_INVALID", "Pilih rekan pengganti.");
+      if (!reason) return fail("REASON_REQUIRED", "Tulis alasan singkat.");
+      const { data: mine } = await db.schema("pos").from("attendance_schedules").select("user_id,shift_name,start_time,end_time,status").eq("user_id", me.source_id).eq("date", date).maybeSingle();
+      if (!mine || isOff(mine)) return fail("NO_SHIFT", "Kamu tidak punya shift kerja di tanggal itu.");
+      const present = await checkedInToday(db, date, [me.source_id]);
+      if (present.size) return fail("ALREADY_IN", "Kamu sudah absen masuk di tanggal itu.");
+      const { data: candidates } = await db.schema("pos").rpc("cover_candidates", { p_absent: me.source_id, p_date: date });
+      const chosen = (Array.isArray(candidates) ? candidates : []).find((c: any) => c.userId === partnerId);
+      if (!chosen) return fail("PARTNER_BUSY", "Rekan ini sudah tidak tersedia di tanggal itu. Pilih yang lain.", 409);
+      const { data: mineP } = await reqs.select("id").eq("status", "pending").in("leave_type", ["pengganti_shift", "tukar_shift"]).eq("start_date", date).eq("user_id", me.source_id);
+      if ((mineP ?? []).length) return fail("PENDING_EXISTS", "Sudah ada permintaan pengganti/tukar yang menunggu di tanggal itu.");
+      const { data: created, error } = await reqs.insert({
+        user_id: me.source_id, user_name: me.name, leave_type: "pengganti_shift", start_date: date, end_date: date, reason, status: "pending",
+        metadata: { partner_id: partnerId, partner_name: chosen.name, my_shift: label(mine), partner_shift: "Libur", stage: "waiting_partner", kind: "cover", leave_request_id: body.leaveRequestId ? String(body.leaveRequestId) : null },
+      }).select("id").single();
+      if (error || !created) { console.error(error); return fail("DB_ERROR", "Gagal membuat permintaan.", 500); }
+      await dm(db, partnerId, `🙋 ${me.name} meminta kamu menggantikan shiftnya\n📅 ${dateId(date)}\n⏰ ${label(mine)}\n📝 ${reason}\n\nKamu sedang libur di tanggal itu. Buka aplikasi Karyawan → Izin & cuti untuk Terima atau Tolak. Bila diterima, jadwalmu otomatis berisi shift ini.`);
+      return json({ success: true, id: created.id });
+    }
+
     if (body.action === "respondSwap") {
       const { data: r } = await reqs.select("*").eq("id", String(body.requestId ?? "")).maybeSingle();
-      if (!r || r.leave_type !== "tukar_shift") return fail("NOT_FOUND", "Permintaan tidak ditemukan.", 404);
+      if (!r || !["tukar_shift", "pengganti_shift"].includes(r.leave_type)) return fail("NOT_FOUND", "Permintaan tidak ditemukan.", 404);
       if (r.metadata?.partner_id !== me.source_id) return fail("FORBIDDEN", "Permintaan ini bukan untukmu.", 403);
       if (r.status !== "pending") return fail("ALREADY_DONE", "Permintaan ini sudah diproses.", 409);
       const date = String(r.start_date);
@@ -114,6 +148,21 @@ Deno.serve(async (req) => {
         return json({ success: true, status: "rejected" });
       }
       if (date < today) return fail("DATE_PAST", "Tanggal shift sudah lewat.");
+      if (r.leave_type === "pengganti_shift") {
+        const present = await checkedInToday(db, date, [r.user_id]);
+        if (present.size) return fail("ALREADY_IN", "Yang meminta sudah absen masuk, shift tidak perlu diganti.", 409);
+        const { data: res, error: coverErr } = await db.schema("pos").rpc("cover_shift", { p_absent: r.user_id, p_cover: me.source_id, p_date: date, p_leave_id: r.metadata?.leave_request_id ?? null });
+        if (coverErr || !res?.ok) {
+          const msg = res?.reason === "cover_busy" ? "Kamu sudah punya shift di tanggal itu." : res?.reason === "absent_not_working" ? "Jadwal pemohon sudah berubah. Minta pengajuan ulang." : "Gagal mengganti jadwal. Coba lagi.";
+          return fail("COVER_FAILED", msg, 409);
+        }
+        const newShift = `${res.shift}${res.start ? ` ${String(res.start).slice(0, 5)}–${String(res.end ?? "").slice(0, 5)}` : ""}`;
+        await reqs.update({ status: "approved", reviewed_by: me.source_id, review_notes: "Disetujui rekan — shift digantikan", metadata: { ...r.metadata, swapped: true, swappedBy: "partner", stage: "done" } }).eq("id", r.id);
+        await dm(db, r.user_id, `✅ ${me.name} menggantikan shiftmu ${dateId(date)} (${newShift}). Jadwalmu di tanggal itu jadi Libur.`);
+        await dm(db, me.source_id, `✅ Kamu menggantikan ${r.user_name} ${dateId(date)}.\nJadwalmu sekarang: ${newShift}`);
+        await group(`🙋 Pengganti Shift — ${dateId(date)}\n👤 ${r.user_name}: ${newShift} → Libur (${r.reason})\n👤 ${me.name}: Libur → ${newShift}\n✅ Disetujui rekan, jadwal sudah berganti otomatis.`);
+        return json({ success: true, status: "approved", yourNewShift: newShift });
+      }
       const { ra, rb } = await rowsFor(db, date, r.user_id, me.source_id);
       if (!ra || !rb) return fail("NO_SCHEDULE", "Jadwal salah satu dari kalian sudah berubah. Minta pengajuan ulang.");
       const present = await checkedInToday(db, date, [r.user_id, me.source_id]);
@@ -130,7 +179,7 @@ Deno.serve(async (req) => {
 
     if (body.action === "cancelSwap") {
       const { data: r } = await reqs.select("id,user_id,status,leave_type").eq("id", String(body.requestId ?? "")).maybeSingle();
-      if (!r || r.leave_type !== "tukar_shift" || r.user_id !== me.source_id) return fail("NOT_FOUND", "Permintaan tidak ditemukan.", 404);
+      if (!r || !["tukar_shift", "pengganti_shift"].includes(r.leave_type) || r.user_id !== me.source_id) return fail("NOT_FOUND", "Permintaan tidak ditemukan.", 404);
       if (r.status !== "pending") return fail("ALREADY_DONE", "Permintaan ini sudah diproses.", 409);
       await reqs.update({ status: "cancelled", reviewed_by: me.source_id, review_notes: "Dibatalkan pemohon" }).eq("id", r.id);
       return json({ success: true });

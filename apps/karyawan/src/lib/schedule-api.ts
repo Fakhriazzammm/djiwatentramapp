@@ -16,3 +16,6 @@ async function call<T>(token: string | null, body: Record<string, unknown>): Pro
 export const requestSwap = (token: string | null, p: { date: string; partnerId: string; reason: string }) => call<{ success: true; id: string }>(token, { action: "requestSwap", ...p });
 export const respondSwap = (token: string | null, requestId: string, accept: boolean) => call<{ success: true; status: "approved" | "rejected"; yourNewShift?: string }>(token, { action: "respondSwap", requestId, accept });
 export const cancelSwap = (token: string | null, requestId: string) => call<{ success: true }>(token, { action: "cancelSwap", requestId });
+export type CoverCandidate = { userId: string; name: string; roleName: string; sameRole: boolean; state: "off" | "unscheduled"; weekShifts: number };
+export const coverOptions = (token: string | null, date: string) => call<{ success: true; myShift: string | null; candidates: CoverCandidate[] }>(token, { action: "coverOptions", date });
+export const requestCover = (token: string | null, p: { date: string; partnerId: string; reason: string; leaveRequestId?: string }) => call<{ success: true; id: string }>(token, { action: "requestCover", ...p });

@@ -175,8 +175,8 @@ export default function JadwalPage() {
 									const conflict = conflicts.some((c) => c.user === u.name && c.date === d);
 									return (
 										<td key={d} className="p-1.5">
-											<motion.button type="button" whileTap={{ scale: 0.95 }} onClick={() => setEdit({ user: u, date: d, current: s })} className={`block w-full px-1 py-2.5 text-center font-mono text-[10px] font-medium uppercase tracking-[0.04em] ${s ? shiftTone(s.shiftName, s.status) : "border border-dashed border-[#d8d8de] text-[#b0b0ba]"} ${conflict ? "outline outline-[1.5px] outline-dashed outline-[#d92d20]" : ""}`}>
-												{s ? (s.status === "off" || s.shiftName.toUpperCase() === OFF ? "Libur" : s.shiftName) : "+"}
+											<motion.button type="button" whileTap={{ scale: 0.95 }} title={s?.raw?.coveredBy ? "Libur: shift diganti rekan (izin/sakit)" : s?.raw?.coverFor ? "Pengganti shift rekan yang izin/sakit" : undefined} onClick={() => setEdit({ user: u, date: d, current: s })} className={`block w-full px-1 py-2.5 text-center font-mono text-[10px] font-medium uppercase tracking-[0.04em] ${s ? shiftTone(s.shiftName, s.status) : "border border-dashed border-[#d8d8de] text-[#b0b0ba]"} ${conflict ? "outline outline-[1.5px] outline-dashed outline-[#d92d20]" : ""}`}>
+												{s ? (s.status === "off" || s.shiftName.toUpperCase() === OFF ? (s.raw?.coveredBy ? "Diganti" : "Libur") : s.raw?.coverFor ? `${s.shiftName} ↺` : s.shiftName) : "+"}
 											</motion.button>
 										</td>
 									);

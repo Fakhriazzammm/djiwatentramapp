@@ -6,7 +6,7 @@ import { addDays, WEEKDAY_NAMES } from "@/lib/schedule-generator";
 import { wibParts } from "@/lib/karyawan-analytics";
 import { useHybridAttendanceSchedules } from "@/hooks/use-hybrid-attendance-schedules";
 import { Btn, Chips, Empty, Feed, KpiStrip, Page, PageHead, Panel, ProgressList, SearchBox, SourceError, StatusTag } from "../kit";
-import { agoText, useLeave, type LeaveRow } from "../data";
+import { agoText, useCoverPlan, useLeave, type CoverCandidate, type LeaveRow } from "../data";
 import { fmtDate, initials } from "../team";
 
 type Tab = "pending" | "approved" | "rejected";
@@ -15,6 +15,54 @@ const ANNUAL = 12;
 
 function daysBetween(a: string, b: string) {
 	return Math.round((new Date(`${b}T00:00:00Z`).getTime() - new Date(`${a}T00:00:00Z`).getTime()) / 86_400_000) + 1;
+}
+
+function CoverPanel({ row }: { row: LeaveRow }) {
+	const { days, error, busy, assign, remove } = useCoverPlan(row.id);
+	const [pick, setPick] = useState<Record<string, string>>({});
+	const needs = (days ?? []).filter((d) => d.state === "needs" && !d.past);
+	const covered = (days ?? []).filter((d) => d.state === "covered").length;
+	const submit = async (date: string) => {
+		const who = pick[date];
+		if (!who) return;
+		const ok = await requestAdminConfirm({ title: "Tugaskan pengganti?", message: `Shift ${row.user_name ?? "karyawan"} tanggal ${fmtDate(date)} akan diisi rekan terpilih, dan ${row.user_name ?? "karyawan"} menjadi libur di hari itu. Keduanya diberi tahu.`, confirmText: "Tugaskan", variant: "info" });
+		if (!ok) return;
+		const r = await assign(date, who);
+		if (r.ok) toast.success(r.message);
+		else toast.error(r.message);
+	};
+	return (
+		<div className="border-t border-[#efeff2] px-4 py-4">
+			<div className="mb-2 flex items-center justify-between gap-2">
+				<div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#2f5d9e]">Pengganti shift</div>
+				{days ? <StatusTag tone={needs.length ? "warn" : "ok"}>{needs.length ? `${needs.length} shift belum terisi` : covered ? "Semua terisi" : "Tidak ada shift"}</StatusTag> : null}
+			</div>
+			{error ? <p className="text-[12px] text-[#b42318]">{error}</p> : days === null ? <div className="h-14 animate-pulse bg-[#ececf0]" /> : days.filter((d) => d.state === "needs" || d.state === "covered").length === 0 ? (
+				<p className="text-[12px] text-[#666672]">Tidak ada shift kerja pada tanggal ini yang perlu diisi.</p>
+			) : (
+				<ul className="space-y-2">
+					{days.filter((d) => d.state === "needs" || d.state === "covered").map((d) => (
+						<li key={d.date} className="border border-[#e4e4e8] bg-white p-3 text-[13px]">
+							<div className="flex items-center justify-between gap-2"><span className="font-medium">{fmtDate(d.date)}</span><span className="font-mono text-[10px] text-[#666672]">{d.shift?.name} {d.shift?.start}–{d.shift?.end}</span></div>
+							{d.state === "covered" ? (
+								<div className="mt-2 flex items-center justify-between gap-2"><span>Diganti <b className="font-medium">{d.coverName}</b></span>{!d.past ? <Btn small danger disabled={busy === d.date} onClick={() => void remove(d.date).then((ok) => ok ? toast.success("Penugasan dibatalkan, jadwal kembali seperti semula") : toast.error("Gagal membatalkan"))}>Batalkan</Btn> : null}</div>
+							) : d.past ? <p className="mt-2 text-[12px] text-[#666672]">Tanggal sudah lewat.</p> : (d.candidates ?? []).length === 0 ? (
+								<p className="mt-2 text-[12px] text-[#7a4b00]">Tidak ada rekan yang libur dan tersedia di tanggal ini. Atur manual di Jadwal.</p>
+							) : (
+								<div className="mt-2 flex gap-2">
+									<select aria-label={`Pengganti ${fmtDate(d.date)}`} className="h-9 min-w-0 flex-1 border border-[#d8d8de] bg-white px-2 text-[13px]" value={pick[d.date] ?? ""} onChange={(e) => setPick({ ...pick, [d.date]: e.target.value })}>
+										<option value="">Pilih rekan pengganti</option>
+										{(d.candidates as CoverCandidate[]).map((c) => <option key={c.userId} value={c.userId}>{c.name}{c.sameRole ? " · sejabatan" : ""} · {c.weekShifts} shift minggu ini</option>)}
+									</select>
+									<Btn small primary disabled={!pick[d.date] || busy === d.date} onClick={() => void submit(d.date)}>Tugaskan</Btn>
+								</div>
+							)}
+						</li>
+					))}
+				</ul>
+			)}
+		</div>
+	);
 }
 
 function LeaveDetail({ row, onDecide, busy, usedDays }: { row: LeaveRow; onDecide: (action: "approve" | "reject") => void; busy: boolean; usedDays: number }) {
@@ -40,13 +88,14 @@ function LeaveDetail({ row, onDecide, busy, usedDays }: { row: LeaveRow; onDecid
 				<div className="flex justify-between gap-3 px-4 py-3"><dt className="text-[#666672]">Jadwal</dt><dd className="text-right font-medium">{sched.isLoading ? "Memeriksa…" : clashes.length ? <span className="text-[#b42318]">Bentrok: {clashes.slice(0, 3).join(", ")}</span> : "Tidak ada bentrok"}</dd></div>
 				{row.review_notes ? <div className="flex justify-between gap-3 px-4 py-3"><dt className="text-[#666672]">Catatan</dt><dd>{row.review_notes}</dd></div> : null}
 			</dl>
+			{row.status !== "rejected" && row.status !== "cancelled" ? <CoverPanel row={row} /> : null}
 			{pending ? <div className="flex gap-2 border-t border-[#efeff2] p-4"><Btn danger disabled={busy} onClick={() => onDecide("reject")}>Tolak</Btn><div className="flex-1"><Btn primary disabled={busy} onClick={() => onDecide("approve")}>{busy ? "Memproses…" : "Setujui"}</Btn></div></div> : null}
 		</div>
 	);
 }
 
 export default function CutiPage() {
-	const { rows, error, busy, decide, reload } = useLeave();
+	const { rows, swaps, error, busy, decide, reload } = useLeave();
 	const [tab, setTab] = useState<Tab>("pending");
 	const [query, setQuery] = useState("");
 	const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -136,6 +185,16 @@ export default function CutiPage() {
 						);
 					})}
 				</div></div>
+			</Panel>
+
+			<Panel title="Tukar & pengganti shift" right={<StatusTag tone={swaps.some((x) => x.status === "pending") ? "warn" : "ok"}>{swaps.filter((x) => x.status === "pending").length} menunggu rekan</StatusTag>}>
+				{swaps.length === 0 ? <Empty>Belum ada permintaan tukar atau pengganti shift dari karyawan.</Empty> : (
+					<ul className="divide-y divide-[#efeff2] text-[13px]">
+						{swaps.slice(0, 8).map((x) => (
+							<li key={x.id} className="flex items-center gap-3 py-2.5"><div className="min-w-0 flex-1"><div className="truncate font-medium">{x.user_name ?? "Karyawan"} · {x.leave_type === "pengganti_shift" ? "minta digantikan" : "tukar shift"} {x.metadata?.partner_name ? `dengan ${x.metadata.partner_name}` : ""}</div><div className="font-mono text-[10px] text-[#666672]">{fmtDate(x.start_date)} · {x.reason}</div></div><StatusTag tone={x.status === "approved" ? "ok" : x.status === "pending" ? "warn" : "mute"}>{x.status === "approved" ? "Selesai" : x.status === "pending" ? "Menunggu rekan" : x.status === "rejected" ? "Ditolak rekan" : "Dibatalkan"}</StatusTag></li>
+						))}
+					</ul>
+				)}
 			</Panel>
 
 			<div className="grid gap-3 lg:grid-cols-3">

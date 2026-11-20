@@ -108,6 +108,18 @@ export type LeaveRow = {
 	reviewed_by?: string | null;
 	review_notes?: string | null;
 	created_at?: string | null;
+	metadata?: { partner_name?: string | null; covers?: { date: string; coverName?: string }[] } | null;
+};
+
+export type CoverCandidate = { userId: string; name: string; roleName: string; sameRole: boolean; state: "off" | "unscheduled"; weekShifts: number };
+export type CoverDay = {
+	date: string;
+	state: "needs" | "covered" | "off" | "no_schedule";
+	past?: boolean;
+	shift?: { name: string; start: string; end: string };
+	candidates?: CoverCandidate[];
+	coverUserId?: string;
+	coverName?: string;
 };
 
 const leaveUrl = () => `${String(import.meta.env.VITE_SUPABASE_URL).replace(/\/$/, "")}/functions/v1/leave-admin`;
@@ -160,7 +172,10 @@ export function useLeave() {
 		[token, busy],
 	);
 
-	return { rows, error, busy, decide, reload: useCallback(() => setTick((v) => v + 1), []) };
+	const LEAVE_TYPES = ["cuti", "izin", "sakit", "other"];
+	const leaveRows = useMemo(() => rows?.filter((r) => LEAVE_TYPES.includes(r.leave_type)), [rows]);
+	const swapRows = useMemo(() => (rows ?? []).filter((r) => r.leave_type === "tukar_shift" || r.leave_type === "pengganti_shift"), [rows]);
+	return { rows: leaveRows, swaps: swapRows, error, busy, decide, reload: useCallback(() => setTick((v) => v + 1), []) };
 }
 
 export const rupiah = (n: number) => `Rp ${Math.round(n).toLocaleString("id-ID")}`;
@@ -183,4 +198,48 @@ export function agoText(ts: number, now = Date.now()): string {
 	const h = Math.floor(m / 60);
 	if (h < 24) return `${h} jam lalu`;
 	return `${Math.floor(h / 24)} hari lalu`;
+}
+
+/** Rencana pengganti shift untuk satu pengajuan izin/sakit/cuti (fungsi leave-admin). */
+export function useCoverPlan(requestId: string | null) {
+	const { token } = useYumiAuth();
+	const [days, setDays] = useState<CoverDay[] | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const [tick, setTick] = useState(0);
+	const [busy, setBusy] = useState<string | null>(null);
+	const post = useCallback(async <T,>(body: Record<string, unknown>) => {
+		if (!token) throw new Error("Sesi admin tidak tersedia.");
+		return invokeDirectFetch<T>(leaveUrl(), { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+	}, [token]);
+
+	useEffect(() => {
+		let active = true;
+		setDays(null);
+		setError(null);
+		if (!requestId) return;
+		void post<{ data?: { days?: CoverDay[] } }>({ action: "coverPlan", requestId })
+			.then((r) => active && setDays(r.data?.days ?? []))
+			.catch(() => active && setError("Rencana pengganti belum dapat dimuat."));
+		return () => { active = false; };
+	}, [requestId, post, tick]);
+
+	const assign = useCallback(async (date: string, coverUserId: string) => {
+		if (!requestId) return { ok: false, message: "Pengajuan tidak dipilih" };
+		setBusy(date);
+		try {
+			const r = await post<{ data?: { coverName?: string; shift?: string } }>({ action: "assignCover", requestId, date, coverUserId });
+			setTick((v) => v + 1);
+			return { ok: true, message: `${r.data?.coverName ?? "Rekan"} ditugaskan menggantikan (${r.data?.shift ?? ""})` };
+		} catch (e) {
+			return { ok: false, message: e instanceof Error && e.message ? e.message : "Penugasan gagal. Jadwal mungkin sudah berubah." };
+		} finally { setBusy(null); }
+	}, [requestId, post]);
+
+	const remove = useCallback(async (date: string) => {
+		if (!requestId) return false;
+		setBusy(date);
+		try { await post({ action: "uncover", requestId, date }); setTick((v) => v + 1); return true; } catch { return false; } finally { setBusy(null); }
+	}, [requestId, post]);
+
+	return { days, error, busy, assign, remove, reload: useCallback(() => setTick((v) => v + 1), []) };
 }
