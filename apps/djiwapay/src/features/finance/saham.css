@@ -60,3 +60,5 @@
 .dpx .dpx-sk-date .dpx-ic{width:16px;height:16px;flex:none}
 /* Isi halaman penuh: blok biasa, bukan grid, supaya tidak meregang. */
 .dpx .dpx-sk-body{display:block}
+.dpx .dpx-vt-sumacts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.dpx .dpx-vt-sumacts .dpx-btn{width:100%;min-height:44px;padding:0 10px;font-size:14px;white-space:nowrap}

@@ -314,8 +314,10 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
         <div className="dpx-sub">{costAll > 0 && gainPct !== null ? <>Modal {m(rupiah(costAll))} · {ctx.visible ? <span className={gainPct >= 0 ? "dpx-up" : "dpx-dn"} style={{ fontWeight: 700 }}>{gainPct >= 0 ? "▲ +" : "▼ −"}{Math.abs(gainPct).toFixed(1).replace(".", ",")}%</span> : "•••"}</> : `${rows.length} aset`}</div>
         <div className="dpx-vt-bar" role="img" aria-label="Komposisi aset">{byKind.map(([k, v], i) => <i key={k} style={{ width: `${totalAll ? (v / totalAll) * 100 : 0}%`, background: KIND_COLORS[i % KIND_COLORS.length] }} />)}</div>
         <div className="dpx-vt-leg">{byKind.map(([k, v], i) => <span key={k}><i style={{ background: KIND_COLORS[i % KIND_COLORS.length] }} />{ASSET_KINDS[k as keyof typeof ASSET_KINDS].label} {totalAll ? Math.round((v / totalAll) * 100) : 0}%</span>)}</div>
-        {hasStocks ? <Btn type="button" className="dpx-linkbtn" onClick={() => pick("saham")}>Lihat saham ›</Btn> : null}
-        <Btn type="button" className="dpx-linkbtn" onClick={() => nav.go("/aset")}>Nilai &amp; grafik semua aset</Btn>
+        <div className="dpx-vt-sumacts">
+          {hasStocks ? <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => pick("saham")}>Lihat saham</Btn> : null}
+          <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => nav.go("/aset")}>Nilai &amp; grafik</Btn>
+        </div>
       </div> : null}
       </>}
     </div> : null}
