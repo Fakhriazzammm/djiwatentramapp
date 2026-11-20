@@ -10,7 +10,9 @@ import { GuideView } from "./views/Guide";
 import { FinanceView } from "./views/Finance";
 import { ExpensesView } from "./views/Expenses";
 import { StockView } from "./views/Stock";
-import { KaryawanView } from "./views/KaryawanView";
+import { KaryawanView, KARYAWAN_ITEMS, readSub } from "./views/KaryawanView";
+import type { SubPage } from "./views/karyawan/nav";
+import { ChevronUp, Users as UsersIcon } from "lucide-react";
 import { PurchasingView } from "./views/Purchasing";
 import { KolView } from "./views/Kol";
 
@@ -47,6 +49,8 @@ export function App() {
   const [access, setAccess] = useState<Access | null>(null);
   const [page, setPage] = useState<Page | null>(() => { const h = window.location.hash.slice(1).split("/")[0]; return (["guide", "dash", "keuangan", "expense", "opset", "sdm", "purch", "belanja", "laporan", "kol"] as string[]).includes(h) ? (h as Page) : null; });
   const [sheet, setSheet] = useState(false);
+  const [sub, setSub] = useState<SubPage>(readSub);
+  const [sdmOpen, setSdmOpen] = useState(true);
   const [bug, setBug] = useState(0);
 
   const loadAccess = useCallback(async () => {
@@ -65,9 +69,13 @@ export function App() {
   let first = "1";
   try { first = localStorage.getItem(FIRST_KEY) ?? ""; } catch { /* storage blocked */ }
   const cur: Page = page ?? (first ? "dash" : "guide");
+  const goSub = (next: SubPage) => {
+    setPage("sdm"); setSub(next); setSheet(false);
+    try { window.history.replaceState(null, "", `#sdm/${next}`); } catch { /* ignore */ }
+  };
   const go = (p: Page) => {
     setPage(p); setSheet(false);
-    try { window.history.replaceState(null, "", `#${p}`); } catch { /* ignore */ }
+    try { window.history.replaceState(null, "", p === "sdm" ? `#sdm/${sub}` : `#${p}`); } catch { /* ignore */ }
     try { localStorage.setItem(FIRST_KEY, "1"); } catch { /* ignore */ }
   };
   const info = pages.find((p) => p[0] === cur) ?? pages[0];
@@ -82,11 +90,25 @@ export function App() {
   return (
     <>
       <div className="shell">
-        <nav className="rail">
-          <div className="logo">D</div>
-          {pages.map((p) => <button key={p[0]} className={`rb ${p[0] === cur ? "on" : ""}`} title={p[2]} onClick={() => go(p[0])}><Ic n={p[1]} /></button>)}
-          <div className="sep" />
-          <div className="avatar" title="Keluar" onClick={signOut} style={{ cursor: "pointer" }}>{initials}</div>
+        <nav className="rail sbar" aria-label="Menu utama">
+          <div className="sbrand"><div className="logo">D</div><span>Djiwa Tentram</span></div>
+          {pages.map((p) => p[0] === "sdm" ? (
+            <div key={p[0]} className="sgroup">
+              <button className={`sgh ${p[0] === cur ? "on" : ""}`} onClick={() => { if (cur !== "sdm") { go("sdm"); setSdmOpen(true); } else setSdmOpen((v) => !v); }} aria-expanded={cur === "sdm" && sdmOpen}>
+                <UsersIcon className="ic" aria-hidden="true" /><span>KARYAWAN APP</span><ChevronUp className="ic chev" style={{ transform: cur === "sdm" && sdmOpen ? "none" : "rotate(180deg)" }} aria-hidden="true" />
+              </button>
+              {cur === "sdm" && sdmOpen && (
+                <div className="ssub">
+                  {KARYAWAN_ITEMS.map(({ id, label, Icon }) => (
+                    <button key={id} className={`ssi ${id === sub ? "on" : ""}`} onClick={() => goSub(id)} aria-current={id === sub ? "page" : undefined}><Icon className="ic" aria-hidden="true" /><span>{label}</span></button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <button key={p[0]} className={`sb ${p[0] === cur ? "on" : ""}`} title={p[3]} onClick={() => go(p[0])}><Ic n={p[1]} /><span>{p[2]}</span></button>
+          ))}
+          <div className="sfoot" onClick={signOut} title="Keluar" role="button" tabIndex={0}><div className="avatar">{initials}</div><span>{session.user.name || ROLE_NAME[role]}<small>Keluar</small></span></div>
         </nav>
         <div className="main">
           <header>
@@ -105,7 +127,7 @@ export function App() {
             {cur === "keuangan" && role === "manager" && <FinanceView />}
             {cur === "expense" && <ExpensesView />}
             {cur === "opset" && <StockView role={role} />}
-            {cur === "sdm" && role === "manager" && <KaryawanView />}
+            {cur === "sdm" && role === "manager" && <KaryawanView sub={sub} onSub={goSub} />}
             {(cur === "purch" || cur === "belanja") && <PurchasingView role={role} />}
             {cur === "laporan" && <ReportsView role={role} bugKey={bug} />}
           </div>

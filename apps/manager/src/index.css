@@ -4,6 +4,20 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 .font-display{font-family:var(--sans)}
+/* Satu sidebar penuh (menggantikan rail ikon): label + grup Karyawan App dengan submenu. */
+.shell{grid-template-columns:256px minmax(0,1fr)}
+.rail.sbar{align-items:stretch;padding:14px 10px;gap:2px;overflow-y:auto}
+.sbrand{display:flex;align-items:center;gap:10px;padding:0 6px 14px;font:600 14px var(--sans)}.sbrand .logo{margin:0;flex:none}
+.sb,.sgh,.ssi{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;text-align:left;padding:10px 12px;color:#18181b;border-radius:0;font:500 12px var(--mono);letter-spacing:.02em;position:relative}
+.sb:hover,.ssi:hover{background:var(--soft)}
+.sb.on,.ssi.on{background:#18181b;color:#fff}
+.sb span,.ssi span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sgroup{margin:4px 0}
+.sgh{background:#e5f0f9;text-transform:uppercase;letter-spacing:.1em;font-size:11.5px}.sgh.on{background:#e5f0f9}.sgh .chev{margin-left:auto;transition:transform .2s}
+.ssub{margin:2px 0 2px 18px;border-left:1px solid var(--line)}
+.sfoot{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px 6px 0;border-top:1px solid var(--line);cursor:pointer}.sfoot .avatar{margin:0;flex:none}.sfoot span{font:500 12px var(--sans);display:flex;flex-direction:column;min-width:0}.sfoot small{font:400 10px var(--mono);color:var(--muted)}
+@media(max-width:1100px){.shell{grid-template-columns:220px minmax(0,1fr)}}
+@media(max-width:700px){.shell{grid-template-columns:1fr}.rail.sbar{flex-direction:row}}
 /* Reset ringan untuk halaman Karyawan (Tailwind preflight tidak dipakai); layer base agar utilitas tetap menang. */
 @layer base{
   .kk-root button{background:transparent;border:0;padding:0;margin:0;font:inherit;color:inherit;text-align:inherit}
