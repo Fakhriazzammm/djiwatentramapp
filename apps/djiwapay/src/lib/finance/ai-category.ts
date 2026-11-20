@@ -1,5 +1,5 @@
 import { call } from "./integrations";
-import { isKnownUnsure, loadMemory, memoryId, recall, remember, saveMemory } from "./ai-cache";
+import { isKnownUnsure, lastChecked, loadMemory, markChecked, memoryId, pruneBefore, recall, remember, saveMemory } from "./ai-cache";
 import type { Category, Entry } from "./types";
 import type { Finance } from "./use-finance";
 
@@ -16,6 +16,15 @@ export const learnRemote = (text: string, categoryId: string, local?: { profileI
   if (text.trim().length >= 3) void call("/categorize/learn", { method: "POST", body: JSON.stringify({ text, categoryId }) }).catch(() => undefined);
 };
 
+/** Before trusting this browser's memory, ask whether a rule was taught on another device since. At most every 5 minutes; offline just keeps the memory. */
+export async function syncMemory(profileId: string, now = Date.now()): Promise<void> {
+  if (now - lastChecked(profileId) < 5 * 60_000) return;
+  try {
+    const { rulesAt } = await call<{ success: true; rulesAt: number }>("/categorize/version");
+    if (rulesAt > 0) saveMemory(profileId, pruneBefore(loadMemory(profileId), rulesAt));
+    markChecked(profileId, now);
+  } catch { /* offline or old server: keep what we have */ }
+}
 export const toItem = (e: Entry): ItemIn => ({ key: e.id, text: e.note, amount: e.amount, kind: e.kind === "in" ? "in" : "out" });
 /** Records that still have no real category: nothing sorted them yet. */
 /** Same, minus shops the app already asked about and was unsure of this week: asking again would only cost money. */
@@ -41,6 +50,7 @@ export async function refineEntries(fin: Finance, notify: Notify, entries: Entry
   const todo = entries.filter((e) => (opts.force ? e.kind !== "tf" && e.source !== "pay" && e.note.trim().length >= 3 : isUnsorted(e))).slice(0, 20);
   if (!todo.length) { if (opts.announce) notify("Semua catatan sudah punya kategori"); return 0; }
   // What this browser already knows about a shop is used first; only unknown shops go to the server (which has its own memory, and only then the model).
+  await syncMemory(fin.profileId);
   let memory = loadMemory(fin.profileId);
   const local: AiPick[] = [], ask: Entry[] = [];
   for (const e of todo) { const h = recall(memory, memoryId(e.note, e.kind === "in" ? "in" : "out")); if (h) local.push({ key: e.id, categoryId: h.c, confidence: h.p, source: "ai" }); else ask.push(e); }

@@ -80,6 +80,15 @@ run("automatic categories (real database, fake model)", () => {
     await categorizeItems({ db, key: "k", fetchImpl: fake(() => '{"results":[{"key":"z","categoryId":"c1","confidence":0.9}]}') }, user, [{ key: "z", text: "Toko Baru Banget", kind: "out" }]);
     expect((await pool.query("select count(*)::int n from finance.ai_category_cache where user_id=$1 and key='toko kuno'", [user])).rows[0].n).toBe(0);
   });
+  test("the rules version tells a device when a rule was taught elsewhere", async () => {
+    const app = new Hono(); const json = (c: any, b: unknown, s = 200) => c.json(b, s);
+    registerCategorizeRoutes(app, { db, key: undefined }, () => user, json);
+    const before = (await (await app.request("/api/finance/categorize/version")).json() as any).rulesAt;
+    await new Promise((r) => setTimeout(r, 20)); await learnRule(db, user, "Toko Versi Baru", "makan");
+    const after = (await (await app.request("/api/finance/categorize/version")).json() as any).rulesAt;
+    expect(before).toBeGreaterThan(0); expect(after).toBeGreaterThan(before);
+    expect((await (await new Hono().request("/x")).status)).toBe(404);
+  });
   test("HTTP: validates input and serves results", async () => {
     await pool.query("delete from finance.ai_usage where user_id=$1", [user]);
     const app = new Hono(); const json = (c: any, b: unknown, s = 200) => c.json(b, s);

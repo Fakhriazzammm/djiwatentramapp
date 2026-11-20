@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { MAX_ENTRIES, isKnownUnsure, loadMemory, memoryId, normalize, recall, remember, saveMemory } from "./ai-cache";
+import { MAX_ENTRIES, isKnownUnsure, lastChecked, loadMemory, markChecked, memoryId, normalize, pruneBefore, recall, remember, saveMemory } from "./ai-cache";
 
 const fake = () => { const m = new Map<string, string>(); return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), raw: m }; };
 const DAY = 86_400_000, T0 = Date.UTC(2026, 10, 20);
@@ -27,4 +27,12 @@ describe("shop memory in the browser", () => {
     expect(loadMemory("p", bad)).toEqual({}); expect(() => saveMemory("p", m, bad)).not.toThrow(); expect(loadMemory("p", null)).toEqual({});
   });
   test("names too short to mean anything are not remembered", () => { expect(remember({}, memoryId("ab", "out"), "makan", 0.9)).toEqual({}); });
+  test("a rule taught on another device invalidates what this browser remembered before it", () => {
+    const m = { ...remember({}, memoryId("Toko A", "out"), "makan", 0.95, T0), ...remember({}, memoryId("Toko B", "out"), "belanja", 0.95, T0 + 2 * DAY) };
+    const kept = pruneBefore(m, T0 + DAY);
+    expect(Object.keys(kept)).toEqual([memoryId("Toko B", "out")]); expect(pruneBefore(m, 0)).toEqual(m);
+  });
+  test("remembers when it last checked, per person", () => {
+    const s = fake(); expect(lastChecked("a", s)).toBe(0); markChecked("a", 1234, s); expect(lastChecked("a", s)).toBe(1234); expect(lastChecked("b", s)).toBe(0);
+  });
 });

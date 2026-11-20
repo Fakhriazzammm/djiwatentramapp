@@ -13,6 +13,12 @@ const browser = (): Store | null => { try { return typeof window !== "undefined"
 export const normalize = (text: string) => text.toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim().slice(0, 40);
 export const memoryId = (text: string, kind: "in" | "out") => `${kind}:${normalize(text)}`;
 
+/** Drops everything remembered before `ms`: another device taught a rule since, so those answers may be out of date. */
+export function pruneBefore(memory: Memory, ms: number): Memory { return Object.fromEntries(Object.entries(memory).filter(([, h]) => h.t >= ms)); }
+const checkKey = (profileId: string) => `djiwa-fin-aicat-checked:${profileId}`;
+export const lastChecked = (profileId: string, storage: Store | null = browser()) => { try { return Number(storage?.getItem(checkKey(profileId)) ?? 0) || 0; } catch { return 0; } };
+export const markChecked = (profileId: string, now = Date.now(), storage: Store | null = browser()) => { try { storage?.setItem(checkKey(profileId), String(now)); } catch { /* checked again next time */ } };
+
 export function loadMemory(profileId: string, storage: Store | null = browser()): Memory {
   try { const raw = JSON.parse(storage?.getItem(key(profileId)) ?? "{}"); return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Memory) : {}; } catch { return {}; }
 }

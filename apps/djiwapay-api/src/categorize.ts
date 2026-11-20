@@ -185,6 +185,11 @@ export function registerCategorizeRoutes(app: Hono, d: CategorizeDeps, uid: (c: 
       return json(c, { success: true, minConfidence: MIN_CONFIDENCE, ...r });
     } catch (e) { console.error("categorize route", e instanceof Error ? e.message : e); return json(c, { success: false, error: "CATEGORIZE_FAILED" }, 502); }
   });
+  // When this person last taught a rule (from any device). A device whose memory is older than this must not trust it.
+  app.get("/api/finance/categorize/version", async (c) => {
+    const r = (await d.db.query("select coalesce(extract(epoch from max(updated_at)) * 1000, 0) as at from finance.merchant_rules where user_id=$1", [uid(c)])).rows[0];
+    return json(c, { success: true, rulesAt: Math.round(Number(r?.at ?? 0)) });
+  });
   app.post("/api/finance/categorize/learn", async (c) => {
     const b = (await c.req.json().catch(() => ({}))) as { text?: unknown; categoryId?: unknown };
     const ok = await learnRule(d.db, uid(c), String(b.text ?? ""), String(b.categoryId ?? ""));
