@@ -8,7 +8,61 @@ type Attendance = {
   total: number; present: number;
   staff: { userId: string; name: string; role: string; status: string; checkInAt?: number; checkOutAt?: number; leaveType?: string | null }[];
 };
-type Leave = { id: string; user_name: string | null; leave_type: string; start_date: string; end_date: string; reason: string | null; status: string; created_at: string };
+type Leave = { id: string; user_name: string | null; leave_type: string; start_date: string; end_date: string; reason: string | null; status: string; created_at: string; metadata?: { partner_name?: string | null } | null };
+type CoverCandidate = { userId: string; name: string; roleName: string; sameRole: boolean; state: string; weekShifts: number };
+type CoverDay = { date: string; state: "needs" | "covered" | "off" | "no_schedule"; past?: boolean; shift?: { name: string; start: string; end: string }; candidates?: CoverCandidate[]; coverUserId?: string; coverName?: string };
+const LEAVE_TYPES = ["cuti", "izin", "sakit", "other"];
+const fmtDay = (d: string) => new Date(`${d}T00:00:00+07:00`).toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Jakarta" });
+
+/** Pengganti shift untuk izin/sakit/cuti: rekan yang libur mengisi shift, yang izin jadi libur. */
+function CoverPlan({ leave }: { leave: Leave }) {
+  const [days, setDays] = useState<CoverDay[] | null>(null);
+  const [pick, setPick] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    try { setDays((await api<{ days: CoverDay[] }>(`/api/manager/team/leaves/${leave.id}/cover`)).days); } catch { toast.error("Rencana pengganti belum bisa dimuat"); setDays([]); }
+  }, [leave.id]);
+  useEffect(() => { void load(); }, [load]);
+  const assign = async (d: CoverDay) => {
+    const who = d.candidates?.find((c) => c.userId === pick[d.date]);
+    if (!who || !window.confirm(`${who.name} menggantikan ${leave.user_name ?? "karyawan"} pada ${fmtDay(d.date)}? ${leave.user_name ?? "Karyawan"} menjadi libur di hari itu.`)) return;
+    setBusy(d.date);
+    try { await api(`/api/manager/team/leaves/${leave.id}/cover`, { method: "POST", body: { date: d.date, coverUserId: who.userId } }); toast.success(`${who.name} ditugaskan menggantikan`); await load(); }
+    catch (e) { const c = (e as { code?: string }).code; toast.error(c === "COVER_UNAVAILABLE" || c === "COVER_BUSY" ? "Rekan ini sudah tidak tersedia di tanggal itu" : "Penugasan belum tersimpan"); void load(); }
+    finally { setBusy(null); }
+  };
+  const undo = async (d: CoverDay) => {
+    setBusy(d.date);
+    try { await api(`/api/manager/team/leaves/${leave.id}/cover/${d.date}`, { method: "DELETE" }); toast.success("Penugasan dibatalkan, jadwal kembali seperti semula"); await load(); }
+    catch { toast.error("Gagal membatalkan"); } finally { setBusy(null); }
+  };
+  if (!days) return <div className="meta" style={{ marginTop: 8 }}>Memuat rencana pengganti…</div>;
+  const list = days.filter((d) => d.state === "needs" || d.state === "covered");
+  if (list.length === 0) return <div className="meta" style={{ marginTop: 8 }}>Tidak ada shift kerja pada tanggal ini yang perlu diisi.</div>;
+  return (
+    <div style={{ marginTop: 8, borderTop: "1px dashed var(--line)", paddingTop: 8 }}>
+      <label style={{ marginTop: 0 }}>Pengganti shift</label>
+      {list.map((d) => (
+        <div key={d.date} className="mr" style={{ display: "block", padding: "6px 0" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><b style={{ fontWeight: 550 }}>{fmtDay(d.date)}</b><span className="meta">{d.shift?.name} {d.shift?.start}–{d.shift?.end}</span></div>
+          {d.state === "covered" ? (
+            <div className="crow"><span className="tg ok">Diganti {d.coverName}</span>{!d.past && <button className="btn s" disabled={busy === d.date} onClick={() => undo(d)}>Batalkan</button>}</div>
+          ) : d.past ? <div className="meta">Tanggal sudah lewat.</div> : (d.candidates ?? []).length === 0 ? (
+            <div className="meta" style={{ color: "var(--warn, #7a4b00)" }}>Tidak ada rekan yang libur dan tersedia di tanggal ini.</div>
+          ) : (
+            <div className="crow">
+              <select className="sel" aria-label={`Pengganti ${fmtDay(d.date)}`} value={pick[d.date] ?? ""} onChange={(e) => setPick({ ...pick, [d.date]: e.target.value })}>
+                <option value="">Pilih rekan</option>
+                {(d.candidates ?? []).map((c) => <option key={c.userId} value={c.userId}>{c.name}{c.sameRole ? " · sejabatan" : ""} · {c.weekShifts} shift minggu ini</option>)}
+              </select>
+              <button className="btn s p" disabled={!pick[d.date] || busy === d.date} onClick={() => assign(d)}>Tugaskan</button>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 type PayrollItem = { user_id: string; user_name: string | null; role_name: string | null; total_shifts: number; total_hours: string; gross_pay: string; deductions: string; net_pay: string };
 type Period = { id: string; period_name: string; start_date: string; end_date: string; status: string };
 type Data = {
@@ -37,6 +91,7 @@ export function TeamView({ role }: { role: Role }) {
   const [pm, setPm] = useState(monthsBack()[0]);
   const [pay, setPay] = useState<Payroll | null>(null);
   const [openRow, setOpenRow] = useState<string | null>(null);
+  const [coverOpen, setCoverOpen] = useState<string | null>(null);
   const [form, setForm] = useState({ kind: "bonus", amount: "", note: "" });
   const [busy, setBusy] = useState(false);
   const loadPay = useCallback(async (m = pm) => {
@@ -74,8 +129,11 @@ export function TeamView({ role }: { role: Role }) {
   };
 
   if (!data) return <div className="empty">Memuat tim…</div>;
-  const pending = data.leaves.filter((l) => l.status === "pending");
-  const others = data.leaves.filter((l) => l.status !== "pending");
+  const leaveRows = data.leaves.filter((l) => LEAVE_TYPES.includes(l.leave_type));
+  const swaps = data.leaves.filter((l) => l.leave_type === "tukar_shift" || l.leave_type === "pengganti_shift");
+  const pending = leaveRows.filter((l) => l.status === "pending");
+  const others = leaveRows.filter((l) => l.status !== "pending");
+  const needCover = leaveRows.filter((l) => l.status !== "rejected" && l.status !== "cancelled" && l.end_date.slice(0, 10) >= new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10));
   const prow = pay?.rows ?? [];
   const gross = prow.reduce((a, i) => a + i.gross, 0);
   const net = prow.reduce((a, i) => a + i.net, 0);
@@ -167,10 +225,27 @@ export function TeamView({ role }: { role: Role }) {
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><b>{l.user_name ?? "Karyawan"}</b><span className="tg">{LEAVE[l.leave_type] ?? l.leave_type}</span></div>
                 <div className="meta">{new Date(l.start_date).toLocaleDateString("id-ID")} – {new Date(l.end_date).toLocaleDateString("id-ID")}</div>
                 {l.reason && <p style={{ margin: "6px 0 0" }}>{l.reason}</p>}
-                {role === "manager" && <div className="crow"><button className="btn s p" onClick={() => decide(l, "approved")}>Setujui</button><button className="btn s" onClick={() => decide(l, "rejected")}>Tolak</button></div>}
+                {role === "manager" && <div className="crow"><button className="btn s p" onClick={() => decide(l, "approved")}>Setujui</button><button className="btn s" onClick={() => decide(l, "rejected")}>Tolak</button><button className="btn s" onClick={() => setCoverOpen(coverOpen === l.id ? null : l.id)}>{coverOpen === l.id ? "Tutup pengganti" : "Cari pengganti"}</button></div>}
+                {role !== "manager" && <div className="crow"><button className="btn s" onClick={() => setCoverOpen(coverOpen === l.id ? null : l.id)}>{coverOpen === l.id ? "Tutup pengganti" : "Cari pengganti"}</button></div>}
+                {coverOpen === l.id && <CoverPlan leave={l} />}
               </div>
             ))}
             {others.slice(0, 6).map((l) => <div key={l.id} className="mr"><span>{l.user_name} <span className="meta">{LEAVE[l.leave_type] ?? l.leave_type}</span></span><span className={`tg ${l.status === "approved" ? "ok" : "hi"}`}>{l.status === "approved" ? "Disetujui" : "Ditolak"}</span></div>)}
+          </Panel>
+          <Panel title={`Pengganti shift · ${needCover.filter((l) => l.status === "approved").length} cuti/izin disetujui`}>
+            {needCover.filter((l) => l.status === "approved").length === 0 && <Empty>TIDAK ADA IZIN DISETUJUI YANG PERLU PENGGANTI</Empty>}
+            {needCover.filter((l) => l.status === "approved").map((l) => (
+              <div key={l.id} className="pad" style={{ borderBottom: "1px solid var(--line)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><b>{l.user_name ?? "Karyawan"}</b><span className="tg">{LEAVE[l.leave_type] ?? l.leave_type}</span></div>
+                <div className="meta">{fmtDay(l.start_date.slice(0, 10))} – {fmtDay(l.end_date.slice(0, 10))}</div>
+                <div className="crow"><button className="btn s" onClick={() => setCoverOpen(coverOpen === l.id ? null : l.id)}>{coverOpen === l.id ? "Tutup" : "Atur pengganti"}</button></div>
+                {coverOpen === l.id && <CoverPlan leave={l} />}
+              </div>
+            ))}
+          </Panel>
+          <Panel title={`Tukar & pengganti shift · ${swaps.filter((x) => x.status === "pending").length} menunggu rekan`}>
+            {swaps.length === 0 && <Empty>BELUM ADA PERMINTAAN</Empty>}
+            {swaps.slice(0, 8).map((x) => <div key={x.id} className="mr"><span>{x.user_name} <span className="meta">{x.leave_type === "pengganti_shift" ? "minta digantikan" : "tukar shift"}{x.metadata?.partner_name ? ` · ${x.metadata.partner_name}` : ""} · {fmtDay(x.start_date.slice(0, 10))}</span></span><span className={`tg ${x.status === "approved" ? "ok" : x.status === "pending" ? "" : "hi"}`}>{x.status === "approved" ? "Selesai" : x.status === "pending" ? "Menunggu rekan" : x.status === "rejected" ? "Ditolak rekan" : "Dibatalkan"}</span></div>)}
           </Panel>
         </div>
       </div>

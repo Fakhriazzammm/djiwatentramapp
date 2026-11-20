@@ -666,7 +666,7 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
     const [att, leaves, periods] = await Promise.all([
       q<{ r: unknown }>(`SELECT public.admin_attendance_today($1,$2) AS r`, [day.start, day.end]),
       q<Record<string, unknown>>(
-        `SELECT id, user_id, user_name, leave_type, start_date, end_date, reason, status, review_notes, created_at
+        `SELECT id, user_id, user_name, leave_type, start_date::text AS start_date, end_date::text AS end_date, reason, status, review_notes, created_at, metadata
            FROM public.attendance_leave_requests
           WHERE status = 'pending' OR created_at >= now() - interval '30 days'
           ORDER BY (status = 'pending') DESC, created_at DESC LIMIT 60`,
@@ -713,6 +713,102 @@ export function registerManagerModules(app: Hono, auth: Auth, pool: Pool) {
     } catch (e) {
       return json({ success: false, error: "REVIEW_FAILED", message: e instanceof Error ? e.message : "" }, 409);
     }
+  });
+
+
+  // ---------- pengganti shift untuk izin / sakit / cuti ----------
+  const COVER_TYPES = ["cuti", "izin", "sakit", "other"];
+  const hhmm = (v: unknown) => (v ? String(v).slice(0, 5) : "");
+  const dateLabel = (d: string) => new Date(`${d}T00:00:00+07:00`).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Jakarta" });
+  const notifyEmployee = async (userId: string, message: string) => {
+    const token = process.env.TELEGRAM_BOT_TOKEN ?? "";
+    if (!token) return;
+    try {
+      const link = await pool.query(`SELECT telegram_user_id FROM public.employee_telegram_links WHERE employee_user_id = $1 AND is_active IS NOT FALSE`, [userId]);
+      const chat = link.rows[0]?.telegram_user_id;
+      if (!chat) return;
+      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: Number(chat), text: message, disable_web_page_preview: true }) });
+    } catch { /* notifikasi tidak boleh menggagalkan penugasan */ }
+  };
+  const loadCoverRequest = async (id: string) => {
+    const r = await pool.query(`SELECT id, user_id, user_name, leave_type, start_date::text AS start_date, end_date::text AS end_date, status, metadata FROM public.attendance_leave_requests WHERE id = $1::uuid`, [id]).catch(() => null);
+    const row = r?.rows[0];
+    if (!row) return { res: json({ success: false, error: "NOT_FOUND" }, 404) } as const;
+    if (!COVER_TYPES.includes(row.leave_type)) return { res: json({ success: false, error: "TYPE_INVALID" }, 400) } as const;
+    if (!["pending", "approved"].includes(row.status)) return { res: json({ success: false, error: "REQUEST_CLOSED" }, 409) } as const;
+    return { row } as const;
+  };
+
+  app.get("/api/manager/team/leaves/:id/cover", async (c) => {
+    const m = await member(c);
+    if ("res" in m) return m.res;
+    const req = await loadCoverRequest(c.req.param("id"));
+    if ("res" in req) return req.res;
+    const { row } = req;
+    const today = wibDay(0).date;
+    const sched = await pool.query(
+      `SELECT date::text AS date, shift_name, start_time, end_time, status, raw FROM pos.attendance_schedules WHERE user_id = $1 AND date BETWEEN $2::date AND $3::date`,
+      [row.user_id, row.start_date, row.end_date],
+    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const byDate = new Map((sched.rows as Record<string, any>[]).map((r) => [String(r.date), r]));
+    const days: Record<string, unknown>[] = [];
+    const last = Date.parse(`${row.end_date}T00:00:00Z`);
+    for (let t = Date.parse(`${row.start_date}T00:00:00Z`); t <= last && days.length < 31; t += 86_400_000) {
+      const date = new Date(t).toISOString().slice(0, 10);
+      const s = byDate.get(date);
+      if (!s) { days.push({ date, state: "no_schedule" }); continue; }
+      if (s.raw?.coveredBy) {
+        const who = await pool.query(`SELECT name FROM public.yumi_users WHERE source_id = $1`, [s.raw.coveredBy]);
+        days.push({ date, state: "covered", past: date < today, shift: { name: s.raw.originalShift, start: hhmm(s.raw.originalStart), end: hhmm(s.raw.originalEnd) }, coverUserId: s.raw.coveredBy, coverName: who.rows[0]?.name ?? "Rekan" });
+        continue;
+      }
+      if (s.status === "off" || /off|libur/i.test(s.shift_name ?? "")) { days.push({ date, state: "off" }); continue; }
+      const cands = date < today ? [] : ((await pool.query(`SELECT pos.cover_candidates($1,$2::date) AS r`, [row.user_id, date])).rows[0]?.r ?? []);
+      days.push({ date, state: "needs", past: date < today, shift: { name: s.shift_name, start: hhmm(s.start_time), end: hhmm(s.end_time) }, candidates: cands });
+    }
+    return json({ success: true, requestId: row.id, userName: row.user_name, days });
+  });
+
+  app.post("/api/manager/team/leaves/:id/cover", async (c) => {
+    const m = await member(c);
+    if ("res" in m) return m.res;
+    const req = await loadCoverRequest(c.req.param("id"));
+    if ("res" in req) return req.res;
+    const { row } = req;
+    const b = (await c.req.json().catch(() => ({}))) as { date?: unknown; coverUserId?: unknown };
+    const date = text(b.date, 10);
+    const coverId = text(b.coverUserId, 120);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < row.start_date || date > row.end_date) return json({ success: false, error: "DATE_INVALID" }, 400);
+    if (date < wibDay(0).date) return json({ success: false, error: "DATE_PAST" }, 400);
+    if (!coverId) return json({ success: false, error: "COVER_REQUIRED" }, 400);
+    const cands = (await pool.query(`SELECT pos.cover_candidates($1,$2::date) AS r`, [row.user_id, date])).rows[0]?.r ?? [];
+    const chosen = (cands as { userId: string; name: string }[]).find((x) => x.userId === coverId);
+    if (!chosen) return json({ success: false, error: "COVER_UNAVAILABLE" }, 409);
+    const res = (await pool.query(`SELECT pos.cover_shift($1,$2,$3::date,$4) AS r`, [row.user_id, coverId, date, row.id])).rows[0]?.r as { ok?: boolean; reason?: string; shift?: string; start?: string; end?: string } | undefined;
+    if (!res?.ok) return json({ success: false, error: res?.reason === "cover_busy" ? "COVER_BUSY" : res?.reason === "absent_not_working" ? "ABSENT_NOT_WORKING" : "COVER_FAILED" }, 409);
+    const covers = (Array.isArray(row.metadata?.covers) ? row.metadata.covers : []).filter((x: { date: string }) => x.date !== date);
+    covers.push({ date, coverUserId: coverId, coverName: chosen.name, by: m.userId, at: new Date().toISOString() });
+    await pool.query(`UPDATE public.attendance_leave_requests SET metadata = coalesce(metadata,'{}'::jsonb) || jsonb_build_object('covers', $2::jsonb) WHERE id = $1::uuid`, [row.id, JSON.stringify(covers)]);
+    const label = `${res.shift}${res.start ? ` ${hhmm(res.start)}–${hhmm(res.end)}` : ""}`;
+    await notifyEmployee(coverId, `🔄 Kamu ditugaskan menggantikan ${row.user_name}\n📅 ${dateLabel(date)}\n⏰ ${label}\n\nJadwalmu di tanggal itu sudah diperbarui.`);
+    await notifyEmployee(row.user_id, `✅ ${chosen.name} menggantikan shiftmu ${dateLabel(date)} (${label}).`);
+    return json({ success: true, date, coverName: chosen.name, shift: label });
+  });
+
+  app.delete("/api/manager/team/leaves/:id/cover/:date", async (c) => {
+    const m = await member(c);
+    if ("res" in m) return m.res;
+    const req = await loadCoverRequest(c.req.param("id"));
+    if ("res" in req) return req.res;
+    const { row } = req;
+    const date = c.req.param("date");
+    const res = (await pool.query(`SELECT pos.uncover_shift($1,$2::date) AS r`, [row.user_id, date]).catch(() => null))?.rows[0]?.r as { ok?: boolean; coverUserId?: string } | undefined;
+    if (!res?.ok) return json({ success: false, error: "NOT_COVERED" }, 409);
+    const covers = (Array.isArray(row.metadata?.covers) ? row.metadata.covers : []).filter((x: { date: string }) => x.date !== date);
+    await pool.query(`UPDATE public.attendance_leave_requests SET metadata = coalesce(metadata,'{}'::jsonb) || jsonb_build_object('covers', $2::jsonb) WHERE id = $1::uuid`, [row.id, JSON.stringify(covers)]);
+    if (res.coverUserId) await notifyEmployee(res.coverUserId, `↩️ Penugasan pengganti ${dateLabel(date)} dibatalkan. Jadwalmu kembali seperti semula.`);
+    return json({ success: true, date });
   });
 
   // ---------- purchasing / PO ----------
