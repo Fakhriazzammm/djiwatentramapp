@@ -3,6 +3,7 @@ import * as faceapi from "face-api.js";
 import { DsButton } from "@djiwaapps/web-shared/components/ds";
 import { preloadFaceModels } from "@/components/auth/FaceRecognition";
 import { reportEvent } from "@/lib/attendance-api";
+import { captureVideoJpeg } from "@/lib/photo-stamp";
 
 export type CameraProblem = { code: "denied" | "blocked_overlay" | "no_camera" | "busy" | "insecure" | "models" | "unsupported" | "unknown"; message: string };
 
@@ -22,31 +23,21 @@ export function describeCameraError(e: unknown): CameraProblem {
 
 const mean = (list: number[][]) => list[0].map((_, i) => list.reduce((s, d) => s + d[i], 0) / list.length);
 
-function snapshot(video: HTMLVideoElement): string | null {
-	try {
-		const w = 480, h = Math.round((video.videoHeight / video.videoWidth) * w) || 640;
-		const c = document.createElement("canvas");
-		c.width = w; c.height = h;
-		const ctx = c.getContext("2d");
-		if (!ctx) return null;
-		ctx.drawImage(video, 0, 0, w, h);
-		return c.toDataURL("image/jpeg", 0.7);
-	} catch { return null; }
-}
-
 type Props = {
 	mode: "enroll" | "verify";
 	/** Dipanggil setelah wajah terbaca stabil. Lempar Error(message) bila server menolak. */
 	onDone: (descriptor: number[], photo: string | null) => Promise<void>;
 	/** Kamera/model tidak bisa dipakai: induk menawarkan PIN. */
 	onUnavailable?: (p: CameraProblem) => void;
+	/** Nama untuk cap pada foto absen. */
+	stamp?: string;
 };
 
 /**
  * Pemindai wajah: kamera depan, tunggu wajah stabil (beberapa bingkai berturut-turut, ukuran cukup),
  * lalu ambil deskriptor. Pendaftaran = rata-rata 3 bingkai (lebih tahan cahaya/sudut). Verifikasi = rata-rata 2 bingkai.
  */
-export function FaceScanner({ mode, onDone, onUnavailable }: Props) {
+export function FaceScanner({ mode, onDone, onUnavailable, stamp }: Props) {
 	const videoRef = useRef<HTMLVideoElement>(null);
 	const streamRef = useRef<MediaStream | null>(null);
 	const runRef = useRef(0);
@@ -138,7 +129,7 @@ export function FaceScanner({ mode, onDone, onUnavailable }: Props) {
 
 			// 4. Kirim
 			setPhase("sending");
-			const photo = snapshot(video);
+			const photo = captureVideoJpeg(video, stamp, true);
 			try {
 				await onDone(mean(samples), photo);
 				if (!alive()) return;

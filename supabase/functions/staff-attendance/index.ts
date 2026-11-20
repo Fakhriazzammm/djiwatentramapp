@@ -168,6 +168,68 @@ function windowState(shift: { start_time: string | null } | null) {
   return cur < minutesOfDay(shift.start_time.slice(0, 5)) - WINDOW_OPEN_MIN ? ("early" as const) : ("open" as const);
 }
 
+
+// ── Pindah shift saat absen ──────────────────────────────────────────────
+
+const ADMIN_ROLES = ["MANAGER", "OWNER", "SUPERVISOR", "ADMIN"];
+
+type Candidate = { userId: string; name: string; shift: string; start: string; end: string };
+
+/** Rekan yang jadwalnya bisa diambil/ditukar sekarang: bertugas hari ini, belum absen, jendela shift-nya sedang terbuka. */
+async function swapCandidates(db: Db, me: string): Promise<Candidate[]> {
+  const today = wibDate();
+  const w = wibNow();
+  const nowMin = w.getUTCHours() * 60 + w.getUTCMinutes();
+  const { data: rows } = await db.schema("pos").from("attendance_schedules").select("user_id,shift_name,start_time,end_time,status").eq("date", today).neq("status", "off");
+  const working = (rows ?? []).filter((r) => r.user_id !== me && r.start_time && r.end_time && !/off|libur/i.test(r.shift_name ?? ""));
+  const open = working.filter((r) => {
+    const st = minutesOfDay(r.start_time.slice(0, 5)), en = minutesOfDay(r.end_time.slice(0, 5));
+    return en > st && nowMin >= st - WINDOW_OPEN_MIN && nowMin <= en;
+  });
+  if (!open.length) return [];
+  const ids = open.map((r) => r.user_id);
+  const start = Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), w.getUTCDate()) - WIB;
+  const [{ data: logs }, { data: users }] = await Promise.all([
+    db.from("pos_attendance_logs").select("userId").in("userId", ids).gte("timestamp", start).lt("timestamp", start + 86400_000),
+    db.from("yumi_users").select("source_id,name,is_active").in("source_id", ids),
+  ]);
+  const present = new Set((logs ?? []).map((l) => String(l.userId)));
+  const nameOf = new Map((users ?? []).filter((u) => u.is_active !== false).map((u) => [u.source_id, String(u.name)]));
+  return open.filter((r) => !present.has(r.user_id) && nameOf.has(r.user_id)).map((r) => ({
+    userId: r.user_id, name: nameOf.get(r.user_id)!, shift: r.shift_name, start: r.start_time.slice(0, 5), end: r.end_time.slice(0, 5),
+  })).slice(0, 15);
+}
+
+async function tgSend(chat: string | number, text: string) {
+  const token = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
+  if (!token || !chat) return;
+  try { await fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: chat, text, disable_web_page_preview: true }) }); } catch { /* abaikan */ }
+}
+
+/** Beri tahu grup Report, rekan, dan manajer/owner/supervisor/admin (DM bila Telegram tertaut). */
+async function notifyReassign(db: Db, text: string, partnerId: string) {
+  await tgSend(Deno.env.get("TELEGRAM_REPORT_CHAT_ID") ?? "", text);
+  const { data: roles } = await db.from("yumi_roles").select("source_id,name");
+  const adminRoleIds = (roles ?? []).filter((r) => ADMIN_ROLES.includes(String(r.name).toUpperCase())).map((r) => r.source_id);
+  const { data: admins } = adminRoleIds.length ? await db.from("yumi_users").select("source_id").in("role_source_id", adminRoleIds).eq("is_active", true) : { data: [] };
+  const targets = [...new Set([partnerId, ...(admins ?? []).map((a) => a.source_id)])];
+  const { data: links } = await db.from("employee_telegram_links").select("employee_user_id,telegram_user_id,is_active").in("employee_user_id", targets);
+  for (const l of links ?? []) if (l.is_active !== false) await tgSend(Number(l.telegram_user_id), text);
+}
+
+/** Foto absen: wajib JPEG dari kamera perangkat. Menolak data yang bukan JPEG atau ukurannya tidak masuk akal. */
+function parsePhoto(v: unknown): { bytes: Uint8Array; contentType: string } | null {
+  if (typeof v !== "string" || !/^data:image\/jpe?g;base64,/.test(v) || v.length > 900_000) return null;
+  try {
+    const bin = atob(v.split(",")[1]);
+    const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
+    if (bytes.length < 8_000 || bytes.length > 650_000 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
+    return { bytes, contentType: "image/jpeg" };
+  } catch { return null; }
+}
+
+const swapLabel = (sh?: { shift?: string; start?: string | null; end?: string | null } | null) => !sh?.shift ? "Libur" : `${sh.shift}${sh.start ? ` ${String(sh.start).slice(0, 5)}–${String(sh.end ?? "").slice(0, 5)}` : ""}`;
+
 async function checks(db: Db, user: Record<string, any>, loc: Loc) {
   const userId = String(user.source_id);
   const [raw, sched, last] = await Promise.all([siteSettings(db), todaySchedule(db, userId), attendanceState(db, userId)]);
@@ -180,8 +242,12 @@ async function checks(db: Db, user: Record<string, any>, loc: Loc) {
   const noSchedule = sched.usesSchedule && !shift;
   const face = (Array.isArray(user.face_descriptor) && user.face_descriptor.length > 0) ||
     (Array.isArray(user.raw?.faceDescriptor) && user.raw.faceDescriptor.length > 0);
+  // Di luar jadwal sendiri (tidak ada shift, belum waktunya, atau terlambat sangat jauh): tawarkan pindah shift.
+  const outOfSchedule = !isIn && (noSchedule || win === "early" || lateMin > 120);
+  const swapOptions = outOfSchedule && geo.state === "ok" ? await swapCandidates(db, userId) : [];
   return {
     geo, isIn, done, shift, win, lateMin, noSchedule, hasOffToday: sched.hasOffToday, hasFace: face,
+    outOfSchedule, swapOptions, needsPhoto: true,
     lateTolerance: LATE_TOLERANCE_MIN,
     needsLateReason: lateMin > LATE_TOLERANCE_MIN,
     lockedPin: await pinLocked(db, userId),
@@ -223,44 +289,63 @@ Deno.serve(async (req) => {
       if (c.geo.state === "unknown") return await rej("LOCATION_REQUIRED", "Lokasi tidak tersedia. Aktifkan GPS lalu coba lagi.");
       if (c.geo.state === "inaccurate") return await rej("LOCATION_INACCURATE", "Sinyal GPS kurang akurat. Pindah ke area terbuka lalu coba lagi.", 400, { geo: c.geo });
       if (c.geo.state === "far") return await rej("OUTSIDE_RADIUS", `Kamu ${c.geo.distance} m dari toko (batas ${c.geo.radius} m).`, 403, { geo: c.geo });
-      if (c.noSchedule) return await rej("NO_SCHEDULE", "Tidak ada jadwal untukmu hari ini. Hubungi supervisor.", 403);
-      if (c.win === "early") return await rej("TOO_EARLY", `Absen dibuka ${WINDOW_OPEN_MIN} menit sebelum shift mulai.`, 403);
 
+      // Pindah shift saat absen: dipilih karyawan, jadwal langsung berganti.
+      const swapWith = String(body.swapWithUserId ?? "");
+      const needsSwap = c.noSchedule || c.win === "early";
+      let chosen: Candidate | undefined;
+      if (swapWith) {
+        if (!c.outOfSchedule) return await rej("SWAP_NOT_NEEDED", "Jadwalmu sudah sesuai, tidak perlu pindah shift.");
+        chosen = c.swapOptions.find((o) => o.userId === swapWith);
+        if (!chosen) return await rej("SWAP_UNAVAILABLE", "Rekan itu tidak lagi bisa ditukar (sudah absen atau jadwalnya berubah). Pilih ulang.");
+      } else if (needsSwap) {
+        return await rej(c.noSchedule ? "NO_SCHEDULE" : "TOO_EARLY",
+          c.noSchedule ? "Kamu tidak dijadwalkan hari ini. Pilih shift rekan untuk dipindah ke kamu, atau hubungi supervisor." : `Absen dibuka ${WINDOW_OPEN_MIN} menit sebelum shift-mu. Tunggu, atau pilih pindah ke shift rekan yang sedang berjalan.`,
+          403, { swapOptions: c.swapOptions });
+      }
+
+      const lateShift = chosen ? { start_time: chosen.start, end_time: chosen.end, shift_name: chosen.shift } : c.shift;
+      const lateMinNow = chosen ? Math.max(0, (wibNow().getUTCHours() * 60 + wibNow().getUTCMinutes()) - minutesOfDay(chosen.start)) : c.lateMin;
       const lateReason = String(body.lateReason ?? "").trim().slice(0, 300);
-      if (c.needsLateReason && !lateReason) return await rej("LATE_REASON_REQUIRED", `Kamu terlambat ${c.lateMin} menit. Pilih alasan.`);
+      if (lateMinNow > LATE_TOLERANCE_MIN && !lateReason) return await rej("LATE_REASON_REQUIRED", `Kamu terlambat ${lateMinNow} menit. Pilih alasan.`);
 
-      const method = body.method === "face" ? "face" : "pin";
+      // Foto langsung dari kamera perangkat: wajib untuk semua metode (tidak bisa diunggah dari galeri).
+      const method = body.method === "face" ? "face" : body.method === "photo" ? "photo" : "pin";
+      const photoParsed = parsePhoto(body.photo);
+      if (!photoParsed) return await rej("PHOTO_REQUIRED", "Foto selfie dari kamera wajib. Ambil foto langsung (tidak bisa unggah dari galeri).");
+
       if (method === "pin" && c.lockedPin) return await rej("PIN_LOCKED", `PIN terkunci ${PIN_LOCK_MIN} menit karena terlalu banyak salah.`, 429);
-      const verdict = await verifyIdentity(db, user, method, String(body.pin ?? ""), Array.isArray(body.faceDescriptor) ? body.faceDescriptor.map(Number) : []);
-      await db.from("attendance_verify_attempts").insert({ user_id: userId, ok: verdict.ok, method });
-      if (!verdict.ok) return await rej((verdict as any).code, (verdict as any).message, 403);
+      if (method !== "photo") {
+        const verdict = await verifyIdentity(db, user, method, String(body.pin ?? ""), Array.isArray(body.faceDescriptor) ? body.faceDescriptor.map(Number) : []);
+        await db.from("attendance_verify_attempts").insert({ user_id: userId, ok: verdict.ok, method });
+        if (!verdict.ok) return await rej((verdict as any).code, (verdict as any).message, 403);
+      }
+
+      const today = wibDate();
+      let reassign: { mode: string; my_old: any; partner_old: any } | null = null;
+      if (chosen) {
+        const { data: res, error: swapErr } = await db.schema("pos").rpc("reassign_shift", { p_me: userId, p_partner: chosen.userId, p_date: today });
+        if (swapErr || !res?.ok) { console.error(swapErr, res); return await rej("SWAP_FAILED", "Gagal memindahkan shift. Coba lagi atau hubungi supervisor.", 409); }
+        reassign = res;
+      }
 
       const ts = Date.now();
       const { data: role } = await db.from("yumi_roles").select("name").eq("source_id", user.role_source_id).maybeSingle();
-      const penalty = await computeLatePenalty(db, userId, c.shift?.start_time, c.shift?.end_time, ts);
-
-      // Foto selfie dari verifikasi wajah (opsional): disimpan dan ikut ke laporan grup.
-      let photo: { bytes: Uint8Array; contentType: string } | null = null;
-      let photoUrl: string | null = null;
-      if (typeof body.photo === "string" && /^data:image\/jpe?g;base64,/.test(body.photo) && body.photo.length < 700_000) {
-        try {
-          const bin = atob(body.photo.split(",")[1]);
-          const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
-          photo = { bytes, contentType: "image/jpeg" };
-          photoUrl = await uploadAttendancePhoto(db, userId, ts, bytes, "image/jpeg");
-        } catch { photo = null; }
-      }
+      const penalty = await computeLatePenalty(db, userId, lateShift?.start_time, lateShift?.end_time, ts);
+      const photoUrl = await uploadAttendancePhoto(db, userId, ts, photoParsed.bytes, "image/jpeg");
+      const methodLabel = method === "face" ? "wajah" : method === "pin" ? "PIN + foto" : "foto langsung";
 
       const note = [
         "Absen via app Karyawan",
         `metode: ${method}`,
         loc ? `lokasi: ${loc.lat},${loc.lng} (±${Math.round(loc.accuracy ?? 0)}m${c.geo.distance != null ? `, ${c.geo.distance}m dari toko` : ""})` : "",
         !penalty.onTime ? `terlambat ${penalty.lateMinutes}m${lateReason ? `: ${lateReason}` : ""}${penalty.penaltyAmount ? ` | denda Rp${penalty.penaltyAmount}` : ""}` : "",
+        chosen ? `pindah shift dengan ${chosen.name}` : "",
         photoUrl ? `foto: ${photoUrl}` : "",
       ].filter(Boolean).join(" | ");
-      const doc: Record<string, unknown> = { userId, type: "check_in", timestamp: ts, source: "karyawan_app", notes: note, lateMinutes: penalty.lateMinutes, penaltyAmount: penalty.penaltyAmount };
+      const doc: Record<string, unknown> = { userId, type: "check_in", timestamp: ts, source: "karyawan_app", notes: note, lateMinutes: penalty.lateMinutes, penaltyAmount: penalty.penaltyAmount, verifyMethod: method };
       if (photoUrl) doc.photoUrl = photoUrl;
-      if (c.shift?.shift_name) doc.shiftName = c.shift.shift_name;
+      if (lateShift?.shift_name) doc.shiftName = lateShift.shift_name;
       if (role?.name) doc.roleName = role.name;
       const rnd = Array.from({ length: 20 }, () => "abcdef0123456789"[Math.floor(Math.random() * 16)]).join("");
       const { error } = await db.schema("legacy_mirror").from("documents").insert({
@@ -268,18 +353,31 @@ Deno.serve(async (req) => {
       });
       if (error) {
         console.error("[staff-attendance] write error", error);
+        // Gagal mencatat: kembalikan jadwal bila sudah dipindah.
+        if (chosen) await db.schema("pos").rpc("reassign_shift", { p_me: chosen.userId, p_partner: userId, p_date: today });
         return await rej("DB_ERROR", "Gagal mencatat absen. Coba lagi.", 500);
       }
 
-      // Laporan ke grup [Report] Djiwa Tentram, format sama dengan bot HRD. Kegagalan Telegram tidak membatalkan absen.
-      const shiftLine = c.shift ? `${c.shift.shift_name}${c.shift.start_time ? ` (${c.shift.start_time.slice(0, 5)} - ${(c.shift.end_time ?? "").slice(0, 5)})` : ""}` : "";
+      // Pindah shift: catat sebagai tukar shift disetujui (jejak audit) dan beri tahu grup, rekan, dan atasan.
+      if (chosen && reassign) {
+        await db.from("attendance_leave_requests").insert({
+          user_id: userId, user_name: String(user.name), leave_type: "tukar_shift", start_date: today, end_date: today, status: "approved",
+          reason: `Pindah shift saat absen${lateReason ? `: ${lateReason}` : ""}`, reviewed_by: "auto", review_notes: "Pindah shift otomatis saat absen",
+          metadata: { partner_id: chosen.userId, partner_name: chosen.name, my_shift: swapLabel(reassign.my_old), partner_shift: swapLabel(reassign.partner_old), swapped: true, swappedBy: "attendance", mode: reassign.mode },
+        });
+        await notifyReassign(db,
+          `🔁 Pindah Shift saat Absen — ${today.slice(8)}/${today.slice(5, 7)}\n👤 ${user.name}: ${swapLabel(reassign.my_old)} → ${swapLabel(reassign.partner_old)}\n👤 ${chosen.name}: ${swapLabel(reassign.partner_old)} → ${reassign.mode === "swap" ? swapLabel(reassign.my_old) : "Libur"}\n✅ Jadwal berganti otomatis dan ${user.name.split(" ")[0]} sudah absen masuk. Mohon dicek bila tidak sesuai.`, chosen.userId);
+      }
+
+      // Laporan absen ke grup [Report] Djiwa Tentram, format sama dengan bot HRD. Kegagalan Telegram tidak membatalkan absen.
+      const shiftLine = lateShift?.shift_name ? `${lateShift.shift_name}${lateShift.start_time ? ` (${lateShift.start_time.slice(0, 5)} - ${(lateShift.end_time ?? "").slice(0, 5)})` : ""}` : "";
       const reported = await sendAttendanceReport({
-        type: "check_in", atMs: ts, name: String(user.name ?? ""), roleName: role?.name, shiftLine, penalty, photo,
-        extraLines: [`📱 Via app Karyawan · ${method === "face" ? "wajah" : "PIN"}${c.geo.distance != null ? ` · ${c.geo.distance} m dari toko` : ""}`, ...(penalty.onTime || !lateReason ? [] : [`📝 Alasan: ${lateReason}`])],
+        type: "check_in", atMs: ts, name: String(user.name ?? ""), roleName: role?.name, shiftLine, penalty, photo: photoParsed,
+        extraLines: [`📱 Via app Karyawan · ${methodLabel}${c.geo.distance != null ? ` · ${c.geo.distance} m dari toko` : ""}`, ...(chosen ? [`🔁 Pindah shift dengan ${chosen.name}`] : []), ...(penalty.onTime || !lateReason ? [] : [`📝 Alasan: ${lateReason}`])],
       });
       return json({
         success: true,
-        log: { timestamp: ts, shiftName: c.shift?.shift_name ?? "", method, distance: c.geo.distance, lateMin: penalty.lateMinutes, onTime: penalty.onTime, penaltyAmount: penalty.penaltyAmount, reported },
+        log: { timestamp: ts, shiftName: lateShift?.shift_name ?? "", method, distance: c.geo.distance, lateMin: penalty.lateMinutes, onTime: penalty.onTime, penaltyAmount: penalty.penaltyAmount, reported, swappedWith: chosen?.name ?? null },
       });
     }
 

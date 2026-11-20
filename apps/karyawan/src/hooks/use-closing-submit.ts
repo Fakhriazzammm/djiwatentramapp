@@ -422,6 +422,8 @@ export async function submitClosingViaEdge(params: {
   /** Verifikasi identitas + lokasi untuk source "karyawan_app" (divalidasi server). */
   pinCode?: string;
   faceDescriptor?: number[];
+  photo?: string | null;
+  verifyMethod?: "face" | "pin" | "photo";
   location?: { lat: number; lng: number; accuracy?: number } | null;
 }): Promise<ClosingEdgeResponse> {
   const supabaseUrl = "https://supabase.djiwatentram.web.id";
@@ -442,6 +444,8 @@ export async function submitClosingViaEdge(params: {
       linkSignature: params.linkSignature,
       pinCode: params.pinCode,
       faceDescriptor: params.faceDescriptor,
+      photo: params.photo ?? undefined,
+      verifyMethod: params.verifyMethod,
       location: params.location ?? null,
     }),
   });

@@ -1,7 +1,7 @@
 {
-  "version": "0.2.500",
-  "commitHash": "f5d274f",
-  "message": "fix(pos): persist availability RPC execute grants",
-  "buildDate": "2026-10-09",
-  "generatedAt": "2026-10-09T06:20:38.765Z"
+  "version": "0.2.576",
+  "commitHash": "102a728",
+  "message": "fix(karyawan): no duplicate camera error on face enrollment",
+  "buildDate": "2026-11-20",
+  "generatedAt": "2026-11-20T01:43:01.607Z"
 }

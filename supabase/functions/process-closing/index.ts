@@ -1,5 +1,6 @@
 import { resolveClosingStockPolicy } from "./stock-policy.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { uploadAttendancePhoto } from "../_shared/attendance-report.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -580,6 +581,8 @@ Deno.serve(async (req: Request) => {
       pinCode = "",
       faceDescriptor = [],
       location = null,
+      photo = "",
+      verifyMethod = "",
     } = payload as {
       userId: string;
       userName: string;
@@ -595,6 +598,8 @@ Deno.serve(async (req: Request) => {
       pinCode?: string;
       faceDescriptor?: number[];
       location?: { lat: number; lng: number; accuracy?: number } | null;
+      photo?: string;
+      verifyMethod?: string;
     };
 
     if (source === "telegram_mini_app") {
@@ -663,10 +668,25 @@ Deno.serve(async (req: Request) => {
 
     if (source === "pos_web" || source === "karyawan_app") {
       try {
-        await verifyPosClosingIdentity(supabase, userId, pinCode, faceDescriptor);
+        // Metode "foto langsung" (hanya app Karyawan): tanpa pencocokan wajah/PIN, atasan menilai foto di laporan grup.
+        if (!(source === "karyawan_app" && verifyMethod === "photo")) await verifyPosClosingIdentity(supabase, userId, pinCode, faceDescriptor);
         await validatePosClosingGeofence(supabase, location);
       } catch (error) {
         return fail("IDENTITY_INVALID", String(error), 403);
+      }
+    }
+
+    // Absen keluar dari app Karyawan wajib disertai foto selfie langsung dari kamera (tidak bisa diunggah dari galeri).
+    let closingPhoto: { bytes: Uint8Array } | null = null;
+    if (source === "karyawan_app") {
+      try {
+        if (typeof photo !== "string" || !/^data:image\/jpe?g;base64,/.test(photo) || photo.length > 900_000) throw new Error("bad");
+        const bin = atob(photo.split(",")[1]);
+        const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
+        if (bytes.length < 8_000 || bytes.length > 650_000 || bytes[0] !== 0xff || bytes[1] !== 0xd8) throw new Error("bad");
+        closingPhoto = { bytes };
+      } catch {
+        return fail("PHOTO_REQUIRED", "Foto selfie dari kamera wajib untuk absen keluar. Ambil foto langsung (tidak bisa unggah dari galeri).", 400);
       }
     }
 
@@ -1047,6 +1067,7 @@ Deno.serve(async (req: Request) => {
 
       // ── Step 5: Record check-out ────────────────────────────
       const docId = makeSourceId("att");
+      const closingPhotoUrl = closingPhoto ? await uploadAttendancePhoto(supabase, userId, now, closingPhoto.bytes, "image/jpeg") : null;
 
       const checkOutNotes = needsOpname
         ? `Absen keluar via ${source} (${role} — opname ${isLastPerson ? "final" : "per-person"})`
@@ -1066,7 +1087,8 @@ Deno.serve(async (req: Request) => {
             source,
             shiftName,
             roleName,
-            notes: checkOutNotes,
+            notes: closingPhotoUrl ? `${checkOutNotes} | foto: ${closingPhotoUrl}` : checkOutNotes,
+            ...(closingPhotoUrl ? { photoUrl: closingPhotoUrl } : {}),
             ...(kebersihanResult.length > 0
               ? { closing: { kebersihan: kebersihanResult, closedAt: now } }
               : {}),
@@ -1115,6 +1137,22 @@ Deno.serve(async (req: Request) => {
           attendanceSaved: true,
           reportNotified: false,
         }, 502);
+      }
+
+      // Foto absen keluar ke grup Report (terpisah dari laporan closing), seperti foto absen masuk.
+      if (closingPhoto) {
+        try {
+          const tgToken = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
+          const tgChat = Deno.env.get("TELEGRAM_REPORT_CHAT_ID") ?? "";
+          if (tgToken && tgChat) {
+            const wibT = new Date(now + 7 * 3600_000).toISOString().slice(11, 16);
+            const form = new FormData();
+            form.set("chat_id", tgChat);
+            form.set("caption", `📸 Foto Absen Keluar — ${userName} • ${wibT} WIB`);
+            form.set("photo", new Blob([closingPhoto.bytes], { type: "image/jpeg" }), "keluar.jpg");
+            await fetch(`https://api.telegram.org/bot${tgToken}/sendPhoto`, { method: "POST", body: form });
+          }
+        } catch (e) { console.warn("[process-closing] kirim foto absen keluar gagal", e); }
       }
 
       return jsonResponse({

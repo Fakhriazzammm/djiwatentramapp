@@ -19,6 +19,10 @@ export type Preflight = {
 	hasOffToday: boolean;
 	hasFace: boolean;
 	lockedPin: boolean;
+	/** Di luar jadwal sendiri: boleh absen dengan pindah ke shift rekan (jadwal langsung berganti). */
+	outOfSchedule: boolean;
+	swapOptions: { userId: string; name: string; shift: string; start: string; end: string }[];
+	needsPhoto: boolean;
 };
 
 export class AttendanceError extends Error {
@@ -66,8 +70,8 @@ async function call<T>(token: string | null, body: Record<string, unknown>): Pro
 
 export const preflight = (token: string | null, location: GeoPoint | null) => call<Preflight>(token, { action: "preflight", location });
 
-export type ClockInResult = { success: true; log: { timestamp: number; shiftName: string; method: "face" | "pin"; distance: number | null; lateMin: number; onTime: boolean; penaltyAmount?: number; reported?: boolean } };
-export const clockIn = (token: string | null, p: { location: GeoPoint | null; method: "face" | "pin"; pin?: string; faceDescriptor?: number[]; photo?: string | null; lateReason?: string }) =>
+export type ClockInResult = { success: true; log: { timestamp: number; shiftName: string; method: "face" | "pin" | "photo"; distance: number | null; lateMin: number; onTime: boolean; penaltyAmount?: number; reported?: boolean; swappedWith?: string | null } };
+export const clockIn = (token: string | null, p: { location: GeoPoint | null; method: "face" | "pin" | "photo"; pin?: string; faceDescriptor?: number[]; photo?: string | null; lateReason?: string; swapWithUserId?: string }) =>
 	call<ClockInResult>(token, { action: "clockIn", ...p });
 
 export const enrollFace = (token: string | null, p: { faceDescriptor: number[]; pin: string }) => call<{ success: true }>(token, { action: "enrollFace", ...p });

@@ -261,6 +261,8 @@ function ClosingPage() {
         kebersihan: pending.kebersihan,
         pinCode: v.method === "pin" ? v.pin : undefined,
         faceDescriptor: v.method === "face" ? v.faceDescriptor : undefined,
+        photo: v.photo,
+        verifyMethod: v.method,
         location: geo.point,
       });
     } catch (err: any) {

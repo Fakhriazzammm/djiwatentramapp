@@ -8,7 +8,6 @@ import { PermissionGate } from "@/components/karyawan/PermissionGate";
 import { OnboardingGuide, guideSeen } from "@/components/karyawan/OnboardingGuide";
 import { useTodayAttendance, type TodayAttendance } from "@/components/karyawan/use-staff-data";
 import { createClient } from "@djiwaapps/web-shared/lib/client";
-import { HomeClockOutBanner } from "@djiwaapps/web-shared/components/home/home-clockout-banner";
 import { Button } from "@djiwaapps/web-shared/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, UserCircle, ShieldCheck, BellRing, X } from "lucide-react";
@@ -259,7 +258,6 @@ function StaffProfileLayout() {
 			<DsRoot className="karyawan-shell ds-legacy fixed inset-0 flex min-w-0 flex-col" >
 				<main id="main-content" className="ds-screen min-w-0 flex-1 overflow-y-auto overscroll-contain">
 					<div className="mx-auto w-full max-w-[560px]">
-						<div className="pt-2"><HomeClockOutBanner userId={authUser?._id} /></div>
 						<AttendanceReminder userId={staff?._id ?? authUser?._id} userName={staff?.name ?? authUser?.name} username={username} />
 						<Outlet />
 					</div>
