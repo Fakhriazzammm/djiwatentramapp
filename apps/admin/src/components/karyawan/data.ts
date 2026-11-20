@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/client";
+import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import { invokeDirectFetch } from "@/lib/api-helper";
@@ -27,6 +28,8 @@ export type DirectoryRow = {
 		startDate?: string | null;
 		employmentType?: string | null;
 		contractDuration?: number | string | null;
+		contractEndDate?: string | null;
+		jabatan?: string | null;
 		monthlySalary?: number | string | null;
 		location?: string | null;
 		emergencyContactName?: string | null;
@@ -67,16 +70,16 @@ type Bundle = { logs: AttendanceLog[]; schedules: ScheduleRow[] };
 async function loadBundle(range: DashboardRange): Promise<Bundle> {
 	const supabase = createClient();
 	const first = range.start === 0 ? 0 : range.start - DAY_MS;
-	const logsQuery = supabase.from("pos_attendance_logs").select("userId,type,timestamp").gte("timestamp", first).lt("timestamp", range.end).order("timestamp", { ascending: true }).limit(20000);
+	const logsQuery = supabase.from("pos_attendance_logs").select("userId,type,timestamp,location,penalty:raw->>penaltyAmount").gte("timestamp", first).lt("timestamp", range.end).order("timestamp", { ascending: true }).limit(20000);
 	const startDate = range.start === 0 ? "2020-01-01" : wibParts(range.start).date;
 	const endDate = wibParts(range.end - 1).date;
-	const schedQuery = supabase.from("pos_attendance_schedules").select("userId,date,shiftName,startTime,status").gte("date", startDate).lte("date", endDate).limit(20000);
+	const schedQuery = supabase.from("pos_attendance_schedules").select("userId,date,shiftName,startTime,endTime,status").gte("date", startDate).lte("date", endDate).limit(20000);
 	const [logs, scheds] = await Promise.all([logsQuery, schedQuery]);
 	if (logs.error) throw logs.error;
 	if (scheds.error) throw scheds.error;
 	return {
-		logs: (logs.data ?? []).map((r: any) => ({ userId: String(r.userId), type: String(r.type), timestamp: Number(r.timestamp) })),
-		schedules: (scheds.data ?? []).map((r: any) => ({ userId: String(r.userId), date: String(r.date), shiftName: String(r.shiftName ?? ""), startTime: r.startTime ?? null, status: r.status ?? null })),
+		logs: (logs.data ?? []).map((r: any) => ({ userId: String(r.userId), type: String(r.type), timestamp: Number(r.timestamp), location: r.location && typeof r.location === "object" ? { lat: Number(r.location.lat), lng: Number(r.location.lng) } : null, penalty: Number(r.penalty ?? 0) || 0 })),
+		schedules: (scheds.data ?? []).map((r: any) => ({ userId: String(r.userId), date: String(r.date), shiftName: String(r.shiftName ?? ""), startTime: r.startTime ?? null, endTime: r.endTime ?? null, status: r.status ?? null })),
 	};
 }
 
@@ -86,9 +89,11 @@ export function useAttendanceAnalysis(period: DashboardPeriodKey) {
 	const bundle = useSupabaseLiveValue<Bundle>(`karyawan-attendance:${period}`, () => loadBundle(range), [period], { realtimeSchemas: ["public", "pos"], refreshMs: 30000 });
 	const previous = useMemo(() => (range.previous ? ({ ...range, start: range.previous.start, end: range.previous.end }) : null), [range]);
 	const prevBundle = useSupabaseLiveValue<Bundle>(`karyawan-attendance-prev:${period}`, () => (previous ? loadBundle(previous) : Promise.resolve({ logs: [], schedules: [] })), [period], { refreshMs: 60000 });
-	const analysis: AttendanceAnalysis | null = useMemo(() => (bundle ? analyzeAttendance(bundle.logs, bundle.schedules, { start: range.start, end: range.end, bucket: range.trendBucket }) : null), [bundle, range]);
-	const prevAnalysis: AttendanceAnalysis | null = useMemo(() => (prevBundle && previous ? analyzeAttendance(prevBundle.logs, prevBundle.schedules, { start: previous.start, end: previous.end, bucket: range.trendBucket }) : null), [prevBundle, previous, range.trendBucket]);
-	return { range, analysis, prevAnalysis, loading: bundle === undefined, error: bundle === null, rawLogs: bundle?.logs ?? [], schedules: bundle?.schedules ?? [] };
+	const site = useHybridSiteSettings() as { attendanceLat?: number; attendanceLng?: number; attendanceRadius?: number } | null | undefined;
+	const geofence = useMemo(() => (site && typeof site.attendanceLat === "number" && typeof site.attendanceLng === "number" ? { lat: site.attendanceLat, lng: site.attendanceLng, radius: Number(site.attendanceRadius ?? 100) } : null), [site]);
+	const analysis: AttendanceAnalysis | null = useMemo(() => (bundle ? analyzeAttendance(bundle.logs, bundle.schedules, { start: range.start, end: range.end, bucket: range.trendBucket, geofence }) : null), [bundle, range, geofence]);
+	const prevAnalysis: AttendanceAnalysis | null = useMemo(() => (prevBundle && previous ? analyzeAttendance(prevBundle.logs, prevBundle.schedules, { start: previous.start, end: previous.end, bucket: range.trendBucket, geofence }) : null), [prevBundle, previous, range.trendBucket, geofence]);
+	return { range, analysis, prevAnalysis, geofence, loading: bundle === undefined, error: bundle === null, rawLogs: bundle?.logs ?? [], schedules: bundle?.schedules ?? [] };
 }
 
 export type LeaveRow = {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { analyzeAttendance } from "@/lib/karyawan-analytics";
 import { createClient } from "@/lib/client";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 import type { UseSupabaseLiveValueOptions } from "@/hooks/use-supabase-live-value";
@@ -108,7 +109,9 @@ async function fetchStaffStats(args: { userId: string; month: number; year: numb
 
 	// Calculate month boundaries for cross-month shift handling
 	const monthStart = new Date(args.year, args.month - 1, 1).getTime();
-	const monthEnd = new Date(args.year, args.month, 1).getTime();
+	const nextY = args.month === 12 ? args.year + 1 : args.year;
+	const nextM = args.month === 12 ? 1 : args.month + 1;
+	const monthEnd = new Date(`${nextY}-${String(nextM).padStart(2, "0")}-01T00:00:00+07:00`).getTime();
 
 	const uniqueDays = new Set<string>();
 	let totalMs = 0;
@@ -388,32 +391,42 @@ async function fetchPayrollReport(args: { month: number; year: number }) {
 	);
 	const activeUsers = (users ?? []).filter((user: any) => Boolean(user.isActive));
 
+	// Jam kerja dihitung sesuai jadwal shift (bukan sekadar selisih check-in/out) dan dari
+	// satu kali ambil data bulanan, bukan satu permintaan per karyawan.
+	const monthStart = new Date(`${args.year}-${String(args.month).padStart(2, "0")}-01T00:00:00+07:00`).getTime();
+	const monthEnd = new Date(args.year, args.month, 1).getTime() > monthStart ? new Date(`${args.month === 12 ? args.year + 1 : args.year}-${String(args.month === 12 ? 1 : args.month + 1).padStart(2, "0")}-01T00:00:00+07:00`).getTime() : monthStart;
+	const firstDate = `${args.year}-${String(args.month).padStart(2, "0")}-01`;
+	const lastDate = new Date(args.year, args.month, 0).toISOString().split("T")[0];
+	const [{ data: logRows, error: logErr }, { data: schedRows, error: schedErr }] = await Promise.all([
+		supabase.from("pos_attendance_logs").select("userId,type,timestamp,location,penalty:raw->>penaltyAmount").gte("timestamp", monthStart - 86_400_000).lt("timestamp", monthEnd).order("timestamp", { ascending: true }).limit(20000),
+		supabase.from("pos_attendance_schedules").select("userId,date,shiftName,startTime,endTime,status").gte("date", firstDate).lte("date", lastDate).limit(20000),
+	]);
+	if (logErr) throw logErr;
+	if (schedErr) throw schedErr;
+	const monthAnalysis = analyzeAttendance(
+		(logRows ?? []).map((r: any) => ({ userId: String(r.userId), type: String(r.type), timestamp: Number(r.timestamp), location: null, penalty: Number(r.penalty ?? 0) || 0 })),
+		(schedRows ?? []).map((r: any) => ({ userId: String(r.userId), date: String(r.date), shiftName: String(r.shiftName ?? ""), startTime: r.startTime ?? null, endTime: r.endTime ?? null, status: r.status ?? null })),
+		{ start: monthStart, end: monthEnd, bucket: "day" }
+	);
+
 	const rows = await Promise.all(
 		activeUsers.map(async (user: any) => {
-			const logs = await fetchStaffLogs({
-				userId: String(user._id),
-				month: args.month,
-				year: args.year,
-			});
-			const stats = await fetchStaffStats({
-				userId: String(user._id),
-				month: args.month,
-				year: args.year,
-			});
+			const userStat = monthAnalysis.byUser[String(user._id)];
+			const stats = { daysWorked: userStat?.days ?? 0, totalHours: userStat?.hours ?? 0 };
 			const role = roleMap.get(String(user.roleId ?? ""));
 			const raw = (role?.raw ?? {}) as Record<string, any>;
-			const sessionCount = Math.floor((logs?.length ?? 0) / 2);
+			const sessionCount = userStat?.sessions ?? 0;
 			const baseShiftRate = safeNum(raw.baseShiftRate ?? 0);
 			const monthlyFixedSalary = safeNum(raw.monthlyFixedSalary ?? 0);
 			const dailyAllowance = safeNum(raw.dailyAllowance ?? 0);
 			const overtimeBonusPerHour = safeNum(raw.overtimeBonusPerHour ?? raw.overtimeRatePerHour ?? globalOvertimeBonusPerHour ?? 10000);
-			const latePenaltyPerMinute = 1000;
 			const totalShiftSalary = sessionCount * baseShiftRate;
 			const totalAllowance = safeNum(stats?.daysWorked ?? 0) * dailyAllowance;
-			const overtimeHours = Math.max(0, safeNum(stats?.totalHours ?? 0) - sessionCount * 8);
+			const overtimeHours = userStat?.overtimeHours ?? 0;
 			const totalOvertimeBonus = overtimeHours * overtimeBonusPerHour;
-			const totalLateMinutes = 0;
-			const totalPenalty = totalLateMinutes * latePenaltyPerMinute;
+			const totalLateMinutes = userStat?.lateMinutes ?? 0;
+			// Denda telat dicatat di log absen masuk (penaltyAmount); jangan menebak dari menit telat.
+			const totalPenalty = userStat?.penalty ?? 0;
 
 			// ── Bonus Target ─────────────────────────────────────────
 			const bonusTargetConfig = (raw?.bonusTargetConfig ?? {}) as Record<string, any>;

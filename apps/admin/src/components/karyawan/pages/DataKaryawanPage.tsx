@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { profileCompleteness } from "@/lib/karyawan-analytics";
 import { Btn, Chips, DataTable, Drawer, Empty, KpiStrip, LineChart, Page, PageHead, Panel, ProgressList, SearchBox, SectionTitle, Segmented, SourceError, StatusTag } from "../kit";
 import { num, rupiah, useAttendanceAnalysis, useDirectory, type DirectoryRow } from "../data";
+import EmployeeEditor from "./EmployeeEditor";
 import { contractInfo, employmentLabel, fmtDate, initials, teamStats } from "../team";
 
 type Filter = "all" | "active" | "incomplete" | "expiring" | "inactive";
@@ -29,6 +30,7 @@ export default function DataKaryawanPage() {
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const [open, setOpen] = useState<DirectoryRow | null>(null);
 	const [tab, setTab] = useState<Tab>("profil");
+	const [editing, setEditing] = useState(false);
 
 	const rows = dir.rows ?? [];
 	const stats = useMemo(() => teamStats(rows), [rows]);
@@ -116,11 +118,11 @@ export default function DataKaryawanPage() {
 					rows={filtered}
 					rowKey={(r) => r._id}
 					empty="Tidak ada karyawan yang cocok dengan filter."
-					onRow={(r) => { setOpen(r); setTab("profil"); }}
+					onRow={(r) => { setOpen(r); setTab("profil"); setEditing(false); }}
 					columns={[
 						{ key: "sel", header: "", render: (r) => <input type="checkbox" aria-label={`Pilih ${r.name}`} checked={selected.has(r._id)} onClick={(e) => e.stopPropagation()} onChange={() => toggle(r._id)} className="h-4 w-4 accent-[#111114]" /> },
 						{ key: "name", header: "Karyawan", render: (r) => <div className="flex items-center gap-3"><Avatar name={r.name} /><div className="min-w-0"><div className="truncate font-medium">{r.name}</div><div className="truncate font-mono text-[10px] text-[#666672]">{r.username}</div></div></div> },
-						{ key: "role", header: "Jabatan", render: (r) => r.roleName || "—" },
+						{ key: "role", header: "Jabatan", render: (r) => <div><div>{r.raw.jabatan || r.roleName || "—"}</div>{r.raw.jabatan && r.raw.jabatan !== r.roleName ? <div className="font-mono text-[10px] text-[#666672]">{r.roleName}</div> : null}</div> },
 						{ key: "type", header: "Tipe kerja", render: (r) => employmentLabel(r.raw.employmentType) },
 						{ key: "status", header: "Status", render: (r) => { const i = contractInfo(r); return !r.isActive ? <StatusTag tone="mute">Nonaktif</StatusTag> : i.daysLeft !== null && i.daysLeft <= 30 ? <StatusTag tone="warn">Berakhir {fmtDate(i.endDate)}</StatusTag> : <StatusTag tone="ok">Aktif</StatusTag>; } },
 						{ key: "ontime", header: "Ketepatan", align: "right", render: (r) => { const s = month.analysis?.byUser[r._id]; return s ? `${s.onTimePct}%` : "—"; } },
@@ -132,8 +134,8 @@ export default function DataKaryawanPage() {
 					{filtered.map((r, i) => {
 						const c = profileCompleteness(r).percent;
 						return (
-							<motion.button key={r._id} type="button" layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 10) * 0.03 }} whileHover={{ y: -2 }} onClick={() => { setOpen(r); setTab("profil"); }} className="border border-[#e4e4e8] bg-white p-4 text-left hover:border-[#cfcfd6]">
-								<div className="flex items-center gap-3"><Avatar name={r.name} size={40} /><div className="min-w-0"><div className="truncate text-[14px] font-semibold">{r.name}</div><div className="truncate text-[12px] text-[#666672]">{r.roleName}</div></div></div>
+							<motion.button key={r._id} type="button" layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 10) * 0.03 }} whileHover={{ y: -2 }} onClick={() => { setOpen(r); setTab("profil"); setEditing(false); }} className="border border-[#e4e4e8] bg-white p-4 text-left hover:border-[#cfcfd6]">
+								<div className="flex items-center gap-3"><Avatar name={r.name} size={40} /><div className="min-w-0"><div className="truncate text-[14px] font-semibold">{r.name}</div><div className="truncate text-[12px] text-[#666672]">{r.raw.jabatan || r.roleName}</div></div></div>
 								<div className="mt-3 flex items-center justify-between"><StatusTag tone={r.isActive ? "ok" : "mute"}>{r.isActive ? "Aktif" : "Nonaktif"}</StatusTag><span className="font-mono text-[10px] text-[#666672]">Data {c}%</span></div>
 								<div className="mt-3 h-[6px] bg-[#ececf0]"><motion.div className="h-full bg-[#2f6fdf]" initial={{ width: 0 }} animate={{ width: `${c}%` }} transition={{ duration: 0.7 }} /></div>
 							</motion.button>
@@ -142,20 +144,20 @@ export default function DataKaryawanPage() {
 				</div>
 			)}
 
-			<Drawer open={Boolean(open)} onClose={() => setOpen(null)} title="Profil karyawan">
-				{open ? <Profile row={open} tab={tab} onTab={setTab} stat={month.analysis?.byUser[open._id]} series={month.analysis ? { labels: month.analysis.labels, values: month.analysis.seriesPresent } : null} onEditPage={() => void navigate({ to: "/admin/operational-team/karyawan/data" })} /> : null}
+			<Drawer open={Boolean(open)} onClose={() => { setOpen(null); setEditing(false); }} title={editing ? "Ubah data karyawan" : "Profil karyawan"}>
+				{open && editing ? <EmployeeEditor row={open} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); setOpen(null); dir.reload(); }} /> : open ? <Profile row={open} tab={tab} onTab={setTab} stat={month.analysis?.byUser[open._id]} series={month.analysis ? { labels: month.analysis.labels, values: month.analysis.seriesPresent } : null} onEdit={() => setEditing(true)} /> : null}
 			</Drawer>
 		</Page>
 	);
 }
 
-function Profile({ row, tab, onTab, stat, series, onEditPage }: { row: DirectoryRow; tab: Tab; onTab: (t: Tab) => void; stat?: { days: number; hours: number; late: number; onTimePct: number; sessions: number; unclosed: number }; series: { labels: string[]; values: number[] } | null; onEditPage: () => void }) {
+function Profile({ row, tab, onTab, stat, series, onEdit }: { row: DirectoryRow; tab: Tab; onTab: (t: Tab) => void; stat?: { days: number; hours: number; late: number; onTimePct: number; sessions: number; unclosed: number }; series: { labels: string[]; values: number[] } | null; onEdit: () => void }) {
 	const comp = profileCompleteness(row);
 	const info = contractInfo(row);
 	const salary = Number(row.raw.monthlySalary ?? 0);
 	return (
 		<div>
-			<div className="mb-4 flex items-center gap-3"><Avatar name={row.name} size={52} /><div className="min-w-0"><div className="truncate font-display text-[20px]">{row.name}</div><div className="text-[13px] text-[#666672]">{row.roleName}</div></div></div>
+			<div className="mb-4 flex items-center gap-3"><Avatar name={row.name} size={52} /><div className="min-w-0"><div className="truncate font-display text-[20px]">{row.name}</div><div className="text-[13px] text-[#666672]">{row.raw.jabatan || row.roleName}</div></div></div>
 			<div className="mb-4"><Chips value={tab} onChange={onTab} options={[{ value: "profil", label: "Profil" }, { value: "kontrak", label: "Kontrak" }, { value: "kehadiran", label: "Kehadiran" }, { value: "gaji", label: "Gaji" }]} /></div>
 			<AnimatePresence mode="wait">
 				<motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="space-y-4">
@@ -197,7 +199,7 @@ function Profile({ row, tab, onTab, stat, series, onEditPage }: { row: Directory
 					) : null}
 				</motion.div>
 			</AnimatePresence>
-			<div className="mt-5 flex gap-2"><Btn primary onClick={onEditPage}>Ubah data</Btn></div>
+			<div className="mt-5 flex gap-2"><Btn primary onClick={onEdit}>Ubah data</Btn></div>
 		</div>
 	);
 }

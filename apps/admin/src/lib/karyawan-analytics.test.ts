@@ -46,4 +46,34 @@ describe("analisis kehadiran", () => {
 		expect(r.percent).toBe(44);
 		expect(r.missing).toContain("Alamat");
 	});
+
+	it("jam kerja mengikuti jadwal: tanpa check-out dihitung sampai akhir shift dan tetap ditandai menggantung", () => {
+		const sch = [{ userId: "a", date: "2026-11-16", shiftName: "Pagi", startTime: "07:00", endTime: "15:00" }];
+		const r = analyzeAttendance([{ userId: "a", type: "check_in", timestamp: at("2026-11-16", "07:00") }], sch, { start, end, bucket: "day", now: at("2026-11-20", "10:00") });
+		expect(r.sessions[0].estimated).toBe(true);
+		expect(r.byUser.a.hours).toBe(8);
+		expect(r.unclosed).toBe(1);
+	});
+
+	it("masuk lebih awal dihitung dari jam shift, lembur dihitung setelah akhir shift", () => {
+		const sch = [{ userId: "a", date: "2026-11-16", shiftName: "Pagi", startTime: "07:00", endTime: "15:00" }];
+		const r = analyzeAttendance([{ userId: "a", type: "check_in", timestamp: at("2026-11-16", "06:30") }, { userId: "a", type: "check_out", timestamp: at("2026-11-16", "16:30") }], sch, { start, end, bucket: "day", now: at("2026-11-20", "10:00") });
+		expect(r.byUser.a.hours).toBe(9.5);
+		expect(r.byUser.a.overtimeHours).toBe(1.5);
+		expect(r.unclosed).toBe(0);
+	});
+
+	it("check-out yang jauh melebihi shift dianggap lupa check-out", () => {
+		const sch = [{ userId: "a", date: "2026-11-16", shiftName: "Pagi", startTime: "07:00", endTime: "15:00" }];
+		const r = analyzeAttendance([{ userId: "a", type: "check_in", timestamp: at("2026-11-16", "07:00") }, { userId: "a", type: "check_out", timestamp: at("2026-11-17", "03:00") }], sch, { start, end, bucket: "day", now: at("2026-11-20", "10:00") });
+		expect(r.byUser.a.hours).toBe(8);
+		expect(r.byUser.a.overtimeHours).toBe(0);
+	});
+
+	it("check-in di luar radius ditandai", () => {
+		const fence = { lat: -7.316143, lng: 108.212601, radius: 100 };
+		const r = analyzeAttendance([{ userId: "a", type: "check_in", timestamp: at("2026-11-16", "07:00"), location: { lat: -7.3161, lng: 108.2126 } }, { userId: "b", type: "check_in", timestamp: at("2026-11-16", "07:00"), location: { lat: -7.33, lng: 108.23 } }], [], { start, end, bucket: "day", now: at("2026-11-20", "10:00"), geofence: fence });
+		expect(r.outside).toBe(1);
+		expect(r.sessions.find((s) => s.userId === "b")?.outsideRadius).toBe(true);
+	});
 });

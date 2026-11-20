@@ -51,7 +51,8 @@ export default function RingkasanPage() {
 		if (analysis) {
 			const worst = Object.values(analysis.byUser).filter((u) => u.late >= 3).sort((a, b) => b.late - a.late)[0];
 			if (worst) out.push({ tone: "bad", title: `${nameOf.get(worst.userId) ?? "Karyawan"} terlambat ${worst.late} kali`, detail: `Ketepatan ${worst.onTimePct}% pada ${range.label.toLowerCase()}.` });
-			if (analysis.unclosed > 0) out.push({ tone: "warn", title: `${analysis.unclosed} sesi check-in belum ditutup`, detail: "Jam kerja jadi membengkak. Tutup sesi agar laporan dan payroll akurat.", action: { label: "Tinjau", onClick: () => void navigate({ to: "/admin/karyawan/laporan" }) } });
+			if (analysis.outside > 0) out.push({ tone: "warn", title: `${analysis.outside} absen di luar radius`, detail: "Lokasi clock-in lebih jauh dari radius yang diatur di Pengaturan Kehadiran.", action: { label: "Tinjau", onClick: () => void navigate({ to: "/admin/karyawan/kehadiran" }) } });
+			if (analysis.unclosed > 0) out.push({ tone: "warn", title: `${analysis.unclosed} sesi check-in belum ditutup`, detail: "Jam dihitung sampai akhir shift di jadwal. Tutup sesi agar tercatat check-out sebenarnya.", action: { label: "Tinjau", onClick: () => void navigate({ to: "/admin/karyawan/laporan" }) } });
 		}
 		if (stats && stats.noPdf.length > 0) out.push({ tone: "info", title: `${stats.noPdf.length} kontrak belum memiliki PDF`, detail: stats.noPdf.slice(0, 3).map((r) => r.name).join(", "), action: { label: "Buka", onClick: () => void navigate({ to: "/admin/karyawan/onboarding/kontrak" }) } });
 		if (stats && stats.incomplete > 0) out.push({ tone: "info", title: `${stats.incomplete} data karyawan belum lengkap`, detail: `Rata-rata kelengkapan ${stats.avgCompleteness}%.`, action: { label: "Lengkapi", onClick: () => void navigate({ to: "/admin/karyawan/data" }) } });
@@ -145,7 +146,8 @@ export default function RingkasanPage() {
 				<ul className="mt-3 list-disc space-y-1.5 pl-5 font-mono text-[11px] leading-relaxed text-[#444450]">
 					<li>Kehadiran = jumlah hari-orang yang punya check-in. Tingkat kehadiran = kehadiran ÷ (karyawan aktif × hari berjalan).</li>
 					<li>Terlambat = check-in lebih dari 10 menit setelah jam mulai di jadwal. Tanpa jadwal, tidak dihitung terlambat.</li>
-					<li>Sesi belum ditutup = check-in tanpa check-out lebih dari 16 jam; jamnya tidak dihitung agar laporan tidak membengkak.</li>
+					<li>Jam kerja mengikuti jadwal shift: dihitung dari jam mulai shift (atau check-in bila terlambat) sampai check-out; tanpa check-out dihitung sampai akhir shift. Lembur = check-out setelah akhir shift.</li>
+					<li>Di luar radius = jarak check-in dari lokasi di Pengaturan Kehadiran melebihi radius.</li>
 					<li>Skor kesehatan = rata-rata kehadiran, ketepatan waktu, kelengkapan data, dan kepatuhan dokumen.</li>
 					<li>Hari dalam WIB. Minggu dimulai Senin ({WEEKDAY_SHORT[0]}).</li>
 				</ul>

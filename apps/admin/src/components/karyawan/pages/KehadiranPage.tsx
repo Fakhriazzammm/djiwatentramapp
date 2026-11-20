@@ -15,20 +15,20 @@ const clock = (ts: number) => new Intl.DateTimeFormat("id-ID", { hour: "2-digit"
 export default function KehadiranPage() {
 	const navigate = useNavigate();
 	const [period, setPeriod] = useState<DashboardPeriodKey>("this_week");
-	const { range, analysis, prevAnalysis, loading, error } = useAttendanceAnalysis(period);
+	const { range, analysis, prevAnalysis, geofence, loading, error } = useAttendanceAnalysis(period);
 	const dir = useDirectory();
 	const createLog = useHybridAdminCreateAttendanceLog();
 	const [closing, setClosing] = useState<string | null>(null);
 	const nameOf = useMemo(() => new Map((dir.rows ?? []).map((r) => [r._id, r.name])), [dir.rows]);
 
-	const staleSessions = useMemo(() => (analysis ? analysis.sessions.filter((s) => !s.closed && !s.outTs && Date.now() - s.inTs > 16 * 3_600_000).sort((a, b) => b.inTs - a.inTs) : []), [analysis]);
+	const staleSessions = useMemo(() => (analysis ? analysis.sessions.filter((s) => !s.closed && Date.now() - s.inTs > 16 * 3_600_000).sort((a, b) => b.inTs - a.inTs) : []), [analysis]);
 	const ranking = useMemo(() => (analysis ? Object.values(analysis.byUser).filter((u) => u.sessions > 0).sort((a, b) => b.onTimePct - a.onTimePct || b.days - a.days).slice(0, 8) : []), [analysis]);
 	const feed: FeedItem[] = useMemo(() => {
 		if (!analysis) return [];
 		return [...analysis.sessions].sort((a, b) => b.inTs - a.inTs).slice(0, 8).map((s) => ({
-			source: s.lateMin > 0 ? "Terlambat" : s.closed ? "Selesai" : "Masuk",
-			tone: s.lateMin > 0 ? ("amber" as const) : s.closed ? ("blue" as const) : ("green" as const),
-			text: `${nameOf.get(s.userId) ?? "Karyawan"} · ${s.shiftName ?? "tanpa jadwal"} · ${clock(s.inTs)}${s.lateMin > 0 ? ` · ${s.lateMin} menit` : ""}`,
+			source: s.outsideRadius ? "Lokasi" : s.lateMin > 0 ? "Terlambat" : s.closed ? "Selesai" : "Masuk",
+			tone: s.outsideRadius || s.lateMin > 0 ? ("amber" as const) : s.closed ? ("blue" as const) : ("green" as const),
+			text: `${nameOf.get(s.userId) ?? "Karyawan"} · ${s.shiftName ?? "tanpa jadwal"} · ${clock(s.inTs)}${s.lateMin > 0 ? ` · ${s.lateMin} menit` : ""}${s.outsideRadius ? ` · ${s.distanceM} m di luar radius` : ""}`,
 			time: agoText(s.inTs),
 		}));
 	}, [analysis, nameOf]);
@@ -65,11 +65,12 @@ export default function KehadiranPage() {
 			<PageHead title="Kehadiran" subtitle="Absensi langsung, pola jam masuk, dan sesi yang perlu dirapikan." actions={<><Btn onClick={() => void navigate({ to: "/admin/operational-team/attendance/pengaturan" })}>Pengaturan</Btn><Btn primary onClick={exportCsv} disabled={!analysis}>Ekspor CSV</Btn></>} />
 			<PeriodBar id="kk-att-period" value={period} onChange={setPeriod} options={PERIODS} loading={loading} right={<><span className="inline-flex items-center gap-2"><LiveDot />{formatDashboardRangeText(range)}</span><span>Diperbarui otomatis</span></>} />
 			{error ? <SourceError message="Absensi tidak dapat dimuat" /> : null}
-			<KpiStrip items={[
+			<KpiStrip cols={5} items={[
 				{ label: "Kehadiran tercatat", value: analysis ? analysis.presence : null, format: num, delta: analysis && prevAnalysis ? deltaOf(analysis.presence, prevAnalysis.presence) : undefined, sub: "hari-orang" },
 				{ label: "Terlambat", value: analysis ? analysis.lateCount : null, format: num, delta: analysis && prevAnalysis ? deltaOf(analysis.lateCount, prevAnalysis.lateCount, true) : undefined, sub: analysis ? `rata-rata ${analysis.lateAvgMin} menit` : undefined },
 				{ label: "Ketepatan waktu", value: analysis ? `${analysis.onTimePct}%` : null, sub: "toleransi 10 menit" },
-				{ label: "Sesi belum ditutup", value: analysis ? analysis.unclosed : null, format: num, sub: analysis && analysis.unclosed > 0 ? "jam kerja tidak dihitung" : "semua sesi tertutup" },
+				{ label: "Di luar radius", value: analysis ? analysis.outside : null, format: num, sub: geofence ? `radius ${geofence.radius} m dari lokasi` : "lokasi belum diatur" },
+				{ label: "Sesi belum ditutup", value: analysis ? analysis.unclosed : null, format: num, sub: analysis && analysis.unclosed > 0 ? "jam dihitung sampai akhir shift" : "semua sesi tertutup" },
 			]} />
 
 			<div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
@@ -92,7 +93,7 @@ export default function KehadiranPage() {
 						<ul className="divide-y divide-[#efeff2]">
 							{staleSessions.slice(0, 8).map((s) => (
 								<li key={`${s.userId}-${s.inTs}`} className="flex items-center gap-3 py-2.5 text-[13px]">
-									<div className="min-w-0 flex-1"><div className="truncate font-medium">{nameOf.get(s.userId) ?? "Karyawan"}</div><div className="font-mono text-[10px] text-[#666672]">Masuk {s.date} {clock(s.inTs)} · tanpa check-out</div></div>
+									<div className="min-w-0 flex-1"><div className="truncate font-medium">{nameOf.get(s.userId) ?? "Karyawan"}</div><div className="font-mono text-[10px] text-[#666672]">Masuk {s.date} {clock(s.inTs)} · tanpa check-out{s.estimated ? " · jam dihitung sampai akhir shift" : ""}</div></div>
 									<Btn small disabled={closing === `${s.userId}-${s.inTs}`} onClick={() => void closeSession(s.userId, s.inTs)}>Tutup sesi</Btn>
 								</li>
 							))}

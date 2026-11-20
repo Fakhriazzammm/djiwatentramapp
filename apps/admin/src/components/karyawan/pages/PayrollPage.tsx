@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { useHybridPayrollReport } from "@/hooks/use-hybrid-attendance-data";
-import { useHybridPayrollRuns } from "@/hooks/use-hybrid-payroll-data";
+import { useHybridPayrollRunItems, useHybridPayrollRuns } from "@/hooks/use-hybrid-payroll-data";
 import { Btn, DataTable, KpiStrip, Note, Page, PageHead, Panel, ProgressList, SectionTitle, SourceError, StatusTag } from "../kit";
 import { rupiah } from "../data";
 
@@ -28,9 +28,9 @@ const STAGES = ["Draf", "Tinjau", "Setujui", "Bayar"] as const;
 
 function stageOf(status: unknown): number {
 	const s = String(status ?? "").toLowerCase();
-	if (/paid|dibayar|disbursed/.test(s)) return 3;
+	if (/paid|dibayar|disbursed|completed/.test(s)) return 3;
 	if (/approved|final|disetujui|posted/.test(s)) return 2;
-	if (/review|ditinjau|pending/.test(s)) return 1;
+	if (/review|ditinjau|pending|processing/.test(s)) return 1;
 	return 0;
 }
 
@@ -42,11 +42,12 @@ export default function PayrollPage() {
 	const [raise, setRaise] = useState(0);
 	const [extraOt, setExtraOt] = useState(0);
 	const report = useHybridPayrollReport({ month, year }) as { rows?: Row[] } | null | undefined;
-	const runs = useHybridPayrollRuns() as { run_date?: string; status?: string }[] | null | undefined;
+	const runs = useHybridPayrollRuns() as { id?: string; run_date?: string; status?: string; total_net_pay?: number | string; total_employees?: number }[] | null | undefined;
 	const rows = report?.rows ?? [];
 
 	const run = useMemo(() => (runs ?? []).find((r) => r.run_date && Number(r.run_date.slice(0, 4)) === year && Number(r.run_date.slice(5, 7)) === month), [runs, month, year]);
 	const stage = run ? stageOf(run.status) : 0;
+	const runItems = useHybridPayrollRunItems(run?.id) as { user_id: string; user_name?: string; net_pay: number | string; total_shifts?: number; deductions?: number | string }[] | null | undefined;
 
 	const total = rows.reduce((s, r) => s + (r.netSalary ?? 0), 0);
 	const paid = rows.filter((r) => r.netSalary > 0);
@@ -88,6 +89,17 @@ export default function PayrollPage() {
 				{ label: "Total lembur", value: report ? overtime : null, format: rupiah, sub: `potongan ${rupiah(penalty)}` },
 				{ label: "Rata-rata per karyawan", value: report ? (paid.length ? total / paid.length : 0) : null, format: rupiah, sub: `${rows.length} baris payroll` },
 			]} />
+
+			{run ? (
+				<Panel title="Payroll run vs perhitungan absensi" tone="blue" right={<StatusTag tone={Math.abs(Number(run.total_net_pay ?? 0) - total) < 1 ? "ok" : "warn"}>{Math.abs(Number(run.total_net_pay ?? 0) - total) < 1 ? "Sama" : "Berbeda"}</StatusTag>}>
+					<div className="grid gap-px border border-[#e4e4e8] bg-[#e4e4e8] sm:grid-cols-3">
+						<div className="bg-white p-3"><div className="font-mono text-[10px] uppercase text-[#666672]">Payroll run ({run.status})</div><div className="font-display text-[20px] tabular-nums">{rupiah(Number(run.total_net_pay ?? 0))}</div><div className="font-mono text-[10px] text-[#666672]">{run.total_employees ?? 0} karyawan</div></div>
+						<div className="bg-white p-3"><div className="font-mono text-[10px] uppercase text-[#666672]">Hitung dari absensi + jadwal</div><div className="font-display text-[20px] tabular-nums">{rupiah(total)}</div><div className="font-mono text-[10px] text-[#666672]">{paid.length} karyawan</div></div>
+						<div className="bg-white p-3"><div className="font-mono text-[10px] uppercase text-[#666672]">Selisih</div><div className="font-display text-[20px] tabular-nums">{rupiah(Math.abs(total - Number(run.total_net_pay ?? 0)))}</div><div className="font-mono text-[10px] text-[#666672]">{total >= Number(run.total_net_pay ?? 0) ? "perhitungan lebih besar" : "run lebih besar"}</div></div>
+					</div>
+					{runItems && runItems.length ? <p className="mt-3 text-[12px] text-[#666672]">Run berisi {runItems.length} karyawan: {runItems.slice(0, 4).map((i) => `${i.user_name ?? i.user_id} (${rupiah(Number(i.net_pay))})`).join(", ")}{runItems.length > 4 ? "…" : ""}. Karyawan yang belum masuk run dihitung lewat absensi dan jadwal di bawah.</p> : null}
+				</Panel>
+			) : null}
 
 			{suspect.length > 0 ? <Note>{suspect.length} karyawan memiliki jam kerja tidak wajar (lebih dari 16 jam per hari kerja): {suspect.slice(0, 3).map((r) => r.name).join(", ")}. Kemungkinan check-in belum ditutup, sehingga lembur membengkak. Rapikan di halaman Kehadiran sebelum menyetujui.</Note> : null}
 

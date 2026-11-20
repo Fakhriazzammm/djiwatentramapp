@@ -30,7 +30,10 @@ export function contractInfo(row: DirectoryRow, now = Date.now()): ContractInfo 
 	let endDate: string | null = null;
 	let estimated = false;
 	let permanent = false;
-	if (start && !Number.isNaN(start.getTime())) {
+	const explicitEnd = row.raw.contractEndDate ? String(row.raw.contractEndDate).slice(0, 10) : null;
+	if (explicitEnd && !Number.isNaN(new Date(explicitEnd).getTime())) {
+		endDate = explicitEnd;
+	} else if (start && !Number.isNaN(start.getTime())) {
 		if (duration > 0) {
 			const end = new Date(start);
 			end.setMonth(end.getMonth() + duration);

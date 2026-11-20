@@ -1,8 +1,8 @@
 begin;
 
--- Tambah contractDuration (bulan) ke direktori karyawan agar halaman Karyawan App
--- dapat menghitung tanggal berakhir kontrak. Hanya menambah satu key pada raw;
--- tidak mengubah data atau key yang sudah ada.
+-- Tambah contractDuration, contractEndDate, dan jabatan ke direktori karyawan agar
+-- halaman Karyawan App dapat menampilkan tanggal berakhir kontrak dan jabatan.
+-- Hanya menambah key pada raw; tidak mengubah data atau key yang sudah ada.
 create or replace function employee_directory_private.read_directory(session_token text)
 returns jsonb
 language plpgsql
@@ -46,6 +46,8 @@ begin
         'startDate', coalesce(nullif(u.raw->>'startDate', ''), a.employment->>'startDate'),
         'employmentType', coalesce(nullif(u.raw->>'employmentType', ''), a.employment->>'employmentType'),
         'contractDuration', coalesce(nullif(u.raw->'contractDuration', 'null'::jsonb), a.employment->'contractDuration'),
+        'contractEndDate', coalesce(nullif(u.raw->>'contractEndDate', ''), a.employment->>'contractEndDate'),
+        'jabatan', coalesce(nullif(u.raw->>'jabatan', ''), a.employment->>'jabatan'),
         'monthlySalary', coalesce(nullif(u.raw->'monthlySalary', 'null'::jsonb), a.employment->'monthlySalary'),
         'location', coalesce(nullif(u.raw->>'location', ''), a.employment->>'location'),
         'emergencyContactName', coalesce(nullif(u.raw->>'emergencyContactName', ''), a.emergency_contact->>'name'),

@@ -2,8 +2,9 @@ import { DAY_MS, WIB_OFFSET_MS } from "./wib-utils";
 
 /** Analisis kehadiran karyawan dari log check-in/out dan jadwal. Semua waktu dalam WIB. */
 
-export type AttendanceLog = { userId: string; type: string; timestamp: number; userName?: string | null };
-export type ScheduleLite = { userId: string; date: string; shiftName: string; startTime: string | null; status?: string | null };
+export type AttendanceLog = { userId: string; type: string; timestamp: number; userName?: string | null; location?: { lat?: number; lng?: number } | null; penalty?: number | null };
+export type ScheduleLite = { userId: string; date: string; shiftName: string; startTime: string | null; endTime?: string | null; status?: string | null };
+export type Geofence = { lat: number; lng: number; radius: number };
 
 export type Session = {
 	userId: string;
@@ -12,11 +13,18 @@ export type Session = {
 	outTs: number | null;
 	lateMin: number;
 	closed: boolean;
+	/** Jam kerja yang dikreditkan, disesuaikan dengan jadwal shift. */
 	hours: number;
+	overtimeHours: number;
 	shiftName: string | null;
+	/** Check-out tidak ada; jam dihitung sampai akhir shift di jadwal. */
+	estimated: boolean;
+	distanceM: number | null;
+	outsideRadius: boolean;
+	penalty: number;
 };
 
-export type UserStat = { userId: string; days: number; hours: number; late: number; lateMinutes: number; sessions: number; unclosed: number; onTimePct: number };
+export type UserStat = { userId: string; days: number; hours: number; overtimeHours: number; late: number; lateMinutes: number; sessions: number; unclosed: number; onTimePct: number; outside: number; penalty: number };
 
 export type AttendanceAnalysis = {
 	sessions: Session[];
@@ -24,6 +32,7 @@ export type AttendanceAnalysis = {
 	lateCount: number;
 	lateAvgMin: number;
 	unclosed: number;
+	outside: number;
 	byUser: Record<string, UserStat>;
 	labels: string[];
 	seriesPresent: number[];
@@ -55,6 +64,15 @@ export function wibParts(ts: number) {
 	};
 }
 
+export function distanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+	const R = 6_371_000;
+	const rad = (d: number) => (d * Math.PI) / 180;
+	const dLat = rad(b.lat - a.lat);
+	const dLng = rad(b.lng - a.lng);
+	const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+	return 2 * R * Math.asin(Math.sqrt(h));
+}
+
 function parseMinutes(value: string | null | undefined): number | null {
 	if (!value) return null;
 	const match = /^(\d{1,2}):(\d{2})/.exec(value);
@@ -73,7 +91,7 @@ function heatSlot(hour: number): number {
 export function analyzeAttendance(
 	logs: AttendanceLog[],
 	schedules: ScheduleLite[],
-	options: { start: number; end: number; bucket: "hour" | "day" | "month"; now?: number; toleranceMin?: number; maxSessionHours?: number },
+	options: { start: number; end: number; bucket: "hour" | "day" | "month"; now?: number; toleranceMin?: number; maxSessionHours?: number; geofence?: Geofence | null },
 ): AttendanceAnalysis {
 	const tolerance = options.toleranceMin ?? 10;
 	const maxMs = (options.maxSessionHours ?? 16) * 3_600_000;
@@ -101,6 +119,7 @@ export function analyzeAttendance(
 			const candidates = schedByKey.get(`${userId}|${inP.date}`) ?? [];
 			let lateMin = 0;
 			let shiftName: string | null = null;
+			let chosen: ScheduleLite | null = null;
 			let bestGap = Number.POSITIVE_INFINITY;
 			for (const sch of candidates) {
 				const startMin = parseMinutes(sch.startTime);
@@ -108,14 +127,40 @@ export function analyzeAttendance(
 				const gap = Math.abs(inP.minutes - startMin);
 				if (gap < bestGap) {
 					bestGap = gap;
+					chosen = sch;
 					shiftName = sch.shiftName;
 					lateMin = Math.max(0, inP.minutes - startMin);
 				}
 			}
 			if (lateMin <= tolerance) lateMin = 0;
-			const duration = outLog ? outLog.timestamp - inLog.timestamp : null;
-			const closed = duration !== null && duration >= 0 && duration <= maxMs;
-			sessions.push({ userId, date: inP.date, inTs: inLog.timestamp, outTs: outLog?.timestamp ?? null, lateMin, closed, hours: closed && duration !== null ? duration / 3_600_000 : 0, shiftName });
+			// Jam kerja mengikuti jadwal: mulai dihitung dari jam shift (bila masuk lebih awal),
+			// berakhir di check-out; tanpa check-out dihitung sampai akhir shift.
+			const dayStart = inLog.timestamp - inP.minutes * 60_000 - (inLog.timestamp % 60_000);
+			const startMin = chosen ? parseMinutes(chosen.startTime) : null;
+			const endMinRaw = chosen ? parseMinutes(chosen.endTime) : null;
+			const shiftStartTs = startMin === null ? null : dayStart + startMin * 60_000;
+			const shiftEndTs = endMinRaw === null || startMin === null ? null : dayStart + (endMinRaw <= startMin ? endMinRaw + 1440 : endMinRaw) * 60_000;
+			const shiftLenH = shiftStartTs !== null && shiftEndTs !== null ? (shiftEndTs - shiftStartTs) / 3_600_000 : null;
+			const rawDuration = outLog ? outLog.timestamp - inLog.timestamp : null;
+			let closed = rawDuration !== null && rawDuration >= 0 && rawDuration <= maxMs;
+			if (closed && shiftLenH !== null && rawDuration !== null && rawDuration / 3_600_000 > shiftLenH + 4) closed = false; // jauh melebihi shift: kemungkinan lupa check-out
+			let outEff: number | null = closed && outLog ? outLog.timestamp : null;
+			let estimated = false;
+			if (outEff === null && shiftEndTs !== null && shiftEndTs > inLog.timestamp && shiftEndTs <= now) {
+				outEff = shiftEndTs;
+				estimated = true;
+			}
+			const creditFrom = shiftStartTs !== null ? Math.max(inLog.timestamp, shiftStartTs) : inLog.timestamp;
+			const hours = outEff !== null ? Math.max(0, (outEff - creditFrom) / 3_600_000) : 0;
+			const overtimeHours = closed && outLog && shiftEndTs !== null ? Math.max(0, (outLog.timestamp - shiftEndTs) / 3_600_000) : 0;
+			let distanceM: number | null = null;
+			let outsideRadius = false;
+			const loc = inLog.location;
+			if (options.geofence && loc && typeof loc.lat === "number" && typeof loc.lng === "number") {
+				distanceM = Math.round(distanceMeters(options.geofence, { lat: loc.lat, lng: loc.lng }));
+				outsideRadius = distanceM > options.geofence.radius;
+			}
+			sessions.push({ userId, date: inP.date, inTs: inLog.timestamp, outTs: outLog?.timestamp ?? null, lateMin, closed, hours, overtimeHours, shiftName, estimated, distanceM, outsideRadius, penalty: Number(inLog.penalty ?? 0) || 0 });
 		};
 		for (const log of list) {
 			if (log.type === "check_in") {
@@ -139,9 +184,12 @@ export function analyzeAttendance(
 
 	const byUser: Record<string, UserStat> = {};
 	for (const s of inRange) {
-		const stat = (byUser[s.userId] ??= { userId: s.userId, days: 0, hours: 0, late: 0, lateMinutes: 0, sessions: 0, unclosed: 0, onTimePct: 100 });
+		const stat = (byUser[s.userId] ??= { userId: s.userId, days: 0, hours: 0, overtimeHours: 0, late: 0, lateMinutes: 0, sessions: 0, unclosed: 0, onTimePct: 100, outside: 0, penalty: 0 });
 		stat.sessions += 1;
 		stat.hours += s.hours;
+		stat.overtimeHours += s.overtimeHours;
+		stat.penalty += s.penalty;
+		if (s.outsideRadius) stat.outside += 1;
 		if (s.lateMin > 0) {
 			stat.late += 1;
 			stat.lateMinutes += s.lateMin;
@@ -210,6 +258,7 @@ export function analyzeAttendance(
 		lateCount: lateSessions.length,
 		lateAvgMin: lateSessions.length ? Math.round(lateSessions.reduce((a, s) => a + s.lateMin, 0) / lateSessions.length) : 0,
 		unclosed: unclosedSessions.length,
+		outside: inRange.filter((s) => s.outsideRadius).length,
 		byUser,
 		labels,
 		seriesPresent,
