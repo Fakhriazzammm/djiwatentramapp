@@ -47,20 +47,22 @@ Deno.serve(async (req) => {
   const rows = (sched ?? []).filter((s) => s.start_time && !/off|libur/i.test(s.shift_name ?? ""));
   if (!rows.length) return json({ due: 0 });
 
-  const ids = [...new Set(rows.map((r) => r.user_id))];
-  const [{ data: logs }, { data: users }, { data: links }, { data: done }] = await Promise.all([
-    db.from("pos_attendance_logs").select("userId,type,timestamp").in("userId", ids).gte("timestamp", dayStart).lt("timestamp", dayStart + 86400_000).order("timestamp", { ascending: true }),
-    db.from("yumi_users").select("source_id,name").in("source_id", ids),
+  const { data: allLogs } = await db.from("pos_attendance_logs").select("userId,type,timestamp").gte("timestamp", dayStart).lt("timestamp", dayStart + 86400_000).order("timestamp", { ascending: true });
+  const logs = allLogs ?? [];
+  // Semua yang punya log hari ini ikut diperiksa (bukan hanya yang terjadwal), supaya yang lupa absen keluar tetap diingatkan.
+  const ids = [...new Set([...rows.map((r) => r.user_id), ...logs.map((l) => String(l.userId))])];
+  const [{ data: users }, { data: links }, { data: done }] = await Promise.all([
+    db.from("yumi_users").select("source_id,name,is_active").in("source_id", ids),
     db.from("employee_telegram_links").select("employee_user_id,telegram_user_id,is_active").in("employee_user_id", ids),
     pos.from("attendance_reminder_log").select("user_id,kind").eq("date", today).in("user_id", ids),
   ]);
   const lastType = new Map<string, string>();
-  for (const l of logs ?? []) lastType.set(String(l.userId), String(l.type));
+  for (const l of logs) lastType.set(String(l.userId), String(l.type));
   const nameOf = new Map((users ?? []).map((u) => [u.source_id, String(u.name)]));
   const tgOf = new Map((links ?? []).filter((l) => l.is_active !== false).map((l) => [l.employee_user_id, Number(l.telegram_user_id)]));
   const sent = new Set((done ?? []).map((d) => `${d.user_id}:${d.kind}`));
 
-  type Due = { userId: string; name: string; kind: "in" | "out"; shift: string; time: string; minsLeft: number; tg?: number };
+  type Due = { userId: string; name: string; kind: "in" | "out" | "close"; shift: string; time: string; minsLeft: number; tg?: number };
   const due: Due[] = [];
   for (const r of rows) {
     const start = toMin(r.start_time), end = r.end_time ? toMin(r.end_time) : null;
@@ -76,19 +78,38 @@ Deno.serve(async (req) => {
       }
     }
   }
+  // Penutupan: menjelang shift terakhir hari ini selesai, ingatkan SEMUA yang masih tercatat masuk
+  // (termasuk tanpa jadwal atau shift-nya sudah lewat). Satu kali per orang per hari.
+  const ends = rows.map((r) => (r.end_time ? toMin(r.end_time) : null)).filter((e): e is number => e !== null);
+  const closeEnd = ends.length ? Math.max(...ends) : null;
+  if (closeEnd !== null && closeEnd - nowMin > 0 && closeEnd - nowMin <= lead) {
+    const active = new Map((users ?? []).map((u) => [u.source_id, u.is_active !== false]));
+    const inDue = new Set(due.filter((d) => d.kind === "out").map((d) => d.userId));
+    const closeTime = `${String(Math.floor(closeEnd / 60)).padStart(2, "0")}:${String(Math.floor(closeEnd % 60)).padStart(2, "0")}`;
+    // Yang shift-nya memang berakhir saat penutupan sudah mendapat pengingat "out"; jangan diingatkan dua kali.
+    const endOf = new Map<string, number>();
+    for (const r of rows) if (r.end_time) endOf.set(r.user_id, Math.max(endOf.get(r.user_id) ?? 0, toMin(r.end_time)));
+    for (const [userId, last] of lastType) {
+      if (last !== "check_in" || inDue.has(userId) || sent.has(`${userId}:close`) || active.get(userId) === false) continue;
+      if (sent.has(`${userId}:out`) && endOf.get(userId) === closeEnd) continue;
+      due.push({ userId, name: nameOf.get(userId) ?? "Karyawan", kind: "close", shift: "Penutupan", time: closeTime, minsLeft: Math.ceil(closeEnd - nowMin), tg: tgOf.get(userId) });
+    }
+  }
   if (!due.length) return json({ due: 0 });
 
-  const dmText = (d: Due) => d.kind === "in"
+  const dmText = (d: Due) => d.kind === "close"
+    ? `⏰ Halo ${d.name.split(" ")[0]}, kamu masih tercatat masuk. Toko tutup ${d.minsLeft} menit lagi (${d.time} WIB).\n\nJangan lupa absen keluar lewat aplikasi Karyawan:\n1️⃣ Buka ${APP_URL}\n2️⃣ Ketuk tombol merah di tengah bawah\n3️⃣ Isi closing, lalu verifikasi wajah atau PIN`
+    : d.kind === "in"
     ? `⏰ Halo ${d.name.split(" ")[0]}, shift ${d.shift} mulai ${d.minsLeft} menit lagi (${d.time} WIB).\n\nAbsen masuk lewat aplikasi Karyawan:\n1️⃣ Buka ${APP_URL}\n2️⃣ Ketuk tombol hijau di tengah bawah\n3️⃣ Pastikan di area toko, verifikasi wajah atau PIN\n\nAbsen lewat bot ini sudah tidak bisa.`
     : `⏰ Halo ${d.name.split(" ")[0]}, shift ${d.shift} berakhir ${d.minsLeft} menit lagi (${d.time} WIB).\n\nSiapkan closing shift lalu absen keluar lewat aplikasi Karyawan:\n1️⃣ Buka ${APP_URL}\n2️⃣ Ketuk tombol merah di tengah bawah\n3️⃣ Isi closing, lalu verifikasi wajah atau PIN`;
   const button = { inline_keyboard: [[{ text: "📱 Buka Aplikasi Karyawan", url: APP_URL }]] };
 
   // Grup: satu pesan per jenis, dikelompokkan per jam.
   const groupLines = (kind: "in" | "out") => {
-    const items = due.filter((d) => d.kind === kind);
+    const items = due.filter((d) => (kind === "out" ? d.kind === "out" || d.kind === "close" : d.kind === kind));
     if (!items.length) return null;
     const byTime = new Map<string, Due[]>();
-    for (const d of items) byTime.set(`${d.shift} ${d.time}`, [...(byTime.get(`${d.shift} ${d.time}`) ?? []), d]);
+    for (const d of items) { const key = d.kind === "close" ? `Masih tercatat masuk · tutup ${d.time}` : `${d.shift} ${d.time}`; byTime.set(key, [...(byTime.get(key) ?? []), d]); }
     const head = kind === "in" ? `⏰ Pengingat Absen Masuk — ${today.slice(8)}/${today.slice(5, 7)}` : `⏰ Pengingat Absen Keluar — ${today.slice(8)}/${today.slice(5, 7)}`;
     const body = [...byTime.entries()].map(([k, list]) => `${kind === "in" ? "🚶‍➡️" : "📤"} ${k} (${list[0].minsLeft} menit lagi)\n${list.map((d) => `   • ${d.name}`).join("\n")}`).join("\n");
     return `${head}\n${body}\n\n${kind === "in" ? "Belum absen masuk? Lakukan sekarang" : "Siapkan closing shift dan absen keluar"} lewat ${APP_URL}`;
