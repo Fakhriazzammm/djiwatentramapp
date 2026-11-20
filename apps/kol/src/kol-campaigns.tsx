@@ -106,6 +106,7 @@ export function CampaignDetail({ campaign: c, calendar = [], refresh, login }: {
   const visibleSow = !applyingAgain && c.sow_snapshot ? c.sow_snapshot : c.sow;
   const visibleTerms = !applyingAgain && c.terms_snapshot?.length ? c.terms_snapshot : c.terms;
   const [label, tone] = statusOf(c);
+  const appStatus = applyingAgain && !sent ? null : (c.application_status ?? (sent ? "pending" : null));
   const applyRef = useRef<HTMLElement | null>(null);
   const steps = [
     ...(visit ? [{ key: "date", label: existing ? "Jadwal kunjungan sudah ada" : "Pilih tanggal kunjungan di kalender", done: Boolean(existing || picked.date) }] : []),
@@ -147,6 +148,7 @@ export function CampaignDetail({ campaign: c, calendar = [], refresh, login }: {
       throw e;
     }
     setSent(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
     await refresh?.();
   });
 
@@ -165,6 +167,7 @@ export function CampaignDetail({ campaign: c, calendar = [], refresh, login }: {
       <a className="kx-link" href="/campaigns">‹ Semua kampanye</a>
       {c.cover_url && <img className="kx-campaign-cover" src={c.cover_url} alt="" width="720" height="420" />}
       <div className="kx-campaign-heading"><h2 className="kx-h1">{c.title}</h2><span className={`kx-pill ${tone}`}>{label}</span></div>
+      {appStatus && <ApplicationStatus campaign={c} status={appStatus} picked={picked} visit={visit} />}
       <ShareCampaign campaign={c} />
       <p className="kx-lead kx-campaign-copy">{c.description}</p>
       {c.reward && <RewardBox reward={c.reward} />}
@@ -193,7 +196,6 @@ export function CampaignDetail({ campaign: c, calendar = [], refresh, login }: {
       </details>}
       {c.review_note && <p className="kx-note">Catatan tim: {c.review_note}</p>}
       {error && <p role="alert" className="kx-note kx-note--err">{error}</p>}
-      {sent && c.application_status && !applyingAgain && <p role="status" className="kx-note">Pengajuanmu tersimpan.</p>}
       {canApply && refresh && !sent && (
         <section id="apply" ref={applyRef} style={{ scrollMarginTop: 12 }}>
           <h3 className="kx-section" style={{ marginTop: 4 }}>Daftar kampanye</h3>
@@ -260,6 +262,35 @@ export function PublicCampaigns({ slug, loginError, onApply }: { slug?: string; 
         : slug && campaigns[0] ? <CampaignDetail campaign={campaigns[0]} login={onApply} />
         : <CampaignsTab campaigns={campaigns} />}
     </main></div>
+  );
+}
+
+function ApplicationStatus({ campaign: c, status, picked, visit }: { campaign: Campaign; status: string; picked: { date: string | null; time: string | null }; visit: boolean }) {
+  const date = c.visit_date || picked.date, time = c.visit_time || picked.time;
+  const rejected = status === "rejected", cancelled = status === "cancelled", approved = status === "approved";
+  if (cancelled) return null;
+  const head = rejected
+    ? { icon: "✕", tone: "err", title: "Pengajuan belum bisa diterima", text: c.review_note ? `Catatan tim: ${c.review_note}` : "Tim belum bisa menerima pengajuan ini. Hubungi admin Djiwa Tentram bila ada pertanyaan." }
+    : approved
+      ? { icon: "✓", tone: "ok", title: "Pengajuan diterima", text: visit ? "Jadwal kunjunganmu sudah dikonfirmasi. Datang sesuai jadwal, lalu kirim link kontenmu di bawah." : "Kamu sudah bergabung. Kirim link kontenmu di bawah setelah tayang." }
+      : { icon: "⏳", tone: "wait", title: "Pengajuan terkirim, menunggu konfirmasi", text: "Pengajuanmu sudah tersimpan. Tim Djiwa Tentram akan mengonfirmasi, biasanya dalam 1 hari kerja. Kami kabari lewat notifikasi portal dan email." };
+  const steps: Array<[string, boolean, boolean]> = [
+    ["Pengajuan terkirim", true, false],
+    ["Konfirmasi tim", approved, !approved && !rejected],
+    ...(visit ? [["Datang ke visit", c.visit_status === "completed", approved && c.visit_status !== "completed"] as [string, boolean, boolean]] : []),
+    ["Kirim link konten", false, approved && (!visit || c.visit_status === "completed")],
+    ...(c.reward ? [[`Reward dibayar H+${c.reward.settleDays}`, false, false] as [string, boolean, boolean]] : []),
+  ];
+  return (
+    <section className={`kx-status kx-status--${head.tone}`} role="status" aria-live="polite">
+      <div className="kx-status-head"><span className="kx-status-ic" aria-hidden>{head.icon}</span><div><b>{head.title}</b><p>{head.text}</p></div></div>
+      {visit && date && !rejected && <div className="kx-status-when"><span>Jadwal kunjungan</span><b>{longDate(date)}{time ? ` · ${dotTime(time)} WIB` : ""}</b></div>}
+      {!rejected && <ol className="kx-status-steps">{steps.map(([label, done, now]) => <li key={label} className={done ? "is-done" : now ? "is-now" : ""}><span aria-hidden>{done ? "✓" : now ? "●" : "○"}</span>{label}</li>)}</ol>}
+      <div className="kx-status-actions">
+        {visit && !rejected && <a className="kx-btn" href="/visit">Lihat jadwal visit</a>}
+        <a className="kx-btn kx-btn--ghost" href="/campaigns">Kembali ke semua kampanye</a>
+      </div>
+    </section>
   );
 }
 

@@ -209,3 +209,14 @@ textarea.kx-input{padding:11px 14px;min-height:88px;resize:none}
 .kx-todo--err{background:#fdecea;color:#9b1c12;animation:kx-shake .35s}
 .kx-todo--ok{background:#e5f5ec;color:#0d6b3c}
 @keyframes kx-shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+.kx-status{border-radius:var(--kx-r);padding:16px;background:#fff8e6;color:#4a3300;box-shadow:0 1px 2px #0000000d}
+.kx-status--ok{background:#e5f5ec;color:#0d4f2c}.kx-status--err{background:#fdecea;color:#7a1810}
+.kx-status-head{display:flex;gap:12px;align-items:flex-start}
+.kx-status-head b{font-size:16px;display:block}.kx-status-head p{margin:4px 0 0;font-size:13.5px;line-height:1.5}
+.kx-status-ic{flex:none;width:38px;height:38px;border-radius:99px;background:#ffffffb3;display:grid;place-items:center;font-size:18px;font-weight:800}
+.kx-status-when{display:flex;justify-content:space-between;gap:12px;margin-top:14px;padding:11px 13px;border-radius:14px;background:#ffffffb3;font-size:13.5px}
+.kx-status-steps{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:8px;font-size:13.5px}
+.kx-status-steps li{display:flex;gap:9px;opacity:.65}.kx-status-steps li span{flex:none;width:16px;font-weight:800}
+.kx-status-steps li.is-done,.kx-status-steps li.is-now{opacity:1;font-weight:700}
+.kx-status-actions{display:grid;gap:8px;margin-top:14px}
