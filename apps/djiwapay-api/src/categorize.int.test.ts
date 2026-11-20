@@ -37,7 +37,7 @@ run("automatic categories (real database, fake model)", () => {
     const f = fake(() => '{"results":[]}');
     for (let i = 0; i < 2; i++) await categorizeItems({ db, key: "k", fetchImpl: f, limit: 2 }, user, [{ key: "x", text: "Toko tidak dikenal " + i, kind: "out" }]);
     const third = await categorizeItems({ db, key: "k", fetchImpl: f, limit: 2 }, user, [{ key: "x", text: "Toko lain lagi", kind: "out" }]);
-    expect(calls).toBe(2); expect(third.limited).toBe(true); expect(third.ai).toBe(false); expect(third.remaining).toBe(0);
+    expect(calls).toBe(4); /* an empty answer retries once on the fallback model, but costs one allowance */ expect(third.limited).toBe(true); expect(third.ai).toBe(false); expect(third.remaining).toBe(0);
     expect(await reserveCall(db, user, 2)).toBe(false);
   });
   test("learning a correction makes the next one a rule; unknown or transfer categories are refused", async () => {

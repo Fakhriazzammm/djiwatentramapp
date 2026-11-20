@@ -35,7 +35,7 @@ export function buildPrompt(cats: CatDef[], examples: Example[]) {
     }
   }
   const shots = examples.filter((e) => code.has(e.categoryId)).slice(0, 15).map((e) => `"${clean(e.text).slice(0, 50)}" -> ${code.get(e.categoryId)}`);
-  const system = `Kamu mengategorikan transaksi keuangan pribadi di Indonesia. Pilih SATU kategori paling spesifik (sub kategori bila ada) dari daftar. Balas HANYA JSON tanpa teks lain, tanpa markdown: {"results":[{"key":string,"categoryId":kode seperti "c12","confidence":angka 0 sampai 1}]}. Pengeluaran hanya boleh memakai kategori PENGELUARAN dan pemasukan hanya PEMASUKAN. Beri confidence rendah bila teks ambigu atau hanya nama orang.${shots.length ? `\n\nContoh pilihan pengguna ini (ikuti kebiasaannya):\n${shots.join("\n")}` : ""}\n\n${lines.join("\n")}`;
+  const system = `Kamu mengategorikan transaksi keuangan pribadi di Indonesia. Pilih SATU kategori paling spesifik (sub kategori bila ada) dari daftar. Balas HANYA JSON tanpa teks lain, tanpa markdown: {"results":[{"key":string,"categoryId":kode seperti "c12","confidence":angka 0 sampai 1}]}. Pengeluaran hanya boleh memakai kategori PENGELUARAN dan pemasukan hanya PEMASUKAN. Beri confidence paling tinggi 0.5 bila teks hanya berisi nama orang, kata "transfer", atau terlalu umum untuk ditebak; jangan menebak.${shots.length ? `\n\nContoh pilihan pengguna ini (ikuti kebiasaannya):\n${shots.join("\n")}` : ""}\n\n${lines.join("\n")}`;
   return { system, byCode, code };
 }
 
