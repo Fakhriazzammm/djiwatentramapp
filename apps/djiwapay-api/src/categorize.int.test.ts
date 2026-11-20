@@ -10,7 +10,7 @@ const run = url ? describe : describe.skip;
 const user = `itest-cat-${crypto.randomUUID().slice(0, 6)}`;
 const pool = url ? new Pool({ connectionString: url, max: 2, ssl: process.env.PGSSL === "off" ? undefined : { rejectUnauthorized: false } }) : (null as unknown as Pool);
 const db = pool ? poolTx(pool) : (null as never);
-afterAll(async () => { if (!pool) return; for (const t of ["categories", "merchant_rules", "ai_usage", "entries"]) await pool.query(`delete from finance.${t} where user_id=$1`, [user]); await pool.end(); });
+afterAll(async () => { if (!pool) return; for (const t of ["categories", "merchant_rules", "ai_usage", "ai_category_cache", "entries"]) await pool.query(`delete from finance.${t} where user_id=$1`, [user]); await pool.end(); });
 let calls = 0;
 const fake = (reply: (body: any) => string) => (async (_u: string, init: RequestInit) => { calls++; return new Response(JSON.stringify({ choices: [{ message: { content: reply(JSON.parse(String(init.body))) } }] }), { status: 200 }); }) as never;
 
@@ -53,6 +53,32 @@ run("automatic categories (real database, fake model)", () => {
     expect([...got.keys()]).toEqual(["a"]);
     const boom = (async () => { throw new Error("network"); }) as never;
     expect((await makeCategorizer({ db, key: "k", fetchImpl: boom })(user, [{ key: "z", text: "Sesuatu yang baru", kind: "out" }])).size).toBe(0);
+  });
+  test("a shop the model already answered costs nothing the second time", async () => {
+    await pool.query("delete from finance.ai_usage where user_id=$1", [user]); await pool.query("delete from finance.ai_category_cache where user_id=$1", [user]);
+    const answer = (conf: number) => fake((b) => { const code = /c(\d+) = Kopi & minuman/.exec(b.messages[0].content)![1]; return `{"results":[{"key":"1","categoryId":"c${code}","confidence":${conf}}]}`; });
+    calls = 0;
+    const first = await categorizeItems({ db, key: "k", fetchImpl: answer(0.95) }, user, [{ key: "1", text: "Starbucks Senayan City", kind: "out" }]);
+    expect(first.results[0]).toMatchObject({ categoryId: "makan-kopi", source: "ai" }); expect(first.results[0].cached).toBeUndefined(); expect(calls).toBe(1); expect(first.remaining).toBe(29);
+    const again = await categorizeItems({ db, key: "k", fetchImpl: answer(0.1) }, user, [{ key: "7", text: "starbucks  senayan city", kind: "out" }]);   // spelling and case differ, the shop is the same
+    expect(again.results[0]).toMatchObject({ key: "7", categoryId: "makan-kopi", confidence: 0.95, cached: true }); expect(calls).toBe(1); expect(again.cached).toBe(1); expect(again.ai).toBe(false); expect(again.remaining).toBe(29);
+    const income = await categorizeItems({ db, key: undefined }, user, [{ key: "8", text: "Starbucks Senayan City", kind: "in" }]);
+    expect(income.results[0].categoryId).toBeNull();                                         // income never borrows an expense answer
+  });
+  test("an unsure answer is remembered only briefly, a sure one for months; a deleted category or a taught rule wins over the memory", async () => {
+    await pool.query("delete from finance.ai_category_cache where user_id=$1", [user]);
+    await pool.query("insert into finance.ai_category_cache(user_id,key,kind,category_id,confidence,updated_at) values($1,'toko samar','out','makan',0.5,now() - interval '8 days'),($1,'toko yakin','out','makan',0.95,now() - interval '80 days'),($1,'toko hilang','out','kategori-dihapus',0.95,now()),($1,'warung pak eko','out','transport',0.95,now())", [user]);
+    calls = 0; const f = fake(() => '{"results":[]}');
+    const out = await categorizeItems({ db, key: "k", fetchImpl: f }, user, [{ key: "a", text: "Toko Samar", kind: "out" }, { key: "b", text: "Toko Yakin", kind: "out" }, { key: "c", text: "Toko Hilang", kind: "out" }, { key: "d", text: "Warung Pak Eko", kind: "out" }]);
+    const by = Object.fromEntries(out.results.map((r) => [r.key, r]));
+    expect(by.b).toMatchObject({ categoryId: "makan", cached: true });                       // sure and 80 days old: still used
+    expect(by.d).toMatchObject({ categoryId: "makan", source: "rule" });                     // the person's rule (makan) beats the cached transport
+    expect(by.a.cached).toBeUndefined(); expect(by.c.cached).toBeUndefined(); expect(calls).toBeGreaterThan(0);   // stale unsure answer and a vanished category go back to the model
+  });
+  test("the memory is cleaned of rows older than 120 days", async () => {
+    await pool.query("insert into finance.ai_category_cache(user_id,key,kind,category_id,confidence,updated_at) values($1,'toko kuno','out','makan',0.95,now() - interval '200 days')", [user]);
+    await categorizeItems({ db, key: "k", fetchImpl: fake(() => '{"results":[{"key":"z","categoryId":"c1","confidence":0.9}]}') }, user, [{ key: "z", text: "Toko Baru Banget", kind: "out" }]);
+    expect((await pool.query("select count(*)::int n from finance.ai_category_cache where user_id=$1 and key='toko kuno'", [user])).rows[0].n).toBe(0);
   });
   test("HTTP: validates input and serves results", async () => {
     await pool.query("delete from finance.ai_usage where user_id=$1", [user]);

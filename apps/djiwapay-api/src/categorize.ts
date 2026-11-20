@@ -10,11 +10,14 @@ export const CATEGORIZE_FALLBACK = "gemini-3-1-flash-lite";
 export const MIN_CONFIDENCE = 0.8;
 export const MAX_ITEMS = 20;
 export const DEFAULT_DAILY_CALLS = 30;
+/** A confident answer is reused for a long time; an unsure one only briefly, so a shop is not asked about again and again but can be retried later. */
+export const CACHE_SURE_DAYS = 90;
+export const CACHE_UNSURE_DAYS = 7;
 
 export type CatDef = { id: string; name: string; income: boolean; parentId?: string | null };
 export type Item = { key: string; text: string; amount?: number; kind: "in" | "out" };
 export type Example = { text: string; categoryId: string };
-export type Pick = { key: string; categoryId: string | null; confidence: number; source: "rule" | "ai" | "none" };
+export type Pick = { key: string; categoryId: string | null; confidence: number; source: "rule" | "ai" | "none"; cached?: boolean };
 
 const FALLBACK_CATS: CatDef[] = [["makan", "Makan & minum"], ["transport", "Transportasi"], ["belanja", "Belanja"], ["tagihan", "Tagihan & utilitas"], ["hiburan", "Hiburan"], ["kesehatan", "Kesehatan"], ["pendidikan", "Pendidikan"], ["rumah", "Rumah"], ["lainnya", "Lainnya"]].map(([id, name]) => ({ id, name, income: false })).concat([{ id: "gaji", name: "Gaji", income: true }, { id: "bonus", name: "Bonus & lainnya", income: true }]);
 
@@ -99,8 +102,22 @@ export async function callsToday(db: Q, userId: string, now = new Date()): Promi
   return Number((await db.query("select calls from finance.ai_usage where user_id=$1 and day=$2", [userId, wibDay(now)])).rows[0]?.calls ?? 0);
 }
 
+const cacheKey = (text: string) => merchantKey(clean(text)) || groupKey(clean(text));
+const fresh = (confidence: number, ageDays: number) => ageDays <= (confidence >= MIN_CONFIDENCE ? CACHE_SURE_DAYS : CACHE_UNSURE_DAYS);
+async function readCache(db: Q, userId: string, items: Item[]) {
+  const keys = [...new Set(items.map((i) => cacheKey(i.text)).filter(Boolean))];
+  if (!keys.length) return new Map<string, { category_id: string; confidence: number; age: number }>();
+  const rows = (await db.query("select key, kind, category_id, confidence, extract(epoch from (now() - updated_at)) / 86400 as age from finance.ai_category_cache where user_id=$1 and key = any($2::text[])", [userId, keys])).rows;
+  return new Map(rows.map((r) => [`${r.kind}:${r.key}`, { category_id: r.category_id as string, confidence: Number(r.confidence), age: Number(r.age) }]));
+}
+async function writeCache(db: Q, userId: string, rows: { text: string; kind: "in" | "out"; categoryId: string; confidence: number }[]) {
+  for (const r of rows) { const k = cacheKey(r.text); if (k.length < 3) continue;
+    await db.query("insert into finance.ai_category_cache(user_id,key,kind,category_id,confidence) values($1,$2,$3,$4,$5) on conflict (user_id,key,kind) do update set category_id=excluded.category_id, confidence=excluded.confidence, updated_at=now()", [userId, k, r.kind, r.categoryId, r.confidence]); }
+  await db.query("delete from finance.ai_category_cache where user_id=$1 and updated_at < now() - interval '120 days'", [userId]);
+}
+
 export type CategorizeDeps = { db: Tx; key?: string; fetchImpl?: typeof fetch; limit?: number; now?: Date };
-export async function categorizeItems(d: CategorizeDeps, userId: string, input: Item[]): Promise<{ results: Pick[]; ai: boolean; limited: boolean; remaining: number }> {
+export async function categorizeItems(d: CategorizeDeps, userId: string, input: Item[]): Promise<{ results: Pick[]; ai: boolean; limited: boolean; remaining: number; cached: number }> {
   const limit = d.limit ?? DEFAULT_DAILY_CALLS;
   const items = input.filter((i) => i && String(i.key) && clean(i.text).length >= 2).slice(0, MAX_ITEMS).map((i) => ({ ...i, kind: i.kind === "in" ? "in" as const : "out" as const }));
   const cats = await loadCats(d.db, userId), byId = new Map(cats.map((c) => [c.id, c]));
@@ -113,7 +130,16 @@ export async function categorizeItems(d: CategorizeDeps, userId: string, input: 
     const cat = r ? byId.get(r.category_id) : undefined;
     if (cat && cat.income === (i.kind === "in")) results.set(i.key, { key: i.key, categoryId: cat.id, confidence: 1, source: "rule" });
   }
-  // 2. the model, for the rest
+  // 2. what the model already said about this shop (no call, no allowance)
+  const cache = await readCache(d.db, userId, items.filter((i) => results.get(i.key)!.source === "none"));
+  let cached = 0;
+  for (const i of items) {
+    if (results.get(i.key)!.source !== "none") continue;
+    const hit = cache.get(`${i.kind}:${cacheKey(i.text)}`), cat = hit ? byId.get(hit.category_id) : undefined;
+    if (hit && cat && cat.income === (i.kind === "in") && fresh(hit.confidence, hit.age)) { results.set(i.key, { key: i.key, categoryId: cat.id, confidence: hit.confidence, source: "ai", cached: true }); cached++; }
+  }
+  if (cached) await d.db.query("update finance.ai_category_cache set hits = hits + 1 where user_id=$1 and key = any($2::text[])", [userId, items.map((i) => cacheKey(i.text)).filter(Boolean)]);
+  // 3. the model, only for shops never seen
   const rest = items.filter((i) => results.get(i.key)!.source === "none");
   let ai = false, limited = false;
   if (rest.length && d.key) {
@@ -123,10 +149,11 @@ export async function categorizeItems(d: CategorizeDeps, userId: string, input: 
       try {
         const got = await aiCategorize({ key: d.key, fetchImpl: d.fetchImpl }, rest, cats, await loadExamples(d.db, userId));
         for (const [k, v] of got) results.set(k, { key: k, categoryId: v.categoryId, confidence: v.confidence, source: "ai" });
+        await writeCache(d.db, userId, rest.filter((i) => got.has(i.key)).map((i) => ({ text: i.text, kind: i.kind, categoryId: got.get(i.key)!.categoryId, confidence: got.get(i.key)!.confidence })));
       } catch (e) { console.error("categorize", e instanceof Error ? e.message : e); }
     }
   }
-  return { results: items.map((i) => results.get(i.key)!), ai, limited, remaining: Math.max(0, limit - (await callsToday(d.db, userId, d.now))) };
+  return { results: items.map((i) => results.get(i.key)!), ai, limited, cached, remaining: Math.max(0, limit - (await callsToday(d.db, userId, d.now))) };
 }
 
 /** The person fixed a category: remember it for that shop so the next one needs no model. */
