@@ -85,18 +85,24 @@ export async function generateCampaignDraft(
   const title = clean(input.title, 160);
   const brief = clean(input.brief, 6000);
   if (!title || !brief) throw new Error("Isi judul dan bahan draf terlebih dahulu.");
-  const response = await fetcher(`${cfg.baseUrl.replace(/\/$/, "")}/chat/completions`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${cfg.key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: cfg.model,
-      messages: [
-        { role: "system", content: "Tulis ajakan kampanye creator dalam bahasa Indonesia yang natural. Gunakan fakta yang diberikan saja. Jangan menambah promo, nominal, persetujuan, lokasi, atau kewajiban. Kembalikan objek JSON dengan description dan deliverableSummary, keduanya string teks biasa." },
-        { role: "user", content: JSON.stringify({ title, brief }) },
-      ],
-    }),
-    signal: AbortSignal.timeout(25_000),
-  });
+  let response: Response;
+  try {
+    response = await fetcher(`${cfg.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${cfg.key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: cfg.model,
+        max_tokens: 900,
+        messages: [
+          { role: "system", content: "Tulis ajakan kampanye creator dalam bahasa Indonesia yang natural. Gunakan fakta yang diberikan saja. Jangan menambah promo, nominal, persetujuan, lokasi, atau kewajiban. Kembalikan objek JSON dengan description dan deliverableSummary, keduanya string teks biasa." },
+          { role: "user", content: JSON.stringify({ title, brief }) },
+        ],
+      }),
+      signal: AbortSignal.timeout(25_000),
+    });
+  } catch {
+    throw new Error("Gateway AI belum bisa dijangkau. Draf masih bisa diedit manual.");
+  }
   if (!response.ok) throw new Error("Layanan AI sedang tidak tersedia. Draf masih bisa diedit manual.");
   const body = await response.json();
   const content = body.choices?.[0]?.message?.content;

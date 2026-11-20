@@ -323,13 +323,15 @@ export function registerManagerKol(app: Hono, auth: Auth, pool: Pool) {
 
     if (action === "campaign_draft_ai") {
       try {
-        const openai = process.env.KOL_CAMPAIGN_OPENAI_KEY || process.env.OPENAI_API_KEY;
+        const projectKey = process.env.KOL_CAMPAIGN_AI_KEY;
+        const openai = process.env.OPENAI_API_KEY;
         const data = await generateCampaignDraft(b, {
-          key: openai || process.env.HELIPOD_AI_KEY,
-          baseUrl: openai
-            ? process.env.KOL_CAMPAIGN_OPENAI_BASE_URL || process.env.OPENAI_BASE_URL || "https://api.openai.com/v1"
+          key: projectKey || openai || process.env.HELIPOD_AI_KEY,
+          baseUrl: projectKey
+            ? process.env.KOL_CAMPAIGN_AI_BASE_URL || "https://ai.helipod.io/v1"
+            : openai ? process.env.OPENAI_BASE_URL || "https://api.openai.com/v1"
             : process.env.HELIPOD_AI_BASE_URL || "https://ai.helipod.io/v1",
-          model: process.env.KOL_CAMPAIGN_AI_MODEL || (openai ? "gpt-4o-mini" : "qwen3.7-flash"),
+          model: process.env.KOL_CAMPAIGN_AI_MODEL || (openai && !projectKey ? "gpt-4o-mini" : "qwen3.7-flash"),
         });
         return json({ success: true, data });
       } catch (e) { return json({ success: false, error: e instanceof Error ? e.message : "Draf AI belum tersedia." }, 422); }
@@ -378,6 +380,11 @@ export function registerManagerKol(app: Hono, auth: Auth, pool: Pool) {
       let fields;
       try { fields = editing ? campaignFieldsForUpdate(b, current) : parseCampaignFields(b); }
       catch (e) { return json({ success: false, error: (e as Error).message }, 400); }
+      if (current?.application_mode === "invite" && fields.application_mode && fields.application_mode !== "invite") {
+        const pending = await pool.query(`select 1 from pos.kol_campaign_assignments
+          where campaign_id = $1 and status = 'invited' limit 1`, [id]);
+        if (pending.rows[0]) return json({ success: false, error: "Masih ada undangan yang menunggu jawaban. Selesaikan sebelum mengubah cara bergabung." }, 409);
+      }
       const values = [
         slug, title, text(b.description, 4000), text(b.location, 160) || null,
         text(b.benefitDescription, 1000), text(b.deliverableSummary, 2000),
@@ -433,10 +440,17 @@ export function registerManagerKol(app: Hono, auth: Auth, pool: Pool) {
       if (!Number.isInteger(id) || !SUBMISSION_STATUSES.has(status)) {
         return json({ success: false, error: "INVALID_SUBMISSION_REVIEW" }, 400);
       }
-      const r = await pool.query(`select * from pos.kol_review_campaign_proof($1,$2,$3,$4)`,
-        [id, status, actor, text(b.note, 1000)]);
-      if (!r.rows[0]?.id) return json({ success: false, error: "SUBMISSION_NOT_FOUND" }, 404);
-      return json({ success: true, data: r.rows[0] });
+      try {
+        const r = await pool.query(`select * from pos.kol_review_campaign_proof($1,$2,$3,$4)`,
+          [id, status, actor, text(b.note, 1000)]);
+        if (!r.rows[0]?.id) return json({ success: false, error: "SUBMISSION_NOT_FOUND" }, 404);
+        return json({ success: true, data: r.rows[0] });
+      } catch (e: any) {
+        if (e?.constraint === "idx_kol_submissions_one_current_platform") {
+          return json({ success: false, error: "Bukti pengganti untuk platform ini sudah masuk. Tinjau bukti terbaru." }, 409);
+        }
+        throw e;
+      }
     }
 
     if (action === "inquiry_update") {
