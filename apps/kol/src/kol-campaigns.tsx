@@ -5,6 +5,7 @@ import { SowCard } from "./kol-sow";
 import type { CampaignSow } from "../../../supabase/functions/_shared/kol-campaign";
 import { ProofChecks, RewardBox, rupiah, type RewardInfo } from "./kol-rewards";
 import { ShareCampaign } from "./kol-share";
+import { CalendarDays, Gift, MapPin, Users } from "lucide-react";
 
 export type Campaign = {
   id: number; slug: string; title: string; description?: string | null; location?: string | null; benefit_description?: string | null; deliverable_summary?: string | null;
@@ -56,18 +57,20 @@ export function CampaignsTab({ campaigns, refresh }: { campaigns: Campaign[]; re
         return (
           <article key={c.id} className="kx-post">
             <a className="kx-campaign-link" href={detailsUrl(c)}>
-              {c.cover_url && <img className="kx-campaign-cover" src={c.cover_url} alt="" loading="lazy" width="720" height="420" />}
-              <div className="kx-campaign-heading">
-                <div style={{ minWidth: 0 }}><b className="kx-h2" style={{ display: "block" }}>{c.title}</b><span className="kx-sub">{c.brand_name || c.category || "Djiwa Tentram"}{c.location ? ` · ${c.location}` : ""}</span></div>
-                <span className={`kx-pill ${tone || ""}`} style={tone ? undefined : { background: "#eceef2", color: "var(--kx-muted)" }}>{label}</span>
+              <div className={`kx-cov ${c.cover_url ? "" : "kx-cov--empty"}`}>
+                {c.cover_url && <img className="kx-campaign-cover" src={c.cover_url} alt="" loading="lazy" width="720" height="420" />}
+                <span className={`kx-pill kx-cov-status ${tone || ""}`} style={tone ? undefined : { background: "#ffffffe6", color: "var(--kx-muted)" }}>{label}</span>
+                {c.reward && <span className="kx-cov-reward"><b>{rupiah(c.reward.ratePer1000)}</b><small> / 1.000 view</small></span>}
               </div>
-              <p className="kx-clamp" style={{ color: "var(--kx-muted)", fontSize: 13.5, margin: "8px 0 0" }}>{c.description || "Detail kampanye ada di halaman detail."}</p>
-              <div className="kx-chips">
-                {c.reward && <span className="kx-chip2 kx-chip2--reward">Reward {rupiah(c.reward.ratePer1000)} / 1.000 view</span>}
-                {c.benefit_description && <span className="kx-chip2">{c.benefit_description}</span>}
-                {deadline && <span className="kx-chip2">Sampai {deadline}</span>}
-              </div>
-              <div className="kx-more2">{c.reward ? `${c.reward.slotsLeft} slot tersisa · ` : ""}Lihat detail <span aria-hidden>›</span></div>
+              <b className="kx-h2 kx-card-title">{c.title}</b>
+              <p className="kx-clamp kx-card-desc">{c.description || "Detail kampanye ada di halaman detail."}</p>
+              <ul className="kx-facts">
+                {c.location && <li><MapPin size={15} aria-hidden /><span>{c.location}</span></li>}
+                {c.benefit_description && <li><Gift size={15} aria-hidden /><span>{c.benefit_description}</span></li>}
+                {deadline && <li><CalendarDays size={15} aria-hidden /><span>Daftar sampai {deadline}</span></li>}
+                {c.reward && <li className={c.reward.slotsLeft > 0 ? "" : "kx-facts--warn"}><Users size={15} aria-hidden /><span>{c.reward.slotsLeft > 0 ? `${c.reward.slotsLeft} dari ${c.reward.slotsTotal} slot tersisa` : "Kuota penuh"}</span></li>}
+              </ul>
+              <span className="kx-cta2">Lihat detail <span aria-hidden>›</span></span>
             </a>
             {refresh && c.assignment_status === "invited" && c.application_mode === "invite" && !c.terms?.length && (
               <div className="kx-row2" style={{ marginTop: 12 }}>

@@ -136,7 +136,7 @@ export function ShareCampaign({ campaign }: { campaign: ShareCampaignInfo }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" className="kx-btn kx-btn--ghost kx-btn--sm" style={{ justifySelf: "start", width: "auto", gap: 8 }} onClick={() => setOpen(true)}><Share2 size={16} />Bagikan</button>
+      <button type="button" className="kx-sharebtn" onClick={() => setOpen(true)}><Share2 size={16} aria-hidden />Bagikan</button>
       {open && <ShareSheet campaign={campaign} onClose={() => setOpen(false)} />}
     </>
   );
@@ -185,16 +185,16 @@ function ShareSheet({ campaign: c, onClose }: { campaign: ShareCampaignInfo; onC
           {preview ? <img src={preview} alt="Pratinjau gambar Instagram Story kampanye" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <div className="kx-sub" style={{ display: "grid", placeItems: "center", height: "100%", textAlign: "center", padding: 12 }}>{error || "Membuat gambar…"}</div>}
         </div>
         <p className="kx-sub" style={{ margin: 0, textAlign: "center" }}>Format Instagram Story 1080 × 1920, lengkap dengan foto kampanye dan reward.</p>
-        <div className="kx-row2">
-          <button type="button" className="kx-btn" disabled={!blob} onClick={() => void shareImage()}><Share2 size={17} style={{ marginRight: 8 }} />{canShareFile ? "Bagikan gambar" : "Unduh gambar"}</button>
-          <button type="button" className="kx-btn kx-btn--ghost" disabled={!blob} onClick={download}><Download size={17} style={{ marginRight: 8 }} />Unduh</button>
+        <div className="kx-sharegrid">
+          <button type="button" className="kx-sharetile kx-sharetile--primary" disabled={!blob} onClick={() => void shareImage()}><Share2 size={20} aria-hidden /><b>{canShareFile ? "Bagikan gambar" : "Unduh gambar"}</b><small>Instagram Story</small></button>
+          <button type="button" className="kx-sharetile" onClick={() => void shareLink()}><Link2 size={20} aria-hidden /><b>Bagikan link</b><small>Pilih aplikasi</small></button>
         </div>
+        {canShareFile && <button type="button" className="kx-sharelink" disabled={!blob} onClick={download}><Download size={16} aria-hidden />Unduh gambar</button>}
         <div className="kx-group">
           <div className="kx-kv" style={{ alignItems: "center" }}><span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{url.replace(/^https?:\/\//, "")}</span>
-            <button type="button" className="kx-btn kx-btn--ghost kx-btn--sm" style={{ width: "auto", flex: "none" }} onClick={() => void copy()}><Link2 size={15} style={{ marginRight: 6 }} />Salin</button></div>
+            <button type="button" className="kx-sharelink" style={{ flex: "none" }} onClick={() => void copy()}>Salin</button></div>
         </div>
-        <button type="button" className="kx-btn kx-btn--ghost" onClick={() => void shareLink()}><Share2 size={17} style={{ marginRight: 8 }} />Bagikan link</button>
-        <div className="kx-chips" style={{ marginTop: 0 }}>{links.map(([name, href]) => <a key={name} className="kx-chip2" style={{ minHeight: 40, padding: "0 14px" }} href={href} target="_blank" rel="noreferrer">{name}</a>)}</div>
+        <div className="kx-sharenets">{links.map(([name, href]) => <a key={name} href={href} target="_blank" rel="noreferrer">{name}</a>)}</div>
         {msg && <p role="status" className="kx-note" style={{ margin: 0 }}>{msg}</p>}
       </div>
     </KxSheet>

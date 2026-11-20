@@ -172,3 +172,30 @@ textarea.kx-input{padding:11px 14px;min-height:88px;resize:none}
 .kx-reward-grid>div{background:#ffffffb8;border-radius:14px;padding:9px 10px}
 .kx-reward-grid span{display:block;font-size:11px;color:var(--kx-muted)}
 .kx-reward-grid b{display:block;font-size:14px;margin-top:2px}
+
+/* Kartu kampanye */
+.kx-cov{position:relative;border-radius:18px;overflow:hidden;margin-bottom:14px;background:var(--kx-line)}
+.kx-cov .kx-campaign-cover{margin:0;border-radius:0}
+.kx-cov--empty{min-height:120px;background:linear-gradient(140deg,#1a5dc6,#13804a)}
+.kx-cov-status{position:absolute;top:10px;left:10px;background:#ffffffeb;box-shadow:0 2px 8px rgba(15,35,71,.15)}
+.kx-cov-reward{position:absolute;left:10px;bottom:10px;display:inline-flex;align-items:baseline;gap:2px;padding:7px 12px;border-radius:99px;background:#13804a;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.kx-cov-reward b{font-size:15px}.kx-cov-reward small{font-size:11.5px;opacity:.92}
+.kx-card-title{display:block;font-size:19px;letter-spacing:-.01em}
+.kx-card-desc{margin:6px 0 0;color:var(--kx-muted);font-size:13.5px;line-height:1.5}
+.kx-facts{list-style:none;margin:12px 0 0;padding:12px 0 0;border-top:1px solid var(--kx-line);display:grid;gap:8px}
+.kx-facts li{display:flex;align-items:center;gap:9px;font-size:13px;color:#3a3f4c;min-width:0}
+.kx-facts li svg{flex:none;color:var(--kx-muted)}
+.kx-facts li span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kx-facts--warn,.kx-facts--warn svg{color:#b42318!important}
+.kx-cta2{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px;min-height:46px;border-radius:99px;background:var(--kx-blue,#1a5dc6);color:#fff;font-size:15px;font-weight:700}
+/* Tombol bagikan dan lembar bagikan */
+.kx-sharebtn{justify-self:start;display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px 0 12px;border-radius:99px;border:1px solid var(--kx-line);background:#fff;color:#1a5dc6;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:0 1px 2px #0000000d}
+.kx-sharebtn:active{transform:scale(.97)}
+.kx-sharegrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kx-sharetile{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:14px;border-radius:18px;border:1px solid var(--kx-line);background:#fff;color:#14161c;font:inherit;text-align:left;cursor:pointer;min-height:92px}
+.kx-sharetile svg{color:#1a5dc6;margin-bottom:6px}.kx-sharetile b{font-size:14.5px}.kx-sharetile small{font-size:12px;color:var(--kx-muted)}
+.kx-sharetile--primary{background:#1a5dc6;border-color:#1a5dc6;color:#fff}.kx-sharetile--primary svg,.kx-sharetile--primary small{color:#ffffffd9}
+.kx-sharetile:disabled{opacity:.5}
+.kx-sharelink{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:0 14px;border-radius:99px;border:0;background:#e6efff;color:#1a5dc6;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.kx-sharenets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.kx-sharenets a{display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:14px;background:#f1f3f8;color:#14161c;font-size:13px;font-weight:700;text-decoration:none}
