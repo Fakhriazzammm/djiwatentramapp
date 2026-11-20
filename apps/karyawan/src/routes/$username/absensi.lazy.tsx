@@ -73,7 +73,7 @@ function Enroll({ onClose }: { onClose: () => void }) {
 				<>
 					<p className="ds-sub" style={{ margin: "0 4px 8px" }}>Hadap kamera di tempat terang, wajah di dalam lingkaran. Tahan sebentar sampai terbaca (±5 detik).</p>
 					<Suspense fallback={<div className="kx-cam" style={{ display: "grid", placeItems: "center", color: "#fff", fontSize: 13 }}>Menyiapkan kamera…</div>}>
-						<FaceScanner mode="enroll" onDone={async (d) => { setDesc(d); }} onUnavailable={(p) => setErr(p.message)} />
+						<FaceScanner mode="enroll" onDone={async (d) => { setDesc(d); }} />
 					</Suspense>
 					{err && <div className="kx-err" role="alert">{err}</div>}
 				</>
