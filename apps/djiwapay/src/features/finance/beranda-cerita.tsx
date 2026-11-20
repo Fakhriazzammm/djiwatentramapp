@@ -106,6 +106,15 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
         <span className="dpx-st-mi"><Ic n={m.icon} />{m.label === "Tinjau" && (inbound.data?.review ?? 0) > 0 ? <i className="dpx-st-mb">{inbound.data?.review}</i> : null}</span><span>{m.label}</span></Btn>)}</div>
     </section>
 
+    <section className="dpx-st-card dpx-pay-strip" aria-label="Saldo Djiwa Pay">
+      <div className="dpx-pay-bal">
+        <div className="dpx-pay-lbl"><span>Saldo Djiwa Pay</span><Btn type="button" className="dpx-pay-eye" onClick={ctx.onToggleVisible} aria-label={visible ? "Sembunyikan saldo" : "Tampilkan saldo"}><Ic n={visible ? "eye" : "eyeoff"} size="sm" /></Btn></div>
+        <div className="dpx-pay-amt">{mk(visible, rupiah(ctx.payBalance))}</div>
+      </div>
+      <div className="dpx-pay-acts">{([["topup", "Isi saldo", "/wallet/topup"], ["send", "Kirim", "/wallet/transfer"], ["scan-qr", "Scan", "/wallet/transfer?mode=scan"], ["bills", "Layanan", "/bayar"]] as const).map(([a, l, p]) => <Btn key={a} type="button" className="dpx-pay-act" onClick={() => nav.go(p)}><img src={payAsset(a)} width={34} height={34} alt="" /><span>{l}</span></Btn>)}</div>
+    </section>
+      {templates.length ? <div className="dpx-st-card"><QuickAdd templates={templates} onAdd={onAddTemplate} /></div> : null}
+
     {empty ? <Card><div className="dpx-st-welcome"><I3 name="customer-benefit-wallet" px={88} /><b>Mulai ceritamu</b><span className="dpx-sub">Catat transaksi pertama. Grafik, statistik, dan kalender belanja muncul di sini setelah ada datanya.</span><Btn type="button" className="dpx-btn" onClick={() => ctx.open({ k: "catat" })}>Catat sekarang</Btn></div></Card> : <>
       <Sec title="Catatan terbaru" action="Lihat semua" onAction={() => nav.go("/riwayat")} />
       <div className="dpx-group dpx-flush">{entries.slice(0, 4).map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div>
@@ -179,15 +188,6 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
 
     </>}
 
-    <Sec title="Dompet & Bayar" action="Buka" onAction={() => nav.go("/dompet")} />
-    <section className="dpx-st-card dpx-pay-strip" aria-label="Saldo Djiwa Pay">
-      <div className="dpx-pay-bal">
-        <div className="dpx-pay-lbl"><span>Saldo Djiwa Pay</span><Btn type="button" className="dpx-pay-eye" onClick={ctx.onToggleVisible} aria-label={visible ? "Sembunyikan saldo" : "Tampilkan saldo"}><Ic n={visible ? "eye" : "eyeoff"} size="sm" /></Btn></div>
-        <div className="dpx-pay-amt">{mk(visible, rupiah(ctx.payBalance))}</div>
-      </div>
-      <div className="dpx-pay-acts">{([["topup", "Isi saldo", "/wallet/topup"], ["send", "Kirim", "/wallet/transfer"], ["scan-qr", "Scan", "/wallet/transfer?mode=scan"], ["bills", "Layanan", "/bayar"]] as const).map(([a, l, p]) => <Btn key={a} type="button" className="dpx-pay-act" onClick={() => nav.go(p)}><img src={payAsset(a)} width={34} height={34} alt="" /><span>{l}</span></Btn>)}</div>
-    </section>
-      {templates.length ? <div className="dpx-st-card" style={{ marginTop: 12 }}><QuickAdd templates={templates} onAdd={onAddTemplate} /></div> : null}
 
     {empty ? null : <Btn type="button" className="dpx-st-tip dpx-st-calm" onClick={() => ctx.open({ k: "weekly" })}><span className="dpx-cat dpx-c-emerald"><Ic n="pie" /></span><div><b>Jeda mingguan</b><span className="dpx-sub">Lima menit melihat minggu ini. Tidak ada yang perlu dikejar.</span></div></Btn>}
     {newsOpen ? <NewsPage onBack={() => setNewsOpen(false)} /> : null}
