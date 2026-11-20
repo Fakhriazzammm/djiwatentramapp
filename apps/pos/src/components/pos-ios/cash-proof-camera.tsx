@@ -14,6 +14,14 @@ export function CashProofCamera({ open, stampText, onClose, onCapture }: { open:
 	const [ready, setReady] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [flash, setFlash] = useState(false);
+	// Layar tutup kasir berada di dalam dialog modal (Radix) yang mematikan klik di luar isinya.
+	// Karena itu overlay kamera dirender di dalam dialog terdekat, bukan di document.body.
+	const anchorRef = useRef<HTMLSpanElement | null>(null);
+	const [host, setHost] = useState<HTMLElement | null>(null);
+	useEffect(() => {
+		if (!open) return;
+		setHost((anchorRef.current?.closest('[role="dialog"]') as HTMLElement | null) ?? document.body);
+	}, [open]);
 
 	const stop = useCallback(() => {
 		streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -74,10 +82,12 @@ export function CashProofCamera({ open, stampText, onClose, onCapture }: { open:
 		onCapture(canvas.toDataURL("image/jpeg", 0.82));
 	};
 
-	return createPortal(
+	return (<>
+		<span ref={anchorRef} hidden />
+		{host ? createPortal(
 		<AnimatePresence>
 			{open ? (
-				<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="fixed inset-0 z-[200] flex flex-col bg-black text-white" role="dialog" aria-label="Foto bukti tunai">
+				<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} style={{ pointerEvents: "auto" }} className="fixed inset-0 z-[200] flex flex-col bg-black text-white" role="dialog" aria-label="Foto bukti tunai">
 					<div className="flex items-center justify-between px-4 pb-2 pt-[calc(0.75rem+env(safe-area-inset-top))]">
 						<p className="text-[15px] font-bold">Foto uang tunai</p>
 						<button type="button" onClick={onClose} aria-label="Tutup kamera" className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15"><X className="h-5 w-5" /></button>
@@ -104,6 +114,7 @@ export function CashProofCamera({ open, stampText, onClose, onCapture }: { open:
 				</motion.div>
 			) : null}
 		</AnimatePresence>,
-		document.body,
-	);
+		host,
+		) : null}
+	</>);
 }
