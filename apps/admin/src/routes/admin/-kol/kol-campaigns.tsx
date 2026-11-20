@@ -2,11 +2,12 @@ import { CampaignApplications, CampaignEditorExtras, campaignEditorFields, visit
 import type { CampaignDraft, CampaignSow } from "../../../../../../supabase/functions/_shared/kol-campaign";
 // Halaman Kampanye: data yang sama dengan tab Kampanye portal creator, ditambah
 // pengelolaan kampanye, undangan creator, dan review bukti konten.
-import { Link2, Plus, RefreshCw, Send, ShieldCheck, X } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ArrowLeft, Link2, Plus, RefreshCw, Send, ShieldCheck, Wallet, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  Btn, Chips, EmptyBlock, ErrorBox, Field, KV, Label, Loading, NoAccess, Page, PageHeader, Panel, SearchBox, SectionLabel, StatusTag, Tag, inputCls, textareaCls,
+  Btn, Card, Chips, EmptyBlock, ErrorBox, Field, KV, Label, Loading, NoAccess, Page, PageHeader, SearchBox, SectionLabel, StatusTag, Tag, inputCls, textareaCls,
 } from "./kol-ui";
 import {
   ASSIGNMENT_STATUS, CAMPAIGN_STATUS, SUBMISSION_STATUS, atUsername, compact, creatorLabel, fmtDate, fmtDateTime, kolCall, totalFollowers, useKolData,
@@ -50,6 +51,20 @@ export function KolCampaignsPage() {
 
   const editingCampaign = typeof editing === "number" ? overview.campaigns.find((c) => c.id === editing) ?? null : null;
   if (!canManage) return <NoAccess />;
+
+  if (editing !== null) return (
+<CampaignPanel
+          key={editingCampaign?.id ?? "new"}
+          campaign={editingCampaign}
+          activeSow={activeSow ? { ...activeSow, days: overview.settings?.post_deadline_days ?? 7 } : undefined}
+          token={token}
+          creators={creators}
+          assignments={editingCampaign ? assignmentsBy.get(editingCampaign.id) ?? [] : []}
+          submissions={editingCampaign ? submissionsBy.get(editingCampaign.id) ?? [] : []}
+          onClose={() => setEditing(null)}
+          onSaved={() => void reload()}
+        />
+  );
 
   return (
     <Page>
@@ -108,19 +123,6 @@ export function KolCampaignsPage() {
         </div>
       )}
 
-      {editing !== null && (
-        <CampaignPanel
-          key={editingCampaign?.id ?? "new"}
-          campaign={editingCampaign}
-          activeSow={activeSow ? { ...activeSow, days: overview.settings?.post_deadline_days ?? 7 } : undefined}
-          token={token}
-          creators={creators}
-          assignments={editingCampaign ? assignmentsBy.get(editingCampaign.id) ?? [] : []}
-          submissions={editingCampaign ? submissionsBy.get(editingCampaign.id) ?? [] : []}
-          onClose={() => setEditing(null)}
-          onSaved={() => void reload()}
-        />
-      )}
     </Page>
   );
 }
@@ -186,15 +188,24 @@ function CampaignPanel({ campaign, activeSow, token, creators, assignments, subm
   };
 
   return (
-    <Panel
-      title={campaign ? campaign.title : "Kampanye baru"}
-      description={campaign ? `Slug ${campaign.slug}` : "Kampanye dibuat sebagai draf sampai status diubah menjadi Dibuka."}
-      onClose={onClose}
-      width="sm:max-w-2xl"
-      footer={<><Btn size="sm" onClick={onClose}>Tutup</Btn><Btn variant="primary" size="sm" disabled={busy === "save"} onClick={() => void save()}>{busy === "save" ? "Menyimpan…" : campaign ? "Simpan perubahan" : "Buat kampanye"}</Btn></>}
-    >
-      <div className="grid gap-2 sm:grid-cols-2">
-        <Field label="Judul" className="sm:col-span-2">
+    <Page>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <button type="button" onClick={onClose} className="mb-1 inline-flex min-h-8 items-center gap-1 font-mono text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#666672] hover:text-[#111114]"><ArrowLeft className="h-3.5 w-3.5" />Semua kampanye</button>
+          <h1 className="truncate text-[22px] font-semibold leading-tight tracking-tight text-[#111114]">{campaign ? campaign.title : "Kampanye baru"}</h1>
+          <p className="mt-1 text-xs text-[#666672]">{campaign ? `Slug ${campaign.slug}` : "Kampanye dibuat sebagai draf sampai status diubah menjadi Dibuka."}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Btn onClick={onClose}>Tutup</Btn>
+          <Btn variant="primary" disabled={busy === "save"} onClick={() => void save()}>{busy === "save" ? "Menyimpan…" : campaign ? "Simpan perubahan" : "Buat kampanye"}</Btn>
+        </div>
+      </div>
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_440px]">
+      <div className="space-y-4">
+      <Card className="space-y-3">
+      <Label tone="ink">INFORMASI KAMPANYE</Label>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Field label="Judul" className="sm:col-span-2 lg:col-span-3">
           <input className={inputCls} value={form.title} maxLength={160} onChange={(e) => set("title", e.target.value)} placeholder="Visit & review menu Djiwa Tentram" />
         </Field>
         <Field label="Slug" hint="Dipakai untuk tautan kampanye.">
@@ -217,36 +228,46 @@ function CampaignPanel({ campaign, activeSow, token, creators, assignments, subm
         <Field label="Selesai">
           <input className={inputCls} type="date" value={form.endDate} onChange={(e) => set("endDate", e.target.value)} />
         </Field>
-        <Field label="Benefit" className="sm:col-span-2" hint="Tampil paling atas di kartu kampanye creator.">
+        <Field label="Benefit" className="sm:col-span-2 lg:col-span-3" hint="Tampil paling atas di kartu kampanye creator.">
           <textarea className={textareaCls} value={form.benefitDescription} maxLength={1000} onChange={(e) => set("benefitDescription", e.target.value)} placeholder="Makan gratis untuk 2 orang + konten kolaborasi" />
         </Field>
-        <Field label="Ringkasan deliverable" className="sm:col-span-2">
+        <Field label="Ringkasan deliverable" className="sm:col-span-2 lg:col-span-3">
           <textarea className={textareaCls} value={form.deliverableSummary} maxLength={2000} onChange={(e) => set("deliverableSummary", e.target.value)} placeholder="1 video TikTok, 1 story Instagram, 3 foto" />
         </Field>
-        <Field label="Deskripsi" className="sm:col-span-2">
+        <Field label="Deskripsi" className="sm:col-span-2 lg:col-span-3">
           <textarea className={textareaCls} value={form.description} maxLength={4000} onChange={(e) => set("description", e.target.value)} placeholder="Detail kampanye, syarat konten, dan hal yang perlu diketahui creator." />
         </Field>
       </div>
+      </Card>
 
+      <Card>
       <CampaignEditorExtras fields={form} title={form.title} slug={form.slug || slugify(form.title)}
         inputClass={inputCls} buttonClass="inline-flex min-h-9 items-center rounded-md border px-3 text-sm"
         onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
         onTemplate={!campaign && activeSow ? () => setForm((prev) => ({ ...prev, ...visitCampaignTemplate(activeSow) })) : undefined}
         generate={(brief) => kolCall<CampaignDraft>("kol-portal-admin", "campaign_draft_ai", token, { title: form.title, brief })}
         onDraft={(draft) => setForm((prev) => ({ ...prev, ...draft }))} />
+      </Card>
+      </div>
+      <div className="space-y-4">
       {campaign && (
-        <CampaignApplications campaignId={campaign.id} inputClass={inputCls}
+        <Link to={"/admin/kol-rewards" as never} className="block">
+          <Card className="flex items-center justify-between gap-3 transition hover:bg-[#fafafb]"><span className="flex items-center gap-3"><Wallet className="h-5 w-5 text-[#2f6fdf]" /><span><b className="block text-[13px] text-[#111114]">Reward & anggaran</b><span className="text-[11.5px] text-[#666672]">Tarif per view, deposit Bisnis, ledger</span></span></span><span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#2f6fdf]">Atur →</span></Card>
+        </Link>
+      )}
+      {campaign && (
+        <Card><CampaignApplications campaignId={campaign.id} inputClass={inputCls}
           buttonClass="inline-flex min-h-9 items-center rounded-md border px-3 text-sm"
           load={() => kolCall<CampaignApplication[]>("kol-portal-admin", "campaign_applications", token, { campaignId: campaign.id })}
           review={async (decision) => {
             await kolCall("kol-portal-admin", "campaign_application_review", token, decision);
             toast.success(decision.approve ? "Pengajuan diterima." : "Pengajuan ditolak.");
             onSaved();
-          }} />
+          }} /></Card>
       )}
 
       {campaign && (
-        <>
+        <Card>
           <SectionLabel right={<Label>{assignments.length} creator</Label>}>Creator kampanye</SectionLabel>
           {assignments.length ? (
             <div className="border border-[#e4e4e8] bg-white px-3">
@@ -284,9 +305,11 @@ function CampaignPanel({ campaign, activeSow, token, creators, assignments, subm
               {submissions.map((s) => <SubmissionRow key={s.id} submission={s} token={token} onSaved={onSaved} />)}
             </div>
           ) : <p className="text-[11.5px] text-[#666672]">Belum ada bukti konten dikirim creator.</p>}
-        </>
+        </Card>
       )}
-    </Panel>
+      </div>
+      </div>
+    </Page>
   );
 }
 
