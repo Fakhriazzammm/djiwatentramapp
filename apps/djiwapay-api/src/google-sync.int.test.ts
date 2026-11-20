@@ -75,6 +75,17 @@ run("workbook sync (real database, in-memory Google)", () => {
     g.catatan.pop(); g.userEditCell(2, COL.note, g.catatan[0][COL.note]);                    // remove it again
   });
 
+  test("business wallets are marked in the sheet and a row typed with that name lands on the right wallet", async () => {
+    await pool.query("insert into finance.accounts(user_id,id,name,type,scope) values($1,'kas','Kas Toko','cash','business')", [user]);
+    await addEntry(E("biz", { account_id: "kas", note: "Jual kopi" }));
+    await markSheetDirty(db, user); await syncSheet(deps(), user);
+    expect(row("biz")!.cells[COL.account]).toBe("Kas Toko · Bisnis");
+    expect(row("a")!.cells[COL.account]).toBe("Tunai");                                    // personal wallets keep their plain name
+    g.userAppendRow(["", toSerial("2026-11-16T05:00:00Z"), "Pemasukan", "Gaji", "Kas Toko · Bisnis", "", 70000, "Setoran toko"]);
+    await syncSheet(deps(), user);
+    expect((await pool.query("select account_id,kind from finance.entries where user_id=$1 and note=$2", [user, "Setoran toko"])).rows[0]).toMatchObject({ account_id: "kas", kind: "in" });
+  });
+
   test("changes made in the app reach the sheet: edit, add, delete", async () => {
     await pool.query("update finance.entries set amount=44000, note='Diubah di aplikasi' where user_id=$1 and id='b'", [user]);
     await addEntry(E("d", { note: "Baru dari aplikasi" }));

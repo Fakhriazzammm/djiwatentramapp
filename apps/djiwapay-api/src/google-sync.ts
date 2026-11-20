@@ -20,7 +20,7 @@ export async function loadNames(db: Q, userId: string) {
   const cats = new Map<string, { name: string; income: boolean }>(DEFAULT_CATS.map(([id, name, income]) => [id, { name, income }]));
   for (const r of (await db.query("select id,name,income from finance.categories where user_id=$1 order by id", [userId])).rows) cats.set(r.id, { name: r.name, income: Boolean(r.income) });
   const accounts = new Map<string, string>([["tunai", "Tunai"]]);
-  for (const r of (await db.query("select id,name from finance.accounts where user_id=$1 order by id", [userId])).rows) accounts.set(r.id, r.name);
+  for (const r of (await db.query("select id,name,scope from finance.accounts where user_id=$1 order by id", [userId])).rows) accounts.set(r.id, r.scope === "business" ? `${r.name} · Bisnis` : r.name);   // the wallet list and the Dompet column then show which pool each belongs to
   const seen = new Map<string, number>();
   const accName: Record<string, string> = {};
   for (const [id, name] of accounts) { const k = name.trim().toLowerCase(); const n = (seen.get(k) ?? 0) + 1; seen.set(k, n); accName[id] = n === 1 ? name : `${name} (${id.slice(0, 6)})`; }
