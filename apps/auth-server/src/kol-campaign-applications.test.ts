@@ -18,11 +18,16 @@ test("rejects unsafe media URLs and proof platforms outside the catalog", () => 
 });
 
 test("AI can edit copy without touching benefits, SOW, or terms", async () => {
-  const mockFetch = async () => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({
-    description: "Datang dan ceritakan pengalamanmu.", deliverableSummary: "Satu video.", terms: ["Tambahan"], benefitDescription: "Rp1.000.000",
-  }) } }] }));
+  const mockFetch = async (_url: unknown, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body));
+    expect(body.enable_thinking).toBe(false);
+    expect(body.response_format).toEqual({ type: "json_object" });
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({
+      description: "Datang dan ceritakan pengalamanmu.", deliverableSummary: "Satu video.", terms: ["Tambahan"], benefitDescription: "Rp1.000.000",
+    }) } }] }));
+  };
   const draft = await generateCampaignDraft({ title: "Visit", brief: "1 video" }, {
-    key: "test", baseUrl: "https://example.com", model: "test",
+    key: "test", baseUrl: "https://example.com", model: "qwen3.7-flash",
   }, mockFetch as typeof fetch);
   expect(draft).toEqual({ description: "Datang dan ceritakan pengalamanmu.", deliverableSummary: "Satu video." });
 });

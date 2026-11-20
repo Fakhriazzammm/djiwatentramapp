@@ -93,8 +93,9 @@ export async function generateCampaignDraft(
       body: JSON.stringify({
         model: cfg.model,
         max_tokens: 900,
+        ...(cfg.model.startsWith("qwen") ? { enable_thinking: false, response_format: { type: "json_object" } } : {}),
         messages: [
-          { role: "system", content: "Tulis ajakan kampanye creator dalam bahasa Indonesia yang natural. Gunakan fakta yang diberikan saja. Jangan menambah promo, nominal, persetujuan, lokasi, atau kewajiban. Kembalikan objek JSON dengan description dan deliverableSummary, keduanya string teks biasa." },
+          { role: "system", content: "Tulis ajakan kampanye creator dalam bahasa Indonesia yang natural. Deskripsi maksimal tiga kalimat dan ringkasan satu kalimat. Gunakan fakta yang diberikan saja. Jangan menambah promo, nominal, persetujuan, lokasi, atau kewajiban. Kembalikan objek JSON dengan description dan deliverableSummary, keduanya string teks biasa." },
           { role: "user", content: JSON.stringify({ title, brief }) },
         ],
       }),
