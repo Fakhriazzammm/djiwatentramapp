@@ -81,9 +81,10 @@ export function LoanSheet({ fin, loan, draft, notify, onClose }: { fin: Finance;
       <label className="dpx-field"><span>Sisa pokok (sesuai bank)</span><MoneyInput value={balance} onChange={setBalance} placeholder="otomatis" /></label></div>
     <label className="dpx-field"><span>Angsuran sesuai bank (opsional)</span><MoneyInput value={installment} onChange={setInstallment} placeholder="dihitung otomatis" /></label>
     <p className="dpx-sub" style={{ margin: "0 4px" }}>Hitungan di aplikasi perkiraan. Isi angsuran dan sisa pokok dari mutasi bank bila angkanya berbeda.</p>
-    <div className="dpx-ln-foot"><Btn type="button" className={`dpx-btn ${ok ? "" : "dpx-off"}`} disabled={!ok} onClick={save}>Simpan</Btn></div>
     {loan ? <Btn type="button" className="dpx-btn dpx-soft" onClick={() => { fin.dispatch({ type: "loan/delete", id: loan.id }); onClose(); notify("Pinjaman dihapus", () => fin.dispatch({ type: "loan/upsert", loan })); }}>Hapus pinjaman</Btn> : null}
-  </div></Sheet>;
+  </div>
+    <div className="dpx-ln-foot"><Btn type="button" className={`dpx-btn ${ok ? "" : "dpx-off"}`} disabled={!ok} onClick={save}>Simpan</Btn></div>
+  </Sheet>;
 }
 
 /* ---------- pay an instalment or prepay ---------- */
