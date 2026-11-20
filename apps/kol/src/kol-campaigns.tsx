@@ -4,6 +4,7 @@ import { VisitPicker } from "./kol-visit";
 import { SowCard } from "./kol-sow";
 import type { CampaignSow } from "../../../supabase/functions/_shared/kol-campaign";
 import { ProofChecks, RewardBox, rupiah, type RewardInfo } from "./kol-rewards";
+import { ShareCampaign } from "./kol-share";
 
 export type Campaign = {
   id: number; slug: string; title: string; description?: string | null; location?: string | null; benefit_description?: string | null; deliverable_summary?: string | null;
@@ -134,6 +135,7 @@ export function CampaignDetail({ campaign: c, calendar = [], refresh, login }: {
       <a className="kx-link" href="/campaigns">‹ Semua kampanye</a>
       {c.cover_url && <img className="kx-campaign-cover" src={c.cover_url} alt="" width="720" height="420" />}
       <div className="kx-campaign-heading"><h2 className="kx-h1">{c.title}</h2><span className={`kx-pill ${tone}`}>{label}</span></div>
+      <ShareCampaign campaign={c} />
       <p className="kx-lead kx-campaign-copy">{c.description}</p>
       {c.reward && <RewardBox reward={c.reward} />}
       <section>
