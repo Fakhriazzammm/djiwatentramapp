@@ -33,7 +33,7 @@ export function FinBudget({ ctx }: { ctx: FinCtx }) {
   const isCurrent = cursor.y === today.getFullYear() && cursor.m === today.getMonth();
   const shift = (d: number) => setCursor((c) => { const n = new Date(c.y, c.m + d, 1); return { y: n.getFullYear(), m: n.getMonth() }; });
   const dim = daysIn(cursor.y, cursor.m), elapsed = isCurrent ? today.getDate() : dim, daysLeft = isCurrent ? dim - today.getDate() + 1 : 0;
-  const month = useMemo(() => entries.filter((e) => inMonth(e, cursor.y, cursor.m)), [entries, cursor]);
+  const month = useMemo(() => fin.rolled.filter((e) => inMonth(e, cursor.y, cursor.m)), [fin.rolled, cursor]);
   const statuses = useMemo(() => budgetStatuses(state.budgets, month), [state.budgets, month]);
   const spendAll = useMemo(() => spendByCategory(month), [month]);
   const refNow = isCurrent ? today : new Date(cursor.y, cursor.m, dim, 12);
@@ -42,7 +42,7 @@ export function FinBudget({ ctx }: { ctx: FinCtx }) {
   const projected = elapsed > 0 ? (usedAll / elapsed) * dim : 0, projPct = totalLimit > 0 ? (projected / totalLimit) * 100 : 0;
   const perDay = useMemo(() => { const a = Array.from({ length: dim }, () => 0); const ids = new Set(state.budgets.map((b) => b.categoryId)); for (const e of month) if (e.kind === "out" && ids.has(e.categoryId)) a[new Date(e.at).getDate() - 1] += e.amount; return a; }, [month, dim, state.budgets]);
   const unbudgeted = useMemo(() => [...spendAll.entries()].filter(([id]) => !state.budgets.some((b) => b.categoryId === id) && !catOf(state, id).income).sort((a, b) => b[1] - a[1]).slice(0, 5), [spendAll, state.budgets]);
-  const avg3 = useMemo(() => { const out = new Map<string, number>(); for (let i = 1; i <= 3; i++) { const d = new Date(today.getFullYear(), today.getMonth() - i, 1); for (const [id, v] of spendByCategory(entries.filter((e) => inMonth(e, d.getFullYear(), d.getMonth())))) out.set(id, (out.get(id) ?? 0) + v / 3); } return out; }, [entries]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const avg3 = useMemo(() => { const out = new Map<string, number>(); for (let i = 1; i <= 3; i++) { const d = new Date(today.getFullYear(), today.getMonth() - i, 1); for (const [id, v] of spendByCategory(fin.rolled.filter((e) => inMonth(e, d.getFullYear(), d.getMonth())))) out.set(id, (out.get(id) ?? 0) + v / 3); } return out; }, [entries]);   // eslint-disable-line react-hooks/exhaustive-deps
   const autoFill = () => {
     const picks = [...avg3.entries()].filter(([id, v]) => v >= 50_000 && !state.budgets.some((b) => b.categoryId === id) && !catOf(state, id).income && id !== "transfer").sort((a, b) => b[1] - a[1]).slice(0, 6);
     if (!picks.length) { ctx.notify("Belum ada pengeluaran 3 bulan terakhir untuk dijadikan anggaran"); return; }

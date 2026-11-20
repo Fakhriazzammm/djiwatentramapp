@@ -8,7 +8,10 @@ import { wealthHistory } from "../../lib/finance/story";
 import { Avatar, payAsset, AnimatedNumber, Bar, Mascot, MascotBuddy, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
 import type { Nav } from "../shell/dpx-pages";
 import { ScopeSwitch } from "./scope-switch";
+import { TidyBanner } from "./tidy-banner";
 import { isCrossScope } from "../../lib/finance/scope";
+import { rootId, guessCategory } from "../../lib/finance/categories";
+import { learnRemote, refineEntries } from "../../lib/finance/ai-category";
 import { AccountEditSheet, AccountSheet, BudgetSheet, CatIcon, CategoryEditSheet, CategorySheet, DebtSheet, EntrySheet, GoalDetailSheet, GoalSheet, PocketSheet, CatatSheet, SplitSheet, StreakSheet, MoneyInput, accName, catOf, type Notify } from "./fin-sheets";
 import { debtRemaining, accountBalance, budgetStatuses, buildInsights, dailySpend, daysIn, debtTotals, detectSubscriptions, goalProjection, goalSaved, inMonth, monthlySeries, safeToSpend, spendByCategory, streak, toCsv, totals, uid } from "../../lib/finance/calc";
 import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
@@ -99,8 +102,8 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
   const { fin, nav, profile } = ctx; const { state, entries } = fin;
   const inbound = useInbound();
   const now = new Date(); const y = now.getFullYear(), m = now.getMonth();
-  const month = useMemo(() => entries.filter((e) => inMonth(e, y, m)), [entries]);
-  const prev = useMemo(() => entries.filter((e) => inMonth(e, m === 0 ? y - 1 : y, (m + 11) % 12)), [entries]);
+  const month = useMemo(() => fin.rolled.filter((e) => inMonth(e, y, m)), [fin.rolled]);
+  const prev = useMemo(() => fin.rolled.filter((e) => inMonth(e, m === 0 ? y - 1 : y, (m + 11) % 12)), [fin.rolled]);
   const t = totals(month); const pt = totals(prev);
   const statuses = useMemo(() => budgetStatuses(state.budgets, month), [state.budgets, month]);
   const safe = safeToSpend(state.budgets, month, now);
@@ -187,7 +190,7 @@ export function FinRecords({ ctx, selected }: { ctx: FinCtx; selected?: ReactNod
   const t = totals(month.filter(inWallet));
   const isCurrent = cursor.y === today.getFullYear() && cursor.m === today.getMonth();
   const shift = (d: number) => setCursor((c) => { const n = new Date(c.y, c.m + d, 1); return { y: n.getFullYear(), m: n.getMonth() }; });
-  const list = month.filter((e) => inWallet(e) && (seg === "all" || e.kind === seg) && (cat === "all" || e.categoryId === cat) && (!q || `${e.note} ${catOf(state, e.categoryId).name} ${accName(state, e.accountId)} ${e.tags.join(" ")}`.toLowerCase().includes(q.toLowerCase())));
+  const list = month.filter((e) => inWallet(e) && (seg === "all" || e.kind === seg) && (cat === "all" || e.categoryId === cat || rootId(state.categories, e.categoryId) === cat) && (!q || `${e.note} ${catOf(state, e.categoryId).name} ${accName(state, e.accountId)} ${e.tags.join(" ")}`.toLowerCase().includes(q.toLowerCase())));
   const days = [...new Set(list.map((e) => dayLabel(e.at)))];
   // Which months hold records, newest first: imported mail lands in past months that the month view would otherwise hide.
   const monthsWith = useMemo(() => { const c = new Map<string, number>(); for (const e of entries) { const d = new Date(e.at); const k = `${d.getFullYear()}-${d.getMonth()}`; c.set(k, (c.get(k) ?? 0) + 1); } return [...c].map(([k, n]) => { const [y, mo] = k.split("-").map(Number); return { y, m: mo, n }; }).sort((a, b) => b.y * 12 + b.m - (a.y * 12 + a.m)); }, [entries]);
@@ -195,6 +198,7 @@ export function FinRecords({ ctx, selected }: { ctx: FinCtx; selected?: ReactNod
   return <div className="dpx-page"><Sky><div className="dpx-pad">
     <div className="dpx-hdr" style={{ paddingTop: 0 }}><h1 className="dpx-page-title" style={{ flex: 1 }}>Catatan</h1><Btn type="button" className="dpx-rb" onClick={() => nav.go("/ringkasan")} aria-label="Laporan"><Ic n="chart" /></Btn></div>
     <ScopeSwitch fin={fin} id="records" />
+    <TidyBanner fin={fin} notify={ctx.notify} />
     <div className="dpx-spread" style={{ margin: "2px 0 4px" }}><Btn type="button" className="dpx-rb" onClick={() => shift(-1)} aria-label="Bulan sebelumnya"><Ic n="back" size="sm" /></Btn><b style={{ fontSize: 17, textTransform: "capitalize" }}>{monthLabel(cursor.y, cursor.m)}</b><Btn type="button" className="dpx-rb" style={isCurrent ? { opacity: 0.4 } : undefined} disabled={isCurrent} onClick={() => shift(1)} aria-label="Bulan berikutnya"><Ic n="chev" size="sm" /></Btn></div>
     {showStrip ? <div className="dpx-chips dpx-mt8" role="group" aria-label="Bulan yang punya catatan">{monthsWith.slice(0, 24).map((x) => { const on = x.y === cursor.y && x.m === cursor.m; return <Btn key={`${x.y}-${x.m}`} type="button" className={`dpx-chip ${on ? "dpx-on" : ""}`} aria-pressed={on} onClick={() => setCursor({ y: x.y, m: x.m })}>{monthLabel(x.y, x.m)} · {x.n}</Btn>; })}</div> : null}
     {month.length === 0 && entries.length > 0 ? <div className="dpx-note dpx-info" style={{ marginTop: 8 }} role="status"><Ic n="info" /><div><b>Tidak ada catatan di {monthLabel(cursor.y, cursor.m)}.</b> Ada {entries.length} catatan di bulan lain.<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setCursor({ y: monthsWith[0].y, m: monthsWith[0].m })}>Lihat {monthLabel(monthsWith[0].y, monthsWith[0].m)}</Btn></div></div></div> : null}
@@ -218,6 +222,7 @@ export function ManualForm({ ctx, editId, initialKind, onDone }: { ctx: FinCtx; 
   const [kind, setKind] = useState<Kind>(existing?.kind ?? initialKind ?? "out");
   const [amount, setAmount] = useState(existing ? String(existing.amount) : "");
   const [categoryId, setCategoryId] = useState(existing?.categoryId ?? (initialKind === "in" ? "gaji" : "makan"));
+  const [touched, setTouched] = useState(Boolean(existing));   // true once the person picked a category themselves
   const [accountId, setAccountId] = useState(existing?.accountId ?? firstAcc);
   const [toId, setToId] = useState(existing?.toAccountId ?? "");
   const [date, setDate] = useState((existing ? new Date(existing.at) : new Date()).toISOString().slice(0, 10));
@@ -232,9 +237,12 @@ export function ManualForm({ ctx, editId, initialKind, onDone }: { ctx: FinCtx; 
   const valid = n > 0 && (kind !== "tf" || (toId && toId !== accountId));
   const save = () => {
     const at = new Date(`${date}T${existing ? new Date(existing.at).toTimeString().slice(0, 8) : new Date().toTimeString().slice(0, 8)}`).toISOString();
-    const entry: Entry = { id: existing?.id ?? uid(), kind, amount: n, categoryId: kind === "tf" ? "transfer" : categoryId, accountId, toAccountId: kind === "tf" ? toId : undefined, at, note: note.trim(), tags: existing?.tags ?? [], source: existing?.source ?? "manual", createdAt: existing?.createdAt ?? new Date().toISOString() };
+    const guess = !touched && kind === "out" && note.trim().length >= 3 ? guessCategory(note) : null;   // nothing chosen: a keyword guess, or "Lainnya", until the model sorts it
+    const entry: Entry = { id: existing?.id ?? uid(), kind, amount: n, categoryId: kind === "tf" ? "transfer" : kind === "out" && !touched && note.trim().length >= 3 ? (guess ?? "lainnya") : categoryId, accountId, toAccountId: kind === "tf" ? toId : undefined, at, note: note.trim(), tags: existing?.tags ?? [], source: existing?.source ?? "manual", createdAt: existing?.createdAt ?? new Date().toISOString() };
     fin.dispatch({ type: existing ? "entry/update" : "entry/add", entry });
     ctx.notify(existing ? "Perubahan disimpan" : "Catatan tersimpan", existing ? undefined : () => fin.dispatch({ type: "entry/delete", id: entry.id }));
+    if (entry.kind !== "tf" && touched && entry.note && (!existing || existing.categoryId !== entry.categoryId)) learnRemote(entry.note, entry.categoryId);   // the person chose: remember it for this shop
+    else if (!touched && entry.kind === "out" && entry.note.length >= 3) void refineEntries(fin, ctx.notify, [entry], { force: true });
     onDone();
   };
   return <div className="dpx-page"><Sky><div className="dpx-pad dpx-nobar" style={{ paddingBottom: 20 }}>
@@ -254,7 +262,7 @@ export function ManualForm({ ctx, editId, initialKind, onDone }: { ctx: FinCtx; 
     <Btn type="button" className={`dpx-btn ${valid ? "" : "dpx-off"}`} disabled={!valid} onClick={save}>{existing ? "Simpan perubahan" : "Simpan catatan"}</Btn>
   </div></Sky>
   <AnimatePresence>
-    {pick === "cat" ? <CategorySheet key="c" categories={state.categories} income={kind === "in"} value={categoryId} onPick={setCategoryId} onClose={() => setPick(null)} onAdd={() => { setPick(null); ctx.open({ k: "category" }); }} /> : null}
+    {pick === "cat" ? <CategorySheet key="c" categories={state.categories} income={kind === "in"} value={categoryId} onPick={(id) => { setCategoryId(id); setTouched(true); }} onClose={() => setPick(null)} onAdd={() => { setPick(null); ctx.open({ k: "category" }); }} /> : null}
     {pick === "acc" ? <AccountSheet key="a" state={state} balances={balances} value={accountId} onPick={setAccountId} onClose={() => setPick(null)} includePay={false} onAdd={() => { setPick(null); ctx.open({ k: "account" }); }} /> : null}
     {pick === "to" ? <AccountSheet key="t" state={fin.raw} balances={allBalances} value={toId} onPick={setToId} onClose={() => setPick(null)} includePay /> : null}
   </AnimatePresence></div>;

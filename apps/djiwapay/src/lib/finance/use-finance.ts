@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { allEntries } from "./calc";
+import { allEntries, rollUp } from "./calc";
 import { effectiveScope, entriesInScope, hasBusiness, scopedState, type Scope } from "./scope";
 import { load, reduce, save, storageKey, type Action } from "./store";
 import { diffState, emptySnapshot, fetchServerState, loadSnapshot, mergeStates, pushDiff, rebaseLoanChanges, saveSnapshot, snapshotOf, type Snapshot } from "./sync";
@@ -80,7 +80,8 @@ export function useFinance(profileId: string, transactions: WalletTransaction[])
   // Pages compute from `state` and `entries`, which are the slice for the chosen scope; `raw` and `allRecords` are everything.
   const view = useMemo(() => scopedState(state, scope), [state, scope]);
   const entries: Entry[] = useMemo(() => entriesInScope(allRecords, state.accounts, scope), [allRecords, state.accounts, scope]);
+  const rolled: Entry[] = useMemo(() => rollUp(entries, state.categories), [entries, state.categories]);
   const business = useMemo(() => hasBusiness(state.accounts), [state.accounts]);
-  return { state: view, raw: state, dispatch, entries, allRecords, scope, setScope, hasBusiness: business, sync, loanConflict, retrySync: pull };
+  return { state: view, raw: state, dispatch, entries, rolled, allRecords, scope, setScope, hasBusiness: business, sync, loanConflict, retrySync: pull };
 }
 export type Finance = ReturnType<typeof useFinance>;

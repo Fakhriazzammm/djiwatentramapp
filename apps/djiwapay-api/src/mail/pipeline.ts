@@ -13,7 +13,7 @@ export type RawMail = {
   auth: { dmarcPass: boolean; dkimDomains: string[]; /** How the verdict came about (signature results), for explaining a refusal. */ debug?: string };
 };
 export type Llm = (subject: string, text: string, from: string) => Promise<Extracted | null>;
-export type PipelineDeps = { db: Tx; llm?: Llm; domain: string; now?: () => Date; trustMin?: number; autoCeiling?: number };
+export type PipelineDeps = { db: Tx; llm?: Llm; categorize?: (userId: string, items: { key: string; text: string; amount?: number; kind: "in" | "out" }[]) => Promise<Map<string, { categoryId: string; confidence: number }>>; domain: string; now?: () => Date; trustMin?: number; autoCeiling?: number };
 export type Outcome = { status: "auto" | "review" | "ignored" | "duplicate" | "failed" | "forwarding-code" | "staged"; reason: string; userId?: string };
 
 /** What the phone shows when a payment e-mail was read: the same words as the banner inside the app. */
@@ -301,7 +301,12 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   }
 
   const learned = await learnedCategory(d.db, userId, x.merchant);
-  const categoryId = learned ?? guessCategory(x.merchant, mail.subject, x.direction);
+  let categoryId = learned ?? guessCategory(x.merchant, mail.subject, x.direction);
+  // Nothing the person taught us: let the model pick the specific sub category (only when it is confident).
+  if (!learned && d.categorize && x.amount > 0 && x.direction !== "unknown") {
+    const ai = (await d.categorize(userId, [{ key: "m", text: [x.merchant, mail.subject].filter(Boolean).join(" · "), amount: x.amount, kind: x.direction === "in" ? "in" : "out" }]).catch(() => null))?.get("m");
+    if (ai) categoryId = ai.categoryId;
+  }
   const candidate: Candidate = { kind, amount: x.amount, categoryId, accountId, at, note: x.merchant || mail.subject.slice(0, 60) || issuer.name };
 
   // New mail is recorded straight away once the gates above agree and the read is clear: money in or out, an amount, and nothing

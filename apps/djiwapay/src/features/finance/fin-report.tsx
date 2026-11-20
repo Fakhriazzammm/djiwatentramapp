@@ -32,9 +32,9 @@ export function FinReport({ ctx, onBack }: { ctx: FinCtx; onBack: () => void }) 
   const isCurrent = cursor.y === today.getFullYear() && cursor.m === today.getMonth();
   const shift = (d: number) => setCursor((c) => { const n = new Date(c.y, c.m + d, 1); return { y: n.getFullYear(), m: n.getMonth() }; });
   const dim = daysIn(cursor.y, cursor.m), elapsed = isCurrent ? today.getDate() : dim, ref = isCurrent ? today : new Date(cursor.y, cursor.m, dim, 12);
-  const month = useMemo(() => entries.filter((e) => inMonth(e, cursor.y, cursor.m)), [entries, cursor]);
+  const month = useMemo(() => fin.rolled.filter((e) => inMonth(e, cursor.y, cursor.m)), [fin.rolled, cursor]);
   const pd = new Date(cursor.y, cursor.m - 1, 1);
-  const prevAll = useMemo(() => entries.filter((e) => inMonth(e, pd.getFullYear(), pd.getMonth())), [entries, cursor]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const prevAll = useMemo(() => fin.rolled.filter((e) => inMonth(e, pd.getFullYear(), pd.getMonth())), [fin.rolled, cursor]);   // eslint-disable-line react-hooks/exhaustive-deps
   const prev = useMemo(() => prevAll.filter((e) => new Date(e.at).getDate() <= elapsed), [prevAll, elapsed]);
   const t = totals(month), pt = totals(prev), ptAll = totals(prevAll);
   const st = useMemo(() => spendStats(entries, ref), [entries, cursor]);   // eslint-disable-line react-hooks/exhaustive-deps

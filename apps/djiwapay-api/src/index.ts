@@ -12,6 +12,7 @@ import { poolTx } from "./db.js";
 import { registerAssetRoutes } from "./assets.js";
 import { registerStockRoutes } from "./stocks/service.js";
 import { registerRateRoutes } from "./rates/service.js";
+import { makeCategorizer, registerCategorizeRoutes } from "./categorize.js";
 import { registerNewsRoutes } from "./news.js";
 import { registerPushRoutes } from "./push.js";
 export { poolTx };
@@ -59,6 +60,7 @@ export function createApp(d: Deps) {
   const later = (fn: () => Promise<unknown>) => void fn().catch((e) => console.error("background sync", e instanceof Error ? e.message : e));
   registerStockRoutes(app, { db: d.db }, uid, json, { driveConnected: (userId) => connected(userId, "drive") });
   registerRateRoutes(app, { db: d.db }, json);
+  registerCategorizeRoutes(app, { db: d.db, key: process.env.HELIPOD_AI_KEY, limit: process.env.CATEGORIZE_DAILY_LIMIT ? Number(process.env.CATEGORIZE_DAILY_LIMIT) : undefined }, uid, json);
 
   app.get("/api/finance/state", async (c) => {
     const state = await d.db.tx(async (q) => {
@@ -325,7 +327,7 @@ if (import.meta.main) {
   await seedAdmins(poolTx(pool)).catch((e) => console.error("admin seed failed", e instanceof Error ? e.message : e));
   const app = createApp({ db: poolTx(pool), resolve: authServerResolver(), resolveEmail: authServerEmailResolver(), authDb: authPool ? { query: (t, p) => authPool.query(t, p as any[]) } : null, dir: process.env.RECEIPTS_DIR || "/var/lib/djiwapay-api/receipts", aiKey: process.env.HELIPOD_AI_KEY, google: googleConfig(), mailDomain: process.env.MAIL_DOMAIN || undefined, publicUrl: process.env.PUBLIC_URL || undefined,
     hook: await (async () => { const { toRawMail } = await import("./mail/smtp.js"); const key = process.env.HELIPOD_AI_KEY; const db = poolTx(pool);
-      return { db, toMail: toRawMail, pipeline: { db, domain: process.env.MAIL_DOMAIN || "catat.djiwapay.web.id", llm: key ? makeLlm({ key, model: process.env.MAIL_LLM_MODEL }) : undefined } }; })() });
+      return { db, toMail: toRawMail, pipeline: { db, domain: process.env.MAIL_DOMAIN || "catat.djiwapay.web.id", llm: key ? makeLlm({ key, model: process.env.MAIL_LLM_MODEL }) : undefined, categorize: key ? makeCategorizer({ db, key }) : undefined } }; })() });
   const port = Number(process.env.PORT || 3011);
   Bun.serve({ port, hostname: "127.0.0.1", fetch: app.fetch, maxRequestBodySize: 8 * 1024 * 1024 });
   console.log(`djiwapay-api listening on 127.0.0.1:${port}`);

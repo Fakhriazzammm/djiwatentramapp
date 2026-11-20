@@ -2,6 +2,7 @@ import "./polyfill.js";
 import { Pool } from "pg";
 import { poolTx } from "./db.js";
 import { makeLlm } from "./mail/llm.js";
+import { makeCategorizer } from "./categorize.js";
 import { auditPending, sweep } from "./mail/pipeline.js";
 import { startSmtp, toRawMail } from "./mail/smtp.js";
 import { googleConfig } from "./google.js";
@@ -18,7 +19,7 @@ const domain = process.env.MAIL_DOMAIN || "catat.djiwapay.web.id";
 const pool = new Pool({ connectionString: url, max: 4, ssl: process.env.PGSSL === "off" ? undefined : { rejectUnauthorized: false } });
 const db = poolTx(pool);
 const key = process.env.HELIPOD_AI_KEY;
-const pipeline = { db, domain, llm: key ? makeLlm({ key, model: process.env.MAIL_LLM_MODEL }) : undefined, trustMin: process.env.MAIL_TRUST_MIN ? Number(process.env.MAIL_TRUST_MIN) : undefined };
+const pipeline = { db, domain, llm: key ? makeLlm({ key, model: process.env.MAIL_LLM_MODEL }) : undefined, categorize: key ? makeCategorizer({ db, key }) : undefined, trustMin: process.env.MAIL_TRUST_MIN ? Number(process.env.MAIL_TRUST_MIN) : undefined };
 startSmtp(
   pipeline,
   { port: Number(process.env.MAIL_PORT || 25), hostname: domain, tlsKey: process.env.MAIL_TLS_KEY, tlsCert: process.env.MAIL_TLS_CERT },

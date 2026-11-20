@@ -32,7 +32,7 @@ export function reduce(state: FinanceState, action: Action): FinanceState {
     case "account/upsert": return { ...state, accounts: upsert(state.accounts, action.account) };
     case "account/archive": return { ...state, accounts: state.accounts.map((a) => (a.id === action.id ? { ...a, archived: true } : a)) };
     case "category/upsert": return { ...state, categories: upsert(state.categories, action.category) };
-    case "category/delete": return { ...state, categories: state.categories.filter((c) => c.id !== action.id || !c.custom), budgets: state.budgets.filter((b) => b.categoryId !== action.id), entries: state.entries.map((e) => (e.categoryId === action.id ? { ...e, categoryId: e.kind === "in" ? "bonus" : "lainnya" } : e)) };
+    case "category/delete": return { ...state, categories: state.categories.filter((c) => c.id !== action.id || !c.custom).map((c) => (c.parentId === action.id ? { ...c, parentId: undefined } : c)), budgets: state.budgets.filter((b) => b.categoryId !== action.id), entries: state.entries.map((e) => (e.categoryId === action.id ? { ...e, categoryId: e.kind === "in" ? "bonus" : "lainnya" } : e)) };
     case "budget/set": return { ...state, budgets: state.budgets.some((b) => b.categoryId === action.budget.categoryId) ? state.budgets.map((b) => (b.categoryId === action.budget.categoryId ? action.budget : b)) : [...state.budgets, action.budget] };
     case "budget/setMany": { const ids = new Set(action.budgets.map((b) => b.categoryId)); return { ...state, budgets: [...state.budgets.filter((b) => !ids.has(b.categoryId)), ...action.budgets] }; }
     case "budget/delete": return { ...state, budgets: state.budgets.filter((b) => b.categoryId !== action.categoryId) };

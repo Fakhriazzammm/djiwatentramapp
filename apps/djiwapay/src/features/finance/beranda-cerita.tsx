@@ -67,8 +67,8 @@ function NewsPage({ onBack }: { onBack: () => void }) {
 export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemplate }: { ctx: FinCtx; entries: Entry[]; cash: number; gold: GoldData | null; now: Date; templates: Entry[]; onAddTemplate: (e: Entry) => void }) {
   const { nav, visible } = ctx, { state } = ctx.fin, inbound = useInbound();
   const y = now.getFullYear(), m = now.getMonth(), empty = entries.length === 0;
-  const month = useMemo(() => entries.filter((e) => inMonth(e, y, m)), [entries]);
-  const prev = useMemo(() => entries.filter((e) => inMonth(e, m === 0 ? y - 1 : y, (m + 11) % 12)), [entries]);
+  const month = useMemo(() => ctx.fin.rolled.filter((e) => inMonth(e, y, m)), [ctx.fin.rolled]);
+  const prev = useMemo(() => ctx.fin.rolled.filter((e) => inMonth(e, m === 0 ? y - 1 : y, (m + 11) % 12)), [ctx.fin.rolled]);
   const t = totals(month), statuses = useMemo(() => budgetStatuses(state.budgets, month), [state.budgets, month]);
   const safe = safeToSpend(state.budgets, month, now);
   const history = useMemo<WealthPoint[]>(() => wealthHistory(state, entries, cash, gold?.points ?? null, 12, now), [state, entries, cash, gold]);

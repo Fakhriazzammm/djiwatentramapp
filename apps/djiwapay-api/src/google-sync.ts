@@ -17,16 +17,18 @@ export type SyncDeps = { db: Tx; cfg: GoogleCfg; f?: Fetch; dir: string; now?: (
 const DEFAULT_CATS: [string, string, boolean][] = [["makan", "Makan & minum", false], ["transport", "Transportasi", false], ["belanja", "Belanja", false], ["tagihan", "Tagihan & utilitas", false], ["hiburan", "Hiburan", false], ["kesehatan", "Kesehatan", false], ["pendidikan", "Pendidikan", false], ["rumah", "Rumah", false], ["lainnya", "Lainnya", false], ["gaji", "Gaji", true], ["bonus", "Bonus & lainnya", true]];
 
 export async function loadNames(db: Q, userId: string) {
-  const cats = new Map<string, { name: string; income: boolean }>(DEFAULT_CATS.map(([id, name, income]) => [id, { name, income }]));
-  for (const r of (await db.query("select id,name,income from finance.categories where user_id=$1 order by id", [userId])).rows) cats.set(r.id, { name: r.name, income: Boolean(r.income) });
+  const cats = new Map<string, { name: string; income: boolean; parent?: string }>(DEFAULT_CATS.map(([id, name, income]) => [id, { name, income }]));
+  for (const r of (await db.query("select id,name,income,parent_id from finance.categories where user_id=$1 order by id", [userId])).rows) cats.set(r.id, { name: r.name, income: Boolean(r.income), ...(r.parent_id ? { parent: r.parent_id } : {}) });
   const accounts = new Map<string, string>([["tunai", "Tunai"]]);
   for (const r of (await db.query("select id,name,scope from finance.accounts where user_id=$1 order by id", [userId])).rows) accounts.set(r.id, r.scope === "business" ? `${r.name} · Bisnis` : r.name);   // the wallet list and the Dompet column then show which pool each belongs to
   const seen = new Map<string, number>();
   const accName: Record<string, string> = {};
   for (const [id, name] of accounts) { const k = name.trim().toLowerCase(); const n = (seen.get(k) ?? 0) + 1; seen.set(k, n); accName[id] = n === 1 ? name : `${name} (${id.slice(0, 6)})`; }
   const catName: Record<string, string> = { transfer: "Transfer" };
-  for (const [id, c] of cats) catName[id] = c.name;
-  const expense = [...cats].filter(([id, c]) => !c.income && id !== "transfer").map(([, c]) => c.name), income = [...cats].filter(([, c]) => c.income).map(([, c]) => c.name);
+  // The Sheet lists top-level categories only; a sub category shows as its parent so editing a row never loses or invents a sub.
+  for (const [id, c] of cats) catName[id] = (c.parent && cats.get(c.parent)?.name) || c.name;
+  const top = [...cats].filter(([, c]) => !c.parent);
+  const expense = top.filter(([id, c]) => !c.income && id !== "transfer").map(([, c]) => c.name), income = top.filter(([, c]) => c.income).map(([, c]) => c.name);
   return { names: { catName, accName } as Names, expense, income, accountNames: Object.values(accName) };
 }
 

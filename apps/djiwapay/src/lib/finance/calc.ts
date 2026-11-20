@@ -40,6 +40,12 @@ export function totals(entries: Entry[]) {
   for (const e of entries) { if (e.kind === "out") out += e.amount; else if (e.kind === "in") income += e.amount; }
   return { out, in: income, net: income - out };
 }
+/** Every record's category replaced by its top-level parent, so budgets and charts count sub categories under the parent. Lists keep the original records. */
+export function rollUp(entries: Entry[], categories: { id: string; parentId?: string }[]): Entry[] {
+  const parent = new Map(categories.filter((c) => c.parentId).map((c) => [c.id, c.parentId!]));
+  if (!parent.size) return entries;
+  return entries.map((e) => (parent.has(e.categoryId) ? { ...e, categoryId: parent.get(e.categoryId)! } : e));
+}
 export function spendByCategory(entries: Entry[]): Map<string, number> {
   const m = new Map<string, number>();
   for (const e of entries) if (e.kind === "out") m.set(e.categoryId, (m.get(e.categoryId) ?? 0) + e.amount);

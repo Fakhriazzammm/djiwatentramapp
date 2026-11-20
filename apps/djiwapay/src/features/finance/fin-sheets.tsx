@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Btn, I3, Ic, Seg, Sheet, bigAmountSize, iconOr, type IconName } from "../shell/dpx-ui";
+import { AnimatePresence, motion } from "framer-motion";
+import { Btn, I3, Ic, Seg, Sheet, bigAmountSize, iconOr, spring, type IconName } from "../shell/dpx-ui";
 import { accountBalance, daysUntil, debtPaid, debtRemaining, debtTotals, goalPlan, goalProjection, goalSaved, uid } from "../../lib/finance/calc";
 import { CATEGORY_ICONS, PAY_ACCOUNT_ID, TONES } from "../../lib/finance/categories";
 import { parseEntries, type ParsedItem } from "../../lib/finance/parse";
@@ -8,6 +9,7 @@ import { rupiah, formatDateTime } from "../../lib/djiwa-pay-format";
 import type { Account, AccountScope, AccountType, Budget, Category, Debt, Entry, FinanceState, Goal, Pocket } from "../../lib/finance/types";
 import type { Finance } from "../../lib/finance/use-finance";
 import { accountScope, isCrossScope } from "../../lib/finance/scope";
+import { AI_TAG, refineEntries } from "../../lib/finance/ai-category";
 import { VoiceSheet } from "./voice-sheet";
 import { ReceiptAttachment, ReceiptFlow, ReceiptReview } from "./fin-receipt";
 import type { ScannedReceipt } from "../../lib/finance/receipt";
@@ -27,13 +29,29 @@ export function MoneyInput({ value, onChange, placeholder = "0", label, big = fa
 }
 
 /* ---------- pickers ---------- */
+const shortName = (name: string) => { const n = name.replace(/ & .*/, ""); return n === "Biaya usaha" ? "Usaha" : n.length > 10 ? n.split(" ")[0] : n; };
+
+/** Two levels: pick a category; if it has sub categories they open underneath (or keep the whole category). */
 export function CategorySheet({ categories, income, value, onPick, onClose, onAdd }: { categories: Category[]; income: boolean; value?: string; onPick: (id: string) => void; onClose: () => void; onAdd?: () => void }) {
-  const list = categories.filter((c) => c.income === income);
+  const ids = new Set(categories.map((c) => c.id));
+  const list = categories.filter((c) => c.income === income && !(c.parentId && ids.has(c.parentId)));
+  const subsOf = (id: string) => categories.filter((c) => c.parentId === id);
+  const current = categories.find((c) => c.id === value), [open, setOpen] = useState<string | null>(current?.parentId && ids.has(current.parentId) ? current.parentId : null);
+  const parent = list.find((c) => c.id === open), subs = parent ? subsOf(parent.id) : [];
+  const done = (id: string) => { onPick(id); onClose(); };
   return <Sheet title="Kategori" onClose={onClose}>
     <div className="dpx-cats">
-      {list.map((c) => <Btn key={c.id} type="button" className={`dpx-q ${value === c.id ? "dpx-on" : ""}`} onClick={() => { onPick(c.id); onClose(); }}><span className={`dpx-qi dpx-c-${c.tone}`} style={{ display: "grid", placeItems: "center" }}><Ic n={iconOr(c.icon)} size="lg" /></span>{c.name.split(" ")[0]}</Btn>)}
+      {list.map((c) => { const has = subsOf(c.id).length > 0, on = value === c.id || current?.parentId === c.id;
+        return <Btn key={c.id} type="button" className={`dpx-q ${on ? "dpx-on" : ""}`} aria-expanded={has ? open === c.id : undefined} onClick={() => (has ? setOpen(open === c.id ? null : c.id) : done(c.id))}><span className={`dpx-qi dpx-c-${c.tone}`} style={{ display: "grid", placeItems: "center" }}><Ic n={iconOr(c.icon)} size="lg" /></span>{shortName(c.name)}{has ? <i className="dpx-cat-more" aria-hidden="true">{open === c.id ? "▴" : "▾"}</i> : null}</Btn>; })}
       {onAdd ? <Btn type="button" className="dpx-q" onClick={onAdd}><span className="dpx-qi" style={{ background: "var(--group)", color: "var(--navy)", display: "grid", placeItems: "center" }}><Ic n="plus" size="lg" /></span>Baru</Btn> : null}
     </div>
+    <AnimatePresence initial={false}>{parent ? <motion.div key={parent.id} className="dpx-subcats" role="group" aria-label={`Sub kategori ${parent.name}`} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={spring} style={{ overflow: "hidden" }}>
+      <div className="dpx-glabel" style={{ marginTop: 12 }}>{parent.name}</div>
+      <div className="dpx-chips" style={{ margin: "0 -18px", flexWrap: "wrap" }}>
+        <Btn type="button" className={`dpx-chip ${value === parent.id ? "dpx-on" : ""}`} onClick={() => done(parent.id)}>Semua {shortName(parent.name).toLowerCase()}</Btn>
+        {subs.map((c) => <Btn key={c.id} type="button" className={`dpx-chip ${value === c.id ? "dpx-on" : ""}`} onClick={() => done(c.id)}>{c.name}</Btn>)}
+      </div>
+    </motion.div> : null}</AnimatePresence>
   </Sheet>;
 }
 
@@ -67,7 +85,7 @@ export function EntrySheet({ entry, fin, notify, onClose, onEdit, onPickCategory
   return <Sheet title="Detail catatan" onClose={onClose}>
     <div className="dpx-center" style={{ margin: "-4px 0 10px" }}><CatIcon cat={c} size={64} /><div className="dpx-money" style={{ marginTop: 8, color: entry.kind === "in" ? "var(--ok)" : undefined }}>{sign}{rupiah(entry.amount)}</div><div className="dpx-sub">{entry.note || c.name}</div></div>
     <div className="dpx-group">
-      <div className="dpx-kv"><span>Kategori</span><b>{c.name}</b></div><div className="dpx-kv"><span>Dompet</span><b>{accName(state, entry.accountId)}</b></div>
+      <div className="dpx-kv"><span>Kategori</span><b>{c.name}{entry.tags.includes(AI_TAG) ? <span className="dpx-ai-tag" title="Dipilih otomatis oleh AI. Ubah lewat Ubah catatan.">AI</span> : null}</b></div><div className="dpx-kv"><span>Dompet</span><b>{accName(state, entry.accountId)}</b></div>
       <div className="dpx-kv"><span>Waktu</span><b>{formatDateTime(entry.at)}</b></div><div className="dpx-kv"><span>Sumber</span><b>{pay ? "Djiwa Pay (otomatis)" : entry.source === "voice" ? "Suara / teks" : entry.source === "receipt" ? "Scan struk" : entry.source === "email" ? "Email pembayaran" : entry.source === "sheet" ? "Spreadsheet" : "Manual"}</b></div>
       {entry.tags.some((t) => t !== "loan-receipt" && !t.startsWith("loan:")) ? <div className="dpx-kv"><span>Tag</span><b>{entry.tags.filter((t) => t !== "loan-receipt" && !t.startsWith("loan:")).map((t) => `#${t}`).join(" ")}</b></div> : null}
     </div>
@@ -116,6 +134,7 @@ export function CatatSheet({ fin, notify, onClose, onManual, onPay, onAsset, bal
     dispatch({ type: "entry/addMany", entries });
     onClose();
     notify(`${entries.length} catatan tersimpan`, () => entries.forEach((e) => dispatch({ type: "entry/delete", id: e.id })));
+    void refineEntries(fin, notify, entries.filter((e) => e.kind === "out"), { force: true });   // sharpen the keyword guess into a specific sub category
   };
   if (voiceOpen) return <VoiceSheet accounts={state.accounts} categories={state.categories} onClose={() => setVoiceOpen(false)} onUse={(t) => { setText(t); setVoiceOpen(false); submit(t); }} />;
   if (scanFile) return <ReceiptFlow key={scanFile.name + scanFile.size + scanFile.lastModified} file={scanFile} fin={fin} notify={notify} balances={balances} onClose={onClose} onRetry={() => setScanFile(null)} />;
@@ -339,15 +358,20 @@ export function CategoryEditSheet({ fin, category, onClose, notify }: { fin: Fin
   const [income, setIncome] = useState(category?.income ?? false);
   const [icon, setIcon] = useState(category?.icon ?? "tag");
   const [tone, setTone] = useState(category?.tone ?? "blue");
+  const [parentId, setParentId] = useState<string>(category?.parentId ?? "");
+  const hasSubs = category ? fin.state.categories.some((c) => c.parentId === category.id) : false;
+  const parents = fin.state.categories.filter((c) => !c.parentId && c.income === income && c.id !== category?.id && c.id !== "transfer");
   const ok = name.trim().length > 0;
   return <Sheet title={category ? "Ubah kategori" : "Kategori baru"} onClose={onClose}>
     <label className="dpx-field" style={{ marginTop: 0 }}><span>Nama</span><div className="dpx-input"><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contoh: Hobi" maxLength={24} /></div></label>
     {!category ? <div style={{ marginTop: 12 }}><Seg id="cat-kind" label="Jenis" value={income ? "in" : "out"} onChange={(v) => setIncome(v === "in")} options={[["out", "Pengeluaran"], ["in", "Pemasukan"]] as const} /></div> : null}
+    {!hasSubs ? <><div className="dpx-glabel">Sub dari</div>
+      <div className="dpx-chips" style={{ margin: "0 -18px" }}><Btn type="button" className={`dpx-chip ${parentId === "" ? "dpx-on" : ""}`} onClick={() => setParentId("")}>Kategori utama</Btn>{parents.map((c) => <Btn key={c.id} type="button" className={`dpx-chip ${parentId === c.id ? "dpx-on" : ""}`} onClick={() => { setParentId(c.id); setIcon(c.icon); setTone(c.tone); }}>{c.name}</Btn>)}</div></> : <p className="dpx-sub" style={{ margin: "8px 4px 0" }}>Kategori ini punya sub kategori, jadi tidak bisa menjadi sub dari yang lain.</p>}
     <div className="dpx-glabel">Ikon</div>
     <div className="dpx-chips" style={{ margin: "0 -18px" }}>{CATEGORY_ICONS.map((i) => <Btn key={i} type="button" className={`dpx-chip ${icon === i ? "dpx-on" : ""}`} onClick={() => setIcon(i)} aria-label={i}><Ic n={i as IconName} size="sm" /></Btn>)}</div>
     <div className="dpx-glabel">Warna</div>
     <div className="dpx-chips" style={{ margin: "0 -18px" }}>{TONES.map((t) => <Btn key={t} type="button" className={`dpx-cat dpx-c-${t}`} style={{ width: 38, height: 38, flex: "none", outline: tone === t ? "3px solid var(--navy)" : "none", outlineOffset: 2 }} onClick={() => setTone(t)} aria-label={t} />)}</div>
-    <Btn type="button" className={`dpx-btn ${ok ? "" : "dpx-off"}`} disabled={!ok} onClick={() => { fin.dispatch({ type: "category/upsert", category: { id: category?.id ?? `c-${uid().slice(0, 8)}`, name: name.trim(), icon, tone, income, custom: category ? category.custom : true } }); onClose(); notify("Kategori disimpan"); }}>Simpan kategori</Btn>
+    <Btn type="button" className={`dpx-btn ${ok ? "" : "dpx-off"}`} disabled={!ok} onClick={() => { fin.dispatch({ type: "category/upsert", category: { id: category?.id ?? `c-${uid().slice(0, 8)}`, name: name.trim(), icon, tone, income, custom: category ? category.custom : true, ...(parentId && !hasSubs ? { parentId } : {}) } }); onClose(); notify("Kategori disimpan"); }}>Simpan kategori</Btn>
     {category?.custom ? <Btn type="button" className="dpx-btn dpx-soft" onClick={() => { fin.dispatch({ type: "category/delete", id: category.id }); onClose(); notify("Kategori dihapus · catatan dipindah ke Lainnya"); }}>Hapus kategori</Btn> : null}
   </Sheet>;
 }

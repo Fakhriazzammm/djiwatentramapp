@@ -25,7 +25,7 @@ export type AccountType = "cash" | "bank" | "ewallet" | "card" | "other";
 export type AccountScope = "personal" | "business";
 export type Account = { id: string; name: string; type: AccountType; opening: number; archived?: boolean; scope?: AccountScope };
 
-export type Category = { id: string; name: string; icon: string; tone: string; income: boolean; custom?: boolean };
+export type Category = { id: string; name: string; icon: string; tone: string; income: boolean; custom?: boolean; /** Set on a sub category: the id of its parent. Budgets and charts roll subs up to the parent. */ parentId?: string };
 export type Budget = { categoryId: string; limit: number; rollover: boolean };
 export type Goal = { id: string; name: string; target: number; deposits: { at: string; amount: number }[]; /** Target date, YYYY-MM-DD. */ due?: string; createdAt: string };
 export type Debt = { id: string; person: string; direction: "owed_to_me" | "i_owe"; amount: number; note: string; due?: string; settled: boolean; /** Repayments made so far (the debt itself keeps its original amount). */ payments?: { at: string; amount: number }[]; createdAt: string };
