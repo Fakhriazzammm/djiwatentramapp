@@ -51,6 +51,12 @@ export function App() {
   const [sheet, setSheet] = useState(false);
   const [sub, setSub] = useState<SubPage>(readSub);
   const [sdmOpen, setSdmOpen] = useState(true);
+  const [navClosed, setNavClosed] = useState(() => { try { return localStorage.getItem("mgr_nav_closed") === "1"; } catch { return false; } });
+  const toggleNav = () => {
+    // Layar kecil memakai menu bawah; di desktop tombol ini membuka/menutup sidebar.
+    if (window.matchMedia("(max-width: 820px)").matches) { setSheet((v) => !v); return; }
+    setNavClosed((v) => { const next = !v; try { localStorage.setItem("mgr_nav_closed", next ? "1" : "0"); } catch { /* ignore */ } return next; });
+  };
   const [bug, setBug] = useState(0);
 
   const loadAccess = useCallback(async () => {
@@ -89,7 +95,7 @@ export function App() {
 
   return (
     <>
-      <div className="shell">
+      <div className={`shell${navClosed ? " nav-closed" : ""}`}>
         <nav className="rail sbar" aria-label="Menu utama">
           <div className="sbrand"><div className="logo">D</div><span>Djiwa Tentram</span></div>
           {pages.map((p) => p[0] === "sdm" ? (
@@ -112,7 +118,7 @@ export function App() {
         </nav>
         <div className="main">
           <header>
-            <span className="circ" title="Menu"><svg className="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" /><path d="M9 3v18" /></svg></span>
+            <button type="button" className="circ" title={navClosed ? "Buka menu" : "Tutup menu"} aria-label={navClosed ? "Buka menu" : "Tutup menu"} aria-expanded={!navClosed} onClick={toggleNav} style={{ border: 0, cursor: "pointer" }}><svg className="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" /><path d="M9 3v18" /></svg></button>
             <div className="hl"><div className="crumb">{ROLE_NAME[role]} / {info[2]}</div><h1>{info[2]}</h1></div>
             {showLive && <span className="live">LIVE · DIPERBARUI BARU SAJA</span>}
             <button className="btn r s bugpill" title="Lapor bug, permintaan fitur, atau kendala aplikasi" onClick={openBug}><Ic n="alert" /><span>Lapor kendala</span></button>
