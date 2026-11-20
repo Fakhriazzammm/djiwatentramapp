@@ -46,6 +46,12 @@ export async function adminProtectedRpc<T = any>(rpc: string, args: Record<strin
 	return body.data as T;
 }
 
+/** Aksi tulis/khusus Edge Function (mis. shift_opname_admin_set); mengembalikan data hasilnya. */
+export async function adminProtectedAction<T = any>(action: string, payload: Record<string, unknown> = {}): Promise<T> {
+	const body = await postAdminProtected({ action, ...payload });
+	return body.data as T;
+}
+
 async function postAdminProtected(payload: Record<string, unknown>): Promise<any> {
 	if (typeof window === "undefined") return { success: true, data: [] };
 	const token = window.localStorage.getItem("yumi_session_token")?.trim();

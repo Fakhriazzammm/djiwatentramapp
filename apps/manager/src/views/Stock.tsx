@@ -100,7 +100,7 @@ export function StockView({ role }: { role: Role }) {
           <div>{tog("recount", "Hitung ulang oleh orang lain bila selisih besar")}
             <div className="row2"><div><label style={{ marginTop: 0 }}>Hitung ulang bila selisih lebih dari (%)</label><NumInput full value={pol.recountAbove} disabled={dis || !pol.recount} onCommit={(v) => setPolicy({ recountAbove: v })} /></div>
               <div><label style={{ marginTop: 0 }}>Foto wajib bila nilai selisih (Rp)</label><NumInput full value={pol.photoAbove} disabled={dis} onCommit={(v) => setPolicy({ photoAbove: v })} /></div></div>
-            {tog("clockoutBar", "Opname Bar wajib saat clock-out")}{tog("clockoutDapur", "Opname Dapur wajib saat clock-out")}</div>
+            <div className="meta" style={{ padding: "9px 0" }}>Opname harian Bar dan Dapur dikerjakan kasir saat tutup shift.</div></div>
           <div className="row2">{sel("schedBar", "Jadwal Bar")}{sel("schedDapur", "Jadwal Dapur")}{sel("schedGudang", "Jadwal Gudang")}</div>
         </div></div>
       )}

@@ -9,6 +9,7 @@ import { ManagerWorkspace } from "./-manager/ManagerWorkspace";
 import "./-manager/manager.css";
 import "./-manager/proto-scoped.css";
 import { requestAdminConfirm } from "@/lib/admin-dialogs";
+import { ShiftOpnameMaterials } from "./-manager/ShiftOpnameMaterials";
 
 export const Route = createLazyFileRoute("/admin/manager")({ component: AdminManager });
 
@@ -390,10 +391,11 @@ function OpnamePanel({ call }: { call: <T,>(path: string, method?: string, body?
       <div className="panel pad"><div className="row2" style={{ alignItems: "start" }}>
         <div>{tog("recount", "Hitung ulang oleh orang lain bila selisih besar")}
           <div className="row2"><div><label style={{ marginTop: 0 }}>Hitung ulang bila selisih lebih dari (%)</label>{num("recountAbove", 120)}</div><div><label style={{ marginTop: 0 }}>Foto wajib bila nilai selisih (Rp)</label>{num("photoAbove", 120)}</div></div>
-          {tog("clockoutBar", "Opname Bar wajib saat clock-out")}{tog("clockoutDapur", "Opname Dapur wajib saat clock-out")}</div>
+          <div className="meta" style={{ padding: "9px 0" }}>Opname harian bahan Bar dan Dapur dikerjakan kasir saat tutup shift, bukan saat absen keluar. Atur daftar bahannya di bawah.</div></div>
         <div><div className="row2">{sel("schedBar", "Jadwal Bar")}{sel("schedDapur", "Jadwal Dapur")}{sel("schedGudang", "Jadwal Gudang")}</div>
           <div style={{ marginTop: 8 }}>{tog("mgrNeedsOwner", "Aturan yang diubah Manager perlu persetujuan Owner")}{tog("lockHigh", "Kunci isi kemasan bahan penting (★) untuk Supervisor")}</div></div>
       </div></div>
+      <ShiftOpnameMaterials />
       <div className="panel"><div className="ph"><span className="lab">Riwayat perubahan</span><span className="meta">Aplikasi Manager ⇄ Admin</span></div>
         <div className="tw2"><table><thead><tr><th>Waktu</th><th>Oleh</th><th>Dari</th><th>Perubahan</th><th>Sebelum → sesudah</th></tr></thead>
           <tbody>{log.map((l) => <tr key={l.id}><td className="mono">{formatDate(l.at)}</td><td>{l.actor_name ?? "—"}</td><td><span className={`tg ${l.source_app === "Admin" ? "o" : ""}`}>{l.source_app}</span></td><td>{l.what}</td><td className="mono">{l.from_value} → {l.to_value}</td></tr>)}</tbody></table>

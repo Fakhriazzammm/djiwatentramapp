@@ -28,6 +28,8 @@ const RPC_ACTIONS = {
 	ecosystem_summary: { fn: "admin_ecosystem_summary", permission: "orders:view" },
 	web_traffic: { fn: "admin_web_traffic", permission: "analytics:view" },
 	actions_summary: { fn: "admin_actions_summary", permission: "orders:view" },
+	shift_opname_admin_list: { fn: "shift_opname_admin_list", permission: "inventory:manage" },
+	shift_checks_for_shift: { fn: "shift_checks_for_shift", permission: "finance:view" },
 } as const;
 
 type Json = Record<string, unknown>;
@@ -219,6 +221,15 @@ Deno.serve(async (req) => {
 				p_name: name,
 				p_unit: unit,
 				p_actor_id: actor.userId,
+				p_actor_name: actor.userName,
+			});
+			return response({ success: true, data });
+		}
+		if (body.action === "shift_opname_admin_set") {
+			const actor = await requireAdmin(token, "inventory:manage");
+			const data = await restRpc("shift_opname_admin_set", {
+				p_inventory_id: String(body.inventoryId ?? "").slice(0, 128),
+				p_area: body.area == null ? null : String(body.area),
 				p_actor_name: actor.userName,
 			});
 			return response({ success: true, data });
