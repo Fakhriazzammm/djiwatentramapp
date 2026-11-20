@@ -1,5 +1,6 @@
 import { CAMPAIGN_PROOF_PLATFORMS, campaignProofMatchesPlatform } from "../../../supabase/functions/_shared/kol-campaign.ts";
 import { registerKolRewardPortalRoutes } from "./kol-rewards.js";
+import { registerKolAnnouncementPortalRoutes } from "./kol-announcements.js";
 import type { Hono } from "hono";
 
 import { createHash } from "node:crypto";
@@ -715,6 +716,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     return json(c, { success: true, data: result.rows[0] });
   });
   registerKolRewardPortalRoutes(app, (c) => context(c, auth, pool), pool as any);
+  registerKolAnnouncementPortalRoutes(app, (c) => context(c, auth, pool), pool as any);
   app.get("/api/kol/portal/notifications", async (c) => {
     const current = await context(c, auth, pool);
     if (current.error) return current.error;

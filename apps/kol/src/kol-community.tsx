@@ -37,7 +37,7 @@ export function CommunityTab({ username }: { username: string }) {
 }
 
 /* ---------- Linimasa ---------- */
-function Feed({ username }: { username: string }) {
+export function Feed({ username }: { username: string }) {
   const [filter, setFilter] = useState("all");
   const [page, setPage] = useState<Page>(empty);
   const [loading, setLoading] = useState(true);
@@ -161,7 +161,7 @@ function Composer({ initial, onClose, onSaved }: { initial?: Item; onClose: () =
 }
 
 /* ---------- Creator ---------- */
-function Creators({ username }: { username: string }) {
+export function Creators({ username }: { username: string }) {
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<Creator[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);

@@ -1,22 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, FileText, Home, LogOut, Sparkles, UserCircle, Users, Wallet } from "lucide-react";
+import { CalendarDays, FileText, Home, LogOut, Sparkles, UserCircle, Wallet } from "lucide-react";
 import { VisitPicker } from "./kol-visit";
 import { KxSheet } from "./kol-sheet";
 import { AvatarImg } from "./kol-avatar";
 import { SowCard, VisitDetails, useVisitInfo } from "./kol-sow";
 import { CONSENT_NO_SHOW, errorText, kolApi, logoutKol, longDate, dotTime, type VisitRow } from "./kol-lib";
 
-export type PortalTabKey = "home" | "community" | "campaigns" | "earnings" | "calendar" | "profile";
+export type PortalTabKey = "home" | "community" | "campaigns" | "earnings" | "calendar" | "profile" | "notifications";
 export type PortalProfileData = {
   name: string; username: string; status?: string; avatar_url?: string | null; display_name?: string | null; slug?: string | null; bio?: string | null;
   public_availability?: string | null; platforms: Array<{ platform: string; username: string; followers: number }>; portfolio: Array<any>;
 };
 type SessionUser = { user: { id: string; name?: string | null; email?: string | null; image?: string | null } };
-const TAB_PATH: Record<PortalTabKey, string> = { home: "/", community: "/komunitas", campaigns: "/campaigns", earnings: "/penghasilan", calendar: "/visit", profile: "/profil" };
+const TAB_PATH: Record<PortalTabKey, string> = { home: "/", notifications: "/notifikasi", community: "/komunitas", campaigns: "/campaigns", earnings: "/penghasilan", calendar: "/visit", profile: "/profil" };
 export const portalPath = (tab: PortalTabKey, invite?: string | null) => (tab === "calendar" && invite ? `${TAB_PATH.calendar}?invite=${encodeURIComponent(invite)}` : TAB_PATH[tab]);
 export function tabFromPath(path: string): PortalTabKey {
   const route = path.replace(/\/+$/, "") || "/";
   if (route.startsWith("/campaigns/")) return "campaigns";
+  if (route === "/notifikasi" || route.startsWith("/notifikasi/")) return "notifications";
   return (Object.entries(TAB_PATH).find(([, p]) => p === route)?.[0] as PortalTabKey) || "home";
 }
 const statusLabel = (s: string) => (s === "requested" ? "Menunggu konfirmasi" : s === "confirmed" ? "Terkonfirmasi" : s === "completed" ? "Selesai" : s);
@@ -47,8 +48,8 @@ export function PortalHeader({ title, subtitle }: { title: string; subtitle?: st
 }
 
 export function PortalTabBar({ tab, onSelect, pending, invite }: { tab: PortalTabKey; onSelect: (t: PortalTabKey) => void; pending: number; invite?: string | null }) {
-  const items: Array<[PortalTabKey, string, typeof Home]> = [["home", "Beranda", Home], ["community", "Komunitas", Users], ["campaigns", "Kampanye", FileText], ["earnings", "Reward", Wallet], ["calendar", "Visit", CalendarDays], ["profile", "Profil", UserCircle]];
-  const active = tab;
+  const items: Array<[PortalTabKey, string, typeof Home]> = [["home", "Beranda", Home], ["campaigns", "Kampanye", FileText], ["earnings", "Reward", Wallet], ["calendar", "Visit", CalendarDays], ["profile", "Profil", UserCircle]];
+  const active = tab === "community" || tab === "notifications" ? "home" : tab;
   return (
     <nav className="kx-tabbar" aria-label="Navigasi Creator Portal">
       {items.map(([key, label, Icon]) => (
