@@ -1,3 +1,4 @@
+import { employeeContractPdfLinks } from "@djiwaapps/web-shared/lib/employee-contract-links";
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { FileText, Search, Download, Loader2, RefreshCw, Trash2 } from "lucide-react";
@@ -125,18 +126,6 @@ function ContractHistoryPage() {
 		return list;
 	}, [applications, search, statusFilter]);
 
-	const downloadPdf = async (url: string, name: string) => {
-		try {
-			const resp = await fetch(url);
-			const blob = await resp.blob();
-			const a = document.createElement("a");
-			a.href = URL.createObjectURL(blob);
-			a.download = `kontrak-${name.replace(/\s+/g, "-").toLowerCase()}.pdf`;
-			a.click();
-		} catch {
-			// silent
-		}
-	};
 
 	function getAdminSecret() {
 		return import.meta.env.VITE_ADMIN_SECRET || "";
@@ -331,7 +320,7 @@ function ContractHistoryPage() {
 									const status = app.status === "approved"
 										? (app.raw?.contractStatus || (app.raw?.pipelineStep === "contract_signed" ? "active" : "waiting_sign"))
 										: app.status;
-									const pdfUrl = app.contract_pdf_url;
+									const contractPdf = employeeContractPdfLinks(app.contract_pdf_url);
 									return (
 										<tr key={app.id} className="border-b last:border-0 hover:bg-muted/30">
 											<td className="px-4 py-3">
@@ -357,8 +346,8 @@ function ContractHistoryPage() {
 												)}
 											</td>
 											<td className="px-4 py-3 text-right">
-												{pdfUrl ? (
-													<Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => downloadPdf(pdfUrl, empName)}>
+												{contractPdf ? (
+													<Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => window.location.assign(contractPdf.download)}>
 														<Download className="h-3 w-3" /> PDF
 													</Button>
 												) : (

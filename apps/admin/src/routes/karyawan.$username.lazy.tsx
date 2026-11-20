@@ -1,3 +1,4 @@
+import { employeeContractPdfLinks } from "@djiwaapps/web-shared/lib/employee-contract-links";
 import { createLazyFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 /* HERMES: rebuild trigger — live payslip + bonus target */
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -415,6 +416,7 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
 	// ── Contract data ──
 	const [contractData, setContractData] = useState<any>(null);
+	const contractPdf = employeeContractPdfLinks(contractData?.contract_pdf_url);
 	const [isLoadingContract, setIsLoadingContract] = useState(false);
 	useEffect(() => {
 		if (!staff?._id) return;
@@ -856,12 +858,12 @@ const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 														<span className="text-xs font-bold">28 November 2026</span>
 													</div>
 												</div>
-												{contractData.contract_pdf_url && (
+												{contractPdf && (
 													<Button
 														variant="outline"
 														size="sm"
 														className="w-full mt-3 rounded-lg text-[10px] font-bold h-8"
-														onClick={() => window.open(contractData.contract_pdf_url, "_blank")}
+														onClick={() => window.location.assign(contractPdf.download)}
 													>
 														<Download className="mr-1.5 h-3 w-3" />
 														Download Kontrak PDF

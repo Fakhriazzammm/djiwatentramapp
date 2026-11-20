@@ -1,3 +1,4 @@
+import { employeeContractPdfLinks } from "@djiwaapps/web-shared/lib/employee-contract-links";
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
@@ -164,6 +165,7 @@ function RegisterCompletePage() {
   const signatoryPersonName = onboardingSettings.signatoryPersonName || onboardingSettings.signatoryName;
 
   const [app, setApp] = useState<any | null>(null);
+  const contractPdf = employeeContractPdfLinks(app?.contract_pdf_url);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [phase, setPhase] = useState<"tracking" | "contract" | "signature">("tracking");
@@ -584,13 +586,13 @@ function RegisterCompletePage() {
                     </p>
                   </div>
 
-                  {app.contract_pdf_url && (
+                  {contractPdf && (
                     <div className="w-full rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 text-left dark:border-emerald-800/50 dark:bg-emerald-950/10">
                       <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-700 uppercase tracking-wider dark:text-emerald-400">
                         <FileSignature className="h-3.5 w-3.5" />
                         Kontrak Kerja
                       </p>
-                      <a href={app.contract_pdf_url} target="_blank" rel="noopener noreferrer"
+                      <a href={contractPdf.download} target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
                         <Download className="h-4 w-4" />
                         Unduh PDF Kontrak

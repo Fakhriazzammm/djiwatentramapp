@@ -1,3 +1,4 @@
+import { employeeContractPdfLinks, isUnavailableLegacyEmployeeCv } from "@djiwaapps/web-shared/lib/employee-contract-links";
 import { useEmployeeSettings, type EmployeeSetting, type EmploymentContractStatus } from "@/components/karyawan/data";
 import { contractStatusLabels, getContractStatus } from "@/components/karyawan/team";
 import { createLazyFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -157,7 +158,7 @@ function DetailRow({ row, expanded, busy, onChange }: { row: any; expanded: bool
 								</div>
 								<div className="flex justify-between text-[11px]">
 									<span className="text-muted-foreground">Wajah / CV</span>
-									<span className="font-medium">{row.hasFace ? "Wajah ✓" : "Wajah —"} · {r.cvUrl ? <a href={r.cvUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Buka CV</a> : "CV —"}</span>
+									<span className="font-medium">{row.hasFace ? "Wajah ✓" : "Wajah —"} · {isUnavailableLegacyEmployeeCv(r.cvUrl) ? "CV perlu diunggah ulang" : r.cvUrl ? <a href={r.cvUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Buka CV</a> : "CV —"}</span>
 								</div>
 							</div>
 						</div>
@@ -205,37 +206,39 @@ function DetailRow({ row, expanded, busy, onChange }: { row: any; expanded: bool
 					{contracts.length > 0 && (
 						<section className="mt-2 rounded-lg border border-border/40 p-2">
 							<h3 className="mb-1 text-xs font-bold">Dokumen & Kontrak</h3>
-							{contracts.map((contract) => (
-								<div key={contract.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1 text-xs">
-									<span>{contract.registrationNumber || "Kontrak karyawan"}</span>
-									<label className="flex items-center gap-2">
-										<span>Status kontrak</span>
-										<select
-											className="rounded border border-input bg-background p-1"
-											value={getContractStatus(contract) ?? ""}
-											disabled={busy}
-											onChange={(event) => onChange({ contractId: contract.id, employmentStatus: event.target.value as EmploymentContractStatus })}
-										>
-											<option value="" disabled>Belum aktif</option>
-											{Object.entries(contractStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-										</select>
-									</label>
-									{contract.registrationNumber && (
-										<Link
-											to="/admin/operational-team/register/application/$registrationNumber"
-											params={{ registrationNumber: contract.registrationNumber }}
-											className="text-primary underline"
-										>
-											Buka detail
-										</Link>
-									)}
-									{contract.pdfUrl?.startsWith("https://") && (
-										<a href={contract.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">
-											Buka PDF
-										</a>
-									)}
-								</div>
-							))}
+							{contracts.map((contract) => {
+								const pdf = employeeContractPdfLinks(contract.pdfUrl);
+								return (
+									<div key={contract.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1 text-xs">
+										<span>{contract.registrationNumber || "Kontrak karyawan"}</span>
+										<label className="flex items-center gap-2">
+											<span>Status kontrak</span>
+											<select
+												className="rounded border border-input bg-background p-1"
+												value={getContractStatus(contract) ?? ""}
+												disabled={busy}
+												onChange={(event) => onChange({ contractId: contract.id, employmentStatus: event.target.value as EmploymentContractStatus })}
+											>
+												<option value="" disabled>Belum aktif</option>
+												{Object.entries(contractStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+											</select>
+										</label>
+										{contract.registrationNumber && (
+											<Link
+												to="/admin/operational-team/register/application/$registrationNumber"
+												params={{ registrationNumber: contract.registrationNumber }}
+												className="text-primary underline"
+											>
+												Buka detail
+											</Link>
+										)}
+										{pdf && <>
+											<a href={pdf.read} target="_blank" rel="noopener noreferrer" className="text-primary underline">Baca PDF</a>
+											<a href={pdf.download} className="text-primary underline">Unduh PDF</a>
+										</>}
+									</div>
+								);
+							})}
 						</section>
 					)}
 				</div>

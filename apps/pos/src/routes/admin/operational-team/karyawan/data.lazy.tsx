@@ -1,3 +1,4 @@
+import { isUnavailableLegacyEmployeeCv } from "@djiwaapps/web-shared/lib/employee-contract-links";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useHybridPublicUsers } from "@/hooks/use-hybrid-attendance-data";
@@ -641,7 +642,7 @@ function DataKaryawanPage() {
 												</span>
 											</td>
 											<td className="px-2.5 py-2 text-center hidden lg:table-cell">{row.hasFace ? <Camera className="inline h-3.5 w-3.5 text-primary" /> : <span className="text-muted-foreground/20">—</span>}</td>
-											<td className="px-2.5 py-2 text-center hidden lg:table-cell">{r.cvUrl ? <a href={r.cvUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 rounded-md bg-primary/5 px-1.5 py-0.5 text-[11px] font-bold text-primary hover:bg-primary/10 transition-colors"><Eye className="h-3 w-3" />Lihat</a> : <span className="text-muted-foreground/20">—</span>}</td>
+											<td className="px-2.5 py-2 text-center hidden lg:table-cell">{isUnavailableLegacyEmployeeCv(r.cvUrl) ? <span className="text-muted-foreground">Perlu unggah ulang</span> : r.cvUrl ? <a href={r.cvUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 rounded-md bg-primary/5 px-1.5 py-0.5 text-[11px] font-bold text-primary hover:bg-primary/10 transition-colors"><Eye className="h-3 w-3" />Lihat</a> : <span className="text-muted-foreground/20">—</span>}</td>
 											<td className="px-1 py-2 text-center">
 												<button
 													title="Hapus"

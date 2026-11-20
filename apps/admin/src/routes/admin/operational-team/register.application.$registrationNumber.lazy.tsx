@@ -1,3 +1,4 @@
+import { employeeContractPdfLinks, isUnavailableLegacyEmployeeCv } from "@djiwaapps/web-shared/lib/employee-contract-links";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { requestAdminConfirm } from "@/lib/admin-dialogs";
@@ -44,6 +45,7 @@ function ApplicationDetailPage() {
 	const deleteApp = useHybridDeleteApplication();
 
 	const [app, setApp] = useState<any | null>(null);
+	const contractPdf = employeeContractPdfLinks(app?.contract_pdf_url);
 	const [isLoading, setIsLoading] = useState(true);
 	const [notFound, setNotFound] = useState(false);
 
@@ -418,8 +420,8 @@ function ApplicationDetailPage() {
 						<h4 className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-emerald-700"><FileText className="h-3.5 w-3.5" aria-hidden="true" /> Tahap 2 — Kontrak & Tanda Tangan <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /></h4>
 						<p className="mb-2 text-[11px] text-emerald-600">Kontrak sudah ditandatangani oleh kandidat.</p>
 						<div className="flex items-center gap-2">
-							{app.contract_pdf_url && (
-								<a href={app.contract_pdf_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-emerald-300 bg-emerald-100 px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-200 transition-colors">
+							{contractPdf && (
+								<a href={contractPdf.download} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md border border-emerald-300 bg-emerald-100 px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-200 transition-colors">
 									<Download className="h-3.5 w-3.5" /> Unduh PDF Kontrak
 								</a>
 							)}
@@ -485,7 +487,8 @@ function ApplicationDetailPage() {
 							<div className="col-span-2">
 								<InfoRow label="Alamat" value={app.address || "-"} />
 							</div>
-							{app.cv_url && (
+							{isUnavailableLegacyEmployeeCv(app.cv_url) && <p className="col-span-2 text-xs text-muted-foreground">CV lama perlu diunggah ulang.</p>}
+							{app.cv_url && !isUnavailableLegacyEmployeeCv(app.cv_url) && (
 								<div className="col-span-2 mt-1">
 									<a
 										href={app.cv_url}

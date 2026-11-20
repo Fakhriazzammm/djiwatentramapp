@@ -1,3 +1,4 @@
+import { employeeContractPdfLinks, isUnavailableLegacyEmployeeCv } from "@djiwaapps/web-shared/lib/employee-contract-links";
 import { useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
@@ -72,7 +73,7 @@ export default function DokumenPage() {
 						<Panel title="Kelengkapan dokumen" tone="red"><ProgressList rows={[
 							{ label: "Kontrak dengan PDF", value: `${stats.pdfRatio}%`, ratio: stats.pdfRatio / 100, tone: tone(stats.pdfRatio) },
 							{ label: "Nomor identitas", value: `${docField((r) => Boolean(r.raw.identityNumber))}%`, ratio: docField((r) => Boolean(r.raw.identityNumber)) / 100, tone: tone(docField((r) => Boolean(r.raw.identityNumber))) },
-							{ label: "CV", value: `${docField((r) => Boolean(r.raw.cvUrl))}%`, ratio: docField((r) => Boolean(r.raw.cvUrl)) / 100, tone: tone(docField((r) => Boolean(r.raw.cvUrl))) },
+							{ label: "CV", value: `${docField((r) => Boolean(r.raw.cvUrl && !isUnavailableLegacyEmployeeCv(r.raw.cvUrl)))}%`, ratio: docField((r) => Boolean(r.raw.cvUrl && !isUnavailableLegacyEmployeeCv(r.raw.cvUrl))) / 100, tone: tone(docField((r) => Boolean(r.raw.cvUrl && !isUnavailableLegacyEmployeeCv(r.raw.cvUrl)))) },
 							{ label: "Kontak darurat", value: `${docField((r) => Boolean(r.raw.emergencyContactPhone))}%`, ratio: docField((r) => Boolean(r.raw.emergencyContactPhone)) / 100, tone: tone(docField((r) => Boolean(r.raw.emergencyContactPhone))) },
 						]} /></Panel>
 					</div>
@@ -87,7 +88,19 @@ export default function DokumenPage() {
 							{ key: "s", header: "Mulai", render: (x) => fmtDate(x.row.raw.startDate) },
 							{ key: "e", header: "Berakhir", render: (x) => (x.info.permanent ? "Tanpa batas" : `${fmtDate(x.info.endDate)}${x.info.estimated ? " *" : ""}`) },
 							{ key: "st", header: "Status", render: (x) => (!x.info.hasContract ? <StatusTag tone="bad">Belum ada kontrak</StatusTag> : x.info.status === "resigned" || x.info.status === "ended" ? <StatusTag tone="mute">{contractStatusLabels[x.info.status]}</StatusTag> : x.info.daysLeft !== null && x.info.daysLeft <= 30 ? <StatusTag tone="warn">{x.info.daysLeft < 0 ? "Melewati tanggal akhir" : "Segera berakhir"}</StatusTag> : x.info.status === "active" ? <StatusTag tone="ok">Aktif</StatusTag> : <StatusTag tone="mute">Belum aktif</StatusTag>) },
-							{ key: "pdf", header: "PDF", render: (x) => { const c = (x.row.raw.contracts ?? []).find((k) => k.pdfUrl); return c?.pdfUrl ? <a href={c.pdfUrl} target="_blank" rel="noreferrer" className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#2f6fdf] underline">Buka</a> : <span className="text-[#9a9aa5]">—</span>; } },
+							{
+								key: "pdf",
+								header: "PDF",
+								render: ({ row }) => {
+									const pdf = (row.raw.contracts ?? []).map((contract) => employeeContractPdfLinks(contract.pdfUrl)).find(Boolean);
+									return pdf ? (
+										<span className="inline-flex flex-wrap gap-2 text-[11px] text-[#2f6fdf]">
+											<a href={pdf.read} target="_blank" rel="noreferrer" className="underline">Baca PDF</a>
+											<a href={pdf.download} className="underline">Unduh PDF</a>
+										</span>
+									) : <span className="text-[#9a9aa5]">—</span>;
+								},
+							},
 						]}
 					/>
 					<p className="font-mono text-[10px] text-[#666672]">* Tanggal berakhir diperkirakan 12 bulan dari tanggal mulai bila durasi kontrak belum tercatat.</p>
@@ -101,7 +114,7 @@ export default function DokumenPage() {
 					columns={[
 						{ key: "n", header: "Karyawan", render: (r) => <div><div className="font-medium">{r.name}</div><div className="font-mono text-[10px] text-[#666672]">{r.roleName}</div></div> },
 						{ key: "id", header: "Identitas", render: (r) => (r.raw.identityNumber ? <StatusTag tone="ok">Ada</StatusTag> : <StatusTag tone="bad">Belum</StatusTag>) },
-						{ key: "cv", header: "CV", render: (r) => (r.raw.cvUrl ? <a href={r.raw.cvUrl} target="_blank" rel="noreferrer" className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#2f6fdf] underline">Buka</a> : <StatusTag tone="bad">Belum</StatusTag>) },
+						{ key: "cv", header: "CV", render: (r) => (isUnavailableLegacyEmployeeCv(r.raw.cvUrl) ? <StatusTag tone="warn">Perlu unggah ulang</StatusTag> : r.raw.cvUrl ? <a href={r.raw.cvUrl} target="_blank" rel="noreferrer" className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#2f6fdf] underline">Buka CV</a> : <StatusTag tone="bad">Belum</StatusTag>) },
 						{ key: "em", header: "Kontak darurat", render: (r) => (r.raw.emergencyContactPhone ? <StatusTag tone="ok">Ada</StatusTag> : <StatusTag tone="bad">Belum</StatusTag>) },
 					]}
 				/>

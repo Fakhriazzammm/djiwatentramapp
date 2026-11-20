@@ -1,3 +1,4 @@
+import { employeeContractPdfLinks } from "../../../../../packages/djiwaapps-web-shared/src/lib/employee-contract-links";
 import { useNavigate } from "./nav";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
@@ -240,26 +241,32 @@ function Profile({ row, tab, onTab, stat, series, onToggleStatus, statusBusy, se
 								<div className="flex justify-between px-3 py-2.5"><dt className="text-[#666672]">Status</dt><dd>{!info.hasContract ? <StatusTag tone="bad">Belum ada kontrak</StatusTag> : info.status === "resigned" || info.status === "ended" ? <StatusTag tone="mute">{contractStatusLabels[info.status]}</StatusTag> : info.daysLeft !== null && info.daysLeft <= 30 ? <StatusTag tone="warn">{info.daysLeft < 0 ? "Melewati tanggal akhir" : "Segera berakhir"}</StatusTag> : info.status === "active" ? <StatusTag tone="ok">Aktif</StatusTag> : <StatusTag tone="mute">Belum aktif</StatusTag>}</dd></div>
 								<div className="flex justify-between px-3 py-2.5"><dt className="text-[#666672]">Tanggal akhir kontrak</dt><dd className="font-medium">{info.permanent ? "Tanpa batas" : `${fmtDate(info.endDate)}${info.estimated ? " (perkiraan)" : ""}`}</dd></div>
 							</dl>
-							{(row.raw.contracts ?? []).map((contract) => (
-								<div key={contract.id} className="space-y-2 border border-[#e4e4e8] p-3 text-[13px]">
-									<div className="flex items-center justify-between gap-3">
-										<span className="font-medium">{contract.registrationNumber ?? "Tanpa nomor"}</span>
-										{contract.pdfUrl?.startsWith("https://") ? <a className="font-mono text-[10px] uppercase text-[#2f6fdf] underline" href={contract.pdfUrl} target="_blank" rel="noreferrer">Buka PDF</a> : <StatusTag tone="mute">PDF belum ada</StatusTag>}
+							{(row.raw.contracts ?? []).map((contract) => {
+								const pdf = employeeContractPdfLinks(contract.pdfUrl);
+								return (
+									<div key={contract.id} className="space-y-2 border border-[#e4e4e8] p-3 text-[13px]">
+										<div className="flex items-center justify-between gap-3">
+											<span className="font-medium">{contract.registrationNumber ?? "Tanpa nomor"}</span>
+											{pdf ? <div className="flex flex-wrap justify-end gap-2 font-mono text-[10px] uppercase text-[#2f6fdf]">
+												<a className="underline" href={pdf.read} target="_blank" rel="noreferrer">Baca PDF</a>
+												<a className="underline" href={pdf.download}>Unduh PDF</a>
+											</div> : <StatusTag tone="mute">PDF belum tersedia</StatusTag>}
+										</div>
+										<label className="flex items-center justify-between gap-3">
+											<span>Status kontrak</span>
+											<select
+												className="border border-[#e4e4e8] bg-white px-2 py-1.5 text-[13px]"
+												value={getContractStatus(contract) ?? ""}
+												disabled={settingBusy}
+												onChange={(event) => onContractChange(contract.id, event.target.value as EmploymentContractStatus)}
+											>
+												<option value="" disabled>Belum aktif</option>
+												{Object.entries(contractStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+											</select>
+										</label>
 									</div>
-									<label className="flex items-center justify-between gap-3">
-										<span>Status kontrak</span>
-										<select
-											className="border border-[#e4e4e8] bg-white px-2 py-1.5 text-[13px]"
-											value={getContractStatus(contract) ?? ""}
-											disabled={settingBusy}
-											onChange={(event) => onContractChange(contract.id, event.target.value as EmploymentContractStatus)}
-										>
-											<option value="" disabled>Belum aktif</option>
-											{Object.entries(contractStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-										</select>
-									</label>
-								</div>
-							))}
+								);
+							})}
 							{info.hasContract && <p className="text-[12px] text-[#666672]">Perubahan status kontrak hanya dicatat pada kontrak. Akses akun dan penjadwalan diatur di atas.</p>}
 						</>
 					) : null}

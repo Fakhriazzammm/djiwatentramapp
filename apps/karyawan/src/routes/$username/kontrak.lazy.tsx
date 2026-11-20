@@ -1,3 +1,4 @@
+import { employeeContractPdfLinks } from "@djiwaapps/web-shared/lib/employee-contract-links";
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useStaffProfile } from "../$username.lazy";
@@ -19,6 +20,7 @@ function KontrakPage() {
 			.eq("approved_user_source_id", staff._id)
 			.in("status", ["approved", "contract_signed", "expired", "completed"])
 			.order("created_at", { ascending: false })
+			.limit(1)
 			.maybeSingle()
 			.then((result: any) => {
 				const { data, error } = result;
@@ -28,6 +30,7 @@ function KontrakPage() {
 			});
 	}, [staff?._id]);
 
+	const pdf = employeeContractPdfLinks(contractData?.contract_pdf_url);
 	const endDate = (contractData as any)?.employment?.endDate;
 	const startDate = (contractData as any)?.employment?.startDate;
 	const durationMonths = Number((contractData as any)?.employment?.contractDuration ?? 0);
@@ -60,10 +63,10 @@ const fd = (d?: string | null) => (d ? new Date(d).toLocaleDateString("id-ID", {
 						</div>
 					</DsGroup>
 					<DsGroup>
-						{contractData.contract_pdf_url ? (
+						{pdf ? (
 							<>
-								<DsRow icon={<DsIcon name="employee-contract" />} title="Baca kontrak" sub="Buka dokumen PDF" chevron onClick={() => window.open(contractData.contract_pdf_url, "_blank", "noopener,noreferrer")} />
-								<DsRow icon={<DsIcon name="employee-payslip" />} title="Unduh PDF" sub="Simpan ke perangkat" chevron onClick={() => window.open(contractData.contract_pdf_url, "_blank", "noopener,noreferrer")} />
+								<DsRow icon={<DsIcon name="employee-contract" />} title="Baca kontrak" sub="Buka dokumen PDF" chevron onClick={() => window.open(pdf.read, "_blank", "noopener,noreferrer")} />
+								<DsRow icon={<DsIcon name="employee-payslip" />} title="Unduh PDF" sub="Simpan ke perangkat" chevron onClick={() => { window.location.assign(pdf.download); }} />
 							</>
 						) : isAwaitingSignature && registrationNumber ? (
 							<DsRow icon={<DsIcon name="employee-contract" />} title="Tanda tangani kontrak" sub="Buka halaman penandatanganan" chevron onClick={() => { window.location.href = `https://pos.djiwatentram.web.id/register/selesai/${registrationNumber}`; }} />
