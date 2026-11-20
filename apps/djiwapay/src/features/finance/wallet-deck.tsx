@@ -60,7 +60,7 @@ export function WalletDeck({ ctx, accounts, balances }: { ctx: FinCtx; accounts:
     <motion.i className="dpx-wd-sheen" />
     <div className="dpx-wd-head">
       <span className="dpx-wd-logo">{c.pay ? <I3 name="payment-wallet" px={26} /> : <Ic n={iconOf(c.type)} />}</span>
-      <span className="dpx-wd-name"><b>{c.name}</b><small>{c.account && accountScope(c.account) === "business" ? "Bisnis · " : ""}{c.pay ? "Saldo digital" : c.type === "bank" ? "Rekening bank" : c.type === "ewallet" ? "Dompet digital" : c.type === "card" ? "Kartu" : c.type === "cash" ? "Tunai" : "Dompet"}</small></span>
+      <span className="dpx-wd-name"><b>{c.name}</b><small>{c.account ? `${accountScope(c.account) === "business" ? "Bisnis" : "Pribadi"} · ` : ""}{c.pay ? "Saldo digital" : c.type === "bank" ? "Rekening bank" : c.type === "ewallet" ? "Dompet digital" : c.type === "card" ? "Kartu" : c.type === "cash" ? "Tunai" : "Dompet"}</small></span>
       {full ? (c.needsOpening ? <span className="dpx-wd-warn">Saldo awal belum diisi</span> : null) : <span className={`dpx-wd-mini ${c.balance < 0 ? "neg" : ""}`}>{c.balance < 0 ? "−" : ""}{ctx.visible ? <>Rp {Math.abs(Math.round(c.balance)).toLocaleString("id-ID")}</> : "•••••"}</span>}
     </div>
     {full ? <>
@@ -76,7 +76,9 @@ export function WalletDeck({ ctx, accounts, balances }: { ctx: FinCtx; accounts:
     {view === "swipe" ? <div className="dpx-wd-swipe">
       <div className="dpx-wd-track" ref={track} onScroll={onScroll} onPointerDown={() => setHint(false)} onTouchStart={() => setHint(false)}>
         {cards.map((c, i) => <div key={c.id} className={`dpx-wd-card swipe ${i === sel ? "front" : ""}`} style={{ background: `linear-gradient(145deg, ${c.skin.from}, ${c.skin.to})`, height: FOCUS_H }}
-          role="group" aria-label={`${c.name}, saldo ${ctx.visible ? rupiah(c.balance) : "disembunyikan"}`} tabIndex={0} onKeyDown={(e) => { if (e.key === "ArrowRight") go(sel + 1); else if (e.key === "ArrowLeft") go(sel - 1); }}>{body(c, true)}</div>)}
+          role="group" aria-label={`${c.name}, saldo ${ctx.visible ? rupiah(c.balance) : "disembunyikan"}`} tabIndex={0}
+          onClick={() => { if (i !== sel) go(i); else if (c.account) ctx.open({ k: "account", id: c.id }); }}
+          onKeyDown={(e) => { if (e.key === "ArrowRight") go(sel + 1); else if (e.key === "ArrowLeft") go(sel - 1); else if ((e.key === "Enter" || e.key === " ") && c.account && i === sel) { e.preventDefault(); ctx.open({ k: "account", id: c.id }); } }}>{body(c, true)}</div>)}
       </div>
       <AnimatePresence>{hint && cards.length > 1 ? <motion.div className="dpx-wd-hint" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ delay: 0.5 }} aria-hidden="true"><motion.span animate={{ x: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 1 }}>‹</motion.span> Geser untuk dompet lain <motion.span animate={{ x: [0, 5, 0] }} transition={{ repeat: Infinity, duration: 1 }}>›</motion.span></motion.div> : null}</AnimatePresence>
     </div> : <div className="dpx-wd-deck" style={{ height: STACK_H }}>
