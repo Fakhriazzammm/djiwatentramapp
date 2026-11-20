@@ -38,7 +38,7 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, max
     else { lines.push(line); line = word; }
   }
   if (line) lines.push(line);
-  if (lines.length > maxLines) { lines.length = maxLines; lines[maxLines - 1] = `${lines[maxLines - 1].replace(/\s+\S*$/, "")}…`; }
+  if (lines.length > maxLines) { lines.length = maxLines; lines[maxLines - 1] = `${(lines[maxLines - 1] ?? "").replace(/\s+\S*$/, "")}…`; }
   return lines;
 }
 
@@ -87,7 +87,7 @@ export async function renderStory(c: ShareCampaignInfo): Promise<Blob> {
   y -= 100;
   ctx.fillStyle = "rgba(255,255,255,.82)"; ctx.font = `500 38px ${FONT}`;
   const sub = [c.location, c.start_date && c.end_date ? `${shortDay(c.start_date)} – ${shortDay(c.end_date)}` : ""].filter(Boolean).join("  ·  ");
-  if (sub) { const l = wrap(ctx, sub, W - 120, 1); ctx.fillText(l[0], 60, y + 64); }
+  if (sub) { const l = wrap(ctx, sub, W - 120, 1); ctx.fillText(l[0] ?? "", 60, y + 64); }
 
   // Kartu reward
   const cardY = photoH + 60;
@@ -116,7 +116,7 @@ export async function renderStory(c: ShareCampaignInfo): Promise<Blob> {
     ctx.fillStyle = "rgba(255,255,255,.14)"; roundRect(ctx, 60, by, W - 120, 110, 55); ctx.fill();
     ctx.fillStyle = "#ffffff"; ctx.font = `700 36px ${FONT}`;
     const l = wrap(ctx, `Benefit: ${c.benefit_description}`, W - 230, 1);
-    ctx.textBaseline = "middle"; ctx.fillText(l[0], 100, by + 56); ctx.textBaseline = "alphabetic";
+    ctx.textBaseline = "middle"; ctx.fillText(l[0] ?? "", 100, by + 56); ctx.textBaseline = "alphabetic";
     by += 110 + 50;
   } else by += 20;
 
