@@ -315,8 +315,15 @@ async function notifyCheckoutToReportGroup(params: {
   const changedItems = params.items.filter(
     (item) => Math.abs(item.qtyAfter - item.qtyBefore) > 0.01,
   );
+  const sourceLabels = new Map([
+    ["karyawan_app", "App Karyawan"],
+    ["karyawan_web", "Web Karyawan"],
+    ["pos_web", "POS"],
+    ["telegram_mini_app", "Telegram Mini App"],
+  ]);
+  const sourceLabel = sourceLabels.get(params.source) ?? "Sumber lainnya";
   const stockLines = [
-    `📦 Stock Opname — ${params.items.length} item dicek, ${changedItems.length} berubah`,
+    `📦 Opname Stok — ${params.items.length} item dicek, ${changedItems.length} berubah`,
     ...changedItems
       .slice(0, 20)
       .map(
@@ -329,7 +336,7 @@ async function notifyCheckoutToReportGroup(params: {
   }
 
   const cleaningLines = [
-    "🧼 Cek Kebersihan",
+    "🧼 Laporan Kebersihan",
     ...params.kebersihan.map((area) => {
       const icon = area.status === "bersih" ? "✅" : "⚠️";
       const note = area.catatan ? ` — ${area.catatan}` : "";
@@ -339,13 +346,11 @@ async function notifyCheckoutToReportGroup(params: {
 
   const photoAreas = params.kebersihan.filter((area) => Boolean(area.photoUrl));
   const text = [
-    `📤 Absen Keluar — ${date} ${time}`,
+    `📤 Absen Keluar — ${date}, ${time} WIB`,
     `👤 ${params.userName}${params.roleName ? ` • ${params.roleName}` : ""}`,
-    `🕐 ${time} WIB`,
-    `${params.shiftName ? `📌 ${params.shiftName}` : "📌 Tanpa shift"}`,
-    `🧾 Closing Mini App (${params.source})`,
-    "",
-    ...stockLines,
+    params.shiftName ? `📌 ${params.shiftName}` : "📌 Tanpa shift",
+    `🧾 Sumber: ${sourceLabel}`,
+    ...(params.items.length > 0 ? ["", ...stockLines] : []),
     "",
     ...cleaningLines,
     ...(photoAreas.length > 0
