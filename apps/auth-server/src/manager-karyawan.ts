@@ -71,6 +71,38 @@ export function registerManagerKaryawan(app: Hono, auth: Auth, pool: Pool) {
     return json({ success: true, rows: r.rows[0]?.rows ?? [] });
   });
 
+  // Aktif/nonaktif karyawan. Nonaktif = tidak muncul di Jadwal dan pemilih shift.
+  app.post("/api/manager/karyawan/directory/status", async (c) => {
+    const m = await guard(c);
+    if ("res" in m) return m.res;
+    const b = (await c.req.json().catch(() => ({}))) as { userId?: unknown; isActive?: unknown };
+    const userId = text(b.userId, 120);
+    if (!userId || typeof b.isActive !== "boolean") return json({ success: false, error: "INVALID" }, 400);
+    const target = await pool.query(
+      `SELECT u.source_id, lower(btrim(coalesce(r.name, ''))) AS role_name
+         FROM public.yumi_users u
+         LEFT JOIN public.yumi_roles r ON r.source_id = u.role_source_id
+        WHERE u.source_id = $1`,
+      [userId],
+    );
+    const row = target.rows[0];
+    if (!row) return json({ success: false, error: "NOT_FOUND" }, 404);
+    if (["admin", "administrator", "owner", "superadmin", "super admin"].includes(String(row.role_name))) {
+      return json({ success: false, error: "PROTECTED_ROLE" }, 403);
+    }
+    await pool.query(
+      `UPDATE public.yumi_users
+          SET is_active = $2,
+              raw = coalesce(raw, '{}'::jsonb) || jsonb_build_object(
+                'statusChangedAt', now(),
+                'statusChangedBy', $3
+              )
+        WHERE source_id = $1`,
+      [userId, b.isActive, `manager:${m.userId}`],
+    );
+    return json({ success: true, userId, isActive: b.isActive });
+  });
+
   app.get("/api/manager/karyawan/attendance", async (c) => {
     const m = await guard(c);
     if ("res" in m) return m.res;
@@ -119,9 +151,9 @@ export function registerManagerKaryawan(app: Hono, auth: Auth, pool: Pool) {
       pool.query(
         `SELECT u.source_id AS id, u.name, trim(coalesce(r.name, '')) AS role_name
            FROM public.yumi_users u LEFT JOIN public.yumi_roles r ON r.source_id = u.role_source_id
-          WHERE u.is_active AND lower(trim(coalesce(r.name, ''))) NOT IN ('owner', 'admin', 'client_viewer')
-            AND (EXISTS (SELECT 1 FROM public.pos_attendance_logs l WHERE l."userId" = u.source_id AND l."timestamp" > (extract(epoch FROM now()) * 1000 - 60 * 86400000::bigint))
-              OR EXISTS (SELECT 1 FROM pos.attendance_schedules s WHERE s.user_id = u.source_id AND s.date > current_date - 90))
+          WHERE u.is_active
+            AND lower(trim(coalesce(r.name, ''))) NOT IN ('owner', 'admin', 'administrator', 'superadmin', 'super admin', 'manager', 'hrd', 'client_viewer')
+            AND NOT (coalesce(r.permissions, '[]'::jsonb) ? 'users:manage')
           ORDER BY u.name`,
       ),
       pool.query(`SELECT raw->'shiftSettings'->'shiftSchedules' AS shifts FROM public.pos_site_settings WHERE raw ? 'shiftSettings' LIMIT 1`),

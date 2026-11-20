@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { generateSchedule, addDays, mondayOf, validateConsecutive, WEEKDAY_NAMES, type GeneratorShift, type GeneratorStaff } from "@/lib/schedule-generator";
 import { wibParts } from "@/lib/karyawan-analytics";
-import { useHybridActiveStaffUsers, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
+import { useHybridScheduleStaffUsers, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { useHybridAttendanceSchedules, useHybridBulkReplaceAttendanceSchedules, useHybridCreateAttendanceSchedule, useHybridDeleteAttendanceSchedule, useHybridUpdateAttendanceSchedule, type AttendanceSchedule, type CreateScheduleInput } from "@/hooks/use-hybrid-attendance-schedules";
 import { Btn, Chips, Drawer, KpiStrip, Note, Page, PageHead, Panel, ProgressList, Segmented, SectionTitle, StatusTag } from "../kit";
 import { fmtDate } from "../team";
@@ -37,7 +37,7 @@ export default function JadwalPage() {
 	const todayIso = wibParts(Date.now()).date;
 	const [weekStart, setWeekStart] = useState(mondayOf(todayIso));
 	const [refresh, setRefresh] = useState(0);
-	const users = (useHybridActiveStaffUsers(refresh) as StaffUser[] | null | undefined) ?? [];
+	const users = (useHybridScheduleStaffUsers(refresh) as StaffUser[] | null | undefined) ?? [];
 	const settings = useHybridSiteSettings() as { shiftSettings?: { shiftSchedules?: { name: string; openTime?: string; closeTime?: string }[] } } | null | undefined;
 	const templates = settings?.shiftSettings?.shiftSchedules ?? [];
 	const weekEnd = addDays(weekStart, 6);
@@ -57,6 +57,7 @@ export default function JadwalPage() {
 	const [edit, setEdit] = useState<{ user: StaffUser; date: string; current?: AttendanceSchedule } | null>(null);
 
 	const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+	const staffIds = useMemo(() => new Set(users.map((u) => u._id)), [users]);
 	const cells = useMemo(() => {
 		const map = new Map<string, AttendanceSchedule>();
 		for (const group of [a.data, b.data]) {
@@ -86,15 +87,16 @@ export default function JadwalPage() {
 	const minPerDay = Math.max(1, Math.ceil(users.length * 0.5));
 	const thin = days.filter((_, i) => perDay[i] < minPerDay);
 	const load = users.map((u) => ({ u, hours: days.reduce((sum, d) => { const s = working(u._id, d); return s ? sum + hoursOf(s.startTime, s.endTime) : sum; }, 0) }));
-	const scheduled = [...cells.values()].filter((s) => s.status !== "off" && s.shiftName.toUpperCase() !== OFF).length;
-	const offCount = cells.size - scheduled;
+	const visibleCells = [...cells.values()].filter((s) => staffIds.has(s.userId));
+	const scheduled = visibleCells.filter((s) => s.status !== "off" && s.shiftName.toUpperCase() !== OFF).length;
+	const offCount = visibleCells.length - scheduled;
 
 	const copyLastWeek = async () => {
 		const prevStart = addDays(weekStart, -7);
 		const pm1 = Number(prevStart.slice(5, 7));
 		const py1 = Number(prevStart.slice(0, 4));
 		const source: AttendanceSchedule[] = [];
-		for (const group of [a.data, b.data]) for (const list of Object.values(group ?? {})) for (const s of list) if (s.date >= prevStart && s.date < weekStart) source.push(s);
+		for (const group of [a.data, b.data]) for (const list of Object.values(group ?? {})) for (const s of list) if (s.date >= prevStart && s.date < weekStart && staffIds.has(s.userId)) source.push(s);
 		const unique = new Map(source.map((s) => [s._id, s]));
 		if (unique.size === 0) {
 			toast.info(`Tidak ada jadwal pada minggu ${fmtDate(prevStart)} (bulan ${pm1}/${py1}) untuk disalin. Buka minggu itu dulu.`);

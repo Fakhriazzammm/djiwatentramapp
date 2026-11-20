@@ -4,6 +4,7 @@ import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { createClient } from "@/lib/client";
 import { useHybridStaffRoles } from "@/hooks/use-hybrid-pos-data";
 import { useHybridUpdateUser } from "@/hooks/use-hybrid-write-actions";
+import { useSetEmployeeActive } from "@/components/karyawan/data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -256,6 +257,7 @@ export function DataKaryawanPage() {
 	}, [token, usersRefreshTrigger]);
 	const staffRoles = useHybridStaffRoles() ?? [];
 	const updateUserRole = useHybridUpdateUser();
+	const statusAction = useSetEmployeeActive();
 	const [savingRoleIds, setSavingRoleIds] = useState<Set<string>>(new Set());
 	const [bulkRoleId, setBulkRoleId] = useState("");
 	const [searchQuery, setSearchQuery] = useState("");
@@ -430,6 +432,36 @@ export function DataKaryawanPage() {
 		const result = await res.json();
 		if (!res.ok) throw new Error(result?.error || "Gagal menghapus");
 		return result;
+	}
+
+	function handleToggleActive(row: any) {
+		const next = row.isActive === false;
+		const protectedRole = ["owner", "admin", "administrator", "superadmin", "super admin"].includes(String(row.roleName ?? "").trim().toLowerCase());
+		if (protectedRole) {
+			toast.error("Akun administrator tidak bisa dinonaktifkan dari Data Karyawan.");
+			return;
+		}
+		setConfirmModal({
+			isOpen: true,
+			title: next ? "Aktifkan karyawan?" : "Nonaktifkan karyawan?",
+			subtitle: row.name || "Karyawan",
+			message: next
+				? `${row.name} akan muncul lagi di Jadwal dan pemilih shift.`
+				: `${row.name} tidak akan muncul di Jadwal dan pemilih shift sampai diaktifkan kembali. Riwayat absensi tetap tersimpan.`,
+			confirmText: next ? "Aktifkan" : "Nonaktifkan",
+			variant: next ? "info" : "warning",
+			loading: false,
+			onConfirm: async () => {
+				setConfirmModal((prev) => ({ ...prev, loading: true }));
+				const result = await statusAction.setActive(row._id, next);
+				if (!result.ok) toast.error(result.message);
+				else {
+					toast.success(result.message);
+					setUsersRefreshTrigger((value) => value + 1);
+				}
+				setConfirmModal((prev) => ({ ...prev, isOpen: false, loading: false }));
+			},
+		});
 	}
 
 	function handleSingleDelete(row: any) {
@@ -792,10 +824,23 @@ export function DataKaryawanPage() {
 												</span>
 											</td>
 											<td className="px-1 py-1 text-center">
-												<span className={`inline-flex items-center justify-center gap-1 rounded-full border px-1.5 py-1 text-[11px] font-bold uppercase tracking-normal ${isActive ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-border bg-muted text-muted-foreground"}`}>
-													<span className={`h-1.5 w-1.5 shrink-0 rounded-full ${isActive ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
-													{isActive ? "Aktif" : "Nonaktif"}
-												</span>
+												{["owner", "admin", "administrator", "superadmin", "super admin"].includes(String(row.roleName ?? "").trim().toLowerCase()) ? (
+													<span className={`inline-flex items-center justify-center gap-1 rounded-full border px-1.5 py-1 text-[11px] font-bold uppercase tracking-normal ${isActive ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-border bg-muted text-muted-foreground"}`}>
+														<span className={`h-1.5 w-1.5 shrink-0 rounded-full ${isActive ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
+														{isActive ? "Aktif" : "Nonaktif"}
+													</span>
+												) : (
+													<button
+														type="button"
+														disabled={statusAction.busy === row._id}
+														onClick={(e) => { e.stopPropagation(); handleToggleActive(row); }}
+														title={isActive ? "Nonaktifkan — tidak tampil di Jadwal" : "Aktifkan — muncul lagi di Jadwal"}
+														className={`inline-flex items-center justify-center gap-1 rounded-full border px-1.5 py-1 text-[11px] font-bold uppercase tracking-normal transition-colors disabled:opacity-60 ${isActive ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "border-border bg-muted text-muted-foreground hover:bg-muted/70"}`}
+													>
+														<span className={`h-1.5 w-1.5 shrink-0 rounded-full ${isActive ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
+														{statusAction.busy === row._id ? "…" : isActive ? "Aktif" : "Nonaktif"}
+													</button>
+												)}
 											</td>
 											<td className="px-1 py-1 text-center">
 												<button

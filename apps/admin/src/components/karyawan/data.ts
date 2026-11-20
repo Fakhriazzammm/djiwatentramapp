@@ -63,6 +63,33 @@ export function useDirectory() {
 	return { rows: current?.rows, error: current?.error ?? (token ? undefined : "Sesi admin tidak tersedia."), reload, loading: !current };
 }
 
+/** Ubah status aktif karyawan lewat RPC admin (memakai sesi Yumi, tidak bergantung sesi Supabase Auth). */
+export function useSetEmployeeActive() {
+	const { token } = useYumiAuth();
+	const [busy, setBusy] = useState<string | null>(null);
+	const setActive = useCallback(
+		async (userId: string, isActive: boolean): Promise<{ ok: boolean; message: string }> => {
+			if (!token) return { ok: false, message: "Sesi admin tidak tersedia. Masuk ulang lalu coba lagi." };
+			setBusy(userId);
+			try {
+				const { error } = await createClient().rpc("admin_set_employee_active", {
+					session_token: token,
+					user_source_id: userId,
+					is_active: isActive,
+				});
+				if (error) throw error;
+				return { ok: true, message: isActive ? "Karyawan diaktifkan" : "Karyawan dinonaktifkan" };
+			} catch {
+				return { ok: false, message: "Status belum berubah. Coba lagi atau masuk ulang." };
+			} finally {
+				setBusy(null);
+			}
+		},
+		[token],
+	);
+	return { setActive, busy };
+}
+
 export type ScheduleRow = ScheduleLite & { _id?: string };
 
 type Bundle = { logs: AttendanceLog[]; schedules: ScheduleRow[] };

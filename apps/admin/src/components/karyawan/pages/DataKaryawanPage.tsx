@@ -2,15 +2,19 @@ import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { profileCompleteness } from "@/lib/karyawan-analytics";
 import { Btn, Chips, DataTable, Drawer, Empty, KpiStrip, LineChart, Page, PageHead, Panel, ProgressList, SearchBox, SectionTitle, Segmented, SourceError, StatusTag } from "../kit";
-import { num, rupiah, useAttendanceAnalysis, useDirectory, type DirectoryRow } from "../data";
+import { num, rupiah, useAttendanceAnalysis, useDirectory, useSetEmployeeActive, type DirectoryRow } from "../data";
 import EmployeeEditor from "./EmployeeEditor";
 import { contractInfo, employmentLabel, fmtDate, initials, teamStats } from "../team";
 
 type Filter = "all" | "active" | "incomplete" | "expiring" | "inactive";
 type View = "tabel" | "kartu";
 type Tab = "profil" | "kontrak" | "kehadiran" | "gaji";
+
+const PROTECTED_ROLES = new Set(["owner", "admin", "administrator", "superadmin", "super admin"]);
+const isProtectedRole = (roleName: string) => PROTECTED_ROLES.has((roleName ?? "").trim().toLowerCase());
 
 function Avatar({ name, size = 36 }: { name: string; size?: number }) {
 	return <span aria-hidden="true" className="flex shrink-0 items-center justify-center bg-[#111114] font-mono text-[11px] font-semibold text-white" style={{ width: size, height: size }}>{initials(name)}</span>;
@@ -31,6 +35,25 @@ export default function DataKaryawanPage() {
 	const [open, setOpen] = useState<DirectoryRow | null>(null);
 	const [tab, setTab] = useState<Tab>("profil");
 	const [editing, setEditing] = useState(false);
+	const statusAction = useSetEmployeeActive();
+
+	const changeStatus = async (row: DirectoryRow, nextActive: boolean) => {
+		if (statusAction.busy) return;
+		const ok = await requestAdminConfirm({
+			title: nextActive ? "Aktifkan karyawan?" : "Nonaktifkan karyawan?",
+			message: nextActive
+				? `${row.name} akan muncul lagi di Jadwal dan pemilih shift.`
+				: `${row.name} tidak akan muncul di Jadwal dan pemilih shift sampai diaktifkan kembali. Riwayat absensi tetap tersimpan.`,
+			confirmText: nextActive ? "Aktifkan" : "Nonaktifkan",
+			variant: nextActive ? "info" : "warning",
+		});
+		if (!ok) return;
+		const result = await statusAction.setActive(row._id, nextActive);
+		if (!result.ok) { toast.error(result.message); return; }
+		toast.success(result.message);
+		setOpen((current) => (current && current._id === row._id ? { ...current, isActive: nextActive } : current));
+		dir.reload();
+	};
 
 	const rows = dir.rows ?? [];
 	const stats = useMemo(() => teamStats(rows), [rows]);
@@ -80,7 +103,7 @@ export default function DataKaryawanPage() {
 
 	return (
 		<Page>
-			<PageHead title="Data Karyawan" subtitle={`${stats.total} akun. Klik baris untuk profil lengkap dengan analisis kehadiran dan gaji.`} actions={<><Btn onClick={exportCsv}>Ekspor CSV</Btn><Btn primary onClick={() => void navigate({ to: "/admin/operational-team/register" })}>+ Tambah karyawan</Btn></>} />
+			<PageHead title="Data Karyawan" subtitle={`${stats.total} akun. Klik baris untuk profil lengkap dengan analisis kehadiran dan gaji. Nonaktifkan karyawan yang sudah tidak bekerja agar tidak memenuhi grid Jadwal.`} actions={<><Btn onClick={exportCsv}>Ekspor CSV</Btn><Btn primary onClick={() => void navigate({ to: "/admin/operational-team/register" })}>+ Tambah karyawan</Btn></>} />
 			{dir.error ? <SourceError message={dir.error} /> : null}
 			<KpiStrip cols={5} items={[
 				{ label: "Total akun", value: dir.rows ? stats.total : null, format: num },
@@ -124,7 +147,7 @@ export default function DataKaryawanPage() {
 						{ key: "name", header: "Karyawan", render: (r) => <div className="flex items-center gap-3"><Avatar name={r.name} /><div className="min-w-0"><div className="truncate font-medium">{r.name}</div><div className="truncate font-mono text-[10px] text-[#666672]">{r.username}</div></div></div> },
 						{ key: "role", header: "Jabatan", render: (r) => <div><div>{r.raw.jabatan || r.roleName || "—"}</div>{r.raw.jabatan && r.raw.jabatan !== r.roleName ? <div className="font-mono text-[10px] text-[#666672]">{r.roleName}</div> : null}</div> },
 						{ key: "type", header: "Tipe kerja", render: (r) => employmentLabel(r.raw.employmentType) },
-						{ key: "status", header: "Status", render: (r) => { const i = contractInfo(r); return !r.isActive ? <StatusTag tone="mute">Nonaktif</StatusTag> : i.daysLeft !== null && i.daysLeft <= 30 ? <StatusTag tone="warn">Berakhir {fmtDate(i.endDate)}</StatusTag> : <StatusTag tone="ok">Aktif</StatusTag>; } },
+						{ key: "status", header: "Status", render: (r) => { const i = contractInfo(r); return <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>{!r.isActive ? <StatusTag tone="mute">Nonaktif</StatusTag> : i.daysLeft !== null && i.daysLeft <= 30 ? <StatusTag tone="warn">Berakhir {fmtDate(i.endDate)}</StatusTag> : <StatusTag tone="ok">Aktif</StatusTag>}{!isProtectedRole(r.roleName) ? <button type="button" className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#2f6fdf] underline disabled:opacity-50" disabled={statusAction.busy === r._id} onClick={() => void changeStatus(r, !r.isActive)}>{statusAction.busy === r._id ? "…" : r.isActive ? "Nonaktifkan" : "Aktifkan"}</button> : null}</div>; } },
 						{ key: "ontime", header: "Ketepatan", align: "right", render: (r) => { const s = month.analysis?.byUser[r._id]; return s ? `${s.onTimePct}%` : "—"; } },
 						{ key: "comp", header: "Kelengkapan data", render: (r) => { const c = profileCompleteness(r).percent; return <div className="flex min-w-[140px] items-center gap-2"><div className="h-[6px] flex-1 bg-[#ececf0]"><motion.div className="h-full" style={{ background: c < 80 ? "#d69e2e" : "#2f6fdf" }} initial={{ width: 0 }} animate={{ width: `${c}%` }} transition={{ duration: 0.7 }} /></div><span className="font-mono text-[10px] text-[#666672]">{c}%</span></div>; } },
 					]}
@@ -145,19 +168,27 @@ export default function DataKaryawanPage() {
 			)}
 
 			<Drawer open={Boolean(open)} onClose={() => { setOpen(null); setEditing(false); }} title={editing ? "Ubah data karyawan" : "Profil karyawan"}>
-				{open && editing ? <EmployeeEditor row={open} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); setOpen(null); dir.reload(); }} /> : open ? <Profile row={open} tab={tab} onTab={setTab} stat={month.analysis?.byUser[open._id]} series={month.analysis ? { labels: month.analysis.labels, values: month.analysis.seriesPresent } : null} onEdit={() => setEditing(true)} /> : null}
+				{open && editing ? <EmployeeEditor row={open} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); setOpen(null); dir.reload(); }} /> : open ? <Profile row={open} tab={tab} onTab={setTab} stat={month.analysis?.byUser[open._id]} series={month.analysis ? { labels: month.analysis.labels, values: month.analysis.seriesPresent } : null} onEdit={() => setEditing(true)} onToggleStatus={() => void changeStatus(open, !open.isActive)} statusBusy={statusAction.busy === open._id} /> : null}
 			</Drawer>
 		</Page>
 	);
 }
 
-function Profile({ row, tab, onTab, stat, series, onEdit }: { row: DirectoryRow; tab: Tab; onTab: (t: Tab) => void; stat?: { days: number; hours: number; late: number; onTimePct: number; sessions: number; unclosed: number }; series: { labels: string[]; values: number[] } | null; onEdit: () => void }) {
+function Profile({ row, tab, onTab, stat, series, onEdit, onToggleStatus, statusBusy }: { row: DirectoryRow; tab: Tab; onTab: (t: Tab) => void; stat?: { days: number; hours: number; late: number; onTimePct: number; sessions: number; unclosed: number }; series: { labels: string[]; values: number[] } | null; onEdit: () => void; onToggleStatus: () => void; statusBusy: boolean }) {
 	const comp = profileCompleteness(row);
 	const info = contractInfo(row);
 	const salary = Number(row.raw.monthlySalary ?? 0);
+	const protectedRole = isProtectedRole(row.roleName);
 	return (
 		<div>
 			<div className="mb-4 flex items-center gap-3"><Avatar name={row.name} size={52} /><div className="min-w-0"><div className="truncate font-display text-[20px]">{row.name}</div><div className="text-[13px] text-[#666672]">{row.raw.jabatan || row.roleName}</div></div></div>
+			<div className="mb-4 flex flex-wrap items-center justify-between gap-3 border border-[#e4e4e8] bg-[#fafafb] px-3 py-2.5">
+				<div className="min-w-0">
+					<div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#666672]">Status akun</div>
+					<div className="text-[13px] font-medium">{row.isActive ? "Aktif · tampil di Jadwal" : "Nonaktif · tidak tampil di Jadwal"}</div>
+				</div>
+				{protectedRole ? <StatusTag tone="mute">Akun administrator</StatusTag> : <Btn small primary={!row.isActive} danger={row.isActive} disabled={statusBusy} onClick={onToggleStatus}>{statusBusy ? "Menyimpan…" : row.isActive ? "Nonaktifkan" : "Aktifkan"}</Btn>}
+			</div>
 			<div className="mb-4"><Chips value={tab} onChange={onTab} options={[{ value: "profil", label: "Profil" }, { value: "kontrak", label: "Kontrak" }, { value: "kehadiran", label: "Kehadiran" }, { value: "gaji", label: "Gaji" }]} /></div>
 			<AnimatePresence mode="wait">
 				<motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="space-y-4">

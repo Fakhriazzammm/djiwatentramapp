@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api } from "../../lib/api";
+import { api, ApiError } from "../../lib/api";
 import { buildDashboardRange, type DashboardPeriodKey, type DashboardRange } from "../../lib/karyawan/periods";
 import { analyzeAttendance, type AttendanceAnalysis, type AttendanceLog, type Geofence, type ScheduleLite } from "../../lib/karyawan/analytics";
 
@@ -51,6 +51,24 @@ function useRemote<T>(path: string | null, refreshMs = 0) {
 export function useDirectory() {
 	const { data, reload } = useRemote<{ rows: DirectoryRow[] }>("/api/manager/karyawan/directory", 60_000);
 	return { rows: data?.rows, error: data === null ? "Data karyawan belum dapat dimuat. Coba lagi atau masuk ulang." : undefined, reload, loading: data === undefined };
+}
+
+/** Aktif/nonaktif karyawan. Nonaktif = tidak muncul di Jadwal dan pemilih shift. */
+export function useSetEmployeeActive() {
+	const [busy, setBusy] = useState<string | null>(null);
+	const setActive = useCallback(async (userId: string, isActive: boolean): Promise<{ ok: boolean; message: string }> => {
+		setBusy(userId);
+		try {
+			await api("/api/manager/karyawan/directory/status", { method: "POST", body: { userId, isActive } });
+			return { ok: true, message: isActive ? "Karyawan diaktifkan" : "Karyawan dinonaktifkan" };
+		} catch (e) {
+			const code = e instanceof ApiError ? e.code : "";
+			return { ok: false, message: code === "PROTECTED_ROLE" ? "Akun administrator tidak bisa dinonaktifkan." : "Status belum berubah. Coba lagi atau masuk ulang." };
+		} finally {
+			setBusy(null);
+		}
+	}, []);
+	return { setActive, busy };
 }
 
 type Bundle = { logs: AttendanceLog[]; schedules: ScheduleLite[]; geofence: Geofence | null };

@@ -2350,6 +2350,29 @@ export function useHybridActiveStaffUsers(refreshTrigger?: number) {
 	return useMemo(() => (all ? all.filter((u) => u.isActive) : all), [all]);
 }
 
+const SCHEDULE_ROLE_BLOCKLIST = new Set(["owner", "admin", "administrator", "superadmin", "super admin", "manager", "hrd", "client_viewer"]);
+
+/**
+ * Staf yang masuk grid Jadwal: aktif, bukan akun administrasi/office.
+ * Menyamakan daftar Admin dengan daftar staf di app Manager.
+ */
+export function useHybridScheduleStaffUsers(refreshTrigger?: number) {
+	const all = useHybridStaffUsers(refreshTrigger);
+	const roles = useHybridStaffRoles(refreshTrigger);
+	return useMemo(() => {
+		if (!all) return all;
+		const roleById = new Map((roles ?? []).map((role) => [role._id, role]));
+		return all.filter((user) => {
+			if (!user.isActive) return false;
+			const roleName = (user.roleName ?? "").trim().toLowerCase();
+			if (SCHEDULE_ROLE_BLOCKLIST.has(roleName)) return false;
+			const role = user.roleId ? roleById.get(user.roleId) : undefined;
+			if (role?.permissions.includes("users:manage")) return false;
+			return true;
+		});
+	}, [all, roles]);
+}
+
 export function useHybridShiftStatus(refreshTrigger?: number) {
 	const supabaseData = useSupabaseValue("shift-status", fetchShiftStatus, [], 
 		refreshTrigger !== undefined 

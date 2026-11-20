@@ -73,12 +73,14 @@ export default function JadwalPage() {
 	const minPerDay = Math.max(1, Math.ceil(users.length * 0.5));
 	const thin = days.filter((_, i) => perDay[i] < minPerDay);
 	const load = users.map((u) => ({ u, hours: days.reduce((sum, d) => { const s = working(u._id, d); return s ? sum + hoursOf(s.startTime?.slice(0, 5) ?? null, s.endTime?.slice(0, 5) ?? null) : sum; }, 0) }));
-	const scheduled = [...cells.values()].filter((s) => s.status !== "off" && s.shiftName.toUpperCase() !== OFF).length;
-	const offCount = cells.size - scheduled;
+	const staffIds = new Set(users.map((u) => u._id));
+	const visibleCells = [...cells.values()].filter((s) => staffIds.has(s.userId));
+	const scheduled = visibleCells.filter((s) => s.status !== "off" && s.shiftName.toUpperCase() !== OFF).length;
+	const offCount = visibleCells.length - scheduled;
 
 	const copyLastWeek = async () => {
 		const prevStart = addDays(weekStart, -7);
-		const source = prevWeek.schedules ?? [];
+		const source = (prevWeek.schedules ?? []).filter((s) => staffIds.has(s.userId));
 		if (source.length === 0) {
 			toast.info(`Tidak ada jadwal pada minggu ${fmtDate(prevStart)} untuk disalin.`);
 			return;

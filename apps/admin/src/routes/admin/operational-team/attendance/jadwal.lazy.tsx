@@ -16,7 +16,7 @@ import {
   useHybridDeleteAttendanceSchedule,
 } from "@/hooks/use-hybrid-attendance-schedules";
 import type { AttendanceSchedule, SchedulesByDate, CreateScheduleInput } from "@/hooks/use-hybrid-attendance-schedules";
-import { useHybridActiveStaffUsers } from "@/hooks/use-hybrid-pos-data";
+import { useHybridScheduleStaffUsers } from "@/hooks/use-hybrid-pos-data";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import {
   DndContext,
@@ -930,7 +930,7 @@ function AttendanceJadwalPage() {
     year,
     refreshTrigger
   );
-  const users = useHybridActiveStaffUsers(refreshTrigger);
+  const users = useHybridScheduleStaffUsers(refreshTrigger);
   const siteSettings = useHybridSiteSettings();
   const shiftTemplates =
     siteSettings?.shiftSettings?.shiftSchedules ?? [];
@@ -947,6 +947,17 @@ function AttendanceJadwalPage() {
       name: (u.name ?? "").trim(),
       roleName: (u.roleName ?? "-").trim(),
     }));
+
+  // Grid hanya menampilkan karyawan aktif; jadwal milik akun nonaktif/office disembunyikan.
+  const visibleSchedulesByDate = useMemo(() => {
+    const allowed = new Set((users ?? []).map((u: any) => u._id));
+    const grouped: SchedulesByDate = {};
+    for (const [date, list] of Object.entries(schedulesByDate ?? {})) {
+      const visible = list.filter((schedule) => allowed.has(schedule.userId));
+      if (visible.length > 0) grouped[date] = visible;
+    }
+    return grouped;
+  }, [schedulesByDate, users]);
 
   const refresh = () => setRefreshTrigger((n) => n + 1);
 
@@ -1164,7 +1175,7 @@ function AttendanceJadwalPage() {
           {viewMode === "matrix" ? (
             <RosterMatrix
               monthDays={monthDays}
-              schedulesByDate={schedulesByDate ?? {}}
+              schedulesByDate={visibleSchedulesByDate}
               users={filteredUsers}
               onEditSchedule={handleEdit}
               onAdd={handleAdd}
@@ -1194,7 +1205,7 @@ function AttendanceJadwalPage() {
                         dateStr={dateStr}
                         isToday={isToday(day)}
                         isCurrentMonth={isSameMonth(day, currentDate)}
-                        schedules={schedulesByDate?.[dateStr] ?? []}
+                        schedules={visibleSchedulesByDate[dateStr] ?? []}
                         onAdd={handleAdd}
                         onEditSchedule={handleEdit}
                         onDeleteSchedule={handleDelete}
@@ -1216,7 +1227,7 @@ function AttendanceJadwalPage() {
 
       {/* Empty state */}
       {!isLoading &&
-        Object.keys(schedulesByDate ?? {}).length === 0 && (
+        Object.keys(visibleSchedulesByDate).length === 0 && (
           <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border/70 px-4 py-8 text-center">
             <CalendarDays className="h-12 w-12 text-muted-foreground/40" />
             <p className="text-muted-foreground">
