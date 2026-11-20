@@ -33,3 +33,4 @@
 .dpx-ln-panel .dpx-ln-table th { overflow-wrap: anywhere; }
 .dpx-ln-panel .dpx-ln-table th[scope="row"] { text-align: left; }
 .dpx-ln-panel .dpx-ln-table a { color: var(--blue); text-decoration: underline; }
+.dpx .dpx-ln-foot{position:sticky;bottom:0;z-index:2;margin:8px -2px 0;padding:14px 2px calc(env(safe-area-inset-bottom,0px) + 10px);background:linear-gradient(to top,#fff 78%,rgba(255,255,255,0))}
