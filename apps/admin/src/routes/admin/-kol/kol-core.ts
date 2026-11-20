@@ -1,3 +1,4 @@
+import type { CampaignFields } from "../../../../../../supabase/functions/_shared/kol-campaign";
 // Inti modul admin KOL Marketing: tipe, panggilan API, aturan status, dan penyimpanan data bersama.
 // Aturan status disamakan dengan apps/kol (portal creator) dan auth-server (kol-portal.ts).
 import { useCallback, useEffect, useState } from "react";
@@ -20,7 +21,7 @@ export type Visit = {
   sow_version?: number | null; sow_snapshot?: SowSnapshot; sow_customized?: boolean; post_deadline?: string | null;
   kol_creators?: { name: string; username: string; avatar_url?: string | null; kol_private_contacts?: Contact | Contact[] | null } | null;
 };
-export type Campaign = {
+export type Campaign = Partial<CampaignFields> & {
   id: number; slug: string; title: string; description: string; location?: string | null; benefit_description: string; deliverable_summary: string;
   application_deadline?: string | null; start_date?: string | null; end_date?: string | null; status: string; created_at?: string;
 };

@@ -6,6 +6,8 @@ type Props = {
   rows: VisitRow[];
   date: string | null;
   time: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
   onChange: (next: { date: string | null; time: string | null }) => void;
 };
 
@@ -13,10 +15,10 @@ const statusLabel = (s: string) => (s === "requested" ? "Menunggu" : s === "conf
 const statusClass = (s: string) => (s === "requested" ? "kx-pill--warn" : "kx-pill--ok");
 const DOW = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 
-export function VisitPicker({ rows, date, time, onChange }: Props) {
+export function VisitPicker({ rows, date, time, onChange, startDate, endDate }: Props) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const minKey = tomorrowKey();
-  const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  const minKey = startDate && startDate > tomorrowKey() ? startDate : tomorrowKey();
+  const [cursor, setCursor] = useState(() => parseDay(minKey.slice(0, 7) + "-01"));
   const [peek, setPeek] = useState<string | null>(null);
   const byDate = useMemo(() => new Map(rows.map(r => [r.booking_date, r])), [rows]);
 
@@ -24,10 +26,11 @@ export function VisitPicker({ rows, date, time, onChange }: Props) {
   const offset = (new Date(y, m, 1).getDay() + 6) % 7;
   const days = new Date(y, m + 1, 0).getDate();
   const cells = [...Array(offset).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)] as Array<number | null>;
-  const atCurrentMonth = y === today.getFullYear() && m === today.getMonth();
+  const atMinMonth = dayKey(y, m, 1).slice(0, 7) <= minKey.slice(0, 7);
+  const atMaxMonth = Boolean(endDate && dayKey(y, m, 1).slice(0, 7) >= endDate.slice(0, 7));
 
   const nextFree = () => {
-    for (let i = 1; i < 120; i++) { const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i); const k = dayKey(d.getFullYear(), d.getMonth(), d.getDate()); if (!byDate.has(k)) return k; }
+    for (let i = 1; i < 120; i++) { const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i); const k = dayKey(d.getFullYear(), d.getMonth(), d.getDate()); if (k >= minKey && (!endDate || k <= endDate) && !byDate.has(k)) return k; }
     return null;
   };
   const pick = (key: string) => {
@@ -43,16 +46,16 @@ export function VisitPicker({ rows, date, time, onChange }: Props) {
     <div>
       <div className="kx-cal">
         <div className="kx-calh">
-          <button type="button" aria-label="Bulan sebelumnya" disabled={atCurrentMonth} onClick={() => setCursor(new Date(y, m - 1, 1))}>‹</button>
+          <button type="button" aria-label="Bulan sebelumnya" disabled={atMinMonth} onClick={() => setCursor(new Date(y, m - 1, 1))}>‹</button>
           <b>{cursor.toLocaleDateString("id-ID", { month: "long", year: "numeric" })}</b>
-          <button type="button" aria-label="Bulan berikutnya" onClick={() => setCursor(new Date(y, m + 1, 1))}>›</button>
+          <button type="button" aria-label="Bulan berikutnya" disabled={atMaxMonth} onClick={() => setCursor(new Date(y, m + 1, 1))}>›</button>
         </div>
         <div className="kx-g7">
           {DOW.map(d => <div className="kx-dow" key={d}>{d}</div>)}
           {cells.map((d, i) => {
             if (!d) return <div key={`e${i}`} />;
             const key = dayKey(y, m, d);
-            const past = key < minKey;
+            const past = key < minKey || Boolean(endDate && key > endDate);
             const row = byDate.get(key);
             const cls = past ? "past" : row ? (row.own ? "full own" : "full") : "free";
             const sel = date === key ? " sel" : "";
@@ -60,7 +63,7 @@ export function VisitPicker({ rows, date, time, onChange }: Props) {
             const pk = peek === key ? " peek" : "";
             return (
               <button key={key} type="button" className={`kx-day ${cls}${sel}${isToday}${pk}`} disabled={past} aria-pressed={date === key}
-                aria-label={`${longDate(key)}${row ? (row.own ? ", jadwalmu" : ", sudah dipegang " + (row.creator_name || "KOL lain")) : ", tersedia"}`}
+                aria-label={`${longDate(key)}${row ? (row.own ? ", jadwalmu" : ", sudah dipegang " + (row.creator_name || "KOL lain")) : past ? ", tidak tersedia" : ", tersedia"}`}
                 onClick={() => pick(key)}>
                 {d}
                 {row && !past && <span className="kx-dot" style={{ background: colorFor(row.creator_name || "x") }} />}

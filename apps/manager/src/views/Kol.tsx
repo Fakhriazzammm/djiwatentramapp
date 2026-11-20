@@ -1,3 +1,5 @@
+import { CampaignApplications, CampaignEditorExtras, campaignEditorFields, visitCampaignTemplate, type CampaignApplication } from "../../../../packages/djiwaapps-web-shared/src/components/kol-campaign-editor";
+import type { CampaignDraft, CampaignFields } from "../../../../supabase/functions/_shared/kol-campaign";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
@@ -17,7 +19,7 @@ type Creator = {
   kol_platforms?: Platform[] | null; contact: Contact | null;
   profile: { slug?: string | null; display_name?: string | null; bio?: string | null; is_public?: boolean | null; public_availability?: string | null } | null;
 };
-type Campaign = {
+type Campaign = Partial<CampaignFields> & {
   id: number; slug: string; title: string; description: string; location?: string | null;
   benefit_description: string; deliverable_summary: string;
   application_deadline?: string | null; start_date?: string | null; end_date?: string | null; status: string; created_at?: string | null;
@@ -722,6 +724,7 @@ function CampaignDetail({ campaign, data, assignments, submissions, send, onClos
   campaign: Campaign | null; data: Snapshot; assignments: Assignment[]; submissions: Submission[]; send: Send; onClose: () => void;
 }) {
   const [form, setForm] = useState({
+    ...campaignEditorFields(campaign),
     title: campaign?.title ?? "",
     slug: campaign?.slug ?? "",
     description: campaign?.description ?? "",
@@ -737,7 +740,8 @@ function CampaignDetail({ campaign, data, assignments, submissions, send, onClos
   const [assignNote, setAssignNote] = useState("");
   const [busy, setBusy] = useState("");
 
-  const set = (key: keyof typeof form, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
+  const activeSow = data.sowVersions.find((version) => version.is_active);
+  const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((prev) => ({ ...prev, [key]: value }));
   const assignedIds = new Set(assignments.filter((a) => a.status !== "cancelled").map((a) => a.kol_id));
   const available = useMemo(
     () => data.creators.filter((c) => !assignedIds.has(c.source_id)).sort((a, b) => totalFollowers(b) - totalFollowers(a)),
@@ -796,10 +800,37 @@ function CampaignDetail({ campaign, data, assignments, submissions, send, onClos
         <textarea className="f" rows={2} value={form.deliverableSummary} maxLength={2000} onChange={(e) => set("deliverableSummary", e.target.value)} />
         <label>Deskripsi</label>
         <textarea className="f" rows={3} value={form.description} maxLength={4000} onChange={(e) => set("description", e.target.value)} />
+        <CampaignEditorExtras fields={form} title={form.title} slug={form.slug || slugify(form.title)}
+          inputClass="f" buttonClass="btn s"
+          onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+          onTemplate={!campaign && activeSow
+            ? () => setForm((prev) => ({ ...prev, ...visitCampaignTemplate({ ...activeSow, days: data.settings?.post_deadline_days ?? 7 }) }))
+            : undefined}
+          generate={async (brief) => {
+            const response = await api<{ data: CampaignDraft }>("/api/manager/kol", { method: "POST",
+              body: { action: "campaign_draft_ai", title: form.title, brief } });
+            return response.data;
+          }}
+          onDraft={(draft) => setForm((prev) => ({ ...prev, ...draft }))} />
+        {campaign && (
+          <CampaignApplications campaignId={campaign.id} inputClass="f" buttonClass="btn s"
+            load={async () => {
+              const response = await api<{ data: CampaignApplication[] }>("/api/manager/kol", {
+                method: "POST", body: { action: "campaign_applications", campaignId: campaign.id },
+              });
+              return response.data;
+            }}
+            review={async (decision) => {
+              const response = await send({ action: "campaign_application_review", ...decision },
+                decision.approve ? "Pengajuan diterima" : "Pengajuan ditolak");
+              if (!response.ok) throw new Error("Keputusan belum tersimpan.");
+            }} />
+        )}
       </div>
 
       {campaign && (
         <div className="pad" style={{ borderTop: "1px solid var(--line)" }}>
+          {(campaign.application_mode ?? "invite") === "invite" && <>
           <label style={{ marginTop: 0 }}>Undang creator</label>
           <div className="crow" style={{ marginTop: 0 }}>
             <select className="f" style={{ flex: 1, minWidth: 180 }} value={assignId} onChange={(e) => setAssignId(e.target.value)}>
@@ -809,9 +840,10 @@ function CampaignDetail({ campaign, data, assignments, submissions, send, onClos
             <input className="f" style={{ flex: 1, minWidth: 160 }} placeholder="Catatan untuk creator (opsional)" value={assignNote} maxLength={1000} onChange={(e) => setAssignNote(e.target.value)} />
             <button className="btn s p" disabled={!assignId || busy === "assign"} onClick={() => void assign()}>Undang</button>
           </div>
+          </>}
 
           <label>Creator di kampanye ini</label>
-          {assignments.length === 0 && <div className="meta">Belum ada creator yang diundang.</div>}
+          {assignments.length === 0 && <div className="meta">Belum ada creator yang bergabung.</div>}
           {assignments.map((a) => (
             <div key={a.id} className="mr" style={{ padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
               <div>

@@ -1,3 +1,4 @@
+import { CAMPAIGN_PROOF_PLATFORMS, campaignProofMatchesPlatform } from "../../../supabase/functions/_shared/kol-campaign.ts";
 import type { Hono } from "hono";
 
 import { createHash } from "node:crypto";
@@ -362,14 +363,25 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     }
     const date = typeof body.bookingDate === "string" ? body.bookingDate.trim() : "";
     const time = typeof body.bookingTime === "string" ? body.bookingTime.trim() : "";
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isBookingDateFromTomorrow(date)) return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
-    if (!isVisitTimeAllowed(time)) return json(c, { success: false, error: "INVALID_BOOKING_TIME" }, 400);
-    if (body.consentTerms !== true || body.consentAttendance !== true || body.consentNoShow !== true) return json(c, { success: false, error: "CONSENT_REQUIRED" }, 400);
+    const campaignSlug = typeof body.campaignSlug === "string" && /^[a-z0-9-]{1,120}$/.test(body.campaignSlug) ? body.campaignSlug : null;
+    if (!campaignSlug && (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isBookingDateFromTomorrow(date))) return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
+    if (!campaignSlug && !isVisitTimeAllowed(time)) return json(c, { success: false, error: "INVALID_BOOKING_TIME" }, 400);
+    if (!campaignSlug && (body.consentTerms !== true || body.consentAttendance !== true || body.consentNoShow !== true)) return json(c, { success: false, error: "CONSENT_REQUIRED" }, 400);
 
     const sourceId = `kol_${crypto.randomUUID().replace(/-/g, "")}`;
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
+      if (campaignSlug) {
+        const available = await client.query(`select 1 from pos.kol_campaigns
+          where slug = $1 and status = 'published' and application_mode <> 'invite'
+            and coalesce(application_deadline >= (now() at time zone 'Asia/Jakarta')::date, true)
+            and coalesce(end_date >= (now() at time zone 'Asia/Jakarta')::date, true)`, [campaignSlug]);
+        if (!available.rows[0]) {
+          await client.query("ROLLBACK");
+          return json(c, { success: false, error: "CAMPAIGN_NOT_OPEN" }, 409);
+        }
+      }
       const owned = await client.query(`select source_id from pos.kol_creators where auth_user_id = $1 limit 1`, [userId]);
       if (owned.rows[0]) { await client.query("ROLLBACK"); return json(c, { success: false, error: "ALREADY_REGISTERED" }, 409); }
       const duplicate = await client.query(
@@ -381,9 +393,9 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
       await client.query(
         `insert into pos.kol_creators(source_id,name,username,username_normalized,location,category,status,public_reason,application_data,auth_user_id,
                                       visit_booking_eligible,visit_booking_eligible_at,visit_booking_eligibility_note,avatar_url)
-         values($1,$2,$3,$4,$5,$6,'Scheduled Visit',$7,$8,$9,true,now(),'Pendaftaran mandiri dengan booking visit',$10)`,
+         values($1,$2,$3,$4,$5,$6,$11,$7,$8,$9,true,now(),'Pendaftaran mandiri',$10)`,
         [sourceId, name, `@${username}`, username, location, category, String(body.reason ?? "").trim().slice(0, 1000),
-         JSON.stringify({ averageViews: Number(body.averageViews) || 0, contentTypes, profileUrl, source: "self-register" }), userId, googlePhotoUrl(session?.user?.image)],
+         JSON.stringify({ averageViews: Number(body.averageViews) || 0, contentTypes, profileUrl, source: "self-register" }), userId, googlePhotoUrl(session?.user?.image), campaignSlug ? 'Potential' : 'Scheduled Visit'],
       );
       await client.query(
         `insert into pos.kol_platforms(kol_id,platform,username,username_normalized,profile_url,followers) values($1,$2,$3,$4,$5,$6)`,
@@ -391,12 +403,12 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
       );
       await client.query(`insert into pos.kol_profiles(kol_id, display_name, slug, is_public) values ($1,$2,$3,true) on conflict (kol_id) do nothing`, [sourceId, name, username]);
       await client.query(`insert into pos.kol_private_contacts(kol_id,email,whatsapp) values($1,$2,$3)`, [sourceId, accountEmail || null, whatsapp]);
-      const booking = await client.query(`select * from pos.kol_request_shared_visit_booking($1,$2,$3::time,$4,$5,$6)`, [sourceId, date, time, true, true, userId]);
-      await stampVisitConsent(client, booking.rows[0]?.id);
+      const booking = campaignSlug ? null : await client.query(`select * from pos.kol_request_shared_visit_booking($1,$2,$3::time,$4,$5,$6)`, [sourceId, date, time, true, true, userId]);
+      if (booking) await stampVisitConsent(client, booking.rows[0]?.id);
       await client.query("COMMIT");
       const photo = googlePhotoUrl(session?.user?.image);
       if (photo) void mirrorGoogleAvatar(pool, sourceId, photo);
-      return json(c, { success: true, data: { creator: { id: sourceId, name, username: `@${username}`, status: "Scheduled Visit" }, booking: booking.rows[0] ?? null } }, 201);
+      return json(c, { success: true, data: { creator: { id: sourceId, name, username: `@${username}`, status: campaignSlug ? "Potential" : "Scheduled Visit" }, booking: booking?.rows[0] ?? null } }, 201);
     } catch (error: any) {
       await client.query("ROLLBACK").catch(() => undefined);
       const message = error?.code === "P0001" ? error.message : "";
@@ -572,18 +584,68 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     return json(c, { success: true, data: result.rows[0] });
   });
 
+  const campaignFields = `c.id, c.slug, c.title, c.description, c.location, c.benefit_description, c.deliverable_summary,
+    c.application_deadline::text, c.start_date::text, c.end_date::text, c.status, c.updated_at::text as revision,
+    c.application_mode, c.cover_url, c.terms, c.sow, c.proof_platforms,
+    c.status = 'published' and c.application_mode <> 'invite'
+      and coalesce(c.application_deadline >= (now() at time zone 'Asia/Jakarta')::date, true)
+      and coalesce(c.end_date >= (now() at time zone 'Asia/Jakarta')::date, true) as can_apply`;
+
+  app.get("/api/kol/public-campaigns", async (c) => {
+    const result = await pool.query(`select ${campaignFields} from pos.kol_campaigns c
+      where c.status = 'published' and c.application_mode <> 'invite' order by c.created_at desc limit 100`);
+    return json(c, { success: true, data: result.rows });
+  });
+
+  app.get("/api/kol/public-campaigns/:slug", async (c) => {
+    const result = await pool.query(`select ${campaignFields} from pos.kol_campaigns c
+      where c.status = 'published' and c.application_mode <> 'invite' and c.slug = $1`, [c.req.param("slug")]);
+    return result.rows[0] ? json(c, { success: true, data: result.rows[0] })
+      : json(c, { success: false, error: "CAMPAIGN_NOT_FOUND" }, 404);
+  });
+
   app.get("/api/kol/portal/campaigns", async (c) => {
     const current = await context(c, auth, pool);
     if (current.error) return current.error;
     const result = await pool.query(
-      `select c.*, a.id as assignment_id, a.status as assignment_status, a.accepted_at, a.completed_at
+      `select ${campaignFields}, a.id as assignment_id, a.status as assignment_status,
+          ap.status as application_status, ap.terms_snapshot, ap.sow_snapshot, ap.proof_platforms as agreed_proof_platforms,
+          ap.review_note, ap.requires_visit as application_requires_visit, b.status as visit_status, b.booking_date::text as visit_date,
+          to_char(b.booking_time, 'HH24:MI') as visit_time,
+          b.post_deadline::text as post_deadline,
+          case when b.sow_snapshot is distinct from ap.sow_snapshot then b.sow_snapshot end as updated_visit_sow
          from pos.kol_campaigns c
          left join pos.kol_campaign_assignments a on a.campaign_id = c.id and a.kol_id = $1
-        where c.status = 'published' or a.id is not null
-        order by coalesce(c.start_date, c.created_at::date) asc, c.created_at desc`,
+         left join pos.kol_campaign_applications ap on ap.campaign_id = c.id and ap.kol_id = $1
+         left join pos.kol_visit_bookings b on b.id = ap.booking_id
+        where c.status = 'published' or a.id is not null or ap.id is not null
+        order by c.created_at desc`,
       [current.kol.source_id],
     );
     return json(c, { success: true, data: result.rows });
+  });
+
+  app.post("/api/kol/portal/campaigns/:slug/apply", async (c) => {
+    const current = await context(c, auth, pool);
+    if (current.error) return current.error;
+    const body = await c.req.json().catch(() => ({}));
+    const slug = c.req.param("slug");
+    const date = typeof body.bookingDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.bookingDate) ? body.bookingDate : null;
+    const time = isVisitTimeAllowed(body.bookingTime) ? body.bookingTime : null;
+    const revision = typeof body.revision === "string" && body.revision.length <= 40 && Number.isFinite(Date.parse(body.revision)) ? body.revision : null;
+    if (!revision || body.consentTerms !== true) return json(c, { success: false, error: "CAMPAIGN_TERMS_CHANGED" }, 409);
+    try {
+      const result = await pool.query(
+        `select status, booking_id from pos.kol_apply_campaign($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+        [slug, current.kol.source_id, current.userId, revision, true, date, time,
+          body.consentAttendance === true, body.consentNoShow === true, VISIT_CONSENT_TEXT, body.useExisting === true],
+      );
+      return json(c, { success: true, data: result.rows[0] });
+    } catch (error: any) {
+      if (error?.code === "P0001") return json(c, { success: false, error: error.message }, 409);
+      if (["22007", "22008"].includes(error?.code)) return json(c, { success: false, error: "INVALID_BOOKING_DATE" }, 400);
+      throw error;
+    }
   });
 
   app.post("/api/kol/portal/campaigns/:id/respond", async (c) => {
@@ -593,7 +655,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const status = body.status === "accepted" ? "accepted" : body.status === "declined" ? "declined" : null;
     if (!status) return json(c, { success: false, error: "INVALID_CAMPAIGN_RESPONSE" }, 400);
     const result = await pool.query(
-      `update pos.kol_campaign_assignments a set status = $1, accepted_at = case when $1='accepted' then now() else accepted_at end, updated_at = now() from pos.kol_campaigns c where a.id = $2 and a.campaign_id=c.id and a.kol_id=$3 and a.status='invited' and c.status='published' returning a.*`,
+      `update pos.kol_campaign_assignments a set status = $1, accepted_at = case when $1='accepted' then now() else accepted_at end, updated_at = now() from pos.kol_campaigns c where a.id = $2 and a.campaign_id=c.id and a.kol_id=$3 and a.status='invited' and c.status='published' and c.application_mode='invite' and ($1='declined' or cardinality(c.terms)=0) returning a.*`,
       [status, Number(c.req.param("id")), current.kol.source_id],
     );
     if (!result.rows[0]) return json(c, { success: false, error: "CAMPAIGN_ASSIGNMENT_NOT_FOUND" }, 404);
@@ -614,9 +676,22 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const assignmentId = Number(body.assignmentId);
     const contentUrl = typeof body.contentUrl === "string" ? body.contentUrl.trim() : "";
     if (!Number.isInteger(assignmentId) || !validUrl(contentUrl)) return json(c, { success: false, error: "INVALID_CONTENT_PROOF" }, 400);
-    const result = await pool.query(`insert into pos.kol_content_submissions (campaign_assignment_id,deliverable_type,content_url,published_at,insight_screenshot_url,status) select a.id,$1,$2,$3,$4,'submitted' from pos.kol_campaign_assignments a where a.id=$5 and a.kol_id=$6 and a.status in ('accepted','active') returning *`, [typeof body.deliverableType === "string" ? body.deliverableType.trim().slice(0, 120) || "content" : "content", contentUrl, typeof body.publishedAt === "string" ? body.publishedAt : null, typeof body.screenshotUrl === "string" && validUrl(body.screenshotUrl) ? body.screenshotUrl.trim() : null, assignmentId, current.kol.source_id]);
-    if (!result.rows[0]) return json(c, { success: false, error: "CAMPAIGN_ASSIGNMENT_NOT_FOUND" }, 404);
-    await pool.query(`update pos.kol_campaign_assignments set status='active', updated_at=now() where id=$1 and kol_id=$2`, [assignmentId, current.kol.source_id]);
+    const deliverable = typeof body.deliverableType === "string" ? body.deliverableType.trim().slice(0, 120) || "content" : "content";
+    const result = await pool.query(`insert into pos.kol_content_submissions
+      (campaign_assignment_id,deliverable_type,content_url,published_at,insight_screenshot_url,status,required_platform)
+      select a.id,$1,$2,$3,$4,'submitted',case when cardinality(ap.proof_platforms) > 0 then $1 end
+        from pos.kol_campaign_assignments a
+        left join pos.kol_campaign_applications ap on ap.campaign_id = a.campaign_id and ap.kol_id = a.kol_id
+        left join pos.kol_visit_bookings b on b.id = ap.booking_id
+       where a.id=$5 and a.kol_id=$6 and a.status in ('accepted','active')
+         and (not coalesce(ap.requires_visit, false) or b.status = 'completed')
+         and (coalesce(cardinality(ap.proof_platforms), 0) = 0 or ($7::boolean and $1 = any(ap.proof_platforms)))
+      on conflict (campaign_assignment_id, required_platform)
+        where required_platform is not null and status <> 'rejected' do nothing
+      returning *`, [deliverable, contentUrl, typeof body.publishedAt === "string" ? body.publishedAt : null,
+        typeof body.screenshotUrl === "string" && validUrl(body.screenshotUrl) ? body.screenshotUrl.trim() : null, assignmentId, current.kol.source_id, campaignProofMatchesPlatform(contentUrl, deliverable)]);
+    if (!result.rows[0]) return json(c, { success: false, error: campaignProofMatchesPlatform(contentUrl, deliverable) ? "CAMPAIGN_PROOF_UNAVAILABLE" : "CAMPAIGN_PROOF_PLATFORM_INVALID" }, 409);
+    await pool.query(`update pos.kol_campaign_assignments set status='active', updated_at=now() where id=$1 and kol_id=$2 and status='accepted'`, [assignmentId, current.kol.source_id]);
     return json(c, { success: true, data: result.rows[0] }, 201);
   });
 
@@ -626,8 +701,8 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const body = await c.req.json().catch(() => ({}));
     const contentUrl = typeof body.contentUrl === "string" ? body.contentUrl.trim() : "";
     if (!validUrl(contentUrl)) return json(c, { success: false, error: "INVALID_CONTENT_PROOF" }, 400);
-    const result = await pool.query(`update pos.kol_content_submissions p set content_url=$1, insight_screenshot_url=coalesce($2,insight_screenshot_url), status='submitted', reviewed_at=null, review_note=null, updated_at=now() from pos.kol_campaign_assignments a where p.id=$3 and p.campaign_assignment_id=a.id and a.kol_id=$4 and p.status='needs_revision' returning p.*`, [contentUrl, typeof body.screenshotUrl === "string" && validUrl(body.screenshotUrl) ? body.screenshotUrl.trim() : null, Number(c.req.param("id")), current.kol.source_id]);
-    if (!result.rows[0]) return json(c, { success: false, error: "CONTENT_PROOF_NOT_FOUND" }, 404);
+    const result = await pool.query(`update pos.kol_content_submissions p set content_url=$1, insight_screenshot_url=coalesce($2,insight_screenshot_url), status='submitted', reviewed_at=null, review_note=null, updated_at=now() from pos.kol_campaign_assignments a where p.id=$3 and p.campaign_assignment_id=a.id and a.kol_id=$4 and p.status='needs_revision' and (p.required_platform is null or p.required_platform = any($5::text[])) returning p.*`, [contentUrl, typeof body.screenshotUrl === "string" && validUrl(body.screenshotUrl) ? body.screenshotUrl.trim() : null, Number(c.req.param("id")), current.kol.source_id, CAMPAIGN_PROOF_PLATFORMS.filter((platform) => campaignProofMatchesPlatform(contentUrl, platform))]);
+    if (!result.rows[0]) return json(c, { success: false, error: "CAMPAIGN_PROOF_REVISION_UNAVAILABLE" }, 404);
     return json(c, { success: true, data: result.rows[0] });
   });
   app.get("/api/kol/portal/notifications", async (c) => {

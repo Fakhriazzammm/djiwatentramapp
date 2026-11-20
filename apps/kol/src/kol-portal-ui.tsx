@@ -16,6 +16,7 @@ const TAB_PATH: Record<PortalTabKey, string> = { home: "/", community: "/komunit
 export const portalPath = (tab: PortalTabKey, invite?: string | null) => (tab === "calendar" && invite ? `${TAB_PATH.calendar}?invite=${encodeURIComponent(invite)}` : TAB_PATH[tab]);
 export function tabFromPath(path: string): PortalTabKey {
   const route = path.replace(/\/+$/, "") || "/";
+  if (route.startsWith("/campaigns/")) return "campaigns";
   return (Object.entries(TAB_PATH).find(([, p]) => p === route)?.[0] as PortalTabKey) || "home";
 }
 const statusLabel = (s: string) => (s === "requested" ? "Menunggu konfirmasi" : s === "confirmed" ? "Terkonfirmasi" : s === "completed" ? "Selesai" : s);

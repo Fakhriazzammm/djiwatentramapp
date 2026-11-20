@@ -1,3 +1,5 @@
+import { CampaignApplications, CampaignEditorExtras, campaignEditorFields, visitCampaignTemplate, type CampaignApplication } from "../../../../../../packages/djiwaapps-web-shared/src/components/kol-campaign-editor";
+import type { CampaignDraft, CampaignSow } from "../../../../../../supabase/functions/_shared/kol-campaign";
 // Halaman Kampanye: data yang sama dengan tab Kampanye portal creator, ditambah
 // pengelolaan kampanye, undangan creator, dan review bukti konten.
 import { Link2, Plus, RefreshCw, Send, ShieldCheck, X } from "lucide-react";
@@ -18,6 +20,7 @@ export function KolCampaignsPage() {
   const { token, canManage, loading, error, overview, creators, reload, ready } = useKolData();
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
+  const activeSow = overview.sowVersions.find((version) => version.is_active);
   const [editing, setEditing] = useState<number | "new" | null>(null);
 
   const assignmentsBy = useMemo(() => {
@@ -109,6 +112,7 @@ export function KolCampaignsPage() {
         <CampaignPanel
           key={editingCampaign?.id ?? "new"}
           campaign={editingCampaign}
+          activeSow={activeSow ? { ...activeSow, days: overview.settings?.post_deadline_days ?? 7 } : undefined}
           token={token}
           creators={creators}
           assignments={editingCampaign ? assignmentsBy.get(editingCampaign.id) ?? [] : []}
@@ -121,8 +125,9 @@ export function KolCampaignsPage() {
   );
 }
 
-function CampaignPanel({ campaign, token, creators, assignments, submissions, onClose, onSaved }: {
+function CampaignPanel({ campaign, activeSow, token, creators, assignments, submissions, onClose, onSaved }: {
   campaign: Campaign | null;
+  activeSow?: CampaignSow;
   token: string | null;
   creators: Creator[];
   assignments: Assignment[];
@@ -132,6 +137,7 @@ function CampaignPanel({ campaign, token, creators, assignments, submissions, on
 }) {
   const [busy, setBusy] = useState("");
   const [form, setForm] = useState({
+    ...campaignEditorFields(campaign),
     title: campaign?.title ?? "",
     slug: campaign?.slug ?? "",
     description: campaign?.description ?? "",
@@ -146,7 +152,7 @@ function CampaignPanel({ campaign, token, creators, assignments, submissions, on
   const [assignId, setAssignId] = useState("");
   const [assignNote, setAssignNote] = useState("");
 
-  const set = <K extends keyof typeof form>(key: K, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
+  const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((prev) => ({ ...prev, [key]: value }));
   const assignedIds = new Set(assignments.filter((a) => a.status !== "cancelled").map((a) => a.kol_id));
   const available = useMemo(
     () => [...creators].filter((c) => !assignedIds.has(c.source_id)).sort((a, b) => totalFollowers(b) - totalFollowers(a)),
@@ -222,6 +228,23 @@ function CampaignPanel({ campaign, token, creators, assignments, submissions, on
         </Field>
       </div>
 
+      <CampaignEditorExtras fields={form} title={form.title} slug={form.slug || slugify(form.title)}
+        inputClass={inputCls} buttonClass="inline-flex min-h-9 items-center rounded-md border px-3 text-sm"
+        onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+        onTemplate={!campaign && activeSow ? () => setForm((prev) => ({ ...prev, ...visitCampaignTemplate(activeSow) })) : undefined}
+        generate={(brief) => kolCall<CampaignDraft>("kol-portal-admin", "campaign_draft_ai", token, { title: form.title, brief })}
+        onDraft={(draft) => setForm((prev) => ({ ...prev, ...draft }))} />
+      {campaign && (
+        <CampaignApplications campaignId={campaign.id} inputClass={inputCls}
+          buttonClass="inline-flex min-h-9 items-center rounded-md border px-3 text-sm"
+          load={() => kolCall<CampaignApplication[]>("kol-portal-admin", "campaign_applications", token, { campaignId: campaign.id })}
+          review={async (decision) => {
+            await kolCall("kol-portal-admin", "campaign_application_review", token, decision);
+            toast.success(decision.approve ? "Pengajuan diterima." : "Pengajuan ditolak.");
+            onSaved();
+          }} />
+      )}
+
       {campaign && (
         <>
           <SectionLabel right={<Label>{assignments.length} creator</Label>}>Creator kampanye</SectionLabel>
@@ -240,9 +263,9 @@ function CampaignPanel({ campaign, token, creators, assignments, submissions, on
                 );
               })}
             </div>
-          ) : <p className="text-[11.5px] text-[#666672]">Belum ada creator diundang.</p>}
+          ) : <p className="text-[11.5px] text-[#666672]">Belum ada creator yang bergabung.</p>}
 
-          <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+          {(campaign.application_mode ?? "invite") === "invite" && <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
             <Field label="Undang creator">
               <select className={inputCls} value={assignId} onChange={(e) => setAssignId(e.target.value)}>
                 <option value="">Pilih creator…</option>
@@ -253,7 +276,7 @@ function CampaignPanel({ campaign, token, creators, assignments, submissions, on
               <input className={inputCls} value={assignNote} maxLength={1000} onChange={(e) => setAssignNote(e.target.value)} placeholder="Opsional" />
             </Field>
             <Btn variant="primary" disabled={!assignId || busy === "assign"} onClick={() => void assign()}><Send className="h-3.5 w-3.5" />Undang</Btn>
-          </div>
+          </div>}
 
           <SectionLabel right={<Label>{submissions.length} bukti</Label>}>Bukti konten</SectionLabel>
           {submissions.length ? (

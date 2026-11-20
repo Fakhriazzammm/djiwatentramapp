@@ -56,7 +56,7 @@ export function LoginScreen({ loading, error, onGoogle }: { loading?: boolean; e
 /* ---------- 2–4. Form → Booking → Berhasil ---------- */
 type Form = { name: string; city: string; wa: string; plat: string; user: string; followers: string; cat: string; types: string[]; why: string };
 
-export function RegisterFlow({ session, onRegistered }: { session: Session; onRegistered: () => Promise<void> | void }) {
+export function RegisterFlow({ session, onRegistered, campaignSlug }: { session: Session; onRegistered: () => Promise<void> | void; campaignSlug?: string }) {
   const [step, setStep] = useState<"form" | "book" | "done">("form");
   const [f, setF] = useState<Form>({ name: session.user.name || "", city: "Tasikmalaya", wa: "", plat: "TikTok", user: "", followers: "", cat: "Food & Beverage", types: [], why: "" });
   const [errors, setErrors] = useState<Partial<Record<"name" | "wa" | "user", string>>>({});
@@ -85,19 +85,27 @@ export function RegisterFlow({ session, onRegistered }: { session: Session; onRe
     setErrors(e);
     return !Object.keys(e).length;
   };
-  const next = () => { setFormNote(""); if (validate()) setStep("book"); };
+  const next = () => {
+    setFormNote("");
+    if (!validate()) return;
+    if (campaignSlug) void submit();
+    else setStep("book");
+  };
 
   const ready = Boolean(pick.date && pick.time && c1 && c2 && c3) && !busy;
   const submit = async () => {
-    if (!pick.date || !pick.time) return;
+    if (!campaignSlug && (!pick.date || !pick.time)) return;
     setBusy(true);
     try {
       await kolApi("/register", { method: "POST", body: JSON.stringify({
         name: f.name.trim(), location: f.city.trim(), whatsapp: f.wa, platform: f.plat, username: f.user, followers: Number(f.followers) || 0,
-        category: f.cat, contentTypes: f.types, reason: f.why, bookingDate: pick.date, bookingTime: pick.time, consentTerms: c1, consentAttendance: c2, consentNoShow: c3,
+        category: f.cat, contentTypes: f.types, reason: f.why, campaignSlug, bookingDate: pick.date, bookingTime: pick.time, consentTerms: c1, consentAttendance: c2, consentNoShow: c3,
       }) });
-      setBooked({ date: pick.date, time: pick.time });
-      setStep("done");
+      if (campaignSlug) await onRegistered();
+      else if (pick.date && pick.time) {
+        setBooked({ date: pick.date, time: pick.time });
+        setStep("done");
+      }
     } catch (error: any) {
       setToast(errorText(error));
       if (error?.code === "DATE_ALREADY_BOOKED") { setPick({ date: null, time: null }); void loadRows(); }
@@ -150,7 +158,7 @@ export function RegisterFlow({ session, onRegistered }: { session: Session; onRe
             <label className="kx-label" htmlFor="kx-why">Kenapa ingin berkolaborasi?</label>
             <textarea id="kx-why" className="kx-input" placeholder="Ceritakan singkat…" value={f.why} onChange={e => set("why", e.target.value)} />
           </div>
-          <div className="kx-dock"><button type="button" className="kx-btn" onClick={next}>Lanjut pilih jadwal ›</button></div>
+          <div className="kx-dock"><button type="button" className="kx-btn" disabled={busy} onClick={next}>{busy ? "Menyimpan…" : campaignSlug ? "Lanjut ke kampanye ›" : "Lanjut pilih jadwal ›"}</button></div>
         </>
       ) : (
         <>

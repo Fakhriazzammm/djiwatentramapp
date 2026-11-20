@@ -1,3 +1,4 @@
+import { campaignFieldsForUpdate, generateCampaignDraft, parseCampaignFields } from "../_shared/kol-campaign.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.103.3";
 import { buildKolEmail, sampleKolPayload, type KolMailKind } from "../_shared/kol-mail.ts";
 import { emailSetting } from "../_shared/email-settings.ts";
@@ -25,9 +26,52 @@ if(action==="overview"){const [campaigns,assignments,submissions,badges,visits,i
  admin.schema("pos").from("kol_visit_settings").select("cafe_name,address,maps_url,wa_admin,wa_manager,post_deadline_days,updated_at").eq("id",1).maybeSingle(),
  admin.schema("pos").from("kol_email_outbox").select("id,kind,booking_id,kol_id,to_email,status,attempts,last_error,scheduled_at,sent_at,created_at").order("id",{ascending:false}).limit(600),
  ]);for(const r of [campaigns,assignments,submissions,badges,visits,inquiries,reports,sowVersions,settings,emails])if(r.error)throw r.error;return json({data:{campaigns:campaigns.data??[],assignments:assignments.data??[],submissions:submissions.data??[],badges:badges.data??[],visits:visits.data??[],inquiries:inquiries.data??[],reports:reports.data??[],sowVersions:sowVersions.data??[],settings:settings.data??null,emails:emails.data??[]}})}
-if(action==="submission_review"){const id=Number(body.id),status=text(body.status,30);if(!Number.isInteger(id)||!allowedSubmission.has(status))return json({error:"Review submission tidak valid."},400);const {data,error}=await admin.schema("pos").from("kol_content_submissions").update({status,review_note:text(body.note,1000)||null,reviewed_at:new Date().toISOString()}).eq("id",id).select("*").maybeSingle();if(error)throw error;if(!data)return json({error:"Submission tidak ditemukan."},404);if(status==="approved")await admin.schema("pos").from("kol_campaign_assignments").update({status:"completed",completed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",data.campaign_assignment_id);return json({data})}
-if(action==="campaign_save"){const id=Number(body.id);const payload={slug:text(body.slug,120).toLowerCase().replace(/[^a-z0-9-]+/g,"-").replace(/^-+|-+$/g,""),title:text(body.title,160),description:text(body.description,4000),location:text(body.location,160)||null,benefit_description:text(body.benefitDescription,1000),deliverable_summary:text(body.deliverableSummary,2000),application_deadline:body.applicationDeadline||null,start_date:body.startDate||null,end_date:body.endDate||null,status:["draft","published","closed","archived"].includes(body.status)?body.status:"draft",updated_at:new Date().toISOString()};if(!payload.slug||!payload.title)return json({error:"Campaign wajib memiliki slug dan judul."},400);const query=Number.isInteger(id)&&id>0?admin.schema("pos").from("kol_campaigns").update(payload).eq("id",id):admin.schema("pos").from("kol_campaigns").insert({...payload,created_by:"admin"});const {data,error}=await query.select("*").single();if(error)throw error;return json({data})}
-if(action==="campaign_assign"){const campaignId=Number(body.campaignId),kolId=text(body.kolId,120);if(!campaignId||!kolId)return json({error:"Campaign atau creator tidak valid."},400);const {data,error}=await admin.schema("pos").from("kol_campaign_assignments").upsert({campaign_id:campaignId,kol_id:kolId,status:"invited",assigned_by:"admin",admin_note:text(body.note,1000)||null,updated_at:new Date().toISOString()},{onConflict:"campaign_id,kol_id"}).select("*").single();if(error)throw error;return json({data})}
+if (action === "campaign_draft_ai") {
+  try {
+    const openai = Deno.env.get("OPENAI_API_KEY");
+    const data = await generateCampaignDraft(body, {
+      key: openai || Deno.env.get("HELIPOD_AI_KEY"),
+      baseUrl: openai
+        ? Deno.env.get("OPENAI_BASE_URL") || "https://api.openai.com/v1"
+        : Deno.env.get("HELIPOD_AI_BASE_URL") || "https://ai.helipod.io/v1",
+      model: Deno.env.get("KOL_CAMPAIGN_AI_MODEL") || (openai ? Deno.env.get("OPENAI_MODEL_CHAT") || "gpt-4o-mini" : "qwen3.7-flash"),
+    });
+    return json({ data });
+  } catch (e) { return json({ error: e instanceof Error ? e.message : "Draf AI belum tersedia." }, 422); }
+}
+if (action === "campaign_applications") {
+  const id = Number(body.campaignId);
+  if (!Number.isSafeInteger(id) || id < 1) return json({ error: "Kampanye tidak valid." }, 400);
+  const { data, error } = await admin.schema("pos").from("kol_campaign_applications")
+    .select("id,status,applied_at,review_note,booking_id,kol_creators(name,username),kol_visit_bookings(booking_date,booking_time)")
+    .eq("campaign_id", id).order("applied_at", { ascending: false });
+  if (error) throw error;
+  return json({ data: (data ?? []).map(({ kol_creators, kol_visit_bookings, ...row }) => {
+    const creator = Array.isArray(kol_creators) ? kol_creators[0] : kol_creators;
+    const booking = Array.isArray(kol_visit_bookings) ? kol_visit_bookings[0] : kol_visit_bookings;
+    return { ...row, name: creator?.name, username: creator?.username, booking_date: booking?.booking_date, booking_time: booking?.booking_time };
+  }) });
+}
+if (action === "campaign_application_review") {
+  const id = Number(body.id);
+  if (!Number.isSafeInteger(id) || id < 1 || typeof body.approve !== "boolean") return json({ error: "Keputusan tidak valid." }, 400);
+  const { data, error } = await admin.schema("pos").rpc("kol_review_campaign_application",
+    { p_id: id, p_approve: body.approve, p_actor: "admin", p_note: text(body.note, 1000) });
+  if (error?.code === "P0001") return json({ error: "Pengajuan sudah diproses. Muat ulang daftar." }, 409);
+  if (error) throw error;
+  return json({ data });
+}
+if (action === "submission_review") {
+  const id = Number(body.id), status = text(body.status, 30);
+  if (!Number.isSafeInteger(id) || !allowedSubmission.has(status)) return json({ error: "Review submission tidak valid." }, 400);
+  const { data, error } = await admin.schema("pos").rpc("kol_review_campaign_proof",
+    { p_id: id, p_status: status, p_actor: "admin", p_note: text(body.note, 1000) });
+  if (error) throw error;
+  if (!data?.id) return json({ error: "Submission tidak ditemukan." }, 404);
+  return json({ data });
+}
+if(action==="campaign_save"){const id=Number(body.id);const editing=Number.isSafeInteger(id)&&id>0;let fields;if(editing){const {data,error}=await admin.schema("pos").from("kol_campaigns").select("application_mode,cover_url,terms,sow,proof_platforms").eq("id",id).maybeSingle();if(error)throw error;if(!data)return json({error:"Kampanye tidak ditemukan."},404);try{fields=campaignFieldsForUpdate(body,data)}catch(e){return json({error:(e as Error).message},400)}}else{try{fields=parseCampaignFields(body)}catch(e){return json({error:(e as Error).message},400)}}const payload={...fields,slug:text(body.slug,120).toLowerCase().replace(/[^a-z0-9-]+/g,"-").replace(/^-+|-+$/g,""),title:text(body.title,160),description:text(body.description,4000),location:text(body.location,160)||null,benefit_description:text(body.benefitDescription,1000),deliverable_summary:text(body.deliverableSummary,2000),application_deadline:body.applicationDeadline||null,start_date:body.startDate||null,end_date:body.endDate||null,status:["draft","published","closed","archived"].includes(body.status)?body.status:"draft",updated_at:new Date().toISOString()};if(!payload.slug||!payload.title)return json({error:"Campaign wajib memiliki slug dan judul."},400);const query=editing?admin.schema("pos").from("kol_campaigns").update(payload).eq("id",id):admin.schema("pos").from("kol_campaigns").insert({...payload,created_by:"admin"});const {data,error}=await query.select("*").single();if(error)throw error;return json({data})}
+if(action==="campaign_assign"){const campaignId=Number(body.campaignId),kolId=text(body.kolId,120);if(!campaignId||!kolId)return json({error:"Campaign atau creator tidak valid."},400);const campaign=await admin.schema("pos").from("kol_campaigns").select("application_mode").eq("id",campaignId).maybeSingle();if(campaign.error)throw campaign.error;if(campaign.data?.application_mode!=="invite")return json({error:"Undangan hanya tersedia untuk kampanye mode undangan."},409);const {data,error}=await admin.schema("pos").from("kol_campaign_assignments").upsert({campaign_id:campaignId,kol_id:kolId,status:"invited",assigned_by:"admin",admin_note:text(body.note,1000)||null,updated_at:new Date().toISOString()},{onConflict:"campaign_id,kol_id"}).select("*").single();if(error)throw error;return json({data})}
 if(action==="badge_award"){const kolId=text(body.kolId,120),code=text(body.code,80);const badge=await admin.schema("pos").from("kol_badges").select("id").eq("code",code).eq("is_active",true).maybeSingle();if(badge.error)throw badge.error;if(!badge.data)return json({error:"Badge tidak ditemukan."},404);const {data,error}=await admin.schema("pos").from("kol_creator_badges").upsert({kol_id:kolId,badge_id:badge.data.id,awarded_by:"admin",source_event:"manual_admin",is_visible:true},{onConflict:"kol_id,badge_id"}).select("*").single();if(error)throw error;return json({data})}
 if(action==="inquiry_update"){const id=Number(body.id),status=text(body.status,30);if(!Number.isInteger(id)||id<1||!allowedInquiry.has(status))return json({error:"Status inquiry tidak valid."},400);const {data,error}=await admin.schema("pos").from("kol_collaboration_inquiries").update({status,admin_note:text(body.adminNote,2000)||null,updated_at:new Date().toISOString()}).eq("id",id).select("id,status,admin_note,updated_at").maybeSingle();if(error)throw error;if(!data)return json({error:"Inquiry tidak ditemukan."},404);return json({data})}
 if(action==="visit_update"){const id=Number(body.id),status=text(body.status,30);if(!id||!allowedVisit.has(status))return json({error:"Status booking tidak valid."},400);

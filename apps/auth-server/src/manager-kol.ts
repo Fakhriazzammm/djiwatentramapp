@@ -1,3 +1,4 @@
+import { campaignFieldsForUpdate, generateCampaignDraft, parseCampaignFields } from "../../../supabase/functions/_shared/kol-campaign.ts";
 import type { Hono } from "hono";
 import type { Pool } from "pg";
 import { createHash, randomBytes } from "node:crypto";
@@ -320,32 +321,90 @@ export function registerManagerKol(app: Hono, auth: Auth, pool: Pool) {
       return json({ success: true, data: r.rows[0] });
     }
 
+    if (action === "campaign_draft_ai") {
+      try {
+        const openai = process.env.KOL_CAMPAIGN_OPENAI_KEY || process.env.OPENAI_API_KEY;
+        const data = await generateCampaignDraft(b, {
+          key: openai || process.env.HELIPOD_AI_KEY,
+          baseUrl: openai
+            ? process.env.KOL_CAMPAIGN_OPENAI_BASE_URL || process.env.OPENAI_BASE_URL || "https://api.openai.com/v1"
+            : process.env.HELIPOD_AI_BASE_URL || "https://ai.helipod.io/v1",
+          model: process.env.KOL_CAMPAIGN_AI_MODEL || (openai ? "gpt-4o-mini" : "qwen3.7-flash"),
+        });
+        return json({ success: true, data });
+      } catch (e) { return json({ success: false, error: e instanceof Error ? e.message : "Draf AI belum tersedia." }, 422); }
+    }
+
+    if (action === "campaign_applications") {
+      const id = Number(b.campaignId);
+      if (!Number.isSafeInteger(id) || id < 1) return json({ success: false, error: "Kampanye tidak valid." }, 400);
+      const data = await pool.query(
+        `select a.id, a.status, a.applied_at, a.review_note, a.booking_id,
+                c.name, c.username, v.booking_date::text, to_char(v.booking_time, 'HH24:MI') as booking_time
+           from pos.kol_campaign_applications a
+           join pos.kol_creators c on c.source_id = a.kol_id
+           left join pos.kol_visit_bookings v on v.id = a.booking_id
+          where a.campaign_id = $1 order by (a.status = 'pending') desc, a.applied_at desc`, [id],
+      );
+      return json({ success: true, data: data.rows });
+    }
+
+    if (action === "campaign_application_review") {
+      const id = Number(b.id);
+      if (!Number.isSafeInteger(id) || id < 1 || typeof b.approve !== "boolean") {
+        return json({ success: false, error: "Keputusan tidak valid." }, 400);
+      }
+      try {
+        const data = await pool.query(`select * from pos.kol_review_campaign_application($1,$2,$3,$4)`,
+          [id, b.approve, actor, text(b.note, 1000)]);
+        return json({ success: true, data: data.rows[0] });
+      } catch (e: any) {
+        if (e?.code === "P0001") return json({ success: false, error: "Pengajuan sudah diproses. Muat ulang daftar." }, 409);
+        throw e;
+      }
+    }
+
     if (action === "campaign_save") {
       const id = Number(b.id);
       const slug = text(b.slug, 120).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
       const title = text(b.title, 160);
       if (!slug || !title) return json({ success: false, error: "CAMPAIGN_SLUG_TITLE_REQUIRED" }, 400);
       const status = CAMPAIGN_STATUSES.includes(text(b.status, 20)) ? text(b.status, 20) : "draft";
+      const editing = Number.isSafeInteger(id) && id > 0;
+      const current = editing
+        ? (await pool.query(`select application_mode, cover_url, terms, sow, proof_platforms from pos.kol_campaigns where id = $1`, [id])).rows[0]
+        : null;
+      if (editing && !current) return json({ success: false, error: "Kampanye tidak ditemukan." }, 404);
+      let fields;
+      try { fields = editing ? campaignFieldsForUpdate(b, current) : parseCampaignFields(b); }
+      catch (e) { return json({ success: false, error: (e as Error).message }, 400); }
       const values = [
         slug, title, text(b.description, 4000), text(b.location, 160) || null,
         text(b.benefitDescription, 1000), text(b.deliverableSummary, 2000),
         isoDate(b.applicationDeadline), isoDate(b.startDate), isoDate(b.endDate), status,
       ];
-      const r = Number.isInteger(id) && id > 0
+      const r = editing
         ? await pool.query(
-            `update pos.kol_campaigns
+            `update pos.kol_campaigns cp
                 set slug = $1, title = $2, description = $3, location = $4, benefit_description = $5,
                     deliverable_summary = $6, application_deadline = $7, start_date = $8, end_date = $9,
-                    status = $10, updated_at = now()
-              where id = $11 returning *`,
-            [...values, id],
+                    status = $10,
+                    application_mode = case when $11::jsonb ? 'application_mode' then patch.application_mode else cp.application_mode end,
+                    cover_url = case when $11::jsonb ? 'cover_url' then patch.cover_url else cp.cover_url end,
+                    terms = case when $11::jsonb ? 'terms' then patch.terms else cp.terms end,
+                    sow = case when $11::jsonb ? 'sow' then patch.sow else cp.sow end,
+                    proof_platforms = case when $11::jsonb ? 'proof_platforms' then patch.proof_platforms else cp.proof_platforms end,
+                    updated_at = now()
+              from jsonb_populate_record(null::pos.kol_campaigns, $11::jsonb) patch
+              where cp.id = $12 returning cp.*`,
+            [...values, JSON.stringify(fields), id],
           )
         : await pool.query(
             `insert into pos.kol_campaigns
                (slug, title, description, location, benefit_description, deliverable_summary,
-                application_deadline, start_date, end_date, status, created_by)
-             values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) returning *`,
-            [...values, actor],
+                application_deadline, start_date, end_date, status, application_mode, cover_url, terms, sow, proof_platforms, created_by)
+             values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) returning *`,
+            [...values, fields.application_mode, fields.cover_url, fields.terms, JSON.stringify(fields.sow), fields.proof_platforms, actor],
           );
       return json({ success: true, data: r.rows[0] });
     }
@@ -356,13 +415,15 @@ export function registerManagerKol(app: Hono, auth: Auth, pool: Pool) {
       if (!Number.isInteger(campaignId) || !kolId) return json({ success: false, error: "INVALID_ASSIGNMENT" }, 400);
       const r = await pool.query(
         `insert into pos.kol_campaign_assignments (campaign_id, kol_id, status, assigned_by, admin_note, updated_at)
-         values ($1, $2, 'invited', $4, nullif($3, ''), now())
+         select c.id, $2, 'invited', $4, nullif($3, ''), now() from pos.kol_campaigns c
+          where c.id = $1 and c.application_mode = 'invite'
          on conflict (campaign_id, kol_id) do update
            set status = 'invited', assigned_by = excluded.assigned_by,
                admin_note = excluded.admin_note, updated_at = now()
          returning *`,
         [campaignId, kolId, text(b.note, 1000), actor],
       );
+      if (!r.rows[0]) return json({ success: false, error: "Undangan hanya tersedia untuk kampanye mode undangan." }, 409);
       return json({ success: true, data: r.rows[0] });
     }
 
@@ -372,21 +433,9 @@ export function registerManagerKol(app: Hono, auth: Auth, pool: Pool) {
       if (!Number.isInteger(id) || !SUBMISSION_STATUSES.has(status)) {
         return json({ success: false, error: "INVALID_SUBMISSION_REVIEW" }, 400);
       }
-      const r = await pool.query(
-        `update pos.kol_content_submissions
-            set status = $2, review_note = nullif($3, ''), reviewed_by = $4, reviewed_at = now(), updated_at = now()
-          where id = $1 returning *`,
-        [id, status, text(b.note, 1000), actor],
-      );
-      if (!r.rows[0]) return json({ success: false, error: "SUBMISSION_NOT_FOUND" }, 404);
-      if (status === "approved") {
-        await pool.query(
-          `update pos.kol_campaign_assignments
-              set status = 'completed', completed_at = now(), updated_at = now()
-            where id = $1`,
-          [r.rows[0].campaign_assignment_id],
-        );
-      }
+      const r = await pool.query(`select * from pos.kol_review_campaign_proof($1,$2,$3,$4)`,
+        [id, status, actor, text(b.note, 1000)]);
+      if (!r.rows[0]?.id) return json({ success: false, error: "SUBMISSION_NOT_FOUND" }, 404);
       return json({ success: true, data: r.rows[0] });
     }
 

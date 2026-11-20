@@ -29,6 +29,15 @@ export const ERROR_TEXT: Record<string, string> = {
   PROFILE_DUPLICATE: "Akun media sosial ini sudah terdaftar. Hubungi admin Djiwa Tentram bila itu akunmu.",
   ALREADY_REGISTERED: "Akun Google ini sudah terdaftar sebagai KOL.",
   UNAUTHORIZED: "Sesi Google berakhir. Masuk lagi ya.",
+  CAMPAIGN_NOT_OPEN: "Pendaftaran kampanye ini sudah ditutup.",
+  CAMPAIGN_PROOF_PLATFORM_INVALID: "Link konten harus berasal dari platform yang dipilih.",
+  CAMPAIGN_PROOF_REVISION_UNAVAILABLE: "Bukti belum bisa direvisi. Periksa status bukti dan platform tautannya.",
+  CAMPAIGN_PROOF_UNAVAILABLE: "Bukti untuk platform ini sudah dikirim atau kunjungan belum ditandai selesai.",
+  CAMPAIGN_NOT_FOUND: "Kampanye tidak ditemukan.",
+  CAMPAIGN_TERMS_CHANGED: "Syarat kampanye berubah. Baca lagi dan setujui versi terbaru.",
+  CAMPAIGN_VISIT_OUTSIDE_PERIOD: "Jadwalmu di luar periode kunjungan kampanye ini.",
+  ACTIVE_VISIT_NOT_FOUND: "Jadwal visit aktif sudah berubah. Pilih jadwal baru.",
+  VISIT_LINKED_TO_CAMPAIGN: "Jadwal visit ini sudah dipakai untuk kampanye lain.",
   VISIT_NOT_ELIGIBLE: "Akunmu belum diizinkan booking visit oleh admin.",
 };
 export const errorText = (error: unknown, fallback = "Permintaan belum berhasil. Coba lagi.") =>

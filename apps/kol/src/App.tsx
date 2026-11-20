@@ -1,6 +1,7 @@
 import { createAuthClient } from "better-auth/react";
 import { useEffect, useRef, useState } from "react";
 import { KolPortalView, portalTabFromPath } from "./kol-portal";
+import { PublicCampaigns } from "./kol-campaigns";
 import { KolPublicProfile } from "./kol-public-profile";
 import { LoginScreen, RegisterFlow } from "./kol-onboarding";
 import { AUTH_BASE, KOL_API, loginErrorText, logoutKol } from "./kol-lib";
@@ -10,7 +11,21 @@ type BetterSession={user:{id:string;name?:string|null;email?:string|null;image?:
 async function getKolSession():Promise<BetterSession|null>{const response=await fetch(`${AUTH_BASE}/get-session`,{credentials:"include",headers:{Accept:"application/json"}});if(!response.ok)return null;return await response.json() as BetterSession|null}
 type KolClaim={userType:string;linked:boolean;ambiguous:boolean;profile:{source_id:string;name:string;username:string;status:string}|null};
 async function claimKolRole():Promise<KolClaim>{const response=await fetch(`${KOL_API}/claim`,{method:"POST",credentials:"include",headers:{Accept:"application/json"}});if(!response.ok)throw new Error("Akun Google belum dapat disiapkan sebagai KOL.");return await response.json() as KolClaim}
-async function startGoogleSignIn(callbackPath=window.location.pathname+window.location.search+window.location.hash){const origin=window.location.origin;const {data,error}=await authClient.signIn.social({provider:"google",callbackURL:origin+callbackPath,errorCallbackURL:origin+"/?login=gagal",disableRedirect:true});if(error)throw new Error(error.message||"Gagal membuka Google Auth.");if(!data?.url)throw new Error("URL login Google tidak diterima server.");const next=new URL(data.url);if(/(^|\.)google\.com$/.test(next.hostname))next.searchParams.set("prompt","select_account");window.location.assign(next.toString())}
+async function startGoogleSignIn(callbackPath = window.location.pathname + window.location.search + window.location.hash) {
+  const origin = window.location.origin;
+  const campaignLogin = callbackPath.startsWith("/campaigns/");
+  const errorUrl = new URL(campaignLogin ? callbackPath : "/", origin);
+  errorUrl.searchParams.delete("apply");
+  errorUrl.searchParams.set("login", "gagal");
+  const { data, error } = await authClient.signIn.social({
+    provider: "google", callbackURL: origin + callbackPath, errorCallbackURL: errorUrl.href, disableRedirect: true,
+  });
+  if (error) throw new Error(error.message || "Gagal membuka Google Auth.");
+  if (!data?.url) throw new Error("URL login Google tidak diterima server.");
+  const next = new URL(data.url);
+  if (/(^|\.)google\.com$/.test(next.hostname)) next.searchParams.set("prompt", "select_account");
+  window.location.assign(next.toString());
+}
 type InviteContext={
   token?:string;
   name?:string|null;
@@ -73,12 +88,29 @@ function App(){
   const canonicalProfileMatch=pathname.match(/^\/([^/]+)\/profile\/?$/);if(canonicalProfileMatch)return <KolPublicProfile slug={decodeURIComponent(canonicalProfileMatch[1]||"")}/>;
   const publicMatch=pathname.match(/^\/creator\/([^/]+)\/?$/);if(publicMatch){const slug=decodeURIComponent(publicMatch[1]||"");window.history.replaceState(null,"",`/${encodeURIComponent(slug)}/profile`);return <KolPublicProfile slug={slug}/>}
   const inviteMatch=pathname.match(/^\/invite\/([^/]+)\/?$/);if(inviteMatch)return <InviteLanding token={decodeURIComponent(inviteMatch[1]||"")} session={session} authLoading={authLoading}/>;
+  const campaignMatch = pathname.match(/^\/campaigns(?:\/([a-z0-9-]{1,120}))?\/?$/i);
+  const campaignSlug = campaignMatch?.[1]?.toLowerCase();
+  const applyPath = campaignSlug ? `/campaigns/${campaignSlug}?apply=1` : "/campaigns";
+  const startingApplication = new URLSearchParams(window.location.search).get("apply") === "1";
+  if (campaignMatch && (!session || (!claim?.linked && !startingApplication))) {
+    return <PublicCampaigns key={pathname} slug={campaignSlug} loginError={authError} onApply={async () => {
+      if (session) window.location.assign(applyPath);
+      else await startGoogleSignIn(applyPath);
+    }} />;
+  }
   if(authLoading)return <LoginScreen loading onGoogle={()=>undefined}/>;
   if(!session)return <LoginScreen error={authError} onGoogle={async()=>{try{setAuthError("");await startGoogleSignIn()}catch(error){setAuthError(error instanceof Error?error.message:"Gagal membuka Google Auth.")}}}/>;
   if(claim?.ambiguous)return <ReviewScreen session={session}/>;
-  if(!claim?.linked)return <RegisterFlow session={session} onRegistered={async()=>{const result=await claimKolRole();setClaim(result);window.history.replaceState({},"","/");setPathname("/")}}/>;
+  if (!claim?.linked) return <RegisterFlow session={session} campaignSlug={startingApplication ? campaignSlug : undefined}
+    onRegistered={async () => {
+      const result = await claimKolRole();
+      setClaim(result);
+      const destination = startingApplication && campaignSlug ? `/campaigns/${campaignSlug}` : "/";
+      window.history.replaceState({}, "", destination);
+      setPathname(destination);
+    }} />;
   if(/^\/portal\/profile-settings\/?$/.test(pathname)){window.history.replaceState({},"","/profil");return <KolPortalView session={session} claim={claim} initialTab="profile"/>}
   const portalTab=portalTabFromPath(pathname);const inviteToken=new URLSearchParams(window.location.search).get("invite");
-  return <KolPortalView session={session} claim={claim} initialTab={portalTab} inviteContext={portalTab==="calendar"&&inviteToken?{active:true,token:inviteToken}:undefined}/>;
+  return <KolPortalView session={session} claim={claim} initialTab={portalTab} campaignSlug={campaignSlug} inviteContext={portalTab==="calendar"&&inviteToken?{active:true,token:inviteToken}:undefined}/>;
 }
 export default App;
