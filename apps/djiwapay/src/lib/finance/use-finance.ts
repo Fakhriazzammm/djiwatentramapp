@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { allEntries } from "./calc";
+import { effectiveScope, entriesInScope, hasBusiness, scopedState, type Scope } from "./scope";
 import { load, reduce, save, storageKey, type Action } from "./store";
 import { diffState, emptySnapshot, fetchServerState, loadSnapshot, mergeStates, pushDiff, rebaseLoanChanges, saveSnapshot, snapshotOf, type Snapshot } from "./sync";
 import type { Entry, FinanceState } from "./types";
 import type { WalletTransaction } from "../wallet-adapter";
+
+const scopeKey = (profileId: string) => `djiwa-fin-scope:${profileId}`;
+const loadScope = (profileId: string): Scope => { try { const v = window.localStorage.getItem(scopeKey(profileId)); return v === "personal" || v === "business" ? v : "all"; } catch { return "all"; } };
 
 export type SyncStatus = "starting" | "syncing" | "ok" | "offline" | "loan-conflict";
 
@@ -12,6 +16,7 @@ export function useFinance(profileId: string, transactions: WalletTransaction[])
   const [state, setState] = useState<FinanceState>(() => load(profileId));
   const [sync, setSync] = useState<{ status: SyncStatus; at?: number }>({ status: "starting" });
   const [loanConflict, setLoanConflict] = useState(false);
+  const [scopePick, setScopePick] = useState<Scope>(() => loadScope(profileId));
   const first = useRef(true);
   const stateRef = useRef(state); stateRef.current = state;
   const snap = useRef<Snapshot | null>(loadSnapshot(profileId));
@@ -69,7 +74,13 @@ export function useFinance(profileId: string, transactions: WalletTransaction[])
   useEffect(() => { if (!ready.current) return; clearTimeout(timer.current); timer.current = setTimeout(push, 1500); return () => clearTimeout(timer.current); }, [state, push]);
 
   const dispatch = useCallback((action: Action) => setState((current) => reduce(current, action)), []);
-  const entries: Entry[] = useMemo(() => allEntries(state, transactions), [state, transactions]);
-  return { state, dispatch, entries, sync, loanConflict, retrySync: pull };
+  const scope = effectiveScope(scopePick, state.accounts);
+  const setScope = useCallback((next: Scope) => { setScopePick(next); try { window.localStorage.setItem(scopeKey(profileId), next); } catch { /* optional */ } }, [profileId]);
+  const allRecords: Entry[] = useMemo(() => allEntries(state, transactions), [state, transactions]);
+  // Pages compute from `state` and `entries`, which are the slice for the chosen scope; `raw` and `allRecords` are everything.
+  const view = useMemo(() => scopedState(state, scope), [state, scope]);
+  const entries: Entry[] = useMemo(() => entriesInScope(allRecords, state.accounts, scope), [allRecords, state.accounts, scope]);
+  const business = useMemo(() => hasBusiness(state.accounts), [state.accounts]);
+  return { state: view, raw: state, dispatch, entries, allRecords, scope, setScope, hasBusiness: business, sync, loanConflict, retrySync: pull };
 }
 export type Finance = ReturnType<typeof useFinance>;

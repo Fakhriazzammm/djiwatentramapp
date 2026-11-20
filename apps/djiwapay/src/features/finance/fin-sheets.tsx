@@ -5,8 +5,9 @@ import { CATEGORY_ICONS, PAY_ACCOUNT_ID, TONES } from "../../lib/finance/categor
 import { parseEntries, type ParsedItem } from "../../lib/finance/parse";
 import { streak } from "../../lib/finance/calc";
 import { rupiah, formatDateTime } from "../../lib/djiwa-pay-format";
-import type { Account, AccountType, Budget, Category, Debt, Entry, FinanceState, Goal, Pocket } from "../../lib/finance/types";
+import type { Account, AccountScope, AccountType, Budget, Category, Debt, Entry, FinanceState, Goal, Pocket } from "../../lib/finance/types";
 import type { Finance } from "../../lib/finance/use-finance";
+import { accountScope, isCrossScope } from "../../lib/finance/scope";
 import { VoiceSheet } from "./voice-sheet";
 import { ReceiptAttachment, ReceiptFlow, ReceiptReview } from "./fin-receipt";
 import type { ScannedReceipt } from "../../lib/finance/receipt";
@@ -15,7 +16,7 @@ import { EmailOrigin } from "../integrations/email-origin";
 
 export type Notify = (text: string, undo?: () => void) => void;
 export const catOf = (state: FinanceState, id: string): Category => state.categories.find((c) => c.id === id) ?? { id, name: id, icon: "tag", tone: "slate", income: false };
-export const accName = (state: FinanceState, id: string) => (id === PAY_ACCOUNT_ID ? "Djiwa Pay" : state.accounts.find((a) => a.id === id)?.name ?? "Dompet");
+export const accName = (state: FinanceState, id: string) => (id === PAY_ACCOUNT_ID ? "Djiwa Pay" : (state.allAccounts ?? state.accounts).find((a) => a.id === id)?.name ?? "Dompet");
 export const CatIcon = ({ cat, size = 44 }: { cat: Category; size?: number }) => <span className={`dpx-cat dpx-c-${cat.tone}`} style={{ width: size, height: size }}><Ic n={iconOr(cat.icon)} /></span>;
 
 export function MoneyInput({ value, onChange, placeholder = "0", label, big = false }: { value: string; onChange: (digits: string) => void; placeholder?: string; label?: string; big?: boolean }) {
@@ -39,7 +40,7 @@ export function CategorySheet({ categories, income, value, onPick, onClose, onAd
 export function AccountSheet({ state, balances, value, onPick, onClose, onAdd, includePay = false, allLabel, title = "Dompet" }: { state: FinanceState; balances: Record<string, number>; value?: string; onPick: (id: string) => void; onClose: () => void; onAdd?: () => void; includePay?: boolean; allLabel?: string; title?: string }) {
   const list: Account[] = [...state.accounts.filter((a) => !a.archived), ...(includePay ? [{ id: PAY_ACCOUNT_ID, name: "Djiwa Pay", type: "ewallet" as const, opening: 0 }] : [])];
   return <Sheet title={title} onClose={onClose}>
-    <div className="dpx-group dpx-flush">{allLabel ? <Btn type="button" className="dpx-row" onClick={() => { onPick("all"); onClose(); }}><span className="dpx-ico"><Ic n="grid" /></span><span className="dpx-main"><b>{allLabel}</b><span>Tidak difilter</span></span>{value === "all" ? <span className="dpx-trail"><Ic n="check" size="sm" /></span> : null}</Btn> : null}{list.map((a) => <Btn key={a.id} type="button" className="dpx-row" onClick={() => { onPick(a.id); onClose(); }}><span className="dpx-ico"><Ic n={a.type === "bank" ? "bank" : a.type === "card" ? "card" : "wallet"} /></span><span className="dpx-main"><b>{a.name}</b><span>{rupiah(balances[a.id] ?? 0)}</span></span>{value === a.id ? <Ic n="check" size="sm" /> : null}</Btn>)}</div>
+    <div className="dpx-group dpx-flush">{allLabel ? <Btn type="button" className="dpx-row" onClick={() => { onPick("all"); onClose(); }}><span className="dpx-ico"><Ic n="grid" /></span><span className="dpx-main"><b>{allLabel}</b><span>Tidak difilter</span></span>{value === "all" ? <span className="dpx-trail"><Ic n="check" size="sm" /></span> : null}</Btn> : null}{list.map((a) => <Btn key={a.id} type="button" className="dpx-row" onClick={() => { onPick(a.id); onClose(); }}><span className="dpx-ico"><Ic n={a.type === "bank" ? "bank" : a.type === "card" ? "card" : "wallet"} /></span><span className="dpx-main"><b>{a.name}{accountScope(a) === "business" && a.id !== PAY_ACCOUNT_ID ? <span className="dpx-scope-tag">Bisnis</span> : null}</b><span>{rupiah(balances[a.id] ?? 0)}</span></span>{value === a.id ? <Ic n="check" size="sm" /> : null}</Btn>)}</div>
     {onAdd ? <Btn type="button" className="dpx-btn dpx-ghost" onClick={onAdd}><Ic n="plus" size="sm" /> Tambah dompet</Btn> : null}
   </Sheet>;
 }
@@ -319,12 +320,16 @@ export function AccountEditSheet({ fin, account, onClose, notify }: { fin: Finan
   const [type, setType] = useState<AccountType>(account?.type ?? "bank");
   const [opening, setOpening] = useState(String(Math.abs(account?.opening ?? 0) || ""));
   const [negative, setNegative] = useState((account?.opening ?? 0) < 0 || type === "card");
+  const [scope, setScope] = useState<AccountScope>(account ? accountScope(account) : fin.scope === "business" ? "business" : "personal");
   const ok = name.trim().length > 0;
   return <Sheet title={account ? "Ubah dompet" : "Dompet baru"} onClose={onClose}>
     <label className="dpx-field" style={{ marginTop: 0 }}><span>Nama</span><div className="dpx-input"><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contoh: BCA, OVO, Celengan" maxLength={30} /></div></label>
     <div className="dpx-chips" style={{ margin: "10px -18px 0" }}>{ACCOUNT_TYPES.map(([k, l]) => <Btn key={k} type="button" className={`dpx-chip ${type === k ? "dpx-on" : ""}`} onClick={() => { setType(k); setNegative(k === "card"); }}>{l}</Btn>)}</div>
+    <div className="dpx-glabel" style={{ marginTop: 14 }}>Untuk apa dompet ini?</div>
+    <Seg id="acc-scope" label="Jenis dompet" fit value={scope} onChange={setScope} options={[["personal", "Pribadi"], ["business", "Bisnis"]] as const} />
+    <p className="dpx-sub" style={{ margin: "6px 4px 0" }}>{scope === "business" ? "Pemasukan dan pengeluaran dompet ini masuk hitungan bisnis, terpisah dari pribadi." : "Dihitung bersama keuangan pribadi."}</p>
     <label className="dpx-field"><span>{type === "card" ? "Tagihan saat ini" : "Saldo awal"}</span><MoneyInput value={opening} onChange={setOpening} label="Saldo awal" /></label>
-    <Btn type="button" className={`dpx-btn ${ok ? "" : "dpx-off"}`} disabled={!ok} onClick={() => { fin.dispatch({ type: "account/upsert", account: { id: account?.id ?? uid(), name: name.trim(), type, opening: (negative ? -1 : 1) * Number(opening || 0) } }); onClose(); notify("Dompet disimpan"); }}>Simpan dompet</Btn>
+    <Btn type="button" className={`dpx-btn ${ok ? "" : "dpx-off"}`} disabled={!ok} onClick={() => { fin.dispatch({ type: "account/upsert", account: { id: account?.id ?? uid(), name: name.trim(), type, opening: (negative ? -1 : 1) * Number(opening || 0), scope } }); onClose(); notify(scope === "business" ? "Dompet bisnis disimpan" : "Dompet disimpan"); }}>Simpan dompet</Btn>
     {account && account.id !== "tunai" ? <Btn type="button" className="dpx-btn dpx-soft" onClick={() => { fin.dispatch({ type: "account/archive", id: account.id }); onClose(); notify("Dompet diarsipkan"); }}>Arsipkan dompet</Btn> : null}
   </Sheet>;
 }

@@ -21,7 +21,9 @@ export type Entry = {
 };
 
 export type AccountType = "cash" | "bank" | "ewallet" | "card" | "other";
-export type Account = { id: string; name: string; type: AccountType; opening: number; archived?: boolean };
+/** Which of the person's two money pools a wallet belongs to. Missing means personal. */
+export type AccountScope = "personal" | "business";
+export type Account = { id: string; name: string; type: AccountType; opening: number; archived?: boolean; scope?: AccountScope };
 
 export type Category = { id: string; name: string; icon: string; tone: string; income: boolean; custom?: boolean };
 export type Budget = { categoryId: string; limit: number; rollover: boolean };
@@ -50,6 +52,8 @@ export type Override = { categoryId?: string; note?: string };
 
 export type FinanceState = {
   v: 1;
+  /** View only, never stored: every wallet, set when `accounts` is narrowed to one scope, so names of the other side of a transfer still resolve. */
+  allAccounts?: Account[];
   onboarded: boolean;
   accounts: Account[];
   categories: Category[];

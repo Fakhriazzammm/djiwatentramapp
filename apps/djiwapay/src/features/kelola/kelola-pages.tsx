@@ -16,7 +16,8 @@ import { assetValue, gainOf, useGold } from "../../lib/finance/assets";
 /** Total cash across wallets, Djiwa Pay included. */
 export function useCash(ctx: FinCtx) {
   const { state, entries } = ctx.fin;
-  return useMemo(() => state.accounts.filter((a) => !a.archived).reduce((s, a) => s + accountBalance(a, entries, ctx.payBalance), 0) + ctx.payBalance, [state.accounts, entries, ctx.payBalance]);
+  const pay = ctx.fin.scope === "business" ? 0 : ctx.payBalance;   // Djiwa Pay is a personal wallet
+  return useMemo(() => state.accounts.filter((a) => !a.archived).reduce((s, a) => s + accountBalance(a, entries, ctx.payBalance), 0) + pay, [state.accounts, entries, ctx.payBalance, pay]);
 }
 const mask = (ctx: FinCtx, v: string) => (ctx.visible ? v : "•••••");
 const statusTag = (v: BillView) => v.status === "paid" ? <span className="dpx-tag dpx-ok">Lunas</span> : v.status === "late" ? <span className="dpx-tag dpx-danger">Terlambat</span> : v.status === "today" ? <span className="dpx-tag dpx-warn">Hari ini</span> : <span className="dpx-tag">{v.daysLeft} hari lagi</span>;

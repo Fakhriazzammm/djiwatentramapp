@@ -70,3 +70,6 @@
 .dpx .dpx-pay-acts{display:flex;gap:2px;flex:0 0 auto}
 .dpx .dpx-pay-act{display:grid;justify-items:center;gap:4px;width:52px;padding:0;min-height:0;background:none;box-shadow:none;font:600 10.5px var(--font);color:var(--ink);white-space:nowrap}
 .dpx .dpx-pay-act img{display:block}
+.dpx .dpx-scope-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:99px;background:var(--chip,#f1eadb);color:var(--navy);font:700 10.5px var(--font);vertical-align:middle}
+.dpx .dpx-scope-hint{display:flex;align-items:center;gap:10px;width:100%;text-align:left;margin-top:12px;padding:12px 14px;border-radius:18px;background:#fff;box-shadow:0 0 0 1px var(--line);font-size:13px;color:var(--mute);line-height:1.4}
+.dpx .dpx-scope-hint b{color:var(--ink)}

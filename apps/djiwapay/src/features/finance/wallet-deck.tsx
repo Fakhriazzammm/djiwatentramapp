@@ -7,6 +7,7 @@ import { inMonth } from "../../lib/finance/calc";
 import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import type { Account } from "../../lib/finance/types";
+import { accountScope } from "../../lib/finance/scope";
 
 type Skin = { from: string; to: string; accent: string; tint?: string };
 /** Card colours by brand name first, then by account type. Every skin is dark enough for white text. */
@@ -30,9 +31,9 @@ const FOCUS_H = 196, STRIP_H = 70;
 export function WalletDeck({ ctx, accounts, balances }: { ctx: FinCtx; accounts: Account[]; balances: Record<string, number> }) {
   const { state, entries } = ctx.fin, now = new Date();
   const cards = useMemo<Card[]>(() => [
-    { id: PAY_ACCOUNT_ID, name: "Djiwa Pay", type: "pay", balance: ctx.payBalance, skin: skinOf("Djiwa Pay", "pay"), pay: true, needsOpening: false },
+    ...(ctx.fin.scope === "business" ? [] : [{ id: PAY_ACCOUNT_ID, name: "Djiwa Pay", type: "pay", balance: ctx.payBalance, skin: skinOf("Djiwa Pay", "pay"), pay: true, needsOpening: false }]),   // Djiwa Pay is personal
     ...accounts.map((a) => ({ id: a.id, name: a.name, type: a.type, balance: balances[a.id] ?? 0, skin: skinOf(a.name, a.type), pay: false, account: a, needsOpening: a.opening === 0 && (balances[a.id] ?? 0) < 0 })),
-  ], [accounts, balances, ctx.payBalance]);
+  ], [accounts, balances, ctx.payBalance, ctx.fin.scope]);
   const [sel, setSel] = useState(0), [view, setView] = useState<"swipe" | "stack">("swipe"), [dir, setDir] = useState(1), [hint, setHint] = useState(true);
   const cur = cards[Math.min(sel, cards.length - 1)];
   const statsOf = useMemo(() => { const m = new Map<string, { inn: number; out: number }>(); for (const e of entries) if (inMonth(e, now.getFullYear(), now.getMonth())) { const t = m.get(e.accountId) ?? { inn: 0, out: 0 }; if (e.kind === "in") t.inn += e.amount; else if (e.kind === "out") t.out += e.amount; m.set(e.accountId, t); } return m; }, [entries]);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -59,7 +60,7 @@ export function WalletDeck({ ctx, accounts, balances }: { ctx: FinCtx; accounts:
     <motion.i className="dpx-wd-sheen" />
     <div className="dpx-wd-head">
       <span className="dpx-wd-logo">{c.pay ? <I3 name="payment-wallet" px={26} /> : <Ic n={iconOf(c.type)} />}</span>
-      <span className="dpx-wd-name"><b>{c.name}</b><small>{c.pay ? "Saldo digital" : c.type === "bank" ? "Rekening bank" : c.type === "ewallet" ? "Dompet digital" : c.type === "card" ? "Kartu" : c.type === "cash" ? "Tunai" : "Dompet"}</small></span>
+      <span className="dpx-wd-name"><b>{c.name}</b><small>{c.account && accountScope(c.account) === "business" ? "Bisnis · " : ""}{c.pay ? "Saldo digital" : c.type === "bank" ? "Rekening bank" : c.type === "ewallet" ? "Dompet digital" : c.type === "card" ? "Kartu" : c.type === "cash" ? "Tunai" : "Dompet"}</small></span>
       {full ? (c.needsOpening ? <span className="dpx-wd-warn">Saldo awal belum diisi</span> : null) : <span className={`dpx-wd-mini ${c.balance < 0 ? "neg" : ""}`}>{c.balance < 0 ? "−" : ""}{ctx.visible ? <>Rp {Math.abs(Math.round(c.balance)).toLocaleString("id-ID")}</> : "•••••"}</span>}
     </div>
     {full ? <>
