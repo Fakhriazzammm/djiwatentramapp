@@ -100,3 +100,8 @@ html.adm-root,html.adm-root body{background:#f4f4f6}
 .adm-hours{display:flex;align-items:flex-end;gap:3px;height:140px;padding-bottom:16px}.adm-hours span{position:relative;flex:1;background:#0e7490;transform-origin:bottom;min-height:4px}.adm-hours em{position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);font:500 9px ui-monospace,Menlo,monospace;color:var(--muted);font-style:normal}
 @media (max-width:760px){.adm-score{width:64px}.adm-score svg{width:56px;height:56px}.adm-score b{top:16px;font-size:15px}.adm-tl time{display:none}}
 .adm-av{flex:none}
+.adm-tbl th .adm-sort{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;border-radius:4px}
+.adm-tbl th.r .adm-sort{flex-direction:row-reverse}
+.adm-tbl th .adm-sort:hover,.adm-tbl th .adm-sort.on{color:var(--ink,#1c1c22)}
+.adm-tbl th .adm-sort:focus-visible{outline:2px solid #3b6de0;outline-offset:2px}
+.adm-sort-i{display:inline-grid;font-size:8px;line-height:1}.adm-sort-i i{font-style:normal;display:block}

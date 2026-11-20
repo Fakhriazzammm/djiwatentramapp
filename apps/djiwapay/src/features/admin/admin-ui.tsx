@@ -92,11 +92,51 @@ export function Donut({ rows, fmt = nf, center }: { rows: { label: string; value
     <ul>{rows.map((r, i) => <motion.li key={r.label} onMouseEnter={() => setHot(i)} onMouseLeave={() => setHot(null)} onPointerDown={() => setHot(i)} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 + i * 0.05 }}><i style={{ background: COLORS[i % COLORS.length] }} /><span>{r.label}</span><b>{fmt(r.value)}</b><em>{Math.round((r.value / total) * 100)}%</em></motion.li>)}</ul></div>;
 }
 
-export type Col<T> = { head: string; cell: (r: T) => ReactNode; right?: boolean; w?: string; hideSm?: boolean };
+export type Sortable = string | number | null | undefined;
+export type Col<T> = { head: string; cell: (r: T) => ReactNode; right?: boolean; w?: string; hideSm?: boolean; /** Value to sort by. Without it the column sorts by the text it shows. */ sort?: (r: T) => Sortable; /** Turns sorting off for a column that is only buttons or badges. */ noSort?: boolean };
+
+/** Plain text of a rendered cell, so any column can be sorted without each one declaring a value. */
+export function textOf(node: ReactNode): string {
+  if (node === null || node === undefined || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(textOf).filter(Boolean).join(" ");
+  const props = (node as { props?: { children?: ReactNode } }).props;
+  return props ? textOf(props.children) : "";
+}
+/** "Rp 1.234.567", "−Rp 5.000", "12%" and "1,5" read as numbers; everything else sorts as text. */
+export function numberOf(text: string): number | null {
+  const t = text.trim().replace(/\s+/g, " ");
+  const m = /^([−+-])?\s?(?:Rp\s?)?([−+-])?(\d[\d.]*)(?:,(\d+))?\s?(%|x|rb|jt)?(?:\s|$)/.exec(t);
+  if (!m) return null;
+  const neg = m[1] === "−" || m[1] === "-" || m[2] === "−" || m[2] === "-", whole = Number(m[3].replace(/\./g, "")), frac = m[4] ? Number(`0.${m[4]}`) : 0;
+  if (!Number.isFinite(whole)) return null;
+  const mult = m[5] === "rb" ? 1e3 : m[5] === "jt" ? 1e6 : 1;
+  return (neg ? -1 : 1) * (whole + frac) * mult;
+}
+export function sortRows<T>(rows: T[], col: Col<T>, dir: 1 | -1): T[] {
+  const keyed = rows.map((r, i) => { const v = col.sort ? col.sort(r) : textOf(col.cell(r)); return { r, i, v: typeof v === "number" ? v : v == null || v === "" ? null : (numberOf(String(v)) ?? String(v)) }; });
+  const allNum = keyed.every((k) => k.v === null || typeof k.v === "number");
+  const cmp = (a: typeof keyed[number], b: typeof keyed[number]) => {
+    if (a.v === null && b.v === null) return a.i - b.i;
+    if (a.v === null) return 1; if (b.v === null) return -1;   // empty cells always last
+    const c = allNum ? (a.v as number) - (b.v as number) : String(a.v).localeCompare(String(b.v), "id", { numeric: true, sensitivity: "base" });
+    return c * dir || a.i - b.i;
+  };
+  return [...keyed].sort(cmp).map((k) => k.r);
+}
+
 export function Table<T>({ rows, cols, onRow, empty, rowKey }: { rows: T[]; cols: Col<T>[]; onRow?: (r: T) => void; empty?: ReactNode; rowKey: (r: T) => string }) {
+  const [sort, setSort] = useState<{ i: number; dir: 1 | -1 } | null>(null);
+  const shown = useMemo(() => (sort && cols[sort.i] ? sortRows(rows, cols[sort.i], sort.dir) : rows), [rows, cols, sort]);
   if (!rows.length) return <Empty>{empty}</Empty>;
-  return <div className="adm-tbl-wrap"><table className="adm-tbl"><thead><tr>{cols.map((c) => <th key={c.head} className={`${c.right ? "r" : ""} ${c.hideSm ? "sm" : ""}`} style={c.w ? { width: c.w } : undefined}>{c.head}</th>)}</tr></thead>
-    <tbody>{rows.map((r, i) => <motion.tr key={rowKey(r)} className={onRow ? "click" : ""} onClick={onRow ? () => onRow(r) : undefined} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 14) * 0.025, duration: 0.28 }} whileTap={onRow ? { scale: 0.995 } : undefined}>{cols.map((c) => <td key={c.head} className={`${c.right ? "r" : ""} ${c.hideSm ? "sm" : ""}`}>{c.cell(r)}</td>)}</motion.tr>)}</tbody></table></div>;
+  const press = (i: number) => setSort((cur) => (cur?.i !== i ? { i, dir: 1 } : cur.dir === 1 ? { i, dir: -1 } : null));   // ascending, then descending, then the original order
+  return <div className="adm-tbl-wrap"><table className="adm-tbl"><thead><tr>{cols.map((c, i) => {
+    const on = sort?.i === i, label = on ? (sort!.dir === 1 ? "menaik" : "menurun") : "belum diurutkan";
+    return <th key={c.head} className={`${c.right ? "r" : ""} ${c.hideSm ? "sm" : ""}`} style={c.w ? { width: c.w } : undefined} aria-sort={on ? (sort!.dir === 1 ? "ascending" : "descending") : "none"}>
+      {c.noSort ? c.head : <button type="button" className={`adm-sort ${on ? "on" : ""}`} onClick={() => press(i)} aria-label={`Urutkan menurut ${c.head}, ${label}`}>{c.head}<span className="adm-sort-i" aria-hidden="true"><motion.i animate={{ rotate: on && sort!.dir === -1 ? 180 : 0, opacity: on ? 1 : 0.35 }} transition={{ duration: 0.18 }}>▲</motion.i></span></button>}
+    </th>;
+  })}</tr></thead>
+    <tbody>{shown.map((r, i) => <motion.tr key={rowKey(r)} layout="position" className={onRow ? "click" : ""} onClick={onRow ? () => onRow(r) : undefined} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: sort ? 0 : Math.min(i, 14) * 0.025, duration: 0.28, layout: { duration: 0.22 } }} whileTap={onRow ? { scale: 0.995 } : undefined}>{cols.map((c) => <td key={c.head} className={`${c.right ? "r" : ""} ${c.hideSm ? "sm" : ""}`}>{c.cell(r)}</td>)}</motion.tr>)}</tbody></table></div>;
 }
 
 export const Pill = ({ tone = "", children }: { tone?: "ok" | "warn" | "bad" | "info" | ""; children: ReactNode }) => <motion.span className={`adm-pill ${tone}`} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 22 }}>{children}</motion.span>;

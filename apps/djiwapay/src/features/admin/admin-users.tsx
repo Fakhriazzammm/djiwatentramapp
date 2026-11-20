@@ -62,8 +62,8 @@ function UserList({ open }: { open: (id: string) => void }) {
           { head: "Kelompok", cell: (r) => <><CohortPill c={r.cohort} /><small className="adm-sub">{r.pay.first ? `di Pay sejak ${dLong(r.pay.first.slice(0, 10))}` : "belum terlihat di Pay"}</small></> },
           { head: "Di Pay", cell: (r) => (r.pay.first ? <>{nf(r.pay.entries)} catatan<small className="adm-sub">{r.pay.seen ? `dilihat ${ago(r.pay.seen)}` : `${nf(r.pay.views)} tampilan`}</small></> : <span className="adm-mute">—</span>), hideSm: true },
           { head: "Fitur", cell: (r) => <>{r.pay.onboarded ? <Pill tone="ok">onboarding</Pill> : null}{r.pay.google ? <Pill tone="info">Google</Pill> : null}{r.pay.push ? <Pill>notif</Pill> : null}{r.pay.pwa ? <Pill>PWA</Pill> : null}{!r.pay.first ? <span className="adm-mute">—</span> : null}</>, hideSm: true },
-          { head: "Saldo", cell: (r) => <>{rp(r.balance)}<small className="adm-sub">{r.is_active ? `${nf(r.total_orders)} pesanan` : "nonaktif"}</small></>, right: true },
-          { head: "Daftar", cell: (r) => dLong(r.created_at.slice(0, 10)), right: true, hideSm: true }]} />}
+          { head: "Saldo", cell: (r) => <>{rp(r.balance)}<small className="adm-sub">{r.is_active ? `${nf(r.total_orders)} pesanan` : "nonaktif"}</small></>, right: true, sort: (r) => r.balance },
+          { head: "Daftar", cell: (r) => dLong(r.created_at.slice(0, 10)), right: true, hideSm: true, sort: (r) => r.created_at }]} />}
       {data && pages > 1 ? <div className="adm-pager"><button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>← Sebelumnya</button><span>{page} / {pages}</span><button type="button" disabled={page >= pages} onClick={() => setPage(page + 1)}>Berikutnya →</button></div> : null}
     </Panel>
   </>;
