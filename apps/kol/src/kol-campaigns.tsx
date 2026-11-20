@@ -56,16 +56,17 @@ export function CampaignsTab({ campaigns, refresh }: { campaigns: Campaign[]; re
           <article key={c.id} className="kx-post">
             <a className="kx-campaign-link" href={detailsUrl(c)}>
               {c.cover_url && <img className="kx-campaign-cover" src={c.cover_url} alt="" loading="lazy" width="720" height="420" />}
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
+              <div className="kx-campaign-heading">
                 <div style={{ minWidth: 0 }}><b className="kx-h2" style={{ display: "block" }}>{c.title}</b><span className="kx-sub">{c.brand_name || c.category || "Djiwa Tentram"}{c.location ? ` · ${c.location}` : ""}</span></div>
                 <span className={`kx-pill ${tone || ""}`} style={tone ? undefined : { background: "#eceef2", color: "var(--kx-muted)" }}>{label}</span>
               </div>
-              <p className="kx-clamp" style={{ color: "var(--kx-muted)", fontSize: 13.5 }}>{c.description || "Detail kampanye ada di halaman detail."}</p>
-              <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 8, fontSize: 12.5 }}>
-                <span><span className="kx-sub">Benefit </span><b>{c.benefit_description || "Dibicarakan bersama"}</b></span>
-                {c.reward && <span><span className="kx-sub">Reward </span><b>{rupiah(c.reward.ratePer1000)} / 1.000 view</b></span>}
-                {deadline && <span><span className="kx-sub">Sampai </span><b>{deadline}</b></span>}
+              <p className="kx-clamp" style={{ color: "var(--kx-muted)", fontSize: 13.5, margin: "8px 0 0" }}>{c.description || "Detail kampanye ada di halaman detail."}</p>
+              <div className="kx-chips">
+                {c.reward && <span className="kx-chip2 kx-chip2--reward">Reward {rupiah(c.reward.ratePer1000)} / 1.000 view</span>}
+                {c.benefit_description && <span className="kx-chip2">{c.benefit_description}</span>}
+                {deadline && <span className="kx-chip2">Sampai {deadline}</span>}
               </div>
+              <div className="kx-more2">{c.reward ? `${c.reward.slotsLeft} slot tersisa · ` : ""}Lihat detail <span aria-hidden>›</span></div>
             </a>
             {refresh && c.assignment_status === "invited" && c.application_mode === "invite" && !c.terms?.length && (
               <div className="kx-row2" style={{ marginTop: 12 }}>
@@ -134,31 +135,35 @@ export function CampaignDetail({ campaign: c, calendar = [], refresh, login }: {
       {c.cover_url && <img className="kx-campaign-cover" src={c.cover_url} alt="" width="720" height="420" />}
       <div className="kx-campaign-heading"><h2 className="kx-h1">{c.title}</h2><span className={`kx-pill ${tone}`}>{label}</span></div>
       <p className="kx-lead kx-campaign-copy">{c.description}</p>
-      <div className="kx-group">
-        {c.location && <div className="kx-kv"><span>Lokasi</span><b>{c.location}</b></div>}
-        {c.benefit_description && <div className="kx-kv"><span>Benefit</span><b>{c.benefit_description}</b></div>}
-        {c.deliverable_summary && <div className="kx-kv"><span>Konten</span><b>{c.deliverable_summary}</b></div>}
-        {c.application_deadline && <div className="kx-kv"><span>Batas daftar</span><b>{day(c.application_deadline)}</b></div>}
-        {(c.start_date || c.end_date) && <div className="kx-kv"><span>Periode</span><b>{[day(c.start_date), day(c.end_date)].filter(Boolean).join(" – ")}</b></div>}
-        {c.visit_date && !applyingAgain && <div className="kx-kv"><span>Jadwal visit</span><b>{longDate(c.visit_date)} · {dotTime(c.visit_time)} WIB</b></div>}
-        {c.post_deadline && !applyingAgain && <div className="kx-kv"><span>Batas tayang konten</span><b>{longDate(c.post_deadline)}</b></div>}
-      </div>
       {c.reward && <RewardBox reward={c.reward} />}
-      {visibleSow && <section>
-        <h3 className="kx-section">Scope of Work</h3>
-        <SowCard sow={!applyingAgain && c.updated_visit_sow ? c.updated_visit_sow : visibleSow} />
-        {!applyingAgain && c.updated_visit_sow && <details><summary>Lihat SOW saat pengajuan</summary><SowCard sow={visibleSow} /></details>}
-      </section>}
-      {visibleTerms?.length > 0 && (
-        <section><h3 className="kx-section">Syarat dan ketentuan</h3>
-          <ul className="kx-card kx-campaign-terms">{visibleTerms.map((term, i) => <li key={i}>{term}</li>)}</ul>
-        </section>
-      )}
+      <section>
+        <h3 className="kx-section" style={{ marginTop: 4 }}>Ringkasan</h3>
+        <div className="kx-group">
+          {c.location && <div className="kx-kv"><span>Lokasi</span><b>{c.location}</b></div>}
+          {c.benefit_description && <div className="kx-kv"><span>Benefit</span><b>{c.benefit_description}</b></div>}
+          {c.deliverable_summary && <div className="kx-kv"><span>Konten</span><b>{c.deliverable_summary}</b></div>}
+          {c.application_deadline && <div className="kx-kv"><span>Batas daftar</span><b>{day(c.application_deadline)}</b></div>}
+          {(c.start_date || c.end_date) && <div className="kx-kv"><span>Periode</span><b>{[day(c.start_date), day(c.end_date)].filter(Boolean).join(" – ")}</b></div>}
+          {c.visit_date && !applyingAgain && <div className="kx-kv"><span>Jadwal visit</span><b>{longDate(c.visit_date)} · {dotTime(c.visit_time)} WIB</b></div>}
+          {c.post_deadline && !applyingAgain && <div className="kx-kv"><span>Batas tayang konten</span><b>{longDate(c.post_deadline)}</b></div>}
+        </div>
+      </section>
+      {visibleSow && <details className="kx-acc">
+        <summary><span>Scope of Work</span><span aria-hidden className="kx-acc-i">›</span></summary>
+        <div className="kx-acc-b">
+          <SowCard sow={!applyingAgain && c.updated_visit_sow ? c.updated_visit_sow : visibleSow} />
+          {!applyingAgain && c.updated_visit_sow && <details><summary>Lihat SOW saat pengajuan</summary><SowCard sow={visibleSow} /></details>}
+        </div>
+      </details>}
+      {visibleTerms?.length > 0 && <details className="kx-acc">
+        <summary><span>Syarat dan ketentuan ({visibleTerms.length})</span><span aria-hidden className="kx-acc-i">›</span></summary>
+        <div className="kx-acc-b"><ol className="kx-campaign-terms" style={{ padding: "4px 4px 4px 22px" }}>{visibleTerms.map((term, i) => <li key={i}>{term}</li>)}</ol></div>
+      </details>}
       {c.review_note && <p className="kx-note">Catatan tim: {c.review_note}</p>}
       {error && <p role="alert" className="kx-note kx-note--err">{error}</p>}
       {sent && c.application_status && !applyingAgain && <p role="status" className="kx-note">Pengajuanmu tersimpan.</p>}
       {canApply && refresh && !sent && (
-        <section>
+        <section id="apply" style={{ scrollMarginTop: 12 }}>
           {visit && <><h3 className="kx-section">Jadwal kunjungan</h3>
             {existing ? <p className="kx-note">Gunakan jadwalmu yang sudah ada, {longDate(existing.booking_date)} pukul {dotTime(existing.booking_time)} WIB.</p>
               : <VisitPicker rows={calendar} date={picked.date} time={picked.time} onChange={setPicked} startDate={c.start_date} endDate={c.end_date} />}
@@ -173,6 +178,11 @@ export function CampaignDetail({ campaign: c, calendar = [], refresh, login }: {
             {busy ? "Mengirim…" : existing && visit ? "Ajukan dengan jadwal ini" : inviteWithTerms ? "Setujui dan terima undangan" : "Ajukan kampanye"}
           </button>
         </section>
+      )}
+      {canApply && !sent && (
+        <div className={`kx-cta ${refresh ? "kx-cta--tabbed" : ""}`}>
+          {refresh ? <a className="kx-btn" href="#apply">Daftar{c.reward ? ` · ${rupiah(c.reward.ratePer1000)} / 1.000 view` : ""}</a> : null}
+        </div>
       )}
       {canApply && !refresh && login && <button type="button" className="kx-btn" disabled={busy} onClick={() => void change(login)}>{busy ? "Membuka…" : "Masuk untuk daftar"}</button>}
       {refresh && c.assignment_status === "invited" && c.application_mode === "invite" && (

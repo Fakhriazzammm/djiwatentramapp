@@ -150,3 +150,25 @@ textarea.kx-input{padding:11px 14px;min-height:88px;resize:none}
 .kx-campaign-detail .kx-check { min-height: 44px; }
 .kx-campaign-detail .kx-check input { flex: 0 0 auto; width: 20px; height: 20px; accent-color: var(--kx-blue); }
 .kx-campaign-detail section > .kx-btn { margin-top: 12px; }
+
+/* Kampanye: daftar dan detail */
+.kx-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.kx-chip2{display:inline-flex;align-items:center;min-height:28px;padding:0 10px;border-radius:99px;background:#f1f3f8;color:#3a3f4c;font-size:12.5px;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kx-chip2--reward{background:#e5f5ec;color:#0d6b3c}
+.kx-more2{display:flex;justify-content:flex-end;align-items:center;gap:4px;margin-top:12px;color:var(--kx-blue-ink,#1a5dc6);font-size:13px;font-weight:700}
+.kx-acc{background:var(--kx-card);border-radius:var(--kx-r);box-shadow:0 1px 2px #0000000d;overflow:hidden}
+.kx-acc>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:0 16px;font-weight:700;font-size:15px;cursor:pointer}
+.kx-acc>summary::-webkit-details-marker{display:none}
+.kx-acc-i{font-size:22px;color:var(--kx-muted);transition:transform .2s}
+.kx-acc[open] .kx-acc-i{transform:rotate(90deg)}
+.kx-acc-b{padding:0 12px 14px}
+.kx-acc-b .kx-card{box-shadow:none;padding:4px}
+.kx-cta{position:sticky;bottom:calc(14px + env(safe-area-inset-bottom));z-index:5;margin-top:4px}
+.kx-cta--tabbed{bottom:calc(86px + env(safe-area-inset-bottom))}
+.kx-cta .kx-btn{box-shadow:0 10px 30px rgba(15,35,71,.22)}
+.kx-reward{border-radius:var(--kx-r);background:linear-gradient(160deg,#e8f7ee,#f3f9ff);padding:16px;box-shadow:0 1px 2px #0000000d}
+.kx-reward-rate{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.05;color:#0d6b3c}
+.kx-reward-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.kx-reward-grid>div{background:#ffffffb8;border-radius:14px;padding:9px 10px}
+.kx-reward-grid span{display:block;font-size:11px;color:var(--kx-muted)}
+.kx-reward-grid b{display:block;font-size:14px;margin-top:2px}

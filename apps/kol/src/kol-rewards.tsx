@@ -26,26 +26,23 @@ const STATE: Record<RewardItem["state"], [string, string]> = {
 };
 const stateLabel = (i: RewardItem) => (i.state === "waiting" ? `Menunggu H+${i.rules.settleDays}` : STATE[i.state][0]);
 
-/** Kotak reward di halaman kampanye: tarif, batas, sisa slot, dan aturan pembayaran. */
+/** Kartu reward di halaman kampanye: tarif, batas, hari bayar, dan sisa slot. */
 export function RewardBox({ reward }: { reward: RewardInfo }) {
   const share = reward.slotsTotal > 0 ? Math.max(0, Math.min(100, (reward.slotsLeft / reward.slotsTotal) * 100)) : 0;
+  const full = reward.slotsLeft <= 0;
   return (
-    <section aria-label="Reward kampanye">
-      <h3 className="kx-section">Reward untuk Anda</h3>
-      <div className="kx-card">
-        <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-.02em" }}>{rupiah(reward.ratePer1000)}</div>
-        <p className="kx-sub" style={{ margin: "2px 0 0" }}>per 1.000 view · dihitung tiap view</p>
-        <div className="kx-row2" style={{ marginTop: 12 }}>
-          <div className="kx-kv" style={{ display: "block" }}><span>Maksimal per KOL</span><b>{rupiah(reward.maxPerKol)}</b></div>
-          <div className="kx-kv" style={{ display: "block" }}><span>Minimal view</span><b>{reward.minViews.toLocaleString("id-ID")} view</b></div>
-        </div>
-        <p className="kx-note" style={{ marginTop: 12 }}>Dibayar sekali di <b>H+{reward.settleDays}</b> setelah video tayang, langsung ke saldo Djiwa Pay.</p>
+    <section className="kx-reward" aria-label="Reward kampanye">
+      <p className="kx-sub" style={{ margin: 0, fontWeight: 700 }}>REWARD UNTUK ANDA</p>
+      <div className="kx-reward-rate">{rupiah(reward.ratePer1000)}<span style={{ fontSize: 14, fontWeight: 600, color: "var(--kx-muted)" }}> / 1.000 view</span></div>
+      <p className="kx-sub" style={{ margin: "4px 0 0" }}>Tiap view dihitung · {rupiah(reward.ratePer1000 / 1000)} per view</p>
+      <div className="kx-reward-grid">
+        <div><span>Maksimal</span><b>{rupiah(reward.maxPerKol)}</b></div>
+        <div><span>Minimal view</span><b>{reward.minViews.toLocaleString("id-ID")}</b></div>
+        <div><span>Dibayar</span><b>H+{reward.settleDays}</b></div>
       </div>
-      <div className="kx-card" style={{ marginTop: 10 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><b>Sisa kuota</b><b>{reward.slotsLeft} dari {reward.slotsTotal} slot</b></div>
-        <div style={{ height: 8, borderRadius: 99, background: "#e6efff", marginTop: 10 }}><div style={{ width: `${share}%`, height: "100%", borderRadius: 99, background: "#1a5dc6" }} /></div>
-        <p className="kx-sub" style={{ margin: "8px 0 0" }}>Slot dibatasi oleh anggaran Bisnis, jadi reward Anda sudah dijamin tersedia.</p>
-      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 14, fontSize: 13 }}><b>Kuota</b><b style={{ color: full ? "#b42318" : undefined }}>{full ? "Penuh" : `${reward.slotsLeft} dari ${reward.slotsTotal} slot`}</b></div>
+      <div style={{ height: 8, borderRadius: 99, background: "#ffffff99", marginTop: 8 }}><div style={{ width: `${share}%`, height: "100%", borderRadius: 99, background: full ? "#b42318" : "#13804a" }} /></div>
+      <p className="kx-sub" style={{ margin: "10px 0 0" }}>Dibayar sekali setelah video tayang H+{reward.settleDays}, langsung ke saldo Djiwa Pay. Kuota dibatasi anggaran Bisnis, jadi reward Anda terjamin.</p>
     </section>
   );
 }
