@@ -95,7 +95,7 @@ export function registerManagerKaryawan(app: Hono, auth: Auth, pool: Pool) {
           SET is_active = $2,
               raw = coalesce(raw, '{}'::jsonb) || jsonb_build_object(
                 'statusChangedAt', now(),
-                'statusChangedBy', $3
+                'statusChangedBy', $3::text
               )
         WHERE source_id = $1`,
       [userId, b.isActive, `manager:${m.userId}`],
