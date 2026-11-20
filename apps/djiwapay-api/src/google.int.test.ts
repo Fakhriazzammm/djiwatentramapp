@@ -1,6 +1,7 @@
 // Real Postgres, simulated Google. Isolated user id, cleaned up afterwards. Skipped without DATABASE_URL.
 import { afterAll, describe, expect, test } from "bun:test";
 import { Pool } from "pg";
+import { createApp, poolTx } from "./index";
 import { disconnect, finishConnect, googleConfig, startConnect, status, syncCalendar, SCOPES } from "./google";
 
 const url = process.env.DATABASE_URL;
@@ -25,7 +26,7 @@ const db = { query: (t: string, p?: unknown[]) => pool.query(t, p as any[]) };
 
 afterAll(async () => {
   if (!pool) return;
-  for (const t of ["google_connections", "google_calendar_events", "google_drive_files", "google_sheet_exports", "bills", "entries", "accounts"]) await pool.query(`delete from finance.${t} where user_id=$1`, [user]);
+  for (const t of ["google_connections", "google_calendar_events", "google_drive_files", "google_sheet_exports", "google_drive_state", "gmail_sync", "gmail_seen", "inbound_sources", "bills", "entries", "accounts"]) await pool.query(`delete from finance.${t} where user_id=$1`, [user]);
   await pool.end();
 });
 
@@ -64,5 +65,56 @@ run("google (real database, simulated Google)", () => {
     expect(calls.some((x) => x.url.includes("/revoke"))).toBe(true);
     expect((await status(db, cfg, user)).connected).toBe(false);
     for (const t of ["google_connections", "google_calendar_events", "google_sheet_exports"]) expect((await pool.query(`select 1 from finance.${t} where user_id=$1`, [user])).rowCount).toBe(0);
+  });
+
+  test("combined OAuth scopes activate only granted features and let Gmail be added later", async () => {
+    const returned = new Map([
+      ["partial", [SCOPES.email, SCOPES.calendar, SCOPES.drive]],
+      ["all", Object.values(SCOPES)],
+      ["files", Object.values(SCOPES)],
+      ["none", [SCOPES.email]],
+      ["different-account", Object.values(SCOPES)],
+    ]);
+    const fetchGoogle = (async (input: string, init: RequestInit) => {
+      if (input.includes("oauth2.googleapis.com/token")) {
+        const code = (init.body as URLSearchParams).get("code")!;
+        return new Response(JSON.stringify({ access_token: code, refresh_token: `refresh-${code}`, expires_in: 3600, scope: returned.get(code)?.join(" ") }));
+      }
+      if (input.includes("openidconnect")) {
+        const account = new Headers(init.headers).get("authorization")?.endsWith("different-account") ? "another@example.com" : "tester@example.com";
+        return new Response(JSON.stringify({ email: account }));
+      }
+      return gfetch(input, init);
+    }) as unknown as typeof fetch;
+    const app = createApp({ db: poolTx(pool), resolve: async () => user, dir: "/tmp", google: cfg, gfetch: fetchGoogle });
+    const connect = async (features: string[]) => {
+      const response = await app.request("/api/finance/google/connect", {
+        method: "POST", body: JSON.stringify({ features }),
+      });
+      expect(response.status).toBe(200);
+      return new URL((await response.json() as { url: string }).url);
+    };
+    const callback = async (auth: URL, code: string) => {
+      const response = await app.request(`/api/finance/google/callback?${new URLSearchParams({ code, state: auth.searchParams.get("state")! })}`);
+      expect(response.status).toBe(302);
+      return response.headers.get("location");
+    };
+
+    const combined = await connect(["drive", "gmail", "calendar"]);
+    expect(new Set(combined.searchParams.get("scope")!.split(" "))).toEqual(new Set(Object.values(SCOPES)));
+    expect(await callback(combined, "partial")).toBe("/integrasi?google=partial");
+    expect(await status(db, cfg, user)).toMatchObject({ features: { drive: true, calendar: true, gmail: false }, gmail: null, sheet: { pending: true } });
+    expect((await db.query("select 1 from finance.google_drive_state where user_id=$1", [user])).rows).toHaveLength(1);
+
+    expect(await callback(await connect(["gmail"]), "all")).toBe("/integrasi?google=ok");
+    expect(await status(db, cfg, user)).toMatchObject({ features: { drive: true, calendar: true, gmail: true }, gmail: { enabled: true } });
+
+    expect((await app.request("/api/finance/google/gmail/off", { method: "POST" })).status).toBe(200);
+    expect(await callback(await connect(["drive"]), "files")).toBe("/integrasi?google=ok");
+    expect((await status(db, cfg, user)).gmail).toBeNull();
+
+    expect(await callback(await connect(["gmail"]), "none")).toBe("/integrasi?google=denied");
+    expect(await callback(await connect(["gmail"]), "different-account")).toBe("/integrasi?google=account");
+    expect(await status(db, cfg, user)).toMatchObject({ email: "tester@example.com", features: { drive: true, calendar: true, gmail: true }, gmail: null });
   });
 });

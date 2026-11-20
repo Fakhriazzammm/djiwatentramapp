@@ -17,7 +17,7 @@ import { registerPushRoutes } from "./push.js";
 export { poolTx };
 import { attachReceipt, confirmReceipt, getReceipt, ReceiptProblem } from "./receipt-records.js";
 import { isEmptyRead, readReceipt, type ReceiptRead } from "./receipt.js";
-import { disconnect as googleDisconnect, FEATURES, finishConnect, googleConfig, startConnect, status as googleStatus, syncCalendar, type Feature, type Fetch, type GoogleCfg } from "./google.js";
+import { disconnect as googleDisconnect, FEATURES, SCOPES, finishConnect, googleConfig, startConnect, status as googleStatus, syncCalendar, type Feature, type Fetch, type GoogleCfg } from "./google.js";
 import { confirmDriveRemovals, confirmSheetDeletes, requestSheet, touchDrive } from "./google-sync.js";
 import { ISSUERS } from "./mail/extract.js";
 import { ensureHook, getHook, hookConfig, hookScript, HOOK_MAX_BYTES, receiveHook, removeHook, SCRIPT_VERSION, type HookDeps } from "./hook.js";
@@ -50,11 +50,11 @@ export function createApp(d: Deps) {
   registerPushRoutes(app, { db: d.db }, uid, json);
   const google = d.google ?? null, mailDomain = d.mailDomain ?? "";
   // Keep Google in step with what the user just changed, without ever slowing or failing the request.
-  const SCOPE_OF: Record<Feature, string> = { calendar: "https://www.googleapis.com/auth/calendar.events", drive: "https://www.googleapis.com/auth/drive.file", gmail: "https://www.googleapis.com/auth/gmail.readonly" };
+
   const connected = async (userId: string, feature: Feature) => {
     if (!google) return false;
     const r = await d.db.query("select granted_scopes from finance.google_connections where user_id=$1 and refresh_enc is not null", [userId]);
-    return Boolean(r.rows[0]) && (r.rows[0].granted_scopes as string[]).includes(SCOPE_OF[feature]);
+    return Boolean(r.rows[0]) && (r.rows[0].granted_scopes as string[]).includes(SCOPES[feature]);
   };
   const later = (fn: () => Promise<unknown>) => void fn().catch((e) => console.error("background sync", e instanceof Error ? e.message : e));
   registerStockRoutes(app, { db: d.db }, uid, json, { driveConnected: (userId) => connected(userId, "drive") });
@@ -181,12 +181,13 @@ export function createApp(d: Deps) {
     if (!google) return json(c, { success: false, error: "NOT_CONFIGURED" }, 503);
     const body = await c.req.json().catch(() => ({})) as { features?: unknown };
     const wanted = (Array.isArray(body.features) ? body.features : []).filter((x): x is Feature => (FEATURES as string[]).includes(String(x)));
-    const features = wanted.length ? [...new Set(wanted)] : (["drive"] as Feature[]);
+    const requested: Feature[] = wanted.length ? [...new Set(wanted)] : ["drive"];
+    const features = [...requested];
     // Keep what was granted before: asking for one more feature must not drop the others.
     const prev = await d.db.query("select granted_scopes from finance.google_connections where user_id=$1 and refresh_enc is not null", [uid(c)]);
     const have = (prev.rows[0]?.granted_scopes as string[] | undefined) ?? [];
-    for (const f of FEATURES) if (have.includes(SCOPE_OF[f]) && !features.includes(f)) features.push(f);
-    return json(c, { success: true, url: await startConnect(d.db, google, uid(c), features) });
+    for (const f of FEATURES) if (have.includes(SCOPES[f]) && !features.includes(f)) features.push(f);
+    return json(c, { success: true, url: await startConnect(d.db, google, uid(c), features, requested) });
   });
   app.get("/api/finance/google/callback", async (c) => {
     const back = (q: string) => c.redirect(`/integrasi?google=${q}`, 302);
@@ -195,9 +196,23 @@ export function createApp(d: Deps) {
     if (c.req.query("error") || !code || !state) return back("denied");
     try {
       const out = await finishConnect(d.db, google, code, state, d.gfetch);
-      later(async () => { if (out.features.gmail) await enableGmail(d.db, out.userId); if (out.features.calendar) await syncCalendar(d.db, google, out.userId, d.gfetch); if (out.features.drive) { await requestSheet(d.db, out.userId); await touchDrive(d.db, out.userId); } });
-      return back("ok");
-    } catch (e) { console.error("google connect", e instanceof Error ? e.message : e); return back("error"); }
+      const setup: Promise<unknown>[] = [];
+      if (out.features.gmail && out.requested.includes("gmail")) setup.push(enableGmail(d.db, out.userId));
+      if (out.features.drive) setup.push(requestSheet(d.db, out.userId), touchDrive(d.db, out.userId));
+      if (out.features.calendar) later(() => syncCalendar(d.db, google, out.userId, d.gfetch));
+      const results = await Promise.allSettled(setup);
+      if (results.some((result) => result.status === "rejected")) {
+        console.error("google connect: integration setup failed");
+        return back("setup");
+      }
+      return back(out.partial ? "partial" : "ok");
+    } catch (e) {
+      const error = e instanceof Error ? e.message : "";
+      if (error === "NO_FEATURE_GRANTED") return back("denied");
+      if (error === "ACCOUNT_MISMATCH") return back("account");
+      console.error("google connect", error || "failed");
+      return back("error");
+    }
   });
   app.post("/api/finance/google/gmail/poll", async (c) => { if (!(await connected(uid(c), "gmail"))) return json(c, { success: false, error: "NOT_CONNECTED" }, 409); await enableGmail(d.db, uid(c)); await pollSoon(d.db, uid(c)); return json(c, { success: true }); });
   // Import of old mail: scan (worker) -> preview -> commit. The API only creates, reads and decides.

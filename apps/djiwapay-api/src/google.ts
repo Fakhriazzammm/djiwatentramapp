@@ -50,8 +50,8 @@ export function scopesFor(features: readonly Feature[]) {
 
 /* ---------------- connect / disconnect ---------------- */
 
-export async function startConnect(db: Q, cfg: GoogleCfg, userId: string, features: readonly Feature[]) {
-  const state = randomBytes(32).toString("base64url");
+export async function startConnect(db: Q, cfg: GoogleCfg, userId: string, features: readonly Feature[], requested = features) {
+  const state = `${randomBytes(32).toString("base64url")}.${requested.join(",")}`;
   await db.query(`insert into finance.google_connections(user_id,state_hash,state_expires_at) values($1,$2,now()+interval '10 minutes')
     on conflict(user_id) do update set state_hash=excluded.state_hash, state_expires_at=excluded.state_expires_at, updated_at=now()`, [userId, hash(state)]);
   const params = new URLSearchParams({ client_id: cfg.clientId, redirect_uri: cfg.redirectUri, response_type: "code", access_type: "offline", prompt: "consent", include_granted_scopes: "true", scope: scopesFor(features).join(" "), state });
@@ -59,20 +59,29 @@ export async function startConnect(db: Q, cfg: GoogleCfg, userId: string, featur
 }
 
 export async function finishConnect(db: Q, cfg: GoogleCfg, code: string, state: string, f: Fetch = fetch) {
-  const pending = (await db.query("select user_id from finance.google_connections where state_hash=$1 and state_expires_at > now()", [hash(state)])).rows[0];
+  const stateHash = hash(state);
+  const pending = (await db.query("select user_id,refresh_enc,email from finance.google_connections where state_hash=$1 and state_expires_at > now()", [stateHash])).rows[0];
   if (!pending) throw new Error("STATE_EXPIRED");
   const res = await f(TOKEN_URL, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ code, client_id: cfg.clientId, client_secret: cfg.clientSecret, redirect_uri: cfg.redirectUri, grant_type: "authorization_code" }) });
   if (!res.ok) throw new Error("GOOGLE_REJECTED");
   const t = (await res.json()) as { access_token: string; refresh_token?: string; expires_in?: number; scope?: string };
-  const existing = (await db.query("select refresh_enc from finance.google_connections where user_id=$1", [pending.user_id])).rows[0]?.refresh_enc as string | null;
+  const existing = pending.refresh_enc as string | null;
   if (!t.refresh_token && !existing) throw new Error("NO_REFRESH_TOKEN");
   const scopes = String(t.scope ?? "").split(/\s+/).filter(Boolean);
+  const features = featuresFromScopes(scopes);
+  if (!FEATURES.some((feature) => features[feature])) throw new Error("NO_FEATURE_GRANTED");
+  const [, requestedRaw] = state.split(".");
+  // Legacy callbacks issued before deployment have only the random nonce.
+  const requested = requestedRaw === undefined ? FEATURES.filter((feature) => features[feature])
+    : FEATURES.filter((feature) => requestedRaw.split(",").includes(feature));
   let email: string | null = null;
   try { const info = await f(USERINFO_URL, { headers: { authorization: `Bearer ${t.access_token}` } }); if (info.ok) email = ((await info.json()) as { email?: string }).email ?? null; } catch { /* the e-mail is only a label */ }
-  await db.query(`update finance.google_connections set access_enc=$2, refresh_enc=$3, expires_at=now()+($4 * interval '1 second'), granted_scopes=$5, email=coalesce($6,email),
-    state_hash=null, state_expires_at=null, connected_at=coalesce(connected_at,now()), updated_at=now() where user_id=$1`,
-    [pending.user_id, encrypt(cfg.key, t.access_token), t.refresh_token ? encrypt(cfg.key, t.refresh_token) : existing, t.expires_in ?? 3600, scopes, email]);
-  return { userId: pending.user_id as string, features: featuresFromScopes(scopes) };
+  if (pending.email && email && pending.email.toLowerCase() !== email.toLowerCase()) throw new Error("ACCOUNT_MISMATCH");
+  const saved = await db.query(`update finance.google_connections set access_enc=$2, refresh_enc=$3, expires_at=now()+($4 * interval '1 second'), granted_scopes=$5, email=coalesce($6,email),
+    state_hash=null, state_expires_at=null, connected_at=coalesce(connected_at,now()), updated_at=now() where user_id=$1 and state_hash=$7 returning user_id`,
+    [pending.user_id, encrypt(cfg.key, t.access_token), t.refresh_token ? encrypt(cfg.key, t.refresh_token) : existing, t.expires_in ?? 3600, scopes, email, stateHash]);
+  if (!saved.rows.length) throw new Error("STATE_EXPIRED");
+  return { userId: pending.user_id as string, features, requested, partial: requested.some((feature) => !features[feature]) };
 }
 
 export async function disconnect(db: Q, cfg: GoogleCfg | null, userId: string, f: Fetch = fetch) {

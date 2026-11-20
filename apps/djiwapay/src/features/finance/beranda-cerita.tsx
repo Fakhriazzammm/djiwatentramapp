@@ -100,7 +100,7 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
 
   return <div className="dpx-st-body">
     <ReviewChip count={inbound.data?.review ?? 0} importReady={inbound.data?.importReady ?? 0} autoRecent={inbound.data?.autoRecent ?? 0} onOpenAuto={() => nav.go("/riwayat?baru=1")} onOpen={() => nav.go("/tinjau")} onOpenImport={() => nav.go("/integrasi?impor=1")} />
-    <IntegrationNudge inbound={inbound.data} onOpenEmail={() => nav.go("/integrasi?email=1")} />
+    <IntegrationNudge onOpenIntegrations={() => nav.go("/integrasi")} />
     <section className="dpx-st-card dpx-st-menu-card" aria-label="Menu">
       <div className="dpx-st-menu">{MENU.map((m) => <Btn key={m.label} type="button" className="dpx-st-mt" onClick={() => (m.all ? setAllOpen(true) : m.news ? setNewsOpen(true) : nav.go(m.path!))}>
         <span className="dpx-st-mi"><Ic n={m.icon} />{m.label === "Tinjau" && (inbound.data?.review ?? 0) > 0 ? <i className="dpx-st-mb">{inbound.data?.review}</i> : null}</span><span>{m.label}</span></Btn>)}</div>

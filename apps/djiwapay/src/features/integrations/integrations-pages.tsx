@@ -5,7 +5,7 @@ import { CatIcon, MoneyInput, accName, catOf } from "../finance/fin-sheets";
 import type { FinCtx } from "../finance/fin-pages";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import {
-  CHANNEL_NAME, approveItem, cancelImport, commitImport, getImport, getImportItems, startImport, undoImport, connectGoogle, integrationNudgeActions, takeAfterGoogle, type HookInfo, confirmDriveRemovals, confirmSheetDeletes, createSource, disconnectGoogle, getGoogle, gmailOff, pollGmailNow, getInbound, getReview, rejectItem, removeSource, syncGoogle,
+  CHANNEL_NAME, approveItem, cancelImport, commitImport, getImport, getImportItems, startImport, undoImport, connectGoogle, GOOGLE_FEATURES, missingGoogleFeatures, takeAfterGoogle, type HookInfo, confirmDriveRemovals, confirmSheetDeletes, createSource, disconnectGoogle, getGoogle, gmailOff, pollGmailNow, getInbound, getReview, rejectItem, removeSource, syncGoogle,
   type GoogleFeature, type GoogleStatus, type ImportItem, type ImportState, type InboundSummary, type ReviewItem,
 } from "../../lib/finance/integrations";
 import { createHook, removeHook } from "../../lib/finance/integrations";
@@ -79,50 +79,66 @@ export function useGoogle() {
 const NUDGE_KEY = "djiwapay.google-nudge-until";
 const nudgeHidden = () => { try { return Number(localStorage.getItem(NUDGE_KEY) ?? 0) > Date.now(); } catch { return false; } };
 
-export function IntegrationNudge({ inbound, onOpenEmail }: { inbound: InboundSummary | null; onOpenEmail: () => void }) {
+const GOOGLE_LABELS: Record<GoogleFeature, string> = {
+  drive: "Spreadsheet + Drive",
+  gmail: "Email bank",
+  calendar: "Calendar",
+};
+
+export function IntegrationNudge({ onOpenIntegrations }: { onOpenIntegrations: () => void }) {
   const { g } = useGoogle();
-  const { hook } = useHook();
   const [hidden, setHidden] = useState(nudgeHidden);
-  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const { email, googleFeatures } = integrationNudgeActions(g, inbound, hook);
-  const files = googleFeatures.length > 0;
-  if (hidden || (!email && !files)) return null;
+  const missing = missingGoogleFeatures(g);
+  if (hidden || !missing.length) return null;
 
   const snooze = () => {
     try { localStorage.setItem(NUDGE_KEY, String(Date.now() + 3 * 86400_000)); } catch { /* this visit only */ }
     setHidden(true);
   };
   const go = async () => {
-    if (busy || !files) return;
+    if (busy) return;
     setBusy(true);
     setError("");
     try {
-      const { url } = await connectGoogle(googleFeatures);
+      takeAfterGoogle();
+      const { url } = await connectGoogle(missing);
       window.location.assign(url);
     } catch {
-      setError("Google belum bisa dibuka. Coba lagi.");
+      setError("Google belum bisa dibuka. Coba lagi atau atur satu per satu.");
       setBusy(false);
     }
   };
-  return <Reveal i={1}><section className="dpx-nudge" aria-label="Integrasi Djiwa Pay">
-    <div className="dpx-nudge-heading">
-      <h2>Hubungkan layanan</h2>
-      <Btn type="button" className="dpx-linkbtn" onClick={snooze}>Nanti</Btn>
+  return <Reveal i={1}><section className="dpx-nudge" aria-label="Hubungkan Google">
+    <div className="dpx-nudge-h">
+      <span className="dpx-nudge-ic"><Ic n="link" /></span>
+      <div><h2>Hubungkan Google-mu</h2>
+        <p>Sinkronkan catatan ke Spreadsheet, simpan struk di Drive, masukkan tagihan ke Calendar, dan catat transaksi dari email bank.</p>
+      </div>
     </div>
-    {email ? <Row icon="spark" tone="orange" title="Atur email bank" sub="Pakai Email terusan atau Apps Script" onClick={onOpenEmail} /> : null}
-    {files ? <Row icon="list" tone="emerald" title="Hubungkan Spreadsheet & Drive" sub="Sinkronkan catatan dan simpan foto struk" onClick={() => { setError(""); setOpen(true); }} /> : null}
-    <AnimatePresence>
-      {open && files ? <ConsentSheet key="nudge-consent" features={googleFeatures} busy={busy} error={error} onClose={() => setOpen(false)} onGo={() => void go()} /> : null}
-    </AnimatePresence>
+    <ul className="dpx-nudge-chips">{GOOGLE_FEATURES.map((feature) => {
+      const active = !missing.includes(feature);
+      return <li key={feature} className={active ? "dpx-on" : undefined} aria-label={`${GOOGLE_LABELS[feature]}, ${active ? "terhubung" : "belum terhubung"}`}>
+        {active ? <Ic n="check" size="sm" /> : <i aria-hidden="true" />}{GOOGLE_LABELS[feature]}
+      </li>;
+    })}</ul>
+    <div className="dpx-nudge-act">
+      <Btn type="button" className="dpx-btn dpx-sm" disabled={busy} onClick={() => void go()}>{busy ? "Membuka Google…" : "Hubungkan semua"}</Btn>
+      <Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={snooze}>Nanti</Btn>
+      <Btn type="button" className="dpx-linkbtn" onClick={onOpenIntegrations}>Atur satu per satu</Btn>
+    </div>
+    {error ? <p className="dpx-sub" role="alert">{error}</p> : null}
   </section></Reveal>;
 }
 
 /* ---------- Google consent ---------- */
-type ConsentFeature = Exclude<GoogleFeature, "gmail">;
-export function ConsentSheet({ features, onClose, busy, onGo, extra, error }: { features: ConsentFeature[]; onClose: () => void; busy: boolean; onGo: () => void; extra?: string[]; error?: string }) {
+export function ConsentSheet({ features, onClose, busy, onGo, extra, error }: { features: GoogleFeature[]; onClose: () => void; busy: boolean; onGo: () => void; extra?: string[]; error?: string }) {
   const can: string[] = [], cannot = ["Membaca atau menyimpan email lain", "Mengubah atau menghapus file yang tidak dibuat Djiwa Pay", "Menyimpan kata sandi Google-mu"];
+  if (features.includes("gmail")) {
+    can.push("Membaca email transaksi dari bank dan e-wallet yang didukung untuk mencatat pembayaran");
+    cannot.unshift("Mengirim, mengubah, atau menghapus email");
+  }
   if (features.includes("calendar")) can.push("Membuat acara pengingat tagihan di Google Calendar-mu");
   if (features.includes("drive")) { can.push("Membuat folder “Djiwa Pay / Struk” dan menyimpan setiap foto struk di sana", "Membuat satu Spreadsheet keuangan dan menyinkronkannya dua arah: ubah atau hapus di aplikasi atau di Sheets, keduanya ikut", "Memindahkan foto ke tempat sampah Drive saat struknya dihapus di aplikasi"); cannot.unshift("Membaca foto atau file lain di Drive-mu. Foto yang kamu taruh sendiri di folder itu tidak ikut terbaca"); }
   if (extra) can.push(...extra);
@@ -261,7 +277,7 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
   const { data: inbound, refresh } = useInbound();
   const [g, setG] = useState<(GoogleStatus & { success: true }) | null>(null);
   const [loadingG, setLoadingG] = useState(true);
-  const [sheet, setSheet] = useState<null | "email" | "import" | "script" | "sources" | { consent: ConsentFeature[] }>(null);
+  const [sheet, setSheet] = useState<null | "email" | "import" | "script" | "sources" | { consent: GoogleFeature[] }>(null);
   const { hook, refresh: refreshHook, setHook } = useHook();
   const [busy, setBusy] = useState("");
   const [confirmOff, setConfirmOff] = useState<null | "google" | "email" | "script">(null);
@@ -282,12 +298,16 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
     if (!googleResult) return;
     const after = takeAfterGoogle();
     ctx.notify(googleResult === "ok" ? "Google terhubung"
+      : googleResult === "partial" ? "Sebagian layanan Google terhubung. Lengkapi izin yang tersisa dari Integrasi."
+      : googleResult === "setup" ? "Izin Google tersimpan. Buka layanan terkait untuk mencoba sinkronisasi lagi."
+      : googleResult === "account" ? "Pilih akun Google yang sudah terhubung di Djiwa Pay."
       : googleResult === "unavailable" ? "Integrasi Google belum tersedia"
-      : "Koneksi Google belum berhasil. Coba lagi dari Integrasi.");
+      : "Koneksi Google belum berhasil. Coba lagi atau atur satu per satu.");
     if (googleResult === "ok" && after) ctx.nav.go(after);
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
-  const goGoogle = async (features: ConsentFeature[]) => {
+  const goGoogle = async (features: GoogleFeature[]) => {
+    if (busy === "connect") return;
     setBusy("connect");
     try { const { url } = await connectGoogle(features); window.location.assign(url); }
     catch (e) { setBusy(""); ctx.notify((e as { code?: string }).code === "NOT_CONFIGURED" ? "Integrasi Google belum tersedia" : "Tidak bisa membuka Google. Coba lagi."); }
@@ -383,12 +403,13 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
             <Row icon="trash" tone="rose" title="Matikan Apps Script" sub="Alamat dihapus. Catatan yang sudah ada tetap" onClick={() => { setSheet(null); setConfirmOff("script"); }} chev={false} />
           </> : null}
         </div>
-        {gm ? <div className="dpx-group dpx-white dpx-int">
+        <div className="dpx-group dpx-white dpx-int">
           <Row icon="spark" tone="orange" title="Gmail langsung"
-            sub={gmInfo?.error ? gmailError(gmInfo.error) : gmInfo?.lastPolledAt ? `Dicek ${ago(gmInfo.lastPolledAt)} · ${gmInfo.fetched} email dibaca` : "Memeriksa email pertama…"}
-            trail={<Tag tone={gmInfo?.error ? "warn" : "ok"}>{gmInfo?.error ? "Perlu perhatian" : "Aktif"}</Tag>} />
-          <Row icon="trash" tone="rose" title="Matikan Gmail langsung" sub="Berhenti membaca email. Catatan yang sudah ada tetap" onClick={() => { setSheet(null); void turnGmailOff(); }} chev={false} />
-        </div> : null}
+            sub={gmInfo?.error ? gmailError(gmInfo.error) : gmInfo?.lastPolledAt ? `Dicek ${ago(gmInfo.lastPolledAt)} · ${gmInfo.fetched} email dibaca` : gm ? "Memeriksa email pertama…" : "Catat email bank dan e-wallet melalui akun Google-mu"}
+            trail={loadingG ? undefined : !gReady ? soon : gm ? <Tag tone={gmInfo?.error ? "warn" : "ok"}>{gmInfo?.error ? "Perlu perhatian" : "Aktif"}</Tag> : <Tag>Sambungkan</Tag>}
+            onClick={g?.configured && (!gm || gmInfo?.error) ? () => setSheet({ consent: ["gmail"] }) : undefined} />
+          {gm ? <Row icon="trash" tone="rose" title="Matikan Gmail langsung" sub="Berhenti membaca email. Catatan yang sudah ada tetap" onClick={() => { setSheet(null); void turnGmailOff(); }} chev={false} /> : null}
+        </div>
       </Sheet> : null}
       {sheet === "email" ? <EmailSetupSheet key="email" ctx={ctx} summary={inbound} refresh={refresh} onClose={() => setSheet(null)} /> : null}
       {sheet && typeof sheet === "object" ? <ConsentSheet key="consent" features={sheet.consent} busy={busy === "connect"} onClose={() => setSheet(null)} onGo={() => void goGoogle(sheet.consent)} /> : null}

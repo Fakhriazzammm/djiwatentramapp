@@ -496,13 +496,18 @@ html:has(.dpx-scened),body:has(.dpx-scened){overflow-x:hidden}
 .dpx-buddy-bubble{position:relative;align-self:center;max-width:226px;padding:9px 12px;border-radius:16px 16px 4px 16px;background:#fff;color:var(--ink);font:600 13px/1.35 var(--font);box-shadow:0 8px 22px rgba(43,38,32,.16),0 0 0 1px rgba(43,38,32,.05)}
 
 /* ---- Beranda: integrations ---- */
-.dpx .dpx-nudge{margin-top:12px;padding:8px 14px 6px;border-radius:22px;background:#fff;box-shadow:var(--soft)}
-.dpx .dpx-nudge-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.dpx .dpx-nudge-heading h2{margin:0;color:var(--ink);font:700 16px var(--font)}
-.dpx .dpx-nudge-heading .dpx-linkbtn{min-height:36px;color:var(--mute)}
-.dpx .dpx-nudge .dpx-row{padding:10px 0;min-height:48px}
-.dpx .dpx-nudge .dpx-row+.dpx-row{border-top:1px solid var(--line)}
-.dpx .dpx-nudge .dpx-main b,.dpx .dpx-nudge .dpx-main span{white-space:normal;overflow-wrap:anywhere}
+.dpx .dpx-nudge{margin-top:12px;padding:14px;border-radius:22px;background:#fff;box-shadow:var(--soft)}
+.dpx .dpx-nudge-h{display:flex;align-items:flex-start;gap:12px}
+.dpx .dpx-nudge-ic{flex:none;width:40px;height:40px;border-radius:14px;background:var(--blue-soft);display:grid;place-items:center}
+.dpx .dpx-nudge-h h2{margin:0;color:var(--ink);font:700 16px var(--font)}
+.dpx .dpx-nudge-h p{margin:3px 0 0;color:var(--mute);font-size:13px;line-height:1.4}
+.dpx .dpx-nudge-chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0;padding:0;list-style:none}
+.dpx .dpx-nudge-chips li{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:var(--group);font:600 12.5px var(--font);color:var(--mute)}
+.dpx .dpx-nudge-chips i{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+.dpx .dpx-nudge-chips .dpx-on{background:var(--ok-soft);color:var(--ok)}
+.dpx .dpx-nudge-act{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-top:10px}
+.dpx .dpx-nudge-act button{min-height:44px;margin:0}
+.dpx .dpx-nudge-act .dpx-linkbtn{margin-left:auto}
 
 /* ---- Import of old mail ---- */
 .dpx .dpx-scan{display:flex;flex-direction:column;gap:8px;margin:14px 0;padding:16px;border-radius:18px;background:var(--group)}

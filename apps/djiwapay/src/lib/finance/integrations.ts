@@ -14,19 +14,14 @@ export type GoogleStatus = {
 };
 export type GoogleFeature = "calendar" | "drive" | "gmail";
 
-export function integrationNudgeActions(
-  google: { configured: boolean; features: Pick<GoogleStatus["features"], "drive" | "gmail">; gmail: Pick<NonNullable<GoogleStatus["gmail"]>, "enabled" | "error"> | null } | null,
-  inbound: { configured: boolean; source: Pick<InboundSource, "enabled" | "forwarding"> | null } | null,
-  script: Pick<HookInfo, "available" | "enabled" | "received"> | null,
-) {
-  const forwarding = inbound?.source?.enabled && inbound.source.forwarding;
-  const direct = google?.features.gmail && google.gmail?.enabled && !google.gmail.error;
-  const scriptReceivesMail = script?.enabled && (script.received ?? 0) > 0;
-  const email = Boolean((inbound?.configured || script?.available) && !forwarding && !scriptReceivesMail && !direct);
-  const googleFeatures: "drive"[] = google?.configured && !google.features.drive ? ["drive"] : [];
-  return { email, googleFeatures };
-}
+export const GOOGLE_FEATURES = ["drive", "gmail", "calendar"] as const;
 
+export function missingGoogleFeatures(
+  google: { configured: boolean; features: GoogleStatus["features"]; gmail: { enabled: boolean } | null } | null,
+): GoogleFeature[] {
+  if (!google?.configured) return [];
+  return GOOGLE_FEATURES.filter((feature) => !google.features[feature] || (feature === "gmail" && !google.gmail?.enabled));
+}
 
 export async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api/finance${path}`, { credentials: "include", ...init, headers: { Accept: "application/json", ...(init.body ? { "Content-Type": "application/json" } : {}), ...(init.headers ?? {}) } });
@@ -65,7 +60,11 @@ export const confirmDriveRemovals = () => call<object>("/google/drive/confirm", 
 export const pollGmailNow = () => call<object>("/google/gmail/poll", { method: "POST" });
 export const gmailOff = () => call<object>("/google/gmail/off", { method: "POST" });
 export const disconnectGoogle = () => call<object>("/google/disconnect", { method: "POST" });
-export const syncGoogle = (what: "calendar" | "drive" | "sheets") => call<Record<string, unknown>>(what === "sheets" ? "/google/sheets/export" : `/google/${what}/sync`, { method: "POST" });
+export const syncGoogle = async (what: "calendar" | "drive" | "sheets") => {
+  const result = await call<Record<string, unknown>>(what === "sheets" ? "/google/sheets/export" : `/google/${what}/sync`, { method: "POST" });
+  if (result.ok === false) throw new Error("GOOGLE_SYNC_FAILED");
+  return result;
+};
 
 /** What the review card needs to show a channel. */
 export const CHANNEL_NAME: Record<string, string> = { bca: "BCA", blu: "blu", mandiri: "Mandiri", bri: "BRI", btn: "BTN", bni: "BNI", cimb: "CIMB Niaga", jago: "Jago", jenius: "Jenius", seabank: "SeaBank", gopay: "GoPay", ovo: "OVO", dana: "DANA", shopeepay: "ShopeePay", linkaja: "LinkAja", grab: "Grab", tokopedia: "Tokopedia", pln: "PLN", telkom: "Telkom", bpjs: "BPJS" };
