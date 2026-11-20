@@ -1701,7 +1701,11 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 
 	const handleAutofill = () => {
 		const expectedTotal = (shiftStatus?.ongoingShift?.startingCash || 0) + shiftCash - shiftExpense - extraExpenseTotal;
-		if (expectedTotal <= 0) return;
+		if (expectedTotal <= 0) {
+			setBreakdown({ bill100000: 0, bill50000: 0, bill20000: 0, bill10000: 0, bill5000: 0, bill2000: 0, bill1000: 0, bill500: 0, bill200: 0, bill100: 0 });
+			toast.info(`Tunai seharusnya di laci Rp ${Math.round(expectedTotal).toLocaleString("id-ID")}: tidak ada uang yang perlu dihitung. Periksa pengeluaran shift.`);
+			return;
+		}
 
 		const denominations = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100];
 		const nextBreakdown: Record<string, number> = {};
@@ -2300,6 +2304,10 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		breakdown,
 		onBreakdown: handleCashBreakdownChange,
 		onAutoFillCash: handleAutofill,
+		onResetCash: () => {
+			setBreakdown({ bill100000: 0, bill50000: 0, bill20000: 0, bill10000: 0, bill5000: 0, bill2000: 0, bill1000: 0, bill500: 0, bill200: 0, bill100: 0 });
+			toast.info("Hitungan pecahan dikosongkan");
+		},
 		shiftExpense,
 		expenseRows: (todayTransactions ?? []).filter((t: any) => t.type === "expense" && t.status === "completed" && t.date >= (shiftStatus?.latestMulai || 0)).map((t: any) => ({ category: t.category, description: t.description, amount: Number(t.amount) })),
 		extraExpenses: endShiftExpenses,

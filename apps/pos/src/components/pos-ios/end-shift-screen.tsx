@@ -29,6 +29,7 @@ export interface EndShiftController {
 	breakdown: Record<string, number>;
 	onBreakdown: (key: string, value: number) => void;
 	onAutoFillCash: () => void;
+	onResetCash: () => void;
 	shiftExpense: number;
 	expenseRows: Array<{ category?: string; description?: string; amount: number }>;
 	extraExpenses: ExtraExpense[];
@@ -238,7 +239,7 @@ export function EndShiftScreen({ c }: { c: EndShiftController }) {
 										);
 									})}
 								</div>
-								<div className="mt-2.5 flex justify-center gap-2"><IosChip onClick={() => c.onAutoFillCash()}>Pas sesuai sistem</IosChip><IosChip onClick={() => BILLS.forEach((bill) => c.onBreakdown(`bill${bill}`, 0))}>Reset</IosChip></div>
+								<div className="mt-2.5 flex justify-center gap-2"><IosChip onClick={() => c.onAutoFillCash()}>Pas sesuai sistem</IosChip><IosChip onClick={() => c.onResetCash()}>Reset</IosChip></div>
 
 								<p className="px-1 pb-1.5 pt-4 text-[11px] font-bold tracking-[0.08em] text-muted-foreground">FOTO BUKTI TUNAI <span className="text-rose-600">WAJIB</span></p>
 								{c.cashPhoto ? (

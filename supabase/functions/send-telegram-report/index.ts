@@ -256,7 +256,8 @@ serve(async (req) => {
         token,
         String(chat_id),
         caption,
-        evidenceUrl,
+        // Selalu unggah byte langsung: URL storage self-hosted tidak bisa diambil Telegram ("failed to get HTTP URL content").
+        null,
         photoBytes,
         String(photo_filename),
         String(photo_mime),
