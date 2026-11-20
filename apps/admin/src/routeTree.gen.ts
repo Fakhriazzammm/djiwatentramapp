@@ -41,6 +41,8 @@ import { Route as AdminMinigamesRouteImport } from './routes/admin/minigames'
 import { Route as AdminManagerRouteImport } from './routes/admin/manager'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminKolVisitsRouteImport } from './routes/admin/kol-visits'
+import { Route as AdminKolRewardsRouteImport } from './routes/admin/kol-rewards'
+import { Route as AdminKolReviewRouteImport } from './routes/admin/kol-review'
 import { Route as AdminKolInquiriesRouteImport } from './routes/admin/kol-inquiries'
 import { Route as AdminKolCreatorsRouteImport } from './routes/admin/kol-creators'
 import { Route as AdminKolCommunityRouteImport } from './routes/admin/kol-community'
@@ -320,6 +322,20 @@ const AdminKolVisitsRoute = AdminKolVisitsRouteImport.update({
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() =>
   import('./routes/admin/kol-visits.lazy').then((d) => d.Route),
+)
+const AdminKolRewardsRoute = AdminKolRewardsRouteImport.update({
+  id: '/kol-rewards',
+  path: '/kol-rewards',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/kol-rewards.lazy').then((d) => d.Route),
+)
+const AdminKolReviewRoute = AdminKolReviewRouteImport.update({
+  id: '/kol-review',
+  path: '/kol-review',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/kol-review.lazy').then((d) => d.Route),
 )
 const AdminKolInquiriesRoute = AdminKolInquiriesRouteImport.update({
   id: '/kol-inquiries',
@@ -1026,6 +1042,8 @@ export interface FileRoutesByFullPath {
   '/admin/kol-community': typeof AdminKolCommunityRoute
   '/admin/kol-creators': typeof AdminKolCreatorsRoute
   '/admin/kol-inquiries': typeof AdminKolInquiriesRoute
+  '/admin/kol-review': typeof AdminKolReviewRoute
+  '/admin/kol-rewards': typeof AdminKolRewardsRoute
   '/admin/kol-visits': typeof AdminKolVisitsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/manager': typeof AdminManagerRoute
@@ -1142,6 +1160,8 @@ export interface FileRoutesByTo {
   '/admin/kol-community': typeof AdminKolCommunityRoute
   '/admin/kol-creators': typeof AdminKolCreatorsRoute
   '/admin/kol-inquiries': typeof AdminKolInquiriesRoute
+  '/admin/kol-review': typeof AdminKolReviewRoute
+  '/admin/kol-rewards': typeof AdminKolRewardsRoute
   '/admin/kol-visits': typeof AdminKolVisitsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/manager': typeof AdminManagerRoute
@@ -1254,6 +1274,8 @@ export interface FileRoutesById {
   '/admin/kol-community': typeof AdminKolCommunityRoute
   '/admin/kol-creators': typeof AdminKolCreatorsRoute
   '/admin/kol-inquiries': typeof AdminKolInquiriesRoute
+  '/admin/kol-review': typeof AdminKolReviewRoute
+  '/admin/kol-rewards': typeof AdminKolRewardsRoute
   '/admin/kol-visits': typeof AdminKolVisitsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/manager': typeof AdminManagerRoute
@@ -1377,6 +1399,8 @@ export interface FileRouteTypes {
     | '/admin/kol-community'
     | '/admin/kol-creators'
     | '/admin/kol-inquiries'
+    | '/admin/kol-review'
+    | '/admin/kol-rewards'
     | '/admin/kol-visits'
     | '/admin/login'
     | '/admin/manager'
@@ -1493,6 +1517,8 @@ export interface FileRouteTypes {
     | '/admin/kol-community'
     | '/admin/kol-creators'
     | '/admin/kol-inquiries'
+    | '/admin/kol-review'
+    | '/admin/kol-rewards'
     | '/admin/kol-visits'
     | '/admin/login'
     | '/admin/manager'
@@ -1604,6 +1630,8 @@ export interface FileRouteTypes {
     | '/admin/kol-community'
     | '/admin/kol-creators'
     | '/admin/kol-inquiries'
+    | '/admin/kol-review'
+    | '/admin/kol-rewards'
     | '/admin/kol-visits'
     | '/admin/login'
     | '/admin/manager'
@@ -1927,6 +1955,20 @@ declare module '@tanstack/react-router' {
       path: '/kol-visits'
       fullPath: '/admin/kol-visits'
       preLoaderRoute: typeof AdminKolVisitsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/kol-rewards': {
+      id: '/admin/kol-rewards'
+      path: '/kol-rewards'
+      fullPath: '/admin/kol-rewards'
+      preLoaderRoute: typeof AdminKolRewardsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/kol-review': {
+      id: '/admin/kol-review'
+      path: '/kol-review'
+      fullPath: '/admin/kol-review'
+      preLoaderRoute: typeof AdminKolReviewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/kol-inquiries': {
@@ -2908,6 +2950,8 @@ interface AdminRouteRouteChildren {
   AdminKolCommunityRoute: typeof AdminKolCommunityRoute
   AdminKolCreatorsRoute: typeof AdminKolCreatorsRoute
   AdminKolInquiriesRoute: typeof AdminKolInquiriesRoute
+  AdminKolReviewRoute: typeof AdminKolReviewRoute
+  AdminKolRewardsRoute: typeof AdminKolRewardsRoute
   AdminKolVisitsRoute: typeof AdminKolVisitsRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminManagerRoute: typeof AdminManagerRoute
@@ -2951,6 +2995,8 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminKolCommunityRoute: AdminKolCommunityRoute,
   AdminKolCreatorsRoute: AdminKolCreatorsRoute,
   AdminKolInquiriesRoute: AdminKolInquiriesRoute,
+  AdminKolReviewRoute: AdminKolReviewRoute,
+  AdminKolRewardsRoute: AdminKolRewardsRoute,
   AdminKolVisitsRoute: AdminKolVisitsRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminManagerRoute: AdminManagerRoute,

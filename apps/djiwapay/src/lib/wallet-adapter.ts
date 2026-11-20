@@ -67,6 +67,7 @@ export function paymentMethodLabel(entry: WalletTransaction): string {
     const key = (entry.payment_method ?? "").trim().toLowerCase();
     return DIRECT_METHOD_LABELS[key] ?? (key ? key.toUpperCase() : "Pembayaran langsung");
   }
+  if (entry.reference_type === "kol_reward") return "Reward KOL";
   switch (entry.type) {
     case "topup_completed":
     case "topup_pending": return "Mayar";

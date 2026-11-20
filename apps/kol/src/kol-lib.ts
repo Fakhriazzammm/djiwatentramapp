@@ -20,6 +20,9 @@ export async function kolApi<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const ERROR_TEXT: Record<string, string> = {
+  CAMPAIGN_FULL: "Kuota kampanye ini sudah penuh karena anggaran Bisnis habis.",
+  REWARD_BUDGET_INSUFFICIENT: "Anggaran reward kampanye ini belum cukup. Tim akan mengabari.",
+  CONTENT_VIDEO_ALREADY_USED: "Video ini sudah dipakai di kampanye lain.",
   DATE_ALREADY_BOOKED: "Tanggal itu baru saja diambil creator lain. Pilih tanggal lain ya.",
   CREATOR_ALREADY_HAS_ACTIVE_BOOKING: "Kamu sudah punya jadwal visit aktif.",
   INVALID_BOOKING_DATE: "Pilih tanggal mulai besok.",

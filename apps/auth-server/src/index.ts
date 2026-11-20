@@ -10,6 +10,7 @@ import { investorAuth, registerInvestorPortalRoutes } from "./investor-portal.js
 import { managerOrigins, registerManagerPortalRoutes } from "./manager-portal.js";
 import { registerManagerModules } from "./manager-modules.js";
 import { registerManagerKol } from "./manager-kol.js";
+import { registerKolRewardRoutes } from "./kol-rewards.js";
 import { startManagerAi } from "./manager-ai.js";
 import { buildCoffeePassportStickerPrompt, generateCoffeePassportPng, stickerModel, stickerPromptVersion } from "./coffee-passport-sticker.js";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
@@ -139,6 +140,7 @@ for (const path of ["/api/manager/*", "/api/admin-manager/*"]) {
 registerManagerPortalRoutes(app, auth, pool);
 registerManagerModules(app, auth, pool);
 registerManagerKol(app, auth, pool);
+registerKolRewardRoutes(app, auth, pool);
 startManagerAi(pool);
 
 // CORS — authenticated KOL profile/claim requests from kolmarketing.

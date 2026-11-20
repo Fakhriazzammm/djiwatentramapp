@@ -151,6 +151,8 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/kol-community": "Komunitas KOL",
 	"/admin/kol-visits": "Visit KOL",
 	"/admin/kol-inquiries": "Inquiry KOL",
+	"/admin/kol-rewards": "Reward & Anggaran KOL",
+	"/admin/kol-review": "Review Konten KOL",
 	"/admin/merchandise": "Merchandise · Ringkasan",
 	"/admin/merchandise/": "Merchandise · Ringkasan",
 	"/admin/merchandise/campaigns": "Produk & Pre-order",
@@ -206,6 +208,8 @@ const MORE_MENU_PATHS = [
 	"/admin/kol-community",
 	"/admin/kol-visits",
 	"/admin/kol-inquiries",
+	"/admin/kol-rewards",
+	"/admin/kol-review",
 	"/admin/merchandise",
 	"/admin/merchandise/",
 	"/admin/merchandise/campaigns",
@@ -389,6 +393,8 @@ const KOL_MARKETING_PATHS = [
 	"/admin/kol-community",
 	"/admin/kol-visits",
 	"/admin/kol-inquiries",
+	"/admin/kol-rewards",
+	"/admin/kol-review",
 ];
 
 const BOOKING_PATHS = [
@@ -1151,6 +1157,8 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 							<DesktopNavLink icon={<MessageSquare />} isCollapsed={isCollapsed} label="Komunitas" to="/admin/kol-community" permission="analytics:view" />
 							<DesktopNavLink icon={<CalendarCheck />} isCollapsed={isCollapsed} label="Visit" to="/admin/kol-visits" permission="analytics:view" />
 							<DesktopNavLink icon={<Inbox />} isCollapsed={isCollapsed} label="Inquiry" to="/admin/kol-inquiries" permission="analytics:view" />
+							<DesktopNavLink icon={<Wallet />} isCollapsed={isCollapsed} label="Reward" to="/admin/kol-rewards" permission="analytics:view" />
+							<DesktopNavLink icon={<CalendarCheck />} isCollapsed={isCollapsed} label="Review Konten" to="/admin/kol-review" permission="analytics:view" />
 						</>
 					) : (
 						<>
@@ -1165,6 +1173,8 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 									<DesktopSubNavLink icon={<MessageSquare />} label="Komunitas" to="/admin/kol-community" permission="analytics:view" />
 									<DesktopSubNavLink icon={<CalendarCheck />} label="Visit" to="/admin/kol-visits" permission="analytics:view" />
 									<DesktopSubNavLink icon={<Inbox />} label="Inquiry" to="/admin/kol-inquiries" permission="analytics:view" />
+									<DesktopSubNavLink icon={<Wallet />} label="Reward & Anggaran" to="/admin/kol-rewards" permission="analytics:view" />
+									<DesktopSubNavLink icon={<CalendarCheck />} label="Review Konten" to="/admin/kol-review" permission="analytics:view" />
 								</div></motion.div>}
 							</AnimatePresence>
 						</>

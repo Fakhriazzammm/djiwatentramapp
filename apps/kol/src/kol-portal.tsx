@@ -4,6 +4,7 @@ import { resolveSocialEmbed, SocialMediaEmbed } from "./components/social-media-
 
 import { CommunityTab } from "./kol-community";
 import { CampaignDetail, CampaignsTab, type Campaign } from "./kol-campaigns";
+import { RewardsTab } from "./kol-rewards";
 import type { VisitRow } from "./kol-lib";
 import { HomeTab, VisitTab, ProfileTab, PortalHeader, PortalTabBar, portalPath, tabFromPath, type PortalTabKey } from "./kol-portal-ui";
 export type PortalTab = PortalTabKey;
@@ -24,7 +25,7 @@ if(error&&!profile)return <div className="kx kx-wrap"><div className="kx-view" s
 const uname=usernameOf(session,claim,profile);
 const campaign = campaignSlug ? campaigns.find((item) => item.slug === campaignSlug) : undefined;
 const pending=4-[Boolean(profile?.platforms?.length),Boolean(session.user.image||profile?.avatar_url),Boolean(profile?.bio?.trim()),Boolean(profile?.slug?.trim())].filter(Boolean).length;
-const titles:Record<PortalTab,string>={home:`Halo, ${(profile?.display_name||profile?.name||session.user.name||"Creator").split(" ")[0]}`,community:"Komunitas",campaigns:"Kampanye",calendar:"Visit",profile:"Profil"};
+const titles:Record<PortalTab,string>={home:`Halo, ${(profile?.display_name||profile?.name||session.user.name||"Creator").split(" ")[0]}`,community:"Komunitas",campaigns:"Kampanye",earnings:"Konten & Penghasilan",calendar:"Visit",profile:"Profil"};
 return <div className="kx kx-wrap"><PortalHeader title={titles[tab]} subtitle={tab==="home"?"Selamat datang,":undefined}/><div className="kx-view kx-tabbed">{error&&<p role="alert" className="kx-note kx-note--err" style={{marginBottom:12}}>{error}</p>}
 {tab==="home"&&<HomeTab session={session} profile={profile as any} own={ownBooking} campaigns={campaigns} onNavigate={navigateTab}/>}
 {tab==="community"&&<CommunityTab username={uname}/>}
@@ -32,6 +33,7 @@ return <div className="kx kx-wrap"><PortalHeader title={titles[tab]} subtitle={t
   ? campaign ? <CampaignDetail key={campaign.slug} campaign={campaign} calendar={calendar} refresh={refresh} />
     : <p className="kx-note">Kampanye tidak ditemukan. <a className="kx-link" href="/campaigns">Lihat semua kampanye</a></p>
   : <CampaignsTab campaigns={campaigns} refresh={refresh} />)}
+{tab==="earnings"&&<RewardsTab/>}
 {tab==="calendar"&&<VisitTab rows={calendar} own={ownBooking} invite={inviteContext?.token} refresh={refresh}/>}
 {tab==="profile"&&<ProfileTab key={profile?.source_id} session={session} profile={profile as any} username={uname} refresh={refresh}/>}
 </div><PortalTabBar tab={tab} onSelect={navigateTab} pending={pending} invite={inviteContext?.token}/></div>}

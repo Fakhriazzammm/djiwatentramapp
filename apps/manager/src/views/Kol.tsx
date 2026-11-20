@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "../lib/api";
 import { Empty, Kpis, Panel, Tabs } from "../ui";
+import { KolRewardsView } from "./KolRewards";
 import { BookingExtras, SowPanel, type EmailRow, type SowVersion, type VisitSettings } from "./KolSow";
 
 /* ------------------------------------------------------------------ */
@@ -69,7 +70,7 @@ type Snapshot = {
   visits: Visit[]; inquiries: Inquiry[]; reports: Report[]; creators: Creator[]; invites: Invite[];
   sowVersions: SowVersion[]; settings: VisitSettings | null; emails: EmailRow[];
 };
-type Tab = "ringkasan" | "creator" | "kampanye" | "visit" | "komunitas" | "inquiry";
+type Tab = "ringkasan" | "creator" | "kampanye" | "reward" | "visit" | "komunitas" | "inquiry";
 type Send = (body: Record<string, unknown>, message?: string) => Promise<{ ok: boolean; data: unknown }>;
 
 /* ------------------------------------------------------------------ */
@@ -233,6 +234,7 @@ const TAB_ITEMS: [Tab, string][] = [
   ["ringkasan", "Ringkasan"],
   ["creator", "Creator"],
   ["kampanye", "Kampanye"],
+  ["reward", "Reward"],
   ["visit", "Visit"],
   ["komunitas", "Komunitas"],
   ["inquiry", "Inquiry"],
@@ -288,6 +290,7 @@ export function KolView() {
       {data && tab === "ringkasan" && <RingkasanView data={data} onGo={go} />}
       {data && tab === "creator" && <CreatorView key={focus ?? "all"} data={data} send={send} initial={focus} onReload={load} />}
       {data && tab === "kampanye" && <KampanyeView data={data} send={send} onReload={load} />}
+      {tab === "reward" && <KolRewardsView />}
       {data && tab === "visit" && <VisitView data={data} send={send} />}
       {data && tab === "komunitas" && <KomunitasView data={data} send={send} />}
       {data && tab === "inquiry" && <InquiryView data={data} send={send} />}

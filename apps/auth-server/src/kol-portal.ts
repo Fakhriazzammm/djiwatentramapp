@@ -1,4 +1,5 @@
 import { CAMPAIGN_PROOF_PLATFORMS, campaignProofMatchesPlatform } from "../../../supabase/functions/_shared/kol-campaign.ts";
+import { registerKolRewardPortalRoutes } from "./kol-rewards.js";
 import type { Hono } from "hono";
 
 import { createHash } from "node:crypto";
@@ -589,7 +590,9 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     c.application_mode, c.cover_url, c.terms, c.sow, c.proof_platforms,
     c.status = 'published' and c.application_mode <> 'invite'
       and coalesce(c.application_deadline >= (now() at time zone 'Asia/Jakarta')::date, true)
-      and coalesce(c.end_date >= (now() at time zone 'Asia/Jakarta')::date, true) as can_apply`;
+      and coalesce(c.end_date >= (now() at time zone 'Asia/Jakarta')::date, true)
+      and (not c.rewards_enabled or coalesce((pos.kol_reward_public(c.id) ->> 'slotsLeft')::int, 0) > 0) as can_apply,
+    pos.kol_reward_public(c.id) as reward`;
 
   app.get("/api/kol/public-campaigns", async (c) => {
     const result = await pool.query(`select ${campaignFields} from pos.kol_campaigns c
@@ -610,7 +613,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const result = await pool.query(
       `select ${campaignFields}, a.id as assignment_id, a.status as assignment_status,
           ap.status as application_status, ap.terms_snapshot, ap.sow_snapshot, ap.proof_platforms as agreed_proof_platforms,
-          ap.review_note, ap.requires_visit as application_requires_visit, b.status as visit_status, b.booking_date::text as visit_date,
+          ap.review_note, ap.reward_rules_snapshot, ap.requires_visit as application_requires_visit, b.status as visit_status, b.booking_date::text as visit_date,
           to_char(b.booking_time, 'HH24:MI') as visit_time,
           b.post_deadline::text as post_deadline,
           case when b.sow_snapshot is distinct from ap.sow_snapshot then b.sow_snapshot end as updated_visit_sow
@@ -677,7 +680,9 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const contentUrl = typeof body.contentUrl === "string" ? body.contentUrl.trim() : "";
     if (!Number.isInteger(assignmentId) || !validUrl(contentUrl)) return json(c, { success: false, error: "INVALID_CONTENT_PROOF" }, 400);
     const deliverable = typeof body.deliverableType === "string" ? body.deliverableType.trim().slice(0, 120) || "content" : "content";
-    const result = await pool.query(`insert into pos.kol_content_submissions
+    let result: any;
+    try {
+    result = await pool.query(`insert into pos.kol_content_submissions
       (campaign_assignment_id,deliverable_type,content_url,published_at,insight_screenshot_url,status,required_platform)
       select a.id,$1,$2,$3,$4,'submitted',case when cardinality(ap.proof_platforms) > 0 then $1 end
         from pos.kol_campaign_assignments a
@@ -690,6 +695,10 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
         where required_platform is not null and status <> 'rejected' do nothing
       returning *`, [deliverable, contentUrl, typeof body.publishedAt === "string" ? body.publishedAt : null,
         typeof body.screenshotUrl === "string" && validUrl(body.screenshotUrl) ? body.screenshotUrl.trim() : null, assignmentId, current.kol.source_id, campaignProofMatchesPlatform(contentUrl, deliverable)]);
+    } catch (error: any) {
+      if (error?.code === "23505") return json(c, { success: false, error: "CONTENT_VIDEO_ALREADY_USED" }, 409);
+      throw error;
+    }
     if (!result.rows[0]) return json(c, { success: false, error: campaignProofMatchesPlatform(contentUrl, deliverable) ? "CAMPAIGN_PROOF_UNAVAILABLE" : "CAMPAIGN_PROOF_PLATFORM_INVALID" }, 409);
     await pool.query(`update pos.kol_campaign_assignments set status='active', updated_at=now() where id=$1 and kol_id=$2 and status='accepted'`, [assignmentId, current.kol.source_id]);
     return json(c, { success: true, data: result.rows[0] }, 201);
@@ -705,6 +714,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     if (!result.rows[0]) return json(c, { success: false, error: "CAMPAIGN_PROOF_REVISION_UNAVAILABLE" }, 404);
     return json(c, { success: true, data: result.rows[0] });
   });
+  registerKolRewardPortalRoutes(app, (c) => context(c, auth, pool), pool as any);
   app.get("/api/kol/portal/notifications", async (c) => {
     const current = await context(c, auth, pool);
     if (current.error) return current.error;

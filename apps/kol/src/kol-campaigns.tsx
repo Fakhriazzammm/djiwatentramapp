@@ -3,17 +3,18 @@ import { CONSENT_NO_SHOW, dotTime, errorText, kolApi, longDate, parseDay, type V
 import { VisitPicker } from "./kol-visit";
 import { SowCard } from "./kol-sow";
 import type { CampaignSow } from "../../../supabase/functions/_shared/kol-campaign";
+import { ProofChecks, RewardBox, rupiah, type RewardInfo } from "./kol-rewards";
 
 export type Campaign = {
   id: number; slug: string; title: string; description?: string | null; location?: string | null; benefit_description?: string | null; deliverable_summary?: string | null;
   application_deadline?: string | null; start_date?: string | null; end_date?: string | null; status: string; assignment_id?: number | null; assignment_status?: string | null; brand_name?: string | null; category?: string | null;
   revision: string; can_apply: boolean; application_mode: "invite" | "open" | "visit"; cover_url?: string | null;
-  terms: string[]; sow?: CampaignSow | null; proof_platforms: string[];
+  terms: string[]; sow?: CampaignSow | null; proof_platforms: string[]; reward?: RewardInfo | null;
   application_status?: string | null; terms_snapshot?: string[] | null; sow_snapshot?: CampaignSow | null;
   agreed_proof_platforms?: string[] | null; review_note?: string | null;
   updated_visit_sow?: CampaignSow | null; application_requires_visit?: boolean | null; visit_status?: string | null; visit_date?: string | null; visit_time?: string | null; post_deadline?: string | null;
 };
-type Proof = { id: number; campaign_assignment_id: number; deliverable_type: string; content_url: string; status: string; review_note?: string | null; campaign_title?: string };
+type Proof = { id: number; campaign_assignment_id: number; deliverable_type: string; content_url: string; status: string; review_note?: string | null; campaign_title?: string; video_id?: string | null; posted_at?: string | null; settle_due_at?: string | null };
 
 const FILTERS: Array<[string, string]> = [["all", "Semua"], ["invited", "Diundang"], ["active", "Aktif"], ["completed", "Selesai"]];
 const STATUS: Record<string, [string, string]> = {
@@ -62,6 +63,7 @@ export function CampaignsTab({ campaigns, refresh }: { campaigns: Campaign[]; re
               <p className="kx-clamp" style={{ color: "var(--kx-muted)", fontSize: 13.5 }}>{c.description || "Detail kampanye ada di halaman detail."}</p>
               <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 8, fontSize: 12.5 }}>
                 <span><span className="kx-sub">Benefit </span><b>{c.benefit_description || "Dibicarakan bersama"}</b></span>
+                {c.reward && <span><span className="kx-sub">Reward </span><b>{rupiah(c.reward.ratePer1000)} / 1.000 view</b></span>}
                 {deadline && <span><span className="kx-sub">Sampai </span><b>{deadline}</b></span>}
               </div>
             </a>
@@ -141,6 +143,7 @@ export function CampaignDetail({ campaign: c, calendar = [], refresh, login }: {
         {c.visit_date && !applyingAgain && <div className="kx-kv"><span>Jadwal visit</span><b>{longDate(c.visit_date)} · {dotTime(c.visit_time)} WIB</b></div>}
         {c.post_deadline && !applyingAgain && <div className="kx-kv"><span>Batas tayang konten</span><b>{longDate(c.post_deadline)}</b></div>}
       </div>
+      {c.reward && <RewardBox reward={c.reward} />}
       {visibleSow && <section>
         <h3 className="kx-section">Scope of Work</h3>
         <SowCard sow={!applyingAgain && c.updated_visit_sow ? c.updated_visit_sow : visibleSow} />
@@ -258,6 +261,7 @@ function CampaignProofs({ campaign: c, onChanged }: { campaign: Campaign; onChan
                   <div key={p.id} className="kx-grow" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
                     <span className="kx-main"><b>{p.deliverable_type}</b><small style={{ overflowWrap: "anywhere" }}><a href={p.content_url} target="_blank" rel="noreferrer" style={{ color: "var(--kx-blue-ink)" }}>{p.content_url}</a></small>{p.review_note && <small style={{ color: "var(--kx-warn)" }}>Catatan: {p.review_note}</small>}</span>
                     <span className={`kx-pill ${pt}`}>{pl}</span>
+                    {c.reward && c.reward.platforms.includes(p.deliverable_type) && <div style={{ width: "100%" }}><ProofChecks proof={p} /></div>}
                     {p.status === "needs_revision" && (editing?.id === p.id
                       ? <div style={{ width: "100%", marginTop: 6 }}><input className="kx-input" aria-label="Link konten revisi" inputMode="url" autoCapitalize="none" value={editUrl} onChange={e => setEditUrl(e.target.value)} /><div className="kx-row2" style={{ marginTop: 8 }}><button type="button" className="kx-btn kx-btn--ghost kx-btn--sm" onClick={() => setEditing(null)}>Batal</button><button type="button" className="kx-btn kx-btn--sm" onClick={() => void revise()}>Kirim</button></div></div>
                       : <button type="button" className="kx-btn kx-btn--ghost kx-btn--sm" style={{ marginTop: 6 }} onClick={() => { setEditing(p); setEditUrl(p.content_url); }}>Kirim revisi</button>)}

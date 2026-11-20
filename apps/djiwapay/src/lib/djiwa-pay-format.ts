@@ -9,6 +9,8 @@ export const formatTime = (value: string) => { const parsed = new Date(value); r
 const labels: Record<string, string> = { topup_completed: "Top up", manual_credit: "Credit saldo", order_debit: "Pembayaran pesanan", wallet_hold: "Saldo ditahan", wallet_release: "Saldo dikembalikan", wallet_transfer_sent: "Transfer terkirim", wallet_transfer_received: "Transfer diterima", refund: "Refund pesanan", adjustment: "Penyesuaian saldo" };
 export function transactionTitle(entry: WalletTransaction) {
   if (entry.direct && entry.title) return entry.title;
+  if (entry.reference_type === "kol_reward") return "Reward KOL";
+  if (entry.reference_type === "kol_budget") return "Anggaran kampanye KOL";
   return labels[entry.type] ?? (entry.counterparty_name ? `${entry.direction === "credit" ? "Saldo diterima dari" : "Saldo dikirim ke"} ${entry.counterparty_name}` : "Transaksi saldo");
 }
 
