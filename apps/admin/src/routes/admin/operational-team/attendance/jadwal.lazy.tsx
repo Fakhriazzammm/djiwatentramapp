@@ -948,16 +948,18 @@ function AttendanceJadwalPage() {
       roleName: (u.roleName ?? "-").trim(),
     }));
 
-  // Grid hanya menampilkan karyawan aktif; jadwal milik akun nonaktif/office disembunyikan.
-  const visibleSchedulesByDate = useMemo(() => {
-    const allowed = new Set((users ?? []).map((u: any) => u._id));
-    const grouped: SchedulesByDate = {};
-    for (const [date, list] of Object.entries(schedulesByDate ?? {})) {
-      const visible = list.filter((schedule) => allowed.has(schedule.userId));
-      if (visible.length > 0) grouped[date] = visible;
+  const gridUsers = useMemo(() => {
+    const rows = new Map(filteredUsers.map((user) => [user._id, user]));
+    for (const schedules of Object.values(schedulesByDate ?? {})) {
+      for (const schedule of schedules) {
+        if (!rows.has(schedule.userId)) {
+          rows.set(schedule.userId, { _id: schedule.userId, name: schedule.userName, roleName: schedule.roleName });
+        }
+      }
     }
-    return grouped;
-  }, [schedulesByDate, users]);
+    return [...rows.values()];
+  }, [filteredUsers, schedulesByDate]);
+  const visibleSchedulesByDate = schedulesByDate ?? {};
 
   const refresh = () => setRefreshTrigger((n) => n + 1);
 
@@ -1176,7 +1178,7 @@ function AttendanceJadwalPage() {
             <RosterMatrix
               monthDays={monthDays}
               schedulesByDate={visibleSchedulesByDate}
-              users={filteredUsers}
+              users={gridUsers}
               onEditSchedule={handleEdit}
               onAdd={handleAdd}
               onDeleteSchedule={handleDelete}

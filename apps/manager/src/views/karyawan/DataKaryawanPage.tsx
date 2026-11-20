@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { profileCompleteness } from "../../lib/karyawan/analytics";
 import { Btn, Chips, DataTable, Drawer, Empty, KpiStrip, LineChart, Page, PageHead, Panel, ProgressList, SearchBox, SectionTitle, Segmented, SourceError, StatusTag } from "./kit";
-import { num, rupiah, useAttendanceAnalysis, useDirectory, useSetEmployeeActive, type DirectoryRow } from "./data";
-import { contractInfo, employmentLabel, fmtDate, initials, teamStats } from "./team";
+import { num, rupiah, useAttendanceAnalysis, useDirectory, useEmployeeSettings, useSetEmployeeActive, type DirectoryRow, type EmployeeSetting, type EmploymentContractStatus } from "./data";
+import { contractInfo, contractStatusLabels, getContractStatus, employmentLabel, fmtDate, initials, teamStats } from "./team";
 import { requestAdminConfirm } from "./confirm";
 
 type Filter = "all" | "active" | "incomplete" | "expiring" | "inactive";
@@ -34,14 +34,37 @@ export default function DataKaryawanPage() {
 	const [open, setOpen] = useState<DirectoryRow | null>(null);
 	const [tab, setTab] = useState<Tab>("profil");
 	const statusAction = useSetEmployeeActive();
+	const saveSetting = useEmployeeSettings();
+	const [settingBusy, setSettingBusy] = useState(false);
+
+	const changeSetting = async (row: DirectoryRow, change: EmployeeSetting) => {
+		setSettingBusy(true);
+		try {
+			await saveSetting(row._id, change);
+			setOpen((current) => {
+				if (current?._id !== row._id) return current;
+				if ("scheduleEnabled" in change) return { ...current, scheduleEnabled: change.scheduleEnabled };
+				const contracts = (current.raw.contracts ?? []).map((contract) =>
+					contract.id === change.contractId ? { ...contract, employmentStatus: change.employmentStatus } : contract,
+				);
+				return { ...current, raw: { ...current.raw, contracts } };
+			});
+			dir.reload();
+			toast.success("Perubahan disimpan");
+		} catch {
+			toast.error("Perubahan belum tersimpan. Coba lagi.");
+		} finally {
+			setSettingBusy(false);
+		}
+	};
 
 	const changeStatus = async (row: DirectoryRow, nextActive: boolean) => {
 		if (statusAction.busy) return;
 		const ok = await requestAdminConfirm({
 			title: nextActive ? "Aktifkan karyawan?" : "Nonaktifkan karyawan?",
 			message: nextActive
-				? `${row.name} akan muncul lagi di Jadwal dan pemilih shift.`
-				: `${row.name} tidak akan muncul di Jadwal dan pemilih shift sampai diaktifkan kembali. Riwayat absensi tetap tersimpan.`,
+				? `${row.name} bisa masuk kembali ke aplikasi staf.`
+				: `${row.name} kehilangan akses aplikasi staf dan keluar dari pemilih shift baru. Shift yang sudah terisi dan riwayat kerja tetap tersimpan.`,
 			confirmText: nextActive ? "Aktifkan" : "Nonaktifkan",
 		});
 		if (!ok) return;
@@ -144,7 +167,7 @@ export default function DataKaryawanPage() {
 						{ key: "name", header: "Karyawan", render: (r) => <div className="flex items-center gap-3"><Avatar name={r.name} /><div className="min-w-0"><div className="truncate font-medium">{r.name}</div><div className="truncate font-mono text-[10px] text-[#666672]">{r.username}</div></div></div> },
 						{ key: "role", header: "Jabatan", render: (r) => <div><div>{r.raw.jabatan || r.roleName || "—"}</div>{r.raw.jabatan && r.raw.jabatan !== r.roleName ? <div className="font-mono text-[10px] text-[#666672]">{r.roleName}</div> : null}</div> },
 						{ key: "type", header: "Tipe kerja", render: (r) => employmentLabel(r.raw.employmentType) },
-						{ key: "status", header: "Status", render: (r) => { const i = contractInfo(r); return <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>{!r.isActive ? <StatusTag tone="mute">Nonaktif</StatusTag> : i.daysLeft !== null && i.daysLeft <= 30 ? <StatusTag tone="warn">Berakhir {fmtDate(i.endDate)}</StatusTag> : <StatusTag tone="ok">Aktif</StatusTag>}{!isProtectedRole(r.roleName) ? <button type="button" className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#2f6fdf] underline disabled:opacity-50" disabled={statusAction.busy === r._id} onClick={() => void changeStatus(r, !r.isActive)}>{statusAction.busy === r._id ? "…" : r.isActive ? "Nonaktifkan" : "Aktifkan"}</button> : null}</div>; } },
+						{ key: "status", header: "Status akun", render: (r) => { const i = contractInfo(r); return <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>{r.isActive ? <StatusTag tone="ok">Aktif</StatusTag> : <StatusTag tone="mute">Nonaktif</StatusTag>}{i.daysLeft !== null && i.daysLeft <= 30 && <StatusTag tone="warn">Kontrak {fmtDate(i.endDate)}</StatusTag>}{!isProtectedRole(r.roleName) ? <button type="button" className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#2f6fdf] underline disabled:opacity-50" disabled={statusAction.busy === r._id} onClick={() => void changeStatus(r, !r.isActive)}>{statusAction.busy === r._id ? "…" : r.isActive ? "Nonaktifkan" : "Aktifkan"}</button> : null}</div>; } },
 						{ key: "ontime", header: "Ketepatan", align: "right", render: (r) => { const s = month.analysis?.byUser[r._id]; return s ? `${s.onTimePct}%` : "—"; } },
 						{ key: "comp", header: "Kelengkapan data", render: (r) => { const c = profileCompleteness(r).percent; return <div className="flex min-w-[140px] items-center gap-2"><div className="h-[6px] flex-1 bg-[#ececf0]"><motion.div className="h-full" style={{ background: c < 80 ? "#d69e2e" : "#2f6fdf" }} initial={{ width: 0 }} animate={{ width: `${c}%` }} transition={{ duration: 0.7 }} /></div><span className="font-mono text-[10px] text-[#666672]">{c}%</span></div>; } },
 					]}
@@ -165,13 +188,16 @@ export default function DataKaryawanPage() {
 			)}
 
 			<Drawer open={Boolean(open)} onClose={() => setOpen(null)} title="Profil karyawan">
-				{open ? <Profile row={open} tab={tab} onTab={setTab} stat={month.analysis?.byUser[open._id]} series={month.analysis ? { labels: month.analysis.labels, values: month.analysis.seriesPresent } : null} onToggleStatus={() => void changeStatus(open, !open.isActive)} statusBusy={statusAction.busy === open._id} /> : null}
+				{open ? <Profile row={open} tab={tab} onTab={setTab} stat={month.analysis?.byUser[open._id]} series={month.analysis ? { labels: month.analysis.labels, values: month.analysis.seriesPresent } : null} onToggleStatus={() => void changeStatus(open, !open.isActive)} statusBusy={statusAction.busy === open._id}
+					settingBusy={settingBusy}
+					onScheduleChange={(scheduleEnabled) => void changeSetting(open, { scheduleEnabled })}
+					onContractChange={(contractId, employmentStatus) => void changeSetting(open, { contractId, employmentStatus })} /> : null}
 			</Drawer>
 		</Page>
 	);
 }
 
-function Profile({ row, tab, onTab, stat, series, onToggleStatus, statusBusy }: { row: DirectoryRow; tab: Tab; onTab: (t: Tab) => void; stat?: { days: number; hours: number; late: number; onTimePct: number; sessions: number; unclosed: number }; series: { labels: string[]; values: number[] } | null; onToggleStatus: () => void; statusBusy: boolean }) {
+function Profile({ row, tab, onTab, stat, series, onToggleStatus, statusBusy, settingBusy, onScheduleChange, onContractChange }: { row: DirectoryRow; tab: Tab; onTab: (t: Tab) => void; stat?: { days: number; hours: number; late: number; onTimePct: number; sessions: number; unclosed: number }; series: { labels: string[]; values: number[] } | null; onToggleStatus: () => void; statusBusy: boolean; settingBusy: boolean; onScheduleChange: (enabled: boolean) => void; onContractChange: (id: string, status: EmploymentContractStatus) => void }) {
 	const comp = profileCompleteness(row);
 	const info = contractInfo(row);
 	const salary = Number(row.raw.monthlySalary ?? 0);
@@ -182,10 +208,19 @@ function Profile({ row, tab, onTab, stat, series, onToggleStatus, statusBusy }: 
 			<div className="mb-4 flex flex-wrap items-center justify-between gap-3 border border-[#e4e4e8] bg-[#fafafb] px-3 py-2.5">
 				<div className="min-w-0">
 					<div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#666672]">Status akun</div>
-					<div className="text-[13px] font-medium">{row.isActive ? "Aktif · tampil di Jadwal" : "Nonaktif · tidak tampil di Jadwal"}</div>
+					<div className="text-[13px] font-medium">{row.isActive ? "Aktif" : "Nonaktif"}</div>
 				</div>
-				{protectedRole ? <StatusTag tone="mute">Akun administrator</StatusTag> : <Btn small primary={!row.isActive} danger={row.isActive} disabled={statusBusy} onClick={onToggleStatus}>{statusBusy ? "Menyimpan…" : row.isActive ? "Nonaktifkan" : "Aktifkan"}</Btn>}
+				{protectedRole ? <StatusTag tone="mute">Akun administrator</StatusTag> : <Btn small primary={!row.isActive} danger={row.isActive} disabled={statusBusy} onClick={onToggleStatus}>{statusBusy ? "Menyimpan…" : row.isActive ? "Nonaktifkan akun" : "Aktifkan akun"}</Btn>}
 			</div>
+			{row.scheduleEligible && (
+				<label className="mb-4 flex items-center justify-between gap-3 border border-[#e4e4e8] px-3 py-2.5">
+					<span>
+						<span className="block text-[13px] font-medium">Tampilkan di Jadwal</span>
+						<span className="block text-[12px] text-[#666672]">Berlaku untuk shift baru. Shift yang sudah dibuat tetap terlihat.</span>
+					</span>
+					<input type="checkbox" role="switch" className="h-5 w-5 shrink-0 accent-[#2f6fdf]" checked={row.isActive && row.scheduleEnabled !== false} disabled={settingBusy || !row.isActive} onChange={(event) => onScheduleChange(event.target.checked)} />
+				</label>
+			)}
 			<div className="mb-4"><Chips value={tab} onChange={onTab} options={[{ value: "profil", label: "Profil" }, { value: "kontrak", label: "Kontrak" }, { value: "kehadiran", label: "Kehadiran" }, { value: "gaji", label: "Gaji" }]} /></div>
 			<AnimatePresence mode="wait">
 				<motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="space-y-4">
@@ -202,12 +237,30 @@ function Profile({ row, tab, onTab, stat, series, onToggleStatus, statusBusy }: 
 					{tab === "kontrak" ? (
 						<>
 							<dl className="divide-y divide-[#efeff2] border border-[#e4e4e8] text-[13px]">
-								<div className="flex justify-between px-3 py-2.5"><dt className="text-[#666672]">Status</dt><dd>{!info.hasContract ? <StatusTag tone="bad">Belum ada kontrak</StatusTag> : info.permanent ? <StatusTag tone="ok">Tetap</StatusTag> : info.daysLeft !== null && info.daysLeft <= 30 ? <StatusTag tone="warn">Berakhir dalam {info.daysLeft} hari</StatusTag> : <StatusTag tone="ok">Aktif</StatusTag>}</dd></div>
-								<div className="flex justify-between px-3 py-2.5"><dt className="text-[#666672]">Berakhir</dt><dd className="font-medium">{info.permanent ? "Tanpa batas" : `${fmtDate(info.endDate)}${info.estimated ? " (perkiraan)" : ""}`}</dd></div>
+								<div className="flex justify-between px-3 py-2.5"><dt className="text-[#666672]">Status</dt><dd>{!info.hasContract ? <StatusTag tone="bad">Belum ada kontrak</StatusTag> : info.status === "resigned" || info.status === "ended" ? <StatusTag tone="mute">{contractStatusLabels[info.status]}</StatusTag> : info.daysLeft !== null && info.daysLeft <= 30 ? <StatusTag tone="warn">{info.daysLeft < 0 ? "Melewati tanggal akhir" : "Segera berakhir"}</StatusTag> : info.status === "active" ? <StatusTag tone="ok">Aktif</StatusTag> : <StatusTag tone="mute">Belum aktif</StatusTag>}</dd></div>
+								<div className="flex justify-between px-3 py-2.5"><dt className="text-[#666672]">Tanggal akhir kontrak</dt><dd className="font-medium">{info.permanent ? "Tanpa batas" : `${fmtDate(info.endDate)}${info.estimated ? " (perkiraan)" : ""}`}</dd></div>
 							</dl>
-							{(row.raw.contracts ?? []).map((c) => (
-								<div key={c.id} className="flex items-center justify-between gap-3 border border-[#e4e4e8] p-3 text-[13px]"><div className="min-w-0"><div className="font-medium">{c.registrationNumber ?? "Tanpa nomor"}</div><div className="text-[12px] text-[#666672]">{c.status}</div></div>{c.pdfUrl ? <a className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#2f6fdf] underline" href={c.pdfUrl} target="_blank" rel="noreferrer">Buka PDF</a> : <StatusTag tone="bad">PDF belum ada</StatusTag>}</div>
+							{(row.raw.contracts ?? []).map((contract) => (
+								<div key={contract.id} className="space-y-2 border border-[#e4e4e8] p-3 text-[13px]">
+									<div className="flex items-center justify-between gap-3">
+										<span className="font-medium">{contract.registrationNumber ?? "Tanpa nomor"}</span>
+										{contract.pdfUrl?.startsWith("https://") ? <a className="font-mono text-[10px] uppercase text-[#2f6fdf] underline" href={contract.pdfUrl} target="_blank" rel="noreferrer">Buka PDF</a> : <StatusTag tone="mute">PDF belum ada</StatusTag>}
+									</div>
+									<label className="flex items-center justify-between gap-3">
+										<span>Status kontrak</span>
+										<select
+											className="border border-[#e4e4e8] bg-white px-2 py-1.5 text-[13px]"
+											value={getContractStatus(contract) ?? ""}
+											disabled={settingBusy}
+											onChange={(event) => onContractChange(contract.id, event.target.value as EmploymentContractStatus)}
+										>
+											<option value="" disabled>Belum aktif</option>
+											{Object.entries(contractStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+										</select>
+									</label>
+								</div>
 							))}
+							{info.hasContract && <p className="text-[12px] text-[#666672]">Perubahan status kontrak hanya dicatat pada kontrak. Akses akun dan penjadwalan diatur di atas.</p>}
 						</>
 					) : null}
 					{tab === "kehadiran" ? (

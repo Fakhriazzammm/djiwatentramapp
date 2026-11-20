@@ -11,6 +11,8 @@ import { createGuards, json, text } from "./manager-guards.js";
  */
 type Auth = typeof defaultAuth;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const UUID_RE = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+const CONTRACT_STATUSES = new Set(['active', 'resigned', 'ended']);
 const TIME_RE = /^\d{2}:\d{2}(:\d{2})?$/;
 const STATUSES = new Set(["scheduled", "confirmed", "off"]);
 const MAX_RANGE_MS = 800 * 86_400_000;
@@ -20,6 +22,9 @@ const DIRECTORY_SQL = `
     '_id', u.source_id, 'name', u.name, 'username', u.username, 'initial', upper(left(u.name, 1)),
     'slug', coalesce(nullif(u.slug, ''), split_part(u.username, '@', 1)),
     'photoUrl', coalesce(u.photo_url, a.photo_url), 'roleId', u.role_source_id, 'roleName', trim(r.name), 'isActive', u.is_active,
+    'scheduleEnabled', u.schedule_enabled,
+    'scheduleEligible', lower(trim(coalesce(r.name, ''))) NOT IN ('owner', 'admin', 'administrator', 'superadmin', 'super admin', 'manager', 'hrd', 'client_viewer')
+      AND NOT (coalesce(r.permissions, '[]'::jsonb) ? 'users:manage'),
     'raw', jsonb_build_object(
       'phone', coalesce(nullif(btrim(u.raw->>'phone'), ''), nullif(btrim(a.phone), '')),
       'identityNumber', coalesce(nullif(u.raw->>'identityNumber', ''), a.identity_number),
@@ -49,6 +54,7 @@ const DIRECTORY_SQL = `
     SELECT coalesce(jsonb_agg(jsonb_build_object(
       'id', application.id, 'registrationNumber', application.registration_number,
       'status', coalesce(nullif(application.raw->>'contractStatus', ''), application.contract_status),
+      'employmentStatus', application.employment_contract_status,
       'pdfUrl', application.contract_pdf_url
     ) ORDER BY application.created_at DESC, application.id), '[]'::jsonb) AS documents
     FROM public.employee_onboarding_applications application
@@ -103,6 +109,40 @@ export function registerManagerKaryawan(app: Hono, auth: Auth, pool: Pool) {
     return json({ success: true, userId, isActive: b.isActive });
   });
 
+  app.post("/api/manager/karyawan/directory/schedule", async (c) => {
+    const m = await guard(c);
+    if ("res" in m) return m.res;
+    const b = await c.req.json().catch(() => null) as { userId?: unknown; scheduleEnabled?: unknown } | null;
+    const userId = text(b?.userId, 120);
+    if (!userId || typeof b?.scheduleEnabled !== "boolean") return json({ success: false, error: "INVALID" }, 400);
+    try {
+      await pool.query("SELECT employee_directory_private.set_schedule($1, $2)", [userId, b.scheduleEnabled]);
+      return json({ success: true });
+    } catch (error) {
+      if ((error as { code?: string }).code === "P0002") return json({ success: false, error: "NOT_FOUND" }, 404);
+      throw error;
+    }
+  });
+
+  app.post("/api/manager/karyawan/directory/contract-status", async (c) => {
+    const m = await guard(c);
+    if ("res" in m) return m.res;
+    const b = await c.req.json().catch(() => null) as { userId?: unknown; contractId?: unknown; employmentStatus?: unknown } | null;
+    const userId = text(b?.userId, 120);
+    const contractId = text(b?.contractId, 37);
+    const status = text(b?.employmentStatus, 12);
+    if (!userId || !UUID_RE.test(contractId) || !CONTRACT_STATUSES.has(status)) {
+      return json({ success: false, error: "INVALID" }, 400);
+    }
+    try {
+      await pool.query("SELECT employee_directory_private.set_contract_status($1, $2, $3)", [userId, contractId, status]);
+      return json({ success: true });
+    } catch (error) {
+      if ((error as { code?: string }).code === "P0002") return json({ success: false, error: "NOT_FOUND" }, 404);
+      throw error;
+    }
+  });
+
   app.get("/api/manager/karyawan/attendance", async (c) => {
     const m = await guard(c);
     if ("res" in m) return m.res;
@@ -144,14 +184,18 @@ export function registerManagerKaryawan(app: Hono, auth: Auth, pool: Pool) {
     if (!DATE_RE.test(from) || !DATE_RE.test(to) || to < from) return json({ success: false, error: "RANGE_INVALID" }, 400);
     const [rows, staff, site] = await Promise.all([
       pool.query(
-        `SELECT source_id AS id, user_id, date::text AS date, shift_name, start_time::text AS start_time, end_time::text AS end_time, status, raw
-           FROM pos.attendance_schedules WHERE date BETWEEN $1::date AND $2::date ORDER BY date, user_id LIMIT 5000`,
+        `SELECT s.source_id AS id, s.user_id, s.date::text AS date, s.shift_name, s.start_time::text AS start_time,
+                s.end_time::text AS end_time, s.status, s.raw, u.name, trim(coalesce(r.name, '')) AS role_name
+           FROM pos.attendance_schedules s
+           JOIN public.yumi_users u ON u.source_id = s.user_id
+           LEFT JOIN public.yumi_roles r ON r.source_id = u.role_source_id
+          WHERE s.date BETWEEN $1::date AND $2::date ORDER BY s.date, s.user_id LIMIT 5000`,
         [from, to],
       ),
       pool.query(
         `SELECT u.source_id AS id, u.name, trim(coalesce(r.name, '')) AS role_name
            FROM public.yumi_users u LEFT JOIN public.yumi_roles r ON r.source_id = u.role_source_id
-          WHERE u.is_active
+          WHERE u.is_active AND u.schedule_enabled
             AND lower(trim(coalesce(r.name, ''))) NOT IN ('owner', 'admin', 'administrator', 'superadmin', 'super admin', 'manager', 'hrd', 'client_viewer')
             AND NOT (coalesce(r.permissions, '[]'::jsonb) ? 'users:manage')
           ORDER BY u.name`,
@@ -161,7 +205,7 @@ export function registerManagerKaryawan(app: Hono, auth: Auth, pool: Pool) {
     const shifts = Array.isArray(site.rows[0]?.shifts) ? site.rows[0].shifts : [];
     return json({
       success: true,
-      schedules: rows.rows.map((r) => ({ id: r.id, userId: r.user_id, date: r.date, shiftName: r.shift_name, startTime: r.start_time, endTime: r.end_time, status: r.status, raw: r.raw ?? {} })),
+      schedules: rows.rows.map((r) => ({ id: r.id, userId: r.user_id, userName: r.name, roleName: r.role_name, date: r.date, shiftName: r.shift_name, startTime: r.start_time, endTime: r.end_time, status: r.status, raw: r.raw ?? {} })),
       staff: staff.rows.map((r) => ({ id: r.id, name: r.name, roleName: r.role_name })),
       shifts: shifts.map((s: { name?: string; openTime?: string; closeTime?: string }) => ({ name: String(s.name ?? ""), openTime: s.openTime ?? null, closeTime: s.closeTime ?? null })).filter((s: { name: string }) => s.name),
     });
@@ -220,30 +264,20 @@ export function registerManagerKaryawan(app: Hono, auth: Auth, pool: Pool) {
     const rows = (Array.isArray(b.rows) ? b.rows.slice(0, 8000) : []).map((x) => cleanRow((x ?? {}) as CellBody));
     if (!DATE_RE.test(start) || !DATE_RE.test(end) || end < start || userIds.length === 0 || rows.some((r) => !r)) return json({ success: false, error: "INVALID" }, 400);
     if ((Date.parse(end) - Date.parse(start)) / 86_400_000 > 190) return json({ success: false, error: "RANGE_TOO_LONG" }, 400);
-    const client = await pool.connect();
+    const records = rows.flatMap((r) => r ? [{
+      user_id: r.userId, date: r.date, shift_name: r.shiftName,
+      start_time: r.start, end_time: r.end, status: r.status, note: r.note,
+      raw: { source: "manager-generator", by: m.userId },
+    }] : []);
     try {
-      await client.query("BEGIN");
-      // Baris pengganti shift (izin/sakit) tidak ikut diganti agar penugasan tidak hilang diam-diam.
-      const del = await client.query(
-        `DELETE FROM pos.attendance_schedules WHERE user_id = ANY($1::text[]) AND date BETWEEN $2::date AND $3::date AND NOT (raw ? 'coveredBy' OR raw ? 'coverFor')`,
-        [userIds, start, end],
+      const result = await pool.query(
+        "SELECT employee_directory_private.replace_schedules($1, $2, $3, $4) AS counts",
+        [userIds, start, end, JSON.stringify(records)],
       );
-      for (const r of rows as NonNullable<ReturnType<typeof cleanRow>>[]) {
-        if (r.date < start || r.date > end || !userIds.includes(r.userId)) continue;
-        const taken = await client.query(`SELECT 1 FROM pos.attendance_schedules WHERE user_id = $1 AND date = $2::date LIMIT 1`, [r.userId, r.date]);
-        if (taken.rows[0]) continue;
-        await client.query(
-          `INSERT INTO pos.attendance_schedules (source_id, user_id, date, shift_name, start_time, end_time, status, note, raw) VALUES ($1,$2,$3::date,$4,$5::time,$6::time,$7,$8,$9::jsonb)`,
-          [randomUUID(), r.userId, r.date, r.shiftName, r.start, r.end, r.status, r.note, JSON.stringify({ source: "manager-generator", by: m.userId })],
-        );
-      }
-      await client.query("COMMIT");
-      return json({ success: true, inserted: rows.length, deleted: del.rowCount ?? 0 });
-    } catch (e) {
-      await client.query("ROLLBACK").catch(() => undefined);
-      return json({ success: false, error: "BULK_FAILED", message: e instanceof Error ? e.message : "" }, 500);
-    } finally {
-      client.release();
+      return json({ success: true, ...result.rows[0].counts });
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      return json({ success: false, error: code === "23514" ? "STAFF_UNAVAILABLE" : "BULK_FAILED" }, code === "23514" ? 409 : 400);
     }
   });
 }

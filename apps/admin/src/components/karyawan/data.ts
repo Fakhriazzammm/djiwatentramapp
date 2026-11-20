@@ -8,7 +8,14 @@ import { buildDashboardRange, type DashboardPeriodKey, type DashboardRange } fro
 import { analyzeAttendance, wibParts, type AttendanceAnalysis, type AttendanceLog, type ScheduleLite } from "@/lib/karyawan-analytics";
 import { DAY_MS } from "@/lib/wib-utils";
 
-export type DirectoryContract = { id: string; registrationNumber: string | null; status: string; pdfUrl: string | null };
+export type EmploymentContractStatus = "active" | "resigned" | "ended";
+export type DirectoryContract = {
+	id: string;
+	registrationNumber: string | null;
+	status: string;
+	employmentStatus?: EmploymentContractStatus | null;
+	pdfUrl: string | null;
+};
 export type DirectoryRow = {
 	_id: string;
 	name: string;
@@ -19,6 +26,8 @@ export type DirectoryRow = {
 	roleId?: string | null;
 	roleName: string;
 	isActive: boolean;
+	scheduleEnabled?: boolean;
+	scheduleEligible?: boolean;
 	hasFace?: boolean;
 	raw: {
 		phone?: string | null;
@@ -61,6 +70,23 @@ export function useDirectory() {
 	const current = state?.token === token ? state : undefined;
 	const reload = useCallback(() => setTick((v) => v + 1), []);
 	return { rows: current?.rows, error: current?.error ?? (token ? undefined : "Sesi admin tidak tersedia."), reload, loading: !current };
+}
+
+export type EmployeeSetting =
+	| { scheduleEnabled: boolean }
+	| { contractId: string; employmentStatus: EmploymentContractStatus };
+
+export function useEmployeeSettings() {
+	const { token } = useYumiAuth();
+	return useCallback(async (userId: string, change: EmployeeSetting) => {
+		if (!token) throw new Error("Sesi Admin tidak tersedia.");
+		const client = createClient();
+		const args = { session_token: token, user_source_id: userId };
+		const { error } = "scheduleEnabled" in change
+			? await client.rpc("admin_set_employee_schedule", { ...args, schedule_enabled: change.scheduleEnabled })
+			: await client.rpc("admin_set_employee_contract_status", { ...args, contract_id: change.contractId, employment_status: change.employmentStatus });
+		if (error) throw error;
+	}, [token]);
 }
 
 /** Ubah status aktif karyawan lewat RPC admin (memakai sesi Yumi, tidak bergantung sesi Supabase Auth). */

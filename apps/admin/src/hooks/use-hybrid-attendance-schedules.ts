@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { createClient } from "@/lib/client";
+import { useYumiAuth } from "@/hooks/useYumiAuth";
 import { useSupabaseLiveValue } from "@/hooks/use-supabase-live-value";
 
 // Fallback generateId() untuk non-secure context
@@ -201,6 +202,7 @@ export function useHybridBulkCreateAttendanceSchedules() {
 // ─── Bulk Replace by Month + Users ───────────────────────────
 
 export function useHybridBulkReplaceAttendanceSchedules() {
+  const { token } = useYumiAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -214,42 +216,26 @@ export function useHybridBulkReplaceAttendanceSchedules() {
       setLoading(true);
       setError(null);
       try {
-        const supabase = createClient();
-        const pos = supabase.schema("pos");
-
-        // Delete existing for these users + date range
-        let deleted = 0;
-        if (userIds.length > 0) {
-          const { count } = await pos
-            .from("attendance_schedules")
-            .delete({ count: "exact" })
-            .in("user_id", userIds)
-            .gte("date", startDate)
-            .lte("date", endDate);
-          deleted = count ?? 0;
-        }
-
-        // Insert new records
-        if (inputs.length > 0) {
-          const records = inputs.map((i) => ({
-            source_id: generateId(),
-            user_id: i.userId,
-            date: i.date,
-            shift_name: i.shiftName,
-            start_time: i.startTime ?? null,
-            end_time: i.endTime ?? null,
-            note: i.note ?? null,
-            status: i.status ?? "scheduled",
-            raw: i.raw ?? {},
-          }));
-
-          const { error: dbError } = await pos
-            .from("attendance_schedules")
-            .insert(records);
-          if (dbError) throw dbError;
-        }
-
-        return { inserted: inputs.length, deleted };
+        if (!token) throw new Error("Sesi Admin tidak tersedia.");
+        const scheduleRows = inputs.map((input) => ({
+          user_id: input.userId,
+          date: input.date,
+          shift_name: input.shiftName,
+          start_time: input.startTime ?? null,
+          end_time: input.endTime ?? null,
+          note: input.note ?? null,
+          status: input.status ?? "scheduled",
+          raw: input.raw ?? {},
+        }));
+        const { data, error: dbError } = await createClient().rpc("admin_replace_employee_schedules", {
+          session_token: token,
+          user_ids: userIds,
+          start_date: startDate,
+          end_date: endDate,
+          schedule_rows: scheduleRows,
+        });
+        if (dbError) throw new Error(dbError.message);
+        return data as { inserted: number; deleted: number };
       } catch (err) {
         const msg =
           err instanceof Error ? err.message : "Gagal replace jadwal";
@@ -259,7 +245,7 @@ export function useHybridBulkReplaceAttendanceSchedules() {
         setLoading(false);
       }
     },
-    []
+    [token]
   );
 
   return { bulkReplace, loading, error };

@@ -37,7 +37,7 @@ export default function JadwalPage() {
 	const todayIso = wibParts(Date.now()).date;
 	const [weekStart, setWeekStart] = useState(mondayOf(todayIso));
 	const [refresh, setRefresh] = useState(0);
-	const users = (useHybridScheduleStaffUsers(refresh) as StaffUser[] | null | undefined) ?? [];
+	const staff = useHybridScheduleStaffUsers(refresh);
 	const settings = useHybridSiteSettings() as { shiftSettings?: { shiftSchedules?: { name: string; openTime?: string; closeTime?: string }[] } } | null | undefined;
 	const templates = settings?.shiftSettings?.shiftSchedules ?? [];
 	const weekEnd = addDays(weekStart, 6);
@@ -57,7 +57,6 @@ export default function JadwalPage() {
 	const [edit, setEdit] = useState<{ user: StaffUser; date: string; current?: AttendanceSchedule } | null>(null);
 
 	const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
-	const staffIds = useMemo(() => new Set(users.map((u) => u._id)), [users]);
 	const cells = useMemo(() => {
 		const map = new Map<string, AttendanceSchedule>();
 		for (const group of [a.data, b.data]) {
@@ -65,6 +64,20 @@ export default function JadwalPage() {
 		}
 		return map;
 	}, [a.data, b.data, weekStart, weekEnd]);
+
+	const users = useMemo((): StaffUser[] => (staff ?? []).map((user) => ({
+		_id: user._id, name: user.name, roleName: user.roleName ?? "",
+	})), [staff]);
+	const staffIds = useMemo(() => new Set(users.map((user) => user._id)), [users]);
+
+	// Retain assigned cells for employees who cannot receive new shifts.
+	const gridStaff = new Map(users.map((user) => [user._id, user]));
+	for (const schedule of cells.values()) {
+		if (!gridStaff.has(schedule.userId)) {
+			gridStaff.set(schedule.userId, { _id: schedule.userId, name: schedule.userName, roleName: schedule.roleName ?? "" });
+		}
+	}
+	const gridUsers = [...gridStaff.values()];
 
 	const loading = a.isLoading || b.isLoading;
 	const working = (userId: string, date: string) => {
@@ -75,19 +88,19 @@ export default function JadwalPage() {
 	const approvedLeaves = (leave.rows ?? []).filter((r) => r.status === "approved");
 	const conflicts = useMemo(() => {
 		const out: { user: string; date: string }[] = [];
-		for (const u of users) for (const d of days) {
+		for (const u of gridUsers) for (const d of days) {
 			if (!working(u._id, d)) continue;
 			if (approvedLeaves.some((l) => l.user_id === u._id && l.start_date <= d && l.end_date >= d)) out.push({ user: u.name, date: d });
 		}
 		return out;
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [users, days, cells, approvedLeaves.length]);
+	}, [gridUsers, days, cells, approvedLeaves.length]);
 
-	const perDay = days.map((d) => users.filter((u) => working(u._id, d)).length);
+	const perDay = days.map((d) => gridUsers.filter((u) => working(u._id, d)).length);
 	const minPerDay = Math.max(1, Math.ceil(users.length * 0.5));
 	const thin = days.filter((_, i) => perDay[i] < minPerDay);
-	const load = users.map((u) => ({ u, hours: days.reduce((sum, d) => { const s = working(u._id, d); return s ? sum + hoursOf(s.startTime, s.endTime) : sum; }, 0) }));
-	const visibleCells = [...cells.values()].filter((s) => staffIds.has(s.userId));
+	const load = gridUsers.map((u) => ({ u, hours: days.reduce((sum, d) => { const s = working(u._id, d); return s ? sum + hoursOf(s.startTime, s.endTime) : sum; }, 0) }));
+	const visibleCells = [...cells.values()];
 	const scheduled = visibleCells.filter((s) => s.status !== "off" && s.shiftName.toUpperCase() !== OFF).length;
 	const offCount = visibleCells.length - scheduled;
 
@@ -105,9 +118,13 @@ export default function JadwalPage() {
 		const ok = await requestAdminConfirm({ title: "Salin jadwal minggu lalu?", message: `${unique.size} jadwal minggu ${fmtDate(prevStart)} akan menggantikan jadwal minggu ini.`, confirmText: "Salin", variant: "info" });
 		if (!ok) return;
 		const inputs: CreateScheduleInput[] = [...unique.values()].map((s) => ({ userId: s.userId, date: addDays(s.date, 7), shiftName: s.shiftName, startTime: s.startTime ?? undefined, endTime: s.endTime ?? undefined, status: s.status }));
-		await bulkReplace(inputs, [...new Set(inputs.map((i) => i.userId))], weekStart, weekEnd);
-		setRefresh((v) => v + 1);
-		toast.success(`${inputs.length} jadwal disalin`);
+		try {
+			const result = await bulkReplace(inputs, [...new Set(inputs.map((i) => i.userId))], weekStart, weekEnd);
+			setRefresh((v) => v + 1);
+			toast.success(`${result.inserted} jadwal disalin`);
+		} catch {
+			toast.error("Jadwal belum bisa disalin.");
+		}
 	};
 
 	const applyCell = async (choice: string) => {
@@ -149,7 +166,7 @@ export default function JadwalPage() {
 			<AnimatePresence initial={false}>
 				{genOpen ? (
 					<motion.div key="gen" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.35 }} className="overflow-hidden">
-						<Generator users={users} templates={templates} defaultStart={weekStart} onDone={() => { setRefresh((v) => v + 1); setGenOpen(false); }} bulkReplace={bulkReplace} />
+						<Generator key={users.map((user) => user._id).join(",")} users={users} templates={templates} defaultStart={weekStart} onDone={() => { setRefresh((v) => v + 1); setGenOpen(false); }} bulkReplace={bulkReplace} />
 					</motion.div>
 				) : null}
 			</AnimatePresence>
@@ -158,34 +175,34 @@ export default function JadwalPage() {
 			{thin.length > 0 && users.length > 0 ? <Note tone="info">{thin.length} hari kurang dari {minPerDay} orang masuk: {thin.map((d) => shortDay(d)).join(", ")}.</Note> : null}
 
 			<KpiStrip items={[
-				{ label: "Karyawan aktif", value: users.length },
+				{ label: "Bisa dijadwalkan", value: users.length },
 				{ label: "Shift terjadwal", value: loading ? null : scheduled, sub: `${offCount} hari libur` },
 				{ label: "Bentrok cuti", value: conflicts.length, sub: conflicts.length ? "perlu diperbaiki" : "tidak ada bentrok" },
-				{ label: "Rata-rata jam / orang", value: users.length ? `${Math.round(load.reduce((s, x) => s + x.hours, 0) / users.length)} jam` : "—", sub: "batas 40 jam" },
+				{ label: "Rata-rata jam / orang", value: gridUsers.length ? `${Math.round(load.reduce((s, x) => s + x.hours, 0) / gridUsers.length)} jam` : "—", sub: "batas 40 jam" },
 			]} />
 
-			<SectionTitle color="#111114" right={<span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#666672]">{users.length} karyawan × 7 hari</span>}>Grid minggu ini</SectionTitle>
+			<SectionTitle color="#111114" right={<span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#666672]">{gridUsers.length} karyawan × 7 hari</span>}>Grid minggu ini</SectionTitle>
 			<div className="overflow-x-auto border border-[#e4e4e8] bg-white">
 				<table className="w-full min-w-[820px] text-[12px]">
 					<thead className="bg-[#fafafb]"><tr><th className="px-4 py-3 text-left font-mono text-[10px] font-normal uppercase tracking-[0.12em] text-[#666672]">Karyawan</th>{days.map((d) => <th key={d} className={`px-2 py-3 text-center font-mono text-[10px] font-normal uppercase tracking-[0.1em] ${d === todayIso ? "bg-[#f1f6ff] text-[#2f5d9e]" : "text-[#666672]"}`}>{shortDay(d)}</th>)}</tr></thead>
 					<tbody>
-						{users.map((u) => (
+						{gridUsers.map((u) => (
 							<tr key={u._id} className="border-t border-[#efeff2]">
-								<td className="px-4 py-2"><div className="font-medium">{u.name}</div><div className="font-mono text-[10px] text-[#666672]">{u.roleName}</div></td>
+								<td className="px-4 py-2"><div className="font-medium">{u.name}</div><div className="font-mono text-[10px] text-[#666672]">{u.roleName}{!staffIds.has(u._id) && " · Tidak menerima shift baru"}</div></td>
 								{days.map((d) => {
 									const s = cells.get(`${u._id}|${d}`);
 									const conflict = conflicts.some((c) => c.user === u.name && c.date === d);
 									return (
 										<td key={d} className="p-1.5">
-											<motion.button type="button" whileTap={{ scale: 0.95 }} title={s?.raw?.coveredBy ? "Libur: shift diganti rekan (izin/sakit)" : s?.raw?.coverFor ? "Pengganti shift rekan yang izin/sakit" : undefined} onClick={() => setEdit({ user: u, date: d, current: s })} className={`block w-full px-1 py-2.5 text-center font-mono text-[10px] font-medium uppercase tracking-[0.04em] ${s ? shiftTone(s.shiftName, s.status) : "border border-dashed border-[#d8d8de] text-[#b0b0ba]"} ${conflict ? "outline outline-[1.5px] outline-dashed outline-[#d92d20]" : ""}`}>
-												{s ? (s.status === "off" || s.shiftName.toUpperCase() === OFF ? (s.raw?.coveredBy ? "Diganti" : "Libur") : s.raw?.coverFor ? `${s.shiftName} ↺` : s.shiftName) : "+"}
+											<motion.button type="button" whileTap={{ scale: 0.95 }} disabled={!s && !staffIds.has(u._id)} title={s?.raw?.coveredBy ? "Libur: shift diganti rekan (izin/sakit)" : s?.raw?.coverFor ? "Pengganti shift rekan yang izin/sakit" : undefined} onClick={() => setEdit({ user: u, date: d, current: s })} className={`block w-full px-1 py-2.5 text-center font-mono text-[10px] font-medium uppercase tracking-[0.04em] ${s ? shiftTone(s.shiftName, s.status) : "border border-dashed border-[#d8d8de] text-[#b0b0ba]"} ${conflict ? "outline outline-[1.5px] outline-dashed outline-[#d92d20]" : ""}`}>
+												{s ? (s.status === "off" || s.shiftName.toUpperCase() === OFF ? (s.raw?.coveredBy ? "Diganti" : "Libur") : s.raw?.coverFor ? `${s.shiftName} ↺` : s.shiftName) : staffIds.has(u._id) ? "+" : "—"}
 											</motion.button>
 										</td>
 									);
 								})}
 							</tr>
 						))}
-						{users.length === 0 ? <tr><td colSpan={8} className="p-6 text-center text-[#666672]">{loading ? "Memuat jadwal…" : "Belum ada karyawan aktif."}</td></tr> : null}
+						{gridUsers.length === 0 ? <tr><td colSpan={8} className="p-6 text-center text-[#666672]">{loading ? "Memuat jadwal…" : "Belum ada karyawan yang bisa dijadwalkan."}</td></tr> : null}
 					</tbody>
 				</table>
 			</div>

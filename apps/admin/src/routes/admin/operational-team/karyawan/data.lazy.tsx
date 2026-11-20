@@ -1,3 +1,5 @@
+import { useEmployeeSettings, type EmployeeSetting, type EmploymentContractStatus } from "@/components/karyawan/data";
+import { contractStatusLabels, getContractStatus } from "@/components/karyawan/team";
 import { createLazyFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useYumiAuth } from "@/hooks/useYumiAuth";
@@ -38,6 +40,7 @@ type EmployeeContract = {
 	id: string;
 	registrationNumber: string | null;
 	status: string;
+	employmentStatus?: EmploymentContractStatus | null;
 	pdfUrl: string | null;
 };
 
@@ -110,7 +113,7 @@ const STATUS_OPTIONS = [
 	{ value: "has_phone", label: "Sudah No HP" },
 ];
 
-function DetailRow({ row, expanded }: { row: any; expanded: boolean }) {
+function DetailRow({ row, expanded, busy, onChange }: { row: any; expanded: boolean; busy: boolean; onChange: (change: EmployeeSetting) => void }) {
 	const r = (row as any).raw ?? {};
 	const contracts: EmployeeContract[] = r.contracts ?? [];
 	if (!expanded) return null;
@@ -118,6 +121,13 @@ function DetailRow({ row, expanded }: { row: any; expanded: boolean }) {
 		<tr className="border-b border-border/20 bg-muted/10">
 			<td colSpan={8} className="p-0">
 				<div className="px-3 py-2">
+					{row.scheduleEligible && (
+						<label className="mb-2 flex w-fit items-center gap-2 text-xs font-medium">
+							<input type="checkbox" role="switch" checked={row.isActive && row.scheduleEnabled !== false} disabled={busy || !row.isActive} onChange={(event) => onChange({ scheduleEnabled: event.target.checked })} />
+							Tampilkan di Jadwal
+						</label>
+					)}
+
 					<div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
 						<div className="rounded-lg border border-border/40 p-2 space-y-1">
 							<div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-primary">
@@ -198,7 +208,18 @@ function DetailRow({ row, expanded }: { row: any; expanded: boolean }) {
 							{contracts.map((contract) => (
 								<div key={contract.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1 text-xs">
 									<span>{contract.registrationNumber || "Kontrak karyawan"}</span>
-									<span className="text-muted-foreground">{contract.status}</span>
+									<label className="flex items-center gap-2">
+										<span>Status kontrak</span>
+										<select
+											className="rounded border border-input bg-background p-1"
+											value={getContractStatus(contract) ?? ""}
+											disabled={busy}
+											onChange={(event) => onChange({ contractId: contract.id, employmentStatus: event.target.value as EmploymentContractStatus })}
+										>
+											<option value="" disabled>Belum aktif</option>
+											{Object.entries(contractStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+										</select>
+									</label>
 									{contract.registrationNumber && (
 										<Link
 											to="/admin/operational-team/register/application/$registrationNumber"
@@ -258,6 +279,21 @@ export function DataKaryawanPage() {
 	const staffRoles = useHybridStaffRoles() ?? [];
 	const updateUserRole = useHybridUpdateUser();
 	const statusAction = useSetEmployeeActive();
+	const saveSetting = useEmployeeSettings();
+	const [settingBusy, setSettingBusy] = useState(false);
+
+	async function changeSetting(userId: string, change: EmployeeSetting) {
+		setSettingBusy(true);
+		try {
+			await saveSetting(userId, change);
+			setUsersRefreshTrigger((value) => value + 1);
+			toast.success("Perubahan disimpan");
+		} catch {
+			toast.error("Perubahan belum tersimpan. Coba lagi.");
+		} finally {
+			setSettingBusy(false);
+		}
+	}
 	const [savingRoleIds, setSavingRoleIds] = useState<Set<string>>(new Set());
 	const [bulkRoleId, setBulkRoleId] = useState("");
 	const [searchQuery, setSearchQuery] = useState("");
@@ -446,8 +482,8 @@ export function DataKaryawanPage() {
 			title: next ? "Aktifkan karyawan?" : "Nonaktifkan karyawan?",
 			subtitle: row.name || "Karyawan",
 			message: next
-				? `${row.name} akan muncul lagi di Jadwal dan pemilih shift.`
-				: `${row.name} tidak akan muncul di Jadwal dan pemilih shift sampai diaktifkan kembali. Riwayat absensi tetap tersimpan.`,
+				? `${row.name} bisa masuk kembali ke aplikasi staf.`
+				: `${row.name} kehilangan akses aplikasi staf dan keluar dari pemilih shift baru. Shift yang sudah terisi dan riwayat kerja tetap tersimpan.`,
 			confirmText: next ? "Aktifkan" : "Nonaktifkan",
 			variant: next ? "info" : "warning",
 			loading: false,
@@ -834,7 +870,7 @@ export function DataKaryawanPage() {
 														type="button"
 														disabled={statusAction.busy === row._id}
 														onClick={(e) => { e.stopPropagation(); handleToggleActive(row); }}
-														title={isActive ? "Nonaktifkan — tidak tampil di Jadwal" : "Aktifkan — muncul lagi di Jadwal"}
+														title={isActive ? "Nonaktifkan akses akun" : "Aktifkan akses akun"}
 														className={`inline-flex items-center justify-center gap-1 rounded-full border px-1.5 py-1 text-[11px] font-bold uppercase tracking-normal transition-colors disabled:opacity-60 ${isActive ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "border-border bg-muted text-muted-foreground hover:bg-muted/70"}`}
 													>
 														<span className={`h-1.5 w-1.5 shrink-0 rounded-full ${isActive ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
@@ -854,7 +890,7 @@ export function DataKaryawanPage() {
 												</button>
 											</td>
 										</tr>
-										<DetailRow row={row} expanded={isExpanded} />
+										<DetailRow row={row} expanded={isExpanded} busy={settingBusy} onChange={(change) => void changeSetting(row._id, change)} />
 									</React.Fragment>
 								);
 							})}

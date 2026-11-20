@@ -102,6 +102,7 @@ type StaffUserRecord = {
 	roleName?: string | null;
 	slug?: string | null;
 	isActive: boolean;
+	scheduleEnabled?: boolean;
 	receiveReportEmails?: boolean;
 	photoUrl?: string | null;
 };
@@ -1632,6 +1633,7 @@ async function fetchStaffUsers() {
 		roleName: row.roleName ?? null,
 		slug: row.slug ?? null,
 		isActive: Boolean(row.isActive),
+		scheduleEnabled: row.scheduleEnabled !== false,
 		receiveReportEmails: Boolean(row.receiveReportEmails),
 		photoUrl: row.photoUrl ?? null,
 	})) as StaffUserRecord[];
@@ -2363,7 +2365,7 @@ export function useHybridScheduleStaffUsers(refreshTrigger?: number) {
 		if (!all) return all;
 		const roleById = new Map((roles ?? []).map((role) => [role._id, role]));
 		return all.filter((user) => {
-			if (!user.isActive) return false;
+			if (!user.isActive || user.scheduleEnabled === false) return false;
 			const roleName = (user.roleName ?? "").trim().toLowerCase();
 			if (SCHEDULE_ROLE_BLOCKLIST.has(roleName)) return false;
 			const role = user.roleId ? roleById.get(user.roleId) : undefined;

@@ -1,5 +1,5 @@
 import { profileCompleteness, monthsSince } from "../../lib/karyawan/analytics";
-import type { DirectoryRow } from "./data";
+import type { DirectoryContract, DirectoryRow, EmploymentContractStatus } from "./data";
 
 export const EMPLOYMENT_LABEL: Record<string, string> = {
 	full_time: "Penuh waktu",
@@ -10,6 +10,29 @@ export const EMPLOYMENT_LABEL: Record<string, string> = {
 
 export const employmentLabel = (type?: string | null) => (type ? (EMPLOYMENT_LABEL[type] ?? type) : "—");
 
+export const contractStatusLabels: Record<EmploymentContractStatus, string> = {
+	active: "Aktif",
+	resigned: "Resign",
+	ended: "Kontrak berakhir",
+};
+
+export function getContractStatus(contract?: DirectoryContract): EmploymentContractStatus | null {
+	if (contract?.employmentStatus) return contract.employmentStatus;
+	switch (contract?.status) {
+		case "active":
+		case "signed":
+		case "renewed":
+			return "active";
+		case "resigned":
+			return "resigned";
+		case "expired":
+		case "ended":
+			return "ended";
+		default:
+			return null;
+	}
+}
+
 export type ContractInfo = {
 	/** Tanggal berakhir yyyy-MM-dd, atau null bila kontrak tetap / tidak diketahui. */
 	endDate: string | null;
@@ -18,6 +41,7 @@ export type ContractInfo = {
 	hasPdf: boolean;
 	permanent: boolean;
 	hasContract: boolean;
+	status: EmploymentContractStatus | null;
 };
 
 export function contractInfo(row: DirectoryRow, now = Date.now()): ContractInfo {
@@ -47,8 +71,9 @@ export function contractInfo(row: DirectoryRow, now = Date.now()): ContractInfo 
 			permanent = true;
 		}
 	}
-	const daysLeft = endDate ? Math.ceil((new Date(endDate).getTime() - now) / 86_400_000) : null;
-	return { endDate, estimated, daysLeft, hasPdf, permanent, hasContract };
+	const status = getContractStatus(contracts[0]);
+	const daysLeft = status !== "resigned" && status !== "ended" && endDate ? Math.ceil((new Date(endDate).getTime() - now) / 86_400_000) : null;
+	return { endDate, estimated, daysLeft, hasPdf, permanent, hasContract, status };
 }
 
 export type TeamStats = {

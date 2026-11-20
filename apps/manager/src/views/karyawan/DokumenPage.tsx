@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { profileCompleteness } from "../../lib/karyawan/analytics";
 import { Btn, Chips, DataTable, Empty, KpiStrip, Page, PageHead, Panel, ProgressList, SourceError, StatusTag } from "./kit";
 import { num, useDirectory, type DirectoryRow } from "./data";
-import { contractInfo, employmentLabel, fmtDate, teamStats, type ContractInfo } from "./team";
+import { contractInfo, contractStatusLabels, employmentLabel, fmtDate, teamStats, type ContractInfo } from "./team";
 
 type Tab = "kontrak" | "dokumen" | "onboarding";
 type Filter = "all" | "expiring" | "nopdf";
@@ -29,7 +29,7 @@ export default function DokumenPage() {
 	const dir = useDirectory();
 	const [tab, setTab] = useState<Tab>("kontrak");
 	const [filter, setFilter] = useState<Filter>("all");
-	const rows = useMemo(() => (dir.rows ?? []).filter((r) => r.isActive), [dir.rows]);
+	const rows = useMemo(() => dir.rows ?? [], [dir.rows]);
 	const stats = useMemo(() => teamStats(dir.rows ?? []), [dir.rows]);
 	const infos = useMemo(() => rows.map((row) => ({ row, info: contractInfo(row) })), [rows]);
 	const contractRows = infos.filter((x) => x.info.hasContract || x.row.raw.employmentType);
@@ -86,7 +86,7 @@ export default function DokumenPage() {
 							{ key: "t", header: "Tipe", render: (x) => employmentLabel(x.row.raw.employmentType) },
 							{ key: "s", header: "Mulai", render: (x) => fmtDate(x.row.raw.startDate) },
 							{ key: "e", header: "Berakhir", render: (x) => (x.info.permanent ? "Tanpa batas" : `${fmtDate(x.info.endDate)}${x.info.estimated ? " *" : ""}`) },
-							{ key: "st", header: "Status", render: (x) => (!x.info.hasContract ? <StatusTag tone="bad">Belum ada kontrak</StatusTag> : x.info.daysLeft !== null && x.info.daysLeft <= 30 ? <StatusTag tone="warn">Segera berakhir</StatusTag> : <StatusTag tone="ok">Aktif</StatusTag>) },
+							{ key: "st", header: "Status", render: (x) => (!x.info.hasContract ? <StatusTag tone="bad">Belum ada kontrak</StatusTag> : x.info.status === "resigned" || x.info.status === "ended" ? <StatusTag tone="mute">{contractStatusLabels[x.info.status]}</StatusTag> : x.info.daysLeft !== null && x.info.daysLeft <= 30 ? <StatusTag tone="warn">{x.info.daysLeft < 0 ? "Melewati tanggal akhir" : "Segera berakhir"}</StatusTag> : x.info.status === "active" ? <StatusTag tone="ok">Aktif</StatusTag> : <StatusTag tone="mute">Belum aktif</StatusTag>) },
 							{ key: "pdf", header: "PDF", render: (x) => { const c = (x.row.raw.contracts ?? []).find((k) => k.pdfUrl); return c?.pdfUrl ? <a href={c.pdfUrl} target="_blank" rel="noreferrer" className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#2f6fdf] underline">Buka</a> : <span className="text-[#9a9aa5]">—</span>; } },
 						]}
 					/>

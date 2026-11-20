@@ -5,7 +5,14 @@ import { analyzeAttendance, type AttendanceAnalysis, type AttendanceLog, type Ge
 
 /** Lapisan data Karyawan App untuk Manager. Semua lewat /api/manager/* (auth-server). */
 
-export type DirectoryContract = { id: string; registrationNumber: string | null; status: string; pdfUrl: string | null };
+export type EmploymentContractStatus = "active" | "resigned" | "ended";
+export type DirectoryContract = {
+	id: string;
+	registrationNumber: string | null;
+	status: string;
+	employmentStatus?: EmploymentContractStatus | null;
+	pdfUrl: string | null;
+};
 export type DirectoryRow = {
 	_id: string;
 	name: string;
@@ -13,6 +20,8 @@ export type DirectoryRow = {
 	roleId?: string | null;
 	roleName: string;
 	isActive: boolean;
+	scheduleEnabled?: boolean;
+	scheduleEligible?: boolean;
 	raw: {
 		phone?: string | null;
 		identityNumber?: string | null;
@@ -51,6 +60,17 @@ function useRemote<T>(path: string | null, refreshMs = 0) {
 export function useDirectory() {
 	const { data, reload } = useRemote<{ rows: DirectoryRow[] }>("/api/manager/karyawan/directory", 60_000);
 	return { rows: data?.rows, error: data === null ? "Data karyawan belum dapat dimuat. Coba lagi atau masuk ulang." : undefined, reload, loading: data === undefined };
+}
+
+export type EmployeeSetting =
+	| { scheduleEnabled: boolean }
+	| { contractId: string; employmentStatus: EmploymentContractStatus };
+
+export function useEmployeeSettings() {
+	return useCallback(async (userId: string, change: EmployeeSetting) => {
+		const endpoint = "scheduleEnabled" in change ? "schedule" : "contract-status";
+		await api("/api/manager/karyawan/directory/" + endpoint, { method: "POST", body: { userId, ...change } });
+	}, []);
 }
 
 /** Aktif/nonaktif karyawan. Nonaktif = tidak muncul di Jadwal dan pemilih shift. */
@@ -172,11 +192,11 @@ export function useCoverPlan(requestId: string | null) {
 
 export type ShiftTemplate = { name: string; openTime: string | null; closeTime: string | null };
 export type StaffLite = { id: string; name: string; roleName: string };
-export type ScheduleRecord = { id: string; userId: string; date: string; shiftName: string; startTime: string | null; endTime: string | null; status: string; raw: Record<string, unknown> };
+export type ScheduleRecord = { id: string; userId: string; userName?: string; roleName?: string; date: string; shiftName: string; startTime: string | null; endTime: string | null; status: string; raw: Record<string, unknown> };
 export type ScheduleRowInput = { userId: string; date: string; shiftName: string; startTime?: string | null; endTime?: string | null; status?: "scheduled" | "off"; note?: string };
 
 export function useSchedules(from: string, to: string) {
-	const { data, reload } = useRemote<{ schedules: ScheduleRecord[]; staff: StaffLite[]; shifts: ShiftTemplate[] }>(`/api/manager/karyawan/schedules?from=${from}&to=${to}`);
+	const { data, reload } = useRemote<{ schedules: ScheduleRecord[]; staff: StaffLite[]; shifts: ShiftTemplate[] }>(`/api/manager/karyawan/schedules?from=${from}&to=${to}`, 30_000);
 	const saveCell = useCallback(async (row: ScheduleRowInput) => { await api("/api/manager/karyawan/schedules/cell", { method: "POST", body: row }); reload(); }, [reload]);
 	const clearCell = useCallback(async (userId: string, date: string) => { await api(`/api/manager/karyawan/schedules/cell?userId=${encodeURIComponent(userId)}&date=${date}`, { method: "DELETE" }); reload(); }, [reload]);
 	const bulkReplace = useCallback(async (rows: ScheduleRowInput[], userIds: string[], start: string, end: string) => {
