@@ -71,7 +71,7 @@ export function registerManagerKol(app: Hono, auth: Auth, pool: Pool) {
                     from pos.kol_creator_badges b
                     join pos.kol_badges d on d.id = b.badge_id
                    order by b.awarded_at desc limit 500`),
-      pool.query(`select b.*,
+      pool.query(`select b.*, b.booking_date::text as booking_date, b.post_deadline::text as post_deadline,
                          json_build_object(
                            'name', c.name, 'username', c.username, 'avatar_url', c.avatar_url,
                            'kol_private_contacts', (
