@@ -82,6 +82,6 @@ export function useFinance(profileId: string, transactions: WalletTransaction[])
   const entries: Entry[] = useMemo(() => entriesInScope(allRecords, state.accounts, scope), [allRecords, state.accounts, scope]);
   const rolled: Entry[] = useMemo(() => rollUp(entries, state.categories), [entries, state.categories]);
   const business = useMemo(() => hasBusiness(state.accounts), [state.accounts]);
-  return { state: view, raw: state, dispatch, entries, rolled, allRecords, scope, setScope, hasBusiness: business, sync, loanConflict, retrySync: pull };
+  return { profileId, state: view, raw: state, dispatch, entries, rolled, allRecords, scope, setScope, hasBusiness: business, sync, loanConflict, retrySync: pull };
 }
 export type Finance = ReturnType<typeof useFinance>;

@@ -1,4 +1,5 @@
 import { call } from "./integrations";
+import { isKnownUnsure, loadMemory, memoryId, recall, remember, saveMemory } from "./ai-cache";
 import type { Category, Entry } from "./types";
 import type { Finance } from "./use-finance";
 
@@ -10,10 +11,15 @@ export type ItemIn = { key: string; text: string; amount?: number; kind: "in" | 
 
 export const categorizeRemote = (items: ItemIn[]) => call<CategorizeRes>("/categorize", { method: "POST", body: JSON.stringify({ items }) });
 /** Remember a correction for that shop. Never blocks or fails the screen. */
-export const learnRemote = (text: string, categoryId: string) => { if (text.trim().length >= 3) void call("/categorize/learn", { method: "POST", body: JSON.stringify({ text, categoryId }) }).catch(() => undefined); };
+export const learnRemote = (text: string, categoryId: string, local?: { profileId: string; kind: "in" | "out" }) => {
+  if (local) saveMemory(local.profileId, remember(loadMemory(local.profileId), memoryId(text, local.kind), categoryId, 1));   // a correction also replaces what this browser remembered
+  if (text.trim().length >= 3) void call("/categorize/learn", { method: "POST", body: JSON.stringify({ text, categoryId }) }).catch(() => undefined);
+};
 
 export const toItem = (e: Entry): ItemIn => ({ key: e.id, text: e.note, amount: e.amount, kind: e.kind === "in" ? "in" : "out" });
 /** Records that still have no real category: nothing sorted them yet. */
+/** Same, minus shops the app already asked about and was unsure of this week: asking again would only cost money. */
+export const worthAsking = (e: Entry, profileId: string) => isUnsorted(e) && !isKnownUnsure(loadMemory(profileId), memoryId(e.note, e.kind === "in" ? "in" : "out"));
 export const isUnsorted = (e: Entry) => e.kind !== "tf" && e.source !== "pay" && e.categoryId === "lainnya" && e.note.trim().length >= 3;
 
 /** Which records change, to what, given the server's picks. Only confident picks (or a rule the person taught) are used. */
@@ -34,8 +40,17 @@ type Notify = (text: string, undo?: () => void) => void;
 export async function refineEntries(fin: Finance, notify: Notify, entries: Entry[], opts: { announce?: boolean; /** Records just made whose category was only a guess: refine them even if the guess was a parent category. */ force?: boolean } = {}): Promise<number> {
   const todo = entries.filter((e) => (opts.force ? e.kind !== "tf" && e.source !== "pay" && e.note.trim().length >= 3 : isUnsorted(e))).slice(0, 20);
   if (!todo.length) { if (opts.announce) notify("Semua catatan sudah punya kategori"); return 0; }
-  let res: CategorizeRes;
-  try { res = await categorizeRemote(todo.map(toItem)); } catch { if (opts.announce) notify("Belum bisa merapikan kategori. Coba lagi nanti."); return 0; }
+  // What this browser already knows about a shop is used first; only unknown shops go to the server (which has its own memory, and only then the model).
+  let memory = loadMemory(fin.profileId);
+  const local: AiPick[] = [], ask: Entry[] = [];
+  for (const e of todo) { const h = recall(memory, memoryId(e.note, e.kind === "in" ? "in" : "out")); if (h) local.push({ key: e.id, categoryId: h.c, confidence: h.p, source: "ai" }); else ask.push(e); }
+  let res: CategorizeRes = { success: true, results: local, limited: false, ai: false, remaining: 0, minConfidence: 0.8 };
+  if (ask.length) {
+    try { const got = await categorizeRemote(ask.map(toItem)); res = { ...got, results: [...local, ...got.results] };
+      for (const r of got.results) { const e = ask.find((x) => x.id === r.key); if (e && r.categoryId && r.source !== "none") memory = remember(memory, memoryId(e.note, e.kind === "in" ? "in" : "out"), r.categoryId, r.confidence); }
+      saveMemory(fin.profileId, memory);
+    } catch { if (!local.length) { if (opts.announce) notify("Belum bisa merapikan kategori. Coba lagi nanti."); return 0; } }
+  }
   const plan = planRefine(todo, res, fin.raw.categories);
   for (const p of plan) fin.dispatch({ type: "entry/update", entry: p.after });
   if (!plan.length) { if (opts.announce) notify(res.limited ? "Batas pengategorian otomatis hari ini sudah tercapai. Coba lagi besok." : "Belum ada yang yakin dikategorikan. Pilih manual ya."); return 0; }
