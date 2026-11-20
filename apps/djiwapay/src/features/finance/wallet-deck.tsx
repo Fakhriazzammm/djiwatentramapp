@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AnimatedNumber, Btn, I3, Ic, spring, type IconName } from "../shell/dpx-ui";
+import { AnimatedNumber, Btn, I3, Ic, Seg, Sheet, spring, type IconName } from "../shell/dpx-ui";
 import type { FinCtx } from "./fin-pages";
 import { EntryRow } from "./fin-pages";
-import { inMonth } from "../../lib/finance/calc";
+import { accountBalance, inMonth } from "../../lib/finance/calc";
 import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import type { Account } from "../../lib/finance/types";
@@ -76,9 +76,9 @@ export function WalletDeck({ ctx, accounts, balances }: { ctx: FinCtx; accounts:
     {view === "swipe" ? <div className="dpx-wd-swipe">
       <div className="dpx-wd-track" ref={track} onScroll={onScroll} onPointerDown={() => setHint(false)} onTouchStart={() => setHint(false)}>
         {cards.map((c, i) => <div key={c.id} className={`dpx-wd-card swipe ${i === sel ? "front" : ""}`} style={{ background: `linear-gradient(145deg, ${c.skin.from}, ${c.skin.to})`, height: FOCUS_H }}
-          role="group" aria-label={`${c.name}, saldo ${ctx.visible ? rupiah(c.balance) : "disembunyikan"}`} tabIndex={0}
-          onClick={() => { if (i !== sel) go(i); else if (c.account) ctx.open({ k: "account", id: c.id }); }}
-          onKeyDown={(e) => { if (e.key === "ArrowRight") go(sel + 1); else if (e.key === "ArrowLeft") go(sel - 1); else if ((e.key === "Enter" || e.key === " ") && c.account && i === sel) { e.preventDefault(); ctx.open({ k: "account", id: c.id }); } }}>{body(c, true)}</div>)}
+          role="button" aria-label={`${c.name}, saldo ${ctx.visible ? rupiah(c.balance) : "disembunyikan"}. Ketuk untuk detail`} tabIndex={0}
+          onClick={() => { if (i !== sel) go(i); else ctx.open({ k: "wallet-view", id: c.id }); }}
+          onKeyDown={(e) => { if (e.key === "ArrowRight") go(sel + 1); else if (e.key === "ArrowLeft") go(sel - 1); else if ((e.key === "Enter" || e.key === " ") && i === sel) { e.preventDefault(); ctx.open({ k: "wallet-view", id: c.id }); } }}>{body(c, true)}</div>)}
       </div>
       <AnimatePresence>{hint && cards.length > 1 ? <motion.div className="dpx-wd-hint" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ delay: 0.5 }} aria-hidden="true"><motion.span animate={{ x: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 1 }}>‹</motion.span> Geser untuk dompet lain <motion.span animate={{ x: [0, 5, 0] }} transition={{ repeat: Infinity, duration: 1 }}>›</motion.span></motion.div> : null}</AnimatePresence>
     </div> : <div className="dpx-wd-deck" style={{ height: STACK_H }}>
@@ -89,14 +89,37 @@ export function WalletDeck({ ctx, accounts, balances }: { ctx: FinCtx; accounts:
     <div className="dpx-wd-dots" role="tablist" aria-label="Pilih dompet">{cards.map((c, i) => <button key={c.id} type="button" role="tab" aria-selected={i === sel} aria-label={c.name} className={i === sel ? "on" : ""} onClick={() => go(i)} />)}<button type="button" className="add" aria-label="Tambah dompet" onClick={() => ctx.open({ k: "account" })}>+</button></div>
     <AnimatePresence mode="wait" initial={false}>
       <motion.div key={cur.id} className="dpx-wd-panel" initial={{ opacity: 0, x: 24 * dir }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 * dir }} transition={{ duration: 0.2 }}>
-        <div className="dpx-wd-acts">
-          {cur.pay ? <>
-            <Btn type="button" className="dpx-wd-act" onClick={() => ctx.nav.go("/wallet/topup")}><Ic n="plus" /><span>Isi saldo</span></Btn><Btn type="button" className="dpx-wd-act" onClick={() => ctx.nav.go("/wallet/transfer")}><Ic n="send" /><span>Kirim</span></Btn><Btn type="button" className="dpx-wd-act" onClick={() => ctx.nav.go("/wallet/transfer?mode=scan")}><Ic n="scan" /><span>Scan QR</span></Btn><Btn type="button" className="dpx-wd-act" onClick={() => ctx.nav.go("/bayar")}><Ic n="flash" /><span>Bayar</span></Btn></>
-            : <>
-            <Btn type="button" className="dpx-wd-act" onClick={() => ctx.open({ k: "account", id: cur.id })}><Ic n="edit" /><span>{cur.needsOpening ? "Isi saldo awal" : "Ubah"}</span></Btn><Btn type="button" className="dpx-wd-act" onClick={() => ctx.open({ k: "catat" })}><Ic n="plus" /><span>Catat</span></Btn><Btn type="button" className="dpx-wd-act" onClick={() => ctx.nav.go("/riwayat")}><Ic n="list" /><span>Catatan</span></Btn></>}
-        </div>
         {recent.length ? <><div className="dpx-glabel">Terakhir di {cur.name}</div><div className="dpx-group dpx-flush dpx-white">{recent.map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div></> : <p className="dpx-sub dpx-center" style={{ margin: "8px 0 0" }}>Belum ada catatan di {cur.name}.</p>}
       </motion.div>
     </AnimatePresence>
   </div>;
+}
+
+/** Opens when a wallet card is tapped: balance, personal/business switch, this month, quick actions and the latest records. */
+export function WalletDetailSheet({ ctx, id, onClose }: { ctx: FinCtx; id: string; onClose: () => void }) {
+  const { fin } = ctx, pay = id === PAY_ACCOUNT_ID, account = pay ? undefined : fin.raw.accounts.find((a) => a.id === id);
+  const now = new Date();
+  if (!pay && !account) return null;
+  const name = pay ? "Djiwa Pay" : account!.name, balance = pay ? ctx.payBalance : accountBalance(account!, fin.allRecords);
+  const mine = fin.allRecords.filter((e) => e.accountId === id || (e.kind === "tf" && e.toAccountId === id));
+  const month = mine.filter((e) => inMonth(e, now.getFullYear(), now.getMonth())), inn = month.filter((e) => e.kind === "in").reduce((n, e) => n + e.amount, 0), out = month.filter((e) => e.kind === "out").reduce((n, e) => n + e.amount, 0);
+  const skin = pay ? skinOf("Djiwa Pay", "pay") : skinOf(account!.name, account!.type), scope = account ? accountScope(account) : "personal";
+  const mask = (t: string) => (ctx.visible ? t : "•••••");
+  const go = (fn: () => void) => () => { onClose(); fn(); };
+  const acts: [IconName, string, () => void][] = pay
+    ? [["plus", "Isi saldo", () => ctx.nav.go("/wallet/topup")], ["send", "Kirim", () => ctx.nav.go("/wallet/transfer")], ["scan", "Scan QR", () => ctx.nav.go("/wallet/transfer?mode=scan")], ["flash", "Bayar", () => ctx.nav.go("/bayar")]]
+    : [["edit", account!.opening === 0 && balance < 0 ? "Isi saldo awal" : "Ubah", () => ctx.open({ k: "account", id })], ["plus", "Catat", () => ctx.open({ k: "catat" })], ["list", "Catatan", () => ctx.nav.go("/riwayat")]];
+  return <Sheet title={name} onClose={onClose}>
+    <motion.div className="dpx-wd-card dpx-wd-sheetcard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={spring} style={{ background: `linear-gradient(145deg, ${skin.from}, ${skin.to})`, position: "relative", height: "auto", minHeight: 120 }}>
+      <div className="dpx-wd-amt"><small>Rp</small>{ctx.visible ? <>{balance < 0 ? "−" : ""}<AnimatedNumber value={Math.abs(balance)} /></> : "•••••••"}</div>
+      <div className="dpx-wd-foot"><div><small>Masuk bulan ini</small><b>{mask(rupiah(inn))}</b></div><i /><div><small>Keluar bulan ini</small><b>{mask(rupiah(out))}</b></div></div>
+    </motion.div>
+    {account ? <><div className="dpx-glabel" style={{ marginTop: 14 }}>Jenis dompet</div>
+      <Seg id="wd-scope" label="Jenis dompet" fit value={scope} onChange={(next) => { fin.dispatch({ type: "account/upsert", account: { ...account, scope: next } }); ctx.notify(next === "business" ? `${account.name} jadi dompet bisnis` : `${account.name} jadi dompet pribadi`); }} options={[["personal", "Pribadi"], ["business", "Bisnis"]] as const} />
+      <p className="dpx-sub" style={{ margin: "6px 4px 0" }}>{scope === "business" ? "Dihitung di keuangan bisnis, terpisah dari pribadi." : "Dihitung bersama keuangan pribadi."}</p></> : null}
+    <div className="dpx-wd-acts dpx-wd-sheetacts" style={{ marginTop: 14, gridTemplateColumns: `repeat(${acts.length}, minmax(0, 1fr))` }}>
+      {acts.map(([icon, label, fn]) => <Btn key={label} type="button" className="dpx-wd-act" onClick={go(fn)}><Ic n={icon} /><span>{label}</span></Btn>)}
+    </div>
+    {mine.length ? <><div className="dpx-glabel">Terakhir di {name}</div><div className="dpx-group dpx-flush dpx-white">{mine.slice(0, 4).map((e, i) => <EntryRow key={e.id} entry={e} state={fin.state} i={i} onOpen={(eid) => { onClose(); ctx.open({ k: "entry", id: eid }); }} />)}</div></> : <p className="dpx-sub dpx-center" style={{ margin: "10px 0 0" }}>Belum ada catatan di {name}.</p>}
+  </Sheet>;
 }
