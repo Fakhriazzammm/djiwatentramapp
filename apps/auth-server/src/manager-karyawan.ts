@@ -185,9 +185,9 @@ export function registerManagerKaryawan(app: Hono, auth: Auth, pool: Pool) {
     const start = text(b.start, 10);
     const end = text(b.end, 10);
     const userIds = Array.isArray(b.userIds) ? b.userIds.map((x) => text(x, 120)).filter(Boolean).slice(0, 200) : [];
-    const rows = (Array.isArray(b.rows) ? b.rows.slice(0, 3000) : []).map((x) => cleanRow((x ?? {}) as CellBody));
+    const rows = (Array.isArray(b.rows) ? b.rows.slice(0, 8000) : []).map((x) => cleanRow((x ?? {}) as CellBody));
     if (!DATE_RE.test(start) || !DATE_RE.test(end) || end < start || userIds.length === 0 || rows.some((r) => !r)) return json({ success: false, error: "INVALID" }, 400);
-    if ((Date.parse(end) - Date.parse(start)) / 86_400_000 > 62) return json({ success: false, error: "RANGE_TOO_LONG" }, 400);
+    if ((Date.parse(end) - Date.parse(start)) / 86_400_000 > 190) return json({ success: false, error: "RANGE_TOO_LONG" }, 400);
     const client = await pool.connect();
     try {
       await client.query("BEGIN");

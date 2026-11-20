@@ -34,9 +34,12 @@ export type GeneratorShift = {
 };
 
 export type GeneratorOptions = {
-	/** Tanggal awal (harus Senin). Format yyyy-MM-dd. */
+	/** Tanggal awal. Pola mingguan dihitung dari Senin pada pekan tanggal ini. Format yyyy-MM-dd. */
 	startDate: string;
-	weeks: number;
+	/** Jumlah pekan penuh sejak Senin pekan startDate. Diabaikan bila endDate diisi. */
+	weeks?: number;
+	/** Tanggal akhir (inklusif). Bila diisi, baris hanya dibuat untuk startDate..endDate (mis. satu atau beberapa bulan). */
+	endDate?: string;
 	staff: GeneratorStaff[];
 	shifts: GeneratorShift[];
 	rotateWeekly?: boolean;
@@ -136,8 +139,11 @@ export function planOffBlocks(staff: GeneratorStaff[], preferWeekend = true): Re
 }
 
 export function generateSchedule(options: GeneratorOptions): GeneratorResult {
-	const { staff, shifts, weeks } = options;
+	const { staff, shifts } = options;
 	const start = mondayOf(options.startDate);
+	const rangeStart = options.endDate ? options.startDate : start;
+	const rangeEnd = options.endDate ?? addDays(start, (options.weeks ?? 1) * 7 - 1);
+	const weeks = options.endDate ? Math.floor((Date.parse(`${rangeEnd}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000 / 7) + 1 : (options.weeks ?? 1);
 	const offStart = planOffBlocks(staff, options.preferWeekend ?? true);
 	const rows: GeneratedRow[] = [];
 	const warnings: GeneratorWarning[] = [];
@@ -194,6 +200,7 @@ export function generateSchedule(options: GeneratorOptions): GeneratorResult {
 
 		for (let wd = 0; wd < 7; wd += 1) {
 			const date = addDays(weekStart, wd);
+			if (date < rangeStart || date > rangeEnd) continue;
 			for (const person of staff) {
 				if (isOffDay(offStart[person.id], person.daysOff, wd)) {
 					rows.push({ userId: person.id, date, shiftName: "OFF", startTime: null, endTime: null, status: "off" });
@@ -217,15 +224,17 @@ export function generateSchedule(options: GeneratorOptions): GeneratorResult {
 export function validateConsecutive(rows: GeneratedRow[], userId: string): { ok: boolean; offDays: number[]; message?: string } {
 	const mine = rows.filter((r) => r.userId === userId).sort((a, b) => a.date.localeCompare(b.date));
 	if (mine.length === 0) return { ok: true, offDays: [] };
-	const firstWeek = mondayOf(mine[0].date);
-	const week = mine.filter((r) => r.date < addDays(firstWeek, 7));
+	// Gunakan pekan penuh pertama (rentang bulan bisa dimulai di tengah pekan).
+	const byWeek = new Map<string, typeof mine>();
+	for (const row of mine) byWeek.set(mondayOf(row.date), [...(byWeek.get(mondayOf(row.date)) ?? []), row]);
+	const full = [...byWeek.values()].find((rows) => rows.length === 7) ?? [...byWeek.values()][0];
 	const flags = Array<boolean | null>(7).fill(null);
-	for (const row of week) flags[weekdayIndex(row.date)] = row.status === "off";
+	for (const row of full) flags[weekdayIndex(row.date)] = row.status === "off";
 	const offDays = flags.flatMap((f, i) => (f ? [i] : []));
 	if (offDays.length === 0) return { ok: true, offDays };
 	// Hitung perpindahan melingkar; blok tunggal berarti tepat 2 perpindahan (atau 0).
 	let transitions = 0;
-	for (let i = 0; i < 7; i += 1) if (flags[i] !== flags[(i + 1) % 7]) transitions += 1;
+	for (let i = 0; i < 7; i += 1) if (flags[i] !== null && flags[(i + 1) % 7] !== null && flags[i] !== flags[(i + 1) % 7]) transitions += 1;
 	const ok = transitions <= 2;
 	return { ok, offDays, message: ok ? undefined : "Hari libur terpisah, tidak berjejer." };
 }

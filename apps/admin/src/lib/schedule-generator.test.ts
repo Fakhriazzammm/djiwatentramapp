@@ -73,4 +73,33 @@ describe("schedule generator", () => {
 		expect(off.length).toBe(3);
 		expect(off.every((r) => r.shiftName === "OFF" && r.startTime === null)).toBe(true);
 	});
+
+	it("membuat jadwal untuk rentang bulan (Desember 2026 sampai Januari 2027) tanpa baris di luar rentang", () => {
+		const people = staff(5, 2);
+		const result = generateSchedule({ startDate: "2026-12-01", endDate: "2027-01-31", staff: people, shifts });
+		const dates = result.rows.map((r) => r.date).sort();
+		expect(dates[0]).toBe("2026-12-01");
+		expect(dates[dates.length - 1]).toBe("2027-01-31");
+		expect(result.rows.length).toBe(5 * 62);
+		// satu orang punya satu baris per hari, tanpa duplikat
+		expect(new Set(result.rows.filter((r) => r.userId === "u0").map((r) => r.date)).size).toBe(62);
+	});
+
+	it("pola libur berjejer tetap konsisten melewati pergantian bulan dan tahun", () => {
+		const result = generateSchedule({ startDate: "2026-12-01", endDate: "2027-01-31", staff: staff(4, 2), shifts });
+		for (const p of staff(4, 2)) {
+			const mine = result.rows.filter((r) => r.userId === p.id).sort((a, b) => a.date.localeCompare(b.date));
+			// setiap pekan penuh punya tepat 2 hari libur yang berurutan (melingkar)
+			expect(validateConsecutive(mine, p.id).ok).toBe(true);
+			// setiap pekan penuh (Senin-Minggu) berisi tepat 2 hari libur
+			const weeks = new Map<string, number[]>();
+			for (const r of mine) weeks.set(mondayOf(r.date), [...(weeks.get(mondayOf(r.date)) ?? []), r.status === "off" ? 1 : 0]);
+			for (const w of weeks.values()) if (w.length === 7) expect(w.reduce((a, b) => a + b, 0)).toBe(2);
+		}
+	});
+
+	it("peringatan cakupan hanya untuk tanggal dalam rentang", () => {
+		const result = generateSchedule({ startDate: "2026-12-10", endDate: "2026-12-12", staff: staff(1, 1), shifts: [{ name: "Pagi", start: null, end: null, minStaff: 2 }] });
+		expect(result.warnings.every((w) => w.date >= "2026-12-10" && w.date <= "2026-12-12")).toBe(true);
+	});
 });

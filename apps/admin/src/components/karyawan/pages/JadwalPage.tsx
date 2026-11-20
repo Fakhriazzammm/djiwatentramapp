@@ -209,6 +209,12 @@ export default function JadwalPage() {
 	);
 }
 
+const MONTH_NAMES = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+const monthLabel = (ym: string) => `${MONTH_NAMES[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`;
+const addMonthsYm = (ym: string, n: number) => { const d = new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1 + n, 1)); return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`; };
+const lastDayOf = (ym: string) => `${ym}-${String(new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0)).getUTCDate()).padStart(2, "0")}`;
+const monthsSpan = (a: string, b: string) => (Number(b.slice(0, 4)) - Number(a.slice(0, 4))) * 12 + Number(b.slice(5, 7)) - Number(a.slice(5, 7)) + 1;
+
 type GenProps = {
 	users: StaffUser[];
 	templates: { name: string; openTime?: string; closeTime?: string }[];
@@ -221,8 +227,16 @@ function Generator({ users, templates, defaultStart, onDone, bulkReplace }: GenP
 	const [chosen, setChosen] = useState<Record<string, boolean>>(() => Object.fromEntries(users.map((u) => [u._id, true])));
 	const [daysOff, setDaysOff] = useState<Record<string, 1 | 2>>({});
 	const [minStaff, setMinStaff] = useState<Record<string, number>>({});
-	const [weeks, setWeeks] = useState("4");
-	const [start, setStart] = useState(addDays(defaultStart, 7));
+	const today = wibParts(Date.now()).date;
+	const [fromMonth, setFromMonth] = useState(addMonthsYm(today.slice(0, 7), 1));
+	const [toMonth, setToMonth] = useState(addMonthsYm(today.slice(0, 7), 1));
+	// Bulan berjalan dimulai dari hari ini agar jadwal yang sudah lewat tidak ikut tertimpa.
+	const first = `${fromMonth}-01`;
+	const start = first < today ? today : first;
+	const endDate = lastDayOf(toMonth);
+	const span = monthsSpan(fromMonth, toMonth);
+	const rangeOk = span >= 1 && span <= 6 && endDate >= start;
+	const rangeLabel = fromMonth === toMonth ? monthLabel(fromMonth) : `${monthLabel(fromMonth)} – ${monthLabel(toMonth)}`;
 	const [rotate, setRotate] = useState(false);
 	const [weekend, setWeekend] = useState(true);
 	const [defaultOff, setDefaultOff] = useState<"1" | "2">("2");
@@ -230,16 +244,17 @@ function Generator({ users, templates, defaultStart, onDone, bulkReplace }: GenP
 
 	const staff: GeneratorStaff[] = users.filter((u) => chosen[u._id] ?? true).map((u) => ({ id: u._id, name: u.name, roleName: u.roleName, daysOff: daysOff[u._id] ?? (Number(defaultOff) as 1 | 2) }));
 	const shifts: GeneratorShift[] = templates.map((t) => ({ name: t.name, start: t.openTime ?? null, end: t.closeTime ?? null, minStaff: minStaff[t.name] ?? 1 }));
-	const result = useMemo(() => (staff.length && shifts.length ? generateSchedule({ startDate: start, weeks: Number(weeks), staff, shifts, rotateWeekly: rotate, preferWeekend: weekend }) : null), [staff.length, shifts.length, start, weeks, rotate, weekend, JSON.stringify(staff), JSON.stringify(shifts)]); // eslint-disable-line react-hooks/exhaustive-deps
+	const result = useMemo(() => (rangeOk && staff.length && shifts.length ? generateSchedule({ startDate: start, endDate, staff, shifts, rotateWeekly: rotate, preferWeekend: weekend }) : null), [rangeOk, staff.length, shifts.length, start, endDate, rotate, weekend, JSON.stringify(staff), JSON.stringify(shifts)]); // eslint-disable-line react-hooks/exhaustive-deps
 	const firstWeek = result ? Array.from({ length: 7 }, (_, i) => addDays(mondayOf(start), i)) : [];
+	const totalRows = result?.rows.length ?? 0;
 	const allValid = result ? staff.every((p) => validateConsecutive(result.rows, p.id).ok) : true;
 	const uncovered = result?.warnings.length ?? 0;
 
 	const apply = async () => {
 		if (!result) return;
-		const first = mondayOf(start);
-		const last = addDays(first, Number(weeks) * 7 - 1);
-		const ok = await requestAdminConfirm({ title: "Terapkan jadwal otomatis?", message: `${staff.length} karyawan, ${weeks} minggu (${fmtDate(first)} – ${fmtDate(last)}). Jadwal lama pada rentang ini untuk karyawan terpilih akan diganti.`, confirmText: "Terapkan", variant: "info" });
+		const first = start;
+		const last = endDate;
+		const ok = await requestAdminConfirm({ title: "Terapkan jadwal otomatis?", message: `${staff.length} karyawan, ${rangeLabel} (${fmtDate(first)} – ${fmtDate(last)}). Jadwal lama pada rentang ini untuk karyawan terpilih akan diganti.`, confirmText: "Terapkan", variant: "info" });
 		if (!ok) return;
 		setBusy(true);
 		try {
@@ -266,9 +281,15 @@ function Generator({ users, templates, defaultStart, onDone, bulkReplace }: GenP
 							<li>• Libur diatur agar jumlah orang masuk per hari seimbang.</li>
 						</ul>
 					</div>
-					<div className="grid grid-cols-2 gap-3">
-						<label className="block text-[12px]"><span className="mb-1 block font-mono text-[10px] uppercase text-[#666672]">Mulai (Senin)</span><input type="date" value={start} onChange={(e) => e.target.value && setStart(mondayOf(e.target.value))} className="h-10 w-full border border-[#d8d8de] px-2" /></label>
-						<div><span className="mb-1 block font-mono text-[10px] uppercase text-[#666672]">Lama</span><Segmented id="kk-weeks" label="Lama" value={weeks} onChange={setWeeks} options={["1", "2", "4", "8"].map((w) => ({ value: w, label: `${w} mgg` }))} size="sm" /></div>
+					<div className="space-y-2">
+						<div className="grid grid-cols-2 gap-3">
+							<label className="block text-[12px]"><span className="mb-1 block font-mono text-[10px] uppercase text-[#666672]">Dari bulan</span><input type="month" aria-label="Dari bulan" value={fromMonth} onChange={(e) => { if (!e.target.value) return; setFromMonth(e.target.value); if (e.target.value > toMonth) setToMonth(e.target.value); }} className="h-10 w-full border border-[#d8d8de] px-2" /></label>
+							<label className="block text-[12px]"><span className="mb-1 block font-mono text-[10px] uppercase text-[#666672]">Sampai bulan</span><input type="month" aria-label="Sampai bulan" min={fromMonth} value={toMonth} onChange={(e) => e.target.value && setToMonth(e.target.value)} className="h-10 w-full border border-[#d8d8de] px-2" /></label>
+						</div>
+						<div className="flex flex-wrap gap-2">
+							{[["Bulan ini", 0, 0], ["Bulan depan", 1, 1], ["2 bulan", 1, 2], ["3 bulan", 1, 3]].map(([label, from, to]) => <button key={String(label)} type="button" className="border border-[#d8d8de] bg-white px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.08em] hover:bg-[#f5f5f7]" onClick={() => { const base = today.slice(0, 7); setFromMonth(addMonthsYm(base, Number(from))); setToMonth(addMonthsYm(base, Number(to) === 0 ? 0 : Number(from) + Number(to) - 1)); }}>{label}</button>)}
+						</div>
+						<p className="text-[12px] text-[#666672]">{rangeOk ? `${rangeLabel} · ${fmtDate(start)} – ${fmtDate(endDate)}${first < today ? " (mulai hari ini)" : ""} · ${totalRows} jadwal` : span > 6 ? "Maksimal 6 bulan sekali generate." : "Rentang bulan tidak valid."}</p>
 					</div>
 					<div><span className="mb-1 block font-mono text-[10px] uppercase text-[#666672]">Jatah libur default</span><Segmented id="kk-off" label="Libur default" value={defaultOff} onChange={(v) => { setDefaultOff(v); setDaysOff({}); }} options={[{ value: "1", label: "1 hari" }, { value: "2", label: "2 hari" }]} /></div>
 					<Chips value={weekend ? "w" : "n"} onChange={(v) => setWeekend(v === "w")} options={[{ value: "w", label: "Utamakan libur akhir pekan" }, { value: "n", label: "Bebas hari" }]} />
@@ -315,7 +336,7 @@ function Generator({ users, templates, defaultStart, onDone, bulkReplace }: GenP
 							</div>
 							<ProgressList rows={WEEKDAY_NAMES.map((d, i) => ({ label: d, value: `${result.workingPerWeekday[i]} / ${staff.length} masuk`, ratio: result.workingPerWeekday[i] / Math.max(1, staff.length), tone: "blue" as const }))} />
 							{uncovered > 0 ? <Note>{uncovered} slot shift kurang orang (mis. {result.warnings[0].shiftName} {fmtDate(result.warnings[0].date)}: butuh {result.warnings[0].needed}, ada {result.warnings[0].actual}). Kurangi minimal per shift atau ikutkan lebih banyak karyawan.</Note> : <Note tone="info">Semua shift terpenuhi sesuai minimal.</Note>}
-							<div className="flex justify-end"><Btn primary disabled={busy || !allValid} onClick={() => void apply()}>{busy ? "Menerapkan…" : `Terapkan ${weeks} minggu`}</Btn></div>
+							<div className="flex justify-end"><Btn primary disabled={busy || !allValid || !rangeOk} onClick={() => void apply()}>{busy ? "Menerapkan…" : `Terapkan ${rangeLabel}`}</Btn></div>
 						</>
 					) : <div className="bg-[#f6f6f9] p-6 text-center text-[12px] text-[#666672]">Pilih minimal satu karyawan dan pastikan shift sudah ada.</div>}
 				</div>
