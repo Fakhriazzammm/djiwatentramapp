@@ -1,7 +1,7 @@
 import { ScopeSwitch } from "./scope-switch";
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Btn, Header, Ic, Sky } from "../shell/dpx-ui";
+import { Btn, Header, Ic, Sky, spring } from "../shell/dpx-ui";
 import { CatIcon, catOf } from "./fin-sheets";
 import type { FinCtx } from "./fin-pages";
 import { CAT_COLORS, CashflowChart, DailyBars, Donut, HeatGrid, PaceChart, WealthChart, rpFull } from "./story-charts";
@@ -50,6 +50,12 @@ export function FinReport({ ctx, onBack }: { ctx: FinCtx; onBack: () => void }) 
     const total = [...cur.values()].reduce((s, v) => s + v, 0);
     return { total, list: [...cur.entries()].sort((a, b) => b[1] - a[1]).map(([id, amount]) => ({ id, amount, pct: total ? (amount / total) * 100 : 0, change: chg(amount, was.get(id) ?? 0) })) };
   }, [month, prev, kind]);
+  const [openCat, setOpenCat] = useState<string | null>(null);
+  const subRows = useMemo(() => {   // from the stored records, not the rolled-up ones: where inside each category the money went
+    const parentOf = new Map(state.categories.map((c) => [c.id, c.parentId ?? c.id])), by = new Map<string, Map<string, number>>();
+    for (const e of fin.entries) if (e.kind === kind && inMonth(e, cursor.y, cursor.m)) { const p = parentOf.get(e.categoryId) ?? e.categoryId, m = by.get(p) ?? new Map<string, number>(); m.set(e.categoryId, (m.get(e.categoryId) ?? 0) + e.amount); by.set(p, m); }
+    return by;
+  }, [fin.entries, state.categories, kind, cursor]);
   const donut = useMemo(() => { const head = rows.list.slice(0, 7), rest = rows.list.slice(7).reduce((s, r) => s + r.amount, 0); return rest > 0 ? [...head, { id: "_rest", amount: rest, pct: rows.total ? (rest / rows.total) * 100 : 0, change: null }] : head; }, [rows]);
   const series = useMemo(() => monthlySeries(entries, range, new Date(cursor.y, cursor.m, 1)), [entries, cursor, range]);
   const history = useMemo(() => wealthHistory(state, entries, cash, gold?.points ?? null, 12, today).filter((p) => p.year * 12 + p.month <= cursor.y * 12 + cursor.m), [state, entries, cash, gold, cursor]);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -95,8 +101,12 @@ export function FinReport({ ctx, onBack }: { ctx: FinCtx; onBack: () => void }) 
           <Card><div className="dpx-st-donutw"><Donut rows={donut} total={rows.total} visible={visible} />
             <div className="dpx-st-catl">{donut.slice(0, 6).map((r, k) => <div key={r.id}><i style={{ background: CAT_COLORS[k % CAT_COLORS.length] }} />{nameOf(r.id)}<b>{Math.round(r.pct)}%</b></div>)}</div></div>
             <p className="dpx-st-foot">{kind === "out" ? "Total keluar" : "Total masuk"} {mk(visible, rpFull(rows.total))}</p></Card>
-          <Card title="Rincian per kategori" right={<span className="dpx-sub">vs {compareLabel}</span>}><div className="dpx-rp-list">{rows.list.map((r, k) => { const c = catOf(state, r.id); return <div key={r.id} className="dpx-rp-cat"><div className="dpx-rp-cat-t"><CatIcon cat={c} /><div><b>{c.name}</b><span className="dpx-sub">{r.pct.toFixed(1).replace(".", ",")}% dari total</span></div><div className="dpx-rp-amt"><b>{mk(visible, rpFull(r.amount))}</b><Chg d={r.change} goodWhenDown={kind === "out"} /></div></div>
-            <div className="dpx-bar"><i style={{ width: `${Math.max(2, r.pct)}%`, background: CAT_COLORS[k % CAT_COLORS.length] }} /></div></div>; })}</div></Card>
+          <Card title="Rincian per kategori" right={<span className="dpx-sub">vs {compareLabel}</span>}><div className="dpx-rp-list">{rows.list.map((r, k) => { const c = catOf(state, r.id); const subs = [...(subRows.get(r.id) ?? new Map<string, number>())].sort((a, b) => b[1] - a[1]), expandable = subs.some(([id]) => id !== r.id), isOpen = openCat === r.id;
+          return <div key={r.id} className="dpx-rp-cat"><div className={`dpx-rp-cat-t ${expandable ? "dpx-rp-tap" : ""}`} role={expandable ? "button" : undefined} tabIndex={expandable ? 0 : undefined} aria-expanded={expandable ? isOpen : undefined} onClick={expandable ? () => setOpenCat(isOpen ? null : r.id) : undefined} onKeyDown={expandable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenCat(isOpen ? null : r.id); } } : undefined}><CatIcon cat={c} /><div><b>{c.name}</b><span className="dpx-sub">{r.pct.toFixed(1).replace(".", ",")}% dari total</span></div><div className="dpx-rp-amt"><b>{mk(visible, rpFull(r.amount))}</b><Chg d={r.change} goodWhenDown={kind === "out"} /></div></div>
+            <div className="dpx-bar"><i style={{ width: `${Math.max(2, r.pct)}%`, background: CAT_COLORS[k % CAT_COLORS.length] }} /></div>
+            <AnimatePresence initial={false}>{expandable && isOpen ? <motion.ul key="subs" className="dpx-rp-subs" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={spring} style={{ overflow: "hidden" }}>
+              {subs.map(([id, amount]) => <li key={id}><span>{id === r.id ? "Tanpa sub kategori" : catOf(state, id).name}</span><i style={{ width: `${Math.max(3, (amount / r.amount) * 100)}%`, background: CAT_COLORS[k % CAT_COLORS.length] }} aria-hidden="true" /><b>{mk(visible, rpFull(amount))}</b><em>{Math.round((amount / r.amount) * 100)}%</em></li>)}
+            </motion.ul> : null}</AnimatePresence></div>; })}</div></Card>
         </> : <Card><p className="dpx-st-empty">Belum ada {kind === "out" ? "pengeluaran" : "pemasukan"} bulan ini.</p></Card>}
       </> : null}
 

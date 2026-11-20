@@ -34,7 +34,8 @@ const shortName = (name: string) => { const n = name.replace(/ & .*/, ""); retur
 /** Two levels: pick a category; if it has sub categories they open underneath (or keep the whole category). */
 export function CategorySheet({ categories, income, value, onPick, onClose, onAdd }: { categories: Category[]; income: boolean; value?: string; onPick: (id: string) => void; onClose: () => void; onAdd?: () => void }) {
   const ids = new Set(categories.map((c) => c.id));
-  const list = categories.filter((c) => c.income === income && !(c.parentId && ids.has(c.parentId)));
+  const tail = (c: Category) => (c.id === "transfer" ? 2 : c.id === "lainnya" ? 1 : 0);   // "Lainnya" and "Transfer" stay last however the list grew
+  const list = categories.filter((c) => c.income === income && !(c.parentId && ids.has(c.parentId))).sort((a, b) => tail(a) - tail(b));
   const subsOf = (id: string) => categories.filter((c) => c.parentId === id);
   const current = categories.find((c) => c.id === value), [open, setOpen] = useState<string | null>(current?.parentId && ids.has(current.parentId) ? current.parentId : null);
   const parent = list.find((c) => c.id === open), subs = parent ? subsOf(parent.id) : [];
@@ -47,7 +48,7 @@ export function CategorySheet({ categories, income, value, onPick, onClose, onAd
     </div>
     <AnimatePresence initial={false}>{parent ? <motion.div key={parent.id} className="dpx-subcats" role="group" aria-label={`Sub kategori ${parent.name}`} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={spring} style={{ overflow: "hidden" }}>
       <div className="dpx-glabel" style={{ marginTop: 12 }}>{parent.name}</div>
-      <div className="dpx-chips" style={{ margin: "0 -18px", flexWrap: "wrap" }}>
+      <div className="dpx-chips dpx-subchips" style={{ margin: 0, padding: 0, flexWrap: "wrap", gap: 8, overflow: "visible" }}>
         <Btn type="button" className={`dpx-chip ${value === parent.id ? "dpx-on" : ""}`} onClick={() => done(parent.id)}>Semua {shortName(parent.name).toLowerCase()}</Btn>
         {subs.map((c) => <Btn key={c.id} type="button" className={`dpx-chip ${value === c.id ? "dpx-on" : ""}`} onClick={() => done(c.id)}>{c.name}</Btn>)}
       </div>
