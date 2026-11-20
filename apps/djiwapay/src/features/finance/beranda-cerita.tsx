@@ -181,8 +181,13 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
     </>}
 
     <Sec title="Dompet & Bayar" action="Buka" onAction={() => nav.go("/dompet")} />
-    <Card><div className="dpx-spread"><div><div className="dpx-sub">Saldo Djiwa Pay</div><div className="dpx-money" style={{ fontSize: 26 }}>{mk(visible, rupiah(ctx.payBalance))}</div></div><span className="dpx-tag dpx-ok">Otomatis tercatat</span></div>
-      <div className="dpx-tile3 dpx-mt" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>{([["topup", "Isi saldo", "/wallet/topup"], ["send", "Kirim", "/wallet/transfer"], ["scan-qr", "Scan", "/wallet/transfer?mode=scan"], ["bills", "Layanan", "/bayar"]] as const).map(([a, l, p]) => <Btn key={a} type="button" className="dpx-q" onClick={() => nav.go(p)}><img src={payAsset(a)} width={38} height={38} alt="" />{l}</Btn>)}</div></Card>
+    <section className="dpx-st-card dpx-pay-strip" aria-label="Saldo Djiwa Pay">
+      <div className="dpx-pay-bal">
+        <div className="dpx-pay-lbl"><span>Saldo Djiwa Pay</span><Btn type="button" className="dpx-pay-eye" onClick={ctx.onToggleVisible} aria-label={visible ? "Sembunyikan saldo" : "Tampilkan saldo"}><Ic n={visible ? "eye" : "eyeoff"} size="sm" /></Btn></div>
+        <div className="dpx-pay-amt">{mk(visible, rupiah(ctx.payBalance))}</div>
+      </div>
+      <div className="dpx-pay-acts">{([["topup", "Isi saldo", "/wallet/topup"], ["send", "Kirim", "/wallet/transfer"], ["scan-qr", "Scan", "/wallet/transfer?mode=scan"], ["bills", "Layanan", "/bayar"]] as const).map(([a, l, p]) => <Btn key={a} type="button" className="dpx-pay-act" onClick={() => nav.go(p)}><img src={payAsset(a)} width={34} height={34} alt="" /><span>{l}</span></Btn>)}</div>
+    </section>
 
     {empty ? null : <Btn type="button" className="dpx-st-tip dpx-st-calm" onClick={() => ctx.open({ k: "weekly" })}><span className="dpx-cat dpx-c-emerald"><Ic n="pie" /></span><div><b>Jeda mingguan</b><span className="dpx-sub">Lima menit melihat minggu ini. Tidak ada yang perlu dikejar.</span></div></Btn>}
     {newsOpen ? <NewsPage onBack={() => setNewsOpen(false)} /> : null}
