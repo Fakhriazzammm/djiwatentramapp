@@ -14,6 +14,20 @@ export type GoogleStatus = {
 };
 export type GoogleFeature = "calendar" | "drive" | "gmail";
 
+export function integrationNudgeActions(
+  google: { configured: boolean; features: Pick<GoogleStatus["features"], "drive" | "gmail">; gmail: Pick<NonNullable<GoogleStatus["gmail"]>, "enabled" | "error"> | null } | null,
+  inbound: { configured: boolean; source: Pick<InboundSource, "enabled" | "forwarding"> | null } | null,
+  script: Pick<HookInfo, "available" | "enabled" | "received"> | null,
+) {
+  const forwarding = inbound?.source?.enabled && inbound.source.forwarding;
+  const direct = google?.features.gmail && google.gmail?.enabled && !google.gmail.error;
+  const scriptReceivesMail = script?.enabled && (script.received ?? 0) > 0;
+  const email = Boolean((inbound?.configured || script?.available) && !forwarding && !scriptReceivesMail && !direct);
+  const googleFeatures: "drive"[] = google?.configured && !google.features.drive ? ["drive"] : [];
+  return { email, googleFeatures };
+}
+
+
 export async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api/finance${path}`, { credentials: "include", ...init, headers: { Accept: "application/json", ...(init.body ? { "Content-Type": "application/json" } : {}), ...(init.headers ?? {}) } });
   if (res.status === 401) { const m = await import("../identity-adapter"); if (await m.recoverPaySession()) await new Promise<never>(() => {}); }

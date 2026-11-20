@@ -16,7 +16,7 @@ import { emptyState, normalize } from "../../lib/finance/store";
 import { dayLabel, daypart, firstName, formatTime, greeting, rupiah } from "../../lib/djiwa-pay-format";
 import { heatLevel, monthLabel } from "../../lib/djiwa-pay-summary";
 import type { Entry, FinanceState, Kind } from "../../lib/finance/types";
-import { GoogleNudge, ReviewChip, useInbound } from "../integrations/integrations-pages";
+import { ReviewChip, useInbound } from "../integrations/integrations-pages";
 import type { Finance } from "../../lib/finance/use-finance";
 import { KelolaHome, PocketsPanel, useCash } from "../kelola/kelola-pages";
 import { assetValue, assetsChange, gainOf, useGold } from "../../lib/finance/assets";

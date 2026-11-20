@@ -7,7 +7,7 @@ import { CAT_COLORS, DragRow, Donut, GoldSpark, HeatGrid, PaceChart, WealthChart
 import { FullPage } from "../kelola/asset-ui";
 import { openArticle } from "../../lib/inapp";
 import { NEWS_TOPICS, timeAgo, useNews, type NewsItem } from "../../lib/finance/news";
-import { GoogleNudge, ReviewChip, useInbound } from "../integrations/integrations-pages";
+import { IntegrationNudge, ReviewChip, useInbound } from "../integrations/integrations-pages";
 import { short } from "../kelola/kelola-ui";
 import { budgetStatuses, buildInsights, goalProjection, goalSaved, inMonth, safeToSpend, totals } from "../../lib/finance/calc";
 import { FlowCard } from "./sankey";
@@ -100,7 +100,7 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
 
   return <div className="dpx-st-body">
     <ReviewChip count={inbound.data?.review ?? 0} importReady={inbound.data?.importReady ?? 0} autoRecent={inbound.data?.autoRecent ?? 0} onOpenAuto={() => nav.go("/riwayat?baru=1")} onOpen={() => nav.go("/tinjau")} onOpenImport={() => nav.go("/integrasi?impor=1")} />
-    <GoogleNudge onOpenIntegrations={() => nav.go("/integrasi")} />
+    <IntegrationNudge inbound={inbound.data} onOpenEmail={() => nav.go("/integrasi?email=1")} />
     <section className="dpx-st-card dpx-st-menu-card" aria-label="Menu">
       <div className="dpx-st-menu">{MENU.map((m) => <Btn key={m.label} type="button" className="dpx-st-mt" onClick={() => (m.all ? setAllOpen(true) : m.news ? setNewsOpen(true) : nav.go(m.path!))}>
         <span className="dpx-st-mi"><Ic n={m.icon} />{m.label === "Tinjau" && (inbound.data?.review ?? 0) > 0 ? <i className="dpx-st-mb">{inbound.data?.review}</i> : null}</span><span>{m.label}</span></Btn>)}</div>

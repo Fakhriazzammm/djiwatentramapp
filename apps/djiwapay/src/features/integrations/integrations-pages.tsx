@@ -5,7 +5,7 @@ import { CatIcon, MoneyInput, accName, catOf } from "../finance/fin-sheets";
 import type { FinCtx } from "../finance/fin-pages";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import {
-  CHANNEL_NAME, approveItem, cancelImport, commitImport, getImport, getImportItems, startImport, undoImport, connectGoogle, takeAfterGoogle, type HookInfo, confirmDriveRemovals, confirmSheetDeletes, createSource, disconnectGoogle, getGoogle, gmailOff, pollGmailNow, getInbound, getReview, rejectItem, removeSource, syncGoogle,
+  CHANNEL_NAME, approveItem, cancelImport, commitImport, getImport, getImportItems, startImport, undoImport, connectGoogle, integrationNudgeActions, takeAfterGoogle, type HookInfo, confirmDriveRemovals, confirmSheetDeletes, createSource, disconnectGoogle, getGoogle, gmailOff, pollGmailNow, getInbound, getReview, rejectItem, removeSource, syncGoogle,
   type GoogleFeature, type GoogleStatus, type ImportItem, type ImportState, type InboundSummary, type ReviewItem,
 } from "../../lib/finance/integrations";
 import { createHook, removeHook } from "../../lib/finance/integrations";
@@ -14,11 +14,11 @@ import { AppsScriptSheet, hookStatusText, useHook } from "./apps-script";
 /** What a Gmail error code means for the person looking at the screen. */
 const gmailError = (code: string) => {
   const [base, reason = ""] = code.split(":");
-  if (/accessNotConfigured|SERVICE_DISABLED|has not been used/i.test(reason)) return "Gmail API belum diaktifkan di Google Cloud. Aktifkan, lalu coba lagi";
-  if (/insufficient|PERMISSION/i.test(reason) || base === "SCOPE_MISSING") return "Izin Gmail belum diberikan. Hubungkan ulang";
+  if (/accessNotConfigured|SERVICE_DISABLED|has not been used/i.test(reason)) return "Gmail langsung belum tersedia. Gunakan Email terusan atau Apps Script";
+  if (/insufficient|PERMISSION/i.test(reason) || base === "SCOPE_MISSING") return "Izin Gmail belum tersedia. Gunakan Email terusan atau Apps Script";
   if (/rateLimit|quota|userRateLimit/i.test(reason) || base === "GMAIL_429") return "Google meminta jeda sebentar. Dilanjutkan otomatis";
-  if (base === "NOT_CONNECTED") return "Izin Google dicabut. Hubungkan ulang";
-  if (base === "GMAIL_FORBIDDEN" || base === "GMAIL_403") return `Google menolak akses Gmail${reason ? ` (${reason})` : ""}. Hubungkan ulang atau periksa pengaturan Google Cloud`;
+  if (base === "NOT_CONNECTED") return "Izin Gmail dicabut. Gunakan Email terusan atau Apps Script";
+  if (base === "GMAIL_FORBIDDEN" || base === "GMAIL_403") return "Google menolak akses Gmail langsung. Gunakan Email terusan atau Apps Script";
   return "Pemeriksaan terakhir gagal, dicoba lagi otomatis";
 };
 const copyText = async (text: string) => { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } };
@@ -79,42 +79,62 @@ export function useGoogle() {
 const NUDGE_KEY = "djiwapay.google-nudge-until";
 const nudgeHidden = () => { try { return Number(localStorage.getItem(NUDGE_KEY) ?? 0) > Date.now(); } catch { return false; } };
 
-/** Beranda: until every Google feature is on, one clear card to connect them all in a single consent. */
-export function GoogleNudge({ onOpenIntegrations }: { onOpenIntegrations: () => void }) {
+export function IntegrationNudge({ inbound, onOpenEmail }: { inbound: InboundSummary | null; onOpenEmail: () => void }) {
   const { g } = useGoogle();
+  const { hook } = useHook();
   const [hidden, setHidden] = useState(nudgeHidden);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  if (!g || !g.configured || hidden) return null;
-  const items: [GoogleFeature, string, string][] = [["drive", "Spreadsheet + Drive", "dl"], ["gmail", "Email bank", "spark"], ["calendar", "Calendar", "cal"]];
-  const missing = items.filter(([k]) => !g.features[k]).map(([k]) => k);
-  if (!missing.length) return null;
-  const snooze = () => { try { localStorage.setItem(NUDGE_KEY, String(Date.now() + 3 * 86400_000)); } catch { /* it just shows again */ } setHidden(true); };
-  const go = async () => { setBusy(true); try { const { url } = await connectGoogle(missing); window.location.assign(url); } catch { setBusy(false); } };
-  return <Reveal i={1}><div className="dpx-nudge" role="region" aria-label="Hubungkan Google">
-    <div className="dpx-nudge-h"><span className="dpx-nudge-ic"><Ic n="link" /></span><div><b>{g.connected ? "Lengkapi koneksi Google-mu" : "Hubungkan Google-mu"}</b><span>Catatan masuk ke Spreadsheet, struk tersimpan di Drive, tagihan di Calendar, dan email bank tercatat sendiri.</span></div></div>
-    <div className="dpx-nudge-chips">{items.map(([k, label]) => <span key={k} className={g.features[k] ? "dpx-on" : ""}>{g.features[k] ? <Ic n="check" size="sm" /> : <i aria-hidden="true" />}{label}</span>)}</div>
-    <div className="dpx-nudge-act"><Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setOpen(true)}>{g.connected ? "Lengkapi sekarang" : "Hubungkan semua"}</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" style={{ margin: 0 }} onClick={snooze}>Nanti</Btn><Btn type="button" className="dpx-linkbtn" onClick={onOpenIntegrations}>Atur satu per satu</Btn></div>
-    <AnimatePresence>{open ? <ConsentSheet key="nudge-consent" features={missing} busy={busy} onClose={() => setOpen(false)} onGo={() => void go()} /> : null}</AnimatePresence>
-  </div></Reveal>;
+  const [error, setError] = useState("");
+  const { email, googleFeatures } = integrationNudgeActions(g, inbound, hook);
+  const files = googleFeatures.length > 0;
+  if (hidden || (!email && !files)) return null;
+
+  const snooze = () => {
+    try { localStorage.setItem(NUDGE_KEY, String(Date.now() + 3 * 86400_000)); } catch { /* this visit only */ }
+    setHidden(true);
+  };
+  const go = async () => {
+    if (busy || !files) return;
+    setBusy(true);
+    setError("");
+    try {
+      const { url } = await connectGoogle(googleFeatures);
+      window.location.assign(url);
+    } catch {
+      setError("Google belum bisa dibuka. Coba lagi.");
+      setBusy(false);
+    }
+  };
+  return <Reveal i={1}><section className="dpx-nudge" aria-label="Integrasi Djiwa Pay">
+    <div className="dpx-nudge-heading">
+      <h2>Hubungkan layanan</h2>
+      <Btn type="button" className="dpx-linkbtn" onClick={snooze}>Nanti</Btn>
+    </div>
+    {email ? <Row icon="spark" tone="orange" title="Atur email bank" sub="Pakai Email terusan atau Apps Script" onClick={onOpenEmail} /> : null}
+    {files ? <Row icon="list" tone="emerald" title="Hubungkan Spreadsheet & Drive" sub="Sinkronkan catatan dan simpan foto struk" onClick={() => { setError(""); setOpen(true); }} /> : null}
+    <AnimatePresence>
+      {open && files ? <ConsentSheet key="nudge-consent" features={googleFeatures} busy={busy} error={error} onClose={() => setOpen(false)} onGo={() => void go()} /> : null}
+    </AnimatePresence>
+  </section></Reveal>;
 }
 
-/* ---------- Google: what Djiwa Pay can and cannot do, shown before Google's own screen ---------- */
-export function ConsentSheet({ features, onClose, busy, onGo, extra }: { features: GoogleFeature[]; onClose: () => void; busy: boolean; onGo: () => void; extra?: string[] }) {
+/* ---------- Google consent ---------- */
+type ConsentFeature = Exclude<GoogleFeature, "gmail">;
+export function ConsentSheet({ features, onClose, busy, onGo, extra, error }: { features: ConsentFeature[]; onClose: () => void; busy: boolean; onGo: () => void; extra?: string[]; error?: string }) {
   const can: string[] = [], cannot = ["Membaca atau menyimpan email lain", "Mengubah atau menghapus file yang tidak dibuat Djiwa Pay", "Menyimpan kata sandi Google-mu"];
-  const gmail = features.includes("gmail");
-  if (gmail) { can.push("Mencari email dari bank dan e-wallet yang terdaftar (BCA, Mandiri, GoPay, OVO, DANA, dan lainnya), lalu mencatat pembayarannya", "Menyimpan hanya nominal, toko, dan waktu. Isi email tidak disimpan"); cannot.unshift("Mengirim, menghapus, atau mengubah email-mu"); }
   if (features.includes("calendar")) can.push("Membuat acara pengingat tagihan di Google Calendar-mu");
   if (features.includes("drive")) { can.push("Membuat folder “Djiwa Pay / Struk” dan menyimpan setiap foto struk di sana", "Membuat satu Spreadsheet keuangan dan menyinkronkannya dua arah: ubah atau hapus di aplikasi atau di Sheets, keduanya ikut", "Memindahkan foto ke tempat sampah Drive saat struknya dihapus di aplikasi"); cannot.unshift("Membaca foto atau file lain di Drive-mu. Foto yang kamu taruh sendiri di folder itu tidak ikut terbaca"); }
   if (extra) can.push(...extra);
-  return <Sheet title="Izinkan akses Google" onClose={onClose}>
-    <p className="dpx-sub" style={{ marginTop: -6 }}>Kamu akan diarahkan ke Google untuk menyetujui. Bisa dicabut kapan saja.</p>
+  const filesOnly = features.length === 1 && features[0] === "drive";
+  return <Sheet title={filesOnly ? "Hubungkan Spreadsheet & Drive" : "Izinkan akses Google"} onClose={onClose}>
+    <p className="dpx-sub" style={{ marginTop: -6 }}>{filesOnly ? "Google akan meminta akses ke file Spreadsheet dan folder struk yang digunakan Djiwa Pay." : "Kamu akan diarahkan ke Google untuk menyetujui. Izin bisa dicabut kapan saja."}</p>
     <div className="dpx-glabel" style={{ marginTop: 14 }}>Yang bisa dilakukan Djiwa Pay</div>
     <div className="dpx-group dpx-white dpx-checks">{can.map((t) => <div key={t} className="dpx-chk dpx-yes"><Ic n="check" size="sm" /><span>{t}</span></div>)}</div>
     <div className="dpx-glabel">Yang tidak bisa</div>
     <div className="dpx-group dpx-white dpx-checks">{cannot.map((t) => <div key={t} className="dpx-chk dpx-no"><Ic n="close" size="sm" /><span>{t}</span></div>)}</div>
-    {gmail ? <div className="dpx-note"><Ic n="info" /><div><b>Google akan menampilkan “belum diverifikasi”.</b> Ketuk <b>Lanjutan</b>, lalu <b>Buka Djiwa Pay</b>, dan centang izin Gmail. Layar itu muncul karena izin baca Gmail memerlukan verifikasi tambahan dari Google, dan kamu bisa mencabutnya kapan saja.</div></div> : null}
     <p className="dpx-hint dpx-center">Cara data Google dipakai dijelaskan di <a href="/privasi" target="_blank" rel="noreferrer">Kebijakan Privasi</a>.</p>
+    {error ? <p className="dpx-sub" role="alert">{error}</p> : null}
     <Btn type="button" className="dpx-btn" disabled={busy} onClick={onGo}>{busy ? "Membuka Google…" : "Lanjut ke Google"}</Btn>
   </Sheet>;
 }
@@ -228,7 +248,7 @@ export function ImportSheet({ ctx, onClose, onChanged }: { ctx: FinCtx; onClose:
       <Btn type="button" className="dpx-btn" onClick={onClose}>Selesai</Btn>
     </> : null}
     {imp?.status === "failed" ? <>
-      <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div><b>Impor gagal.</b> {imp.error === "SCOPE_MISSING" || imp.error === "NOT_CONNECTED" ? "Izin Gmail belum ada atau dicabut. Hubungkan Gmail lagi." : "Coba lagi sebentar lagi."}</div></div>
+      <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div><b>Impor gagal.</b> {imp.error === "SCOPE_MISSING" || imp.error === "NOT_CONNECTED" ? "Impor lama memerlukan izin Gmail yang aktif. Untuk email baru, gunakan Email terusan atau Apps Script." : "Coba lagi sebentar lagi."}</div></div>
       <Btn type="button" className="dpx-btn" disabled={busy} onClick={() => void act(() => startImport(days))}>Coba lagi</Btn>
     </> : null}
   </Sheet>;
@@ -241,31 +261,33 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
   const { data: inbound, refresh } = useInbound();
   const [g, setG] = useState<(GoogleStatus & { success: true }) | null>(null);
   const [loadingG, setLoadingG] = useState(true);
-  const [sheet, setSheet] = useState<null | "email" | "import" | "script" | "sources" | { consent: GoogleFeature[] }>(null);
+  const [sheet, setSheet] = useState<null | "email" | "import" | "script" | "sources" | { consent: ConsentFeature[] }>(null);
   const { hook, refresh: refreshHook, setHook } = useHook();
-  const [autoImport, setAutoImport] = useState(false);
   const [busy, setBusy] = useState("");
   const [confirmOff, setConfirmOff] = useState<null | "google" | "email" | "script">(null);
   const loadG = useCallback(async () => { try { setG(await getGoogle()); } catch { /* offline: leave as is */ } finally { setLoadingG(false); } }, []);
   useEffect(() => { void loadG(); }, [loadG]);
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("impor") === "1") { window.history.replaceState({}, "", window.location.pathname); setSheet("import"); }
-    const q = new URLSearchParams(window.location.search).get("google");
-    if (!q) return;
-    window.history.replaceState({}, "", window.location.pathname);
-    if (q === "ok") setAutoImport(true);
-    const after = q === "ok" ? takeAfterGoogle() : null;
-    ctx.notify(q === "ok" ? "Google terhubung" : q === "denied" ? "Izin Google dibatalkan" : q === "unavailable" ? "Integrasi Google belum tersedia" : "Gagal menghubungkan Google. Coba lagi.");
-    void loadG();
-    if (after) ctx.nav.go(after);
+    const url = new URL(window.location.href);
+    const openEmail = url.searchParams.get("email") === "1";
+    const openImport = url.searchParams.get("impor") === "1";
+    const googleResult = url.searchParams.get("google");
+    if (!openEmail && !openImport && !googleResult) return;
+
+    if (openEmail) { url.searchParams.delete("email"); setSheet("sources"); }
+    if (openImport) { url.searchParams.delete("impor"); setSheet("import"); }
+    url.searchParams.delete("google");
+    window.history.replaceState(window.history.state, "", url);
+
+    if (!googleResult) return;
+    const after = takeAfterGoogle();
+    ctx.notify(googleResult === "ok" ? "Google terhubung"
+      : googleResult === "unavailable" ? "Integrasi Google belum tersedia"
+      : "Koneksi Google belum berhasil. Coba lagi dari Integrasi.");
+    if (googleResult === "ok" && after) ctx.nav.go(after);
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {       // right after Gmail is connected, offer to bring in the old mail
-    if (!autoImport || !g) return;
-    setAutoImport(false);
-    if (g.features.gmail) void getImport().then((r) => { if (!r.import || ["cancelled", "undone"].includes(r.import.status)) setSheet("import"); }).catch(() => {});
-  }, [autoImport, g]);
-  const goGoogle = async (features: GoogleFeature[]) => {
+  const goGoogle = async (features: ConsentFeature[]) => {
     setBusy("connect");
     try { const { url } = await connectGoogle(features); window.location.assign(url); }
     catch (e) { setBusy(""); ctx.notify((e as { code?: string }).code === "NOT_CONFIGURED" ? "Integrasi Google belum tersedia" : "Tidak bisa membuka Google. Coba lagi."); }
@@ -310,7 +332,7 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
     <div className="dpx-glabel">Catat otomatis dari email{gm ? <Btn type="button" disabled={busy === "gmail-check"} onClick={() => void checkGmail()}>{busy === "gmail-check" ? "Memeriksa…" : "Periksa"}</Btn> : null}</div>
     <Reveal i={1}><div className="dpx-group dpx-white dpx-int">
       {active.length ? <Row icon="check" tone="emerald" title={`Antrean tinjau${inbound && inbound.review ? ` (${inbound.review})` : ""}`} sub="Email baru tercatat otomatis. Di sini hanya yang perlu dicek" onClick={onReview} /> : null}
-      <Row icon="spark" tone="orange" title="Sumber email" sub={active.length ? active.join(" · ") : "Pilih cara termudah untuk menyambungkan email"} trail={loadingG ? undefined : active.length ? <Tag tone="ok">Aktif</Tag> : <Tag tone="warn">Sambungkan</Tag>} onClick={() => setSheet("sources")} />
+      <Row icon="spark" tone="orange" title="Sumber email" sub={active.length ? active.join(" · ") : "Gunakan Email terusan atau Apps Script"} trail={loadingG ? undefined : active.length ? <Tag tone="ok">Aktif</Tag> : <Tag tone="warn">Sambungkan</Tag>} onClick={() => setSheet("sources")} />
       {gm ? <Row icon="dl" tone="amber" title="Impor email lama" sub={inbound && inbound.importReady ? `${inbound.importReady} transaksi siap ditinjau` : "Catat pembayaran lama dari Gmail-mu, dengan pratinjau dulu"} onClick={() => setSheet("import")} /> : null}
       {hook?.enabled && (hook.scriptVersion ?? 1) < (hook.currentScriptVersion ?? 2) ? <div className="dpx-note" role="status" style={{ margin: "6px 12px 10px" }}><Ic n="info" /><div><b>Skrip Apps Script-mu versi lama.</b> Salin skrip yang baru agar pembayaran dari toko, marketplace, dan pengirim lain ikut terbaca.<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setSheet("script")}>Salin skrip baru</Btn></div></div></div> : null}
     </div></Reveal>
@@ -342,30 +364,31 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
       {sheet === "import" ? <ImportSheet key="import" ctx={ctx} onClose={() => setSheet(null)} onChanged={() => void refresh()} /> : null}
       {sheet === "script" ? <AppsScriptSheet key="script" ctx={ctx} hook={hook} setHook={setHook} refresh={refreshHook} rotate={async () => { try { setHook(await createHook(true)); } catch { ctx.notify("Gagal membuat alamat baru"); } }} onClose={() => setSheet(null)} /> : null}
       {sheet === "sources" ? <Sheet key="sources" title="Sumber email" onClose={() => setSheet(null)}>
-        <p className="dpx-sub" style={{ marginTop: -6 }}>Satu sumber saja sudah cukup. Boleh lebih dari satu: email yang sama tidak pernah tercatat dua kali.</p>
-        <div className="dpx-glabel">Satu ketukan</div>
+        <p className="dpx-sub" style={{ marginTop: -6 }}>Pilih satu cara untuk mencatat transaksi dari email bank dan e-wallet.</p>
         <div className="dpx-group dpx-white dpx-int">
-      <Row icon="spark" tone="orange" title="Gmail langsung" sub={gm ? (gmInfo?.error ? gmailError(gmInfo.error) : gmInfo?.lastPolledAt ? `Dicek ${ago(gmInfo.lastPolledAt)} · ${gmInfo.fetched} email dibaca` : "Memeriksa email pertama…") : "Satu ketukan. Email bank dan e-wallet tercatat sendiri"}
-        trail={loadingG ? undefined : !gReady ? soon : gm ? <Tag tone={gmInfo?.error ? "warn" : "ok"}>{gmInfo?.error ? "Perlu perhatian" : "Aktif"}</Tag> : <Tag tone="warn">Disarankan</Tag>}
-        onClick={gReady && !loadingG && !gm ? () => setSheet({ consent: ["gmail"] }) : undefined} />
-      {gm ? <Row icon="trash" tone="rose" title="Matikan Gmail langsung" sub="Berhenti membaca email. Catatan yang sudah ada tetap" onClick={() => { setSheet(null); void turnGmailOff(); }} chev={false} /> : null}
+          <Row icon="bank" tone="slate" title="Email terusan"
+            sub={src?.forwarding ? (src.mailCount ? `${src.mailCount} email · ${ago(src.lastMailAt)}` : "Menunggu email pertama") : "Teruskan email transaksi tertentu ke alamat Djiwa Pay-mu"}
+            trail={src?.forwarding ? <Tag tone="ok">Aktif</Tag> : inbound && !inbound.configured ? soon : inbound?.configured ? <Tag tone="warn">Disarankan</Tag> : undefined}
+            onClick={inbound?.configured ? () => setSheet("email") : undefined} />
+          {src?.forwarding ? <>
+            <Row icon="refresh" tone="slate" title="Buat alamat baru" sub="Alamat lama berhenti menerima email" onClick={async () => { setBusy("rot"); try { await createSource(true); await refresh(); ctx.notify("Alamat baru dibuat. Perbarui terusan di Gmail."); setSheet("email"); } catch { ctx.notify("Gagal membuat alamat baru"); } finally { setBusy(""); } }} chev={false} />
+            <Row icon="trash" tone="rose" title="Matikan email terusan" sub="Hapus alamat dan antrean" onClick={() => { setSheet(null); setConfirmOff("email"); }} chev={false} />
+          </> : null}
+          <Row icon="spark" tone="orange" title="Apps Script"
+            sub={hook?.enabled ? (hook.received ? `${hook.received} email · ${ago(hook.lastAt ?? null)}${hookStatusText(hook.lastStatus, hook.lastReason) ? ` · ${hookStatusText(hook.lastStatus, hook.lastReason)}` : ""}` : "Menunggu email pertama dari skripmu") : "Ikuti panduan untuk menjalankan skrip di akun Google-mu"}
+            trail={hook?.available === false ? soon : hook?.enabled ? (hook.received ? <Tag tone="ok">Aktif</Tag> : <Tag tone="warn">Menunggu uji</Tag>) : undefined}
+            onClick={hook?.available === false ? undefined : () => setSheet("script")} />
+          {hook?.enabled ? <>
+            <Row icon="refresh" tone="slate" title="Buat alamat skrip baru" sub="Alamat lama langsung mati. Salin dan tempel skrip yang baru" onClick={async () => { setBusy("hook"); try { setHook(await createHook(true)); ctx.notify("Alamat baru dibuat. Tempel ulang skripnya."); setSheet("script"); } catch { ctx.notify("Gagal membuat alamat baru"); } finally { setBusy(""); } }} chev={false} />
+            <Row icon="trash" tone="rose" title="Matikan Apps Script" sub="Alamat dihapus. Catatan yang sudah ada tetap" onClick={() => { setSheet(null); setConfirmOff("script"); }} chev={false} />
+          </> : null}
         </div>
-        <div className="dpx-glabel">Tanpa izin Gmail</div>
-        <div className="dpx-group dpx-white dpx-int">
-      <Row icon="spark" tone="orange" title="Apps Script" sub={hook?.enabled ? (hook.received ? `${hook.received} email · ${ago(hook.lastAt ?? null)}${hookStatusText(hook.lastStatus, hook.lastReason) ? ` · ${hookStatusText(hook.lastStatus, hook.lastReason)}` : ""}` : "Menunggu email pertama dari skripmu") : "Skrip kecil di akun Googlemu. Gratis, tanpa batas pengguna. Ada tutorialnya"}
-        trail={hook?.enabled ? <Tag tone="ok">Aktif</Tag> : hook && hook.available === false ? soon : <Tag>Mati</Tag>}
-        onClick={hook && hook.available === false ? undefined : () => setSheet("script")} />
-      {hook?.enabled ? <>
-        <Row icon="refresh" tone="slate" title="Buat alamat skrip baru" sub="Alamat lama langsung mati. Salin dan tempel skrip yang baru" onClick={async () => { setBusy("hook"); try { setHook(await createHook(true)); ctx.notify("Alamat baru dibuat. Tempel ulang skripnya."); setSheet("script"); } catch { ctx.notify("Gagal membuat alamat baru"); } finally { setBusy(""); } }} chev={false} />
-        <Row icon="trash" tone="rose" title="Matikan Apps Script" sub="Alamat dihapus. Catatan yang sudah ada tetap" onClick={() => { setSheet(null); setConfirmOff("script"); }} chev={false} />
-      </> : null}
-      <Row icon="bank" tone="slate" title="Email terusan" sub={src?.forwarding ? `${src.mailCount ? `${src.mailCount} email · ${ago(src.lastMailAt)}` : "Menunggu email pertama"}` : "Tanpa izin Gmail. Atur sekali di Gmail atau di aplikasi bank"} trail={src?.forwarding ? <Tag tone="ok">Aktif</Tag> : inbound && !inbound.configured ? soon : <Tag>Mati</Tag>}
-        onClick={inbound?.configured ? () => setSheet("email") : undefined} />
-      {src?.forwarding ? <>
-        <Row icon="refresh" tone="slate" title="Buat alamat baru" sub="Alamat lama berhenti menerima email" onClick={async () => { setBusy("rot"); try { await createSource(true); await refresh(); ctx.notify("Alamat baru dibuat. Perbarui terusan di Gmail."); setSheet("email"); } catch { ctx.notify("Gagal membuat alamat baru"); } finally { setBusy(""); } }} chev={false} />
-        <Row icon="trash" tone="rose" title="Matikan email terusan" sub="Hapus alamat dan antrean" onClick={() => { setSheet(null); setConfirmOff("email"); }} chev={false} />
-      </> : null}
-        </div>
+        {gm ? <div className="dpx-group dpx-white dpx-int">
+          <Row icon="spark" tone="orange" title="Gmail langsung"
+            sub={gmInfo?.error ? gmailError(gmInfo.error) : gmInfo?.lastPolledAt ? `Dicek ${ago(gmInfo.lastPolledAt)} · ${gmInfo.fetched} email dibaca` : "Memeriksa email pertama…"}
+            trail={<Tag tone={gmInfo?.error ? "warn" : "ok"}>{gmInfo?.error ? "Perlu perhatian" : "Aktif"}</Tag>} />
+          <Row icon="trash" tone="rose" title="Matikan Gmail langsung" sub="Berhenti membaca email. Catatan yang sudah ada tetap" onClick={() => { setSheet(null); void turnGmailOff(); }} chev={false} />
+        </div> : null}
       </Sheet> : null}
       {sheet === "email" ? <EmailSetupSheet key="email" ctx={ctx} summary={inbound} refresh={refresh} onClose={() => setSheet(null)} /> : null}
       {sheet && typeof sheet === "object" ? <ConsentSheet key="consent" features={sheet.consent} busy={busy === "connect"} onClose={() => setSheet(null)} onGo={() => void goGoogle(sheet.consent)} /> : null}
