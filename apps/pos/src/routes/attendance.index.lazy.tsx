@@ -1,4 +1,3 @@
-import { shouldRunIntegratedStock } from "@djiwaapps/web-shared/lib/manual-stock";
 ﻿import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { FaceRecognition, preloadFaceModels } from "@/components/auth/FaceRecognition";
@@ -340,36 +339,6 @@ function AttendancePage() {
 			};
 			
 			if (user.isCurrentlyIn) {
-				// Check if this role needs stock opname before clock out
-				const roleName = (user.roleName || "").toLowerCase();
-				const needsOpname = (roleName.includes("bar") || roleName.includes("kitchen")) && await shouldRunIntegratedStock();
-				
-				if (needsOpname) {
-					// Save clock-out payload for opname page to complete
-					const opnameRole = roleName.includes("bar") ? "bar" : "kitchen";
-					sessionStorage.setItem("__clockout_payload__", JSON.stringify({
-						userId: user.id,
-						faceDescriptor: descriptor,
-						pinCode: pin || undefined,
-						location: attendanceLocation,
-						role: opnameRole,
-						userName: user.name,
-						shiftName: effectiveShift?.name || "Shift",
-						shiftId: effectiveShift?.id || "",
-					}));
-					toast.dismiss("clocking");
-					navigate({ 
-						to: "/attendance/stock-opname",
-						search: {
-							role: opnameRole,
-							shiftId: effectiveShift?.id || "",
-							shiftName: effectiveShift?.name || "Shift",
-							userId: user.id,
-							userName: user.name,
-						}
-					} as any);
-					return;
-				}
 				
 				await clockOut({
 					...verificationPayload,

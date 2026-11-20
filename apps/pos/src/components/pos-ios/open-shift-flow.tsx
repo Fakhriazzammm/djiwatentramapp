@@ -2,12 +2,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, CheckCircle2, Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatRp, IOS_SPRING, IOS_SPRING_SOFT, IosChip } from "./ios-kit";
+import { GateHint } from "./gate-kit";
+import { MenuCheckStep, menuCheckPending, type MenuCheckController } from "./menu-check-step";
 
 type OnlineStatus = string;
 export interface OpenShiftController {
 	step: 1 | 2 | 3 | 4;
 	setStep: (step: 1 | 2 | 3 | 4) => void;
-	success: { cashierName: string; shiftName: string; amount: number } | null;
+	success: { cashierName: string; shiftName: string; amount: number; menuTotal?: number; menuOut?: string[] } | null;
 	onFinish: () => void;
 	currentUserName?: string;
 	cashierName: string;
@@ -41,9 +43,10 @@ export interface OpenShiftController {
 	setOnline: (updater: (prev: any) => any) => void;
 	onlinePlatforms: ReadonlyArray<{ key: string; label: string }>;
 	onlineStatusOptions: ReadonlyArray<{ value: string; label: string }>;
+	menu: MenuCheckController;
 }
 
-const STEPS = ["Data", "Review", "Checklist"];
+const STEPS = ["Data", "Review", "Checklist", "Cek menu"];
 const QUICK = [50000, 100000, 200000, 500000];
 
 function Label({ children }: { children: React.ReactNode }) {
@@ -57,25 +60,31 @@ export function OpenShiftFlow({ c }: { c: OpenShiftController }) {
 			<motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={IOS_SPRING_SOFT} className="flex flex-1 flex-col items-center px-2 pt-8 text-center">
 				<motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ ...IOS_SPRING, delay: 0.1 }} className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/25"><CheckCircle2 className="h-8 w-8" /></motion.div>
 				<h3 className="mt-4 text-[22px] font-extrabold tracking-tight">Shift siap digunakan</h3>
-				<p className="mt-1 text-[14px] text-muted-foreground">Kasir sudah boleh mulai menerima transaksi.</p>
+				<p className="mt-1 text-[14px] text-muted-foreground">Menu sudah dicek. Kasir boleh menerima transaksi.</p>
 				<div className="mt-5 w-full space-y-2 rounded-2xl bg-muted/60 p-4 text-left text-[14px]">
 					<div className="flex justify-between"><span className="text-muted-foreground">Kasir</span><b>{c.success.cashierName}</b></div>
 					<div className="flex justify-between"><span className="text-muted-foreground">Shift</span><b>{c.success.shiftName}</b></div>
 					<div className="flex justify-between border-t border-border pt-2"><span className="text-muted-foreground">Modal awal</span><b className="text-primary">{formatRp(c.success.amount)}</b></div>
+					{c.success.menuTotal ? <div className="flex justify-between"><span className="text-muted-foreground">Menu Ada / Habis</span><b>{c.success.menuTotal - (c.success.menuOut?.length ?? 0)} / {c.success.menuOut?.length ?? 0}</b></div> : null}
 				</div>
+				{c.success.menuOut?.length ? <p className="mt-2 w-full rounded-2xl border border-dashed border-border px-3.5 py-3 text-left text-[13px] text-muted-foreground">Dimatikan di /menu: {c.success.menuOut.join(", ")}</p> : null}
 				<motion.button type="button" whileTap={{ scale: 0.97 }} onClick={c.onFinish} className="mt-6 h-[52px] w-full rounded-2xl bg-primary text-[16px] font-bold text-primary-foreground">Masuk ke kasir</motion.button>
 			</motion.div>
 		);
 	}
 
 	const allOnlineSet = c.onlinePlatforms.every(({ key }) => c.online[key]?.status !== "pending");
+	const operationalPending = c.operationalChecks.filter(({ key }) => !c.operational[key]).length;
+	const menuPending = menuCheckPending(c.menu);
+	const hint = c.step === 3 ? (operationalPending > 0 ? `Masih ${operationalPending} kesiapan belum dicentang` : !allOnlineSet ? "Semua platform online food wajib diberi status" : null) : c.step === 4 ? (c.menu.items ? (menuPending > 0 ? `Masih ${menuPending} menu belum dicek` : null) : "Menu masih dimuat") : null;
+	const blocked = hint !== null;
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
 			<div className="px-0.5 pb-3">
 				<h3 className="text-[22px] font-extrabold tracking-tight">Buka shift</h3>
 				<p className="text-[13px] text-muted-foreground">Siapkan kasir kurang dari satu menit</p>
 			</div>
-			<div className="mb-4 flex gap-1.5" role="progressbar" aria-valuemin={1} aria-valuemax={3} aria-valuenow={Math.min(3, c.step)}>
+			<div className="mb-4 flex gap-1.5" role="progressbar" aria-valuemin={1} aria-valuemax={4} aria-valuenow={Math.min(4, c.step)}>
 				{STEPS.map((label, index) => (
 					<div key={label} className="flex-1">
 						<div className="h-1.5 overflow-hidden rounded-full bg-border"><motion.div className="h-full rounded-full bg-primary" initial={false} animate={{ width: c.step >= index + 1 ? "100%" : "0%" }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }} /></div>
@@ -144,7 +153,7 @@ export function OpenShiftFlow({ c }: { c: OpenShiftController }) {
 							<button type="button" onClick={() => c.setStep(1)} className="mt-2 h-10 w-full text-[14px] font-bold text-primary">Ubah data</button>
 							<p className="mt-2 rounded-xl bg-primary/5 px-3.5 py-3 text-[12.5px] leading-relaxed text-muted-foreground">Shift dan transaksi <b className="text-foreground">Modal Awal</b> disimpan bersamaan. Checklist online food wajib diselesaikan sebelum shift dibuka.</p>
 						</motion.div>
-					) : (
+					) : c.step === 3 ? (
 						<motion.div key="s3" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.22 }}>
 							<p className="mb-3 rounded-xl bg-primary/5 px-3.5 py-3 text-[12.5px] leading-relaxed text-muted-foreground">Pastikan area kasir siap. Untuk online food, buka aplikasi merchant lalu pilih statusnya. Jangan masukkan password di sini.</p>
 							<div className="mb-4 rounded-2xl border border-border p-3">
@@ -171,17 +180,23 @@ export function OpenShiftFlow({ c }: { c: OpenShiftController }) {
 							})}
 							{!allOnlineSet ? <p className="text-[12px] font-semibold text-amber-700">Semua platform wajib diberi status sebelum shift dibuka.</p> : null}
 						</motion.div>
+					) : (
+						<motion.div key="s4" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.22 }}>
+							<p className="mb-3 rounded-xl bg-primary/5 px-3.5 py-3 text-[12.5px] leading-relaxed text-muted-foreground">Tandai setiap menu <b className="text-foreground">Ada</b> atau <b className="text-foreground">Habis</b> sebelum kasir dipakai. Hasilnya langsung dipakai di halaman /menu.</p>
+							<MenuCheckStep menu={c.menu} />
+						</motion.div>
 					)}
 				</AnimatePresence>
 				{c.error ? <p role="alert" className="mt-2 rounded-xl bg-rose-50 px-3 py-2.5 text-[12.5px] font-semibold text-rose-700">{c.error}</p> : null}
 			</div>
 
 			<div className="shrink-0 border-t border-border bg-background pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2.5">
+				<GateHint text={hint} />
 				<div className="flex gap-2.5">
 					{c.step > 1 ? <button type="button" disabled={c.submitting} onClick={() => c.setStep((c.step - 1) as 1 | 2 | 3)} className="h-[52px] w-24 rounded-2xl bg-muted text-[15px] font-bold disabled:opacity-60">Kembali</button> : null}
-					<motion.button type="button" whileTap={{ scale: 0.97 }} transition={IOS_SPRING} disabled={c.submitting} onClick={() => (c.step === 1 ? c.onNext() : c.step === 2 ? c.setStep(3) : c.onConfirm())} className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-2xl bg-primary text-[16px] font-bold text-primary-foreground disabled:opacity-60">
+					<motion.button type="button" whileTap={{ scale: 0.97 }} transition={IOS_SPRING} disabled={c.submitting || blocked} onClick={() => (c.step === 1 ? c.onNext() : c.step === 2 ? c.setStep(3) : c.step === 3 ? c.setStep(4) : c.onConfirm())} className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-2xl bg-primary text-[16px] font-bold text-primary-foreground disabled:opacity-60">
 						{c.submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
-						{c.step === 1 ? "Lanjut ke review" : c.step === 2 ? "Lanjut checklist" : c.submitting ? "Menyimpan…" : "Buka shift"}
+						{c.step === 1 ? "Lanjut ke review" : c.step === 2 ? "Lanjut checklist" : c.step === 3 ? "Lanjut ke cek menu →" : c.submitting ? "Menyimpan…" : "Mulai kasir"}
 					</motion.button>
 				</div>
 			</div>

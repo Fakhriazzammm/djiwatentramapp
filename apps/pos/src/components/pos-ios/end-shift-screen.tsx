@@ -5,6 +5,7 @@ import { SHIFT_PAYMENT_CHANNELS, type ShiftPaymentBreakdown, type ShiftPaymentCh
 import { cn } from "@/lib/utils";
 import { CashProofCamera } from "./cash-proof-camera";
 import { AnimatedNumber, formatRp, IOS_SPRING, IosChip, IosSheet, StatusPill } from "./ios-kit";
+import { OpnameReview, OpnameStep, opnameIssues, opnameNotesMissing, type OpnameController } from "./opname-step";
 
 type Actual = Partial<Record<ShiftPaymentChannelKey, number | null>>;
 export interface ExtraExpense { id: number; category: string; amount: string; description: string; savedId?: string }
@@ -47,11 +48,12 @@ export interface EndShiftController {
 	cashPhoto: string | null;
 	setCashPhoto: (value: string | null) => void;
 	staffName: string;
+	opname: OpnameController;
 }
 
 const BILLS = [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100];
 const EXPENSE_CATS = ["Token Listrik", "Bahan Baku", "Operasional", "Lainnya"];
-const STEPS = ["CEK", "TUNAI", "KIRIM"] as const;
+const STEPS = ["CEK", "OPNAME", "TUNAI", "KIRIM"] as const;
 const EASE = [0.3, 0.9, 0.3, 1] as const;
 
 const diffTone = (d: number) => (d === 0 ? "ok" : d < 0 ? "bad" : "warn") as "ok" | "bad" | "warn";
@@ -99,16 +101,19 @@ export function EndShiftScreen({ c }: { c: EndShiftController }) {
 	if (c.attendanceLoading) step1Issues.push("absensi masih dimuat");
 	if (c.attendanceError) step1Issues.push("absensi gagal dimuat");
 	if (activeStaff.length > 0) step1Issues.push(`${activeStaff.length} belum absen keluar`);
-	const step2Issues: string[] = [];
-	if (counted <= 0) step2Issues.push("hitung uang di laci");
-	if (!c.cashPhoto) step2Issues.push("ambil foto bukti tunai");
-	const step3Issues: string[] = [];
-	if (c.gate.blocked) step3Issues.push(c.closeTime ? `tunggu ${c.closeTime} WIB` : "belum jadwal tutup");
-	if (!navigator.onLine) step3Issues.push("butuh koneksi internet");
-	const issues = step === 1 ? step1Issues : step === 2 ? step2Issues : step3Issues;
+	const opnameStepIssues = opnameIssues(c.opname);
+	const cashIssues: string[] = [];
+	if (counted <= 0) cashIssues.push("hitung uang di laci");
+	if (!c.cashPhoto) cashIssues.push("ambil foto bukti tunai");
+	const sendIssues: string[] = [];
+	const missingNotes = opnameNotesMissing(c.opname);
+	if (missingNotes > 0) sendIssues.push(`${missingNotes} catatan selisih bahan`);
+	if (c.gate.blocked) sendIssues.push(c.closeTime ? `tunggu ${c.closeTime} WIB` : "belum jadwal tutup");
+	if (!navigator.onLine) sendIssues.push("butuh koneksi internet");
+	const issues = step === 1 ? step1Issues : step === 2 ? opnameStepIssues : step === 3 ? cashIssues : sendIssues;
 	const disabled = c.submitting || issues.length > 0;
 
-	const onCta = () => { if (step < 3) go(step + 1); else c.onEnd(); };
+	const onCta = () => { if (step < 4) go(step + 1); else c.onEnd(); };
 	const stampText = `${new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "short", timeStyle: "medium" })} WIB · ${c.staffName || c.cashierName || "Kasir"} · ${formatRp(counted)}`;
 
 	return (
@@ -200,6 +205,13 @@ export function EndShiftScreen({ c }: { c: EndShiftController }) {
 
 						{step === 2 ? (
 							<div>
+								<p className="mb-2.5 rounded-xl bg-primary/5 px-3.5 py-3 text-[12.5px] leading-relaxed text-muted-foreground">Hitung bahan baku dulu sebelum uang. Tandai <b className="text-foreground">Ada</b> atau <b className="text-foreground">Habis</b>, atau isi jumlah sisa.</p>
+								<OpnameStep opname={c.opname} />
+							</div>
+						) : null}
+
+						{step === 3 ? (
+							<div>
 								<div className="rounded-[18px] border border-border bg-card px-3 py-3 text-center">
 									<p className="text-[11px] font-bold tracking-wider text-muted-foreground">SEHARUSNYA ADA DI LACI</p>
 									<p className="my-0.5 text-[30px] font-extrabold leading-tight tracking-tight tabular-nums">{formatRp(drawerExpected)}</p>
@@ -249,8 +261,9 @@ export function EndShiftScreen({ c }: { c: EndShiftController }) {
 							</div>
 						) : null}
 
-						{step === 3 ? (
+						{step === 4 ? (
 							<div>
+								<OpnameReview opname={c.opname} />
 								<div className="overflow-hidden rounded-[18px] border border-border bg-card text-[14px]">
 									{[
 										["Pendapatan sistem", formatRp(systemTotal)],
@@ -285,8 +298,8 @@ export function EndShiftScreen({ c }: { c: EndShiftController }) {
 				<div className="mb-2 flex gap-1.5">
 					{[["SISTEM", formatRp(systemTotal)], ["TUNAI", formatRp(counted)], ["BEDA TUNAI", counted === 0 ? "—" : diff === 0 ? "Cocok" : `${diff < 0 ? "−" : "+"}${formatRp(Math.abs(diff))}`]].map(([label, value]) => <div key={label} className="flex-1 rounded-xl bg-muted py-1.5 text-center"><p className="text-[10px] font-extrabold tracking-wider text-muted-foreground">{label}</p><p className="text-[13px] font-extrabold tabular-nums">{value}</p></div>)}
 				</div>
-				<motion.button type="button" whileTap={{ scale: disabled ? 1 : 0.97 }} disabled={disabled} onClick={onCta} className={cn("flex h-[50px] w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-bold text-white transition-colors disabled:bg-muted disabled:text-muted-foreground", step === 3 ? "bg-rose-600" : "bg-primary")}>
-					{c.submitting ? <><Loader2 className="h-5 w-5 animate-spin" />Mengirim laporan & foto…</> : step === 1 ? "Lanjut hitung tunai →" : step === 2 ? "Lanjut tinjau & kirim →" : <><Send className="h-5 w-5" />Akhiri & kirim laporan</>}
+				<motion.button type="button" whileTap={{ scale: disabled ? 1 : 0.97 }} disabled={disabled} onClick={onCta} className={cn("flex h-[50px] w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-bold text-white transition-colors disabled:bg-muted disabled:text-muted-foreground", step === 4 ? "bg-rose-600" : "bg-primary")}>
+					{c.submitting ? <><Loader2 className="h-5 w-5 animate-spin" />Mengirim laporan & foto…</> : step === 1 ? "Lanjut opname bahan →" : step === 2 ? "Lanjut hitung tunai →" : step === 3 ? "Lanjut tinjau & kirim →" : <><Send className="h-5 w-5" />Akhiri & kirim laporan</>}
 				</motion.button>
 				<p className="mt-1 min-h-4 text-center text-[12px] text-muted-foreground">{issues.length ? `Lengkapi: ${issues.join(", ")}` : ""}</p>
 			</div>

@@ -119,8 +119,8 @@ export function AbsenSheet({ isIn, token, onClose, onClosing, onHistory, onRecor
 	if (isIn) {
 		return (
 			<DsSheet title="Absen keluar" onClose={onClose}>
-				<p className="ds-sub" style={{ margin: "0 0 8px" }}>Selesaikan closing shift lebih dulu. Opname dan kebersihan wajib dikirim, lalu verifikasi di langkah akhir.</p>
-				<Check s="idle" title="Closing shift" sub="Opname stok · kebersihan · verifikasi" />
+				<p className="ds-sub" style={{ margin: "0 0 8px" }}>Selesaikan closing shift lebih dulu. Checklist kebersihan wajib dikirim, lalu verifikasi di langkah akhir.</p>
+				<Check s="idle" title="Closing shift" sub="Kebersihan · verifikasi" />
 				<Check s={geoState} title={geoTitle} sub={geoSub} />
 				<DsNote tone="info" icon={<DsIcon name="stock-opname" />}><b>Verifikasi di akhir</b>Wajah, atau PIN/foto langsung dari kamera, diminta setelah closing terkirim.</DsNote>
 				<DsButton block onClick={onClosing}>Mulai closing shift</DsButton>
@@ -146,7 +146,7 @@ export function AbsenSheet({ isIn, token, onClose, onClosing, onHistory, onRecor
 						<div className="kx-kv"><span>Verifikasi</span><b>{result.method === "face" ? "Wajah" : result.method === "photo" ? "Foto langsung" : "PIN + foto"}</b></div>
 						<div className="kx-kv"><span>Laporan grup</span><b>{result.reported ? "Terkirim ✓" : "Belum terkirim"}</b></div>
 					</div>
-					<DsNote tone="info" icon={<DsIcon name="shift-closing" />}><b>Jangan lupa closing shift</b>Opname dan kebersihan wajib sebelum absen keluar.</DsNote>
+					<DsNote tone="info" icon={<DsIcon name="shift-closing" />}><b>Jangan lupa closing shift</b>Checklist kebersihan wajib sebelum absen keluar.</DsNote>
 					<DsButton block onClick={onClose}>Ke Beranda</DsButton>
 				</div>
 			</div>

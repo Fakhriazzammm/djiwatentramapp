@@ -44,7 +44,7 @@ const STEPS: Step[] = [
 		lead: "Absen keluar dilakukan lewat Closing Shift, sebelum pulang.",
 		items: [
 			{ n: "1", t: "Ketuk tombol merah di tengah bawah", d: "Lalu “Mulai closing shift”." },
-			{ n: "2", t: "Isi opname stok (jika ada) dan checklist kebersihan" },
+			{ n: "2", t: "Isi checklist kebersihan" },
 			{ n: "3", t: "Kirim laporan, lalu verifikasi wajah atau PIN", d: "Absen keluar tercatat otomatis dan laporan masuk ke grup." },
 		],
 	},

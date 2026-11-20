@@ -29,3 +29,10 @@ async function protectedStock(action:string,args:Record<string,unknown>){
 export async function saveManualStock(input:{inventoryId:string;mode:ManualStockValue['mode'];status:ManualStockValue['status'];quantity:number|null;unit:string;note?:string;expectedUpdatedAt?:number|null}){return protectedStock('manual_stock_save',{input});}
 export async function fetchManualStockHistory(inventoryId:string):Promise<ManualStockHistory[]>{return protectedStock('manual_stock_history',{inventoryId});}
 export async function createManualStockMaterial(name:string,unit:string){return protectedStock('manual_stock_create',{name,unit});}
+
+/** Bahan yang dihitung kasir saat tutup shift, lengkap dengan catatan stok terakhir. */
+export type ShiftOpnameMaterial=ManualStockValue&{inventoryId:string;name:string;group:'bar'|'kitchen'|null;updatedAt:number|null};
+export type ShiftOpnameSubmitItem={inventoryId:string;name:string;mode:ManualStockValue['mode'];status:'available'|'out';quantity:number|null;previousQuantity:number|null;unit:string;flagged:boolean;note?:string};
+export async function fetchShiftOpnameItems():Promise<ShiftOpnameMaterial[]>{const {data,error}=await createClient().rpc('shift_opname_items');if(error||!Array.isArray(data))throw new Error('Daftar bahan opname gagal dimuat');return data;}
+export async function submitShiftOpname(items:ShiftOpnameSubmitItem[],shiftSourceId:string){return protectedStock('shift_opname_submit',{items,shiftSourceId}) as Promise<{saved:number;out:number;flagged:number}>;}
+export async function recordShiftMenuCheck(items:{productId:string;name:string;available:boolean;previous:boolean}[],shiftSourceId:string){return protectedStock('shift_menu_check_record',{items,shiftSourceId}) as Promise<{total:number;out:number}>;}

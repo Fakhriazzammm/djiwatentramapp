@@ -25,7 +25,6 @@ import { Route as KaryawanLoginRouteImport } from './routes/karyawan/login'
 import { Route as KaryawanUsernameRouteImport } from './routes/karyawan.$username'
 import { Route as HomeSectionRouteImport } from './routes/home.$section'
 import { Route as AuthGoogleRouteImport } from './routes/auth.google'
-import { Route as AttendanceStockOpnameRouteImport } from './routes/attendance/stock-opname'
 import { Route as AdminStockOverviewRouteImport } from './routes/admin/stock-overview'
 import { Route as AdminShiftClosingRouteImport } from './routes/admin/shift-closing'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
@@ -220,13 +219,6 @@ const AuthGoogleRoute = AuthGoogleRouteImport.update({
   path: '/auth/google',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/auth.google.lazy').then((d) => d.Route))
-const AttendanceStockOpnameRoute = AttendanceStockOpnameRouteImport.update({
-  id: '/stock-opname',
-  path: '/stock-opname',
-  getParentRoute: () => AttendanceRoute,
-} as any).lazy(() =>
-  import('./routes/attendance/stock-opname.lazy').then((d) => d.Route),
-)
 const AdminStockOverviewRoute = AdminStockOverviewRouteImport.update({
   id: '/stock-overview',
   path: '/stock-overview',
@@ -1050,7 +1042,6 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/shift-closing': typeof AdminShiftClosingRoute
   '/admin/stock-overview': typeof AdminStockOverviewRoute
-  '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/auth/google': typeof AuthGoogleRoute
   '/home/$section': typeof HomeSectionRoute
   '/karyawan/$username': typeof KaryawanUsernameRoute
@@ -1163,7 +1154,6 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/shift-closing': typeof AdminShiftClosingRoute
   '/admin/stock-overview': typeof AdminStockOverviewRoute
-  '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/auth/google': typeof AuthGoogleRoute
   '/home/$section': typeof HomeSectionRoute
   '/karyawan/$username': typeof KaryawanUsernameRoute
@@ -1280,7 +1270,6 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/shift-closing': typeof AdminShiftClosingRoute
   '/admin/stock-overview': typeof AdminStockOverviewRoute
-  '/attendance/stock-opname': typeof AttendanceStockOpnameRoute
   '/auth/google': typeof AuthGoogleRoute
   '/home/$section': typeof HomeSectionRoute
   '/karyawan/$username': typeof KaryawanUsernameRoute
@@ -1404,7 +1393,6 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/shift-closing'
     | '/admin/stock-overview'
-    | '/attendance/stock-opname'
     | '/auth/google'
     | '/home/$section'
     | '/karyawan/$username'
@@ -1517,7 +1505,6 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/shift-closing'
     | '/admin/stock-overview'
-    | '/attendance/stock-opname'
     | '/auth/google'
     | '/home/$section'
     | '/karyawan/$username'
@@ -1633,7 +1620,6 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/shift-closing'
     | '/admin/stock-overview'
-    | '/attendance/stock-opname'
     | '/auth/google'
     | '/home/$section'
     | '/karyawan/$username'
@@ -1830,13 +1816,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/google'
       preLoaderRoute: typeof AuthGoogleRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/attendance/stock-opname': {
-      id: '/attendance/stock-opname'
-      path: '/stock-opname'
-      fullPath: '/attendance/stock-opname'
-      preLoaderRoute: typeof AttendanceStockOpnameRouteImport
-      parentRoute: typeof AttendanceRoute
     }
     '/admin/stock-overview': {
       id: '/admin/stock-overview'
@@ -2997,12 +2976,10 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
 )
 
 interface AttendanceRouteChildren {
-  AttendanceStockOpnameRoute: typeof AttendanceStockOpnameRoute
   AttendanceIndexRoute: typeof AttendanceIndexRoute
 }
 
 const AttendanceRouteChildren: AttendanceRouteChildren = {
-  AttendanceStockOpnameRoute: AttendanceStockOpnameRoute,
   AttendanceIndexRoute: AttendanceIndexRoute,
 }
 

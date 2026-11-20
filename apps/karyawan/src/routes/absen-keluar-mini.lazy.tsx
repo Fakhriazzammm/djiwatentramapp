@@ -1,4 +1,3 @@
-import { useManualStockMode } from "@djiwaapps/web-shared/lib/manual-stock";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState, useEffect, useCallback, useMemo, useRef, forwardRef, useImperativeHandle } from "react";
 import { createClient } from "@djiwaapps/web-shared/lib/client";
@@ -18,7 +17,6 @@ import {
   submitClosingViaEdge,
   prepareKebersihanPhoto,
   ClosingSubmitError,
-  type OpnameItem,
 } from "../hooks/use-closing-submit";
 
 // ─── Search Schema ────────────────────────────
@@ -108,29 +106,6 @@ type StaffProfileData = {
 // ─── Constants
 // ─── Constants ────────────────────────────
 
-const BAR_INGREDIENTS = new Set([
-  "Air Galon", "Apple Juice", "Arabica Beans", "Beans Robusta",
-  "C1000 Apple", "Es Batu", "Fresh Milk Greenfield", "Gula Aren",
-  "Le Mineral", "Lemon Tea Max Tea", "Matcha Powder", "Peach Tea Max Tea",
-  "Richgold Label", "Robusta Beans", "SKM Carnation 488gr", "Sirup Green Apple",
-  "Sirup Peach", "Soda Water Schweppes", "Sprite", "Sunquick Lemon",
-  "Susu Coconut", "Susu Kental Manis", "White Cream",
-]);
-
-const KITCHEN_INGREDIENTS = new Set([
-  "Barbeque Sauce", "Baso Sapi", "Bawang Daun", "Bawang Goreng",
-  "Beras", "Biji Wijen", "Bubur Base", "Butter", "Coklat Powder", "Daging Ayam",
-  "Fla", "Garam", "Gula Pasir Putih", "Kecap Asin", "Kecap Ikan", "Kecap Manis",
-  "Kemangi Instant", "Kentang", "Kerupuk", "Kulit Pangsit (Cap Jempol)",
-  "Mayonaise", "Merica", "Micin", "Minyak Bawang Putih", "Mix Vegetable",
-  "Nasi Ayam Chasiu Sauce", "Nasi Ayam Mentega Sauce",
-  "Nasi Ayam Rempah Kemangi  Sauce", "Nasi Goreng Sauce",
-  "Nasi Telor Omega Pontianak Sauce", "Patty Hamburg", "Pisang",
-  "Roti (Bread Co)", "Saus Sambel (Del Monte)", "Saus Tiram (Mahsuri)",
-  "Saus Tomat (Del Monte)", "Selada (Ibu Teti Pasar)", "Sosis (Salam)",
-  "Telor Ayam (Yogya)", "Telor Omega (Happy Egg)", "Telur Ayam",
-  "Tepung Terigu", "Timun", "Tongcai", "Ubi Cilembu", "Yamin Base",
-]);
 
 const AREAS_KEBERSIHAN: KebersihanArea[] = [
   { id: "bar_kitchen", label: "Bar & Kitchen", icon: "cooking", status: "belum_dicek", foto: null, catatan: "" },
@@ -427,7 +402,6 @@ function EmptyText({ text }: { text: string }) { return <div className="rounded-
 // ═══════════════════════════════════════════
 
 function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, linkTimestamp, linkSignature }: { staff: StaffInfo; role: "bar" | "kitchen" | null; shiftName: string; openTime: string; closeTime: string; linkUid: string; linkTimestamp: string | number; linkSignature: string }) {
-  const [activeTab, setActiveTab] = useState<"opname" | "kebersihan">(role === null ? "kebersihan" : "opname");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitDone, setSubmitDone] = useState(false);
   const [submitResult, setSubmitResult] = useState<{
@@ -442,11 +416,7 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, lin
   const submitInFlightRef = useRef(false);
   const [clockTick, setClockTick] = useState(() => Date.now());
 
-  const opnameRef = useRef<{ getItems: () => OpnameItem[] }>(null);
   const kebersihanRef = useRef<{ getAreas: () => KebersihanArea[] }>(null);
-  const { mode: stockMode } = useManualStockMode();
-  const needsOpname = role !== null && stockMode === "integrated";
-  useEffect(() => { if (!needsOpname) setActiveTab("kebersihan"); }, [needsOpname]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setClockTick(Date.now()), 30_000);
@@ -487,7 +457,7 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, lin
     return () => {
       tg.MainButton.offClick(handleSubmit);
     };
-  }, [submitDone, activeTab, closeScheduleNotice, closeTime]);
+  }, [submitDone, closeScheduleNotice, closeTime]);
 
   // ── Show/update MainButton ──
   useEffect(() => {
@@ -523,11 +493,6 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, lin
 
     setIsSubmitting(true);
     try {
-      const opnameItems = needsOpname ? opnameRef.current?.getItems() ?? [] : [];
-      const markedChanged = opnameItems.filter(
-        (i) => Math.abs(i.qtyAfter - i.qtyBefore) > 0.01
-      );
-
       // Kebersihan: kecilkan foto lalu ikutkan ke payload. Sebelumnya data ini
       // hanya hidup di state dan hilang begitu submit, padahal layar sukses
       // sudah terlanjur bilang "kebersihan tersimpan".
@@ -547,7 +512,7 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, lin
         roleName,
         shiftName,
         role,
-        items: markedChanged.length > 0 ? markedChanged : opnameItems,
+        items: [],
         source: "telegram_mini_app",
         kebersihan,
         linkUid,
@@ -672,46 +637,10 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, lin
         )}
       </div>
 
-      {/* Tabs */}
-      {!submitDone && (
-        <div className="shrink-0 px-4 pt-3">
-          {stockMode === "manual" && <p className="text-xs text-muted-foreground">Stok bahan dikelola terpisah di halaman Material. Closing tidak memerlukan opname.</p>}
-          <div className="flex gap-1 rounded-xl bg-muted/50 p-1">
-            {needsOpname && (
-              <button
-                onClick={() => setActiveTab("opname")}
-                className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] py-2 text-[11px] font-bold transition-all ${
-                  activeTab === "opname"
-                    ? "bg-background shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <ClipboardList className="h-4 w-4" /> Stock Opname
-              </button>
-            )}
-            <button
-              onClick={() => setActiveTab("kebersihan")}
-              className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] py-2 text-[11px] font-bold transition-all ${
-                activeTab === "kebersihan"
-                  ? "bg-background shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Brush className="h-4 w-4" /> Kebersihan
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Content */}
       {!submitDone && (
         <div className="flex-1 overflow-y-auto px-4 py-3">
-          {activeTab === "opname" && needsOpname && (
-            <StockOpnameSection ref={opnameRef} role={role!} mini onSave={() => void handleSubmit()} />
-          )}
-          {activeTab === "kebersihan" && (
-            <KebersihanSection ref={kebersihanRef} onSave={() => void handleSubmit()} />
-          )}
+          <KebersihanSection ref={kebersihanRef} onSave={() => void handleSubmit()} />
         </div>
       )}
 
@@ -720,229 +649,6 @@ function ClosingForm({ staff, role, shiftName, openTime, closeTime, linkUid, lin
     </div>
   );
 }
-
-// ═══════════════════════════════════════════
-//  STOCK OPNAME SECTION (reused)
-// ═══════════════════════════════════════════
-
-const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: "bar" | "kitchen"; mini?: boolean; onSave?: () => void }>(
-  function StockOpnameSection({ role, mini, onSave }, ref) {
-    const [items, setItems] = useState<OpnameItem[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [allSame, setAllSame] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [saved, setSaved] = useState(false);
-
-    const targetNames = role === "bar" ? BAR_INGREDIENTS : KITCHEN_INGREDIENTS;
-    const RoleIcon = role === "bar" ? Coffee : ChefHat;
-    const roleLabel = role === "bar" ? "BAR" : "KITCHEN";
-
-    useEffect(() => {
-      const load = async () => {
-        try {
-          setLoading(true);
-          const supabase = createClient();
-          const { data: inventory, error: invErr } = await supabase
-            .schema("pos")
-            .from("inventory")
-            .select("source_id, ingredient_name, quantity, unit")
-            .limit(500);
-
-          if (invErr) throw invErr;
-
-          const mapped: OpnameItem[] = (inventory || [])
-            .filter((i: any) => targetNames.has((i.ingredient_name || "").trim()))
-            .map((i: any) => ({
-              inventoryId: i.source_id,
-              name: (i.ingredient_name || "").trim(),
-              unit: (i.unit || "").trim(),
-              qtyBefore: parseFloat(i.quantity || "0"),
-              qtyAfter: parseFloat(i.quantity || "0"),
-            }))
-            .sort((a: OpnameItem, b: OpnameItem) => a.name.localeCompare(b.name));
-
-          setItems(mapped);
-        } catch (err: any) {
-          setError(err?.message || "Gagal memuat data stok");
-        } finally {
-          setLoading(false);
-        }
-      };
-      load();
-    }, [role]);
-
-    useImperativeHandle(ref, () => ({
-      getItems: () => items.map((i) => ({
-        ...i,
-        isChanged: Math.abs(i.qtyAfter - i.qtyBefore) > 0.01,
-      })),
-    }));
-
-    const updateQty = (index: number, qty: number) => {
-      setItems((prev) => {
-        const next = [...prev];
-        next[index] = { ...next[index], qtyAfter: Math.max(0, qty) };
-        return next;
-      });
-      setAllSame(false);
-    };
-
-    const markAllSame = () => {
-      setItems((prev) =>
-        prev.map((item) => ({ ...item, qtyAfter: item.qtyBefore }))
-      );
-      setAllSame(true);
-    };
-
-    const changedItems = items.filter(
-      (i) => Math.abs(i.qtyAfter - i.qtyBefore) > 0.01
-    );
-    const filtered = searchQuery
-      ? items.filter((i) => i.name.toLowerCase().includes(searchQuery.toLowerCase()))
-      : items;
-
-    const lowStock = items.filter((i) => i.qtyAfter > 0 && i.qtyAfter <= 3);
-
-    if (loading) {
-      return (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-sm text-muted-foreground">Memuat data stok...</span>
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className="rounded-2xl bg-rose-50 border border-rose-200 p-4 text-center">
-          <AlertTriangle className="h-8 w-8 text-rose-400 mx-auto mb-2" />
-          <p className="text-sm font-semibold text-rose-700">Gagal memuat data</p>
-          <p className="text-xs text-rose-500 mt-1">{error}</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-2.5">
-        {/* Header card */}
-        <div className="rounded-xl bg-gradient-to-br from-sky-50 to-blue-50 border border-sky-200 p-3">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-sm">
-              <ClipboardList className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="flex items-center gap-1.5 font-bold text-xs"><RoleIcon className="h-3.5 w-3.5" /> {roleLabel} Stock Opname</p>
-              <p className="text-[11px] text-muted-foreground">
-                {items.length} bahan — {changedItems.length} berubah
-              </p>
-            </div>
-            {allSame && (
-              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-                <Check className="h-3 w-3" /> Sama
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Quick actions */}
-        <div className="flex gap-2">
-          <button onClick={markAllSame} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] border border-border bg-background px-3 py-2 text-[11px] font-bold hover:bg-muted">
-            <Check className="h-3.5 w-3.5" /> Semua Sama
-          </button>
-          <button onClick={() => { setSaved(true); onSave?.(); }} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] bg-emerald-500 px-3 py-2 text-[11px] font-bold text-white hover:bg-emerald-600">
-            <Save className="h-3.5 w-3.5" /> Simpan & Kirim
-          </button>
-        </div>
-
-        {saved && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-lg bg-blue-50 border border-blue-200 p-2.5 text-center">
-            <p className="flex items-center justify-center gap-1 text-[11px] font-semibold text-blue-700"><Check className="h-3.5 w-3.5" /> Opname tersimpan sementara.</p>
-          </motion.div>
-        )}
-
-        {/* Info banner (compact for mini) */}
-        <div className="rounded-lg bg-amber-50 border border-amber-200 p-2">
-          <p className="flex items-start gap-1 text-[11px] font-medium text-amber-700 leading-relaxed">
-            <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>Hanya <strong>orang terakhir</strong> yang absen keluar perubahannya diterapkan ke stok.</span>
-          </p>
-        </div>
-
-        {/* Search */}
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Cari bahan..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="min-h-11 w-full rounded-[14px] border border-border bg-background py-2 pl-9 pr-11 text-xs outline-none transition-all focus:ring-2 focus:ring-primary/20"
-          />
-          {searchQuery && (
-            <button aria-label="Hapus pencarian" onClick={() => setSearchQuery("")} className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-[14px] text-muted-foreground">
-              <X className="h-3 w-3" />
-            </button>
-          )}
-        </div>
-
-        {/* Stock list */}
-        {filtered.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border p-6 text-center">
-            <p className="text-xs text-muted-foreground">{searchQuery ? "Bahan tidak ditemukan" : "Tidak ada data stok"}</p>
-          </div>
-        ) : (
-          <div className="space-y-1">
-            {filtered.map((item, idx) => {
-              const globalIdx = items.findIndex((i) => i.inventoryId === item.inventoryId);
-              const diff = item.qtyAfter - item.qtyBefore;
-              const isChanged = Math.abs(diff) > 0.01;
-
-              return (
-                <div key={item.inventoryId} className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 transition-all ${
-                  isChanged ? "border-amber-200 bg-amber-50/50" : "border-border bg-background"
-                }`}>
-                  <span className="w-5 text-[11px] font-bold text-muted-foreground text-right shrink-0">{globalIdx + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-semibold truncate">{item.name}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {item.qtyBefore} {item.unit}
-                      {isChanged && (
-                        <span className={`ml-1 font-bold ${diff < 0 ? "text-rose-500" : "text-emerald-500"}`}>
-                          → {item.qtyAfter} ({diff > 0 ? "+" : ""}{diff})
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    <button onClick={() => updateQty(globalIdx, item.qtyAfter - 1)}
-                      className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background text-xs font-bold hover:bg-muted">−</button>
-                    <input type="number" value={item.qtyAfter}
-                      onChange={(e) => updateQty(globalIdx, parseFloat(e.target.value) || 0)}
-                      className="h-6 w-12 rounded-md border border-border bg-background text-center text-[11px] font-bold outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      min={0} step={1} />
-                    <button onClick={() => updateQty(globalIdx, item.qtyAfter + 1)}
-                      className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background text-xs font-bold hover:bg-muted">+</button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Low stock */}
-        {lowStock.length > 0 && (
-          <div className="rounded-lg bg-amber-50 border border-amber-200 p-2.5">
-            <p className="text-[11px] font-bold text-amber-700 uppercase tracking-widest mb-1">Stok Menipis</p>
-            {lowStock.slice(0, 3).map((item) => (
-              <p key={item.name} className="text-[10px] text-amber-700">• {item.name} — {item.qtyAfter}</p>
-            ))}
-            {lowStock.length > 3 && <p className="text-[11px] text-amber-500">+{lowStock.length - 3} lainnya</p>}
-          </div>
-        )}
-      </div>
-    );
-  }
-);
 
 // ═══════════════════════════════════════════
 //  KEBERSIHAN SECTION (reused)

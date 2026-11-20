@@ -153,7 +153,7 @@ function sanitizeRpcArgs(value: unknown): Json {
 	if (JSON.stringify(value).length > 16_384) throw Object.assign(new Error("RPC arguments too large"), { status: 400 });
 	return value as Json;
 }
-async function requireAdmin(token: string, permission: string) {
+async function requireStaff(token: string, permission?: string) {
 	if (!token) throw Object.assign(new Error("Unauthorized"), { status: 401 });
 	const sessions = await restRead("yumi_sessions", { select: "user_source_id,expires_at", eq: { token }, limit: 1 });
 	const session = sessions?.[0];
@@ -165,13 +165,20 @@ async function requireAdmin(token: string, permission: string) {
 	const role = roles?.[0];
 	const roleName = String(role?.name ?? "").trim().toLowerCase();
 	const permissions = Array.isArray(role?.permissions) ? role.permissions.map(String) : [];
-	if (!ADMIN_ROLES.has(roleName) && !permissions.includes(permission)) throw Object.assign(new Error("Admin permission required"), { status: 403 });
+	if (permission && !ADMIN_ROLES.has(roleName) && !permissions.includes(permission)) throw Object.assign(new Error("Admin permission required"), { status: 403 });
 	return {
 		userId: String(user.source_id),
 		userName: String(user.name || user.username || user.source_id).trim() || "Petugas",
 		roleName,
 	};
 }
+
+function itemsArg(value: unknown): Json {
+	if (!Array.isArray(value) || value.length === 0) throw Object.assign(new Error("Data kosong"), { status: 400 });
+	if (JSON.stringify(value).length > 160_000) throw Object.assign(new Error("Data terlalu besar"), { status: 400 });
+	return value as Json;
+}
+const requireAdmin = (token: string, permission: string) => requireStaff(token, permission);
 
 Deno.serve(async (req) => {
 	if (req.method === "OPTIONS") return response({ ok: true });
@@ -211,6 +218,27 @@ Deno.serve(async (req) => {
 			const data = await restRpc("manual_stock_create", {
 				p_name: name,
 				p_unit: unit,
+				p_actor_id: actor.userId,
+				p_actor_name: actor.userName,
+			});
+			return response({ success: true, data });
+		}
+		// Gerbang kasir: staf aktif mana pun yang login boleh mengirim cek menu / opname shift miliknya.
+		if (body.action === "shift_opname_submit") {
+			const actor = await requireStaff(token);
+			const data = await restRpc("shift_opname_submit", {
+				p_items: itemsArg(body.items),
+				p_shift_source_id: String(body.shiftSourceId ?? "").slice(0, 128),
+				p_actor_id: actor.userId,
+				p_actor_name: actor.userName,
+			});
+			return response({ success: true, data });
+		}
+		if (body.action === "shift_menu_check_record") {
+			const actor = await requireStaff(token);
+			const data = await restRpc("shift_menu_check_record", {
+				p_items: itemsArg(body.items),
+				p_shift_source_id: String(body.shiftSourceId ?? "").slice(0, 128),
 				p_actor_id: actor.userId,
 				p_actor_name: actor.userName,
 			});

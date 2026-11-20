@@ -125,12 +125,16 @@ import {
 	useHybridUpdateOrder,
 	useHybridUpdateSiteSettings,
 	useHybridSyncMenuStockFromInventory,
+	useHybridBulkUpdateProducts,
 } from "@/hooks/use-hybrid-write-actions";
 import { cn } from "@/lib/utils";
 import { OrdersScreen } from "@/components/pos-ios/orders-screen";
 import { CashBookScreen } from "@/components/pos-ios/cash-book-screen";
 import { EndShiftScreen, type EndShiftController } from "@/components/pos-ios/end-shift-screen";
 import { OpenShiftFlow, type OpenShiftController } from "@/components/pos-ios/open-shift-flow";
+import type { OpnameController } from "@/components/pos-ios/opname-step";
+import { fetchShiftOpnameItems, recordShiftMenuCheck, submitShiftOpname, type ShiftOpnameMaterial } from "@djiwaapps/web-shared/lib/manual-stock";
+import { buildMenuCheckItems, buildOpnameSubmitItems, menuCheckChanges, opnameEntryFromLast, opnameSummary, type OpnameEntries, type OpnameEntry } from "@/lib/shift-gate";
 import {
   calculateBreakdownTotal as calculateCashBreakdownTotal,
   calculateShiftPaymentBreakdown,
@@ -1449,13 +1453,25 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [cashPhoto, setCashPhoto] = useState<string | null>(null);
 	const [showEndConfirm, setShowEndConfirm] = useState(false);
 	const [startStep, setStartStep] = useState<1 | 2 | 3 | 4>(1);
-	const [startSuccess, setStartSuccess] = useState<{ cashierName: string; shiftName: string; amount: number } | null>(null);
+	const [startSuccess, setStartSuccess] = useState<{ cashierName: string; shiftName: string; amount: number; menuTotal?: number; menuOut?: string[] } | null>(null);
 	const [teamSearch, setTeamSearch] = useState("");
 	const [onlineFoodChecklist, setOnlineFoodChecklist] = useState<OnlineFoodChecklist>(() => createEmptyOnlineFoodChecklist());
 	const [operationalChecklist, setOperationalChecklist] = useState<Record<string, boolean>>(() => Object.fromEntries(OPERATIONAL_CHECKS.map(({ key }) => [key, false])));
 	const [openRequestId, setOpenRequestId] = useState<string | null>(null);
 	const [queuedCount, setQueuedCount] = useState(() => getOfflineManager().getState().queuedActions.length);
 	const [handoverConfirmed, setHandoverConfirmed] = useState(false);
+	// Gerbang kasir: cek menu (buka shift) dan opname bahan (tutup shift).
+	const gateProducts = useHybridAllProducts();
+	const gateCategories = useHybridCategories();
+	const bulkUpdateProducts = useHybridBulkUpdateProducts();
+	const menuCheckItems = useMemo(() => (gateProducts && gateCategories ? buildMenuCheckItems(gateProducts as any[], gateCategories as any[]) : null), [gateProducts, gateCategories]);
+	const [menuChecks, setMenuChecks] = useState<Record<string, boolean | undefined>>({});
+	const [opnameRows, setOpnameRows] = useState<ShiftOpnameMaterial[] | null>(null);
+	const [opnameLoadError, setOpnameLoadError] = useState<string | null>(null);
+	const [opnameEntries, setOpnameEntries] = useState<OpnameEntries>({});
+	const [opnameNotes, setOpnameNotes] = useState<Record<string, string>>({});
+	const [opnameReloadKey, setOpnameReloadKey] = useState(0);
+	const opnameSaved = useRef(false);
 	const closeInFlight = useRef(false);
 	useEffect(() => getOfflineManager().subscribe(state => setQueuedCount(state.queuedActions.length)), []);
 	
@@ -1470,6 +1486,15 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	// Status dari database menjadi sumber kebenaran agar UI tidak sempat
 	// menampilkan flow buka shift saat shift sebenarnya sudah aktif.
 	const isClosingShift = shiftStatus?.isOpen === true || shiftType === "akhiri";
+	useEffect(() => {
+		if (!isClosingShift) return;
+		let active = true;
+		setOpnameLoadError(null);
+		fetchShiftOpnameItems()
+			.then((rows) => { if (active) setOpnameRows(rows); })
+			.catch((error) => { if (active) setOpnameLoadError(error instanceof Error ? error.message : "Daftar bahan opname gagal dimuat"); });
+		return () => { active = false; };
+	}, [isClosingShift, opnameReloadKey]);
 	const [closingAttendance, setClosingAttendance] = useState<Array<{ name: string; userId: string; status: "active" | "checked_out" | "no_show" }>>([]);
 	const [closingAttendanceLoading, setClosingAttendanceLoading] = useState(false);
 	const [closingAttendanceError, setClosingAttendanceError] = useState<string | null>(null);
@@ -1877,6 +1902,15 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		setSubmitError(null);
 		setSubmitNotice(null);
 		try {
+			// Opname bahan wajib selesai sebelum laporan keuangan; tidak dikirim ulang saat penutupan diulang.
+			if (opnameRows && opnameRows.length > 0 && !opnameSaved.current) {
+				const summary = opnameSummary(opnameRows, opnameEntries);
+				if (!summary.complete) throw new Error(`Opname bahan belum selesai: ${summary.total - summary.done} bahan belum dihitung`);
+				const items = buildOpnameSubmitItems(opnameRows, opnameEntries, opnameNotes);
+				if (items.some((item) => item.flagged && !item.note)) throw new Error("Catatan selisih bahan wajib diisi");
+				await submitShiftOpname(items, String(shiftStatus.shiftInfo.shiftId));
+				opnameSaved.current = true;
+			}
 			// The same expense row keeps its fingerprint when closing is retried.
 			for (const exp of endShiftExpenses) {
 				if (exp.savedId) continue;
@@ -2137,6 +2171,15 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				return `${label}: ${statusLabel}${item.note.trim() ? ` — ${item.note.trim()}` : ""}`;
 				}),
 			].join("\n");
+			if (menuCheckItems) {
+				const pendingMenu = menuCheckItems.filter((item) => menuChecks[item.id] === undefined);
+				if (pendingMenu.length > 0) throw new Error(`Cek menu belum selesai: ${pendingMenu.length} menu belum ditandai`);
+			}
+			const menuChanges = menuCheckItems ? menuCheckChanges(menuCheckItems, menuChecks) : [];
+			const turnOff = menuChanges.filter((c) => c.previous && !c.available).map((c) => c.productId);
+			const turnOn = menuChanges.filter((c) => !c.previous && c.available).map((c) => c.productId);
+			if (turnOff.length > 0) await bulkUpdateProducts({ ids: turnOff, updates: { isAvailable: false } });
+			if (turnOn.length > 0) await bulkUpdateProducts({ ids: turnOn, updates: { isAvailable: true } });
 			const openedShiftId = await startShift({
 				cashierName: cashierName.trim(),
 				cashierUserId: cashier?._id ?? null,
@@ -2149,6 +2192,9 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				openRequestId: openRequestId ?? undefined,
 			});
 			await captureStockSnapshot(String(openedShiftId), "opening");
+			if (menuChanges.length > 0) {
+				try { await recordShiftMenuCheck(menuChanges, String(openedShiftId)); } catch (logError) { console.warn("Catatan cek menu gagal disimpan", logError); }
+			}
 			playShiftSound(`open:${openRequestId ?? `${cashierName.trim()}:${shiftName.trim()}`}`, "/sounds/cashier-shift-open.mp3");
 			toast.success("Shift berhasil dimulai");
 			// Pembayaran dan workspace utama punya instance status shift sendiri.
@@ -2169,7 +2215,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				toast.success("Notifikasi pembukaan shift terkirim");
 			}
 			setStartStep(4);
-			setStartSuccess({ cashierName: cashierName.trim(), shiftName: shiftName.trim(), amount: startingCash });
+			setStartSuccess({ cashierName: cashierName.trim(), shiftName: shiftName.trim(), amount: startingCash, menuTotal: menuChanges.length, menuOut: menuChanges.filter((c) => !c.available).map((c) => c.name) });
 			setShiftRefreshTrigger((c) => c + 1);
 			setOpenRequestId(null);
 			window.localStorage.removeItem(SHIFT_OPENING_DRAFT_KEY);
@@ -2219,9 +2265,22 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		setTeamMembers([]);
 		setOnlineFoodChecklist(createEmptyOnlineFoodChecklist());
 		setOperationalChecklist(Object.fromEntries(OPERATIONAL_CHECKS.map(({ key }) => [key, false])));
+		setMenuChecks({});
 		onClose();
 	};
 
+	const opnameController: OpnameController = {
+		rows: opnameRows,
+		loadError: opnameLoadError,
+		reload: () => { setOpnameRows(null); setOpnameReloadKey((k) => k + 1); },
+		entries: opnameEntries,
+		setEntry: (id: string, entry: OpnameEntry) => setOpnameEntries((prev) => ({ ...prev, [id]: entry })),
+		fillFromLast: () => setOpnameEntries((prev) => { const next = { ...prev }; for (const row of opnameRows ?? []) { const entry = opnameEntryFromLast(row); if (entry && !next[row.inventoryId]) next[row.inventoryId] = entry; } return next; }),
+		fillAllAvailable: () => setOpnameEntries((prev) => { const next = { ...prev }; for (const row of opnameRows ?? []) { if (row.mode === "availability" && !next[row.inventoryId]) next[row.inventoryId] = { status: "available" }; } return next; }),
+		reset: () => { setOpnameEntries({}); setOpnameNotes({}); },
+		notes: opnameNotes,
+		setNote: (id: string, text: string) => setOpnameNotes((prev) => ({ ...prev, [id]: text })),
+	};
 	const endController: EndShiftController = {
 		shiftName: shiftStatus?.shiftInfo?.shiftName || shiftName,
 		cashierName: shiftStatus?.shiftInfo?.cashierName || cashierName,
@@ -2260,6 +2319,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		cashPhoto,
 		setCashPhoto,
 		staffName: String(shiftStatus?.shiftInfo?.cashierName || cashierName || ""),
+		opname: opnameController,
 	};
 	if (isClosingShift) return <EndShiftScreen c={endController} />;
 
@@ -2299,6 +2359,12 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		setOnline: setOnlineFoodChecklist as any,
 		onlinePlatforms: ONLINE_FOOD_PLATFORMS,
 		onlineStatusOptions: ONLINE_FOOD_STATUS_OPTIONS,
+		menu: {
+			items: menuCheckItems,
+			checks: menuChecks,
+			setCheck: (id: string, available: boolean) => setMenuChecks((prev) => ({ ...prev, [id]: available })),
+			setAll: (value: boolean | null) => setMenuChecks(value === null ? {} : Object.fromEntries((menuCheckItems ?? []).map((item) => [item.id, value]))),
+		},
 	};
 	return <OpenShiftFlow c={openController} />;
 }

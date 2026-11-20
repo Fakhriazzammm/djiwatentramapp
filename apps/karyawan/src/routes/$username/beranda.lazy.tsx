@@ -170,7 +170,7 @@ function BerandaPage() {
 			</DsGroup>
 			{isIn && (
 				<DsGroup>
-					<DsRow icon={<DsIcon name="stock-opname" />} title="Closing shift" sub="Opname & kebersihan · wajib sebelum absen keluar" trail={<DsTag tone="warn">Belum</DsTag>} onClick={() => go("absen-keluar")} />
+					<DsRow icon={<DsIcon name="stock-opname" />} title="Closing shift" sub="Kebersihan · wajib sebelum absen keluar" trail={<DsTag tone="warn">Belum</DsTag>} onClick={() => go("absen-keluar")} />
 				</DsGroup>
 			)}
 		</div>

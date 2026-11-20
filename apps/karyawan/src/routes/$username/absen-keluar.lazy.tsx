@@ -1,4 +1,3 @@
-import { useManualStockMode } from "@djiwaapps/web-shared/lib/manual-stock";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useStaffProfile } from "../$username.lazy";
 import { DsButton, DsIconButton, DsPageTitle } from "@djiwaapps/web-shared/components/ds";
@@ -9,9 +8,9 @@ import { createClient } from "@djiwaapps/web-shared/lib/client";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ClipboardList, Check, ChevronDown, ChevronUp, Camera, Upload,
+  Check, Camera, Upload,
   Loader2, Sparkles, AlertTriangle, ArrowLeft, X, Image, Brush,
-  Save, Search, Lightbulb, Coffee, ChefHat, CookingPot, Armchair, Toilet
+  Save, Search, Lightbulb, CookingPot, Armchair, Toilet
 } from "lucide-react";
 import {
   submitClosingViaEdge,
@@ -44,29 +43,6 @@ const searchSchema = z.object({
 
 // ─── Constants ───
 
-const BAR_INGREDIENTS = new Set([
-  "Air Galon", "Apple Juice", "Arabica Beans", "Beans Robusta",
-  "C1000 Apple", "Es Batu", "Fresh Milk Greenfield", "Gula Aren",
-  "Le Mineral", "Lemon Tea Max Tea", "Matcha Powder", "Peach Tea Max Tea",
-  "Richgold Label", "Robusta Beans", "SKM Carnation 488gr", "Sirup Green Apple",
-  "Sirup Peach", "Soda Water Schweppes", "Sprite", "Sunquick Lemon",
-  "Susu Coconut", "Susu Kental Manis", "White Cream",
-]);
-
-const KITCHEN_INGREDIENTS = new Set([
-  "Barbeque Sauce", "Baso Sapi", "Bawang Daun", "Bawang Goreng",
-  "Beras", "Biji Wijen", "Bubur Base", "Butter", "Coklat Powder", "Daging Ayam",
-  "Fla", "Garam", "Gula Pasir Putih", "Kecap Asin", "Kecap Ikan", "Kecap Manis",
-  "Kemangi Instant", "Kentang", "Kerupuk", "Kulit Pangsit (Cap Jempol)",
-  "Mayonaise", "Merica", "Micin", "Minyak Bawang Putih", "Mix Vegetable",
-  "Nasi Ayam Chasiu Sauce", "Nasi Ayam Mentega Sauce",
-  "Nasi Ayam Rempah Kemangi  Sauce", "Nasi Goreng Sauce",
-  "Nasi Telor Omega Pontianak Sauce", "Patty Hamburg", "Pisang",
-  "Roti (Bread Co)", "Saus Sambel (Del Monte)", "Saus Tiram (Mahsuri)",
-  "Saus Tomat (Del Monte)", "Selada (Ibu Teti Pasar)", "Sosis (Salam)",
-  "Telor Ayam (Yogya)", "Telor Omega (Happy Egg)", "Telur Ayam",
-  "Tepung Terigu", "Timun", "Tongcai", "Ubi Cilembu", "Yamin Base",
-]);
 
 const AREAS_KEBERSIHAN: KebersihanArea[] = [
   { id: "bar_kitchen", label: "Bar & Kitchen", icon: "cooking", status: "bersih", foto: null, catatan: "" },
@@ -115,14 +91,13 @@ function ClosingPage() {
     };
     fetchShift();
   }, [staff, username, shiftName]);
-  const [activeTab, setActiveTab] = useState<"opname" | "kebersihan">("opname");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitDone, setSubmitDone] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const pendingRef = useRef<{ items: OpnameItem[]; kebersihan: KebersihanSubmitArea[] } | null>(null);
 
-  // Detect role for stock opname
+  // Peran dikirim ke closing; opname bahan kini dikerjakan kasir saat tutup shift.
   const role = useMemo<"bar" | "kitchen" | null>(() => {
     const r = (staff?.roleName || "").toLowerCase();
     if (r.includes("bar")) return "bar";
@@ -130,13 +105,8 @@ function ClosingPage() {
     return null;
   }, [staff]);
 
-  const { mode: stockMode } = useManualStockMode();
-  const needsOpname = role !== null && stockMode === "integrated";
-  useEffect(() => { if (!needsOpname) setActiveTab("kebersihan"); }, [needsOpname]);
-  const steps: ("opname" | "kebersihan")[] = needsOpname ? ["opname", "kebersihan"] : ["kebersihan"];
 
   // Refs to child sections for data extraction
-  const opnameRef = useRef<{ getItems: () => OpnameItem[] }>(null);
   const kebersihanRef = useRef<{ getAreas: () => KebersihanArea[] }>(null);
 
   const userId = staff?._id || username;
@@ -167,7 +137,7 @@ function ClosingPage() {
               {today.lastIn && <div className="kx-kv"><span>Masuk</span><b>{new Date(today.lastIn).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(".", ":")}</b></div>}
               <div className="kx-kv"><span>Shift</span><b>{shiftName}</b></div>
               {today.lastIn && <div className="kx-kv"><span>Jam kerja</span><b>{(() => { const m = Math.max(0, Math.round((Date.now() - today.lastIn) / 60000)); return `${Math.floor(m / 60)}j ${m % 60}m`; })()}</b></div>}
-              <div className="kx-kv"><span>Closing</span><b>Opname &amp; kebersihan terkirim</b></div>
+              <div className="kx-kv"><span>Closing</span><b>Kebersihan terkirim</b></div>
             </div>
             <button type="button" className="ds-btn ds-btn--block" onClick={() => navigate({ to: `/${username}/beranda` })}>Ke Beranda</button>
             <button type="button" className="ds-btn ds-btn--ghost ds-btn--block" style={{ marginTop: 8 }} onClick={() => navigate({ to: `/${username}/rekap-absensi` })}>Lihat rekap</button>
@@ -178,13 +148,6 @@ function ClosingPage() {
       <div className="shrink-0 mb-3">
         <DsPageTitle left={<DsIconButton aria-label="Kembali" onClick={() => navigate({ to: `/${username}/beranda` })}>‹</DsIconButton>}>Closing shift</DsPageTitle>
         <p className="ds-sub" style={{ margin: "-6px 4px 8px" }}>{userName} · {shiftName}</p>
-        {!submitDone && (
-          <>
-            <div className="ds-bar" style={{ margin: "0 4px 6px" }}><i style={{ width: `${((steps.indexOf(activeTab) + 1) / steps.length) * 100}%` }} /></div>
-            <div className="ds-label" style={{ margin: "0 6px" }}>{steps.indexOf(activeTab) + 1} dari {steps.length} · {activeTab === "opname" ? "Opname stok" : "Kebersihan"}</div>
-          </>
-        )}
-
         {/* Error Banner */}
         {submitError && (
           <motion.div
@@ -205,21 +168,10 @@ function ClosingPage() {
 
       {!submitDone && (
         <>
-          {stockMode === "manual" && <p className="mb-3 text-xs text-muted-foreground">Stok bahan dikelola terpisah di halaman Material. Closing tidak memerlukan opname.</p>}
           {/* Content */}
           <div className="flex-1 overflow-y-auto">
             <AnimatePresence mode="wait">
-              {activeTab === "opname" && needsOpname && (
-                <motion.div
-                  key="opname"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 10 }}
-                >
-                  <StockOpnameSection ref={opnameRef} role={role!} />
-                </motion.div>
-              )}
-              {activeTab === "kebersihan" && (
+              {(
                 <motion.div
                   key="kebersihan"
                   initial={{ opacity: 0, x: -10 }}
@@ -234,12 +186,7 @@ function ClosingPage() {
 
           {/* Aksi */}
           <div className="shrink-0 pt-2 pb-2">
-            {activeTab === "opname" && steps.length > 1 ? (
-              <DsButton block onClick={() => setActiveTab("kebersihan")}>Lanjut</DsButton>
-            ) : (
-              <DsButton block disabled={isSubmitting} onClick={handleSubmit}>{isSubmitting ? "Menyimpan…" : "Kirim laporan & verifikasi"}</DsButton>
-            )}
-            {activeTab === "kebersihan" && steps.length > 1 && <DsButton block variant="ghost" onClick={() => setActiveTab("opname")}>Kembali ke opname</DsButton>}
+            <DsButton block disabled={isSubmitting} onClick={handleSubmit}>{isSubmitting ? "Menyimpan…" : "Kirim laporan & verifikasi"}</DsButton>
           </div>
         </>
       )}
@@ -277,12 +224,6 @@ function ClosingPage() {
     setSubmitError(null);
     setIsSubmitting(true);
     try {
-      // 1. Get opname items
-      const opnameItems = needsOpname ? opnameRef.current?.getItems() ?? [] : [];
-      const markedChanged = opnameItems.filter(
-        (i) => Math.abs(i.qtyAfter - i.qtyBefore) > 0.01
-      );
-
       // 2. Kebersihan: kecilkan foto lalu ikutkan ke payload. Sebelumnya
       //    data ini hanya hidup di state dan hilang begitu submit.
       const areasKebersihan = kebersihanRef.current?.getAreas() ?? [];
@@ -297,7 +238,7 @@ function ClosingPage() {
       );
 
       // 3. Simpan payload, lalu minta verifikasi (wajah/PIN) + lokasi sebelum absen keluar.
-      pendingRef.current = { items: markedChanged.length > 0 ? markedChanged : opnameItems, kebersihan };
+      pendingRef.current = { items: [], kebersihan };
       setVerifying(true);
     } catch (err: any) {
       const msg = err?.message || err?.toString() || "Terjadi kesalahan";
@@ -308,282 +249,6 @@ function ClosingPage() {
     }
   }
 }
-
-// ═══════════════════════════════════════════
-//  STOCK OPNAME SECTION
-// ═══════════════════════════════════════════
-
-const StockOpnameSection = forwardRef<{ getItems: () => OpnameItem[] }, { role: "bar" | "kitchen" }>(
-  function StockOpnameSection({ role }, ref) {
-    const [items, setItems] = useState<OpnameItem[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [allSame, setAllSame] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [saved, setSaved] = useState(false);
-
-    const targetNames = role === "bar" ? BAR_INGREDIENTS : KITCHEN_INGREDIENTS;
-    const RoleIcon = role === "bar" ? Coffee : ChefHat;
-    const roleLabel = role === "bar" ? "BAR" : "KITCHEN";
-
-    useEffect(() => {
-      const load = async () => {
-        try {
-          setLoading(true);
-          const supabase = createClient();
-          const { data: inventory, error: invErr } = await supabase
-            .schema("pos")
-            .from("inventory")
-            .select("source_id, ingredient_name, quantity, unit")
-            .limit(500);
-
-          if (invErr) throw invErr;
-
-          const mapped: OpnameItem[] = (inventory || [])
-            .filter((i: any) => targetNames.has((i.ingredient_name || "").trim()))
-            .map((i: any) => ({
-              inventoryId: i.source_id,
-              name: (i.ingredient_name || "").trim(),
-              unit: (i.unit || "").trim(),
-              qtyBefore: parseFloat(i.quantity || "0"),
-              qtyAfter: parseFloat(i.quantity || "0"),
-            }))
-            .sort((a: OpnameItem, b: OpnameItem) => a.name.localeCompare(b.name));
-
-          setItems(mapped);
-        } catch (err: any) {
-          setError(err?.message || "Gagal memuat data stok");
-        } finally {
-          setLoading(false);
-        }
-      };
-      load();
-    }, [role]);
-
-    // Expose getItems to parent via ref
-    useImperativeHandle(ref, () => ({
-      getItems: () => items.map((i) => ({
-        ...i,
-        isChanged: Math.abs(i.qtyAfter - i.qtyBefore) > 0.01,
-      })),
-    }));
-
-    const updateQty = (index: number, qty: number) => {
-      setItems((prev) => {
-        const next = [...prev];
-        next[index] = { ...next[index], qtyAfter: Math.max(0, qty) };
-        return next;
-      });
-      setAllSame(false);
-    };
-
-    const markAllSame = () => {
-      setItems((prev) =>
-        prev.map((item) => ({ ...item, qtyAfter: item.qtyBefore }))
-      );
-      setAllSame(true);
-    };
-
-    const changedItems = items.filter(
-      (i) => Math.abs(i.qtyAfter - i.qtyBefore) > 0.01
-    );
-
-    const filtered = searchQuery
-      ? items.filter((i) =>
-          i.name.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      : items;
-
-    const lowStock = items.filter((i) => i.qtyAfter > 0 && i.qtyAfter <= 3);
-
-    if (loading) {
-      return (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-sm text-muted-foreground">Memuat data stok...</span>
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className="rounded-2xl bg-rose-50 border border-rose-200 p-4 text-center">
-          <AlertTriangle className="h-8 w-8 text-rose-400 mx-auto mb-2" />
-          <p className="text-sm font-semibold text-rose-700">Gagal memuat data</p>
-          <p className="text-xs text-rose-500 mt-1">{error}</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-3">
-        {/* Header */}
-        <div className="rounded-2xl bg-gradient-to-br from-sky-50 to-blue-50 border border-sky-200 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-sm">
-              <ClipboardList className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="flex items-center gap-1.5 font-black text-sm"><RoleIcon className="h-4 w-4" /> {roleLabel} Stock Opname</p>
-              <p className="text-[10px] text-muted-foreground font-medium">
-                {items.length} bahan — {changedItems.length} berubah
-              </p>
-            </div>
-            {allSame && (
-              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-700">
-                <Check className="h-3 w-3" /> Sama semua
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="flex gap-2">
-          <button
-            onClick={markAllSame}
-            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] border border-border bg-background px-3 py-2.5 text-xs font-bold hover:bg-muted transition-colors"
-          >
-            <Check className="h-4 w-4" /> Semua Sama
-          </button>
-          <button
-            onClick={() => setSaved(true)}
-            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] bg-emerald-500 px-3 py-2.5 text-xs font-bold text-white hover:bg-emerald-600 transition-colors"
-          >
-            <Save className="h-4 w-4" /> Simpan Opname
-          </button>
-        </div>
-
-        {/* Notification: data will be used on final submit */}
-        {saved && (
-          <motion.div
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl bg-blue-50 border border-blue-200 p-3 text-center"
-          >
-            <p className="flex items-center justify-center gap-1.5 text-xs font-semibold text-blue-700">
-              <Check className="h-4 w-4 shrink-0" /> Opname tersimpan sementara. Tekan "Kirim Laporan Closing" untuk absen keluar.
-            </p>
-          </motion.div>
-        )}
-
-        {/* Info banner */}
-        <div className="rounded-xl bg-amber-50 border border-amber-200 p-2.5">
-          <p className="flex items-start gap-1.5 text-[10px] font-medium text-amber-700 leading-relaxed">
-            <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>Opname ini akan disimpan per orang. Hanya <strong>orang terakhir</strong> yang
-            absen keluar yang perubahannya diterapkan ke stok ({roleLabel}).</span>
-          </p>
-        </div>
-
-        {/* Search */}
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Cari bahan..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="min-h-11 w-full rounded-[14px] border border-border bg-background py-2.5 pl-10 pr-12 text-sm outline-none transition-all focus:ring-2 focus:ring-primary/20"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              aria-label="Hapus pencarian"
-              className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-[14px] text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-
-        {/* Stock List */}
-        {filtered.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border p-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              {searchQuery ? "Bahan tidak ditemukan" : "Tidak ada data stok"}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-1.5">
-            {filtered.map((item, idx) => {
-              const globalIdx = items.findIndex((i) => i.inventoryId === item.inventoryId);
-              const diff = item.qtyAfter - item.qtyBefore;
-              const isChanged = Math.abs(diff) > 0.01;
-
-              return (
-                <div
-                  key={item.inventoryId}
-                  className={`flex items-center gap-2 rounded-xl border px-3.5 py-2.5 transition-all ${
-                    isChanged
-                      ? "border-amber-200 bg-amber-50/50"
-                      : "border-border bg-background"
-                  }`}
-                >
-                  <span className="w-6 text-[10px] font-bold text-muted-foreground text-right shrink-0">
-                    {globalIdx + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold truncate">{item.name}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      Stok: {item.qtyBefore} {item.unit}
-                      {isChanged && (
-                        <span className={`ml-1 font-bold ${diff < 0 ? "text-rose-500" : "text-emerald-500"}`}>
-                          → {item.qtyAfter} ({diff > 0 ? "+" : ""}{diff})
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => updateQty(globalIdx, item.qtyAfter - 1)}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-background text-xs font-bold hover:bg-muted transition-colors"
-                    >
-                      −
-                    </button>
-                    <input
-                      type="number"
-                      value={item.qtyAfter}
-                      onChange={(e) => updateQty(globalIdx, parseFloat(e.target.value) || 0)}
-                      className="h-7 w-14 rounded-lg border border-border bg-background text-center text-xs font-bold outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      min={0}
-                      step={1}
-                    />
-                    <button
-                      onClick={() => updateQty(globalIdx, item.qtyAfter + 1)}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-background text-xs font-bold hover:bg-muted transition-colors"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Low Stock Alert */}
-        {lowStock.length > 0 && (
-          <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3">
-            <div className="flex items-center gap-2 mb-1.5">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">
-                Stok Menipis
-              </p>
-            </div>
-            {lowStock.slice(0, 5).map((item) => (
-              <p key={item.name} className="text-xs text-amber-700 ml-6">
-                • {item.name} — sisa {item.qtyAfter}
-              </p>
-            ))}
-            {lowStock.length > 5 && (
-              <p className="text-xs text-amber-500 ml-6">+{lowStock.length - 5} lainnya</p>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
-);
 
 // ═══════════════════════════════════════════
 //  KEBERSIHAN SECTION
