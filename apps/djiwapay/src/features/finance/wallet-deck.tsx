@@ -4,6 +4,8 @@ import { AnimatedNumber, Btn, I3, Ic, Seg, Sheet, spring, type IconName } from "
 import type { FinCtx } from "./fin-pages";
 import { EntryRow } from "./fin-pages";
 import { accountBalance, inMonth } from "../../lib/finance/calc";
+import { planAdjustment, type AdjustMode } from "../../lib/finance/adjust";
+import { MoneyInput } from "./fin-sheets";
 import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import type { Account } from "../../lib/finance/types";
@@ -108,7 +110,7 @@ export function WalletDetailSheet({ ctx, id, onClose }: { ctx: FinCtx; id: strin
   const go = (fn: () => void) => () => { onClose(); fn(); };
   const acts: [IconName, string, () => void][] = pay
     ? [["plus", "Isi saldo", () => ctx.nav.go("/wallet/topup")], ["send", "Kirim", () => ctx.nav.go("/wallet/transfer")], ["scan", "Scan QR", () => ctx.nav.go("/wallet/transfer?mode=scan")], ["flash", "Bayar", () => ctx.nav.go("/bayar")]]
-    : [["edit", account!.opening === 0 && balance < 0 ? "Isi saldo awal" : "Ubah", () => ctx.open({ k: "account", id })], ["plus", "Catat", () => ctx.open({ k: "catat" })], ["list", "Catatan", () => ctx.nav.go("/riwayat")]];
+    : [["wallet", "Sesuaikan", () => ctx.open({ k: "wallet-adjust", id })], ["edit", "Ubah", () => ctx.open({ k: "account", id })], ["plus", "Catat", () => ctx.open({ k: "catat" })], ["list", "Catatan", () => ctx.nav.go("/riwayat")]];
   return <Sheet title={name} onClose={onClose}>
     <motion.div className="dpx-wd-card dpx-wd-sheetcard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={spring} style={{ background: `linear-gradient(145deg, ${skin.from}, ${skin.to})`, position: "relative", height: "auto", minHeight: 120 }}>
       <div className="dpx-wd-amt"><small>Rp</small>{ctx.visible ? <>{balance < 0 ? "−" : ""}<AnimatedNumber value={Math.abs(balance)} /></> : "•••••••"}</div>
@@ -121,5 +123,35 @@ export function WalletDetailSheet({ ctx, id, onClose }: { ctx: FinCtx; id: strin
       {acts.map(([icon, label, fn]) => <Btn key={label} type="button" className="dpx-wd-act" onClick={go(fn)}><Ic n={icon} /><span>{label}</span></Btn>)}
     </div>
     {mine.length ? <><div className="dpx-glabel">Terakhir di {name}</div><div className="dpx-group dpx-flush dpx-white">{mine.slice(0, 4).map((e, i) => <EntryRow key={e.id} entry={e} state={fin.state} i={i} onOpen={(eid) => { onClose(); ctx.open({ k: "entry", id: eid }); }} />)}</div></> : <p className="dpx-sub dpx-center" style={{ margin: "10px 0 0" }}>Belum ada catatan di {name}.</p>}
+  </Sheet>;
+}
+
+/** Match a wallet to what the bank app shows: type the real balance, see the gap, choose how to record it. */
+export function WalletAdjustSheet({ ctx, id, onClose }: { ctx: FinCtx; id: string; onClose: () => void }) {
+  const { fin } = ctx, account = fin.raw.accounts.find((a) => a.id === id);
+  const current = account ? accountBalance(account, fin.allRecords) : 0;
+  const [digits, setDigits] = useState(""), [minus, setMinus] = useState(current < 0 && account?.type === "card"), [mode, setMode] = useState<AdjustMode>(fin.allRecords.some((e) => e.accountId === id) ? "entry" : "opening");
+  if (!account) return null;
+  const typed = digits !== "", target = (minus ? -1 : 1) * Number(digits || 0), plan = typed ? planAdjustment(account, current, target, mode) : null, diff = plan?.diff ?? 0;
+  const mask = (t: string) => (ctx.visible ? t : "•••••");
+  const money = (n: number) => `${n < 0 ? "−" : ""}${rupiah(Math.abs(n))}`;
+  const save = () => {
+    if (!plan || plan.diff === 0) return;
+    if (plan.account) { const before = account; fin.dispatch({ type: "account/upsert", account: plan.account }); ctx.notify(`Saldo ${account.name} disesuaikan`, () => fin.dispatch({ type: "account/upsert", account: before })); }
+    else if (plan.entry) { const eid = plan.entry.id; fin.dispatch({ type: "entry/add", entry: plan.entry }); ctx.notify(`Selisih ${money(diff)} dicatat di ${account.name}`, () => fin.dispatch({ type: "entry/delete", id: eid })); }
+    onClose();
+  };
+  return <Sheet title="Sesuaikan saldo" onClose={onClose}>
+    <p className="dpx-sub" style={{ margin: "0 4px 10px" }}>Samakan saldo {account.name} di aplikasi dengan saldo sebenarnya di bank atau dompetnya.</p>
+    <div className="dpx-group dpx-white" style={{ padding: "12px 16px" }}><div className="dpx-sub">Saldo di aplikasi sekarang</div><div style={{ font: "800 24px var(--font)", letterSpacing: "-.02em", fontVariantNumeric: "tabular-nums" }}>{mask(money(current))}</div></div>
+    <label className="dpx-field"><span>Saldo sebenarnya</span><MoneyInput value={digits} onChange={setDigits} label="Saldo sebenarnya" placeholder="0" big /></label>
+    <label className="dpx-check" style={{ display: "flex", alignItems: "center", gap: 8, margin: "6px 4px 0", fontSize: 13, color: "var(--mute)" }}><input type="checkbox" checked={minus} onChange={(e) => setMinus(e.target.checked)} /> Saldo minus (misalnya tagihan kartu)</label>
+    <AnimatePresence initial={false}>{typed ? <motion.div key="plan" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={spring} style={{ overflow: "hidden" }}>
+      <div className={`dpx-note ${diff === 0 ? "" : diff > 0 ? "dpx-ok" : "dpx-danger"}`} role="status" style={{ marginTop: 12 }}><Ic n={diff === 0 ? "check" : "info"} /><div>{diff === 0 ? "Saldo sudah sama. Tidak ada yang perlu disesuaikan." : <><b>Selisih {diff > 0 ? "+" : "−"}{rupiah(Math.abs(diff))}</b> {diff > 0 ? "saldo sebenarnya lebih besar dari catatan." : "saldo sebenarnya lebih kecil dari catatan."}</>}</div></div>
+      {diff !== 0 ? <><div className="dpx-glabel" style={{ marginTop: 14 }}>Cara mencatat</div>
+        <Seg id="adj-mode" label="Cara mencatat selisih" fit value={mode} onChange={setMode} options={[["opening", "Koreksi saldo"], ["entry", "Catat selisih"]] as const} />
+        <p className="dpx-sub" style={{ margin: "6px 4px 0" }}>{mode === "opening" ? "Mengubah saldo awal. Tidak muncul sebagai pemasukan atau pengeluaran, jadi laporan tidak terpengaruh." : `Dicatat sebagai ${diff > 0 ? "pemasukan" : "pengeluaran"} “Penyesuaian saldo” dan ikut dihitung di laporan.`}</p></> : null}
+    </motion.div> : null}</AnimatePresence>
+    <Btn type="button" className={`dpx-btn ${typed && diff !== 0 ? "" : "dpx-off"}`} disabled={!typed || diff === 0} onClick={save} style={{ marginTop: 14 }}>Sesuaikan saldo</Btn>
   </Sheet>;
 }

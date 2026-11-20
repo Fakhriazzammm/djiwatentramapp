@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { markAutoSeen, readAutoSeen } from "../../lib/finance/integrations";
 import { AnimatePresence, motion } from "framer-motion";
 import { CeritaBody } from "./beranda-cerita";
-import { WalletDeck, WalletDetailSheet } from "./wallet-deck";
+import { WalletAdjustSheet, WalletDeck, WalletDetailSheet } from "./wallet-deck";
 import { quoteDeck } from "../../lib/quotes";
 import { wealthHistory } from "../../lib/finance/story";
 import { Avatar, payAsset, AnimatedNumber, Bar, Mascot, MascotBuddy, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
@@ -35,7 +35,7 @@ import type { WalletTransaction } from "../../lib/wallet-adapter";
 
 export type FinSheet =
   | { k: "catat" } | { k: "entry"; id: string } | { k: "budget"; cid?: string } | { k: "goal"; id?: string } | { k: "goal-detail"; id: string }
-  | { k: "debt"; id?: string } | { k: "split" } | { k: "streak" } | { k: "account"; id?: string } | { k: "wallet-view"; id: string } | { k: "category"; id?: string } | { k: "pay-category"; id: string }
+  | { k: "debt"; id?: string } | { k: "split" } | { k: "streak" } | { k: "account"; id?: string } | { k: "wallet-view"; id: string } | { k: "wallet-adjust"; id: string } | { k: "category"; id?: string } | { k: "pay-category"; id: string }
   | { k: "bill"; id?: string } | { k: "bill-pay"; id: string } | { k: "asset"; id?: string } | { k: "asset-new"; noPhoto?: boolean } | { k: "loan"; id?: string; draft?: import("../../lib/finance/loans").LoanInput } | { k: "loan-view"; id: string } | { k: "loan-pay"; id: string; extra?: boolean } | { k: "loan-rate"; id: string } | { k: "stock-activate" } | { k: "stock-add"; ticker?: string; side?: "buy" | "sell"; first?: boolean } | { k: "stock-view"; ticker: string } | { k: "stock-trade"; id: string } | { k: "stock-fee" } | { k: "stock-manual"; ticker: string } | { k: "asset-view"; id: string } | { k: "pockets" } | { k: "pocket"; id?: string } | { k: "payoff" } | { k: "weekly" };
 
 export type FinCtx = {
@@ -414,6 +414,7 @@ export function FinSheetHost({ ctx, sheet, close, goManual, openPaySheet }: { ct
     case "weekly": return <WeeklySheet key="weekly" entries={entries} categoryName={(id) => catOf(state, id).name} onClose={close} />;
     case "split": return <SplitSheet key="split" notify={notify} onClose={close} />;
     case "streak": return <StreakSheet key="streak" entries={entries} onClose={close} onCatat={() => ctx.open({ k: "catat" })} />;
+    case "wallet-adjust": return <WalletAdjustSheet key={`wa-${sheet.id}`} ctx={ctx} id={sheet.id} onClose={close} />;
     case "wallet-view": return <WalletDetailSheet key={`wv-${sheet.id}`} ctx={ctx} id={sheet.id} onClose={close} />;
     case "account": return <AccountEditSheet key="acc" fin={fin} account={state.accounts.find((a) => a.id === sheet.id)} notify={notify} onClose={close} />;
     case "category": return <CategoryEditSheet key="cat" fin={fin} category={state.categories.find((c) => c.id === sheet.id)} notify={notify} onClose={close} />;
