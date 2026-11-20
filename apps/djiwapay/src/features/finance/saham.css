@@ -62,7 +62,7 @@
 .dpx .dpx-sk-body{display:block}
 .dpx .dpx-vt-sumacts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .dpx .dpx-vt-sumacts .dpx-btn{width:100%;min-height:44px;padding:0 10px;font-size:14px;white-space:nowrap}
-.dpx .dpx-pay-strip{display:flex;align-items:center;gap:10px;background:#fff;border-radius:22px;padding:14px 14px 14px 16px;box-shadow:0 6px 20px rgba(43,38,32,.07)}
+.dpx .dpx-st-card.dpx-pay-strip{display:flex;grid-template-columns:none;grid-template-rows:none;flex-wrap:nowrap;align-items:center;gap:10px;background:#fff;border-radius:22px;padding:14px 14px 14px 16px;box-shadow:0 6px 20px rgba(43,38,32,.07)}
 .dpx .dpx-pay-bal{flex:1 1 auto;min-width:0}
 .dpx .dpx-pay-lbl{display:flex;align-items:center;gap:4px;font-size:12.5px;color:var(--mute);min-width:0}
 .dpx .dpx-pay-eye{width:26px;height:26px;min-height:0;padding:0;display:inline-grid;place-items:center;color:var(--mute);background:none;border-radius:99px}
