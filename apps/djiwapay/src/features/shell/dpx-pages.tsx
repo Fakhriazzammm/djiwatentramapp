@@ -160,17 +160,20 @@ export function AccountPage({ profile, unread, customerHome, onBack, nav, onOpen
 const NOTE_LOOK: Record<string, { icon: IconName; tone: string }> = { "fin-email": { icon: "receipt", tone: "orange" }, "fin-bill": { icon: "cal", tone: "amber" }, "fin-budget": { icon: "warn", tone: "rose" }, "fin-debt": { icon: "users", tone: "violet" }, "fin-goal": { icon: "target", tone: "emerald" } };
 const noteDay = (iso: string) => { const d = new Date(iso); if (Number.isNaN(d.getTime())) return "Lainnya"; const key = (x: Date) => x.toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" }); const today = new Date(); const yest = new Date(today.getTime() - 864e5); return key(d) === key(today) ? "Hari ini" : key(d) === key(yest) ? "Kemarin" : d.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: key(d).slice(0, 4) === key(today).slice(0, 4) ? undefined : "numeric", timeZone: "Asia/Jakarta" }); };
 const cleanTitle = (t: string) => t.replace(/\s*[·•]\s*PAN\b.*$/i, "").replace(/\s+/g, " ").trim();
-export function NotificationsPage({ items, loading, busy, onBack, onRead, onReadAll }: { items: WalletNotification[]; loading: boolean; busy: boolean; onBack: () => void; onRead: (n: WalletNotification) => void; onReadAll: () => void }) {
+export function NotificationsPage({ items, loading, busy, onBack, onRead, onReadAll, feed }: { items: WalletNotification[]; loading: boolean; busy: boolean; onBack: () => void; onRead: (n: WalletNotification) => void; onReadAll: () => void; feed?: ReactNode }) {
   const unread = items.filter((n) => n.unread).length;
-  const [only, setOnly] = useState(false);
+  const [tab, setTab] = useState<"semua" | "unread" | "cerita">("semua");
+  const only = tab === "unread";
   const shown = only ? items.filter((n) => n.unread) : items;
   const groups = useMemo(() => { const m = new Map<string, WalletNotification[]>(); for (const n of shown) { const k = noteDay(n.created_at); m.set(k, [...(m.get(k) ?? []), n]); } return [...m.entries()]; }, [shown]);
   return <div className="dpx-page"><Sky><div className="dpx-pad dpx-nobar">
     <Header title="Notifikasi" onBack={onBack} right={<Btn type="button" className="dpx-linkbtn" style={{ textAlign: "right", whiteSpace: "nowrap", opacity: unread && !busy ? 1 : 0.4 }} disabled={busy || unread === 0} onClick={onReadAll}>{busy ? "Memproses" : "Tandai dibaca"}</Btn>} />
-    <div className="dpx-nt-chips" role="tablist" aria-label="Filter notifikasi"><Btn type="button" role="tab" aria-selected={!only} className={`dpx-nt-chip ${!only ? "on" : ""}`} onClick={() => setOnly(false)}>Semua <em>{items.length}</em></Btn><Btn type="button" role="tab" aria-selected={only} className={`dpx-nt-chip ${only ? "on" : ""}`} onClick={() => setOnly(true)}>Belum dibaca <em>{unread}</em></Btn></div>
+    <div className="dpx-nt-chips" role="tablist" aria-label="Filter notifikasi"><Btn type="button" role="tab" aria-selected={tab === "semua"} className={`dpx-nt-chip ${tab === "semua" ? "on" : ""}`} onClick={() => setTab("semua")}>Semua <em>{items.length}</em></Btn><Btn type="button" role="tab" aria-selected={tab === "unread"} className={`dpx-nt-chip ${tab === "unread" ? "on" : ""}`} onClick={() => setTab("unread")}>Belum dibaca <em>{unread}</em></Btn>{feed ? <Btn type="button" role="tab" aria-selected={tab === "cerita"} className={`dpx-nt-chip ${tab === "cerita" ? "on" : ""}`} onClick={() => setTab("cerita")}>Cerita &amp; berita</Btn> : null}</div>
+    {tab === "cerita" && feed ? feed : <>
     {loading && items.length === 0 ? <SkeletonBlock h={160} /> : shown.length === 0 ? <div className="dpx-empty"><I3 name="notifications-alerts" px={112} /><b>{only ? "Semua sudah dibaca" : "Belum ada notifikasi"}</b><p>{only ? "Tidak ada notifikasi baru." : "Aktivitas saldo, transfer, email pembayaran, tagihan, dan anggaran akan muncul di sini."}</p></div>
       : groups.map(([day, list]) => <section key={day} className="dpx-nt-day"><div className="dpx-glabel">{day}</div>
         <div className="dpx-group dpx-flush dpx-white">{list.map((n, i) => <motion.div key={n.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: Math.min(i, 8) * 0.03 }}><Btn type="button" className={`dpx-row dpx-nt-row ${n.unread ? "unread" : ""}`} onClick={() => onRead(n)}><span className={`dpx-cat dpx-c-${NOTE_LOOK[n.notification_type]?.tone ?? "blue"}`}><Ic n={NOTE_LOOK[n.notification_type]?.icon ?? "bell"} /></span><span className="dpx-main"><b>{cleanTitle(n.title)}</b><span>{n.message}</span></span><span className="dpx-trail"><small>{formatTime(n.created_at)}</small>{n.unread ? <span className="dpx-unread" aria-label="Belum dibaca" /> : null}</span></Btn></motion.div>)}</div></section>)}
+    </>}
   </div></Sky></div>;
 }
 

@@ -19,7 +19,7 @@ import { emptyState, normalize } from "../../lib/finance/store";
 import { dayLabel, daypart, firstName, formatTime, greeting, rupiah } from "../../lib/djiwa-pay-format";
 import { heatLevel, monthLabel } from "../../lib/djiwa-pay-summary";
 import type { Entry, FinanceState, Kind } from "../../lib/finance/types";
-import { ReviewChip, useInbound } from "../integrations/integrations-pages";
+import { AutoChip, ReviewChip, useInbound } from "../integrations/integrations-pages";
 import type { Finance } from "../../lib/finance/use-finance";
 import { KelolaHome, PocketsPanel, useCash } from "../kelola/kelola-pages";
 import { assetValue, assetsChange, gainOf, useGold } from "../../lib/finance/assets";
@@ -152,6 +152,7 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
       ]} /></div>
       <div className="dpx-st-hint dpx-onsky">Cerita {monthName} ada di bawah ↓</div>
     </div>
+    <AutoChip count={inbound.data?.autoRecent ?? 0} onOpen={() => nav.go("/riwayat?baru=1")} />
     <ScopeSwitch fin={fin} id="home" />
     <CeritaBody ctx={ctx} entries={entries} cash={cashNow} gold={goldData} now={now} templates={templates} onAddTemplate={addTemplate} />
   </div></Sky></div>;

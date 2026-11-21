@@ -41,15 +41,20 @@ export function useInbound() {
   return { data, refresh };
 }
 
-/* ---------- Beranda: the small dot that says something is waiting ---------- */
-export function ReviewChip({ count, importReady, autoRecent, onOpen, onOpenImport, onOpenAuto }: { count: number; importReady?: number; autoRecent?: number; onOpen: () => void; onOpenImport?: () => void; onOpenAuto?: () => void }) {
-  if (count <= 0 && !(importReady && importReady > 0) && !(autoRecent && autoRecent > 0)) return null;
-  return <>
-    {autoRecent && autoRecent > 0 ? <Reveal i={1}><Btn type="button" className="dpx-reviewchip dpx-autochip" onClick={onOpenAuto} aria-label={`${autoRecent} catatan baru tercatat otomatis dari email`}>
+/* ---------- Beranda: transactions the bank mail recorded on its own, shown above the wallet filter ---------- */
+export function AutoChip({ count, onOpen }: { count: number; onOpen: () => void }) {
+  if (count <= 0) return null;
+  return <Reveal i={1}><Btn type="button" className="dpx-reviewchip dpx-autochip" onClick={onOpen} aria-label={`${count} catatan baru tercatat otomatis dari email`}>
       <span className="dpx-rc-dot" aria-hidden="true"><Ic n="check" size="sm" /></span>
-      <span className="dpx-rc-t"><b>{autoRecent} catatan baru dari email</b><span>Tercatat otomatis. Ketuk untuk melihat atau mengurungkan</span></span>
+      <span className="dpx-rc-t"><b>{count} catatan baru dari email</b><span>Tercatat otomatis. Ketuk untuk melihat atau mengurungkan</span></span>
       <Ic n="chev" size="sm" />
-    </Btn></Reveal> : null}
+    </Btn></Reveal>;
+}
+
+/* ---------- Beranda: the small dot that says something is waiting ---------- */
+export function ReviewChip({ count, importReady, onOpen, onOpenImport }: { count: number; importReady?: number; onOpen: () => void; onOpenImport?: () => void }) {
+  if (count <= 0 && !(importReady && importReady > 0)) return null;
+  return <>
     {importReady && importReady > 0 ? <Reveal i={1}><Btn type="button" className="dpx-reviewchip" onClick={onOpenImport} aria-label={`Impor email lama siap ditinjau, ${importReady} transaksi`}>
       <span className="dpx-rc-dot" aria-hidden="true"><Ic n="dl" size="sm" /></span>
       <span className="dpx-rc-t"><b>Impor email lama siap</b><span>{importReady} transaksi menunggu pratinjau kamu</span></span>

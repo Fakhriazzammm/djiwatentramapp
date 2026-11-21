@@ -12,7 +12,8 @@ import { short } from "../kelola/kelola-ui";
 import { budgetStatuses, buildInsights, goalProjection, goalSaved, inMonth, safeToSpend, totals } from "../../lib/finance/calc";
 import { FlowCard } from "./sankey";
 import { cashflowGraph, categoryShares, pace, spendCalendar, spendStats, wealthHistory, type WealthPoint } from "../../lib/finance/story";
-import { gainOf, isGoldAsset, assetValue, assetsChange, type GoldData } from "../../lib/finance/assets";
+import { gainOf, isGoldAsset, assetValue, assetsChange, useGold, type GoldData } from "../../lib/finance/assets";
+import type { Finance } from "../../lib/finance/use-finance";
 import { billsFor, forecast, healthScore } from "../../lib/finance/kelola";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import type { Entry } from "../../lib/finance/types";
@@ -63,6 +64,56 @@ function NewsPage({ onBack }: { onBack: () => void }) {
   </FullPage>;
 }
 
+/** The "Cerita" cards: what the person's own numbers say this month. Pure of the screen, so the Beranda and the Notifikasi tab show the same ones. */
+export function useStories(fin: Finance, entries: Entry[], gold: GoldData | null, now: Date): Story[] {
+  const { state } = fin;
+  const y = now.getFullYear(), m = now.getMonth();
+  const month = useMemo(() => fin.rolled.filter((e) => inMonth(e, y, m)), [fin.rolled]);
+  const prev = useMemo(() => fin.rolled.filter((e) => inMonth(e, m === 0 ? y - 1 : y, (m + 11) % 12)), [fin.rolled]);
+  const statuses = useMemo(() => budgetStatuses(state.budgets, month), [state.budgets, month]);
+  const st = useMemo(() => spendStats(entries, now), [entries]);
+  const cal = useMemo(() => spendCalendar(entries, now), [entries]);
+  const pc = useMemo(() => pace(entries, now), [entries]);
+  const stories = useMemo<Story[]>(() => {
+    const out: Story[] = [], prevOut = totals(prev).out;
+    if (st.perDayChange !== null && prevOut > 0) out.push(st.perDayChange <= 0 ? { id: "pace", tone: "ok", icon: "trend", title: `Belanja harianmu turun ${pctText(st.perDayChange)}`, body: `Rata-rata ${rupiah(Math.round(st.perDay))} per hari, dibanding bulan lalu di tanggal yang sama.` } : { id: "pace", tone: "warn", icon: "warn", title: `Belanja harianmu naik ${pctText(st.perDayChange)}`, body: `Rata-rata ${rupiah(Math.round(st.perDay))} per hari, dibanding bulan lalu di tanggal yang sama.` });
+    const worst = statuses.find((s) => s.level !== "ok");
+    if (worst) out.push({ id: "budget", tone: "warn", icon: "warn", title: `${catOf(state, worst.budget.categoryId).name} sudah ${Math.round(worst.percent)}% dari anggaran`, body: worst.remaining >= 0 ? `Sisa ${rupiah(worst.remaining)} untuk ${Math.max(1, pc.dim - pc.today + 1)} hari lagi.` : `Lewat ${rupiah(-worst.remaining)} dari batas.` });
+    for (const i of buildInsights(state.categories, month, prev, statuses).slice(0, 2)) if (!out.some((o) => o.title === i.title)) out.push({ id: i.id, tone: i.tone, icon: i.tone === "warn" ? "warn" : i.tone === "ok" ? "spark" : "trend", title: i.title, body: i.body });
+    const ch = assetsChange(state.assets, gold?.points ?? null, 30, now);
+    if (ch && Math.abs(ch.delta) >= 1000) out.push({ id: "gold", tone: ch.delta >= 0 ? "ok" : "warn", icon: "gift", title: `Emasmu ${ch.delta >= 0 ? "naik" : "turun"} ${rupiah(Math.abs(Math.round(ch.delta)))}`, body: "Dalam 30 hari terakhir, mengikuti harga emas dunia." });
+    if (cal.calm > 0) out.push({ id: "calm", tone: "ok", icon: "heart", title: `${cal.calm} hari tenang bulan ini`, body: "Hari tanpa belanja. Setiap hari tenang memberi ruang pada tabunganmu." });
+    return out.slice(0, 5);
+  }, [st, statuses, month, prev, gold, cal.calm]);
+  return stories;
+}
+
+/** Cerita & berita: the topic tabs, the story cards, and the headlines. Used on Beranda and in the Notifikasi tab. */
+export function CeritaFeed({ stories, onOpenAll }: { stories: Story[]; onOpenAll: () => void }) {
+  const [feed, setFeed] = useState<string>("untukmu"), news = useNews(feed, feed !== "untukmu");
+  return <>
+      <DragRow className="dpx-st-tabs" role="tablist" aria-label="Topik cerita dan berita">{[{ id: "untukmu", label: "Untukmu" }, ...NEWS_TOPICS.filter((t) => t.id !== "semua")].map((t) => <Btn key={t.id} type="button" role="tab" aria-selected={feed === t.id} className={feed === t.id ? "on" : ""} onClick={() => setFeed(t.id)}>{t.label}</Btn>)}</DragRow>
+      <DragRow className="dpx-st-stories">
+        {feed === "untukmu"
+          ? (stories.length ? stories.map((s) => <div key={s.id} className="dpx-st-card dpx-st-story"><span className={`dpx-cat dpx-c-${s.tone === "warn" ? "amber" : s.tone === "ok" ? "emerald" : "violet"}`}><Ic n={s.icon} /></span><b>{s.title}</b><span className="dpx-sub">{s.body}</span></div>) : <div className="dpx-st-card dpx-st-story"><b>Ceritamu menyusul</b><span className="dpx-sub">Catat beberapa transaksi lagi, insight pribadi muncul di sini.</span></div>)
+          : news.items === null ? <div className="dpx-st-card dpx-st-story"><b>{news.failed ? "Berita belum bisa dimuat" : "Memuat berita…"}</b><span className="dpx-sub">{news.failed ? "Periksa koneksi lalu pilih topik lagi." : "Sebentar ya."}</span></div>
+          : news.items.length ? <>{news.items.slice(0, 8).map((n) => <NewsCard key={n.url} n={n} />)}<button type="button" className="dpx-st-card dpx-st-story dpx-st-more" onClick={() => onOpenAll()}><b>Lihat semua berita</b><span className="dpx-sub">Emas, ekonomi, saham, kripto</span></button></>
+          : <div className="dpx-st-card dpx-st-story"><b>Belum ada berita</b><span className="dpx-sub">Belum ada kabar untuk topik ini hari ini.</span></div>}
+      </DragRow>
+  </>;
+}
+
+/** The same section inside Notifikasi: its own headlines overlay, so it works from any page. */
+export function CeritaTab({ ctx }: { ctx: FinCtx }) {
+  const gold = useGold(), now = new Date(), [newsOpen, setNewsOpen] = useState(false);
+  const stories = useStories(ctx.fin, ctx.fin.entries, gold, now);
+  return <>
+    <Sec title="Cerita & berita" action="Semua berita" onAction={() => setNewsOpen(true)} />
+    <CeritaFeed stories={stories} onOpenAll={() => setNewsOpen(true)} />
+    {newsOpen ? <NewsPage onBack={() => setNewsOpen(false)} /> : null}
+  </>;
+}
+
 /** Everything under the sky on Beranda. No card sits on the scene: the sky block above ends where this begins. */
 export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemplate }: { ctx: FinCtx; entries: Entry[]; cash: number; gold: GoldData | null; now: Date; templates: Entry[]; onAddTemplate: (e: Entry) => void }) {
   const { nav, visible } = ctx, { state } = ctx.fin, inbound = useInbound();
@@ -83,23 +134,13 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
   const goldAssets = state.assets.filter(isGoldAsset), goldValue = goldAssets.reduce((s, a) => s + assetValue(a), 0);
   const goldGain = goldAssets.reduce((s, a) => { const g = gainOf(a); return g ? { gain: s.gain + g.gain, cost: s.cost + (a.cost ?? 0) } : s; }, { gain: 0, cost: 0 });
   const goal = state.goals[0], goalPct = goal ? Math.min(100, Math.round((goalSaved(goal) / Math.max(1, goal.target)) * 100)) : 0;
-  const stories = useMemo<Story[]>(() => {
-    const out: Story[] = [], prevOut = totals(prev).out;
-    if (st.perDayChange !== null && prevOut > 0) out.push(st.perDayChange <= 0 ? { id: "pace", tone: "ok", icon: "trend", title: `Belanja harianmu turun ${pctText(st.perDayChange)}`, body: `Rata-rata ${rupiah(Math.round(st.perDay))} per hari, dibanding bulan lalu di tanggal yang sama.` } : { id: "pace", tone: "warn", icon: "warn", title: `Belanja harianmu naik ${pctText(st.perDayChange)}`, body: `Rata-rata ${rupiah(Math.round(st.perDay))} per hari, dibanding bulan lalu di tanggal yang sama.` });
-    const worst = statuses.find((s) => s.level !== "ok");
-    if (worst) out.push({ id: "budget", tone: "warn", icon: "warn", title: `${catOf(state, worst.budget.categoryId).name} sudah ${Math.round(worst.percent)}% dari anggaran`, body: worst.remaining >= 0 ? `Sisa ${rupiah(worst.remaining)} untuk ${Math.max(1, pc.dim - pc.today + 1)} hari lagi.` : `Lewat ${rupiah(-worst.remaining)} dari batas.` });
-    for (const i of buildInsights(state.categories, month, prev, statuses).slice(0, 2)) if (!out.some((o) => o.title === i.title)) out.push({ id: i.id, tone: i.tone, icon: i.tone === "warn" ? "warn" : i.tone === "ok" ? "spark" : "trend", title: i.title, body: i.body });
-    const ch = assetsChange(state.assets, gold?.points ?? null, 30, now);
-    if (ch && Math.abs(ch.delta) >= 1000) out.push({ id: "gold", tone: ch.delta >= 0 ? "ok" : "warn", icon: "gift", title: `Emasmu ${ch.delta >= 0 ? "naik" : "turun"} ${rupiah(Math.abs(Math.round(ch.delta)))}`, body: "Dalam 30 hari terakhir, mengikuti harga emas dunia." });
-    if (cal.calm > 0) out.push({ id: "calm", tone: "ok", icon: "heart", title: `${cal.calm} hari tenang bulan ini`, body: "Hari tanpa belanja. Setiap hari tenang memberi ruang pada tabunganmu." });
-    return out.slice(0, 5);
-  }, [st, statuses, month, prev, gold, cal.calm]);
-  const [feed, setFeed] = useState<string>("untukmu"), [newsOpen, setNewsOpen] = useState(false), [allOpen, setAllOpen] = useState(false), news = useNews(feed, feed !== "untukmu");
+  const stories = useStories(ctx.fin, entries, gold, now);
+  const [newsOpen, setNewsOpen] = useState(false), [allOpen, setAllOpen] = useState(false);
   const nameOf = (id: string) => (id === "_rest" ? "Lainnya" : catOf(state, id).name);
   const fav = st.fav && st.fav.n >= 2 ? st.fav : null;
 
   return <div className="dpx-st-body">
-    <ReviewChip count={inbound.data?.review ?? 0} importReady={inbound.data?.importReady ?? 0} autoRecent={inbound.data?.autoRecent ?? 0} onOpenAuto={() => nav.go("/riwayat?baru=1")} onOpen={() => nav.go("/tinjau")} onOpenImport={() => nav.go("/integrasi?impor=1")} />
+    <ReviewChip count={inbound.data?.review ?? 0} importReady={inbound.data?.importReady ?? 0} onOpen={() => nav.go("/tinjau")} onOpenImport={() => nav.go("/integrasi?impor=1")} />
     <IntegrationNudge onOpenIntegrations={() => nav.go("/integrasi")} />
     <section className="dpx-st-card dpx-st-menu-card" aria-label="Menu">
       <div className="dpx-st-menu">{MENU.map((m) => <Btn key={m.label} type="button" className="dpx-st-mt" onClick={() => (m.all ? setAllOpen(true) : m.news ? setNewsOpen(true) : nav.go(m.path!))}>
@@ -113,11 +154,11 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
       </div>
       <div className="dpx-pay-acts">{([["topup", "Isi saldo", "/wallet/topup"], ["send", "Kirim", "/wallet/transfer"], ["scan-qr", "Scan", "/wallet/transfer?mode=scan"], ["bills", "Layanan", "/bayar"]] as const).map(([a, l, p]) => <Btn key={a} type="button" className="dpx-pay-act" onClick={() => nav.go(p)}><img src={payAsset(a)} width={34} height={34} alt="" /><span>{l}</span></Btn>)}</div>
     </section>
-      {templates.length ? <div className="dpx-st-card"><QuickAdd templates={templates} onAdd={onAddTemplate} /></div> : null}
 
     {empty ? <Card><div className="dpx-st-welcome"><I3 name="customer-benefit-wallet" px={88} /><b>Mulai ceritamu</b><span className="dpx-sub">Catat transaksi pertama. Grafik, statistik, dan kalender belanja muncul di sini setelah ada datanya.</span><Btn type="button" className="dpx-btn" onClick={() => ctx.open({ k: "catat" })}>Catat sekarang</Btn></div></Card> : <>
       <Sec title="Catatan terbaru" action="Lihat semua" onAction={() => nav.go("/riwayat")} />
       <div className="dpx-group dpx-flush">{entries.slice(0, 4).map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div>
+      {templates.length ? <div className="dpx-st-card"><QuickAdd templates={templates} onAdd={onAddTemplate} /></div> : null}
 
       <Card title="Perjalanan kekayaan" right={<Btn type="button" className="dpx-st-link" onClick={() => nav.go("/kekayaan")}>Kekayaan</Btn>}>
         <WealthChart history={history} visible={visible} />
@@ -125,14 +166,8 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
       </Card>
 
       <Sec title="Cerita & berita" action="Semua berita" onAction={() => setNewsOpen(true)} />
-      <DragRow className="dpx-st-tabs" role="tablist" aria-label="Topik cerita dan berita">{[{ id: "untukmu", label: "Untukmu" }, ...NEWS_TOPICS.filter((t) => t.id !== "semua")].map((t) => <Btn key={t.id} type="button" role="tab" aria-selected={feed === t.id} className={feed === t.id ? "on" : ""} onClick={() => setFeed(t.id)}>{t.label}</Btn>)}</DragRow>
-      <DragRow className="dpx-st-stories">
-        {feed === "untukmu"
-          ? (stories.length ? stories.map((s) => <div key={s.id} className="dpx-st-card dpx-st-story"><span className={`dpx-cat dpx-c-${s.tone === "warn" ? "amber" : s.tone === "ok" ? "emerald" : "violet"}`}><Ic n={s.icon} /></span><b>{s.title}</b><span className="dpx-sub">{s.body}</span></div>) : <div className="dpx-st-card dpx-st-story"><b>Ceritamu menyusul</b><span className="dpx-sub">Catat beberapa transaksi lagi, insight pribadi muncul di sini.</span></div>)
-          : news.items === null ? <div className="dpx-st-card dpx-st-story"><b>{news.failed ? "Berita belum bisa dimuat" : "Memuat berita…"}</b><span className="dpx-sub">{news.failed ? "Periksa koneksi lalu pilih topik lagi." : "Sebentar ya."}</span></div>
-          : news.items.length ? <>{news.items.slice(0, 8).map((n) => <NewsCard key={n.url} n={n} />)}<button type="button" className="dpx-st-card dpx-st-story dpx-st-more" onClick={() => setNewsOpen(true)}><b>Lihat semua berita</b><span className="dpx-sub">Emas, ekonomi, saham, kripto</span></button></>
-          : <div className="dpx-st-card dpx-st-story"><b>Belum ada berita</b><span className="dpx-sub">Belum ada kabar untuk topik ini hari ini.</span></div>}
-      </DragRow>
+      <CeritaFeed stories={stories} onOpenAll={() => setNewsOpen(true)} />
+      {empty ? null : <Btn type="button" className="dpx-st-tip dpx-st-calm" onClick={() => ctx.open({ k: "weekly" })}><span className="dpx-cat dpx-c-emerald"><Ic n="pie" /></span><div><b>Jeda mingguan</b><span className="dpx-sub">Lima menit melihat minggu ini. Tidak ada yang perlu dikejar.</span></div></Btn>}
 
       <Card title="Arus uang bulan ini" right={<Btn type="button" className="dpx-st-link" onClick={() => nav.go("/ringkasan")}>Laporan</Btn>}>
         <FlowCard graph={flowGraph} state={state} visible={visible} />
@@ -189,7 +224,6 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
     </>}
 
 
-    {empty ? null : <Btn type="button" className="dpx-st-tip dpx-st-calm" onClick={() => ctx.open({ k: "weekly" })}><span className="dpx-cat dpx-c-emerald"><Ic n="pie" /></span><div><b>Jeda mingguan</b><span className="dpx-sub">Lima menit melihat minggu ini. Tidak ada yang perlu dikejar.</span></div></Btn>}
     {newsOpen ? <NewsPage onBack={() => setNewsOpen(false)} /> : null}
     {allOpen ? <AllMenuPage onBack={() => setAllOpen(false)} run={(i) => { setAllOpen(false); if (i.act === "news") setNewsOpen(true); else if (i.act === "notif") ctx.onOpenNotifications(); else if (i.act === "catat") ctx.open({ k: "asset-new" }); else if (i.path) nav.go(i.path); }} /> : null}
   </div>;
