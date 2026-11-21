@@ -67,12 +67,15 @@ export function MascotBuddy({ messages, px = 84, quotes = [] }: { messages: stri
   };
   return <div className="dpx-buddy">
     <AnimatePresence>{bubble ? <motion.div key={bubble} className={`dpx-buddy-bubble ${isQuote ? "dpx-buddy-q" : ""}`} role="status" initial={{ opacity: 0, scale: 0.85, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={spring}>{bubble}</motion.div> : null}</AnimatePresence>
-    <motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}>
+    <div>
       <motion.button type="button" className="dpx-buddy-btn" aria-label="Maskot Djiwa Pay. Ketuk untuk mendengar tips" animate={controls} style={{ x, rotate, width: px, height: px }}
         drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.5} dragSnapToOrigin onDragStart={() => say("Wuih, pelan-pelan!", 1800)} onTap={onTap} whileTap={{ scale: 0.94 }}>
-        <img src={payAsset("mascot")} alt="" draggable={false} width={px} height={px} />
+        <picture>
+          <source media="(prefers-reduced-motion: no-preference)" srcSet="/assets/djiwapay-studio/coffee.gif" />
+          <img src={payAsset("coffee")} alt="" draggable={false} width={px} height={px} />
+        </picture>
       </motion.button>
-    </motion.div>
+    </div>
   </div>;
 }
 

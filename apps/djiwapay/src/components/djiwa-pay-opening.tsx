@@ -3,29 +3,18 @@ import { AnimatePresence, motion, useAnimation, useMotionValue, useReducedMotion
 import { playSound } from "../lib/sound";
 import { markDjiwaPayOpeningSeen, nextOpeningLine } from "../lib/djiwa-pay-opening";
 
-const VIDEO_BASE = "/assets/djiwapay-opening/mascot-hello";
-const MASCOT_SRC = "/assets/djiwapay-studio/mascot.webp";
-/** Never keep a customer waiting on a video that will not start. */
-const VIDEO_START_TIMEOUT_MS = 2_500;
+import { DjiwaPayLogoLoader, mascotActions } from "./djiwa-pay-logo-loader";
 
-type Phase = "intro" | "live" | "leaving";
 type Coin = { id: number; x: number; y: number; r: number };
 
-/**
- * First-launch opening. The Higgsfield-animated mascot clip plays once on an
- * ivory stage, then hands over (cross-fade at the exact same position) to a
- * live mascot the customer can tap, drag and tilt. Swipe up or "Mulai" opens
- * the app; the boot splash keeps loading underneath the whole time.
- */
 export function DjiwaPayOpening({ onDone }: { onDone: () => void }) {
   const reduce = useReducedMotion();
-  const [phase, setPhase] = useState<Phase>(reduce ? "live" : "intro");
+  const [leaving, setLeaving] = useState(false);
+  const [actionIndex, setActionIndex] = useState(0);
   const [bubble, setBubble] = useState<string | null>(null);
   const [coins, setCoins] = useState<Coin[]>([]);
-  const lineIndex = useRef(-1);
   const coinId = useRef(0);
   const bubbleTimer = useRef<number | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const hop = useAnimation();
   const draggingMascot = useRef(false);
 
@@ -47,22 +36,6 @@ export function DjiwaPayOpening({ onDone }: { onDone: () => void }) {
     bubbleTimer.current = window.setTimeout(() => setBubble(null), ms);
   };
 
-  const goLive = () => setPhase((current) => (current === "intro" ? "live" : current));
-
-  useEffect(() => {
-    if (phase !== "intro") return;
-    const video = videoRef.current;
-    const timeout = window.setTimeout(() => { if (!video || video.paused || video.readyState < 2) goLive(); }, VIDEO_START_TIMEOUT_MS);
-    video?.play().catch(goLive);
-    return () => window.clearTimeout(timeout);
-  }, [phase]);
-
-  useEffect(() => {
-    if (phase !== "live") return;
-    const greet = window.setTimeout(() => { lineIndex.current = 0; say(nextOpeningLine(0).line, 3600); }, 450);
-    return () => window.clearTimeout(greet);
-  }, [phase]);
-
   useEffect(() => () => { if (bubbleTimer.current) window.clearTimeout(bubbleTimer.current); }, []);
 
   const burst = () => {
@@ -76,12 +49,12 @@ export function DjiwaPayOpening({ onDone }: { onDone: () => void }) {
   };
 
   const tapMascot = () => {
-    if (phase === "intro") { goLive(); return; }
-    if (phase !== "live") return;
-    const { index, line } = nextOpeningLine(lineIndex.current + 1);
-    lineIndex.current = index;
-    say(line);
+    if (leaving || draggingMascot.current) return;
+    const next = nextOpeningLine(actionIndex + 1);
+    setActionIndex(next.index);
+    say(next.line);
     playSound("mascot");
+    if (reduce) return;
     burst();
     void hop.start({
       y: [0, 8, -44, 0, -8, 0],
@@ -92,8 +65,8 @@ export function DjiwaPayOpening({ onDone }: { onDone: () => void }) {
   };
 
   const finish = () => {
-    if (phase === "leaving") return;
-    setPhase("leaving");
+    if (leaving) return;
+    setLeaving(true);
     markDjiwaPayOpeningSeen();
     playSound("mascot");
     window.setTimeout(onDone, reduce ? 120 : 620);
@@ -110,7 +83,6 @@ export function DjiwaPayOpening({ onDone }: { onDone: () => void }) {
     if (info.offset.y < -90 || info.velocity.y < -600) finish();
   };
 
-  const showMascot = phase !== "intro";
 
   return (
     <motion.div
@@ -119,7 +91,7 @@ export function DjiwaPayOpening({ onDone }: { onDone: () => void }) {
       aria-modal="true"
       aria-label="Selamat datang di Djiwa Pay"
       initial={{ opacity: 1 }}
-      animate={phase === "leaving" ? { opacity: 0, y: reduce ? 0 : "-6%" } : { opacity: 1, y: 0 }}
+      animate={leaving ? { opacity: 0, y: reduce ? 0 : "-6%" } : { opacity: 1, y: 0 }}
       transition={{ duration: reduce ? 0.12 : 0.55, ease: [0.32, 0.72, 0, 1] }}
       onPointerMove={onPointerMove}
       onPointerLeave={() => { px.set(0); py.set(0); }}
@@ -129,51 +101,31 @@ export function DjiwaPayOpening({ onDone }: { onDone: () => void }) {
 
       <div className="djiwa-opening-stage">
         <motion.div className="djiwa-opening-glow" style={{ x: glowX }} aria-hidden="true" />
-        {!reduce ? (
-          <motion.video
-            ref={videoRef}
-            className="djiwa-opening-video"
-            muted
-            playsInline
-            preload="auto"
-            poster={`${VIDEO_BASE}-poster.jpg`}
-            onEnded={goLive}
-            onError={goLive}
-            onClick={tapMascot}
-            animate={{ opacity: showMascot ? 0 : 1 }}
-            transition={{ duration: 0.35 }}
-            aria-hidden="true"
-          >
-            <source src={`${VIDEO_BASE}.webm`} type="video/webm" />
-            <source src={`${VIDEO_BASE}.mp4`} type="video/mp4" />
-          </motion.video>
-        ) : null}
-
-        <motion.div className="djiwa-opening-mascot-slot" style={{ x: leanX, y: leanY, rotate: leanR }} initial={false} animate={{ opacity: showMascot ? 1 : 0 }} transition={{ duration: 0.35 }}>
+        <motion.div className="djiwa-opening-mascot-slot" style={{ x: leanX, y: leanY, rotate: leanR }}>
           <AnimatePresence>
-            {bubble && showMascot ? (
+            {bubble ? (
               <motion.div key={bubble} className="djiwa-opening-bubble" role="status" initial={{ opacity: 0, scale: 0.8, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 420, damping: 28 }}>
                 {bubble}
               </motion.div>
             ) : null}
           </AnimatePresence>
-          <motion.div className="djiwa-opening-float" animate={showMascot && !reduce ? { y: [0, -8, 0] } : { y: 0 }} transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}>
+          <motion.div className="djiwa-opening-float" animate={!reduce ? { y: [0, -8, 0] } : { y: 0 }} transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}>
             <motion.button
               type="button"
               className="djiwa-opening-mascot"
-              aria-label="Maskot Djiwa Pay. Ketuk untuk menyapa"
+              aria-label="Maskot Djiwa Pay. Ketuk untuk mengganti aksi"
               animate={hop}
               style={{ x: dx, rotate: dragR }}
-              drag={phase === "live"}
+              drag={!leaving && !reduce}
               dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
               dragElastic={0.45}
               dragSnapToOrigin
               onDragStart={() => { draggingMascot.current = true; say("Wuih, pelan-pelan!", 1600); }}
               onDragEnd={() => { window.setTimeout(() => { draggingMascot.current = false; }, 0); }}
-              onTap={tapMascot}
+              onClick={tapMascot}
               whileTap={{ scale: 0.95 }}
             >
-              <img src={MASCOT_SRC} alt="" draggable={false} />
+              <DjiwaPayLogoLoader action={mascotActions[actionIndex]} />
             </motion.button>
             {coins.map((coin) => (
               <motion.span
@@ -192,7 +144,7 @@ export function DjiwaPayOpening({ onDone }: { onDone: () => void }) {
       <div className="djiwa-opening-copy">
         <p className="djiwa-opening-eyebrow">Djiwa Pay</p>
         <h1 className="djiwa-opening-title">Keuangan tertata,<br />tagihan beres.</h1>
-        <p className="djiwa-opening-sub">Ketuk maskotnya untuk menyapa, lalu geser ke atas untuk mulai.</p>
+        <p className="djiwa-opening-sub">Ketuk maskot untuk ganti aksi. Geser ke atas untuk mulai.</p>
         <motion.button type="button" className="djiwa-opening-cta" onClick={finish} whileTap={{ scale: 0.96 }}>
           Mulai
         </motion.button>

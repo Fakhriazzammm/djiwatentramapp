@@ -1,4 +1,16 @@
-/** Original Djiwa Pay mascot; static rendering respects reduced motion. */
-export function DjiwaPayLogoLoader({ size = 96, className }: { size?: number; className?: string }) {
-  return <img src="/assets/djiwapay-studio/mascot.webp" alt="Djiwa Pay" width={size} height={size} className={className} style={{ width: size, height: size, objectFit: "contain" }} />;
+export const mascotActions = ["spin", "juggle", "save", "write", "bounce"] as const;
+export type MascotAction = typeof mascotActions[number];
+
+export function DjiwaPayLogoLoader({ action, size, className }: {
+  action: MascotAction;
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <picture>
+      <source media="(prefers-reduced-motion: no-preference)" srcSet={`/assets/djiwapay-opening/${action}.gif`} />
+      <img src={action === "spin" ? "/assets/djiwapay-opening/spin-rest.webp" : "/assets/djiwapay-studio/mascot.webp"} alt="" draggable={false}
+        width={size} height={size} className={className} style={{ objectFit: "contain" }} />
+    </picture>
+  );
 }

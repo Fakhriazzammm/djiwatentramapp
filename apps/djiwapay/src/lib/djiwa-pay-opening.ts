@@ -40,10 +40,11 @@ export function markDjiwaPayOpeningSeen(storage: StorageLike | null = safeStorag
 
 /** What the mascot says on each tap, cycling. */
 export const DJIWA_PAY_OPENING_LINES = [
-  "Halo! Aku maskot Djiwa Pay.",
-  "Semua pengeluaranmu kucatat otomatis.",
-  "Pulsa, listrik, tagihan? Sekali ketuk beres.",
-  "Hehe, geli! Yuk mulai menata keuanganmu.",
+  "Tangkap koinnya!",
+  "Bisa tangkap tiga koin?",
+  "Satu koin lagi masuk tabungan.",
+  "Pengeluaran hari ini sudah dicatat?",
+  "Siap mulai!",
 ] as const;
 
 export function nextOpeningLine(index: number): { index: number; line: string } {

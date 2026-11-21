@@ -1,4 +1,17 @@
-import { DjiwaPayLogoLoader } from "./djiwa-pay-logo-loader";
+import { parseWalletPath } from "../lib/djiwa-pay-routes";
+import { DJIWA_PAY_SESSION_SPLASH_LABEL } from "../lib/djiwa-pay-splash";
+import { DjiwaPayLogoLoader, type MascotAction } from "./djiwa-pay-logo-loader";
+
+function splashAction(pathname: string): MascotAction {
+  if (pathname.startsWith("/ppob/") && pathname.endsWith("/struk")) return "write";
+  if (pathname === "/ppob" || pathname.startsWith("/ppob/")) return "juggle";
+  switch (parseWalletPath(pathname)?.page) {
+    case "wallet": case "assets": case "budget": case "topup": return "save";
+    case "catat": case "history": case "summary": case "review": return "write";
+    case "services": case "transfer": case "receive": return "juggle";
+    default: return "bounce";
+  }
+}
 
 type DjiwaPaySplashProps = {
   visible?: boolean;
@@ -30,7 +43,7 @@ export function DjiwaPaySplash({
       aria-label={slow ? `${label}. Masih memuat data.` : label}
     >
       <div className="djiwa-splash-content">
-        <DjiwaPayLogoLoader size={92} className="djiwa-splash-logo" />
+        <DjiwaPayLogoLoader action={label === DJIWA_PAY_SESSION_SPLASH_LABEL ? "spin" : splashAction(window.location.pathname)} size={112} className="djiwa-splash-logo" />
         <p className="djiwa-splash-brand">{brand}</p>
         <p className="djiwa-splash-label">{label}</p>
         {slow ? <p className="djiwa-splash-hint">Masih memuat data…</p> : null}
