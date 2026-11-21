@@ -286,8 +286,11 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
   const { hook, refresh: refreshHook, setHook } = useHook();
   const [busy, setBusy] = useState("");
   const [confirmOff, setConfirmOff] = useState<null | "google" | "email" | "script">(null);
+  const offerImport = useRef(false);
   const loadG = useCallback(async () => { try { setG(await getGoogle()); } catch { /* offline: leave as is */ } finally { setLoadingG(false); } }, []);
   useEffect(() => { void loadG(); }, [loadG]);
+  // Fresh Google connection with live Gmail: offer the old-mail import (it still opens a preview first, nothing is recorded yet).
+  useEffect(() => { if (offerImport.current && g?.features.gmail && g.gmail?.enabled) { offerImport.current = false; setSheet((cur) => cur ?? "import"); } }, [g]);
   useEffect(() => {
     const url = new URL(window.location.href);
     const openEmail = url.searchParams.get("email") === "1";
@@ -309,6 +312,7 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
       : googleResult === "unavailable" ? "Integrasi Google belum tersedia"
       : "Koneksi Google belum berhasil. Coba lagi atau atur satu per satu.");
     if (googleResult === "ok" && after) ctx.nav.go(after);
+    else if (googleResult === "ok" || googleResult === "partial") offerImport.current = true;
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const goGoogle = async (features: GoogleFeature[]) => {
