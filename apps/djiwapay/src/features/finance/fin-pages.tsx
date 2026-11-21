@@ -170,7 +170,8 @@ function BudgetRow({ status, state, onOpen }: { status: ReturnType<typeof budget
 }
 
 /* ---------- Catatan ---------- */
-export function FinRecords({ ctx, selected }: { ctx: FinCtx; selected?: ReactNode }) {
+/** `embed` shows the records inside another page (Kekayaan › Dompet): no header, scope switch or banner, fixed to one wallet. */
+export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: ReactNode; embed?: { acc: string; name: string } }) {
   const { fin, nav } = ctx; const { state, entries } = fin;
   const today = new Date();
   const [cursor, setCursor] = useState(() => {   // ?bulan=2026-05 opens that month (e.g. from "Lihat di Catatan" after approving imported mail)
@@ -180,7 +181,8 @@ export function FinRecords({ ctx, selected }: { ctx: FinCtx; selected?: ReactNod
   const [seg, setSeg] = useState<"all" | "in" | "out" | "tf">("all");
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
-  const [acc, setAcc] = useState("all");
+  const [accOwn, setAcc] = useState("all");
+  const acc = embed ? embed.acc : accOwn;
   const [sheet, setSheet] = useState<null | "filter" | "wallet">(null);
   const balances = useBalances(state, entries, ctx.payBalance);
   // Entries the person has not yet seen that came in by e-mail on their own; opened from the "catatan baru dari email" notice.
@@ -196,22 +198,36 @@ export function FinRecords({ ctx, selected }: { ctx: FinCtx; selected?: ReactNod
   // Which months hold records, newest first: imported mail lands in past months that the month view would otherwise hide.
   const monthsWith = useMemo(() => { const c = new Map<string, number>(); for (const e of entries) { const d = new Date(e.at); const k = `${d.getFullYear()}-${d.getMonth()}`; c.set(k, (c.get(k) ?? 0) + 1); } return [...c].map(([k, n]) => { const [y, mo] = k.split("-").map(Number); return { y, m: mo, n }; }).sort((a, b) => b.y * 12 + b.m - (a.y * 12 + a.m)); }, [entries]);
   const showStrip = monthsWith.length > 1 || (monthsWith.length === 1 && month.length === 0);
-  return <div className="dpx-page"><Sky><div className="dpx-pad">
+  const head = <>
     <div className="dpx-hdr" style={{ paddingTop: 0 }}><h1 className="dpx-page-title" style={{ flex: 1 }}>Catatan</h1><Btn type="button" className="dpx-rb" onClick={() => nav.go("/ringkasan")} aria-label="Laporan"><Ic n="chart" /></Btn></div>
     <ScopeSwitch fin={fin} id="records" />
     <TidyBanner fin={fin} notify={ctx.notify} />
+  </>;
+  const body = <>
     <div className="dpx-spread" style={{ margin: "2px 0 4px" }}><Btn type="button" className="dpx-rb" onClick={() => shift(-1)} aria-label="Bulan sebelumnya"><Ic n="back" size="sm" /></Btn><b style={{ fontSize: 17, textTransform: "capitalize" }}>{monthLabel(cursor.y, cursor.m)}</b><Btn type="button" className="dpx-rb" style={isCurrent ? { opacity: 0.4 } : undefined} disabled={isCurrent} onClick={() => shift(1)} aria-label="Bulan berikutnya"><Ic n="chev" size="sm" /></Btn></div>
     {showStrip ? <div className="dpx-chips dpx-mt8" role="group" aria-label="Bulan yang punya catatan">{monthsWith.slice(0, 24).map((x) => { const on = x.y === cursor.y && x.m === cursor.m; return <Btn key={`${x.y}-${x.m}`} type="button" className={`dpx-chip ${on ? "dpx-on" : ""}`} aria-pressed={on} onClick={() => setCursor({ y: x.y, m: x.m })}>{monthLabel(x.y, x.m)} · {x.n}</Btn>; })}</div> : null}
     {month.length === 0 && entries.length > 0 ? <div className="dpx-note dpx-info" style={{ marginTop: 8 }} role="status"><Ic n="info" /><div><b>Tidak ada catatan di {monthLabel(cursor.y, cursor.m)}.</b> Ada {entries.length} catatan di bulan lain.<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setCursor({ y: monthsWith[0].y, m: monthsWith[0].m })}>Lihat {monthLabel(monthsWith[0].y, monthsWith[0].m)}</Btn></div></div></div> : null}
     <div className="dpx-kpi"><div className="dpx-group"><small>Masuk</small><b className="dpx-up">{ctx.visible ? rupiah(t.in) : "•••••"}</b></div><div className="dpx-group"><small>Keluar</small><b>{ctx.visible ? rupiah(t.out) : "•••••"}</b></div></div>
     <label className="dpx-search dpx-mt"><Ic n="search" size="sm" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari catatan, kategori, dompet" aria-label="Cari catatan" /></label>
-    <div className="dpx-chips dpx-mt8"><Btn type="button" className={`dpx-chip ${cat !== "all" ? "dpx-on" : ""}`} onClick={() => setSheet("filter")}><Ic n="filter" size="sm" /> {cat === "all" ? "Kategori" : catOf(state, cat).name}</Btn><Btn type="button" className={`dpx-chip ${acc !== "all" ? "dpx-on" : ""}`} onClick={() => setSheet("wallet")}><Ic n="wallet" size="sm" /> {acc === "all" ? "Dompet" : accName(state, acc)}</Btn>{cat !== "all" || acc !== "all" ? <Btn type="button" className="dpx-chip" onClick={() => { setCat("all"); setAcc("all"); }}>Reset filter</Btn> : null}</div>
+    <div className="dpx-chips dpx-mt8"><Btn type="button" className={`dpx-chip ${cat !== "all" ? "dpx-on" : ""}`} onClick={() => setSheet("filter")}><Ic n="filter" size="sm" /> {cat === "all" ? "Kategori" : catOf(state, cat).name}</Btn>{embed ? null : <Btn type="button" className={`dpx-chip ${acc !== "all" ? "dpx-on" : ""}`} onClick={() => setSheet("wallet")}><Ic n="wallet" size="sm" /> {acc === "all" ? "Dompet" : accName(state, acc)}</Btn>}{cat !== "all" || (!embed && acc !== "all") ? <Btn type="button" className="dpx-chip" onClick={() => { setCat("all"); setAcc("all"); }}>Reset filter</Btn> : null}</div>
     <div className="dpx-mt8"><Seg id="rec" label="Jenis catatan" value={seg} onChange={setSeg} options={[["all", "Semua"], ["in", "Masuk"], ["out", "Keluar"], ["tf", "Transfer"]] as const} /></div>
-    <div aria-live="polite">{entries.length === 0 ? <Empty img="order-receipt" title="Belum ada catatan" text="Catat pengeluaran pertamamu — satu kalimat cukup. Pembayaran Djiwa Pay otomatis ikut tercatat."><Btn type="button" className="dpx-btn" style={{ maxWidth: 300 }} onClick={() => ctx.open({ k: "catat" })}><Ic n="plus" size="sm" /> Catat sekarang</Btn></Empty>
+    <motion.div key={`${acc}|${cursor.y}-${cursor.m}|${seg}|${cat}|${q ? "q" : ""}`} aria-live="polite" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}>{entries.length === 0 ? <Empty img="order-receipt" title="Belum ada catatan" text="Catat pengeluaran pertamamu — satu kalimat cukup. Pembayaran Djiwa Pay otomatis ikut tercatat."><Btn type="button" className="dpx-btn" style={{ maxWidth: 300 }} onClick={() => ctx.open({ k: "catat" })}><Ic n="plus" size="sm" /> Catat sekarang</Btn></Empty>
       : list.length === 0 ? <Empty img="restaurant-cafe" title="Tidak ada hasil" text="Coba ubah bulan, kata kunci, atau filter." />
-      : days.map((d) => { const items = list.filter((e) => dayLabel(e.at) === d); const spent = items.filter((e) => e.kind === "out").reduce((s, e) => s + e.amount, 0); return <div key={d}><div className="dpx-dayh"><span>{d}</span><span>{spent ? `−${rupiah(spent)}` : ""}</span></div><div className="dpx-group dpx-flush dpx-white">{items.map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} fresh={fresh.has(e.id)} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div></div>; })}</div>
-  </div></Sky>
+      : days.map((d) => { const items = list.filter((e) => dayLabel(e.at) === d); const spent = items.filter((e) => e.kind === "out").reduce((s, e) => s + e.amount, 0); return <div key={d}><div className="dpx-dayh"><span>{d}</span><span>{spent ? `−${rupiah(spent)}` : ""}</span></div><div className="dpx-group dpx-flush dpx-white">{items.map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} fresh={fresh.has(e.id)} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div></div>; })}</motion.div>
+  </>;
+  const sheets = <>
   <AnimatePresence>{sheet === "wallet" ? <AccountSheet key="w" state={state} balances={balances} value={acc} includePay allLabel="Semua dompet" title="Filter dompet" onPick={setAcc} onClose={() => setSheet(null)} /> : null}{sheet === "filter" ? <CategorySheet key="f" categories={[{ id: "all", name: "Semua", icon: "grid", tone: "slate", income: false }, ...state.categories]} income={false} value={cat} onPick={setCat} onClose={() => setSheet(null)} /> : null}</AnimatePresence>
+  </>;
+  if (embed) return <div className="dpx-rec-embed">
+    <div className="dpx-sec"><h2>Catatan · {embed.name}</h2><Btn type="button" onClick={() => nav.go("/riwayat")}>Lihat semua</Btn></div>
+    {body}
+    {sheets}
+  </div>;
+  return <div className="dpx-page"><Sky><div className="dpx-pad">
+    {head}
+    {body}
+  </div></Sky>
+  {sheets}
   {selected}</div>;
 }
 
@@ -289,6 +305,7 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
   const debt = debtTotals(state.debts);
   const [tab, setTab] = useState<VaultTab>(() => { try { const t = sessionStorage.getItem("dpx-vault-tab"); return t === "dompet" || t === "kewajiban" || t === "saham" ? t : "aset"; } catch { return "aset"; } });
   const pick = (t: VaultTab) => { setTab(t); try { sessionStorage.setItem("dpx-vault-tab", t); } catch { /* optional */ } };
+  const [walletSel, setWalletSel] = useState("all");   // the wallet chosen in the pouch: its records show right below
   useEffect(() => {   // back from Google's consent screen with the Drive permission: continue where the person left off
     const q = new URLSearchParams(window.location.search), part = q.get("bagian");
     if (part === "aset" || part === "saham" || part === "dompet" || part === "kewajiban") { window.history.replaceState({}, "", window.location.pathname); pick(part); return; }
@@ -348,9 +365,10 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
       {accounts.length === 0 ? <Onboard asset="wallet" title="Kumpulkan semua dompet" desc="Tunai, rekening bank, dan e-wallet dalam satu tempat, supaya saldo dan kekayaan bersih akurat."
         bullets={[["Saldo awal ", "membuat angka kekayaan benar."], ["Djiwa Pay ", "sudah ada sebagai dompet utama."], ["Transfer antar dompet ", "tercatat otomatis."]]}
         primary="Tambah dompet pertama" onPrimary={() => ctx.open({ k: "account" })} /> : null}
-      <WalletDeck ctx={ctx} accounts={accounts} balances={balances} />
+      <WalletDeck ctx={ctx} accounts={accounts} balances={balances} onSelect={setWalletSel} hideRecent />
       {!fin.hasBusiness ? <motion.button type="button" className="dpx-scope-hint" onClick={() => ctx.open({ k: "account" })} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring} whileTap={{ scale: 0.98 }}><Ic n="bag" /><span><b>Punya usaha?</b> Tambah dompet dan pilih Bisnis agar catatan dan laporannya terpisah.</span></motion.button> : null}
       {missing.length ? <div className="dpx-vt-note"><Ic n="warn" /><span>{missing.length} rekening hanya berisi pengeluaran tercatat, jadi saldonya minus. Ketuk rekening lalu isi saldo awal agar kekayaan bersih akurat.</span></div> : null}
+    <FinRecords ctx={ctx} embed={{ acc: walletSel, name: walletSel === "all" ? "Semua dompet" : accName(state, walletSel) }} />
     <div className="dpx-sec"><h2>Bayar & layanan</h2><Btn type="button" onClick={() => nav.go("/bayar")}>Semua layanan</Btn></div>
     <div className="dpx-group"><div className="dpx-tile3" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>{acts.map(([a, l, p]) => <Btn key={a} type="button" className="dpx-q" onClick={() => nav.go(p)}><img src={payAsset(a)} width={42} height={42} alt="" />{l}</Btn>)}</div></div>
     <Btn type="button" className="dpx-group dpx-flex" style={{ width: "100%", marginTop: 12, textAlign: "left" }} onClick={() => nav.openSheet("card")}><img src={payAsset("card")} width={56} height={56} alt="" /><span style={{ flex: 1 }}><b style={{ fontSize: 16 }}>Kartu Djiwa</b><div className="dpx-sub">Kartu virtual untuk belanja online.</div></span><span className="dpx-tag">Segera</span></Btn>

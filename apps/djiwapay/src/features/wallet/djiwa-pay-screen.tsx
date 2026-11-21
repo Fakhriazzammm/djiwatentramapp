@@ -586,7 +586,7 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   if (walletRoute?.page === "history") {
     const selectedTransaction = walletRoute.transactionId ? transactions.find((entry) => String(entry.id) === walletRoute.transactionId || String(entry.transfer_id ?? "") === walletRoute.transactionId) ?? null : null;
     const selectedNode = <AnimatePresence>{selectedTransaction ? <TxnSheet key="tx" entry={selectedTransaction} onClose={() => goPayRoute("/riwayat")} onHelp={() => goPayRoute("/wallet/help")} /> : null}</AnimatePresence>;
-    return frameShell(<FinRecords ctx={finCtx} selected={selectedNode} />, "history");
+    return frameShell(<FinRecords ctx={finCtx} selected={selectedNode} />, "wallet");
   }
   if (walletRoute?.page === "transfer" || walletRoute?.page === "receive") return <DjiwaPayWalletAction mode={walletRoute.page === "transfer" ? "send" : "receive"} profile={profile} balance={balance} initialMode={transferInitialMode} initialRecipient={transferInitialRecipient} onClose={() => goPayRoute("/")} onSuccess={() => { goPayRoute("/"); onRefresh(); if (!previewOnly) void refreshWalletNotifications(); }} />;
   if (walletRoute?.page === "help") return frameShell(<HelpPage onBack={() => goBack("/")} nav={payNav} />, null);

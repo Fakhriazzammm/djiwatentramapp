@@ -31,7 +31,7 @@ export function TxRow({ entry, onOpen, i = 0 }: { entry: WalletTransaction; onOp
 }
 
 export function TabBar({ active, go, openPay }: { active: "home" | "budget" | "history" | "wallet" | null; go: (path: string) => void; openPay: () => void }) {
-  const items = [["home", "Beranda", "/", "navigation-home"], ["history", "Catatan", "/riwayat", "navigation-history"], ["budget", "Rencana", "/rencana", "sales-report"], ["wallet", "Kekayaan", "/kekayaan", "navigation-wallet"]] as const;
+  const items = [["home", "Beranda", "/", "navigation-home"], ["budget", "Rencana", "/rencana", "sales-report"], ["wallet", "Kekayaan", "/kekayaan", "navigation-wallet"]] as const;
   return <motion.nav className="dpx-tabbar" aria-label="Navigasi utama" initial={{ y: 90, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ ...spring, delay: 0.05 }}>
     {items.map(([key, label, path, icon]) => <Btn key={key} type="button" className={`dpx-tb ${active === key ? "dpx-on" : ""}`} aria-current={active === key ? "page" : undefined} onClick={() => go(path)}>{active === key ? <motion.span layoutId="dpx-tabpill" className="dpx-tabpill" transition={spring} /> : null}<motion.span style={{ display: "grid" }} animate={{ scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 500, damping: 18 }}><I3 name={icon} px={26} /></motion.span><span>{label}</span></Btn>)}
     <Btn type="button" className="dpx-fab" onClick={openPay} aria-label="Catat transaksi" initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 300, damping: 16, delay: 0.1 }} whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.88, rotate: -6 }}><Ic n="plus" /><span>Catat</span></Btn>
