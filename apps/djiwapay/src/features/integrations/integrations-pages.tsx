@@ -368,6 +368,11 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
 
     <div className="dpx-glabel">Google{cal || drive ? <Btn type="button" disabled={busy === "google-all"} onClick={() => void syncAll()}>{busy === "google-all" ? "Menyinkronkan…" : "Sinkronkan"}</Btn> : null}</div>
     <Reveal i={3}><div className="dpx-group dpx-white dpx-int">
+      <Row icon="spark" tone="orange" title="Gmail langsung"
+        sub={gmInfo?.error ? gmailError(gmInfo.error) : gmInfo?.lastPolledAt ? `Dicek ${ago(gmInfo.lastPolledAt)} · ${gmInfo.fetched} email dibaca` : gm ? "Memeriksa email pertama…" : "Catat email bank dan e-wallet melalui akun Google-mu"}
+        trail={loadingG ? undefined : !gReady ? soon : gm ? <Tag tone={gmInfo?.error ? "warn" : "ok"}>{gmInfo?.error ? "Perlu perhatian" : "Aktif"}</Tag> : <Tag>Sambungkan</Tag>}
+        onClick={g?.configured && (!gm || gmInfo?.error) ? () => setSheet({ consent: ["gmail"] }) : undefined} />
+      {gm ? <Row icon="trash" tone="rose" title="Matikan Gmail langsung" sub="Berhenti membaca email. Catatan yang sudah ada tetap" onClick={() => { setSheet(null); void turnGmailOff(); }} chev={false} /> : null}
       <Row icon="cal" tone="blue" title="Google Calendar" sub={cal ? `${g!.calendar.events} tagihan jadi acara bulanan` : "Tagihan rutin jadi acara + pengingat"} trail={loadingG ? undefined : !gReady ? soon : cal ? <Tag tone="ok">Aktif</Tag> : <Tag>Mati</Tag>}
         onClick={gReady && !loadingG && !cal ? () => setSheet({ consent: ["calendar"] }) : undefined} />
       <Row icon="list" tone="emerald" title="Spreadsheet keuangan" sub={drive ? (g!.sheet?.status === "missing" ? "Spreadsheet terhapus di Drive. Ketuk untuk membuat ulang" : g!.sheet?.url ? `Dua arah · ${g!.sheet.pending ? "menyinkronkan…" : g!.sheet.lastSyncedAt ? `disinkron ${ago(g!.sheet.lastSyncedAt)}` : "menunggu sinkron pertama"}` : "Sedang dibuat di Drive-mu…") : "Semua catatan otomatis tertulis di Spreadsheet-mu, dua arah"}
@@ -394,15 +399,7 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
       {sheet === "script" ? <AppsScriptSheet key="script" ctx={ctx} hook={hook} setHook={setHook} refresh={refreshHook} rotate={async () => { try { setHook(await createHook(true)); } catch { ctx.notify("Gagal membuat alamat baru"); } }} onClose={() => setSheet(null)} /> : null}
       {sheet === "sources" ? <Sheet key="sources" title="Sumber email" onClose={() => setSheet(null)}>
         <p className="dpx-sub" style={{ marginTop: -6, marginBottom: 4 }}>Pilih satu cara untuk mencatat transaksi dari email bank dan e-wallet.</p>
-        <p className="dpx-sub" style={{ margin: "6px 4px 6px", fontWeight: 600 }}>Disarankan · langsung dari Gmail</p>
-        <div className="dpx-group dpx-white dpx-int">
-          <Row icon="spark" tone="orange" title="Gmail langsung"
-            sub={gmInfo?.error ? gmailError(gmInfo.error) : gmInfo?.lastPolledAt ? `Dicek ${ago(gmInfo.lastPolledAt)} · ${gmInfo.fetched} email dibaca` : gm ? "Memeriksa email pertama…" : "Catat email bank dan e-wallet melalui akun Google-mu"}
-            trail={loadingG ? undefined : !gReady ? soon : gm ? <Tag tone={gmInfo?.error ? "warn" : "ok"}>{gmInfo?.error ? "Perlu perhatian" : "Aktif"}</Tag> : <Tag>Sambungkan</Tag>}
-            onClick={g?.configured && (!gm || gmInfo?.error) ? () => setSheet({ consent: ["gmail"] }) : undefined} />
-          {gm ? <Row icon="trash" tone="rose" title="Matikan Gmail langsung" sub="Berhenti membaca email. Catatan yang sudah ada tetap" onClick={() => { setSheet(null); void turnGmailOff(); }} chev={false} /> : null}
-        </div>
-        <p className="dpx-sub" style={{ margin: "14px 4px 6px", fontWeight: 600 }}>Alternatif · lanjutan (untuk yang butuh pengaturan sendiri)</p>
+        <p className="dpx-sub" style={{ margin: "6px 4px 6px", fontWeight: 600 }}>Alternatif · lanjutan. Gmail langsung ada di bagian Google</p>
         <div className="dpx-group dpx-white dpx-int">
           <Row icon="bank" tone="slate" title="Email terusan"
             sub={src?.forwarding ? (src.mailCount ? `${src.mailCount} email · ${ago(src.lastMailAt)}` : "Menunggu email pertama") : "Teruskan email transaksi tertentu ke alamat Djiwa Pay-mu"}
