@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { isNativeApp, setupNativeChrome } from "./native";
 
 /** Installing Djiwa Pay on the phone: detection, the install prompt, updates, and Web Push for the installed app. */
 export type Platform = "ios-safari" | "ios-other" | "android-chrome" | "android-samsung" | "android-firefox" | "android-other" | "desktop-chromium" | "desktop-safari" | "desktop-firefox" | "desktop-other";
@@ -27,7 +28,7 @@ export const GUIDE: Record<Platform, { title: string; steps: Step[]; note?: stri
   "desktop-other": { title: "Komputer", steps: [{ text: "Buka djiwapay.web.id di Chrome atau Edge, lalu klik ikon instal di kolom alamat.", icon: "install" }] },
 };
 
-export const isStandalone = (): boolean => typeof window !== "undefined" && (window.matchMedia?.("(display-mode: standalone)").matches || (navigator as unknown as { standalone?: boolean }).standalone === true);
+export const isStandalone = (): boolean => isNativeApp() || typeof window !== "undefined" && (window.matchMedia?.("(display-mode: standalone)").matches || (navigator as unknown as { standalone?: boolean }).standalone === true);
 export const currentPlatform = (): Platform => (typeof navigator === "undefined" ? "desktop-other" : detectPlatform(navigator.userAgent, navigator.maxTouchPoints));
 export const isIos = (p: Platform = currentPlatform()) => p.startsWith("ios");
 
@@ -42,6 +43,7 @@ export const usePwaState = () => useSyncExternalStore((cb) => { listeners.add(cb
 export function initPwa() {
   if (started || typeof window === "undefined") return; started = true;
   set({ installed: isStandalone() });
+  setupNativeChrome();
   window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferred = e as BIPE; set({ canPrompt: true }); });
   window.addEventListener("appinstalled", () => { deferred = null; set({ canPrompt: false, installed: true }); });
   window.matchMedia?.("(display-mode: standalone)").addEventListener?.("change", () => set({ installed: isStandalone() }));

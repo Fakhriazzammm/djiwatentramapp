@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Ic } from "../shell/dpx-ui";
+import { nativePlugin, nativeShare } from "../../lib/native";
 import {
   CheckoutField,
   CheckoutInput,
@@ -191,7 +192,7 @@ export function DjiwaPaySuccess({ productName, operator, customerNumber, amount,
       cart={cart}
       currency={currency}
       showOrderDetail={false}
-      fields={<div className="djiwa-payment-notice is-success" role="status"><strong>Transaksi selesai</strong><small>Saldo Djiwa Pay telah dipotong dan provider mengonfirmasi pembelian.</small><div className="djiwa-receipt-actions"><button type="button" onClick={() => { const text = [productName, operator, customerNumber, serialNumber, reference].filter(Boolean).join(" · "); void navigator.clipboard?.writeText(text).then(() => setCopied(true)); }}>{copied ? "Tersalin" : "Salin detail"}</button><button type="button" onClick={() => { if (navigator.share) void navigator.share({ title: "Struk Djiwa Pay", text: `${productName} · ${customerNumber} · ${currency(amount)}` }); else void navigator.clipboard?.writeText(`${productName} · ${customerNumber} · ${currency(amount)}`).then(() => setCopied(true)); }}>Bagikan</button></div></div>}
+      fields={<div className="djiwa-payment-notice is-success" role="status"><strong>Transaksi selesai</strong><small>Saldo Djiwa Pay telah dipotong dan provider mengonfirmasi pembelian.</small><div className="djiwa-receipt-actions"><button type="button" onClick={() => { const text = [productName, operator, customerNumber, serialNumber, reference].filter(Boolean).join(" · "); void navigator.clipboard?.writeText(text).then(() => setCopied(true)); }}>{copied ? "Tersalin" : "Salin detail"}</button><button type="button" onClick={() => { if (nativePlugin("Share")) void nativeShare("Struk Djiwa Pay", `${productName} · ${customerNumber} · ${currency(amount)}`); else if (navigator.share) void navigator.share({ title: "Struk Djiwa Pay", text: `${productName} · ${customerNumber} · ${currency(amount)}` }); else void navigator.clipboard?.writeText(`${productName} · ${customerNumber} · ${currency(amount)}`).then(() => setCopied(true)); }}>Bagikan</button></div></div>}
       notesLabel="Catatan transaksi"
       notesPlaceholder="Opsional"
       notes=""

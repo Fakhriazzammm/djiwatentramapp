@@ -1,4 +1,5 @@
 import { createAuthClient } from "better-auth/react";
+import { isNativeApp, nativeGoogleIdToken } from "./native";
 
 // Auth goes through this app's own origin (Nginx proxies /api/auth and
 // /api/customer/pay-bridge to the central auth server), so the browser never sees
@@ -29,6 +30,15 @@ export async function signInWithGoogle(currentUrl = window.location.href) {
   returnTo.search = "";
   returnTo.hash = "";
   returnTo.searchParams.set("sso", "1");
+  if (isNativeApp()) {
+    // Google refuses its sign-in page inside an embedded WebView, so the app picks the account natively and hands Better Auth the ID token.
+    const idToken = await nativeGoogleIdToken();
+    if (!idToken) return;
+    const done = await authClient.signIn.social({ provider: "google", idToken: { token: idToken }, disableRedirect: true });
+    if (done.error) throw new Error(done.error.message || "Gagal masuk dengan Google");
+    window.location.assign(returnTo.toString());
+    return;
+  }
   const result = await authClient.signIn.social(buildGoogleSignInOptions(returnTo.toString()));
   const url = result.data?.url;
   if (!url) throw new Error(result.error?.message || "Gagal memulai masuk dengan Google");
