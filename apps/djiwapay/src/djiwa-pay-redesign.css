@@ -1200,3 +1200,12 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 .dpx .dpx-ds[aria-label="Pilih bulan"] .dpx-ds-day{width:54px}
 .dpx .dpx-ds[aria-label="Pilih bulan"] .dpx-ds-day b{font-size:16px}
 .dpx .dpx-ds[aria-label="Pilih bulan"] .dpx-ds-row{padding-inline:calc(50% - 27px)}
+
+/* Fixed lens in the middle; the day/month row slides beneath it and the item under it is the chosen one */
+.dpx .dpx-ds-wrap{position:relative;flex:1;min-width:0}
+.dpx .dpx-ds-lens{position:absolute;top:2px;left:50%;width:50px;height:62px;margin-left:-25px;border-radius:16px;background:var(--navy);box-shadow:0 6px 14px -6px rgba(15,35,71,.5);z-index:0;pointer-events:none}
+.dpx .dpx-ds-wrap.wide .dpx-ds-lens{width:54px;margin-left:-27px}
+.dpx .dpx-ds-wrap .dpx-ds-row{position:relative;z-index:1;width:100%;box-sizing:border-box}
+.dpx .dpx-ds-day{transition:color .18s}
+.dpx .dpx-ds-all.on{background:var(--navy);box-shadow:0 6px 14px -6px rgba(15,35,71,.5)}
+.dpx .dpx-ds-day.today:not(.on){box-shadow:none;background:rgba(43,38,32,.06)}
