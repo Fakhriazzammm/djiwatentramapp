@@ -8,6 +8,7 @@ import { LoanCard } from "../kelola/loan-ui";
 import { allocate, billsFor, payday, pocketUsage, pocketsOf, payoffPlan, unpaidTotal } from "../../lib/finance/kelola";
 import { rpFull } from "./story-charts";
 import { monthLabel } from "../../lib/djiwa-pay-summary";
+import { MonthStrip, monthKey, monthRange } from "./day-strip";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import type { Budget, Debt } from "../../lib/finance/types";
 
@@ -31,7 +32,9 @@ export function FinBudget({ ctx }: { ctx: FinCtx }) {
   useEffect(() => { if (new URLSearchParams(window.location.search).get("bagian") === "hutang") nav.go("/kekayaan?bagian=kewajiban"); }, []);   // eslint-disable-line react-hooks/exhaustive-deps   // debts and bills live under Kekayaan → Kewajiban now
   const [cursor, setCursor] = useState({ y: today.getFullYear(), m: today.getMonth() });
   const isCurrent = cursor.y === today.getFullYear() && cursor.m === today.getMonth();
-  const shift = (d: number) => setCursor((c) => { const n = new Date(c.y, c.m + d, 1); return { y: n.getFullYear(), m: n.getMonth() }; });
+  const monthCounts = useMemo(() => { const m = new Map<string, number>(); for (const e of entries) { const k = monthKey(new Date(e.at)); m.set(k, (m.get(k) ?? 0) + 1); } return m; }, [entries]);
+  const curKey = `${cursor.y}-${String(cursor.m + 1).padStart(2, "0")}`;
+  const months = useMemo(() => monthRange(monthCounts, today, curKey), [monthCounts, curKey]);   // eslint-disable-line react-hooks/exhaustive-deps
   const dim = daysIn(cursor.y, cursor.m), elapsed = isCurrent ? today.getDate() : dim, daysLeft = isCurrent ? dim - today.getDate() + 1 : 0;
   const month = useMemo(() => fin.rolled.filter((e) => inMonth(e, cursor.y, cursor.m)), [fin.rolled, cursor]);
   const statuses = useMemo(() => budgetStatuses(state.budgets, month), [state.budgets, month]);
@@ -60,7 +63,7 @@ export function FinBudget({ ctx }: { ctx: FinCtx }) {
     <div className="dpx-st-body" style={{ paddingTop: 10 }}>
 
     {tab === "bud" ? <>
-      <div className="dpx-rp-month"><Btn type="button" className="dpx-rb" onClick={() => shift(-1)} aria-label="Bulan sebelumnya"><Ic n="back" size="sm" /></Btn><b>{monthLabel(cursor.y, cursor.m)}</b><Btn type="button" className="dpx-rb" style={isCurrent ? { opacity: 0.4 } : undefined} disabled={isCurrent} onClick={() => shift(1)} aria-label="Bulan berikutnya"><span style={{ display: "inline-flex", transform: "scaleX(-1)" }}><Ic n="back" size="sm" /></span></Btn></div>
+      <MonthStrip months={months} today={today} counts={monthCounts} value={curKey} onPick={(k) => { const [y, m] = k.split("-").map(Number); setCursor({ y, m: m - 1 }); }} />
       {state.budgets.length === 0 ? <Card><Empty img="sales-report" title="Belum ada anggaran" text="Tentukan batas per kategori. Kami hitung berapa yang aman dibelanjakan setiap hari.">
         <div className="dpx-pl-actions"><Btn type="button" className="dpx-btn" onClick={() => ctx.open({ k: "budget" })}><Ic n="plus" size="sm" /> Atur anggaran</Btn><Btn type="button" className="dpx-btn dpx-ghost" onClick={autoFill}>Isi dari rata-rata 3 bulan</Btn></div></Empty></Card> : <>
         <Card>

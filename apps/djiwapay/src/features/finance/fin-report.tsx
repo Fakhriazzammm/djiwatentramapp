@@ -34,7 +34,6 @@ export function FinReport({ ctx, onBack }: { ctx: FinCtx; onBack: () => void }) 
   const monthCounts = useMemo(() => { const m = new Map<string, number>(); for (const e of entries) { const k = monthKey(new Date(e.at)); m.set(k, (m.get(k) ?? 0) + 1); } return m; }, [entries]);
   const curKey = `${cursor.y}-${String(cursor.m + 1).padStart(2, "0")}`;
   const months = useMemo(() => monthRange(monthCounts, today, curKey), [monthCounts, curKey]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const shift = (d: number) => setCursor((c) => { const n = new Date(c.y, c.m + d, 1); return { y: n.getFullYear(), m: n.getMonth() }; });
   const dim = daysIn(cursor.y, cursor.m), elapsed = isCurrent ? today.getDate() : dim, ref = isCurrent ? today : new Date(cursor.y, cursor.m, dim, 12);
   const month = useMemo(() => fin.rolled.filter((e) => inMonth(e, cursor.y, cursor.m)), [fin.rolled, cursor]);
   const pd = new Date(cursor.y, cursor.m - 1, 1);

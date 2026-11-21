@@ -195,11 +195,13 @@ export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: R
   const inWallet = (e: Entry) => acc === "all" || e.accountId === acc || e.toAccountId === acc;
   const t = totals(month.filter(inWallet));
   const isCurrent = cursor.y === today.getFullYear() && cursor.m === today.getMonth();
-  const shift = (d: number) => setCursor((c) => { const n = new Date(c.y, c.m + d, 1); return { y: n.getFullYear(), m: n.getMonth() }; });
   const list = month.filter((e) => inWallet(e) && (seg === "all" || e.kind === seg) && (cat === "all" || e.categoryId === cat || rootId(state.categories, e.categoryId) === cat) && (!q || `${e.note} ${catOf(state, e.categoryId).name} ${accName(state, e.accountId)} ${e.tags.join(" ")}`.toLowerCase().includes(q.toLowerCase())));
   const days = [...new Set(list.map((e) => dayLabel(e.at)))];
   // Which months hold records, newest first: imported mail lands in past months that the month view would otherwise hide.
   const monthsWith = useMemo(() => { const c = new Map<string, number>(); for (const e of entries) { const d = new Date(e.at); const k = `${d.getFullYear()}-${d.getMonth()}`; c.set(k, (c.get(k) ?? 0) + 1); } return [...c].map(([k, n]) => { const [y, mo] = k.split("-").map(Number); return { y, m: mo, n }; }).sort((a, b) => b.y * 12 + b.m - (a.y * 12 + a.m)); }, [entries]);
+  const allMonthCounts = useMemo(() => { const m = new Map<string, number>(); for (const e of entries) { const k = monthKey(new Date(e.at)); m.set(k, (m.get(k) ?? 0) + 1); } return m; }, [entries]);
+  const curKey = `${cursor.y}-${String(cursor.m + 1).padStart(2, "0")}`;
+  const allMonths = useMemo(() => monthRange(allMonthCounts, today, curKey), [allMonthCounts, curKey]);   // eslint-disable-line react-hooks/exhaustive-deps
   const showStrip = monthsWith.length > 1 || (monthsWith.length === 1 && month.length === 0);
   // Embedded view (under the wallet pouch): a day strip instead of month navigation, search and filters.
   const dayCounts = useMemo(() => { const m = new Map<string, number>(); for (const e of entries) { if (!(acc === "all" || e.accountId === acc || e.toAccountId === acc)) continue; const k = dayKey(new Date(e.at)); m.set(k, (m.get(k) ?? 0) + 1); } return m; }, [entries, acc]);
@@ -226,8 +228,7 @@ export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: R
     <TidyBanner fin={fin} notify={ctx.notify} />
   </>;
   const body = <>
-    <div className="dpx-spread" style={{ margin: "2px 0 4px" }}><Btn type="button" className="dpx-rb" onClick={() => shift(-1)} aria-label="Bulan sebelumnya"><Ic n="back" size="sm" /></Btn><b style={{ fontSize: 17, textTransform: "capitalize" }}>{monthLabel(cursor.y, cursor.m)}</b><Btn type="button" className="dpx-rb" style={isCurrent ? { opacity: 0.4 } : undefined} disabled={isCurrent} onClick={() => shift(1)} aria-label="Bulan berikutnya"><Ic n="chev" size="sm" /></Btn></div>
-    {showStrip ? <div className="dpx-chips dpx-mt8" role="group" aria-label="Bulan yang punya catatan">{monthsWith.slice(0, 24).map((x) => { const on = x.y === cursor.y && x.m === cursor.m; return <Btn key={`${x.y}-${x.m}`} type="button" className={`dpx-chip ${on ? "dpx-on" : ""}`} aria-pressed={on} onClick={() => setCursor({ y: x.y, m: x.m })}>{monthLabel(x.y, x.m)} · {x.n}</Btn>; })}</div> : null}
+    <MonthStrip months={allMonths} today={today} counts={allMonthCounts} value={curKey} onPick={(k) => { const [y, m] = k.split("-").map(Number); setCursor({ y, m: m - 1 }); }} />
     {month.length === 0 && entries.length > 0 ? <div className="dpx-note dpx-info" style={{ marginTop: 8 }} role="status"><Ic n="info" /><div><b>Tidak ada catatan di {monthLabel(cursor.y, cursor.m)}.</b> Ada {entries.length} catatan di bulan lain.<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setCursor({ y: monthsWith[0].y, m: monthsWith[0].m })}>Lihat {monthLabel(monthsWith[0].y, monthsWith[0].m)}</Btn></div></div></div> : null}
     <div className="dpx-kpi"><div className="dpx-group"><small>Masuk</small><b className="dpx-up">{ctx.visible ? rupiah(t.in) : "•••••"}</b></div><div className="dpx-group"><small>Keluar</small><b>{ctx.visible ? rupiah(t.out) : "•••••"}</b></div></div>
     <label className="dpx-search dpx-mt"><Ic n="search" size="sm" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari catatan, kategori, dompet" aria-label="Cari catatan" /></label>
