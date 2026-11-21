@@ -39,7 +39,7 @@ const VIEWS: { id: View; title: string; sub: string; icon: IconName }[] = [
 const POS = [{ y: 0, s: 1, dim: 0 }, { y: -16, s: 0.95, dim: 0.14 }, { y: -30, s: 0.9, dim: 0.26 }];
 const TUCKED = { y: 70, s: 0.9, dim: 0.3 };
 const SPRING = { type: "spring", stiffness: 260, damping: 26 } as const;
-const tagOf = (c: { pay: boolean; name: string }) => (c.pay ? "PAY" : c.name.split(/[\s•]/)[0].toUpperCase().slice(0, 8));
+const tagOf = (c: { pay: boolean; name: string }) => (c.pay ? "PAY" : c.name.split(/[\s•]/)[0].toUpperCase());
 
 /**
  * The default view: cards rise out of a pouch. The front card flips to the next on tap or a sideways flick, the cards behind it
