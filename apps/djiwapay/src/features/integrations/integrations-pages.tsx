@@ -402,7 +402,7 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
       {receipts && g!.drive.hold ? <div className="dpx-note dpx-danger" role="alert" style={{ margin: "6px 12px 10px" }}><Ic n="warn" /><div><b>Penghapusan ditahan.</b> {g!.drive.hold}<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy === "hold"} onClick={() => void holdOk(confirmDriveRemovals)}>Ya, hapus juga di aplikasi</Btn></div></div></div> : null}
     </div></Reveal>
 
-    <div className="dpx-glabel">Sumber email lain</div>
+    <div className="dpx-glabel">Alternatif Integrasi email (Advance)</div>
     <Reveal i={5}><div className="dpx-group dpx-white dpx-int">
       <Row icon="spark" tone="orange" title="Sumber email" sub={active.length ? active.join(" · ") : "Gunakan Email terusan atau Apps Script"} trail={loadingG ? undefined : active.length ? <Tag tone="ok">Aktif</Tag> : <Tag tone="warn">Sambungkan</Tag>} onClick={() => setSheet("sources")} />
     </div></Reveal>
