@@ -1,0 +1,10 @@
+{
+  "appId": "id.web.djiwapay.app",
+  "appName": "Djiwa Pay",
+  "webDir": "www",
+  "server": {
+    "url": "https://djiwapay.web.id",
+    "androidScheme": "https",
+    "allowNavigation": ["djiwapay.web.id", "accounts.google.com"]
+  }
+}
