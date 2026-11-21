@@ -207,7 +207,8 @@ export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: R
   const latestDay = useMemo(() => [...dayCounts.keys()].sort().pop() ?? dayKey(today), [dayCounts]);   // eslint-disable-line react-hooks/exhaustive-deps
   const nowMonth = monthKey(today);
   const activeMon = mon || latestDay.slice(0, 7);
-  const monthList = useMemo(() => { const first = [...monthCounts.keys()].sort()[0] ?? nowMonth; const [y0, m0] = (first < activeMon ? first : activeMon).split("-").map(Number); const out: string[] = []; let y = y0, m = m0; while (`${y}-${String(m).padStart(2, "0")}` <= nowMonth && out.length < 36) { out.push(`${y}-${String(m).padStart(2, "0")}`); if (++m > 12) { m = 1; y++; } } return out.length ? out : [nowMonth]; }, [monthCounts, activeMon, nowMonth]);
+  const endMonth = monthKey(new Date(today.getFullYear(), today.getMonth() + 12, 1));   // the strip runs on into the future, like the days do
+  const monthList = useMemo(() => { const first = [...monthCounts.keys()].sort()[0] ?? nowMonth; const [y0, m0] = (first < activeMon ? first : activeMon).split("-").map(Number); const out: string[] = []; let y = y0, m = m0; while (`${y}-${String(m).padStart(2, "0")}` <= endMonth && out.length < 60) { out.push(`${y}-${String(m).padStart(2, "0")}`); if (++m > 12) { m = 1; y++; } } return out.length ? out : [nowMonth]; }, [monthCounts, activeMon, nowMonth, endMonth]);
   const latestInMonth = useMemo(() => [...dayCounts.keys()].filter((k) => k.startsWith(activeMon)).sort().pop() ?? (activeMon === nowMonth ? dayKey(today) : `${activeMon}-01`), [dayCounts, activeMon, nowMonth]);   // eslint-disable-line react-hooks/exhaustive-deps
   const activeDay = day || latestInMonth;
   useEffect(() => { setDay(""); setMon(""); }, [acc]);   // another wallet: back to its latest month and day
