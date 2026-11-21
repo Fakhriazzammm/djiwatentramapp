@@ -216,6 +216,9 @@ export function FinRecords({ ctx, selected }: { ctx: FinCtx; selected?: ReactNod
 }
 
 /* ---------- Catat manual ---------- */
+/** Calendar day in the device's own time zone (toISOString would give the UTC day, a day early in WIB before 07:00). */
+const localDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
 export function ManualForm({ ctx, editId, initialKind, onDone }: { ctx: FinCtx; editId?: string; initialKind?: Kind; onDone: () => void }) {
   const { fin } = ctx; const { state } = fin;
   const existing = editId ? state.entries.find((e) => e.id === editId) : undefined;
@@ -226,7 +229,7 @@ export function ManualForm({ ctx, editId, initialKind, onDone }: { ctx: FinCtx; 
   const [touched, setTouched] = useState(Boolean(existing));   // true once the person picked a category themselves
   const [accountId, setAccountId] = useState(existing?.accountId ?? firstAcc);
   const [toId, setToId] = useState(existing?.toAccountId ?? "");
-  const [date, setDate] = useState((existing ? new Date(existing.at) : new Date()).toISOString().slice(0, 10));
+  const [date, setDate] = useState(localDay(existing ? new Date(existing.at) : new Date()));
   const [note, setNote] = useState(existing?.note ?? "");
   const [pick, setPick] = useState<null | "cat" | "acc" | "to">(null);
   const balances = useBalances(state, fin.entries, ctx.payBalance), allBalances = useBalances(fin.raw, fin.allRecords, ctx.payBalance);
@@ -254,7 +257,7 @@ export function ManualForm({ ctx, editId, initialKind, onDone }: { ctx: FinCtx; 
       {kind !== "tf" ? <Btn type="button" className="dpx-chip3" onClick={() => setPick("cat")} style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><span className={`dpx-cat dpx-c-${c.tone}`} style={{ width: 20, height: 20 }}><Ic n={iconOr(c.icon)} size="sm" /></span>{c.name}</Btn> : null}
       <Btn type="button" className="dpx-chip3" onClick={() => setPick("acc")}>{kind === "tf" ? "Dari: " : ""}{accName(state, accountId)}</Btn>
       {kind === "tf" ? <Btn type="button" className="dpx-chip3" onClick={() => setPick("to")}>Ke: {toId ? accName(state, toId) : "pilih"}</Btn> : null}
-      <label className="dpx-chip3 dpx-datefield" style={{ cursor: "pointer" }}><Ic n="cal" size="sm" /> {new Date(`${date}T12:00`).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}<input type="date" value={date} max={new Date().toISOString().slice(0, 10)} onChange={(e) => e.target.value && setDate(e.target.value)} aria-label="Tanggal" /></label>
+      <label className="dpx-chip3 dpx-datefield" style={{ cursor: "pointer" }} onClick={(e) => { const el = e.currentTarget.querySelector("input"); try { el?.showPicker?.(); } catch { /* the native control still opens on tap where showPicker is missing */ } }}><Ic n="cal" size="sm" /> {new Date(`${date}T12:00`).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}<input type="date" value={date} max={localDay(new Date())} onChange={(e) => e.target.value && setDate(e.target.value)} aria-label="Tanggal" /></label>
     </div>
     <div className="dpx-input" style={{ marginTop: 14 }}><Ic n="edit" size="sm" /><input value={note} maxLength={80} placeholder="Catatan (opsional)" aria-label="Catatan" onChange={(e) => setNote(e.target.value)} /></div>
     <div className="dpx-kp">{["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((k) => <Btn key={k} type="button" onClick={() => key(k)}>{k}</Btn>)}<Btn type="button" style={{ fontSize: 18 }} onClick={() => key("000")}>000</Btn><Btn type="button" onClick={() => key("0")}>0</Btn><Btn type="button" onClick={() => key("del")} aria-label="Hapus angka"><Ic n="del" /></Btn></div>
