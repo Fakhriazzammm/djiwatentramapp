@@ -189,7 +189,7 @@ export function DjiwaPayOpening({ onDone }: { onDone: () => void }) {
         </motion.div>
       </div>
 
-      <motion.div className="djiwa-opening-copy" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: reduce ? 0 : 1.1, duration: 0.6, ease: [0.32, 0.72, 0, 1] }}>
+      <div className="djiwa-opening-copy">
         <p className="djiwa-opening-eyebrow">Djiwa Pay</p>
         <h1 className="djiwa-opening-title">Keuangan tertata,<br />tagihan beres.</h1>
         <p className="djiwa-opening-sub">Ketuk maskotnya untuk menyapa, lalu geser ke atas untuk mulai.</p>
@@ -199,7 +199,7 @@ export function DjiwaPayOpening({ onDone }: { onDone: () => void }) {
         <motion.span className="djiwa-opening-swipe" aria-hidden="true" animate={reduce ? undefined : { y: [0, -6, 0], opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.6, repeat: Infinity }}>
           ︿
         </motion.span>
-      </motion.div>
+      </div>
     </motion.div>
   );
 }

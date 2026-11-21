@@ -1212,3 +1212,10 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 
 /* Both strips start with a "Semua" button of the same width, so their lenses line up one above the other */
 .dpx .dpx-ds-all{width:76px;padding:0}
+
+/* Search under the record-type tabs; while it has text, the date strips step back (the search covers all dates) */
+.dpx .dpx-ds-off{opacity:.38;pointer-events:none;transition:opacity .25s}
+.dpx .dpx-rec-embed .dpx-ds[aria-label="Pilih bulan"]{margin-bottom:2px}
+.dpx .dpx-search input[type=search]::-webkit-search-cancel-button{display:none}
+.dpx .dpx-search-x{width:28px;height:28px;min-height:0;padding:0;border-radius:50%;display:grid;place-items:center;background:rgba(43,38,32,.1);flex:none}
+.dpx .dpx-search-x img{width:14px;height:14px}
