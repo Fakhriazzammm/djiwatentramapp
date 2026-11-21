@@ -44,6 +44,8 @@ export const decrypt = (key: Buffer, value: string) => {
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
 export const featuresFromScopes = (scopes: readonly string[]) => ({ calendar: scopes.includes(SCOPES.calendar), drive: scopes.includes(SCOPES.drive), gmail: scopes.includes(SCOPES.gmail) });
 
+/** Switches (off_features keys) that a fresh Google grant for these features turns back on. */
+const offKeys = (requested: readonly Feature[]) => requested.flatMap((f) => (f === "calendar" ? ["calendar"] : f === "drive" ? ["sheets", "receipts"] : []));
 export function scopesFor(features: readonly Feature[]) {
   return [...new Set([SCOPES.email, ...features.map((f) => SCOPES[f])])];
 }
@@ -78,8 +80,9 @@ export async function finishConnect(db: Q, cfg: GoogleCfg, code: string, state: 
   try { const info = await f(USERINFO_URL, { headers: { authorization: `Bearer ${t.access_token}` } }); if (info.ok) email = ((await info.json()) as { email?: string }).email ?? null; } catch { /* the e-mail is only a label */ }
   if (pending.email && email && pending.email.toLowerCase() !== email.toLowerCase()) throw new Error("ACCOUNT_MISMATCH");
   const saved = await db.query(`update finance.google_connections set access_enc=$2, refresh_enc=$3, expires_at=now()+($4 * interval '1 second'), granted_scopes=$5, email=coalesce($6,email),
+    off_features=(select coalesce(array_agg(x),'{}') from unnest(off_features) x where not (x = any($8::text[]))),
     state_hash=null, state_expires_at=null, connected_at=coalesce(connected_at,now()), updated_at=now() where user_id=$1 and state_hash=$7 returning user_id`,
-    [pending.user_id, encrypt(cfg.key, t.access_token), t.refresh_token ? encrypt(cfg.key, t.refresh_token) : existing, t.expires_in ?? 3600, scopes, email, stateHash]);
+    [pending.user_id, encrypt(cfg.key, t.access_token), t.refresh_token ? encrypt(cfg.key, t.refresh_token) : existing, t.expires_in ?? 3600, scopes, email, stateHash, offKeys(requested)]);
   if (!saved.rows.length) throw new Error("STATE_EXPIRED");
   return { userId: pending.user_id as string, features, requested, partial: requested.some((feature) => !features[feature]) };
 }
@@ -91,9 +94,12 @@ export async function disconnect(db: Q, cfg: GoogleCfg | null, userId: string, f
 }
 
 export async function status(db: Q, cfg: GoogleCfg | null, userId: string) {
-  const c = (await db.query("select email,granted_scopes,connected_at,refresh_enc from finance.google_connections where user_id=$1", [userId])).rows[0];
+  const c = (await db.query("select email,granted_scopes,connected_at,refresh_enc,off_features from finance.google_connections where user_id=$1", [userId])).rows[0];
   const connected = Boolean(c?.refresh_enc);
   const features = connected ? featuresFromScopes(c.granted_scopes ?? []) : { calendar: false, drive: false, gmail: false };
+  const off = new Set<string>((c?.off_features as string[] | null) ?? []);
+  /** What is actually running: granted by Google and not switched off. */
+  const active = { calendar: features.calendar && !off.has("calendar"), sheets: features.drive && !off.has("sheets"), receipts: features.drive && !off.has("receipts") };
   const gm = connected ? (await db.query("select enabled,last_polled_at,last_error,fetched_count from finance.gmail_sync where user_id=$1", [userId])).rows[0] : null;
   const [ev, dr, sh] = connected ? await Promise.all([
     db.query("select count(*)::int n from finance.google_calendar_events where user_id=$1", [userId]),
@@ -103,7 +109,7 @@ export async function status(db: Q, cfg: GoogleCfg | null, userId: string) {
   const drive = Object.fromEntries((dr?.rows ?? []).map((r) => [r.status, Number(r.n)]));
   const dh = connected ? (await db.query("select hold,last_error,last_checked_at from finance.google_drive_state where user_id=$1", [userId])).rows[0] : null;
   return {
-    configured: Boolean(cfg), connected, email: connected ? c.email ?? null : null, features,
+    configured: Boolean(cfg), connected, email: connected ? c.email ?? null : null, features, active,
     gmail: gm ? { enabled: Boolean(gm.enabled), lastPolledAt: gm.last_polled_at ? new Date(gm.last_polled_at).toISOString() : null, error: (gm.last_error as string | null) ?? null, fetched: Number(gm.fetched_count) } : null,
     calendar: { events: Number(ev?.rows[0]?.n ?? 0) },
     drive: { uploaded: drive.uploaded ?? 0, failed: drive.failed ?? 0, hold: (dh?.hold as string | null) ?? null, lastCheckedAt: dh?.last_checked_at ? new Date(dh.last_checked_at).toISOString() : null },

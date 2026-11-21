@@ -52,10 +52,11 @@ export function createApp(d: Deps) {
   const google = d.google ?? null, mailDomain = d.mailDomain ?? "";
   // Keep Google in step with what the user just changed, without ever slowing or failing the request.
 
-  const connected = async (userId: string, feature: Feature) => {
+  /** Granted by Google AND not switched off on the Integrasi page. `key` is the switch (calendar, sheets, receipts) when it differs from the scope's feature. */
+  const connected = async (userId: string, feature: Feature, key: string = feature) => {
     if (!google) return false;
-    const r = await d.db.query("select granted_scopes from finance.google_connections where user_id=$1 and refresh_enc is not null", [userId]);
-    return Boolean(r.rows[0]) && (r.rows[0].granted_scopes as string[]).includes(SCOPES[feature]);
+    const r = await d.db.query("select granted_scopes, off_features from finance.google_connections where user_id=$1 and refresh_enc is not null", [userId]);
+    return Boolean(r.rows[0]) && (r.rows[0].granted_scopes as string[]).includes(SCOPES[feature]) && !((r.rows[0].off_features as string[] | null) ?? []).includes(key);
   };
   const later = (fn: () => Promise<unknown>) => void fn().catch((e) => console.error("background sync", e instanceof Error ? e.message : e));
   registerStockRoutes(app, { db: d.db }, uid, json, { driveConnected: (userId) => connected(userId, "drive") });
@@ -122,7 +123,7 @@ export function createApp(d: Deps) {
     await d.db.query(`insert into finance.receipts(user_id,id,merchant,purchased_at,total,tax,confidence,items,model,image_path,image_bytes,details) values($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12::jsonb)
 `,
       [userId, id, read.merchant, read.purchasedAt, read.total, read.tax, read.confidence, JSON.stringify(read.items), read.model, rel, bytes.length, JSON.stringify({ version: 2, original: read })]);
-    if (google) later(async () => { if (await connected(userId, "drive")) await touchDrive(d.db, userId); });
+    if (google) later(async () => { if (await connected(userId, "drive", "receipts")) await touchDrive(d.db, userId); });
     return json(c, { success: true, receipt: { id, ...read } });
   });
 
@@ -230,12 +231,30 @@ export function createApp(d: Deps) {
   app.post("/api/finance/google/gmail/import/:id/undo", async (c) => { const r = await undoImport(d.db, uid(c), c.req.param("id")); return r ? json(c, { success: true, ...r }) : json(c, { success: false, error: "NOT_FOUND" }, 404); });
   app.post("/api/finance/google/gmail/import/cancel", async (c) => { await cancelImport(d.db, uid(c)); return json(c, { success: true }); });
   app.post("/api/finance/google/gmail/off", async (c) => { await disableGmail(d.db, uid(c)); return json(c, { success: true }); });
+  // Per-service switches. Gmail has its own (/gmail/off, /gmail/poll). Turning on needs the scope Google already granted; otherwise the page goes through consent.
+  const SWITCH: Record<string, Feature> = { calendar: "calendar", sheets: "drive", receipts: "drive" };
+  app.post("/api/finance/google/feature/:key/off", async (c) => {
+    const key = c.req.param("key"); if (!SWITCH[key]) return json(c, { success: false, error: "UNKNOWN_FEATURE" }, 400);
+    await d.db.query("update finance.google_connections set off_features = (select coalesce(array_agg(distinct x),'{}') from unnest(off_features || $2::text[]) x), updated_at=now() where user_id=$1", [uid(c), [key]]);
+    return json(c, { success: true });
+  });
+  app.post("/api/finance/google/feature/:key/on", async (c) => {
+    const key = c.req.param("key"); const scope = SWITCH[key]; if (!scope) return json(c, { success: false, error: "UNKNOWN_FEATURE" }, 400);
+    if (!(await connected(uid(c), scope, "-"))) return json(c, { success: false, error: "NOT_CONNECTED" }, 409);
+    await d.db.query("update finance.google_connections set off_features = array_remove(off_features, $2), updated_at=now() where user_id=$1", [uid(c), key]);
+    if (google) {
+      if (key === "calendar") later(() => syncCalendar(d.db, google, uid(c), d.gfetch));
+      else if (key === "sheets") await requestSheet(d.db, uid(c), true);
+      else await touchDrive(d.db, uid(c));
+    }
+    return json(c, { success: true });
+  });
   app.post("/api/finance/google/disconnect", async (c) => { await googleDisconnect(d.db, google, uid(c), d.gfetch); return json(c, { success: true }); });
   const need = (c: any) => (!google ? json(c, { success: false, error: "NOT_CONFIGURED" }, 503) : null);
   app.post("/api/finance/google/calendar/sync", async (c) => need(c) ?? json(c, { success: true, ...(await syncCalendar(d.db, google!, uid(c), d.gfetch)) }));
   // Drive and Sheets are handled by the background worker; these only ask it to look now.
-  app.post("/api/finance/google/drive/sync", async (c) => need(c) ?? (!(await connected(uid(c), "drive")) ? json(c, { success: false, error: "NOT_CONNECTED" }, 409) : (await touchDrive(d.db, uid(c)), json(c, { success: true, queued: true }))));
-  app.post("/api/finance/google/sheets/export", async (c) => need(c) ?? (!(await connected(uid(c), "drive")) ? json(c, { success: false, error: "NOT_CONNECTED" }, 409) : (await requestSheet(d.db, uid(c), true), json(c, { success: true, queued: true }))));
+  app.post("/api/finance/google/drive/sync", async (c) => need(c) ?? (!(await connected(uid(c), "drive", "receipts")) ? json(c, { success: false, error: "NOT_CONNECTED" }, 409) : (await touchDrive(d.db, uid(c)), json(c, { success: true, queued: true }))));
+  app.post("/api/finance/google/sheets/export", async (c) => need(c) ?? (!(await connected(uid(c), "drive", "sheets")) ? json(c, { success: false, error: "NOT_CONNECTED" }, 409) : (await requestSheet(d.db, uid(c), true), json(c, { success: true, queued: true }))));
   app.post("/api/finance/google/sheets/confirm", async (c) => { await confirmSheetDeletes(d.db, uid(c)); return json(c, { success: true }); });
   app.post("/api/finance/google/drive/confirm", async (c) => { await confirmDriveRemovals(d.db, uid(c)); return json(c, { success: true }); });
 

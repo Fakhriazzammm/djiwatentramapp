@@ -7,7 +7,7 @@ export type ReviewItem = {
   parsed: { loanMail?: "reminder" | "receipt"; amount?: number; kind?: "out" | "in" | "tf"; transfer?: { from: string; to: string; toName?: string; amount: number; fee?: number }; direction?: string; merchant?: string; categoryId?: string; accountId?: string; accountHint?: string; at?: string; subject?: string; issuer?: string; details?: PaymentDetails; flags?: string[]; bill?: boolean; due?: string | null; generic?: boolean; suggest?: "in" | "out" | null; suggestFrom?: "hint" | "mail" | null };
 };
 export type GoogleStatus = {
-  configured: boolean; connected: boolean; email: string | null; features: { calendar: boolean; drive: boolean; gmail: boolean };
+  configured: boolean; connected: boolean; email: string | null; features: { calendar: boolean; drive: boolean; gmail: boolean }; /** Running now: granted by Google and not switched off. */ active: { calendar: boolean; sheets: boolean; receipts: boolean };
   gmail: { enabled: boolean; lastPolledAt: string | null; error: string | null; fetched: number } | null;
   calendar: { events: number }; drive: { uploaded: number; failed: number; hold: string | null; lastCheckedAt: string | null };
   sheet: { url: string | null; status: string; lastSyncedAt: string | null; error: string | null; hold: string | null; pending: boolean; stats: Record<string, number> } | null;
@@ -58,6 +58,9 @@ export const connectGoogle = (features: GoogleFeature[]) => call<{ url: string }
 export const confirmSheetDeletes = () => call<object>("/google/sheets/confirm", { method: "POST" });
 export const confirmDriveRemovals = () => call<object>("/google/drive/confirm", { method: "POST" });
 export const pollGmailNow = () => call<object>("/google/gmail/poll", { method: "POST" });
+export type SwitchKey = "calendar" | "sheets" | "receipts";
+export const featureOff = (key: SwitchKey) => call<object>(`/google/feature/${key}/off`, { method: "POST" });
+export const featureOn = (key: SwitchKey) => call<object>(`/google/feature/${key}/on`, { method: "POST" });
 export const gmailOff = () => call<object>("/google/gmail/off", { method: "POST" });
 export const disconnectGoogle = () => call<object>("/google/disconnect", { method: "POST" });
 export const syncGoogle = async (what: "calendar" | "drive" | "sheets") => {

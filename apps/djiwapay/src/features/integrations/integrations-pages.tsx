@@ -5,7 +5,7 @@ import { CatIcon, MoneyInput, accName, catOf } from "../finance/fin-sheets";
 import type { FinCtx } from "../finance/fin-pages";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import {
-  CHANNEL_NAME, approveItem, cancelImport, commitImport, getImport, getImportItems, startImport, undoImport, connectGoogle, GOOGLE_FEATURES, missingGoogleFeatures, takeAfterGoogle, type HookInfo, confirmDriveRemovals, confirmSheetDeletes, createSource, disconnectGoogle, getGoogle, gmailOff, pollGmailNow, getInbound, getReview, rejectItem, removeSource, syncGoogle,
+  CHANNEL_NAME, approveItem, cancelImport, commitImport, getImport, getImportItems, startImport, undoImport, connectGoogle, GOOGLE_FEATURES, missingGoogleFeatures, takeAfterGoogle, type HookInfo, confirmDriveRemovals, confirmSheetDeletes, createSource, disconnectGoogle, getGoogle, gmailOff, pollGmailNow, getInbound, getReview, rejectItem, removeSource, syncGoogle, featureOff, featureOn, type SwitchKey,
   type GoogleFeature, type GoogleStatus, type ImportItem, type ImportState, type InboundSummary, type ReviewItem,
 } from "../../lib/finance/integrations";
 import { createHook, removeHook } from "../../lib/finance/integrations";
@@ -337,6 +337,14 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
     try { await pollGmailNow(); ctx.notify("Memeriksa Gmail… hasilnya muncul sebentar lagi"); window.setTimeout(() => { void loadG(); void refresh(); }, 6000); }
     catch { ctx.notify("Gagal memulai pemeriksaan. Coba lagi."); } finally { setBusy(""); }
   };
+  /** One switch per Google service: on/off without leaving the page; only a service Google has not granted yet goes through consent. */
+  const flip = async (key: SwitchKey, on: boolean, label: string) => {
+    const scope = key === "calendar" ? "calendar" : "drive";
+    if (!on && !g?.features[scope]) { setSheet({ consent: [scope] }); return; }
+    setBusy(`sw-${key}`);
+    try { await (on ? featureOff(key) : featureOn(key)); await loadG(); ctx.notify(on ? `${label} dimatikan` : `${label} dinyalakan`); }
+    catch { ctx.notify("Gagal mengubah. Coba lagi."); } finally { setBusy(""); }
+  };
   const turnGmailOn = async () => { setBusy("gmail"); try { await pollGmailNow(); await loadG(); ctx.notify("Gmail langsung dinyalakan"); } catch { ctx.notify("Gagal menyalakan. Coba lagi."); } finally { setBusy(""); } };
   const turnGmailOff = async () => { setBusy("gmail"); try { await gmailOff(); await loadG(); ctx.notify("Gmail langsung dimatikan"); } catch { ctx.notify("Gagal mematikan. Coba lagi."); } finally { setBusy(""); } };
   const off = async () => {
@@ -347,7 +355,7 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
 
   const src = inbound?.source ?? null;
   const gOn = Boolean(g?.connected), gReady = g?.configured !== false;
-  const cal = Boolean(g?.features.calendar), drive = Boolean(g?.features.drive);
+  const cal = Boolean(g?.active?.calendar), drive = Boolean(g?.active?.sheets), receipts = Boolean(g?.active?.receipts), driveGranted = Boolean(g?.features.drive);
   const gm = Boolean(g?.features.gmail && g?.gmail?.enabled), gmInfo = g?.gmail ?? null;
   const soon = <Tag tone="later">Segera</Tag>;
   const active = [gm ? "Gmail langsung" : null, hook?.enabled ? "Apps Script" : null, src?.forwarding ? "Email terusan" : null].filter(Boolean) as string[];
@@ -367,7 +375,6 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
     <div className="dpx-glabel">Catat otomatis dari email{gm ? <Btn type="button" disabled={busy === "gmail-check"} onClick={() => void checkGmail()}>{busy === "gmail-check" ? "Memeriksa…" : "Periksa"}</Btn> : null}</div>
     <Reveal i={1}><div className="dpx-group dpx-white dpx-int">
       {active.length ? <Row icon="check" tone="emerald" title={`Antrean tinjau${inbound && inbound.review ? ` (${inbound.review})` : ""}`} sub="Email baru tercatat otomatis. Di sini hanya yang perlu dicek" onClick={onReview} /> : null}
-      <Row icon="spark" tone="orange" title="Sumber email" sub={active.length ? active.join(" · ") : "Gunakan Email terusan atau Apps Script"} trail={loadingG ? undefined : active.length ? <Tag tone="ok">Aktif</Tag> : <Tag tone="warn">Sambungkan</Tag>} onClick={() => setSheet("sources")} />
       {gm ? <Row icon="dl" tone="amber" title="Impor email lama" sub={inbound && inbound.importReady ? `${inbound.importReady} transaksi siap ditinjau` : "Catat pembayaran lama dari Gmail-mu, dengan pratinjau dulu"} onClick={() => setSheet("import")} /> : null}
       {hook?.enabled && (hook.scriptVersion ?? 1) < (hook.currentScriptVersion ?? 2) ? <div className="dpx-note" role="status" style={{ margin: "6px 12px 10px" }}><Ic n="info" /><div><b>Skrip Apps Script-mu versi lama.</b> Salin skrip yang baru agar pembayaran dari toko, marketplace, dan pengirim lain ikut terbaca.<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setSheet("script")}>Salin skrip baru</Btn></div></div></div> : null}
     </div></Reveal>
@@ -376,22 +383,29 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
     <Reveal i={3}><div className="dpx-group dpx-white dpx-int">
       <Row icon="spark" tone="orange" title="Gmail langsung"
         sub={gmInfo?.error ? gmailError(gmInfo.error) : gmInfo?.lastPolledAt ? `Dicek ${ago(gmInfo.lastPolledAt)} · ${gmInfo.fetched} email dibaca` : gm ? "Memeriksa email pertama…" : "Catat email bank dan e-wallet melalui akun Google-mu"}
-        trail={loadingG ? undefined : !gReady ? soon : <span className={`dpx-switch ${gm ? "is-on" : ""} ${gm && gmInfo?.error ? "is-warn" : ""}`} role="switch" aria-checked={gm} aria-label="Gmail langsung" aria-busy={busy === "gmail"}><i /></span>}
+        trail={loadingG ? undefined : !gReady ? soon : <span className={`dpx-switch ${gm ? "is-on" : ""} ${gm && gmInfo?.error ? "is-warn" : ""}`} role="switch" aria-checked={gm} aria-label="Gmail langsung" aria-busy={busy === "gmail"}><i /></span>} chev={false}
         onClick={g?.configured && busy !== "gmail" ? (gm && !gmInfo?.error ? () => void turnGmailOff() : !gm && g.features.gmail ? () => void turnGmailOn() : () => setSheet({ consent: ["gmail"] })) : undefined} />
-      <Row icon="cal" tone="blue" title="Google Calendar" sub={cal ? `${g!.calendar.events} tagihan jadi acara bulanan` : "Tagihan rutin jadi acara + pengingat"} trail={loadingG ? undefined : !gReady ? soon : cal ? <Tag tone="ok">Aktif</Tag> : <Tag>Mati</Tag>}
-        onClick={gReady && !loadingG && !cal ? () => setSheet({ consent: ["calendar"] }) : undefined} />
+      <Row icon="cal" tone="blue" title="Google Calendar" sub={cal ? `${g!.calendar.events} tagihan jadi acara bulanan` : "Tagihan rutin jadi acara + pengingat"} chev={false}
+        trail={loadingG ? undefined : !gReady ? soon : <Switch on={cal} label="Google Calendar" onToggle={() => void flip("calendar", cal, "Google Calendar")} />}
+        onClick={gReady && !loadingG && busy !== "sw-calendar" ? () => void flip("calendar", cal, "Google Calendar") : undefined} />
       <Row icon="list" tone="emerald" title="Spreadsheet keuangan" sub={drive ? (g!.sheet?.status === "missing" ? "Spreadsheet terhapus di Drive. Ketuk untuk membuat ulang" : g!.sheet?.url ? `Dua arah · ${g!.sheet.pending ? "menyinkronkan…" : g!.sheet.lastSyncedAt ? `disinkron ${ago(g!.sheet.lastSyncedAt)}` : "menunggu sinkron pertama"}` : "Sedang dibuat di Drive-mu…") : "Semua catatan otomatis tertulis di Spreadsheet-mu, dua arah"}
-        trail={loadingG ? undefined : !gReady ? soon : drive ? <Tag tone={g!.sheet?.error || g!.sheet?.status === "missing" ? "warn" : "ok"}>{g!.sheet?.error || g!.sheet?.status === "missing" ? "Perlu perhatian" : "Aktif"}</Tag> : <Tag tone="warn">Disarankan</Tag>}
-        onClick={gReady && !loadingG ? (!drive ? () => setSheet({ consent: ["drive"] }) : g!.sheet?.status === "missing" ? () => void run("sheets", "Membuat ulang spreadsheet…") : g!.sheet?.url ? () => window.open(g!.sheet!.url!, "_blank", "noopener") : undefined) : undefined} />
+        trail={loadingG ? undefined : !gReady ? soon : <Switch on={drive} warn={drive && Boolean(g!.sheet?.error || g!.sheet?.status === "missing")} label="Spreadsheet keuangan" onToggle={() => void flip("sheets", drive, "Spreadsheet")} />}
+        onClick={gReady && !loadingG ? (!drive ? () => void flip("sheets", drive, "Spreadsheet") : g!.sheet?.status === "missing" ? () => void run("sheets", "Membuat ulang spreadsheet…") : g!.sheet?.url ? () => window.open(g!.sheet!.url!, "_blank", "noopener") : undefined) : undefined} />
       {drive && g!.sheet?.hold ? <div className="dpx-note dpx-danger" role="alert" style={{ margin: "6px 12px 10px" }}><Ic n="warn" /><div><b>Penghapusan ditahan.</b> {g!.sheet.hold}<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy === "hold"} onClick={() => void holdOk(confirmSheetDeletes)}>Ya, hapus juga di aplikasi</Btn></div></div></div> : null}
-      {drive ? <Row icon="dl" tone="amber" title="Foto struk di Drive" sub={`${g!.drive.uploaded} foto di “Djiwa Pay / Struk”${g!.drive.failed ? ` · ${g!.drive.failed} gagal` : ""} · dua arah`} chev={false} /> : null}
-      {drive && g!.drive.hold ? <div className="dpx-note dpx-danger" role="alert" style={{ margin: "6px 12px 10px" }}><Ic n="warn" /><div><b>Penghapusan ditahan.</b> {g!.drive.hold}<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy === "hold"} onClick={() => void holdOk(confirmDriveRemovals)}>Ya, hapus juga di aplikasi</Btn></div></div></div> : null}
+      {driveGranted || gOn ? <Row icon="dl" tone="amber" title="Foto struk di Drive" sub={receipts ? `${g!.drive.uploaded} foto di “Djiwa Pay / Struk”${g!.drive.failed ? ` · ${g!.drive.failed} gagal` : ""} · dua arah` : "Simpan foto struk ke folder “Djiwa Pay / Struk” di Drive-mu"} chev={false}
+        trail={loadingG ? undefined : !gReady ? soon : <Switch on={receipts} label="Foto struk di Drive" onToggle={() => void flip("receipts", receipts, "Foto struk")} />}
+        onClick={gReady && !loadingG && busy !== "sw-receipts" ? () => void flip("receipts", receipts, "Foto struk") : undefined} /> : null}
+      {receipts && g!.drive.hold ? <div className="dpx-note dpx-danger" role="alert" style={{ margin: "6px 12px 10px" }}><Ic n="warn" /><div><b>Penghapusan ditahan.</b> {g!.drive.hold}<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy === "hold"} onClick={() => void holdOk(confirmDriveRemovals)}>Ya, hapus juga di aplikasi</Btn></div></div></div> : null}
     </div></Reveal>
 
     {gOn ? <Reveal i={4}><div className="dpx-group dpx-white dpx-int" style={{ marginTop: 12 }}>
       <Row icon="user" tone="slate" title={g!.email ?? "Akun Google"} sub="Akun yang terhubung" chev={false} />
-      <Row icon="link" tone="blue" title="Akun Google (semua layanan)" sub="Matikan untuk memutus Gmail, Calendar, Spreadsheet dan Drive sekaligus. File di Drive-mu tetap ada" onClick={() => setConfirmOff("google")} chev={false} trail={<Switch on label="Akun Google, semua layanan" onToggle={() => setConfirmOff("google")} />} />
     </div></Reveal> : null}
+
+    <div className="dpx-glabel">Sumber email lain</div>
+    <Reveal i={5}><div className="dpx-group dpx-white dpx-int">
+      <Row icon="spark" tone="orange" title="Sumber email" sub={active.length ? active.join(" · ") : "Gunakan Email terusan atau Apps Script"} trail={loadingG ? undefined : active.length ? <Tag tone="ok">Aktif</Tag> : <Tag tone="warn">Sambungkan</Tag>} onClick={() => setSheet("sources")} />
+    </div></Reveal>
 
     {g && !g.configured ? <div className="dpx-note" style={{ marginTop: 12 }}><Ic n="info" /><div><b>Google belum dihubungkan di server ini.</b> Calendar, Drive dan Sheets aktif begitu kredensial Google dipasang.</div></div> : null}
     {inbound && !inbound.configured ? <div className="dpx-note" style={{ marginTop: 12 }}><Ic n="info" /><div><b>Penerima email belum aktif.</b> Email terusan aktif begitu alamat domain surat dipasang.</div></div> : null}
