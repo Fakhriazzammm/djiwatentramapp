@@ -8,7 +8,7 @@ import { wealthHistory } from "../../lib/finance/story";
 import { Avatar, payAsset, AnimatedNumber, Bar, Mascot, MascotBuddy, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
 import type { Nav } from "../shell/dpx-pages";
 import { ScopeSwitch } from "./scope-switch";
-import { DayStrip, dayKey } from "./day-strip";
+import { DayStrip, MonthStrip, dayKey, monthKey } from "./day-strip";
 import { TidyBanner } from "./tidy-banner";
 import { isCrossScope } from "../../lib/finance/scope";
 import { rootId, guessCategory } from "../../lib/finance/categories";
@@ -180,7 +180,8 @@ export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: R
     return m && Number(m[2]) >= 1 && Number(m[2]) <= 12 ? { y: Number(m[1]), m: Number(m[2]) - 1 } : { y: today.getFullYear(), m: today.getMonth() };
   });
   const [seg, setSeg] = useState<"all" | "in" | "out" | "tf">("all");
-  const [day, setDay] = useState("");   // embedded view: a day key, "all", or "" = the latest day that has records
+  const [day, setDay] = useState("");   // embedded view: a day key, "all" (the whole month), or "" = the latest day with records in the month
+  const [mon, setMon] = useState("");   // embedded view: "YYYY-MM", or "" = the month of the latest record
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
   const [accOwn, setAcc] = useState("all");
@@ -202,10 +203,15 @@ export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: R
   const showStrip = monthsWith.length > 1 || (monthsWith.length === 1 && month.length === 0);
   // Embedded view (under the wallet pouch): a day strip instead of month navigation, search and filters.
   const dayCounts = useMemo(() => { const m = new Map<string, number>(); for (const e of entries) { if (!(acc === "all" || e.accountId === acc || e.toAccountId === acc)) continue; const k = dayKey(new Date(e.at)); m.set(k, (m.get(k) ?? 0) + 1); } return m; }, [entries, acc]);
+  const monthCounts = useMemo(() => { const m = new Map<string, number>(); dayCounts.forEach((n, k) => m.set(k.slice(0, 7), (m.get(k.slice(0, 7)) ?? 0) + n)); return m; }, [dayCounts]);
   const latestDay = useMemo(() => [...dayCounts.keys()].sort().pop() ?? dayKey(today), [dayCounts]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const activeDay = day || latestDay;
-  useEffect(() => { setDay(""); }, [acc]);   // another wallet: back to its latest day with records
-  const eList = embed ? entries.filter((e) => inWallet(e) && (seg === "all" || e.kind === seg) && (activeDay === "all" ? today.getTime() - Date.parse(e.at) < 90 * 864e5 : dayKey(new Date(e.at)) === activeDay)) : [];
+  const nowMonth = monthKey(today);
+  const activeMon = mon || latestDay.slice(0, 7);
+  const monthList = useMemo(() => { const first = [...monthCounts.keys()].sort()[0] ?? nowMonth; const [y0, m0] = (first < activeMon ? first : activeMon).split("-").map(Number); const out: string[] = []; let y = y0, m = m0; while (`${y}-${String(m).padStart(2, "0")}` <= nowMonth && out.length < 36) { out.push(`${y}-${String(m).padStart(2, "0")}`); if (++m > 12) { m = 1; y++; } } return out.length ? out : [nowMonth]; }, [monthCounts, activeMon, nowMonth]);
+  const latestInMonth = useMemo(() => [...dayCounts.keys()].filter((k) => k.startsWith(activeMon)).sort().pop() ?? (activeMon === nowMonth ? dayKey(today) : `${activeMon}-01`), [dayCounts, activeMon, nowMonth]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const activeDay = day || latestInMonth;
+  useEffect(() => { setDay(""); setMon(""); }, [acc]);   // another wallet: back to its latest month and day
+  const eList = embed ? entries.filter((e) => inWallet(e) && (seg === "all" || e.kind === seg) && (activeDay === "all" ? dayKey(new Date(e.at)).startsWith(activeMon) : dayKey(new Date(e.at)) === activeDay)) : [];
   const eDays = [...new Set(eList.map((e) => dayLabel(e.at)))];
   const head = <>
     <div className="dpx-hdr" style={{ paddingTop: 0 }}><h1 className="dpx-page-title" style={{ flex: 1 }}>Catatan</h1><Btn type="button" className="dpx-rb" onClick={() => nav.go("/ringkasan")} aria-label="Laporan"><Ic n="chart" /></Btn></div>
@@ -228,11 +234,12 @@ export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: R
   <AnimatePresence>{sheet === "wallet" ? <AccountSheet key="w" state={state} balances={balances} value={acc} includePay allLabel="Semua dompet" title="Filter dompet" onPick={setAcc} onClose={() => setSheet(null)} /> : null}{sheet === "filter" ? <CategorySheet key="f" categories={[{ id: "all", name: "Semua", icon: "grid", tone: "slate", income: false }, ...state.categories]} income={false} value={cat} onPick={setCat} onClose={() => setSheet(null)} /> : null}</AnimatePresence>
   </>;
   if (embed) return <div className="dpx-rec-embed">
-    <DayStrip today={today} counts={dayCounts} value={activeDay} onPick={setDay} />
+    <MonthStrip months={monthList} today={today} counts={monthCounts} value={activeMon} onPick={(k) => { setMon(k); setDay(""); }} />
+    <DayStrip month={activeMon} today={today} counts={dayCounts} value={activeDay} onPick={setDay} />
     <Seg id="rec" label="Jenis catatan" value={seg} onChange={setSeg} options={[["all", "Semua"], ["in", "Masuk"], ["out", "Keluar"], ["tf", "Transfer"]] as const} />
     <motion.div key={`${acc}|${activeDay}|${seg}`} aria-live="polite" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, ease: [0.32, 0.72, 0, 1] }}>
       {entries.length === 0 ? <Empty img="order-receipt" title="Belum ada catatan" text="Catat pengeluaran pertamamu. Pembayaran Djiwa Pay otomatis ikut tercatat."><Btn type="button" className="dpx-btn" style={{ maxWidth: 300 }} onClick={() => ctx.open({ k: "catat" })}><Ic n="plus" size="sm" /> Catat sekarang</Btn></Empty>
-        : eList.length === 0 ? <Empty img="restaurant-cafe" title={activeDay === "all" ? "Tidak ada catatan" : "Tidak ada catatan di hari ini"} text={activeDay === "all" ? "Belum ada catatan 90 hari terakhir untuk pilihan ini." : "Geser tanggal lain, atau lihat semuanya."}>{activeDay !== "all" ? <Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setDay("all")}>Lihat semua tanggal</Btn> : null}</Empty>
+        : eList.length === 0 ? <Empty img="restaurant-cafe" title={activeDay === "all" ? "Tidak ada catatan" : "Tidak ada catatan di hari ini"} text={activeDay === "all" ? "Belum ada catatan di bulan ini untuk pilihan ini." : "Geser tanggal lain, atau lihat semuanya."}>{activeDay !== "all" ? <Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setDay("all")}>Lihat semua tanggal</Btn> : null}</Empty>
         : eDays.map((d) => { const items = eList.filter((e) => dayLabel(e.at) === d); const spent = items.filter((e) => e.kind === "out").reduce((n, e) => n + e.amount, 0); return <div key={d}><div className="dpx-dayh"><span>{d}</span><span>{spent ? `−${rupiah(spent)}` : ""}</span></div><div className="dpx-group dpx-flush dpx-white">{items.map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} fresh={fresh.has(e.id)} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div></div>; })}
     </motion.div>
     {sheets}

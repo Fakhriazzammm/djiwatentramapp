@@ -1179,7 +1179,7 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 .dpx .dpx-ds{display:flex;align-items:center;gap:8px;margin:4px 0 12px}
 .dpx .dpx-ds-all{flex:none;position:relative;height:60px;padding:0 14px;border-radius:16px;background:#fff;box-shadow:0 2px 8px rgba(43,38,32,.07);font:700 13px var(--font);color:var(--mute)}
 .dpx .dpx-ds-all.on{color:#fff}
-.dpx .dpx-ds-row{position:relative;display:flex;align-items:center;gap:6px;flex:1;min-width:0;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;padding:2px 14px;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
+.dpx .dpx-ds-row{position:relative;display:flex;align-items:center;gap:6px;flex:1;min-width:0;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;padding:2px calc(50% - 25px);-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
   -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 16px,#000 calc(100% - 16px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 16px,#000 calc(100% - 16px),transparent 100%)}
 .dpx .dpx-ds-row::-webkit-scrollbar{display:none}
 .dpx .dpx-ds-day{flex:none;position:relative;width:50px;height:62px;min-height:0;padding:0;border-radius:16px;display:grid;place-items:center;align-content:center;gap:1px;scroll-snap-align:center;color:var(--mute);background:transparent}
@@ -1194,3 +1194,9 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 .dpx .dpx-ds-month{flex:none;align-self:center;padding:0 6px;font:700 11px var(--font);color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
 .dpx .dpx-ds-day:focus-visible,.dpx .dpx-ds-all:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.dpx .dpx-ds-day i{transition:none}}
+
+/* Month strip sits right above the day strip: same look, a little tighter between them */
+.dpx .dpx-rec-embed>.dpx-ds:first-child{margin-bottom:2px}
+.dpx .dpx-ds[aria-label="Pilih bulan"] .dpx-ds-day{width:54px}
+.dpx .dpx-ds[aria-label="Pilih bulan"] .dpx-ds-day b{font-size:16px}
+.dpx .dpx-ds[aria-label="Pilih bulan"] .dpx-ds-row{padding-inline:calc(50% - 27px)}

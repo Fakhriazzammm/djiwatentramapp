@@ -14,7 +14,7 @@ export function Ic({ n, size, className = "" }: { n: IconName; size?: "sm" | "lg
 export const Chev = () => <img className="dpx-chev" src={payAsset("chev")} alt="" aria-hidden="true" />;
 const illustrationAssets = {
   "payment-wallet": "wallet", "customer-benefit-wallet": "wallet", "navigation-wallet": "wallet",
-  "navigation-home": "home", "navigation-history": "receipt", "sales-report": "chart",
+  "navigation-home": "home", "navigation-history": "receipt", "sales-report": "chart", "plan-target": "target",
   "order-receipt": "receipt", "restaurant-cafe": "cup", "loyalty-points": "bank",
   "notifications-alerts": "bell", "promo-voucher": "gift", "business-ai-assistant": "mascot",
 } as const;
