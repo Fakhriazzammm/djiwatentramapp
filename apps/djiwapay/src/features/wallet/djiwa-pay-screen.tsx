@@ -579,7 +579,8 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
     {fsheet ? <FinSheetHost key={fsheet.k} ctx={finCtx} sheet={fsheet} close={() => setFsheet(null)} goManual={goManual} openPaySheet={() => setShell("pay")} /> : null}
   </AnimatePresence>;
   const snackbar = <AnimatePresence>{snack ? <motion.div key={snack.id} className="dpx-snack" role="status" initial={{ opacity: 0, y: 30, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20 }} transition={spring}><span>{snack.text}</span>{snack.undo ? <Btn type="button" onClick={() => { snack.undo?.(); setSnack(null); }}>Urungkan</Btn> : null}</motion.div> : null}</AnimatePresence>;
-  const frameShell = (content: ReactNode, active: "home" | "budget" | "history" | "wallet" | null) => <MotionConfig reducedMotion="user"><div className={`dpx ${embedded ? "dpx-embedded" : ""}`}><motion.div key={`${routePath}|${notificationsOpen ? "n" : ""}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.34, ease: [0.32, 0.72, 0, 1] }}>{content}</motion.div>{embedded || !active ? null : <TabBar active={active} go={(path) => goPayRoute(path)} openPay={() => setFsheet({ k: "catat" })} />}{sheets}{snackbar}</div></MotionConfig>;
+  // Every framed page gets the bottom bar; `active` only picks which tab is highlighted (null = none). `bar={false}` is for setup flows.
+  const frameShell = (content: ReactNode, active: "home" | "budget" | "history" | "wallet" | null, bar = true) => <MotionConfig reducedMotion="user"><div className={`dpx ${embedded ? "dpx-embedded" : ""}`}><motion.div key={`${routePath}|${notificationsOpen ? "n" : ""}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.34, ease: [0.32, 0.72, 0, 1] }}>{content}</motion.div>{embedded || !bar ? null : <TabBar active={active} go={(path) => goPayRoute(path)} openPay={() => setFsheet({ k: "catat" })} />}{sheets}{snackbar}</div></MotionConfig>;
   if (!wallet && error && walletRoute?.page !== "help") return frameShell(
     <Sky><div className="dpx-pad"><div className="dpx-empty" role="alert" style={{ paddingTop: 80 }}><I3 name="payment-wallet" px={112} /><b>Saldo belum dapat dimuat</b><p>{error}</p><Btn type="button" className="dpx-btn" style={{ maxWidth: 260 }} onClick={onRefresh} disabled={loading}>{loading ? "Mencoba lagi…" : "Coba lagi"}</Btn></div></div></Sky>, null);
   if (walletRoute?.page === "history") {
@@ -606,6 +607,6 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   if (walletRoute?.page === "tools") return frameShell(<ToolsPage ctx={finCtx} onBack={() => goBack("/kekayaan")} />, "wallet");
   if (walletRoute?.page === "wallet") return frameShell(<FinWallet ctx={finCtx} />, "wallet");
   if (walletRoute?.page === "budget") return frameShell(<FinBudget ctx={finCtx} />, "budget");
-  if (!fin.state.onboarded) return frameShell(<Onboarding ctx={finCtx} />, null);
+  if (!fin.state.onboarded) return frameShell(<Onboarding ctx={finCtx} />, null, false);
   return frameShell(<FinHome ctx={finCtx} />, "home");
 }
