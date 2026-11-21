@@ -1113,3 +1113,6 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 .dpx-switch.is-on{background:#2f9e5b}.dpx-switch.is-on i{transform:translateX(18px)}
 .dpx-switch.is-warn{background:#e0a030}
 .dpx-switch[aria-busy="true"]{opacity:.6}
+
+/* Pages built for "no bar" now sit under the bottom bar too: keep their last row clear of it. */
+.dpx:has(> .dpx-tabbar) .dpx-pad.dpx-nobar{padding-bottom:calc(132px + env(safe-area-inset-bottom,0px)) !important}

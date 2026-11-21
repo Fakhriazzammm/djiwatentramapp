@@ -389,7 +389,7 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
 
     {gOn ? <Reveal i={4}><div className="dpx-group dpx-white dpx-int" style={{ marginTop: 12 }}>
       <Row icon="user" tone="slate" title={g!.email ?? "Akun Google"} sub="Akun yang terhubung" chev={false} />
-      <Row icon="trash" tone="rose" title="Putuskan Google" sub="Token dihapus, file di Drive-mu tetap ada" onClick={() => setConfirmOff("google")} chev={false} />
+      <Row icon="link" tone="blue" title="Terhubung ke Google" sub="Matikan untuk memutus. Token dihapus, file di Drive-mu tetap ada" onClick={() => setConfirmOff("google")} chev={false} trail={<Switch on label="Terhubung ke Google" onToggle={() => setConfirmOff("google")} />} />
     </div></Reveal> : null}
 
     {g && !g.configured ? <div className="dpx-note" style={{ marginTop: 12 }}><Ic n="info" /><div><b>Google belum dihubungkan di server ini.</b> Calendar, Drive dan Sheets aktif begitu kredensial Google dipasang.</div></div> : null}
