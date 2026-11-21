@@ -204,6 +204,7 @@ export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: R
   const dayCounts = useMemo(() => { const m = new Map<string, number>(); for (const e of entries) { if (!(acc === "all" || e.accountId === acc || e.toAccountId === acc)) continue; const k = dayKey(new Date(e.at)); m.set(k, (m.get(k) ?? 0) + 1); } return m; }, [entries, acc]);
   const latestDay = useMemo(() => [...dayCounts.keys()].sort().pop() ?? dayKey(today), [dayCounts]);   // eslint-disable-line react-hooks/exhaustive-deps
   const activeDay = day || latestDay;
+  useEffect(() => { setDay(""); }, [acc]);   // another wallet: back to its latest day with records
   const eList = embed ? entries.filter((e) => inWallet(e) && (seg === "all" || e.kind === seg) && (activeDay === "all" ? today.getTime() - Date.parse(e.at) < 90 * 864e5 : dayKey(new Date(e.at)) === activeDay)) : [];
   const eDays = [...new Set(eList.map((e) => dayLabel(e.at)))];
   const head = <>
