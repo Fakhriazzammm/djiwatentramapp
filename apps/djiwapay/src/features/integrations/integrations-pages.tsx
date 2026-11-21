@@ -370,9 +370,8 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
     <Reveal i={3}><div className="dpx-group dpx-white dpx-int">
       <Row icon="spark" tone="orange" title="Gmail langsung"
         sub={gmInfo?.error ? gmailError(gmInfo.error) : gmInfo?.lastPolledAt ? `Dicek ${ago(gmInfo.lastPolledAt)} · ${gmInfo.fetched} email dibaca` : gm ? "Memeriksa email pertama…" : "Catat email bank dan e-wallet melalui akun Google-mu"}
-        trail={loadingG ? undefined : !gReady ? soon : gm ? <Tag tone={gmInfo?.error ? "warn" : "ok"}>{gmInfo?.error ? "Perlu perhatian" : "Aktif"}</Tag> : <Tag>Sambungkan</Tag>}
-        onClick={g?.configured && (!gm || gmInfo?.error) ? () => setSheet({ consent: ["gmail"] }) : undefined} />
-      {gm ? <Row icon="trash" tone="rose" title="Matikan Gmail langsung" sub="Berhenti membaca email. Catatan yang sudah ada tetap" onClick={() => { setSheet(null); void turnGmailOff(); }} chev={false} /> : null}
+        trail={loadingG ? undefined : !gReady ? soon : <span className={`dpx-switch ${gm ? "is-on" : ""} ${gm && gmInfo?.error ? "is-warn" : ""}`} role="switch" aria-checked={gm} aria-label="Gmail langsung" aria-busy={busy === "gmail"}><i /></span>}
+        onClick={g?.configured && busy !== "gmail" ? (!gm || gmInfo?.error ? () => setSheet({ consent: ["gmail"] }) : () => void turnGmailOff()) : undefined} />
       <Row icon="cal" tone="blue" title="Google Calendar" sub={cal ? `${g!.calendar.events} tagihan jadi acara bulanan` : "Tagihan rutin jadi acara + pengingat"} trail={loadingG ? undefined : !gReady ? soon : cal ? <Tag tone="ok">Aktif</Tag> : <Tag>Mati</Tag>}
         onClick={gReady && !loadingG && !cal ? () => setSheet({ consent: ["calendar"] }) : undefined} />
       <Row icon="list" tone="emerald" title="Spreadsheet keuangan" sub={drive ? (g!.sheet?.status === "missing" ? "Spreadsheet terhapus di Drive. Ketuk untuk membuat ulang" : g!.sheet?.url ? `Dua arah · ${g!.sheet.pending ? "menyinkronkan…" : g!.sheet.lastSyncedAt ? `disinkron ${ago(g!.sheet.lastSyncedAt)}` : "menunggu sinkron pertama"}` : "Sedang dibuat di Drive-mu…") : "Semua catatan otomatis tertulis di Spreadsheet-mu, dua arah"}
