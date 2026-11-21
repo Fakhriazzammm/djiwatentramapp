@@ -1125,3 +1125,4 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 .dpx .is-list .dpx-st-story b{font:700 15px/1.3 var(--font)}
 .dpx .is-list .dpx-st-story .dpx-sub{font-size:13px;line-height:1.4}
 .dpx .is-list .dpx-st-more{grid-template-columns:minmax(0,1fr);text-align:center;padding:14px}
+.dpx .dpx-st-stories.is-list+.dpx-st-more,.dpx .is-list .dpx-st-more{width:100%;box-sizing:border-box}
