@@ -8,6 +8,7 @@ import { wealthHistory } from "../../lib/finance/story";
 import { Avatar, payAsset, AnimatedNumber, Bar, Mascot, MascotBuddy, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
 import type { Nav } from "../shell/dpx-pages";
 import { ScopeSwitch } from "./scope-switch";
+import { DayStrip, dayKey } from "./day-strip";
 import { TidyBanner } from "./tidy-banner";
 import { isCrossScope } from "../../lib/finance/scope";
 import { rootId, guessCategory } from "../../lib/finance/categories";
@@ -179,6 +180,7 @@ export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: R
     return m && Number(m[2]) >= 1 && Number(m[2]) <= 12 ? { y: Number(m[1]), m: Number(m[2]) - 1 } : { y: today.getFullYear(), m: today.getMonth() };
   });
   const [seg, setSeg] = useState<"all" | "in" | "out" | "tf">("all");
+  const [day, setDay] = useState("");   // embedded view: a day key, "all", or "" = the latest day that has records
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
   const [accOwn, setAcc] = useState("all");
@@ -198,6 +200,12 @@ export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: R
   // Which months hold records, newest first: imported mail lands in past months that the month view would otherwise hide.
   const monthsWith = useMemo(() => { const c = new Map<string, number>(); for (const e of entries) { const d = new Date(e.at); const k = `${d.getFullYear()}-${d.getMonth()}`; c.set(k, (c.get(k) ?? 0) + 1); } return [...c].map(([k, n]) => { const [y, mo] = k.split("-").map(Number); return { y, m: mo, n }; }).sort((a, b) => b.y * 12 + b.m - (a.y * 12 + a.m)); }, [entries]);
   const showStrip = monthsWith.length > 1 || (monthsWith.length === 1 && month.length === 0);
+  // Embedded view (under the wallet pouch): a day strip instead of month navigation, search and filters.
+  const dayCounts = useMemo(() => { const m = new Map<string, number>(); for (const e of entries) { if (!(acc === "all" || e.accountId === acc || e.toAccountId === acc)) continue; const k = dayKey(new Date(e.at)); m.set(k, (m.get(k) ?? 0) + 1); } return m; }, [entries, acc]);
+  const latestDay = useMemo(() => [...dayCounts.keys()].sort().pop() ?? dayKey(today), [dayCounts]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const activeDay = day || latestDay;
+  const eList = embed ? entries.filter((e) => inWallet(e) && (seg === "all" || e.kind === seg) && (activeDay === "all" ? today.getTime() - Date.parse(e.at) < 90 * 864e5 : dayKey(new Date(e.at)) === activeDay)) : [];
+  const eDays = [...new Set(eList.map((e) => dayLabel(e.at)))];
   const head = <>
     <div className="dpx-hdr" style={{ paddingTop: 0 }}><h1 className="dpx-page-title" style={{ flex: 1 }}>Catatan</h1><Btn type="button" className="dpx-rb" onClick={() => nav.go("/ringkasan")} aria-label="Laporan"><Ic n="chart" /></Btn></div>
     <ScopeSwitch fin={fin} id="records" />
@@ -219,8 +227,13 @@ export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: R
   <AnimatePresence>{sheet === "wallet" ? <AccountSheet key="w" state={state} balances={balances} value={acc} includePay allLabel="Semua dompet" title="Filter dompet" onPick={setAcc} onClose={() => setSheet(null)} /> : null}{sheet === "filter" ? <CategorySheet key="f" categories={[{ id: "all", name: "Semua", icon: "grid", tone: "slate", income: false }, ...state.categories]} income={false} value={cat} onPick={setCat} onClose={() => setSheet(null)} /> : null}</AnimatePresence>
   </>;
   if (embed) return <div className="dpx-rec-embed">
-    <div className="dpx-sec"><h2>Catatan · {embed.name}</h2><Btn type="button" onClick={() => nav.go("/riwayat")}>Lihat semua</Btn></div>
-    {body}
+    <DayStrip today={today} counts={dayCounts} value={activeDay} onPick={setDay} />
+    <Seg id="rec" label="Jenis catatan" value={seg} onChange={setSeg} options={[["all", "Semua"], ["in", "Masuk"], ["out", "Keluar"], ["tf", "Transfer"]] as const} />
+    <motion.div key={`${acc}|${activeDay}|${seg}`} aria-live="polite" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, ease: [0.32, 0.72, 0, 1] }}>
+      {entries.length === 0 ? <Empty img="order-receipt" title="Belum ada catatan" text="Catat pengeluaran pertamamu. Pembayaran Djiwa Pay otomatis ikut tercatat."><Btn type="button" className="dpx-btn" style={{ maxWidth: 300 }} onClick={() => ctx.open({ k: "catat" })}><Ic n="plus" size="sm" /> Catat sekarang</Btn></Empty>
+        : eList.length === 0 ? <Empty img="restaurant-cafe" title={activeDay === "all" ? "Tidak ada catatan" : "Tidak ada catatan di hari ini"} text={activeDay === "all" ? "Belum ada catatan 90 hari terakhir untuk pilihan ini." : "Geser tanggal lain, atau lihat semuanya."}>{activeDay !== "all" ? <Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setDay("all")}>Lihat semua tanggal</Btn> : null}</Empty>
+        : eDays.map((d) => { const items = eList.filter((e) => dayLabel(e.at) === d); const spent = items.filter((e) => e.kind === "out").reduce((n, e) => n + e.amount, 0); return <div key={d}><div className="dpx-dayh"><span>{d}</span><span>{spent ? `−${rupiah(spent)}` : ""}</span></div><div className="dpx-group dpx-flush dpx-white">{items.map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} fresh={fresh.has(e.id)} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div></div>; })}
+    </motion.div>
     {sheets}
   </div>;
   return <div className="dpx-page"><Sky><div className="dpx-pad">

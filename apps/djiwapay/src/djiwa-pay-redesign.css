@@ -1174,3 +1174,23 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 /* Records embedded under the wallet pouch (Kekayaan › Dompet) */
 .dpx .dpx-rec-embed{margin-top:6px}
 .dpx .dpx-rec-embed .dpx-dayh{position:static}
+
+/* Day strip (records under the wallet pouch) */
+.dpx .dpx-ds{display:flex;align-items:center;gap:8px;margin:4px 0 12px}
+.dpx .dpx-ds-all{flex:none;position:relative;height:60px;padding:0 14px;border-radius:16px;background:#fff;box-shadow:0 2px 8px rgba(43,38,32,.07);font:700 13px var(--font);color:var(--mute)}
+.dpx .dpx-ds-all.on{color:#fff}
+.dpx .dpx-ds-row{position:relative;display:flex;align-items:center;gap:6px;flex:1;min-width:0;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;padding:2px 14px;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 16px,#000 calc(100% - 16px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 16px,#000 calc(100% - 16px),transparent 100%)}
+.dpx .dpx-ds-row::-webkit-scrollbar{display:none}
+.dpx .dpx-ds-day{flex:none;position:relative;width:50px;height:62px;min-height:0;padding:0;border-radius:16px;display:grid;place-items:center;align-content:center;gap:1px;scroll-snap-align:center;color:var(--mute);background:transparent}
+.dpx .dpx-ds-day small{font:600 11px var(--font)}
+.dpx .dpx-ds-day b{font:800 18px var(--font);color:var(--ink,#2b2620);letter-spacing:-.02em}
+.dpx .dpx-ds-day i{width:5px;height:5px;border-radius:99px;background:transparent;transition:background .25s}
+.dpx .dpx-ds-day.has i{background:rgba(43,38,32,.35)}
+.dpx .dpx-ds-day.today:not(.on){box-shadow:inset 0 0 0 1.5px rgba(43,38,32,.22)}
+.dpx .dpx-ds-day small,.dpx .dpx-ds-day b,.dpx .dpx-ds-day i,.dpx .dpx-ds-all span:not(.dpx-ds-pill){position:relative;z-index:1}
+.dpx .dpx-ds-day.on small,.dpx .dpx-ds-day.on b{color:#fff}.dpx .dpx-ds-day.on.has i{background:rgba(255,255,255,.85)}
+.dpx .dpx-ds-pill{position:absolute;inset:0;border-radius:16px;background:var(--navy);box-shadow:0 6px 14px -6px rgba(15,35,71,.5);z-index:0}
+.dpx .dpx-ds-month{flex:none;align-self:center;padding:0 6px;font:700 11px var(--font);color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.dpx .dpx-ds-day:focus-visible,.dpx .dpx-ds-all:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.dpx .dpx-ds-day i{transition:none}}
