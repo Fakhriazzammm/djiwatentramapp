@@ -118,6 +118,7 @@ export function CatatSheet({ fin, notify, onClose, onManual, onPay, onAsset, bal
   const [pick, setPick] = useState<{ key: string; kind: "cat" | "acc" } | null>(null);
   const [accountId, setAccountId] = useState(() => state.accounts.find((a) => !a.archived)?.id ?? "tunai");
   const [scanFile, setScanFile] = useState<File | null>(null);
+  const noteInput = useRef<HTMLTextAreaElement>(null);
   const camera = useRef<HTMLInputElement>(null), gallery = useRef<HTMLInputElement>(null);
   const choose = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) setScanFile(f); };
   const supported = typeof window !== "undefined" && speechCtor() !== null;
@@ -165,8 +166,14 @@ export function CatatSheet({ fin, notify, onClose, onManual, onPay, onAsset, bal
   }
   return <Sheet title="Catat" onClose={onClose}>
     <span className="dpx-bubble">Cukup tulis atau bilang: “kopi 25rb dan parkir 5rb”</span>
-    <div className="dpx-glow" style={{ width: 88, height: 88, margin: "14px auto 6px", boxShadow: "0 0 0 10px rgba(209,75,26,.10)" }}><I3 name="business-ai-assistant" px={58} /></div>
-    <textarea className="dpx-textarea" aria-label="Catatan dalam satu kalimat" placeholder="Atau ketik di sini" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }} />
+    <button type="button" className="dpx-glow" aria-label="Tulis catatan" onClick={() => noteInput.current?.focus()}
+      style={{ width: 88, height: 88, border: 0, margin: "14px auto 6px", boxShadow: "0 0 0 10px rgba(209,75,26,.10)" }}>
+      <picture>
+        <source media="(prefers-reduced-motion: no-preference)" srcSet={text.trim() ? "/assets/djiwapay-studio/catat-writing.gif" : "/assets/djiwapay-studio/catat.gif"} />
+        <img src="/assets/djiwapay-studio/catat-rest.webp" width={58} height={58} alt="" />
+      </picture>
+    </button>
+    <textarea ref={noteInput} className="dpx-textarea" aria-label="Catatan dalam satu kalimat" placeholder="Atau ketik di sini" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }} />
     <div className="dpx-flex dpx-mt">
       <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0, flex: 1 }} onClick={() => setVoiceOpen(true)}><Ic n="mic" size="sm" /> Bicara</Btn>
       <Btn type="button" className={`dpx-btn dpx-soft ${text.trim() ? "" : "dpx-off"}`} style={{ margin: 0, width: 96, padding: 0 }} onClick={() => submit()} disabled={!text.trim()}><Ic n="up" size="sm" /> Kirim</Btn>
