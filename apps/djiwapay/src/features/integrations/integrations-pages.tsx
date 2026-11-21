@@ -372,6 +372,10 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
     <Header title="Integrasi" onBack={onBack} />
     <div className="dpx-note dpx-info" style={{ marginTop: 6 }}><Ic n="shield" /><div><b>Kamu yang mengatur.</b> Setiap integrasi bisa diputus kapan saja. Token dan data turunan ikut dihapus.</div></div>
 
+    {gOn ? <Reveal i={4}><div className="dpx-group dpx-white dpx-int" style={{ marginTop: 10 }}>
+      <Row icon="user" tone="slate" title={g!.email ?? "Akun Google"} sub="Akun yang terhubung" chev={false} />
+    </div></Reveal> : null}
+
     <div className="dpx-glabel">Catat otomatis dari email{gm ? <Btn type="button" disabled={busy === "gmail-check"} onClick={() => void checkGmail()}>{busy === "gmail-check" ? "Memeriksa…" : "Periksa"}</Btn> : null}</div>
     <Reveal i={1}><div className="dpx-group dpx-white dpx-int">
       {active.length ? <Row icon="check" tone="emerald" title={`Antrean tinjau${inbound && inbound.review ? ` (${inbound.review})` : ""}`} sub="Email baru tercatat otomatis. Di sini hanya yang perlu dicek" onClick={onReview} /> : null}
@@ -397,10 +401,6 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
         onClick={gReady && !loadingG && busy !== "sw-receipts" ? () => void flip("receipts", receipts, "Foto struk") : undefined} /> : null}
       {receipts && g!.drive.hold ? <div className="dpx-note dpx-danger" role="alert" style={{ margin: "6px 12px 10px" }}><Ic n="warn" /><div><b>Penghapusan ditahan.</b> {g!.drive.hold}<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy === "hold"} onClick={() => void holdOk(confirmDriveRemovals)}>Ya, hapus juga di aplikasi</Btn></div></div></div> : null}
     </div></Reveal>
-
-    {gOn ? <Reveal i={4}><div className="dpx-group dpx-white dpx-int" style={{ marginTop: 12 }}>
-      <Row icon="user" tone="slate" title={g!.email ?? "Akun Google"} sub="Akun yang terhubung" chev={false} />
-    </div></Reveal> : null}
 
     <div className="dpx-glabel">Sumber email lain</div>
     <Reveal i={5}><div className="dpx-group dpx-white dpx-int">
