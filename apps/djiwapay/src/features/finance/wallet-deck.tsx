@@ -26,6 +26,66 @@ const iconOf = (type: string): IconName => (type === "bank" ? "bank" : type === 
 type Card = { id: string; name: string; type: string; balance: number; skin: Skin; pay: boolean; account?: Account; needsOpening: boolean };
 const FOCUS_H = 196, STRIP_H = 70;
 
+type View = "pouch" | "swipe" | "stack";
+const VIEW_KEY = "djiwa-fin-wallet-view";
+const readView = (): View => { try { const v = localStorage.getItem(VIEW_KEY); return v === "swipe" || v === "stack" || v === "pouch" ? v : "pouch"; } catch { return "pouch"; } };
+const saveView = (v: View) => { try { localStorage.setItem(VIEW_KEY, v); } catch { /* private mode: the choice just isn't remembered */ } };
+const VIEWS: { id: View; title: string; sub: string; icon: IconName }[] = [
+  { id: "pouch", title: "Kantong", sub: "Kartu muncul dari dompet, ketuk untuk ganti", icon: "wallet" },
+  { id: "swipe", title: "Geser", sub: "Kartu berjajar ke samping", icon: "card" },
+  { id: "stack", title: "Daftar", sub: "Semua dompet bertumpuk", icon: "list" },
+];
+/** Where a card sits in the pouch by its distance from the chosen one: front, two behind it, then tucked away inside. */
+const POS = [{ y: 0, s: 1, dim: 0 }, { y: -16, s: 0.95, dim: 0.14 }, { y: -30, s: 0.9, dim: 0.26 }];
+const TUCKED = { y: 70, s: 0.9, dim: 0.3 };
+const SPRING = { type: "spring", stiffness: 260, damping: 26 } as const;
+const tagOf = (c: { pay: boolean; name: string }) => (c.pay ? "PAY" : c.name.split(/[\s•]/)[0].toUpperCase().slice(0, 8));
+
+/**
+ * The default view: cards rise out of a pouch. The front card flips to the next on tap or a sideways flick, the cards behind it
+ * shuffle forward, and the previous one slips back into the pouch. The balance box opens the wallet's detail.
+ */
+function Pouch({ cards, sel, go, ctx, stats, hint, cur }: { cards: Card[]; sel: number; go: (i: number) => void; ctx: FinCtx; stats: { inn: number; out: number }; hint: boolean; cur: Card }) {
+  const n = cards.length, mask = (t: string) => (ctx.visible ? t : "•••••"), neg = cur.balance < 0;
+  return <motion.div className="dpx-pc" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING, delay: 0.05 }}>
+    <div className="dpx-pc-stage">
+      {cards.map((c, i) => {
+        const p = (i - sel + n) % n, pos = p < 3 ? POS[p] : TUCKED, front = p === 0;
+        return <motion.div key={c.id} className="dpx-pc-card" style={{ background: `linear-gradient(145deg, ${c.skin.from}, ${c.skin.to})`, zIndex: p < 3 ? 5 - p : 1, pointerEvents: p < 3 ? "auto" : "none" }}
+          animate={{ y: pos.y, scale: pos.s, opacity: p < 3 ? 1 : 0 }} transition={SPRING}
+          drag={front && n > 1 ? "x" : false} dragSnapToOrigin dragElastic={0.5} dragMomentum={false}
+          onDragEnd={(_, info) => { if (Math.abs(info.offset.x) > 60 || Math.abs(info.velocity.x) > 500) go(sel + (info.offset.x < 0 ? 1 : -1)); }}
+          onTap={() => go(front ? sel + 1 : i)} whileTap={front ? { scale: 0.985 } : undefined}
+          role="button" tabIndex={p < 3 ? 0 : -1} aria-label={front ? `${c.name}. Ketuk untuk ganti kartu` : `Tampilkan ${c.name}`}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(front ? sel + 1 : i); } else if (front && e.key === "ArrowRight") go(sel + 1); else if (front && e.key === "ArrowLeft") go(sel - 1); }}>
+          <i className="dpx-wd-sheen" />
+          <div className="dpx-wd-head">
+            <span className="dpx-wd-logo">{c.pay ? <I3 name="payment-wallet" px={26} /> : <Ic n={iconOf(c.type)} />}</span>
+            <span className="dpx-wd-name"><b>{c.name}</b><small>{c.account ? `${accountScope(c.account) === "business" ? "Bisnis" : "Pribadi"} · ` : ""}{c.pay ? "Saldo digital" : c.type === "bank" ? "Rekening bank" : c.type === "ewallet" ? "Dompet digital" : c.type === "card" ? "Kartu" : c.type === "cash" ? "Tunai" : "Dompet"}</small></span>
+            <span className="dpx-pc-tag">{tagOf(c)}</span>
+          </div>
+          <motion.i className="dpx-pc-dim" initial={false} animate={{ opacity: pos.dim }} transition={SPRING} />
+        </motion.div>;
+      })}
+    </div>
+    <AnimatePresence>{hint && n > 1 ? <motion.div className="dpx-pc-hint" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ delay: 0.6 }} aria-hidden="true">Ketuk atau geser kartu untuk ganti</motion.div> : null}</AnimatePresence>
+    <div className="dpx-pc-pouch">
+      <div className="dpx-pc-dots" role="tablist" aria-label="Pilih dompet">{cards.map((c, i) => <button key={c.id} type="button" role="tab" aria-selected={i === sel} aria-label={c.name} className={i === sel ? "on" : ""} onClick={() => go(i)} />)}</div>
+      <div className="dpx-pc-totalwrap">
+        <Btn type="button" className="dpx-pc-eye" onClick={ctx.onToggleVisible} aria-label={ctx.visible ? "Sembunyikan saldo" : "Tampilkan saldo"} aria-pressed={!ctx.visible}><Ic n={ctx.visible ? "eye" : "eyeoff"} size="sm" /></Btn>
+        <Btn type="button" className="dpx-pc-total" onClick={() => ctx.open({ k: "wallet-view", id: cur.id })} aria-label={`Saldo ${cur.name}, ketuk untuk detail`}>
+          <span className={`dpx-pc-amt ${neg ? "neg" : ""}`}><small>Rp</small>{ctx.visible ? <>{neg ? "−" : ""}<AnimatedNumber key={cur.id} value={Math.abs(cur.balance)} /></> : "•••••••"}</span>
+          <span className="dpx-pc-lab">Saldo {cur.name} · Detail ›</span>
+        </Btn>
+      </div>
+      <div className="dpx-pc-pills">
+        <div className="dpx-pc-pill"><Ic n="down" size="sm" /><small>Masuk bulan ini</small><b>{mask(rupiah(stats.inn))}</b></div>
+        <div className="dpx-pc-pill out"><Ic n="up" size="sm" /><small>Keluar bulan ini</small><b>{mask(rupiah(stats.out))}</b></div>
+      </div>
+    </div>
+  </motion.div>;
+}
+
 /**
  * Wallets as a deck of cards. The chosen card sits on top at full size, the others are stacked under it as strips.
  * Tap a strip to bring it forward, swipe the top card sideways to flip through, tap the list button to see every card as a strip.
@@ -36,14 +96,16 @@ export function WalletDeck({ ctx, accounts, balances }: { ctx: FinCtx; accounts:
     ...(ctx.fin.scope === "business" ? [] : [{ id: PAY_ACCOUNT_ID, name: "Djiwa Pay", type: "pay", balance: ctx.payBalance, skin: skinOf("Djiwa Pay", "pay"), pay: true, needsOpening: false }]),   // Djiwa Pay is personal
     ...accounts.map((a) => ({ id: a.id, name: a.name, type: a.type, balance: balances[a.id] ?? 0, skin: skinOf(a.name, a.type), pay: false, account: a, needsOpening: a.opening === 0 && (balances[a.id] ?? 0) < 0 })),
   ], [accounts, balances, ctx.payBalance, ctx.fin.scope]);
-  const [sel, setSel] = useState(0), [view, setView] = useState<"swipe" | "stack">("swipe"), [dir, setDir] = useState(1), [hint, setHint] = useState(true);
+  const [sel, setSel] = useState(0), [view, setView] = useState<View>(readView), [dir, setDir] = useState(1), [hint, setHint] = useState(true), [menu, setMenu] = useState(false);
+  const lastMain = useRef<"pouch" | "swipe">(view === "stack" ? "pouch" : view);
+  const pick = (v: View) => { setView(v); if (v !== "stack") lastMain.current = v; saveView(v); setMenu(false); };
   const cur = cards[Math.min(sel, cards.length - 1)];
   const statsOf = useMemo(() => { const m = new Map<string, { inn: number; out: number }>(); for (const e of entries) if (inMonth(e, now.getFullYear(), now.getMonth())) { const t = m.get(e.accountId) ?? { inn: 0, out: 0 }; if (e.kind === "in") t.inn += e.amount; else if (e.kind === "out") t.out += e.amount; m.set(e.accountId, t); } return m; }, [entries]);   // eslint-disable-line react-hooks/exhaustive-deps
   const recent = useMemo(() => entries.filter((e) => e.accountId === cur.id).slice(0, 3), [entries, cur.id]);
   const mask = (s: string) => (ctx.visible ? s : "•••••");
   const track = useRef<HTMLDivElement>(null);
   const scrollTo = (i: number, smooth = true) => { const el = track.current?.children[i] as HTMLElement | undefined; if (el && track.current) track.current.scrollTo({ left: el.offsetLeft - (track.current.clientWidth - el.offsetWidth) / 2, behavior: smooth ? "smooth" : "auto" }); };
-  const go = (i: number) => { const n = (i + cards.length) % cards.length; setDir(n >= sel ? 1 : -1); setSel(n); setHint(false); if (view === "swipe") scrollTo(n); else setView("swipe"); };
+  const go = (i: number) => { const n = (i + cards.length) % cards.length; setDir(n >= sel ? 1 : -1); setSel(n); setHint(false); if (view === "swipe") scrollTo(n); else if (view === "stack") pick(lastMain.current); };
   useEffect(() => { if (view === "swipe") scrollTo(sel, false); }, [view]);   // eslint-disable-line react-hooks/exhaustive-deps
   const hintOn = useRef(true); hintOn.current = hint;
   useEffect(() => {   // nudge the row sideways a few times so people see it moves; stops at the first touch
@@ -73,7 +135,13 @@ export function WalletDeck({ ctx, accounts, balances }: { ctx: FinCtx; accounts:
 
   return <div className="dpx-wd">
     <div className="dpx-wd-top"><span className="dpx-sub">{cards.length} dompet</span>
-      <div className="dpx-wd-tools"><Btn type="button" className={`dpx-wd-tool ${view === "stack" ? "on" : ""}`} onClick={() => setView((v) => (v === "swipe" ? "stack" : "swipe"))} aria-pressed={view === "stack"} aria-label={view === "stack" ? "Tampilan geser" : "Tampilan daftar"}><Ic n={view === "stack" ? "wallet" : "list"} size="sm" /></Btn>
+      <div className="dpx-wd-tools"><div className="dpx-wd-menuwrap">
+        <Btn type="button" className={`dpx-wd-tool ${view !== "pouch" ? "on" : ""}`} onClick={() => setMenu((m) => !m)} aria-haspopup="menu" aria-expanded={menu} aria-label="Pilih tampilan kartu"><Ic n={VIEWS.find((v) => v.id === view)!.icon} size="sm" /></Btn>
+        <AnimatePresence>{menu ? <>
+          <div className="dpx-wd-scrim" onClick={() => setMenu(false)} />
+          <motion.div className="dpx-wd-menu" role="menu" aria-label="Tampilan kartu" initial={{ opacity: 0, scale: 0.92, y: -6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: -4 }} transition={{ duration: 0.16 }} onKeyDown={(e) => { if (e.key === "Escape") setMenu(false); }}>
+            {VIEWS.map((v) => <button key={v.id} type="button" role="menuitemradio" aria-checked={view === v.id} className={view === v.id ? "on" : ""} onClick={() => pick(v.id)}><Ic n={v.icon} /><span><b>{v.title}</b><small>{v.sub}</small></span><i aria-hidden="true">✓</i></button>)}
+          </motion.div></> : null}</AnimatePresence></div>
         <Btn type="button" className="dpx-wd-tool" onClick={() => ctx.open({ k: "account" })} aria-label="Tambah dompet"><Ic n="plus" size="sm" /></Btn></div></div>
     {view === "swipe" ? <div className="dpx-wd-swipe">
       <div className="dpx-wd-track" ref={track} onScroll={onScroll} onPointerDown={() => setHint(false)} onTouchStart={() => setHint(false)}>
@@ -83,12 +151,12 @@ export function WalletDeck({ ctx, accounts, balances }: { ctx: FinCtx; accounts:
           onKeyDown={(e) => { if (e.key === "ArrowRight") go(sel + 1); else if (e.key === "ArrowLeft") go(sel - 1); else if ((e.key === "Enter" || e.key === " ") && i === sel) { e.preventDefault(); ctx.open({ k: "wallet-view", id: c.id }); } }}>{body(c, true)}</div>)}
       </div>
       <AnimatePresence>{hint && cards.length > 1 ? <motion.div className="dpx-wd-hint" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ delay: 0.5 }} aria-hidden="true"><motion.span animate={{ x: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 1 }}>‹</motion.span> Geser untuk dompet lain <motion.span animate={{ x: [0, 5, 0] }} transition={{ repeat: Infinity, duration: 1 }}>›</motion.span></motion.div> : null}</AnimatePresence>
-    </div> : <div className="dpx-wd-deck" style={{ height: STACK_H }}>
+    </div> : view === "pouch" ? <Pouch cards={cards} sel={Math.min(sel, cards.length - 1)} go={go} ctx={ctx} stats={statsOf.get(cur.id) ?? { inn: 0, out: 0 }} hint={hint} cur={cur} /> : <div className="dpx-wd-deck" style={{ height: STACK_H }}>
       {cards.map((c, idx) => <motion.div key={c.id} className="dpx-wd-card" style={{ background: `linear-gradient(145deg, ${c.skin.from}, ${c.skin.to})`, zIndex: idx, height: STRIP_H + 18, top: idx * (STRIP_H - 18) }}
         initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.025 }}
         role="button" tabIndex={0} aria-label={`${c.name}, ketuk untuk membuka`} onClick={() => go(idx)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(idx); } }} whileTap={{ scale: 0.99 }}>{body(c, false)}</motion.div>)}
     </div>}
-    <div className="dpx-wd-dots" role="tablist" aria-label="Pilih dompet">{cards.map((c, i) => <button key={c.id} type="button" role="tab" aria-selected={i === sel} aria-label={c.name} className={i === sel ? "on" : ""} onClick={() => go(i)} />)}<button type="button" className="add" aria-label="Tambah dompet" onClick={() => ctx.open({ k: "account" })}>+</button></div>
+    {view === "swipe" ? <div className="dpx-wd-dots" role="tablist" aria-label="Pilih dompet">{cards.map((c, i) => <button key={c.id} type="button" role="tab" aria-selected={i === sel} aria-label={c.name} className={i === sel ? "on" : ""} onClick={() => go(i)} />)}<button type="button" className="add" aria-label="Tambah dompet" onClick={() => ctx.open({ k: "account" })}>+</button></div> : null}
     <AnimatePresence mode="wait" initial={false}>
       <motion.div key={cur.id} className="dpx-wd-panel" initial={{ opacity: 0, x: 24 * dir }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 * dir }} transition={{ duration: 0.2 }}>
         {recent.length ? <><div className="dpx-glabel">Terakhir di {cur.name}</div><div className="dpx-group dpx-flush dpx-white">{recent.map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div></> : <p className="dpx-sub dpx-center" style={{ margin: "8px 0 0" }}>Belum ada catatan di {cur.name}.</p>}

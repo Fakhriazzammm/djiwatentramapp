@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Djiwa Pay · Dompet saku (prototipe)</title>
+<style>
+:root{--cream:#f6f2e7;--ink:#2b2620;--mute:#7a6f60;--line:rgba(43,38,32,.1);--group:#efe8d8;--pouch:#2a221b;--pouch2:#3a2f26;--accent:#f0a458;--font:-apple-system,"SF Pro Text",Inter,"Segoe UI",system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+body{background:#d9d3c3;font:15px/1.4 var(--font);color:var(--ink);display:grid;place-items:start center;padding:16px 0}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.phone{width:390px;max-width:100%;background:var(--cream);border-radius:34px;box-shadow:0 30px 80px -20px rgba(0,0,0,.35);overflow:hidden;position:relative;padding:18px 0 110px}
+.top{display:flex;align-items:center;justify-content:space-between;padding:6px 18px 14px}
+.top h1{font:800 24px var(--font);letter-spacing:-.02em}
+.top small{color:var(--mute);font-weight:600}
+.tools{display:flex;gap:8px}
+.tool{width:38px;height:38px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 2px 8px rgba(43,38,32,.1);transition:background .2s,transform .15s}
+.tool:active{transform:scale(.92)}
+.tool svg{width:19px;height:19px;stroke:var(--ink);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.tool.on{background:var(--ink)}.tool.on svg{stroke:#fff}
+
+/* ---------- Kantong (default) ---------- */
+.pouch-wrap{position:relative;margin:0 14px;height:446px}
+.stage{position:absolute;left:0;right:0;top:0;height:250px}
+.card{position:absolute;left:14px;right:14px;top:34px;height:196px;border-radius:26px;padding:16px 18px;color:#fff;overflow:hidden;
+  box-shadow:0 14px 30px -12px rgba(20,16,12,.55),0 0 0 1px rgba(255,255,255,.08) inset;cursor:pointer;
+  transition:transform .55s cubic-bezier(.32,.72,0,1),opacity .4s,filter .4s;transform-origin:50% 100%;will-change:transform}
+.card .sheen{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.22) 48%,transparent 62%),repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 2px,transparent 2px 4px)}
+.head{position:relative;display:flex;align-items:center;gap:12px}
+.logo{width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.92);display:grid;place-items:center;flex:none;box-shadow:0 2px 6px rgba(0,0,0,.2);font-size:20px}
+.name{display:grid;gap:1px;flex:1;min-width:0}.name b{font:700 16px var(--font)}.name small{font:500 12px var(--font);color:rgba(255,255,255,.75)}
+.tag{font:800 13px var(--font);letter-spacing:.04em;opacity:.9}
+.hint{position:absolute;left:0;right:0;top:128px;text-align:center;font:600 11.5px var(--font);color:var(--mute);transition:opacity .3s}
+/* kedalaman tumpukan */
+.card[data-p="0"]{transform:translateY(0) scale(1);z-index:5}
+.card[data-p="1"]{transform:translateY(-16px) scale(.95);z-index:4;filter:brightness(.88)}
+.card[data-p="2"]{transform:translateY(-30px) scale(.9);z-index:3;filter:brightness(.78)}
+.card[data-p="hide"]{transform:translateY(70px) scale(.9);z-index:1;opacity:0;pointer-events:none}
+.card[data-p="0"]:active{transform:translateY(6px) scale(.985)}
+.pouch{position:absolute;left:0;right:0;top:150px;bottom:0;z-index:10;border-radius:38px;padding:92px 16px 18px;color:#fff;
+  background:linear-gradient(170deg,var(--pouch2),var(--pouch));box-shadow:0 20px 40px -18px rgba(20,16,12,.6);
+  -webkit-mask:radial-gradient(ellipse 96px 30px at 50% 0,transparent 96%,#000 100%);mask:radial-gradient(ellipse 96px 30px at 50% 0,transparent 96%,#000 100%)}
+.pouch::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent)}
+.dots{position:absolute;z-index:11;left:0;right:0;top:196px;display:flex;gap:7px;justify-content:center}
+.dots button{width:8px;height:8px;border-radius:99px;background:rgba(255,255,255,.35);padding:0;transition:width .25s,background .25s}
+.dots button.on{width:24px;background:var(--accent)}
+.total{margin-top:6px;border:1.5px dashed rgba(255,255,255,.28);border-radius:22px;padding:14px 12px 12px;text-align:center;position:relative}
+.eye{position:absolute;left:50%;top:-17px;transform:translateX(-50%);width:34px;height:34px;border-radius:50%;background:var(--accent);display:grid;place-items:center;box-shadow:0 0 0 5px var(--pouch)}
+.eye svg{width:18px;height:18px;stroke:#3a2410;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.amt{margin-top:8px;font:800 34px/1 var(--font);letter-spacing:-.03em;font-variant-numeric:tabular-nums}.amt small{font-size:.45em;font-weight:700;margin-right:5px;opacity:.8}
+.lab{margin-top:4px;color:rgba(255,255,255,.65);font:500 13px var(--font)}
+.pills{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.pill{display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:center;text-align:left;padding:10px 12px;border-radius:18px;background:rgba(255,255,255,.08);box-shadow:0 0 0 1px rgba(255,255,255,.12) inset}
+.pill i{grid-row:1/3;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.14)}
+.pill i svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.pill small{font:500 11.5px var(--font);color:rgba(255,255,255,.7)}.pill b{font:700 14px var(--font);font-variant-numeric:tabular-nums}
+.pill.out{background:#fff;color:var(--ink)}.pill.out i{background:#f3e7d4}.pill.out i svg{stroke:var(--ink)}.pill.out small{color:var(--mute)}
+
+.chips{display:flex;gap:8px;overflow-x:auto;padding:14px 18px 4px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;display:inline-flex;align-items:center;gap:7px;padding:10px 16px;border-radius:999px;background:#fff;box-shadow:0 0 0 1px var(--line);font:700 13.5px var(--font)}
+.chip.dark{background:var(--ink);color:#fff;box-shadow:none}.chip svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- Geser (opsi, seperti sekarang) ---------- */
+.swipe{display:none;margin:0}
+.track{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 18px 14px;scrollbar-width:none}.track::-webkit-scrollbar{display:none}
+.track .card{position:relative;left:auto;right:auto;top:auto;flex:none;width:76%;height:196px;scroll-snap-align:center;transform:none!important;filter:none!important}
+.sdots{display:flex;gap:7px;justify-content:center;margin:2px 0 10px}.sdots button{width:8px;height:8px;border-radius:99px;background:rgba(43,38,32,.2);padding:0;transition:.25s}.sdots button.on{width:26px;background:var(--ink)}
+.sstats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 18px}
+.sstats div{background:#fff;border-radius:18px;padding:11px 14px;box-shadow:0 2px 8px rgba(43,38,32,.07)}.sstats small{display:block;color:var(--mute);font-size:12px}.sstats b{font:700 15px var(--font);font-variant-numeric:tabular-nums}
+body[data-view="swipe"] .pouch-wrap{display:none}body[data-view="swipe"] .swipe{display:block}
+
+.menuwrap{position:relative}
+.menu{position:absolute;right:0;top:46px;z-index:60;width:264px;background:#fff;border-radius:20px;padding:6px;box-shadow:0 18px 44px -10px rgba(43,38,32,.35),0 0 0 1px var(--line)}
+.menu[hidden]{display:none}
+.menu button{display:grid;grid-template-columns:30px 1fr 18px;gap:10px;align-items:center;width:100%;text-align:left;padding:10px;border-radius:14px}
+.menu button:hover{background:var(--group)}
+.menu svg{width:22px;height:22px;stroke:var(--ink);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.menu b{display:block;font:700 14px var(--font)}.menu small{display:block;color:var(--mute);font:500 11.5px/1.3 var(--font)}
+.menu i{font-style:normal;font-weight:800;opacity:0}.menu button.on i{opacity:1}.menu button.on{background:var(--group)}
+.stackwrap{display:none;margin:0 14px}
+.stack{position:relative}
+.strip{position:absolute;left:0;right:0;height:88px;border-radius:26px;padding:14px 18px;color:#fff;overflow:hidden;cursor:pointer;box-shadow:0 -6px 18px -10px rgba(20,16,12,.5),0 0 0 1px rgba(255,255,255,.08) inset;transition:transform .2s}
+.strip:active{transform:scale(.99)}
+.strip .head{align-items:flex-start}.strip .bal{font:700 15px var(--font);font-variant-numeric:tabular-nums;white-space:nowrap;margin-top:2px}.strip .bal.neg{color:#ffd0c8}
+.strip.pick{box-shadow:0 0 0 3px var(--accent),0 -6px 18px -10px rgba(20,16,12,.5)}
+body[data-view="stack"] .pouch-wrap,body[data-view="stack"] .swipe{display:none}body[data-view="stack"] .stackwrap{display:block}
+.lbl{margin:20px 22px 8px;font:700 12px var(--font);color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.list{margin:0 14px;background:#fff;border-radius:22px;padding:4px 14px;box-shadow:0 2px 8px rgba(43,38,32,.07)}
+.row{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}.row:first-child{border-top:0}
+.row span.i{width:36px;height:36px;border-radius:50%;background:var(--group);display:grid;place-items:center;font-size:17px}
+.row div{flex:1;min-width:0}.row b{display:block;font:600 14px var(--font)}.row small{color:var(--mute);font-size:12px}.row em{font:700 14px var(--font);font-style:normal;font-variant-numeric:tabular-nums}.row em.in{color:#1f7a4d}
+.tabbar{position:absolute;left:14px;right:14px;bottom:16px;height:62px;border-radius:999px;background:rgba(255,255,255,.92);box-shadow:0 10px 30px rgba(43,38,32,.18);display:grid;grid-template-columns:repeat(4,1fr) 70px;align-items:center;padding:0 6px;font:600 10.5px var(--font);text-align:center;color:var(--mute);z-index:30}
+.tabbar .on{color:var(--ink);font-weight:800}.tabbar .fab{width:52px;height:52px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;justify-self:end;font-size:22px}
+.note{max-width:390px;margin:14px auto 0;font:12.5px/1.45 var(--font);color:#5d5444;padding:0 12px;text-align:center}
+</style>
+</head>
+<body data-view="pouch">
+<div>
+<div class="phone">
+  <div class="top">
+    <div><h1>Dompet</h1><small id="count"></small></div>
+    <div class="tools">
+      <div class="menuwrap"><button class="tool" id="switch" aria-label="Pilih tampilan kartu" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" id="swicon"></svg></button>
+        <div class="menu" id="menu" role="menu" hidden>
+          <button role="menuitem" data-v="pouch"><svg viewBox="0 0 24 24"><path d="M4 8a2 2 0 0 1 2-2h11v2"/><rect x="4" y="8" width="16" height="11" rx="3"/><circle cx="16" cy="13.5" r="1.1"/></svg><span><b>Kantong</b><small>Kartu muncul dari dompet, ketuk untuk ganti</small></span><i>✓</i></button>
+          <button role="menuitem" data-v="swipe"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="12" height="12" rx="3"/><path d="M18 9l3 3-3 3"/></svg><span><b>Geser</b><small>Kartu berjajar ke samping</small></span><i>✓</i></button>
+          <button role="menuitem" data-v="stack"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="6" rx="2"/><rect x="4" y="9" width="16" height="6" rx="2"/><rect x="4" y="14" width="16" height="6" rx="2"/></svg><span><b>Daftar</b><small>Semua dompet bertumpuk</small></span><i>✓</i></button>
+        </div></div>
+      <button class="tool" aria-label="Tambah dompet"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    </div>
+  </div>
+
+  <!-- Default: kantong -->
+  <div class="pouch-wrap" id="pouchWrap">
+    <div class="stage" id="stage"></div>
+    <div class="hint" id="hint">Ketuk kartu untuk ganti</div>
+    <div class="pouch">
+      <div class="total">
+        <button class="eye" id="eye" aria-label="Tampilkan atau sembunyikan saldo"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        <div class="amt" id="amt"></div>
+        <div class="lab" id="lab"></div>
+      </div>
+      <div class="pills">
+        <button class="pill"><i><svg viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg></i><small>Masuk bulan ini</small><b id="inn"></b></button>
+        <button class="pill out"><i><svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></i><small>Keluar bulan ini</small><b id="out"></b></button>
+      </div>
+    </div>
+    <div class="dots" id="dots"></div>
+  </div>
+
+  <!-- Opsi: geser horizontal (seperti sekarang) -->
+  <div class="swipe" id="swipe">
+    <div class="track" id="track"></div>
+    <div class="sdots" id="sdots"></div>
+    <div class="sstats"><div><small>Masuk bulan ini</small><b id="sinn"></b></div><div><small>Keluar bulan ini</small><b id="sout"></b></div></div>
+  </div>
+
+  <!-- Opsi: daftar bertumpuk -->
+  <div class="stackwrap" id="stackWrap"><div class="stack" id="stack"></div></div>
+
+  <div class="chips">
+    <button class="chip dark"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Tambah dompet</button>
+    <button class="chip"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h6"/></svg> Atur saldo</button>
+    <button class="chip"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM14 3v5h5"/></svg> Laporan</button>
+  </div>
+
+  <div class="lbl" id="recentLbl"></div>
+  <div class="list" id="recent"></div>
+
+  <div class="tabbar"><span>Beranda</span><span>Catatan</span><span>Rencana</span><span class="on">Kekayaan</span><button class="fab">+</button></div>
+</div>
+<p class="note">Prototipe: ketuk kartu di kantong untuk ganti kartu, atau ketuk titik di bawahnya. Tombol bulat di kanan atas membuka menu pilihan: <b>kantong</b> (baru, default) dan <b>geser horizontal</b> (tampilan sekarang, jadi opsi) dan <b>daftar</b> (semua dompet bertumpuk). Pilihan tampilan diingat.</p>
+</div>
+
+<script>
+const rp = n => "Rp " + Math.round(n).toLocaleString("id-ID");
+const WALLETS = [
+  { id:"pay",  name:"Djiwa Pay", sub:"Saldo digital", tag:"PAY", from:"#e8833a", to:"#b83f17", bal:9561, inn:1001, out:176401, icon:"👛" },
+  { id:"bca",  name:"BCA ••9473", sub:"Pribadi · Rekening bank", tag:"BCA", from:"#2368c8", to:"#0c3a85", bal:3904142, inn:0, out:340215, icon:"🏦" },
+  { id:"blu1", name:"blu ••1080", sub:"Pribadi · Rekening bank", tag:"BLU", from:"#13a4c9", to:"#0b6584", bal:0, inn:0, out:0, icon:"🏦" },
+  { id:"blu2", name:"blu ••1998", sub:"Pribadi · Rekening bank", tag:"BLU", from:"#2a97bd", to:"#0e5a78", bal:0, inn:0, out:0, icon:"🏦" },
+  { id:"gp",   name:"GoPay", sub:"Pribadi · Dompet digital", tag:"GOPAY", from:"#0a9fd0", to:"#05638a", bal:271988, inn:150000, out:96500, icon:"📱" },
+  { id:"mdr",  name:"Mandiri ••4399", sub:"Bisnis · Rekening bank", tag:"MANDIRI", from:"#12356b", to:"#0a1f45", bal:-564040, inn:8500000, out:2140300, icon:"🏦" },
+  { id:"shp",  name:"ShopeePay", sub:"Pribadi · Dompet digital", tag:"SHOPEE", from:"#f0552f", to:"#b3351b", bal:51000, inn:0, out:12000, icon:"🛍️" },
+  { id:"cash", name:"Tunai", sub:"Pribadi · Tunai", tag:"TUNAI", from:"#3f5f49", to:"#1f3326", bal:0, inn:0, out:0, icon:"💵" },
+];
+const RECENT = {
+  pay:[["IndiHome","Tagihan & utilitas","− Rp 340.215","out","📡"],["Top up","Masuk","+ Rp 1.001","in","➕"]],
+  bca:[["IndiHome","Tagihan & utilitas","− Rp 340.215","out","📡"],["MyPertamina","Transportasi","− Rp 100.000","out","⛽"]],
+  mdr:[["Pembayaran klien","Pendapatan","+ Rp 8.500.000","in","💼"],["Sewa kios","Bisnis","− Rp 2.000.000","out","🏪"]],
+  blu1:[], blu2:[], shp:[["Marketplace","Belanja","− Rp 12.000","out","🛍️"]],
+  gp:[["Gojek","Transportasi","− Rp 36.500","out","🛵"],["Isi saldo","Masuk","+ Rp 150.000","in","➕"]],
+  cash:[["Warung","Makan","− Rp 45.000","out","🍜"]],
+};
+let lastMain = "pouch", sel = 0, shown = true, view = (()=>{try{return localStorage.getItem("dpx-wallet-view")||"pouch"}catch{return"pouch"}})();
+const $ = id => document.getElementById(id);
+const n = WALLETS.length;
+$("count").textContent = n + " dompet";
+const ICONS = {
+  pouch:'<path d="M4 8a2 2 0 0 1 2-2h11v2"/><rect x="4" y="8" width="16" height="11" rx="3"/><circle cx="16" cy="13.5" r="1.1"/>',
+  swipe:'<rect x="3" y="6" width="12" height="12" rx="3"/><path d="M18 9l3 3-3 3"/>',
+  stack:'<rect x="4" y="4" width="16" height="6" rx="2"/><rect x="4" y="9" width="16" height="6" rx="2"/><rect x="4" y="14" width="16" height="6" rx="2"/>' };
+
+const cardHTML = w => `<span class="sheen"></span><div class="head"><span class="logo">${w.icon}</span><span class="name"><b>${w.name}</b><small>${w.sub}</small></span><span class="tag">${w.tag}</span></div>`;
+const grad = w => `linear-gradient(145deg,${w.from},${w.to})`;
+
+/* kantong */
+WALLETS.forEach((w,i)=>{ const c=document.createElement("div"); c.className="card"; c.style.background=grad(w); c.innerHTML=cardHTML(w); c.setAttribute("role","button"); c.tabIndex=0; c.dataset.i=i;
+  c.addEventListener("click",()=>{ if(+c.dataset.i===sel) go(sel+1); else go(+c.dataset.i); }); $("stage").appendChild(c); });
+WALLETS.forEach((w,i)=>{ const b=document.createElement("button"); b.setAttribute("aria-label",w.name); b.onclick=()=>go(i); $("dots").appendChild(b); });
+
+/* daftar bertumpuk */
+const STRIP=88, STEP=52;
+$("stack").style.height=(n*STEP+(STRIP-STEP)+8)+"px";
+WALLETS.forEach((w,i)=>{ const c=document.createElement("div"); c.className="strip"; c.style.background=grad(w); c.style.top=(i*STEP)+"px"; c.style.zIndex=i;
+  c.innerHTML=`<span class="sheen"></span><div class="head"><span class="logo">${w.icon}</span><span class="name"><b>${w.name}</b><small>${w.sub}</small></span><span class="bal ${w.bal<0?"neg":""}" data-b="${i}"></span></div>`;
+  c.setAttribute("role","button"); c.tabIndex=0; c.addEventListener("click",()=>{ sel=i; setView(lastMain); }); $("stack").appendChild(c); });
+
+/* geser */
+WALLETS.forEach((w,i)=>{ const c=document.createElement("div"); c.className="card"; c.style.background=grad(w); c.innerHTML=cardHTML(w); c.dataset.p="0"; c.addEventListener("click",()=>go(i)); $("track").appendChild(c);
+  const b=document.createElement("button"); b.onclick=()=>go(i); $("sdots").appendChild(b); });
+let scrolling=false;
+$("track").addEventListener("scroll",()=>{ const t=$("track"); const mid=t.scrollLeft+t.clientWidth/2; let best=0,d=1e9; [...t.children].forEach((c,i)=>{const dd=Math.abs(c.offsetLeft+c.offsetWidth/2-mid); if(dd<d){d=dd;best=i}}); if(best!==sel){sel=best;paint(true)} },{passive:true});
+
+function go(i){ sel=(i+n)%n; $("hint").style.opacity=0; paint(); if(view==="swipe"){const c=$("track").children[sel]; $("track").scrollTo({left:c.offsetLeft-($("track").clientWidth-c.offsetWidth)/2,behavior:"smooth"});} }
+
+function paint(fromScroll){
+  const w=WALLETS[sel];
+  [...$("stage").children].forEach((c,i)=>{ const p=(i-sel+n)%n; c.dataset.p = p<3 ? String(p) : "hide"; });
+  [...$("dots").children].forEach((b,i)=>b.classList.toggle("on",i===sel));
+  [...$("sdots").children].forEach((b,i)=>b.classList.toggle("on",i===sel));
+  const m = v => shown ? rp(v) : "•••••";
+  $("amt").innerHTML = shown ? `<small>Rp</small>${Math.round(w.bal).toLocaleString("id-ID")}` : "•••••••";
+  $("lab").textContent = "Saldo " + w.name;
+  $("inn").textContent = m(w.inn); $("out").textContent = m(w.out); $("sinn").textContent = m(w.inn); $("sout").textContent = m(w.out);
+  [...document.querySelectorAll("[data-b]")].forEach(e=>{const b=WALLETS[+e.dataset.b].bal; e.textContent=shown?((b<0?"−":"")+rp(Math.abs(b))):"•••••";});
+  $("recentLbl").textContent = "Terakhir di " + w.name;
+  $("recent").innerHTML = (RECENT[w.id]||[]).map(r=>`<div class="row"><span class="i">${r[4]}</span><div><b>${r[0]}</b><small>${r[1]}</small></div><em class="${r[3]}">${shown?r[2]:"•••••"}</em></div>`).join("");
+}
+function setView(v){ view=v; if(v!=="stack") lastMain=v; document.body.dataset.view=v;
+  $("swicon").innerHTML=ICONS[v]; $("switch").classList.toggle("on",v!=="pouch");
+  document.querySelectorAll("#menu button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
+  try{localStorage.setItem("dpx-wallet-view",v)}catch{}
+  paint(); if(v==="swipe") requestAnimationFrame(()=>go(sel)); }
+const menu=$("menu"), toggleMenu=open=>{ menu.hidden=!open; $("switch").setAttribute("aria-expanded",String(open)); };
+$("switch").onclick=e=>{ e.stopPropagation(); toggleMenu(menu.hidden); };
+menu.addEventListener("click",e=>{ const b=e.target.closest("button[data-v]"); if(b){ setView(b.dataset.v); toggleMenu(false);} });
+document.addEventListener("click",()=>toggleMenu(false));
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") toggleMenu(false); });
+$("eye").onclick=()=>{shown=!shown;paint()};
+document.addEventListener("keydown",e=>{ if(e.key==="ArrowRight")go(sel+1); if(e.key==="ArrowLeft")go(sel-1); });
+setView(["pouch","swipe","stack"].includes(view)?view:"pouch");
+</script>
+</body>
+</html>

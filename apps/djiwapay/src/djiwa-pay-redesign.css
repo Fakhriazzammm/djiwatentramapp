@@ -1131,3 +1131,42 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 /* "Buka di Google" shortcuts under the Google switches: one horizontal row, equal buttons. */
 .dpx .dpx-openrow{display:flex;gap:8px;margin:10px 0 0}
 .dpx .dpx-openrow .dpx-btn{flex:1 1 0;min-width:0;margin:0;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+
+/* ---- Wallet pouch (default view): cards rise out of a pouch ---- */
+.dpx .dpx-pc{position:relative;height:446px;margin:0 -2px}
+.dpx .dpx-pc-stage{position:absolute;left:0;right:0;top:0;height:250px}
+.dpx .dpx-pc-card{position:absolute;left:14px;right:14px;top:34px;height:196px;border-radius:26px;padding:16px 18px;color:#fff;overflow:hidden;cursor:pointer;touch-action:pan-y;user-select:none;-webkit-user-select:none;transform-origin:50% 100%;
+  box-shadow:0 14px 30px -12px rgba(20,16,12,.55),0 0 0 1px rgba(255,255,255,.08) inset}
+.dpx .dpx-pc-card:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.dpx .dpx-pc-dim{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none}
+.dpx .dpx-pc-tag{font:800 13px var(--font);letter-spacing:.04em;opacity:.9;flex:none}
+.dpx .dpx-pc-hint{position:absolute;left:0;right:0;top:128px;text-align:center;font:600 11.5px var(--font);color:var(--mute);z-index:12;pointer-events:none}
+.dpx .dpx-pc-pouch{position:absolute;left:0;right:0;top:150px;bottom:0;z-index:10;border-radius:38px;padding:92px 16px 18px;color:#fff;
+  background:linear-gradient(170deg,#3a2f26,#2a221b);box-shadow:0 20px 40px -18px rgba(20,16,12,.6);
+  -webkit-mask:radial-gradient(ellipse 96px 30px at 50% 0,transparent 96%,#000 100%);mask:radial-gradient(ellipse 96px 30px at 50% 0,transparent 96%,#000 100%)}
+.dpx .dpx-pc-pouch::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent)}
+.dpx .dpx-pc-dots{position:absolute;left:0;right:0;top:46px;display:flex;gap:7px;justify-content:center;flex-wrap:wrap;padding:0 28px}
+.dpx .dpx-pc-dots button{width:8px;height:8px;min-height:0;border-radius:99px;background:rgba(255,255,255,.35);padding:0;transition:width .25s,background .25s}
+.dpx .dpx-pc-dots button.on{width:24px;background:#f0a458}
+.dpx .dpx-pc-totalwrap{position:relative}
+.dpx .dpx-pc-eye{position:absolute;left:50%;top:-17px;transform:translateX(-50%);width:34px;height:34px;min-height:0;border-radius:50%;background:#f0a458;display:grid;place-items:center;box-shadow:0 0 0 5px #2e261e;z-index:2;padding:0}
+.dpx .dpx-pc-eye img{width:20px;height:20px}
+.dpx .dpx-pc-total{display:grid;gap:4px;width:100%;border:1.5px dashed rgba(255,255,255,.28);border-radius:22px;padding:22px 12px 12px;text-align:center;color:#fff}
+.dpx .dpx-pc-amt{font:800 34px/1 var(--font);letter-spacing:-.03em;font-variant-numeric:tabular-nums;display:block}.dpx .dpx-pc-amt small{font-size:.45em;font-weight:700;margin-right:5px;opacity:.8}.dpx .dpx-pc-amt.neg{color:#ffd0c8}
+.dpx .dpx-pc-lab{color:rgba(255,255,255,.65);font:500 13px var(--font)}
+.dpx .dpx-pc-pills{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.dpx .dpx-pc-pill{display:grid;grid-template-columns:30px minmax(0,1fr);column-gap:8px;align-items:center;padding:10px 12px;border-radius:18px;background:rgba(255,255,255,.08);box-shadow:0 0 0 1px rgba(255,255,255,.12) inset;min-width:0}
+.dpx .dpx-pc-pill>img{grid-row:1/3;width:30px;height:30px;padding:6px;border-radius:50%;background:rgba(255,255,255,.14);box-sizing:border-box}
+.dpx .dpx-pc-pill small{font:500 11.5px var(--font);color:rgba(255,255,255,.7)}.dpx .dpx-pc-pill b{font:700 14px var(--font);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dpx .dpx-pc-pill.out{background:#fff;color:var(--ink,#2b2620)}.dpx .dpx-pc-pill.out small{color:var(--mute)}.dpx .dpx-pc-pill.out>img{background:#f3e7d4}
+
+/* ---- view menu behind the round tool button ---- */
+.dpx .dpx-wd-menuwrap{position:relative}
+.dpx .dpx-wd-scrim{position:fixed;inset:0;z-index:40}
+.dpx .dpx-wd-menu{position:absolute;right:0;top:46px;z-index:41;width:264px;background:#fff;border-radius:20px;padding:6px;transform-origin:top right;box-shadow:0 18px 44px -10px rgba(43,38,32,.35),0 0 0 1px rgba(43,38,32,.08)}
+.dpx .dpx-wd-menu button{display:grid;grid-template-columns:30px minmax(0,1fr) 18px;gap:10px;align-items:center;width:100%;text-align:left;padding:10px;border-radius:14px;min-height:0}
+.dpx .dpx-wd-menu button:hover,.dpx .dpx-wd-menu button.on{background:var(--group)}
+.dpx .dpx-wd-menu img{width:26px;height:26px}
+.dpx .dpx-wd-menu b{display:block;font:700 14px var(--font)}.dpx .dpx-wd-menu small{display:block;color:var(--mute);font:500 11.5px/1.3 var(--font)}
+.dpx .dpx-wd-menu i{font-style:normal;font-weight:800;opacity:0}.dpx .dpx-wd-menu button.on i{opacity:1}
+@media (prefers-reduced-motion:reduce){.dpx .dpx-pc-dots button{transition:none}}
