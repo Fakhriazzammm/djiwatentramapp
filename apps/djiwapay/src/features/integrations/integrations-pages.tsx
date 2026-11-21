@@ -292,6 +292,8 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
   const [busy, setBusy] = useState("");
   const [confirmOff, setConfirmOff] = useState<null | "google" | "email" | "script">(null);
   const offerImport = useRef(false);
+  // The switches sit near the top and the confirmation at the bottom: bring it into view.
+  useEffect(() => { if (confirmOff) window.setTimeout(() => document.getElementById("dpx-confirm-off")?.scrollIntoView({ behavior: "smooth", block: "center" }), 60); }, [confirmOff]);
   const loadG = useCallback(async () => { try { setG(await getGoogle()); } catch { /* offline: leave as is */ } finally { setLoadingG(false); } }, []);
   useEffect(() => { void loadG(); }, [loadG]);
   // Fresh Google connection with live Gmail: offer the old-mail import (it still opens a preview first, nothing is recorded yet).
@@ -372,8 +374,13 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
     <Header title="Integrasi" onBack={onBack} />
     <div className="dpx-note dpx-info" style={{ marginTop: 6 }}><Ic n="shield" /><div><b>Kamu yang mengatur.</b> Setiap integrasi bisa diputus kapan saja. Token dan data turunan ikut dihapus.</div></div>
 
-    {gOn ? <Reveal i={4}><div className="dpx-group dpx-white dpx-int" style={{ marginTop: 10 }}>
-      <Row icon="user" tone="slate" title={g!.email ?? "Akun Google"} sub="Akun yang terhubung" chev={false} />
+    {/* One row per connected account. Today a person has a single Google account; the list shape is where more e-mail accounts will plug in. */}
+    {g && gReady ? <Reveal i={4}><div className="dpx-group dpx-white dpx-int" style={{ marginTop: 10 }}>
+      {[{ id: "google", name: gOn ? g.email ?? "Akun Google" : "Akun Google", on: gOn }].map((a) => (
+        <Row key={a.id} icon="user" tone="slate" title={a.name} sub={a.on ? "Akun yang terhubung. Matikan untuk memutus semua layanan Google" : "Belum terhubung. Nyalakan untuk menghubungkan"} chev={false}
+          trail={<Switch on={a.on} label={`Akun ${a.name}`} onToggle={() => (a.on ? setConfirmOff("google") : setSheet({ consent: [...GOOGLE_FEATURES] }))} />}
+          onClick={() => (a.on ? setConfirmOff("google") : setSheet({ consent: [...GOOGLE_FEATURES] }))} />
+      ))}
     </div></Reveal> : null}
 
     <div className="dpx-glabel">Catat otomatis dari email{gm ? <Btn type="button" disabled={busy === "gmail-check"} onClick={() => void checkGmail()}>{busy === "gmail-check" ? "Memeriksa…" : "Periksa"}</Btn> : null}</div>
@@ -416,7 +423,7 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
     {g && !g.configured ? <div className="dpx-note" style={{ marginTop: 12 }}><Ic n="info" /><div><b>Google belum dihubungkan di server ini.</b> Calendar, Drive dan Sheets aktif begitu kredensial Google dipasang.</div></div> : null}
     {inbound && !inbound.configured ? <div className="dpx-note" style={{ marginTop: 12 }}><Ic n="info" /><div><b>Penerima email belum aktif.</b> Email terusan aktif begitu alamat domain surat dipasang.</div></div> : null}
 
-    {confirmOff ? <div className="dpx-note dpx-danger" role="alert" style={{ marginTop: 12 }}><Ic n="warn" /><div><b>{confirmOff === "google" ? "Putuskan Google?" : confirmOff === "script" ? "Matikan Apps Script?" : "Matikan email terusan?"}</b> {confirmOff === "google" ? "Acara Calendar dan file yang sudah dibuat tetap ada di akun Google-mu." : confirmOff === "script" ? "Alamat skrip dihapus, jadi skrip di akun Google-mu berhenti dikenali. Hapus juga proyeknya di script.google.com. Catatan yang sudah tersimpan tetap ada." : "Alamat dihapus dan antrean tinjau dikosongkan. Catatan yang sudah tersimpan tetap ada."}
+    {confirmOff ? <div id="dpx-confirm-off" className="dpx-note dpx-danger" role="alert" style={{ marginTop: 12 }}><Ic n="warn" /><div><b>{confirmOff === "google" ? "Putuskan Google?" : confirmOff === "script" ? "Matikan Apps Script?" : "Matikan email terusan?"}</b> {confirmOff === "google" ? "Acara Calendar dan file yang sudah dibuat tetap ada di akun Google-mu." : confirmOff === "script" ? "Alamat skrip dihapus, jadi skrip di akun Google-mu berhenti dikenali. Hapus juga proyeknya di script.google.com. Catatan yang sudah tersimpan tetap ada." : "Alamat dihapus dan antrean tinjau dikosongkan. Catatan yang sudah tersimpan tetap ada."}
       <div className="dpx-flex" style={{ marginTop: 10 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy === "off"} onClick={() => void off()}>{busy === "off" ? "Memproses…" : "Ya, putuskan"}</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => setConfirmOff(null)}>Batal</Btn></div></div></div> : null}
 
     <AnimatePresence>
