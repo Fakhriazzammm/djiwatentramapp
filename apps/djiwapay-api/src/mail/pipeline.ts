@@ -28,6 +28,18 @@ export function pushFor(status: "auto" | "review", p: Record<string, any>, id: s
 const TRUST_MIN = 10;               // no longer gates automatic recording; kept for the learning counter shown in the app
 const AUTO_CEILING = 50_000_000;    // an amount this large is more likely a misread number than a payment: a person looks
 const CLOSE_MS = 10 * 60_000, TRANSFER_MS = 15 * 60_000;
+/** A shop's own receipt often names only the day, which reads as midnight Jakarta time. Such a time says nothing about the hour, so the match is by day. */
+export const isDayOnly = (at: string | Date | null | undefined) => { const t = at ? new Date(at).getTime() : NaN; return Number.isFinite(t) && (t + 7 * 3_600_000) % 86_400_000 === 0; };
+const DAY_SQL = (col: string, param: string) => `(${col} at time zone 'Asia/Jakarta')::date = (${param}::timestamptz at time zone 'Asia/Jakarta')::date`;
+
+/** A payment was just recorded: a receipt from the shop that arrived a moment earlier (and waits for a decision) is the same payment, not a second one. */
+export async function absorbPending(db: Q, userId: string, amount: number, at: string, entryId: string): Promise<number> {
+  const r = await db.query(`update finance.inbound_messages set status='duplicate', reason='already-recorded', entry_id=$4
+    where user_id=$1 and status='review' and coalesce(parsed->>'generic','false')='true' and (parsed->>'amount')::numeric=$2 and entry_id is null
+      and (occurred_at between $3::timestamptz - ($5 * interval '1 millisecond') and $3::timestamptz + ($5 * interval '1 millisecond')
+        or ((occurred_at at time zone 'Asia/Jakarta')::time = '00:00' and ${DAY_SQL("occurred_at", "$3")})) returning id`, [userId, amount, at, entryId, CLOSE_MS]);
+  return r.rows.length;
+}
 
 const newToken = () => { const a = "abcdefghjkmnpqrstuvwxyz23456789"; return Array.from(randomBytes(10), (b) => a[b % a.length]).join(""); };
 
@@ -277,7 +289,7 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
 
   // Same money already recorded (Djiwa Pay, scan, manual or another e-mail)?
   const same = generic
-    ? await d.db.query("select id from finance.entries where user_id=$1 and amount=$2 and at between $3::timestamptz - ($4 * interval '1 millisecond') and $3::timestamptz + ($4 * interval '1 millisecond') limit 1", [userId, x.amount, at, CLOSE_MS])
+    ? await d.db.query(`select id from finance.entries where user_id=$1 and amount=$2 and (at between $3::timestamptz - ($4 * interval '1 millisecond') and $3::timestamptz + ($4 * interval '1 millisecond') or ($5::boolean and kind <> 'tf' and ${DAY_SQL("at", "$3")})) limit 1`, [userId, x.amount, at, CLOSE_MS, isDayOnly(at)])
     : await d.db.query("select id from finance.entries where user_id=$1 and amount=$2 and kind=$3 and account_id=$4 and at between $5::timestamptz - ($6 * interval '1 millisecond') and $5::timestamptz + ($6 * interval '1 millisecond') limit 1", [userId, x.amount, kind, accountId, at, CLOSE_MS]);
   if (same.rows[0]) return finish("duplicate", "already-recorded", { parsed, confidence: x.confidence, entryId: same.rows[0].id, at });
 
@@ -321,6 +333,7 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   const auto = flags.length === 0 && clear && x.direction !== "unknown" && x.amount <= (d.autoCeiling ?? AUTO_CEILING);
   if (auto) {
     const entryId = await d.db.tx((q) => insertEntry(q, userId, candidate, inboundId));
+    await absorbPending(d.db, userId, x.amount, at, entryId).catch(() => 0);   // the shop's own receipt, if it came first
     return finish("auto", "recorded", { parsed, confidence: x.confidence, entryId, at });
   }
   return finish("review", "needs-check", { parsed: { ...parsed, categoryId, accountId, kind, ...(flags.length ? { flags } : {}) }, confidence: x.confidence, at });
