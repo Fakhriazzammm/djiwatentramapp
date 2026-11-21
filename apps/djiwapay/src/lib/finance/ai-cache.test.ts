@@ -36,3 +36,10 @@ describe("shop memory in the browser", () => {
     const s = fake(); expect(lastChecked("a", s)).toBe(0); markChecked("a", 1234, s); expect(lastChecked("a", s)).toBe(1234); expect(lastChecked("b", s)).toBe(0);
   });
 });
+
+test("a remembered 'Lainnya' never counts as a sure answer", () => {
+  const now = Date.now();
+  const m = remember({}, "out:kopi ara", "lainnya", 1, now);
+  expect(m["out:kopi ara"].p).toBe(0.5);
+  expect(isKnownUnsure({ "out:old shop": { c: "lainnya", p: 1, t: now } }, "out:old shop", now)).toBe(true);
+});

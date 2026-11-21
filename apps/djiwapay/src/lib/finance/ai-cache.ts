@@ -32,8 +32,10 @@ export function recall(memory: Memory, id: string, now = Date.now()): Hit | null
   if (!h || typeof h.c !== "string" || typeof h.p !== "number") return null;
   return now - h.t <= (h.p >= SURE ? SURE_DAYS : UNSURE_DAYS) * DAY ? h : null;
 }
-export const isKnownUnsure = (memory: Memory, id: string, now = Date.now()) => { const h = recall(memory, id, now); return h !== null && h.p < SURE; };
+/** "Lainnya" is the catch-all: remembering it as a sure answer would hide the record from every later pass. */
+const VAGUE = new Set(["lainnya"]);
+export const isKnownUnsure = (memory: Memory, id: string, now = Date.now()) => { const h = recall(memory, id, now); return h !== null && (h.p < SURE || VAGUE.has(h.c)); };
 export function remember(memory: Memory, id: string, categoryId: string, confidence: number, now = Date.now()): Memory {
   if (normalize(id.slice(id.indexOf(":") + 1)).length < 3) return memory;
-  return { ...memory, [id]: { c: categoryId, p: confidence, t: now } };
+  return { ...memory, [id]: { c: categoryId, p: VAGUE.has(categoryId) ? Math.min(confidence, 0.5) : confidence, t: now } };
 }

@@ -13,7 +13,7 @@ export const categorizeRemote = (items: ItemIn[]) => call<CategorizeRes>("/categ
 /** Remember a correction for that shop. Never blocks or fails the screen. */
 export const learnRemote = (text: string, categoryId: string, local?: { profileId: string; kind: "in" | "out" }) => {
   if (local) saveMemory(local.profileId, remember(loadMemory(local.profileId), memoryId(text, local.kind), categoryId, 1));   // a correction also replaces what this browser remembered
-  if (text.trim().length >= 3) void call("/categorize/learn", { method: "POST", body: JSON.stringify({ text, categoryId }) }).catch(() => undefined);
+  if (categoryId !== "lainnya" && text.trim().length >= 3) void call("/categorize/learn", { method: "POST", body: JSON.stringify({ text, categoryId }) }).catch(() => undefined);
 };
 
 /** Before trusting this browser's memory, ask whether a rule was taught on another device since. At most every 5 minutes; offline just keeps the memory. */
@@ -53,7 +53,7 @@ export async function refineEntries(fin: Finance, notify: Notify, entries: Entry
   await syncMemory(fin.profileId);
   let memory = loadMemory(fin.profileId);
   const local: AiPick[] = [], ask: Entry[] = [];
-  for (const e of todo) { const h = recall(memory, memoryId(e.note, e.kind === "in" ? "in" : "out")); if (h) local.push({ key: e.id, categoryId: h.c, confidence: h.p, source: "ai" }); else ask.push(e); }
+  for (const e of todo) { const h = recall(memory, memoryId(e.note, e.kind === "in" ? "in" : "out")); if (h && h.c !== e.categoryId && h.c !== "lainnya") local.push({ key: e.id, categoryId: h.c, confidence: h.p, source: "ai" }); else ask.push(e); }
   let res: CategorizeRes = { success: true, results: local, limited: false, ai: false, remaining: 0, minConfidence: 0.8 };
   if (ask.length) {
     try { const got = await categorizeRemote(ask.map(toItem)); res = { ...got, results: [...local, ...got.results] };

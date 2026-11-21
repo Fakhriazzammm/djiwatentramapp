@@ -116,6 +116,9 @@ async function writeCache(db: Q, userId: string, rows: { text: string; kind: "in
   await db.query("delete from finance.ai_category_cache where user_id=$1 and updated_at < now() - interval '120 days'", [userId]);
 }
 
+/** Catch-all categories: saying a shop is "Lainnya" teaches nothing, so it is never a rule and never a sure answer. */
+export const VAGUE = new Set(["lainnya"]);
+
 export type CategorizeDeps = { db: Tx; key?: string; fetchImpl?: typeof fetch; limit?: number; now?: Date };
 export async function categorizeItems(d: CategorizeDeps, userId: string, input: Item[]): Promise<{ results: Pick[]; ai: boolean; limited: boolean; remaining: number; cached: number }> {
   const limit = d.limit ?? DEFAULT_DAILY_CALLS;
@@ -127,7 +130,7 @@ export async function categorizeItems(d: CategorizeDeps, userId: string, input: 
     const keys = [...new Set([merchantKey(i.text), groupKey(i.text)].filter(Boolean))];
     if (!keys.length) continue;
     const r = (await d.db.query("select category_id from finance.merchant_rules where user_id=$1 and pattern = any($2::text[]) order by (pattern = $3) desc limit 1", [userId, keys, keys[0]])).rows[0];
-    const cat = r ? byId.get(r.category_id) : undefined;
+    const cat = r && !VAGUE.has(r.category_id) ? byId.get(r.category_id) : undefined;   // "Lainnya" is not a real answer: never let it stop the model
     if (cat && cat.income === (i.kind === "in")) results.set(i.key, { key: i.key, categoryId: cat.id, confidence: 1, source: "rule" });
   }
   // 2. what the model already said about this shop (no call, no allowance)
@@ -148,7 +151,7 @@ export async function categorizeItems(d: CategorizeDeps, userId: string, input: 
       ai = true;
       try {
         const got = await aiCategorize({ key: d.key, fetchImpl: d.fetchImpl }, rest, cats, await loadExamples(d.db, userId));
-        for (const [k, v] of got) results.set(k, { key: k, categoryId: v.categoryId, confidence: v.confidence, source: "ai" });
+        for (const [k, v] of got) { if (VAGUE.has(v.categoryId)) v.confidence = Math.min(v.confidence, 0.5); results.set(k, { key: k, categoryId: v.categoryId, confidence: v.confidence, source: "ai" }); }
         await writeCache(d.db, userId, rest.filter((i) => got.has(i.key)).map((i) => ({ text: i.text, kind: i.kind, categoryId: got.get(i.key)!.categoryId, confidence: got.get(i.key)!.confidence })));
       } catch (e) { console.error("categorize", e instanceof Error ? e.message : e); }
     }
@@ -159,7 +162,7 @@ export async function categorizeItems(d: CategorizeDeps, userId: string, input: 
 /** The person fixed a category: remember it for that shop so the next one needs no model. */
 export async function learnRule(db: Q, userId: string, text: string, categoryId: string): Promise<boolean> {
   const cats = await loadCats(db, userId);
-  if (!cats.some((c) => c.id === categoryId) || categoryId === "transfer") return false;
+  if (!cats.some((c) => c.id === categoryId) || categoryId === "transfer" || VAGUE.has(categoryId)) return false;
   const k = groupKey(clean(text)) || merchantKey(clean(text));
   if (!k || k.length < 3) return false;
   await db.query("insert into finance.merchant_rules(user_id,pattern,category_id,uses) values($1,$2,$3,1) on conflict (user_id,pattern) do update set category_id=excluded.category_id, uses=finance.merchant_rules.uses+1, updated_at=now()", [userId, k, categoryId]);
