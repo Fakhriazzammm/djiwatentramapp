@@ -107,12 +107,13 @@ export async function status(db: Q, cfg: GoogleCfg | null, userId: string) {
     db.query("select spreadsheet_url,status,last_synced_at,last_error,hold,last_stats,dirty from finance.google_sheet_exports where user_id=$1", [userId]),
   ]) : [null, null, null];
   const drive = Object.fromEntries((dr?.rows ?? []).map((r) => [r.status, Number(r.n)]));
+  const fo = connected ? (await db.query("select folder_id from finance.google_drive_files where user_id=$1 and folder_id is not null order by updated_at desc nulls last limit 1", [userId])).rows[0] : null;
   const dh = connected ? (await db.query("select hold,last_error,last_checked_at from finance.google_drive_state where user_id=$1", [userId])).rows[0] : null;
   return {
     configured: Boolean(cfg), connected, email: connected ? c.email ?? null : null, features, active,
     gmail: gm ? { enabled: Boolean(gm.enabled), lastPolledAt: gm.last_polled_at ? new Date(gm.last_polled_at).toISOString() : null, error: (gm.last_error as string | null) ?? null, fetched: Number(gm.fetched_count) } : null,
     calendar: { events: Number(ev?.rows[0]?.n ?? 0) },
-    drive: { uploaded: drive.uploaded ?? 0, failed: drive.failed ?? 0, hold: (dh?.hold as string | null) ?? null, lastCheckedAt: dh?.last_checked_at ? new Date(dh.last_checked_at).toISOString() : null },
+    drive: { folderId: (fo?.folder_id as string | null) ?? null, uploaded: drive.uploaded ?? 0, failed: drive.failed ?? 0, hold: (dh?.hold as string | null) ?? null, lastCheckedAt: dh?.last_checked_at ? new Date(dh.last_checked_at).toISOString() : null },
     sheet: sh?.rows[0] ? { url: sh.rows[0].spreadsheet_url as string | null, status: sh.rows[0].status as string, lastSyncedAt: sh.rows[0].last_synced_at ? new Date(sh.rows[0].last_synced_at).toISOString() : null, error: sh.rows[0].last_error as string | null, hold: (sh.rows[0].hold as string | null) ?? null, pending: Boolean(sh.rows[0].dirty), stats: (sh.rows[0].last_stats ?? {}) as Record<string, number> } : null,
   };
 }

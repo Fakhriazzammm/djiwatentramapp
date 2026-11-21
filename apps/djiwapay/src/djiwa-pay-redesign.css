@@ -1127,3 +1127,7 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 .dpx .is-list .dpx-st-more{grid-template-columns:minmax(0,1fr);text-align:center;padding:14px}
 .dpx .dpx-st-stories.is-list+.dpx-st-more,.dpx .is-list .dpx-st-more{width:100%;box-sizing:border-box}
 .dpx .dpx-switch{margin-right:4px}
+
+/* "Buka di Google" shortcuts under the Google switches: one horizontal row, equal buttons. */
+.dpx .dpx-openrow{display:flex;gap:8px;margin:10px 0 0}
+.dpx .dpx-openrow .dpx-btn{flex:1 1 0;min-width:0;margin:0;display:inline-flex;align-items:center;justify-content:center;gap:6px}

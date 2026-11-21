@@ -9,7 +9,7 @@ export type ReviewItem = {
 export type GoogleStatus = {
   configured: boolean; connected: boolean; email: string | null; features: { calendar: boolean; drive: boolean; gmail: boolean }; /** Running now: granted by Google and not switched off. */ active: { calendar: boolean; sheets: boolean; receipts: boolean };
   gmail: { enabled: boolean; lastPolledAt: string | null; error: string | null; fetched: number } | null;
-  calendar: { events: number }; drive: { uploaded: number; failed: number; hold: string | null; lastCheckedAt: string | null };
+  calendar: { events: number }; drive: { folderId?: string | null; uploaded: number; failed: number; hold: string | null; lastCheckedAt: string | null };
   sheet: { url: string | null; status: string; lastSyncedAt: string | null; error: string | null; hold: string | null; pending: boolean; stats: Record<string, number> } | null;
 };
 export type GoogleFeature = "calendar" | "drive" | "gmail";

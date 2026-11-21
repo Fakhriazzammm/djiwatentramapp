@@ -400,7 +400,13 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
         trail={loadingG ? undefined : !gReady ? soon : <Switch on={receipts} label="Foto struk di Drive" onToggle={() => void flip("receipts", receipts, "Foto struk")} />}
         onClick={gReady && !loadingG && busy !== "sw-receipts" ? () => void flip("receipts", receipts, "Foto struk") : undefined} /> : null}
       {receipts && g!.drive.hold ? <div className="dpx-note dpx-danger" role="alert" style={{ margin: "6px 12px 10px" }}><Ic n="warn" /><div><b>Penghapusan ditahan.</b> {g!.drive.hold}<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy === "hold"} onClick={() => void holdOk(confirmDriveRemovals)}>Ya, hapus juga di aplikasi</Btn></div></div></div> : null}
-    </div></Reveal>
+    </div>
+    {cal || drive || receipts ? <div className="dpx-openrow" role="group" aria-label="Buka di Google">
+      {cal ? <Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => window.open("https://calendar.google.com/calendar/r", "_blank", "noopener")}><Ic n="cal" size="sm" /> Calendar</Btn> : null}
+      {receipts ? <Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => window.open(g!.drive.folderId ? `https://drive.google.com/drive/folders/${g!.drive.folderId}` : "https://drive.google.com/drive/my-drive", "_blank", "noopener")}><Ic n="dl" size="sm" /> Drive</Btn> : null}
+      {drive && g!.sheet?.url ? <Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => window.open(g!.sheet!.url!, "_blank", "noopener")}><Ic n="list" size="sm" /> Spreadsheet</Btn> : null}
+    </div> : null}
+    </Reveal>
 
     <div className="dpx-glabel">Alternatif Integrasi email (Advance)</div>
     <Reveal i={5}><div className="dpx-group dpx-white dpx-int">
