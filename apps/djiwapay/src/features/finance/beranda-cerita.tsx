@@ -89,17 +89,18 @@ export function useStories(fin: Finance, entries: Entry[], gold: GoldData | null
 }
 
 /** Cerita & berita: the topic tabs, the story cards, and the headlines. Used on Beranda and in the Notifikasi tab. */
-export function CeritaFeed({ stories, onOpenAll }: { stories: Story[]; onOpenAll: () => void }) {
+export function CeritaFeed({ stories, onOpenAll, list }: { stories: Story[]; onOpenAll: () => void; list?: boolean }) {
   const [feed, setFeed] = useState<string>("untukmu"), news = useNews(feed, feed !== "untukmu");
   return <>
       <DragRow className="dpx-st-tabs" role="tablist" aria-label="Topik cerita dan berita">{[{ id: "untukmu", label: "Untukmu" }, ...NEWS_TOPICS.filter((t) => t.id !== "semua")].map((t) => <Btn key={t.id} type="button" role="tab" aria-selected={feed === t.id} className={feed === t.id ? "on" : ""} onClick={() => setFeed(t.id)}>{t.label}</Btn>)}</DragRow>
-      <DragRow className="dpx-st-stories">
+      <DragRow className={`dpx-st-stories ${list ? "is-list" : ""}`}>
         {feed === "untukmu"
           ? (stories.length ? stories.map((s) => <div key={s.id} className="dpx-st-card dpx-st-story"><span className={`dpx-cat dpx-c-${s.tone === "warn" ? "amber" : s.tone === "ok" ? "emerald" : "violet"}`}><Ic n={s.icon} /></span><b>{s.title}</b><span className="dpx-sub">{s.body}</span></div>) : <div className="dpx-st-card dpx-st-story"><b>Ceritamu menyusul</b><span className="dpx-sub">Catat beberapa transaksi lagi, insight pribadi muncul di sini.</span></div>)
           : news.items === null ? <div className="dpx-st-card dpx-st-story"><b>{news.failed ? "Berita belum bisa dimuat" : "Memuat berita…"}</b><span className="dpx-sub">{news.failed ? "Periksa koneksi lalu pilih topik lagi." : "Sebentar ya."}</span></div>
-          : news.items.length ? <>{news.items.slice(0, 8).map((n) => <NewsCard key={n.url} n={n} />)}<button type="button" className="dpx-st-card dpx-st-story dpx-st-more" onClick={() => onOpenAll()}><b>Lihat semua berita</b><span className="dpx-sub">Emas, ekonomi, saham, kripto</span></button></>
+          : news.items.length ? <>{news.items.slice(0, list ? 20 : 8).map((n) => <NewsCard key={n.url} n={n} />)}<button type="button" className="dpx-st-card dpx-st-story dpx-st-more" onClick={() => onOpenAll()}><b>Lihat semua berita</b><span className="dpx-sub">Emas, ekonomi, saham, kripto</span></button></>
           : <div className="dpx-st-card dpx-st-story"><b>Belum ada berita</b><span className="dpx-sub">Belum ada kabar untuk topik ini hari ini.</span></div>}
       </DragRow>
+      {list && feed === "untukmu" ? <button type="button" className="dpx-st-card dpx-st-more" onClick={() => onOpenAll()}><b>Lihat semua berita</b><span className="dpx-sub">Emas, ekonomi, saham, kripto</span></button> : null}
   </>;
 }
 
@@ -108,8 +109,7 @@ export function CeritaTab({ ctx }: { ctx: FinCtx }) {
   const gold = useGold(), now = new Date(), [newsOpen, setNewsOpen] = useState(false);
   const stories = useStories(ctx.fin, ctx.fin.entries, gold, now);
   return <>
-    <Sec title="Cerita & berita" action="Semua berita" onAction={() => setNewsOpen(true)} />
-    <CeritaFeed stories={stories} onOpenAll={() => setNewsOpen(true)} />
+    <CeritaFeed stories={stories} onOpenAll={() => setNewsOpen(true)} list />
     {newsOpen ? <NewsPage onBack={() => setNewsOpen(false)} /> : null}
   </>;
 }
