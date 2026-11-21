@@ -52,6 +52,11 @@ export function AutoChip({ count, onOpen }: { count: number; onOpen: () => void 
 }
 
 /* ---------- Beranda: the small dot that says something is waiting ---------- */
+/** On/off switch shown inside a row. Tapping it acts on its own (the rest of the row still opens the details). */
+function Switch({ on, warn, label, onToggle }: { on: boolean; warn?: boolean; label: string; onToggle: () => void }) {
+  return <span className={`dpx-switch ${on ? "is-on" : ""} ${warn ? "is-warn" : ""}`} role="switch" aria-checked={on} aria-label={label} tabIndex={0} onClick={(e) => { e.stopPropagation(); onToggle(); }} onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); e.stopPropagation(); onToggle(); } }}><i /></span>;
+}
+
 export function ReviewChip({ count, importReady, onOpen, onOpenImport }: { count: number; importReady?: number; onOpen: () => void; onOpenImport?: () => void }) {
   if (count <= 0 && !(importReady && importReady > 0)) return null;
   return <>
@@ -402,19 +407,17 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
         <div className="dpx-group dpx-white dpx-int">
           <Row icon="bank" tone="slate" title="Email terusan"
             sub={src?.forwarding ? (src.mailCount ? `${src.mailCount} email · ${ago(src.lastMailAt)}` : "Menunggu email pertama") : "Teruskan email transaksi tertentu ke alamat Djiwa Pay-mu"}
-            trail={src?.forwarding ? <Tag tone="ok">Aktif</Tag> : inbound && !inbound.configured ? soon : inbound?.configured ? <Tag tone="warn">Disarankan</Tag> : undefined}
+            trail={inbound && !inbound.configured ? soon : <Switch on={Boolean(src?.forwarding)} label="Email terusan" onToggle={() => { if (src?.forwarding) { setSheet(null); setConfirmOff("email"); } else setSheet("email"); }} />}
             onClick={inbound?.configured ? () => setSheet("email") : undefined} />
           {src?.forwarding ? <>
             <Row icon="refresh" tone="slate" title="Buat alamat baru" sub="Alamat lama berhenti menerima email" onClick={async () => { setBusy("rot"); try { await createSource(true); await refresh(); ctx.notify("Alamat baru dibuat. Perbarui terusan di Gmail."); setSheet("email"); } catch { ctx.notify("Gagal membuat alamat baru"); } finally { setBusy(""); } }} chev={false} />
-            <Row icon="trash" tone="rose" title="Matikan email terusan" sub="Hapus alamat dan antrean" onClick={() => { setSheet(null); setConfirmOff("email"); }} chev={false} />
           </> : null}
           <Row icon="spark" tone="orange" title="Apps Script"
             sub={hook?.enabled ? (hook.received ? `${hook.received} email · ${ago(hook.lastAt ?? null)}${hookStatusText(hook.lastStatus, hook.lastReason) ? ` · ${hookStatusText(hook.lastStatus, hook.lastReason)}` : ""}` : "Menunggu email pertama dari skripmu") : "Ikuti panduan untuk menjalankan skrip di akun Google-mu"}
-            trail={hook?.available === false ? soon : hook?.enabled ? (hook.received ? <Tag tone="ok">Aktif</Tag> : <Tag tone="warn">Menunggu uji</Tag>) : undefined}
+            trail={hook?.available === false ? soon : <Switch on={Boolean(hook?.enabled)} warn={Boolean(hook?.enabled && !hook.received)} label="Apps Script" onToggle={() => { if (hook?.enabled) { setSheet(null); setConfirmOff("script"); } else setSheet("script"); }} />}
             onClick={hook?.available === false ? undefined : () => setSheet("script")} />
           {hook?.enabled ? <>
             <Row icon="refresh" tone="slate" title="Buat alamat skrip baru" sub="Alamat lama langsung mati. Salin dan tempel skrip yang baru" onClick={async () => { setBusy("hook"); try { setHook(await createHook(true)); ctx.notify("Alamat baru dibuat. Tempel ulang skripnya."); setSheet("script"); } catch { ctx.notify("Gagal membuat alamat baru"); } finally { setBusy(""); } }} chev={false} />
-            <Row icon="trash" tone="rose" title="Matikan Apps Script" sub="Alamat dihapus. Catatan yang sudah ada tetap" onClick={() => { setSheet(null); setConfirmOff("script"); }} chev={false} />
           </> : null}
         </div>
       </Sheet> : null}
