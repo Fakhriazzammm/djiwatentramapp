@@ -5,6 +5,12 @@
   "server": {
     "url": "https://djiwapay.web.id",
     "androidScheme": "https",
-    "allowNavigation": ["djiwapay.web.id", "accounts.google.com"]
+    "errorPath": "offline.html",
+    "allowNavigation": ["djiwapay.web.id"]
+  },
+  "android": { "allowMixedContent": false },
+  "plugins": {
+    "SplashScreen": { "launchShowDuration": 1500, "launchAutoHide": false, "backgroundColor": "#f8f3e9", "showSpinner": false },
+    "StatusBar": { "style": "LIGHT", "backgroundColor": "#f8f3e9", "overlaysWebView": false }
   }
 }

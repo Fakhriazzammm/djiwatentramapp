@@ -1,5 +1,10 @@
 apply plugin: 'com.android.application'
 
+def keystoreProps = new Properties()
+def keystoreFile = new File(System.getenv('DJIWAPAY_KEYSTORE_PROPERTIES') ?: (System.getProperty('user.home') + '/.local/android/keys/keystore.properties'))
+if (keystoreFile.exists()) { keystoreFile.withInputStream { keystoreProps.load(it) } }
+def buildNumber = (System.getenv('DJIWAPAY_VERSION_CODE') ?: '1').toInteger()
+
 android {
     namespace "id.web.djiwapay.app"
     compileSdk rootProject.ext.compileSdkVersion
@@ -7,8 +12,8 @@ android {
         applicationId "id.web.djiwapay.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode buildNumber
+        versionName "1.0." + buildNumber
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +21,19 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keystoreProps['storeFile']) {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            if (keystoreProps['storeFile']) { signingConfig signingConfigs.release }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -52,3 +68,6 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
+
+// The social-login plugin pulls androidx.browser 1.9, which needs compileSdk 36; 1.8 is enough for Custom Tabs here.
+configurations.all { resolutionStrategy.force 'androidx.browser:browser:1.8.0' }

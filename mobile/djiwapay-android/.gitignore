@@ -5,3 +5,4 @@ android/local.properties
 *.jks
 keystore.properties
 *.apk
+dist-android
