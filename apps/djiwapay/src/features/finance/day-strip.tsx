@@ -74,9 +74,20 @@ export function DayStrip({ month, today, counts, value, onPick }: { month: strin
     lead={<Btn type="button" className={`dpx-ds-all ${value === "all" ? "on" : ""}`} aria-pressed={value === "all"} onClick={() => onPick("all")} whileTap={{ scale: 0.94 }}><span>Semua</span></Btn>} />;
 }
 
-/** One item per month, oldest left, current month right, centred on the chosen month. */
-export function MonthStrip({ months, today, counts, value, onPick }: { months: string[]; today: Date; counts: Map<string, number>; value: string; onPick: (key: string) => void }) {
+/** The months a strip offers: from the earliest month with records (or `include`) up to a year ahead of today. */
+export function monthRange(counts: Map<string, number>, today: Date, include?: string, ahead = 12): string[] {
+  const end = monthKey(new Date(today.getFullYear(), today.getMonth() + ahead, 1)), now = monthKey(today);
+  const firsts = [...counts.keys(), now, ...(include && include !== "all" ? [include] : [])].sort();
+  const [y0, m0] = firsts[0].split("-").map(Number), out: string[] = [];
+  let y = y0, m = m0;
+  while (`${y}-${String(m).padStart(2, "0")}` <= end && out.length < 72) { out.push(`${y}-${String(m).padStart(2, "0")}`); if (++m > 12) { m = 1; y++; } }
+  return out;
+}
+
+/** One item per month, oldest left, current month right, centred on the chosen month. `allLabel` adds a fixed "Semua" button that picks "all". */
+export function MonthStrip({ months, today, counts, value, onPick, allLabel }: { months: string[]; today: Date; counts: Map<string, number>; value: string; onPick: (key: string) => void; allLabel?: string }) {
   const nowKey = monthKey(today);
   const items = useMemo<Item[]>(() => months.map((k) => { const [y, m] = k.split("-").map(Number), c = counts.get(k) ?? 0; return { key: k, small: String(y), main: MONTH[m - 1], has: c > 0, today: k === nowKey, label: `${LONG_MONTH.format(new Date(y, m - 1, 1))}${k === nowKey ? ", bulan ini" : ""}, ${c ? `${c} catatan` : "tanpa catatan"}` }; }), [months, counts, nowKey]);
-  return <CenterStrip items={items} value={value} onPick={onPick} label="Pilih bulan" wide />;
+  return <CenterStrip items={items} value={value} onPick={onPick} label="Pilih bulan" wide
+    lead={allLabel ? <Btn type="button" className={`dpx-ds-all ${value === "all" ? "on" : ""}`} aria-pressed={value === "all"} onClick={() => onPick("all")} whileTap={{ scale: 0.94 }}><span>{allLabel}</span></Btn> : undefined} />;
 }

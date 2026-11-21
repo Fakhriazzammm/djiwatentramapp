@@ -7,6 +7,8 @@ import { DjiwaPayAuth } from "./features/auth/djiwa-pay-auth";
 import { DjiwaPayScreen } from "./features/wallet/djiwa-pay-screen";
 import { isKnownPayPath } from "./lib/djiwa-pay-routes";
 import { DjiwaPaySplash } from "./components/djiwa-pay-splash";
+import { DjiwaPayOpening } from "./components/djiwa-pay-opening";
+import { shouldShowDjiwaPayOpening } from "./lib/djiwa-pay-opening";
 import { UpdateWatcher } from "./components/update-watcher";
 import { useDjiwaPaySplash } from "./hooks/use-djiwa-pay-splash";
 import { LegalPage } from "./features/legal/legal-pages";
@@ -40,6 +42,7 @@ export function DjiwaPayApp() {
   const load = async () => { setLoading(true); setError(null); try { const next = await resolveIdentity(); setProfile(next); if (next) setWallet(await readWallet(next)); } catch (cause) { setError(cause instanceof Error ? cause.message : "Gagal memuat Djiwa Pay"); } finally { setLoading(false); } };
   useEffect(() => { if (!localPreview) void load(); }, []);
   const splash = useDjiwaPaySplash();
+  const [opening, setOpening] = useState(() => shouldShowDjiwaPayOpening(window.location.search));
   // Auth and not-found identities have no page data to wait for: release the
   // boot splash as soon as the session check settles.
   useEffect(() => { if (!loading && !profile) splash.release(); }, [loading, profile, splash.release]);
@@ -52,5 +55,6 @@ export function DjiwaPayApp() {
     )}
     <UpdateWatcher />
     <DjiwaPaySplash visible={splash.visible} leaving={splash.leaving} slow={splash.slow} label={splash.label} />
+    {opening ? <DjiwaPayOpening onDone={() => setOpening(false)} /> : null}
   </>;
 }

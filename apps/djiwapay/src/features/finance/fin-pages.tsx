@@ -8,7 +8,7 @@ import { wealthHistory } from "../../lib/finance/story";
 import { Avatar, payAsset, AnimatedNumber, Bar, Mascot, MascotBuddy, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
 import type { Nav } from "../shell/dpx-pages";
 import { ScopeSwitch } from "./scope-switch";
-import { DayStrip, MonthStrip, dayKey, monthKey } from "./day-strip";
+import { DayStrip, MonthStrip, dayKey, monthKey, monthRange } from "./day-strip";
 import { TidyBanner } from "./tidy-banner";
 import { isCrossScope } from "../../lib/finance/scope";
 import { rootId, guessCategory } from "../../lib/finance/categories";
@@ -206,13 +206,15 @@ export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: R
   const monthCounts = useMemo(() => { const m = new Map<string, number>(); dayCounts.forEach((n, k) => m.set(k.slice(0, 7), (m.get(k.slice(0, 7)) ?? 0) + n)); return m; }, [dayCounts]);
   const latestDay = useMemo(() => [...dayCounts.keys()].sort().pop() ?? dayKey(today), [dayCounts]);   // eslint-disable-line react-hooks/exhaustive-deps
   const nowMonth = monthKey(today);
-  const activeMon = mon || latestDay.slice(0, 7);
-  const endMonth = monthKey(new Date(today.getFullYear(), today.getMonth() + 12, 1));   // the strip runs on into the future, like the days do
-  const monthList = useMemo(() => { const first = [...monthCounts.keys()].sort()[0] ?? nowMonth; const [y0, m0] = (first < activeMon ? first : activeMon).split("-").map(Number); const out: string[] = []; let y = y0, m = m0; while (`${y}-${String(m).padStart(2, "0")}` <= endMonth && out.length < 60) { out.push(`${y}-${String(m).padStart(2, "0")}`); if (++m > 12) { m = 1; y++; } } return out.length ? out : [nowMonth]; }, [monthCounts, activeMon, nowMonth, endMonth]);
-  const latestInMonth = useMemo(() => [...dayCounts.keys()].filter((k) => k.startsWith(activeMon)).sort().pop() ?? (activeMon === nowMonth ? dayKey(today) : `${activeMon}-01`), [dayCounts, activeMon, nowMonth]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const activeDay = day || latestInMonth;
+  const ytd = mon === "all";   // both strips on "Semua": everything since 1 January of this year
+  const baseMon = ytd || !mon ? latestDay.slice(0, 7) : mon;   // the month whose days the day strip lists
+  const monthList = useMemo(() => monthRange(monthCounts, today, baseMon), [monthCounts, baseMon, nowMonth]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const latestInMonth = useMemo(() => [...dayCounts.keys()].filter((k) => k.startsWith(baseMon)).sort().pop() ?? (baseMon === nowMonth ? dayKey(today) : `${baseMon}-01`), [dayCounts, baseMon, nowMonth]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const activeMon = ytd ? "all" : baseMon;
+  const activeDay = ytd ? "all" : day || latestInMonth;
   useEffect(() => { setDay(""); setMon(""); }, [acc]);   // another wallet: back to its latest month and day
-  const eList = embed ? entries.filter((e) => inWallet(e) && (seg === "all" || e.kind === seg) && (activeDay === "all" ? dayKey(new Date(e.at)).startsWith(activeMon) : dayKey(new Date(e.at)) === activeDay)) : [];
+  const yearStart = `${today.getFullYear()}-01-01`;
+  const eList = embed ? entries.filter((e) => { if (!(inWallet(e) && (seg === "all" || e.kind === seg))) return false; const k = dayKey(new Date(e.at)); return ytd ? k >= yearStart : activeDay === "all" ? k.startsWith(baseMon) : k === activeDay; }) : [];
   const eDays = [...new Set(eList.map((e) => dayLabel(e.at)))];
   const head = <>
     <div className="dpx-hdr" style={{ paddingTop: 0 }}><h1 className="dpx-page-title" style={{ flex: 1 }}>Catatan</h1><Btn type="button" className="dpx-rb" onClick={() => nav.go("/ringkasan")} aria-label="Laporan"><Ic n="chart" /></Btn></div>
@@ -235,12 +237,12 @@ export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: R
   <AnimatePresence>{sheet === "wallet" ? <AccountSheet key="w" state={state} balances={balances} value={acc} includePay allLabel="Semua dompet" title="Filter dompet" onPick={setAcc} onClose={() => setSheet(null)} /> : null}{sheet === "filter" ? <CategorySheet key="f" categories={[{ id: "all", name: "Semua", icon: "grid", tone: "slate", income: false }, ...state.categories]} income={false} value={cat} onPick={setCat} onClose={() => setSheet(null)} /> : null}</AnimatePresence>
   </>;
   if (embed) return <div className="dpx-rec-embed">
-    <MonthStrip months={monthList} today={today} counts={monthCounts} value={activeMon} onPick={(k) => { setMon(k); setDay(""); }} />
-    <DayStrip month={activeMon} today={today} counts={dayCounts} value={activeDay} onPick={setDay} />
+    <MonthStrip months={monthList} today={today} counts={monthCounts} value={activeMon} allLabel="Semua" onPick={(k) => { if (k === "all") { setMon("all"); setDay("all"); } else { setMon(k); setDay(""); } }} />
+    <DayStrip month={baseMon} today={today} counts={dayCounts} value={activeDay} onPick={(k) => { if (ytd) { if (k === "all") return; setMon(baseMon); } setDay(k); }} />
     <Seg id="rec" label="Jenis catatan" value={seg} onChange={setSeg} options={[["all", "Semua"], ["in", "Masuk"], ["out", "Keluar"], ["tf", "Transfer"]] as const} />
     <motion.div key={`${acc}|${activeDay}|${seg}`} aria-live="polite" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, ease: [0.32, 0.72, 0, 1] }}>
       {entries.length === 0 ? <Empty img="order-receipt" title="Belum ada catatan" text="Catat pengeluaran pertamamu. Pembayaran Djiwa Pay otomatis ikut tercatat."><Btn type="button" className="dpx-btn" style={{ maxWidth: 300 }} onClick={() => ctx.open({ k: "catat" })}><Ic n="plus" size="sm" /> Catat sekarang</Btn></Empty>
-        : eList.length === 0 ? <Empty img="restaurant-cafe" title={activeDay === "all" ? "Tidak ada catatan" : "Tidak ada catatan di hari ini"} text={activeDay === "all" ? "Belum ada catatan di bulan ini untuk pilihan ini." : "Geser tanggal lain, atau lihat semuanya."}>{activeDay !== "all" ? <Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setDay("all")}>Lihat semua tanggal</Btn> : null}</Empty>
+        : eList.length === 0 ? <Empty img="restaurant-cafe" title={activeDay === "all" ? "Tidak ada catatan" : "Tidak ada catatan di hari ini"} text={activeDay === "all" ? "Belum ada catatan untuk pilihan ini." : "Geser tanggal lain, atau lihat semuanya."}>{activeDay !== "all" ? <Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setDay("all")}>Lihat semua tanggal</Btn> : null}</Empty>
         : eDays.map((d) => { const items = eList.filter((e) => dayLabel(e.at) === d); const spent = items.filter((e) => e.kind === "out").reduce((n, e) => n + e.amount, 0); return <div key={d}><div className="dpx-dayh"><span>{d}</span><span>{spent ? `−${rupiah(spent)}` : ""}</span></div><div className="dpx-group dpx-flush dpx-white">{items.map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} fresh={fresh.has(e.id)} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div></div>; })}
     </motion.div>
     {sheets}

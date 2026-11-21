@@ -1,4 +1,5 @@
 import { ScopeSwitch } from "./scope-switch";
+import { MonthStrip, monthKey, monthRange } from "./day-strip";
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Btn, Header, Ic, Sky, spring } from "../shell/dpx-ui";
@@ -30,6 +31,9 @@ export function FinReport({ ctx, onBack }: { ctx: FinCtx; onBack: () => void }) 
   const [cursor, setCursor] = useState({ y: today.getFullYear(), m: today.getMonth() });
   const [tab, setTab] = useState<Tab>("sum"), [kind, setKind] = useState<"out" | "in">("out"), [range, setRange] = useState<6 | 12>(6);
   const isCurrent = cursor.y === today.getFullYear() && cursor.m === today.getMonth();
+  const monthCounts = useMemo(() => { const m = new Map<string, number>(); for (const e of entries) { const k = monthKey(new Date(e.at)); m.set(k, (m.get(k) ?? 0) + 1); } return m; }, [entries]);
+  const curKey = `${cursor.y}-${String(cursor.m + 1).padStart(2, "0")}`;
+  const months = useMemo(() => monthRange(monthCounts, today, curKey), [monthCounts, curKey]);   // eslint-disable-line react-hooks/exhaustive-deps
   const shift = (d: number) => setCursor((c) => { const n = new Date(c.y, c.m + d, 1); return { y: n.getFullYear(), m: n.getMonth() }; });
   const dim = daysIn(cursor.y, cursor.m), elapsed = isCurrent ? today.getDate() : dim, ref = isCurrent ? today : new Date(cursor.y, cursor.m, dim, 12);
   const month = useMemo(() => fin.rolled.filter((e) => inMonth(e, cursor.y, cursor.m)), [fin.rolled, cursor]);
@@ -68,7 +72,7 @@ export function FinReport({ ctx, onBack }: { ctx: FinCtx; onBack: () => void }) 
     <Header title="Laporan" onBack={onBack} right={<Btn type="button" className="dpx-rb" onClick={exportCsv} aria-label="Ekspor CSV"><Ic n="dl" /></Btn>} />
     <ScopeSwitch fin={fin} id="report" />
     <div className="dpx-rp-tabs" role="tablist">{TABS.map(([k, l]) => <Btn key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</Btn>)}</div>
-    <div className="dpx-rp-month"><Btn type="button" className="dpx-rb" onClick={() => shift(-1)} aria-label="Bulan sebelumnya"><Ic n="back" size="sm" /></Btn><b>{monthLabel(cursor.y, cursor.m)}</b><Btn type="button" className="dpx-rb" style={isCurrent ? { opacity: 0.4 } : undefined} disabled={isCurrent} onClick={() => shift(1)} aria-label="Bulan berikutnya"><span style={{ display: "inline-flex", transform: "scaleX(-1)" }}><Ic n="back" size="sm" /></span></Btn></div>
+    <MonthStrip months={months} today={today} counts={monthCounts} value={curKey} onPick={(k) => { const [y, m] = k.split("-").map(Number); setCursor({ y, m: m - 1 }); }} />
     {month.length === 0 && tab !== "trend" ? <Card><p className="dpx-st-empty">Belum ada catatan di {monthLabel(cursor.y, cursor.m)}. Catat pemasukan atau pengeluaran agar laporan terisi.</p></Card> :
     <AnimatePresence mode="wait" initial={false}><motion.div key={`${tab}${kind}`} className="dpx-rp-body" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
 

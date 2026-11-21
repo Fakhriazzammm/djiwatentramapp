@@ -452,3 +452,167 @@ button:disabled { cursor: default; }
   .djiwa-splash, .djiwa-splash-content { transition: none; animation: none; }
   .djiwa-pay-logo-trace { animation: none; stroke-dasharray: none; opacity: .7; }
 }
+
+/* ── First-launch opening (animated mascot, shown once per device) ── */
+.djiwa-opening {
+  position: fixed;
+  z-index: 3100;
+  inset: 0;
+  overflow: hidden;
+  background: #f8f5f1;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* The stage is the video's own 9:16 frame, sized to cover the phone screen, so
+   the live mascot can sit exactly where the clip leaves it. */
+.djiwa-opening-stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(max(100vw, 56.25dvh), 520px);
+  aspect-ratio: 9 / 16;
+  transform: translate(-50%, -58%);
+}
+.djiwa-opening-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #f8f5f1;
+}
+.djiwa-opening-glow {
+  position: absolute;
+  top: 28%;
+  left: 50%;
+  width: 92%;
+  aspect-ratio: 1;
+  margin-left: -46%;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(242,178,26,.22), rgba(209,75,26,.06) 46%, transparent 70%);
+  pointer-events: none;
+}
+.djiwa-opening-mascot-slot {
+  position: absolute;
+  top: 28.79%;
+  left: 14.81%;
+  width: 70.37%;
+  aspect-ratio: 1312 / 1199;
+}
+.djiwa-opening-float { position: relative; width: 100%; height: 100%; }
+.djiwa-opening-mascot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: grab;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.djiwa-opening-mascot:active { cursor: grabbing; }
+.djiwa-opening-mascot img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.djiwa-opening-bubble {
+  position: absolute;
+  z-index: 2;
+  bottom: 100%;
+  left: 50%;
+  max-width: min(260px, 74vw);
+  margin-bottom: 6px;
+  padding: 10px 14px;
+  border-radius: 18px;
+  background: #1d1d1f;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  translate: -50% 0;
+  box-shadow: 0 10px 24px rgba(29,29,31,.18);
+  white-space: normal;
+  width: max-content;
+}
+.djiwa-opening-bubble::after {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  border: 7px solid transparent;
+  border-top-color: #1d1d1f;
+  content: "";
+  translate: -50% 0;
+}
+.djiwa-opening-coin {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border: 3px solid #b8892f;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #ffd75e, #f2b21a 60%, #d9970f);
+  pointer-events: none;
+}
+.djiwa-opening-skip {
+  position: absolute;
+  z-index: 3;
+  top: calc(14px + env(safe-area-inset-top));
+  right: 16px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(29,29,31,.06);
+  color: #6e6e73;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.djiwa-opening-copy {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  justify-items: center;
+  padding: 0 24px calc(18px + env(safe-area-inset-bottom));
+  text-align: center;
+  background: linear-gradient(to top, #f8f5f1 70%, rgba(248,245,241,0));
+}
+.djiwa-opening-eyebrow {
+  margin: 28px 0 0;
+  color: #d14b1a;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+}
+.djiwa-opening-title {
+  margin: 8px 0 0;
+  color: #1d1d1f;
+  font-size: clamp(26px, 7.4vw, 32px);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.12;
+}
+.djiwa-opening-sub { max-width: 300px; margin: 10px 0 0; color: #6e6e73; font-size: 14px; line-height: 1.45; }
+.djiwa-opening-cta {
+  width: min(100%, 340px);
+  margin-top: 20px;
+  padding: 15px 20px;
+  border: 0;
+  border-radius: 16px;
+  background: #d14b1a;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgba(209,75,26,.28);
+}
+.djiwa-opening-swipe { margin-top: 8px; color: #a1a1a6; font-size: 18px; line-height: 1; }
+@media (max-height: 640px) {
+  .djiwa-opening-sub { display: none; }
+  .djiwa-opening-cta { margin-top: 14px; }
+}
