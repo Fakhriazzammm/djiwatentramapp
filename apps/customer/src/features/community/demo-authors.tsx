@@ -27,7 +27,7 @@ export function DemoBadge({ className }: { className?: string }) {
 	return (
 		<span
 			className={cn(
-				"inline-flex shrink-0 items-center gap-0.5 rounded-full bg-[#eef2f7] px-1.5 py-[1px] text-[9px] font-black uppercase tracking-[0.08em] text-[#5b6573]",
+				"inline-flex shrink-0 items-center gap-0.5 rounded-full border border-[#f0d9ae] bg-[#fff7e8] px-1.5 py-[1px] text-[10px] font-black uppercase tracking-[0.06em] text-[#8a5a00]",
 				className,
 			)}
 			title="Konten demo, bukan pelanggan sungguhan"
