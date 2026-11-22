@@ -7,6 +7,7 @@ import { CustomerErrorState, CustomerSectionSkeleton } from "@/components/custom
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { CommunityClientError, communityClient } from "@/features/community/community-client";
 import type { CommunityPost, CommunityPurchaseActivity } from "@/features/community/community-types";
+import { DemoBadge, isDemoAuthor } from "@/features/community/demo-authors";
 
 export const Route = createLazyFileRoute("/$username/komunitas")({ component: CommunityPage });
 
@@ -120,7 +121,7 @@ function PostCard({ post, currentSourceId, onDelete, onReport, onOpen }: { post:
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-1.5 text-[13px] leading-5"><p className="truncate font-bold text-[#111111]">{displayName}</p><span className="shrink-0 text-xs text-[#969696]">{relativeTime(post.createdAt)}</span>{!isOwner ? <button type="button" className="min-h-8 shrink-0 rounded-full px-2 text-[10px] font-black text-[#3156a3] hover:bg-[#e8eefb]" aria-pressed={following} onClick={() => void toggleFollow()}>{following ? "Mengikuti" : "Ikuti"}</button> : null}</div>
+            <div className="flex min-w-0 items-center gap-1.5 text-[13px] leading-5"><p className="truncate font-bold text-[#111111]">{displayName}</p>{isDemoAuthor(post.author.sourceId) ? <DemoBadge /> : null}<span className="shrink-0 text-xs text-[#969696]">{relativeTime(post.createdAt)}</span>{!isOwner ? <button type="button" className="min-h-8 shrink-0 rounded-full px-2 text-[10px] font-black text-[#3156a3] hover:bg-[#e8eefb]" aria-pressed={following} onClick={() => void toggleFollow()}>{following ? "Mengikuti" : "Ikuti"}</button> : null}</div>
             <div className="relative -mr-2 -mt-2"><button type="button" className="flex h-10 w-10 items-center justify-center rounded-full text-[#777777] hover:bg-[#f5f5f5]" aria-label="Aksi postingan" onClick={() => setOpen((value) => !value)}><MoreHorizontal className="h-5 w-5" /></button>{open ? <div className="absolute right-0 top-10 z-10 w-44 rounded-xl border border-[#e2e2e2] bg-white p-1 shadow-lg">{isOwner ? <button type="button" className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); onDelete(post); }}>Hapus postingan</button> : <button type="button" className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold hover:bg-[#f5f5f5]" onClick={() => { setOpen(false); const reason = window.prompt("Alasan laporan: spam, pelecehan, informasi salah, atau lainnya", "Konten tidak sesuai"); if (reason?.trim()) onReport(post, reason.trim()); }}>Laporkan postingan</button>}</div> : null}</div>
           </div>
           {post.body ? <p className="mt-0.5 whitespace-pre-wrap text-[14px] leading-[1.4] text-[#161616]">{post.body}</p> : null}
