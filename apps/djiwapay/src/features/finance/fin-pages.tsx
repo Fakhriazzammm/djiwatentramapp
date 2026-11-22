@@ -83,19 +83,18 @@ export function Onboarding({ ctx }: { ctx: FinCtx }) {
     ctx.notify("Siap! Ketuk Catat untuk mencatat yang pertama.");
   };
   const steps = [
-    { img: <picture>
-      <source media="(prefers-reduced-motion: no-preference)" srcSet="/assets/djiwapay-studio/catat.gif" />
-      <img src="/assets/djiwapay-studio/catat-rest.webp" alt="" width={170} height={170}
-        style={{ objectFit: "contain", filter: "drop-shadow(0 16px 24px rgba(45,36,29,.18))" }} />
-    </picture>, title: "Tahu uangmu pergi ke mana.", sub: "Catat dengan satu kalimat, lihat anggaran, dan semua pembayaran Djiwa Pay otomatis tercatat.", body: null, cta: "Mulai" },
-    { img: <I3 name="customer-benefit-wallet" px={110} />, title: "Berapa uang tunaimu sekarang?", sub: "Saldo awal dompet Tunai. Boleh dikosongkan dan diubah nanti.", body: <MoneyInput big value={cash} onChange={setCash} label="Saldo tunai" />, cta: "Lanjut" },
-    { img: <I3 name="loyalty-points" px={110} />, title: "Punya rekening yang ingin dicatat?", sub: "Opsional. Djiwa Pay sudah terhubung otomatis.", body: <><label className="dpx-field" style={{ textAlign: "left" }}><span>Nama rekening</span><div className="dpx-input"><input value={bank} onChange={(e) => setBank(e.target.value)} placeholder="Contoh: BCA" maxLength={30} /></div></label>{bank.trim() ? <label className="dpx-field" style={{ textAlign: "left" }}><span>Saldo awal</span><MoneyInput value={bankBal} onChange={setBankBal} /></label> : null}</>, cta: "Selesai" },
+    { scene: "map", title: "Tahu uangmu pergi ke mana.", sub: "Catat dengan satu kalimat, lihat anggaran, dan semua pembayaran Djiwa Pay otomatis tercatat.", body: null, cta: "Mulai" },
+    { scene: "cash", title: "Berapa uang tunaimu sekarang?", sub: "Saldo awal dompet Tunai. Boleh dikosongkan dan diubah nanti.", body: <MoneyInput big value={cash} onChange={setCash} label="Saldo tunai" />, cta: "Lanjut" },
+    { scene: "account", title: "Punya rekening yang ingin dicatat?", sub: "Opsional. Djiwa Pay sudah terhubung otomatis.", body: <><label className="dpx-field" style={{ textAlign: "left" }}><span>Nama rekening</span><div className="dpx-input"><input value={bank} onChange={(e) => setBank(e.target.value)} placeholder="Contoh: BCA" maxLength={30} /></div></label>{bank.trim() ? <label className="dpx-field" style={{ textAlign: "left" }}><span>Saldo awal</span><MoneyInput value={bankBal} onChange={setBankBal} /></label> : null}</>, cta: "Selesai" },
   ];
   const s = steps[step];
   return <div className="dpx-page"><Sky deep><div className="dpx-pad dpx-nobar" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
     <div className="dpx-steps">{steps.map((_, i) => <i key={i} className={i <= step ? "dpx-on" : ""} />)}</div>
     <AnimatePresence mode="wait" initial={false}><motion.div key={step} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.22 }} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
-      {s.img}<h1 className="dpx-title" style={{ fontSize: 28, marginTop: 14 }}>{s.title}</h1><p className="dpx-sub" style={{ maxWidth: 300, marginTop: 8, fontSize: 15 }}>{s.sub}</p><div style={{ width: "100%", marginTop: 18 }}>{s.body}</div>
+      <picture>
+        <source media="(prefers-reduced-motion: no-preference)" srcSet={`/assets/djiwapay-onboarding/${s.scene}.gif`} />
+        <img src={`/assets/djiwapay-onboarding/${s.scene}.webp`} width={step === 0 ? 170 : 110} height={step === 0 ? 170 : 110} alt="" />
+      </picture><h1 className="dpx-title" style={{ fontSize: 28, marginTop: 14 }}>{s.title}</h1><p className="dpx-sub" style={{ maxWidth: 300, marginTop: 8, fontSize: 15 }}>{s.sub}</p><div style={{ width: "100%", marginTop: 18 }}>{s.body}</div>
     </motion.div></AnimatePresence>
     <Btn type="button" className="dpx-btn" onClick={() => (step === steps.length - 1 ? finish() : setStep(step + 1))}>{s.cta}</Btn>
     {step > 0 ? <Btn type="button" className="dpx-btn dpx-soft" style={{ marginTop: 10 }} onClick={() => (step === 1 ? setStep(0) : finish())}>{step === 1 ? "Kembali" : "Lewati"}</Btn> : null}
