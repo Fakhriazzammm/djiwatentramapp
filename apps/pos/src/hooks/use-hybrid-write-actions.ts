@@ -4943,6 +4943,14 @@ export function useHybridEndShift() {
 						non_cash_confirmed: Number(args?.nonCashConfirmed ?? 0),
 						non_cash_expected: nonCashExpected,
 						cash_breakdown: args?.cashBreakdown ?? null,
+						cash_handover: args?.cashHandover
+							? {
+								counted: Number(args.cashHandover.counted ?? 0),
+								separated: Number(args.cashHandover.separated ?? 0),
+								kept: Number(args.cashHandover.kept ?? 0),
+								recordedAt: endTime,
+							}
+							: null,
 						payment_breakdown_expected: paymentBreakdownExpected,
 						payment_breakdown_actual: paymentBreakdownActual,
 						payment_breakdown_variance: paymentBreakdownVariance,

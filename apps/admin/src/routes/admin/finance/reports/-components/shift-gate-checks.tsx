@@ -1,15 +1,30 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { adminProtectedRpc } from "@/lib/admin-protected-read";
+import { createClient } from "@/lib/client";
 
 type Check = { id: string; kind: "open_menu" | "close_opname"; actorName: string; createdAt: number; summary: { total?: number; out?: number; flagged?: number }; items: any[] };
 
+const rp = (n: number) => `Rp ${Math.round(n).toLocaleString("id-ID")}`;
 const time = (ms: number) => new Date(ms).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
 
 /** Hasil cek menu (buka shift) dan opname bahan (tutup shift) untuk satu shift. */
 export function ShiftGateChecks({ shiftId }: { shiftId: string }) {
 	const [checks, setChecks] = useState<Check[] | null>(null);
 	const [failed, setFailed] = useState(false);
+	const [handover, setHandover] = useState<{ counted: number; separated: number; kept: number } | null>(null);
+	useEffect(() => {
+		let active = true;
+		setHandover(null);
+		void (async () => {
+			try {
+				const { data } = await createClient().schema("pos").from("shifts").select("cash_handover").eq("source_id", shiftId).maybeSingle();
+				const value = (data as any)?.cash_handover;
+				if (active && value && typeof value.kept === "number") setHandover({ counted: Number(value.counted ?? 0), separated: Number(value.separated ?? 0), kept: Number(value.kept) });
+			} catch { /* opsional */ }
+		})();
+		return () => { active = false; };
+	}, [shiftId]);
 	useEffect(() => {
 		let active = true;
 		setChecks(null);
@@ -29,6 +44,7 @@ export function ShiftGateChecks({ shiftId }: { shiftId: string }) {
 	return (
 		<div className="rounded-xl border border-border p-3">
 			<p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Cek menu & opname bahan</p>
+			{handover ? <p className="mb-2 rounded-md bg-primary/5 px-2 py-1.5 text-xs">🤝 Serah terima tunai: dihitung {rp(handover.counted)} · dipisah/disetor <b>{rp(handover.separated)}</b> · modal shift berikutnya <b>{rp(handover.kept)}</b></p> : null}
 			{failed ? <p className="text-xs text-muted-foreground">Catatan gerbang kasir belum bisa dimuat.</p> : !checks ? <p className="text-xs text-muted-foreground">Memuat…</p> : (
 				<AnimatePresence initial={false}>
 					<motion.div key="body" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-2 text-xs">

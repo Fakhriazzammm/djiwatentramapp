@@ -11,6 +11,12 @@ export interface OpenShiftController {
 	setStep: (step: 1 | 2 | 3 | 4) => void;
 	success: { cashierName: string; shiftName: string; amount: number; menuTotal?: number; menuOut?: string[] } | null;
 	onFinish: () => void;
+	/** Serah terima uang dari shift terakhir yang ditutup (kosong bila belum ada catatan). */
+	handover?: { fromShift: string; fromCashier: string; closedAt: number; counted: number; separated: number; kept: number } | null;
+	handoverChecked: boolean;
+	setHandoverChecked: (value: boolean) => void;
+	handoverReason: string;
+	setHandoverReason: (value: string) => void;
 	currentUserName?: string;
 	cashierName: string;
 	setCashierName: (value: string) => void;
@@ -76,7 +82,9 @@ export function OpenShiftFlow({ c }: { c: OpenShiftController }) {
 	const allOnlineSet = c.onlinePlatforms.every(({ key }) => c.online[key]?.status !== "pending");
 	const operationalPending = c.operationalChecks.filter(({ key }) => !c.operational[key]).length;
 	const menuPending = menuCheckPending(c.menu);
-	const hint = c.step === 3 ? (operationalPending > 0 ? `Masih ${operationalPending} kesiapan belum dicentang` : !allOnlineSet ? "Semua platform online food wajib diberi status" : null) : c.step === 4 ? (c.menu.items ? (menuPending > 0 ? `Masih ${menuPending} menu belum dicek` : null) : "Menu masih dimuat") : null;
+	const handoverGap = c.handover ? (Number(c.amount) || 0) - c.handover.kept : 0;
+	const handoverHint = c.handover ? (!c.handoverChecked ? "Konfirmasi serah terima uang dari shift sebelumnya" : handoverGap !== 0 && !c.handoverReason.trim() ? "Isi alasan modal berbeda dari serah terima" : null) : null;
+	const hint = c.step === 1 ? handoverHint : c.step === 3 ? (operationalPending > 0 ? `Masih ${operationalPending} kesiapan belum dicentang` : !allOnlineSet ? "Semua platform online food wajib diberi status" : null) : c.step === 4 ? (c.menu.items ? (menuPending > 0 ? `Masih ${menuPending} menu belum dicek` : null) : "Menu masih dimuat") : null;
 	const blocked = hint !== null;
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
@@ -115,6 +123,14 @@ export function OpenShiftFlow({ c }: { c: OpenShiftController }) {
 							) : null}
 							{!c.predefinedShifts?.length || c.isCustom ? <input value={c.shiftName} onChange={(event) => c.setShiftName(event.target.value)} placeholder="Nama shift" aria-label="Nama shift" className={cn(fieldClass, "mb-2")} /> : null}
 							{c.schedule?.openTime && c.schedule?.closeTime ? <p className="mb-3 text-[12px] font-semibold text-primary">Jadwal {c.schedule.openTime} – {c.schedule.closeTime}</p> : <div className="mb-3" />}
+							{c.handover ? (
+								<div className="mb-3 rounded-2xl border border-amber-300 bg-amber-50 px-3.5 py-3 text-[12.5px] leading-relaxed text-amber-900">
+									<p className="font-extrabold">🤝 Serah terima dari {c.handover.fromShift || "shift sebelumnya"}{c.handover.fromCashier ? ` · ${c.handover.fromCashier}` : ""}</p>
+									<p className="mt-1">Tunai dihitung {formatRp(c.handover.counted)}. <b>{formatRp(c.handover.separated)}</b> sudah dipisah/disetor, jangan dicampur. Di laci seharusnya hanya ada <b>{formatRp(c.handover.kept)}</b> sebagai modal shift ini.</p>
+									<label className="mt-2 flex cursor-pointer items-start gap-2.5 text-[13px] font-semibold"><input type="checkbox" checked={c.handoverChecked} onChange={(event) => c.setHandoverChecked(event.target.checked)} className="mt-0.5 h-5 w-5 shrink-0" /><span>Saya sudah menghitung uang di laci dan uang shift sebelumnya sudah dipisah.</span></label>
+									{handoverGap !== 0 ? <div className="mt-2"><p className="font-bold text-rose-700">Modal {handoverGap > 0 ? "lebih" : "kurang"} {formatRp(Math.abs(handoverGap))} dari serah terima.</p><input value={c.handoverReason} onChange={(event) => c.setHandoverReason(event.target.value)} placeholder="Alasan modal berbeda" aria-label="Alasan modal berbeda" className={cn(fieldClass, "mt-1.5 bg-white")} /></div> : null}
+								</div>
+							) : null}
 							<Label>MODAL KASIR (RP)</Label>
 							<input value={c.amount} onChange={(event) => c.setAmount(event.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="0" aria-label="Modal kasir" className={cn(fieldClass, "h-14 text-[24px] font-extrabold tracking-tight")} />
 							<div className="mt-2 flex flex-wrap gap-2">{QUICK.map((value) => <IosChip key={value} active={c.amount === String(value)} onClick={() => c.setAmount(String(value))} className="h-8 px-3.5 text-[12.5px]">{formatRp(value)}</IosChip>)}</div>

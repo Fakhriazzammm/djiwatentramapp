@@ -134,7 +134,7 @@ import { EndShiftScreen, type EndShiftController } from "@/components/pos-ios/en
 import { OpenShiftFlow, type OpenShiftController } from "@/components/pos-ios/open-shift-flow";
 import type { OpnameController } from "@/components/pos-ios/opname-step";
 import { fetchShiftOpnameItems, recordShiftMenuCheck, submitShiftOpname, type ShiftOpnameMaterial } from "@djiwaapps/web-shared/lib/manual-stock";
-import { buildMenuCheckItems, buildOpnameSubmitItems, menuCheckChanges, opnameEntryFromLast, opnameSummary, type OpnameEntries, type OpnameEntry } from "@/lib/shift-gate";
+import { buildMenuCheckItems, buildOpnameSubmitItems, menuCheckChanges, opnameEntryFromLast, opnameFlagged, opnameIsOut, opnameSummary, type OpnameEntries, type OpnameEntry } from "@/lib/shift-gate";
 import {
   calculateBreakdownTotal as calculateCashBreakdownTotal,
   calculateShiftPaymentBreakdown,
@@ -1435,6 +1435,11 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 
 	// Mulai Shift State
 	const [amount, setAmount] = useState("");
+	// Serah terima uang tunai antar shift: diisi saat tutup, dibaca saat buka shift berikutnya.
+	const [keptCash, setKeptCash] = useState("");
+	const [lastHandover, setLastHandover] = useState<{ fromShift: string; fromCashier: string; closedAt: number; counted: number; separated: number; kept: number } | null>(null);
+	const [handoverChecked, setHandoverChecked] = useState(false);
+	const [handoverReason, setHandoverReason] = useState("");
 	const [cashierName, setCashierName] = useState("");
 	const [shiftName, setShiftName] = useState("Shift Pagi");
 	const [isCustomShift, setIsCustomShift] = useState(false);
@@ -1699,6 +1704,36 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		}
 	}, [shiftQris]);
 
+	// Ambil serah terima dari shift terakhir yang ditutup (hanya saat belum ada shift berjalan).
+	useEffect(() => {
+		if (shiftStatus?.isOpen) { setLastHandover(null); return; }
+		let cancelled = false;
+		void (async () => {
+			try {
+				const { data } = await createClient().schema("pos").from("shifts")
+					.select("shift_name,cashier_name,end_time,cash_handover")
+					.not("end_time", "is", null)
+					.order("end_time", { ascending: false })
+					.limit(1);
+				const row = (data as any[] | null)?.[0];
+				const handover = row?.cash_handover;
+				if (cancelled) return;
+				if (row && handover && typeof handover.kept === "number") {
+					setLastHandover({ fromShift: String(row.shift_name ?? ""), fromCashier: String(row.cashier_name ?? ""), closedAt: Number(row.end_time ?? 0), counted: Number(handover.counted ?? 0), separated: Number(handover.separated ?? 0), kept: Number(handover.kept) });
+				} else {
+					setLastHandover(null);
+				}
+			} catch (error) {
+				console.warn("[shift-handover] gagal memuat serah terima", error);
+			}
+		})();
+		return () => { cancelled = true; };
+	}, [shiftStatus?.isOpen, shiftStatus?.latestAkhir]);
+	useEffect(() => {
+		if (lastHandover && amount === "") setAmount(String(lastHandover.kept));
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [lastHandover]);
+
 	const handleAutofill = () => {
 		const expectedTotal = (shiftStatus?.ongoingShift?.startingCash || 0) + shiftCash - shiftExpense - extraExpenseTotal;
 		if (expectedTotal <= 0) {
@@ -1906,6 +1941,11 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		setSubmitError(null);
 		setSubmitNotice(null);
 		try {
+			const countedCash = Number(cashInRegister || 0);
+			const keptValue = keptCash === "" ? NaN : Number(keptCash);
+			if (!Number.isFinite(keptValue) || keptValue < 0) throw new Error("Isi uang yang ditinggal di laci untuk shift berikutnya");
+			if (keptValue > countedCash) throw new Error("Uang yang ditinggal tidak boleh melebihi uang di laci");
+			const cashHandover = { counted: countedCash, kept: keptValue, separated: countedCash - keptValue };
 			// Opname bahan wajib selesai sebelum laporan keuangan; tidak dikirim ulang saat penutupan diulang.
 			if (opnameRows && opnameRows.length > 0 && !opnameSaved.current) {
 				const summary = opnameSummary(opnameRows, opnameEntries);
@@ -1940,6 +1980,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				nonCashConfirmed: Number(nonCashConfirmed),
 				paymentBreakdownActual: paymentActual,
 				cashBreakdown: breakdown as any,
+				cashHandover,
 				notes,
 			});
 			await captureStockSnapshot(String(shiftStatus.shiftInfo.shiftId), "closing");
@@ -2059,6 +2100,20 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					`   Dihitung kasir: ${rp(cashInRegisterVal)}`,
 					`   Selisih: ${fmtSelisih(diffTunai)}`,
 					...(pecahanTxt.length ? ["🔢 Pecahan:", ...pecahanTxt.map((ln) => `   ${ln}`)] : []),
+					"",
+					"🤝 SERAH TERIMA UANG KE SHIFT BERIKUTNYA",
+					`   Dipisah/disetor shift ini: ${rp(cashHandover.separated)}`,
+					`   Ditinggal di laci (modal shift berikutnya): ${rp(cashHandover.kept)}`,
+					...(opnameRows && opnameRows.length > 0 ? (() => {
+						const outRows = opnameRows.filter((row) => opnameIsOut(row, opnameEntries[row.inventoryId]));
+						const flaggedRows = opnameRows.filter((row) => opnameFlagged(row, opnameEntries[row.inventoryId]));
+						return [
+							"",
+							`📦 OPNAME BAHAN: ${opnameRows.length} bahan dicek · ${outRows.length} habis${flaggedRows.length ? ` · ${flaggedRows.length} selisih besar` : ""}`,
+							...(outRows.length ? [`   Habis: ${outRows.map((row) => row.name).join(", ")}`] : []),
+							...flaggedRows.map((row) => `   ⚠️ ${row.name}: ${opnameNotes[row.inventoryId] || "tanpa catatan"}`),
+						];
+					})() : []),
 					...(notes ? ["", `📝 Catatan: ${notes}`] : []),
 					"",
 					"📸 Foto bukti tunai ada di pesan berikutnya",
@@ -2124,6 +2179,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			setNotes("");
 			setCashPhoto(null);
 			setEndShiftExpenses([]);
+			setKeptCash("");
 			setCashierName("");
 			setTeamMembers([]);
 			onClose();
@@ -2153,6 +2209,13 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			if (!cashierName.trim()) throw new Error("Nama kasir wajib diisi");
 			if (!shiftName.trim()) throw new Error("Nama shift wajib diisi");
 			if (!Number.isFinite(startingCash) || startingCash < 0) throw new Error("Modal kasir tidak valid");
+			let handoverNote = "";
+			if (lastHandover) {
+				if (!handoverChecked) throw new Error("Konfirmasi dulu bahwa uang di laci sudah dihitung dan uang shift sebelumnya sudah dipisah");
+				const gap = startingCash - lastHandover.kept;
+				if (gap !== 0 && !handoverReason.trim()) throw new Error("Modal berbeda dari serah terima shift sebelumnya, isi alasannya");
+				handoverNote = `[SERAH TERIMA] Dari ${lastHandover.fromShift || "shift sebelumnya"}: ditinggal Rp ${lastHandover.kept.toLocaleString("id-ID")}, disetor Rp ${lastHandover.separated.toLocaleString("id-ID")}. Modal diterima Rp ${startingCash.toLocaleString("id-ID")}${gap !== 0 ? ` (beda ${gap > 0 ? "+" : "-"}Rp ${Math.abs(gap).toLocaleString("id-ID")}: ${handoverReason.trim()})` : " (sesuai)"}`;
+			}
 			const cashier = staffUsers.find((u: any) => u.name?.trim()?.toLowerCase() === cashierName.trim().toLowerCase());
 			const selectedTeamIds = teamMembers
 				.map((name) => staffUsers.find((u: any) => u.name?.trim()?.toLowerCase() === name.trim().toLowerCase())?._id)
@@ -2191,7 +2254,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				teamMembers: teamMembers.join(", "),
 				teamMemberIds: selectedTeamIds,
 				startingCash,
-				notes,
+				notes: handoverNote ? [notes, handoverNote].filter(Boolean).join("\n") : notes,
 				onlineFoodChecklist,
 				openRequestId: openRequestId ?? undefined,
 			});
@@ -2211,6 +2274,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				"👤 Kasir": cashierName.trim(),
 				"👥 Tim": `\n${teamFormatted}`,
 				"💰 Modal Kasir": `Rp ${startingCash.toLocaleString("id-ID")}`,
+				...(lastHandover ? { "🤝 Serah terima": `\n   ${lastHandover.fromShift || "Shift sebelumnya"}: ditinggal Rp ${lastHandover.kept.toLocaleString("id-ID")}, disetor Rp ${lastHandover.separated.toLocaleString("id-ID")}\n   ${startingCash === lastHandover.kept ? "✅ Modal diterima sesuai" : `⚠️ Modal diterima beda Rp ${Math.abs(startingCash - lastHandover.kept).toLocaleString("id-ID")}: ${handoverReason.trim()}`}` } : {}),
 				"📱 Online Food": `\n${checklistLines}`,
 			});
 			if (!notificationDelivered) {
@@ -2219,6 +2283,8 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				toast.success("Notifikasi pembukaan shift terkirim");
 			}
 			setStartStep(4);
+			setHandoverChecked(false);
+			setHandoverReason("");
 			setStartSuccess({ cashierName: cashierName.trim(), shiftName: shiftName.trim(), amount: startingCash, menuTotal: menuChanges.length, menuOut: menuChanges.filter((c) => !c.available).map((c) => c.name) });
 			setShiftRefreshTrigger((c) => c + 1);
 			setOpenRequestId(null);
@@ -2304,6 +2370,8 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		breakdown,
 		onBreakdown: handleCashBreakdownChange,
 		onAutoFillCash: handleAutofill,
+		keptCash,
+		setKeptCash,
 		onResetCash: () => {
 			setBreakdown({ bill100000: 0, bill50000: 0, bill20000: 0, bill10000: 0, bill5000: 0, bill2000: 0, bill1000: 0, bill500: 0, bill200: 0, bill100: 0 });
 			toast.info("Hitungan pecahan dikosongkan");
@@ -2336,6 +2404,11 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		setStep: setStartStep,
 		success: startSuccess,
 		onFinish: finishStartFlow,
+		handover: lastHandover,
+		handoverChecked,
+		setHandoverChecked,
+		handoverReason,
+		setHandoverReason,
 		currentUserName: currentUser?.name,
 		cashierName,
 		setCashierName,

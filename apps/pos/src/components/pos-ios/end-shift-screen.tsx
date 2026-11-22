@@ -30,6 +30,9 @@ export interface EndShiftController {
 	onBreakdown: (key: string, value: number) => void;
 	onAutoFillCash: () => void;
 	onResetCash: () => void;
+	/** Uang yang ditinggal di laci sebagai modal shift berikutnya (rupiah, teks angka). */
+	keptCash: string;
+	setKeptCash: (value: string) => void;
 	shiftExpense: number;
 	expenseRows: Array<{ category?: string; description?: string; amount: number }>;
 	extraExpenses: ExtraExpense[];
@@ -92,6 +95,8 @@ export function EndShiftScreen({ c }: { c: EndShiftController }) {
 	const drawerExpected = c.startingCash + c.shiftCash - expenseTotal;
 	const counted = c.cashInRegister;
 	const diff = counted - drawerExpected;
+	const keptValue = c.keptCash === "" ? null : Number(c.keptCash);
+	const separatedValue = keptValue === null ? null : counted - keptValue;
 
 	const activeStaff = c.attendance.filter((member) => member.status === "active");
 	const hasUnfinished = c.closing.unpaid > 0 || c.closing.inProduction > 0;
@@ -106,6 +111,8 @@ export function EndShiftScreen({ c }: { c: EndShiftController }) {
 	const cashIssues: string[] = [];
 	if (counted <= 0) cashIssues.push("hitung uang di laci");
 	if (!c.cashPhoto) cashIssues.push("ambil foto bukti tunai");
+	if (keptValue === null) cashIssues.push("isi uang yang ditinggal untuk shift berikutnya");
+	else if (keptValue > counted) cashIssues.push("uang ditinggal melebihi uang di laci");
 	const sendIssues: string[] = [];
 	const missingNotes = opnameNotesMissing(c.opname);
 	if (missingNotes > 0) sendIssues.push(`${missingNotes} catatan selisih bahan`);
@@ -259,6 +266,23 @@ export function EndShiftScreen({ c }: { c: EndShiftController }) {
 
 								<p className="px-1 pb-1.5 pt-4 text-[11px] font-bold tracking-[0.08em] text-muted-foreground">CATATAN / KENDALA</p>
 								<textarea value={c.notes} onChange={(event) => c.setNotes(event.target.value)} placeholder="Contoh: selisih uang Rp 2.000, barang rusak…" rows={2} className="w-full resize-none rounded-[14px] bg-muted px-3.5 py-3 text-[15px] outline-none placeholder:text-muted-foreground focus:bg-background focus:shadow-[0_0_0_1px_var(--border)]" />
+
+								<p className="px-1 pb-1.5 pt-4 text-[11px] font-bold tracking-[0.08em] text-muted-foreground">SERAH TERIMA KE SHIFT BERIKUTNYA <span className="text-rose-600">WAJIB</span></p>
+								<div className="rounded-[18px] border border-border bg-card px-3.5 py-3">
+									<p className="text-[12.5px] leading-relaxed text-muted-foreground">Pisahkan uang shift ini. Uang yang <b className="text-foreground">ditinggal di laci</b> jadi modal awal shift berikutnya, sisanya <b className="text-foreground">dipisah/disetor</b> dan tidak ikut dihitung shift berikutnya.</p>
+									<label className="mt-2.5 block text-[11px] font-bold tracking-wider text-muted-foreground">DITINGGAL DI LACI (RP)</label>
+									<input value={c.keptCash} onChange={(event) => c.setKeptCash(event.target.value.replace(/\D/g, "").slice(0, 9))} inputMode="numeric" placeholder="0" aria-label="Uang ditinggal di laci" className="mt-1 h-12 w-full rounded-[13px] bg-muted px-3.5 text-[20px] font-extrabold tabular-nums outline-none focus:bg-background focus:shadow-[0_0_0_1px_var(--border)]" />
+									<div className="mt-2 flex flex-wrap gap-2">
+										{[100000, 50000].filter((value) => value <= counted).map((value) => <IosChip key={value} active={c.keptCash === String(value)} onClick={() => c.setKeptCash(String(value))} className="h-8 px-3.5 text-[12.5px]">{formatRp(value)}</IosChip>)}
+										<IosChip active={counted > 0 && c.keptCash === String(counted)} onClick={() => c.setKeptCash(String(Math.max(0, counted)))} className="h-8 px-3.5 text-[12.5px]">Semua</IosChip>
+										<IosChip active={c.keptCash === "0"} onClick={() => c.setKeptCash("0")} className="h-8 px-3.5 text-[12.5px]">Tidak ada</IosChip>
+									</div>
+									<div className="mt-3 flex items-center justify-between rounded-2xl bg-muted px-3.5 py-2.5 text-[13.5px]">
+										<span className="text-muted-foreground">Dipisah/disetor shift ini</span>
+										<b className={cn("tabular-nums", separatedValue !== null && separatedValue < 0 ? "text-rose-600" : "")}>{separatedValue === null ? "—" : formatRp(separatedValue)}</b>
+									</div>
+									{separatedValue !== null && separatedValue > 0 ? <p className="mt-2 text-[12px] font-semibold text-amber-800">Masukkan {formatRp(separatedValue)} ke amplop/setoran dan beri label shift ini. Jangan campur dengan laci.</p> : null}
+								</div>
 							</div>
 						) : null}
 
@@ -271,6 +295,8 @@ export function EndShiftScreen({ c }: { c: EndShiftController }) {
 										["Non-tunai (otomatis)", formatRp(nonCashTotal)],
 										["Tunai seharusnya di laci", formatRp(drawerExpected)],
 										["Tunai dihitung kasir", formatRp(counted)],
+										["Dipisah/disetor shift ini", separatedValue === null ? "—" : formatRp(separatedValue)],
+										["Ditinggal untuk shift berikutnya", keptValue === null ? "—" : formatRp(keptValue)],
 									].map(([label, value], i) => <div key={label} className={cn("flex justify-between px-3.5 py-2.5", i > 0 && "border-t border-border/70")}><span className="text-muted-foreground">{label}</span><b className="tabular-nums">{value}</b></div>)}
 									<div className="flex items-center justify-between border-t border-border/70 px-3.5 py-2.5"><span className="text-muted-foreground">Selisih tunai</span><StatusPill tone={diffTone(diff)}>{diffLabel(diff)}</StatusPill></div>
 								</div>
