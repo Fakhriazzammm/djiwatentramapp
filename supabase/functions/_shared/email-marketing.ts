@@ -74,7 +74,7 @@ export const validEmail = (value: unknown): value is string => typeof value === 
 export type Recipient = { customerId: string; email: string; name: string; vars: Record<string, string> };
 
 export const rupiah = (value: number) => `Rp${Math.round(value || 0).toLocaleString("id-ID")}`;
-const dateId = (value: string | null | undefined) => {
+export const dateId = (value: string | null | undefined) => {
 	if (!value) return "";
 	const date = new Date(`${String(value).slice(0, 10)}T12:00:00+07:00`);
 	return Number.isNaN(date.getTime()) ? "" : new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" }).format(date);
@@ -120,7 +120,7 @@ export function selectRecipients(rows: CustomerRow[], opts: { segment: SegmentKe
 }
 
 // ---------- rendering ----------
-const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+export const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 /** Replaces {{var}} with HTML-escaped values; unknown variables become empty. {{{var}}} is left raw (urls only). */
 export function renderTemplate(source: string, vars: Record<string, string>) {
@@ -171,7 +171,11 @@ export async function verifyHelipodSignature(raw: string, header: string, secret
 }
 
 // ---------- layout + built-in templates ----------
-export function wrapEmail(inner: string, preheader = "") {
+const MARKETING_FOOTER = `Kamu menerima email ini karena kamu terdaftar di Djiwa Tentram dan setuju menerima info promo.<br>
+<a href="{{{unsubscribe_url}}}" style="color:#6a6a76;">Berhenti berlangganan</a> · <a href="${APP_URL}" style="color:#6a6a76;">djiwatentram.web.id</a>`;
+export const TRANSACTIONAL_FOOTER = `Email ini dikirim otomatis terkait reservasimu di Djiwa Tentram.<br><a href="${APP_URL}" style="color:#6a6a76;">djiwatentram.web.id</a>`;
+
+export function wrapEmail(inner: string, preheader = "", footer = MARKETING_FOOTER) {
 	return `<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Djiwa Tentram</title></head>
 <body style="margin:0;padding:0;background:#f4f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111114;">
 <span style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader)}</span>
@@ -180,15 +184,14 @@ export function wrapEmail(inner: string, preheader = "") {
 <tr><td style="padding:18px 28px;border-bottom:1px solid #e6e6ea;"><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td width="40" style="padding:0 10px 0 0;"><img src="${LOGO_URL}" alt="" width="36" height="36" style="display:block;width:36px;height:36px;border:0;border-radius:18px;"></td><td style="font-size:18px;font-weight:700;letter-spacing:-0.01em;color:#1a5dc6;">Djiwa Tentram</td></tr></table></td></tr>
 <tr><td style="padding:28px;font-size:15px;line-height:1.6;">${inner}</td></tr>
 <tr><td style="padding:18px 28px;border-top:1px solid #e6e6ea;background:#fafafb;font-size:12px;line-height:1.6;color:#6a6a76;">
-Kamu menerima email ini karena kamu terdaftar di Djiwa Tentram dan setuju menerima info promo.<br>
-<a href="{{{unsubscribe_url}}}" style="color:#6a6a76;">Berhenti berlangganan</a> · <a href="${APP_URL}" style="color:#6a6a76;">djiwatentram.web.id</a>
+${footer}
 </td></tr></table></td></tr></table></body></html>`;
 }
 
-const button = (label: string, href = "{{{link}}}") => `<p style="margin:26px 0 8px;"><a href="${href}" style="display:inline-block;background:#1a5dc6;color:#ffffff;text-decoration:none;font-weight:600;padding:13px 26px;border-radius:10px;">${label}</a></p>`;
-const h1 = (text: string) => `<h1 style="margin:0 0 14px;font-size:22px;line-height:1.3;letter-spacing:-0.01em;">${text}</h1>`;
-const p = (text: string) => `<p style="margin:0 0 14px;">${text}</p>`;
-const box = (text: string) => `<div style="margin:18px 0;padding:14px 16px;background:#eaf1fc;border-left:3px solid #1a5dc6;">${text}</div>`;
+export const button = (label: string, href = "{{{link}}}") => `<p style="margin:26px 0 8px;"><a href="${href}" style="display:inline-block;background:#1a5dc6;color:#ffffff;text-decoration:none;font-weight:600;padding:13px 26px;border-radius:10px;">${label}</a></p>`;
+export const h1 = (text: string) => `<h1 style="margin:0 0 14px;font-size:22px;line-height:1.3;letter-spacing:-0.01em;">${text}</h1>`;
+export const p = (text: string) => `<p style="margin:0 0 14px;">${text}</p>`;
+export const box = (text: string) => `<div style="margin:18px 0;padding:14px 16px;background:#eaf1fc;border-left:3px solid #1a5dc6;">${text}</div>`;
 
 export type BuiltinTemplate = { id: string; name: string; description: string; segment: SegmentKey; subject: string; html: string };
 

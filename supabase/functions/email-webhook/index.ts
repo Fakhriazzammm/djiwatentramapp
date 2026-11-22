@@ -36,12 +36,18 @@ Deno.serve(async (req) => {
 		const email = String(recipient).trim().toLowerCase();
 		if (!email) continue;
 		// Helipod's messageId differs from the id returned by /send, so match the newest delivered-to-provider row for that address.
-		const { data: row } = await pos().from("email_campaign_recipients").select("id,status").eq("email", email).in("status", ["sent", "delivered"]).order("sent_at", { ascending: false }).limit(1).maybeSingle();
+		const [{ data: campaignRow }, { data: autoRow }] = await Promise.all([
+			pos().from("email_campaign_recipients").select("id,status,sent_at").eq("email", email).in("status", ["sent", "delivered"]).order("sent_at", { ascending: false }).limit(1).maybeSingle(),
+			pos().from("email_automation_sends").select("id,status,sent_at").eq("email", email).in("status", ["sent", "delivered"]).order("sent_at", { ascending: false }).limit(1).maybeSingle(),
+		]);
+		// An address can have both a campaign and an automation mail: credit the most recently sent one.
+		const useAuto = Boolean(autoRow) && (!campaignRow || Date.parse(String(autoRow!.sent_at ?? 0)) >= Date.parse(String(campaignRow.sent_at ?? 0)));
+		const row = useAuto ? autoRow : campaignRow;
 		if (row) {
 			const patch: Record<string, unknown> = { [map.column]: at };
 			// never downgrade a final negative status back to delivered/opened
 			if (map.status) patch.status = map.status;
-			const { error } = await pos().from("email_campaign_recipients").update(patch).eq("id", row.id);
+			const { error } = await pos().from(useAuto ? "email_automation_sends" : "email_campaign_recipients").update(patch).eq("id", row.id);
 			if (error) { console.error("[email-webhook] update failed", error); return json({ error: "UPDATE_FAILED" }, 500); }
 			updated++;
 		}

@@ -40,3 +40,21 @@ export function renderPreview(source: string) {
 		.replace(/\{\{\{\s*([a-z_]+)\s*\}\}\}/gi, (_, key: string) => SAMPLE_VARS[key] ?? "")
 		.replace(/\{\{\s*([a-z_]+)\s*\}\}/gi, (_, key: string) => esc(SAMPLE_VARS[key] ?? ""));
 }
+
+export type AutomationStats = { sent: number; delivered: number; opened: number; clicked: number; failed: number; returned: number; tracksReturn: boolean };
+export type Automation = {
+	key: string; name: string; description: string; kind: "marketing" | "transactional"; trigger: string; enabled: boolean; delayHours: number; dailyLimit: number;
+	subject: string; html: string; customized: boolean; defaultSubject: string; defaultHtml: string; sampleVars: Record<string, string>; variables: string[];
+	lastRunAt: string | null; lastError: string | null; eligibleNow: number; stats: AutomationStats;
+};
+export type AutomationSend = { id: number; email: string; name: string; status: string; error: string | null; sent_at: string | null; delivered_at: string | null; opened_at: string | null; clicked_at: string | null; created_at: string };
+
+export function automationApi<T = Record<string, unknown>>(action: string, payload: Record<string, unknown> = {}) {
+	return invokeEdgeFunction<T>("email-automation", { action, staffToken: staffToken(), ...payload });
+}
+
+export function renderWith(source: string, vars: Record<string, string>) {
+	return source
+		.replace(/\{\{\{\s*([a-z_]+)\s*\}\}\}/gi, (_, key: string) => vars[key] ?? "")
+		.replace(/\{\{\s*([a-z_]+)\s*\}\}/gi, (_, key: string) => esc(vars[key] ?? ""));
+}

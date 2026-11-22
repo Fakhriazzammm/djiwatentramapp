@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Automations } from "@/components/djiwa-app/email-automations";
 import { agoLabel, Kpis, monoLabel, num, Panel, Pill, Tabs } from "@/components/djiwa-app/ui";
 import {
 	emailApi, renderPreview, STATUS_LABEL,
@@ -13,7 +14,7 @@ export const Route = createLazyFileRoute("/admin/email-marketing")({
 	component: EmailMarketingPage,
 });
 
-type Tab = "campaigns" | "templates" | "suppressions";
+type Tab = "campaigns" | "automations" | "templates" | "suppressions";
 const statusTone = (status: Campaign["status"]) => status === "done" ? "ok" : status === "sending" ? "info" : status === "paused" || status === "scheduled" ? "warn" : status === "canceled" ? "bad" : "";
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : "Terjadi kesalahan");
 const dateTime = (value: string | null) => value ? new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value)) : "—";
@@ -93,8 +94,9 @@ function EmailMarketingPage() {
 			]} />
 			{expiresSoon ? <div className="border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[12.5px] text-amber-900">Plan email berakhir {dateTime(quota!.expiredAt)}. Pastikan wallet Helipod cukup untuk perpanjangan agar kampanye tidak berhenti.</div> : null}
 			{quotaLow ? <div className="border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[12.5px] text-amber-900">Sisa kuota bulan ini {num(quota!.remaining ?? 0)} email. Kampanye yang butuh lebih dari itu akan ditolak kecuali pay-as-you-go diaktifkan.</div> : null}
-			<Tabs value={tab} onChange={setTab} items={[["campaigns", "Kampanye", campaigns?.length ?? 0], ["templates", "Template", overview.builtinTemplates.length + overview.customTemplates.length], ["suppressions", "Daftar berhenti", overview.customers.suppressed]] as const} />
+			<Tabs value={tab} onChange={setTab} items={[["campaigns", "Kampanye", campaigns?.length ?? 0], ["automations", "Otomasi"], ["templates", "Template", overview.builtinTemplates.length + overview.customTemplates.length], ["suppressions", "Daftar berhenti", overview.customers.suppressed]] as const} />
 			{tab === "campaigns" ? <CampaignList campaigns={campaigns} onOpen={setOpenCampaign} onNew={() => setComposer({})} /> : null}
+			{tab === "automations" ? <Automations /> : null}
 			{tab === "templates" ? (
 				templateEditor
 					? <TemplateEditor template={templateEditor === "new" ? null : templateEditor} onClose={() => setTemplateEditor(null)} onSaved={() => { setTemplateEditor(null); reload(); }} />
