@@ -46,7 +46,7 @@ export function publishArtifact(root, app, source) {
     if (existsSync(live)) cpSync(live, backup, { recursive: true });
     // Simpan hanya 5 backup rilis terbaru; tanpa ini disk VPS penuh (Postgres mati, 22 Nov 2026).
     const backupRoot = join(appDir, ".release-backups");
-    const stale = readdirSync(backupRoot).sort().reverse().slice(5);
+    const stale = existsSync(backupRoot) ? readdirSync(backupRoot).sort().reverse().slice(5) : [];
     for (const name of stale) rmSync(join(backupRoot, name), { recursive: true, force: true });
     mkdirSync(live, { recursive: true });
     // Preserve old hashed assets for already-open clients; publish entry last.

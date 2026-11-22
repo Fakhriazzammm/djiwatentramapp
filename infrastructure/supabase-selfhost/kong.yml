@@ -211,4 +211,5 @@ services:
             - Accept
             - x-yumi-session-token
             - X-Yumi-Session-Token
+            - x-customer-session
           preflight_continue: false
