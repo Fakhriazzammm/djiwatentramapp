@@ -105,3 +105,15 @@ html.adm-root,html.adm-root body{background:#f4f4f6}
 .adm-tbl th .adm-sort:hover,.adm-tbl th .adm-sort.on{color:var(--ink,#1c1c22)}
 .adm-tbl th .adm-sort:focus-visible{outline:2px solid #3b6de0;outline-offset:2px}
 .adm-sort-i{display:inline-grid;font-size:8px;line-height:1}.adm-sort-i i{font-style:normal;display:block}
+/* ---- email marketing ---- */
+.adm-primary{background:var(--ink,#16161a)!important;color:#fff!important;border-color:var(--ink,#16161a)!important}.adm-primary:disabled{opacity:.4}.adm-btn:disabled{opacity:.45;cursor:not-allowed}
+.adm-em-bar{height:6px;background:#efeff2;overflow:hidden;margin-top:6px}.adm-em-bar i{display:block;height:100%;background:#166534}
+.adm-em-note{padding:10px 12px;border:1px solid var(--line);border-left:3px solid #1a5dc6;background:#f4f8ff;font-size:13px;margin-top:10px}.adm-em-note.bad{border-left-color:#c73822;background:#fff5f3}.adm-em-note.warn{border-left-color:#9a6200;background:#fffaf0}
+.adm-em-tpls{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}.adm-em-tpls button{text-align:left;background:#fff;border:1px solid var(--line);padding:11px 12px;display:grid;gap:3px;align-content:start;cursor:pointer;font:inherit}.adm-em-tpls button b{font-size:13.5px}.adm-em-tpls button small{color:#6a6a76;font-size:12px;line-height:1.4}.adm-em-tpls button.on{border-color:#16161a;box-shadow:inset 0 0 0 1px #16161a}
+.adm-em-f{display:grid;gap:5px;font-size:12px;color:#6a6a76;margin-bottom:10px}.adm-em-f input,.adm-em-f textarea,.adm-em-row input,.adm-em-sel{font:14px inherit;padding:8px 10px;border:1px solid var(--line);background:#fff;color:#16161a;width:100%;box-sizing:border-box}.adm-em-f textarea{font:12.5px/1.5 ui-monospace,Menlo,monospace;resize:vertical}
+.adm-em-row{display:flex;gap:8px;margin-bottom:10px}.adm-em-row input{flex:1}.adm-em-sel{width:auto;padding:5px 8px;font-size:12px}
+.adm-em-segs{display:grid;gap:6px}.adm-em-segs button{display:flex;justify-content:space-between;gap:10px;align-items:center;text-align:left;background:#fff;border:1px solid var(--line);padding:9px 12px;cursor:pointer;font:inherit;font-size:13px}.adm-em-segs button b{font-variant-numeric:tabular-nums}.adm-em-segs button.on{border-color:#16161a;background:#faf7f0;box-shadow:inset 0 0 0 1px #16161a}
+.adm-em-aud{overflow:hidden}.adm-em-actions{display:flex;flex-wrap:wrap;gap:8px}.adm-em-head{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-start}.adm-em-head h2{margin:0 0 2px;font-size:20px}
+.adm-em-prev{border:1px solid var(--line);background:#f5f1e8}.adm-em-subj{padding:8px 12px;font-size:13px;font-weight:600;border-bottom:1px solid var(--line);background:#fff}.adm-em-prev iframe{width:100%;height:460px;border:0;display:block;background:#f5f1e8}
+.adm-em-rules{margin:0;padding-left:18px;display:grid;gap:8px;font-size:13px;line-height:1.5}
+@media(max-width:720px){.adm-em-row{flex-direction:column}.adm-kpis[style*="--cols:6"]{--cols:2!important}}

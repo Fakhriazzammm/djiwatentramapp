@@ -122,7 +122,7 @@ async function audience(segment: SegmentKey, excludeCampaignId?: string) {
 async function overview() {
 	const [rows, suppressed, recentlyMailed, q, customTemplates] = await Promise.all([
 		loadCustomers(), loadSuppressed(), loadRecentlyMailed(), quota(),
-		pos().from("email_templates").select("id,name,description,subject,html,updated_at").order("updated_at", { ascending: false }),
+		pos().from("email_templates").select("id,name,description,subject,html,updated_at").eq("brand", "djiwatentram").order("updated_at", { ascending: false }),
 	]);
 	if (customTemplates.error) throw customTemplates.error;
 	const segments = (Object.keys(SEGMENTS) as SegmentKey[]).map((key) => ({ key, label: SEGMENTS[key], eligible: selectRecipients(rows, { segment: key, suppressed, recentlyMailed }).recipients.length }));
@@ -193,7 +193,7 @@ async function createCampaign(payload: Json, staffId: string) {
 }
 
 async function listCampaigns() {
-	const { data, error } = await pos().from("email_campaigns").select("*").order("created_at", { ascending: false }).limit(100);
+	const { data, error } = await pos().from("email_campaigns").select("*").eq("brand", "djiwatentram").order("created_at", { ascending: false }).limit(100);
 	if (error) throw error;
 	const campaigns = data ?? [];
 	const stats: Record<string, Record<string, number>> = {};
@@ -378,13 +378,13 @@ async function removeSuppression(payload: Json) {
 /** Cron entrypoint: start due scheduled campaigns, then keep sending ones moving. */
 async function processDue() {
 	const now = new Date().toISOString();
-	const { data: due } = await pos().from("email_campaigns").select("id").eq("status", "scheduled").lte("scheduled_at", now).limit(3);
+	const { data: due } = await pos().from("email_campaigns").select("id").eq("brand", "djiwatentram").eq("status", "scheduled").lte("scheduled_at", now).limit(3);
 	const started: string[] = [];
 	for (const campaign of due ?? []) {
 		try { await startCampaign({ id: campaign.id }); started.push(campaign.id); }
 		catch (error) { await pos().from("email_campaigns").update({ status: "paused", last_error: error instanceof Error ? error.message : String(error) }).eq("id", campaign.id); }
 	}
-	const { data: sending } = await pos().from("email_campaigns").select("id").eq("status", "sending").limit(3);
+	const { data: sending } = await pos().from("email_campaigns").select("id").eq("brand", "djiwatentram").eq("status", "sending").limit(3);
 	for (const campaign of sending ?? []) if (!started.includes(campaign.id)) await processCampaign({ id: campaign.id }).catch((error) => console.warn("[email-marketing] process failed", campaign.id, error));
 	return { started: started.length, sending: (sending ?? []).length };
 }
