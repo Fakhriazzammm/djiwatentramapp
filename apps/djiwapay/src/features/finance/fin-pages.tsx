@@ -5,7 +5,7 @@ import { CeritaBody } from "./beranda-cerita";
 import { WalletAdjustSheet, WalletDeck, WalletDetailSheet } from "./wallet-deck";
 import { quoteDeck } from "../../lib/quotes";
 import { wealthHistory } from "../../lib/finance/story";
-import { Avatar, payAsset, AnimatedNumber, Bar, Mascot, MascotBuddy, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
+import { Avatar, payAsset, AnimatedNumber, Bar, MascotBuddy, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
 import type { Nav } from "../shell/dpx-pages";
 import { ScopeSwitch } from "./scope-switch";
 import { DayStrip, MonthStrip, dayKey, monthKey, monthRange } from "./day-strip";
@@ -83,7 +83,11 @@ export function Onboarding({ ctx }: { ctx: FinCtx }) {
     ctx.notify("Siap! Ketuk Catat untuk mencatat yang pertama.");
   };
   const steps = [
-    { img: <Mascot px={170} style={{ filter: "drop-shadow(0 16px 24px rgba(45,36,29,.18))" }} />, title: "Tahu uangmu pergi ke mana.", sub: "Catat dengan satu kalimat, lihat anggaran, dan semua pembayaran Djiwa Pay otomatis tercatat.", body: null, cta: "Mulai" },
+    { img: <picture>
+      <source media="(prefers-reduced-motion: no-preference)" srcSet="/assets/djiwapay-studio/catat.gif" />
+      <img src="/assets/djiwapay-studio/catat-rest.webp" alt="" width={170} height={170}
+        style={{ objectFit: "contain", filter: "drop-shadow(0 16px 24px rgba(45,36,29,.18))" }} />
+    </picture>, title: "Tahu uangmu pergi ke mana.", sub: "Catat dengan satu kalimat, lihat anggaran, dan semua pembayaran Djiwa Pay otomatis tercatat.", body: null, cta: "Mulai" },
     { img: <I3 name="customer-benefit-wallet" px={110} />, title: "Berapa uang tunaimu sekarang?", sub: "Saldo awal dompet Tunai. Boleh dikosongkan dan diubah nanti.", body: <MoneyInput big value={cash} onChange={setCash} label="Saldo tunai" />, cta: "Lanjut" },
     { img: <I3 name="loyalty-points" px={110} />, title: "Punya rekening yang ingin dicatat?", sub: "Opsional. Djiwa Pay sudah terhubung otomatis.", body: <><label className="dpx-field" style={{ textAlign: "left" }}><span>Nama rekening</span><div className="dpx-input"><input value={bank} onChange={(e) => setBank(e.target.value)} placeholder="Contoh: BCA" maxLength={30} /></div></label>{bank.trim() ? <label className="dpx-field" style={{ textAlign: "left" }}><span>Saldo awal</span><MoneyInput value={bankBal} onChange={setBankBal} /></label> : null}</>, cta: "Selesai" },
   ];

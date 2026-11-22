@@ -59,7 +59,11 @@ export function useDjiwaPaySplash(): DjiwaPaySplashState {
     timers.current = [];
   }, []);
 
-  useEffect(() => () => clearTimers(), [clearTimers]);
+  useEffect(() => () => {
+    clearTimers();
+    // A replayed readiness effect must be able to schedule the cancelled release.
+    released.current = false;
+  }, [clearTimers]);
 
   const hide = useCallback(
     (id: number) => {
