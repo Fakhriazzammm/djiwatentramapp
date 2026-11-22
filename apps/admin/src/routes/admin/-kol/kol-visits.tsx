@@ -1,6 +1,6 @@
 // Visit KOL: jadwal booking dari portal creator, transisi status, dan undangan portal.
 // Transisi status mengikuti aturan server: requested → confirmed/cancelled, confirmed → cancelled/completed/no_show.
-import { CalendarDays, Clock3, FileText, Mail, MessageCircle, RefreshCw, Send, Trash2, UserPlus } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3, FileText, List as ListIcon, Mail, MessageCircle, RefreshCw, Send, Trash2, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { requestAdminConfirm } from "@/lib/admin-dialogs";
@@ -36,6 +36,11 @@ export function KolVisitsPage() {
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<number | null>(null);
   const [sowOpen, setSowOpen] = useState(false);
+  const [view, setView] = useState<"calendar" | "list">("calendar");
+  const today = ymd(new Date());
+  const [month, setMonth] = useState(today.slice(0, 7));
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [showPast, setShowPast] = useState(false);
 
   const [invites, setInvites] = useState<Invite[] | null>(null);
   const [inviteError, setInviteError] = useState("");
@@ -72,6 +77,10 @@ export function KolVisitsPage() {
     for (const visit of rows) map.set(visit.booking_date, [...(map.get(visit.booking_date) ?? []), visit]);
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [overview.visits, filter, query]);
+
+  const byDate = useMemo(() => new Map(groups), [groups]);
+  const upcomingGroups = useMemo(() => groups.filter(([d]) => d >= today), [groups, today]);
+  const pastGroups = useMemo(() => groups.filter(([d]) => d < today), [groups, today]);
 
   // Email konfirmasi terbaru per booking, untuk lencana di daftar.
   const confirmEmail = useMemo(() => {
@@ -157,52 +166,45 @@ export function KolVisitsPage() {
 
       {tab === "schedule" ? (
         <>
-          <div className="space-y-2">
-            <SearchBox value={query} onChange={setQuery} placeholder="Cari creator atau tanggal" />
-            <Chips value={filter} onChange={setFilter} options={[
-              { key: "all", label: "Semua", count: overview.visits.length },
-              ...Object.entries(VISIT_STATUS).map(([key, meta]) => ({ key, label: meta.label, count: counts.get(key) ?? 0 })),
-            ]} />
+          <div className="flex flex-wrap items-center gap-2">
+            <div role="tablist" aria-label="Tampilan" className="inline-flex border border-[#e4e4e8] bg-white">
+              {([["calendar", "Kalender", CalendarDays], ["list", "Daftar", ListIcon]] as const).map(([key, label, Icon]) => (
+                <button key={key} type="button" role="tab" aria-selected={view === key} onClick={() => setView(key)} className={`inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.06em] transition ${view === key ? "bg-[#111114] text-white" : "text-[#666672] hover:bg-[#fafafb]"}`}>
+                  <Icon className="h-3.5 w-3.5" />{label}
+                </button>
+              ))}
+            </div>
+            <div className="min-w-[200px] flex-1"><SearchBox value={query} onChange={setQuery} placeholder="Cari creator atau tanggal" /></div>
           </div>
+          <Chips value={filter} onChange={setFilter} options={[
+            { key: "all", label: "Semua", count: overview.visits.length },
+            ...Object.entries(VISIT_STATUS).map(([key, meta]) => ({ key, label: meta.label, count: counts.get(key) ?? 0 })),
+          ]} />
 
-          {loading && !ready ? <Loading rows={4} /> : groups.length === 0 ? (
+          {loading && !ready ? <Loading rows={4} /> : view === "calendar" ? (
+            <VisitCalendar
+              byDate={byDate}
+              month={month}
+              onMonth={setMonth}
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              confirmEmail={confirmEmail}
+              onOpen={setOpenId}
+            />
+          ) : groups.length === 0 ? (
             <EmptyBlock title="Tidak ada booking" hint="Creator memesan jadwal dari tab Visit di portal KOL. Booking baru muncul di sini." />
           ) : (
-            <div className="space-y-3">
-              {groups.map(([date, rows]) => (
-                <section key={date} className="border border-[#e4e4e8] bg-white">
-                  <header className="flex items-center justify-between gap-3 border-b border-[#ececf0] px-4 py-2.5">
-                    <p className="flex items-center gap-2 text-[12.5px] font-semibold text-[#111114]"><CalendarDays className="h-4 w-4 text-[#666672]" />{fmtDay(date, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
-                    <Label>{rows.length} creator</Label>
-                  </header>
-                  <ul className="divide-y divide-[#ececf0]">
-                    {rows.map((v) => {
-                      const meta = VISIT_STATUS[v.status] ?? { label: v.status, color: "#666672" };
-                      const contact = one(v.kol_creators?.kol_private_contacts as Contact | Contact[] | null | undefined);
-                      const wa = waUrl(contact?.whatsapp, `Halo ${v.kol_creators?.name ?? "creator"}, soal jadwal visit di Djiwa Tentram.`);
-                      return (
-                        <li key={v.id}>
-                          <button type="button" onClick={() => setOpenId(v.id)} className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-[#fafafb]">
-                            <span className="flex min-w-0 items-center gap-2.5">
-                              <span className="grid h-8 w-12 shrink-0 place-items-center border border-[#e4e4e8] bg-[#fafafb] font-mono text-[10.5px] font-semibold text-[#111114]">{v.booking_time ? fmtTime(v.booking_time) : "—"}</span>
-                              <Avatar url={v.kol_creators?.avatar_url} name={v.kol_creators?.name ?? "KOL"} size={30} />
-                              <span className="min-w-0">
-                                <span className="block truncate text-[12.5px] font-semibold text-[#111114]">{v.kol_creators?.name ?? v.kol_id}</span>
-                                <span className="block truncate font-mono text-[10px] uppercase tracking-[0.06em] text-[#666672]">{atUsername(v.kol_creators?.username)}{v.visit_note ? " · ada catatan" : ""}</span>
-                              </span>
-                            </span>
-                            <span className="flex items-center gap-2">
-                              {v.status === "confirmed" && (() => { const e = confirmEmail.get(v.id); const m = EMAIL_STATUS[e?.status ?? "skipped"] ?? { label: "Email", color: "#666672" }; return <span title="Email konfirmasi" className="inline-flex items-center gap-1"><Mail className="h-3.5 w-3.5 text-[#666672]" /><StatusTag color={e ? m.color : "#666672"}>{e ? m.label : "Belum ada email"}</StatusTag></span>; })()}
-                              {wa && <a href={wa} target="_blank" rel="noreferrer" aria-label="WhatsApp creator" className="text-[#16a34a]" onClick={(e) => e.stopPropagation()}><MessageCircle className="h-4 w-4" /></a>}
-                              <StatusTag color={meta.color}>{meta.label}</StatusTag>
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </section>
-              ))}
+            <div className="border border-[#e4e4e8] bg-white">
+              {upcomingGroups.map(([date, rows]) => <DayGroup key={date} date={date} rows={rows} confirmEmail={confirmEmail} onOpen={setOpenId} today={today} />)}
+              {pastGroups.length > 0 && (
+                <>
+                  <button type="button" onClick={() => setShowPast((v) => !v)} className="flex w-full items-center justify-between border-t border-[#ececf0] bg-[#fafafb] px-4 py-2 text-left font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-[#666672] hover:text-[#111114]">
+                    <span>Sudah lewat · {pastGroups.reduce((n, [, r]) => n + r.length, 0)} booking</span>
+                    <span>{showPast ? "Sembunyikan" : "Tampilkan"}</span>
+                  </button>
+                  {showPast && [...pastGroups].reverse().map(([date, rows]) => <DayGroup key={date} date={date} rows={rows} confirmEmail={confirmEmail} onOpen={setOpenId} today={today} />)}
+                </>
+              )}
             </div>
           )}
         </>
@@ -352,5 +354,135 @@ function VisitPanel({ visit, emails, token, onClose, onSaved }: { visit: Visit; 
       <SectionLabel>Email ke creator</SectionLabel>
       <BookingEmails visit={visit} emails={emails} token={token} onSaved={onSaved} />
     </Panel>
+  );
+}
+
+function ymd(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+type ConfirmMap = Map<number, EmailRow>;
+
+function VisitRow({ v, confirmEmail, onOpen }: { v: Visit; confirmEmail: ConfirmMap; onOpen: (id: number) => void }) {
+  const meta = VISIT_STATUS[v.status] ?? { label: v.status, color: "#666672" };
+  const contact = one(v.kol_creators?.kol_private_contacts as Contact | Contact[] | null | undefined);
+  const wa = waUrl(contact?.whatsapp, `Halo ${v.kol_creators?.name ?? "creator"}, soal jadwal visit di Djiwa Tentram.`);
+  const e = v.status === "confirmed" ? confirmEmail.get(v.id) : undefined;
+  const em = e ? EMAIL_STATUS[e.status] ?? { label: "Email", color: "#666672" } : null;
+  return (
+    <li>
+      <button type="button" onClick={() => onOpen(v.id)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-[#fafafb]">
+        <span className="w-11 shrink-0 font-mono text-[11px] font-semibold text-[#111114]">{v.booking_time ? fmtTime(v.booking_time) : "—"}</span>
+        <Avatar url={v.kol_creators?.avatar_url} name={v.kol_creators?.name ?? "KOL"} size={26} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[12.5px] font-semibold text-[#111114]">{v.kol_creators?.name ?? v.kol_id}</span>
+          <span className="block truncate font-mono text-[10px] uppercase tracking-[0.06em] text-[#666672]">{atUsername(v.kol_creators?.username)}{v.visit_note ? " · ada catatan" : ""}</span>
+        </span>
+        {v.status === "confirmed" && (
+          <span title={e ? `Email konfirmasi: ${em?.label}` : "Belum ada email konfirmasi"} className="shrink-0"><Mail className="h-3.5 w-3.5" style={{ color: em?.color ?? "#c0c0c8" }} /></span>
+        )}
+        {wa && <a href={wa} target="_blank" rel="noreferrer" aria-label="WhatsApp creator" className="shrink-0 text-[#16a34a]" onClick={(ev) => ev.stopPropagation()}><MessageCircle className="h-3.5 w-3.5" /></a>}
+        <span className="inline-flex shrink-0 items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.06em]" style={{ color: meta.color }}>
+          <i className="h-1.5 w-1.5 rounded-full" style={{ background: meta.color }} /><span className="hidden sm:inline">{meta.label}</span>
+        </span>
+      </button>
+    </li>
+  );
+}
+
+function DayGroup({ date, rows, confirmEmail, onOpen, today }: { date: string; rows: Visit[]; confirmEmail: ConfirmMap; onOpen: (id: number) => void; today: string }) {
+  return (
+    <section className="border-t border-[#ececf0] first:border-t-0">
+      <header className="flex items-center justify-between gap-3 bg-[#fafafb] px-4 py-1.5">
+        <p className="text-[11.5px] font-semibold text-[#111114]">
+          {fmtDay(date, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          {date === today && <span className="ml-2 bg-[#111114] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em] text-white">Hari ini</span>}
+        </p>
+        <Label>{rows.length}</Label>
+      </header>
+      <ul className="divide-y divide-[#f1f1f4]">{rows.map((v) => <VisitRow key={v.id} v={v} confirmEmail={confirmEmail} onOpen={onOpen} />)}</ul>
+    </section>
+  );
+}
+
+const WEEKDAYS = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+
+function VisitCalendar({ byDate, month, onMonth, selected, onSelect, confirmEmail, onOpen }: {
+  byDate: Map<string, Visit[]>; month: string; onMonth: (m: string) => void; selected: string; onSelect: (d: string) => void; confirmEmail: ConfirmMap; onOpen: (id: number) => void;
+}) {
+  const today = ymd(new Date());
+  const [y, m] = month.split("-").map(Number);
+  const offset = (new Date(y, m - 1, 1).getDay() + 6) % 7;
+  const days = new Date(y, m, 0).getDate();
+  const total = Math.ceil((offset + days) / 7) * 7;
+  const shift = (n: number) => onMonth(ymd(new Date(y, m - 1 + n, 1)).slice(0, 7));
+  const label = new Date(y, m - 1, 1).toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+  const monthCount = [...byDate.entries()].filter(([d]) => d.startsWith(month)).reduce((n, [, r]) => n + r.length, 0);
+  const dayRows = byDate.get(selected) ?? [];
+
+  return (
+    <div className="space-y-3">
+      <div className="border border-[#e4e4e8] bg-white">
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[#ececf0] px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <button type="button" aria-label="Bulan sebelumnya" onClick={() => shift(-1)} className="grid h-7 w-7 place-items-center border border-[#e4e4e8] hover:bg-[#fafafb]"><ChevronLeft className="h-4 w-4" /></button>
+            <button type="button" aria-label="Bulan berikutnya" onClick={() => shift(1)} className="grid h-7 w-7 place-items-center border border-[#e4e4e8] hover:bg-[#fafafb]"><ChevronRight className="h-4 w-4" /></button>
+            <h3 className="ml-1 text-[13.5px] font-semibold capitalize text-[#111114]">{label}</h3>
+            <Label>{monthCount} booking</Label>
+          </div>
+          <Btn size="sm" onClick={() => { onMonth(today.slice(0, 7)); onSelect(today); }}>Hari ini</Btn>
+        </header>
+        <div className="grid grid-cols-7 border-b border-[#ececf0] bg-[#fafafb]">
+          {WEEKDAYS.map((d) => <div key={d} className="px-2 py-1.5 text-center font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em] text-[#666672]">{d}</div>)}
+        </div>
+        <div className="grid grid-cols-7">
+          {Array.from({ length: total }, (_, i) => {
+            const day = i - offset + 1;
+            if (day < 1 || day > days) return <div key={i} className="min-h-[52px] border-b border-r border-[#f1f1f4] bg-[#fcfcfd] sm:min-h-[88px]" />;
+            const date = `${month}-${String(day).padStart(2, "0")}`;
+            const rows = byDate.get(date) ?? [];
+            const isSel = date === selected;
+            return (
+              <button key={i} type="button" onClick={() => onSelect(date)} aria-pressed={isSel} className={`min-h-[52px] border-b border-r border-[#f1f1f4] p-1 text-left align-top transition hover:bg-[#fafafb] sm:min-h-[88px] sm:p-1.5 ${isSel ? "bg-[#f3f6fd] ring-1 ring-inset ring-[#2f6fdf]" : ""}`}>
+                <span className={`inline-grid h-5 min-w-5 place-items-center px-1 font-mono text-[10.5px] font-semibold ${date === today ? "bg-[#111114] text-white" : "text-[#444450]"}`}>{day}</span>
+                <span className="mt-1 hidden flex-col gap-0.5 sm:flex">
+                  {rows.slice(0, 3).map((v) => {
+                    const c = (VISIT_STATUS[v.status] ?? { color: "#666672" }).color;
+                    return (
+                      <span key={v.id} className="flex items-center gap-1 truncate text-[10px] leading-4 text-[#111114]" style={{ opacity: v.status === "cancelled" ? 0.5 : 1 }}>
+                        <i className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: c }} />
+                        <span className="font-mono text-[9.5px] text-[#666672]">{v.booking_time ? fmtTime(v.booking_time) : ""}</span>
+                        <span className="truncate">{(v.kol_creators?.name ?? v.kol_id).split(" ")[0]}</span>
+                      </span>
+                    );
+                  })}
+                  {rows.length > 3 && <span className="font-mono text-[9.5px] text-[#666672]">+{rows.length - 3} lagi</span>}
+                </span>
+                <span className="mt-1 flex flex-wrap gap-0.5 sm:hidden">
+                  {rows.slice(0, 4).map((v) => <i key={v.id} className="h-1.5 w-1.5 rounded-full" style={{ background: (VISIT_STATUS[v.status] ?? { color: "#666672" }).color }} />)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <footer className="flex flex-wrap gap-x-4 gap-y-1 border-t border-[#ececf0] px-4 py-2">
+          {Object.entries(VISIT_STATUS).map(([k, meta]) => (
+            <span key={k} className="inline-flex items-center gap-1.5 font-mono text-[9.5px] uppercase tracking-[0.06em] text-[#666672]"><i className="h-1.5 w-1.5 rounded-full" style={{ background: meta.color }} />{meta.label}</span>
+          ))}
+        </footer>
+      </div>
+
+      <section className="border border-[#e4e4e8] bg-white">
+        <header className="flex items-center justify-between gap-3 border-b border-[#ececf0] px-4 py-2.5">
+          <p className="flex items-center gap-2 text-[12.5px] font-semibold text-[#111114]"><CalendarDays className="h-4 w-4 text-[#666672]" />{fmtDay(selected, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
+          <Label>{dayRows.length} creator</Label>
+        </header>
+        {dayRows.length === 0 ? (
+          <p className="px-4 py-6 text-center text-[12px] text-[#666672]">Tidak ada visit di tanggal ini.</p>
+        ) : (
+          <ul className="divide-y divide-[#f1f1f4]">{dayRows.map((v) => <VisitRow key={v.id} v={v} confirmEmail={confirmEmail} onOpen={onOpen} />)}</ul>
+        )}
+      </section>
+    </div>
   );
 }
