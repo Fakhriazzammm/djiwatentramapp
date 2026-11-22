@@ -27,13 +27,14 @@ export function DemoBadge({ className }: { className?: string }) {
 	return (
 		<span
 			className={cn(
-				"inline-flex shrink-0 items-center gap-0.5 rounded-full border border-[#f0d9ae] bg-[#fff7e8] px-1.5 py-[1px] text-[10px] font-black uppercase tracking-[0.06em] text-[#8a5a00]",
+				"inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#f0d9ae] bg-[#fff7e8] text-[#8a5a00]",
 				className,
 			)}
 			title="Konten demo, bukan pelanggan sungguhan"
+			role="img"
+			aria-label="Konten demo"
 		>
 			<Check className="h-2.5 w-2.5" strokeWidth={3.5} aria-hidden="true" />
-			Demo
 		</span>
 	);
 }
