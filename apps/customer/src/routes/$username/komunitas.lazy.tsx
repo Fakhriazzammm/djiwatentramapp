@@ -1,8 +1,7 @@
 import { createLazyFileRoute, Outlet, useMatches, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, BadgeCheck, Bookmark, BookmarkCheck, Heart, ImagePlus, Loader2, MessageCircle, MoreHorizontal, Plus, RefreshCw, Send, Video, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Djiwa3DIcon } from "@djiwaapps/web-shared";
-import { CustomerBottomNav, CustomerHeader } from "@/components/customer/customer-shell";
+import { CustomerBottomNav, CustomerHeader, type CustomerBottomNavItem } from "@/components/customer/customer-shell";
 import { JumatBerkahCommunityStrip } from "@/components/customer/jumat-berkah";
 import { CustomerErrorState, CustomerSectionSkeleton } from "@/components/customer/customer-states";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
@@ -242,12 +241,12 @@ function CommunityPage() {
 
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
-  const navItems = useMemo(() => [
-    { label: "Home", active: false, onSelect: () => navigate({ to: "/$username", params: { username } }), icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" /> },
-    { label: "Pesan", active: false, onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }), icon: <Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" /> },
-    { label: "Komunitas", active: true, onSelect: () => {}, icon: <Djiwa3DIcon name="navigation-community" size="micro" alt="" className="h-5 w-5 object-contain" /> },
-    { label: "Saldo", active: false, onSelect: () => navigate({ to: "/$username/saldo", params: { username } }), icon: <Djiwa3DIcon name="navigation-wallet" size="micro" alt="" className="h-5 w-5 object-contain" /> },
-    { label: "Profil", active: false, onSelect: () => navigate({ to: "/$username/profile", params: { username } }), icon: <Djiwa3DIcon name="navigation-profile" size="micro" alt="" className="h-5 w-5 object-contain" /> },
+  const navItems = useMemo<CustomerBottomNavItem[]>(() => [
+    { label: "Home", active: false, onSelect: () => navigate({ to: "/$username", params: { username } }) },
+    { label: "Pesan", active: false, onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }) },
+    { label: "Komunitas", active: true, onSelect: () => {} },
+    { label: "Saldo", active: false, onSelect: () => navigate({ to: "/$username/saldo", params: { username } }) },
+    { label: "Profil", active: false, onSelect: () => navigate({ to: "/$username/profile", params: { username } }) },
   ], [navigate, username]);
 
   const selectFile = async (next: File | undefined) => {

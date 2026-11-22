@@ -34,6 +34,15 @@ import navigationHistory from "../../assets/djiwa-icons-v2/navigation/history.we
 import navigationWallet from "../../assets/djiwa-icons-v2/navigation/wallet.webp";
 import navigationProfile from "../../assets/djiwa-icons-v2/navigation/profile.webp";
 import navigationTracking from "../../assets/djiwa-icons-v2/navigation/tracking.webp";
+import customerNavHome from "../../assets/djiwa-icons-v2/navigation/customer-home.webp";
+import customerNavOrder from "../../assets/djiwa-icons-v2/navigation/customer-order.webp";
+import customerNavScanQr from "../../assets/djiwa-icons-v2/navigation/customer-scan-qr.webp";
+import customerNavCommunity from "../../assets/djiwa-icons-v2/navigation/customer-community.webp";
+import customerNavProfile from "../../assets/djiwa-icons-v2/navigation/customer-profile.webp";
+import customerLoyaltyPoints from "../../assets/djiwa-icons-v2/customer-loyalty-points.webp";
+import customerNotifications from "../../assets/djiwa-icons-v2/customer-notifications-alerts.webp";
+import customerPromoVoucher from "../../assets/djiwa-icons-v2/customer-promo-voucher.webp";
+import customerOrderTracking from "../../assets/djiwa-icons-v2/customer-order-tracking.webp";
 import djiwaRun from "../../assets/djiwa-icons-v2/djiwa-run.webp";
 import employeeHome from "../../assets/djiwa-icons-v2/navigation/employee-home.webp";
 import employeeSchedule from "../../assets/djiwa-icons-v2/navigation/employee-schedule.webp";
@@ -96,6 +105,15 @@ export const djiwa3DIconSources = {
   "navigation-wallet": navigationWallet,
   "navigation-profile": navigationProfile,
   "navigation-tracking": navigationTracking,
+  "customer-nav-home": customerNavHome,
+  "customer-nav-order": customerNavOrder,
+  "customer-nav-scan-qr": customerNavScanQr,
+  "customer-nav-community": customerNavCommunity,
+  "customer-nav-profile": customerNavProfile,
+  "customer-loyalty-points": customerLoyaltyPoints,
+  "customer-notifications-alerts": customerNotifications,
+  "customer-promo-voucher": customerPromoVoucher,
+  "customer-order-tracking": customerOrderTracking,
   "djiwa-run": djiwaRun,
   "employee-home": employeeHome,
   "employee-schedule": employeeSchedule,

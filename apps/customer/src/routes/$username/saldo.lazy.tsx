@@ -21,7 +21,7 @@ const VERIFY_WINDOW_MS = 10 * 60_000;
 const MIN_TOPUP = 1000;
 const PRESETS = [25_000, 50_000, 100_000, 200_000, 500_000, 1_000_000];
 const EASE = [0.32, 0.72, 0, 1] as const;
-const ICON = (name: string) => `/assets/djiwa-pay-actions/${name}.webp`;
+const ICON = (name: string) => `/assets/djiwa-pay-actions/${name}.webp?v=2`;
 
 const LABELS: Record<string, string> = {
 	topup_completed: "Top up saldo", order_debit: "Pembayaran pesanan", wallet_release: "Saldo dikembalikan", refund: "Refund pesanan",
@@ -123,10 +123,10 @@ function SaldoPage() {
 	const press = reduce ? {} : { whileTap: { scale: 0.96 } };
 
 	const quick = [
-		{ label: "Isi Saldo", icon: "topup", onClick: () => { setFormError(null); setSheet(true); } },
-		{ label: "Riwayat", icon: "history", onClick: () => document.getElementById("saldo-riwayat")?.scrollIntoView({ behavior: "smooth", block: "start" }) },
-		{ label: "Pesan", icon: "send", onClick: () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }) },
-		{ label: "Bantuan", icon: "help", onClick: () => setFlow("help") },
+		{ label: "Isi Saldo", icon: ICON("topup"), onClick: () => { setFormError(null); setSheet(true); } },
+		{ label: "Riwayat", icon: ICON("history"), onClick: () => document.getElementById("saldo-riwayat")?.scrollIntoView({ behavior: "smooth", block: "start" }) },
+		{ label: "Pesan", icon: "/assets/djiwa-services/menu.webp?v=2", onClick: () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }) },
+		{ label: "Bantuan", icon: ICON("help"), onClick: () => setFlow("help") },
 	];
 	const openTopup = () => { setFlow(null); setFormError(null); setSheet(true); };
 
@@ -183,7 +183,7 @@ function SaldoPage() {
 				<motion.section {...fade(3)}>
 					<p className="mb-2.5 ml-1 mt-6 text-[13px] font-bold text-[#6b7080]">AKSI CEPAT</p>
 					<div className="grid grid-cols-4 rounded-[30px] bg-[#f1f3f8] px-1 py-3">
-						{quick.map((q) => <motion.button {...press} key={q.label} type="button" onClick={q.onClick} className="flex flex-col items-center gap-2 text-xs font-semibold"><span className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-white shadow-[0_2px_8px_rgba(15,35,71,.05)]"><img src={ICON(q.icon)} alt="" className="h-[30px] w-[30px] object-contain" /></span>{q.label}</motion.button>)}
+						{quick.map((q) => <motion.button {...press} key={q.label} type="button" onClick={q.onClick} className="flex flex-col items-center gap-2 text-xs font-semibold"><span className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-white shadow-[0_2px_8px_rgba(15,35,71,.05)]"><img src={q.icon} alt="" className="h-[30px] w-[30px] object-contain" /></span>{q.label}</motion.button>)}
 					</div>
 				</motion.section>
 

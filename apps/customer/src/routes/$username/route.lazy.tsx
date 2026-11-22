@@ -1,6 +1,5 @@
 import { createLazyFileRoute, Outlet, useLocation, useMatches, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Djiwa3DIcon } from "@djiwaapps/web-shared";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { useCustomerSplashGate } from "@/hooks/use-customer-splash-gate";
 import { useCustomerOrders } from "@/hooks/use-customer-data";
@@ -9,7 +8,7 @@ import { useOrderContext } from "@/hooks/use-order-context";
 import { useHybridAllProducts, useHybridBestSellers, useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { AuthModal } from "@/components/customer/auth-modal";
 import { MemberOnboarding, ProfileCompletionOnboarding } from "@/components/customer/member-onboarding";
-import { CustomerBottomNav, CustomerLiveShiftIndicator } from "@/components/customer/customer-shell";
+import { CustomerBottomNav, CustomerLiveShiftIndicator, type CustomerBottomNavItem } from "@/components/customer/customer-shell";
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { CustomerSplash } from "@/components/customer/customer-entry";
 import { CustomerPageSkeleton } from "@/components/customer/customer-states";
@@ -105,12 +104,12 @@ function MemberHomePage() {
 		if (typeof window === "undefined") return;
 		window.location.assign(`/${encodeURIComponent(username)}/saldo?aksi=${action}`);
 	};
-	const customerNav = [
-		{ label: "Home", icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname === `/${username}`, onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}`) },
-		{ label: "Pesan", icon: <Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/order"), onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}/order?step=table`) },
-		{ label: "Komunitas", icon: <Djiwa3DIcon name="navigation-community" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/komunitas"), onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}/komunitas`) },
-		{ label: "Saldo", icon: <Djiwa3DIcon name="navigation-wallet" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/saldo"), onSelect: goDjiwaPay },
-		{ label: "Profil", icon: <Djiwa3DIcon name="navigation-profile" size="micro" alt="" className="h-5 w-5 object-contain" />, active: location.pathname.includes("/profile"), onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}/profile`) },
+	const customerNav: CustomerBottomNavItem[] = [
+		{ label: "Home", active: location.pathname === `/${username}`, onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}`) },
+		{ label: "Pesan", active: location.pathname.includes("/order"), onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}/order?step=table`) },
+		{ label: "Komunitas", active: location.pathname.includes("/komunitas"), onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}/komunitas`) },
+		{ label: "Saldo", active: location.pathname.includes("/saldo"), onSelect: goDjiwaPay },
+		{ label: "Profil", active: location.pathname.includes("/profile"), onSelect: () => goCustomerPath(`/${encodeURIComponent(username)}/profile`) },
 	];
 
 	const goMenu = () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } });

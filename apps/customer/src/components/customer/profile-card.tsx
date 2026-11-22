@@ -101,7 +101,7 @@ export function ProfileCard({
           value={currency(customer.walletBalance ?? 0)}
         />
         <Stat
-          icon={<Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-4 w-4 object-contain" />}
+          icon={<Djiwa3DIcon name="customer-nav-order" size="micro" alt="" className="h-4 w-4 object-contain" />}
           label="Pesanan"
           value={String(customer.liveOrderCount ?? customer.totalOrders ?? customer.total_orders ?? 0)}
         />

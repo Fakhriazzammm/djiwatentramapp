@@ -90,10 +90,10 @@ export function FlowDock({
 				) : null}
 			</AnimatePresence>
 			<nav aria-label="Navigasi pesanan" className="flex h-16 items-stretch rounded-[32px] bg-white/70 p-1.5 shadow-[inset_0_0_0_0.5px_rgba(255,255,255,0.9),0_8px_24px_rgba(15,35,71,0.12)] backdrop-blur-2xl">
-				<Tab label="Menu" icon="navigation-home" onClick={onMenu} active />
+				<Tab label="Menu" icon="customer-nav-home" onClick={onMenu} active />
 				<Tab label="Riwayat" icon="navigation-history" onClick={onHistory} />
-				<Tab label="Keranjang" icon="navigation-order" onClick={onCart} badge={totalItems || undefined} targetId={CART_FLY_TARGET_ID} />
-				<Tab label="Staff" icon="notifications-alerts" onClick={onStaff} />
+				<Tab label="Keranjang" icon="customer-nav-order" onClick={onCart} badge={totalItems || undefined} targetId={CART_FLY_TARGET_ID} />
+				<Tab label="Staff" icon="customer-notifications-alerts" onClick={onStaff} />
 			</nav>
 		</div>
 	);

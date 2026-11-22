@@ -1182,6 +1182,101 @@
       "source_type": "openai-codex-gpt-image-2-medium",
       "generation_status": "approved-prototype",
       "notes": "Simplified B2B live-order tracking icon; generated for mobile bottom navigation."
+    },
+    {
+      "name": "customer-nav-home",
+      "source": "generated-by-openai-codex",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/customer-home.webp",
+      "canvas": [1024, 1024],
+      "visible_target": 798,
+      "render_targets": [20, 24, 40],
+      "source_type": "openai-imagegen",
+      "generation_status": "generated",
+      "notes": "Coral roof and ivory house for Beranda."
+    },
+    {
+      "name": "customer-nav-order",
+      "source": "generated-by-openai-codex",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/customer-order.webp",
+      "canvas": [1024, 1024],
+      "visible_target": 798,
+      "render_targets": [20, 24, 40],
+      "source_type": "openai-imagegen",
+      "generation_status": "generated",
+      "notes": "Teal shopping basket for Pesan."
+    },
+    {
+      "name": "customer-nav-scan-qr",
+      "source": "generated-by-openai-codex",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/customer-scan-qr.webp",
+      "canvas": [1024, 1024],
+      "visible_target": 798,
+      "render_targets": [20, 24, 40],
+      "source_type": "openai-imagegen",
+      "generation_status": "generated",
+      "notes": "Cobalt phone with a simplified QR glyph for Bayar."
+    },
+    {
+      "name": "customer-nav-community",
+      "source": "generated-by-openai-codex",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/customer-community.webp",
+      "canvas": [1024, 1024],
+      "visible_target": 798,
+      "render_targets": [20, 24, 40],
+      "source_type": "openai-imagegen",
+      "generation_status": "generated",
+      "notes": "Indigo speech bubble for Komunitas."
+    },
+    {
+      "name": "customer-nav-profile",
+      "source": "generated-by-openai-codex",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/navigation/customer-profile.webp",
+      "canvas": [1024, 1024],
+      "visible_target": 798,
+      "render_targets": [20, 24, 40],
+      "source_type": "openai-imagegen",
+      "generation_status": "generated",
+      "notes": "Violet medallion with an ivory silhouette for Profil."
+    },
+    {
+      "name": "customer-loyalty-points",
+      "source": "generated-by-openai-codex",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/customer-loyalty-points.webp",
+      "canvas": [1024, 1024],
+      "visible_target": 798,
+      "render_targets": [24, 38],
+      "source_type": "openai-imagegen",
+      "generation_status": "generated"
+    },
+    {
+      "name": "customer-notifications-alerts",
+      "source": "generated-by-openai-codex",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/customer-notifications-alerts.webp",
+      "canvas": [1024, 1024],
+      "visible_target": 798,
+      "render_targets": [20, 24],
+      "source_type": "openai-imagegen",
+      "generation_status": "generated"
+    },
+    {
+      "name": "customer-promo-voucher",
+      "source": "generated-by-openai-codex",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/customer-promo-voucher.webp",
+      "canvas": [1024, 1024],
+      "visible_target": 798,
+      "render_targets": [38],
+      "source_type": "openai-imagegen",
+      "generation_status": "generated"
+    },
+    {
+      "name": "customer-order-tracking",
+      "source": "generated-by-openai-codex",
+      "output": "packages/djiwaapps-web-shared/src/assets/djiwa-icons-v2/customer-order-tracking.webp",
+      "canvas": [1024, 1024],
+      "visible_target": 798,
+      "render_targets": [38],
+      "source_type": "openai-imagegen",
+      "generation_status": "generated"
     }
   ],
   "generated_provider": "openai-codex",

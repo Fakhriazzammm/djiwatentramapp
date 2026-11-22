@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Djiwa3DIcon, type Djiwa3DIconName } from "@djiwaapps/web-shared";
 import { motion, useReducedMotion } from "framer-motion";
 import { Radio } from "lucide-react";
 import { useHybridShiftStatus } from "@/hooks/use-hybrid-pos-data";
@@ -147,31 +148,36 @@ export function CustomerPrimaryCta({
 	);
 }
 
-const NAV_ORDER = ["Home", "Pesan", "Saldo", "Komunitas", "Profil"];
+const NAV_ICONS = {
+	Home: "customer-nav-home",
+	Pesan: "customer-nav-order",
+	Saldo: "customer-nav-scan-qr",
+	Komunitas: "customer-nav-community",
+	Profil: "customer-nav-profile",
+} as const satisfies Record<string, Djiwa3DIconName>;
+type NavLabel = keyof typeof NAV_ICONS;
+const NAV_ORDER = Object.keys(NAV_ICONS);
 const NAV_LABEL: Record<string, string> = { Home: "Beranda", Saldo: "Bayar" };
 const NAV_CENTER = "Saldo";
+
+export type CustomerBottomNavItem = {
+	active?: boolean;
+	badge?: ReactNode;
+	label: NavLabel;
+	onSelect?: () => void;
+};
 
 /** Tab bawah: Beranda, Pesan, Bayar (tengah, buka pemindai QR di Djiwa Pay), Komunitas, Profil. */
 export function CustomerBottomNav({
 	items,
 }: {
-	items: Array<{
-		active?: boolean;
-		badge?: ReactNode;
-		icon: ReactNode;
-		label: string;
-		onSelect?: () => void;
-	}>;
+	items: CustomerBottomNavItem[];
 }) {
 	const shouldReduceMotion = useReducedMotion();
 	const spring = { type: "spring" as const, stiffness: 420, damping: 28, mass: 0.7 };
 	const shiftStatus = useHybridShiftStatus();
 	const isLive = Boolean(shiftStatus?.isOpen && shiftStatus?.ongoingShift);
-	const tabs = [...items].sort((a, b) => {
-		const ia = NAV_ORDER.indexOf(a.label);
-		const ib = NAV_ORDER.indexOf(b.label);
-		return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
-	});
+	const tabs = [...items].sort((a, b) => NAV_ORDER.indexOf(a.label) - NAV_ORDER.indexOf(b.label));
 	const openScan = () => {
 		const username = window.location.pathname.split("/")[1];
 		if (username) window.location.assign(`/${encodeURIComponent(decodeURIComponent(username))}/saldo?aksi=scan`);
@@ -197,7 +203,7 @@ export function CustomerBottomNav({
 								className="relative -mt-3 flex h-[52px] min-w-[72px] flex-col items-center justify-center gap-0.5 justify-self-center rounded-full border border-white/70 bg-primary px-3 text-[10px] font-extrabold text-white shadow-[0_8px_20px_rgba(11,99,184,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								<span className="flex h-6 w-6 items-center justify-center rounded-full bg-white p-0.5">
-									<img src="/assets/djiwa-pay-actions/scan-qr.webp" alt="" className="h-full w-full object-contain" />
+									<Djiwa3DIcon name={NAV_ICONS[item.label]} size="micro" className="max-h-full max-w-full" />
 								</span>
 								<span>{label}</span>
 							</motion.button>
@@ -219,7 +225,9 @@ export function CustomerBottomNav({
 							{item.active ? <motion.span layoutId="customer-bottom-nav-active" transition={spring} className="absolute inset-0 rounded-full bg-primary/12" aria-hidden="true" /> : null}
 							{item.badge ? <span className="absolute right-1/4 top-0.5 z-[1]">{item.badge}</span> : null}
 							{item.label === "Pesan" && !isLive ? <span className="absolute right-[26%] top-1 z-[1] h-2 w-2 rounded-full border border-background bg-amber-500" title="Layanan sedang offline, menu tetap bisa dilihat" aria-hidden="true" /> : null}
-							<span className="relative z-[1] flex h-5 items-center justify-center">{item.icon}</span>
+							<span className="relative z-[1] flex size-5 items-center justify-center">
+								<Djiwa3DIcon name={NAV_ICONS[item.label]} size="micro" className="max-h-full max-w-full" />
+							</span>
 							<span className="relative z-[1] max-w-full truncate">{label}</span>
 						</motion.button>
 					);

@@ -24,9 +24,9 @@ interface CustomerMenuGridProps {
 
 const menuItems: MenuItem[] = [
   { label: "Minigames", icon: Gamepad2, menuId: "minigames", route: "/$username/minigames" },
-  { label: "Promo", icon: Tags, menuId: "promo", route: "/$username/promo", illustration: "promo-voucher" },
-  { label: "Favorit", icon: Star, menuId: "favorit", route: "/$username/favorit", illustration: "loyalty-points" },
-  { label: "Notifikasi", icon: Bell, menuId: "notifikasi", route: "/$username/notifikasi", illustration: "notifications-alerts" },
+  { label: "Promo", icon: Tags, menuId: "promo", route: "/$username/promo", illustration: "customer-promo-voucher" },
+  { label: "Favorit", icon: Star, menuId: "favorit", route: "/$username/favorit", illustration: "customer-loyalty-points" },
+  { label: "Notifikasi", icon: Bell, menuId: "notifikasi", route: "/$username/notifikasi", illustration: "customer-notifications-alerts" },
 ];
 
 export function CustomerMenuGrid({ baseRoute }: CustomerMenuGridProps) {

@@ -2,8 +2,7 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AlertCircle, ArrowLeft, CheckCircle2, Clock3, CloudUpload, MapPin, RefreshCw, ShieldCheck, Trophy, Upload, X, XCircle } from "lucide-react";
-import { Djiwa3DIcon } from "@djiwaapps/web-shared";
-import { CustomerBottomNav, CustomerHeader } from "@/components/customer/customer-shell";
+import { CustomerBottomNav, CustomerHeader, type CustomerBottomNavItem } from "@/components/customer/customer-shell";
 import { CustomerSectionSkeleton } from "@/components/customer/customer-states";
 import { ActionSheet, NoGpsNotice, RunHomeView, RunLiveView, RunRankingView, RunResultView, daysLeft } from "@/components/customer/run-views";
 import { useRunTracker } from "@/hooks/use-run-tracker";
@@ -213,12 +212,12 @@ function DjiwaRunPage() {
     manual: ["Catat manual", "Upload bukti dari aplikasi olahraga"],
   };
   const onBack = effectiveView === "live" ? () => setConfirmCancel(true) : effectiveView === "home" ? goHome : () => setView("home");
-  const navItems = [
-    { label: "Home", active: false, onSelect: goHome, icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" /> },
-    { label: "Pesan", active: false, onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }), icon: <Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" /> },
-    { label: "Komunitas", active: false, onSelect: () => navigate({ to: "/$username/komunitas", params: { username } }), icon: <Djiwa3DIcon name="navigation-community" size="micro" alt="" className="h-5 w-5 object-contain" /> },
-    { label: "Saldo", active: false, onSelect: () => navigate({ to: "/$username/saldo", params: { username } }), icon: <Djiwa3DIcon name="navigation-wallet" size="micro" alt="" className="h-5 w-5 object-contain" /> },
-    { label: "Profil", active: false, onSelect: () => navigate({ to: "/$username/profile", params: { username } }), icon: <Djiwa3DIcon name="navigation-profile" size="micro" alt="" className="h-5 w-5 object-contain" /> },
+  const navItems: CustomerBottomNavItem[] = [
+    { label: "Home", active: false, onSelect: goHome },
+    { label: "Pesan", active: false, onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }) },
+    { label: "Komunitas", active: false, onSelect: () => navigate({ to: "/$username/komunitas", params: { username } }) },
+    { label: "Saldo", active: false, onSelect: () => navigate({ to: "/$username/saldo", params: { username } }) },
+    { label: "Profil", active: false, onSelect: () => navigate({ to: "/$username/profile", params: { username } }) },
   ];
   const revealProps = reduceMotion ? {} : { initial: "hidden", animate: "show", variants: runReveal };
 

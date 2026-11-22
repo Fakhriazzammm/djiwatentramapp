@@ -105,7 +105,7 @@ export function HomeTop({
           className="flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-[#ffe08a] pl-1.5 pr-3 text-[#5a3a00] shadow-[0_4px_14px_rgba(160,110,0,0.25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           aria-label={points === null ? "Masuk untuk mengambil poin" : `${points} poin. Buka poin`}
         >
-          <Djiwa3DIcon name="loyalty-points" size="micro" alt="" className="h-6 w-6 object-contain" />
+          <Djiwa3DIcon name="customer-loyalty-points" size="micro" alt="" className="h-6 w-6 object-contain" />
           <span className="text-left text-[12.5px] font-extrabold leading-[1.05]">
             <span className="block text-[10px] font-semibold opacity-75">{points === null ? "Ambil" : "Poin kamu"}</span>
             {points === null ? "Poin" : points.toLocaleString("id-ID")}
@@ -122,7 +122,7 @@ export function HomeTop({
             className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/90 shadow-[0_4px_14px_rgba(20,60,110,0.12)] backdrop-blur-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
             aria-label={unread > 0 ? `Notifikasi, ${unread} baru` : "Notifikasi"}
           >
-            <Djiwa3DIcon name="notifications-alerts" size="micro" alt="" className="h-5 w-5 object-contain" />
+            <Djiwa3DIcon name="customer-notifications-alerts" size="micro" alt="" className="h-5 w-5 object-contain" />
             {unread > 0 ? (
               <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={SPRING} className="absolute -right-0.5 -top-0.5 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-[9px] font-black leading-none text-white">
                 {unread > 9 ? "9+" : unread}
@@ -153,9 +153,9 @@ const popVariants: Variants = {
 
 export function HomeShortcuts({ onOrder, onPromo, onBooking, isLive }: { onOrder: () => void; onPromo: () => void; onBooking: () => void; isLive: boolean }) {
   const items = [
-    { label: "Pesan", tag: isLive ? "Buka" : "Lihat menu", icon: "/assets/djiwa-services/menu.webp", onClick: onOrder },
-    { label: "Promo", tag: "50%", icon: "/assets/djiwa-services/promo.webp", onClick: onPromo },
-    { label: "Booking", tag: "Acara", icon: "/assets/djiwa-services/booking.webp", onClick: onBooking },
+    { label: "Pesan", tag: isLive ? "Buka" : "Lihat menu", icon: "/assets/djiwa-services/menu.webp?v=2", onClick: onOrder },
+    { label: "Promo", tag: "50%", icon: "/assets/djiwa-services/promo.webp?v=2", onClick: onPromo },
+    { label: "Booking", tag: "Acara", icon: "/assets/djiwa-services/booking.webp?v=2", onClick: onBooking },
   ];
   return (
     <motion.div variants={listVariants} initial="hidden" animate="show" className="mt-[150px] grid grid-cols-3 gap-2">
@@ -209,9 +209,9 @@ export function HomeWalletCard({ customer, onOpen, onAction }: { customer: Custo
     });
   };
   const actions: Array<{ key: WalletAction; label: string; icon: string }> = [
-    { key: "topup", label: "Top up", icon: "/assets/djiwa-pay-actions/topup.webp" },
-    { key: "kirim", label: "Kirim", icon: "/assets/djiwa-pay-actions/send.webp" },
-    { key: "tagihan", label: "Tagihan", icon: "/assets/djiwa-pay-actions/bills.webp" },
+    { key: "topup", label: "Top up", icon: "/assets/djiwa-pay-actions/topup.webp?v=2" },
+    { key: "kirim", label: "Kirim", icon: "/assets/djiwa-pay-actions/send.webp?v=2" },
+    { key: "tagihan", label: "Tagihan", icon: "/assets/djiwa-pay-actions/bills.webp?v=2" },
   ];
   return (
     <motion.section
@@ -268,7 +268,7 @@ export function HomeGuestWallet({ onLogin }: { onLogin: () => void }) {
       transition={{ duration: 0.55, ease: EASE, delay: 0.3 }}
       className="mt-2.5 flex items-center gap-2.5 rounded-[20px] bg-card px-3 py-2.5 shadow-[0_0_0_1px_hsl(var(--border)),0_4px_12px_rgba(20,60,110,0.05)]"
     >
-      <img src="/assets/djiwa-services/pay.webp" alt="" className="h-10 w-10 object-contain" />
+      <img src="/assets/djiwa-services/pay.webp?v=2" alt="" className="h-10 w-10 object-contain" />
       <div className="min-w-0">
         <p className="text-sm font-black leading-tight">Djiwa Pay</p>
         <p className="text-[11.5px] leading-tight text-muted-foreground">Daftar member, ada saldo bonus</p>
@@ -306,14 +306,14 @@ export function HomeServiceRail(handlers: HomeServiceHandlers) {
 
   const items = useMemo<ServiceItem[]>(() => {
     const list: ServiceItem[] = [
-      { label: "Komunitas", src: "/assets/djiwa-services/community.webp", onClick: handlers.onCommunity },
-      { label: "Riwayat", src: "/assets/djiwa-services/history.webp", onClick: handlers.onHistory },
-      { label: "Merch", badge: "Baru", src: "/assets/djiwa-services/merchandise.webp", onClick: handlers.onMerchandise },
-      { label: "Djiwa Run", badge: "Baru", src: "/assets/djiwa-services/run.webp", onClick: handlers.onDjiwaRun },
-      { label: "Djiwa Pay", badge: "+Rp1.000", src: "/assets/djiwa-services/pay.webp", onClick: handlers.onWallet },
-      { label: "Poin", icon: <Djiwa3DIcon name="loyalty-points" size="sm" alt="" className="h-[38px] w-[38px] object-contain" />, onClick: handlers.onWallet },
-      { label: "Voucher", icon: <Djiwa3DIcon name="promo-voucher" size="sm" alt="" className="h-[38px] w-[38px] object-contain" />, onClick: handlers.onPromo },
-      { label: "Lacak", icon: <Djiwa3DIcon name="order-tracking" size="sm" alt="" className="h-[38px] w-[38px] object-contain" />, onClick: handlers.onHistory },
+      { label: "Komunitas", src: "/assets/djiwa-services/community.webp?v=2", onClick: handlers.onCommunity },
+      { label: "Riwayat", src: "/assets/djiwa-services/history.webp?v=2", onClick: handlers.onHistory },
+      { label: "Merch", badge: "Baru", src: "/assets/djiwa-services/merchandise.webp?v=2", onClick: handlers.onMerchandise },
+      { label: "Djiwa Run", badge: "Baru", src: "/assets/djiwa-services/run.webp?v=2", onClick: handlers.onDjiwaRun },
+      { label: "Djiwa Pay", badge: "+Rp1.000", src: "/assets/djiwa-services/pay.webp?v=2", onClick: handlers.onWallet },
+      { label: "Poin", icon: <Djiwa3DIcon name="customer-loyalty-points" size="sm" alt="" className="h-[38px] w-[38px] object-contain" />, onClick: handlers.onWallet },
+      { label: "Voucher", icon: <Djiwa3DIcon name="customer-promo-voucher" size="sm" alt="" className="h-[38px] w-[38px] object-contain" />, onClick: handlers.onPromo },
+      { label: "Lacak", icon: <Djiwa3DIcon name="customer-order-tracking" size="sm" alt="" className="h-[38px] w-[38px] object-contain" />, onClick: handlers.onHistory },
     ];
     if (jumatBerkah && jumatBerkah.enabled) {
       list.unshift({

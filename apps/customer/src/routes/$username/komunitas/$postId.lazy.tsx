@@ -1,8 +1,7 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Heart, Loader2, MessageCircle, MoreHorizontal, Pencil, Send, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Djiwa3DIcon } from "@djiwaapps/web-shared";
-import { CustomerBottomNav, CustomerHeader } from "@/components/customer/customer-shell";
+import { CustomerBottomNav, CustomerHeader, type CustomerBottomNavItem } from "@/components/customer/customer-shell";
 import { CustomerErrorState, CustomerSectionSkeleton } from "@/components/customer/customer-states";
 import { useCustomerAuth } from "@/hooks/use-customer-auth";
 import { communityClient } from "@/features/community/community-client";
@@ -154,12 +153,12 @@ function CommunityPostDetailPage() {
   };
 
   const backToCommunity = () => navigate({ to: "/$username/komunitas", params: { username } });
-  const navItems = [
-    { label: "Home", active: false, onSelect: () => navigate({ to: "/$username", params: { username } }), icon: <Djiwa3DIcon name="navigation-home" size="micro" alt="" className="h-5 w-5 object-contain" /> },
-    { label: "Pesan", active: false, onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }), icon: <Djiwa3DIcon name="navigation-order" size="micro" alt="" className="h-5 w-5 object-contain" /> },
-    { label: "Komunitas", active: true, onSelect: backToCommunity, icon: <Djiwa3DIcon name="navigation-community" size="micro" alt="" className="h-5 w-5 object-contain" /> },
-    { label: "Saldo", active: false, onSelect: () => navigate({ to: "/$username/saldo", params: { username } }), icon: <Djiwa3DIcon name="navigation-wallet" size="micro" alt="" className="h-5 w-5 object-contain" /> },
-    { label: "Profil", active: false, onSelect: () => navigate({ to: "/$username/profile", params: { username } }), icon: <Djiwa3DIcon name="navigation-profile" size="micro" alt="" className="h-5 w-5 object-contain" /> },
+  const navItems: CustomerBottomNavItem[] = [
+    { label: "Home", active: false, onSelect: () => navigate({ to: "/$username", params: { username } }) },
+    { label: "Pesan", active: false, onSelect: () => navigate({ to: "/$username/order", params: { username }, search: { step: "table" } }) },
+    { label: "Komunitas", active: true, onSelect: backToCommunity },
+    { label: "Saldo", active: false, onSelect: () => navigate({ to: "/$username/saldo", params: { username } }) },
+    { label: "Profil", active: false, onSelect: () => navigate({ to: "/$username/profile", params: { username } }) },
   ];
 
   if (authLoading) return <CustomerSectionSkeleton label="Menyiapkan detail Komunitas Djiwa" />;
