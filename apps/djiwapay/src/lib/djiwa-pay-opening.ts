@@ -40,7 +40,7 @@ export function markDjiwaPayOpeningSeen(storage: StorageLike | null = safeStorag
 
 /** What the mascot says on each tap, cycling. */
 export const DJIWA_PAY_OPENING_LINES = [
-  "Tangkap koinnya!",
+  "Lihat, ada bintang di dalamnya!",
   "Bisa tangkap tiga koin?",
   "Satu koin lagi masuk tabungan.",
   "Pengeluaran hari ini sudah dicatat?",

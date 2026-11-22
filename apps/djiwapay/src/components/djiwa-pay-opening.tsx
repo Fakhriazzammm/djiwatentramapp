@@ -125,7 +125,12 @@ export function DjiwaPayOpening({ onDone }: { onDone: () => void }) {
               onClick={tapMascot}
               whileTap={{ scale: 0.95 }}
             >
-              <DjiwaPayLogoLoader action={mascotActions[actionIndex]} />
+              {actionIndex === 0 ? (
+                <picture>
+                  <source media="(prefers-reduced-motion: no-preference)" srcSet="/assets/djiwapay-opening/music-box.gif" />
+                  <img src="/assets/djiwapay-opening/music-box.webp" alt="" draggable={false} />
+                </picture>
+              ) : <DjiwaPayLogoLoader action={mascotActions[actionIndex]} />}
             </motion.button>
             {coins.map((coin) => (
               <motion.span
