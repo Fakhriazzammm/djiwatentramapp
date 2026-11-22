@@ -8,7 +8,7 @@ import { AnimatedNumber, formatRp, IOS_SPRING, IosChip, IosSheet, StatusPill } f
 import { OpnameReview, OpnameStep, opnameIssues, opnameNotesMissing, type OpnameController } from "./opname-step";
 
 type Actual = Partial<Record<ShiftPaymentChannelKey, number | null>>;
-export interface ExtraExpense { id: number; category: string; amount: string; description: string; savedId?: string }
+export interface ExtraExpense { id: number; category: string; amount: string; description: string; savedId?: string; /** false = dibayar dari uang di luar laci (tidak mengurangi hitungan tunai). */ fromDrawer?: boolean }
 
 export interface EndShiftController {
 	shiftName: string;
@@ -34,7 +34,8 @@ export interface EndShiftController {
 	keptCash: string;
 	setKeptCash: (value: string) => void;
 	shiftExpense: number;
-	expenseRows: Array<{ category?: string; description?: string; amount: number }>;
+	expenseRows: Array<{ id: string; category?: string; description?: string; amount: number; fromDrawer: boolean }>;
+	onToggleExpenseSource: (id: string) => void;
 	extraExpenses: ExtraExpense[];
 	setExtraExpenses: (updater: (prev: ExtraExpense[]) => ExtraExpense[]) => void;
 	notes: string;
@@ -90,8 +91,9 @@ export function EndShiftScreen({ c }: { c: EndShiftController }) {
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [autoSig]);
 
-	const extraTotal = c.extraExpenses.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
-	const expenseTotal = c.shiftExpense + extraTotal;
+	const extraTotal = c.extraExpenses.filter((row) => row.fromDrawer !== false).reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+	const listedDrawerTotal = c.expenseRows.filter((row) => row.fromDrawer).reduce((sum, row) => sum + row.amount, 0);
+	const expenseTotal = listedDrawerTotal + extraTotal;
 	const drawerExpected = c.startingCash + c.shiftCash - expenseTotal;
 	const counted = c.cashInRegister;
 	const diff = counted - drawerExpected;
@@ -197,12 +199,18 @@ export function EndShiftScreen({ c }: { c: EndShiftController }) {
 								{c.shiftExpense > 0 ? (
 									<div className="mb-2 rounded-2xl bg-rose-50 px-3.5 py-2.5">
 										<div className="flex justify-between text-[12px] font-bold text-rose-700"><span>Pengeluaran shift</span><span className="tabular-nums">{formatRp(c.shiftExpense)}</span></div>
-										{c.expenseRows.map((row, i) => <div key={i} className="mt-1 flex justify-between gap-3 text-[12px] text-rose-700/90"><span className="truncate">{row.category || "Lainnya"}{row.description ? ` — ${row.description}` : ""}</span><span className="shrink-0 tabular-nums">{formatRp(row.amount)}</span></div>)}
+										{c.expenseRows.map((row, i) => (
+											<div key={row.id || i} className="mt-1.5 flex items-center justify-between gap-2 text-[12px] text-rose-700/90">
+												<span className="min-w-0 flex-1 truncate">{row.category || "Lainnya"}{row.description ? ` — ${row.description}` : ""}</span>
+												<span className="shrink-0 tabular-nums">{formatRp(row.amount)}</span>
+												{row.id ? <button type="button" onClick={() => c.onToggleExpenseSource(row.id)} aria-label={row.fromDrawer ? "Ubah ke di luar laci" : "Ubah ke dari laci"} className={cn("shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold", row.fromDrawer ? "bg-rose-600 text-white" : "bg-white text-rose-700 ring-1 ring-rose-300")}>{row.fromDrawer ? "Dari laci" : "Luar laci"}</button> : null}
+											</div>
+										))}
 									</div>
 								) : null}
 								{c.extraExpenses.map((exp, index) => (
 									<div key={exp.id} className="mb-2 flex items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-2.5">
-										<div className="min-w-0 flex-1"><p className="truncate text-[14px] font-bold">{exp.category}{exp.description ? ` — ${exp.description}` : ""}</p><p className="text-[12px] text-muted-foreground">{exp.savedId ? "Sudah tersimpan" : `Pengeluaran #${index + 1} · dicatat saat tutup`}</p></div>
+										<div className="min-w-0 flex-1"><p className="truncate text-[14px] font-bold">{exp.category}{exp.description ? ` — ${exp.description}` : ""}</p><p className="text-[12px] text-muted-foreground">{exp.savedId ? "Sudah tersimpan" : `Pengeluaran #${index + 1} · dicatat saat tutup`} · {exp.fromDrawer === false ? "dari luar laci" : "dari laci"}</p></div>
 										<b className="tabular-nums text-rose-600">{formatRp(Number(exp.amount) || 0)}</b>
 										{!exp.savedId ? <button type="button" aria-label="Hapus pengeluaran" onClick={() => c.setExtraExpenses((prev) => prev.filter((e) => e.id !== exp.id))} className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-600"><Trash2 className="h-4 w-4" /></button> : null}
 									</div>
@@ -341,12 +349,16 @@ function ExpenseSheet({ open, onClose, onAdd }: { open: boolean; onClose: () => 
 	const [category, setCategory] = useState(EXPENSE_CATS[0]);
 	const [amount, setAmount] = useState("");
 	const [description, setDescription] = useState("");
+	const [fromDrawer, setFromDrawer] = useState(true);
 	const [lastOpen, setLastOpen] = useState(false);
-	if (open !== lastOpen) { setLastOpen(open); if (open) { setCategory(EXPENSE_CATS[0]); setAmount(""); setDescription(""); } }
+	if (open !== lastOpen) { setLastOpen(open); if (open) { setCategory(EXPENSE_CATS[0]); setAmount(""); setDescription(""); setFromDrawer(true); } }
 	return (
-		<IosSheet open={open} onClose={onClose} title="Pengeluaran saat tutup" heightClass="max-h-[80dvh]" footer={<button type="button" disabled={!(Number(amount) > 0)} onClick={() => onAdd({ id: Date.now(), category, amount, description })} className="h-[52px] w-full rounded-2xl bg-rose-600 text-[16px] font-bold text-white disabled:opacity-50">Tambahkan</button>}>
+		<IosSheet open={open} onClose={onClose} title="Pengeluaran saat tutup" heightClass="max-h-[80dvh]" footer={<button type="button" disabled={!(Number(amount) > 0)} onClick={() => onAdd({ id: Date.now(), category, amount, description, fromDrawer })} className="h-[52px] w-full rounded-2xl bg-rose-600 text-[16px] font-bold text-white disabled:opacity-50">Tambahkan</button>}>
 			<div className="flex flex-wrap gap-2 pb-3">{EXPENSE_CATS.map((cat) => <IosChip key={cat} active={category === cat} onClick={() => setCategory(cat)}>{cat}</IosChip>)}</div>
 			<input value={amount} onChange={(event) => setAmount(event.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="Jumlah (Rp)" aria-label="Jumlah pengeluaran" className="h-12 w-full rounded-[13px] bg-muted px-3.5 text-[20px] font-extrabold outline-none placeholder:font-normal placeholder:text-muted-foreground focus:bg-background focus:shadow-[0_0_0_1px_var(--border)]" />
+			<p className="px-1 pb-1.5 pt-3 text-[11px] font-bold tracking-wider text-muted-foreground">DIBAYAR DARI</p>
+			<div className="mb-1 flex gap-2"><IosChip active={fromDrawer} onClick={() => setFromDrawer(true)}>Uang laci</IosChip><IosChip active={!fromDrawer} onClick={() => setFromDrawer(false)}>Di luar laci</IosChip></div>
+			<p className="px-1 pb-1 text-[12px] text-muted-foreground">{fromDrawer ? "Mengurangi uang yang seharusnya ada di laci." : "Tidak mengurangi hitungan tunai laci (mis. uang pribadi/rekening)."}</p>
 			<input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Keterangan, mis. token 200rb" aria-label="Keterangan" className="mt-2 h-11 w-full rounded-[13px] bg-muted px-3.5 text-[15px] outline-none placeholder:text-muted-foreground focus:bg-background focus:shadow-[0_0_0_1px_var(--border)]" />
 		</IosSheet>
 	);

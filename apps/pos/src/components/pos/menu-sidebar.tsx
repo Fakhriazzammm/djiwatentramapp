@@ -1437,6 +1437,8 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [amount, setAmount] = useState("");
 	// Serah terima uang tunai antar shift: diisi saat tutup, dibaca saat buka shift berikutnya.
 	const [keptCash, setKeptCash] = useState("");
+	// Sumber dana tiap pengeluaran shift: true = dari laci (mengurangi hitungan tunai), false = di luar laci. Tanpa isian: tunai dianggap dari laci.
+	const [expenseFromDrawer, setExpenseFromDrawer] = useState<Record<string, boolean>>({});
 	const [lastHandover, setLastHandover] = useState<{ fromShift: string; fromCashier: string; closedAt: number; counted: number; separated: number; kept: number } | null>(null);
 	const [handoverChecked, setHandoverChecked] = useState(false);
 	const [handoverReason, setHandoverReason] = useState("");
@@ -1451,7 +1453,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	const [paymentActual, setPaymentActual] = useState<Partial<Record<keyof ShiftPaymentBreakdown, number | null>>>({ ...EMPTY_SHIFT_PAYMENT_ACTUAL });
 	const [notes, setNotes] = useState("");
 	// Pengeluaran saat tutup shift
-	const [endShiftExpenses, setEndShiftExpenses] = useState<{id: number; category: string; amount: string; description: string; savedId?: string}[]>([]);
+	const [endShiftExpenses, setEndShiftExpenses] = useState<{id: number; category: string; amount: string; description: string; savedId?: string; fromDrawer?: boolean}[]>([]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [submitNotice, setSubmitNotice] = useState<string | null>(null);
@@ -1672,6 +1674,15 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			.reduce((acc: number, o: Doc<"orders">) => acc + o.items.reduce((sum: number, item: any) => sum + item.quantity, 0), 0);
 	}
 
+	const isCashMethod = (method: unknown) => ["cash", "tunai"].includes(String(method ?? "").trim().toLowerCase());
+	const shiftExpenseRows: Array<{ id: string; category?: string; description?: string; amount: number; fromDrawer: boolean }> = (todayTransactions ?? [])
+		.filter((t: any) => t.type === "expense" && t.status === "completed" && t.date >= (shiftStatus?.latestMulai || 0))
+		.map((t: any) => {
+			const id = String(t._id ?? t.id ?? "");
+			return { id, category: t.category, description: t.description, amount: Number(t.amount) || 0, fromDrawer: expenseFromDrawer[id] ?? isCashMethod(t.paymentMethod) };
+		});
+	const shiftExpenseDrawer = shiftExpenseRows.filter((row) => row.fromDrawer).reduce((sum, row) => sum + row.amount, 0);
+	const shiftExpenseOutside = shiftExpenseRows.filter((row) => !row.fromDrawer).reduce((sum, row) => sum + row.amount, 0);
 	const calculateBreakdownTotal = () => calculateCashBreakdownTotal(breakdown);
 	const expectedPaymentBreakdown = useMemo(() => calculateShiftPaymentBreakdown(
 		(todayOrders ?? []).filter((order: any) => Number(order.createdAt ?? order._creationTime ?? 0) >= Number(shiftStatus?.latestMulai ?? 0))
@@ -1685,17 +1696,18 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 
 	// When breakdown changes, update cashInRegister
 	const startingCashValue = Number(shiftStatus?.ongoingShift?.startingCash || 0);
-	const extraExpenseTotal = endShiftExpenses.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+	const extraExpenseTotal = endShiftExpenses.filter((row) => row.fromDrawer !== false).reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+	const extraExpenseOutside = endShiftExpenses.filter((row) => row.fromDrawer === false).reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
 	useEffect(() => {
 		const total = calculateBreakdownTotal();
 		setCashInRegister(total.toString());
 		// Uang laci dihitung sekali (termasuk modal awal). Penerimaan tunai = laci - modal + pengeluaran tunai;
 		// dialokasikan dulu ke "Bayar Tunai di Kasir" (Djiwa App), sisanya tunai POS.
-		const received = Math.max(0, total - startingCashValue + Number(shiftExpense || 0) + extraExpenseTotal);
+		const received = Math.max(0, total - startingCashValue + Number(shiftExpenseDrawer || 0) + extraExpenseTotal);
 		const appCashExpected = Number(expectedPaymentBreakdown.djiwaapp_bayar_kasir || 0);
 		const appCash = Math.min(received, appCashExpected);
 		setPaymentActual((previous) => ({ ...previous, tunai_kasir: received - appCash, ...(appCashExpected > 0 ? { djiwaapp_bayar_kasir: appCash } : {}) }));
-	}, [breakdown, expectedPaymentBreakdown.djiwaapp_bayar_kasir, startingCashValue, shiftExpense, extraExpenseTotal]);
+	}, [breakdown, expectedPaymentBreakdown.djiwaapp_bayar_kasir, startingCashValue, shiftExpenseDrawer, extraExpenseTotal]);
 
 	// Auto-fill nonCashConfirmed from shiftQris
 	useEffect(() => {
@@ -1735,7 +1747,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 	}, [lastHandover]);
 
 	const handleAutofill = () => {
-		const expectedTotal = (shiftStatus?.ongoingShift?.startingCash || 0) + shiftCash - shiftExpense - extraExpenseTotal;
+		const expectedTotal = (shiftStatus?.ongoingShift?.startingCash || 0) + shiftCash - shiftExpenseDrawer - extraExpenseTotal;
 		if (expectedTotal <= 0) {
 			setBreakdown({ bill100000: 0, bill50000: 0, bill20000: 0, bill10000: 0, bill5000: 0, bill2000: 0, bill1000: 0, bill500: 0, bill200: 0, bill100: 0 });
 			toast.info(`Tunai seharusnya di laci Rp ${Math.round(expectedTotal).toLocaleString("id-ID")}: tidak ada uang yang perlu dihitung. Periksa pengeluaran shift.`);
@@ -1967,7 +1979,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					description: exp.description || "",
 					date: Date.now(),
 					status: "completed",
-					paymentMethod: "tunai",
+					paymentMethod: exp.fromDrawer === false ? "luar_laci" : "tunai",
 					sourceFingerprint: `shift-close:${shiftStatus.shiftInfo.shiftId}:expense:${exp.id}`,
 				});
 				setEndShiftExpenses(rows => rows.map(row => row.id === exp.id ? {...row, savedId: String(savedId)} : row));
@@ -1981,6 +1993,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				paymentBreakdownActual: paymentActual,
 				cashBreakdown: breakdown as any,
 				cashHandover,
+				outsideDrawerExpense: shiftExpenseOutside + extraExpenseOutside,
 				notes,
 			});
 			await captureStockSnapshot(String(shiftStatus.shiftInfo.shiftId), "closing");
@@ -2065,7 +2078,9 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				Object.entries(ofp2).filter(([_, v]) => Number(v) > 0).forEach(([p]) => ntLabelParts2.push(pfLabels2[p] || p));
 				const ntLabel2 = ntLabelParts2.length ? ` (${ntLabelParts2.join(" + ")})` : "";
 				const totalNonTunaiStr = `Rp ${totalNonTunai.toLocaleString("id-ID")}${ntLabel2}${sourcePaymentLines.length ? `\n${sourcePaymentLines.join("\n")}` : ""}`;
-				const expectedDrawer = modalKasir + s.cashRevenue - s.totalExpenses;
+				const outsideExpense = shiftExpenseOutside + extraExpenseOutside;
+				const drawerExpense = Math.max(0, s.totalExpenses - outsideExpense);
+				const expectedDrawer = modalKasir + s.cashRevenue - drawerExpense;
 				const diffTunai = cashInRegisterVal - expectedDrawer;
 				const fmtSelisih = (v: number) => v === 0 ? "✅ Cocok (Rp 0)" : v > 0 ? `⬆️ Lebih Rp ${v.toLocaleString("id-ID")}` : `⬇️ Kurang Rp ${Math.abs(v).toLocaleString("id-ID")}`;
 				
@@ -2090,12 +2105,13 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 					`💰 PENDAPATAN SISTEM: ${rp(systemTotal)}`,
 					...channelLines,
 					`   └ Tunai: ${rp(cashIn)}${Number((sourcePb as any).djiwaapp_bayar_kasir ?? 0) > 0 ? ` (Djiwa App bayar kasir ${rp(Number((sourcePb as any).djiwaapp_bayar_kasir))})` : ""}`,
-					`🧾 ${s.totalItemsSold} pesanan · 🏷 Diskon ${rp(s.totalDiscount)} · 💸 Pengeluaran ${rp(s.totalExpenses)}`,
+					`🧾 ${s.totalItemsSold} pesanan · 🏷 Diskon ${rp(s.totalDiscount)} · 💸 Pengeluaran ${rp(s.totalExpenses)}${outsideExpense > 0 ? ` (dari laci ${rp(drawerExpense)})` : ""}`,
 					"",
 					"💵 UANG TUNAI DI LACI",
 					`   Modal awal: ${rp(modalKasir)}`,
 					`   + Tunai masuk: ${rp(s.cashRevenue)}`,
-					`   − Pengeluaran: ${rp(s.totalExpenses)}`,
+					`   − Pengeluaran dari laci: ${rp(drawerExpense)}`,
+					...(outsideExpense > 0 ? [`   (Pengeluaran di luar laci ${rp(outsideExpense)}, tidak mengurangi laci)`] : []),
 					`   = Seharusnya: ${rp(expectedDrawer)}`,
 					`   Dihitung kasir: ${rp(cashInRegisterVal)}`,
 					`   Selisih: ${fmtSelisih(diffTunai)}`,
@@ -2180,6 +2196,7 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			setCashPhoto(null);
 			setEndShiftExpenses([]);
 			setKeptCash("");
+			setExpenseFromDrawer({});
 			setCashierName("");
 			setTeamMembers([]);
 			onClose();
@@ -2377,7 +2394,8 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 			toast.info("Hitungan pecahan dikosongkan");
 		},
 		shiftExpense,
-		expenseRows: (todayTransactions ?? []).filter((t: any) => t.type === "expense" && t.status === "completed" && t.date >= (shiftStatus?.latestMulai || 0)).map((t: any) => ({ category: t.category, description: t.description, amount: Number(t.amount) })),
+		expenseRows: shiftExpenseRows,
+		onToggleExpenseSource: (id: string) => setExpenseFromDrawer((prev) => ({ ...prev, [id]: !(shiftExpenseRows.find((row) => row.id === id)?.fromDrawer ?? true) })),
 		extraExpenses: endShiftExpenses,
 		setExtraExpenses: setEndShiftExpenses,
 		notes,

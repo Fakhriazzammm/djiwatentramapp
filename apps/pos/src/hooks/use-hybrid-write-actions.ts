@@ -4908,8 +4908,9 @@ export function useHybridEndShift() {
 					console.warn("[supabase-hybrid:write-end-shift] failed to query orders for discount", e);
 				}
 
+				const outsideDrawerExpense = Math.min(totalExpenses, Math.max(0, Number(args?.outsideDrawerExpense ?? 0)));
 				const endingCashExpected =
-					Number(shift.startingCash ?? 0) + cashRevenue - totalExpenses;
+					Number(shift.startingCash ?? 0) + cashRevenue - (totalExpenses - outsideDrawerExpense);
 				const nonCashExpected = qrisRevenue;
 				const paymentBreakdownActual = args?.paymentBreakdownActual ?? {};
 				const paymentBreakdownVariance = Object.fromEntries(
@@ -4924,6 +4925,7 @@ export function useHybridEndShift() {
 					cashRevenue, qrisRevenue, totalRevenue, totalGrossSales,
 					totalDiscount: totalDiscountFromOrders,
 					totalExpenses,
+					outsideDrawerExpenses: outsideDrawerExpense,
 					totalItemsSold: Math.max(Number((shift.summary as any)?.totalItemsSold ?? 0), totalItemsSold),
 					endingCashExpected, endingCashPhysical: Number(args?.endingCashPhysical ?? 0),
 					nonCashExpected, nonCashConfirmed: Number(args?.nonCashConfirmed ?? 0),
