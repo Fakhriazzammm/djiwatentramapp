@@ -19,7 +19,8 @@ export async function nativeGoogleIdToken(): Promise<string | null> {
   if (!social) throw new Error("Masuk dengan Google belum tersedia di aplikasi ini");
   await social.initialize({ google: { webClientId: GOOGLE_WEB_CLIENT_ID } });
   try {
-    const res = await social.login({ provider: "google", options: { scopes: ["email", "profile"] } });
+    // No `scopes` here: the plugin refuses them unless MainActivity is modified, and the ID token already carries email and profile.
+    const res = await social.login({ provider: "google", options: {} });
     const token = res?.result?.idToken as string | null | undefined;
     if (!token) throw new Error("Google tidak mengirim token masuk");
     return token;
