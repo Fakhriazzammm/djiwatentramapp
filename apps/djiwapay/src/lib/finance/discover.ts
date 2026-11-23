@@ -38,13 +38,18 @@ const jakartaDay = (iso: string) => new Date(new Date(iso).getTime() + 7 * 3_600
 const isMailAccount = (a: Account) => a.id.startsWith("email-") && !a.archived;
 const issuerOf = (id: string) => id.replace(/^email-/, "").replace(/-\d{2,}$/, "");
 
-function accountFinds(state: FinanceState, entries: Entry[]): Discovery[] {
+const NEW_DAYS = 3;   // a wallet older than this is no longer "new": it is part of the person's life already
+
+function accountFinds(state: FinanceState, entries: Entry[], now: Date): Discovery[] {
   const out: Discovery[] = [];
   for (const a of state.accounts.filter(isMailAccount)) {
     const mine = entries.filter((e) => e.accountId === a.id || e.toAccountId === a.id).sort((x, y) => +new Date(y.at) - +new Date(x.at));
     const base = issuerOf(a.id), hint = a.id.match(/-(\d{2,})$/)?.[1] ?? "";
     const siblings = state.accounts.filter((o) => o.id !== a.id && !o.archived && issuerOf(o.id) === base && o.id.startsWith("email-"));
     const first = mine[mine.length - 1];
+    // Only a wallet that has just appeared is a discovery. One that has been in use for days, was given an opening balance, or has records the person made by hand is already theirs.
+    if (first && +now - +new Date(first.at) > NEW_DAYS * DAY) continue;
+    if (a.opening !== 0 || mine.some((e) => e.source !== "email")) continue;
     const bank = a.name.replace(/\s*••.*$/, "");
     const lead = hint ? (siblings.length ? `Rekening baru di ${bank}` : `${a.type === "ewallet" ? "E-wallet" : "Bank"} baru: ${bank}`) : (a.type === "ewallet" ? `E-wallet baru: ${bank}` : `Dompet baru: ${bank}`);
     out.push({
@@ -137,7 +142,7 @@ const ORDER: Record<DiscoveryKind, number> = { account: 0, price: 1, recurring: 
 /** Everything found that the person has not answered yet, most useful first. */
 export function findDiscoveries(state: FinanceState, entries: Entry[], decisions: Decision[], now = new Date()): Discovery[] {
   const answered = new Set(decisions.filter((d) => d.status !== "snoozed" || (d.until && +new Date(d.until) > +now)).map((d) => d.key));
-  return [...accountFinds(state, entries), ...priceFinds(state, entries, now), ...billFinds(state, entries, now)]
+  return [...accountFinds(state, entries, now), ...priceFinds(state, entries, now), ...billFinds(state, entries, now)]
     .filter((d) => !answered.has(d.key))
     .filter((d) => d.confidence >= 0.6)
     .sort((a, b) => ORDER[a.kind] - ORDER[b.kind] || b.confidence - a.confidence || +new Date(b.at) - +new Date(a.at));

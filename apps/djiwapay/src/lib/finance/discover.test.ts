@@ -27,6 +27,12 @@ describe("discoveries", () => {
     expect(findDiscoveries(s, [], [], NOW).map((d) => d.lead)).toEqual(["Rekening baru di BCA", "Rekening baru di BCA"]);
   });
 
+  test("a wallet that has been in use for days, or that the person touched, is not new", () => {
+    const s = state({ accounts: [{ id: "email-mandiri-4399", name: "Mandiri ••4399", type: "bank", opening: 0 }, { id: "email-gopay", name: "GoPay", type: "ewallet", opening: 50000 }, { id: "email-ovo", name: "OVO", type: "ewallet", opening: 0 }] });
+    const e = [ent("a", "Kopi", 25000, "2026-11-10T05:00:00Z", { accountId: "email-mandiri-4399" }), ent("b", "Bakso", 20000, "2026-11-19T05:00:00Z", { accountId: "email-gopay" }), ent("c", "Makan", 20000, "2026-11-19T05:00:00Z", { accountId: "email-ovo", source: "manual" })];
+    expect(findDiscoveries(s, e, [], NOW)).toHaveLength(0);
+  });
+
   test("three monthly payments of about the same amount suggest one bill", () => {
     const found = findDiscoveries(state(), monthly("Netflix", 54990, [4, 34, 64, 95]), [], NOW);
     expect(found).toHaveLength(1);
