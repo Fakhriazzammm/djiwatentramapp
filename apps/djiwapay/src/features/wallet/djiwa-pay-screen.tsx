@@ -20,6 +20,7 @@ import { financeNotes, loadRead, saveRead } from "../../lib/finance/notify";
 import { useDiscoveries } from "../../lib/finance/discoveries-api";
 import { useNotifSync } from "../integrations/phone-sources";
 import { DiscoveryPage } from "../finance/discoveries";
+import { PayeesPage } from "../finance/payees";
 import { GestureHost } from "../shell/gestures";
 import { ProfileSetupSheet } from "../account/profile-setup-sheet";
 import { PinHost } from "../auth/pin-ui";
@@ -605,6 +606,7 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   if (walletRoute?.page === "account") return frameShell(<><AccountPage onOpenApp={() => setPwaOpen(true)} onOpenProfile={() => setAccountSub("profile")} onOpenSecurity={() => setAccountSub("security")} profile={profile} unread={unreadCount} customerHome={customerHome} embedded={embedded} onBack={() => goBack("/")} nav={payNav} onOpenNotifications={openNotifications} />{pwaOpen ? <PwaSheet onClose={() => setPwaOpen(false)} notify={(t) => notify(t)} /> : null}</>, null);
   if (walletRoute?.page === "settings") return frameShell(<FinSettings ctx={finCtx} onBack={() => goBack("/akun")} />, null);
   if (walletRoute?.page === "integrations") return frameShell(<IntegrationsPage ctx={finCtx} onBack={() => goBack("/pengaturan")} onReview={() => goPayRoute("/tinjau")} />, null);
+  if (walletRoute?.page === "payees") return frameShell(<PayeesPage ctx={finCtx} onBack={() => goBack("/ringkasan")} />, "report");
   if (walletRoute?.page === "discoveries") return frameShell(<DiscoveryPage ctx={finCtx} onBack={() => goBack("/")} onOpenReview={() => goPayRoute("/tinjau")} />, "home");
   if (walletRoute?.page === "review") return frameShell(<ReviewPage ctx={finCtx} onBack={() => goBack("/")} onOpenIntegrations={() => goPayRoute("/integrasi")} />, "home");
   if (walletRoute?.page === "catat") { const editId = paySearchParams.get("edit") ?? undefined; const k = paySearchParams.get("kind"); return frameShell(<ManualForm key={editId ?? k ?? "new"} ctx={finCtx} editId={editId} initialKind={k === "in" || k === "tf" ? k : undefined} onDone={() => { if (window.history.length > 1) window.history.back(); else goPayRoute("/"); }} />, null); }

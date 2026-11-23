@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { call } from "./integrations";
 import { findDiscoveries, type Decision, type Discovery, type Untracked } from "./discover";
 import type { Finance } from "./use-finance";
+import { usePayeeMeta } from "./payee-meta";
 
 const post = (path: string, body: unknown) => call<{ success: true }>(path, { method: "POST", body: JSON.stringify(body) });
 const cacheKey = (id: string) => `djiwa-disc-decisions:${id}`;
@@ -10,6 +11,7 @@ const writeCache = (id: string, list: Decision[]) => { try { window.localStorage
 
 /** What was found in the records and not answered yet. Answers live on the server (every device agrees) and in a local copy (works offline). */
 export function useDiscoveries(fin: Finance) {
+  const { meta } = usePayeeMeta(fin.profileId);
   const [decisions, setDecisions] = useState<Decision[]>(() => readCache(fin.profileId));
   const [ready, setReady] = useState(false), [untracked, setUntracked] = useState<Untracked[]>([]);
   const refresh = useCallback(async () => {
@@ -17,7 +19,7 @@ export function useDiscoveries(fin: Finance) {
   }, [fin.profileId]);
   useEffect(() => { void refresh(); const f = () => { if (document.visibilityState === "visible") void refresh(); }; document.addEventListener("visibilitychange", f); return () => document.removeEventListener("visibilitychange", f); }, [refresh]);
 
-  const items: Discovery[] = useMemo(() => findDiscoveries(fin.raw, fin.raw.entries, decisions, new Date(), untracked), [fin.raw, decisions, untracked]);
+  const items: Discovery[] = useMemo(() => findDiscoveries(fin.raw, fin.raw.entries, decisions, new Date(), untracked, meta), [fin.raw, decisions, untracked, meta]);
 
   const decide = useCallback(async (keys: string[], status: Decision["status"], days = 7) => {
     const until = status === "snoozed" ? new Date(Date.now() + days * 86_400_000).toISOString() : null;

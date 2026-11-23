@@ -7,12 +7,13 @@ import { billExists, mergeTargets, movedEntries, type Discovery, type DiscoveryG
 import type { Account, AccountType } from "../../lib/finance/types";
 import { useInbound } from "../integrations/integrations-pages";
 import { pollGmailNow, startImport } from "../../lib/finance/integrations";
+import { usePayeeMeta } from "../../lib/finance/payee-meta";
 import "./discoveries.css";
 
 const GROUPS: readonly (readonly [DiscoveryGroup | "all", string])[] = [["all", "Semua"], ["dompet", "Dompet"], ["tagihan", "Tagihan"], ["langganan", "Langganan"]];
 const TYPES: readonly (readonly [AccountType, string])[] = [["bank", "Bank"], ["ewallet", "E-wallet"], ["card", "Kartu"], ["cash", "Tunai"], ["other", "Lainnya"]];
-const ICON: Record<Discovery["kind"], IconName> = { account: "wallet", recurring: "repeat", price: "trend", stopped: "clock", business: "bag" };
-const TONE: Record<Discovery["kind"], string> = { account: "blue", recurring: "violet", price: "amber", stopped: "slate", business: "amber" };
+const ICON: Record<Discovery["kind"], IconName> = { account: "wallet", recurring: "repeat", price: "trend", stopped: "clock", business: "bag", newpayee: "users" };
+const TONE: Record<Discovery["kind"], string> = { account: "blue", recurring: "violet", price: "amber", stopped: "slate", business: "amber", newpayee: "blue" };
 const date = (iso: string) => new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
 
 /** A number that counts up to its value, so a change is felt and not just replaced. */
@@ -30,11 +31,11 @@ function Proof({ list }: { list: Discovery["proof"] }) {
   </div>;
 }
 
-function Card({ d, i, ctx, busy, onPrimary, onLater, onNo, onMore, onImport }: { d: Discovery; i: number; ctx: FinCtx; busy: boolean; onPrimary: () => void; onLater: () => void; onNo: () => void; onMore: () => void; onImport: () => void }) {
+function Card({ d, i, ctx, busy, onPrimary, onLater, onNo, onMore, onImport, onLabel }: { d: Discovery; i: number; ctx: FinCtx; busy: boolean; onPrimary: () => void; onLater: () => void; onNo: () => void; onMore: () => void; onImport: () => void; onLabel: (l: string) => void }) {
   const x = useMotionValue(0), reduce = useReducedMotion();
   const rightOp = useTransform(x, [20, 110], [0, 1]), leftOp = useTransform(x, [-110, -20], [1, 0]), tilt = useTransform(x, [-160, 0, 160], [-3, 0, 3]);
   const done = (_: unknown, info: PanInfo) => { if (info.offset.x > 110) onPrimary(); else if (info.offset.x < -110) onLater(); };
-  const label = d.kind === "business" ? "Tandai Bisnis" : d.kind === "account" ? "Simpan" : d.kind === "recurring" ? "Simpan tagihan" : d.kind === "price" ? `Perbarui jadi ${rupiah(d.newAmount ?? 0)}` : "Sudah berhenti";
+  const label = d.kind === "newpayee" ? "Lihat detail" : d.kind === "business" ? "Tandai Bisnis" : d.kind === "account" ? "Simpan" : d.kind === "recurring" ? "Simpan tagihan" : d.kind === "price" ? `Perbarui jadi ${rupiah(d.newAmount ?? 0)}` : "Sudah berhenti";
   const swipeRight = d.kind === "account" ? "Simpan" : d.kind === "stopped" ? "Berhenti" : d.kind === "price" ? "Perbarui" : "Simpan";
   return <motion.li layout="position" className="dpx-df-wrap" initial={reduce ? false : { opacity: 0, y: 26, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, x: 80, scale: 0.94, transition: { duration: 0.22 } }} transition={{ ...spring, delay: Math.min(i, 6) * 0.06 }}>
     <motion.span className="dpx-df-hint is-yes" style={{ opacity: rightOp }} aria-hidden="true"><Ic n="check" size="sm" />{swipeRight}</motion.span>
@@ -53,6 +54,7 @@ function Card({ d, i, ctx, busy, onPrimary, onLater, onNo, onMore, onImport }: {
         {d.kind === "account" ? <Btn type="button" className="dpx-df-ghost" disabled={busy} onClick={onMore} whileTap={{ scale: 0.95 }}>Ubah / gabung</Btn> : <Btn type="button" className="dpx-df-ghost" disabled={busy} onClick={onLater} whileTap={{ scale: 0.95 }}>Nanti</Btn>}
         <Btn type="button" className="dpx-df-no" disabled={busy} onClick={onNo} whileTap={{ scale: 0.95 }} aria-label={`Bukan ini: ${d.title}`}>Bukan ini</Btn>
       </footer>
+      {d.kind === "newpayee" ? <div className="dpx-df-labels" role="group" aria-label="Beri label">{["Keluarga", "Teman", "Kerja"].map((l) => <Btn key={l} type="button" className="dpx-df-lab" disabled={busy} onClick={() => onLabel(l)} whileTap={{ scale: 0.95 }}>{l}</Btn>)}</div> : null}
       {d.draft && d.issuerId ? <Btn type="button" className="dpx-df-imp" disabled={busy} onClick={onImport} whileTap={{ scale: 0.97 }}><Ic n="dl" size="sm" /> Simpan dan impor email lamanya (1 tahun)</Btn> : null}
     </motion.article>
   </motion.li>;
@@ -151,6 +153,7 @@ export function DiscoveryPage({ ctx, onBack, onOpenReview }: { ctx: FinCtx; onBa
       if (!quiet) ctx.notify(`${d.title} kini ${rupiah(d.newAmount ?? 0)}`, () => { if (old) fin.dispatch({ type: "bill/upsert", bill: old }); void disc.undo([d.key]); });
       return;
     }
+    if (d.kind === "newpayee") { ctx.nav.go(`/penerima?k=${encodeURIComponent(d.payeeKey ?? "")}`); return; }
     await disc.decide([d.key], "dismissed");
     if (!quiet) ctx.notify(`${d.title} ditandai berhenti`, () => void disc.undo([d.key]));
   };
@@ -160,6 +163,9 @@ export function DiscoveryPage({ ctx, onBack, onOpenReview }: { ctx: FinCtx; onBa
     try { await startImport(365, { issuers: d.issuerId ? [d.issuerId] : [] }); ctx.notify(`${d.title} disimpan. Email lamanya mulai dipindai`); ctx.nav.go("/integrasi?impor=1"); }
     catch (e) { ctx.notify((e as { code?: string }).code === "NOT_CONNECTED" ? `${d.title} disimpan. Hubungkan Gmail agar email lamanya bisa diimpor` : `${d.title} disimpan, tetapi impor email belum bisa dimulai`); }
   };
+  const { setLabel } = usePayeeMeta(fin.profileId);
+  /** A label on a new person: remembered, shown beside their name everywhere, and the question is answered. */
+  const labelPayee = async (d: Discovery, label: string) => { if (d.payeeKey) setLabel(d.payeeKey, label); await disc.decide([d.key], "saved"); ctx.notify(`${d.title} diberi label ${label}`, () => { if (d.payeeKey) setLabel(d.payeeKey, ""); void disc.undo([d.key]); }); };
   const later = async (d: Discovery) => { await disc.decide([d.key], "snoozed", d.kind === "stopped" ? 30 : 7); ctx.notify("Ditunda, muncul lagi nanti", () => void disc.undo([d.key])); };
   const no = async (d: Discovery) => { await disc.decide([d.key], "dismissed"); ctx.notify("Tidak akan ditanyakan lagi", () => void disc.undo([d.key])); };
   const run = async (fn: () => Promise<void>) => { setBusy(true); try { await fn(); } finally { setBusy(false); } };
@@ -191,7 +197,7 @@ export function DiscoveryPage({ ctx, onBack, onOpenReview }: { ctx: FinCtx; onBa
 
     <ul className="dpx-df-list">
       <AnimatePresence mode="popLayout" initial={false}>
-        {list.map((d, i) => <Card key={d.key} d={d} i={first.current ? i : 0} ctx={ctx} busy={busy} onPrimary={() => void run(() => accept(d))} onLater={() => void run(() => later(d))} onNo={() => void run(() => no(d))} onMore={() => setOpen(d)} onImport={() => void run(() => importOld(d))} />)}
+        {list.map((d, i) => <Card key={d.key} d={d} i={first.current ? i : 0} ctx={ctx} busy={busy} onPrimary={() => void run(() => accept(d))} onLater={() => void run(() => later(d))} onNo={() => void run(() => no(d))} onMore={() => setOpen(d)} onImport={() => void run(() => importOld(d))} onLabel={(l) => void run(() => labelPayee(d, l))} />)}
       </AnimatePresence>
     </ul>
 

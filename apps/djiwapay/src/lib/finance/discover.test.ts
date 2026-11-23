@@ -50,6 +50,15 @@ describe("discoveries", () => {
     expect(findDiscoveries(s, [e[0]], [], NOW).filter((d) => d.kind === "business")).toHaveLength(0);
   });
 
+  test("a new person with several big transfers is offered a label, and a monthly transfer to a person reads as a transfer", () => {
+    const big = [ent("p1", "Bayu P", 1_500_000, "2026-11-18T05:00:00Z", { categoryId: "transfer" }), ent("p2", "Bayu P", 1_500_000, "2026-11-19T05:00:00Z", { categoryId: "transfer" }), ent("p3", "Bayu P", 1_200_000, "2026-11-19T09:00:00Z", { categoryId: "transfer" })];
+    const f = findDiscoveries(state(), big, [], NOW).filter((d) => d.kind === "newpayee");
+    expect(f).toHaveLength(1); expect(f[0]).toMatchObject({ lead: "Penerima baru, nominal besar", amount: 4_200_000, payeeKey: "bayu p" });
+    expect(findDiscoveries(state(), big, [], NOW, [], { kinds: {}, labels: { "bayu p": "Teman" } }).filter((d) => d.kind === "newpayee")).toHaveLength(0);
+    const monthlyPerson = monthly("Rani Amalia", 1_500_000, [4, 34, 64, 95]).map((e) => ({ ...e, categoryId: "transfer" }));
+    expect(findDiscoveries(state(), monthlyPerson, [], NOW).find((d) => d.kind === "recurring")?.lead).toBe("Transfer rutin terdeteksi");
+  });
+
   test("three monthly payments of about the same amount suggest one bill", () => {
     const found = findDiscoveries(state(), monthly("Netflix", 54990, [4, 34, 64, 95]), [], NOW);
     expect(found).toHaveLength(1);

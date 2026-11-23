@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { payeeName } from "../../lib/finance/payees";
 import { Btn, I3, Ic, Seg, Sheet, bigAmountSize, iconOr, spring, type IconName } from "../shell/dpx-ui";
 import { accountBalance, daysUntil, debtPaid, debtRemaining, debtTotals, goalPlan, goalProjection, goalSaved, uid } from "../../lib/finance/calc";
 import { CATEGORY_ICONS, PAY_ACCOUNT_ID, TONES } from "../../lib/finance/categories";
@@ -66,7 +67,7 @@ export function AccountSheet({ state, balances, value, onPick, onClose, onAdd, i
 }
 
 /* ---------- entry detail ---------- */
-export function EntrySheet({ entry, fin, notify, onClose, onEdit, onPickCategory }: { entry: Entry; fin: Finance; notify: Notify; onClose: () => void; onEdit: () => void; onPickCategory: (id: string) => void }) {
+export function EntrySheet({ entry, fin, notify, onClose, onEdit, onPickCategory, onPayee }: { entry: Entry; fin: Finance; notify: Notify; onClose: () => void; onEdit: () => void; onPickCategory: (id: string) => void; /** Opens everything with the same person or shop. */ onPayee?: () => void }) {
   const { state, dispatch } = fin;
   const c = catOf(state, entry.categoryId);
   const pay = entry.source === "pay";
@@ -88,7 +89,8 @@ export function EntrySheet({ entry, fin, notify, onClose, onEdit, onPickCategory
     <div className="dpx-center" style={{ margin: "-4px 0 10px" }}><CatIcon cat={c} size={64} /><div className="dpx-money" style={{ marginTop: 8, color: entry.kind === "in" ? "var(--ok)" : undefined }}>{sign}{rupiah(entry.amount)}</div><div className="dpx-sub">{entry.note || c.name}</div></div>
     <div className="dpx-group">
       <div className="dpx-kv"><span>Kategori</span><b>{c.name}{entry.tags.includes(AI_TAG) ? <span className="dpx-ai-tag" title="Dipilih otomatis oleh AI. Ubah lewat Ubah catatan.">AI</span> : null}</b></div><div className="dpx-kv"><span>Dompet</span><b>{accName(state, entry.accountId)}</b></div>
-      <div className="dpx-kv"><span>Waktu</span><b>{formatDateTime(entry.at)}</b></div><div className="dpx-kv"><span>Sumber</span><b>{pay ? "Djiwa Pay (otomatis)" : entry.source === "voice" ? "Suara / teks" : entry.source === "receipt" ? "Scan struk" : entry.source === "email" ? "Email pembayaran" : entry.source === "sheet" ? "Spreadsheet" : "Manual"}</b></div>
+      <div className="dpx-kv"><span>Waktu</span><b>{formatDateTime(entry.at)}</b></div>
+      {onPayee && entry.kind !== "tf" && entry.note.trim() ? <button type="button" className="dpx-kv dpx-kv-link" onClick={onPayee}><span>{entry.kind === "in" ? "Pengirim" : "Penerima"}</span><b>{payeeName(entry.note)} <Ic n="chev" size="sm" /></b></button> : null}<div className="dpx-kv"><span>Sumber</span><b>{pay ? "Djiwa Pay (otomatis)" : entry.source === "voice" ? "Suara / teks" : entry.source === "receipt" ? "Scan struk" : entry.source === "email" ? "Email pembayaran" : entry.source === "sheet" ? "Spreadsheet" : "Manual"}</b></div>
       {entry.tags.some((t) => t !== "loan-receipt" && !t.startsWith("loan:")) ? <div className="dpx-kv"><span>Tag</span><b>{entry.tags.filter((t) => t !== "loan-receipt" && !t.startsWith("loan:")).map((t) => `#${t}`).join(" ")}</b></div> : null}
     </div>
     {!entry.receiptId && !entry.inboundId ? <Breakdown title="Rincian" count="1 item"

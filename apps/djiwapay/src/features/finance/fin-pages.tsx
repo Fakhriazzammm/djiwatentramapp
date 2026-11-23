@@ -12,6 +12,7 @@ import { DayStrip, MonthStrip, dayKey, monthKey, monthRange } from "./day-strip"
 import { TidyBanner } from "./tidy-banner";
 import { TidySheet } from "./tidy-sheet";
 import { TidyCard } from "./tidy-card";
+import { payeeKeyOf } from "../../lib/finance/payees";
 import type { Discoveries } from "../../lib/finance/discoveries-api";
 import { isCrossScope } from "../../lib/finance/scope";
 import { rootId, guessCategory } from "../../lib/finance/categories";
@@ -459,7 +460,7 @@ export function FinSheetHost({ ctx, sheet, close, goManual, openPaySheet }: { ct
   if (!sheet) return null;
   switch (sheet.k) {
     case "catat": return <CatatSheet key="catat" fin={fin} notify={notify} balances={balances} onClose={close} onManual={(k) => { close(); goManual(k); }} onPay={() => { close(); openPaySheet(); }} onAsset={() => { close(); ctx.open({ k: "asset-new" }); }} />;
-    case "entry": { const e = entries.find((x) => x.id === sheet.id); if (!e) return null; return <EntrySheet key="entry" entry={e} fin={fin} notify={notify} onClose={close} onEdit={() => { close(); goManual(e.kind, e.id); }} onPickCategory={() => ctx.open({ k: "pay-category", id: e.id })} />; }
+    case "entry": { const e = entries.find((x) => x.id === sheet.id); if (!e) return null; return <EntrySheet key="entry" entry={e} fin={fin} notify={notify} onClose={close} onEdit={() => { close(); goManual(e.kind, e.id); }} onPickCategory={() => ctx.open({ k: "pay-category", id: e.id })} onPayee={() => { close(); ctx.nav.go(`/penerima?k=${encodeURIComponent(payeeKeyOf(e.note))}&m=${e.kind === "in" ? "in" : "out"}`); }} />; }
     case "pay-category": { const e = entries.find((x) => x.id === sheet.id); if (!e) return null; return <CategorySheet key="paycat" categories={state.categories} income={e.kind === "in"} value={e.categoryId} onPick={(id) => { fin.dispatch({ type: "override/set", id: e.id, override: { categoryId: id } }); notify("Kategori diubah"); }} onClose={close} />; }
     case "budget": return <BudgetSheet key="budget" fin={fin} categoryId={sheet.cid} suggested={suggested} notify={notify} onClose={close} />;
     case "goal": return <GoalSheet key="goal" fin={fin} goal={state.goals.find((g) => g.id === sheet.id)} notify={notify} onClose={close} />;

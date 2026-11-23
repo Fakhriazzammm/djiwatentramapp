@@ -1,3 +1,4 @@
+import { classify, newBigPayees, type Meta } from "./payees";
 import type { Account, AccountType, Bill, Entry, FinanceState } from "./types";
 
 /**
@@ -9,13 +10,13 @@ import type { Account, AccountType, Bill, Entry, FinanceState } from "./types";
  *  - stopped:   a monthly payment that used to come and stopped
  * A suggestion never changes a record by itself, and each one is checked against what already exists so it can never create a duplicate.
  */
-export type DiscoveryKind = "account" | "recurring" | "price" | "stopped" | "business";
+export type DiscoveryKind = "account" | "recurring" | "price" | "stopped" | "business" | "newpayee";
 export type DiscoveryGroup = "dompet" | "tagihan" | "langganan";
 export type BillDraft = { id: string; name: string; amount: number; day: number; icon: string; tone: string };
 export type Discovery = {
   key: string; kind: DiscoveryKind; group: DiscoveryGroup; title: string; lead: string; detail: string;
   amount?: number; /** 0..1, how sure the detector is. */ confidence: number; at: string;
-  accountId?: string; /** The bank or biller (issuer id) behind a wallet found in e-mail: its old mail can be imported. */ issuerId?: string; /** A bank or e-wallet seen in e-mail that is not in any wallet, asset, bill or loan yet: saving creates this wallet. */ draft?: Account; bill?: BillDraft; billId?: string; newAmount?: number; oldAmount?: number;
+  accountId?: string; /** A person worth labelling: the key their payee page opens with. */ payeeKey?: string; /** The bank or biller (issuer id) behind a wallet found in e-mail: its old mail can be imported. */ issuerId?: string; /** A bank or e-wallet seen in e-mail that is not in any wallet, asset, bill or loan yet: saving creates this wallet. */ draft?: Account; bill?: BillDraft; billId?: string; newAmount?: number; oldAmount?: number;
   /** Past payments that prove the pattern, newest first. */ proof: { at: string; amount: number }[];
 };
 /** From the server: a bank or e-wallet that e-mail shows and that is tracked nowhere yet. */
@@ -78,7 +79,7 @@ type Series = { key: string; name: string; list: Entry[]; gap: number; amount: n
 function monthlySeries(entries: Entry[], now: Date): Series[] {
   const by = new Map<string, Entry[]>();
   for (const e of entries) {
-    if (e.kind !== "out" || e.categoryId === "transfer" || e.tags.includes("loan-receipt") || !e.note) continue;
+    if (e.kind !== "out" || e.tags.includes("loan-receipt") || !e.note) continue;   // a transfer to a person is "out"; moves between own wallets are "tf" and never get here
     if (+now - +new Date(e.at) > 400 * DAY) continue;
     const k = payeeKey(e.note); if (k.length < 3) continue;
     by.set(k, [...(by.get(k) ?? []), e]);
@@ -111,7 +112,7 @@ function billFinds(state: FinanceState, entries: Entry[], now: Date): Discovery[
     if (age <= s.gap * 1.45 + 5) {
       out.push({
         key: `rec:${slug(s.key)}`, kind: "recurring", group: subscription ? "langganan" : "tagihan", title: s.name,
-        lead: subscription ? "Langganan terdeteksi" : "Tagihan rutin terdeteksi",
+        lead: subscription ? "Langganan terdeteksi" : classify(s.name) === "orang" ? "Transfer rutin terdeteksi" : "Tagihan rutin terdeteksi",
         detail: `${s.list.length} kali dibayar sekitar tanggal ${day}, sekitar ${rp(s.amount)} per bulan.`,
         amount: latest, confidence: Math.min(0.97, 0.6 + s.list.length * 0.08), at: last.at, proof,
         bill: { id: `disc-${slug(s.key)}`, name: s.name, amount: Math.round(latest), day, icon: subscription ? "repeat" : "receipt", tone: subscription ? "violet" : "amber" },
@@ -162,12 +163,21 @@ function businessFinds(state: FinanceState, entries: Entry[], now: Date): Discov
   return out;
 }
 
-const ORDER: Record<DiscoveryKind, number> = { account: 0, business: 1, price: 2, recurring: 3, stopped: 4 };
+/** A person you sent several transfers to for the first time lately, adding up to something big: label them so the money is easy to trace. */
+function payeeFinds(entries: Entry[], meta: Meta, now: Date): Discovery[] {
+  return newBigPayees(entries, meta, now).map((p) => ({
+    key: `payee:${slug(p.key)}`, kind: "newpayee" as const, group: "dompet" as const, title: p.name, lead: "Penerima baru, nominal besar",
+    detail: `Pertama kali kamu transfer ke orang ini: ${p.count} kali dalam ${Math.max(1, Math.round((+now - +new Date(p.firstAt)) / DAY))} hari, total ${rp(p.total)}. Beri label supaya mudah dilacak.`,
+    amount: p.total, confidence: 0.85, at: p.lastAt, payeeKey: p.key, proof: p.entries.slice(0, 4).map((e) => ({ at: e.at, amount: e.amount })),
+  }));
+}
+
+const ORDER: Record<DiscoveryKind, number> = { account: 0, business: 1, newpayee: 2, price: 3, recurring: 4, stopped: 5 };
 
 /** Everything found that the person has not answered yet, most useful first. */
-export function findDiscoveries(state: FinanceState, entries: Entry[], decisions: Decision[], now = new Date(), untracked: Untracked[] = []): Discovery[] {
+export function findDiscoveries(state: FinanceState, entries: Entry[], decisions: Decision[], now = new Date(), untracked: Untracked[] = [], meta: Meta = { kinds: {}, labels: {} }): Discovery[] {
   const answered = new Set(decisions.filter((d) => d.status !== "snoozed" || (d.until && +new Date(d.until) > +now)).map((d) => d.key));
-  return [...untrackedFinds(state, untracked), ...accountFinds(state, entries, now), ...businessFinds(state, entries, now), ...priceFinds(state, entries, now), ...billFinds(state, entries, now)]
+  return [...untrackedFinds(state, untracked), ...accountFinds(state, entries, now), ...businessFinds(state, entries, now), ...payeeFinds(entries, meta, now), ...priceFinds(state, entries, now), ...billFinds(state, entries, now)]
     .filter((d) => !answered.has(d.key))
     .filter((d) => d.confidence >= 0.6)
     .sort((a, b) => ORDER[a.kind] - ORDER[b.kind] || b.confidence - a.confidence || +new Date(b.at) - +new Date(a.at));

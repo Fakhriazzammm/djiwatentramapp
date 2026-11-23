@@ -1,3 +1,4 @@
+import { PayeeCard } from "./payees";
 import { ScopeSwitch } from "./scope-switch";
 import { MonthStrip, monthKey, monthRange } from "./day-strip";
 import { useMemo, useState } from "react";
@@ -87,6 +88,7 @@ export function FinReport({ ctx, onBack }: { ctx: FinCtx; onBack: () => void }) 
           <div><span className="dpx-st-up">Hari terboros</span><b>{st.costly ? st.costly.day.toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short" }) : "—"}</b><span className="dpx-sub">{st.costly ? mk(visible, rpFull(st.costly.amount)) : "belum ada"}</span></div>
           <div><span className="dpx-st-up">Transaksi keluar</span><b>{st.count}</b><span className="dpx-sub">{cal.calm} hari tanpa belanja</span></div>
         </div>
+        <PayeeCard ctx={ctx} y={cursor.y} m={cursor.m} />
         <Card title="Pengeluaran harian"><DailyBars perDay={perDay} elapsed={elapsed} today={isCurrent ? today.getDate() : null} visible={visible} />
           <div className="dpx-st-legend"><span><i style={{ background: "#c9461b" }} />Ada belanja</span><span><i style={{ background: "#4f7a2b" }} />Hari tenang</span><span>┄ Rata-rata</span></div></Card>
         <Card title="Laju belanja" right={<span className="dpx-sub">kumulatif per hari</span>}>

@@ -17,13 +17,13 @@ export function parsePpobPath(pathname: string): PpobRoute | null {
 }
 
 export type WalletRoute = {
-  page: "topup" | "transfer" | "receive" | "history" | "help" | "services" | "wallet" | "summary" | "account" | "budget" | "catat" | "settings" | "calendar" | "health" | "forecast" | "tools" | "integrations" | "review" | "discoveries" | "assets";
+  page: "topup" | "transfer" | "receive" | "history" | "help" | "services" | "wallet" | "summary" | "account" | "budget" | "catat" | "settings" | "calendar" | "health" | "forecast" | "tools" | "integrations" | "review" | "discoveries" | "payees" | "assets";
   transactionId?: string;
 };
 
 /** Bottom-tab destinations and the standalone pages reachable from them. */
-const tabPaths = { "/layanan": "services", "/bayar": "services", "/dompet": "wallet", "/riwayat": "history", "/ringkasan": "summary", "/laporan": "summary", "/akun": "account", "/anggaran": "budget", "/rencana": "budget", "/aset": "assets", "/kekayaan": "wallet", "/kalender": "calendar", "/kesehatan": "health", "/prakiraan": "forecast", "/alat": "tools", "/catat": "catat", "/pengaturan": "settings", "/integrasi": "integrations", "/tinjau": "review", "/temuan": "discoveries" } as const;
-const tabPathPattern = /^(\/layanan|\/bayar|\/dompet|\/riwayat|\/ringkasan|\/laporan|\/akun|\/anggaran|\/rencana|\/kekayaan|\/kalender|\/kesehatan|\/prakiraan|\/alat|\/catat|\/pengaturan|\/integrasi|\/tinjau|\/temuan|\/aset)\/?$/;
+const tabPaths = { "/layanan": "services", "/bayar": "services", "/dompet": "wallet", "/riwayat": "history", "/ringkasan": "summary", "/laporan": "summary", "/akun": "account", "/anggaran": "budget", "/rencana": "budget", "/aset": "assets", "/kekayaan": "wallet", "/kalender": "calendar", "/kesehatan": "health", "/prakiraan": "forecast", "/alat": "tools", "/catat": "catat", "/pengaturan": "settings", "/integrasi": "integrations", "/tinjau": "review", "/temuan": "discoveries", "/penerima": "payees" } as const;
+const tabPathPattern = /^(\/layanan|\/bayar|\/dompet|\/riwayat|\/ringkasan|\/laporan|\/akun|\/anggaran|\/rencana|\/kekayaan|\/kalender|\/kesehatan|\/prakiraan|\/alat|\/catat|\/pengaturan|\/integrasi|\/tinjau|\/temuan|\/penerima|\/aset)\/?$/;
 export const payTabPath = { home: "/", history: "/riwayat", budget: "/rencana", wallet: "/kekayaan" } as const;
 export type PayTab = keyof typeof payTabPath;
 
