@@ -163,6 +163,14 @@ async function requireStaff(token: string, permission?: string) {
 	const users = await restRead("yumi_users", { select: "source_id,name,username,is_active,role_source_id", eq: { source_id: session.user_source_id }, limit: 1 });
 	const user = users?.[0];
 	if (!user?.is_active) throw Object.assign(new Error("Inactive user"), { status: 403 });
+	// Sesi bergeser: dipakai aktif = diperpanjang 24 jam (hanya bila sisa < 12 jam, supaya hemat tulis).
+	if (new Date(session.expires_at).getTime() - Date.now() < 12 * 3600_000) {
+		void fetch(`${SUPABASE_URL}/rest/v1/yumi_sessions?token=eq.${encodeURIComponent(token)}`, {
+			method: "PATCH",
+			headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+			body: JSON.stringify({ expires_at: new Date(Date.now() + 24 * 3600_000).toISOString() }),
+		}).catch(() => {});
+	}
 	const roles = await restRead("yumi_roles", { select: "name,permissions", eq: { source_id: user.role_source_id }, limit: 1 });
 	const role = roles?.[0];
 	const roleName = String(role?.name ?? "").trim().toLowerCase();
