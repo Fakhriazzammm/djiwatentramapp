@@ -17,6 +17,14 @@ import { ImportPreview } from "./import-preview";
 import { openNotifSettings } from "../../lib/native-notif";
 
 /** What a Gmail error code means for the person looking at the screen. */
+/** What a failed spreadsheet means for the person, in plain words (the code with Google's reason is for the admin). */
+const sheetError = (code: string) => {
+  const [base, reason = ""] = code.split(":");
+  if (/accessNotConfigured|SERVICE_DISABLED/i.test(reason)) return "Layanan Google Sheets belum aktif untuk Djiwa Pay. Dicoba lagi otomatis";
+  if (/rateLimit|quota/i.test(reason)) return "Google meminta jeda sebentar. Dilanjutkan otomatis";
+  if (/insufficient|SCOPE|PERMISSION|forbidden/i.test(reason) || /_403$/.test(base)) return "Google belum mengizinkan membuat spreadsheet. Matikan lalu nyalakan lagi untuk memberi izin Drive";
+  return "Sinkron terakhir gagal, dicoba lagi otomatis";
+};
 const gmailError = (code: string) => {
   const [base, reason = ""] = code.split(":");
   if (/accessNotConfigured|SERVICE_DISABLED|has not been used/i.test(reason)) return "Gmail langsung belum tersedia. Gunakan Email terusan atau Apps Script";
@@ -415,7 +423,7 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
       <Row icon="cal" tone="blue" title="Google Calendar" sub={cal ? `${g!.calendar.events} tagihan jadi acara bulanan` : "Tagihan rutin jadi acara + pengingat"} chev={false}
         trail={loadingG ? undefined : !gReady ? soon : <Switch on={cal} label="Google Calendar" onToggle={() => void flip("calendar", cal, "Google Calendar")} />}
         onClick={gReady && !loadingG && busy !== "sw-calendar" ? () => void flip("calendar", cal, "Google Calendar") : undefined} />
-      <Row icon="list" tone="emerald" title="Spreadsheet keuangan" chev={false} sub={drive ? (g!.sheet?.status === "missing" ? "Spreadsheet terhapus di Drive. Ketuk untuk membuat ulang" : g!.sheet?.url ? `Dua arah · ${g!.sheet.pending ? "menyinkronkan…" : g!.sheet.lastSyncedAt ? `disinkron ${ago(g!.sheet.lastSyncedAt)}` : "menunggu sinkron pertama"}` : "Sedang dibuat di Drive-mu…") : "Semua catatan otomatis tertulis di Spreadsheet-mu, dua arah"}
+      <Row icon="list" tone="emerald" title="Spreadsheet keuangan" chev={false} sub={drive ? (g!.sheet?.status === "missing" ? "Spreadsheet terhapus di Drive. Ketuk untuk membuat ulang" : g!.sheet?.error && !g!.sheet?.url ? sheetError(g!.sheet.error) : g!.sheet?.url ? `Dua arah · ${g!.sheet.pending ? "menyinkronkan…" : g!.sheet.lastSyncedAt ? `disinkron ${ago(g!.sheet.lastSyncedAt)}` : "menunggu sinkron pertama"}` : "Sedang dibuat di Drive-mu…") : "Semua catatan otomatis tertulis di Spreadsheet-mu, dua arah"}
         trail={loadingG ? undefined : !gReady ? soon : <Switch on={drive} warn={drive && Boolean(g!.sheet?.error || g!.sheet?.status === "missing")} label="Spreadsheet keuangan" onToggle={() => void flip("sheets", drive, "Spreadsheet")} />}
         onClick={gReady && !loadingG ? (!drive ? () => void flip("sheets", drive, "Spreadsheet") : g!.sheet?.status === "missing" ? () => void run("sheets", "Membuat ulang spreadsheet…") : g!.sheet?.url ? () => window.open(g!.sheet!.url!, "_blank", "noopener") : undefined) : undefined} />
       {drive && g!.sheet?.hold ? <div className="dpx-note dpx-danger" role="alert" style={{ margin: "6px 12px 10px" }}><Ic n="warn" /><div><b>Penghapusan ditahan.</b> {g!.sheet.hold}<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy === "hold"} onClick={() => void holdOk(confirmSheetDeletes)}>Ya, hapus juga di aplikasi</Btn></div></div></div> : null}

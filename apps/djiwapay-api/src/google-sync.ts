@@ -3,7 +3,7 @@
 import { readFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import { accessToken, type Fetch, type GoogleCfg } from "./google.js";
+import { accessToken, googleReason, type Fetch, type GoogleCfg } from "./google.js";
 import { SHEET_DELETE_GUARD, hashOf, planSync, rowOf, type Cell, type EntryRow, type Names, type Plan, type SheetRow } from "./sheets/model.js";
 import { listMeta } from "./payee-meta.js";
 import { CATATAN_ROWS, GROW_BY, SHEET, TEMPLATE_VERSION, catatanRows, contentData, createBody, styleRequests, type Static } from "./sheets/template.js";
@@ -44,8 +44,11 @@ const wib = (d: Date) => new Date(d.getTime() + 7 * 3600_000);
 
 export const sheets = (f: Fetch, token: string, path: string, init: RequestInit = {}) => f(`https://sheets.googleapis.com/v4/spreadsheets${path}`, { ...init, headers: { authorization: `Bearer ${token}`, ...(init.body ? { "content-type": "application/json" } : {}) } });
 export const drive = (f: Fetch, token: string, path: string, init: RequestInit = {}) => f(`https://www.googleapis.com/drive/v3${path}`, { ...init, headers: { authorization: `Bearer ${token}`, ...(init.body ? { "content-type": "application/json" } : {}), ...(init.headers ?? {}) } });
-export class GoogleError extends Error { constructor(public status: number, what: string) { super(`${what}_${status}`); } }
-export const must = async (res: Response, what: string) => { if (!res.ok) throw new GoogleError(res.status, what); return res; };
+/** The reason Google gives rides along ("SHEETS_CREATE_403:accessNotConfigured"), so an admin can tell a switched-off API from a missing permission from a rate limit. */
+export class GoogleError extends Error { constructor(public status: number, what: string, public reason = "") { super(`${what}_${status}${reason ? ":" + reason : ""}`); } }
+export const must = async (res: Response, what: string) => { if (!res.ok) throw new GoogleError(res.status, what, await googleReason(res)); return res; };
+/** How long to leave a failing spreadsheet alone: a switched-off API or a missing permission does not fix itself in five minutes; a rate limit does. */
+export const retryAfterMs = (code: string) => /rateLimit|quota/i.test(code) ? 10 * 60_000 : /:(accessNotConfigured|SERVICE_DISABLED|insufficientPermissions|forbidden|ACCESS_TOKEN_SCOPE_INSUFFICIENT|PERMISSION_DENIED)/i.test(code) || /_403$/.test(code) ? 6 * 3_600_000 : 5 * 60_000;
 
 async function staticData(db: Q, userId: string, n: Awaited<ReturnType<typeof loadNames>>, now: Date): Promise<Static> {
   const w = wib(now), ym = `${w.getUTCFullYear()}-${String(w.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -129,7 +132,7 @@ export async function syncSheet(d: SyncDeps, userId: string, opts: { force?: boo
   const ex = (await d.db.query("select *, clock_timestamp()::text as sync_started from finance.google_sheet_exports where user_id=$1", [userId])).rows[0];
   if (!ex) return { ok: false, action: "idle", error: "NO_EXPORT" };
   const schedule = (ms: number) => d.db.query("update finance.google_sheet_exports set next_sync_at=now()+($2 * interval '1 millisecond') where user_id=$1", [userId, ms]);
-  const fail = async (code: string): Promise<SheetOutcome> => { await d.db.query("update finance.google_sheet_exports set status=case when status='missing' then status else 'failed' end, last_error=$2, next_sync_at=now()+interval '5 minutes' where user_id=$1", [userId, code]); return { ok: false, action: "failed", error: code }; };
+  const fail = async (code: string): Promise<SheetOutcome> => { await d.db.query("update finance.google_sheet_exports set status=case when status='missing' then status else 'failed' end, last_error=$2, next_sync_at=now()+($3 * interval '1 millisecond') where user_id=$1", [userId, code, retryAfterMs(code)]); return { ok: false, action: "failed", error: code }; };
   if (ex.status === "missing" && !opts.force) { await schedule(60 * 60_000); return { ok: false, action: "missing" }; }
   const token = await accessToken(d.db, d.cfg, userId, f);
   if (!token) return fail("NOT_CONNECTED");

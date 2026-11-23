@@ -33,3 +33,14 @@ describe("staged items are categorized while scanning", () => {
     expect(w[1]).toEqual({ aiTried: true });
   });
 });
+
+import { retryAfterMs, GoogleError } from "./google-sync.js";
+describe("a failing spreadsheet is left alone as long as it should be", () => {
+  test("a switched-off API or a missing permission waits hours, a rate limit minutes, anything else the usual five", () => {
+    expect(retryAfterMs("SHEETS_CREATE_403:accessNotConfigured")).toBe(6 * 3_600_000);
+    expect(retryAfterMs("SHEETS_CREATE_403")).toBe(6 * 3_600_000);
+    expect(retryAfterMs("SHEETS_READ_403:rateLimitExceeded")).toBe(10 * 60_000);
+    expect(retryAfterMs("SHEETS_READ_500")).toBe(5 * 60_000);
+  });
+  test("Google's reason rides along in the error", () => { expect(new GoogleError(403, "SHEETS_CREATE", "accessNotConfigured").message).toBe("SHEETS_CREATE_403:accessNotConfigured"); expect(new GoogleError(500, "X").message).toBe("X_500"); });
+});

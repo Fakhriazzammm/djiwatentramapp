@@ -64,7 +64,7 @@ export async function scanStep(d: ImportDeps, imp: Record<string, any>): Promise
     const from = (imp.issuers as string[] | null)?.length ? `from:(${ISSUERS.filter((i) => (imp.issuers as string[]).includes(i.id)).flatMap((i) => i.domains).join(" OR ")})` : senderQuery();
     const q = `${from} after:${Math.floor(start / 1000)} before:${Math.floor(end / 1000)}`;
     const res = await gmail(f, token, `messages?${new URLSearchParams({ q, maxResults: String(PAGE), ...(pageToken ? { pageToken } : {}) })}`);
-    if (res.status === 429 || res.status === 403) { await fail(`GMAIL_${res.status}:${await googleReason(res)}`, res.status === 403 ? 300_000 : 120_000); return; }
+    if (res.status === 429 || res.status === 403) { const why = await googleReason(res); await fail(`GMAIL_${res.status}:${why}`, /rateLimit|quota/i.test(why) || res.status === 429 ? 60_000 : 300_000); return; }
     if (res.status === 401) { await fail("NOT_CONNECTED"); return; }
     if (!res.ok) { await fail(`GMAIL_${res.status}`, 60_000); return; }
     const page = (await res.json()) as { messages?: { id: string }[]; nextPageToken?: string };
@@ -74,7 +74,7 @@ export async function scanStep(d: ImportDeps, imp: Record<string, any>): Promise
     const todo = ids.filter((id) => !handled.has(id));
     for (const id of todo) {
       const raw = await gmail(f, token, `messages/${encodeURIComponent(id)}?format=raw`);
-      if (raw.status === 429) { await fail("GMAIL_429"); return; }
+      if (raw.status === 429 || (raw.status === 403 && /rateLimit|quota/i.test(await googleReason(raw)))) { await fail(`GMAIL_${raw.status}:${await googleReason(raw) || "rateLimitExceeded"}`, 60_000); return; }   // never marked as seen: it is read again after the pause, not lost
       if (raw.ok) {
         const { raw: b64 } = (await raw.json()) as { raw?: string };
         if (b64) {
@@ -86,6 +86,7 @@ export async function scanStep(d: ImportDeps, imp: Record<string, any>): Promise
         }
       }
       await d.db.query("insert into finance.gmail_import_seen(import_id,gmail_id) values($1,$2) on conflict do nothing", [imp.id, id]); scanned++;
+      if (!d.test) await new Promise((r) => setTimeout(r, 70));   // a steady pace keeps Gmail from answering "too many requests"
       if (Date.now() - started > budget) break;
     }
     const mid = todo.length > scanned && Date.now() - started > budget;    // out of time inside this page: resume it next tick

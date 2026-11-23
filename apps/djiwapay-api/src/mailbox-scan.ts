@@ -1,4 +1,4 @@
-import { accessToken, type Fetch, type GoogleCfg } from "./google.js";
+import { accessToken, googleReason, type Fetch, type GoogleCfg } from "./google.js";
 import { ISSUERS } from "./mail/issuers.js";
 import type { Q } from "./sync.js";
 
@@ -14,18 +14,20 @@ export async function scanMailbox(db: Q, cfg: GoogleCfg, userId: string, f: Fetc
   if (!scopes.includes("https://www.googleapis.com/auth/gmail.readonly")) return { ok: false, error: "SCOPE_MISSING", found: 0, checked: 0 };
   const auth = { authorization: `Bearer ${token}` };
   let found = 0, failed = 0;
+  /** Gmail answers "too many requests" to a burst: wait a moment and ask again, a few times. */
+  const get = async (url: string) => { for (let n = 0; n < 4; n++) { const r = await f(url, { headers: auth }); if (r.status !== 429 && r.status !== 403) return r; if (r.status === 403 && !/rateLimit|quota/i.test(await googleReason(r))) return r; await new Promise((x) => setTimeout(x, 800 * (n + 1))); } return f(url, { headers: auth }); };
   const one = async (i: (typeof ISSUERS)[number]) => {
-    const res = await f(`https://gmail.googleapis.com/gmail/v1/users/me/messages?${new URLSearchParams({ q: scanQuery(i.domains), maxResults: "5" })}`, { headers: auth });
+    const res = await get(`https://gmail.googleapis.com/gmail/v1/users/me/messages?${new URLSearchParams({ q: scanQuery(i.domains), maxResults: "5" })}`);
     if (!res.ok) { failed++; return; }
     const j = (await res.json()) as { messages?: { id: string }[]; resultSizeEstimate?: number };
     const first = j.messages?.[0]?.id; if (!first) return;
-    const m = await f(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(first)}?format=minimal`, { headers: auth });
+    const m = await get(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(first)}?format=minimal`);
     const at = m.ok ? Number(((await m.json()) as { internalDate?: string }).internalDate) : NaN;
     await db.query("insert into finance.mailbox_seen(user_id,issuer_id,last_at,seen_at,approx) values($1,$2,$3,now(),$4) on conflict(user_id,issuer_id) do update set last_at=excluded.last_at, seen_at=now(), approx=excluded.approx",
       [userId, i.id, Number.isFinite(at) ? new Date(at).toISOString() : new Date().toISOString(), Math.max(1, j.messages?.length ?? 1)]);
     found++;
   };
   const list = ISSUERS.filter((i) => i.domains.length);
-  for (let k = 0; k < list.length; k += 6) await Promise.all(list.slice(k, k + 6).map((i) => one(i).catch(() => { failed++; })));
+  for (let k = 0; k < list.length; k += 3) { await Promise.all(list.slice(k, k + 3).map((i) => one(i).catch(() => { failed++; }))); await new Promise((r) => setTimeout(r, 120)); }
   return failed >= list.length ? { ok: false, error: "GMAIL_FAILED", found, checked: list.length } : { ok: true, found, checked: list.length };
 }
