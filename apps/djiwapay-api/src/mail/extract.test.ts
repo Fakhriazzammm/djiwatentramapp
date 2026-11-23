@@ -194,3 +194,16 @@ describe("shop grouping", () => {
     expect(parseWhen("Tanggal 17 Nov 2026")).toBe(Date.UTC(2026, 10, 16, 17, 0));   // no time anywhere: midnight as before
   });
 });
+
+import { isNoticeMail as noticeMail, issuerFor as issuerOfDomain } from "./extract";
+describe("system notices and more issuers", () => {
+  test("a system or maintenance notice is not a payment, a transaction notice still is", () => {
+    expect(noticeMail("🧑‍🔧 Informasi optimalisasi sistem", "Rp5.000.000")).toBe(true);
+    expect(noticeMail("Pemberitahuan Pembaruan Ringkasan Informasi Produk", "")).toBe(true);
+    expect(noticeMail("Informasi Transaksi Online - Debit BCA [BERHASIL]", "IDR 25,000.00")).toBe(false);
+    expect(noticeMail("Notifikasi Transaksi", "Rp2.460")).toBe(false);
+  });
+  test("other banks and wallets are recognised by their sending domain", () => {
+    for (const [d, id] of [["permatabank.com", "permata"], ["mail.ocbc.id", "ocbc"], ["bsi.co.id", "bsi"], ["flip.id", "flip"], ["allobank.com", "allo"]] as const) expect(issuerOfDomain(d)?.id).toBe(id);
+  });
+});

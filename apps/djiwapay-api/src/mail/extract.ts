@@ -16,11 +16,30 @@ export const ISSUERS: Issuer[] = [
   { id: "jago", name: "Jago", kind: "bank", domains: ["jago.com", "bankjago.com"] },
   { id: "jenius", name: "Jenius", kind: "bank", domains: ["jenius.com", "btpn.com"] },
   { id: "seabank", name: "SeaBank", kind: "bank", domains: ["seabank.co.id"] },
+  { id: "permata", name: "Permata", kind: "bank", domains: ["permatabank.co.id", "permatabank.com"] },
+  { id: "danamon", name: "Danamon", kind: "bank", domains: ["danamon.co.id"] },
+  { id: "maybank", name: "Maybank", kind: "bank", domains: ["maybank.co.id"] },
+  { id: "ocbc", name: "OCBC", kind: "bank", domains: ["ocbc.id", "ocbcnisp.com"] },
+  { id: "neo", name: "Neo Commerce", kind: "bank", domains: ["bankneocommerce.co.id", "neocommerce.co.id"] },
+  { id: "allo", name: "Allo Bank", kind: "bank", domains: ["allobank.com", "allo.bank"] },
+  { id: "mega", name: "Bank Mega", kind: "bank", domains: ["bankmega.com"] },
+  { id: "panin", name: "Panin", kind: "bank", domains: ["panin.co.id"] },
+  { id: "bsi", name: "BSI", kind: "bank", domains: ["bsi.co.id", "bankbsi.co.id"] },
+  { id: "muamalat", name: "Muamalat", kind: "bank", domains: ["bankmuamalat.co.id"] },
+  { id: "sinarmas", name: "Sinarmas", kind: "bank", domains: ["banksinarmas.com"] },
+  { id: "uob", name: "UOB", kind: "bank", domains: ["uob.co.id"] },
+  { id: "hsbc", name: "HSBC", kind: "bank", domains: ["hsbc.co.id"] },
+  { id: "aladin", name: "Aladin", kind: "bank", domains: ["aladinbank.id"] },
+  { id: "superbank", name: "Superbank", kind: "bank", domains: ["superbank.id"] },
   { id: "gopay", name: "GoPay", kind: "ewallet", domains: ["gopay.co.id", "gojek.com", "go-jek.com"] },
   { id: "ovo", name: "OVO", kind: "ewallet", domains: ["ovo.id"] },
   { id: "dana", name: "DANA", kind: "ewallet", domains: ["dana.id"] },
   { id: "shopeepay", name: "ShopeePay", kind: "ewallet", domains: ["shopee.co.id", "shopeepay.co.id", "shopee.com"] },
   { id: "linkaja", name: "LinkAja", kind: "ewallet", domains: ["linkaja.id"] },
+  { id: "flip", name: "Flip", kind: "ewallet", domains: ["flip.id"] },
+  { id: "doku", name: "DOKU", kind: "ewallet", domains: ["doku.com"] },
+  { id: "kredivo", name: "Kredivo", kind: "service", domains: ["kredivo.com"] },
+  { id: "akulaku", name: "Akulaku", kind: "service", domains: ["akulaku.com"] },
   { id: "grab", name: "Grab", kind: "service", domains: ["grab.com"] },
   { id: "tokopedia", name: "Tokopedia", kind: "service", domains: ["tokopedia.com"] },
   { id: "pln", name: "PLN", kind: "service", domains: ["pln.co.id"] },
@@ -67,7 +86,7 @@ export function isPromo(subject: string, text: string): boolean {
 /** Announces money but moves none: a scam warning, a fee schedule, a product launch. */
 export function isNoticeMail(subject: string, text: string): boolean {
   // Announcements of a product or a limit change ("[PENTING] Limit Baru Kartu Jago!") read as money too.
-  if (/\b(waspada|hati-hati|modus|penipuan|scam|tips|edukasi|limit baru|kenaikan limit|kebijakan baru|fitur baru)\b/i.test(subject)) return true;
+  if (/\b(waspada|hati-hati|modus|penipuan|scam|tips|edukasi|limit baru|kenaikan limit|kebijakan baru|fitur baru|optimalisasi|pemeliharaan|maintenance|gangguan|pembaruan sistem|pemberitahuan (?:perubahan|pembaruan)|informasi (?:penting|layanan|sistem))\b/i.test(subject)) return true;
   // "biaya tidak aktif sebesar Rp10.000 akan didebet setiap bulan": a future charge is not a payment.
   return /\bakan\s+(?:didebet|dipotong|ditagih|dikenakan)\b/i.test(flat(text));
 }
