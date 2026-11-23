@@ -1135,6 +1135,14 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 /* ---- Wallet pouch (default view): cards rise out of a pouch ---- */
 .dpx .dpx-pc{position:relative;height:446px;margin:0 -2px}
 .dpx .dpx-pc-stage{position:absolute;left:0;right:0;top:0;height:250px}
+.dpx .dpx-pc-stage::before{
+  content:"";position:absolute;inset:4px 3px 0;pointer-events:none;
+  border:1px solid #41271c;border-radius:32px 32px 20px 20px;
+  background:linear-gradient(180deg,#150b0626,#180d09bf 72%),
+    url("/assets/wallet-materials/leather.jpg") center 48% / 120% 220%,#38241c;
+  box-shadow:inset 0 2px 1px #bd8967,inset 0 6px 1px #573524,
+    inset 0 10px 8px #1e100bd9,0 3px 7px #24150f36;
+}
 .dpx .dpx-pc-card{position:absolute;left:14px;right:14px;top:34px;height:196px;border-radius:26px;padding:16px 18px;color:#fff;overflow:hidden;cursor:pointer;touch-action:pan-y;user-select:none;-webkit-user-select:none;transform-origin:50% 100%;
   box-shadow:0 14px 30px -12px rgba(20,16,12,.55),0 0 0 1px rgba(255,255,255,.08) inset}
 .dpx .dpx-pc-card > .dpx-wd-sheen{background:url("/assets/wallet-materials/satin.jpg") center / 100% 100%;mix-blend-mode:soft-light;opacity:.85;border-radius:inherit;box-shadow:inset 0 2px 1px #fff9,inset 0 -3px 2px #0008}

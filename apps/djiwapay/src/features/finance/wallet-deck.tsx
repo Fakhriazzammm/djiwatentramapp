@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AnimatedNumber, Btn, I3, Ic, Seg, Sheet, spring, type IconName } from "../shell/dpx-ui";
 import type { FinCtx } from "./fin-pages";
 import { EntryRow } from "./fin-pages";
@@ -68,19 +68,29 @@ const tagOf = (c: { id: string; pay: boolean; name: string }) => (c.id === ALL_I
  */
 function Pouch({ cards, sel, go, ctx, stats, hint, cur }: { cards: Card[]; sel: number; go: (i: number) => void; ctx: FinCtx; stats: { inn: number; out: number }; hint: boolean; cur: Card }) {
   const n = cards.length, mask = (t: string) => (ctx.visible ? t : "•••••"), neg = cur.balance < 0;
-  // The card that just left the front tips up and back over the pile, then settles behind it.
-  // Decided while rendering, so the card starts its lift from the front slot instead of from where it was already hidden.
-  const prev = useRef(sel), leave = useRef<string | null>(null), [, bump] = useState(0);
-  if (prev.current !== sel) { leave.current = cards[prev.current]?.id ?? null; prev.current = sel; }
-  useEffect(() => { if (!leave.current) return; const t = window.setTimeout(() => { leave.current = null; bump((x) => x + 1); }, 950); return () => window.clearTimeout(t); }, [sel]);
-  const leaving = leave.current;
-  return <motion.div className="dpx-pc" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING, delay: 0.05 }}>
+  const reducedMotion = useReducedMotion();
+  const [shuffle, setShuffle] = useState({ front: cur.id, leaving: null as string | null });
+  if (shuffle.front !== cur.id) {
+    setShuffle({ front: cur.id, leaving: reducedMotion ? null : shuffle.front });
+  }
+
+  return <motion.div className="dpx-pc" initial={false}>
     <div className="dpx-pc-stage">
       {cards.map((c, i) => {
-        const p = (i - sel + n) % n, pos = p < 3 ? POS[p] : TUCKED, front = p === 0, flip = leaving === c.id && n > 1;
-        return <motion.div key={c.id} className="dpx-pc-card" style={{ background: `linear-gradient(145deg, ${c.skin.from}, ${c.skin.to})`, zIndex: p < 3 ? 5 - p : 1, pointerEvents: p < 3 ? "auto" : "none", transformPerspective: 900 }}
-          animate={flip ? { y: [0, -132, -62, -44], rotateX: [0, 12, 40, 0], scale: [1, 1.05, 0.9, 0.84], opacity: [1, 1, 1, 0], zIndex: [7, 7, 0, 0] } : { y: pos.y, rotateX: 0, scale: pos.s, opacity: p < 3 ? 1 : 0 }}
-          transition={flip ? { duration: 0.85, times: [0, 0.38, 0.7, 1], ease: "easeInOut" } : SPRING}
+        const p = (i - sel + n) % n, pos = p < 3 ? POS[p] : TUCKED, front = p === 0, lifting = !reducedMotion && shuffle.leaving === c.id && n > 1;
+        return <motion.div key={c.id} className="dpx-pc-card" style={{ background: `linear-gradient(145deg, ${c.skin.from}, ${c.skin.to})`, pointerEvents: !lifting && p < 3 ? "auto" : "none", transformPerspective: 900 }}
+          initial={false}
+          animate={lifting ? {
+            y: [0, -104, -112, pos.y], rotate: [0, -3, -4, 0],
+            rotateX: [0, 0, 6, 0], scale: [1, 1.025, 0.97, pos.s],
+            zIndex: [7, 7, 1, p < 3 ? 5 - p : 1], opacity: [1, 1, 1, p < 3 ? 1 : 0],
+          } : { y: pos.y, rotate: 0, rotateX: 0, scale: pos.s, opacity: p < 3 ? 1 : 0, zIndex: p < 3 ? 5 - p : 1 }}
+          transition={reducedMotion ? { duration: 0 } : lifting
+            ? { type: "tween", duration: 0.72, times: [0, 0.40, 0.55, 1], ease: ["easeOut", "easeInOut", "easeInOut"] }
+            : { ...SPRING, zIndex: { duration: 0 } }}
+          onAnimationComplete={() => {
+            if (lifting) setShuffle(current => current === shuffle ? { ...current, leaving: null } : current);
+          }}
           drag={front && n > 1 ? "x" : false} dragSnapToOrigin dragElastic={0.5} dragMomentum={false}
           onDragEnd={(_, info) => { if (Math.abs(info.offset.x) > 60 || Math.abs(info.velocity.x) > 500) go(sel + (info.offset.x < 0 ? 1 : -1)); }}
           onTap={() => go(front ? sel + 1 : i)} whileTap={front ? { scale: 0.985 } : undefined}
@@ -92,7 +102,7 @@ function Pouch({ cards, sel, go, ctx, stats, hint, cur }: { cards: Card[]; sel: 
             <span className="dpx-wd-name"><b>{c.name}</b><small>{c.account ? `${accountScope(c.account) === "business" ? "Bisnis" : "Pribadi"} · ` : ""}{c.type === "all" ? "Ringkasan semua dompet" : c.pay ? "Saldo digital" : c.type === "bank" ? "Rekening bank" : c.type === "ewallet" ? "Dompet digital" : c.type === "card" ? "Kartu" : c.type === "cash" ? "Tunai" : "Dompet"}</small></span>
             <span className="dpx-pc-tag">{tagOf(c)}</span>
           </div>
-          <motion.i className="dpx-pc-dim" initial={false} animate={{ opacity: pos.dim }} transition={SPRING} />
+          <motion.i className="dpx-pc-dim" initial={false} animate={{ opacity: pos.dim }} transition={reducedMotion ? { duration: 0 } : SPRING} />
         </motion.div>;
       })}
     </div>
