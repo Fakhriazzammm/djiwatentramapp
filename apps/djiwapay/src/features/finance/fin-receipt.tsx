@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Btn, Ic, Sheet } from "../shell/dpx-ui";
 import { ScanSweep } from "../shell/scan-camera";
 import { formatDateTime } from "../../lib/djiwa-pay-format";
@@ -45,6 +46,18 @@ function NumberField({ label, value, onChange }: { label: string; value: number 
 }
 
 /** Same editor for new camera/upload results and persistent receipt corrections. */
+function RxScreen({ title, aurora, onClose, onRetry, footer, children }: { title: string; aurora: boolean; onClose: () => void; onRetry?: () => void; footer: ReactNode; children: ReactNode }) {
+  useEffect(() => { const prev = document.body.style.overflow; document.body.style.overflow = "hidden"; const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); }; window.addEventListener("keydown", k); return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", k); }; }, [onClose]);
+  const node = <div className="dpx dpx-rxv" role="dialog" aria-modal="true" aria-label={title}>
+    {aurora ? <div className="dpx-aurora" aria-hidden="true"><i /></div> : null}
+    <div className="dpx-rxv-top"><button type="button" className="dpx-rxv-x" onClick={onClose} aria-label="Tutup"><Ic n="close" /></button>{onRetry ? <button type="button" className="dpx-rxv-retake" onClick={onRetry}>Ulangi</button> : <span />}</div>
+    <h1 className="dpx-rxv-title">{title}</h1>
+    <div className="dpx-rxv-body">{children}</div>
+    <div className="dpx-rxv-foot">{footer}</div>
+  </div>;
+  return createPortal(node, document.body);
+}
+
 export function ReceiptReview({ initial, preview, onRetry, entry, attach, ...props }: FlowProps & { initial: ScannedReceipt; preview?: string; onRetry?: () => void; entry?: Entry; attach?: Entry }) {
   const { fin, notify, onClose, balances } = props;
   const [doc, setDoc] = useState<ScannedReceipt>(()=>({ ...initial, purchasedAt: initial.purchasedAt ?? attach?.at ?? null, items: initial.items.map(i=>({...i,components:i.components ?? []})), charges: initial.charges.map(c=>({...c})) }));
@@ -55,7 +68,7 @@ export function ReceiptReview({ initial, preview, onRetry, entry, attach, ...pro
   });
   const [categoryId, setCategoryId] = useState((entry ?? attach)?.categoryId ?? "belanja");
   const [pick, setPick] = useState<"account" | "category" | null>(null);
-  const [checked, setChecked] = useState(false), [saving, setSaving] = useState(false), [error, setError] = useState("");
+  const [editing, setEditing] = useState(false), [checked, setChecked] = useState(false), [saving, setSaving] = useState(false), [error, setError] = useState("");
   const savingRef = useRef(false);
   const change = (patch: Partial<ScannedReceipt>) => { setDoc(d=>({...d,...patch})); setChecked(false); setError(""); };
   const itemChange = (index: number, patch: Partial<ScannedReceipt["items"][number]>, recalc = false) => {
@@ -80,16 +93,26 @@ export function ReceiptReview({ initial, preview, onRetry, entry, attach, ...pro
   };
   if (pick === "account") return <AccountSheet state={fin.state} balances={balances} value={accountId} onPick={id=>{setAccountId(id);setChecked(false);}} onClose={()=>setPick(null)} />;
   if (pick === "category") return <CategorySheet categories={fin.state.categories} income={false} value={categoryId} onPick={id=>{setCategoryId(id);setChecked(false);}} onClose={()=>setPick(null)} />;
-  return <Sheet tone="scan" title={attach ? "Tambah rincian struk" : entry ? "Ubah rincian struk" : "Periksa rincian struk"} onClose={()=>{if(!savingRef.current)onClose();}}>
-    {preview ? <div className="dpx-aurora" aria-hidden="true"><i /></div> : null}
-    <p className="dpx-sub">{attach ? `Nominal bayar ${rupiah(attach.amount)}, dompet, dan waktu dari email tidak berubah. Struk menambahkan item, pajak, dan diskon.` : "Satu struk, satu pengeluaran. Semua rincian tetap tersimpan."}</p>
+  const needsCheck = totals.problems.length > 0 || doc.warnings.length > 0 || doc.items.some(i=>i.confidence < .7);
+  const canSave = !saving && totals.valid && Boolean(metadataValid) && selectionValid && (!needsCheck || checked);
+  const photoSrc = preview ?? receiptImageUrl(doc.id);
+  const money = (n: number | null) => n === null ? "—" : rupiah(n);
+  const when = doc.purchasedAt ? formatDateTime(doc.purchasedAt) : "Waktu belum terbaca";
+  const account = accountId ? accName(fin.state, accountId) : "Pilih dompet";
+  return <RxScreen title={attach ? "Tambah rincian struk" : entry ? "Ubah rincian struk" : "Pengeluaran baru"} aurora={Boolean(preview) && !editing} onClose={()=>{if(!savingRef.current)onClose();}} onRetry={onRetry && !editing ? onRetry : undefined}
+    footer={<>
+      {error ? <div className="dpx-rxv-err" role="alert">{error}</div> : null}
+      {needsCheck && !editing ? <label className="dpx-rxv-check"><input type="checkbox" checked={checked} onChange={e=>setChecked(e.target.checked)} /><span>Saya sudah memeriksa item, total, dan dompet.</span></label> : null}
+      {editing ? <Btn type="button" className="dpx-btn" onClick={()=>setEditing(false)}>Selesai mengubah</Btn> : <Btn type="button" className="dpx-btn" disabled={!canSave} onClick={()=>void save()}>{saving ? "Menyimpan…" : attach ? "Simpan rincian struk" : entry ? "Simpan perubahan struk" : `Simpan 1 catatan · ${rupiah(doc.total)}`}</Btn>}
+    </>}>
+    {attach ? <p className="dpx-rxv-note">Nominal bayar {rupiah(attach.amount)}, dompet, dan waktu dari email tidak berubah. Struk menambahkan item, pajak, dan diskon.</p> : null}
+    {editing ? <>
     <fieldset className="dpx-receipt-editor" disabled={saving}>
       <div className="dpx-rcs"><label className="dpx-receipt-field"><span>Toko / tempat</span><input value={doc.merchant} maxLength={160} onChange={e=>change({merchant:e.target.value})} /></label>
       <label className="dpx-receipt-field"><span>Tanggal dan waktu transaksi</span><input type="datetime-local" value={dateInput(doc.purchasedAt)} onChange={e=>change({purchasedAt:e.target.value ? new Date(e.target.value).toISOString() : null})} /></label>
       {!metadataValid ? <p className="dpx-hint">Lengkapi toko serta tanggal yang sesuai dengan struk.</p> : null}
       <div className="dpx-receipt-fields"><label className="dpx-receipt-field"><span>Nomor struk (opsional)</span><input value={doc.reference} onChange={e=>change({reference:e.target.value})} /></label><label className="dpx-receipt-field"><span>Metode bayar tercetak (opsional)</span><input value={doc.paymentMethod} onChange={e=>change({paymentMethod:e.target.value})} /></label></div>
       <label className="dpx-receipt-field"><span>Alamat toko (opsional)</span><input value={doc.merchantAddress} onChange={e=>change({merchantAddress:e.target.value})} /></label></div>
-      <details className="dpx-receipt-photo"><summary><img className="dpx-rx-thumb" src={preview ?? receiptImageUrl(doc.id)} alt="" /><span><b>Foto asli</b><small>Terlampir di catatan ini</small></span></summary><img src={preview ?? receiptImageUrl(doc.id)} alt="Foto struk asli untuk memeriksa rincian" /></details>
       <h3 className="dpx-receipt-heading">Rincian item · {doc.items.length}</h3>
       {doc.items.map((i,k)=><div className="dpx-receipt-item" key={k}>
         <div className="dpx-receipt-item-head"><label className="dpx-receipt-field"><span>Item {k+1}{i.confidence < .7 ? " · periksa" : ""}</span><input aria-label={`Nama item ${k+1}`} value={i.name} maxLength={160} onChange={e=>itemChange(k,{name:e.target.value})} /></label><Btn type="button" className="dpx-sh-x" aria-label={`Hapus item ${k+1}`} onClick={()=>change({items:doc.items.filter((_,n)=>n!==k)})}><Ic n="close" size="sm" /></Btn></div>
@@ -117,12 +140,26 @@ export function ReceiptReview({ initial, preview, onRetry, entry, attach, ...pro
       {attach ? null : <><Btn type="button" className="dpx-walletpick" onClick={()=>setPick("account")}><Ic n="wallet" /><span><small>Dompet</small><b>{accountId ? accName(fin.state,accountId) : "Pilih dompet pembayaran"}</b></span><em>Ganti</em></Btn>
       <Btn type="button" className="dpx-walletpick" onClick={()=>setPick("category")}><Ic n="tag" /><span><small>Kategori catatan</small><b>{catOf(fin.state,categoryId).name}</b></span><em>Ganti</em></Btn></>}
     </fieldset>
-    {error ? <div className="dpx-note dpx-danger" role="alert">{error}</div> : null}
-    <div className="dpx-rc-bar"><label className="dpx-receipt-check"><input type="checkbox" checked={checked} onChange={e=>setChecked(e.target.checked)} /> Saya sudah memeriksa semua item, kuantitas, biaya, total, dan dompet pembayaran.</label>
-    <Btn type="button" className="dpx-btn" disabled={saving || !checked || !totals.valid || !metadataValid || !selectionValid} onClick={()=>void save()}>{saving ? "Menyimpan…" : attach ? "Simpan rincian struk" : entry ? "Simpan perubahan struk" : `Simpan 1 catatan · ${rupiah(doc.total)}`}</Btn>
-    {onRetry ? <Btn type="button" className="dpx-btn dpx-soft" disabled={saving} onClick={onRetry}>Pilih foto lain</Btn> : null}
-    </div>
-  </Sheet>;
+    </> : <>
+    <section className="dpx-rxv-card">
+      <header><span className="dpx-rxv-logo"><Ic n="receipt" /></span><div><b>{doc.merchant || "Toko belum terbaca"}</b>{doc.merchantAddress ? <small>{doc.merchantAddress}</small> : null}</div></header>
+      <div className="dpx-rxv-meta"><div><span>{when}</span>{doc.reference ? <small>No. {doc.reference}</small> : null}</div></div>
+      <ul className="dpx-rxv-items">{doc.items.map((i,k)=><li key={k}><div><b>{i.name || "Item"}</b>{i.confidence < .7 ? <em>periksa</em> : null}<small>{i.qty ?? 1}{i.unit ? ` ${i.unit}` : " ×"}{i.unitPrice !== null ? ` · ${rupiah(i.unitPrice)}` : ""}{i.discount ? ` · diskon ${rupiah(i.discount)}` : ""}</small>{i.components.length ? <small className="dpx-rxv-sub">{i.components.map(c=>c.name).join(" · ")}</small> : null}</div><span>{money(i.price)}</span></li>)}</ul>
+      <dl className="dpx-rxv-sum">
+        <div><dt>Subtotal</dt><dd>{rupiah(totals.itemSum)}</dd></div>
+        {doc.discount ? <div><dt>Diskon</dt><dd>−{rupiah(doc.discount)}</dd></div> : null}
+        {doc.charges.map((c,k)=><div key={k} className={c.included ? "inc" : ""}><dt>{c.label || "Biaya"}{c.included ? " (termasuk)" : ""}</dt><dd>{money(c.amount)}</dd></div>)}
+        <div className="tot"><dt>Total</dt><dd>{rupiah(doc.total)}</dd></div>
+      </dl>
+      {doc.paymentMethod || doc.tendered ? <footer><span>{doc.paymentMethod || "Tunai"}</span>{doc.tendered ? <span>Dibayar {rupiah(doc.tendered)}</span> : null}</footer> : null}
+    </section>
+    <div className={`dpx-rxv-verdict ${totals.valid ? "ok" : "bad"}`} role="status"><i />{totals.valid ? "Total cocok dengan struk" : `Belum cocok · selisih ${rupiah(totals.difference)}`}</div>
+    {totals.problems.length || doc.warnings.length ? <ul className="dpx-rxv-warn">{[...totals.problems,...doc.warnings].map((w,k)=><li key={k}>{w}</li>)}</ul> : null}
+    {attach ? null : <div className="dpx-rxv-pick"><button type="button" onClick={()=>setPick("account")}><Ic n="wallet" /><span><small>Dompet</small><b>{account}</b></span><Ic n="chev" size="sm" /></button><button type="button" onClick={()=>setPick("category")}><Ic n="tag" /><span><small>Kategori</small><b>{catOf(fin.state,categoryId).name}</b></span><Ic n="chev" size="sm" /></button></div>}
+    <div className="dpx-rxv-photo"><img src={photoSrc} alt="Foto struk asli" /><span><b>Foto asli</b><small>Terlampir di catatan ini</small></span></div>
+    <button type="button" className="dpx-rxv-edit" onClick={()=>setEditing(true)}><Ic n="edit" size="sm" /> Ubah rincian</button>
+    </>}
+  </RxScreen>;
 }
 
 export function ReceiptBreakdown({ receipt }: { receipt: ReceiptDocument }) {
