@@ -45,3 +45,25 @@ describe("rendering", () => {
     for (const t of BUILTIN_TEMPLATES) { expect(t.html).toContain("{{{unsubscribe_url}}}"); expect(t.segment in SEGMENTS).toBe(true); expect(htmlToText(t.html).length).toBeGreaterThan(40); }
   });
 });
+
+import { existsSync, statSync } from "node:fs";
+import { join } from "node:path";
+describe("email house style", () => {
+  const root = join(import.meta.dir, "../../djiwapay/public");
+  test("every image a built-in template points at exists, is light enough, and has alt text", () => {
+    for (const t of BUILTIN_TEMPLATES) {
+      for (const m of t.html.matchAll(/<img [^>]*src="https:\/\/djiwapay\.web\.id(\/assets\/email\/[^"]+)"[^>]*>/g)) {
+        const file = join(root, m[1]);
+        expect(existsSync(file)).toBe(true);
+        expect(statSync(file).size).toBeLessThan(200_000);
+        expect(m[0]).toContain("alt=");
+        expect(m[0]).toContain("width=");
+      }
+    }
+  });
+  test("a hero email keeps the unsubscribe link and a preheader", () => {
+    const t = BUILTIN_TEMPLATES.find((x) => x.id === "builtin-android-tester")!;
+    expect(t.html).toContain("/assets/email/android-tester/hero.jpg");
+    expect(t.html).toContain("{{{unsubscribe_url}}}");
+  });
+});

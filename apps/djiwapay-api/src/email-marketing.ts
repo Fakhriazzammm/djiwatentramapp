@@ -112,6 +112,16 @@ const steps = (items: string[]) => `<table role="presentation" width="100%" cell
 const feature = (title: string, body: string) => `<tr><td style="padding:0 0 12px;"><strong>${title}</strong><br><span style="color:#55534c;">${body}</span></td></tr>`;
 const box = (s: string) => `<div style="margin:18px 0;padding:14px 16px;background:#f3eddc;border-left:3px solid #16161a;">${s}</div>`;
 
+/* ---------- house style for campaign email: hero image, animated section GIFs, one button (see docs/djiwapay-email-standard.md) ---------- */
+/** Art lives in apps/djiwapay/public/assets/email/<slug>/ and is served from APP_URL. Alt text is required: many clients block images. */
+export const emailArt = (slug: string, file: string, alt: string, width: number) =>
+  `<img src="${APP_URL}/assets/email/${slug}/${file}" alt="${alt}" width="${width}" style="display:block;width:100%;max-width:${width}px;height:auto;border:0;border-radius:12px;">`;
+
+export const emailHero = (slug: string, alt: string) => emailArt(slug, "hero.jpg", alt, 504);
+/** A titled block with a small looping GIF (176px source, shown at 72px) beside the heading. */
+export const emailSection = (slug: string, gif: string, title: string, content: string) =>
+  `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:18px 0 8px;"><tr><td width="72" style="padding-right:14px;">${emailArt(slug, gif, "", 72)}</td><td><h2 style="margin:0;font-size:18px;line-height:1.3;">${title}</h2></td></tr></table>${content}`;
+
 export type Builtin = { id: string; name: string; description: string; segment: SegmentKey; subject: string; html: string };
 export const BUILTIN_TEMPLATES: Builtin[] = [
   { id: "builtin-welcome", name: "Sambutan pengguna baru", description: "Untuk pendaftar baru: kenalkan cara mencatat pertama.", segment: "new", subject: "Selamat datang di Djiwa Pay, {{nama}}!",
@@ -127,7 +137,25 @@ export const BUILTIN_TEMPLATES: Builtin[] = [
   { id: "builtin-invite", name: "Undangan untuk pelanggan lama", description: "Untuk pelanggan Djiwa Tentram yang belum membuka Djiwa Pay.", segment: "invite_old", subject: "{{nama}}, kenalan dengan Djiwa Pay",
     html: wrapEmail(h1("Halo {{nama}}, ada yang baru!") + p("Akun Djiwa Tentram-mu sudah bisa dipakai di <strong>Djiwa Pay</strong>, aplikasi pencatat keuangan pribadi dari kami.") + box("Masuk dengan akun yang sama. Tidak perlu daftar ulang.") + button("Coba Djiwa Pay"), "Pencatat keuangan dari Djiwa Tentram.") },
   { id: "builtin-android-tester", name: "Undangan uji coba Android", description: "Untuk pelanggan ber-Gmail yang setuju info: ajak jadi penguji pertama aplikasi Android Djiwa Pay.", segment: "android_testers", subject: "{{nama}}, kamu diundang jadi yang pertama mencoba Djiwa Pay di Android",
-    html: wrapEmail(h1("{{nama}}, aplikasi Android Djiwa Pay sudah siap dicoba") + p("Kami sedang membuka uji coba terbatas untuk pelanggan Djiwa Tentram, sebelum aplikasinya tersedia untuk umum. Kamu salah satu yang kami undang, gratis.") + `<p style="margin:20px 0 8px;font-weight:700;">Yang bisa kamu coba</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0">` + feature("Foto struk, langsung tercatat", "Arahkan kamera ke struk. Item, pajak, dan total terbaca otomatis, kamu tinggal memeriksa.") + feature("Catat dengan suara atau teks", "Cukup bilang “kopi 25rb dan parkir 5rb”.") + feature("Foto aset jadi stiker", "Emas, perhiasan, atau aset lain dipantau nilainya dari waktu ke waktu.") + feature("Tagihan, anggaran, dan laporan", "Lihat ke mana uangmu pergi, lengkap dengan pengingat tagihan.") + feature("Catat otomatis dari email pembayaran", "Pilihan: hubungkan Gmail dan catatan terisi sendiri.") + `</table>` + `<p style="margin:22px 0 10px;font-weight:700;">Cara bergabung, 3 langkah</p>` + steps(["Buka tombol di bawah <strong>dari HP Android</strong> dan masuk dengan akun Google yang sama dengan alamat email ini.", "Ketuk <strong>Jadi penguji</strong>, lalu <strong>Unduh di Google Play</strong>.", "Masuk dengan akun Djiwa Tentram-mu. Tidak perlu daftar ulang."]) + button("Gabung sebagai penguji", "https://play.google.com/apps/internaltest/4701234918447287738") + box("Untuk Android 7.0 ke atas. Ini versi uji coba, jadi mungkin masih ada yang kurang rapi. Kalau menemukan sesuatu yang janggal, cukup balas email ini dan ceritakan, masukanmu sangat berarti.") + p(`<span style="color:#6c6a62;font-size:13px;">Tombol hanya berfungsi untuk alamat Gmail yang kami daftarkan. Pengguna iPhone tetap bisa memakai Djiwa Pay lewat <a href="{{{link}}}" style="color:#6c6a62;">djiwapay.web.id</a>.</span>`), "Undangan uji coba terbatas, gratis. Tinggal tiga langkah.") },
+    html: wrapEmail(
+      emailHero("android-tester", "Maskot Djiwa Pay memeriksa struk kopi di ponselnya.") +
+      `<p style="margin:16px 0 6px;font-size:12px;color:#695746;">Djiwa Pay by Djiwa Tentram &amp; Zantara Technology</p>` +
+      h1("{{nama}}, aplikasi Android Djiwa Pay sudah siap dicoba") +
+      p("Kami sedang membuka uji coba terbatas untuk pelanggan Djiwa Tentram, sebelum aplikasinya tersedia untuk umum. Kamu salah satu yang kami undang, gratis.") +
+      emailSection("android-tester", "receipt.gif", "Mulai dari struk kopi hari ini",
+        `<table role="presentation" width="100%" cellspacing="0" cellpadding="0">` +
+        feature("Foto struk, langsung tercatat", "Arahkan kamera ke struk. Item, pajak, dan total terbaca otomatis, kamu tinggal memeriksa.") +
+        feature("Catat dengan suara atau teks", "Cukup bilang “kopi 25rb dan parkir 5rb”.") +
+        feature("Catat otomatis dari email pembayaran", "Kalau mau, hubungkan Gmail untuk mencatat pembayaran dari email.") + `</table>`) +
+      emailSection("android-tester", "budget.gif", "Lihat ke mana uangmu pergi",
+        `<table role="presentation" width="100%" cellspacing="0" cellpadding="0">` +
+        feature("Tagihan, anggaran, dan laporan", "Cek sisa anggaran, lihat pengeluaran bulan ini, dan pasang pengingat tagihan.") +
+        feature("Foto aset jadi stiker", "Emas, perhiasan, atau aset lain dipantau nilainya dari waktu ke waktu.") + `</table>`) +
+      emailSection("android-tester", "invite.gif", "Cara bergabung dalam tiga langkah",
+        steps(["Buka tombol di bawah <strong>dari HP Android</strong> dan masuk dengan akun Google yang sama dengan alamat email ini.", "Ketuk <strong>Jadi penguji</strong>, lalu <strong>Unduh di Google Play</strong>.", "Masuk dengan akun Djiwa Tentram-mu. Tidak perlu daftar ulang."])) +
+      button("Gabung sebagai penguji", "https://play.google.com/apps/internaltest/4701234918447287738") +
+      box("Untuk Android 7.0 ke atas. Ini versi uji coba, jadi mungkin masih ada yang kurang rapi. Kalau menemukan sesuatu yang janggal, cukup balas email ini dan ceritakan, masukanmu sangat berarti.") +
+      p(`<span style="color:#6c6a62;font-size:13px;">Tombol hanya berfungsi untuk alamat Gmail yang kami daftarkan. Pengguna iPhone tetap bisa memakai Djiwa Pay lewat <a href="{{{link}}}" style="color:#6c6a62;">djiwapay.web.id</a>.</span>`), "Undangan uji coba terbatas, gratis. Tinggal tiga langkah.") },
   { id: "builtin-announcement", name: "Pengumuman / fitur baru", description: "Kerangka bebas. Ubah teksnya sebelum dikirim.", segment: "active", subject: "Kabar baru dari Djiwa Pay",
     html: wrapEmail(h1("Halo {{nama}}, ada kabar baru!") + p("Tulis isi pengumuman di sini: apa yang baru, kenapa berguna, dan apa yang perlu dilakukan pengguna.") + box("<strong>Tips:</strong> satu pesan utama dan satu tombol ajakan.") + button("Lihat selengkapnya"), "Ada kabar baru dari Djiwa Pay.") },
 ];
