@@ -41,7 +41,7 @@ function Row({ item, ctx, selecting, selected, onToggle, onOpen, onQuick, busy }
       <span className="dpx-rv-text">
         <b>{titleOf(item)}</b>
         <span className="dpx-rv-sub">{sourceOf(item)}{p.at ? ` · ${timeOf(p.at)}` : ""}</span>
-        <span className="dpx-rv-chips"><i>{isBill(item) ? "Belum dibayar" : isMove(item) ? `Pindah dana ke ${p.transfer?.toName ?? "dompet"}` : cat.name}</i>{isBill(item) ? <i className="is-warn">Jatuh tempo {dueLabel(p.due)}</i> : isGeneric(item) ? <i className="is-warn">Pemasukan atau pengeluaran?</i> : !isMove(item) && needsLook(item) ? <i className="is-warn">{(p.categoryId ?? "lainnya") === "lainnya" ? "Pilih kategori" : "Perlu dicek"}</i> : null}</span>
+        <span className="dpx-rv-chips">{p.settlement ? <i>Settlement</i> : null}<i>{isBill(item) ? "Belum dibayar" : isMove(item) ? `Pindah dana ke ${p.transfer?.toName ?? "dompet"}` : cat.name}</i>{isBill(item) ? <i className="is-warn">Jatuh tempo {dueLabel(p.due)}</i> : isGeneric(item) ? <i className="is-warn">Pemasukan atau pengeluaran?</i> : !isMove(item) && needsLook(item) ? <i className="is-warn">{(p.categoryId ?? "lainnya") === "lainnya" ? "Pilih kategori" : "Perlu dicek"}</i> : null}</span>
       </span>
       <span className={`dpx-rv-amt ${kind === "in" && !isMove(item) && !isGeneric(item) && !isBill(item) ? "is-in" : ""}`}>{ok ? (isMove(item) ? `⇄ ${rupiah(moveAmount(item))}` : isGeneric(item) || isBill(item) ? rupiah(p.amount ?? 0) : `${kind === "in" ? "+" : "−"}${rupiah(p.amount ?? 0)}`) : <em style={{ fontSize: 12, fontStyle: "normal", color: "var(--warn, #b4691a)", fontWeight: 600 }}>Nominal belum terbaca</em>}</span>
     </Btn>

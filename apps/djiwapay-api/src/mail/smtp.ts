@@ -34,6 +34,18 @@ const stripTags = (html: string) => html.replace(/<(script|style)[\s\S]*?<\/\1>/
 /** Parses and authenticates one raw message into the shape the pipeline wants. */
 export type MailCtx = { ip: string; helo: string; sender: string; host: string; recipients: string[]; resolver?: (name: string, rr: string) => Promise<unknown>;
   /** Old Gmail mail: its DKIM key may have been rotated away, so also accept Google's own verdict recorded when the mail arrived. */ trustGoogleVerdict?: boolean };
+/** Settlement and merchant reports often carry their figures in a small text, CSV or HTML attachment; those are read as part of the mail. Other attachments (PDF, images) are not opened. */
+export function attachmentText(list: { contentType?: string; filename?: string; content?: Buffer }[] | undefined): string {
+  let out = "";
+  for (const a of (list ?? []).slice(0, 4)) {
+    const type = String(a.contentType ?? "").toLowerCase(), name = String(a.filename ?? "").toLowerCase();
+    if (!a.content || a.content.length > 300_000) continue;
+    if (/^text\/(plain|csv)/.test(type) || /\.(csv|txt)$/.test(name)) out += "\n" + a.content.toString("utf8");
+    else if (/^text\/html/.test(type) || /\.html?$/.test(name)) out += "\n" + stripTags(a.content.toString("utf8"));
+  }
+  return out.slice(0, 8000);
+}
+
 export async function toRawMail(raw: Buffer, ctx: MailCtx): Promise<RawMail> {
   const parsed = await simpleParser(raw, { skipImageLinks: true, skipHtmlToText: false });
   let dmarcPass = false, debug = ""; const dkimDomains: string[] = [];
@@ -56,7 +68,7 @@ export async function toRawMail(raw: Buffer, ctx: MailCtx): Promise<RawMail> {
   }
   return {
     messageId: parsed.messageId ?? "", from: parsed.from?.value?.[0]?.address ?? ctx.sender, to: ctx.recipients, subject: parsed.subject ?? "",
-    text: (parsed.text && parsed.text.trim() ? parsed.text : stripTags(parsed.html || "")).slice(0, 20_000), date: parsed.date ?? null, auth: { dmarcPass, dkimDomains, debug },
+    text: ((parsed.text && parsed.text.trim() ? parsed.text : stripTags(parsed.html || "")) + attachmentText(parsed.attachments)).slice(0, 20_000), date: parsed.date ?? null, auth: { dmarcPass, dkimDomains, debug },
   };
 }
 

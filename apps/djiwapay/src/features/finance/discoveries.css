@@ -19,7 +19,7 @@
 .dpx-df-hint.is-later{left:0;right:0;justify-content:flex-end;background:var(--warn-soft);color:var(--warn)}
 .dpx-df-card{position:relative;padding:16px 16px 14px;border-radius:24px;background:#fff;box-shadow:var(--soft);touch-action:pan-y;cursor:grab}
 .dpx-df-card::before{content:"";position:absolute;left:0;top:18px;bottom:18px;width:4px;border-radius:0 4px 4px 0;background:var(--blue)}
-.dpx-df-card.k-recurring::before{background:#8a5cc2}.dpx-df-card.k-price::before{background:#d9a21a}.dpx-df-card.k-stopped::before{background:#958a7d}
+.dpx-df-card.k-recurring::before{background:#8a5cc2}.dpx-df-card.k-price::before{background:#d9a21a}.dpx-df-card.k-business::before{background:#d9a21a}.dpx-df-card.k-stopped::before{background:#958a7d}
 .dpx-df-card header{display:flex;align-items:center;gap:12px}
 .dpx-df-card header>div{flex:1;min-width:0}
 .dpx-df-ic{flex:none;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--blue-soft)}
@@ -91,4 +91,5 @@
 .dpx-ph-tick.ok{border-color:var(--ok);background:var(--ok-soft)}
 .dpx-ph-d{flex:1;min-width:0}.dpx-ph-d b{display:block;font:600 13.5px var(--font);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dpx-ph-d small{display:block;font-size:11.5px;color:var(--mute)}
 .dpx-ph-a{flex:none;font:700 13.5px var(--font);font-variant-numeric:tabular-nums}.dpx-ph-a.in{color:var(--ok)}
+.dpx .dpx-tx-badge.dpx-src-settlement{background:#fff0c9;color:#8a5a00}
 .dpx .dpx-tx-badge.dpx-src-statement{background:#efe6fa;color:#6b3fa0}

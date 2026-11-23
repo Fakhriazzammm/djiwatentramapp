@@ -41,6 +41,15 @@ describe("discoveries", () => {
     expect(findDiscoveries(state({ accounts: [{ id: "email-bni-7710", name: "BNI ••7710", type: "bank", opening: 0 }] }), [ent("a", "x", 1, "2026-11-01T00:00:00Z", { accountId: "email-bni-7710" })], [], NOW, [u])).toHaveLength(0);
   });
 
+  test("a wallet that keeps receiving merchant settlements is offered as a business wallet, once it is one it is not", () => {
+    const s = state({ accounts: [{ id: "email-bca", name: "BCA", type: "bank", opening: 0 }] });
+    const e = [ent("a", "DJIWA TENTRAM", 2333550, "2026-11-18T05:00:00Z", { kind: "in", accountId: "email-bca", tags: ["settlement"] }), ent("b", "DJIWA TENTRAM", 1500000, "2026-11-19T05:00:00Z", { kind: "in", accountId: "email-bca", tags: ["settlement"] })];
+    const f = findDiscoveries(s, e, [], NOW).filter((d) => d.kind === "business");
+    expect(f).toHaveLength(1); expect(f[0]).toMatchObject({ key: "biz:email-bca", amount: 3833550 });
+    expect(findDiscoveries(state({ accounts: [{ id: "email-bca", name: "BCA", type: "bank", opening: 0, scope: "business" }] }), e, [], NOW).filter((d) => d.kind === "business")).toHaveLength(0);
+    expect(findDiscoveries(s, [e[0]], [], NOW).filter((d) => d.kind === "business")).toHaveLength(0);
+  });
+
   test("three monthly payments of about the same amount suggest one bill", () => {
     const found = findDiscoveries(state(), monthly("Netflix", 54990, [4, 34, 64, 95]), [], NOW);
     expect(found).toHaveLength(1);

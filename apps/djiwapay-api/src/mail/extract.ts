@@ -55,6 +55,45 @@ export const looksLikePayment = (subject: string, text: string) => TXN_EVIDENCE.
 /** A periodic report (merchant settlement, monthly statement, transaction history) is not one transaction, even when it carries a total. */
 export const isReportMail = (subject: string) => /\b(laporan|statement|rekap\w*|ringkasan|mutasi|riwayat|settlement)\b/i.test(subject);
 
+/* ---------------- settlement: money a merchant receives ---------------- */
+
+/** A merchant settlement or payout (QRIS, card machine, marketplace, payment gateway): the sales of the last period arriving in the bank as one credit.
+ *  A monthly statement, a mutation list or a history is NOT one: those only repeat movements that were already mailed. */
+export function isSettlementMail(subject: string, text: string): boolean {
+  if (/\b(statement|mutasi|riwayat|e-?statement|rekening koran)\b/i.test(subject)) return false;
+  if (/\b(gagal|ditunda|dibatalkan|akan (?:dicairkan|disettle|diproses|dikreditkan)|jadwal)\b/i.test(subject)) return false;
+  const head = `${subject}\n${text.slice(0, 1500)}`;
+  return /\b(settle?ment|settlemen|settled|payout|pencairan (?:dana|saldo|penjualan)|penarikan (?:dana|saldo) (?:berhasil|merchant)|disbursement|dana (?:penjualan|merchant) (?:telah )?(?:cair|masuk|dikreditkan)|hasil penjualan|pembayaran penjualan)\b/i.test(head);
+}
+
+const NET_LABELS: RegExp[] = [
+  /(?:total\s+(?:dana\s+)?settle?ment(?:\s+(?:bersih|net))?|jumlah\s+settle?ment|nilai\s+settle?ment|settle?ment\s+amount|net(?:t|to)?\s+settle?ment|nominal\s+settle?ment|dana\s+settle?ment|amount\s+settled|total\s+settled)\s*[:\-]?\s*(?:rp|idr)\.?\s*([\d.,]+)/i,
+  /(?:dana|jumlah|nominal|saldo)\s+yang\s+(?:telah\s+|akan\s+)?(?:di)?(?:kredit|transfer|cair|salur|terima)\w*(?:\s+ke\s+[\w ]{2,30}?)?\s*[:\-]?\s*(?:rp|idr)\.?\s*([\d.,]+)/i,
+  /(?:total\s+(?:pencairan|penerimaan|payout|disbursement)|payout\s+amount|net(?:t)?\s+(?:amount|payout)|total\s+(?:bersih|nett?))\s*[:\-]?\s*(?:rp|idr)\.?\s*([\d.,]+)/i,
+  /(?:pencairan|penarikan|payout|settle?ment)[^.\n]{0,60}?(?:sebesar|senilai|:)\s*(?:rp|idr)\.?\s*([\d.,]+)/i,
+];
+const GROSS_RE = /(?:total\s+(?:transaksi|penjualan|gross|bruto)|gross(?:\s+amount)?|penjualan\s+kotor)\s*[:\-]?\s*(?:rp|idr)\.?\s*([\d.,]+)/i;
+const FEE_RE = /(?:mdr|biaya\s+(?:layanan|admin|transaksi|merchant)|fee|komisi|potongan)\s*[:\-]?\s*(?:rp|idr)\.?\s*([\d.,]+)/i;
+
+/** Reads a settlement mail as money IN: the net amount that reached the account, the merchant or outlet, the settlement day and (when printed) the gross sales and the fee. */
+export function extractSettlement(subject: string, bodyText: string): Extracted & { gross: number; fee: number } {
+  const text = bodyText.replace(/\r/g, "").replace(/[ \t]+/g, " ").slice(0, 20_000), whole = `${subject}\n${text}`, one = flat(whole);
+  let amount = 0;
+  for (const re of NET_LABELS) { const m = one.match(re); if (m) { const n = valueAt(one, (m.index ?? 0) + m[0].lastIndexOf(m[1]), m[1]); if (n >= MIN_AMOUNT && n <= MAX_AMOUNT) { amount = n; break; } } }
+  const num = (re: RegExp) => { const m = one.match(re); if (!m) return 0; const n = valueAt(one, (m.index ?? 0) + m[0].lastIndexOf(m[1]), m[1]); return n >= MIN_AMOUNT && n <= MAX_AMOUNT ? n : 0; };
+  const gross = num(GROSS_RE), fee = num(FEE_RE);
+  if (!amount && gross && fee && gross > fee) amount = gross - fee;   // printed gross and fee, no net line: net = gross - fee
+  const day = one.match(/(?:tanggal|tgl\.?|periode)?\s*(?:settle?ment|pencairan|kredit|pembayaran)\s*(?:date)?\s*[:\-]?\s*([0-9]{1,2}[\/.\-][0-9]{1,2}[\/.\-][0-9]{2,4}|[0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{1,2}\s+[A-Za-z]{3,9}\.?\s+[0-9]{4})/i);
+  const at = (day ? parseWhen(day[1]) : null) ?? parseWhen(whole);
+  const merRe = (/(?:nama\s+)?(?:merchant|outlet|toko|usaha)\s*(?:name)?\s*[:\-]?\s*([A-Za-z0-9][A-Za-z0-9 &'.\-]{2,40}?)(?=\s+(?:mid|tid|nmid|no\.?|nomor|tanggal|periode|total|jumlah|hasil)\b|[,;\n]|\s-\s|\d{6,}|$)/i);
+  const mer = flat(text).match(merRe) ?? flat(subject).match(merRe);
+  const merchant = (mer?.[1] ?? "").trim().replace(/\s+/g, " ");
+  const ref = (whole.match(/(?:id|no\.?|nomor)\s*(?:settle?ment|batch|payout)\s*[:#]?\s*(?=[A-Z0-9-]*\d)([A-Z0-9][A-Z0-9-]{4,29})\b/i)?.[1]) ?? "";
+  const acct = whole.match(/(?:rek(?:ening)?(?:\s+tujuan)?|no\.? ?rek|account)[^\d\n]{0,14}(?:[x*•·]+[\s-]*)*(\d{4})\b/i);
+  const confidence = amount ? Math.min(0.9, 0.55 + (merchant ? 0.15 : 0) + (at !== null ? 0.1 : 0) + (gross || fee ? 0.1 : 0)) : 0;
+  return { amount, direction: "in", merchant, accountHint: acct?.[1] ?? "", ref, at, confidence, missing: [...(amount ? [] : ["amount"]), ...(merchant ? [] : ["merchant"]), ...(at === null ? ["at"] : [])], gross, fee };
+}
+
 /* ---------------- bill reminders ---------------- */
 
 export type BillInfo = { amount: number; due: string | null; name: string };
@@ -295,7 +334,7 @@ const CATEGORY_HINTS: [string, string[]][] = [
   ["rumah", ["sewa", "kontrakan", "kos", "furniture", "bangunan"]],
 ];
 export function guessCategory(merchant: string, subject: string, direction: "out" | "in" | "unknown"): string {
-  if (direction === "in") return /gaji|salary|payroll/i.test(subject + merchant) ? "gaji" : "bonus";
+  if (direction === "in") return /gaji|salary|payroll/i.test(subject + merchant) ? "gaji" : /settle?ment|settlemen|payout|pencairan|hasil penjualan|pembayaran penjualan|omzet|merchant/i.test(subject + merchant) ? "penjualan" : "bonus";
   const hay = `${merchant} ${subject}`.toLowerCase();
   for (const [id, words] of CATEGORY_HINTS) if (words.some((w) => hay.includes(w))) return id;
   return "lainnya";

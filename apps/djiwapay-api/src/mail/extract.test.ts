@@ -207,3 +207,34 @@ describe("system notices and more issuers", () => {
     for (const [d, id] of [["permatabank.com", "permata"], ["mail.ocbc.id", "ocbc"], ["bsi.co.id", "bsi"], ["flip.id", "flip"], ["allobank.com", "allo"]] as const) expect(issuerOfDomain(d)?.id).toBe(id);
   });
 });
+
+import { extractSettlement, isSettlementMail, guessCategory as guessCat } from "./extract";
+describe("merchant settlement is income", () => {
+  const bca = "Laporan Transaksi Merchant BCA 004069399 DJIWA TENTRAM Hasil Settlemen";
+  const body = `Nama Merchant : DJIWA TENTRAM\nMID : 004069399\nTanggal Settlement : 22/11/2026\nTotal Transaksi : Rp 2.350.000\nMDR : Rp 16.450\nTotal Settlement : Rp 2.333.550\nRekening Tujuan : ****4821`;
+  test("a settlement report or payout is recognised, a statement or a failed one is not", () => {
+    expect(isSettlementMail(bca, body)).toBe(true);
+    expect(isSettlementMail("Pencairan dana berhasil", "Dana penjualan telah dikreditkan")).toBe(true);
+    expect(isSettlementMail("Payout Xendit", "Payout amount Rp 1.000.000")).toBe(true);
+    expect(isSettlementMail("e-Statement November", "settlement")).toBe(false);
+    expect(isSettlementMail("Settlement gagal diproses", "")).toBe(false);
+    expect(isSettlementMail("Informasi Transaksi Online - Debit BCA [BERHASIL]", "Rp 25.000")).toBe(false);
+  });
+  test("the net amount is what counts, with gross and fee kept beside it", () => {
+    const x = extractSettlement(bca, body);
+    expect(x).toMatchObject({ amount: 2333550, direction: "in", merchant: "DJIWA TENTRAM", accountHint: "4821", gross: 2350000, fee: 16450 });
+    expect(x.confidence).toBeGreaterThanOrEqual(0.65);
+  });
+  test("gross and fee without a net line give the net", () => {
+    expect(extractSettlement("Settlement", "Total Penjualan Rp 1.000.000\nBiaya layanan Rp 7.000").amount).toBe(993000);
+  });
+  test("other wordings of the credited amount", () => {
+    expect(extractSettlement("Pencairan saldo", "Dana yang ditransfer ke rekening BCA: Rp 500.000").amount).toBe(500000);
+    expect(extractSettlement("Payout", "Net amount: IDR 1,250,000.00").amount).toBe(1250000);
+  });
+  test("a settlement with no readable amount is zero, not a guess", () => { expect(extractSettlement(bca, "Terlampir laporan transaksi merchant Anda.").amount).toBe(0); });
+  test("settlement income is sales, a salary is a salary", () => {
+    expect(guessCat("DJIWA TENTRAM", bca, "in")).toBe("penjualan");
+    expect(guessCat("", "Gaji November", "in")).toBe("gaji");
+  });
+});

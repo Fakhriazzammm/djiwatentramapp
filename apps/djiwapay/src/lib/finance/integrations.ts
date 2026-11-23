@@ -4,7 +4,7 @@ export type InboundSource = { forwarding: boolean; address: string; enabled: boo
 export type InboundSummary = { configured: boolean; broad?: boolean; broadFilter?: string; filter: string; source: InboundSource | null; review: number; importReady: number; autoRecent: number };
 export type ReviewItem = {
   id: string; channel: string; status: "review" | "failed"; reason: string; confidence: number; createdAt: string;
-  parsed: { loanMail?: "reminder" | "receipt"; amount?: number; kind?: "out" | "in" | "tf"; transfer?: { from: string; to: string; toName?: string; amount: number; fee?: number }; direction?: string; merchant?: string; categoryId?: string; accountId?: string; accountHint?: string; at?: string; subject?: string; issuer?: string; details?: PaymentDetails; flags?: string[]; bill?: boolean; due?: string | null; generic?: boolean; suggest?: "in" | "out" | null; suggestFrom?: "hint" | "mail" | null };
+  parsed: { settlement?: { gross: number; fee: number }; loanMail?: "reminder" | "receipt"; amount?: number; kind?: "out" | "in" | "tf"; transfer?: { from: string; to: string; toName?: string; amount: number; fee?: number }; direction?: string; merchant?: string; categoryId?: string; accountId?: string; accountHint?: string; at?: string; subject?: string; issuer?: string; details?: PaymentDetails; flags?: string[]; bill?: boolean; due?: string | null; generic?: boolean; suggest?: "in" | "out" | null; suggestFrom?: "hint" | "mail" | null };
 };
 export type GoogleStatus = {
   configured: boolean; connected: boolean; email: string | null; features: { calendar: boolean; drive: boolean; gmail: boolean }; /** Running now: granted by Google and not switched off. */ active: { calendar: boolean; sheets: boolean; receipts: boolean };

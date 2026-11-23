@@ -5,7 +5,7 @@ import { notifyUser, type PushPayload } from "../push.js";
 import type { Q, Tx } from "../sync.js";
 import { auditQueue, auditSummary } from "./audit.js";
 import { GENERIC_DAILY_LIMIT, genericIssuer, senderAuthentic } from "./generic.js";
-import { domainOf, extractBill, extractPayment, forwardingCode, guessCategory, implausible, isBillReminder, isConfident, isFailedMail, isNoticeMail, isPromo, isReportMail, isSecretMail, issuerFor, looksLikePayment, groupKey, merchantKey, redactForShare, RULES_VERSION, type Extracted, type Issuer } from "./extract.js";
+import { domainOf, extractBill, extractPayment, extractSettlement, isSettlementMail, forwardingCode, guessCategory, implausible, isBillReminder, isConfident, isFailedMail, isNoticeMail, isPromo, isReportMail, isSecretMail, issuerFor, looksLikePayment, groupKey, merchantKey, redactForShare, RULES_VERSION, type Extracted, type Issuer } from "./extract.js";
 
 export type RawMail = {
   messageId: string; from: string; to: string[]; subject: string; text: string; date: Date | null;
@@ -22,7 +22,7 @@ export function pushFor(status: "auto" | "review", p: Record<string, any>, id: s
   const who = String(p.details?.description || p.merchant || p.subject || "Email pembayaran").replace(/\s*·\s*PAN.*$/i, "").slice(0, 60);
   const wallet = p.accountName || (p.issuer ? `${p.issuer}${p.accountHint ? " ••" + p.accountHint : ""}` : "");
   if (status === "review") return { id: `mail-${id}`, tone: "mail", label: "Email", title: amount ? `Perlu ditinjau ${kind === "in" ? "+" : kind === "out" ? "−" : ""}Rp ${amount.toLocaleString("id-ID")}` : "Email perlu ditinjau", message: who, route: "/tinjau", at: at ?? new Date().toISOString(), ...(amount ? { amount, sign: kind === "in" ? "+" as const : kind === "out" ? "−" as const : "⇄" as const } : {}) };
-  return { id: `mail-${id}`, tone: kind === "in" ? "in" : kind === "out" ? "out" : "move", label: "Dari email", title: kind === "in" ? "Pemasukan" : kind === "out" ? "Pengeluaran" : "Pindah dana", message: `${who}${wallet ? " · " + wallet : ""}${kind === "out" && !p.details?.items?.length ? ". Ketuk lalu scan struk untuk rincian item dan pajak." : ""}`, route: "/riwayat?baru=1", at: at ?? new Date().toISOString(), ...(amount ? { amount, sign: kind === "in" ? "+" as const : kind === "out" ? "−" as const : "⇄" as const } : {}) };
+  return { id: `mail-${id}`, tone: kind === "in" ? "in" : kind === "out" ? "out" : "move", label: "Dari email", title: p.settlement ? "Settlement masuk" : kind === "in" ? "Pemasukan" : kind === "out" ? "Pengeluaran" : "Pindah dana", message: `${who}${wallet ? " · " + wallet : ""}${kind === "out" && !p.details?.items?.length ? ". Ketuk lalu scan struk untuk rincian item dan pajak." : ""}`, route: "/riwayat?baru=1", at: at ?? new Date().toISOString(), ...(amount ? { amount, sign: kind === "in" ? "+" as const : kind === "out" ? "−" as const : "⇄" as const } : {}) };
 }
 
 const TRUST_MIN = 10;               // no longer gates automatic recording; kept for the learning counter shown in the app
@@ -164,8 +164,10 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   // Gate 3: codes, PINs and resets are never read or stored.
   if (isSecretMail(mail.subject, mail.text)) return skip("secret", issuer.id, false);
   // Gate 4: a campaign or a periodic report is not one movement of money, whatever rupiah it prints.
-  if (isPromo(mail.subject, mail.text)) return skip("promo", issuer.id);
-  if (isReportMail(mail.subject)) return skip("report", issuer.id);
+  // A merchant settlement is the exception: it is the sales of a period arriving as one credit, i.e. income.
+  const settlement = isSettlementMail(mail.subject, mail.text);
+  if (!settlement && isPromo(mail.subject, mail.text)) return skip("promo", issuer.id);
+  if (!settlement && isReportMail(mail.subject)) return skip("report", issuer.id);
   // Gate 5: a failed transfer moved nothing, and a bill that asks to be paid has not been paid yet.
   if (isFailedMail(mail.subject)) return skip("failed", issuer.id);
   // A bill reminder moved no money. When it names an amount it becomes a suggested bill ("Kamu berutang") to confirm; otherwise it is dropped.
@@ -209,7 +211,8 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
 
   try {
   // Read it: rules first, model only when the rules are unsure.
-  const rules = extractPayment(mail.subject, mail.text);
+  const set = settlement ? extractSettlement(mail.subject, mail.text) : null;
+  const rules = set ?? extractPayment(mail.subject, mail.text);
   let x = rules, agreed = false;
   if ((!isConfident(x) || !x.merchant || (!x.details?.items.length && /rincian|detail pesanan|daftar (?:produk|barang)|qty|subtotal|ppn|pajak/i.test(mail.text))) && d.llm) {
     try {
@@ -220,13 +223,15 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   }
   const atMs = x.at ?? mail.date?.getTime() ?? now.getTime();
   const at = new Date(Number.isFinite(atMs) ? atMs : now.getTime()).toISOString();
-  const parsed = { amount: x.amount, direction: x.direction, merchant: x.merchant, accountHint: x.accountHint, ref: x.ref, at, subject: mail.subject.slice(0, 80), issuer: issuer.name, rulesVersion: RULES_VERSION, details: x.details, ...(loanMail ? { loanMail } : {}), ...(opts.notif ? { via: "notif" } : {}) };
+  const parsed = { amount: x.amount, direction: x.direction, merchant: x.merchant, accountHint: x.accountHint, ref: x.ref, at, subject: mail.subject.slice(0, 80), issuer: issuer.name, rulesVersion: RULES_VERSION, details: x.details, ...(loanMail ? { loanMail } : {}), ...(opts.notif ? { via: "notif" } : {}), ...(set ? { settlement: { gross: set.gross, fee: set.fee } } : {}) };
   // Gate 7: the read must agree with the mail it came from. A shape nobody has taught the parser yet
   // then waits for a person instead of being recorded, for every user and not only the one who reported it.
   if (loanMail === "receipt" && !(x.amount > 0) && !stage) {
     return finish("review", "loan-payment-review", { parsed: { ...parsed, kind: "out", categoryId: "tagihan" }, at });
   }
   const flags = implausible(`${mail.subject}\n${mail.text}`, x, mail.date?.getTime() ?? null);
+  // A settlement whose amount is not in the mail body (it is in an attachment): the person types it from the report instead of the income being lost.
+  if (settlement && !(x.amount > 0) && !generic && !stage && !opts.notif) return finish("review", "settlement-amount", { parsed: { ...parsed, kind: "in", categoryId: "penjualan", accountId: accountIdFor(issuer, x.accountHint), accountName: `${issuer.name}${x.accountHint ? " ••" + x.accountHint : ""}`, accountType: issuer.kind === "bank" ? "bank" : issuer.kind === "ewallet" ? "ewallet" : "other", flags: ["Settlement tanpa nominal di email: isi nominal dari laporannya"] }, confidence: 0.4, at });
   if (!(x.amount > 0) && generic) return finish("ignored", "unreadable", { confidence: x.confidence });   // an unknown sender with no readable amount is not worth the person's attention
   if (!(x.amount > 0)) return stage || opts.notif ? finish("ignored", "unreadable", { confidence: x.confidence }) : looksLikePayment(mail.subject, mail.text) ? finish("failed", "unreadable", { parsed, confidence: x.confidence }) : finish("ignored", "unreadable", { confidence: x.confidence });
   // Gate 6b: an announcement can print a rupiah figure ("Limit Baru Kartu Jago", "kenaikan limit
@@ -296,6 +301,12 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
     ? await d.db.query(`select id from finance.entries where user_id=$1 and amount=$2 and (at between $3::timestamptz - ($4 * interval '1 millisecond') and $3::timestamptz + ($4 * interval '1 millisecond') or ($5::boolean and kind <> 'tf' and ${DAY_SQL("at", "$3")})) limit 1`, [userId, x.amount, at, CLOSE_MS, isDayOnly(at)])
     : await d.db.query("select id from finance.entries where user_id=$1 and amount=$2 and kind=$3 and (account_id=$4 or account_id like $7) and at between $5::timestamptz - ($6 * interval '1 millisecond') and $5::timestamptz + ($6 * interval '1 millisecond') limit 1", [userId, x.amount, kind, accountId, at, CLOSE_MS, `email-${issuer.id}%`]);   // the same bank, with or without the account digits a notification does not carry
   if (same.rows[0]) return finish("duplicate", "already-recorded", { parsed, confidence: x.confidence, entryId: same.rows[0].id, at });
+  // A settlement and the bank's own "dana masuk" mail for it are one credit: whichever came second is not recorded again.
+  if (kind === "in" && !generic) {
+    const credit = await d.db.query(`select id from finance.entries where user_id=$1 and kind='in' and abs(amount-$2) < 1 and at between $3::timestamptz - interval '36 hours' and $3::timestamptz + interval '36 hours'
+      and ($4::boolean or 'settlement' = any(tags)) limit 1`, [userId, x.amount, at, settlement]);
+    if (credit.rows[0]) return finish("duplicate", "already-recorded", { parsed, confidence: x.confidence, entryId: credit.rows[0].id, at });
+  }
 
   if (stage) {   // an import: keep it aside until the user has seen the preview. Accounts, transfers and entries come with the commit.
     const learnedS = await learnedCategory(d.db, userId, x.merchant);
@@ -323,7 +334,7 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
     const ai = (await d.categorize(userId, [{ key: "m", text: [x.merchant, mail.subject].filter(Boolean).join(" · "), amount: x.amount, kind: x.direction === "in" ? "in" : "out" }]).catch(() => null))?.get("m");
     if (ai) { categoryId = ai.categoryId; byAi = ai.source === "ai"; }
   }
-  const candidate: Candidate = { kind, amount: x.amount, categoryId, accountId, at, note: x.merchant || mail.subject.slice(0, 60) || issuer.name, ...(byAi || opts.notif ? { tags: [...(byAi ? ["kategori-ai"] : []), ...(opts.notif ? ["notif"] : [])] } : {}) };
+  const candidate: Candidate = { kind, amount: x.amount, categoryId, accountId, at, note: x.merchant || mail.subject.slice(0, 60) || issuer.name, ...(byAi || opts.notif || settlement ? { tags: [...(byAi ? ["kategori-ai"] : []), ...(opts.notif ? ["notif"] : []), ...(settlement ? ["settlement"] : [])] } : {}) };
 
   // New mail is recorded straight away once the gates above agree and the read is clear: money in or out, an amount, and nothing
   // implausible about it. What stays for a person is only what the parser itself is unsure of. Every automatic record can be undone.
@@ -402,7 +413,7 @@ export async function approve(d: Tx, userId: string, inboundId: string, e: Edits
     const atMs = Date.parse(String(e.at ?? p.at));
     const candidate: Candidate = {
       kind, amount, categoryId: tr ? "transfer" : String(e.categoryId ?? p.categoryId ?? "lainnya").slice(0, 80), ...(tr ? { toAccountId: tr.to } : {}),
-      accountId: String(tr ? tr.from : e.accountId ?? p.accountId ?? "tunai").slice(0, 80), at: new Date(Number.isNaN(atMs) ? Date.now() : atMs).toISOString(), note: String(e.note ?? p.merchant ?? p.subject ?? "").slice(0, 200), ...(p.via === "notif" ? { tags: ["notif"] } : {}),
+      accountId: String(tr ? tr.from : e.accountId ?? p.accountId ?? "tunai").slice(0, 80), at: new Date(Number.isNaN(atMs) ? Date.now() : atMs).toISOString(), note: String(e.note ?? p.merchant ?? p.subject ?? "").slice(0, 200), ...(p.via === "notif" || p.settlement ? { tags: [...(p.via === "notif" ? ["notif"] : []), ...(p.settlement ? ["settlement"] : [])] } : {}),
     };
     if (typeof p.accountId === "string" && p.accountId.startsWith("email-") && p.accountId === candidate.accountId)   // imported items keep their account until approved
       await q.query("insert into finance.accounts(user_id,id,name,type,opening) values($1,$2,$3,$4,0) on conflict do nothing", [userId, p.accountId, String(p.accountName ?? p.issuer ?? "Dompet").slice(0, 60), ["bank", "ewallet"].includes(p.accountType) ? p.accountType : "other"]);

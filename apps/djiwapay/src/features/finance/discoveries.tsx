@@ -11,8 +11,8 @@ import "./discoveries.css";
 
 const GROUPS: readonly (readonly [DiscoveryGroup | "all", string])[] = [["all", "Semua"], ["dompet", "Dompet"], ["tagihan", "Tagihan"], ["langganan", "Langganan"]];
 const TYPES: readonly (readonly [AccountType, string])[] = [["bank", "Bank"], ["ewallet", "E-wallet"], ["card", "Kartu"], ["cash", "Tunai"], ["other", "Lainnya"]];
-const ICON: Record<Discovery["kind"], IconName> = { account: "wallet", recurring: "repeat", price: "trend", stopped: "clock" };
-const TONE: Record<Discovery["kind"], string> = { account: "blue", recurring: "violet", price: "amber", stopped: "slate" };
+const ICON: Record<Discovery["kind"], IconName> = { account: "wallet", recurring: "repeat", price: "trend", stopped: "clock", business: "bag" };
+const TONE: Record<Discovery["kind"], string> = { account: "blue", recurring: "violet", price: "amber", stopped: "slate", business: "amber" };
 const date = (iso: string) => new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
 
 /** A number that counts up to its value, so a change is felt and not just replaced. */
@@ -34,7 +34,7 @@ function Card({ d, i, ctx, busy, onPrimary, onLater, onNo, onMore }: { d: Discov
   const x = useMotionValue(0), reduce = useReducedMotion();
   const rightOp = useTransform(x, [20, 110], [0, 1]), leftOp = useTransform(x, [-110, -20], [1, 0]), tilt = useTransform(x, [-160, 0, 160], [-3, 0, 3]);
   const done = (_: unknown, info: PanInfo) => { if (info.offset.x > 110) onPrimary(); else if (info.offset.x < -110) onLater(); };
-  const label = d.kind === "account" ? "Simpan" : d.kind === "recurring" ? "Simpan tagihan" : d.kind === "price" ? `Perbarui jadi ${rupiah(d.newAmount ?? 0)}` : "Sudah berhenti";
+  const label = d.kind === "business" ? "Tandai Bisnis" : d.kind === "account" ? "Simpan" : d.kind === "recurring" ? "Simpan tagihan" : d.kind === "price" ? `Perbarui jadi ${rupiah(d.newAmount ?? 0)}` : "Sudah berhenti";
   const swipeRight = d.kind === "account" ? "Simpan" : d.kind === "stopped" ? "Berhenti" : d.kind === "price" ? "Perbarui" : "Simpan";
   return <motion.li layout="position" className="dpx-df-wrap" initial={reduce ? false : { opacity: 0, y: 26, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, x: 80, scale: 0.94, transition: { duration: 0.22 } }} transition={{ ...spring, delay: Math.min(i, 6) * 0.06 }}>
     <motion.span className="dpx-df-hint is-yes" style={{ opacity: rightOp }} aria-hidden="true"><Ic n="check" size="sm" />{swipeRight}</motion.span>
@@ -123,6 +123,13 @@ export function DiscoveryPage({ ctx, onBack, onOpenReview }: { ctx: FinCtx; onBa
 
   /** Every answer that changes a record, with the way back. */
   const accept = async (d: Discovery, quiet = false) => {
+    if (d.kind === "business" && d.accountId) {
+      const acct = fin.raw.accounts.find((a) => a.id === d.accountId);
+      if (acct) fin.dispatch({ type: "account/upsert", account: { ...acct, scope: "business" } });
+      await disc.decide([d.key], "saved");
+      if (!quiet) ctx.notify(`${d.title} dihitung sebagai Bisnis`, () => { if (acct) fin.dispatch({ type: "account/upsert", account: acct }); void disc.undo([d.key]); });
+      return;
+    }
     if (d.kind === "account") {
       const made = d.draft && !fin.raw.accounts.some((a) => a.id === d.draft!.id) ? d.draft : null;
       if (made) fin.dispatch({ type: "account/upsert", account: made });

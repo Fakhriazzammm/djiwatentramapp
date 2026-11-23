@@ -52,7 +52,7 @@ const COLORS: Record<string, string> = { orange: "#e8833a", blue: "#d14b1a", vio
 export const useBalances = (state: FinanceState, entries: Entry[], payBalance: number) => useMemo(() => { const m: Record<string, number> = {}; for (const a of state.accounts) m[a.id] = accountBalance(a, entries, payBalance); m[PAY_ACCOUNT_ID] = payBalance; return m; }, [state.accounts, entries, payBalance]);
 const SOURCE_LABEL: Record<Entry["source"], string> = { manual: "Manual", voice: "Suara", pay: "Djiwa Pay", receipt: "Scan struk", email: "Email", sheet: "Sheets", statement: "E-statement" };
 /** A record read from an Android notification is stored as e-mail with a "notif" tag; it shows as what it is. */
-const sourceBadge = (s: Entry["source"], tags: string[] = []) => tags.includes("notif") ? <span className="dpx-tx-badge dpx-src-email">Notifikasi</span> : <span className={`dpx-tx-badge dpx-src-${s}`}>{SOURCE_LABEL[s] ?? "Manual"}</span>;
+const sourceBadge = (s: Entry["source"], tags: string[] = []) => tags.includes("settlement") ? <span className="dpx-tx-badge dpx-src-settlement">Settlement</span> : tags.includes("notif") ? <span className="dpx-tx-badge dpx-src-email">Notifikasi</span> : <span className={`dpx-tx-badge dpx-src-${s}`}>{SOURCE_LABEL[s] ?? "Manual"}</span>;
 /** Corner mark on the category icon: up = money in, down = money out, ⇄ = moved between own accounts, ? = not sorted yet. */
 function DirMark({ entry }: { entry: Entry }) {
   const unsorted = entry.kind !== "tf" && entry.categoryId === "lainnya";

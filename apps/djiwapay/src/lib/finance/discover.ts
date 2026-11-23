@@ -9,7 +9,7 @@ import type { Account, AccountType, Bill, Entry, FinanceState } from "./types";
  *  - stopped:   a monthly payment that used to come and stopped
  * A suggestion never changes a record by itself, and each one is checked against what already exists so it can never create a duplicate.
  */
-export type DiscoveryKind = "account" | "recurring" | "price" | "stopped";
+export type DiscoveryKind = "account" | "recurring" | "price" | "stopped" | "business";
 export type DiscoveryGroup = "dompet" | "tagihan" | "langganan";
 export type BillDraft = { id: string; name: string; amount: number; day: number; icon: string; tone: string };
 export type Discovery = {
@@ -148,12 +148,26 @@ function priceFinds(state: FinanceState, entries: Entry[], now: Date): Discovery
   return out;
 }
 
-const ORDER: Record<DiscoveryKind, number> = { account: 0, price: 1, recurring: 2, stopped: 3 };
+/** A wallet that keeps receiving merchant settlements is where a business is paid: offer to count it as Bisnis, so sales do not mix into personal money. */
+function businessFinds(state: FinanceState, entries: Entry[], now: Date): Discovery[] {
+  const out: Discovery[] = [];
+  for (const a of state.accounts.filter((x) => !x.archived && x.scope !== "business")) {
+    const pays = entries.filter((e) => e.kind === "in" && e.accountId === a.id && e.tags.includes("settlement") && +now - +new Date(e.at) < 90 * DAY).sort((x, y) => +new Date(y.at) - +new Date(x.at));
+    if (pays.length < 2) continue;
+    const total = pays.reduce((s, e) => s + e.amount, 0);
+    out.push({ key: `biz:${a.id}`, kind: "business", group: "dompet", title: a.name, lead: "Pemasukan usaha terdeteksi",
+      detail: `${pays.length} settlement masuk dalam 90 hari (${rp(total)}). Tandai dompet ini sebagai Bisnis agar penjualan tidak bercampur dengan uang pribadi. Seluruh catatan dompet ini ikut masuk hitungan bisnis.`,
+      amount: total, confidence: Math.min(0.95, 0.7 + pays.length * 0.05), at: pays[0].at, accountId: a.id, proof: pays.slice(0, 4).map((e) => ({ at: e.at, amount: e.amount })) });
+  }
+  return out;
+}
+
+const ORDER: Record<DiscoveryKind, number> = { account: 0, business: 1, price: 2, recurring: 3, stopped: 4 };
 
 /** Everything found that the person has not answered yet, most useful first. */
 export function findDiscoveries(state: FinanceState, entries: Entry[], decisions: Decision[], now = new Date(), untracked: Untracked[] = []): Discovery[] {
   const answered = new Set(decisions.filter((d) => d.status !== "snoozed" || (d.until && +new Date(d.until) > +now)).map((d) => d.key));
-  return [...untrackedFinds(state, untracked), ...accountFinds(state, entries, now), ...priceFinds(state, entries, now), ...billFinds(state, entries, now)]
+  return [...untrackedFinds(state, untracked), ...accountFinds(state, entries, now), ...businessFinds(state, entries, now), ...priceFinds(state, entries, now), ...billFinds(state, entries, now)]
     .filter((d) => !answered.has(d.key))
     .filter((d) => d.confidence >= 0.6)
     .sort((a, b) => ORDER[a.kind] - ORDER[b.kind] || b.confidence - a.confidence || +new Date(b.at) - +new Date(a.at));
