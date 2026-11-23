@@ -10,6 +10,7 @@ import type { Account, AccountScope, AccountType, Budget, Category, Debt, Entry,
 import type { Finance } from "../../lib/finance/use-finance";
 import { accountScope, isCrossScope } from "../../lib/finance/scope";
 import { AI_TAG, refineEntries } from "../../lib/finance/ai-category";
+import { ScanCamera } from "../shell/scan-camera";
 import { VoiceSheet } from "./voice-sheet";
 import { ReceiptAttachment, ReceiptFlow, ReceiptReview } from "./fin-receipt";
 import type { ScannedReceipt } from "../../lib/finance/receipt";
@@ -117,9 +118,9 @@ export function CatatSheet({ fin, notify, onClose, onManual, onPay, onAsset, bal
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [pick, setPick] = useState<{ key: string; kind: "cat" | "acc" } | null>(null);
   const [accountId, setAccountId] = useState(() => state.accounts.find((a) => !a.archived)?.id ?? "tunai");
-  const [scanFile, setScanFile] = useState<File | null>(null);
+  const [scanFile, setScanFile] = useState<File | null>(null), [camOpen, setCamOpen] = useState(false);
   const noteInput = useRef<HTMLTextAreaElement>(null);
-  const camera = useRef<HTMLInputElement>(null), gallery = useRef<HTMLInputElement>(null);
+  const gallery = useRef<HTMLInputElement>(null);
   const choose = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) setScanFile(f); };
   const supported = typeof window !== "undefined" && speechCtor() !== null;
   const submit = (override?: string) => {
@@ -138,6 +139,7 @@ export function CatatSheet({ fin, notify, onClose, onManual, onPay, onAsset, bal
     notify(`${entries.length} catatan tersimpan`, () => entries.forEach((e) => dispatch({ type: "entry/delete", id: e.id })));
     void refineEntries(fin, notify, entries.filter((e) => e.kind === "out"), { force: true });   // sharpen the keyword guess into a specific sub category
   };
+  if (camOpen) return <ScanCamera kind="receipt" onClose={() => setCamOpen(false)} onCapture={(f) => { setCamOpen(false); setScanFile(f); }} />;
   if (voiceOpen) return <VoiceSheet accounts={state.accounts} categories={state.categories} onClose={() => setVoiceOpen(false)} onUse={(t) => { setText(t); setVoiceOpen(false); submit(t); }} />;
   if (scanFile) return <ReceiptFlow key={scanFile.name + scanFile.size + scanFile.lastModified} file={scanFile} fin={fin} notify={notify} balances={balances} onClose={onClose} onRetry={() => setScanFile(null)} />;
   if (pick && items) {
@@ -178,9 +180,9 @@ export function CatatSheet({ fin, notify, onClose, onManual, onPay, onAsset, bal
       <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0, flex: 1 }} onClick={() => setVoiceOpen(true)}><Ic n="mic" size="sm" /> Bicara</Btn>
       <Btn type="button" className={`dpx-btn dpx-soft ${text.trim() ? "" : "dpx-off"}`} style={{ margin: 0, width: 96, padding: 0 }} onClick={() => submit()} disabled={!text.trim()}><Ic n="up" size="sm" /> Kirim</Btn>
     </div>
-    <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={choose} /><input ref={gallery} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={choose} />
+    <input ref={gallery} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={choose} />
     <div className="dpx-tile3 dpx-mt" style={{ gridTemplateColumns: "repeat(2,1fr)", gap: 8 }}>
-      <Btn type="button" className="dpx-tile dpx-t-scan" style={{ minHeight: 84 }} onClick={() => camera.current?.click()}><Ic n="scan" size="lg" /><span style={{ fontSize: 13 }}>Foto struk</span></Btn>
+      <Btn type="button" className="dpx-tile dpx-t-scan" style={{ minHeight: 84 }} onClick={() => setCamOpen(true)}><Ic n="scan" size="lg" /><span style={{ fontSize: 13 }}>Foto struk</span></Btn>
       <Btn type="button" className="dpx-tile dpx-t-sky" style={{ minHeight: 84 }} onClick={() => gallery.current?.click()}><Ic n="receipt" size="lg" /><span style={{ fontSize: 13 }}>Unggah struk</span></Btn>
       <Btn type="button" className="dpx-tile dpx-t-mint" style={{ minHeight: 84 }} onClick={() => onManual("out")}><Ic n="edit" size="lg" /><span style={{ fontSize: 13 }}>Catat manual</span></Btn>
       <Btn type="button" className="dpx-tile dpx-t-lav" style={{ minHeight: 84 }} onClick={() => onManual("in")}><Ic n="down" size="lg" /><span style={{ fontSize: 13 }}>Pemasukan</span></Btn>

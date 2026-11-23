@@ -30,7 +30,7 @@ export function ReceiptFlow({ file, onRetry, ...props }: FlowProps & { file: Fil
   if (stage.s === "result") return <ReceiptReview {...props} initial={stage.receipt} preview={stage.preview} onRetry={onRetry} />;
   return <Sheet title={stage.s === "error" ? "Struk belum terbaca" : "Membaca struk"} onClose={props.onClose}>
     {stage.s === "error" ? <><div className="dpx-note dpx-danger" role="alert">{stage.text}</div><Btn type="button" className="dpx-btn dpx-soft" onClick={onRetry}>Pilih foto lain</Btn></> : <>
-      {stage.preview ? <img className="dpx-receipt-preview" src={stage.preview} alt="Struk yang sedang dibaca" /> : null}
+      {stage.preview ? <div className="dpx-receipt-scan"><img className="dpx-receipt-preview" src={stage.preview} alt="Struk yang sedang dibaca" /></div> : null}
       <div role="status" aria-live="polite" className="dpx-receipt-progress">{STEPS[step]}…</div><p className="dpx-hint">Rincian yang kurang jelas akan ditandai untuk diperiksa.</p>
     </>}
   </Sheet>;

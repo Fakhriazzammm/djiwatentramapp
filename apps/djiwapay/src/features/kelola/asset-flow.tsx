@@ -8,6 +8,7 @@ import { DEFAULT_RATE, KARAT, SUB_LABEL, assetValue, createSticker, fetchRaw, go
 import { rupiah } from "../../lib/djiwa-pay-format";
 import type { Asset, AssetKind, AssetSub } from "../../lib/finance/types";
 import type { Finance } from "../../lib/finance/use-finance";
+import { ScanCamera } from "../shell/scan-camera";
 
 type Step = "shoot" | "work" | "sticker" | "form";
 const SUBS: AssetSub[] = ["batangan", "perhiasan", "koin", "lainnya"];
@@ -20,30 +21,15 @@ export function AssetFlow({ fin, asset, notify, onClose, noPhoto }: { fin: Finan
   const gold = useGold();
 
   /* ----- camera ----- */
-  const video = useRef<HTMLVideoElement>(null), stream = useRef<MediaStream | null>(null), gallery = useRef<HTMLInputElement>(null), nativeCam = useRef<HTMLInputElement>(null);
-  const [camOn, setCamOn] = useState(false), [camErr, setCamErr] = useState(false), [live, setLive] = useState(false);   // native camera first; the in-app viewfinder only when asked for
-  const stop = () => { stream.current?.getTracks().forEach((t) => t.stop()); stream.current = null; setCamOn(false); };
-  useEffect(() => {
-    if (step !== "shoot" || !live) return;
-    let dead = false; setCamErr(false);
-    navigator.mediaDevices?.getUserMedia?.({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1600 } }, audio: false })
-      .then((s) => { if (dead) { s.getTracks().forEach((t) => t.stop()); return; } stream.current = s; if (video.current) { video.current.srcObject = s; void video.current.play().catch(() => {}); } setCamOn(true); })
-      .catch(() => setCamErr(true));
-    if (!navigator.mediaDevices?.getUserMedia) setCamErr(true);
-    return () => { dead = true; stop(); };
-  }, [step, live]);
-  const snap = () => {
-    const v = video.current; if (!v || !v.videoWidth) return;
-    const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext("2d")!.drawImage(v, 0, 0);
-    c.toBlob((b) => b && void process(b), "image/jpeg", 0.9);
-  };
+  const gallery = useRef<HTMLInputElement>(null), nativeCam = useRef<HTMLInputElement>(null);
+  const [live, setLive] = useState(false);
 
   /* ----- sticker ----- */
   const [err, setErr] = useState<string | null>(null);
   const [rawUrl, setRawUrl] = useState<string | null>(null), [png, setPng] = useState<string | null>(null), [mode, setMode] = useState<StickerMode>("local"), [view, setView] = useState<"cut" | "raw">("cut");
   const draftId = useRef<string | null>(null);
   const process = async (blob: Blob) => {
-    stop(); setErr(null); setStep("work");
+    setErr(null); setStep("work");
     try {
       const made = await createSticker(blob);
       draftId.current = made.id; setMode(made.mode);
@@ -97,35 +83,19 @@ export function AssetFlow({ fin, asset, notify, onClose, noPhoto }: { fin: Finan
   const back = step === "form" && !asset ? () => setStep(stickerId ? "sticker" : "shoot") : step === "sticker" ? () => setStep("shoot") : onClose;
   const title = step === "shoot" ? "Foto aset" : step === "work" ? "Membuat stiker" : step === "sticker" ? "Stiker aset" : "Data aset";
 
-  return <FullPage title={title} onBack={step === "work" ? () => {} : back} dark={step === "shoot" && live}>
+  return <FullPage title={title} onBack={step === "work" ? () => {} : back} dark={false}>
     {step === "shoot" && !live ? <div className="dpx-as-shoot dpx-as-start">
       <div className="dpx-as-intro"><span className="dpx-as-intro-i"><Ic n="scan" /></span><b>Foto asetmu</b><p>Pakai kamera ponsel untuk hasil paling tajam. Latarnya kami potong jadi stiker.</p></div>
       <ul className="dpx-as-tips"><li>Taruh di tempat polos dan terang</li><li>Satu aset per foto, tepat di tengah</li><li>Hindari bayangan dan pantulan kuat</li></ul>
       {err ? <div className="dpx-as-err" role="alert">{err}</div> : null}
-      <Btn type="button" className="dpx-btn" onClick={() => nativeCam.current?.click()}><Ic n="scan" size="sm" /> Buka kamera</Btn>
+      <Btn type="button" className="dpx-btn" onClick={() => setLive(true)}><Ic n="scan" size="sm" /> Buka kamera</Btn>
       <Btn type="button" className="dpx-btn dpx-soft" onClick={() => gallery.current?.click()}><Ic n="grid" size="sm" /> Pilih dari galeri</Btn>
-      <div className="dpx-as-more"><Btn type="button" className="dpx-linkbtn" onClick={() => setLive(true)}>Pakai kamera dalam aplikasi dengan bingkai</Btn><Btn type="button" className="dpx-linkbtn" onClick={() => setStep("form")}>Isi tanpa foto</Btn></div>
+      <div className="dpx-as-more"><Btn type="button" className="dpx-linkbtn" onClick={() => nativeCam.current?.click()}>Pakai kamera bawaan ponsel</Btn><Btn type="button" className="dpx-linkbtn" onClick={() => setStep("form")}>Isi tanpa foto</Btn></div>
       <input ref={gallery} type="file" accept="image/*" hidden onChange={pick} />
       <input ref={nativeCam} type="file" accept="image/*" capture="environment" hidden onChange={pick} />
     </div> : null}
 
-    {step === "shoot" && live ? <div className="dpx-as-shoot">
-      <div className="dpx-as-view">
-        <video ref={video} playsInline muted aria-label="Pratinjau kamera" style={{ opacity: camOn ? 1 : 0 }} />
-        {!camOn ? <div className="dpx-as-novideo"><Ic n="scan" /><p>{camErr ? "Kamera dalam aplikasi tidak bisa dibuka. Pakai kamera ponsel atau galeri." : "Membuka kamera…"}</p></div> : null}
-        <i className="dpx-as-c a" /><i className="dpx-as-c b" /><i className="dpx-as-c c" /><i className="dpx-as-c d" />
-        <div className="dpx-as-hint">Taruh emas di dalam bingkai, tempat polos dan terang.<br />Satu aset per foto.</div>
-      </div>
-      {err ? <div className="dpx-as-err" role="alert">{err}</div> : null}
-      <div className="dpx-as-cam">
-        <Btn type="button" className="dpx-as-side" onClick={() => setLive(false)} aria-label="Kembali ke pilihan kamera"><Ic n="back" /></Btn>
-        <Btn type="button" className="dpx-as-shutter" onClick={() => (camOn ? snap() : nativeCam.current?.click())} aria-label="Ambil foto"><i /></Btn>
-        <Btn type="button" className="dpx-as-side" onClick={() => gallery.current?.click()} aria-label="Pilih dari galeri"><Ic n="grid" /></Btn>
-      </div>
-      <p className="dpx-as-sub">Ketuk bulat untuk memotret · kiri kembali · kanan galeri</p>
-      <input ref={gallery} type="file" accept="image/*" hidden onChange={pick} />
-      <input ref={nativeCam} type="file" accept="image/*" capture="environment" hidden onChange={pick} />
-    </div> : null}
+    {step === "shoot" && live ? <ScanCamera kind="asset" onClose={() => setLive(false)} onCapture={(f) => void process(f)} /> : null}
 
     {step === "work" ? <div className="dpx-as-body dpx-as-center"><div className="dpx-as-spin" aria-hidden="true" /><b>Memotong latar…</b><p className="dpx-sub">Biasanya 10 sampai 30 detik. Jangan tutup layar ini.</p></div> : null}
 
