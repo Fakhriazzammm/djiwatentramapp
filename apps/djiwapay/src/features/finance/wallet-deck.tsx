@@ -10,6 +10,7 @@ import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import type { Account } from "../../lib/finance/types";
 import { accountScope } from "../../lib/finance/scope";
+import { pollGmailNow } from "../../lib/finance/integrations";
 
 type Skin = { from: string; to: string; accent: string; tint?: string };
 /** Card colours by brand name first, then by account type. Every skin is dark enough for white text. */
@@ -184,8 +185,20 @@ export function WalletDeck({ ctx, accounts, balances, onSelect, hideRecent }: { 
 /** Opens when a wallet card is tapped: balance, personal/business switch, this month, quick actions and the latest records. */
 export function WalletDetailSheet({ ctx, id, onClose }: { ctx: FinCtx; id: string; onClose: () => void }) {
   const { fin } = ctx, pay = id === PAY_ACCOUNT_ID, account = pay ? undefined : fin.raw.accounts.find((a) => a.id === id);
-  const now = new Date();
+  const now = new Date(), [checking, setChecking] = useState(false);
   if (!pay && !account) return null;
+  /** Looks through Gmail again so a transaction that was missed shows up for review; Gmail is read once for all wallets. */
+  const checkMail = async () => {
+    if (checking) return; setChecking(true);
+    try {
+      const s = await ctx.disc.scan().catch((e: { code?: string }) => e);
+      const code = s instanceof Error ? undefined : (s as { code?: string } | undefined)?.code;
+      if (code === "NOT_CONNECTED" || code === "SCOPE_MISSING") { ctx.notify("Hubungkan Gmail di Integrasi agar email bisa diperiksa"); return; }
+      await pollGmailNow().catch(() => undefined);
+      await ctx.disc.refresh();
+      ctx.notify(`Email dicek. Transaksi ${name} yang terlewat muncul di Temuan untuk kamu setujui`);
+    } finally { setChecking(false); }
+  };
   const name = pay ? "Djiwa Pay" : account!.name, balance = pay ? ctx.payBalance : accountBalance(account!, fin.allRecords);
   const mine = fin.allRecords.filter((e) => e.accountId === id || (e.kind === "tf" && e.toAccountId === id));
   const month = mine.filter((e) => inMonth(e, now.getFullYear(), now.getMonth())), inn = month.filter((e) => e.kind === "in").reduce((n, e) => n + e.amount, 0), out = month.filter((e) => e.kind === "out").reduce((n, e) => n + e.amount, 0);
@@ -206,6 +219,7 @@ export function WalletDetailSheet({ ctx, id, onClose }: { ctx: FinCtx; id: strin
     <div className="dpx-wd-acts dpx-wd-sheetacts" style={{ marginTop: 14, gridTemplateColumns: `repeat(${acts.length}, minmax(0, 1fr))` }}>
       {acts.map(([icon, label, fn]) => <Btn key={label} type="button" className="dpx-wd-act" onClick={go(fn)}><Ic n={icon} /><span>{label}</span></Btn>)}
     </div>
+    {pay ? null : <Btn type="button" className="dpx-wd-act" style={{ width: "100%", marginTop: 10, flexDirection: "row", gap: 8 }} disabled={checking} onClick={() => void checkMail()} aria-busy={checking}><Ic n="refresh" size="sm" /><span>{checking ? "Memeriksa email…" : `Cek email ${name}`}</span></Btn>}
     {mine.length ? <><div className="dpx-glabel">Terakhir di {name}</div><div className="dpx-group dpx-flush dpx-white">{mine.slice(0, 4).map((e, i) => <EntryRow key={e.id} entry={e} state={fin.state} i={i} onOpen={(eid) => { onClose(); ctx.open({ k: "entry", id: eid }); }} />)}</div></> : <p className="dpx-sub dpx-center" style={{ margin: "10px 0 0" }}>Belum ada catatan di {name}.</p>}
   </Sheet>;
 }
