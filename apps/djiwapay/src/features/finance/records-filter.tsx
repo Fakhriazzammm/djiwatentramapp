@@ -48,3 +48,15 @@ export function FilterBar({ state, value, onChange, onOpen }: { state: FinanceSt
     </div>
   </div>;
 }
+
+/** While a filter is being applied: a bar that always moves and a line that says so, so a pause never looks like a freeze. */
+export function FilterWait({ show }: { show: boolean }) {
+  return <AnimatePresence initial={false}>{show ? <motion.div key="wait" className="dpx-rf-wait" role="status" aria-live="polite" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}>
+    <span className="ring" aria-hidden="true" /><span>Menyaring catatan…</span><i className="bar" aria-hidden="true"><u /></i>
+  </motion.div> : null}</AnimatePresence>;
+}
+
+/** Placeholder rows that shimmer where the list will be. */
+export function FilterSkeleton() {
+  return <div className="dpx-rf-skel" aria-hidden="true">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="r" style={{ animationDelay: `${i * 0.12}s` }}><i className="c" /><span><i className="l1" style={{ width: `${48 + ((i * 17) % 30)}%` }} /><i className="l2" /></span><i className="a" /></div>)}</div>;
+}

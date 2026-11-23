@@ -93,3 +93,17 @@
 .dpx-rf-subs .chip{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 14px;border-radius:999px;background:#fff;color:var(--mute);font:500 13px var(--font);box-shadow:inset 0 0 0 1.5px var(--line)}
 .dpx-rf-subs .chip.on{background:var(--blue-soft);color:var(--ink);box-shadow:inset 0 0 0 1.5px rgba(201,70,27,.4)}.dpx-rf-subs .chip small{font-size:11px;color:var(--mute)}
 .dpx-rf-bar{display:flex;gap:10px;margin-top:16px}.dpx-rf-bar .dpx-btn{flex:1;margin:0}
+
+/* Menunggu filter */
+.dpx-rf-wait{display:flex;align-items:center;gap:10px;margin:10px 4px 0;font:500 13px var(--font);color:var(--mute);position:relative;overflow:hidden}
+.dpx-rf-wait .ring{flex:none;width:16px;height:16px;border-radius:50%;border:2.5px solid rgba(201,70,27,.25);border-top-color:var(--blue);animation:dpx-rf-spin .8s linear infinite}
+.dpx-rf-wait .bar{position:absolute;left:0;right:0;bottom:-4px;height:3px;border-radius:2px;background:rgba(43,38,32,.08);overflow:hidden}
+.dpx-rf-wait .bar u{position:absolute;top:0;bottom:0;width:38%;border-radius:2px;background:linear-gradient(90deg,#c9461b,#e8833a);animation:dpx-rf-slide 1.1s ease-in-out infinite}
+@keyframes dpx-rf-spin{to{transform:rotate(360deg)}}@keyframes dpx-rf-slide{0%{left:-38%}100%{left:100%}}
+.dpx-rf-skel{display:flex;flex-direction:column;margin-top:14px;padding:4px 14px;border-radius:22px;background:#fff}
+.dpx-rf-skel .r{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--hair);animation:dpx-rf-pulse 1.2s ease-in-out infinite}.dpx-rf-skel .r:last-child{border-bottom:0}
+.dpx-rf-skel .r>span{flex:1;display:flex;flex-direction:column;gap:8px}
+.dpx-rf-skel i{display:block;border-radius:6px;background:linear-gradient(90deg,#efe7d8 25%,#f8f2e6 50%,#efe7d8 75%);background-size:200% 100%;animation:dpx-rf-shimmer 1.3s linear infinite}
+.dpx-rf-skel .c{flex:none;width:44px;height:44px;border-radius:50%}.dpx-rf-skel .l1{height:12px}.dpx-rf-skel .l2{height:10px;width:34%}.dpx-rf-skel .a{flex:none;width:68px;height:14px}
+@keyframes dpx-rf-shimmer{to{background-position:-200% 0}}@keyframes dpx-rf-pulse{0%,100%{opacity:1}50%{opacity:.6}}
+@media (prefers-reduced-motion:reduce){.dpx-rf-wait .ring,.dpx-rf-wait .bar u,.dpx-rf-skel *{animation:none!important}}
