@@ -1900,6 +1900,22 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 		}
 	}, [currentUser?._id]);
 
+	useEffect(() => {
+		let cancelled = false;
+		const flush = async () => {
+			let queue: { shiftId: string; items: any[] }[] = [];
+			try { queue = JSON.parse(localStorage.getItem("pending_shift_opname") || "[]"); } catch {}
+			if (!queue.length) return;
+			const rest: typeof queue = [];
+			for (const entry of queue) {
+				try { await submitShiftOpname(entry.items, entry.shiftId); } catch { rest.push(entry); }
+			}
+			if (!cancelled) { try { localStorage.setItem("pending_shift_opname", JSON.stringify(rest)); } catch {} }
+		};
+		void flush();
+		return () => { cancelled = true; };
+	}, []);
+
 	const handleEndShift = async () => {
 		if (closeInFlight.current) return;
 		if (todayOrders === undefined) {setSubmitError("Pesanan shift masih dimuat. Tunggu sebentar sebelum menutup shift."); return;}
@@ -1964,7 +1980,20 @@ function ShiftManagement({ onClose }: { onClose: () => void }) {
 				if (!summary.complete) throw new Error(`Opname bahan belum selesai: ${summary.total - summary.done} bahan belum dihitung`);
 				const items = buildOpnameSubmitItems(opnameRows, opnameEntries, opnameNotes);
 				if (items.some((item) => item.flagged && !item.note)) throw new Error("Catatan selisih bahan wajib diisi");
-				await submitShiftOpname(items, String(shiftStatus.shiftInfo.shiftId));
+				const opnameShiftId = String(shiftStatus.shiftInfo.shiftId);
+				try {
+					await submitShiftOpname(items, opnameShiftId);
+				} catch (opnameError) {
+					const message = opnameError instanceof Error ? opnameError.message : "";
+					if (!/session|expired|invalid|login|unauthorized/i.test(message)) throw opnameError;
+					// Sesi login kedaluwarsa: jangan blokir tutup kasir. Antrekan, kirim ulang otomatis nanti.
+					try {
+						const queue = JSON.parse(localStorage.getItem("pending_shift_opname") || "[]");
+						queue.push({ shiftId: opnameShiftId, items });
+						localStorage.setItem("pending_shift_opname", JSON.stringify(queue));
+					} catch {}
+					toast.warning("Sesi login habis — opname bahan disimpan di perangkat dan dikirim ulang otomatis saat login lagi.");
+				}
 				opnameSaved.current = true;
 			}
 			// The same expense row keeps its fingerprint when closing is retried.
