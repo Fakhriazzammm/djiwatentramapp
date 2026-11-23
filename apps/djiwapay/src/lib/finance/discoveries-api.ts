@@ -30,8 +30,10 @@ export function useDiscoveries(fin: Finance) {
     setDecisions(next); writeCache(fin.profileId, next);
     try { await post("/discoveries/undo", { keys }); } catch { /* reconciled on refresh */ }
   }, [decisions, fin.profileId]);
+  /** Looks through the connected Gmail for transaction mail from every known bank, e-wallet and biller. */
+  const scan = () => call<{ found?: number; skipped?: boolean }>("/discoveries/scan", { method: "POST" });
   const merge = (from: string, to: string) => post("/discoveries/merge", { from, to });
   const unmerge = (from: string) => post("/discoveries/unmerge", { from });
-  return { items, ready, decide, undo, merge, unmerge, refresh };
+  return { items, ready, decide, undo, merge, unmerge, refresh, scan };
 }
 export type Discoveries = ReturnType<typeof useDiscoveries>;

@@ -52,7 +52,7 @@ export function createApp(d: Deps) {
   registerAssetRoutes(app, { db: d.db, dir: d.dir, aiKey: d.aiKey }, uid, json);
   registerNewsRoutes(app, json);
   registerPushRoutes(app, { db: d.db }, uid, json);
-  registerDiscoveryRoutes(app, { db: d.db }, uid, json);
+  registerDiscoveryRoutes(app, { db: d.db, google: d.google ?? null, gfetch: d.gfetch }, uid, json);
   registerStatementRoutes(app, { aiKey: d.aiKey }, uid, json);
   registerNotifRoutes(app, { db: d.db, pipeline: d.hook?.pipeline ?? null }, uid, json);
   const google = d.google ?? null, mailDomain = d.mailDomain ?? "";

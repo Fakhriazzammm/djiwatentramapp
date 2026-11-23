@@ -1,5 +1,7 @@
 import type { Hono } from "hono";
 import { ISSUERS } from "./mail/extract.js";
+import { scanMailbox } from "./mailbox-scan.js";
+import type { Fetch, GoogleCfg } from "./google.js";
 
 /** "Temuan": suggestions found in the person's records (new wallet from e-mail, recurring bill, price change...).
  *  They are computed in the app from the records; the server keeps only the answer so a suggestion is never asked twice, on any device. */
@@ -28,9 +30,12 @@ export function isTracked(places: { accounts: { id: string; name: string }[]; ot
 
 /** Banks and e-wallets that e-mail shows (waiting, failed or in an import preview) and that are not in any wallet, asset, bill or loan yet. */
 export async function untracked(db: Db, userId: string) {
-  const ev = (await db.query(`select channel, coalesce(parsed->>'accountHint','') hint, count(*)::int n, min(coalesce(occurred_at, created_at)) first_at, max(coalesce(occurred_at, created_at)) last_at
+  const inbound = (await db.query(`select channel, coalesce(parsed->>'accountHint','') hint, count(*)::int n, min(coalesce(occurred_at, created_at)) first_at, max(coalesce(occurred_at, created_at)) last_at
     from finance.inbound_messages where user_id=$1 and status in ('review','failed','staged') and coalesce(parsed->>'generic','false') <> 'true' and parsed->>'bill' is null
       and created_at > now() - interval '120 days' group by 1,2`, [userId])).rows;
+  const seen = (await db.query("select issuer_id channel, '' hint, approx n, last_at first_at, last_at from finance.mailbox_seen where user_id=$1 and last_at > now() - interval '430 days'", [userId]).catch(() => ({ rows: [] }))).rows;
+  const have = new Set(inbound.map((r) => `${r.channel}|${r.hint}`));
+  const ev = [...inbound, ...seen.filter((r) => !have.has(`${r.channel}|`))];
   if (!ev.length) return [];
   const [acc, ass, bil, loa] = await Promise.all([
     db.query("select id,name from finance.accounts where user_id=$1 and not archived", [userId]), db.query("select name from finance.assets where user_id=$1", [userId]),
@@ -47,7 +52,8 @@ export async function untracked(db: Db, userId: string) {
   return out;
 }
 
-export function registerDiscoveryRoutes(app: Hono, d: { db: Db }, uid: (c: any) => string, json: (c: any, body: unknown, status?: number) => Response) {
+const scanned = new Map<string, number>();
+export function registerDiscoveryRoutes(app: Hono, d: { db: Db; google?: GoogleCfg | null; gfetch?: Fetch }, uid: (c: any) => string, json: (c: any, body: unknown, status?: number) => Response) {
   app.get("/api/finance/discoveries", async (c) => json(c, { success: true, decisions: await listDecisions(d.db, uid(c)), untracked: await untracked(d.db, uid(c)).catch(() => []) }));
   app.post("/api/finance/discoveries/decide", async (c) => {
     const b = await c.req.json().catch(() => null) as { keys?: unknown; status?: unknown; days?: unknown } | null;
@@ -58,6 +64,14 @@ export function registerDiscoveryRoutes(app: Hono, d: { db: Db }, uid: (c: any) 
     await d.db.query(`insert into finance.discovery_decisions(user_id,key,status,until,decided_at) select $1, k, $3, case when $3='snoozed' then now() + ($4 || ' days')::interval end, now() from unnest($2::text[]) k
       on conflict(user_id,key) do update set status=excluded.status, until=excluded.until, decided_at=now()`, [uid(c), keys, status, String(days)]);
     return json(c, { success: true });
+  });
+  app.post("/api/finance/discoveries/scan", async (c) => {
+    if (!d.google) return json(c, { success: false, error: "NOT_CONFIGURED" }, 503);
+    const id = uid(c), now = Date.now();
+    if (now - (scanned.get(id) ?? 0) < 120_000) return json(c, { success: true, skipped: true });
+    scanned.set(id, now);
+    const r = await scanMailbox(d.db, d.google, id, d.gfetch);
+    return r.ok ? json(c, { success: true, found: r.found, checked: r.checked }) : json(c, { success: false, error: r.error }, r.error === "NOT_CONNECTED" || r.error === "SCOPE_MISSING" ? 409 : 502);
   });
   app.post("/api/finance/discoveries/undo", async (c) => {
     const b = await c.req.json().catch(() => null) as { keys?: unknown } | null;

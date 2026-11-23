@@ -108,12 +108,17 @@ export function DiscoveryPage({ ctx, onBack, onOpenReview }: { ctx: FinCtx; onBa
   const waiting = inbound.data?.review ?? 0, first = useRef(true), [searching, setSearching] = useState(false);
   /** Look in the e-mail right now (Gmail, when connected) and re-read what is waiting, instead of waiting for the next automatic round. */
   const search = async () => {
-    setSearching(true); const before = disc.items.length;
-    try { await pollGmailNow().catch(() => undefined); await Promise.all([disc.refresh(), inbound.refresh()]); } finally { setSearching(false); }
-    ctx.notify("Pencarian email selesai");
-    void before;
+    setSearching(true); let msg = "Pencarian email selesai";
+    try {
+      const s = await disc.scan().catch((e: { code?: string }) => e);
+      if (s instanceof Error || (s && "code" in s && s.code)) { const code = (s as { code?: string }).code; msg = code === "NOT_CONNECTED" || code === "SCOPE_MISSING" ? "Hubungkan Gmail di Integrasi agar seluruh kotak masukmu bisa diperiksa" : "Belum bisa memeriksa Gmail. Coba lagi sebentar lagi"; }
+      await pollGmailNow().catch(() => undefined);
+      await Promise.all([disc.refresh(), inbound.refresh()]);
+    } finally { setSearching(false); }
+    ctx.notify(msg);
   };
   useEffect(() => { first.current = false; }, []);
+  useEffect(() => { void disc.scan().then(() => disc.refresh()).catch(() => undefined); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (group !== "all" && counts[group] === 0) setGroup("all"); }, [counts, group]);
 
   /** Every answer that changes a record, with the way back. */

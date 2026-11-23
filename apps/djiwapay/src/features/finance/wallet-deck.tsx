@@ -48,12 +48,20 @@ const tagOf = (c: { id: string; pay: boolean; name: string }) => (c.id === ALL_I
  */
 function Pouch({ cards, sel, go, ctx, stats, hint, cur }: { cards: Card[]; sel: number; go: (i: number) => void; ctx: FinCtx; stats: { inn: number; out: number }; hint: boolean; cur: Card }) {
   const n = cards.length, mask = (t: string) => (ctx.visible ? t : "•••••"), neg = cur.balance < 0;
+  // The card that just left the front tips up and back over the pile, then settles behind it.
+  const prev = useRef(sel), [leaving, setLeaving] = useState<string | null>(null);
+  useEffect(() => {
+    if (prev.current === sel) return;
+    const id = cards[prev.current]?.id ?? null; prev.current = sel;
+    if (!id) return; setLeaving(id); const t = window.setTimeout(() => setLeaving(null), 750); return () => window.clearTimeout(t);
+  }, [sel]);   // eslint-disable-line react-hooks/exhaustive-deps
   return <motion.div className="dpx-pc" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING, delay: 0.05 }}>
     <div className="dpx-pc-stage">
       {cards.map((c, i) => {
-        const p = (i - sel + n) % n, pos = p < 3 ? POS[p] : TUCKED, front = p === 0;
-        return <motion.div key={c.id} className="dpx-pc-card" style={{ background: `linear-gradient(145deg, ${c.skin.from}, ${c.skin.to})`, zIndex: p < 3 ? 5 - p : 1, pointerEvents: p < 3 ? "auto" : "none" }}
-          animate={{ y: pos.y, scale: pos.s, opacity: p < 3 ? 1 : 0 }} transition={SPRING}
+        const p = (i - sel + n) % n, pos = p < 3 ? POS[p] : TUCKED, front = p === 0, flip = leaving === c.id && n > 1;
+        return <motion.div key={c.id} className="dpx-pc-card" style={{ background: `linear-gradient(145deg, ${c.skin.from}, ${c.skin.to})`, zIndex: p < 3 ? 5 - p : 1, pointerEvents: p < 3 ? "auto" : "none", transformPerspective: 900 }}
+          animate={flip ? { y: [0, -96, pos.y], rotateX: [0, 58, 0], scale: [1, 1.02, pos.s], opacity: 1, zIndex: [7, 7, 1] } : { y: pos.y, rotateX: 0, scale: pos.s, opacity: p < 3 ? 1 : 0 }}
+          transition={flip ? { duration: 0.72, times: [0, 0.45, 1], ease: "easeInOut" } : SPRING}
           drag={front && n > 1 ? "x" : false} dragSnapToOrigin dragElastic={0.5} dragMomentum={false}
           onDragEnd={(_, info) => { if (Math.abs(info.offset.x) > 60 || Math.abs(info.velocity.x) > 500) go(sel + (info.offset.x < 0 ? 1 : -1)); }}
           onTap={() => go(front ? sel + 1 : i)} whileTap={front ? { scale: 0.985 } : undefined}
