@@ -172,3 +172,9 @@
 .dpx-ip-check p{margin:8px 0 0;font-size:12.5px;line-height:1.45;color:var(--mute)}
 .dpx-ip-bar{position:sticky;bottom:-18px;z-index:3;display:flex;gap:10px;margin:16px -18px -18px;padding:12px 18px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,rgba(255,255,255,0),#fff 28%)}
 .dpx-ip-bar .dpx-btn{flex:1;margin:0}.dpx-ip-bar .dpx-soft{flex:.7}
+
+/* Kartu Rapikan di Kekayaan > Dompet */
+.dpx-tidycard{margin:12px 0 4px}
+.dpx-tidycard .in{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;background:var(--warn-soft);box-shadow:inset 0 0 0 1px rgba(160,93,0,.14)}
+.dpx-tidycard .q{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#fff;color:var(--warn);font:600 18px var(--font)}
+.dpx-tidycard .t{flex:1;min-width:0}.dpx-tidycard b{display:block;font:600 14px var(--font);color:var(--ink)}.dpx-tidycard small{display:block;margin-top:2px;font-size:12px;line-height:1.35;color:var(--mute)}

@@ -11,6 +11,7 @@ import { ScopeSwitch } from "./scope-switch";
 import { DayStrip, MonthStrip, dayKey, monthKey, monthRange } from "./day-strip";
 import { TidyBanner } from "./tidy-banner";
 import { TidySheet } from "./tidy-sheet";
+import { TidyCard } from "./tidy-card";
 import type { Discoveries } from "../../lib/finance/discoveries-api";
 import { isCrossScope } from "../../lib/finance/scope";
 import { rootId, guessCategory } from "../../lib/finance/categories";
@@ -41,7 +42,7 @@ import type { WalletTransaction } from "../../lib/wallet-adapter";
 
 export type FinSheet =
   | { k: "catat" } | { k: "entry"; id: string } | { k: "budget"; cid?: string } | { k: "goal"; id?: string } | { k: "goal-detail"; id: string }
-  | { k: "debt"; id?: string } | { k: "tidy" } | { k: "split" } | { k: "streak" } | { k: "account"; id?: string } | { k: "wallet-view"; id: string } | { k: "wallet-adjust"; id: string } | { k: "category"; id?: string } | { k: "pay-category"; id: string }
+  | { k: "debt"; id?: string } | { k: "tidy"; acc?: string } | { k: "split" } | { k: "streak" } | { k: "account"; id?: string } | { k: "wallet-view"; id: string } | { k: "wallet-adjust"; id: string } | { k: "category"; id?: string } | { k: "pay-category"; id: string }
   | { k: "bill"; id?: string } | { k: "bill-pay"; id: string } | { k: "asset"; id?: string } | { k: "asset-new"; noPhoto?: boolean } | { k: "loan"; id?: string; draft?: import("../../lib/finance/loans").LoanInput } | { k: "loan-view"; id: string } | { k: "loan-pay"; id: string; extra?: boolean } | { k: "loan-rate"; id: string } | { k: "stock-activate" } | { k: "stock-add"; ticker?: string; side?: "buy" | "sell"; first?: boolean } | { k: "stock-view"; ticker: string } | { k: "stock-trade"; id: string } | { k: "stock-fee" } | { k: "stock-manual"; ticker: string } | { k: "asset-view"; id: string } | { k: "pockets" } | { k: "pocket"; id?: string } | { k: "payoff" } | { k: "weekly" };
 
 export type FinCtx = {
@@ -407,6 +408,7 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
       <WalletDeck ctx={ctx} accounts={accounts} balances={balances} onSelect={setWalletSel} hideRecent />
       {!fin.hasBusiness ? <motion.button type="button" className="dpx-scope-hint" onClick={() => ctx.open({ k: "account" })} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={spring} whileTap={{ scale: 0.98 }}><Ic n="bag" /><span><b>Punya usaha?</b> Tambah dompet dan pilih Bisnis agar catatan dan laporannya terpisah.</span></motion.button> : null}
       {missing.length ? <div className="dpx-vt-note"><Ic n="warn" /><span>{missing.length} rekening hanya berisi pengeluaran tercatat, jadi saldonya minus. Ketuk rekening lalu isi saldo awal agar kekayaan bersih akurat.</span></div> : null}
+    <TidyCard ctx={ctx} acc={walletSel === "all" ? undefined : walletSel} />
     <FinRecords ctx={ctx} embed={{ acc: walletSel, name: walletSel === "all" ? "Semua dompet" : accName(state, walletSel) }} />
     <div className="dpx-sec"><h2>Bayar & layanan</h2><Btn type="button" onClick={() => nav.go("/bayar")}>Semua layanan</Btn></div>
     <div className="dpx-group"><div className="dpx-tile3" style={{ gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>{acts.map(([a, l, p]) => <Btn key={a} type="button" className="dpx-q" onClick={() => nav.go(p)}><img src={payAsset(a)} width={42} height={42} alt="" />{l}</Btn>)}</div></div>
@@ -462,7 +464,7 @@ export function FinSheetHost({ ctx, sheet, close, goManual, openPaySheet }: { ct
     case "budget": return <BudgetSheet key="budget" fin={fin} categoryId={sheet.cid} suggested={suggested} notify={notify} onClose={close} />;
     case "goal": return <GoalSheet key="goal" fin={fin} goal={state.goals.find((g) => g.id === sheet.id)} notify={notify} onClose={close} />;
     case "goal-detail": { const g = state.goals.find((x) => x.id === sheet.id); return g ? <GoalDetailSheet key="gd" fin={fin} goal={g} notify={notify} onClose={close} onEdit={() => ctx.open({ k: "goal", id: g.id })} /> : null; }
-    case "tidy": return <TidySheet key="tidy" ctx={ctx} onClose={close} />;
+    case "tidy": return <TidySheet key="tidy" ctx={ctx} onClose={close} acc={sheet.acc} />;
     case "debt": return <DebtSheet key="debt" fin={fin} debt={state.debts.find((d) => d.id === sheet.id)} notify={notify} onClose={close} />;
     case "bill": { const loan = state.loans.find((l) => (l.billId ?? `ln-${l.id}`) === sheet.id); if (loan) return <LoanDetail key={`lv-${loan.id}`} ctx={ctx} id={loan.id} onClose={close} />; return <BillSheet key="bill" fin={fin} bill={state.bills.find((b) => b.id === sheet.id)} notify={notify} onClose={close} />; }
     case "bill-pay": { const loan = state.loans.find((l) => (l.billId ?? `ln-${l.id}`) === sheet.id); if (loan) return <LoanPaySheet key={`lp-${loan.id}`} ctx={ctx} loan={loan} extra={false} onClose={close} />; const b = state.bills.find((x) => x.id === sheet.id); return b ? <BillPaySheet key="billpay" fin={fin} bill={b} notify={notify} onClose={close} goPay={() => ctx.nav.go("/bayar")} accounts={[{ id: PAY_ACCOUNT_ID, name: "Djiwa Pay" }, ...state.accounts.filter((a) => !a.archived).map((a) => ({ id: a.id, name: a.name }))]} /> : null; }

@@ -9,15 +9,18 @@ import { payeeKey } from "../../lib/finance/discover";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import type { Entry } from "../../lib/finance/types";
 
-const unsorted = (e: Entry) => e.kind !== "tf" && e.source !== "pay" && e.categoryId === "lainnya";
+/** The same records that carry a "?" in the lists: every record with no category, Djiwa Pay payments included. */
+export const unsorted = (e: Entry) => e.kind !== "tf" && e.categoryId === "lainnya";
 type Group = { key: string; label: string; kind: "in" | "out"; list: Entry[]; total: number };
 
 /** Every record with no category, in two steps: the model sorts what it is sure of (in rounds, until it is done or out of its daily allowance), and what is left is
  *  asked shop by shop: one answer, category or sub category, sorts all of that shop's records and is remembered for next time. */
-export function TidySheet({ ctx, onClose }: { ctx: FinCtx; onClose: () => void }) {
+export function TidySheet({ ctx, onClose, acc }: { ctx: FinCtx; onClose: () => void; /** Only one wallet's records. */ acc?: string }) {
   const { fin } = ctx;
   const [busy, setBusy] = useState(false), [progress, setProgress] = useState<{ done: number; of: number } | null>(null), [note, setNote] = useState(""), [pick, setPick] = useState<Group | null>(null), [more, setMore] = useState(false);
-  const todo = useMemo(() => fin.raw.entries.filter(unsorted), [fin.raw.entries]);
+  const todo = useMemo(() => fin.allRecords.filter((e) => unsorted(e) && (!acc || e.accountId === acc || e.toAccountId === acc)), [fin.allRecords, acc]);
+  /** A stored record is updated; a Djiwa Pay payment (read-only) takes its category as an override. */
+  const put = (e: Entry, next: Entry) => { if (e.source === "pay") fin.dispatch({ type: "override/set", id: e.id, override: { categoryId: next.categoryId } }); else fin.dispatch({ type: "entry/update", entry: next }); };
   const groups = useMemo(() => {
     const m = new Map<string, Group>();
     for (const e of todo) {
@@ -40,7 +43,7 @@ export function TidySheet({ ctx, onClose }: { ctx: FinCtx; onClose: () => void }
         let res = { results: local as { key: string; categoryId: string | null; confidence: number; source: "rule" | "ai" | "none" }[], minConfidence: 0.8 };
         if (ask.length) { const got = await categorizeRemote(ask.map(toItem)).catch(() => null); if (got) { res = { results: [...local, ...got.results], minConfidence: got.minConfidence }; limited = got.limited; } }
         const plan = planRefine(part, res, fin.raw.categories);
-        for (const p of plan) fin.dispatch({ type: "entry/update", entry: p.after });
+        for (const p of plan) put(p.before, p.after);
         sorted += plan.length;
         if (limited) break;
       }
@@ -52,10 +55,10 @@ export function TidySheet({ ctx, onClose }: { ctx: FinCtx; onClose: () => void }
   /** One answer for a whole shop, remembered for next time. The way back is one tap. */
   const apply = (g: Group, categoryId: string) => {
     const before = g.list, name = catOf(fin.raw, categoryId).name;
-    for (const e of before) fin.dispatch({ type: "entry/update", entry: { ...e, categoryId } });
+    for (const e of before) put(e, { ...e, categoryId });
     learnRemote(g.label, categoryId, { profileId: fin.profileId, kind: g.kind });
     setPick(null);
-    ctx.notify(`${before.length} catatan ${g.label} masuk ${name}`, () => { for (const e of before) fin.dispatch({ type: "entry/update", entry: e }); });
+    ctx.notify(`${before.length} catatan ${g.label} masuk ${name}`, () => { for (const e of before) put(e, e); });
   };
 
   const shown = more ? groups : groups.slice(0, 12);
