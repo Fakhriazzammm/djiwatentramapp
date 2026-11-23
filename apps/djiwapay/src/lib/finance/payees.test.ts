@@ -7,6 +7,12 @@ const ent = (id: string, note: string, amount: number, iso: string, extra: Parti
 const nov = periodRange("bulan", NOW);
 const run = (entries: Entry[], mode: "out" | "in" = "out") => analyze(entries, { mode, ...nov, now: NOW });
 
+test("a sub category of food makes a name-like payee a shop, through its root", () => {
+  const e = [ent("1", "ICHIBAN SUSHI", 163_900, "2026-11-21T09:00:00Z", { categoryId: "makan-restoran" })];
+  const a = analyze(e, { mode: "out", ...nov, now: NOW, rootOf: (id) => (id.startsWith("makan") ? "makan" : id) });
+  expect(a.list[0].kind).toBe("toko");
+});
+
 describe("payees", () => {
   test("a name is cleaned and merged across spellings", () => {
     expect(payeeName("Transfer ke RANI AMALIA")).toBe("Rani Amalia");
@@ -19,6 +25,13 @@ describe("payees", () => {
     expect(classify("Toko Sumber Rejeki")).toBe("toko");
     expect(classify("PLN Prabayar")).toBe("layanan");
     expect(classify("Bu Siti", ["makan", "makan", "makan"])).toBe("toko");
+    // shops written like names: a QRIS terminal, a place, a food word or a restaurant category make them shops
+    expect(classify("Garland Barnville Garut", [], { qris: true })).toBe("toko");
+    expect(classify("Idm Qris Livin Jakarta Utara", [])).toBe("toko");
+    expect(classify("Ichiban Sushi", ["makan"])).toBe("toko");
+    expect(classify("Haidir Ali Abidin", ["lainnya"])).toBe("orang");
+    expect(classify("Dian Siti Fatimah", ["transfer", "lainnya"])).toBe("orang");
+    expect(classify("Warung Bu Tini 2", [])).toBe("toko");
   });
   test("totals, counts, averages and shares add up, and the biggest comes first", () => {
     const a = run([ent("1", "Transfer ke Rani", 1_000_000, "2026-11-05T05:00:00Z"), ent("2", "RANI", 500_000, "2026-11-12T05:00:00Z"), ent("3", "Kopi Ara", 20_000, "2026-11-10T05:00:00Z"), ent("4", "Kopi Ara", 20_000, "2026-11-11T05:00:00Z")]);

@@ -7,6 +7,7 @@ import { useTween } from "../integrations/import-scan";
 import { analyze, billKey, periodRange, type Payee, type PayeeKind, type PayeeMode, type PayeePeriod } from "../../lib/finance/payees";
 import { usePayeeMeta } from "../../lib/finance/payee-meta";
 import { rupiah } from "../../lib/djiwa-pay-format";
+import { rootId } from "../../lib/finance/categories";
 import type { Entry } from "../../lib/finance/types";
 import "./payees.css";
 import { NewBadge } from "../shell/new-badge";
@@ -138,9 +139,10 @@ export function PayeesPage({ ctx, onBack }: { ctx: FinCtx; onBack: () => void })
   const [mode, setMode] = useState<PayeeMode>(() => (new URLSearchParams(window.location.search).get("m") === "in" ? "in" : "out")), [period, setPeriod] = useState<PayeePeriod>("bulan"), [kind, setKindFilter] = useState<PayeeKind | "all">("all");
   const [sel, setSel] = useState<string | null>(() => new URLSearchParams(window.location.search).get("k"));
   useEffect(() => { if (window.location.search) window.history.replaceState({}, "", window.location.pathname); }, []);
+  const rootOf = useMemo(() => (id: string) => rootId(fin.raw.categories, id), [fin.raw.categories]);
   const now = useMemo(() => new Date(), []), range = useMemo(() => periodRange(period, now), [period, now]);
-  const a = useMemo(() => analyze(fin.allRecords, { mode, ...range, meta, now }), [fin.allRecords, mode, range, meta, now]);
-  const wide = useMemo(() => analyze(fin.allRecords, { mode, ...periodRange("semua", now), meta, now }), [fin.allRecords, mode, meta, now]);
+  const a = useMemo(() => analyze(fin.allRecords, { mode, ...range, meta, now, rootOf }), [fin.allRecords, mode, range, meta, now, rootOf]);
+  const wide = useMemo(() => analyze(fin.allRecords, { mode, ...periodRange("semua", now), meta, now, rootOf }), [fin.allRecords, mode, meta, now, rootOf]);
   const list = kind === "all" ? a.list : a.list.filter((p) => p.kind === kind);
   const chosen = sel ? (a.list.find((p) => p.key === sel) ?? wide.list.find((p) => p.key === sel)) ?? null : null;
   const idx = chosen ? Math.max(0, a.list.findIndex((p) => p.key === chosen.key)) : 0;
@@ -181,8 +183,9 @@ export function PayeesPage({ ctx, onBack }: { ctx: FinCtx; onBack: () => void })
 /** Laporan > Ringkasan: the five biggest, the share they take, and the way into the whole page. */
 export function PayeeCard({ ctx, y, m }: { ctx: FinCtx; y: number; m: number }) {
   const { fin } = ctx, { meta } = usePayeeMeta(fin.profileId), reduce = Boolean(useReducedMotion()), nf = useNewFeature<HTMLElement>("payee-card");
+  const rootOf = useMemo(() => (id: string) => rootId(fin.raw.categories, id), [fin.raw.categories]);
   const range = useMemo(() => periodRange("bulan", new Date(), { y, m }), [y, m]);
-  const a = useMemo(() => analyze(fin.allRecords, { mode: "out", ...range, meta }), [fin.allRecords, range, meta]);
+  const a = useMemo(() => analyze(fin.allRecords, { mode: "out", ...range, meta, rootOf }), [fin.allRecords, range, meta, rootOf]);
   if (!a.list.length) return null;
   const top = a.top, others = Math.max(0, 100 - top.reduce((s, p) => s + p.share, 0));
   return <motion.section ref={nf.ref} className={`dpx-py-card dpx-py-rep ${nf.fresh ? "is-new" : ""}`} initial={reduce ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring} aria-label="Ke mana uangmu pergi">

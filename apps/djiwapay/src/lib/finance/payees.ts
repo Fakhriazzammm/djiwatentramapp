@@ -29,13 +29,23 @@ export const payeeKeyOf = (note: string) => payeeName(note).toLowerCase().replac
 /** A saved bill is the same payee when its name reduces to the same key. */
 export const billKey = payeeKeyOf;
 
-export function classify(name: string, categories: string[] = []): PayeeKind {
+const PLACE = /\b(jakarta|bandung|garut|tasikmalaya|bekasi|bogor|depok|tangerang|surabaya|semarang|yogyakarta|jogja|solo|malang|medan|bali|makassar|palembang|cirebon|cimahi|sukabumi|utara|selatan|barat|timur|pusat|cabang|branch|city|kota|kab|kabupaten|plaza|mall|mal|square|tower|livin|qris|idm|alfa|pasar|terminal|stasiun|bandara)\b/i;
+const FOOD = /\b(sushi|ramen|kebab|steak|seafood|geprek|boba|teh|jus|juice|donut|cake|warteg|padang|bakmi|siomay|batagor|baso|cilok|sop|soto|gado|rawon|pecel|lele|bebek|burger|pizza|cafe|kafe|resto|restoran|kitchen|dapur|garden|house|corner|bar|grill|bbq|snack|bread|pastry|fried|chicken|noodle)\b/i;
+const NOT_PERSON_CATS = new Set(["lainnya", "transfer", ""]);
+const looksLikePerson = (name: string) => /^[A-Za-z'.\- ]{3,40}$/.test(name) && name.trim().split(/\s+/).length <= 4 && !SHOP.test(name) && !SERVICE.test(name) && !PLACE.test(name) && !FOOD.test(name);
+
+/** A person, a shop or a service. Signals, strongest first: a known service or shop word, a QRIS/PAN terminal on the mail, the root category of its records (a restaurant category is a shop),
+ *  a place or food word in the name, and only then "a name that reads like a person's, on records nobody has sorted". `cats` are root category ids. */
+export function classify(name: string, cats: string[] = [], signals: { qris?: boolean } = {}): PayeeKind {
   if (SERVICE.test(name)) return "layanan";
-  if (SHOP.test(name) || /\d/.test(name)) return "toko";
-  const shopVotes = categories.filter((c) => SHOP_CATS.has(c)).length;
-  if (categories.length && shopVotes / categories.length > 0.5) return "toko";
-  if (categories.includes("tagihan") && categories.filter((c) => c === "tagihan").length / Math.max(1, categories.length) > 0.5) return "layanan";
-  return "orang";
+  if (SHOP.test(name) || /\d/.test(name) || signals.qris || PLACE.test(name) || FOOD.test(name)) return "toko";
+  const sorted = cats.filter((c) => !NOT_PERSON_CATS.has(c));
+  if (sorted.length) {
+    const share = (set: (c: string) => boolean) => sorted.filter(set).length / sorted.length;
+    if (share((c) => c === "tagihan") > 0.5) return "layanan";
+    if (share((c) => SHOP_CATS.has(c)) > 0.5) return "toko";
+  }
+  return looksLikePerson(name) ? "orang" : "toko";
 }
 
 const jakarta = (iso: string) => new Date(new Date(iso).getTime() + WIB);
@@ -62,7 +72,7 @@ export type Analysis = {
 };
 
 const SHORT = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-export function analyze(entries: Entry[], o: { mode: PayeeMode; start: number; end: number; prevStart: number | null; prevEnd: number | null; meta?: Meta; now?: Date }): Analysis {
+export function analyze(entries: Entry[], o: { mode: PayeeMode; start: number; end: number; prevStart: number | null; prevEnd: number | null; meta?: Meta; now?: Date; /** Maps a category id to its top-level parent, so a sub category like "Restoran & warung" counts as food. */ rootOf?: (id: string) => string }): Analysis {
   const meta = o.meta ?? { kinds: {}, labels: {} }, now = o.now ?? new Date();
   const all = entries.filter((e) => e.kind === o.mode && !e.tags.includes("loan-receipt") && (e.note || "").trim().length > 0);
   const groups = new Map<string, Entry[]>();
@@ -77,13 +87,14 @@ export function analyze(entries: Entry[], o: { mode: PayeeMode; start: number; e
     const names = new Map<string, number>(); for (const e of every) { const n = payeeName(e.note); names.set(n, (names.get(n) ?? 0) + 1); }
     const name = [...names.entries()].sort((a, b) => b[1] - a[1])[0][0];
     const cats = new Map<string, number>(); for (const e of every) cats.set(e.categoryId, (cats.get(e.categoryId) ?? 0) + 1);
+    const roots = every.map((e) => (o.rootOf ? o.rootOf(e.categoryId) : e.categoryId)), qris = every.some((e) => /\bPAN\b|qris/i.test(e.note));
     const categoryId = [...cats.entries()].sort((a, b) => b[1] - a[1])[0][0];
     const months: PayeeMonth[] = [];
     for (let i = 5; i >= 0; i--) { const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1)), k = monthKey(d); months.push({ key: k, label: SHORT[d.getUTCMonth()], total: every.filter((e) => monthKey(jakarta(e.at)) === k).reduce((s, e) => s + e.amount, 0) }); }
     const recent = every.filter((e) => +now - +new Date(e.at) < 200 * DAY), days = recent.map((e) => jakarta(e.at).getUTCDate());
     const monthsWith = new Set(recent.map((e) => monthKey(jakarta(e.at)))).size, spread = days.length ? Math.max(...days) - Math.min(...days) : 99;
     list.push({
-      key, name, kind: meta.kinds[key] ?? classify(name, [...cats.keys()]), label: meta.labels[key] ?? "", total, count: inWin.length, avg: total / inWin.length, prevTotal,
+      key, name, kind: meta.kinds[key] ?? classify(name, roots, { qris }), label: meta.labels[key] ?? "", total, count: inWin.length, avg: total / inWin.length, prevTotal,
       trend: prevTotal > 0 ? Math.round(((total - prevTotal) / prevTotal) * 100) : null, share: 0, firstAt: [...every].sort((a, b) => +new Date(a.at) - +new Date(b.at))[0].at, lastAt: sorted[0].at,
       entries: sorted, categoryId, months, typicalDay: Math.round(median(days)) || 1, typicalAmount: Math.round(median(recent.map((e) => e.amount))), monthly: monthsWith >= 3 && spread <= 6,
     });
