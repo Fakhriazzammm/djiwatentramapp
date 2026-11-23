@@ -10,6 +10,7 @@ import type { Nav } from "../shell/dpx-pages";
 import { ScopeSwitch } from "./scope-switch";
 import { DayStrip, MonthStrip, dayKey, monthKey, monthRange } from "./day-strip";
 import { TidyBanner } from "./tidy-banner";
+import { TidySheet } from "./tidy-sheet";
 import type { Discoveries } from "../../lib/finance/discoveries-api";
 import { isCrossScope } from "../../lib/finance/scope";
 import { rootId, guessCategory } from "../../lib/finance/categories";
@@ -40,7 +41,7 @@ import type { WalletTransaction } from "../../lib/wallet-adapter";
 
 export type FinSheet =
   | { k: "catat" } | { k: "entry"; id: string } | { k: "budget"; cid?: string } | { k: "goal"; id?: string } | { k: "goal-detail"; id: string }
-  | { k: "debt"; id?: string } | { k: "split" } | { k: "streak" } | { k: "account"; id?: string } | { k: "wallet-view"; id: string } | { k: "wallet-adjust"; id: string } | { k: "category"; id?: string } | { k: "pay-category"; id: string }
+  | { k: "debt"; id?: string } | { k: "tidy" } | { k: "split" } | { k: "streak" } | { k: "account"; id?: string } | { k: "wallet-view"; id: string } | { k: "wallet-adjust"; id: string } | { k: "category"; id?: string } | { k: "pay-category"; id: string }
   | { k: "bill"; id?: string } | { k: "bill-pay"; id: string } | { k: "asset"; id?: string } | { k: "asset-new"; noPhoto?: boolean } | { k: "loan"; id?: string; draft?: import("../../lib/finance/loans").LoanInput } | { k: "loan-view"; id: string } | { k: "loan-pay"; id: string; extra?: boolean } | { k: "loan-rate"; id: string } | { k: "stock-activate" } | { k: "stock-add"; ticker?: string; side?: "buy" | "sell"; first?: boolean } | { k: "stock-view"; ticker: string } | { k: "stock-trade"; id: string } | { k: "stock-fee" } | { k: "stock-manual"; ticker: string } | { k: "asset-view"; id: string } | { k: "pockets" } | { k: "pocket"; id?: string } | { k: "payoff" } | { k: "weekly" };
 
 export type FinCtx = {
@@ -230,7 +231,7 @@ export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: R
   const head = <>
     <div className="dpx-hdr" style={{ paddingTop: 0 }}><h1 className="dpx-page-title" style={{ flex: 1 }}>Catatan</h1><Btn type="button" className="dpx-rb" onClick={() => nav.go("/ringkasan")} aria-label="Laporan"><Ic n="chart" /></Btn></div>
     <ScopeSwitch fin={fin} id="records" />
-    <TidyBanner fin={fin} notify={ctx.notify} />
+    <TidyBanner fin={fin} notify={ctx.notify} onManual={() => ctx.open({ k: "tidy" })} />
   </>;
   const body = <>
     <MonthStrip months={allMonths} today={today} counts={allMonthCounts} value={curKey} onPick={(k) => { const [y, m] = k.split("-").map(Number); setCursor({ y, m: m - 1 }); }} />
@@ -461,6 +462,7 @@ export function FinSheetHost({ ctx, sheet, close, goManual, openPaySheet }: { ct
     case "budget": return <BudgetSheet key="budget" fin={fin} categoryId={sheet.cid} suggested={suggested} notify={notify} onClose={close} />;
     case "goal": return <GoalSheet key="goal" fin={fin} goal={state.goals.find((g) => g.id === sheet.id)} notify={notify} onClose={close} />;
     case "goal-detail": { const g = state.goals.find((x) => x.id === sheet.id); return g ? <GoalDetailSheet key="gd" fin={fin} goal={g} notify={notify} onClose={close} onEdit={() => ctx.open({ k: "goal", id: g.id })} /> : null; }
+    case "tidy": return <TidySheet key="tidy" ctx={ctx} onClose={close} />;
     case "debt": return <DebtSheet key="debt" fin={fin} debt={state.debts.find((d) => d.id === sheet.id)} notify={notify} onClose={close} />;
     case "bill": { const loan = state.loans.find((l) => (l.billId ?? `ln-${l.id}`) === sheet.id); if (loan) return <LoanDetail key={`lv-${loan.id}`} ctx={ctx} id={loan.id} onClose={close} />; return <BillSheet key="bill" fin={fin} bill={state.bills.find((b) => b.id === sheet.id)} notify={notify} onClose={close} />; }
     case "bill-pay": { const loan = state.loans.find((l) => (l.billId ?? `ln-${l.id}`) === sheet.id); if (loan) return <LoanPaySheet key={`lp-${loan.id}`} ctx={ctx} loan={loan} extra={false} onClose={close} />; const b = state.bills.find((x) => x.id === sheet.id); return b ? <BillPaySheet key="billpay" fin={fin} bill={b} notify={notify} onClose={close} goPay={() => ctx.nav.go("/bayar")} accounts={[{ id: PAY_ACCOUNT_ID, name: "Djiwa Pay" }, ...state.accounts.filter((a) => !a.archived).map((a) => ({ id: a.id, name: a.name }))]} /> : null; }
