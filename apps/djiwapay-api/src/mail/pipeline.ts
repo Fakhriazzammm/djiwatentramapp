@@ -312,8 +312,10 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
     const learnedS = await learnedCategory(d.db, userId, x.merchant);
     const categoryS = learnedS ?? guessCategory(x.merchant, mail.subject, x.direction);
     const knownS = Boolean(learnedS) || (categoryS !== "lainnya" && Boolean(x.merchant)) || (kind === "in" && Boolean(x.merchant));
-    const sure = !loanMail && flags.length === 0 && (isConfident(rules) || agreed) && x.direction !== "unknown" && knownS && issuer.kind !== "service" && x.amount <= (d.autoCeiling ?? AUTO_CEILING);
-    return finish("staged", sure ? "sure" : "check", { confidence: x.confidence, at, parsed: { ...parsed, kind, categoryId: categoryS, accountId, accountName: `${issuer.name}${x.accountHint ? " ••" + x.accountHint : ""}`, accountType: issuer.kind === "bank" ? "bank" : issuer.kind === "ewallet" ? "ewallet" : "other", sure, ...(sure ? {} : { sample: redactForShare(`${mail.subject}\n${mail.text}`) }) } });
+    // Readable money is recorded; a category nobody knows yet is not a reason to hold it back: it is filled in afterwards (the person's own rules, then the model) and can be changed any time.
+    const why = loanMail ? "pinjaman" : flags.length ? "tanda ganjil" : !(isConfident(rules) || agreed) ? "pembacaan ragu" : x.direction === "unknown" ? "arah tidak jelas" : issuer.kind === "service" ? "pengirim layanan" : x.amount > (d.autoCeiling ?? AUTO_CEILING) ? "nominal besar" : "";
+    const sure = why === "";
+    return finish("staged", sure ? "sure" : "check", { confidence: x.confidence, at, parsed: { ...parsed, kind, categoryId: categoryS, catKnown: knownS, ...(sure ? {} : { why }), accountId, accountName: `${issuer.name}${x.accountHint ? " ••" + x.accountHint : ""}`, accountType: issuer.kind === "bank" ? "bank" : issuer.kind === "ewallet" ? "ewallet" : "other", sure, ...(sure ? {} : { sample: redactForShare(`${mail.subject}\n${mail.text}`) }) } });
   }
 
   // The other half of a move between the user's own accounts becomes one transfer.

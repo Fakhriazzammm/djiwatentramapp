@@ -65,7 +65,7 @@ run("gmail import (real database, simulated Gmail)", () => {
       ...pays,
       mail({ from: "info@bca.co.id", subject: "Transfer", ageDays: 20, body: `Transfer ke rekening sendiri berhasil. Penerima: DANA. Jumlah Rp 200.000 pada ${when(20)}. Rekening ****1234.`, ref: "BCX2611200001" }),
       mail({ from: "no-reply@dana.id", subject: "Dana masuk", ageDays: 20, body: `Transfer dari BCA sebesar Rp 200.000 diterima pada ${when(20)}.`, ref: "DNX2611200002" }),
-      mail({ from: "no-reply@gopay.co.id", subject: "Notifikasi", ageDays: 30, body: `Transaksi di Toko Antah Berantah sebesar Rp 15.000 berhasil pada ${when(30)}.` }),
+      mail({ from: "no-reply@gopay.co.id", subject: "Notifikasi", ageDays: 30, body: `Transaksi di Toko Antah Berantah sebesar Rp 60.000.000 berhasil pada ${when(30)}.` }),
       mail({ from: "no-reply@gopay.co.id", subject: "Halo", ageDays: 31, body: "Promo spesial untukmu minggu ini" }),
       mail({ from: "no-reply@gopay.co.id", subject: "Kode OTP", ageDays: 32, body: "Kode verifikasi 123456 jangan berikan ke siapa pun" }),
       mail({ from: "info@bca.co.id", subject: "Pembayaran", ageDays: 33, body: `Pembayaran ke Kopi Palsu sebesar Rp 999.000 berhasil pada ${when(33)}.`, verdict: null }),        // no Google verdict, old key gone: must be refused
@@ -84,7 +84,7 @@ run("gmail import (real database, simulated Gmail)", () => {
     expect((await pool.query("select count(*)::int n from finance.accounts where user_id=$1", [user])).rows[0].n).toBe(0);
     const p = s.preview;
     expect(p.sure.count).toBe(72);                          // 70 payments + the BCA/DANA pair
-    expect(p.check.count).toBe(1);                          // the unknown merchant
+    expect(p.check.count).toBe(1);                          // above the automatic ceiling: a person looks (an unknown merchant alone no longer holds a payment back)
     expect(p.months.length).toBeGreaterThanOrEqual(3);
     expect(p.categories[0].categoryId).toBe("makan");
     const refused = await pool.query("select count(*)::int n from finance.inbound_messages where user_id=$1 and import_id=$2 and parsed->>'merchant'='Kopi Palsu'", [user, id]);
@@ -98,7 +98,8 @@ run("gmail import (real database, simulated Gmail)", () => {
     const items = await importCheckItems(db, user, s.id);
     expect(items).toHaveLength(1);
     expect(items[0].parsed.merchant).toContain("Antah Berantah");
-    expect(items[0].parsed.sample).toContain("Rp 15.000");
+    expect(items[0].parsed.sample).toContain("Rp 60.000.000");
+    expect(["nominal besar", "tanda ganjil"]).toContain(items[0].parsed.why);
   });
 
   test("commit records the sure group, pairs the transfer, and hands the rest to the review queue", async () => {

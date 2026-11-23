@@ -240,13 +240,14 @@ export function createApp(d: Deps) {
   // Import of old mail: scan (worker) -> preview -> commit. The API only creates, reads and decides.
   app.post("/api/finance/google/gmail/import", async (c) => {
     if (!(await connected(uid(c), "gmail"))) return json(c, { success: false, error: "NOT_CONNECTED" }, 409);
-    const body = await c.req.json().catch(() => ({})) as { days?: unknown };
+    const body = await c.req.json().catch(() => ({})) as { days?: unknown; since?: unknown; issuers?: unknown };
     await enableGmail(d.db, uid(c));
-    return json(c, { success: true, id: await createImport(d.db, uid(c), Number(body.days ?? 90)) });
+    const issuers = Array.isArray(body.issuers) ? body.issuers.filter((x): x is string => typeof x === "string").slice(0, 20) : [];
+    return json(c, { success: true, id: await createImport(d.db, uid(c), Number(body.days ?? 90), new Date(), { sinceLast: body.since === "last", issuers }) });
   });
   app.get("/api/finance/google/gmail/import", async (c) => json(c, { success: true, import: await importState(d.db, uid(c)) }));
   app.get("/api/finance/google/gmail/import/:id/items", async (c) => json(c, { success: true, items: await importCheckItems(d.db, uid(c), c.req.param("id")) }));
-  app.post("/api/finance/google/gmail/import/:id/commit", async (c) => { const r = await commitImport(d.db, uid(c), c.req.param("id")); return r ? json(c, { success: true, ...r }) : json(c, { success: false, error: "NOT_READY" }, 409); });
+  app.post("/api/finance/google/gmail/import/:id/commit", async (c) => { const r = await commitImport(d.db, uid(c), c.req.param("id"), { categorize: d.hook?.pipeline.categorize }); return r ? json(c, { success: true, ...r }) : json(c, { success: false, error: "NOT_READY" }, 409); });
   app.post("/api/finance/google/gmail/import/:id/undo", async (c) => { const r = await undoImport(d.db, uid(c), c.req.param("id")); return r ? json(c, { success: true, ...r }) : json(c, { success: false, error: "NOT_FOUND" }, 404); });
   app.post("/api/finance/google/gmail/import/cancel", async (c) => { await cancelImport(d.db, uid(c)); return json(c, { success: true }); });
   app.post("/api/finance/google/gmail/off", async (c) => { await disableGmail(d.db, uid(c)); return json(c, { success: true }); });

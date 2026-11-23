@@ -6,7 +6,7 @@ import { rupiah } from "../../lib/djiwa-pay-format";
 import { billExists, mergeTargets, movedEntries, type Discovery, type DiscoveryGroup } from "../../lib/finance/discover";
 import type { Account, AccountType } from "../../lib/finance/types";
 import { useInbound } from "../integrations/integrations-pages";
-import { pollGmailNow } from "../../lib/finance/integrations";
+import { pollGmailNow, startImport } from "../../lib/finance/integrations";
 import "./discoveries.css";
 
 const GROUPS: readonly (readonly [DiscoveryGroup | "all", string])[] = [["all", "Semua"], ["dompet", "Dompet"], ["tagihan", "Tagihan"], ["langganan", "Langganan"]];
@@ -30,7 +30,7 @@ function Proof({ list }: { list: Discovery["proof"] }) {
   </div>;
 }
 
-function Card({ d, i, ctx, busy, onPrimary, onLater, onNo, onMore }: { d: Discovery; i: number; ctx: FinCtx; busy: boolean; onPrimary: () => void; onLater: () => void; onNo: () => void; onMore: () => void }) {
+function Card({ d, i, ctx, busy, onPrimary, onLater, onNo, onMore, onImport }: { d: Discovery; i: number; ctx: FinCtx; busy: boolean; onPrimary: () => void; onLater: () => void; onNo: () => void; onMore: () => void; onImport: () => void }) {
   const x = useMotionValue(0), reduce = useReducedMotion();
   const rightOp = useTransform(x, [20, 110], [0, 1]), leftOp = useTransform(x, [-110, -20], [1, 0]), tilt = useTransform(x, [-160, 0, 160], [-3, 0, 3]);
   const done = (_: unknown, info: PanInfo) => { if (info.offset.x > 110) onPrimary(); else if (info.offset.x < -110) onLater(); };
@@ -53,6 +53,7 @@ function Card({ d, i, ctx, busy, onPrimary, onLater, onNo, onMore }: { d: Discov
         {d.kind === "account" ? <Btn type="button" className="dpx-df-ghost" disabled={busy} onClick={onMore} whileTap={{ scale: 0.95 }}>Ubah / gabung</Btn> : <Btn type="button" className="dpx-df-ghost" disabled={busy} onClick={onLater} whileTap={{ scale: 0.95 }}>Nanti</Btn>}
         <Btn type="button" className="dpx-df-no" disabled={busy} onClick={onNo} whileTap={{ scale: 0.95 }} aria-label={`Bukan ini: ${d.title}`}>Bukan ini</Btn>
       </footer>
+      {d.draft && d.issuerId ? <Btn type="button" className="dpx-df-imp" disabled={busy} onClick={onImport} whileTap={{ scale: 0.97 }}><Ic n="dl" size="sm" /> Simpan dan impor email lamanya (1 tahun)</Btn> : null}
     </motion.article>
   </motion.li>;
 }
@@ -153,6 +154,12 @@ export function DiscoveryPage({ ctx, onBack, onOpenReview }: { ctx: FinCtx; onBa
     await disc.decide([d.key], "dismissed");
     if (!quiet) ctx.notify(`${d.title} ditandai berhenti`, () => void disc.undo([d.key]));
   };
+  /** A bank found in the mailbox: save its wallet, then read that bank's old mail so its history comes with it (a preview first, nothing recorded before it is confirmed). */
+  const importOld = async (d: Discovery) => {
+    await accept(d, true);
+    try { await startImport(365, { issuers: d.issuerId ? [d.issuerId] : [] }); ctx.notify(`${d.title} disimpan. Email lamanya mulai dipindai`); ctx.nav.go("/integrasi?impor=1"); }
+    catch (e) { ctx.notify((e as { code?: string }).code === "NOT_CONNECTED" ? `${d.title} disimpan. Hubungkan Gmail agar email lamanya bisa diimpor` : `${d.title} disimpan, tetapi impor email belum bisa dimulai`); }
+  };
   const later = async (d: Discovery) => { await disc.decide([d.key], "snoozed", d.kind === "stopped" ? 30 : 7); ctx.notify("Ditunda, muncul lagi nanti", () => void disc.undo([d.key])); };
   const no = async (d: Discovery) => { await disc.decide([d.key], "dismissed"); ctx.notify("Tidak akan ditanyakan lagi", () => void disc.undo([d.key])); };
   const run = async (fn: () => Promise<void>) => { setBusy(true); try { await fn(); } finally { setBusy(false); } };
@@ -184,7 +191,7 @@ export function DiscoveryPage({ ctx, onBack, onOpenReview }: { ctx: FinCtx; onBa
 
     <ul className="dpx-df-list">
       <AnimatePresence mode="popLayout" initial={false}>
-        {list.map((d, i) => <Card key={d.key} d={d} i={first.current ? i : 0} ctx={ctx} busy={busy} onPrimary={() => void run(() => accept(d))} onLater={() => void run(() => later(d))} onNo={() => void run(() => no(d))} onMore={() => setOpen(d)} />)}
+        {list.map((d, i) => <Card key={d.key} d={d} i={first.current ? i : 0} ctx={ctx} busy={busy} onPrimary={() => void run(() => accept(d))} onLater={() => void run(() => later(d))} onNo={() => void run(() => no(d))} onMore={() => setOpen(d)} onImport={() => void run(() => importOld(d))} />)}
       </AnimatePresence>
     </ul>
 

@@ -77,15 +77,18 @@ export const CHANNEL_NAME: Record<string, string> = { bca: "BCA", blu: "blu", ma
 
 /* ---- Import of old Gmail mail ---- */
 export type ImportPreview = {
-  sure: { count: number; income: number; expense: number }; check: { count: number };
+  sure: { count: number; income: number; expense: number }; check: { count: number; reasons?: { why: string; count: number }[] };
   months: { month: string; count: number; income: number; expense: number }[]; categories: { categoryId: string; count: number; total: number }[];
 };
 export type ImportState = {
   id: string; status: "scanning" | "ready" | "done" | "cancelled" | "undone" | "failed"; periodDays: number; scanned: number; staged: number; progress: number;
   error: string | null; committed: number; movedToReview: number; scanningTo: string | null; since: string | null; preview?: ImportPreview;
+  /** Done imports: what became of the mail that went to the queue, judged now. */ live?: { pending: number; approved: number; rejected: number; uncategorized: number };
+  lastSyncedAt?: string | null; issuers?: string[]; mode?: "period" | "since-last";
 };
 export type ImportItem = { id: string; channel: string; confidence: number; parsed: { merchant?: string; amount?: number; kind?: string; subject?: string; sample?: string; issuer?: string; at?: string } };
-export const startImport = (days: number) => call<{ id: string }>("/google/gmail/import", { method: "POST", body: JSON.stringify({ days }) });
+export type ImportStart = { /** Start where the last finished import stopped. */ since?: "last"; /** Only these banks (issuer ids). */ issuers?: string[] };
+export const startImport = (days: number, o: ImportStart = {}) => call<{ id: string }>("/google/gmail/import", { method: "POST", body: JSON.stringify({ days, ...o }) });
 export const getImport = () => call<{ import: ImportState | null }>("/google/gmail/import");
 export const getImportItems = (id: string) => call<{ items: ImportItem[] }>(`/google/gmail/import/${encodeURIComponent(id)}/items`);
 export const commitImport = (id: string) => call<{ committed: number; movedToReview: number; transfers: number }>(`/google/gmail/import/${encodeURIComponent(id)}/commit`, { method: "POST" });

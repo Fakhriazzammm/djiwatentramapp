@@ -15,7 +15,7 @@ export type BillDraft = { id: string; name: string; amount: number; day: number;
 export type Discovery = {
   key: string; kind: DiscoveryKind; group: DiscoveryGroup; title: string; lead: string; detail: string;
   amount?: number; /** 0..1, how sure the detector is. */ confidence: number; at: string;
-  accountId?: string; /** A bank or e-wallet seen in e-mail that is not in any wallet, asset, bill or loan yet: saving creates this wallet. */ draft?: Account; bill?: BillDraft; billId?: string; newAmount?: number; oldAmount?: number;
+  accountId?: string; /** The bank or biller (issuer id) behind a wallet found in e-mail: its old mail can be imported. */ issuerId?: string; /** A bank or e-wallet seen in e-mail that is not in any wallet, asset, bill or loan yet: saving creates this wallet. */ draft?: Account; bill?: BillDraft; billId?: string; newAmount?: number; oldAmount?: number;
   /** Past payments that prove the pattern, newest first. */ proof: { at: string; amount: number }[];
 };
 /** From the server: a bank or e-wallet that e-mail shows and that is tracked nowhere yet. */
@@ -45,7 +45,7 @@ function untrackedFinds(state: FinanceState, extra: Untracked[]): Discovery[] {
     const id = `email-${u.issuerId}${u.hint ? "-" + u.hint : ""}`, label = `${u.name}${u.hint ? " ••" + u.hint : ""}`, type: AccountType = u.kind === "ewallet" ? "ewallet" : "bank";
     const lead = u.sameIssuer.length ? `Rekening baru di ${u.name}` : `${type === "ewallet" ? "E-wallet" : "Bank"} baru: ${u.name}`;
     return { key: u.key, kind: "account" as const, group: "dompet" as const, title: label, lead, detail: `Muncul di ${u.count} email, terakhir ${shortDate(u.lastAt)}, tetapi belum ada di dompet, aset, tagihan, atau kewajibanmu. Simpan agar tercatat dan tidak terlewat.`,
-      confidence: 0.92, at: u.lastAt, accountId: id, draft: { id, name: label, type, opening: 0 }, proof: [] };
+      confidence: 0.92, at: u.lastAt, accountId: id, issuerId: u.issuerId, draft: { id, name: label, type, opening: 0 }, proof: [] };
   });
 }
 

@@ -2,6 +2,7 @@
  *  look at a preview. Only the commit turns staged mail into entries, and a whole import can be undone. */
 import { accessToken, googleReason, type Fetch, type GoogleCfg } from "./google.js";
 import { RULES_VERSION } from "./mail/extract.js";
+import { ISSUERS } from "./mail/issuers.js";
 import { senderQuery } from "./gmail.js";
 import { processForUser, type PipelineDeps, type RawMail } from "./mail/pipeline.js";
 import type { MailCtx } from "./mail/smtp.js";
@@ -13,12 +14,15 @@ const DAY = 86400_000, EVERYTHING_SINCE = Date.UTC(2010, 0, 1);
 const TICK_BUDGET_MS = 8000, PAGE = 50, TRANSFER_MS = 15 * 60_000;
 export type ImportDeps = { db: Tx; cfg: GoogleCfg; pipeline: PipelineDeps; toMail: (raw: Buffer, ctx: MailCtx) => Promise<RawMail>; f?: Fetch; now?: () => Date; budgetMs?: number; test?: boolean };
 
-export async function createImport(db: Tx, userId: string, days: number, now = new Date()) {
-  const period = [0, 90, 180, 365].includes(days) ? days : 90;
+export type ImportOpts = { /** Start where the last finished import stopped, so only new old-mail is read. */ sinceLast?: boolean; /** Only these banks, e-wallets and billers (issuer ids). */ issuers?: string[] };
+export async function createImport(db: Tx, userId: string, days: number, now = new Date(), opts: ImportOpts = {}) {
+  const period = [0, 30, 90, 180, 365].includes(days) ? days : 90;
+  const only = (opts.issuers ?? []).filter((i) => ISSUERS.some((x) => x.id === i)).slice(0, 20);
   return db.tx(async (q) => {
     await dropImports(q, userId, "scanning");
-    const since = period ? new Date(now.getTime() - period * DAY) : new Date(EVERYTHING_SINCE);
-    const r = await q.query("insert into finance.gmail_import(user_id,status,period_days,since,until,window_end) values($1,'scanning',$2,$3,$4,$4) returning id", [userId, period, since.toISOString(), now.toISOString()]);
+    const last = opts.sinceLast ? (await q.query("select until from finance.gmail_import where user_id=$1 and status='done' order by created_at desc limit 1", [userId])).rows[0]?.until : null;
+    const since = last ? new Date(new Date(last).getTime() - DAY) : period ? new Date(now.getTime() - period * DAY) : new Date(EVERYTHING_SINCE);   // a day of overlap: a mail seen twice is recorded once
+    const r = await q.query("insert into finance.gmail_import(user_id,status,period_days,since,until,window_end,issuers,mode) values($1,'scanning',$2,$3,$4,$4,$5,$6) returning id", [userId, last ? 0 : period, since.toISOString(), now.toISOString(), only.length ? only : null, last ? "since-last" : "period"]);
     return r.rows[0].id as string;
   });
 }
@@ -57,7 +61,8 @@ export async function scanStep(d: ImportDeps, imp: Record<string, any>): Promise
   while (Date.now() - started < budget) {
     if (end <= since) { await d.db.query("update finance.gmail_import set status='ready', window_end=$2, page_token=null, error=null, finished_at=now() where id=$1", [imp.id, new Date(since).toISOString()]); return; }
     const start = Math.max(since, end - windowSize(end, until));
-    const q = `${senderQuery()} after:${Math.floor(start / 1000)} before:${Math.floor(end / 1000)}`;
+    const from = (imp.issuers as string[] | null)?.length ? `from:(${ISSUERS.filter((i) => (imp.issuers as string[]).includes(i.id)).flatMap((i) => i.domains).join(" OR ")})` : senderQuery();
+    const q = `${from} after:${Math.floor(start / 1000)} before:${Math.floor(end / 1000)}`;
     const res = await gmail(f, token, `messages?${new URLSearchParams({ q, maxResults: String(PAGE), ...(pageToken ? { pageToken } : {}) })}`);
     if (res.status === 429 || res.status === 403) { await fail(`GMAIL_${res.status}:${await googleReason(res)}`, res.status === 403 ? 300_000 : 120_000); return; }
     if (res.status === 401) { await fail("NOT_CONNECTED"); return; }
@@ -105,7 +110,18 @@ export async function importState(db: Q, userId: string) {
   if (!imp) return null;
   const span = new Date(imp.until).getTime() - new Date(imp.since).getTime();
   const progress = imp.status === "scanning" ? Math.min(0.99, Math.max(0, (new Date(imp.until).getTime() - new Date(imp.window_end).getTime()) / (span || 1))) : 1;
-  const out: Record<string, unknown> = { id: imp.id, status: imp.status, periodDays: imp.period_days, scanned: imp.scanned, staged: imp.staged, progress, error: imp.error ?? null, committed: imp.committed, movedToReview: imp.moved_to_review, scanningTo: imp.window_end ? new Date(imp.window_end).toISOString() : null, since: imp.since ? new Date(imp.since).toISOString() : null };
+  const out: Record<string, unknown> = { id: imp.id, status: imp.status, periodDays: imp.period_days, scanned: imp.scanned, staged: imp.staged, progress, error: imp.error ?? null, committed: imp.committed, movedToReview: imp.moved_to_review, scanningTo: imp.window_end ? new Date(imp.window_end).toISOString() : null, since: imp.since ? new Date(imp.since).toISOString() : null , issuers: imp.issuers ?? [], mode: imp.mode ?? "period", until: imp.until };
+  const lastDone = (await db.query("select until, finished_at from finance.gmail_import where user_id=$1 and status='done' order by created_at desc limit 1", [userId])).rows[0];
+  out.lastSyncedAt = lastDone ? new Date(lastDone.until).toISOString() : null;
+  if (imp.status === "done") {
+    // What became of the mail that went to the queue: it is judged now, not frozen at the moment of the import.
+    const [live, unc] = await Promise.all([
+      db.query("select status, count(*)::int n from finance.inbound_messages where user_id=$1 and import_id=$2 group by 1", [userId, imp.id]),
+      db.query("select count(*)::int n from finance.entries where user_id=$1 and category_id='lainnya' and kind<>'tf' and inbound_id in (select id::text from finance.inbound_messages where import_id=$2 and status='approved')", [userId, imp.id]),
+    ]);
+    const by = Object.fromEntries(live.rows.map((r) => [r.status as string, Number(r.n)]));
+    out.live = { pending: (by.review ?? 0) + (by.failed ?? 0), approved: by.approved ?? 0, rejected: by.rejected ?? 0, uncategorized: Number(unc.rows[0]?.n ?? 0) };
+  }
   if (imp.status === "ready" || imp.status === "scanning") {
     const [tot, months, cats, chk] = await Promise.all([
       db.query(`select count(*)::int n, coalesce(sum(case when parsed->>'kind'='in' then (parsed->>'amount')::numeric end),0) inc, coalesce(sum(case when parsed->>'kind'='out' then (parsed->>'amount')::numeric end),0) outc
@@ -114,11 +130,11 @@ export async function importState(db: Q, userId: string) {
         from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' and (${CURRENT_SURE}) group by 1 order by 1 desc`, [userId, imp.id]),
       db.query(`select parsed->>'categoryId' c, count(*)::int n, sum((parsed->>'amount')::numeric) total from finance.inbound_messages
         where user_id=$1 and import_id=$2 and status='staged' and (${CURRENT_SURE}) and parsed->>'kind'='out' group by 1 order by total desc limit 6`, [userId, imp.id]),
-      db.query(`select count(*)::int n from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' and not (${CURRENT_SURE})`, [userId, imp.id]),
+      db.query(`select coalesce(parsed->>'why','lainnya') why, count(*)::int n from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' and not (${CURRENT_SURE}) group by 1 order by n desc`, [userId, imp.id]),
     ]);
     out.preview = {
       sure: { count: tot.rows[0].n, income: Number(tot.rows[0].inc), expense: Number(tot.rows[0].outc) },
-      check: { count: chk.rows[0].n },
+      check: { count: chk.rows.reduce((s, r) => s + Number(r.n), 0), reasons: chk.rows.map((r) => ({ why: r.why as string, count: Number(r.n) })) },
       months: months.rows.map((r) => ({ month: r.m as string, count: r.n as number, income: Number(r.inc), expense: Number(r.outc) })),
       categories: cats.rows.map((r) => ({ categoryId: r.c as string, count: r.n as number, total: Number(r.total) })),
     };
@@ -140,7 +156,29 @@ const bump = async (q: Q, userId: string) => {
 };
 
 /** Turns the preview's "sure" group into entries, pairs moves between the user's own accounts, and hands the rest to the review queue. */
-export async function commitImport(db: Tx, userId: string, importId: string) {
+type Categorize = NonNullable<PipelineDeps["categorize"]>;
+export async function commitImport(db: Tx, userId: string, importId: string, opts: { categorize?: Categorize } = {}) {
+  const done = await commitTx(db, userId, importId);
+  if (done && opts.categorize) void fillCategories(db, userId, importId, opts.categorize).catch((e) => console.error("import categories", e instanceof Error ? e.message : e));
+  return done;
+}
+
+/** Entries the import recorded without a known category get one: the person's own rules first, then the model, in small batches; unsure ones stay for "Rapikan". */
+export async function fillCategories(db: Tx, userId: string, importId: string, categorize: Categorize, limit = 300) {
+  const rows = (await db.query(`select id, note, amount, kind from finance.entries where user_id=$1 and category_id='lainnya' and kind in ('in','out') and inbound_id in (select id::text from finance.inbound_messages where import_id=$2 and status='approved') order by at desc limit $3`, [userId, importId, limit])).rows;
+  let changed = 0;
+  for (let i = 0; i < rows.length; i += 20) {
+    const part = rows.slice(i, i + 20), picks = await categorize(userId, part.map((r) => ({ key: r.id as string, text: String(r.note ?? ""), amount: Number(r.amount), kind: r.kind as "in" | "out" })));
+    for (const r of part) {
+      const p = picks.get(r.id as string); if (!p || !p.categoryId || p.categoryId === "lainnya") continue;
+      await db.query("update finance.entries set category_id=$3, tags = case when $4 then array_append(tags,'kategori-ai') else tags end where user_id=$1 and id=$2 and category_id='lainnya'", [userId, r.id, p.categoryId, p.source === "ai"]); changed++;
+    }
+  }
+  if (changed) await bump(db, userId);
+  return changed;
+}
+
+async function commitTx(db: Tx, userId: string, importId: string) {
   return db.tx(async (q) => {
     const imp = (await q.query("select status from finance.gmail_import where id=$1 and user_id=$2 for update", [importId, userId])).rows[0];
     if (!imp || imp.status !== "ready") return null;

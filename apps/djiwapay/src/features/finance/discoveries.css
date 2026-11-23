@@ -93,3 +93,11 @@
 .dpx-ph-a{flex:none;font:700 13.5px var(--font);font-variant-numeric:tabular-nums}.dpx-ph-a.in{color:var(--ok)}
 .dpx .dpx-tx-badge.dpx-src-settlement{background:#fff0c9;color:#8a5a00}
 .dpx .dpx-tx-badge.dpx-src-statement{background:#efe6fa;color:#6b3fa0}
+
+/* Impor email lama: langkah berikutnya dan sinkron */
+.dpx-df-next{display:flex;flex-direction:column;gap:8px;margin:12px 0 4px}
+.dpx-df-next .dpx-btn{margin:0;display:flex;align-items:center;justify-content:center;gap:8px}
+.dpx-sync{display:flex!important;align-items:center;gap:12px;text-align:left;background:var(--blue-soft)!important;color:var(--ink)!important;box-shadow:inset 0 0 0 1.5px rgba(201,70,27,.25)}
+.dpx-sync span{flex:1;min-width:0}.dpx-sync b{display:block;font:700 14px var(--font)}.dpx-sync small{display:block;margin-top:2px;font:500 12px/1.35 var(--font);color:var(--mute)}
+.dpx-df-imp{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:8px;min-height:40px;border-radius:12px;background:transparent;box-shadow:inset 0 0 0 1.5px var(--line);color:var(--blue);font:700 12.5px var(--font)}
+.dpx-df-imp:disabled{opacity:.5}

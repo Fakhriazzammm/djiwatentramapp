@@ -219,7 +219,8 @@ function EmailSetupSheet({ onClose, summary, refresh, ctx }: { onClose: () => vo
 }
 
 /* ---------- Import of old Gmail mail: choose, scan, preview, commit, undo ---------- */
-const PERIODS: [number, string][] = [[90, "3 bulan"], [180, "6 bulan"], [365, "1 tahun"], [0, "Semua"]];
+const PERIODS: [number, string][] = [[30, "1 bulan"], [90, "3 bulan"], [180, "6 bulan"], [365, "1 tahun"], [0, "Semua"]];
+const WHY: Record<string, string> = { "tanda ganjil": "ada yang janggal", "pembacaan ragu": "belum terbaca yakin", "arah tidak jelas": "masuk atau keluar tidak jelas", "pengirim layanan": "dari toko atau layanan", "nominal besar": "nominal besar", pinjaman: "cicilan atau pinjaman", lainnya: "perlu dicek" };
 const monthName = (ym: string) => new Date(`${ym}-15T00:00:00+07:00`).toLocaleDateString("id-ID", { month: "long", year: "numeric" });
 
 export function ImportSheet({ ctx, onClose, onChanged }: { ctx: FinCtx; onClose: () => void; onChanged: () => void }) {
@@ -241,7 +242,8 @@ export function ImportSheet({ ctx, onClose, onChanged }: { ctx: FinCtx; onClose:
     {imp === undefined ? <div className="dpx-sub dpx-center" style={{ padding: 30 }}>Memuat…</div> : null}
     {imp === null || (imp && ["cancelled", "undone"].includes(imp.status)) ? <>
       <p className="dpx-sub" style={{ marginTop: -6 }}>Cari pembayaran lama di Gmail-mu dan catat sekaligus. Kamu lihat pratinjau dulu. Tidak ada yang tercatat sebelum kamu setuju.</p>
-      <div className="dpx-glabel" style={{ marginTop: 12 }}>Seberapa jauh ke belakang?</div>
+      {imp?.lastSyncedAt ? <Btn type="button" className="dpx-btn dpx-sync" disabled={busy} onClick={() => void act(() => startImport(90, { since: "last" }), "Menyinkronkan email sejak impor terakhir")} whileTap={{ scale: 0.98 }}><Ic n="refresh" size="sm" /><span><b>Sinkronkan sejak impor terakhir</b><small>{new Date(imp.lastSyncedAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })} sampai sekarang. Yang sudah tercatat dilewati.</small></span></Btn> : null}
+      <div className="dpx-glabel" style={{ marginTop: 12 }}>{imp?.lastSyncedAt ? "Atau pilih rentang" : "Seberapa jauh ke belakang?"}</div>
       <div className="dpx-inline-seg" role="group" aria-label="Periode">{PERIODS.map(([d, label]) => <Btn key={d} type="button" className={days === d ? "dpx-on" : ""} aria-pressed={days === d} onClick={() => setDays(d)}>{label}</Btn>)}</div>
       <div className="dpx-note dpx-info"><Ic n="shield" /><div>Hanya email dari bank dan e-wallet yang terdaftar yang dibaca. Disimpan hanya nominal, toko, dan waktu.{days === 0 || days === 365 ? " Email yang lebih lama bisa memakan waktu beberapa menit." : ""}</div></div>
       <Btn type="button" className="dpx-btn" disabled={busy} onClick={() => void act(() => startImport(days))}>{busy ? "Memulai…" : "Mulai pindai"}</Btn>
@@ -259,7 +261,7 @@ export function ImportSheet({ ctx, onClose, onChanged }: { ctx: FinCtx; onClose:
       {p.months.length ? <div className="dpx-group dpx-white dpx-flush" style={{ marginTop: 10 }}>{p.months.slice(0, 8).map((m) => <div key={m.month} className="dpx-kv"><span>{monthName(m.month)} · {m.count}</span><b>{m.income ? <span className="dpx-in">+{rupiah(m.income)} </span> : null}−{rupiah(m.expense)}</b></div>)}{p.months.length > 8 ? <div className="dpx-kv"><span>dan {p.months.length - 8} bulan lain</span><b /></div> : null}</div> : null}
       {p.categories.length ? <div className="dpx-chips2" style={{ marginTop: 10 }}>{p.categories.map((c) => <span key={c.categoryId} className="dpx-chip3">{catOf(ctx.fin.state, c.categoryId).name} {rupiah(c.total)}</span>)}</div> : null}
       {p.check.count ? <>
-        <Btn type="button" className="dpx-linkbtn" style={{ marginTop: 12 }} onClick={() => setShowCheck((v) => !v)} aria-expanded={showCheck}>{p.check.count} email belum terbaca jelas, masuk antrean tinjau {showCheck ? "▴" : "▾"}</Btn>
+        <Btn type="button" className="dpx-linkbtn" style={{ marginTop: 12 }} onClick={() => setShowCheck((v) => !v)} aria-expanded={showCheck}>{p.check.count} email perlu dicek dulu{p.check.reasons?.length ? ` (${p.check.reasons.slice(0, 3).map((r) => `${r.count} ${WHY[r.why] ?? r.why}`).join(", ")})` : ""} {showCheck ? "▴" : "▾"}</Btn>
         {showCheck ? <div className="dpx-checks2">{items === null ? <div className="dpx-sub">Memuat…</div> : items.map((it) => <div key={it.id} className="dpx-checkitem"><div><b>{CHANNEL_NAME[it.channel] ?? it.channel}{it.parsed.amount ? ` · ${rupiah(it.parsed.amount)}` : ""}</b><span>{it.parsed.merchant || it.parsed.subject || "Tanpa judul"}</span></div><Btn type="button" className="dpx-copybtn" onClick={() => void share(it)}><Ic n="copy" size="sm" /> Salin contoh</Btn></div>)}
           <p className="dpx-hint">“Salin contoh” menyalin teks email dengan nomor dan nama disamarkan. Kirim ke pengembang agar pembaca email bisa diperbaiki.</p></div> : null}
       </> : null}
@@ -270,7 +272,14 @@ export function ImportSheet({ ctx, onClose, onChanged }: { ctx: FinCtx; onClose:
       </div>
     </> : null}
     {imp?.status === "done" ? <>
-      <div className="dpx-codebox dpx-got"><Ic n="check" size="lg" /><b style={{ fontSize: 17 }}>{imp.committed} transaksi dicatat</b><small>{imp.movedToReview ? `${imp.movedToReview} lainnya menunggu di antrean tinjau. ` : ""}Catatan ini juga tertulis di Spreadsheet-mu.</small></div>
+      <div className="dpx-codebox dpx-got"><Ic n={imp.committed ? "check" : "info"} size="lg" /><b style={{ fontSize: 17 }}>{imp.committed ? `${imp.committed} transaksi dicatat` : "Tidak ada yang langsung dicatat"}</b>
+        <small>{imp.live ? (imp.live.pending ? `${imp.live.pending} masih menunggu ditinjau` : imp.movedToReview ? `${imp.movedToReview} yang perlu dicek sudah selesai ditinjau (${imp.live.approved} dicatat, ${imp.live.rejected} diabaikan)` : "Semua langsung tercatat") : ""}{imp.committed ? ". Catatan ini juga tertulis di Spreadsheet-mu." : ""}</small></div>
+      <div className="dpx-df-next" role="group" aria-label="Langkah berikutnya">
+        {imp.live?.pending ? <Btn type="button" className="dpx-btn" onClick={() => { onClose(); ctx.nav.go("/tinjau"); }}><Ic n="list" size="sm" /> Tinjau {imp.live.pending} sisanya</Btn> : null}
+        {imp.live?.uncategorized ? <Btn type="button" className="dpx-btn dpx-soft" onClick={() => { onClose(); ctx.nav.go("/riwayat"); }}><Ic n="spark" size="sm" /> {imp.live.uncategorized} belum berkategori. Rapikan</Btn> : null}
+        {ctx.disc.items.length ? <Btn type="button" className="dpx-btn dpx-soft" onClick={() => { onClose(); ctx.nav.go("/temuan"); }}><Ic n="spark" size="sm" /> {ctx.disc.items.length} temuan dari riwayatmu</Btn> : null}
+        <Btn type="button" className="dpx-btn dpx-soft" disabled={busy} onClick={() => void act(() => startImport(90, { since: "last" }), "Menyinkronkan email sejak impor terakhir")}><Ic n="refresh" size="sm" /> Sinkronkan email lama lagi{imp.lastSyncedAt ? ` (sejak ${new Date(imp.lastSyncedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })})` : ""}</Btn>
+      </div>
       {confirmUndo ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div><b>Hapus semua catatan dari impor ini?</b> Perubahan yang sudah kamu buat pada catatan itu ikut hilang.<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy} onClick={() => void act(async () => { const r = await undoImport(imp.id); await ctx.fin.retrySync(); setConfirmUndo(false); ctx.notify(`${r.removed} catatan dihapus`); })}>Ya, urungkan</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => setConfirmUndo(false)}>Batal</Btn></div></div></div>
         : <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => setConfirmUndo(true)}><Ic n="undo" size="sm" /> Urungkan impor ini</Btn>}
       <Btn type="button" className="dpx-btn" onClick={onClose}>Selesai</Btn>
