@@ -38,12 +38,13 @@ export function CategoryFilterSheet({ state, value, counts, onApply, onClose }: 
 export function FilterBar({ state, value, onChange, onOpen }: { state: FinanceState; value: RecFilter; onChange: (f: RecFilter) => void; onOpen: () => void }) {
   const cat = value.cat ? catOf(state, value.cat) : null, sub = value.sub ? catOf(state, value.sub) : null, hasSubs = Boolean(value.cat && state.categories.some((c) => c.parentId === value.cat));
   return <div className="dpx-rf">
-    <div className="row" role="group" aria-label="Filter kategori">
+    <div className="row" role="group" aria-label="Filter kategori dan jenis">
       <Btn type="button" className={`btn ${cat ? "on" : ""}`} onClick={onOpen} whileTap={{ scale: 0.96 }}><Ic n="filter" size="sm" />{cat ? cat.name : "Kategori"}{cat ? null : <NewTag id="records-filter" />}<Ic n="chev" size="sm" /></Btn>
-      <AnimatePresence initial={false}>{hasSubs ? <motion.span key="sub" initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: "auto" }} exit={{ opacity: 0, width: 0 }} style={{ display: "inline-flex", overflow: "hidden" }}>
+      <AnimatePresence initial={false}>{hasSubs ? <motion.span key="sub" initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: "auto" }} exit={{ opacity: 0, width: 0 }} style={{ display: "inline-flex", overflow: "hidden", flex: "none" }}>
         <Btn type="button" className={`btn ${sub ? "on" : ""}`} onClick={onOpen} whileTap={{ scale: 0.96 }}>{sub ? sub.name : "Sub kategori"}<Ic n="chev" size="sm" /></Btn></motion.span> : null}</AnimatePresence>
-      <AnimatePresence initial={false}>{hasFilter(value) ? <motion.span key="reset" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} style={{ display: "inline-flex" }}><Btn type="button" className="btn reset" onClick={() => onChange(NO_FILTER)} whileTap={{ scale: 0.94 }}><Ic n="close" size="sm" />Atur ulang</Btn></motion.span> : null}</AnimatePresence>
+      <i className="sep" aria-hidden="true" />
+      {KINDS.map(([k, l]) => <Btn key={k} type="button" className={`k ${value.kind === k ? "on" : ""}`} aria-pressed={value.kind === k} onClick={() => onChange({ ...value, kind: k })} whileTap={{ scale: 0.95 }}>{l}</Btn>)}
+      <AnimatePresence initial={false}>{hasFilter(value) ? <motion.span key="reset" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} style={{ display: "inline-flex", flex: "none" }}><Btn type="button" className="btn reset" onClick={() => onChange(NO_FILTER)} whileTap={{ scale: 0.94 }} aria-label="Atur ulang filter"><Ic n="close" size="sm" /></Btn></motion.span> : null}</AnimatePresence>
     </div>
-    <div className="row kinds" role="group" aria-label="Jenis penerima">{KINDS.map(([k, l]) => <Btn key={k} type="button" className={`k ${value.kind === k ? "on" : ""}`} aria-pressed={value.kind === k} onClick={() => onChange({ ...value, kind: k })} whileTap={{ scale: 0.95 }}>{l}</Btn>)}</div>
   </div>;
 }
