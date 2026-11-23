@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { call } from "./integrations";
-import { findDiscoveries, type Decision, type Discovery } from "./discover";
+import { findDiscoveries, type Decision, type Discovery, type Untracked } from "./discover";
 import type { Finance } from "./use-finance";
 
 const post = (path: string, body: unknown) => call<{ success: true }>(path, { method: "POST", body: JSON.stringify(body) });
@@ -11,13 +11,13 @@ const writeCache = (id: string, list: Decision[]) => { try { window.localStorage
 /** What was found in the records and not answered yet. Answers live on the server (every device agrees) and in a local copy (works offline). */
 export function useDiscoveries(fin: Finance) {
   const [decisions, setDecisions] = useState<Decision[]>(() => readCache(fin.profileId));
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(false), [untracked, setUntracked] = useState<Untracked[]>([]);
   const refresh = useCallback(async () => {
-    try { const r = await call<{ decisions: Decision[] }>("/discoveries"); setDecisions(r.decisions); writeCache(fin.profileId, r.decisions); } catch { /* keep the local copy */ } finally { setReady(true); }
+    try { const r = await call<{ decisions: Decision[]; untracked?: Untracked[] }>("/discoveries"); setDecisions(r.decisions); setUntracked(r.untracked ?? []); writeCache(fin.profileId, r.decisions); } catch { /* keep the local copy */ } finally { setReady(true); }
   }, [fin.profileId]);
   useEffect(() => { void refresh(); const f = () => { if (document.visibilityState === "visible") void refresh(); }; document.addEventListener("visibilitychange", f); return () => document.removeEventListener("visibilitychange", f); }, [refresh]);
 
-  const items: Discovery[] = useMemo(() => findDiscoveries(fin.raw, fin.raw.entries, decisions, new Date()), [fin.raw, decisions]);
+  const items: Discovery[] = useMemo(() => findDiscoveries(fin.raw, fin.raw.entries, decisions, new Date(), untracked), [fin.raw, decisions, untracked]);
 
   const decide = useCallback(async (keys: string[], status: Decision["status"], days = 7) => {
     const until = status === "snoozed" ? new Date(Date.now() + days * 86_400_000).toISOString() : null;

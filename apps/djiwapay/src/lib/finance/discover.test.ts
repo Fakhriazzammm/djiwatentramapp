@@ -33,6 +33,14 @@ describe("discoveries", () => {
     expect(findDiscoveries(s, e, [], NOW)).toHaveLength(0);
   });
 
+  test("a bank that e-mail shows but nothing tracks is found, and is gone once its wallet exists", () => {
+    const u = { key: "new:bni-7710", issuerId: "bni", name: "BNI", kind: "bank", hint: "7710", count: 3, firstAt: "2026-11-18T00:00:00Z", lastAt: "2026-11-19T00:00:00Z", sameIssuer: [] };
+    const found = findDiscoveries(state(), [], [], NOW, [u]);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({ lead: "Bank baru: BNI", draft: { id: "email-bni-7710", name: "BNI ••7710", type: "bank" } });
+    expect(findDiscoveries(state({ accounts: [{ id: "email-bni-7710", name: "BNI ••7710", type: "bank", opening: 0 }] }), [ent("a", "x", 1, "2026-11-01T00:00:00Z", { accountId: "email-bni-7710" })], [], NOW, [u])).toHaveLength(0);
+  });
+
   test("three monthly payments of about the same amount suggest one bill", () => {
     const found = findDiscoveries(state(), monthly("Netflix", 54990, [4, 34, 64, 95]), [], NOW);
     expect(found).toHaveLength(1);

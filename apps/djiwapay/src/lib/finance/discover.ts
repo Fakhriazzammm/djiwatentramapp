@@ -1,4 +1,4 @@
-import type { Account, Bill, Entry, FinanceState } from "./types";
+import type { Account, AccountType, Bill, Entry, FinanceState } from "./types";
 
 /**
  * "Temuan": things worth saving that the person's own records reveal. Everything is computed from the records,
@@ -15,9 +15,11 @@ export type BillDraft = { id: string; name: string; amount: number; day: number;
 export type Discovery = {
   key: string; kind: DiscoveryKind; group: DiscoveryGroup; title: string; lead: string; detail: string;
   amount?: number; /** 0..1, how sure the detector is. */ confidence: number; at: string;
-  accountId?: string; bill?: BillDraft; billId?: string; newAmount?: number; oldAmount?: number;
+  accountId?: string; /** A bank or e-wallet seen in e-mail that is not in any wallet, asset, bill or loan yet: saving creates this wallet. */ draft?: Account; bill?: BillDraft; billId?: string; newAmount?: number; oldAmount?: number;
   /** Past payments that prove the pattern, newest first. */ proof: { at: string; amount: number }[];
 };
+/** From the server: a bank or e-wallet that e-mail shows and that is tracked nowhere yet. */
+export type Untracked = { key: string; issuerId: string; name: string; kind: string; hint: string; count: number; firstAt: string; lastAt: string; sameIssuer: { id: string; name: string }[] };
 export type Decision = { key: string; status: "saved" | "dismissed" | "snoozed"; until: string | null };
 
 const DAY = 86_400_000;
@@ -37,6 +39,15 @@ const jakartaDay = (iso: string) => new Date(new Date(iso).getTime() + 7 * 3_600
 
 const isMailAccount = (a: Account) => a.id.startsWith("email-") && !a.archived;
 const issuerOf = (id: string) => id.replace(/^email-/, "").replace(/-\d{2,}$/, "");
+
+function untrackedFinds(state: FinanceState, extra: Untracked[]): Discovery[] {
+  return extra.filter((u) => !state.accounts.some((a) => a.id === `email-${u.issuerId}${u.hint ? "-" + u.hint : ""}`)).map((u) => {
+    const id = `email-${u.issuerId}${u.hint ? "-" + u.hint : ""}`, label = `${u.name}${u.hint ? " ••" + u.hint : ""}`, type: AccountType = u.kind === "ewallet" ? "ewallet" : "bank";
+    const lead = u.sameIssuer.length ? `Rekening baru di ${u.name}` : `${type === "ewallet" ? "E-wallet" : "Bank"} baru: ${u.name}`;
+    return { key: u.key, kind: "account" as const, group: "dompet" as const, title: label, lead, detail: `Muncul di ${u.count} email, terakhir ${shortDate(u.lastAt)}, tetapi belum ada di dompet, aset, tagihan, atau kewajibanmu. Simpan agar tercatat dan tidak terlewat.`,
+      confidence: 0.92, at: u.lastAt, accountId: id, draft: { id, name: label, type, opening: 0 }, proof: [] };
+  });
+}
 
 const NEW_DAYS = 3;   // a wallet older than this is no longer "new": it is part of the person's life already
 
@@ -140,9 +151,9 @@ function priceFinds(state: FinanceState, entries: Entry[], now: Date): Discovery
 const ORDER: Record<DiscoveryKind, number> = { account: 0, price: 1, recurring: 2, stopped: 3 };
 
 /** Everything found that the person has not answered yet, most useful first. */
-export function findDiscoveries(state: FinanceState, entries: Entry[], decisions: Decision[], now = new Date()): Discovery[] {
+export function findDiscoveries(state: FinanceState, entries: Entry[], decisions: Decision[], now = new Date(), untracked: Untracked[] = []): Discovery[] {
   const answered = new Set(decisions.filter((d) => d.status !== "snoozed" || (d.until && +new Date(d.until) > +now)).map((d) => d.key));
-  return [...accountFinds(state, entries, now), ...priceFinds(state, entries, now), ...billFinds(state, entries, now)]
+  return [...untrackedFinds(state, untracked), ...accountFinds(state, entries, now), ...priceFinds(state, entries, now), ...billFinds(state, entries, now)]
     .filter((d) => !answered.has(d.key))
     .filter((d) => d.confidence >= 0.6)
     .sort((a, b) => ORDER[a.kind] - ORDER[b.kind] || b.confidence - a.confidence || +new Date(b.at) - +new Date(a.at));

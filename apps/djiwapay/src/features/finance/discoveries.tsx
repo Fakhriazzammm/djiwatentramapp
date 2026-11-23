@@ -58,27 +58,27 @@ function Card({ d, i, ctx, busy, onPrimary, onLater, onNo, onMore }: { d: Discov
 
 /** Keep, rename, retype or merge a wallet that e-mail created. Merging moves every record and makes later mail for the old one land in the chosen wallet. */
 function AccountSheet({ d, ctx, onClose, onSaved }: { d: Discovery; ctx: FinCtx; onClose: () => void; onSaved: (message: string, undo?: () => void) => void }) {
-  const fin = ctx.fin, acct = fin.raw.accounts.find((a) => a.id === d.accountId);
+  const fin = ctx.fin, existing = fin.raw.accounts.find((a) => a.id === d.accountId), acct = existing ?? d.draft;
   const [name, setName] = useState(acct?.name ?? d.title), [type, setType] = useState<AccountType>(acct?.type ?? "bank"), [into, setInto] = useState<string>(""), [busy, setBusy] = useState(false);
-  const targets = useMemo(() => mergeTargets(fin.raw, d.accountId ?? ""), [fin.raw, d.accountId]);
+  const targets = useMemo(() => mergeTargets(existing ? fin.raw : { ...fin.raw, accounts: [...fin.raw.accounts, acct!] }, d.accountId ?? ""), [fin.raw, d.accountId]);
   const count = fin.raw.entries.filter((e) => e.accountId === d.accountId || e.toAccountId === d.accountId).length;
   if (!acct) return null;
   const save = async () => {
     setBusy(true);
     try {
       if (into) {
-        const target = fin.raw.accounts.find((a) => a.id === into)!, moved = movedEntries(fin.raw.entries, acct.id, into);
+        const target = fin.raw.accounts.find((a) => a.id === into)!, moved = existing ? movedEntries(fin.raw.entries, acct.id, into) : [];
         await ctx.disc.merge(acct.id, into);
         for (const e of moved) fin.dispatch({ type: "entry/update", entry: e });
-        fin.dispatch({ type: "account/archive", id: acct.id });
+        if (existing) fin.dispatch({ type: "account/archive", id: acct.id });
         await ctx.disc.decide([d.key], "saved");
         const back = moved.map((e) => fin.raw.entries.find((o) => o.id === e.id)!);
-        onSaved(`${moved.length} catatan digabung ke ${target.name}`, () => { for (const e of back) fin.dispatch({ type: "entry/update", entry: e }); fin.dispatch({ type: "account/upsert", account: acct }); void ctx.disc.unmerge(acct.id); void ctx.disc.undo([d.key]); });
+        onSaved(existing ? `${moved.length} catatan digabung ke ${target.name}` : `Email dari ${acct.name} akan masuk ke ${target.name}`, () => { for (const e of back) fin.dispatch({ type: "entry/update", entry: e }); if (existing) fin.dispatch({ type: "account/upsert", account: acct }); void ctx.disc.unmerge(acct.id); void ctx.disc.undo([d.key]); });
       } else {
         const next: Account = { ...acct, name: name.trim() || acct.name, type };
         fin.dispatch({ type: "account/upsert", account: next });
         await ctx.disc.decide([d.key], "saved");
-        onSaved(`${next.name} disimpan`, () => { fin.dispatch({ type: "account/upsert", account: acct }); void ctx.disc.undo([d.key]); });
+        onSaved(`${next.name} disimpan`, () => { fin.dispatch(existing ? { type: "account/upsert", account: acct } : { type: "account/archive", id: acct.id }); void ctx.disc.undo([d.key]); });
       }
       onClose();
     } catch { ctx.notify("Belum bisa menggabungkan. Coba lagi."); } finally { setBusy(false); }
@@ -110,7 +110,11 @@ export function DiscoveryPage({ ctx, onBack, onOpenReview }: { ctx: FinCtx; onBa
 
   /** Every answer that changes a record, with the way back. */
   const accept = async (d: Discovery, quiet = false) => {
-    if (d.kind === "account") { await disc.decide([d.key], "saved"); if (!quiet) ctx.notify(`${d.title} disimpan`, () => void disc.undo([d.key])); return; }
+    if (d.kind === "account") {
+      const made = d.draft && !fin.raw.accounts.some((a) => a.id === d.draft!.id) ? d.draft : null;
+      if (made) fin.dispatch({ type: "account/upsert", account: made });
+      await disc.decide([d.key], "saved"); if (!quiet) ctx.notify(`${d.title} disimpan sebagai dompet`, () => { if (made) fin.dispatch({ type: "account/archive", id: made.id }); void disc.undo([d.key]); }); return;
+    }
     if (d.kind === "recurring" && d.bill) {
       if (billExists(fin.raw.bills, d.bill)) { await disc.decide([d.key], "saved"); if (!quiet) ctx.notify(`${d.title} sudah ada di tagihan`); return; }
       const bill = { ...d.bill, paid: [] as string[] };
