@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { accessToken, type Fetch, type GoogleCfg } from "./google.js";
 import { SHEET_DELETE_GUARD, hashOf, planSync, rowOf, type Cell, type EntryRow, type Names, type Plan, type SheetRow } from "./sheets/model.js";
+import { listMeta } from "./payee-meta.js";
 import { CATATAN_ROWS, GROW_BY, SHEET, TEMPLATE_VERSION, catatanRows, contentData, createBody, styleRequests, type Static } from "./sheets/template.js";
 import type { Q, Tx } from "./sync.js";
 
@@ -101,6 +102,26 @@ export async function buildWorkbook(d: SyncDeps, userId: string, token: string) 
   return { id, url, rows, count: entries.length };
 }
 
+const PAYEE_TAB = { id: 1010, title: "Penerima" };
+const KIND_ID: Record<string, string> = { orang: "Orang", toko: "Toko", layanan: "Layanan" };
+/** The kind and label the person gave each payee, as its own tab (added to workbooks that already exist, without rebuilding them). Written from the app: edits here are not read back. */
+async function syncPayeesTab(d: SyncDeps, f: Fetch, token: string, id: string, userId: string) {
+  const info = (await (await must(await sheets(f, token, `/${id}?fields=sheets(properties(sheetId,title))`), "SHEETS_INFO")).json()) as { sheets: { properties: { sheetId: number; title: string } }[] };
+  if (!info.sheets.some((t) => t.properties.sheetId === PAYEE_TAB.id || t.properties.title === PAYEE_TAB.title)) {
+    await must(await sheets(f, token, `/${id}:batchUpdate`, { method: "POST", body: JSON.stringify({ requests: [
+      { addSheet: { properties: { sheetId: PAYEE_TAB.id, title: PAYEE_TAB.title, tabColorStyle: { rgbColor: { red: 0.54, green: 0.36, blue: 0.76 } }, gridProperties: { rowCount: 500, columnCount: 5, frozenRowCount: 1 } } } },
+      { repeatCell: { range: { sheetId: PAYEE_TAB.id, startRowIndex: 0, endRowIndex: 1 }, cell: { userEnteredFormat: { textFormat: { bold: true } } }, fields: "userEnteredFormat.textFormat.bold" } },
+      { updateDimensionProperties: { range: { sheetId: PAYEE_TAB.id, dimension: "COLUMNS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 260 }, fields: "pixelSize" } },
+    ] }) }), "SHEETS_PAYEES");
+  }
+  const items = (await listMeta(d.db, userId)).filter((m) => m.kind || m.label);
+  const title = (k: string) => k.replace(/(^|\s)([a-z])/g, (_m, a: string, b: string) => a + b.toUpperCase());
+  const stamp = (at: number) => new Date(at + 7 * 3_600_000).toISOString().replace("T", " ").slice(0, 16);
+  const rows: Cell[][] = items.map((m) => [title(m.key), m.kind ? KIND_ID[m.kind] : "", m.label ?? "", stamp(m.at), "Diatur di aplikasi: Laporan > Penerima"]);
+  await must(await sheets(f, token, `/${id}/values:batchClear`, { method: "POST", body: JSON.stringify({ ranges: [`${PAYEE_TAB.title}!A2:E`] }) }), "SHEETS_CLEAR");
+  await writeValues(f, token, id, [{ range: `${PAYEE_TAB.title}!A1:E1`, values: [["Penerima", "Jenis", "Label", "Diubah (WIB)", "Keterangan"]] }, ...(rows.length ? [{ range: `${PAYEE_TAB.title}!A2:E${rows.length + 1}`, values: rows }] : [])], "RAW");
+}
+
 export type SheetOutcome = { ok: boolean; action: "built" | "synced" | "idle" | "held" | "missing" | "failed"; stats?: Plan["stats"]; error?: string };
 
 export async function syncSheet(d: SyncDeps, userId: string, opts: { force?: boolean } = {}): Promise<SheetOutcome> {
@@ -183,6 +204,7 @@ export async function syncSheet(d: SyncDeps, userId: string, opts: { force?: boo
       const clears = ["Anggaran!B5:G60", "Tagihan!B5:F60", "Tujuan!B5:G60", "Hutang!B5:G", "Aset!B5:D60", "Referensi!C2:F41", "Referensi!H2:H25"];
       await must(await sheets(f, token, `/${id}/values:batchClear`, { method: "POST", body: JSON.stringify({ ranges: clears }) }), "SHEETS_CLEAR");
       await writeValues(f, token, id, contentData(staticRows, false), "USER_ENTERED");
+      await syncPayeesTab(d, f, token, id, userId).catch((e) => console.error("payees tab", e instanceof Error ? e.message : e));   // a nice-to-have tab: never fails the sync
     }
 
     await d.db.tx(async (q) => {

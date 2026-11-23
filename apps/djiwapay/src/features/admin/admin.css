@@ -122,3 +122,13 @@ html.adm-root,html.adm-root body{background:#f4f4f6}
 .adm-em-filter select { max-width: 100%; }
 .adm-em-row-actions { justify-content: flex-end; }
 .adm-em-feedback { padding: 10px 12px; color: #166534; }
+
+/* Kesehatan data */
+.adm-mini{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
+.adm-mini>div{padding:10px 12px;border-radius:10px;background:var(--adm-soft,#f3f3f6)}.adm-mini small{display:block;font-size:11.5px;color:#6b6b76}.adm-mini b{display:block;margin-top:2px;font-size:20px;font-variant-numeric:tabular-nums}.adm-mini b.bad{color:#c73822}.adm-mini span{display:block;font-size:11.5px;color:#6b6b76}
+.adm-jobs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.adm-jobs li{display:grid;grid-template-columns:minmax(150px,1.2fr) 1fr auto;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.07)}.adm-jobs li:last-child{border-bottom:0}
+.adm-jobs .n b{display:block;font-size:13.5px}.adm-jobs .n small{display:block;font-size:12px;color:#6b6b76}
+.adm-jobs .bar{height:6px;border-radius:3px;background:rgba(0,0,0,.08);overflow:hidden}.adm-jobs .bar i{display:block;height:100%;border-radius:3px}
+.adm-errs{margin-top:14px;padding-top:12px;border-top:1px solid rgba(0,0,0,.07)}.adm-errs>b{display:block;margin-bottom:8px;font-size:13px}
+@media (max-width:640px){.adm-jobs li{grid-template-columns:1fr auto}.adm-jobs .bar{display:none}.adm-mini{grid-template-columns:1fr}}

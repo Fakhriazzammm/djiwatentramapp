@@ -160,6 +160,7 @@ export async function seedAdmins(db: Tx, list = process.env.ADMIN_EMAILS || "") 
   for (const e of list.split(/[,\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => x.includes("@"))) await db.query("insert into finance.admins (email, added_by) values ($1,'env') on conflict do nothing", [e]);
 }
 
+import { dataHealth } from "./admin-health.js";
 export function registerAdminRoutes(app: Hono, d: AdminDeps, json: (c: any, body: unknown, status?: number) => Response) {
   const isAdmin = async (c: any) => { const email = (await d.emailOf(c.req.header("cookie") || ""))?.trim().toLowerCase(); if (!email) return null; const r = await d.db.query("select 1 from finance.admins where email = $1", [email]); return r.rows.length ? email : null; };
   app.use("/api/finance/admin/*", async (c, next) => { if (c.req.path.endsWith("/admin/me")) return next(); const email = await isAdmin(c); if (!email) return json(c, { success: false, error: "FORBIDDEN" }, 403); c.set("adminEmail" as never, email as never); return next(); });
@@ -172,6 +173,7 @@ export function registerAdminRoutes(app: Hono, d: AdminDeps, json: (c: any, body
   app.get("/api/finance/admin/finance", guard((c) => financeStats(d, ...range(c))));
   app.get("/api/finance/admin/wallet", guard((c) => walletStats(d, ...range(c))));
   app.get("/api/finance/admin/system", guard(() => system(d)));
+  app.get("/api/finance/admin/health", guard((c) => dataHealth(d, ...range(c))));
   const listOpts = (c: any) => ({ q: c.req.query("q"), page: Number(c.req.query("page")) || 1, sort: c.req.query("sort"), filter: c.req.query("filter"), cohort: c.req.query("cohort") });
   app.get("/api/finance/admin/users", guard((c) => usersList(d, listOpts(c))));
   app.get("/api/finance/admin/users/growth", guard(() => usersGrowth(d)));

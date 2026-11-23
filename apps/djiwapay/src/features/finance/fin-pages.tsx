@@ -12,6 +12,8 @@ import { DayStrip, MonthStrip, dayKey, monthKey, monthRange } from "./day-strip"
 import { TidyBanner } from "./tidy-banner";
 import { TidySheet } from "./tidy-sheet";
 import { TidyCard } from "./tidy-card";
+import { BackupSheet } from "./backup-sheet";
+import { NewTag } from "../shell/new-badge";
 import { CategoryFilterSheet, FilterBar, FilterSkeleton, FilterWait, NO_FILTER, hasFilter, type RecFilter } from "./records-filter";
 import { analyze, classify, payeeKeyOf, payeeName, periodRange, type PayeeKind } from "../../lib/finance/payees";
 import { usePayeeMeta } from "../../lib/finance/payee-meta";
@@ -445,9 +447,8 @@ export { FinReport } from "./fin-report";
 /* ---------- Pengaturan keuangan ---------- */
 export function FinSettings({ ctx, onBack }: { ctx: FinCtx; onBack: () => void }) {
   const { fin } = ctx; const { state, entries } = fin;
-  const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false), [backup, setBackup] = useState(false);
   const file = (name: string, type: string, content: string) => { const url = URL.createObjectURL(new Blob([content], { type })); const a = document.createElement("a"); a.href = url; a.download = name; a.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000); };
-  const importJson = (f: File | undefined) => { if (!f) return; void f.text().then((txt) => { try { const next = normalize(JSON.parse(txt)); fin.dispatch({ type: "import", state: { ...next, onboarded: true } }); ctx.notify(`Data dipulihkan: ${next.entries.length} catatan`); } catch { ctx.notify("Berkas cadangan tidak valid"); } }); };
   return <div className="dpx-page"><Sky><div className="dpx-pad dpx-nobar">
     <Header title="Pengaturan keuangan" onBack={onBack} />
     {fin.sync.status === "loan-conflict" || fin.loanConflict ? <div className="dpx-note" role="status"><Ic n="warn" /><div>Pinjaman diperbarui dari email. Periksa riwayat sebelum mencatat angsuran atau mengulang perubahan pinjaman. {fin.sync.status === "loan-conflict" ? <Btn type="button" className="dpx-chip3" onClick={() => void fin.retrySync()}>Muat data terbaru</Btn> : null}</div></div> : null}
@@ -457,12 +458,12 @@ export function FinSettings({ ctx, onBack }: { ctx: FinCtx; onBack: () => void }
     <div className="dpx-glabel">Data</div>
     <div className="dpx-group dpx-flush dpx-white">
       <Row icon="dl" tone="emerald" title="Ekspor semua catatan (CSV)" sub={`${entries.length} catatan termasuk Djiwa Pay`} onClick={() => file("djiwa-pay-catatan.csv", "text/csv;charset=utf-8", "﻿" + toCsv(entries, state.categories, state.accounts))} />
-      <Row icon="share" tone="blue" title="Cadangkan data (JSON)" sub="Simpan ke Files / kirim ke dirimu" onClick={() => file("djiwa-pay-cadangan.json", "application/json", JSON.stringify(state, null, 2))} />
-      <label className="dpx-row" style={{ cursor: "pointer" }}><span className="dpx-ico dpx-c-violet" style={{ boxShadow: "none" }}><Ic n="up" /></span><span className="dpx-main"><b>Pulihkan dari cadangan</b><span>Pilih berkas JSON</span></span><input type="file" accept="application/json,.json" style={{ display: "none" }} onChange={(e) => { importJson(e.target.files?.[0]); e.target.value = ""; }} /><Ic n="chev" size="sm" /></label>
+      <Row icon="share" tone="blue" title={<>Cadangan dan pemulihan<NewTag id="backup" /></>} sub="Satu berkas berisi semua datamu, dan cara memulihkannya" onClick={() => setBackup(true)} />
     </div>
     <div className="dpx-glabel">Zona hati-hati</div>
     <div className="dpx-group dpx-flush dpx-white"><Row icon="trash" tone="rose" title="Hapus semua data keuangan" sub="Catatan, anggaran, tujuan, hutang" onClick={() => setConfirmReset(true)} chev={false} /></div>
     {confirmReset ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div><b>Hapus semua data keuangan (perangkat dan server)?</b> Tidak bisa dibatalkan. Transaksi Djiwa Pay tidak terpengaruh.<div className="dpx-flex" style={{ marginTop: 10 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" onClick={() => { fin.dispatch({ type: "reset" }); setConfirmReset(false); ctx.notify("Data keuangan dihapus"); onBack(); }}>Hapus semua</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => setConfirmReset(false)}>Batal</Btn></div></div></div> : null}
+  <AnimatePresence>{backup ? <BackupSheet key="backup" ctx={ctx} onClose={() => setBackup(false)} /> : null}</AnimatePresence>
   </div></Sky></div>;
 }
 

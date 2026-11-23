@@ -18,6 +18,8 @@ import { registerPushRoutes } from "./push.js";
 import { issuerOfWallet, registerDiscoveryRoutes } from "./discoveries.js";
 import { registerNotifRoutes } from "./notif.js";
 import { registerStatementRoutes } from "./statement.js";
+import { registerPayeeMetaRoutes } from "./payee-meta.js";
+import { registerBackupRoutes } from "./backup.js";
 export { poolTx };
 import { attachReceipt, confirmReceipt, getReceipt, ReceiptProblem } from "./receipt-records.js";
 import { isEmptyRead, locateReceiptText, readReceipt, type ReceiptRead } from "./receipt.js";
@@ -53,6 +55,8 @@ export function createApp(d: Deps) {
   registerNewsRoutes(app, json);
   registerPushRoutes(app, { db: d.db }, uid, json);
   registerDiscoveryRoutes(app, { db: d.db, google: d.google ?? null, gfetch: d.gfetch }, uid, json);
+  registerPayeeMetaRoutes(app, { db: d.db }, uid, json);
+  registerBackupRoutes(app, { db: d.db }, uid, json);
   registerStatementRoutes(app, { aiKey: d.aiKey }, uid, json);
   registerNotifRoutes(app, { db: d.db, pipeline: d.hook?.pipeline ?? null }, uid, json);
   const google = d.google ?? null, mailDomain = d.mailDomain ?? "";
