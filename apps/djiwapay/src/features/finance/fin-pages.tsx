@@ -12,7 +12,9 @@ import { DayStrip, MonthStrip, dayKey, monthKey, monthRange } from "./day-strip"
 import { TidyBanner } from "./tidy-banner";
 import { TidySheet } from "./tidy-sheet";
 import { TidyCard } from "./tidy-card";
-import { payeeKeyOf } from "../../lib/finance/payees";
+import { CategoryFilterSheet, FilterBar, NO_FILTER, hasFilter, type RecFilter } from "./records-filter";
+import { analyze, classify, payeeKeyOf, payeeName, periodRange, type PayeeKind } from "../../lib/finance/payees";
+import { usePayeeMeta } from "../../lib/finance/payee-meta";
 import type { Discoveries } from "../../lib/finance/discoveries-api";
 import { isCrossScope } from "../../lib/finance/scope";
 import { rootId, guessCategory } from "../../lib/finance/categories";
@@ -192,8 +194,13 @@ export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: R
   const [mon, setMon] = useState("");   // embedded view: "YYYY-MM", or "" = the month of the latest record
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("all");
+  const [rf, setRf] = useState<RecFilter>(NO_FILTER), [rfOpen, setRfOpen] = useState(false);   // embedded view: category, sub category and kind filters
+  const { meta: payeeMeta } = usePayeeMeta(fin.profileId);
+  const kindByKey = useMemo(() => { const m = new Map<string, PayeeKind>(); if (!embed) return m; for (const mode of ["out", "in"] as const) for (const p of analyze(fin.allRecords, { mode, ...periodRange("semua"), meta: payeeMeta }).list) m.set(`${mode}|${p.key}`, p.kind); return m; }, [embed, fin.allRecords, payeeMeta]);
+  const passRf = (e: Entry) => { if (rf.sub ? e.categoryId !== rf.sub : rf.cat ? !(e.categoryId === rf.cat || rootId(state.categories, e.categoryId) === rf.cat) : false) return false; if (rf.kind !== "all") { if (e.kind === "tf") return false; const k = kindByKey.get(`${e.kind}|${payeeKeyOf(e.note)}`) ?? classify(payeeName(e.note), [e.categoryId]); if (k !== rf.kind) return false; } return true; };
   const [accOwn, setAcc] = useState("all");
   const acc = embed ? embed.acc : accOwn;
+  const rfCounts = useMemo(() => { const m = new Map<string, number>(); if (!embed) return m; for (const e of entries) { if (!(acc === "all" || e.accountId === acc || e.toAccountId === acc)) continue; m.set(e.categoryId, (m.get(e.categoryId) ?? 0) + 1); } return m; }, [embed, entries, acc]);
   const [sheet, setSheet] = useState<null | "filter" | "wallet">(null);
   const balances = useBalances(state, entries, ctx.payBalance);
   // Entries the person has not yet seen that came in by e-mail on their own; opened from the "catatan baru dari email" notice.
@@ -226,9 +233,9 @@ export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: R
   const yearStart = `${today.getFullYear()}-01-01`;
   // Search doubles as a filter: every word must appear somewhere in the record (title, category and its parent, wallets, tags, source, kind, amount, date).
   const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
-  const searching = Boolean(embed) && tokens.length > 0;
+  const searching = Boolean(embed) && (tokens.length > 0 || hasFilter(rf));
   const hay = (e: Entry) => { const h = [e.note, catOf(state, e.categoryId).name, catOf(state, rootId(state.categories, e.categoryId)).name, accName(state, e.accountId), e.toAccountId ? accName(state, e.toAccountId) : "", e.tags.join(" "), SOURCE_LABEL[e.source], e.kind === "in" ? "masuk pemasukan" : e.kind === "out" ? "keluar pengeluaran" : "transfer pindah dana", String(Math.round(e.amount)), rupiah(e.amount), dayLabel(e.at), new Date(e.at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })].join(" ").toLowerCase(); return h + " " + h.replace(/\./g, ""); };
-  const eList = embed ? entries.filter((e) => { if (!(inWallet(e) && (seg === "all" || e.kind === seg))) return false; if (searching) { const h = hay(e); return tokens.every((t) => h.includes(t) || h.includes(t.replace(/\./g, ""))); } const k = dayKey(new Date(e.at)); return ytd ? k >= yearStart : activeDay === "all" ? k.startsWith(baseMon) : k === activeDay; }).slice(0, 300) : [];
+  const eList = embed ? entries.filter((e) => { if (!(inWallet(e) && (seg === "all" || e.kind === seg))) return false; if (searching) { if (!passRf(e)) return false; if (!tokens.length) return true; const h = hay(e); return tokens.every((t) => h.includes(t) || h.includes(t.replace(/\./g, ""))); } const k = dayKey(new Date(e.at)); return ytd ? k >= yearStart : activeDay === "all" ? k.startsWith(baseMon) : k === activeDay; }).slice(0, 300) : [];
   const eDays = [...new Set(eList.map((e) => dayLabel(e.at)))];
   const head = <>
     <div className="dpx-hdr" style={{ paddingTop: 0 }}><h1 className="dpx-page-title" style={{ flex: 1 }}>Catatan</h1><Btn type="button" className="dpx-rb" onClick={() => nav.go("/ringkasan")} aria-label="Laporan"><Ic n="chart" /></Btn></div>
@@ -247,7 +254,7 @@ export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: R
       : days.map((d) => { const items = list.filter((e) => dayLabel(e.at) === d); const spent = items.filter((e) => e.kind === "out").reduce((s, e) => s + e.amount, 0); return <div key={d}><div className="dpx-dayh"><span>{d}</span><span>{spent ? `−${rupiah(spent)}` : ""}</span></div><div className="dpx-group dpx-flush dpx-white">{items.map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} fresh={fresh.has(e.id)} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div></div>; })}</motion.div>
   </>;
   const sheets = <>
-  <AnimatePresence>{sheet === "wallet" ? <AccountSheet key="w" state={state} balances={balances} value={acc} includePay allLabel="Semua dompet" title="Filter dompet" onPick={setAcc} onClose={() => setSheet(null)} /> : null}{sheet === "filter" ? <CategorySheet key="f" categories={[{ id: "all", name: "Semua", icon: "grid", tone: "slate", income: false }, ...state.categories]} income={false} value={cat} onPick={setCat} onClose={() => setSheet(null)} /> : null}</AnimatePresence>
+  <AnimatePresence>{sheet === "wallet" ? <AccountSheet key="w" state={state} balances={balances} value={acc} includePay allLabel="Semua dompet" title="Filter dompet" onPick={setAcc} onClose={() => setSheet(null)} /> : null}{rfOpen ? <CategoryFilterSheet key="rf" state={state} value={rf} counts={rfCounts} onApply={(c, sb) => setRf((f) => ({ ...f, cat: c, sub: sb }))} onClose={() => setRfOpen(false)} /> : null}{sheet === "filter" ? <CategorySheet key="f" categories={[{ id: "all", name: "Semua", icon: "grid", tone: "slate", income: false }, ...state.categories]} income={false} value={cat} onPick={setCat} onClose={() => setSheet(null)} /> : null}</AnimatePresence>
   </>;
   if (embed) return <div className="dpx-rec-embed">
     <div className={searching ? "dpx-ds-off" : ""} aria-hidden={searching || undefined}>
@@ -256,8 +263,9 @@ export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: R
     </div>
     <Seg id="rec" label="Jenis catatan" value={seg} onChange={setSeg} options={[["all", "Semua"], ["in", "Masuk"], ["out", "Keluar"], ["tf", "Transfer"]] as const} />
     <label className="dpx-search dpx-mt8"><Ic n="search" size="sm" /><input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari judul, kategori, dompet, nominal" aria-label="Cari catatan" enterKeyHint="search" autoComplete="off" />{q ? <Btn type="button" className="dpx-search-x" aria-label="Hapus pencarian" onClick={() => setQ("")}><Ic n="close" size="sm" /></Btn> : null}</label>
-    {searching ? <p className="dpx-sub" role="status" style={{ margin: "8px 4px 0" }}>{eList.length ? `${eList.length}${eList.length >= 300 ? "+" : ""} catatan cocok, dicari di semua tanggal` : "Tidak ada yang cocok di semua tanggal"}</p> : null}
-    <motion.div key={`${acc}|${searching ? "q" : activeDay}|${seg}`} aria-live="polite" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, ease: [0.32, 0.72, 0, 1] }}>
+    {embed ? <FilterBar state={state} value={rf} onChange={setRf} onOpen={() => setRfOpen(true)} /> : null}
+    {searching ? <p className="dpx-sub" role="status" style={{ margin: "8px 4px 0" }}>{eList.length ? `${eList.length}${eList.length >= 300 ? "+" : ""} catatan cocok${hasFilter(rf) ? " dengan filter" : ""}, dicari di semua tanggal` : "Tidak ada yang cocok di semua tanggal"}</p> : null}
+    <motion.div key={`${acc}|${searching ? "q" : activeDay}|${seg}|${rf.cat}|${rf.sub}|${rf.kind}`} aria-live="polite" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, ease: [0.32, 0.72, 0, 1] }}>
       {entries.length === 0 ? <Empty img="order-receipt" title="Belum ada catatan" text="Catat pengeluaran pertamamu. Pembayaran Djiwa Pay otomatis ikut tercatat."><Btn type="button" className="dpx-btn" style={{ maxWidth: 300 }} onClick={() => ctx.open({ k: "catat" })}><Ic n="plus" size="sm" /> Catat sekarang</Btn></Empty>
         : eList.length === 0 ? <Empty img="restaurant-cafe" title={searching ? "Tidak ada hasil" : activeDay === "all" ? "Tidak ada catatan" : "Tidak ada catatan di hari ini"} text={searching ? "Coba kata kunci lain, atau ubah jenis catatan." : activeDay === "all" ? "Belum ada catatan untuk pilihan ini." : "Geser tanggal lain, atau lihat semuanya."}>{searching ? <Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setQ("")}>Hapus pencarian</Btn> : activeDay !== "all" ? <Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setDay("all")}>Lihat semua tanggal</Btn> : null}</Empty>
         : eDays.map((d) => { const items = eList.filter((e) => dayLabel(e.at) === d); const spent = items.filter((e) => e.kind === "out").reduce((n, e) => n + e.amount, 0); return <div key={d}><div className="dpx-dayh"><span>{d}</span><span>{spent ? `−${rupiah(spent)}` : ""}</span></div><div className="dpx-group dpx-flush dpx-white">{items.map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} fresh={fresh.has(e.id)} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div></div>; })}

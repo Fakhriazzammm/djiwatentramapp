@@ -75,3 +75,20 @@
 .dpx-newbadge.float{overflow:visible}.dpx-newbadge.float .glint{display:none}
 .dpx-py-rep{transition:box-shadow .5s}.dpx-py-rep:not(.is-new){box-shadow:none}
 @media (prefers-reduced-motion:reduce){.dpx-newbadge::after,.dpx-newbadge .glint{animation:none}}
+
+/* Filter catatan: kategori, sub kategori, jenis */
+.dpx-rf{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.dpx-rf .row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.dpx-rf .row::-webkit-scrollbar{display:none}
+.dpx-rf .btn{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 12px;border-radius:999px;background:#fff;color:var(--ink);font:500 13px var(--font);box-shadow:inset 0 0 0 1px var(--line);transition:background .15s,box-shadow .15s}
+.dpx-rf .btn.on{background:var(--blue-soft);box-shadow:inset 0 0 0 1.5px rgba(201,70,27,.4)}.dpx-rf .btn.reset{color:var(--blue)}
+.dpx-rf .k{flex:none;min-height:36px;padding:0 14px;border-radius:999px;background:transparent;color:var(--mute);font:500 13px var(--font);box-shadow:inset 0 0 0 1px var(--line);transition:background .15s,color .15s}
+.dpx-rf .k.on{background:var(--navy);color:#fff;box-shadow:none}
+.dpx-rf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;max-height:42dvh;overflow-y:auto}
+.dpx-rf-cat{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:16px;background:#fff;box-shadow:inset 0 0 0 1px var(--line);text-align:center;min-width:0}
+.dpx-rf-cat.on{background:var(--blue-soft);box-shadow:inset 0 0 0 1.5px rgba(201,70,27,.45)}
+.dpx-rf-cat b{font:500 12px/1.25 var(--font);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dpx-rf-cat small{font-size:11px;color:var(--mute)}
+.dpx-rf-cat .all{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--group)}
+.dpx-rf-subs{overflow:hidden;margin-top:12px}.dpx-rf-subs .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.dpx-rf-subs .chip{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 14px;border-radius:999px;background:#fff;color:var(--mute);font:500 13px var(--font);box-shadow:inset 0 0 0 1.5px var(--line)}
+.dpx-rf-subs .chip.on{background:var(--blue-soft);color:var(--ink);box-shadow:inset 0 0 0 1.5px rgba(201,70,27,.4)}.dpx-rf-subs .chip small{font-size:11px;color:var(--mute)}
+.dpx-rf-bar{display:flex;gap:10px;margin-top:16px}.dpx-rf-bar .dpx-btn{flex:1;margin:0}
