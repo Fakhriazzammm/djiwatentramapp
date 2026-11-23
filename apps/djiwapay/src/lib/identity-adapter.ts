@@ -32,9 +32,10 @@ export async function signInWithGoogle(currentUrl = window.location.href) {
   returnTo.searchParams.set("sso", "1");
   if (isNativeApp()) {
     // Google refuses its sign-in page inside an embedded WebView, so the app picks the account natively and hands Better Auth the ID token.
-    const idToken = await nativeGoogleIdToken();
+    const limit = <T,>(p: Promise<T>, ms: number, msg: string) => new Promise<T>((ok, no) => { const t = setTimeout(() => no(new Error(msg)), ms); p.then((v) => { clearTimeout(t); ok(v); }, (e) => { clearTimeout(t); no(e); }); });
+    const idToken = await limit(nativeGoogleIdToken(), 40_000, "Pemilih akun Google tidak merespons. Tutup aplikasi lalu coba lagi, atau masuk dengan email dan kata sandi.");
     if (!idToken) return;
-    const done = await authClient.signIn.social({ provider: "google", idToken: { token: idToken }, disableRedirect: true });
+    const done = await limit(authClient.signIn.social({ provider: "google", idToken: { token: idToken }, disableRedirect: true }), 25_000, "Server masuk lambat merespons. Periksa sinyal lalu coba lagi.");
     if (done.error) throw new Error(done.error.message || "Gagal masuk dengan Google");
     window.location.assign(returnTo.toString());
     return;
