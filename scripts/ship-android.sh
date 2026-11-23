@@ -8,7 +8,8 @@ TOOLS="${ANDROID_TOOLS_DIR:-$HOME/.local/android}"
 export JAVA_HOME="${JAVA_HOME:-$(ls -d "$TOOLS"/jdk-21*/Contents/Home | head -1)}"
 export ANDROID_HOME="${ANDROID_HOME:-$TOOLS/sdk}"
 export PATH="$JAVA_HOME/bin:$PATH"
-export DJIWAPAY_VERSION_CODE="${DJIWAPAY_VERSION_CODE:-$(tr -dc 0-9 < "$ROOT/scripts/BUILD_NUMBER")}"
+# Offset 1000: kode versi 577 sudah dipakai Play Console; counter web (BUILD_NUMBER) tetap naik, jadi kode selalu lebih besar.
+export DJIWAPAY_VERSION_CODE="${DJIWAPAY_VERSION_CODE:-$(( 1000 + $(tr -dc 0-9 < "$ROOT/scripts/BUILD_NUMBER") ))}"
 [ -f "${DJIWAPAY_KEYSTORE_PROPERTIES:-$TOOLS/keys/keystore.properties}" ] || { echo "Keystore belum ada: $TOOLS/keys/keystore.properties" >&2; exit 1; }
 cd "$APP"
 [ -d node_modules ] || npm ci
