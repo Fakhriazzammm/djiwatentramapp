@@ -1379,3 +1379,12 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 .dpx-ed-sw input:checked+i{background:#ff8a55}.dpx-ed-sw input:checked+i::after{transform:translateX(18px)}
 .dpx-ed-sw input:focus-visible+i{outline:2px solid #ffb27f;outline-offset:2px}
 .dpx-ed .dpx-rxv-pick,.dpx-ed .dpx-rxv-verdict{margin-top:0}
+
+/* Pull to refresh + swipe between tabs */
+html,body{overscroll-behavior-y:contain}
+.dpx-ptr{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:50%;margin-left:-84px;width:168px;z-index:150;display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 12px;border-radius:999px;background:#fff;box-shadow:0 6px 22px rgba(45,36,29,.18);font:600 12px var(--font,system-ui);color:var(--ink,#251f1a);pointer-events:none}
+.dpx-ptr-dot{width:14px;height:14px;border-radius:50%;border:2px solid #d9cfc0;border-top-color:var(--accent,#e8590c);transition:transform .2s}
+.dpx-ptr-dot.ready{transform:rotate(180deg);border-color:var(--accent,#e8590c)}
+.dpx-ptr-dot.spin{animation:dpx-ptr-spin .7s linear infinite}
+@keyframes dpx-ptr-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.dpx-ptr-dot.spin{animation:none}}

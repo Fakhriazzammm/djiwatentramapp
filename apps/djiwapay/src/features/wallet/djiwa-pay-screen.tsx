@@ -20,6 +20,7 @@ import { financeNotes, loadRead, saveRead } from "../../lib/finance/notify";
 import { useDiscoveries } from "../../lib/finance/discoveries-api";
 import { useNotifSync } from "../integrations/phone-sources";
 import { DiscoveryPage } from "../finance/discoveries";
+import { GestureHost } from "../shell/gestures";
 import { ProfileSetupSheet } from "../account/profile-setup-sheet";
 import { PinHost } from "../auth/pin-ui";
 import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
@@ -118,6 +119,8 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
     finally { setNotificationsLoading(false); }
   };
   useEffect(() => { if (!previewOnly) void refreshWalletNotifications(); }, [profile.source_id, previewOnly]);
+  /** Pull-to-refresh: the wallet, the money records and the notifications, all at once. */
+  const refreshAll = async () => { onRefresh(); await Promise.allSettled([fin.retrySync(), refreshWalletNotifications()]); };
   const goPpobRoute = (path: string, silent = false) => { if (!silent) onNavigate(djiwaPaySplashLabel(path)); window.history.pushState({ ppob: true, depth: navDepth() + 1 }, "", path); setRoutePath(path); };
   /** Back to the page the person came from; a page opened directly (no earlier in-app page) falls back to `fallback`. */
   const navDepth = () => Number((window.history.state as { depth?: number } | null)?.depth ?? 0);
@@ -586,7 +589,7 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   </AnimatePresence>;
   const snackbar = <AnimatePresence>{snack ? <motion.div key={snack.id} className="dpx-snack" role="status" initial={{ opacity: 0, y: 30, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20 }} transition={spring}><span>{snack.text}</span>{snack.undo ? <Btn type="button" onClick={() => { snack.undo?.(); setSnack(null); }}>Urungkan</Btn> : null}</motion.div> : null}</AnimatePresence>;
   // Every framed page gets the bottom bar; `active` only picks which tab is highlighted (null = none). `bar={false}` is for setup flows.
-  const frameShell = (content: ReactNode, active: "home" | "report" | "budget" | "history" | "wallet" | null, bar = true) => <MotionConfig reducedMotion="user"><div className={`dpx ${embedded ? "dpx-embedded" : ""}`}><motion.div key={`${routePath}|${notificationsOpen ? "n" : ""}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.34, ease: [0.32, 0.72, 0, 1] }}>{content}</motion.div>{embedded || !bar ? null : <TabBar active={active} go={(path) => { if (notificationsOpen) setNotificationsOpen(false); goPayRoute(path); }} openPay={() => setFsheet({ k: "catat" })} />}{sheets}{snackbar}</div></MotionConfig>;
+  const frameShell = (content: ReactNode, active: "home" | "report" | "budget" | "history" | "wallet" | null, bar = true) => <MotionConfig reducedMotion="user"><div className={`dpx ${embedded ? "dpx-embedded" : ""}`}><motion.div key={`${routePath}|${notificationsOpen ? "n" : ""}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.34, ease: [0.32, 0.72, 0, 1] }}>{content}</motion.div><GestureHost enabled={!embedded && !previewOnly} onRefresh={refreshAll} go={(path) => { if (notificationsOpen) setNotificationsOpen(false); goPayRoute(path); }} />{embedded || !bar ? null : <TabBar active={active} go={(path) => { if (notificationsOpen) setNotificationsOpen(false); goPayRoute(path); }} openPay={() => setFsheet({ k: "catat" })} />}{sheets}{snackbar}</div></MotionConfig>;
   if (!wallet && error && walletRoute?.page !== "help") return frameShell(
     <Sky><div className="dpx-pad"><div className="dpx-empty" role="alert" style={{ paddingTop: 80 }}><I3 name="payment-wallet" px={112} /><b>Saldo belum dapat dimuat</b><p>{error}</p><Btn type="button" className="dpx-btn" style={{ maxWidth: 260 }} onClick={onRefresh} disabled={loading}>{loading ? "Mencoba lagi…" : "Coba lagi"}</Btn></div></div></Sky>, null);
   if (walletRoute?.page === "history") {
