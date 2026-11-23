@@ -149,6 +149,7 @@ export function WalletDeck({ ctx, accounts, balances, onSelect, hideRecent }: { 
           <motion.div className="dpx-wd-menu" role="menu" aria-label="Tampilan kartu" initial={{ opacity: 0, scale: 0.92, y: -6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: -4 }} transition={{ duration: 0.16 }} onKeyDown={(e) => { if (e.key === "Escape") setMenu(false); }}>
             {VIEWS.map((v) => <button key={v.id} type="button" role="menuitemradio" aria-checked={view === v.id} className={view === v.id ? "on" : ""} onClick={() => pick(v.id)}><Ic n={v.icon} /><span><b>{v.title}</b><small>{v.sub}</small></span><i aria-hidden="true">✓</i></button>)}
           </motion.div></> : null}</AnimatePresence></div>
+        <Btn type="button" className="dpx-wd-tool dpx-wd-find" onClick={() => ctx.nav.go("/temuan?jenis=dompet")} aria-label={`Cari dompet dari email${ctx.disc.items.some((d) => d.group === "dompet") ? `, ${ctx.disc.items.filter((d) => d.group === "dompet").length} ditemukan` : ""}`}><Ic n="search" size="sm" />{ctx.disc.items.some((d) => d.group === "dompet") ? <i className="dpx-wd-badge">{ctx.disc.items.filter((d) => d.group === "dompet").length}</i> : null}</Btn>
         <Btn type="button" className="dpx-wd-tool" onClick={() => ctx.open({ k: "account" })} aria-label="Tambah dompet"><Ic n="plus" size="sm" /></Btn></div></div>
     {view === "swipe" ? <div className="dpx-wd-swipe">
       <div className="dpx-wd-track" ref={track} onScroll={onScroll} onPointerDown={() => setHint(false)} onTouchStart={() => setHint(false)}>

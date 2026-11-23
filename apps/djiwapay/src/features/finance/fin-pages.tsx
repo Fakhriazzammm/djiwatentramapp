@@ -340,8 +340,8 @@ export function FinWallet({ ctx }: { ctx: FinCtx }) {
   const stocks = useStocks(), stockPf = portfolio(stocks.state), hasStocks = Boolean(stocks.state?.activated && stockPf.rows.length);
   const cash = useCash(ctx); const nw = netWorth(state, cash, stockValue(stocks.state)), onlyBiz = fin.scope === "business", net = onlyBiz ? nw.cash : nw.total;
   const debt = debtTotals(state.debts);
-  const [tab, setTab] = useState<VaultTab>(() => { try { const t = sessionStorage.getItem("dpx-vault-tab"); return t === "dompet" || t === "kewajiban" || t === "saham" ? t : "aset"; } catch { return "aset"; } });
-  const pick = (t: VaultTab) => { setTab(t); try { sessionStorage.setItem("dpx-vault-tab", t); } catch { /* optional */ } };
+  const [tab, setTab] = useState<VaultTab>("dompet");   // Kekayaan always opens on the wallets; another part opens only when a link names it (?bagian=)
+  const pick = (t: VaultTab) => setTab(t);
   const [walletSel, setWalletSel] = useState("all");   // the wallet chosen in the pouch: its records show right below
   useEffect(() => {   // back from Google's consent screen with the Drive permission: continue where the person left off
     const q = new URLSearchParams(window.location.search), part = q.get("bagian");
@@ -483,7 +483,7 @@ export function FinSheetHost({ ctx, sheet, close, goManual, openPaySheet }: { ct
     case "streak": return <StreakSheet key="streak" entries={entries} onClose={close} onCatat={() => ctx.open({ k: "catat" })} />;
     case "wallet-adjust": return <WalletAdjustSheet key={`wa-${sheet.id}`} ctx={ctx} id={sheet.id} onClose={close} />;
     case "wallet-view": return <WalletDetailSheet key={`wv-${sheet.id}`} ctx={ctx} id={sheet.id} onClose={close} />;
-    case "account": return <AccountEditSheet key="acc" fin={fin} account={state.accounts.find((a) => a.id === sheet.id)} notify={notify} onClose={close} />;
+    case "account": return <AccountEditSheet key="acc" fin={fin} account={state.accounts.find((a) => a.id === sheet.id)} notify={notify} onClose={close} find={sheet.id ? undefined : { count: ctx.disc.items.filter((d) => d.group === "dompet").length, onOpen: () => { close(); ctx.nav.go("/temuan?jenis=dompet"); } }} />;
     case "category": return <CategoryEditSheet key="cat" fin={fin} category={state.categories.find((c) => c.id === sheet.id)} notify={notify} onClose={close} />;
   }
 }

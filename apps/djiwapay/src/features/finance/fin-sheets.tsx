@@ -344,7 +344,7 @@ export function StreakSheet({ entries, onClose, onCatat }: { entries: Entry[]; o
 
 /* ---------- accounts & categories editing ---------- */
 const ACCOUNT_TYPES: [AccountType, string][] = [["cash", "Tunai"], ["bank", "Rekening bank"], ["ewallet", "E-wallet"], ["card", "Kartu kredit"], ["other", "Lainnya"]];
-export function AccountEditSheet({ fin, account, onClose, notify }: { fin: Finance; account?: Account; onClose: () => void; notify: Notify }) {
+export function AccountEditSheet({ fin, account, onClose, notify, find }: { fin: Finance; account?: Account; onClose: () => void; notify: Notify; /** New wallet only: search the e-mail for banks and e-wallets that are not tracked yet. */ find?: { count: number; onOpen: () => void } }) {
   const [name, setName] = useState(account?.name ?? "");
   const [type, setType] = useState<AccountType>(account?.type ?? "bank");
   const [opening, setOpening] = useState(String(Math.abs(account?.opening ?? 0) || ""));
@@ -352,6 +352,7 @@ export function AccountEditSheet({ fin, account, onClose, notify }: { fin: Finan
   const [scope, setScope] = useState<AccountScope>(account ? accountScope(account) : fin.scope === "business" ? "business" : "personal");
   const ok = name.trim().length > 0;
   return <Sheet title={account ? "Ubah dompet" : "Dompet baru"} onClose={onClose}>
+    {find ? <button type="button" className="dpx-df-find" onClick={find.onOpen}><span className="dpx-df-find-ic"><Ic n="search" size="sm" /></span><span><b>Cari dompet dari email</b><small>{find.count ? `${find.count} bank atau e-wallet ditemukan, siap disimpan` : "Temukan bank dan e-wallet dari email pembayaranmu"}</small></span>{find.count ? <i>{find.count}</i> : <Ic n="chev" size="sm" />}</button> : null}
     <label className="dpx-field" style={{ marginTop: 0 }}><span>Nama</span><div className="dpx-input"><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contoh: BCA, OVO, Celengan" maxLength={30} /></div></label>
     <div className="dpx-chips" style={{ margin: "10px -18px 0" }}>{ACCOUNT_TYPES.map(([k, l]) => <Btn key={k} type="button" className={`dpx-chip ${type === k ? "dpx-on" : ""}`} onClick={() => { setType(k); setNegative(k === "card"); }}>{l}</Btn>)}</div>
     <div className="dpx-glabel" style={{ marginTop: 14 }}>Untuk apa dompet ini?</div>

@@ -6,6 +6,7 @@ import { rupiah } from "../../lib/djiwa-pay-format";
 import { billExists, mergeTargets, movedEntries, type Discovery, type DiscoveryGroup } from "../../lib/finance/discover";
 import type { Account, AccountType } from "../../lib/finance/types";
 import { useInbound } from "../integrations/integrations-pages";
+import { pollGmailNow } from "../../lib/finance/integrations";
 import "./discoveries.css";
 
 const GROUPS: readonly (readonly [DiscoveryGroup | "all", string])[] = [["all", "Semua"], ["dompet", "Dompet"], ["tagihan", "Tagihan"], ["langganan", "Langganan"]];
@@ -100,11 +101,18 @@ function AccountSheet({ d, ctx, onClose, onSaved }: { d: Discovery; ctx: FinCtx;
 
 export function DiscoveryPage({ ctx, onBack, onOpenReview }: { ctx: FinCtx; onBack: () => void; onOpenReview: () => void }) {
   const { disc, fin } = ctx, inbound = useInbound();
-  const [group, setGroup] = useState<DiscoveryGroup | "all">("all"), [busy, setBusy] = useState(false), [open, setOpen] = useState<Discovery | null>(null), [bulk, setBulk] = useState(false);
+  const [group, setGroup] = useState<DiscoveryGroup | "all">(() => { const g = new URLSearchParams(window.location.search).get("jenis"); return g === "dompet" || g === "tagihan" || g === "langganan" ? g : "all"; }), [busy, setBusy] = useState(false), [open, setOpen] = useState<Discovery | null>(null), [bulk, setBulk] = useState(false);
   const list = useMemo(() => disc.items.filter((d) => group === "all" || d.group === group), [disc.items, group]);
   const counts = useMemo(() => Object.fromEntries(GROUPS.map(([k]) => [k, k === "all" ? disc.items.length : disc.items.filter((d) => d.group === k).length])) as Record<string, number>, [disc.items]);
   const sure = disc.items.filter((d) => d.confidence >= 0.9 && (d.kind === "recurring" || d.kind === "account"));
-  const waiting = inbound.data?.review ?? 0, first = useRef(true);
+  const waiting = inbound.data?.review ?? 0, first = useRef(true), [searching, setSearching] = useState(false);
+  /** Look in the e-mail right now (Gmail, when connected) and re-read what is waiting, instead of waiting for the next automatic round. */
+  const search = async () => {
+    setSearching(true); const before = disc.items.length;
+    try { await pollGmailNow().catch(() => undefined); await Promise.all([disc.refresh(), inbound.refresh()]); } finally { setSearching(false); }
+    ctx.notify("Pencarian email selesai");
+    void before;
+  };
   useEffect(() => { first.current = false; }, []);
   useEffect(() => { if (group !== "all" && counts[group] === 0) setGroup("all"); }, [counts, group]);
 
@@ -152,6 +160,7 @@ export function DiscoveryPage({ ctx, onBack, onOpenReview }: { ctx: FinCtx; onBa
         <div><b className="dpx-df-big"><Count to={disc.items.length} /></b><span>{disc.items.length ? "temuan menunggu jawabanmu" : disc.ready ? "semua sudah terjawab" : "memeriksa catatanmu…"}</span></div>
         {!disc.ready ? <motion.i className="dpx-df-scan" aria-hidden="true" animate={{ x: ["-100%", "100%"] }} transition={{ duration: 1.4, repeat: Infinity, ease: "linear" }} /> : null}
       </section>
+      <Btn type="button" className="dpx-df-search" disabled={searching} onClick={() => void search()} whileTap={{ scale: 0.97 }}><motion.span animate={searching ? { rotate: 360 } : { rotate: 0 }} transition={searching ? { duration: 0.9, repeat: Infinity, ease: "linear" } : { duration: 0 }} style={{ display: "inline-flex" }}><Ic n="refresh" size="sm" /></motion.span>{searching ? "Mencari di email…" : "Cari dari email sekarang"}</Btn>
       <p className="dpx-df-lede">Djiwa Pay membaca email dan catatanmu untuk menemukan dompet baru, tagihan rutin, langganan, dan perubahan harga. Tidak ada yang disimpan tanpa persetujuanmu.</p>
     </Reveal>
 
