@@ -30,7 +30,7 @@ export async function adminFetch<T>(path: string, init?: RequestInit): Promise<T
 }
 
 /** Loads one admin endpoint, reloads when the key changes, keeps the previous data on screen while refreshing. */
-export function useAdmin<T>(path: string | null, refreshMs = 0): { data: T | null; error: string | null; loading: boolean; reload: () => void } {
+export function useAdmin<T>(path: string | null, refreshMs = 0, refreshVersion = 0): { data: T | null; error: string | null; loading: boolean; reload: () => void } {
   const [state, set] = useState<{ data: T | null; error: string | null; loading: boolean }>({ data: null, error: null, loading: Boolean(path) });
   const seq = useRef(0), cache = useRef(new Map<string, T>());
   const run = useCallback(() => {
@@ -38,7 +38,7 @@ export function useAdmin<T>(path: string | null, refreshMs = 0): { data: T | nul
     set((s) => ({ data: hit ?? s.data, error: null, loading: true }));
     adminFetch<T>(path).then((d) => { if (id !== seq.current) return; cache.current.set(path, d); set({ data: d, error: null, loading: false }); }, (e: Error) => { if (id === seq.current) set((s) => ({ data: s.data, error: e.message, loading: false })); });
   }, [path]);
-  useEffect(() => { run(); if (!refreshMs) return; const t = window.setInterval(run, refreshMs); return () => window.clearInterval(t); }, [run, refreshMs]);
+  useEffect(() => { run(); if (!refreshMs) return; const t = window.setInterval(run, refreshMs); return () => window.clearInterval(t); }, [run, refreshMs, refreshVersion]);
   return { ...state, reload: run };
 }
 

@@ -117,3 +117,8 @@ html.adm-root,html.adm-root body{background:#f4f4f6}
 .adm-em-prev{border:1px solid var(--line);background:#f5f1e8}.adm-em-subj{padding:8px 12px;font-size:13px;font-weight:600;border-bottom:1px solid var(--line);background:#fff}.adm-em-prev iframe{width:100%;height:460px;border:0;display:block;background:#f5f1e8}
 .adm-em-rules{margin:0;padding-left:18px;display:grid;gap:8px;font-size:13px;line-height:1.5}
 @media(max-width:720px){.adm-em-row{flex-direction:column}.adm-kpis[style*="--cols:6"]{--cols:2!important}}
+
+.adm-em-filter { padding: 10px 12px; margin: 0; border-bottom: 1px solid var(--line); }
+.adm-em-filter select { max-width: 100%; }
+.adm-em-row-actions { justify-content: flex-end; }
+.adm-em-feedback { padding: 10px 12px; color: #166534; }

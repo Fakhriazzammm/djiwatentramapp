@@ -25,32 +25,69 @@ const VARS = ["nama", "saldo", "jumlah_catatan", "hari_tidak_aktif", "link"];
 const Progress = ({ done, total }: { done: number; total: number }) => <div className="adm-em-bar" role="progressbar" aria-valuenow={done} aria-valuemax={total}><motion.i initial={{ width: 0 }} animate={{ width: total ? `${Math.min(100, (done / total) * 100)}%` : 0 }} transition={{ type: "spring", stiffness: 160, damping: 24 }} /></div>;
 const Note = ({ tone = "", children }: { tone?: "bad" | "warn" | ""; children: ReactNode }) => <motion.div className={`adm-em-note ${tone}`} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>{children}</motion.div>;
 
-export function EmailPage({ sub, go }: { sub: string; go: (to: string) => void }) {
-  if (sub === "baru") return <Composer go={go} />;
-  if (sub) return <CampaignPage id={sub} go={go} />;
-  return <EmailHome go={go} />;
+type Suppression = { email: string; reason: string; source: string | null; created_at: string };
+type ComposeSeed = Pick<Template, "name" | "subject" | "html" | "segment"> & { templateId?: string };
+const EMAIL_TABS = [["kampanye", "Kampanye"], ["audiens", "Audiens"], ["template", "Template"], ["berhenti", "Alamat diblokir"]] as const;
+const REASONS: Record<string, string> = { unsubscribed: "Berhenti berlangganan", bounce: "Email memantul", complaint: "Laporan spam", manual: "Blokir manual" };
+const SOURCES: Record<string, string> = { link: "Tautan email", webhook: "Laporan pengiriman", provider: "Penyedia email", admin: "Admin Djiwa Tentram", "admin-djiwapay": "Admin Djiwa Pay" };
+
+export function EmailPage({ sub, go, refreshVersion }: {
+  sub: string;
+  go: (to: string, state?: Record<string, unknown>) => void;
+  refreshVersion: number;
+}) {
+  const compose = (seed?: ComposeSeed) => go("/admin/email/baru", { emailSeed: seed });
+  if (sub === "baru") return <Composer go={go} refreshVersion={refreshVersion} seed={window.history.state?.emailSeed} />;
+  if (sub) return <CampaignPage key={sub} id={sub} go={go} compose={compose} refreshVersion={refreshVersion} />;
+  return <EmailHome go={go} compose={compose} refreshVersion={refreshVersion} />;
 }
 
-/* ---------- list ---------- */
-function EmailHome({ go }: { go: (to: string) => void }) {
-  const ov = useAdmin<Overview>("email/overview"), list = useAdmin<{ campaigns: Campaign[] }>("email/campaigns", 5000), sup = useAdmin<{ suppressions: { email: string; reason: string; source: string | null; created_at: string }[] }>("email/suppressions");
-  const [tab, setTab] = useState<"kampanye" | "audiens" | "berhenti">("kampanye");
-  const [addr, setAddr] = useState(""), [msg, setMsg] = useState<string | null>(null);
-  if (!ov.data || !list.data) return ov.error || list.error ? <div className="adm-err">Email marketing belum bisa dimuat ({ov.error ?? list.error}). <button type="button" onClick={() => { ov.reload(); list.reload(); }}>Coba lagi</button></div> : <Loading />;
-  const o = ov.data, q = o.quota, camps = list.data.campaigns;
-  const addSup = async () => { try { await post("suppressions", { email: addr }); setAddr(""); setMsg(null); sup.reload(); ov.reload(); } catch (e) { setMsg((e as Error).message); } };
+function EmailHome({ go, compose, refreshVersion }: {
+  go: (to: string) => void;
+  compose: (seed?: ComposeSeed) => void;
+  refreshVersion: number;
+}) {
+  const ov = useAdmin<Overview>("email/overview", 0, refreshVersion);
+  const list = useAdmin<{ campaigns: Campaign[] }>("email/campaigns", 5000, refreshVersion);
+  const [tab, setTab] = useState<(typeof EMAIL_TABS)[number][0]>("kampanye");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [segment, setSegment] = useState("");
+  if (!ov.data) return ov.error ? <div className="adm-err" role="alert">Email marketing belum bisa dimuat ({ov.error}). <button type="button" onClick={ov.reload}>Coba lagi</button></div> : <Loading />;
+  const o = ov.data;
+  const q = o.quota;
+  const camps = list.data?.campaigns ?? [];
+  const term = search.trim().toLowerCase();
+  const matching = camps.filter((campaign) =>
+    (!status || campaign.status === status) &&
+    (!segment || campaign.segment === segment) &&
+    [campaign.name, campaign.subject].some((value) => value.toLowerCase().includes(term))
+  );
   return <div className="adm-stack">
-    <div className="adm-toolbar"><span className="adm-sub">Pengirim: <b>{o.from}</b></span><motion.button type="button" className="adm-btn adm-primary" onClick={() => go("/admin/email/baru")} whileTap={{ scale: 0.96 }} whileHover={{ y: -1 }}>+ Kampanye baru</motion.button></div>
+    <div className="adm-toolbar"><span className="adm-sub">Pengirim: <b>{o.from}</b></span><motion.button type="button" className="adm-btn adm-primary" onClick={() => compose()} whileTap={{ scale: 0.96 }} whileHover={{ y: -1 }}>+ Kampanye baru</motion.button></div>
     {!q ? <Note tone="bad">Penyedia email tidak merespons: kunci API belum terpasang atau paket Helipod Email tidak aktif. Kampanye tidak bisa dikirim sampai ini beres.</Note> : q.expiredAt && new Date(q.expiredAt).getTime() < Date.now() ? <Note tone="bad">Paket Helipod Email sudah berakhir ({dTime(q.expiredAt)}). Perpanjang di dashboard Helipod.</Note> : q.remaining !== null && q.remaining < 50 && !q.payg ? <Note tone="warn">Kuota bulan ini tinggal {nf(q.remaining)} email.</Note> : null}
     <Kpis items={[
       { label: "Pengguna Djiwa Pay", value: nf(o.customers.pay), hint: `dari ${nf(o.customers.total)} pelanggan` },
       { label: "Setuju menerima email", value: nf(o.customers.payConsented), hint: `${pct(o.customers.payConsented, o.customers.pay)} pengguna Pay` },
-      { label: "Berhenti berlangganan", value: nf(o.customers.suppressed), hint: "tidak akan dikirimi lagi" },
+      { label: "Alamat diblokir", value: nf(o.customers.suppressed), hint: "Berhenti langganan, pantulan, spam, dan manual" },
       { label: "Kuota email bulan ini", value: q?.limit ? nf(q.remaining ?? 0) : "—", hint: q ? `terpakai ${nf(q.used)} dari ${nf(q.limit)} · paket ${q.plan || "?"}` : "tidak terbaca", tone: q && q.remaining !== null && q.remaining < 50 ? "warn" : undefined },
     ]} />
-    <Tabs items={[["kampanye", "Kampanye"], ["audiens", "Audiens"], ["berhenti", "Berhenti langganan"]] as const} value={tab} onChange={setTab} />
-    {tab === "kampanye" ? <Panel title="Kampanye" meta={`${camps.length} kampanye`} flush>
-      <Table rowKey={(c) => c.id} rows={camps} onRow={(c) => go(`/admin/email/${c.id}`)} empty={<>Belum ada kampanye. <button type="button" className="adm-link" onClick={() => go("/admin/email/baru")}>Buat yang pertama</button>.</>} cols={[
+    <Tabs items={EMAIL_TABS} value={tab} onChange={setTab} />
+    {tab === "kampanye" ? <Panel title="Kampanye" meta={`${nf(matching.length)} dari ${nf(camps.length)} kampanye`} flush>
+      <div className="adm-toolbar adm-em-filter">
+        <input className="adm-search" type="search" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Cari kampanye" placeholder="Cari nama kampanye atau subjek" />
+        <select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status kampanye">
+          <option value="">Semua status</option>
+          {Object.entries(STATUS).map(([key, [label]]) => <option key={key} value={key}>{label}</option>)}
+        </select>
+        <select value={segment} onChange={(e) => setSegment(e.target.value)} aria-label="Segmen kampanye">
+          <option value="">Semua segmen</option>
+          {o.segments.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
+        </select>
+      </div>
+      {list.error ? <div className="adm-err" role="alert">Daftar kampanye gagal dimuat ({list.error}). <button type="button" onClick={list.reload}>Coba lagi</button></div> : null}
+      {!list.data && !list.error ? <Loading /> : null}
+      {list.data ? <Table rowKey={(c) => c.id} rows={matching} onRow={(c) => go(`/admin/email/${c.id}`)} empty={camps.length ? "Tidak ada kampanye yang cocok." : <>Belum ada kampanye. <button type="button" className="adm-link" onClick={() => compose()}>Buat yang pertama</button>.</>} cols={[
         { head: "Kampanye", cell: (c) => <><b>{c.name}</b><small className="adm-sub">{c.subject}</small></>, sort: (c) => c.name },
         { head: "Segmen", cell: (c) => o.segments.find((s) => s.key === c.segment)?.label ?? c.segment, hideSm: true },
         { head: "Status", cell: (c) => <Pill tone={STATUS[c.status]?.[1]}>{STATUS[c.status]?.[0] ?? c.status}</Pill>, sort: (c) => c.status },
@@ -58,24 +95,129 @@ function EmailHome({ go }: { go: (to: string) => void }) {
         { head: "Dibuka", cell: (c) => pct(c.opened ?? 0, sent(c.stats)), right: true, sort: (c) => c.opened ?? 0, hideSm: true },
         { head: "Klik", cell: (c) => pct(c.clicked ?? 0, sent(c.stats)), right: true, sort: (c) => c.clicked ?? 0, hideSm: true },
         { head: "Dibuat", cell: (c) => c.scheduled_at && c.status === "scheduled" ? `jadwal ${dTime(c.scheduled_at)}` : dTime(c.created_at), sort: (c) => c.created_at },
-      ]} />
+        { head: "Aksi", noSort: true, right: true, cell: (c) => <div className="adm-em-actions adm-em-row-actions" onClick={(event) => event.stopPropagation()}>
+          <button type="button" className="adm-link" aria-label={`Detail kampanye ${c.name}`} onClick={() => go(`/admin/email/${c.id}`)}>Detail</button>
+          <button type="button" className="adm-link" aria-label={`Salin kampanye ${c.name}`} onClick={() => compose({ name: `Salinan ${c.name}`.slice(0, 120), subject: c.subject, html: c.html, segment: c.segment })}>Salin</button>
+        </div> },
+      ]} /> : null}
     </Panel> : null}
     {tab === "audiens" ? <div className="adm-grid2">
       <Panel title="Segmen audiens" meta="bisa dikirimi sekarang (sudah setuju, email valid, tidak berhenti langganan)"><Rank color="#16161a" rows={o.segments.map((s) => ({ label: s.label, value: s.eligible, sub: `${nf(s.members)} anggota segmen` }))} /></Panel>
       <Panel title="Aturan kirim"><ul className="adm-em-rules"><li>Hanya pengguna yang <b>setuju menerima info</b> (opsi di profil Djiwa App).</li><li>Alamat yang berhenti berlangganan, memantul, atau melapor spam dilewati otomatis, bersama dengan email Djiwa Tentram.</li><li>Satu orang tidak dikirimi lebih dari satu kampanye per <b>72 jam</b>.</li><li>Setiap email memuat tombol berhenti berlangganan satu klik.</li></ul></Panel>
     </div> : null}
-    {tab === "berhenti" ? <Panel title="Daftar berhenti langganan" meta={`${nf(sup.data?.suppressions.length ?? 0)} alamat · dipakai bersama Djiwa Tentram`} flush>
-      <div className="adm-add"><input type="email" value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="tambah alamat yang tidak boleh dikirimi" aria-label="Alamat email" onKeyDown={(e) => e.key === "Enter" && addr && addSup()} /><button type="button" disabled={!addr} onClick={addSup}>Tambah</button></div>
-      {msg ? <div className="adm-err">{msg}</div> : null}
-      <Table rowKey={(s) => s.email} rows={sup.data?.suppressions ?? []} empty="Belum ada." cols={[{ head: "Email", cell: (s) => s.email }, { head: "Alasan", cell: (s) => ({ unsubscribed: "berhenti langganan", bounce: "memantul", complaint: "lapor spam", manual: "manual" } as Record<string, string>)[s.reason] ?? s.reason }, { head: "Sejak", cell: (s) => dTime(s.created_at), hideSm: true }, { head: "", cell: (s) => <button type="button" className="adm-link" onClick={async () => { await del(`suppressions/${encodeURIComponent(s.email)}`); sup.reload(); ov.reload(); }}>hapus</button>, right: true }]} />
-    </Panel> : null}
+    {tab === "template" ? <TemplateLibrary overview={o} compose={compose} /> : null}
+    {tab === "berhenti" ? <SuppressionPanel total={o.customers.suppressed} onChange={ov.reload} refreshVersion={refreshVersion} /> : null}
   </div>;
 }
 
+function TemplateLibrary({ overview, compose }: { overview: Overview; compose: (seed: ComposeSeed) => void }) {
+  const [query, setQuery] = useState("");
+  const [kind, setKind] = useState("");
+  const [selected, setSelected] = useState<Template>();
+  const term = query.trim().toLowerCase();
+  const builtins = overview.builtinTemplates;
+  const custom = overview.customTemplates;
+  const rows = (kind === "builtin" ? builtins : kind === "custom" ? custom : [...builtins, ...custom])
+    .filter((item) => [item.name, item.subject, item.description].some((value) => (value ?? "").toLowerCase().includes(term)));
+  return <>
+    <Panel title="Template email" meta={`${nf(rows.length)} template`} flush>
+      <div className="adm-toolbar adm-em-filter">
+        <input className="adm-search" type="search" aria-label="Cari template" placeholder="Cari nama template atau subjek" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <select aria-label="Jenis template" value={kind} onChange={(e) => setKind(e.target.value)}>
+          <option value="">Semua template</option><option value="builtin">Bawaan</option><option value="custom">Tersimpan</option>
+        </select>
+      </div>
+      <Table rows={rows} rowKey={(item) => item.id} empty="Tidak ada template yang cocok." cols={[
+        { head: "Template", cell: (item) => <><b>{item.name}</b><small className="adm-sub">{item.subject}</small></> },
+        { head: "Jenis", cell: (item) => <Pill>{item.id.startsWith("builtin") ? "Bawaan" : "Tersimpan"}</Pill> },
+        { head: "Aksi", noSort: true, right: true, cell: (item) => <div className="adm-em-actions adm-em-row-actions">
+          <button className="adm-link" type="button" onClick={() => setSelected(item)}>Pratinjau</button>
+          <button className="adm-link" type="button" onClick={() => compose({ ...item, templateId: item.id })}>Gunakan</button>
+        </div> },
+      ]} />
+    </Panel>
+    {selected ? <Panel title={`Pratinjau · ${selected.name}`} action={<button className="adm-link" type="button" onClick={() => setSelected(undefined)}>Tutup</button>}>
+      <div className="adm-em-prev"><div className="adm-em-subj">{fill(selected.subject)}</div><iframe title="Pratinjau template email" sandbox="" srcDoc={fill(selected.html)} /></div>
+    </Panel> : null}
+  </>;
+}
+
+function SuppressionPanel({ total, onChange, refreshVersion }: { total: number; onChange: () => void; refreshVersion: number }) {
+  const sup = useAdmin<{ suppressions: Suppression[] }>("email/suppressions", 0, refreshVersion);
+  const [addr, setAddr] = useState("");
+  const [search, setSearch] = useState("");
+  const [reason, setReason] = useState("");
+  const [source, setSource] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ error: boolean; text: string }>();
+  const addresses = sup.data?.suppressions ?? [];
+  const sources = [...new Set(addresses.map((item) => item.source ?? ""))].sort();
+  const reasons = [...new Set(addresses.map((item) => item.reason))].sort();
+  const rows = addresses.filter((item) => item.email.toLowerCase().includes(search.trim().toLowerCase()) &&
+    (!reason || item.reason === reason) && (!source || (item.source ?? "-") === source));
+  const mutate = async (request: () => Promise<unknown>, text: string) => {
+    setBusy(true);
+    setMessage(undefined);
+    try {
+      await request();
+      sup.reload();
+      onChange();
+      setMessage({ error: false, text });
+    } catch (error) {
+      setMessage({ error: true, text: (error as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return <Panel title="Daftar alamat diblokir" meta={`${nf(rows.length)} ditampilkan · ${nf(total)} alamat bersama Djiwa Tentram`} flush>
+    <div className="adm-toolbar adm-em-filter">
+      <input type="search" className="adm-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari alamat email" aria-label="Cari alamat diblokir" />
+      <select value={reason} onChange={(e) => setReason(e.target.value)} aria-label="Alasan pemblokiran">
+        <option value="">Semua alasan</option>
+        {reasons.map((key) => <option key={key} value={key}>{REASONS[key] ?? key}</option>)}
+      </select>
+      <select value={source} onChange={(e) => setSource(e.target.value)} aria-label="Sumber pemblokiran">
+        <option value="">Semua sumber</option>
+        {sources.map((key) => <option key={key} value={key || "-"}>{(SOURCES[key] ?? key) || "Tidak tercatat"}</option>)}
+      </select>
+    </div>
+    <form className="adm-add adm-em-filter" onSubmit={(e) => {
+      e.preventDefault();
+      if (busy || !addr.trim()) return;
+      const email = addr.trim().toLowerCase();
+      if (addresses.some((item) => item.email.toLowerCase() === email)) {
+        setMessage({ error: true, text: "Alamat ini sudah diblokir." });
+        return;
+      }
+      void mutate(async () => { await post("suppressions", { email }); setAddr(""); }, "Alamat ditambahkan ke daftar blokir.");
+    }}>
+      <input type="email" required value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="Tambah alamat yang perlu diblokir" aria-label="Alamat email untuk diblokir" />
+      <button type="submit" disabled={busy || !addr.trim()}>Blokir alamat</button>
+    </form>
+    {total > addresses.length && sup.data ? <p className="adm-hint adm-em-filter">Pencarian mencakup {nf(addresses.length)} alamat terbaru.</p> : null}
+    {message ? <div className={message.error ? "adm-err" : "adm-em-feedback"} role={message.error ? "alert" : "status"}>{message.text}</div> : null}
+    {sup.error ? <div className="adm-err" role="alert">Daftar gagal dimuat ({sup.error}). <button type="button" onClick={sup.reload}>Coba lagi</button></div> : null}
+    {sup.data ? <Table rowKey={(item) => item.email} rows={rows} empty={addresses.length ? "Tidak ada alamat yang cocok." : "Belum ada alamat diblokir."} cols={[
+      { head: "Email", cell: (item) => item.email },
+      { head: "Alasan", cell: (item) => <Pill tone={item.reason === "complaint" ? "bad" : item.reason === "bounce" ? "warn" : ""}>{REASONS[item.reason] ?? item.reason}</Pill> },
+      { head: "Sumber", cell: (item) => (SOURCES[item.source ?? ""] ?? item.source) || "—", hideSm: true },
+      { head: "Sejak", cell: (item) => dTime(item.created_at), sort: (item) => item.created_at, hideSm: true },
+      { head: "Aksi", right: true, noSort: true, cell: (item) => <button type="button" className="adm-link" disabled={busy} onClick={() => {
+        if (!window.confirm(`Lepas ${item.email} dari daftar blokir bersama Djiwa Pay dan Djiwa Tentram?`)) return;
+        void mutate(() => del(`suppressions/${encodeURIComponent(item.email)}`), "Alamat dilepas dari daftar blokir.");
+      }}>Lepas blokir</button> },
+    ]} /> : sup.loading ? <Loading /> : null}
+  </Panel>;
+}
+
 /* ---------- composer ---------- */
-function Composer({ go }: { go: (to: string) => void }) {
-  const ov = useAdmin<Overview>("email/overview");
-  const [name, setName] = useState(""), [subject, setSubject] = useState(""), [html, setHtml] = useState(""), [segment, setSegment] = useState("all"), [tplId, setTplId] = useState<string | null>(null);
+function Composer({ go, seed, refreshVersion }: { go: (to: string) => void; seed?: ComposeSeed; refreshVersion: number }) {
+  const ov = useAdmin<Overview>("email/overview", 0, refreshVersion);
+  const [name, setName] = useState(seed?.name ?? "");
+  const [subject, setSubject] = useState(seed?.subject ?? "");
+  const [html, setHtml] = useState(seed?.html ?? "");
+  const [segment, setSegment] = useState(seed?.segment ?? "all");
+  const [tplId, setTplId] = useState<string | null>(seed?.templateId ?? null);
   const [when, setWhen] = useState(""), [testTo, setTestTo] = useState(""), [busy, setBusy] = useState<string | null>(null), [msg, setMsg] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [aud, setAud] = useState<{ total: number; skipped: Record<string, number>; sample: { name: string; email: string }[] } | null>(null);
   const [view, setView] = useState<"edit" | "preview">("edit");
@@ -127,9 +269,9 @@ function Composer({ go }: { go: (to: string) => void }) {
 }
 
 /* ---------- one campaign ---------- */
-function CampaignPage({ id, go }: { id: string; go: (to: string) => void }) {
+function CampaignPage({ id, go, compose, refreshVersion }: { id: string; go: (to: string) => void; compose: (seed: ComposeSeed) => void; refreshVersion: number }) {
   const [filter, setFilter] = useState("");
-  const d = useAdmin<Detail>(`email/campaigns/${id}${filter ? `?status=${filter}` : ""}`, 3000), [busy, setBusy] = useState(false), [err, setErr] = useState<string | null>(null);
+  const d = useAdmin<Detail>(`email/campaigns/${id}${filter ? `?status=${filter}` : ""}`, 3000, refreshVersion), [busy, setBusy] = useState(false), [err, setErr] = useState<string | null>(null);
   const [gone, setGone] = useState(false);
   if (gone) return null;
   if (!d.data) return d.error ? <div className="adm-err">Kampanye tidak ditemukan ({d.error}). <button type="button" onClick={() => go("/admin/email")}>Kembali</button></div> : <Loading />;
@@ -141,6 +283,7 @@ function CampaignPage({ id, go }: { id: string; go: (to: string) => void }) {
     <motion.button type="button" className="adm-back" onClick={() => go("/admin/email")} whileHover={{ x: -3 }} whileTap={{ scale: 0.96 }}>← Semua kampanye</motion.button>
     <Panel><div className="adm-em-head"><div><h2>{c.name}</h2><span className="adm-sub">{c.subject}</span><div className="adm-tags"><Pill tone={st[1]}>{st[0]}</Pill><Pill>{c.segment}</Pill>{c.scheduled_at ? <Pill tone="info">jadwal {dTime(c.scheduled_at)}</Pill> : null}</div></div>
       <div className="adm-em-actions">
+        <button type="button" className="adm-btn" onClick={() => compose({ name: `Salinan ${c.name}`.slice(0, 120), subject: c.subject, html: c.html, segment: c.segment })}>Salin kampanye</button>
         {["draft", "scheduled", "paused"].includes(c.status) ? <button type="button" className="adm-btn adm-primary" disabled={busy} onClick={() => act("start", c.status === "paused" ? undefined : `Kirim kampanye ini sekarang?`)}>{c.status === "paused" ? "Lanjutkan" : "Kirim sekarang"}</button> : null}
         {c.status === "sending" ? <button type="button" className="adm-btn" disabled={busy} onClick={() => act("pause")}>Jeda</button> : null}
         {["draft", "scheduled", "sending", "paused"].includes(c.status) ? <button type="button" className="adm-btn" disabled={busy} onClick={() => act("cancel", "Batalkan kampanye? Email yang belum terkirim tidak akan dikirim.")}>Batalkan</button> : null}
@@ -150,7 +293,7 @@ function CampaignPage({ id, go }: { id: string; go: (to: string) => void }) {
     <Kpis items={[
       { label: "Penerima", value: nf(total), hint: `${nf(stats.queued ?? 0)} masih antre` },
       { label: "Terkirim", value: nf(done), hint: pct(done, total) },
-      { label: "Sampai di inbox", value: nf(stats.delivered ?? 0), hint: pct(stats.delivered ?? 0, done) },
+      { label: "Dikonfirmasi sampai", value: nf(stats.delivered ?? 0), hint: pct(stats.delivered ?? 0, done) },
       { label: "Dibuka", value: nf(d.data.opened), hint: pct(d.data.opened, done) },
       { label: "Diklik", value: nf(d.data.clicked), hint: pct(d.data.clicked, done) },
       { label: "Gagal / memantul", value: nf((stats.failed ?? 0) + (stats.bounced ?? 0) + (stats.complained ?? 0)), hint: `${nf(stats.skipped ?? 0)} dilewati`, tone: (stats.failed ?? 0) + (stats.bounced ?? 0) > 0 ? "warn" : undefined },

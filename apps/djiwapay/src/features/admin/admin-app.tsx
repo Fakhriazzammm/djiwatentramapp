@@ -22,7 +22,7 @@ const Icon = ({ d }: { d: string }) => <svg className="adm-ic" viewBox="0 0 24 2
 function useLocation() {
   const [loc, set] = useState(() => window.location.pathname);
   useEffect(() => { const on = () => set(window.location.pathname); window.addEventListener("popstate", on); return () => window.removeEventListener("popstate", on); }, []);
-  const go = useCallback((to: string) => { if (to !== window.location.pathname) window.history.pushState({}, "", to); set(to); window.scrollTo({ top: 0 }); }, []);
+  const go = useCallback((to: string, state: Record<string, unknown> = {}) => { if (to !== window.location.pathname) window.history.pushState(state, "", to); set(to); window.scrollTo({ top: 0 }); }, []);
   return [loc.replace(/\/$/, "") || "/admin", go] as const;
 }
 
@@ -71,7 +71,7 @@ function Shell({ me }: { me: { email: string; name: string } }) {
       case "pengguna": return sub ? <UserDetailPage key={sub} id={decodeURIComponent(sub)} back={() => go("/admin/pengguna")} /> : <UsersPage open={openUser} />;
       case "keuangan": return <FinancePage key={tick} range={r} openUser={openUser} />;
       case "dompet": return <WalletPage key={tick} range={r} openUser={openUser} />;
-      case "email": return <EmailPage sub={sub} go={go} />;
+      case "email": return <EmailPage sub={sub} go={go} refreshVersion={tick} />;
       case "sistem": return <SystemPage me={me.email} />;
       default: return <OverviewPage key={tick} range={r} go={go} />;
     }
