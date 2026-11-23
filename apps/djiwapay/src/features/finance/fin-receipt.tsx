@@ -44,10 +44,16 @@ export function ReceiptFlow({ file, onRetry, ...props }: FlowProps & { file: Fil
   </Sheet>;
 }
 
-function NumberField({ label, value, onChange }: { label: string; value: number | null; onChange: (n: number | null) => void }) {
+function Field({ label, grow, children }: { label: string; grow?: boolean; children: ReactNode }) {
+  return <label className={`dpx-ed-f ${grow ? "grow" : ""}`}><span>{label}</span>{children}</label>;
+}
+function Switch({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode }) {
+  return <label className="dpx-ed-sw"><span>{children}</span><input type="checkbox" role="switch" checked={checked} onChange={e=>onChange(e.target.checked)} /><i aria-hidden="true" /></label>;
+}
+function NumberField({ label, value, onChange, money, strong }: { label: string; value: number | null; onChange: (n: number | null) => void; money?: boolean; strong?: boolean }) {
   const [input, setInput] = useState(value === null ? "" : String(value));
   useEffect(()=>{setInput(current=>receiptNumber(current) === value ? current : value === null ? "" : String(value));}, [value]);
-  return <label className="dpx-receipt-field"><span>{label}</span><input type="text" inputMode="decimal" value={input} placeholder="Belum terbaca" onChange={e=>{setInput(e.target.value);onChange(receiptNumber(e.target.value));}} /></label>;
+  return <label className={`dpx-ed-f ${strong ? "strong" : ""}`}><span>{label}</span><div className="dpx-ed-in">{money ? <em>Rp</em> : null}<input type="text" inputMode="decimal" value={input} placeholder="—" aria-label={label} onChange={e=>{setInput(e.target.value);onChange(receiptNumber(e.target.value));}} /></div></label>;
 }
 
 /** Same editor for new camera/upload results and persistent receipt corrections. */
@@ -112,38 +118,42 @@ export function ReceiptReview({ initial, preview, onRetry, entry, attach, ...pro
     </>}>
     {attach ? <p className="dpx-rxv-note">Nominal bayar {rupiah(attach.amount)}, dompet, dan waktu dari email tidak berubah. Struk menambahkan item, pajak, dan diskon.</p> : null}
     {editing ? <>
-    <fieldset className="dpx-receipt-editor" disabled={saving}>
-      <div className="dpx-rcs"><label className="dpx-receipt-field"><span>Toko / tempat</span><input value={doc.merchant} maxLength={160} onChange={e=>change({merchant:e.target.value})} /></label>
-      <label className="dpx-receipt-field"><span>Tanggal dan waktu transaksi</span><input type="datetime-local" value={dateInput(doc.purchasedAt)} onChange={e=>change({purchasedAt:e.target.value ? new Date(e.target.value).toISOString() : null})} /></label>
-      {!metadataValid ? <p className="dpx-hint">Lengkapi toko serta tanggal yang sesuai dengan struk.</p> : null}
-      <div className="dpx-receipt-fields"><label className="dpx-receipt-field"><span>Nomor struk (opsional)</span><input value={doc.reference} onChange={e=>change({reference:e.target.value})} /></label><label className="dpx-receipt-field"><span>Metode bayar tercetak (opsional)</span><input value={doc.paymentMethod} onChange={e=>change({paymentMethod:e.target.value})} /></label></div>
-      <label className="dpx-receipt-field"><span>Alamat toko (opsional)</span><input value={doc.merchantAddress} onChange={e=>change({merchantAddress:e.target.value})} /></label></div>
-      <h3 className="dpx-receipt-heading">Rincian item · {doc.items.length}</h3>
-      {doc.items.map((i,k)=><div className="dpx-receipt-item" key={k}>
-        <div className="dpx-receipt-item-head"><label className="dpx-receipt-field"><span>Item {k+1}{i.confidence < .7 ? " · periksa" : ""}</span><input aria-label={`Nama item ${k+1}`} value={i.name} maxLength={160} onChange={e=>itemChange(k,{name:e.target.value})} /></label><Btn type="button" className="dpx-sh-x" aria-label={`Hapus item ${k+1}`} onClick={()=>change({items:doc.items.filter((_,n)=>n!==k)})}><Ic n="close" size="sm" /></Btn></div>
-        <div className="dpx-receipt-fields"><NumberField label={`Kuantitas item ${k+1}`} value={i.qty} onChange={qty=>itemChange(k,{qty},true)} /><label className="dpx-receipt-field"><span>Satuan</span><input aria-label={`Satuan item ${k+1}`} placeholder="pcs, kg, cup…" value={i.unit} onChange={e=>itemChange(k,{unit:e.target.value})} /></label><NumberField label={`Harga satuan item ${k+1}`} value={i.unitPrice} onChange={unitPrice=>itemChange(k,{unitPrice},true)} /><NumberField label={`Diskon item ${k+1}`} value={i.discount} onChange={discount=>itemChange(k,{discount:discount ?? 0},true)} /></div>
-        {i.components.map((c,n)=><div className="dpx-receipt-components" key={n}><label className="dpx-receipt-field"><span>Isi paket / varian {n+1} (termasuk harga induk)</span><input value={c.name} onChange={e=>itemChange(k,{components:i.components.map((x,j)=>j===n?{...x,name:e.target.value}:x)})} /></label><NumberField label={`Qty isi paket ${n+1}`} value={c.qty} onChange={qty=>itemChange(k,{components:i.components.map((x,j)=>j===n?{...x,qty}:x)})} /></div>)}
-        <NumberField label={`Jumlah baris item ${k+1}`} value={i.price} onChange={price=>itemChange(k,{price})} />
+    <fieldset className="dpx-ed" disabled={saving}>
+      <section className="dpx-ed-g"><h3>Toko</h3><div className="dpx-ed-card">
+        <Field label="Nama toko"><input value={doc.merchant} maxLength={160} onChange={e=>change({merchant:e.target.value})} /></Field>
+        <Field label="Alamat (opsional)"><input value={doc.merchantAddress} onChange={e=>change({merchantAddress:e.target.value})} /></Field>
+      </div></section>
+      <section className="dpx-ed-g"><h3>Transaksi</h3><div className="dpx-ed-card">
+        <Field label="Tanggal dan waktu"><input type="datetime-local" value={dateInput(doc.purchasedAt)} onChange={e=>change({purchasedAt:e.target.value ? new Date(e.target.value).toISOString() : null})} /></Field>
+        {!metadataValid ? <p className="dpx-ed-hint bad">Lengkapi nama toko dan tanggal sesuai struk.</p> : null}
+        <div className="dpx-ed-row"><Field label="Nomor struk"><input value={doc.reference} onChange={e=>change({reference:e.target.value})} /></Field><Field label="Metode bayar"><input value={doc.paymentMethod} onChange={e=>change({paymentMethod:e.target.value})} /></Field></div>
+      </div></section>
+      <section className="dpx-ed-g"><h3>Item <b>{doc.items.length}</b></h3>
+      {doc.items.map((i,k)=><div className="dpx-ed-card dpx-ed-item" key={k}>
+        <div className="dpx-ed-ih"><span className={`dpx-ed-n ${i.confidence < .7 ? "chk" : ""}`}>{k+1}</span><Field label={i.confidence < .7 ? "Nama item · periksa" : "Nama item"} grow><input aria-label={`Nama item ${k+1}`} value={i.name} maxLength={160} onChange={e=>itemChange(k,{name:e.target.value})} /></Field><button type="button" className="dpx-ed-del" aria-label={`Hapus item ${k+1}`} onClick={()=>change({items:doc.items.filter((_,n)=>n!==k)})}><Ic n="trash" size="sm" /></button></div>
+        <div className="dpx-ed-row"><NumberField label="Jumlah" value={i.qty} onChange={qty=>itemChange(k,{qty},true)} /><Field label="Satuan"><input aria-label={`Satuan item ${k+1}`} placeholder="pcs, kg…" value={i.unit} onChange={e=>itemChange(k,{unit:e.target.value})} /></Field></div>
+        <div className="dpx-ed-row"><NumberField money label="Harga satuan" value={i.unitPrice} onChange={unitPrice=>itemChange(k,{unitPrice},true)} /><NumberField money label="Diskon" value={i.discount} onChange={discount=>itemChange(k,{discount:discount ?? 0},true)} /></div>
+        {i.components.length ? <div className="dpx-ed-sub"><small>Isi paket / varian</small>{i.components.map((c,n)=><div className="dpx-ed-comp" key={n}><Field label={`Varian ${n+1}`} grow><input value={c.name} onChange={e=>itemChange(k,{components:i.components.map((x,j)=>j===n?{...x,name:e.target.value}:x)})} /></Field><NumberField label="Qty" value={c.qty} onChange={qty=>itemChange(k,{components:i.components.map((x,j)=>j===n?{...x,qty}:x)})} /></div>)}</div> : null}
+        <NumberField money strong label="Jumlah baris" value={i.price} onChange={price=>itemChange(k,{price})} />
       </div>)}
-      <Btn type="button" className="dpx-btn dpx-soft" onClick={()=>change({items:[...doc.items,{name:"",qty:1,unit:"",unitPrice:null,discount:0,price:null,categoryId:"belanja",confidence:1,components:[]}]})} disabled={doc.items.length>=200}><Ic n="plus" size="sm" /> Tambah item</Btn>
-      <h3 className="dpx-receipt-heading">Ringkasan struk</h3><div className="dpx-rcs">
-      <div className="dpx-kv"><span>Jumlah seluruh item</span><b>{rupiah(totals.itemSum)}</b></div>
-      <div className="dpx-receipt-fields"><NumberField label="Subtotal pada struk (opsional)" value={doc.subtotal} onChange={subtotal=>change({subtotal})} /><NumberField label="Diskon seluruh struk" value={doc.discount} onChange={discount=>change({discount:discount ?? 0})} /></div>
-      <label className="dpx-receipt-check"><input type="checkbox" checked={doc.subtotalBeforeItemDiscounts} onChange={e=>change({subtotalBeforeItemDiscounts:e.target.checked})} /> Subtotal tercetak masih sebelum diskon item</label>
-      <p className="dpx-hint">Diskon item sudah mengurangi jumlah baris. Isi diskon struk hanya jika belum dikurangi pada item.</p>
-      {doc.charges.map((c,k)=><div className="dpx-receipt-item" key={k}>
-        <div className="dpx-receipt-item-head"><label className="dpx-receipt-field"><span>Nama pajak / biaya</span><input value={c.label} onChange={e=>change({charges:doc.charges.map((x,n)=>n===k?{...x,label:e.target.value}:x)})} /></label><Btn type="button" className="dpx-sh-x" aria-label={`Hapus biaya ${k+1}`} onClick={()=>change({charges:doc.charges.filter((_,n)=>n!==k)})}><Ic n="close" size="sm" /></Btn></div>
-        <div className="dpx-receipt-fields"><label className="dpx-receipt-field"><span>Jenis</span><select value={c.kind} onChange={e=>change({charges:doc.charges.map((x,n)=>n===k?{...x,kind:e.target.value as typeof c.kind}:x)})}><option value="tax">Pajak</option><option value="service">Layanan</option><option value="shipping">Ongkir</option><option value="rounding">Pembulatan (+/−)</option><option value="other">Biaya lain</option></select></label><NumberField label={`Nominal biaya ${k+1}`} value={c.amount} onChange={amount=>change({charges:doc.charges.map((x,n)=>n===k?{...x,amount}:x)})} /></div>
-        <label className="dpx-receipt-check"><input type="checkbox" checked={c.included} onChange={e=>change({charges:doc.charges.map((x,n)=>n===k?{...x,included:e.target.checked}:x)})} /> Sudah termasuk dalam harga item</label>
+      <button type="button" className="dpx-ed-add" disabled={doc.items.length>=200} onClick={()=>change({items:[...doc.items,{name:"",qty:1,unit:"",unitPrice:null,discount:0,price:null,categoryId:"belanja",confidence:1,components:[]}]})}><Ic n="plus" size="sm" /> Tambah item</button></section>
+      <section className="dpx-ed-g"><h3>Ringkasan</h3><div className="dpx-ed-card">
+        <div className="dpx-ed-kv"><span>Jumlah seluruh item</span><b>{rupiah(totals.itemSum)}</b></div>
+        <div className="dpx-ed-row"><NumberField money label="Subtotal struk" value={doc.subtotal} onChange={subtotal=>change({subtotal})} /><NumberField money label="Diskon struk" value={doc.discount} onChange={discount=>change({discount:discount ?? 0})} /></div>
+        <Switch checked={doc.subtotalBeforeItemDiscounts} onChange={v=>change({subtotalBeforeItemDiscounts:v})}>Subtotal tercetak sebelum diskon item</Switch>
+        <p className="dpx-ed-hint">Diskon item sudah mengurangi jumlah baris. Isi diskon struk hanya bila belum dikurangi pada item.</p>
+      </div>
+      {doc.charges.map((c,k)=><div className="dpx-ed-card dpx-ed-item" key={k}>
+        <div className="dpx-ed-ih"><Field label="Pajak / biaya" grow><input value={c.label} onChange={e=>change({charges:doc.charges.map((x,n)=>n===k?{...x,label:e.target.value}:x)})} /></Field><button type="button" className="dpx-ed-del" aria-label={`Hapus biaya ${k+1}`} onClick={()=>change({charges:doc.charges.filter((_,n)=>n!==k)})}><Ic n="trash" size="sm" /></button></div>
+        <div className="dpx-ed-row"><Field label="Jenis"><select value={c.kind} onChange={e=>change({charges:doc.charges.map((x,n)=>n===k?{...x,kind:e.target.value as typeof c.kind}:x)})}><option value="tax">Pajak</option><option value="service">Layanan</option><option value="shipping">Ongkir</option><option value="rounding">Pembulatan (+/−)</option><option value="other">Biaya lain</option></select></Field><NumberField money label="Nominal" value={c.amount} onChange={amount=>change({charges:doc.charges.map((x,n)=>n===k?{...x,amount}:x)})} /></div>
+        <Switch checked={c.included} onChange={v=>change({charges:doc.charges.map((x,n)=>n===k?{...x,included:v}:x)})}>Sudah termasuk dalam harga item</Switch>
       </div>)}
-      <Btn type="button" className="dpx-btn dpx-soft" onClick={()=>change({charges:[...doc.charges,{label:"",kind:"tax",amount:null,included:false}]})} disabled={doc.charges.length>=50}>Tambah pajak / biaya</Btn>
-      <NumberField label="Total akhir pada struk" value={doc.total} onChange={total=>change({total:total ?? 0})} />
-      <div className="dpx-receipt-fields"><NumberField label="Uang dibayar (opsional)" value={doc.tendered} onChange={tendered=>change({tendered})} /><NumberField label="Kembalian (opsional)" value={doc.change} onChange={changeValue=>change({change:changeValue})} /></div>
-      </div><div className={`dpx-rc-verdict ${totals.valid ? "ok" : "bad"}`} aria-live="polite"><div><small>Total hasil hitung</small><b>{rupiah(totals.computed)}</b></div><div><small>Selisih dengan struk</small><b>{rupiah(totals.difference)}</b></div><em>{totals.valid ? "Cocok dengan struk" : "Belum cocok"}</em></div>
-      {totals.problems.length ? <div className="dpx-note dpx-warn" role="status"><div><b>Perlu diperiksa</b><ul>{totals.problems.map((p,k)=><li key={k}>{p}</li>)}</ul></div></div> : null}
-      {doc.warnings.length ? <div className="dpx-note dpx-warn"><div><b>Catatan pembacaan</b><ul>{doc.warnings.map((w,k)=><li key={k}>{w}</li>)}</ul></div></div> : null}
-      {attach ? null : <><Btn type="button" className="dpx-walletpick" onClick={()=>setPick("account")}><Ic n="wallet" /><span><small>Dompet</small><b>{accountId ? accName(fin.state,accountId) : "Pilih dompet pembayaran"}</b></span><em>Ganti</em></Btn>
-      <Btn type="button" className="dpx-walletpick" onClick={()=>setPick("category")}><Ic n="tag" /><span><small>Kategori catatan</small><b>{catOf(fin.state,categoryId).name}</b></span><em>Ganti</em></Btn></>}
+      <button type="button" className="dpx-ed-add" disabled={doc.charges.length>=50} onClick={()=>change({charges:[...doc.charges,{label:"",kind:"tax",amount:null,included:false}]})}><Ic n="plus" size="sm" /> Tambah pajak / biaya</button>
+      <div className="dpx-ed-card"><NumberField money strong label="Total akhir struk" value={doc.total} onChange={total=>change({total:total ?? 0})} />
+        <div className="dpx-ed-row"><NumberField money label="Uang dibayar" value={doc.tendered} onChange={tendered=>change({tendered})} /><NumberField money label="Kembalian" value={doc.change} onChange={changeValue=>change({change:changeValue})} /></div></div></section>
+      <div className={`dpx-rxv-verdict ${totals.valid ? "ok" : "bad"}`} role="status"><i />{totals.valid ? `Total cocok · ${rupiah(totals.computed)}` : `Belum cocok · hitungan ${rupiah(totals.computed)}, selisih ${rupiah(totals.difference)}`}</div>
+      {totals.problems.length || doc.warnings.length ? <ul className="dpx-rxv-warn">{[...totals.problems,...doc.warnings].map((w,k)=><li key={k}>{w}</li>)}</ul> : null}
+      {attach ? null : <div className="dpx-rxv-pick"><button type="button" onClick={()=>setPick("account")}><Ic n="wallet" /><span><small>Dompet</small><b>{account}</b></span><Ic n="chev" size="sm" /></button><button type="button" onClick={()=>setPick("category")}><Ic n="tag" /><span><small>Kategori</small><b>{catOf(fin.state,categoryId).name}</b></span><Ic n="chev" size="sm" /></button></div>}
     </fieldset>
     </> : <>
     <section className="dpx-rxv-card">
