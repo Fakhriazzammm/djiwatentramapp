@@ -226,7 +226,7 @@ const monthName = (ym: string) => new Date(`${ym}-15T00:00:00+07:00`).toLocaleDa
 
 export function ImportSheet({ ctx, onClose, onChanged }: { ctx: FinCtx; onClose: () => void; onChanged: () => void }) {
   const [imp, setImp] = useState<ImportState | null | undefined>(undefined);
-  const [days, setDays] = useState(90);
+  const [days, setDays] = useState(90), [syncPick, setSyncPick] = useState<string>("last");
   const [busy, setBusy] = useState(false);
   const [items, setItems] = useState<ImportItem[] | null>(null);
   const [showCheck, setShowCheck] = useState(false);
@@ -278,7 +278,12 @@ export function ImportSheet({ ctx, onClose, onChanged }: { ctx: FinCtx; onClose:
         {imp.live?.pending ? <Btn type="button" className="dpx-btn" onClick={() => { onClose(); ctx.nav.go("/tinjau"); }}><Ic n="list" size="sm" /> Tinjau {imp.live.pending} sisanya</Btn> : null}
         {imp.live?.uncategorized ? <Btn type="button" className="dpx-btn dpx-soft" onClick={() => { onClose(); ctx.open({ k: "tidy" }); }}><Ic n="spark" size="sm" /> {imp.live.uncategorized} belum berkategori. Rapikan</Btn> : null}
         {ctx.disc.items.length ? <Btn type="button" className="dpx-btn dpx-soft" onClick={() => { onClose(); ctx.nav.go("/temuan"); }}><Ic n="spark" size="sm" /> {ctx.disc.items.length} temuan dari riwayatmu</Btn> : null}
-        <Btn type="button" className="dpx-btn dpx-soft" disabled={busy} onClick={() => void act(() => startImport(90, { since: "last" }), "Menyinkronkan email sejak impor terakhir")}><Ic n="refresh" size="sm" /> Sinkronkan email lama lagi{imp.lastSyncedAt ? ` (sejak ${new Date(imp.lastSyncedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })})` : ""}</Btn>
+      </div>
+      <div className="dpx-glabel" style={{ marginTop: 14 }}>Sinkronkan email lama lagi</div>
+      <div className="dpx-inline-seg dpx-sync-seg" role="group" aria-label="Rentang sinkron">{([["last", imp.lastSyncedAt ? `Sejak ${new Date(imp.lastSyncedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}` : "Terakhir"], ...PERIODS.map(([d, l]) => [String(d), l])] as [string, string][]).map(([k, label]) => <Btn key={k} type="button" className={syncPick === k ? "dpx-on" : ""} aria-pressed={syncPick === k} onClick={() => setSyncPick(k)}>{label}</Btn>)}</div>
+      <p className="dpx-hint" style={{ margin: "6px 4px 0" }}>{syncPick === "last" ? "Hanya email yang datang setelah impor terakhir." : "Yang sudah tercatat dilewati, jadi aman diulang. Pratinjau tampil dulu sebelum apa pun dicatat."}</p>
+      <div className="dpx-df-next" style={{ marginTop: 8 }}>
+        <Btn type="button" className="dpx-btn" disabled={busy} onClick={() => void act(() => syncPick === "last" ? startImport(90, { since: "last" }) : startImport(Number(syncPick)), "Sinkronisasi dimulai")}><Ic n="refresh" size="sm" /> Sinkronkan {syncPick === "last" ? "sejak impor terakhir" : syncPick === "0" ? "semua email" : `${PERIODS.find(([d]) => String(d) === syncPick)?.[1] ?? ""} ke belakang`}</Btn>
       </div>
       {confirmUndo ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div><b>Hapus semua catatan dari impor ini?</b> Perubahan yang sudah kamu buat pada catatan itu ikut hilang.<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy} onClick={() => void act(async () => { const r = await undoImport(imp.id); await ctx.fin.retrySync(); setConfirmUndo(false); ctx.notify(`${r.removed} catatan dihapus`); })}>Ya, urungkan</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => setConfirmUndo(false)}>Batal</Btn></div></div></div>
         : <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => setConfirmUndo(true)}><Ic n="undo" size="sm" /> Urungkan impor ini</Btn>}

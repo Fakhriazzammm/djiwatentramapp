@@ -126,3 +126,4 @@
 .dpx-tidy-row{display:flex;align-items:center;gap:12px;width:100%;min-height:58px;padding:10px 12px;text-align:left;border-bottom:1px solid var(--hair)}
 .dpx-tidy-row:last-child{border-bottom:0}.dpx-tidy-row>span{flex:1;min-width:0}
 .dpx-tidy-row b{display:block;font:600 14px var(--font);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dpx-tidy-row small{display:block;font-size:12px;color:var(--mute)}
+.dpx-sync-seg{flex-wrap:wrap}
