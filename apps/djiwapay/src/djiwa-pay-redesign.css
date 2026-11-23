@@ -1137,13 +1137,14 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 .dpx .dpx-pc-stage{position:absolute;left:0;right:0;top:0;height:250px}
 .dpx .dpx-pc-card{position:absolute;left:14px;right:14px;top:34px;height:196px;border-radius:26px;padding:16px 18px;color:#fff;overflow:hidden;cursor:pointer;touch-action:pan-y;user-select:none;-webkit-user-select:none;transform-origin:50% 100%;
   box-shadow:0 14px 30px -12px rgba(20,16,12,.55),0 0 0 1px rgba(255,255,255,.08) inset}
+.dpx .dpx-pc-card > .dpx-wd-sheen{background:url("/assets/wallet-materials/satin.jpg") center / 100% 100%;mix-blend-mode:soft-light;opacity:.85;border-radius:inherit;box-shadow:inset 0 2px 1px #fff9,inset 0 -3px 2px #0008}
 .dpx .dpx-pc-card:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
 .dpx .dpx-pc-dim{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none}
 .dpx .dpx-pc-tag{font:800 13px var(--font);letter-spacing:.04em;opacity:.9;flex:none}
 .dpx .dpx-pc-hint{position:absolute;left:0;right:0;top:128px;text-align:center;font:600 11.5px var(--font);color:var(--mute);z-index:12;pointer-events:none}
 .dpx .dpx-pc-pouch{position:absolute;left:0;right:0;top:150px;bottom:0;z-index:10;border-radius:38px;padding:92px 16px 18px;color:#fff;
-  background:linear-gradient(170deg,#3a2f26,#2a221b);box-shadow:0 20px 40px -18px rgba(20,16,12,.6);
-  -webkit-mask:radial-gradient(ellipse 96px 30px at 50% 0,transparent 96%,#000 100%);mask:radial-gradient(ellipse 96px 30px at 50% 0,transparent 96%,#000 100%)}
+  background:#34241b url("/assets/wallet-materials/leather.jpg") center / 100% 100% no-repeat;box-shadow:0 20px 40px -18px rgba(20,16,12,.6);
+  -webkit-mask:radial-gradient(ellipse 11% 8% at 50% 0,transparent 96%,#000 100%);mask:radial-gradient(ellipse 11% 8% at 50% 0,transparent 96%,#000 100%)}
 .dpx .dpx-pc-pouch::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent)}
 .dpx .dpx-pc-dots{position:absolute;left:0;right:0;top:46px;display:flex;gap:7px;justify-content:center;flex-wrap:wrap;padding:0 28px}
 .dpx .dpx-pc-dots button{width:8px;height:8px;min-height:0;border-radius:99px;background:rgba(255,255,255,.35);padding:0;transition:width .25s,background .25s}
