@@ -1339,7 +1339,7 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 .dpx-sweep-stage img{object-fit:fill}
 .dpx-sweep-stage.once .lit{animation:dpx-sweep-reveal 2.4s cubic-bezier(.5,.05,.4,.95) 1 forwards}
 .dpx-sweep-stage.once .band{animation:dpx-sweep-band 2.4s cubic-bezier(.5,.05,.4,.95) 1 forwards}
-.dpx-chip{position:absolute;z-index:2;display:flex;align-items:center;justify-content:center;background:#000;color:#fff;border-radius:3px;font-family:"SF Mono",ui-monospace,Menlo,monospace;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;opacity:0;transform:scale(.9);animation:dpx-chip-in .35s cubic-bezier(.2,.9,.3,1.3) forwards;line-height:1}
+.dpx-sweep-chip{position:absolute;z-index:2;display:flex;align-items:center;justify-content:center;background:#000;color:#fff;border-radius:3px;font-family:"SF Mono",ui-monospace,Menlo,monospace;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;opacity:0;transform:scale(.9);animation:dpx-chip-in .35s cubic-bezier(.2,.9,.3,1.3) forwards;line-height:1}
 @keyframes dpx-chip-in{to{opacity:1;transform:none}}
 
 /* ---- receipt editor (dark, own components) ---- */

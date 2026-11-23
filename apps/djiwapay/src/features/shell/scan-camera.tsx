@@ -119,7 +119,7 @@ export function ScanSweep({ src, kind, onClose, chips, onDone }: { src: string; 
     <div ref={stage} className={`dpx-sweep-stage ${kind} ${reveal ? "once" : ""}`} style={{ aspectRatio: String(ratio), width: `min(${kind === "asset" ? 76 : 70}vw, calc(60dvh * ${ratio}), 360px)`, ["--sh" as string]: `${h}px` }}>
       <img className="base" src={src} alt="Foto yang sedang diproses" onLoad={(e) => { const i = e.currentTarget; if (i.naturalWidth && i.naturalHeight) setRatio(i.naturalWidth / i.naturalHeight); requestAnimationFrame(measure); }} />
       <img className="lit" src={src} alt="" aria-hidden="true" />
-      {reveal ? chips?.map((c, k) => <span key={k} className="dpx-chip" style={{ left: `${c.box[0] * 100}%`, top: `${c.box[1] * 100}%`, width: `${c.box[2] * 100}%`, height: `${c.box[3] * 100}%`, fontSize: `calc(var(--sh) * ${c.box[3] * 0.58})`, animationDelay: `${0.25 + c.box[1] * 1.9}s` }}>{c.text}</span>) : null}
+      {reveal ? chips?.map((c, k) => <span key={k} className="dpx-sweep-chip" style={{ left: `${c.box[0] * 100}%`, top: `${c.box[1] * 100}%`, width: `${c.box[2] * 100}%`, height: `${c.box[3] * 100}%`, fontSize: `calc(var(--sh) * ${c.box[3] * 0.58})`, animationDelay: `${0.25 + c.box[1] * 1.9}s` }}>{c.text}</span>) : null}
       <i className="band" aria-hidden="true" />
     </div>
     <div className="dpx-sweep-status" role="status" aria-live="polite">{reveal ? "Struk terbaca" : `${SWEEP_STEPS[kind][step]}…`}</div>
