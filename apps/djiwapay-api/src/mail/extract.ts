@@ -302,7 +302,7 @@ const MAX_DRIFT_MS = 45 * 86400_000;
 /** Every rupiah the mail prints, with "rb"/"juta" read the way a person reads them. */
 function printedAmounts(text: string): number[] {
   const out: number[] = [];
-  for (const m of text.matchAll(/(?:rp|idr)\.?\s*([\d][\d.,]*)\s*(juta|jt|ribu|rb|k)?/gi)) {
+  for (const m of text.matchAll(/(?:rp|idr)\.?\s*([\d][\d.,]*)(?:\s*(juta|jt|ribu|rb|k)\b)?/gi)) {   // the unit must be a whole word: "Rp120.000 Kalau" is not 120 million
     const n = parseRupiah(m[1]);
     if (!n) continue;
     const unit = (m[2] ?? "").toLowerCase();

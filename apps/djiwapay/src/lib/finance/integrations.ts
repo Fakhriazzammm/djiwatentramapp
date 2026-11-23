@@ -79,6 +79,7 @@ export const CHANNEL_NAME: Record<string, string> = { bca: "BCA", blu: "blu", ma
 export type ImportPreview = {
   sure: { count: number; income: number; expense: number }; check: { count: number; reasons?: { why: string; count: number }[] };
   months: { month: string; count: number; income: number; expense: number }[]; categories: { categoryId: string; count: number; total: number }[];
+  /** Every bank in the scan, with what each would record: shown whole even when some are left out. */ issuers?: { id: string; sure: number; check: number; expense: number; income: number }[];
 };
 export type ImportState = {
   id: string; status: "scanning" | "ready" | "done" | "cancelled" | "undone" | "failed"; periodDays: number; scanned: number; staged: number; progress: number;
@@ -89,9 +90,9 @@ export type ImportState = {
 export type ImportItem = { id: string; channel: string; confidence: number; parsed: { merchant?: string; amount?: number; kind?: string; subject?: string; sample?: string; issuer?: string; at?: string } };
 export type ImportStart = { /** Start where the last finished import stopped. */ since?: "last"; /** Only these banks (issuer ids). */ issuers?: string[] };
 export const startImport = (days: number, o: ImportStart = {}) => call<{ id: string }>("/google/gmail/import", { method: "POST", body: JSON.stringify({ days, ...o }) });
-export const getImport = () => call<{ import: ImportState | null }>("/google/gmail/import");
+export const getImport = (exclude: string[] = []) => call<{ import: ImportState | null }>(`/google/gmail/import${exclude.length ? `?exclude=${encodeURIComponent(exclude.join(","))}` : ""}`);
 export const getImportItems = (id: string) => call<{ items: ImportItem[] }>(`/google/gmail/import/${encodeURIComponent(id)}/items`);
-export const commitImport = (id: string) => call<{ committed: number; movedToReview: number; transfers: number }>(`/google/gmail/import/${encodeURIComponent(id)}/commit`, { method: "POST" });
+export const commitImport = (id: string, exclude: string[] = []) => call<{ committed: number; movedToReview: number; transfers: number }>(`/google/gmail/import/${encodeURIComponent(id)}/commit`, { method: "POST", body: JSON.stringify({ exclude }) });
 export const undoImport = (id: string) => call<{ removed: number }>(`/google/gmail/import/${encodeURIComponent(id)}/undo`, { method: "POST" });
 export const cancelImport = () => call<object>("/google/gmail/import/cancel", { method: "POST" });
 

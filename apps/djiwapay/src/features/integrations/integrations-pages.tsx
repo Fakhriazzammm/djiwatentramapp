@@ -12,6 +12,7 @@ import { createHook, removeHook } from "../../lib/finance/integrations";
 import { AppsScriptSheet, hookStatusText, useHook } from "./apps-script";
 import { NotifSheet, StatementSheet, useNotifState } from "./phone-sources";
 import { ImportScanning } from "./import-scan";
+import { ImportPreview } from "./import-preview";
 import { openNotifSettings } from "../../lib/native-notif";
 
 /** What a Gmail error code means for the person looking at the screen. */
@@ -226,12 +227,13 @@ const monthName = (ym: string) => new Date(`${ym}-15T00:00:00+07:00`).toLocaleDa
 
 export function ImportSheet({ ctx, onClose, onChanged }: { ctx: FinCtx; onClose: () => void; onChanged: () => void }) {
   const [imp, setImp] = useState<ImportState | null | undefined>(undefined);
-  const [days, setDays] = useState(90), [syncPick, setSyncPick] = useState<string>("last");
+  const [days, setDays] = useState(90), [syncPick, setSyncPick] = useState<string>("last"), [off, setOff] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [items, setItems] = useState<ImportItem[] | null>(null);
   const [showCheck, setShowCheck] = useState(false);
   const [confirmUndo, setConfirmUndo] = useState(false);
-  const load = useCallback(async () => { try { setImp((await getImport()).import); } catch { setImp((cur) => cur ?? null); } }, []);
+  const load = useCallback(async () => { try { setImp((await getImport([...off])).import); } catch { setImp((cur) => cur ?? null); } }, [off]);
+  const toggleBank = (id: string) => setOff((cur) => { const n = new Set(cur); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { if (imp?.status !== "scanning") return; const t = window.setInterval(() => void load(), 3000); return () => window.clearInterval(t); }, [imp?.status, load]);
   useEffect(() => { if (imp?.status === "ready" && showCheck && !items) void getImportItems(imp.id).then((r) => setItems(r.items)).catch(() => setItems([])); }, [imp?.status, imp?.id, showCheck, items]);
@@ -255,22 +257,9 @@ export function ImportSheet({ ctx, onClose, onChanged }: { ctx: FinCtx; onClose:
       <p className="dpx-sub dpx-center">Boleh ditutup. Pemindaian jalan terus di server, dan Beranda memberi tahu saat pratinjau siap.</p>
       <Btn type="button" className="dpx-btn dpx-soft" disabled={busy} onClick={() => void act(() => cancelImport(), "Pemindaian dihentikan")}>Hentikan</Btn>
     </> : null}
-    {imp?.status === "ready" && p ? <>
-      <p className="dpx-sub" style={{ marginTop: -6 }}>Hasil pindai {periodLabel.toLowerCase()} terakhir. Belum ada yang dicatat.</p>
-      <div className="dpx-impsum"><div><span>Siap dicatat</span><b>{p.sure.count}</b></div><div><span>Masuk</span><b className="dpx-in">+{rupiah(p.sure.income)}</b></div><div><span>Keluar</span><b>−{rupiah(p.sure.expense)}</b></div></div>
-      {p.months.length ? <div className="dpx-group dpx-white dpx-flush" style={{ marginTop: 10 }}>{p.months.slice(0, 8).map((m) => <div key={m.month} className="dpx-kv"><span>{monthName(m.month)} · {m.count}</span><b>{m.income ? <span className="dpx-in">+{rupiah(m.income)} </span> : null}−{rupiah(m.expense)}</b></div>)}{p.months.length > 8 ? <div className="dpx-kv"><span>dan {p.months.length - 8} bulan lain</span><b /></div> : null}</div> : null}
-      {p.categories.length ? <div className="dpx-chips2" style={{ marginTop: 10 }}>{p.categories.map((c) => <span key={c.categoryId} className="dpx-chip3">{catOf(ctx.fin.state, c.categoryId).name} {rupiah(c.total)}</span>)}</div> : null}
-      {p.check.count ? <>
-        <Btn type="button" className="dpx-linkbtn" style={{ marginTop: 12 }} onClick={() => setShowCheck((v) => !v)} aria-expanded={showCheck}>{p.check.count} email perlu dicek dulu{p.check.reasons?.length ? ` (${p.check.reasons.slice(0, 3).map((r) => `${r.count} ${WHY[r.why] ?? r.why}`).join(", ")})` : ""} {showCheck ? "▴" : "▾"}</Btn>
-        {showCheck ? <div className="dpx-checks2">{items === null ? <div className="dpx-sub">Memuat…</div> : items.map((it) => <div key={it.id} className="dpx-checkitem"><div><b>{CHANNEL_NAME[it.channel] ?? it.channel}{it.parsed.amount ? ` · ${rupiah(it.parsed.amount)}` : ""}</b><span>{it.parsed.merchant || it.parsed.subject || "Tanpa judul"}</span></div><Btn type="button" className="dpx-copybtn" onClick={() => void share(it)}><Ic n="copy" size="sm" /> Salin contoh</Btn></div>)}
-          <p className="dpx-hint">“Salin contoh” menyalin teks email dengan nomor dan nama disamarkan. Kirim ke pengembang agar pembaca email bisa diperbaiki.</p></div> : null}
-      </> : null}
-      {!p.sure.count && !p.check.count ? <div className="dpx-note"><Ic n="info" /><div><b>Tidak ada pembayaran ditemukan</b> di periode ini. Coba periode yang lebih panjang.</div></div> : null}
-      <div className="dpx-flex dpx-mt">
-        <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} disabled={busy} onClick={() => void act(() => cancelImport(), "Impor dibatalkan")}>Batalkan</Btn>
-        {p.sure.count || p.check.count ? <Btn type="button" className="dpx-btn" style={{ margin: 0 }} disabled={busy} onClick={() => void act(async () => { const r = await commitImport(imp.id); await ctx.fin.retrySync(); ctx.notify(`${r.committed} transaksi dicatat${r.movedToReview ? `, ${r.movedToReview} masuk antrean tinjau` : ""}`); })}>{busy ? "Mencatat…" : p.sure.count ? `Catat ${p.sure.count} transaksi` : "Pindahkan ke antrean tinjau"}</Btn> : null}
-      </div>
-    </> : null}
+    {imp?.status === "ready" && p ? <ImportPreview imp={imp} state={ctx.fin.state} items={items} off={off} onToggle={toggleBank} onSeeCheck={() => setShowCheck((v) => !v)} showCheck={showCheck} onShare={(it) => void share(it)} busy={busy} periodLabel={periodLabel}
+      onCancel={() => void act(() => cancelImport(), "Impor dibatalkan")}
+      onCommit={() => void act(async () => { const r = await commitImport(imp.id, [...off]); await ctx.fin.retrySync(); ctx.notify(`${r.committed} transaksi dicatat${r.movedToReview ? `, ${r.movedToReview} masuk antrean tinjau` : ""}`); })} /> : null}
     {imp?.status === "done" ? <>
       <div className="dpx-codebox dpx-got"><Ic n={imp.committed ? "check" : "info"} size="lg" /><b style={{ fontSize: 17 }}>{imp.committed ? `${imp.committed} transaksi dicatat` : "Tidak ada yang langsung dicatat"}</b>
         <small>{imp.live ? (imp.live.pending ? `${imp.live.pending} masih menunggu ditinjau` : imp.movedToReview ? `${imp.movedToReview} yang perlu dicek sudah selesai ditinjau (${imp.live.approved} dicatat, ${imp.live.rejected} diabaikan)` : "Semua langsung tercatat") : ""}{imp.committed ? ". Catatan ini juga tertulis di Spreadsheet-mu." : ""}</small></div>

@@ -208,7 +208,7 @@ describe("system notices and more issuers", () => {
   });
 });
 
-import { extractSettlement, isSettlementMail, guessCategory as guessCat } from "./extract";
+import { extractSettlement, isSettlementMail, guessCategory as guessCat, implausible } from "./extract";
 describe("merchant settlement is income", () => {
   const bca = "Laporan Transaksi Merchant BCA 004069399 DJIWA TENTRAM Hasil Settlemen";
   const body = `Nama Merchant : DJIWA TENTRAM\nMID : 004069399\nTanggal Settlement : 22/11/2026\nTotal Transaksi : Rp 2.350.000\nMDR : Rp 16.450\nTotal Settlement : Rp 2.333.550\nRekening Tujuan : ****4821`;
@@ -236,5 +236,19 @@ describe("merchant settlement is income", () => {
   test("settlement income is sales, a salary is a salary", () => {
     expect(guessCat("DJIWA TENTRAM", bca, "in")).toBe("penjualan");
     expect(guessCat("", "Gaji November", "in")).toBe("gaji");
+  });
+});
+
+describe("an amount is not stretched by the next word", () => {
+  test("'Rp120.000 Kalau ada pertanyaan' is 120.000, not 120 million, and is not flagged", () => {
+    const body = "Transfer ke tujuan berhasil diproses. Waktu Terkirim 17 September 2026 13:14 WIB Nama Tujuan BUDI Nominal Rp120.000 Kalau ada pertanyaan, silakan hubungi kami";
+    const x = extractPayment("Transfer ke BUDI berhasil", body), mailDate = Date.parse("2026-09-17T06:14:00Z");
+    expect(x.amount).toBe(120000);
+    expect(implausible(`Transfer ke BUDI berhasil\n${body}`, x, mailDate)).toEqual([]);
+  });
+  test("real units still count", () => {
+    expect(extractPayment("Promo", "Bayar Rp 50 rb sekarang").amount).toBe(50000);
+    expect(implausible("Rp 50 rb", { amount: 50000, at: null }, null)).toEqual([]);
+    expect(implausible("Rp 2 jt", { amount: 2_000_000, at: null }, null)).toEqual([]);
   });
 });

@@ -90,9 +90,24 @@ export async function scanStep(d: ImportDeps, imp: Record<string, any>): Promise
     }
     const mid = todo.length > scanned && Date.now() - started > budget;    // out of time inside this page: resume it next tick
     if (!mid) { pageToken = page.nextPageToken ?? null; if (!pageToken) end = start; }   // the window only advances once its last page is fully handled
+    if (staged && d.pipeline.categorize && Date.now() - started < budget) await categorizeStaged(d.db, userId, imp.id, d.pipeline.categorize).catch(() => undefined);
     await d.db.query("update finance.gmail_import set scanned=scanned+$2, staged=staged+$3, window_end=$4, page_token=$5, error=null where id=$1", [imp.id, scanned, staged, new Date(end).toISOString(), pageToken]);
     if (mid) return;
   }
+}
+
+/** While scanning, what is staged without a known category is sorted right away (the person's own rules, then the model, sub categories included), so the preview already shows real categories. One try per item. */
+export async function categorizeStaged(db: Tx, userId: string, importId: string, categorize: NonNullable<PipelineDeps["categorize"]>, limit = 60) {
+  const rows = (await db.query(`select id, parsed from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' and parsed->>'categoryId'='lainnya' and parsed->>'kind' in ('in','out') and coalesce(parsed->>'aiTried','')='' order by created_at limit $3`, [userId, importId, limit])).rows;
+  for (let i = 0; i < rows.length; i += 20) {
+    const part = rows.slice(i, i + 20);
+    const picks = await categorize(userId, part.map((r) => ({ key: r.id as string, text: [r.parsed.merchant, r.parsed.subject].filter(Boolean).join(" · ").slice(0, 160), amount: Number(r.parsed.amount), kind: r.parsed.kind as "in" | "out" })));
+    for (const r of part) {
+      const p = picks.get(r.id as string), ok = p?.categoryId && p.categoryId !== "lainnya";
+      await db.query("update finance.inbound_messages set parsed = parsed || $3::jsonb where user_id=$1 and id=$2", [userId, r.id, JSON.stringify({ aiTried: true, ...(ok ? { categoryId: p!.categoryId, catKnown: true, catAi: p!.source === "ai" } : {}) })]);
+    }
+  }
+  return rows.length;
 }
 
 /** One scheduler tick for imports. */
@@ -105,7 +120,9 @@ export async function runImports(d: ImportDeps) {
 
 /* ---------------- state and preview ---------------- */
 
-export async function importState(db: Q, userId: string) {
+/** `exclude`: banks the person unticked in the preview; the totals, months and categories are shown without them. */
+export async function importState(db: Q, userId: string, exclude: string[] = []) {
+  const ex = exclude.slice(0, 40);
   const imp = (await db.query("select * from finance.gmail_import where user_id=$1 and status<>'cancelled' order by created_at desc limit 1", [userId])).rows[0];
   if (!imp) return null;
   const span = new Date(imp.until).getTime() - new Date(imp.since).getTime();
@@ -123,20 +140,22 @@ export async function importState(db: Q, userId: string) {
     out.live = { pending: (by.review ?? 0) + (by.failed ?? 0), approved: by.approved ?? 0, rejected: by.rejected ?? 0, uncategorized: Number(unc.rows[0]?.n ?? 0) };
   }
   if (imp.status === "ready" || imp.status === "scanning") {
-    const [tot, months, cats, chk] = await Promise.all([
+    const [tot, months, cats, chk, byIssuer] = await Promise.all([
       db.query(`select count(*)::int n, coalesce(sum(case when parsed->>'kind'='in' then (parsed->>'amount')::numeric end),0) inc, coalesce(sum(case when parsed->>'kind'='out' then (parsed->>'amount')::numeric end),0) outc
-        from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' and (${CURRENT_SURE})`, [userId, imp.id]),
+        from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' and not (channel = any($3::text[])) and (${CURRENT_SURE})`, [userId, imp.id, ex]),
       db.query(`select to_char((parsed->>'at')::timestamptz at time zone 'Asia/Jakarta','YYYY-MM') m, count(*)::int n, coalesce(sum(case when parsed->>'kind'='in' then (parsed->>'amount')::numeric end),0) inc, coalesce(sum(case when parsed->>'kind'='out' then (parsed->>'amount')::numeric end),0) outc
-        from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' and (${CURRENT_SURE}) group by 1 order by 1 desc`, [userId, imp.id]),
+        from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' and not (channel = any($3::text[])) and (${CURRENT_SURE}) group by 1 order by 1 desc`, [userId, imp.id, ex]),
       db.query(`select parsed->>'categoryId' c, count(*)::int n, sum((parsed->>'amount')::numeric) total from finance.inbound_messages
-        where user_id=$1 and import_id=$2 and status='staged' and (${CURRENT_SURE}) and parsed->>'kind'='out' group by 1 order by total desc limit 6`, [userId, imp.id]),
-      db.query(`select coalesce(parsed->>'why','lainnya') why, count(*)::int n from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' and not (${CURRENT_SURE}) group by 1 order by n desc`, [userId, imp.id]),
+        where user_id=$1 and import_id=$2 and status='staged' and not (channel = any($3::text[])) and (${CURRENT_SURE}) and parsed->>'kind'='out' group by 1 order by total desc limit 12`, [userId, imp.id, ex]),
+      db.query(`select coalesce(parsed->>'why','lainnya') why, count(*)::int n from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' and not (channel = any($3::text[])) and not (${CURRENT_SURE}) group by 1 order by n desc`, [userId, imp.id, ex]),
+      db.query(`select channel, count(*) filter (where ${CURRENT_SURE})::int sure, count(*) filter (where not (${CURRENT_SURE}))::int chk, coalesce(sum((parsed->>'amount')::numeric) filter (where parsed->>'kind'='out' and (${CURRENT_SURE})),0) outc, coalesce(sum((parsed->>'amount')::numeric) filter (where parsed->>'kind'='in' and (${CURRENT_SURE})),0) inc from finance.inbound_messages where user_id=$1 and import_id=$2 and status='staged' group by 1 order by 2 desc`, [userId, imp.id]),
     ]);
     out.preview = {
       sure: { count: tot.rows[0].n, income: Number(tot.rows[0].inc), expense: Number(tot.rows[0].outc) },
       check: { count: chk.rows.reduce((s, r) => s + Number(r.n), 0), reasons: chk.rows.map((r) => ({ why: r.why as string, count: Number(r.n) })) },
       months: months.rows.map((r) => ({ month: r.m as string, count: r.n as number, income: Number(r.inc), expense: Number(r.outc) })),
       categories: cats.rows.map((r) => ({ categoryId: r.c as string, count: r.n as number, total: Number(r.total) })),
+      issuers: byIssuer.rows.map((r) => ({ id: r.channel as string, sure: Number(r.sure), check: Number(r.chk), expense: Number(r.outc), income: Number(r.inc) })),
     };
   }
   return out;
@@ -157,8 +176,8 @@ const bump = async (q: Q, userId: string) => {
 
 /** Turns the preview's "sure" group into entries, pairs moves between the user's own accounts, and hands the rest to the review queue. */
 type Categorize = NonNullable<PipelineDeps["categorize"]>;
-export async function commitImport(db: Tx, userId: string, importId: string, opts: { categorize?: Categorize } = {}) {
-  const done = await commitTx(db, userId, importId);
+export async function commitImport(db: Tx, userId: string, importId: string, opts: { categorize?: Categorize; exclude?: string[] } = {}) {
+  const done = await commitTx(db, userId, importId, opts.exclude ?? []);
   if (done && opts.categorize) void fillCategories(db, userId, importId, opts.categorize).catch((e) => console.error("import categories", e instanceof Error ? e.message : e));
   return done;
 }
@@ -178,10 +197,12 @@ export async function fillCategories(db: Tx, userId: string, importId: string, c
   return changed;
 }
 
-async function commitTx(db: Tx, userId: string, importId: string) {
+async function commitTx(db: Tx, userId: string, importId: string, exclude: string[]) {
   return db.tx(async (q) => {
     const imp = (await q.query("select status from finance.gmail_import where id=$1 and user_id=$2 for update", [importId, userId])).rows[0];
     if (!imp || imp.status !== "ready") return null;
+    // Banks the person unticked in the preview are left out entirely: nothing recorded, nothing queued.
+    if (exclude.length) await q.query("update finance.inbound_messages set status='ignored', reason='import-excluded' where user_id=$1 and import_id=$2 and status='staged' and channel = any($3::text[])", [userId, importId, exclude.slice(0, 40)]);
     // Deployment can change the parser while an import is scanning. Never trust the old
     // "sure" label: retain the extracted values for explicit review, without recording them.
     await q.query(`update finance.inbound_messages set parsed=jsonb_set(parsed,'{sure}','false'::jsonb)

@@ -19,3 +19,17 @@ describe("old-mail import fills categories afterwards", () => {
     expect(calls.some((c) => /update finance.entries/.test(c.text))).toBe(false);
   });
 });
+
+import { categorizeStaged } from "./gmail-import.js";
+describe("staged items are categorized while scanning", () => {
+  test("a known pick is written into the staged read, an unsure one is only marked tried", async () => {
+    const calls: { text: string; params: unknown[] }[] = [];
+    const rows = [{ id: "a", parsed: { merchant: "KOPI ARA", subject: "Pembayaran", amount: 17000, kind: "out" } }, { id: "b", parsed: { merchant: "???", subject: "x", amount: 5000, kind: "out" } }];
+    const db = { query: async (text: string, params: unknown[] = []) => { calls.push({ text, params }); return { rows: /select id, parsed/.test(text) ? rows : [] }; } } as never;
+    const picks = new Map([["a", { categoryId: "makan-kopi", confidence: 0.9, source: "ai" as const }], ["b", { categoryId: null, confidence: 0.1, source: "none" as const }]]);
+    expect(await categorizeStaged(db, "u1", "imp", (async () => picks) as never)).toBe(2);
+    const w = calls.filter((c) => /update finance.inbound_messages set parsed = parsed/.test(c.text)).map((c) => JSON.parse(String(c.params[2])));
+    expect(w[0]).toMatchObject({ aiTried: true, categoryId: "makan-kopi", catKnown: true, catAi: true });
+    expect(w[1]).toEqual({ aiTried: true });
+  });
+});
