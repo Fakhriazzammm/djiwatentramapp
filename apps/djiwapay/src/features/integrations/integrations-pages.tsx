@@ -10,6 +10,8 @@ import {
 } from "../../lib/finance/integrations";
 import { createHook, removeHook } from "../../lib/finance/integrations";
 import { AppsScriptSheet, hookStatusText, useHook } from "./apps-script";
+import { NotifSheet, StatementSheet, useNotifState } from "./phone-sources";
+import { openNotifSettings } from "../../lib/native-notif";
 
 /** What a Gmail error code means for the person looking at the screen. */
 const gmailError = (code: string) => {
@@ -287,7 +289,8 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
   const { data: inbound, refresh } = useInbound();
   const [g, setG] = useState<(GoogleStatus & { success: true }) | null>(null);
   const [loadingG, setLoadingG] = useState(true);
-  const [sheet, setSheet] = useState<null | "email" | "import" | "script" | "sources" | { consent: GoogleFeature[] }>(null);
+  const [sheet, setSheet] = useState<null | "email" | "import" | "script" | "sources" | "notif" | "statement" | { consent: GoogleFeature[] }>(null);
+  const phone = useNotifState();
   const { hook, refresh: refreshHook, setHook } = useHook();
   const [busy, setBusy] = useState("");
   const [confirmOff, setConfirmOff] = useState<null | "google" | "email" | "script">(null);
@@ -390,6 +393,15 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
       {hook?.enabled && (hook.scriptVersion ?? 1) < (hook.currentScriptVersion ?? 2) ? <div className="dpx-note" role="status" style={{ margin: "6px 12px 10px" }}><Ic n="info" /><div><b>Skrip Apps Script-mu versi lama.</b> Salin skrip yang baru agar pembayaran dari toko, marketplace, dan pengirim lain ikut terbaca.<div className="dpx-flex" style={{ marginTop: 8 }}><Btn type="button" className="dpx-btn dpx-sm" style={{ margin: 0 }} onClick={() => setSheet("script")}>Salin skrip baru</Btn></div></div></div> : null}
     </div></Reveal>
 
+    <div className="dpx-glabel">Catat dari ponsel dan bank</div>
+    <Reveal i={2}><div className="dpx-group dpx-white dpx-int">
+      <Row icon="bell" tone="blue" title="Notifikasi ponsel" chev
+        sub={!phone.supported ? "Di aplikasi Android Djiwa Pay: transaksi m-banking dan e-wallet tercatat dari notifikasinya" : phone.st?.enabled ? `Aktif${phone.cfg?.state ? ` · ${phone.cfg.state.received} notifikasi dibaca, terakhir ${ago(phone.cfg.state.lastAt)}` : " · menunggu notifikasi pertama"}` : "Nyalakan akses notifikasi agar transaksi yang tidak dikirimi email tetap tercatat"}
+        trail={!phone.supported ? <Tag tone="later">Android</Tag> : phone.st?.enabled ? <Tag tone="ok">Aktif</Tag> : <Tag tone="warn">Nyalakan</Tag>}
+        onClick={() => setSheet("notif")} />
+      <Row icon="receipt" tone="emerald" title="e-Statement bank (PDF)" sub="Unggah statement bulanan dari bank mana pun, dicocokkan dengan catatanmu" onClick={() => setSheet("statement")} />
+    </div></Reveal>
+
     <div className="dpx-glabel">Google{cal || drive ? <Btn type="button" disabled={busy === "google-all"} onClick={() => void syncAll()}>{busy === "google-all" ? "Menyinkronkan…" : "Sinkronkan"}</Btn> : null}</div>
     <Reveal i={3}><div className="dpx-group dpx-white dpx-int">
       <Row icon="spark" tone="orange" title="Gmail langsung"
@@ -427,6 +439,8 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
       <div className="dpx-flex" style={{ marginTop: 10 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy === "off"} onClick={() => void off()}>{busy === "off" ? "Memproses…" : "Ya, putuskan"}</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => setConfirmOff(null)}>Batal</Btn></div></div></div> : null}
 
     <AnimatePresence>
+      {sheet === "notif" ? <NotifSheet key="notif" cfg={phone.cfg} enabled={Boolean(phone.st?.enabled)} onClose={() => setSheet(null)} onOpenSettings={() => { if (phone.supported) void openNotifSettings(); else ctx.notify("Buka Djiwa Pay di ponsel Android untuk menyalakan ini"); }} /> : null}
+      {sheet === "statement" ? <StatementSheet key="statement" ctx={ctx} onClose={() => setSheet(null)} /> : null}
       {sheet === "import" ? <ImportSheet key="import" ctx={ctx} onClose={() => setSheet(null)} onChanged={() => void refresh()} /> : null}
       {sheet === "script" ? <AppsScriptSheet key="script" ctx={ctx} hook={hook} setHook={setHook} refresh={refreshHook} rotate={async () => { try { setHook(await createHook(true)); } catch { ctx.notify("Gagal membuat alamat baru"); } }} onClose={() => setSheet(null)} /> : null}
       {sheet === "sources" ? <Sheet key="sources" title="Sumber email" onClose={() => setSheet(null)}>

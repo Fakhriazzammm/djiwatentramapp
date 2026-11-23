@@ -50,8 +50,9 @@ export type FinCtx = {
 
 const COLORS: Record<string, string> = { orange: "#e8833a", blue: "#d14b1a", violet: "#eeb866", amber: "#d9a21a", rose: "#e0568a", indigo: "#e45825", cyan: "#16a3b8", emerald: "#1f9d62", slate: "#958a7d" };
 export const useBalances = (state: FinanceState, entries: Entry[], payBalance: number) => useMemo(() => { const m: Record<string, number> = {}; for (const a of state.accounts) m[a.id] = accountBalance(a, entries, payBalance); m[PAY_ACCOUNT_ID] = payBalance; return m; }, [state.accounts, entries, payBalance]);
-const SOURCE_LABEL: Record<Entry["source"], string> = { manual: "Manual", voice: "Suara", pay: "Djiwa Pay", receipt: "Scan struk", email: "Email", sheet: "Sheets" };
-const sourceBadge = (s: Entry["source"]) => <span className={`dpx-tx-badge dpx-src-${s}`}>{SOURCE_LABEL[s] ?? "Manual"}</span>;
+const SOURCE_LABEL: Record<Entry["source"], string> = { manual: "Manual", voice: "Suara", pay: "Djiwa Pay", receipt: "Scan struk", email: "Email", sheet: "Sheets", statement: "E-statement" };
+/** A record read from an Android notification is stored as e-mail with a "notif" tag; it shows as what it is. */
+const sourceBadge = (s: Entry["source"], tags: string[] = []) => tags.includes("notif") ? <span className="dpx-tx-badge dpx-src-email">Notifikasi</span> : <span className={`dpx-tx-badge dpx-src-${s}`}>{SOURCE_LABEL[s] ?? "Manual"}</span>;
 /** Corner mark on the category icon: up = money in, down = money out, ⇄ = moved between own accounts, ? = not sorted yet. */
 function DirMark({ entry }: { entry: Entry }) {
   const unsorted = entry.kind !== "tf" && entry.categoryId === "lainnya";
@@ -64,7 +65,7 @@ export function EntryRow({ entry, state, onOpen, i = 0, fresh = false }: { entry
   const sign = entry.kind === "in" ? "+" : entry.kind === "out" ? "−" : "";
   return <Btn type="button" className="dpx-row" onClick={() => onOpen(entry.id)} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: Math.min(i, 10) * 0.04 }} whileTap={{ scale: 0.985, backgroundColor: "rgba(45,36,29,.04)" }}>
     <span className="dpx-ent-av"><CatIcon cat={c} /><DirMark entry={entry} /></span>
-    <span className="dpx-main"><b>{entry.note || c.name}</b><span>{entry.kind === "tf" ? "Transfer" : c.name} · {accName(state, entry.accountId)}{sourceBadge(entry.source)}{fresh ? <span className="dpx-tx-badge dpx-new">Baru</span> : null}</span></span>
+    <span className="dpx-main"><b>{entry.note || c.name}</b><span>{entry.kind === "tf" ? "Transfer" : c.name} · {accName(state, entry.accountId)}{sourceBadge(entry.source, entry.tags)}{fresh ? <span className="dpx-tx-badge dpx-new">Baru</span> : null}</span></span>
     <span className="dpx-trail"><b className={entry.kind === "in" ? "dpx-in" : ""}>{sign}{rupiah(entry.amount)}</b>{formatTime(entry.at)}</span>
   </Btn>;
 }

@@ -18,6 +18,7 @@ import { AssetOverview } from "../kelola/asset-overview";
 import { IntegrationsPage, ReviewPage, useInbound } from "../integrations/integrations-pages";
 import { financeNotes, loadRead, saveRead } from "../../lib/finance/notify";
 import { useDiscoveries } from "../../lib/finance/discoveries-api";
+import { useNotifSync } from "../integrations/phone-sources";
 import { DiscoveryPage } from "../finance/discoveries";
 import { PinHost } from "../auth/pin-ui";
 import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
@@ -228,6 +229,7 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   const [fsheet, setFsheet] = useState<FinSheet | null>(null);
   const [snack, setSnack] = useState<{ id: number; text: string; undo?: () => void } | null>(null);
   const notify: Notify = (text, undo) => { const id = Date.now(); setSnack({ id, text, undo }); window.setTimeout(() => setSnack((cur) => (cur && cur.id === id ? null : cur)), undo ? 5500 : 2600); };
+  useNotifSync((recorded, review) => { if (recorded) void fin.retrySync(); notify(recorded ? `${recorded} transaksi tercatat dari notifikasi${review ? `, ${review} perlu ditinjau` : ""}` : `${review} notifikasi perlu ditinjau`); });
   const entries = wallet?.ledger ?? [];
   const incoming = wallet?.wallet.total_credited ?? entries.filter((entry) => entry.direction === "credit").reduce((total, entry) => total + entry.amount, 0);
   const outgoing = wallet?.wallet.total_debited ?? entries.filter((entry) => entry.direction === "debit").reduce((total, entry) => total + entry.amount, 0);

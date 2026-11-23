@@ -67,3 +67,28 @@
 .dpx-wd-find{position:relative}
 .dpx-wd-badge{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;display:grid;place-items:center;background:var(--blue);color:#fff;font:700 10.5px var(--font);font-style:normal;box-shadow:0 0 0 2px #fff}
 @media (prefers-reduced-motion:reduce){.dpx-df-card{cursor:default}}
+
+/* Catat dari ponsel dan bank */
+.dpx-ph-points{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.dpx-ph-points>div{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:14px;background:var(--group);font-size:13px;line-height:1.45;color:var(--mute)}
+.dpx-ph-points b{color:var(--ink)}
+.dpx-ph-apps{margin-top:8px}.dpx-ph-apps b{font:700 12.5px var(--font);color:var(--ink)}.dpx-ph-apps p{margin:2px 0 0;font-size:12.5px;line-height:1.5;color:var(--mute)}
+.dpx-ph-drop{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;margin-top:10px;padding:26px 16px;border-radius:20px;border:2px dashed var(--line);background:var(--group);color:var(--ink);text-align:center}
+.dpx-ph-drop b{font:700 15px var(--font)}.dpx-ph-drop span{font-size:12.5px;color:var(--mute)}
+.dpx-ph-reading{display:flex;flex-direction:column;align-items:center;gap:8px;padding:36px 12px;text-align:center}.dpx-ph-reading span:last-child{font-size:12.5px;color:var(--mute)}
+.dpx-ph-sum{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.dpx-ph-sum b{display:block;font:700 16px var(--font)}.dpx-ph-sum span{font-size:12.5px;color:var(--mute)}
+.dpx-ph-sum i{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:999px;font:700 12px var(--font);font-style:normal}
+.dpx-ph-sum i.is-ok{background:var(--ok-soft);color:var(--ok)}.dpx-ph-sum i.is-warn{background:var(--warn-soft);color:var(--warn)}
+.dpx-ph-tabs{display:flex;gap:6px;margin:12px 0 6px;overflow-x:auto;scrollbar-width:none}
+.dpx-ph-tabs button{flex:none;min-height:36px;padding:0 12px;border-radius:999px;background:var(--group);font:600 12.5px var(--font);color:var(--mute)}
+.dpx-ph-tabs button.on{background:var(--navy);color:#fff}
+.dpx-ph-list{max-height:38dvh;overflow-y:auto;border-radius:16px;background:#fff;box-shadow:inset 0 0 0 1px var(--line)}
+.dpx-ph-row{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;text-align:left;border-bottom:1px solid var(--hair)}
+.dpx-ph-row:last-child{border-bottom:0}.dpx-ph-row.off{opacity:.45}.dpx-ph-row.static{cursor:default}
+.dpx-ph-tick{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;border:2px solid var(--faint);background:#fff}
+.dpx-ph-row:not(.off):not(.static) .dpx-ph-tick{background:var(--navy);border-color:var(--navy)}.dpx-ph-row:not(.off):not(.static) .dpx-ph-tick .dpx-ic{filter:brightness(0) invert(1)}
+.dpx-ph-tick.ok{border-color:var(--ok);background:var(--ok-soft)}
+.dpx-ph-d{flex:1;min-width:0}.dpx-ph-d b{display:block;font:600 13.5px var(--font);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dpx-ph-d small{display:block;font-size:11.5px;color:var(--mute)}
+.dpx-ph-a{flex:none;font:700 13.5px var(--font);font-variant-numeric:tabular-nums}.dpx-ph-a.in{color:var(--ok)}
+.dpx .dpx-tx-badge.dpx-src-statement{background:#efe6fa;color:#6b3fa0}

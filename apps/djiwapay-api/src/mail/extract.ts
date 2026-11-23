@@ -2,50 +2,8 @@ import { paymentDetails, type PaymentDetails } from "./details.js";
 /** Reads payment notifications. Pure (no network, no DB) so every rule is unit-tested.
  *  Deterministic rules run first; the LLM in llm.ts is only a fallback, and anything unsure goes to the review queue. */
 
-export type Issuer = { id: string; name: string; kind: "bank" | "ewallet" | "service"; domains: string[] };
-
-// Allowlist of sender domains. A mail is only read when its From domain (or a parent) is listed here.
-export const ISSUERS: Issuer[] = [
-  { id: "bca", name: "BCA", kind: "bank", domains: ["bca.co.id", "klikbca.com", "bcadigital.co.id"] },
-  { id: "blu", name: "blu", kind: "bank", domains: ["blubybcadigital.id", "blu.co.id"] },
-  { id: "mandiri", name: "Mandiri", kind: "bank", domains: ["bankmandiri.co.id", "livin.id"] },
-  { id: "bri", name: "BRI", kind: "bank", domains: ["bri.co.id", "bri.id"] },
-  { id: "btn", name: "BTN", kind: "bank", domains: ["btn.co.id"] },
-  { id: "bni", name: "BNI", kind: "bank", domains: ["bni.co.id", "bni.id"] },
-  { id: "cimb", name: "CIMB Niaga", kind: "bank", domains: ["cimbniaga.co.id", "cimb.id"] },
-  { id: "jago", name: "Jago", kind: "bank", domains: ["jago.com", "bankjago.com"] },
-  { id: "jenius", name: "Jenius", kind: "bank", domains: ["jenius.com", "btpn.com"] },
-  { id: "seabank", name: "SeaBank", kind: "bank", domains: ["seabank.co.id"] },
-  { id: "permata", name: "Permata", kind: "bank", domains: ["permatabank.co.id", "permatabank.com"] },
-  { id: "danamon", name: "Danamon", kind: "bank", domains: ["danamon.co.id"] },
-  { id: "maybank", name: "Maybank", kind: "bank", domains: ["maybank.co.id"] },
-  { id: "ocbc", name: "OCBC", kind: "bank", domains: ["ocbc.id", "ocbcnisp.com"] },
-  { id: "neo", name: "Neo Commerce", kind: "bank", domains: ["bankneocommerce.co.id", "neocommerce.co.id"] },
-  { id: "allo", name: "Allo Bank", kind: "bank", domains: ["allobank.com", "allo.bank"] },
-  { id: "mega", name: "Bank Mega", kind: "bank", domains: ["bankmega.com"] },
-  { id: "panin", name: "Panin", kind: "bank", domains: ["panin.co.id"] },
-  { id: "bsi", name: "BSI", kind: "bank", domains: ["bsi.co.id", "bankbsi.co.id"] },
-  { id: "muamalat", name: "Muamalat", kind: "bank", domains: ["bankmuamalat.co.id"] },
-  { id: "sinarmas", name: "Sinarmas", kind: "bank", domains: ["banksinarmas.com"] },
-  { id: "uob", name: "UOB", kind: "bank", domains: ["uob.co.id"] },
-  { id: "hsbc", name: "HSBC", kind: "bank", domains: ["hsbc.co.id"] },
-  { id: "aladin", name: "Aladin", kind: "bank", domains: ["aladinbank.id"] },
-  { id: "superbank", name: "Superbank", kind: "bank", domains: ["superbank.id"] },
-  { id: "gopay", name: "GoPay", kind: "ewallet", domains: ["gopay.co.id", "gojek.com", "go-jek.com"] },
-  { id: "ovo", name: "OVO", kind: "ewallet", domains: ["ovo.id"] },
-  { id: "dana", name: "DANA", kind: "ewallet", domains: ["dana.id"] },
-  { id: "shopeepay", name: "ShopeePay", kind: "ewallet", domains: ["shopee.co.id", "shopeepay.co.id", "shopee.com"] },
-  { id: "linkaja", name: "LinkAja", kind: "ewallet", domains: ["linkaja.id"] },
-  { id: "flip", name: "Flip", kind: "ewallet", domains: ["flip.id"] },
-  { id: "doku", name: "DOKU", kind: "ewallet", domains: ["doku.com"] },
-  { id: "kredivo", name: "Kredivo", kind: "service", domains: ["kredivo.com"] },
-  { id: "akulaku", name: "Akulaku", kind: "service", domains: ["akulaku.com"] },
-  { id: "grab", name: "Grab", kind: "service", domains: ["grab.com"] },
-  { id: "tokopedia", name: "Tokopedia", kind: "service", domains: ["tokopedia.com"] },
-  { id: "pln", name: "PLN", kind: "service", domains: ["pln.co.id"] },
-  { id: "telkom", name: "Telkom / IndiHome", kind: "service", domains: ["telkom.co.id", "indihome.co.id", "telkomsel.com"] },
-  { id: "bpjs", name: "BPJS", kind: "service", domains: ["bpjs-kesehatan.go.id", "bpjsketenagakerjaan.go.id"] },
-];
+import { ISSUERS, type Issuer } from "./issuers.js";
+export { ISSUERS, type Issuer };
 
 export const domainOf = (address: string) => (address.split("@").pop() || "").trim().toLowerCase().replace(/[>\s]+$/g, "");
 

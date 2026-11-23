@@ -21,6 +21,17 @@
             </intent-filter>
         </activity>
 
+        <!-- Reads notifications of bank and payment apps, only after the person turns it on in Android settings. -->
+        <service
+            android:name=".DjiwaNotifService"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

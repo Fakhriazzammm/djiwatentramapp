@@ -10,7 +10,7 @@ export type IslandTone = "in" | "out" | "move" | "mail" | "warn" | "info";
 export type IslandItem = { id: string; tone: IslandTone; icon: IconName; label: string; title: string; message: string; amount?: number; sign?: "+" | "−" | "⇄"; route?: string; at: string };
 
 const SOURCES = new Set<Entry["source"]>(["pay", "email", "receipt", "sheet"]);
-const SOURCE_LABEL: Partial<Record<Entry["source"], string>> = { pay: "Djiwa Pay", email: "Dari email", receipt: "Scan struk", sheet: "Sheets" };
+const SOURCE_LABEL: Partial<Record<Entry["source"], string>> = { pay: "Djiwa Pay", email: "Dari email", receipt: "Scan struk", sheet: "Sheets", statement: "E-statement" };
 const NOTE_LOOK: Record<FinNote["notification_type"], { tone: IslandTone; icon: IconName; label: string }> = {
   "fin-email": { tone: "mail", icon: "receipt", label: "Email" }, "fin-find": { tone: "info", icon: "spark", label: "Temuan" }, "fin-bill": { tone: "warn", icon: "cal", label: "Tagihan" }, "fin-budget": { tone: "warn", icon: "warn", label: "Anggaran" }, "fin-debt": { tone: "info", icon: "users", label: "Hutang" }, "fin-goal": { tone: "in", icon: "target", label: "Tujuan" }, "fin-loan": { tone: "warn", icon: "cal", label: "Pinjaman" },
 };

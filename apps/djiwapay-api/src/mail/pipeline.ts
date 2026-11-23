@@ -131,11 +131,11 @@ export async function processMail(d: PipelineDeps, mail: RawMail): Promise<Outco
 }
 
 /** The same pipeline for mail that already belongs to a known user (forwarded, or fetched from their Gmail). */
-export type ProcessOpts = { stage?: { importId: string } };
+export type ProcessOpts = { stage?: { importId: string }; /** Read from an Android notification, not an e-mail: short text, no account digits, and many that are not payments at all. */ notif?: boolean };
 export async function processForUser(d: PipelineDeps, userId: string, trustedCount: number, mail: RawMail, opts: ProcessOpts = {}): Promise<Outcome> {
   const now = (d.now ?? (() => new Date()))();
   const stage = opts.stage;
-  if (!stage) await d.db.query("update finance.inbound_sources set mail_count=mail_count+1, last_mail_at=now(), first_mail_at=coalesce(first_mail_at,now()) where user_id=$1", [userId]);
+  if (!stage && !opts.notif) await d.db.query("update finance.inbound_sources set mail_count=mail_count+1, last_mail_at=now(), first_mail_at=coalesce(first_mail_at,now()) where user_id=$1", [userId]);
 
   // Gmail's forwarding confirmation: keep the code for the setup screen, nothing else.
   const fromDomain = domainOf(mail.from);
@@ -220,7 +220,7 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   }
   const atMs = x.at ?? mail.date?.getTime() ?? now.getTime();
   const at = new Date(Number.isFinite(atMs) ? atMs : now.getTime()).toISOString();
-  const parsed = { amount: x.amount, direction: x.direction, merchant: x.merchant, accountHint: x.accountHint, ref: x.ref, at, subject: mail.subject.slice(0, 80), issuer: issuer.name, rulesVersion: RULES_VERSION, details: x.details, ...(loanMail ? { loanMail } : {}) };
+  const parsed = { amount: x.amount, direction: x.direction, merchant: x.merchant, accountHint: x.accountHint, ref: x.ref, at, subject: mail.subject.slice(0, 80), issuer: issuer.name, rulesVersion: RULES_VERSION, details: x.details, ...(loanMail ? { loanMail } : {}), ...(opts.notif ? { via: "notif" } : {}) };
   // Gate 7: the read must agree with the mail it came from. A shape nobody has taught the parser yet
   // then waits for a person instead of being recorded, for every user and not only the one who reported it.
   if (loanMail === "receipt" && !(x.amount > 0) && !stage) {
@@ -228,7 +228,7 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   }
   const flags = implausible(`${mail.subject}\n${mail.text}`, x, mail.date?.getTime() ?? null);
   if (!(x.amount > 0) && generic) return finish("ignored", "unreadable", { confidence: x.confidence });   // an unknown sender with no readable amount is not worth the person's attention
-  if (!(x.amount > 0)) return stage ? finish("ignored", "unreadable", { confidence: x.confidence }) : looksLikePayment(mail.subject, mail.text) ? finish("failed", "unreadable", { parsed, confidence: x.confidence }) : finish("ignored", "unreadable", { confidence: x.confidence });
+  if (!(x.amount > 0)) return stage || opts.notif ? finish("ignored", "unreadable", { confidence: x.confidence }) : looksLikePayment(mail.subject, mail.text) ? finish("failed", "unreadable", { parsed, confidence: x.confidence }) : finish("ignored", "unreadable", { confidence: x.confidence });
   // Gate 6b: an announcement can print a rupiah figure ("Limit Baru Kartu Jago", "kenaikan limit
   // transaksi dari Rp50 juta jadi Rp150 juta") without paying anything. No transaction wording at all
   // and a shaky read means it is not a payment, whatever the words of the announcement are.
@@ -292,9 +292,9 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
   }
 
   // Same money already recorded (Djiwa Pay, scan, manual or another e-mail)?
-  const same = generic
+  const same = generic || opts.notif   // a notification names no account digits, and the person often noted it by hand a moment ago: match on money and time across wallets
     ? await d.db.query(`select id from finance.entries where user_id=$1 and amount=$2 and (at between $3::timestamptz - ($4 * interval '1 millisecond') and $3::timestamptz + ($4 * interval '1 millisecond') or ($5::boolean and kind <> 'tf' and ${DAY_SQL("at", "$3")})) limit 1`, [userId, x.amount, at, CLOSE_MS, isDayOnly(at)])
-    : await d.db.query("select id from finance.entries where user_id=$1 and amount=$2 and kind=$3 and account_id=$4 and at between $5::timestamptz - ($6 * interval '1 millisecond') and $5::timestamptz + ($6 * interval '1 millisecond') limit 1", [userId, x.amount, kind, accountId, at, CLOSE_MS]);
+    : await d.db.query("select id from finance.entries where user_id=$1 and amount=$2 and kind=$3 and (account_id=$4 or account_id like $7) and at between $5::timestamptz - ($6 * interval '1 millisecond') and $5::timestamptz + ($6 * interval '1 millisecond') limit 1", [userId, x.amount, kind, accountId, at, CLOSE_MS, `email-${issuer.id}%`]);   // the same bank, with or without the account digits a notification does not carry
   if (same.rows[0]) return finish("duplicate", "already-recorded", { parsed, confidence: x.confidence, entryId: same.rows[0].id, at });
 
   if (stage) {   // an import: keep it aside until the user has seen the preview. Accounts, transfers and entries come with the commit.
@@ -323,7 +323,7 @@ export async function processForUser(d: PipelineDeps, userId: string, trustedCou
     const ai = (await d.categorize(userId, [{ key: "m", text: [x.merchant, mail.subject].filter(Boolean).join(" · "), amount: x.amount, kind: x.direction === "in" ? "in" : "out" }]).catch(() => null))?.get("m");
     if (ai) { categoryId = ai.categoryId; byAi = ai.source === "ai"; }
   }
-  const candidate: Candidate = { kind, amount: x.amount, categoryId, accountId, at, note: x.merchant || mail.subject.slice(0, 60) || issuer.name, ...(byAi ? { tags: ["kategori-ai"] } : {}) };
+  const candidate: Candidate = { kind, amount: x.amount, categoryId, accountId, at, note: x.merchant || mail.subject.slice(0, 60) || issuer.name, ...(byAi || opts.notif ? { tags: [...(byAi ? ["kategori-ai"] : []), ...(opts.notif ? ["notif"] : [])] } : {}) };
 
   // New mail is recorded straight away once the gates above agree and the read is clear: money in or out, an amount, and nothing
   // implausible about it. What stays for a person is only what the parser itself is unsure of. Every automatic record can be undone.
@@ -402,7 +402,7 @@ export async function approve(d: Tx, userId: string, inboundId: string, e: Edits
     const atMs = Date.parse(String(e.at ?? p.at));
     const candidate: Candidate = {
       kind, amount, categoryId: tr ? "transfer" : String(e.categoryId ?? p.categoryId ?? "lainnya").slice(0, 80), ...(tr ? { toAccountId: tr.to } : {}),
-      accountId: String(tr ? tr.from : e.accountId ?? p.accountId ?? "tunai").slice(0, 80), at: new Date(Number.isNaN(atMs) ? Date.now() : atMs).toISOString(), note: String(e.note ?? p.merchant ?? p.subject ?? "").slice(0, 200),
+      accountId: String(tr ? tr.from : e.accountId ?? p.accountId ?? "tunai").slice(0, 80), at: new Date(Number.isNaN(atMs) ? Date.now() : atMs).toISOString(), note: String(e.note ?? p.merchant ?? p.subject ?? "").slice(0, 200), ...(p.via === "notif" ? { tags: ["notif"] } : {}),
     };
     if (typeof p.accountId === "string" && p.accountId.startsWith("email-") && p.accountId === candidate.accountId)   // imported items keep their account until approved
       await q.query("insert into finance.accounts(user_id,id,name,type,opening) values($1,$2,$3,$4,0) on conflict do nothing", [userId, p.accountId, String(p.accountName ?? p.issuer ?? "Dompet").slice(0, 60), ["bank", "ewallet"].includes(p.accountType) ? p.accountType : "other"]);

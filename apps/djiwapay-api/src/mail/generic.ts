@@ -18,7 +18,7 @@ export function senderName(domain: string): string {
   const base = parts[parts.length - 1] ?? domain;
   return base ? base.charAt(0).toUpperCase() + base.slice(1) : "Pengirim lain";
 }
-export const genericIssuer = (domain: string): Issuer => ({ id: "other", name: senderName(domain), kind: "service", domains: [domain] });
+export const genericIssuer = (domain: string): Issuer => ({ id: "other", name: senderName(domain), kind: "service", domains: [domain], packages: [] });
 
 /** The mail really comes from the domain it claims: DMARC passed, or a DKIM signature of that domain (or a parent / child of it) verified. */
 export function senderAuthentic(fromDomain: string, auth: { dmarcPass: boolean; dkimDomains: string[] }): boolean {
