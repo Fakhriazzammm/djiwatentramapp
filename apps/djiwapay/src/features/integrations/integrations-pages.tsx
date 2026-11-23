@@ -453,7 +453,7 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
       <div className="dpx-flex" style={{ marginTop: 10 }}><Btn type="button" className="dpx-btn dpx-danger dpx-sm" disabled={busy === "off"} onClick={() => void off()}>{busy === "off" ? "Memproses…" : "Ya, putuskan"}</Btn><Btn type="button" className="dpx-btn dpx-soft dpx-sm" onClick={() => setConfirmOff(null)}>Batal</Btn></div></div></div> : null}
 
     <AnimatePresence>
-      {sheet === "notif" ? <NotifSheet key="notif" cfg={phone.cfg} enabled={Boolean(phone.st?.enabled)} onClose={() => setSheet(null)} onOpenSettings={() => { if (phone.supported) void openNotifSettings(); else ctx.notify("Buka Djiwa Pay di ponsel Android untuk menyalakan ini"); }} /> : null}
+      {sheet === "notif" ? <NotifSheet key="notif" cfg={phone.cfg} enabled={Boolean(phone.st?.enabled)} onClose={() => setSheet(null)} onOpenSettings={() => { if (phone.supported) void openNotifSettings().catch(() => ctx.notify("Buka Pengaturan › Notifikasi › Akses notifikasi, lalu pilih Djiwa Pay")); else ctx.notify("Buka Djiwa Pay di ponsel Android untuk menyalakan ini"); }} /> : null}
       {sheet === "statement" ? <StatementSheet key="statement" ctx={ctx} onClose={() => setSheet(null)} /> : null}
       {sheet === "import" ? <ImportSheet key="import" ctx={ctx} onClose={() => setSheet(null)} onChanged={() => void refresh()} /> : null}
       {sheet === "script" ? <AppsScriptSheet key="script" ctx={ctx} hook={hook} setHook={setHook} refresh={refreshHook} rotate={async () => { try { setHook(await createHook(true)); } catch { ctx.notify("Gagal membuat alamat baru"); } }} onClose={() => setSheet(null)} /> : null}

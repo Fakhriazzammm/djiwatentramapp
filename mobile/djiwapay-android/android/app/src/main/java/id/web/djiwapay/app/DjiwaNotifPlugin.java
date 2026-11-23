@@ -32,10 +32,26 @@ public class DjiwaNotifPlugin extends Plugin {
 
     @PluginMethod
     public void openSettings(PluginCall call) {
-        Intent i = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
-        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        getContext().startActivity(i);
-        call.resolve();
+        // Some phone makers do not ship the standard screen; try the others so the button never does nothing.
+        String pkg = getContext().getPackageName();
+        Intent[] tries = new Intent[] {
+            new Intent("android.settings.NOTIFICATION_LISTENER_SETTINGS"),
+            new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS")
+                .putExtra("android.provider.extra.NOTIFICATION_LISTENER_COMPONENT_NAME", new ComponentName(pkg, DjiwaNotifService.class.getName()).flattenToString()),
+            new Intent("android.settings.APPLICATION_DETAILS_SETTINGS").setData(android.net.Uri.parse("package:" + pkg)),
+            new Intent(Settings.ACTION_SETTINGS)
+        };
+        for (Intent i : tries) {
+            try {
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(i);
+                JSObject r = new JSObject();
+                r.put("screen", i.getAction());
+                call.resolve(r);
+                return;
+            } catch (Exception ignored) { }
+        }
+        call.reject("Pengaturan akses notifikasi tidak bisa dibuka");
     }
 
     @PluginMethod
