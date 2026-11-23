@@ -108,7 +108,9 @@ describe("applySync", () => {
 import { parseBoxes } from "./receipt.js";
 describe("parseBoxes", () => {
   test("scales 0-1000 boxes to fractions and drops nonsense", () => {
-    expect(parseBoxes('{"merchant":[100,50,500,90],"date":[0,0,1000,1000],"total":"x"}')).toEqual({ merchant: [0.1, 0.05, 0.4, 0.04] });
+    const b = parseBoxes('{"merchant":[100,50,500,90],"date":[0,0,1000,1000],"total":"x"}');
+    expect(Object.keys(b)).toEqual(["merchant"]);
+    expect(b.merchant!.map((n) => Math.round(n * 1000))).toEqual([100, 50, 400, 40]);
     expect(parseBoxes("bukan json")).toEqual({});
   });
 });
