@@ -1133,8 +1133,8 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 .dpx .dpx-openrow .dpx-btn{flex:1 1 0;min-width:0;margin:0;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 
 /* ---- Wallet pouch (default view): cards rise out of a pouch ---- */
-.dpx .dpx-pc{position:relative;height:446px;margin:0 -2px}
-.dpx .dpx-pc-stage{position:absolute;left:0;right:0;top:0;height:250px}
+.dpx .dpx-pc{position:relative;height:372px;margin:0 -2px}
+.dpx .dpx-pc-stage{position:absolute;left:0;right:0;top:0;height:212px}
 .dpx .dpx-pc-stage::before{
   content:"";position:absolute;inset:4px 3px 0;pointer-events:none;
   border:1px solid #41271c;border-radius:32px 32px 20px 20px;
@@ -1143,28 +1143,28 @@ html,body,#root{overflow-x:clip;max-width:100vw}
   box-shadow:inset 0 2px 1px #bd8967,inset 0 6px 1px #573524,
     inset 0 10px 8px #1e100bd9,0 3px 7px #24150f36;
 }
-.dpx .dpx-pc-card{position:absolute;left:14px;right:14px;top:34px;height:196px;border-radius:26px;padding:16px 18px;color:#fff;overflow:hidden;cursor:pointer;touch-action:pan-y;user-select:none;-webkit-user-select:none;transform-origin:50% 100%;
+.dpx .dpx-pc-card{position:absolute;left:14px;right:14px;top:28px;height:164px;border-radius:24px;padding:13px 16px;color:#fff;overflow:hidden;cursor:pointer;touch-action:pan-y;user-select:none;-webkit-user-select:none;transform-origin:50% 100%;
   box-shadow:0 14px 30px -12px rgba(20,16,12,.55),0 0 0 1px rgba(255,255,255,.08) inset}
 .dpx .dpx-pc-card > .dpx-wd-sheen{background:url("/assets/wallet-materials/satin.jpg") center / 100% 100%;mix-blend-mode:soft-light;opacity:.85;border-radius:inherit;box-shadow:inset 0 2px 1px #fff9,inset 0 -3px 2px #0008}
 .dpx .dpx-pc-card:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
 .dpx .dpx-pc-dim{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none}
 .dpx .dpx-pc-tag{font:800 13px var(--font);letter-spacing:.04em;opacity:.9;flex:none}
-.dpx .dpx-pc-hint{position:absolute;left:0;right:0;top:128px;text-align:center;font:600 11.5px var(--font);color:var(--mute);z-index:12;pointer-events:none}
-.dpx .dpx-pc-pouch{position:absolute;left:0;right:0;top:150px;bottom:0;z-index:10;border-radius:38px;padding:92px 16px 18px;color:#fff;
+.dpx .dpx-pc-hint{position:absolute;left:0;right:0;top:106px;text-align:center;font:600 11.5px var(--font);color:var(--mute);z-index:12;pointer-events:none}
+.dpx .dpx-pc-pouch{position:absolute;left:0;right:0;top:126px;bottom:0;z-index:10;border-radius:34px;padding:70px 14px 14px;color:#fff;
   background:#34241b url("/assets/wallet-materials/leather.jpg") center / 100% 100% no-repeat;box-shadow:0 20px 40px -18px rgba(20,16,12,.6);
   -webkit-mask:radial-gradient(ellipse 11% 8% at 50% 0,transparent 96%,#000 100%);mask:radial-gradient(ellipse 11% 8% at 50% 0,transparent 96%,#000 100%)}
 .dpx .dpx-pc-pouch::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent)}
-.dpx .dpx-pc-dots{position:absolute;left:0;right:0;top:46px;display:flex;gap:7px;justify-content:center;flex-wrap:wrap;padding:0 28px}
+.dpx .dpx-pc-dots{position:absolute;left:0;right:0;top:34px;display:flex;gap:7px;justify-content:center;flex-wrap:wrap;padding:0 28px}
 .dpx .dpx-pc-dots button{width:8px;height:8px;min-height:0;border-radius:99px;background:rgba(255,255,255,.35);padding:0;transition:width .25s,background .25s}
 .dpx .dpx-pc-dots button.on{width:24px;background:#f0a458}
 .dpx .dpx-pc-totalwrap{position:relative}
 .dpx .dpx-pc-eye{position:absolute;left:50%;top:-17px;transform:translateX(-50%);width:34px;height:34px;min-height:0;border-radius:50%;background:#f0a458;display:grid;place-items:center;box-shadow:0 0 0 5px #2e261e;z-index:2;padding:0}
 .dpx .dpx-pc-eye img{width:20px;height:20px}
-.dpx .dpx-pc-total{display:grid;gap:4px;width:100%;border:1.5px dashed rgba(255,255,255,.28);border-radius:22px;padding:22px 12px 12px;text-align:center;color:#fff}
-.dpx .dpx-pc-amt{font:800 34px/1 var(--font);letter-spacing:-.03em;font-variant-numeric:tabular-nums;display:block}.dpx .dpx-pc-amt small{font-size:.45em;font-weight:700;margin-right:5px;opacity:.8}.dpx .dpx-pc-amt.neg{color:#ffd0c8}
+.dpx .dpx-pc-total{display:grid;gap:4px;width:100%;border:1.5px dashed rgba(255,255,255,.28);border-radius:20px;padding:18px 12px 10px;text-align:center;color:#fff}
+.dpx .dpx-pc-amt{font:800 29px/1 var(--font);letter-spacing:-.03em;font-variant-numeric:tabular-nums;display:block}.dpx .dpx-pc-amt small{font-size:.45em;font-weight:700;margin-right:5px;opacity:.8}.dpx .dpx-pc-amt.neg{color:#ffd0c8}
 .dpx .dpx-pc-lab{color:rgba(255,255,255,.65);font:500 13px var(--font)}
-.dpx .dpx-pc-pills{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
-.dpx .dpx-pc-pill{display:grid;grid-template-columns:30px minmax(0,1fr);column-gap:8px;align-items:center;padding:10px 12px;border-radius:18px;background:rgba(255,255,255,.08);box-shadow:0 0 0 1px rgba(255,255,255,.12) inset;min-width:0}
+.dpx .dpx-pc-pills{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.dpx .dpx-pc-pill{display:grid;grid-template-columns:30px minmax(0,1fr);column-gap:8px;align-items:center;padding:7px 10px;border-radius:16px;background:rgba(255,255,255,.08);box-shadow:0 0 0 1px rgba(255,255,255,.12) inset;min-width:0}
 .dpx .dpx-pc-pill>img{grid-row:1/3;width:30px;height:30px;padding:6px;border-radius:50%;background:rgba(255,255,255,.14);box-sizing:border-box}
 .dpx .dpx-pc-pill small{font:500 11.5px var(--font);color:rgba(255,255,255,.7)}.dpx .dpx-pc-pill b{font:700 14px var(--font);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dpx .dpx-pc-pill.out{background:#fff;color:var(--ink,#2b2620)}.dpx .dpx-pc-pill.out small{color:var(--mute)}.dpx .dpx-pc-pill.out>img{background:#f3e7d4}
