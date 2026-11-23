@@ -17,7 +17,7 @@ import { registerNewsRoutes } from "./news.js";
 import { registerPushRoutes } from "./push.js";
 export { poolTx };
 import { attachReceipt, confirmReceipt, getReceipt, ReceiptProblem } from "./receipt-records.js";
-import { isEmptyRead, readReceipt, type ReceiptRead } from "./receipt.js";
+import { isEmptyRead, locateReceiptText, readReceipt, type ReceiptRead } from "./receipt.js";
 import { disconnect as googleDisconnect, FEATURES, SCOPES, finishConnect, googleConfig, startConnect, status as googleStatus, syncCalendar, type Feature, type Fetch, type GoogleCfg } from "./google.js";
 import { confirmDriveRemovals, confirmSheetDeletes, requestSheet, touchDrive } from "./google-sync.js";
 import { ISSUERS } from "./mail/extract.js";
@@ -112,7 +112,7 @@ export function createApp(d: Deps) {
     const bytes = Buffer.from(m[2], "base64");
     if (bytes.length > MAX_IMAGE_BYTES) return json(c, { success: false, error: "IMAGE_TOO_LARGE" }, 413);
     const userId = uid(c);
-    const analysis = await analyzeImage(userId, image);
+    const [analysis, boxes] = await Promise.all([analyzeImage(userId, image), d.aiKey && !d.read ? locateReceiptText(image, { key: d.aiKey }) : Promise.resolve({})]);
     if ("error" in analysis) return json(c, { success: false, error: analysis.error }, analysis.status);
     const read = analysis.read;
     // Server-generated IDs make scan documents/images immutable across retries.
@@ -124,7 +124,7 @@ export function createApp(d: Deps) {
 `,
       [userId, id, read.merchant, read.purchasedAt, read.total, read.tax, read.confidence, JSON.stringify(read.items), read.model, rel, bytes.length, JSON.stringify({ version: 2, original: read })]);
     if (google) later(async () => { if (await connected(userId, "drive", "receipts")) await touchDrive(d.db, userId); });
-    return json(c, { success: true, receipt: { id, ...read } });
+    return json(c, { success: true, receipt: { id, ...read }, boxes });
   });
 
   app.get("/api/finance/receipts/:id", async c => {

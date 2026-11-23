@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Ic } from "./dpx-ui";
+import { hideStatusBar } from "../../lib/native-chrome";
 
 /**
  * Full-screen in-app scanner: live viewfinder, corner brackets, a "detected" pill, flash and gallery.
@@ -32,8 +33,8 @@ export function ScanCamera({ kind, onCapture, onClose }: { kind: "receipt" | "as
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow; document.body.style.overflow = "hidden";
-    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
+    const prev = document.body.style.overflow; document.body.style.overflow = "hidden"; const release = hideStatusBar();
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; release(); };
   }, [onClose]);
 
   // Cheap paper check: a bright, even patch in the middle that clearly outshines the frame edges.
@@ -99,19 +100,29 @@ const SWEEP_STEPS: Record<"receipt" | "asset", string[]> = {
   asset: ["Mengunggah foto dengan aman", "Memisahkan aset dari latar", "Membuat stiker"],
 };
 
-/** Dark full-screen "reading" stage: the photo sits alone while an iridescent light band sweeps over it. */
-export function ScanSweep({ src, kind, onClose }: { src: string; kind: "receipt" | "asset"; onClose?: () => void }) {
-  const [step, setStep] = useState(0);
-  useEffect(() => { const a = setTimeout(() => setStep(1), 1000), b = setTimeout(() => setStep(2), 2800); return () => { clearTimeout(a); clearTimeout(b); }; }, []);
-  useEffect(() => { const prev = document.body.style.overflow; document.body.style.overflow = "hidden"; return () => { document.body.style.overflow = prev; }; }, []);
+export type SweepChip = { box: [number, number, number, number]; text: string };
+
+/** Dark full-screen "reading" stage: the photo sits alone while an iridescent light band sweeps over it.
+ *  With `chips` it plays once and stamps black labels over the merchant, date and total as the band passes. */
+export function ScanSweep({ src, kind, onClose, chips, onDone }: { src: string; kind: "receipt" | "asset"; onClose?: () => void; chips?: SweepChip[]; onDone?: () => void }) {
+  const [step, setStep] = useState(0), [ratio, setRatio] = useState(kind === "asset" ? 1 : 0.71), [h, setH] = useState(0);
+  const stage = useRef<HTMLDivElement>(null), done = useRef(onDone);
+  done.current = onDone;
+  const reveal = Boolean(onDone);
+  useEffect(() => { if (reveal) return; const a = setTimeout(() => setStep(1), 1000), b = setTimeout(() => setStep(2), 2800); return () => { clearTimeout(a); clearTimeout(b); }; }, [reveal]);
+  useEffect(() => { if (!reveal) return; const t = setTimeout(() => done.current?.(), 3000); return () => clearTimeout(t); }, [reveal]);
+  useEffect(() => { const prev = document.body.style.overflow; document.body.style.overflow = "hidden"; const release = hideStatusBar(); return () => { document.body.style.overflow = prev; release(); }; }, []);
+  const measure = () => { if (stage.current) setH(stage.current.getBoundingClientRect().height); };
+  useEffect(() => { measure(); }, [ratio]);
   const node = <div className="dpx dpx-scan dpx-sweep" role="dialog" aria-modal="true" aria-label="Memproses foto">
-    <div className="dpx-scan-top">{onClose ? <button type="button" className="dpx-scan-btn" onClick={onClose} aria-label="Batalkan"><Ic n="close" /></button> : <span className="dpx-scan-btn ghost" />}<b /><span className="dpx-scan-btn ghost" /></div>
-    <div className={`dpx-sweep-stage ${kind}`}>
-      <img className="base" src={src} alt="Foto yang sedang diproses" />
+    <div className="dpx-scan-top">{onClose && !reveal ? <button type="button" className="dpx-scan-btn" onClick={onClose} aria-label="Batalkan"><Ic n="close" /></button> : <span className="dpx-scan-btn ghost" />}<b /><span className="dpx-scan-btn ghost" /></div>
+    <div ref={stage} className={`dpx-sweep-stage ${kind} ${reveal ? "once" : ""}`} style={{ aspectRatio: String(ratio), width: `min(${kind === "asset" ? 76 : 70}vw, calc(60dvh * ${ratio}), 360px)`, ["--sh" as string]: `${h}px` }}>
+      <img className="base" src={src} alt="Foto yang sedang diproses" onLoad={(e) => { const i = e.currentTarget; if (i.naturalWidth && i.naturalHeight) setRatio(i.naturalWidth / i.naturalHeight); requestAnimationFrame(measure); }} />
       <img className="lit" src={src} alt="" aria-hidden="true" />
+      {reveal ? chips?.map((c, k) => <span key={k} className="dpx-chip" style={{ left: `${c.box[0] * 100}%`, top: `${c.box[1] * 100}%`, width: `${c.box[2] * 100}%`, height: `${c.box[3] * 100}%`, fontSize: `calc(var(--sh) * ${c.box[3] * 0.58})`, animationDelay: `${0.25 + c.box[1] * 1.9}s` }}>{c.text}</span>) : null}
       <i className="band" aria-hidden="true" />
     </div>
-    <div className="dpx-sweep-status" role="status" aria-live="polite">{SWEEP_STEPS[kind][step]}…</div>
+    <div className="dpx-sweep-status" role="status" aria-live="polite">{reveal ? "Struk terbaca" : `${SWEEP_STEPS[kind][step]}…`}</div>
   </div>;
   return typeof document === "undefined" ? node : createPortal(node, document.body);
 }

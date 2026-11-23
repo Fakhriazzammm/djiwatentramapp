@@ -74,3 +74,36 @@ export async function readReceipt(dataUrl: string, opts: { key: string; base?: s
   if (first && !needsSecondOpinion(first)) return first;
   try { const second = await call(FALLBACK_MODEL); return first && first.items.length && !second.items.length ? first : second; } catch (e) { if (first) return first; throw e; }
 }
+
+export type TextBox = [number, number, number, number];   // x, y, width, height as fractions of the photo
+export type ReceiptBoxes = { merchant?: TextBox; date?: TextBox; total?: TextBox };
+
+const LOCATE_PROMPT = `Temukan posisi tiga teks pada foto struk ini. Balas HANYA JSON dengan kotak [x1,y1,x2,y2] pada skala 0-1000 terhadap seluruh foto (0,0 kiri atas): {"merchant":nama toko,"date":baris tanggal dan jam,"total":angka TOTAL akhir yang dibayar}. Hilangkan kunci yang tidak terlihat.`;
+
+/** Optional, best effort: where the merchant, date and total sit, so the scan animation can highlight them. */
+export function parseBoxes(text: string): ReceiptBoxes {
+  let raw: Record<string, unknown>;
+  try { raw = extractJson(text) as Record<string, unknown>; } catch { return {}; }
+  const out: ReceiptBoxes = {};
+  for (const k of ["merchant", "date", "total"] as const) {
+    const v = raw[k];
+    if (!Array.isArray(v) || v.length !== 4) continue;
+    const n = v.map(Number);
+    if (n.some(x => !Number.isFinite(x))) continue;
+    const [x1, y1, x2, y2] = n.map(x => Math.min(1, Math.max(0, x / 1000)));
+    const w = x2 - x1, h = y2 - y1;
+    if (w < 0.03 || h < 0.004 || w > 0.98 || h > 0.2) continue;
+    out[k] = [x1, y1, w, h];
+  }
+  return out;
+}
+
+export async function locateReceiptText(dataUrl: string, opts: { key: string; base?: string; fetchImpl?: typeof fetch }): Promise<ReceiptBoxes> {
+  const f = opts.fetchImpl ?? fetch, base = opts.base ?? "https://ai.helipod.io/v1";
+  try {
+    const res = await f(`${base}/chat/completions`, { method: "POST", signal: AbortSignal.timeout(20_000), headers: { "Content-Type": "application/json", Authorization: `Bearer ${opts.key}` }, body: JSON.stringify({ model: PRIMARY_MODEL, temperature: 0, max_tokens: 300, messages: [{ role: "user", content: [{ type: "image_url", image_url: { url: dataUrl } }, { type: "text", text: LOCATE_PROMPT }] }] }) });
+    if (!res.ok) return {};
+    const body = (await res.json()) as { choices?: { message?: { content?: unknown } }[] };
+    return parseBoxes(contentText(body.choices?.[0]?.message?.content));
+  } catch { return {}; }
+}

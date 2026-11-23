@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Btn, Ic, Sheet } from "../shell/dpx-ui";
-import { ScanSweep } from "../shell/scan-camera";
+import { ScanSweep, type SweepChip } from "../shell/scan-camera";
+import { hideStatusBar } from "../../lib/native-chrome";
 import { formatDateTime } from "../../lib/djiwa-pay-format";
 import { SCAN_ERROR_TEXT, ScanError, compressImage, receiptImageUrl, scanReceipt, fetchReceipt, rereadReceipt, confirmScannedReceipt, attachScannedReceipt, reconcileReceipt, receiptNumber, roundMoney, type ScannedReceipt, type ReceiptDocument } from "../../lib/finance/receipt";
 import { pushDiff } from "../../lib/finance/sync";
@@ -11,7 +12,7 @@ import { Breakdown, type BreakdownRow } from "./breakdown";
 import { AccountSheet, CategorySheet, accName, catOf, type Notify } from "./fin-sheets";
 
 type FlowProps = { fin: Finance; notify: Notify; onClose: () => void; balances: Record<string, number> };
-type Stage = { s: "reading"; preview: string } | { s: "error"; text: string } | { s: "result"; receipt: ScannedReceipt; preview: string };
+type Stage = { s: "reading"; preview: string } | { s: "reveal"; receipt: ScannedReceipt; preview: string } | { s: "error"; text: string } | { s: "result"; receipt: ScannedReceipt; preview: string };
 const STEPS = ["Mengunggah foto dengan aman", "Membaca seluruh item dan harga", "Memeriksa subtotal, pajak, dan total"];
 const rupiah = (n: number) => `Rp ${n.toLocaleString("id-ID", { maximumFractionDigits: 2 })}`;
 const moneyText = (n: number | null) => n === null ? "Belum terbaca" : rupiah(n);
@@ -24,11 +25,15 @@ export function ReceiptFlow({ file, onRetry, ...props }: FlowProps & { file: Fil
   useEffect(() => {
     if (started.current) return; started.current = true;
     void (async () => {
-      try { const image = await compressImage(file); setStage({ s: "reading", preview: image }); const receipt = await scanReceipt(image); setStage({ s: "result", receipt, preview: image }); }
+      try { const image = await compressImage(file); setStage({ s: "reading", preview: image }); const receipt = await scanReceipt(image); setStage({ s: "reveal", receipt, preview: image }); }
       catch (e) { setStage({ s: "error", text: e instanceof ScanError ? SCAN_ERROR_TEXT[e.code] : "Gambar belum dapat dibuka. Gunakan JPG, PNG, atau WebP." }); }
     })();
   }, [file]);
   useEffect(() => { if (stage.s !== "reading") return; const a = setTimeout(()=>setStep(1),900), b = setTimeout(()=>setStep(2),2600); return ()=>{clearTimeout(a);clearTimeout(b);}; }, [stage.s]);
+  if (stage.s === "reveal") { const { boxes, ...receipt } = stage.receipt; const r = stage.receipt;
+    const d = r.purchasedAt ? new Date(r.purchasedAt) : null, p2 = (n: number) => String(n).padStart(2, "0");
+    const chips = [boxes?.merchant && r.merchant ? { box: boxes.merchant, text: r.merchant.toUpperCase() } : null, boxes?.date && d && Number.isFinite(d.getTime()) ? { box: boxes.date, text: `${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()} ${p2(d.getHours())}.${p2(d.getMinutes())}` } : null, boxes?.total && r.total ? { box: boxes.total, text: r.total.toLocaleString("id-ID") } : null].filter((c): c is SweepChip => Boolean(c));
+    return <ScanSweep src={stage.preview} kind="receipt" chips={chips} onDone={() => setStage({ s: "result", receipt: receipt as ScannedReceipt, preview: stage.preview })} />; }
   if (stage.s === "result") return <ReceiptReview {...props} initial={stage.receipt} preview={stage.preview} onRetry={onRetry} />;
   if (stage.s === "reading" && stage.preview) return <ScanSweep src={stage.preview} kind="receipt" onClose={props.onClose} />;
   return <Sheet title={stage.s === "error" ? "Struk belum terbaca" : "Membaca struk"} onClose={props.onClose}>
@@ -47,7 +52,7 @@ function NumberField({ label, value, onChange }: { label: string; value: number 
 
 /** Same editor for new camera/upload results and persistent receipt corrections. */
 function RxScreen({ title, aurora, onClose, onRetry, footer, children }: { title: string; aurora: boolean; onClose: () => void; onRetry?: () => void; footer: ReactNode; children: ReactNode }) {
-  useEffect(() => { const prev = document.body.style.overflow; document.body.style.overflow = "hidden"; const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); }; window.addEventListener("keydown", k); return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", k); }; }, [onClose]);
+  useEffect(() => { const prev = document.body.style.overflow; document.body.style.overflow = "hidden"; const release = hideStatusBar(); const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); }; window.addEventListener("keydown", k); return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", k); release(); }; }, [onClose]);
   const node = <div className="dpx dpx-rxv" role="dialog" aria-modal="true" aria-label={title}>
     {aurora ? <div className="dpx-aurora" aria-hidden="true"><i /></div> : null}
     <div className="dpx-rxv-top"><button type="button" className="dpx-rxv-x" onClick={onClose} aria-label="Tutup"><Ic n="close" /></button>{onRetry ? <button type="button" className="dpx-rxv-retake" onClick={onRetry}>Ulangi</button> : <span />}</div>

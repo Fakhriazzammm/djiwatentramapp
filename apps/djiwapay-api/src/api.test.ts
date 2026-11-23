@@ -104,3 +104,11 @@ describe("applySync", () => {
     const prof = log.find((l) => l.t.startsWith("update finance.profiles"))!; expect(JSON.parse(String(prof.p![3]))[0].percent).toBe(100);
   });
 });
+
+import { parseBoxes } from "./receipt.js";
+describe("parseBoxes", () => {
+  test("scales 0-1000 boxes to fractions and drops nonsense", () => {
+    expect(parseBoxes('{"merchant":[100,50,500,90],"date":[0,0,1000,1000],"total":"x"}')).toEqual({ merchant: [0.1, 0.05, 0.4, 0.04] });
+    expect(parseBoxes("bukan json")).toEqual({});
+  });
+});

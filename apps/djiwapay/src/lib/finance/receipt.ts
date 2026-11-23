@@ -6,7 +6,9 @@ import type { ReceiptDocument, ReceiptItem } from "../../../../djiwapay-api/src/
 export { normalizeReceiptDocument, reconcileReceipt, receiptNumber, roundMoney } from "../../../../djiwapay-api/src/receipt-document";
 export type { ReceiptDocument, ReceiptCharge } from "../../../../djiwapay-api/src/receipt-document";
 export type ScannedItem = ReceiptItem;
-export type ScannedReceipt = ReceiptDocument & { id: string; confidence: number; model: string; legacy?: boolean; reviewed?: boolean; revision?: string | null };
+export type TextBox = [number, number, number, number];
+export type ScanBoxes = { merchant?: TextBox; date?: TextBox; total?: TextBox };
+export type ScannedReceipt = ReceiptDocument & { boxes?: ScanBoxes; id: string; confidence: number; model: string; legacy?: boolean; reviewed?: boolean; revision?: string | null };
 export type ScanErrorCode = "UNAUTHORIZED" | "NOT_A_RECEIPT" | "DAILY_LIMIT" | "SCAN_UNAVAILABLE" | "IMAGE_TOO_LARGE" | "BAD_IMAGE" | "SCAN_FAILED" | "NETWORK";
 export class ScanError extends Error { constructor(public code: ScanErrorCode) { super(code); } }
 
@@ -44,9 +46,9 @@ export async function scanReceipt(image: string, id = uid()): Promise<ScannedRec
   try { res = await fetch("/api/finance/receipts/scan", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image, id }) }); }
   catch { throw new ScanError("NETWORK"); }
   if (res.status === 401) throw new ScanError("UNAUTHORIZED");
-  const body = await res.json().catch(() => null) as { success?: boolean; error?: string; receipt?: ScannedReceipt } | null;
+  const body = await res.json().catch(() => null) as { success?: boolean; error?: string; receipt?: ScannedReceipt; boxes?: ScanBoxes } | null;
   if (!res.ok || !body?.success || !body.receipt) throw new ScanError((body?.error && body.error in SCAN_ERROR_TEXT ? body.error : "SCAN_FAILED") as ScanErrorCode);
-  return { ...body.receipt, ...normalizeReceiptDocument(body.receipt) };
+  return { ...body.receipt, ...normalizeReceiptDocument(body.receipt), boxes: body.boxes ?? {} };
 }
 export const receiptImageUrl = (id: string) => `/api/finance/receipts/${encodeURIComponent(id)}/image`;
 
@@ -91,7 +93,7 @@ export async function rereadReceipt(id: string): Promise<ScannedReceipt> {
   const r = await fetch(`/api/finance/receipts/${encodeURIComponent(id)}/reread`, { method: "POST", credentials: "include" });
   const body = await r.json().catch(()=>null);
   if (!r.ok || !body?.receipt) throw new Error(SCAN_ERROR_TEXT[body?.error as ScanErrorCode] ?? "Foto struk belum dapat dibaca ulang. Coba lagi.");
-  return { ...body.receipt, ...normalizeReceiptDocument(body.receipt) };
+  return { ...body.receipt, ...normalizeReceiptDocument(body.receipt), boxes: body.boxes ?? {} };
 }
 
 /** Adds the scanned receipt to an existing entry (e.g. from a payment e-mail) without changing what was paid. */
