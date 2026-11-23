@@ -57,6 +57,9 @@ export const takeAfterGoogle = () => { try { const p = sessionStorage.getItem(AF
 export const connectGoogle = (features: GoogleFeature[]) => call<{ url: string }>("/google/connect", { method: "POST", body: JSON.stringify({ features }) });
 export const confirmSheetDeletes = () => call<object>("/google/sheets/confirm", { method: "POST" });
 export const confirmDriveRemovals = () => call<object>("/google/drive/confirm", { method: "POST" });
+export type WalletCheck = { issuer: string; days: number; processed: number; outcomes: Record<string, number> };
+/** Looks in Gmail again for one wallet's bank or e-wallet (last `days` days) and adds what was missed. */
+export const checkWalletMail = (accountId: string, days = 30) => call<WalletCheck>("/google/gmail/wallet-check", { method: "POST", body: JSON.stringify({ accountId, days }) });
 export const pollGmailNow = () => call<object>("/google/gmail/poll", { method: "POST" });
 export type SwitchKey = "calendar" | "sheets" | "receipts";
 export const featureOff = (key: SwitchKey) => call<object>(`/google/feature/${key}/off`, { method: "POST" });

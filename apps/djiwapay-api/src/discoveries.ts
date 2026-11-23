@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import { ISSUERS } from "./mail/extract.js";
+import { ISSUERS, type Issuer } from "./mail/extract.js";
 import { scanMailbox } from "./mailbox-scan.js";
 import type { Fetch, GoogleCfg } from "./google.js";
 
@@ -50,6 +50,12 @@ export async function untracked(db: Db, userId: string) {
     out.push({ key: `new:${issuer.id}${r.hint ? "-" + r.hint : ""}`, issuerId: issuer.id, name: issuer.name, kind: issuer.kind, hint: String(r.hint || ""), count: Number(r.n), firstAt: new Date(r.first_at).toISOString(), lastAt: new Date(r.last_at).toISOString(), sameIssuer: t.sameIssuer });
   }
   return out;
+}
+
+/** The bank or e-wallet a wallet stands for: made from its mail (`email-<issuer>…` id) or named after it. */
+export function issuerOfWallet(id: string, name: string): Issuer | null {
+  const n = norm(name);
+  return ISSUERS.find((i) => i.domains.length && id.startsWith(`email-${i.id}`)) ?? ISSUERS.find((i) => i.domains.length && i.kind !== "service" && (wordIn(n, norm(i.name)) || wordIn(n, i.id))) ?? null;
 }
 
 const scanned = new Map<string, number>();

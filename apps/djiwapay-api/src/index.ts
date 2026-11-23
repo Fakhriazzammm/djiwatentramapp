@@ -15,7 +15,7 @@ import { registerRateRoutes } from "./rates/service.js";
 import { makeCategorizer, registerCategorizeRoutes } from "./categorize.js";
 import { registerNewsRoutes } from "./news.js";
 import { registerPushRoutes } from "./push.js";
-import { registerDiscoveryRoutes } from "./discoveries.js";
+import { issuerOfWallet, registerDiscoveryRoutes } from "./discoveries.js";
 import { registerNotifRoutes } from "./notif.js";
 import { registerStatementRoutes } from "./statement.js";
 export { poolTx };
@@ -26,7 +26,7 @@ import { confirmDriveRemovals, confirmSheetDeletes, requestSheet, touchDrive } f
 import { ISSUERS } from "./mail/extract.js";
 import { ensureHook, getHook, hookConfig, hookScript, HOOK_MAX_BYTES, receiveHook, removeHook, SCRIPT_VERSION, type HookDeps } from "./hook.js";
 import { broadQuery } from "./mail/generic.js";
-import { disableGmail, enableGmail, pollSoon } from "./gmail.js";
+import { checkIssuerMail, disableGmail, enableGmail, pollSoon } from "./gmail.js";
 import { cancelImport, commitImport, createImport, importCheckItems, importState, undoImport } from "./gmail-import.js";
 import { approveGroup, rejectGroup, reviewGroups, approve, ensureSource, getSource, originOf, reject, removeSource, reviewCount, reviewList } from "./mail/pipeline.js";
 
@@ -224,6 +224,19 @@ export function createApp(d: Deps) {
     }
   });
   app.post("/api/finance/google/gmail/poll", async (c) => { if (!(await connected(uid(c), "gmail"))) return json(c, { success: false, error: "NOT_CONNECTED" }, 409); await enableGmail(d.db, uid(c)); await pollSoon(d.db, uid(c)); return json(c, { success: true }); });
+  /** Checks Gmail again for one wallet's bank or e-wallet: finds the issuer from the wallet's name, then reads that sender's mail only. */
+  app.post("/api/finance/google/gmail/wallet-check", async (c) => {
+    if (!d.google || !d.hook) return json(c, { success: false, error: "NOT_CONFIGURED" }, 503);
+    const b = await c.req.json().catch(() => null) as { accountId?: unknown; days?: unknown } | null;
+    const row = (await d.db.query("select id,name from finance.accounts where user_id=$1 and id=$2", [uid(c), String(b?.accountId ?? "")])).rows[0];
+    if (!row) return json(c, { success: false, error: "UNKNOWN_ACCOUNT" }, 404);
+    const issuer = issuerOfWallet(String(row.id), String(row.name));
+    if (!issuer) return json(c, { success: false, error: "NO_ISSUER" }, 422);
+    const days = Math.max(1, Math.min(120, Math.round(Number(b?.days) || 30)));
+    const r = await checkIssuerMail({ ...d.hook, cfg: d.google, f: d.gfetch }, uid(c), issuer.domains, days);
+    return r.ok ? json(c, { success: true, issuer: issuer.name, days, processed: r.processed, outcomes: r.outcomes })
+      : json(c, { success: false, error: r.error }, r.error === "NOT_CONNECTED" || r.error === "SCOPE_MISSING" ? 409 : 502);
+  });
   // Import of old mail: scan (worker) -> preview -> commit. The API only creates, reads and decides.
   app.post("/api/finance/google/gmail/import", async (c) => {
     if (!(await connected(uid(c), "gmail"))) return json(c, { success: false, error: "NOT_CONNECTED" }, 409);

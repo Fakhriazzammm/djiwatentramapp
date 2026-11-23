@@ -85,3 +85,37 @@ export async function runDue(d: PollDeps, limit = 5) {
   for (const r of due.rows) { try { out[r.user_id] = await pollGmail(d, r.user_id as string); } catch (e) { console.error("gmail poll", e instanceof Error ? e.message : e); } }
   return out;
 }
+
+/** Looks again, right now, for the mail of one bank or e-wallet over the last `days` days. It never moves the regular poll's cursor
+ *  and does not trust the "already seen" list: the pipeline itself drops what was recorded, so only what was missed is added. */
+export async function checkIssuerMail(d: PollDeps, userId: string, domains: string[], days: number): Promise<PollResult> {
+  const f = d.f ?? fetch, outcomes: Record<string, number> = {};
+  const fail = (error: string): PollResult => ({ ok: false, processed: 0, outcomes, error });
+  if (!domains.length) return fail("NO_ISSUER");
+  const token = await accessToken(d.db, d.cfg, userId, f);
+  if (!token) return fail("NOT_CONNECTED");
+  const conn = (await d.db.query("select email,granted_scopes from finance.google_connections where user_id=$1", [userId])).rows[0];
+  if (!conn || !(conn.granted_scopes as string[]).includes("https://www.googleapis.com/auth/gmail.readonly")) return fail("SCOPE_MISSING");
+  const auth = { authorization: `Bearer ${token}` }, since = Math.floor(((d.now ?? (() => new Date()))().getTime() - days * 86400_000) / 1000);
+  const ids: string[] = []; let page: string | undefined;
+  for (let i = 0; i < 4 && ids.length < 100; i++) {
+    const res = await f(`https://gmail.googleapis.com/gmail/v1/users/me/messages?${new URLSearchParams({ q: `from:(${domains.join(" OR ")}) after:${since}`, maxResults: "50", ...(page ? { pageToken: page } : {}) })}`, { headers: auth });
+    if (res.status === 401 || res.status === 403) return fail(res.status === 403 ? `GMAIL_FORBIDDEN:${await googleReason(res)}` : "NOT_CONNECTED");
+    if (!res.ok) return fail(`GMAIL_${res.status}`);
+    const j = (await res.json()) as { messages?: { id: string }[]; nextPageToken?: string };
+    ids.push(...(j.messages ?? []).map((m) => m.id)); page = j.nextPageToken; if (!page) break;
+  }
+  const trusted = Number((await ensureSource(d.db, userId)).trusted_count ?? 0);
+  let processed = 0;
+  for (const id of ids.slice(0, 100)) {
+    const res = await f(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(id)}?format=raw`, { headers: auth });
+    if (!res.ok) continue;
+    const { raw } = (await res.json()) as { raw?: string }; if (!raw) continue;
+    try {
+      const mail = await d.toMail(Buffer.from(raw, "base64url"), { ip: "", helo: "", sender: "", host: "gmail", recipients: [String(conn.email ?? "")] });
+      const out: Outcome = await processForUser(d.pipeline, userId, trusted, mail);
+      outcomes[out.status] = (outcomes[out.status] ?? 0) + 1; processed++;
+    } catch { outcomes.failed = (outcomes.failed ?? 0) + 1; }
+  }
+  return { ok: true, processed, outcomes };
+}

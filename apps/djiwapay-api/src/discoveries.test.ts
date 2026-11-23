@@ -26,3 +26,10 @@ describe("mailbox scan query", () => {
     expect(q).toContain("from:(jago.com OR bankjago.com)"); expect(q).toContain("subject:(transaksi OR"); expect(q).toContain("newer_than:420d");
   });
 });
+
+import { issuerOfWallet } from "./discoveries.js";
+test("issuerOfWallet: dompet dari email atau bernama bank", () => {
+  expect(issuerOfWallet("email-bca-1234", "BCA ••1234")?.id).toBe("bca");
+  expect(issuerOfWallet("x1", "Tabungan Mandiri")?.id).toBe("mandiri");
+  expect(issuerOfWallet("x2", "Dompet Tunai")).toBeNull();
+});

@@ -10,7 +10,7 @@ import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import type { Account } from "../../lib/finance/types";
 import { accountScope } from "../../lib/finance/scope";
-import { pollGmailNow } from "../../lib/finance/integrations";
+import { checkWalletMail } from "../../lib/finance/integrations";
 
 type Skin = { from: string; to: string; accent: string; tint?: string };
 /** Card colours by brand name first, then by account type. Every skin is dark enough for white text. */
@@ -187,16 +187,17 @@ export function WalletDetailSheet({ ctx, id, onClose }: { ctx: FinCtx; id: strin
   const { fin } = ctx, pay = id === PAY_ACCOUNT_ID, account = pay ? undefined : fin.raw.accounts.find((a) => a.id === id);
   const now = new Date(), [checking, setChecking] = useState(false);
   if (!pay && !account) return null;
-  /** Looks through Gmail again so a transaction that was missed shows up for review; Gmail is read once for all wallets. */
+  /** Reads this wallet's bank/e-wallet mail in Gmail again (last 30 days); what was missed is recorded or waits for approval in Temuan. */
   const checkMail = async () => {
     if (checking) return; setChecking(true);
     try {
-      const s = await ctx.disc.scan().catch((e: { code?: string }) => e);
-      const code = s instanceof Error ? undefined : (s as { code?: string } | undefined)?.code;
-      if (code === "NOT_CONNECTED" || code === "SCOPE_MISSING") { ctx.notify("Hubungkan Gmail di Integrasi agar email bisa diperiksa"); return; }
-      await pollGmailNow().catch(() => undefined);
-      await ctx.disc.refresh();
-      ctx.notify(`Email dicek. Transaksi ${name} yang terlewat muncul di Temuan untuk kamu setujui`);
+      const r = await checkWalletMail(id, 30);
+      await Promise.all([ctx.disc.refresh(), fin.retrySync?.()]);
+      const o = r.outcomes, added = (o.auto ?? 0), wait = (o.review ?? 0) + (o.staged ?? 0);
+      ctx.notify(added || wait ? `Email ${r.issuer} dicek: ${added} dicatat otomatis${wait ? `, ${wait} menunggu persetujuanmu` : ""}` : r.processed ? `Email ${r.issuer} dicek. Semua transaksi 30 hari terakhir sudah tercatat` : `Tidak ada email ${r.issuer} dalam 30 hari terakhir`);
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      ctx.notify(code === "NOT_CONNECTED" || code === "SCOPE_MISSING" ? "Hubungkan Gmail di Integrasi agar email bisa diperiksa" : code === "NO_ISSUER" ? "Dompet ini bukan bank atau e-wallet yang dikenali, jadi tidak ada email yang bisa dicari" : "Belum bisa memeriksa Gmail. Coba lagi sebentar lagi");
     } finally { setChecking(false); }
   };
   const name = pay ? "Djiwa Pay" : account!.name, balance = pay ? ctx.payBalance : accountBalance(account!, fin.allRecords);
