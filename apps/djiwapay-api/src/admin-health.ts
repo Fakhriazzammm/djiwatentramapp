@@ -20,7 +20,7 @@ export async function dataHealth(d: AdminDeps, from?: string, to?: string, now =
     d.db.query(`select reason, count(*)::int n from finance.inbound_skips where ${win} group by 1 order by 2 desc`, [lo, r.to]),
     d.db.query(`select sender_domain domain, reason, count(*)::int n from finance.inbound_skips where ${win} and reason in ('auth-failed','sender-not-allowed','secret') group by 1,2 order by 3 desc limit 15`, [lo, r.to]),
     d.db.query(`select count(*)::int users, coalesce(sum(calls),0)::int calls, count(*) filter (where calls >= $1)::int atlimit from finance.ai_usage where day = (now() at time zone 'Asia/Jakarta')::date`, [DEFAULT_DAILY_CALLS]),
-    d.db.query(`select day::text day, sum(calls)::int calls, count(*)::int users from finance.ai_usage where day >= (now() at time zone 'Asia/Jakarta')::date - 13 group by 1 order by 1`),
+    d.db.query(`select to_char(day, 'YYYY-MM-DD') as "day", sum(calls)::int as calls, count(*)::int as users from finance.ai_usage where day >= (now() at time zone 'Asia/Jakarta')::date - 13 group by day order by day`),
     d.db.query(`select count(*)::int rows, coalesce(sum(hits),0)::int hits from finance.ai_category_cache`),
     d.db.query(`select status, count(*)::int n from finance.gmail_import where created_at >= $1::timestamptz group by 1`, [lo]),
     d.db.query(`select error, count(*)::int n from finance.gmail_import where created_at >= $1::timestamptz and error is not null group by 1 order by 2 desc limit 6`, [lo]),
