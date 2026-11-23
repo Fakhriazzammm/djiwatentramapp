@@ -11,6 +11,7 @@ import {
 import { createHook, removeHook } from "../../lib/finance/integrations";
 import { AppsScriptSheet, hookStatusText, useHook } from "./apps-script";
 import { NotifSheet, StatementSheet, useNotifState } from "./phone-sources";
+import { ImportScanning } from "./import-scan";
 import { openNotifSettings } from "../../lib/native-notif";
 
 /** What a Gmail error code means for the person looking at the screen. */
@@ -249,8 +250,7 @@ export function ImportSheet({ ctx, onClose, onChanged }: { ctx: FinCtx; onClose:
       <Btn type="button" className="dpx-btn" disabled={busy} onClick={() => void act(() => startImport(days))}>{busy ? "Memulai…" : "Mulai pindai"}</Btn>
     </> : null}
     {imp?.status === "scanning" ? <>
-      <div className="dpx-scan"><div className="dpx-bar"><motion.i animate={{ width: `${Math.max(4, Math.round(imp.progress * 100))}%` }} transition={{ duration: 0.6 }} /></div>
-        <b>{Math.round(imp.progress * 100)}%</b><span>{imp.scanned} email diperiksa · {imp.staged} transaksi ditemukan{imp.scanningTo ? ` · sampai ${new Date(imp.scanningTo).toLocaleDateString("id-ID", { month: "short", year: "numeric" })}` : ""}</span></div>
+      <ImportScanning imp={imp} />
       {imp.error ? <div className="dpx-note dpx-danger" role="alert"><Ic n="warn" /><div><b>Pemindaian tertahan.</b> {gmailError(imp.error)}</div></div> : null}
       <p className="dpx-sub dpx-center">Boleh ditutup. Pemindaian jalan terus di server, dan Beranda memberi tahu saat pratinjau siap.</p>
       <Btn type="button" className="dpx-btn dpx-soft" disabled={busy} onClick={() => void act(() => cancelImport(), "Pemindaian dihentikan")}>Hentikan</Btn>
