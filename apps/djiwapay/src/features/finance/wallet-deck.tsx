@@ -27,6 +27,25 @@ const iconOf = (type: string): IconName => (type === "bank" ? "bank" : type === 
 type Card = { id: string; name: string; type: string; balance: number; skin: Skin; pay: boolean; account?: Account; needsOpening: boolean };
 const FOCUS_H = 196, STRIP_H = 70;
 
+
+/** Re-reads one wallet's bank or e-wallet mail in Gmail (last 30 days); what was missed is recorded or waits for approval in Temuan. */
+function useMailCheck(ctx: FinCtx) {
+  const [checking, setChecking] = useState(false);
+  const run = async (id: string, label: string) => {
+    if (checking) return; setChecking(true); ctx.notify(`Memeriksa email ${label}…`);
+    try {
+      const r = await checkWalletMail(id, 30);
+      await Promise.all([ctx.disc.refresh(), ctx.fin.retrySync?.()]);
+      const o = r.outcomes, added = o.auto ?? 0, wait = (o.review ?? 0) + (o.staged ?? 0);
+      ctx.notify(added || wait ? `Email ${r.issuer} dicek: ${added} dicatat otomatis${wait ? `, ${wait} menunggu persetujuanmu` : ""}` : r.processed ? `Email ${r.issuer} dicek. Semua transaksi 30 hari terakhir sudah tercatat` : `Tidak ada email ${r.issuer} dalam 30 hari terakhir`);
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      ctx.notify(code === "NOT_CONNECTED" || code === "SCOPE_MISSING" ? "Hubungkan Gmail di Integrasi agar email bisa diperiksa" : code === "NO_ISSUER" ? "Dompet ini bukan bank atau e-wallet yang dikenali, jadi tidak ada email yang bisa dicari" : "Belum bisa memeriksa Gmail. Coba lagi sebentar lagi");
+    } finally { setChecking(false); }
+  };
+  return { checking, run };
+}
+
 type View = "pouch" | "swipe" | "stack";
 const VIEW_KEY = "djiwa-fin-wallet-view";
 const readView = (): View => { try { const v = localStorage.getItem(VIEW_KEY); return v === "swipe" || v === "stack" || v === "pouch" ? v : "pouch"; } catch { return "pouch"; } };
@@ -61,8 +80,8 @@ function Pouch({ cards, sel, go, ctx, stats, hint, cur }: { cards: Card[]; sel: 
       {cards.map((c, i) => {
         const p = (i - sel + n) % n, pos = p < 3 ? POS[p] : TUCKED, front = p === 0, flip = leaving === c.id && n > 1;
         return <motion.div key={c.id} className="dpx-pc-card" style={{ background: `linear-gradient(145deg, ${c.skin.from}, ${c.skin.to})`, zIndex: p < 3 ? 5 - p : 1, pointerEvents: p < 3 ? "auto" : "none", transformPerspective: 900 }}
-          animate={flip ? { y: [0, -96, pos.y], rotateX: [0, 58, 0], scale: [1, 1.02, pos.s], opacity: 1, zIndex: [7, 7, 1] } : { y: pos.y, rotateX: 0, scale: pos.s, opacity: p < 3 ? 1 : 0 }}
-          transition={flip ? { duration: 0.72, times: [0, 0.45, 1], ease: "easeInOut" } : SPRING}
+          animate={flip ? { y: [0, -108, -50, -44], rotateX: [0, 52, 26, 0], scale: [1, 1.03, 0.9, 0.84], opacity: [1, 1, 1, 0], zIndex: [7, 7, 0, 0] } : { y: pos.y, rotateX: 0, scale: pos.s, opacity: p < 3 ? 1 : 0 }}
+          transition={flip ? { duration: 0.85, times: [0, 0.42, 0.72, 1], ease: "easeInOut" } : SPRING}
           drag={front && n > 1 ? "x" : false} dragSnapToOrigin dragElastic={0.5} dragMomentum={false}
           onDragEnd={(_, info) => { if (Math.abs(info.offset.x) > 60 || Math.abs(info.velocity.x) > 500) go(sel + (info.offset.x < 0 ? 1 : -1)); }}
           onTap={() => go(front ? sel + 1 : i)} whileTap={front ? { scale: 0.985 } : undefined}
@@ -109,7 +128,7 @@ export function WalletDeck({ ctx, accounts, balances, onSelect, hideRecent }: { 
     if (base.length < 2) return base;
     return [{ id: ALL_ID, name: "Semua dompet", type: "all", balance: base.reduce((n, c) => n + c.balance, 0), skin: { from: "#4a4036", to: "#241d17", accent: "#f1e6d6" }, pay: false, needsOpening: false }, ...base];
   }, [accounts, balances, ctx.payBalance, ctx.fin.scope]);
-  const [sel, setSel] = useState(0), [view, setView] = useState<View>(readView), [dir, setDir] = useState(1), [hint, setHint] = useState(true), [menu, setMenu] = useState(false);
+  const mail = useMailCheck(ctx), [sel, setSel] = useState(0), [view, setView] = useState<View>(readView), [dir, setDir] = useState(1), [hint, setHint] = useState(true), [menu, setMenu] = useState(false);
   const lastMain = useRef<"pouch" | "swipe">(view === "stack" ? "pouch" : view);
   const pick = (v: View) => { setView(v); if (v !== "stack") lastMain.current = v; saveView(v); setMenu(false); };
   const cur = cards[Math.min(sel, cards.length - 1)];
@@ -158,6 +177,8 @@ export function WalletDeck({ ctx, accounts, balances, onSelect, hideRecent }: { 
           <motion.div className="dpx-wd-menu" role="menu" aria-label="Tampilan kartu" initial={{ opacity: 0, scale: 0.92, y: -6 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: -4 }} transition={{ duration: 0.16 }} onKeyDown={(e) => { if (e.key === "Escape") setMenu(false); }}>
             {VIEWS.map((v) => <button key={v.id} type="button" role="menuitemradio" aria-checked={view === v.id} className={view === v.id ? "on" : ""} onClick={() => pick(v.id)}><Ic n={v.icon} /><span><b>{v.title}</b><small>{v.sub}</small></span><i aria-hidden="true">✓</i></button>)}
           </motion.div></> : null}</AnimatePresence></div>
+        {cur.id !== ALL_ID && cur.id !== PAY_ACCOUNT_ID ? <Btn type="button" className="dpx-wd-tool" disabled={mail.checking} aria-busy={mail.checking} onClick={() => void mail.run(cur.id, cur.name)} aria-label={`Cek email ${cur.name}`}><motion.span style={{ display: "grid" }} animate={mail.checking ? { rotate: 360 } : { rotate: 0 }} transition={mail.checking ? { repeat: Infinity, duration: 0.9, ease: "linear" } : { duration: 0 }}><Ic n="refresh" size="sm" /></motion.span></Btn> : null}
+        {cur.id !== ALL_ID ? <Btn type="button" className="dpx-wd-tool" onClick={() => ctx.open({ k: "wallet-view", id: cur.id })} aria-label={`Detail ${cur.name}`}><Ic n="info" size="sm" /></Btn> : null}
         <Btn type="button" className="dpx-wd-tool dpx-wd-find" onClick={() => ctx.nav.go("/temuan?jenis=dompet")} aria-label={`Cari dompet dari email${ctx.disc.items.some((d) => d.group === "dompet") ? `, ${ctx.disc.items.filter((d) => d.group === "dompet").length} ditemukan` : ""}`}><Ic n="search" size="sm" />{ctx.disc.items.some((d) => d.group === "dompet") ? <i className="dpx-wd-badge">{ctx.disc.items.filter((d) => d.group === "dompet").length}</i> : null}</Btn>
         <Btn type="button" className="dpx-wd-tool" onClick={() => ctx.open({ k: "account" })} aria-label="Tambah dompet"><Ic n="plus" size="sm" /></Btn></div></div>
     {view === "swipe" ? <div className="dpx-wd-swipe">
@@ -185,21 +206,9 @@ export function WalletDeck({ ctx, accounts, balances, onSelect, hideRecent }: { 
 /** Opens when a wallet card is tapped: balance, personal/business switch, this month, quick actions and the latest records. */
 export function WalletDetailSheet({ ctx, id, onClose }: { ctx: FinCtx; id: string; onClose: () => void }) {
   const { fin } = ctx, pay = id === PAY_ACCOUNT_ID, account = pay ? undefined : fin.raw.accounts.find((a) => a.id === id);
-  const now = new Date(), [checking, setChecking] = useState(false);
+  const now = new Date();
   if (!pay && !account) return null;
-  /** Reads this wallet's bank/e-wallet mail in Gmail again (last 30 days); what was missed is recorded or waits for approval in Temuan. */
-  const checkMail = async () => {
-    if (checking) return; setChecking(true);
-    try {
-      const r = await checkWalletMail(id, 30);
-      await Promise.all([ctx.disc.refresh(), fin.retrySync?.()]);
-      const o = r.outcomes, added = (o.auto ?? 0), wait = (o.review ?? 0) + (o.staged ?? 0);
-      ctx.notify(added || wait ? `Email ${r.issuer} dicek: ${added} dicatat otomatis${wait ? `, ${wait} menunggu persetujuanmu` : ""}` : r.processed ? `Email ${r.issuer} dicek. Semua transaksi 30 hari terakhir sudah tercatat` : `Tidak ada email ${r.issuer} dalam 30 hari terakhir`);
-    } catch (e) {
-      const code = (e as { code?: string }).code;
-      ctx.notify(code === "NOT_CONNECTED" || code === "SCOPE_MISSING" ? "Hubungkan Gmail di Integrasi agar email bisa diperiksa" : code === "NO_ISSUER" ? "Dompet ini bukan bank atau e-wallet yang dikenali, jadi tidak ada email yang bisa dicari" : "Belum bisa memeriksa Gmail. Coba lagi sebentar lagi");
-    } finally { setChecking(false); }
-  };
+  const { checking, run: runCheck } = useMailCheck(ctx), checkMail = () => runCheck(id, account?.name ?? "");
   const name = pay ? "Djiwa Pay" : account!.name, balance = pay ? ctx.payBalance : accountBalance(account!, fin.allRecords);
   const mine = fin.allRecords.filter((e) => e.accountId === id || (e.kind === "tf" && e.toAccountId === id));
   const month = mine.filter((e) => inMonth(e, now.getFullYear(), now.getMonth())), inn = month.filter((e) => e.kind === "in").reduce((n, e) => n + e.amount, 0), out = month.filter((e) => e.kind === "out").reduce((n, e) => n + e.amount, 0);
