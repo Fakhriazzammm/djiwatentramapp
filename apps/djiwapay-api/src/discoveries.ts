@@ -10,8 +10,14 @@ const STATUS = new Set(["saved", "dismissed", "snoozed"]);
 const KEY = /^[A-Za-z0-9:_.\-|]{3,120}$/;
 
 export async function listDecisions(db: Db, userId: string) {
-  const rows = (await db.query("select key,status,until from finance.discovery_decisions where user_id=$1 and (status<>'snoozed' or until > now())", [userId])).rows;
+  const rows = (await db.query("select key,status,until from finance.discovery_decisions where user_id=$1 and key not like 'seen:%' and (status<>'snoozed' or until > now())", [userId])).rows;
   return rows.map((r) => ({ key: String(r.key), status: String(r.status), until: r.until ? new Date(r.until).toISOString() : null }));
+}
+
+/** When this person first saw each new feature ("Baru" badge): the clock of the 2 days starts there, per person, on every device. The first time is kept; later calls never move it. */
+export async function seenMap(db: Db, userId: string): Promise<Record<string, string>> {
+  const rows = (await db.query("select substr(key, 6) id, decided_at from finance.discovery_decisions where user_id=$1 and key like 'seen:%'", [userId])).rows;
+  return Object.fromEntries(rows.map((r) => [String(r.id), new Date(r.decided_at).toISOString()]));
 }
 
 const norm = (t: unknown) => String(t ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -60,7 +66,7 @@ export function issuerOfWallet(id: string, name: string): Issuer | null {
 
 const scanned = new Map<string, number>();
 export function registerDiscoveryRoutes(app: Hono, d: { db: Db; google?: GoogleCfg | null; gfetch?: Fetch }, uid: (c: any) => string, json: (c: any, body: unknown, status?: number) => Response) {
-  app.get("/api/finance/discoveries", async (c) => json(c, { success: true, decisions: await listDecisions(d.db, uid(c)), untracked: await untracked(d.db, uid(c)).catch(() => []) }));
+  app.get("/api/finance/discoveries", async (c) => json(c, { success: true, decisions: await listDecisions(d.db, uid(c)), seen: await seenMap(d.db, uid(c)).catch(() => ({})), untracked: await untracked(d.db, uid(c)).catch(() => []) }));
   app.post("/api/finance/discoveries/decide", async (c) => {
     const b = await c.req.json().catch(() => null) as { keys?: unknown; status?: unknown; days?: unknown } | null;
     const keys = (Array.isArray(b?.keys) ? b!.keys : []).filter((k): k is string => typeof k === "string" && KEY.test(k)).slice(0, 40);
@@ -78,6 +84,12 @@ export function registerDiscoveryRoutes(app: Hono, d: { db: Db; google?: GoogleC
     scanned.set(id, now);
     const r = await scanMailbox(d.db, d.google, id, d.gfetch);
     return r.ok ? json(c, { success: true, found: r.found, checked: r.checked }) : json(c, { success: false, error: r.error }, r.error === "NOT_CONNECTED" || r.error === "SCOPE_MISSING" ? 409 : 502);
+  });
+  app.post("/api/finance/discoveries/seen", async (c) => {
+    const b = await c.req.json().catch(() => null) as { ids?: unknown } | null;
+    const ids = (Array.isArray(b?.ids) ? b!.ids : []).filter((k): k is string => typeof k === "string" && /^[a-z0-9][a-z0-9_-]{1,60}$/.test(k)).slice(0, 20);
+    if (ids.length) await d.db.query("insert into finance.discovery_decisions(user_id,key,status) select $1, 'seen:' || k, 'saved' from unnest($2::text[]) k on conflict(user_id,key) do nothing", [uid(c), ids]);
+    return json(c, { success: true, seen: await seenMap(d.db, uid(c)) });
   });
   app.post("/api/finance/discoveries/undo", async (c) => {
     const b = await c.req.json().catch(() => null) as { keys?: unknown } | null;

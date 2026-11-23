@@ -9,6 +9,8 @@ import { usePayeeMeta } from "../../lib/finance/payee-meta";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import type { Entry } from "../../lib/finance/types";
 import "./payees.css";
+import { NewBadge } from "../shell/new-badge";
+import { useNewFeature } from "../../lib/finance/new-feature";
 
 const COLORS = ["#c9461b", "#e8833a", "#8a5cc2", "#16a3b8", "#d9a21a", "#1f9d62", "#e0568a", "#6f7bd9"];
 const PERIODS: readonly (readonly [PayeePeriod, string])[] = [["bulan", "Bulan ini"], ["3", "3 bulan"], ["6", "6 bulan"], ["12", "1 tahun"], ["semua", "Semua"]];
@@ -178,13 +180,13 @@ export function PayeesPage({ ctx, onBack }: { ctx: FinCtx; onBack: () => void })
 
 /** Laporan > Ringkasan: the five biggest, the share they take, and the way into the whole page. */
 export function PayeeCard({ ctx, y, m }: { ctx: FinCtx; y: number; m: number }) {
-  const { fin } = ctx, { meta } = usePayeeMeta(fin.profileId), reduce = Boolean(useReducedMotion());
+  const { fin } = ctx, { meta } = usePayeeMeta(fin.profileId), reduce = Boolean(useReducedMotion()), nf = useNewFeature<HTMLElement>("payee-card");
   const range = useMemo(() => periodRange("bulan", new Date(), { y, m }), [y, m]);
   const a = useMemo(() => analyze(fin.allRecords, { mode: "out", ...range, meta }), [fin.allRecords, range, meta]);
   if (!a.list.length) return null;
   const top = a.top, others = Math.max(0, 100 - top.reduce((s, p) => s + p.share, 0));
-  return <motion.section className="dpx-py-card dpx-py-rep" initial={reduce ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring} aria-label="Ke mana uangmu pergi">
-    <span className="new">Baru</span>
+  return <motion.section ref={nf.ref} className={`dpx-py-card dpx-py-rep ${nf.fresh ? "is-new" : ""}`} initial={reduce ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring} aria-label="Ke mana uangmu pergi">
+    <NewBadge show={nf.fresh} variant="float" />
     <b className="ttl">Ke mana uangmu pergi</b>
     <small className="sub">Pengeluaran ke orang dan toko bulan ini</small>
     <div className="stack" aria-hidden="true">{top.map((p, i) => <motion.i key={p.key} style={{ background: colorOf(i) }} initial={reduce ? false : { width: 0 }} animate={{ width: `${p.share}%` }} transition={{ duration: 0.8, delay: 0.1 + i * 0.08, ease: [0.22, 1, 0.36, 1] }} />)}<i style={{ background: "#e9dfcb", flexGrow: 1, minWidth: others > 0 ? 4 : 0 }} /></div>

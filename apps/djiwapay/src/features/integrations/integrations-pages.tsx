@@ -12,6 +12,7 @@ import { createHook, removeHook } from "../../lib/finance/integrations";
 import { AppsScriptSheet, hookStatusText, useHook } from "./apps-script";
 import { NotifSheet, StatementSheet, useNotifState } from "./phone-sources";
 import { ImportScanning } from "./import-scan";
+import { NewTag } from "../shell/new-badge";
 import { ImportPreview } from "./import-preview";
 import { openNotifSettings } from "../../lib/native-notif";
 
@@ -398,11 +399,11 @@ export function IntegrationsPage({ ctx, onBack, onReview }: { ctx: FinCtx; onBac
 
     <div className="dpx-glabel">Catat dari ponsel dan bank</div>
     <Reveal i={2}><div className="dpx-group dpx-white dpx-int">
-      <Row icon="bell" tone="blue" title="Notifikasi ponsel" chev
+      <Row icon="bell" tone="blue" title={<>Notifikasi ponsel<NewTag id="notif-ponsel" /></>} chev
         sub={!phone.supported ? "Di aplikasi Android Djiwa Pay: transaksi m-banking dan e-wallet tercatat dari notifikasinya" : phone.st?.enabled ? `Aktif${phone.cfg?.state ? ` · ${phone.cfg.state.received} notifikasi dibaca, terakhir ${ago(phone.cfg.state.lastAt)}` : " · menunggu notifikasi pertama"}` : "Nyalakan akses notifikasi agar transaksi yang tidak dikirimi email tetap tercatat"}
         trail={!phone.supported ? <Tag tone="later">Android</Tag> : phone.st?.enabled ? <Tag tone="ok">Aktif</Tag> : <Tag tone="warn">Nyalakan</Tag>}
         onClick={() => setSheet("notif")} />
-      <Row icon="receipt" tone="emerald" title="e-Statement bank (PDF)" sub="Unggah statement bulanan dari bank mana pun, dicocokkan dengan catatanmu" onClick={() => setSheet("statement")} />
+      <Row icon="receipt" tone="emerald" title={<>e-Statement bank (PDF)<NewTag id="estatement" /></>} sub="Unggah statement bulanan dari bank mana pun, dicocokkan dengan catatanmu" onClick={() => setSheet("statement")} />
     </div></Reveal>
 
     <div className="dpx-glabel">Google{cal || drive ? <Btn type="button" disabled={busy === "google-all"} onClick={() => void syncAll()}>{busy === "google-all" ? "Menyinkronkan…" : "Sinkronkan"}</Btn> : null}</div>

@@ -119,3 +119,7 @@ Utamakan tugas, pengecualian, dan keputusan. Ringkasan metrik harus bermakna dan
 - [ ] Tidak ada truncation atau overflow yang tidak disengaja.
 - [ ] Aturan transaksi dan data tetap sama.
 - [ ] Pemeriksaan relevan dijalankan dan hasilnya dilaporkan dengan tepat.
+
+## Fitur baru: tanda "Baru"
+
+Setiap fitur baru di Djiwa Pay memakai tanda **Baru** standar (hilang 2 hari setelah orang itu pertama kali melihatnya). Aturan dan cara pakai: [`docs/djiwapay-new-badge.md`](docs/djiwapay-new-badge.md).

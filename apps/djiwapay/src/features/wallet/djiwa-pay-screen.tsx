@@ -18,6 +18,7 @@ import { AssetOverview } from "../kelola/asset-overview";
 import { IntegrationsPage, ReviewPage, useInbound } from "../integrations/integrations-pages";
 import { financeNotes, loadRead, saveRead } from "../../lib/finance/notify";
 import { useDiscoveries } from "../../lib/finance/discoveries-api";
+import { setBadgeProfile, syncSeen } from "../../lib/finance/new-feature";
 import { useNotifSync } from "../integrations/phone-sources";
 import { DiscoveryPage } from "../finance/discoveries";
 import { PayeesPage } from "../finance/payees";
@@ -215,6 +216,7 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   const visibleTransactions = activityFilter === "all" ? transactions : activityFilter === "transfer" ? transactions.filter((entry) => entry.category === "transfer") : transactions.filter((entry) => entry.direction === activityFilter && !entry.direct);
   const fin = useFinance(profile.source_id, transactions);
   const disc = useDiscoveries(fin);
+  useEffect(() => { setBadgeProfile(profile.source_id); void syncSeen(); }, [profile.source_id]);
   const inboundSummary = useInbound();
   const [pwaOpen, setPwaOpen] = useState(false);
   const [accountSub, setAccountSub] = useState<null | "profile" | "security">(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("keamanan") === "1" ? "security" : null));

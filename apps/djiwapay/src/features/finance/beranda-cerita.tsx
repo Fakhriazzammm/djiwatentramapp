@@ -8,6 +8,7 @@ import { FullPage } from "../kelola/asset-ui";
 import { openArticle } from "../../lib/inapp";
 import { NEWS_TOPICS, timeAgo, useNews, type NewsItem } from "../../lib/finance/news";
 import { DiscoveryChip } from "./discoveries";
+import { NewTag } from "../shell/new-badge";
 import { IntegrationNudge, ReviewChip, useInbound } from "../integrations/integrations-pages";
 import { short } from "../kelola/kelola-ui";
 import { budgetStatuses, buildInsights, goalProjection, goalSaved, inMonth, safeToSpend, totals } from "../../lib/finance/calc";
@@ -32,12 +33,12 @@ const MENU: { label: string; icon: IconName; path?: string; news?: boolean; all?
   { label: "Laporan", icon: "chart", path: "/ringkasan" }, { label: "Kalender", icon: "cal", path: "/kalender" }, { label: "Kesehatan", icon: "heart", path: "/kesehatan" }, { label: "Kantong", icon: "pie", path: "/rencana?bagian=kantong" },
   { label: "Tujuan", icon: "target", path: "/rencana?bagian=tujuan" }, { label: "Hutang & tagihan", icon: "users", path: "/kekayaan?bagian=kewajiban" }, { label: "Berita", icon: "book", news: true }, { label: "Lainnya", icon: "grid", all: true },
 ];
-type MenuGroup = { title: string; items: { label: string; sub: string; icon: IconName; path?: string; act?: "news" | "notif" | "catat" }[] };
+type MenuGroup = { title: string; items: { label: string; sub: string; icon: IconName; path?: string; act?: "news" | "notif" | "catat"; /** Id of a new feature: shows the standard "Baru" mark for 2 days after the person first sees it. */ fresh?: string }[] };
 const ALL_MENU: MenuGroup[] = [
-  { title: "Keuangan", items: [{ label: "Laporan", sub: "Ringkasan, kategori, tren, arus uang", icon: "chart", path: "/ringkasan" }, { label: "Penerima", sub: "Ke mana uangmu pergi, dari siapa masuk", icon: "users", path: "/penerima" }, { label: "Kalender tagihan", sub: "Jatuh tempo per tanggal", icon: "cal", path: "/kalender" }, { label: "Kesehatan keuangan", sub: "Skor dan langkah tercepat", icon: "heart", path: "/kesehatan" }, { label: "Prakiraan kas", sub: "Saldo sampai akhir bulan", icon: "trend", path: "/prakiraan" }] },
+  { title: "Keuangan", items: [{ label: "Laporan", sub: "Ringkasan, kategori, tren, arus uang", icon: "chart", path: "/ringkasan" }, { label: "Penerima", sub: "Ke mana uangmu pergi, dari siapa masuk", icon: "users", path: "/penerima", fresh: "payees-page" }, { label: "Kalender tagihan", sub: "Jatuh tempo per tanggal", icon: "cal", path: "/kalender" }, { label: "Kesehatan keuangan", sub: "Skor dan langkah tercepat", icon: "heart", path: "/kesehatan" }, { label: "Prakiraan kas", sub: "Saldo sampai akhir bulan", icon: "trend", path: "/prakiraan" }] },
   { title: "Rencana", items: [{ label: "Anggaran", sub: "Batas per kategori", icon: "chart", path: "/rencana" }, { label: "Kantong", sub: "Bagi pemasukan", icon: "pie", path: "/rencana?bagian=kantong" }, { label: "Tujuan", sub: "Tabungan dan targetnya", icon: "target", path: "/rencana?bagian=tujuan" }, { label: "Alat", sub: "Bisa beli, dana darurat, zakat, cicilan", icon: "grid", path: "/alat" }] },
   { title: "Kekayaan", items: [{ label: "Kekayaan", sub: "Aset, saham, dompet, kewajiban", icon: "wallet", path: "/kekayaan" }, { label: "Hutang & tagihan", sub: "Cicilan, tagihan bulanan, jatuh tempo", icon: "users", path: "/kekayaan?bagian=kewajiban" }, { label: "Foto aset", sub: "Emas, kendaraan, rumah, lainnya", icon: "scan", act: "catat" }] },
-  { title: "Email & catatan", items: [{ label: "Temuan", sub: "Dompet, tagihan, langganan baru", icon: "spark", path: "/temuan" }, { label: "Tinjau email", sub: "Catatan yang perlu dicek", icon: "receipt", path: "/tinjau" }, { label: "Email & Google", sub: "Hubungkan email pembayaran", icon: "link", path: "/integrasi" }, { label: "Catatan", sub: "Semua transaksi", icon: "list", path: "/riwayat" }] },
+  { title: "Email & catatan", items: [{ label: "Temuan", sub: "Dompet, tagihan, langganan baru", icon: "spark", path: "/temuan", fresh: "discoveries-page" }, { label: "Tinjau email", sub: "Catatan yang perlu dicek", icon: "receipt", path: "/tinjau" }, { label: "Email & Google", sub: "Hubungkan email pembayaran", icon: "link", path: "/integrasi" }, { label: "Catatan", sub: "Semua transaksi", icon: "list", path: "/riwayat" }] },
   { title: "Dompet & bayar", items: [{ label: "Isi saldo", sub: "Tambah saldo Djiwa Pay", icon: "plus", path: "/wallet/topup" }, { label: "Kirim", sub: "Transfer ke sesama pengguna", icon: "send", path: "/wallet/transfer" }, { label: "Scan QR", sub: "Bayar dengan QR", icon: "scan", path: "/wallet/transfer?mode=scan" }, { label: "Layanan", sub: "Pulsa, PLN, e-toll, dan lain-lain", icon: "flash", path: "/bayar" }] },
   { title: "Lainnya", items: [{ label: "Berita keuangan", sub: "Emas, ekonomi, saham, kripto", icon: "book", act: "news" }, { label: "Notifikasi", sub: "Email, tagihan, anggaran", icon: "bell", act: "notif" }, { label: "Bantuan", sub: "Pertanyaan umum", icon: "help", path: "/wallet/help" }, { label: "Pengaturan", sub: "Dompet, kategori, data", icon: "shield", path: "/pengaturan" }, { label: "Akun", sub: "Profil dan keluar", icon: "user", path: "/akun" }] },
 ];
@@ -46,7 +47,7 @@ const ALL_MENU: MenuGroup[] = [
 function AllMenuPage({ onBack, run }: { onBack: () => void; run: (i: MenuGroup["items"][number]) => void }) {
   return <FullPage title="Semua menu" onBack={onBack}>
     <div className="dpx-st-npage">{ALL_MENU.map((g) => <div key={g.title} className="dpx-am-g"><div className="dpx-glabel">{g.title}</div>
-      <div className="dpx-st-nlist">{g.items.map((i) => <Btn key={i.label} type="button" className="dpx-st-nrow dpx-am-row" onClick={() => run(i)}><span className="dpx-st-mi" style={{ width: 40, height: 40 }}><Ic n={i.icon} /></span><div><b>{i.label}</b><span className="dpx-sub">{i.sub}</span></div><Ic n="chev" size="sm" /></Btn>)}</div></div>)}</div>
+      <div className="dpx-st-nlist">{g.items.map((i) => <Btn key={i.label} type="button" className="dpx-st-nrow dpx-am-row" onClick={() => run(i)}><span className="dpx-st-mi" style={{ width: 40, height: 40 }}><Ic n={i.icon} /></span><div><b>{i.label}{i.fresh ? <NewTag id={i.fresh} /> : null}</b><span className="dpx-sub">{i.sub}</span></div><Ic n="chev" size="sm" /></Btn>)}</div></div>)}</div>
   </FullPage>;
 }
 const TOPIC_ICON: Record<string, { icon: IconName; tone: string }> = { emas: { icon: "gift", tone: "amber" }, saham: { icon: "chart", tone: "blue" }, kripto: { icon: "flash", tone: "violet" }, ekonomi: { icon: "trend", tone: "emerald" } };
