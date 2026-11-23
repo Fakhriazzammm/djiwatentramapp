@@ -37,7 +37,7 @@ export function ProfileEditPage({ onBack, notify }: { onBack: () => void; notify
     setBusy(true); setErr("");
     try {
       const send = (pin?: string) => api("/account", { method: "PATCH", body: JSON.stringify({ ...changes, ...(pin ? { pin } : {}) }) });
-      const res = "phone" in changes ? await pinGuarded("Ubah nomor telepon", (pin) => send(pin)) : await send();
+      const res = "phone" in changes || "name" in changes ? await pinGuarded("Konfirmasi perubahan data diri", (pin) => send(pin)) : await send();
       const body = await res.json().catch(() => ({}));
       if (!res.ok) { setErr(ERR[body.error] ?? "Belum bisa disimpan. Coba lagi."); return; }
       const fresh = await loadAccount(); setAcc(fresh); setForm(fresh.profile); notify(done);
@@ -50,7 +50,7 @@ export function ProfileEditPage({ onBack, notify }: { onBack: () => void; notify
       <Field id="ac-name" label="Nama lengkap" value={form.name ?? ""} onChange={(v) => set("name", v)} maxLength={80} />
       <Field id="ac-nick" label="Nama panggilan" value={form.nickname ?? ""} onChange={(v) => set("nickname", v)} maxLength={30} clear={() => set("nickname", "")} />
       <Field id="ac-email" label="Email" value={form.email ?? ""} readOnly hint={acc.methods.emailVerified ? "Terverifikasi. Email dipakai untuk masuk dan tidak bisa diubah di sini." : "Email dipakai untuk masuk dan tidak bisa diubah di sini."} />
-      <Field id="ac-phone" label="Nomor WhatsApp / telepon" value={form.phone ?? ""} onChange={(v) => set("phone", v.replace(/[^\d+\s-]/g, ""))} inputMode="tel" maxLength={20} clear={() => set("phone", "")} hint="Mengubah nomor meminta PIN." />
+      <Field id="ac-phone" label="Nomor WhatsApp / telepon" value={form.phone ?? ""} onChange={(v) => set("phone", v.replace(/[^\d+\s-]/g, ""))} inputMode="tel" maxLength={20} clear={() => set("phone", "")} hint="Mengubah nama atau nomor meminta PIN." />
     </Section>
     <Section title="Data pribadi">
       <Field id="ac-birth" label="Tanggal lahir" type="date" value={form.birthDate ?? ""} onChange={(v) => set("birthDate", v)} clear={() => set("birthDate", "")} />

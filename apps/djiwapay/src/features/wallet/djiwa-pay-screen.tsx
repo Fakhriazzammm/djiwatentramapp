@@ -20,6 +20,7 @@ import { financeNotes, loadRead, saveRead } from "../../lib/finance/notify";
 import { useDiscoveries } from "../../lib/finance/discoveries-api";
 import { useNotifSync } from "../integrations/phone-sources";
 import { DiscoveryPage } from "../finance/discoveries";
+import { ProfileSetupSheet } from "../account/profile-setup-sheet";
 import { PinHost } from "../auth/pin-ui";
 import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
 import { IslandHost } from "../shell/island";
@@ -53,7 +54,7 @@ function PpobReceipt({ product, number, serialNumber, reference, onDone }: { pro
 }
 
 /** The wallet screen plus the PIN pad it can ask for from anywhere. */
-export function DjiwaPayScreen(props: Props) { return <><DjiwaPayScreenInner {...props} /><PinHost /><IslandHost /><PwaHost /><InAppBrowserHost /></>; }
+export function DjiwaPayScreen(props: Props) { return <><DjiwaPayScreenInner {...props} /><PinHost /><ProfileSetupSheet onSaved={props.onRefresh} /><IslandHost /><PwaHost /><InAppBrowserHost /></>; }
 
 function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh, onTopup, navigationContext, onNavigate, onPageReady, transitionId, previewOnly = false }: Props) {
   // Host apps (Djiwa Travel) already draw a bottom tab bar around the iframe.

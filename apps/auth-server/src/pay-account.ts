@@ -117,7 +117,11 @@ export function registerPayAccount(d: PayAccountDeps) {
     const put = (col: string, v: unknown) => { vals.push(v); sets.push(`${col} = $${vals.length}`); };
     const cur = (await pool.query("SELECT name, phone FROM pos.customers WHERE source_id = $1 AND is_active = true", [s.userId])).rows[0];
     if (!cur) return json({ success: false, error: "CUSTOMER_NOT_FOUND" }, 404);
-    if ("name" in b) { const n = text(b.name, 80); if (n.length < 2) return json({ success: false, error: "INVALID_NAME" }, 400); put("name", n); }
+    if ("name" in b) {
+      const n = text(b.name, 80); if (n.length < 2) return json({ success: false, error: "INVALID_NAME" }, 400);
+      if (n !== (cur.name ?? "")) { const v = await checkPin(pool, s.userId, b.pin); if (!v.ok) return pinResponse(json, v); }   // a changed name needs the PIN too, like the phone number
+      put("name", n);
+    }
     if ("nickname" in b) put("nickname", text(b.nickname, 30) || null);
     if ("phone" in b) {
       const raw = String(b.phone ?? "").trim(), phone = raw === "" ? null : normalizePhone(raw);
