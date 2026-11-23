@@ -24,6 +24,11 @@ const app = new Hono();
 const MAYAR_PROXY_URL = process.env.MAYAR_PROXY_URL || "";
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
 const MAYAR_DEFAULT_MOBILE = process.env.MAYAR_DEFAULT_MOBILE || "";
+/** Mayar rejects an invoice without a WhatsApp number, and Google sign-ups have no phone. Use the first number that looks like an Indonesian mobile. */
+const mobileFor = (...candidates: unknown[]) => {
+  for (const c of candidates) { const d = String(c ?? "").replace(/\D/g, ""); if (/^(0|62)8\d{8,12}$/.test(d)) return d; }
+  return "";
+};
 const IAK_PPOB_URL = process.env.IAK_PPOB_URL || "";
 const customerOrigins = (process.env.CUSTOMER_ALLOWED_ORIGINS ?? "")
   .split(",")
@@ -964,11 +969,11 @@ app.post("/api/pay-bridge/ppob/invoice", async (c) => {
     [refId, "1", productCode, customerNumber, amount, "Menunggu pembayaran QRIS", JSON.stringify({ source_id: sourceId, payment_status: "pending" })],
   );
   try {
-    const invoice = await fetch(MAYAR_PROXY_URL, { method: "POST", headers: { "Content-Type": "application/json", ...(SUPABASE_ANON_KEY ? { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } : {}) }, body: JSON.stringify({ action: "create-invoice", name: session.customer.name || "Customer Djiwa", email, mobile: session.customer.phone || MAYAR_DEFAULT_MOBILE, redirectUrl: `${PAY_BRIDGE_ORIGIN}/wallet?ppob=success`, description: `Pembelian PPOB ${productCode}`, items: [{ quantity: 1, rate: amount, description: `PPOB ${productCode} · ${customerNumber}` }], extraData: { ppob: true, ppobRefId: refId, productCode, customerNumber, sourceId } }) });
+    const invoice = await fetch(MAYAR_PROXY_URL, { method: "POST", headers: { "Content-Type": "application/json", ...(SUPABASE_ANON_KEY ? { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } : {}) }, body: JSON.stringify({ action: "create-invoice", name: session.customer.name || "Customer Djiwa", email, mobile: mobileFor(session.customer.phone, customerNumber, MAYAR_DEFAULT_MOBILE), redirectUrl: `${PAY_BRIDGE_ORIGIN}/wallet?ppob=success`, description: `Pembelian PPOB ${productCode}`, items: [{ quantity: 1, rate: amount, description: `PPOB ${productCode} · ${customerNumber}` }], extraData: { ppob: true, ppobRefId: refId, productCode, customerNumber, sourceId } }) });
     const payload = await invoice.json().catch(() => ({})) as any;
     const data = payload?.data || {};
     const link = data.link || data.paymentUrl || data.url;
-    if (!invoice.ok || !payload.success || !data.id || !link) throw new Error("INVOICE_FAILED");
+    if (!invoice.ok || !payload.success || !data.id || !link) { console.error("PPOB QRIS invoice failed", invoice.status, JSON.stringify(payload?.error ?? payload?.message ?? "").slice(0, 200)); throw new Error("INVOICE_FAILED"); }
     const invoiceId = String(data.id);
     await pool.query("UPDATE pos.ppob_transactions SET payload = payload || $1::jsonb, message=$2, updated_at=now() WHERE ref_id=$3", [JSON.stringify({ invoice_id: invoiceId, invoice_url: String(link) }), "Menunggu pembayaran QRIS", refId]);
     return privateJson({ success: true, invoiceId, invoiceUrl: String(link), refId, amount, productCode, customerNumber });
