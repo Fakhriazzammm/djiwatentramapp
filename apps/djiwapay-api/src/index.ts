@@ -15,6 +15,7 @@ import { registerRateRoutes } from "./rates/service.js";
 import { makeCategorizer, registerCategorizeRoutes } from "./categorize.js";
 import { registerNewsRoutes } from "./news.js";
 import { registerPushRoutes } from "./push.js";
+import { registerDiscoveryRoutes } from "./discoveries.js";
 export { poolTx };
 import { attachReceipt, confirmReceipt, getReceipt, ReceiptProblem } from "./receipt-records.js";
 import { isEmptyRead, locateReceiptText, readReceipt, type ReceiptRead } from "./receipt.js";
@@ -49,6 +50,7 @@ export function createApp(d: Deps) {
   registerAssetRoutes(app, { db: d.db, dir: d.dir, aiKey: d.aiKey }, uid, json);
   registerNewsRoutes(app, json);
   registerPushRoutes(app, { db: d.db }, uid, json);
+  registerDiscoveryRoutes(app, { db: d.db }, uid, json);
   const google = d.google ?? null, mailDomain = d.mailDomain ?? "";
   // Keep Google in step with what the user just changed, without ever slowing or failing the request.
 

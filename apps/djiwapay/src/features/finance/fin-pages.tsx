@@ -10,6 +10,7 @@ import type { Nav } from "../shell/dpx-pages";
 import { ScopeSwitch } from "./scope-switch";
 import { DayStrip, MonthStrip, dayKey, monthKey, monthRange } from "./day-strip";
 import { TidyBanner } from "./tidy-banner";
+import type { Discoveries } from "../../lib/finance/discoveries-api";
 import { isCrossScope } from "../../lib/finance/scope";
 import { rootId, guessCategory } from "../../lib/finance/categories";
 import { learnRemote, refineEntries } from "../../lib/finance/ai-category";
@@ -44,7 +45,7 @@ export type FinSheet =
 
 export type FinCtx = {
   fin: Finance; notify: Notify; nav: Nav; profile: CustomerProfile; transactions: WalletTransaction[]; payBalance: number; loading: boolean;
-  visible: boolean; onToggleVisible: () => void; unread: number; onOpenNotifications: () => void; open: (s: FinSheet) => void; onPayDetail: (id: string) => void;
+  visible: boolean; onToggleVisible: () => void; unread: number; onOpenNotifications: () => void; open: (s: FinSheet) => void; onPayDetail: (id: string) => void; disc: Discoveries;
 };
 
 const COLORS: Record<string, string> = { orange: "#e8833a", blue: "#d14b1a", violet: "#eeb866", amber: "#d9a21a", rose: "#e0568a", indigo: "#e45825", cyan: "#16a3b8", emerald: "#1f9d62", slate: "#958a7d" };

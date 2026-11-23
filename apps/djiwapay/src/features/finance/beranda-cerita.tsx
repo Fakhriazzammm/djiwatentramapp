@@ -7,6 +7,7 @@ import { CAT_COLORS, DragRow, Donut, GoldSpark, HeatGrid, PaceChart, WealthChart
 import { FullPage } from "../kelola/asset-ui";
 import { openArticle } from "../../lib/inapp";
 import { NEWS_TOPICS, timeAgo, useNews, type NewsItem } from "../../lib/finance/news";
+import { DiscoveryChip } from "./discoveries";
 import { IntegrationNudge, ReviewChip, useInbound } from "../integrations/integrations-pages";
 import { short } from "../kelola/kelola-ui";
 import { budgetStatuses, buildInsights, goalProjection, goalSaved, inMonth, safeToSpend, totals } from "../../lib/finance/calc";
@@ -36,7 +37,7 @@ const ALL_MENU: MenuGroup[] = [
   { title: "Keuangan", items: [{ label: "Laporan", sub: "Ringkasan, kategori, tren, arus uang", icon: "chart", path: "/ringkasan" }, { label: "Kalender tagihan", sub: "Jatuh tempo per tanggal", icon: "cal", path: "/kalender" }, { label: "Kesehatan keuangan", sub: "Skor dan langkah tercepat", icon: "heart", path: "/kesehatan" }, { label: "Prakiraan kas", sub: "Saldo sampai akhir bulan", icon: "trend", path: "/prakiraan" }] },
   { title: "Rencana", items: [{ label: "Anggaran", sub: "Batas per kategori", icon: "chart", path: "/rencana" }, { label: "Kantong", sub: "Bagi pemasukan", icon: "pie", path: "/rencana?bagian=kantong" }, { label: "Tujuan", sub: "Tabungan dan targetnya", icon: "target", path: "/rencana?bagian=tujuan" }, { label: "Alat", sub: "Bisa beli, dana darurat, zakat, cicilan", icon: "grid", path: "/alat" }] },
   { title: "Kekayaan", items: [{ label: "Kekayaan", sub: "Aset, saham, dompet, kewajiban", icon: "wallet", path: "/kekayaan" }, { label: "Hutang & tagihan", sub: "Cicilan, tagihan bulanan, jatuh tempo", icon: "users", path: "/kekayaan?bagian=kewajiban" }, { label: "Foto aset", sub: "Emas, kendaraan, rumah, lainnya", icon: "scan", act: "catat" }] },
-  { title: "Email & catatan", items: [{ label: "Tinjau email", sub: "Catatan yang perlu dicek", icon: "receipt", path: "/tinjau" }, { label: "Email & Google", sub: "Hubungkan email pembayaran", icon: "link", path: "/integrasi" }, { label: "Catatan", sub: "Semua transaksi", icon: "list", path: "/riwayat" }] },
+  { title: "Email & catatan", items: [{ label: "Temuan", sub: "Dompet, tagihan, langganan baru", icon: "spark", path: "/temuan" }, { label: "Tinjau email", sub: "Catatan yang perlu dicek", icon: "receipt", path: "/tinjau" }, { label: "Email & Google", sub: "Hubungkan email pembayaran", icon: "link", path: "/integrasi" }, { label: "Catatan", sub: "Semua transaksi", icon: "list", path: "/riwayat" }] },
   { title: "Dompet & bayar", items: [{ label: "Isi saldo", sub: "Tambah saldo Djiwa Pay", icon: "plus", path: "/wallet/topup" }, { label: "Kirim", sub: "Transfer ke sesama pengguna", icon: "send", path: "/wallet/transfer" }, { label: "Scan QR", sub: "Bayar dengan QR", icon: "scan", path: "/wallet/transfer?mode=scan" }, { label: "Layanan", sub: "Pulsa, PLN, e-toll, dan lain-lain", icon: "flash", path: "/bayar" }] },
   { title: "Lainnya", items: [{ label: "Berita keuangan", sub: "Emas, ekonomi, saham, kripto", icon: "book", act: "news" }, { label: "Notifikasi", sub: "Email, tagihan, anggaran", icon: "bell", act: "notif" }, { label: "Bantuan", sub: "Pertanyaan umum", icon: "help", path: "/wallet/help" }, { label: "Pengaturan", sub: "Dompet, kategori, data", icon: "shield", path: "/pengaturan" }, { label: "Akun", sub: "Profil dan keluar", icon: "user", path: "/akun" }] },
 ];
@@ -140,6 +141,7 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
   const fav = st.fav && st.fav.n >= 2 ? st.fav : null;
 
   return <div className="dpx-st-body">
+    <DiscoveryChip ctx={ctx} />
     <ReviewChip count={inbound.data?.review ?? 0} importReady={inbound.data?.importReady ?? 0} onOpen={() => nav.go("/tinjau")} onOpenImport={() => nav.go("/integrasi?impor=1")} />
     <IntegrationNudge onOpenIntegrations={() => nav.go("/integrasi")} />
     <section className="dpx-st-card dpx-st-menu-card" aria-label="Menu">

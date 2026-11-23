@@ -1,0 +1,59 @@
+/* Temuan: suggestions found in the person's own records. Cards can be swiped; everything that moves respects reduced motion. */
+.dpx-df-hero{position:relative;overflow:hidden;display:flex;align-items:center;gap:16px;margin:4px 0 10px;padding:18px 18px;border-radius:24px;color:#fff;background:linear-gradient(135deg,#2b2620 0%,#4a2a17 60%,#c9461b 140%);box-shadow:var(--float)}
+.dpx-df-orb{flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.14);box-shadow:0 0 0 6px rgba(255,255,255,.07)}
+.dpx-df-orb .dpx-ic{filter:brightness(0) invert(1)}
+.dpx-df-big{display:block;font:700 40px/1 var(--font);letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.dpx-df-hero span:not(.dpx-df-orb){display:block;margin-top:4px;font-size:13px;color:rgba(255,255,255,.78)}
+.dpx-df-scan{position:absolute;inset:0;width:40%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);pointer-events:none}
+.dpx-df-lede{margin:0 6px 14px;font-size:12.5px;line-height:1.5;color:var(--mute)}
+.dpx-df-n{font-style:normal;margin-left:6px;padding:1px 7px;border-radius:999px;background:rgba(43,38,32,.08);font:700 11px var(--font)}
+.dpx-on .dpx-df-n{background:rgba(255,255,255,.22)}
+.dpx-df-bulk{overflow:hidden}
+.dpx-df-all{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;margin:12px 0 2px;border-radius:16px;background:var(--navy);color:#fff;font:700 14.5px var(--font)}
+.dpx-df-all .dpx-ic{filter:brightness(0) invert(1)}
+.dpx-df-all:disabled{opacity:.6}
+.dpx-df-list{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:14px}
+.dpx-df-wrap{position:relative;border-radius:24px}
+.dpx-df-hint{position:absolute;top:0;bottom:0;display:flex;align-items:center;gap:6px;padding:0 20px;border-radius:24px;font:700 13px var(--font)}
+.dpx-df-hint.is-yes{left:0;right:0;justify-content:flex-start;background:var(--ok-soft);color:var(--ok)}
+.dpx-df-hint.is-later{left:0;right:0;justify-content:flex-end;background:var(--warn-soft);color:var(--warn)}
+.dpx-df-card{position:relative;padding:16px 16px 14px;border-radius:24px;background:#fff;box-shadow:var(--soft);touch-action:pan-y;cursor:grab}
+.dpx-df-card::before{content:"";position:absolute;left:0;top:18px;bottom:18px;width:4px;border-radius:0 4px 4px 0;background:var(--blue)}
+.dpx-df-card.k-recurring::before{background:#8a5cc2}.dpx-df-card.k-price::before{background:#d9a21a}.dpx-df-card.k-stopped::before{background:#958a7d}
+.dpx-df-card header{display:flex;align-items:center;gap:12px}
+.dpx-df-card header>div{flex:1;min-width:0}
+.dpx-df-ic{flex:none;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--blue-soft)}
+.dpx-df-ic.t-violet{background:#efe6fa}.dpx-df-ic.t-amber{background:var(--warn-soft)}.dpx-df-ic.t-slate{background:var(--group)}
+.dpx-df-lead{display:block;font:700 11.5px var(--font);letter-spacing:.02em;text-transform:uppercase;color:var(--blue)}
+.dpx-df-card.k-recurring .dpx-df-lead{color:#7448a8}.dpx-df-card.k-price .dpx-df-lead{color:var(--warn)}.dpx-df-card.k-stopped .dpx-df-lead{color:var(--mute)}
+.dpx-df-card h3{margin:2px 0 0;font:700 17px/1.25 var(--font);color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dpx-df-amt{flex:none;font:700 15px var(--font);font-variant-numeric:tabular-nums;color:var(--ink)}
+.dpx-df-card p{margin:10px 0 0;font-size:13.5px;line-height:1.5;color:var(--mute)}
+.dpx-df-diff{display:flex;align-items:center;gap:8px;margin-top:10px;font:600 14px var(--font);font-variant-numeric:tabular-nums}
+.dpx-df-diff s{color:var(--faint)}.dpx-df-diff b{color:var(--warn)}
+.dpx-df-proof{display:flex;align-items:flex-end;gap:10px;height:74px;margin-top:12px;padding:10px 12px 6px;border-radius:14px;background:var(--group)}
+.dpx-df-bar{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;min-width:0}
+.dpx-df-bar i{display:block;width:100%;max-width:34px;height:calc(100% - 16px);border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,var(--blue),#e8833a);transform-origin:bottom}
+.dpx-df-card.k-recurring .dpx-df-bar i{background:linear-gradient(180deg,#8a5cc2,#b79be0)}
+.dpx-df-bar span{font-size:10px;color:var(--mute);white-space:nowrap}
+.dpx-df-card footer{display:flex;gap:8px;margin-top:14px}
+.dpx-df-card footer button{min-height:44px;border-radius:14px;font:700 13.5px var(--font);padding:0 14px;white-space:nowrap}
+.dpx-df-go{flex:1;min-width:0;background:var(--navy);color:#fff;overflow:hidden;text-overflow:ellipsis}
+.dpx-df-ghost{background:var(--group);color:var(--ink)}
+.dpx-df-no{background:transparent;color:var(--mute);padding:0 8px!important}
+.dpx-df-card footer button:disabled{opacity:.5}
+.dpx-df-merge{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.dpx-df-opt{position:relative;display:flex;align-items:center;gap:10px;min-height:48px;padding:0 14px;border-radius:14px;background:var(--group);color:var(--ink);font:600 14px var(--font);text-align:left;box-shadow:inset 0 0 0 1.5px transparent;transition:box-shadow .15s,background .15s}
+.dpx-df-opt span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dpx-df-opt.is-on{background:var(--blue-soft);box-shadow:inset 0 0 0 1.5px var(--blue)}
+.dpx-df-opt i{display:grid;place-items:center}
+.dpx-df-review{display:flex;align-items:center;gap:12px;width:100%;margin-top:20px;padding:14px;border-radius:20px;background:#fff;box-shadow:var(--soft);text-align:left}
+.dpx-df-review span:nth-child(2){flex:1;min-width:0}
+.dpx-df-review b{display:block;font:700 14.5px var(--font);color:var(--ink)}
+.dpx-df-review small{display:block;margin-top:2px;font-size:12px;line-height:1.4;color:var(--mute)}
+.dpx-df-rc{flex:none;min-width:34px;height:34px;padding:0 8px;border-radius:17px;display:grid;place-items:center;background:var(--blue);color:#fff;font:700 13px var(--font)}
+.dpx-df-done{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;background:var(--ok-soft);margin-bottom:8px}
+.dpx-df-chip .dpx-rc-dot{position:relative}
+.dpx-df-pulse{position:absolute;inset:0;border-radius:50%;background:var(--blue);pointer-events:none;z-index:0}
+.dpx-df-chip .dpx-rc-dot .dpx-ic{position:relative;z-index:1}
+@media (prefers-reduced-motion:reduce){.dpx-df-card{cursor:default}}

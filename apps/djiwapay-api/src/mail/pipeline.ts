@@ -68,7 +68,11 @@ const bump = (q: Q, userId: string) => q.query("insert into finance.profiles(use
 const accountIdFor = (issuer: Issuer, hint: string) => `email-${issuer.id}${hint ? "-" + hint : ""}`;
 async function ensureAccount(q: Q, userId: string, issuer: Issuer, hint: string) {
   const id = accountIdFor(issuer, hint);
-  await q.query("insert into finance.accounts(user_id,id,name,type,opening) values($1,$2,$3,$4,0) on conflict do nothing", [userId, id, `${issuer.name}${hint ? " ••" + hint : ""}`, issuer.kind === "bank" ? "bank" : issuer.kind === "ewallet" ? "ewallet" : "other"]);
+  const alias = (await q.query("select to_id from finance.account_alias where user_id=$1 and from_id=$2", [userId, id]))?.rows?.[0]?.to_id as string | undefined;
+  if (alias) return alias;   // the person merged this wallet into another one
+  const made = await q.query("insert into finance.accounts(user_id,id,name,type,opening) values($1,$2,$3,$4,0) on conflict do nothing returning id", [userId, id, `${issuer.name}${hint ? " ••" + hint : ""}`, issuer.kind === "bank" ? "bank" : issuer.kind === "ewallet" ? "ewallet" : "other"]);
+  // A wallet that did not exist before is a discovery: tell the person once so they can keep, rename or merge it ("Temuan").
+  if (made?.rows?.[0]) void notifyUser(q, userId, { id: `disc-${id}`.slice(0, 60), tone: "info", label: "Temuan baru", title: hint ? `Rekening baru: ${issuer.name} ••${hint}` : `${issuer.kind === "ewallet" ? "E-wallet" : "Dompet"} baru: ${issuer.name}`, message: "Dibuat dari email pembayaran. Ketuk untuk menyimpan, mengganti nama, atau menggabungkan.", route: "/temuan", at: new Date().toISOString() });
   return id;
 }
 

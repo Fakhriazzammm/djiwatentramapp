@@ -17,6 +17,8 @@ import { CalendarPage, ForecastPage, HealthPage, ToolsPage } from "../kelola/kel
 import { AssetOverview } from "../kelola/asset-overview";
 import { IntegrationsPage, ReviewPage, useInbound } from "../integrations/integrations-pages";
 import { financeNotes, loadRead, saveRead } from "../../lib/finance/notify";
+import { useDiscoveries } from "../../lib/finance/discoveries-api";
+import { DiscoveryPage } from "../finance/discoveries";
 import { PinHost } from "../auth/pin-ui";
 import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
 import { IslandHost } from "../shell/island";
@@ -206,11 +208,12 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   const transactions: WalletTransaction[] = wallet?.transactions?.length ? wallet.transactions : legacyTransactions;
   const visibleTransactions = activityFilter === "all" ? transactions : activityFilter === "transfer" ? transactions.filter((entry) => entry.category === "transfer") : transactions.filter((entry) => entry.direction === activityFilter && !entry.direct);
   const fin = useFinance(profile.source_id, transactions);
+  const disc = useDiscoveries(fin);
   const inboundSummary = useInbound();
   const [pwaOpen, setPwaOpen] = useState(false);
   const [accountSub, setAccountSub] = useState<null | "profile" | "security">(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("keamanan") === "1" ? "security" : null));
   const [localRead, setLocalRead] = useState<Set<string>>(() => loadRead(profile.source_id));
-  const finNotes = useMemo(() => financeNotes(fin.state, fin.entries, inboundSummary.data, new Date()), [fin.state, fin.entries, inboundSummary.data]);
+  const finNotes = useMemo(() => financeNotes(fin.state, fin.entries, inboundSummary.data, new Date(), disc.items.length), [fin.state, fin.entries, inboundSummary.data, disc.items.length]);
   const allNotifications = useMemo<WalletNotification[]>(() => [...finNotes.map((n) => ({ id: n.id, title: n.title, message: n.message, notification_type: n.notification_type, created_at: n.created_at, unread: !localRead.has(n.id), action_payload: { route: n.route } })), ...walletNotifications].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)), [finNotes, localRead, walletNotifications]);
   // On opening the app, money that moved and things that need a look appear one after another as an island banner.
   const islandStarted = useRef(false), islandSeen = useRef<Set<string>>(new Set());
@@ -569,7 +572,7 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
     openService: (key, label) => { if (previewOnly && key !== "pulsa") { /* catalog calls are read-only; allow browsing */ } openPpob(key, label); },
     openSheet: (name) => setShell(name),
   };
-  const finCtx: FinCtx = { fin, notify, nav: payNav, profile, transactions, payBalance: balance, loading, visible, onToggleVisible: toggleVisible, unread: unreadCount, onOpenNotifications: openNotifications, open: setFsheet, onPayDetail: openTx };
+  const finCtx: FinCtx = { fin, notify, nav: payNav, profile, transactions, payBalance: balance, loading, visible, onToggleVisible: toggleVisible, unread: unreadCount, onOpenNotifications: openNotifications, open: setFsheet, onPayDetail: openTx, disc };
   const goManual = (kind: "out" | "in" | "tf", editId?: string) => goPayRoute(`/catat?${editId ? `edit=${encodeURIComponent(editId)}` : `kind=${kind}`}`);
   const sheets = <AnimatePresence>
     {shell === "pay" ? <PaySheet key="pay" nav={payNav} onClose={() => setShell(null)} withdrawSupported={withdrawAction.supported} /> : null}
@@ -596,6 +599,7 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   if (walletRoute?.page === "account") return frameShell(<><AccountPage onOpenApp={() => setPwaOpen(true)} onOpenProfile={() => setAccountSub("profile")} onOpenSecurity={() => setAccountSub("security")} profile={profile} unread={unreadCount} customerHome={customerHome} embedded={embedded} onBack={() => goBack("/")} nav={payNav} onOpenNotifications={openNotifications} />{pwaOpen ? <PwaSheet onClose={() => setPwaOpen(false)} notify={(t) => notify(t)} /> : null}</>, null);
   if (walletRoute?.page === "settings") return frameShell(<FinSettings ctx={finCtx} onBack={() => goBack("/akun")} />, null);
   if (walletRoute?.page === "integrations") return frameShell(<IntegrationsPage ctx={finCtx} onBack={() => goBack("/pengaturan")} onReview={() => goPayRoute("/tinjau")} />, null);
+  if (walletRoute?.page === "discoveries") return frameShell(<DiscoveryPage ctx={finCtx} onBack={() => goBack("/")} onOpenReview={() => goPayRoute("/tinjau")} />, "home");
   if (walletRoute?.page === "review") return frameShell(<ReviewPage ctx={finCtx} onBack={() => goBack("/")} onOpenIntegrations={() => goPayRoute("/integrasi")} />, "home");
   if (walletRoute?.page === "catat") { const editId = paySearchParams.get("edit") ?? undefined; const k = paySearchParams.get("kind"); return frameShell(<ManualForm key={editId ?? k ?? "new"} ctx={finCtx} editId={editId} initialKind={k === "in" || k === "tf" ? k : undefined} onDone={() => { if (window.history.length > 1) window.history.back(); else goPayRoute("/"); }} />, null); }
   if (notificationsOpen) return frameShell(<NotificationsPage items={allNotifications} loading={notificationsLoading} busy={notificationsBusy} feed={<CeritaTab ctx={finCtx} />} onBack={() => { onNavigate("Kembali ke Saldo Djiwa Pay"); setNotificationsOpen(false); }} onRead={async (notification) => { const route = notification.action_payload?.route; if (route) { readLocal([notification.id]); setNotificationsOpen(false); payNav.go(route); return; } if (notification.unread) { await markWalletNotificationRead(notification.id); await refreshWalletNotifications(); } }} onReadAll={async () => { setNotificationsBusy(true); try { readLocal(finNotes.map((n) => n.id)); await markAllWalletNotificationsRead(); await refreshWalletNotifications(); } finally { setNotificationsBusy(false); } }} />, null);
