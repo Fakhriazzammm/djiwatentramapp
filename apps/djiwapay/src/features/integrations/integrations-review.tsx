@@ -7,6 +7,7 @@ import { rupiah } from "../../lib/djiwa-pay-format";
 import { monthLabel } from "../../lib/djiwa-pay-summary";
 import { CHANNEL_NAME, approveItem, approveReviewGroup, bulkReview, getReview, getReviewGroups, rejectItem, rejectReviewGroup, rereadItem, type ReviewGroup, type ReviewItem } from "../../lib/finance/integrations";
 import { PaymentDetails } from "./payment-details";
+import { ProcessingOverlay, type Proc } from "./review-progress";
 import { tidyTitle } from "../../lib/finance/review-format";
 import "./integrations-review.css";
 
@@ -31,6 +32,19 @@ const isGeneric = (it: ReviewItem) => Boolean(it.parsed.generic) && !it.parsed.k
 const moveAmount = (it: ReviewItem) => it.parsed.transfer?.amount ?? it.parsed.amount ?? 0;
 const sourceOf = (it: ReviewItem) => `${CHANNEL_NAME[it.channel] ?? it.parsed.issuer ?? "Email"}${it.parsed.accountHint ? ` ••${it.parsed.accountHint}` : ""}`;
 const needsLook = (it: ReviewItem) => Boolean(it.parsed.flags?.length) || (it.parsed.categoryId ?? "lainnya") === "lainnya";
+
+/** Shows the processing overlay while `fn` runs, then a short confirmation. `tick` reports how far a multi-step job is. */
+async function withProc<T>(set: (p: Proc | null) => void, label: string, total: number, fn: (tick: (done: number) => void) => Promise<T>, doneText: (r: T) => string | null): Promise<T> {
+  set({ label, done: 0, total, phase: "run" });
+  const started = Date.now();
+  try {
+    const r = await fn((done) => set({ label, done, total, phase: "run" }));
+    const text = doneText(r);
+    await new Promise((res) => setTimeout(res, Math.max(0, 650 - (Date.now() - started))));   // a job that finishes at once still shows itself
+    if (text) { set({ label, done: total, total, phase: "done", doneText: text }); await new Promise((res) => setTimeout(res, 850)); }
+    return r;
+  } finally { set(null); }
+}
 
 /* ---------- one row ---------- */
 function Row({ item, ctx, selecting, selected, onToggle, onOpen, onQuick, busy }: { item: ReviewItem; ctx: FinCtx; selecting: boolean; selected: boolean; onToggle: () => void; onOpen: () => void; onQuick: () => void; busy: boolean }) {
@@ -59,11 +73,11 @@ function DetailSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: Fi
   const [note, setNote] = useState(tidyTitle(p.details?.description || p.merchant || p.subject || ""));
   const [cat, setCat] = useState(generic && kind === "in" ? "bonus" : p.categoryId ?? (kind === "in" ? "bonus" : "lainnya"));   // a guessed spending category must not ride along with income
   const [account, setAccount] = useState(p.accountId ?? "tunai");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(false), [proc, setProc] = useState<Proc | null>(null);
   const [detail, setDetail] = useState(Boolean(p.details?.items?.length));
   const cats = state.categories.filter((c) => c.income === (kind === "in")), accounts = state.accounts.filter((a) => !a.archived);
   const accountOptions = accounts.some((a) => a.id === account) ? accounts : [...accounts, { id: account, name: accName(state, account) } as (typeof accounts)[number]];
-  const act = async (fn: () => Promise<unknown>, done: string) => { setBusy(true); try { await fn(); await onDone(done); } catch { ctx.notify("Gagal memproses. Datanya tetap aman. Coba lagi."); } finally { setBusy(false); } };
+  const act = async (fn: () => Promise<unknown>, done: string) => { setBusy(true); try { await withProc(setProc, "Memproses…", 1, async () => { await fn(); }, () => done); await onDone(done); } catch { ctx.notify("Gagal memproses. Datanya tetap aman. Coba lagi."); } finally { setBusy(false); } };
   const approve = () => act(async () => { await approveItem(item.id, { amount: Number(amount), kind: kind ?? undefined, categoryId: cat, accountId: account, note: note || undefined }); await ctx.fin.retrySync(); }, `${note || "Catatan"} ${rupiah(Number(amount))} tercatat`);
   return <Sheet title="Tinjau catatan" onClose={onClose}>
     <div className="dpx-rv-hero"><CatIcon cat={catOf(state, cat)} size={56} /><div><b>{tidyTitle(p.details?.description || p.merchant || p.subject || "Email pembayaran")}</b><span>{sourceOf(item)}{p.at ? ` · ${new Date(p.at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}, ${timeOf(p.at)}` : ""}</span></div></div>
@@ -93,6 +107,7 @@ function DetailSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: Fi
       <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} disabled={busy} onClick={() => void act(() => rejectItem(item.id), "Email diabaikan")}>Abaikan</Btn>
       <Btn type="button" className="dpx-btn" style={{ margin: 0 }} disabled={busy || !(Number(amount) > 0) || (generic && !kind)} onClick={() => void approve()}>{busy ? "Memproses…" : generic && !kind ? "Pilih jenis dulu" : "Setujui"}</Btn>
     </div>
+  <ProcessingOverlay proc={proc} />
   </Sheet>;
 }
 
@@ -100,8 +115,8 @@ function DetailSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: Fi
 function BillSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: FinCtx; onClose: () => void; onDone: (message: string) => Promise<void> }) {
   const p = item.parsed;
   const [name, setName] = useState(p.merchant ?? CHANNEL_NAME[item.channel] ?? "Tagihan"), [amount, setAmount] = useState(String(Math.round(p.amount ?? 0))), [due, setDue] = useState(p.due ?? "");
-  const [busy, setBusy] = useState(false);
-  const act = async (fn: () => Promise<unknown>, done: string) => { setBusy(true); try { await fn(); await ctx.fin.retrySync(); await onDone(done); } catch { ctx.notify("Gagal memproses. Datanya tetap aman. Coba lagi."); } finally { setBusy(false); } };
+  const [busy, setBusy] = useState(false), [proc, setProc] = useState<Proc | null>(null);
+  const act = async (fn: () => Promise<unknown>, done: string) => { setBusy(true); try { await withProc(setProc, "Memproses…", 1, async () => { await fn(); await ctx.fin.retrySync(); }, () => done); await onDone(done); } catch { ctx.notify("Gagal memproses. Datanya tetap aman. Coba lagi."); } finally { setBusy(false); } };
   return <Sheet title="Tagihan dari email" onClose={onClose}>
     <div className="dpx-rv-hero"><CatIcon cat={catOf(ctx.fin.state, "tagihan")} size={56} /><div><b>Tagihan {name}</b><span>{p.issuer ?? "Email"} · jatuh tempo {dueLabel(due || null)}</span></div></div>
     <div className="dpx-note dpx-info" style={{ marginTop: 0 }}><Ic n="info" /><div><b>Belum dibayar, jadi belum jadi pengeluaran.</b> Setelah kamu setujui, tagihan ini masuk ke Kekayaan → Kewajiban → Tagihan bulanan, lengkap dengan jatuh tempo dan pengingat. Saat pembayarannya tercatat dari email, bulan itu otomatis ditandai lunas.</div></div>
@@ -114,6 +129,7 @@ function BillSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: FinC
       <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} disabled={busy} onClick={() => void act(() => rejectItem(item.id), "Email diabaikan")}>Abaikan</Btn>
       <Btn type="button" className="dpx-btn" style={{ margin: 0 }} disabled={busy || !(Number(amount) > 0) || !name.trim()} onClick={() => void act(() => approveItem(item.id, { amount: Number(amount), note: name.trim(), at: due || undefined }), `Tagihan ${name.trim()} masuk ke Tagihan bulanan`)}>{busy ? "Memproses…" : "Jadikan tagihan"}</Btn>
     </div>
+  <ProcessingOverlay proc={proc} />
   </Sheet>;
 }
 
@@ -192,18 +208,17 @@ function GroupRow({ g, ctx, onOpen }: { g: ReviewGroup; ctx: FinCtx; onOpen: () 
 function GroupSheet({ g, ctx, onClose, onApproved, onRejected }: { g: ReviewGroup; ctx: FinCtx; onClose: () => void; onApproved: (result: Result) => Promise<void>; onRejected: (n: number) => Promise<void> }) {
   const state = ctx.fin.state;
   const [cat, setCat] = useState(g.categoryId);
-  const [busy, setBusy] = useState(false), [confirmReject, setConfirmReject] = useState(false);
+  const [busy, setBusy] = useState(false), [confirmReject, setConfirmReject] = useState(false), [proc, setProc] = useState<Proc | null>(null);
   const cats = state.categories.filter((c) => c.income === (g.kind === "in"));
   const ready = g.count - g.flagged;
   const approve = async () => {
     setBusy(true);
     try {
-      const r = await approveReviewGroup(g.key, cat);
-      await ctx.fin.retrySync();
+      const r = await withProc(setProc, `Mencatat ${ready} transaksi ${g.name}…`, 1, async () => { const x = await approveReviewGroup(g.key, cat); await ctx.fin.retrySync(); return x; }, (x) => `${x.approved} transaksi dicatat`);
       await onApproved({ count: r.approved, income: r.income, expense: r.expense, uncategorised: cat === "lainnya" ? r.approved : 0, remaining: 0, months: r.months });
     } catch { ctx.notify("Gagal memproses. Datanya tetap aman. Coba lagi."); } finally { setBusy(false); }
   };
-  const reject = async () => { setBusy(true); try { const r = await rejectReviewGroup(g.key); await onRejected(r.rejected); } catch { ctx.notify("Gagal memproses. Coba lagi."); } finally { setBusy(false); } };
+  const reject = async () => { setBusy(true); try { const r = await withProc(setProc, "Mengabaikan…", 1, () => rejectReviewGroup(g.key), (x) => `${x.rejected} email diabaikan`); await onRejected(r.rejected); } catch { ctx.notify("Gagal memproses. Coba lagi."); } finally { setBusy(false); } };
   return <Sheet title="Satu toko, sekali putus" onClose={onClose}>
     <div className="dpx-rv-hero"><CatIcon cat={catOf(state, cat)} size={56} /><div><b>{tidyTitle(g.name)}</b><span>{g.count} transaksi{span(g) ? ` · ${span(g)}` : ""} · {g.kind === "in" ? "+" : "−"}{rupiah(g.total)}</span></div></div>
     <div className="dpx-group dpx-white dpx-flush">{g.sample.map((x, i) => <div key={i} className="dpx-kv"><span>{x.at ? new Date(x.at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "Tanggal belum terbaca"}</span><b>{g.kind === "in" ? "+" : "−"}{rupiah(x.amount)}</b></div>)}{g.count > g.sample.length ? <div className="dpx-kv"><span>dan {g.count - g.sample.length} transaksi lain</span><b /></div> : null}</div>
@@ -216,7 +231,8 @@ function GroupSheet({ g, ctx, onClose, onApproved, onRejected }: { g: ReviewGrou
       <Btn type="button" className="dpx-btn dpx-soft" style={{ margin: 0 }} disabled={busy} onClick={() => setConfirmReject(true)}>Abaikan</Btn>
       <Btn type="button" className="dpx-btn" style={{ margin: 0 }} disabled={busy || ready <= 0} onClick={() => void approve()}>{busy ? "Mencatat…" : `Catat ${ready} transaksi`}</Btn>
     </div>
-  </Sheet>;
+    <ProcessingOverlay proc={proc} />
+    </Sheet>;
 }
 
 /* ---------- what just happened ---------- */
@@ -261,7 +277,7 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
   const [selecting, setSelecting] = useState(false), [selected, setSelected] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null), [confirm, setConfirm] = useState<"approve" | "reject" | null>(null);
   const [done, setDone] = useState<{ count: number; y: number; m: number } | null>(null);
-  const [result, setResult] = useState<Result | null>(null);
+  const [result, setResult] = useState<Result | null>(null), [proc, setProc] = useState<Proc | null>(null);
   const [view, setView] = useState<"toko" | "hari">("toko");
   const [shops, setShops] = useState<ReviewGroup[]>([]), [groupedItems, setGroupedItems] = useState(0), [groupsLoading, setGroupsLoading] = useState(true), [openGroup, setOpenGroup] = useState<string | null>(null);
   const loadGroups = useCallback(async () => { setGroupsLoading(true); try { const r = await getReviewGroups(); setShops(r.groups); setGroupedItems(r.groupedItems); setError(false); } catch { setError(true); } finally { setGroupsLoading(false); } }, []);
@@ -290,32 +306,42 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
   const toggle = (id: string) => setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const leaveSelect = () => { setSelecting(false); setSelected(new Set()); setConfirm(null); };
 
+  // The selection must always point at records that still exist: after a refresh a stale id would leave "49 dipilih" on an empty list.
+  useEffect(() => {
+    if (!selecting || loading) return;
+    const present = new Set(items.map((i) => i.id));
+    setSelected((prev) => { const n = new Set([...prev].filter((id) => present.has(id))); return n.size === prev.size ? prev : n; });
+    if (!items.length) { setSelecting(false); setConfirm(null); }
+  }, [items, selecting, loading]);
+
   const quick = async (it: ReviewItem) => {
     if (busy) return; setBusy(true);
     try {
       if (isBill(it)) {
-        await approveItem(it.id, { amount: it.parsed.amount, note: it.parsed.merchant, at: it.parsed.due ?? undefined });
-        await ctx.fin.retrySync(); await load();
+        await withProc(setProc, "Menyimpan tagihan…", 1, async () => { await approveItem(it.id, { amount: it.parsed.amount, note: it.parsed.merchant, at: it.parsed.due ?? undefined }); await ctx.fin.retrySync(); await load(); }, () => "Masuk ke Tagihan");
         ctx.notify(`${titleOf(it)} ${rupiah(it.parsed.amount ?? 0)} masuk ke Tagihan`);
         return;
       }
-      const r = await approveItem(it.id, { amount: isMove(it) ? moveAmount(it) : it.parsed.amount, kind: kindOf(it), categoryId: it.parsed.categoryId, accountId: it.parsed.accountId });
-      await ctx.fin.retrySync(); markDone([it]); await load();
+      const r = await withProc(setProc, "Mencatat…", 1, async () => { const x = await approveItem(it.id, { amount: isMove(it) ? moveAmount(it) : it.parsed.amount, kind: kindOf(it), categoryId: it.parsed.categoryId, accountId: it.parsed.accountId }); await ctx.fin.retrySync(); markDone([it]); await load(); return x; }, () => "Tercatat");
       ctx.notify(`${titleOf(it)} ${rupiah(it.parsed.amount ?? 0)} tercatat`, () => ctx.fin.dispatch({ type: "entry/delete", id: r.entryId }));
     } catch { ctx.notify("Gagal memproses. Coba lagi."); } finally { setBusy(false); }
   };
   const run = async (action: "approve" | "reject") => {
     if (busy) return; setBusy(true); setConfirm(null);
     try {
-      const ids = chosen.filter((i) => action === "reject" || ((i.parsed.amount ?? 0) > 0 && !isGeneric(i) && !i.parsed.loanMail && !isBill(i))).map((i) => i.id), results: { id: string; ok: boolean }[] = [];
-      for (let at = 0; at < ids.length; at += 200) results.push(...(await bulkReview(ids.slice(at, at + 200), action)).results);
-      const ok = new Set(results.filter((x) => x.ok).map((x) => x.id));
-      setSelected((prev) => new Set([...prev].filter((id) => !ok.has(id))));
-      await ctx.fin.retrySync();
-      if (action === "approve") { const okItems = chosen.filter((i) => ok.has(i.id)); markDone(okItems); if (okItems.length) setResult(resultOf(okItems, total - okItems.length)); }
-      await load();
-      ctx.notify(`${ok.size} ${action === "approve" ? "disetujui" : "diabaikan"}${ok.size < ids.length ? `; ${ids.length - ok.size} belum diproses, periksa kembali` : ""}`);
-      if (ok.size === ids.length) leaveSelect();
+      const ids = chosen.filter((i) => action === "reject" || ((i.parsed.amount ?? 0) > 0 && !isGeneric(i) && !i.parsed.loanMail && !isBill(i))).map((i) => i.id);
+      const okIds = await withProc(setProc, action === "approve" ? `Menyetujui ${ids.length} transaksi…` : `Mengabaikan ${ids.length} email…`, ids.length, async (tick) => {
+        const results: { id: string; ok: boolean }[] = [];
+        for (let at = 0; at < ids.length; at += 100) { results.push(...(await bulkReview(ids.slice(at, at + 100), action)).results); tick(Math.min(ids.length, at + 100)); }
+        const ok = new Set(results.filter((x) => x.ok).map((x) => x.id));
+        await ctx.fin.retrySync();
+        if (action === "approve") { const okItems = chosen.filter((i) => ok.has(i.id)); markDone(okItems); if (okItems.length) setResult(resultOf(okItems, total - okItems.length)); }
+        await load();
+        return ok;
+      }, (ok) => `${ok.size} ${action === "approve" ? "transaksi dicatat" : "email diabaikan"}`);
+      setSelected((prev) => new Set([...prev].filter((id) => !okIds.has(id))));
+      ctx.notify(`${okIds.size} ${action === "approve" ? "disetujui" : "diabaikan"}${okIds.size < ids.length ? `; ${ids.length - okIds.size} belum diproses, periksa kembali` : ""}`);
+      if (okIds.size === ids.length) leaveSelect();
     } catch { ctx.notify("Gagal memproses pilihan. Muat ulang sebelum mencoba lagi."); await load(); } finally { setBusy(false); }
   };
 
@@ -339,13 +365,14 @@ export function ReviewPage({ ctx, onBack, onOpenIntegrations }: { ctx: FinCtx; o
     {view === "hari" && !loading && items.length < total ? <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => void load(true)}>Muat berikutnya · {items.length} dari {total}</Btn> : null}
     {!loading && !error && !items.length ? <div className="dpx-empty" style={{ paddingTop: 56 }}><Ic n="check" size="lg" /><b>Semua sudah ditinjau</b><p>Pembayaran berikutnya dari email muncul di sini bila perlu dicek.</p><Btn type="button" className="dpx-btn dpx-ghost" style={{ maxWidth: 260 }} onClick={onOpenIntegrations}>Atur email pembayaran</Btn></div> : null}
 
-    <AnimatePresence>{selecting && view === "hari" ? <motion.div key="bar" className="dpx-rv-bar" initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }} transition={spring}>
+    <AnimatePresence>{selecting && view === "hari" && items.length > 0 ? <motion.div key="bar" className="dpx-rv-bar" initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }} transition={spring}>
       <Btn type="button" className="dpx-rv-all" disabled={busy || !items.length} onClick={() => setSelected(items.every((x) => selected.has(x.id)) ? new Set() : new Set(items.map((x) => x.id)))}>{items.every((x) => selected.has(x.id)) ? "Batal semua" : "Pilih semua"}</Btn>
       <span className="dpx-rv-count">{selected.size ? `${selected.size} dipilih` : "Belum ada dipilih"}</span>
       <Btn type="button" className="dpx-rv-soft" disabled={busy || !chosen.length} onClick={() => setConfirm("reject")}>Abaikan</Btn>
       <Btn type="button" className="dpx-rv-go" disabled={busy || !approvable.length} onClick={() => setConfirm("approve")}>Setujui{approvable.length ? ` ${approvable.length}` : ""}</Btn>
     </motion.div> : null}</AnimatePresence>
 
+    <ProcessingOverlay proc={proc} />
     <AnimatePresence>
       {confirm ? <Sheet key="confirm" title={confirm === "approve" ? "Setujui yang dipilih?" : "Abaikan yang dipilih?"} onClose={() => setConfirm(null)}>
         <p className="dpx-sub" style={{ marginTop: -6 }}>{confirm === "approve" ? `${approvable.length} transaksi dicatat sesuai nominal, kategori, dan dompet yang tampil di daftar.${chosen.length > approvable.length && chosen.some(isGeneric) ? ` ${chosen.filter(isGeneric).length} dari pengirim baru tidak ikut: pilih pemasukan atau pengeluaran satu per satu.` : ""}` : `${chosen.length} email tidak akan dicatat.`}</p>

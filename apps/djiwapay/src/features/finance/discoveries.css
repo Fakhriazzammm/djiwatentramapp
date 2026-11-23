@@ -178,3 +178,22 @@
 .dpx-tidycard .in{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;background:var(--warn-soft);box-shadow:inset 0 0 0 1px rgba(160,93,0,.14)}
 .dpx-tidycard .q{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#fff;color:var(--warn);font:600 18px var(--font)}
 .dpx-tidycard .t{flex:1;min-width:0}.dpx-tidycard b{display:block;font:600 14px var(--font);color:var(--ink)}.dpx-tidycard small{display:block;margin-top:2px;font-size:12px;line-height:1.35;color:var(--mute)}
+
+/* Memproses setujui / abaikan */
+.dpx-proc{position:fixed;inset:0;z-index:300;display:grid;place-items:center;background:rgba(43,38,32,.38);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);min-height:0!important}
+.dpx-proc-card{width:min(300px,calc(100vw - 48px));padding:22px 20px 20px;border-radius:26px;background:#fff;box-shadow:0 20px 50px rgba(43,38,32,.3);text-align:center}
+.dpx-proc .run,.dpx-proc .ok{display:flex;flex-direction:column;align-items:center;gap:10px}
+.dpx-proc b{font:600 15px var(--font);color:var(--ink)}
+.dpx-proc .n{font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums}.dpx-proc .n em{font-style:normal;font-weight:600;color:var(--ink)}
+.dpx-proc .ledger{position:relative;width:96px;height:64px;margin-bottom:2px}
+.dpx-proc .ledger i{position:absolute;left:0;right:0;height:14px;border-radius:7px;background:var(--blue-soft);box-shadow:inset 0 0 0 1.5px rgba(201,70,27,.3);animation:dpx-proc-row 1.5s ease-in infinite}
+.dpx-proc .ledger i:nth-child(1){top:0;animation-delay:0s}.dpx-proc .ledger i:nth-child(2){top:0;animation-delay:.5s}.dpx-proc .ledger i:nth-child(3){top:0;animation-delay:1s}
+.dpx-proc .ledger u{position:absolute;left:-4px;right:-4px;bottom:0;height:18px;border-radius:9px;background:var(--navy);animation:dpx-proc-box 1.5s ease-in-out infinite}
+@keyframes dpx-proc-row{0%{transform:translateY(-6px) scale(.9);opacity:0}15%{opacity:1;transform:translateY(0) scale(1)}70%{opacity:1;transform:translateY(42px) scale(.96)}100%{opacity:0;transform:translateY(50px) scale(.8)}}
+@keyframes dpx-proc-box{0%,100%{transform:scaleY(1)}70%{transform:scaleY(1.12)}}
+.dpx-proc .bar{position:relative;width:100%;height:8px;border-radius:4px;background:rgba(43,38,32,.1);overflow:hidden}
+.dpx-proc .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .5s cubic-bezier(.22,1,.36,1);background:repeating-linear-gradient(45deg,#c9461b 0 10px,#e8833a 10px 20px);background-size:28px 28px;animation:dpx-isc-stripes .9s linear infinite}
+.dpx-proc .bar i.indet{width:36%;animation:dpx-isc-stripes .9s linear infinite,dpx-isc-slide 1.3s ease-in-out infinite}
+.dpx-proc .burst{display:grid;place-items:center;width:72px;height:72px;border-radius:50%;background:var(--ok-soft);box-shadow:0 0 0 0 rgba(79,122,43,.4);animation:dpx-proc-ring .7s ease-out}
+@keyframes dpx-proc-ring{from{box-shadow:0 0 0 0 rgba(79,122,43,.45)}to{box-shadow:0 0 0 22px rgba(79,122,43,0)}}
+@media (prefers-reduced-motion:reduce){.dpx-proc *{animation:none!important}}
