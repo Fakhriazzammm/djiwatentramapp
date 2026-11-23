@@ -51,10 +51,10 @@ export function ScanCamera({ kind, onCapture, onClose }: { kind: "receipt" | "as
         if (x > 7 && x < 25 && y > 8 && y < 40) { mid += l; midN++; } else { edge += l; edgeN++; }
       }
       mid /= midN; edge /= edgeN;
-      setFound(mid > 110 && mid - edge > 22);
+      setFound(mid > (receipt ? 110 : 70) && Math.abs(mid - edge) > 22);
     }, 450);
     return () => window.clearInterval(id);
-  }, [on]);
+  }, [on, receipt]);
 
   const toggleTorch = () => {
     const t = stream.current?.getVideoTracks()[0]; if (!t) return;
@@ -70,26 +70,48 @@ export function ScanCamera({ kind, onCapture, onClose }: { kind: "receipt" | "as
   const pick = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onCapture(f); };
 
   const title = receipt ? "Pindai struk" : "Foto aset";
-  const pill = !on ? (failed ? "Kamera tidak bisa dibuka" : "Membuka kamera…") : receipt ? (found ? "Struk terdeteksi" : "Arahkan ke struk") : "Taruh aset di dalam bingkai";
-  const node = <div className="dpx dpx-scan" role="dialog" aria-modal="true" aria-label={title}>
+  const pill = !on ? (failed ? "Kamera tidak bisa dibuka" : "Membuka kamera…") : receipt ? (found ? "Struk terdeteksi" : "Arahkan ke struk") : found ? "Aset terdeteksi" : "Taruh aset di dalam bingkai";
+  const node = <div className={`dpx dpx-scan ${flash ? "shot" : ""}`} role="dialog" aria-modal="true" aria-label={title}>
     <video ref={video} playsInline muted aria-label="Pratinjau kamera" className={on ? "on" : ""} />
     <div className="dpx-scan-top">
       <button type="button" className="dpx-scan-btn" onClick={onClose} aria-label="Tutup"><Ic n="close" /></button>
       <b>{title}</b>
-      {canTorch ? <button type="button" className={`dpx-scan-btn ${torch ? "act" : ""}`} onClick={toggleTorch} aria-pressed={torch} aria-label="Lampu kilat"><Ic n="flash" /></button> : <span className="dpx-scan-btn ghost" />}
+      <span className={`dpx-scan-btn ghost ${torch ? "lit" : ""}`}><Ic n="flash" size="sm" /></span>
     </div>
-    <div className={`dpx-scan-pill ${found && on && receipt ? "ok" : ""}`} role="status" aria-live="polite"><i />{pill}</div>
-    <div className={`dpx-scan-frame ${receipt ? "tall" : "sq"} ${found && on && receipt ? "ok" : ""}`} aria-hidden="true"><i className="a" /><i className="b" /><i className="c" /><i className="d" /></div>
+    <div className={`dpx-scan-pill ${found && on ? "ok" : ""}`} role="status" aria-live="polite"><i />{pill}</div>
+    <div className={`dpx-scan-frame ${receipt ? "tall" : "sq"} ${found && on ? "ok" : ""}`} aria-hidden="true"><i className="a" /><i className="b" /><i className="c" /><i className="d" /></div>
     {failed ? <div className="dpx-scan-fail"><p>Kamera dalam aplikasi belum bisa dibuka. Pakai kamera ponsel atau pilih dari galeri.</p><button type="button" className="dpx-btn" onClick={() => native.current?.click()}><Ic n="scan" size="sm" /> Buka kamera ponsel</button></div> : null}
     <p className="dpx-scan-tip">{receipt ? "Ratakan struk, pastikan semua baris terlihat dan terang." : "Satu aset per foto, di tempat polos dan terang."}</p>
     <div className="dpx-scan-bar">
-      <button type="button" className="dpx-scan-side" onClick={() => gallery.current?.click()} aria-label="Pilih dari galeri"><Ic n="grid" /></button>
+      <button type="button" className="dpx-scan-side" onClick={() => gallery.current?.click()} aria-label="Pilih dari galeri" />
       <button type="button" className="dpx-scan-shutter" onClick={snap} aria-label="Ambil foto" disabled={!on && !failed}><i /></button>
-      <span className="dpx-scan-side ghost" />
+      {canTorch ? <button type="button" className="dpx-scan-auto" onClick={toggleTorch} aria-pressed={torch}>{torch ? "Nyala" : "Auto"}</button> : <span className="dpx-scan-auto ghost">Auto</span>}
     </div>
     {flash ? <div className="dpx-scan-flash" /> : null}
     <input ref={gallery} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={pick} />
     <input ref={native} type="file" accept="image/*" capture="environment" hidden onChange={pick} />
+  </div>;
+  return typeof document === "undefined" ? node : createPortal(node, document.body);
+}
+
+const SWEEP_STEPS: Record<"receipt" | "asset", string[]> = {
+  receipt: ["Mengunggah foto dengan aman", "Membaca seluruh item dan harga", "Memeriksa subtotal, pajak, dan total"],
+  asset: ["Mengunggah foto dengan aman", "Memisahkan aset dari latar", "Membuat stiker"],
+};
+
+/** Dark full-screen "reading" stage: the photo sits alone while an iridescent light band sweeps over it. */
+export function ScanSweep({ src, kind, onClose }: { src: string; kind: "receipt" | "asset"; onClose?: () => void }) {
+  const [step, setStep] = useState(0);
+  useEffect(() => { const a = setTimeout(() => setStep(1), 1000), b = setTimeout(() => setStep(2), 2800); return () => { clearTimeout(a); clearTimeout(b); }; }, []);
+  useEffect(() => { const prev = document.body.style.overflow; document.body.style.overflow = "hidden"; return () => { document.body.style.overflow = prev; }; }, []);
+  const node = <div className="dpx dpx-scan dpx-sweep" role="dialog" aria-modal="true" aria-label="Memproses foto">
+    <div className="dpx-scan-top">{onClose ? <button type="button" className="dpx-scan-btn" onClick={onClose} aria-label="Batalkan"><Ic n="close" /></button> : <span className="dpx-scan-btn ghost" />}<b /><span className="dpx-scan-btn ghost" /></div>
+    <div className={`dpx-sweep-stage ${kind}`}>
+      <img className="base" src={src} alt="Foto yang sedang diproses" />
+      <img className="lit" src={src} alt="" aria-hidden="true" />
+      <i className="band" aria-hidden="true" />
+    </div>
+    <div className="dpx-sweep-status" role="status" aria-live="polite">{SWEEP_STEPS[kind][step]}…</div>
   </div>;
   return typeof document === "undefined" ? node : createPortal(node, document.body);
 }

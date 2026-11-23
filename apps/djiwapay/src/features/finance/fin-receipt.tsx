@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Btn, Ic, Sheet } from "../shell/dpx-ui";
+import { ScanSweep } from "../shell/scan-camera";
 import { formatDateTime } from "../../lib/djiwa-pay-format";
 import { SCAN_ERROR_TEXT, ScanError, compressImage, receiptImageUrl, scanReceipt, fetchReceipt, rereadReceipt, confirmScannedReceipt, attachScannedReceipt, reconcileReceipt, receiptNumber, roundMoney, type ScannedReceipt, type ReceiptDocument } from "../../lib/finance/receipt";
 import { pushDiff } from "../../lib/finance/sync";
@@ -28,6 +29,7 @@ export function ReceiptFlow({ file, onRetry, ...props }: FlowProps & { file: Fil
   }, [file]);
   useEffect(() => { if (stage.s !== "reading") return; const a = setTimeout(()=>setStep(1),900), b = setTimeout(()=>setStep(2),2600); return ()=>{clearTimeout(a);clearTimeout(b);}; }, [stage.s]);
   if (stage.s === "result") return <ReceiptReview {...props} initial={stage.receipt} preview={stage.preview} onRetry={onRetry} />;
+  if (stage.s === "reading" && stage.preview) return <ScanSweep src={stage.preview} kind="receipt" onClose={props.onClose} />;
   return <Sheet title={stage.s === "error" ? "Struk belum terbaca" : "Membaca struk"} onClose={props.onClose}>
     {stage.s === "error" ? <><div className="dpx-note dpx-danger" role="alert">{stage.text}</div><Btn type="button" className="dpx-btn dpx-soft" onClick={onRetry}>Pilih foto lain</Btn></> : <>
       {stage.preview ? <div className="dpx-receipt-scan"><img className="dpx-receipt-preview" src={stage.preview} alt="Struk yang sedang dibaca" /></div> : null}
@@ -78,7 +80,8 @@ export function ReceiptReview({ initial, preview, onRetry, entry, attach, ...pro
   };
   if (pick === "account") return <AccountSheet state={fin.state} balances={balances} value={accountId} onPick={id=>{setAccountId(id);setChecked(false);}} onClose={()=>setPick(null)} />;
   if (pick === "category") return <CategorySheet categories={fin.state.categories} income={false} value={categoryId} onPick={id=>{setCategoryId(id);setChecked(false);}} onClose={()=>setPick(null)} />;
-  return <Sheet title={attach ? "Tambah rincian struk" : entry ? "Ubah rincian struk" : "Periksa rincian struk"} onClose={()=>{if(!savingRef.current)onClose();}}>
+  return <Sheet tone="scan" title={attach ? "Tambah rincian struk" : entry ? "Ubah rincian struk" : "Periksa rincian struk"} onClose={()=>{if(!savingRef.current)onClose();}}>
+    {preview ? <div className="dpx-aurora" aria-hidden="true"><i /></div> : null}
     <p className="dpx-sub">{attach ? `Nominal bayar ${rupiah(attach.amount)}, dompet, dan waktu dari email tidak berubah. Struk menambahkan item, pajak, dan diskon.` : "Satu struk, satu pengeluaran. Semua rincian tetap tersimpan."}</p>
     <fieldset className="dpx-receipt-editor" disabled={saving}>
       <div className="dpx-rcs"><label className="dpx-receipt-field"><span>Toko / tempat</span><input value={doc.merchant} maxLength={160} onChange={e=>change({merchant:e.target.value})} /></label>
@@ -86,7 +89,7 @@ export function ReceiptReview({ initial, preview, onRetry, entry, attach, ...pro
       {!metadataValid ? <p className="dpx-hint">Lengkapi toko serta tanggal yang sesuai dengan struk.</p> : null}
       <div className="dpx-receipt-fields"><label className="dpx-receipt-field"><span>Nomor struk (opsional)</span><input value={doc.reference} onChange={e=>change({reference:e.target.value})} /></label><label className="dpx-receipt-field"><span>Metode bayar tercetak (opsional)</span><input value={doc.paymentMethod} onChange={e=>change({paymentMethod:e.target.value})} /></label></div>
       <label className="dpx-receipt-field"><span>Alamat toko (opsional)</span><input value={doc.merchantAddress} onChange={e=>change({merchantAddress:e.target.value})} /></label></div>
-      <details className="dpx-receipt-photo"><summary>Lihat foto struk asli</summary><img src={preview ?? receiptImageUrl(doc.id)} alt="Foto struk asli untuk memeriksa rincian" /></details>
+      <details className="dpx-receipt-photo"><summary><img className="dpx-rx-thumb" src={preview ?? receiptImageUrl(doc.id)} alt="" /><span><b>Foto asli</b><small>Terlampir di catatan ini</small></span></summary><img src={preview ?? receiptImageUrl(doc.id)} alt="Foto struk asli untuk memeriksa rincian" /></details>
       <h3 className="dpx-receipt-heading">Rincian item · {doc.items.length}</h3>
       {doc.items.map((i,k)=><div className="dpx-receipt-item" key={k}>
         <div className="dpx-receipt-item-head"><label className="dpx-receipt-field"><span>Item {k+1}{i.confidence < .7 ? " · periksa" : ""}</span><input aria-label={`Nama item ${k+1}`} value={i.name} maxLength={160} onChange={e=>itemChange(k,{name:e.target.value})} /></label><Btn type="button" className="dpx-sh-x" aria-label={`Hapus item ${k+1}`} onClick={()=>change({items:doc.items.filter((_,n)=>n!==k)})}><Ic n="close" size="sm" /></Btn></div>

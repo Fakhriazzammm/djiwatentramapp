@@ -182,7 +182,7 @@ function lockPageScroll() {
   return () => { if (--scrollLocks === 0) { b.style.position = ""; b.style.top = ""; b.style.left = ""; b.style.right = ""; b.style.width = ""; window.scrollTo(0, lockedY); } };
 }
 
-export function Sheet({ title, onClose, children, label }: { title?: string; onClose: () => void; children: ReactNode; label?: string }) {
+export function Sheet({ title, onClose, children, label, tone }: { title?: string; onClose: () => void; children: ReactNode; label?: string; tone?: "scan" }) {
   const controls = useDragControls();
   useEffect(() => lockPageScroll(), []);
   useEffect(() => {
@@ -191,7 +191,7 @@ export function Sheet({ title, onClose, children, label }: { title?: string; onC
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
   // Rendered at the top of the document: a page that creates its own stacking context would otherwise trap the sheet under the floating tab bar.
-  const node = <div className="dpx dpx-sheetwrap" style={{ background: "transparent", minHeight: 0, maxWidth: "none", overflow: "visible" }}>
+  const node = <div className={`dpx dpx-sheetwrap ${tone === "scan" ? "dpx-rx" : ""}`} style={{ background: "transparent", minHeight: 0, maxWidth: "none", overflow: "visible" }}>
     <motion.div className="dpx-scrim" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }} />
     <motion.div className="dpx-sheet" role="dialog" aria-modal="true" aria-label={label ?? title}
       initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 380, damping: 36 }}

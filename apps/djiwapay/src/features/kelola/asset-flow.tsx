@@ -8,7 +8,7 @@ import { DEFAULT_RATE, KARAT, SUB_LABEL, assetValue, createSticker, fetchRaw, go
 import { rupiah } from "../../lib/djiwa-pay-format";
 import type { Asset, AssetKind, AssetSub } from "../../lib/finance/types";
 import type { Finance } from "../../lib/finance/use-finance";
-import { ScanCamera } from "../shell/scan-camera";
+import { ScanCamera, ScanSweep } from "../shell/scan-camera";
 
 type Step = "shoot" | "work" | "sticker" | "form";
 const SUBS: AssetSub[] = ["batangan", "perhiasan", "koin", "lainnya"];
@@ -22,14 +22,14 @@ export function AssetFlow({ fin, asset, notify, onClose, noPhoto }: { fin: Finan
 
   /* ----- camera ----- */
   const gallery = useRef<HTMLInputElement>(null), nativeCam = useRef<HTMLInputElement>(null);
-  const [live, setLive] = useState(false);
+  const [live, setLive] = useState(false), [workUrl, setWorkUrl] = useState<string | null>(null);
 
   /* ----- sticker ----- */
   const [err, setErr] = useState<string | null>(null);
   const [rawUrl, setRawUrl] = useState<string | null>(null), [png, setPng] = useState<string | null>(null), [mode, setMode] = useState<StickerMode>("local"), [view, setView] = useState<"cut" | "raw">("cut");
   const draftId = useRef<string | null>(null);
   const process = async (blob: Blob) => {
-    setErr(null); setStep("work");
+    setErr(null); setStep("work"); setWorkUrl((u) => { if (u) URL.revokeObjectURL(u); return URL.createObjectURL(blob); });
     try {
       const made = await createSticker(blob);
       draftId.current = made.id; setMode(made.mode);
@@ -97,7 +97,7 @@ export function AssetFlow({ fin, asset, notify, onClose, noPhoto }: { fin: Finan
 
     {step === "shoot" && live ? <ScanCamera kind="asset" onClose={() => setLive(false)} onCapture={(f) => void process(f)} /> : null}
 
-    {step === "work" ? <div className="dpx-as-body dpx-as-center"><div className="dpx-as-spin" aria-hidden="true" /><b>Memotong latar…</b><p className="dpx-sub">Biasanya 10 sampai 30 detik. Jangan tutup layar ini.</p></div> : null}
+    {step === "work" ? (workUrl ? <ScanSweep src={workUrl} kind="asset" /> : <div className="dpx-as-body dpx-as-center"><div className="dpx-as-spin" aria-hidden="true" /><b>Memotong latar…</b></div>) : null}
 
     {step === "sticker" ? <div className="dpx-as-body">
       <div className={`dpx-as-cut ${view === "raw" ? "raw" : ""}`}>
