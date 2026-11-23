@@ -6,7 +6,7 @@
     "url": "https://djiwapay.web.id",
     "androidScheme": "https",
     "errorPath": "offline.html",
-    "allowNavigation": ["djiwapay.web.id"]
+    "allowNavigation": ["djiwapay.web.id", "*.myr.id", "*.mayar.id", "*.mayar.club", "*.mayar.link"]
   },
   "android": { "allowMixedContent": false },
   "plugins": {
