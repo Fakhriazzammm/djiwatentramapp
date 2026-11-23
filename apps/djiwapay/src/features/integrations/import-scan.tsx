@@ -6,7 +6,7 @@ const months = new Intl.DateTimeFormat("id-ID", { month: "short", year: "numeric
 const STEPS = ["Menghubungi Gmail", "Membaca email bank dan e-wallet", "Memisahkan transaksi dari promo", "Mencocokkan nominal dan penerima", "Melewati yang sudah tercatat"];
 
 /** A number that glides to its new value, so progress is felt between the server's updates. Plain requestAnimationFrame: no library, nothing to break in a WebView. */
-function useTween(target: number, ms = 800) {
+export function useTween(target: number, ms = 800) {
   const [value, setValue] = useState(target), from = useRef(target), shown = useRef(target);
   useEffect(() => {
     if (typeof window === "undefined" || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) { shown.current = target; setValue(target); return; }
