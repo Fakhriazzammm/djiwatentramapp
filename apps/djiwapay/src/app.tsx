@@ -36,6 +36,7 @@ export function DjiwaPayApp() {
   useEffect(() => startTracking(), []);
   if (path === "/admin" || path.startsWith("/admin/")) return <Suspense fallback={null}><AdminApp /></Suspense>;
   if (path === "/privasi") return <LegalPage kind="privacy" />;   // public: Google and new users read these before signing in
+  if (path === "/hapus-akun") return <LegalPage kind="deletion" />;
   if (path === "/syarat") return <LegalPage kind="terms" />;
   if (!isKnownPayPath(window.location.pathname)) return <DjiwaPayNotFound />;
   const navigationContext = getPayNavigationContext(); const [profile, setProfile] = useState<CustomerProfile | null>(localPreview ? previewProfile : null); const [wallet, setWallet] = useState<WalletResponse | null>(localPreview ? previewWallet : null); const [loading, setLoading] = useState(!localPreview); const [error, setError] = useState<string | null>(null); const [busy, setBusy] = useState(false);

@@ -1,9 +1,9 @@
-import { LEGAL_UPDATED, PRIVACY, TERMS, type Section } from "../../lib/legal-content";
+import { DELETION, LEGAL_UPDATED, PRIVACY, TERMS, type Section } from "../../lib/legal-content";
 
 /** Public pages (no sign-in): Google and the people who use the app can read them before connecting anything. */
-export function LegalPage({ kind }: { kind: "privacy" | "terms" }) {
-  const sections: Section[] = kind === "privacy" ? PRIVACY : TERMS;
-  const title = kind === "privacy" ? "Kebijakan Privasi" : "Syarat Layanan";
+export function LegalPage({ kind }: { kind: "privacy" | "terms" | "deletion" }) {
+  const sections: Section[] = kind === "privacy" ? PRIVACY : kind === "deletion" ? DELETION : TERMS;
+  const title = kind === "privacy" ? "Kebijakan Privasi" : kind === "deletion" ? "Hapus Akun Djiwa Pay" : "Syarat Layanan";
   const back = () => { if (window.history.length > 1) window.history.back(); else window.location.assign("/"); };
   return <div className="dpx"><div className="dpx-page"><div className="dpx-sky dpx-legal"><div className="dpx-pad dpx-nobar">
     <div className="dpx-hdr"><button type="button" className="dpx-rb" onClick={back} aria-label="Kembali">‹</button><div className="dpx-grow"><h1>{title}</h1></div><span style={{ width: 44 }} /></div>

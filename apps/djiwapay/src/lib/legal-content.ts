@@ -43,3 +43,25 @@ export const TERMS: Section[] = [
   { title: "Tanggung jawab", body: ["Sejauh diizinkan hukum, Djiwa Pay tidak bertanggung jawab atas kerugian tidak langsung akibat kesalahan pembacaan otomatis, gangguan layanan pihak ketiga, atau keputusan keuangan yang kamu ambil."] },
   { title: "Hukum yang berlaku", body: ["Ketentuan ini tunduk pada hukum Republik Indonesia."] },
 ];
+
+/** Public account-deletion page required by Google Play. Mirrors /api/pay-bridge/account/delete in apps/auth-server. */
+export const DELETION: Section[] = [
+  { title: "Cara menghapus akun Djiwa Pay", body: [
+    "Berlaku untuk aplikasi Djiwa Pay (Android dan web) dari Djiwa Tentram.",
+    "1. Buka Djiwa Pay dan masuk ke akunmu.",
+    "2. Buka Pengaturan › Keamanan, lalu pilih Hapus akun.",
+    "3. Ketik HAPUS, lalu masukkan PIN pembayaranmu.",
+    "Syarat: saldo dompet Djiwa Pay harus kosong (tarik atau pakai dulu), dan PIN sudah dibuat. Kalau belum punya PIN, buat dulu di menu yang sama."] },
+  { title: "Data yang dihapus", body: [
+    "Nama, nomor telepon, alamat, tanggal lahir, dan foto profil dihapus dari profilmu; namamu diganti menjadi “Akun dihapus”.",
+    "Email diganti dengan alamat anonim, sehingga kamu tidak bisa masuk lagi dengan email itu.",
+    "PIN, sesi masuk, dan koneksi akun masuk (kata sandi dan Google) dihapus. Persetujuan info pemasaran dicabut.",
+    "Akun ditutup untuk semua aplikasi Djiwa (Pay, Tentram, Travel)."] },
+  { title: "Data yang tetap disimpan", body: [
+    "Riwayat pesanan, transaksi, dan struk tetap disimpan tanpa namamu, karena dibutuhkan untuk pembukuan dan kewajiban hukum.",
+    "Data keuangan pribadi di aplikasi dapat kamu hapus lebih dulu lewat Pengaturan › Hapus semua data keuangan."] },
+  { title: "Hapus sebagian data tanpa menghapus akun", body: [
+    "Kamu bisa menghapus transaksi, struk, dan catatan satu per satu, memutus Google lewat Pengaturan › Integrasi, atau menghapus semua data keuangan lewat Pengaturan, tanpa menutup akun."] },
+  { title: "Tidak bisa membuka aplikasi?", body: [
+    "Ajukan permintaan penghapusan lewat menu Bantuan di aplikasi, atau lewat Bantuan di djiwatentram.web.id. Sebutkan nama dan email akun Djiwa Pay-mu. Kami memprosesnya setelah memastikan akun itu milikmu."] },
+];
