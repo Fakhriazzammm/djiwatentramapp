@@ -41,7 +41,7 @@ export async function confirmReceipt(db: Tx, userId: string, id: string, body: a
     const account = await q.query("select id from finance.accounts where user_id=$1 and id = any($2::text[]) and not archived", [userId, entryKind === "tf" ? [body.accountId, toAccountId] : [body.accountId]]);
     const category = await q.query("select id from finance.categories where user_id=$1 and id=$2 and income=$3", [userId, body.categoryId, entryKind === "in"]);
     if (account.rows.length !== (entryKind === "tf" ? 2 : 1) || !category.rows.length) throw new ReceiptProblem("INVALID_ACCOUNT_OR_CATEGORY");
-    const tags = foreign ? [`trip:${document.currency}-${document.purchasedAt.slice(0, 7)}`] : [];
+    const tags = foreign ? [`trip:${document.currency}-${document.purchasedAt!.slice(0, 7)}`] : [];
     const fxCols = foreign ? [document.currency, document.total, document.fx!.rate] : [null, null, null];
     const entryId = revise ? previous.rows[0].id : `receipt:${id}`;
     if (entryId.length > 80) throw new ReceiptProblem("BAD_REQUEST", 400);
@@ -78,4 +78,18 @@ export async function attachReceipt(db: Tx, userId: string, id: string, body: an
     await q.query("update finance.google_sheet_exports set dirty=true,next_sync_at=least(next_sync_at,now()+interval '8 seconds') where user_id=$1", [userId]);
     return { receipt: receiptFromRow(saved.rows[0]), entry: entryFromRow(updated.rows[0]), alreadySaved: false };
   });
+}
+
+export type DuplicateHint = { id: string; merchant: string; total: number; currency: string; at: string | null; reason: "photo" | "amount" };
+/** A receipt that is probably already recorded: the same photo, or the same amount at the same minute. Only receipts that became an entry count. */
+export async function findDuplicate(q: Q, userId: string, id: string, sha: string, read: { total: number; purchasedAt: string | null }): Promise<DuplicateHint | null> {
+  const pick = (r: Record<string, any>, reason: DuplicateHint["reason"]): DuplicateHint => ({ id: r.id, merchant: r.merchant ?? "", total: Number(r.total), currency: r.details?.reviewed?.currency ?? r.details?.original?.currency ?? "IDR", at: r.purchased_at ? new Date(r.purchased_at).toISOString() : null, reason });
+  const confirmed = "confirmed_at is not null and exists(select 1 from finance.entries e where e.user_id=r.user_id and e.receipt_id=r.id)";
+  const same = (await q.query(`select * from finance.receipts r where user_id=$1 and id<>$2 and image_sha=$3 and ${confirmed} order by created_at desc limit 1`, [userId, id, sha])).rows[0];
+  if (same) return pick(same, "photo");
+  if (read.purchasedAt && read.total > 0) {
+    const near = (await q.query(`select * from finance.receipts r where user_id=$1 and id<>$2 and abs(total - $3::numeric) < 0.01 and purchased_at between $4::timestamptz - interval '90 seconds' and $4::timestamptz + interval '90 seconds' and ${confirmed} order by created_at desc limit 1`, [userId, id, read.total, read.purchasedAt])).rows[0];
+    if (near) return pick(near, "amount");
+  }
+  return null;
 }

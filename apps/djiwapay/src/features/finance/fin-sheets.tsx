@@ -1,3 +1,4 @@
+import { CURRENCY_CODES, fmtMoney, infoOf, parseTrip, symbolOf } from "../../lib/finance/currency";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { payeeName } from "../../lib/finance/payees";
@@ -90,8 +91,9 @@ export function EntrySheet({ entry, fin, notify, onClose, onEdit, onPickCategory
     <div className="dpx-group">
       <div className="dpx-kv"><span>Kategori</span><b>{c.name}{entry.tags.includes(AI_TAG) ? <span className="dpx-ai-tag" title="Dipilih otomatis oleh AI. Ubah lewat Ubah catatan.">AI</span> : null}</b></div><div className="dpx-kv"><span>Dompet</span><b>{accName(state, entry.accountId)}</b></div>
       <div className="dpx-kv"><span>Waktu</span><b>{formatDateTime(entry.at)}</b></div>
+      {entry.foreignCurrency && entry.foreignAmount ? <><div className="dpx-kv"><span>Jumlah asli</span><b>{fmtMoney(entry.foreignAmount, entry.foreignCurrency)}</b></div>{entry.fxRate ? <div className="dpx-kv"><span>Kurs</span><b>1 {symbolOf(entry.foreignCurrency)} = Rp {entry.fxRate.toLocaleString("id-ID", { maximumFractionDigits: 4 })}</b></div> : null}</> : null}
       {onPayee && entry.kind !== "tf" && entry.note.trim() ? <button type="button" className="dpx-kv dpx-kv-link" onClick={onPayee}><span>{entry.kind === "in" ? "Pengirim" : "Penerima"}</span><b>{payeeName(entry.note)} <Ic n="chev" size="sm" /></b></button> : null}<div className="dpx-kv"><span>Sumber</span><b>{pay ? "Djiwa Pay (otomatis)" : entry.source === "voice" ? "Suara / teks" : entry.source === "receipt" ? "Scan struk" : entry.source === "email" ? "Email pembayaran" : entry.source === "sheet" ? "Spreadsheet" : "Manual"}</b></div>
-      {entry.tags.some((t) => t !== "loan-receipt" && !t.startsWith("loan:")) ? <div className="dpx-kv"><span>Tag</span><b>{entry.tags.filter((t) => t !== "loan-receipt" && !t.startsWith("loan:")).map((t) => `#${t}`).join(" ")}</b></div> : null}
+      {entry.tags.some((t) => t !== "loan-receipt" && !t.startsWith("loan:")) ? <div className="dpx-kv"><span>Tag</span><b>{entry.tags.filter((t) => t !== "loan-receipt" && !t.startsWith("loan:")).map((t) => parseTrip(t)?.label ?? `#${t}`).join(" ")}</b></div> : null}
     </div>
     {!entry.receiptId && !entry.inboundId ? <Breakdown title="Rincian" count="1 item"
       lines={[{ name: entry.note || c.name, sub: [c.name, ...entry.tags.map((t) => `#${t}`)].join(" \u00b7 "), amount: rupiah(entry.amount) }]}
@@ -352,6 +354,7 @@ export function AccountEditSheet({ fin, account, onClose, notify, find }: { fin:
   const [opening, setOpening] = useState(String(Math.abs(account?.opening ?? 0) || ""));
   const [negative, setNegative] = useState((account?.opening ?? 0) < 0 || type === "card");
   const [scope, setScope] = useState<AccountScope>(account ? accountScope(account) : fin.scope === "business" ? "business" : "personal");
+  const [currency, setCurrency] = useState(account?.currency ?? "IDR");
   const ok = name.trim().length > 0;
   return <Sheet title={account ? "Ubah dompet" : "Dompet baru"} onClose={onClose}>
     {find ? <button type="button" className="dpx-df-find" onClick={find.onOpen}><span className="dpx-df-find-ic"><Ic n="search" size="sm" /></span><span><b>Cari dompet dari email</b><small>{find.count ? `${find.count} bank atau e-wallet ditemukan, siap disimpan` : "Temukan bank dan e-wallet dari email pembayaranmu"}</small></span>{find.count ? <i>{find.count}</i> : <Ic n="chev" size="sm" />}</button> : null}
@@ -360,8 +363,10 @@ export function AccountEditSheet({ fin, account, onClose, notify, find }: { fin:
     <div className="dpx-glabel" style={{ marginTop: 14 }}>Untuk apa dompet ini?</div>
     <Seg id="acc-scope" label="Jenis dompet" fit value={scope} onChange={setScope} options={[["personal", "Pribadi"], ["business", "Bisnis"]] as const} />
     <p className="dpx-sub" style={{ margin: "6px 4px 0" }}>{scope === "business" ? "Pemasukan dan pengeluaran dompet ini masuk hitungan bisnis, terpisah dari pribadi." : "Dihitung bersama keuangan pribadi."}</p>
+    <label className="dpx-field"><span>Mata uang dompet</span><div className="dpx-input"><select value={currency} onChange={(e) => setCurrency(e.target.value)} aria-label="Mata uang dompet">{CURRENCY_CODES.map((c) => <option key={c} value={c}>{infoOf(c).flag} {c} · {infoOf(c).name}</option>)}</select></div></label>
+    {currency !== "IDR" ? <p className="dpx-sub" style={{ margin: "6px 4px 0" }}>Struk berbahasa {infoOf(currency).country} otomatis memilih dompet ini. Saldo dan laporan tetap dalam rupiah; saldo awal diisi dalam rupiah.</p> : null}
     <label className="dpx-field"><span>{type === "card" ? "Tagihan saat ini" : "Saldo awal"}</span><MoneyInput value={opening} onChange={setOpening} label="Saldo awal" /></label>
-    <Btn type="button" className={`dpx-btn ${ok ? "" : "dpx-off"}`} disabled={!ok} onClick={() => { fin.dispatch({ type: "account/upsert", account: { id: account?.id ?? uid(), name: name.trim(), type, opening: (negative ? -1 : 1) * Number(opening || 0), scope } }); onClose(); notify(scope === "business" ? "Dompet bisnis disimpan" : "Dompet disimpan"); }}>Simpan dompet</Btn>
+    <Btn type="button" className={`dpx-btn ${ok ? "" : "dpx-off"}`} disabled={!ok} onClick={() => { fin.dispatch({ type: "account/upsert", account: { id: account?.id ?? uid(), name: name.trim(), type, opening: (negative ? -1 : 1) * Number(opening || 0), scope, ...(currency !== "IDR" ? { currency } : {}) } }); onClose(); notify(scope === "business" ? "Dompet bisnis disimpan" : "Dompet disimpan"); }}>Simpan dompet</Btn>
     {account && account.id !== "tunai" ? <Btn type="button" className="dpx-btn dpx-soft" onClick={() => { fin.dispatch({ type: "account/archive", id: account.id }); onClose(); notify("Dompet diarsipkan"); }}>Arsipkan dompet</Btn> : null}
   </Sheet>;
 }

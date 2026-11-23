@@ -10,7 +10,9 @@ import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import type { Account } from "../../lib/finance/types";
 import { accountScope } from "../../lib/finance/scope";
+import { fmtMoney } from "../../lib/finance/currency";
 import { checkWalletMail } from "../../lib/finance/integrations";
+import { useFxToday } from "../../lib/finance/receipt";
 
 type Skin = { from: string; to: string; accent: string; tint?: string };
 /** Card colours by brand name first, then by account type. Every skin is dark enough for white text. */
@@ -68,6 +70,7 @@ const tagOf = (c: { id: string; pay: boolean; name: string }) => (c.id === ALL_I
  */
 function Pouch({ cards, sel, go, ctx, stats, hint, cur }: { cards: Card[]; sel: number; go: (i: number) => void; ctx: FinCtx; stats: { inn: number; out: number }; hint: boolean; cur: Card }) {
   const n = cards.length, mask = (t: string) => (ctx.visible ? t : "•••••"), neg = cur.balance < 0;
+  const wcur = cur.account?.currency, wrate = useFxToday(wcur), foreignBal = wcur && wrate && ctx.visible ? fmtMoney(Math.round(cur.balance / wrate), wcur) : "";
   const reducedMotion = useReducedMotion();
   const [shuffle, setShuffle] = useState({ front: cur.id, leaving: null as string | null });
   if (shuffle.front !== cur.id) {
@@ -113,7 +116,7 @@ function Pouch({ cards, sel, go, ctx, stats, hint, cur }: { cards: Card[]; sel: 
         <Btn type="button" className="dpx-pc-eye" onClick={ctx.onToggleVisible} aria-label={ctx.visible ? "Sembunyikan saldo" : "Tampilkan saldo"} aria-pressed={!ctx.visible}><Ic n={ctx.visible ? "eye" : "eyeoff"} size="sm" /></Btn>
         <Btn type="button" className="dpx-pc-total" onClick={() => { if (cur.id !== ALL_ID) ctx.open({ k: "wallet-view", id: cur.id }); }} aria-label={cur.id === ALL_ID ? `Total saldo semua dompet` : `Saldo ${cur.name}, ketuk untuk detail`}>
           <span className={`dpx-pc-amt ${neg ? "neg" : ""}`}><small>Rp</small>{ctx.visible ? <>{neg ? "−" : ""}<AnimatedNumber key={cur.id} value={Math.abs(cur.balance)} /></> : "•••••••"}</span>
-          <span className="dpx-pc-lab">{cur.id === ALL_ID ? "Total saldo semua dompet" : `Saldo ${cur.name} · Detail ›`}</span>
+          <span className="dpx-pc-lab">{cur.id === ALL_ID ? "Total saldo semua dompet" : `Saldo ${cur.name}${foreignBal ? ` · ≈ ${foreignBal}` : ""} · Detail ›`}</span>
         </Btn>
       </div>
       <div className="dpx-pc-pills">

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { uid } from "./calc";
 import type { Category, Entry } from "./types";
 
@@ -8,7 +9,8 @@ export type { ReceiptDocument, ReceiptCharge } from "../../../../djiwapay-api/sr
 export type ScannedItem = ReceiptItem;
 export type TextBox = [number, number, number, number];
 export type ScanBoxes = { merchant?: TextBox; date?: TextBox; total?: TextBox };
-export type ScannedReceipt = ReceiptDocument & { boxes?: ScanBoxes; id: string; confidence: number; model: string; legacy?: boolean; reviewed?: boolean; revision?: string | null };
+export type DuplicateHint = { id: string; merchant: string; total: number; currency: string; at: string | null; reason: "photo" | "amount" };
+export type ScannedReceipt = ReceiptDocument & { duplicate?: DuplicateHint | null; boxes?: ScanBoxes; id: string; confidence: number; model: string; legacy?: boolean; reviewed?: boolean; revision?: string | null };
 export type ScanErrorCode = "UNAUTHORIZED" | "NOT_A_RECEIPT" | "DAILY_LIMIT" | "SCAN_UNAVAILABLE" | "IMAGE_TOO_LARGE" | "BAD_IMAGE" | "SCAN_FAILED" | "NETWORK";
 export class ScanError extends Error { constructor(public code: ScanErrorCode) { super(code); } }
 
@@ -46,9 +48,9 @@ export async function scanReceipt(image: string, id = uid()): Promise<ScannedRec
   try { res = await fetch("/api/finance/receipts/scan", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image, id }) }); }
   catch { throw new ScanError("NETWORK"); }
   if (res.status === 401) throw new ScanError("UNAUTHORIZED");
-  const body = await res.json().catch(() => null) as { success?: boolean; error?: string; receipt?: ScannedReceipt; boxes?: ScanBoxes } | null;
+  const body = await res.json().catch(() => null) as { success?: boolean; error?: string; receipt?: ScannedReceipt; boxes?: ScanBoxes; duplicate?: DuplicateHint | null } | null;
   if (!res.ok || !body?.success || !body.receipt) throw new ScanError((body?.error && body.error in SCAN_ERROR_TEXT ? body.error : "SCAN_FAILED") as ScanErrorCode);
-  return { ...body.receipt, ...normalizeReceiptDocument(body.receipt), boxes: body.boxes ?? {} };
+  return { ...body.receipt, ...normalizeReceiptDocument(body.receipt), boxes: body.boxes ?? {}, duplicate: body.duplicate ?? null };
 }
 export const receiptImageUrl = (id: string) => `/api/finance/receipts/${encodeURIComponent(id)}/image`;
 
@@ -74,6 +76,7 @@ const RECEIPT_ERRORS: Record<string,string> = {
   RECEIPT_CHANGED: "Struk telah berubah atau terdiri dari beberapa catatan lama. Tutup dan buka kembali detailnya.",
   INVALID_ACCOUNT_OR_CATEGORY: "Dompet atau kategori belum tersedia. Sinkronkan catatan lalu coba lagi.",
   ALREADY_RECORDED: "Struk ini sudah tercatat. Buka dari riwayat.",
+  FX_REQUIRED: "Kurs ke rupiah belum ada. Isi kurs lalu simpan lagi.",
   ALREADY_REMOVED: "Catatan ini sudah dihapus. Pulihkan dari riwayat, jangan simpan struk yang sama lagi.",
 };
 export async function fetchReceipt(id: string): Promise<ScannedReceipt> {
@@ -82,8 +85,8 @@ export async function fetchReceipt(id: string): Promise<ScannedReceipt> {
   const receipt = (await r.json()).receipt;
   return { ...receipt, ...normalizeReceiptDocument(receipt) };
 }
-export async function confirmScannedReceipt(receipt: ScannedReceipt, accountId: string, categoryId: string, revise = false): Promise<Entry> {
-  const r = await fetch(`/api/finance/receipts/${encodeURIComponent(receipt.id)}/${revise ? "revise" : "confirm"}`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ document: receipt, accountId, categoryId, reviewed: true, revision: receipt.revision ?? null }) });
+export async function confirmScannedReceipt(receipt: ScannedReceipt, accountId: string, categoryId: string, revise = false, toAccountId?: string): Promise<Entry> {
+  const r = await fetch(`/api/finance/receipts/${encodeURIComponent(receipt.id)}/${revise ? "revise" : "confirm"}`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ document: receipt, accountId, categoryId, ...(toAccountId ? { toAccountId } : {}), reviewed: true, revision: receipt.revision ?? null }) });
   const body = await r.json().catch(()=>null);
   if (!r.ok || !body?.entry) throw new Error(r.status === 401 ? SCAN_ERROR_TEXT.UNAUTHORIZED : RECEIPT_ERRORS[body?.error] ?? "Belum tersimpan. Periksa koneksi lalu coba lagi; percobaan ulang tidak membuat catatan ganda.");
   return body.entry;
@@ -102,4 +105,27 @@ export async function attachScannedReceipt(receipt: ScannedReceipt, entry: Entry
   const body = await r.json().catch(() => null);
   if (!r.ok || !body?.entry) throw new Error(r.status === 401 ? SCAN_ERROR_TEXT.UNAUTHORIZED : RECEIPT_ERRORS[body?.error] ?? "Belum tersimpan. Periksa koneksi lalu coba lagi.");
   return { ...entry, receiptId: receipt.id };
+}
+
+export type FxQuote = { currency: string; day: string; rate: number; source: string };
+/** Reference rate into rupiah for the receipt's day. Rejects when the server has none; the person can type one. */
+export async function fetchFxRate(currency: string, date: string): Promise<FxQuote> {
+  const r = await fetch(`/api/finance/fx?currency=${encodeURIComponent(currency)}&date=${encodeURIComponent(date.slice(0, 10))}`, { credentials: "include" });
+  const body = await r.json().catch(() => null);
+  if (!r.ok || !body?.rate) throw new Error("FX_UNAVAILABLE");
+  return body as FxQuote;
+}
+
+const fxToday = new Map<string, number | null>();
+/** Today's rate for a wallet held in another currency, to show its balance in that currency. Null while loading or when none is available. */
+export function useFxToday(currency: string | undefined): number | null {
+  const [rate, setRate] = useState<number | null>(currency ? fxToday.get(currency) ?? null : null);
+  useEffect(() => {
+    if (!currency || currency === "IDR") { setRate(null); return; }
+    if (fxToday.has(currency)) { setRate(fxToday.get(currency) ?? null); return; }
+    let on = true;
+    fetchFxRate(currency, new Date().toISOString()).then((q) => { fxToday.set(currency, q.rate); if (on) setRate(q.rate); }).catch(() => { fxToday.set(currency, null); });
+    return () => { on = false; };
+  }, [currency]);
+  return rate;
 }

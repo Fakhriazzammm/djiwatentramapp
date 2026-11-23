@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { rereadMail } from "./mail/reread.js";
 import { makeLlm } from "./mail/llm.js";
 import { Hono } from "hono";
@@ -16,12 +16,13 @@ import { makeCategorizer, registerCategorizeRoutes } from "./categorize.js";
 import { registerNewsRoutes } from "./news.js";
 import { registerPushRoutes } from "./push.js";
 import { issuerOfWallet, registerDiscoveryRoutes } from "./discoveries.js";
+import { fxRate, isCurrency } from "./fx.js";
 import { registerNotifRoutes } from "./notif.js";
 import { registerStatementRoutes } from "./statement.js";
 import { registerPayeeMetaRoutes } from "./payee-meta.js";
 import { registerBackupRoutes } from "./backup.js";
 export { poolTx };
-import { attachReceipt, confirmReceipt, getReceipt, ReceiptProblem } from "./receipt-records.js";
+import { attachReceipt, confirmReceipt, findDuplicate, getReceipt, ReceiptProblem } from "./receipt-records.js";
 import { isEmptyRead, locateReceiptText, readReceipt, type ReceiptRead } from "./receipt.js";
 import { disconnect as googleDisconnect, FEATURES, SCOPES, finishConnect, googleConfig, startConnect, status as googleStatus, syncCalendar, type Feature, type Fetch, type GoogleCfg } from "./google.js";
 import { confirmDriveRemovals, confirmSheetDeletes, requestSheet, touchDrive } from "./google-sync.js";
@@ -114,6 +115,13 @@ export function createApp(d: Deps) {
     return { read } as const;
   };
 
+  /** Reference rate into rupiah for a currency on a day (the receipt's date). The person can still type their own rate. */
+  app.get("/api/finance/fx", async (c) => {
+    const currency = String(c.req.query("currency") ?? "").toUpperCase(), day = String(c.req.query("date") ?? new Date().toISOString().slice(0, 10)).slice(0, 10);
+    if (!isCurrency(currency) || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return json(c, { success: false, error: "BAD_REQUEST" }, 400);
+    const r = await fxRate(d.db, currency, day, d.gfetch as never);
+    return r ? json(c, { success: true, ...r }) : json(c, { success: false, error: "FX_UNAVAILABLE" }, 502);
+  });
   app.post("/api/finance/receipts/scan", async (c) => {
     const body = await c.req.json().catch(() => null) as { image?: unknown; id?: unknown } | null;
     const image = typeof body?.image === "string" ? body.image : "";
@@ -127,14 +135,15 @@ export function createApp(d: Deps) {
     const read = analysis.read;
     // Server-generated IDs make scan documents/images immutable across retries.
     const id = randomUUID();
+    const sha = createHash("sha256").update(bytes).digest("hex");
     const rel = join(userId.replace(/[^\w-]/g, "_"), `${id}.${m[1] === "jpeg" ? "jpg" : m[1]}`);
     await mkdir(join(d.dir, rel, ".."), { recursive: true });
     await writeFile(join(d.dir, rel), bytes);
-    await d.db.query(`insert into finance.receipts(user_id,id,merchant,purchased_at,total,tax,confidence,items,model,image_path,image_bytes,details) values($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12::jsonb)
+    await d.db.query(`insert into finance.receipts(user_id,id,merchant,purchased_at,total,tax,confidence,items,model,image_path,image_bytes,details,image_sha) values($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12::jsonb,$13)
 `,
-      [userId, id, read.merchant, read.purchasedAt, read.total, read.tax, read.confidence, JSON.stringify(read.items), read.model, rel, bytes.length, JSON.stringify({ version: 2, original: read })]);
+      [userId, id, read.merchant, read.purchasedAt, read.total, read.tax, read.confidence, JSON.stringify(read.items), read.model, rel, bytes.length, JSON.stringify({ version: 2, original: read }), sha]);
     if (google) later(async () => { if (await connected(userId, "drive", "receipts")) await touchDrive(d.db, userId); });
-    return json(c, { success: true, receipt: { id, ...read }, boxes });
+    return json(c, { success: true, receipt: { id, ...read }, boxes, duplicate: await findDuplicate(d.db, userId, id, sha, read) });
   });
 
   app.get("/api/finance/receipts/:id", async c => {

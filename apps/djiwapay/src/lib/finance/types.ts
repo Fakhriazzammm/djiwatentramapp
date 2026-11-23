@@ -17,13 +17,17 @@ export type Entry = {
   receiptId?: string;
   /** Set when the entry was read from a payment e-mail (server-side finance.inbound_messages id). */
   inboundId?: string;
+  /** Paid in another currency: what was paid and the rate used. `amount` is always the rupiah value. */
+  foreignCurrency?: string;
+  foreignAmount?: number;
+  fxRate?: number;
   createdAt: string;
 };
 
 export type AccountType = "cash" | "bank" | "ewallet" | "card" | "other";
 /** Which of the person's two money pools a wallet belongs to. Missing means personal. */
 export type AccountScope = "personal" | "business";
-export type Account = { id: string; name: string; type: AccountType; opening: number; archived?: boolean; scope?: AccountScope };
+export type Account = { id: string; name: string; type: AccountType; opening: number; archived?: boolean; scope?: AccountScope; /** Held in another currency (yen cash, a transit card). Balances still count in rupiah. */ currency?: string };
 
 export type Category = { id: string; name: string; icon: string; tone: string; income: boolean; custom?: boolean; /** Set on a sub category: the id of its parent. Budgets and charts roll subs up to the parent. */ parentId?: string };
 export type Budget = { categoryId: string; limit: number; rollover: boolean };

@@ -1,3 +1,4 @@
+import { fmtMoney } from "../../lib/finance/currency";
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { markAutoSeen, readAutoSeen } from "../../lib/finance/integrations";
 import { AnimatePresence, motion } from "framer-motion";
@@ -73,7 +74,7 @@ export function EntryRow({ entry, state, onOpen, i = 0, fresh = false }: { entry
   return <Btn type="button" className="dpx-row" onClick={() => onOpen(entry.id)} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: Math.min(i, 10) * 0.04 }} whileTap={{ scale: 0.985, backgroundColor: "rgba(45,36,29,.04)" }}>
     <span className="dpx-ent-av"><CatIcon cat={c} /><DirMark entry={entry} /></span>
     <span className="dpx-main"><b>{entry.note || c.name}</b><span>{entry.kind === "tf" ? "Transfer" : c.name} · {accName(state, entry.accountId)}{sourceBadge(entry.source, entry.tags)}{fresh ? <span className="dpx-tx-badge dpx-new">Baru</span> : null}</span></span>
-    <span className="dpx-trail"><b className={entry.kind === "in" ? "dpx-in" : ""}>{sign}{rupiah(entry.amount)}</b>{formatTime(entry.at)}</span>
+    <span className="dpx-trail"><b className={entry.kind === "in" ? "dpx-in" : ""}>{sign}{rupiah(entry.amount)}</b>{formatTime(entry.at)}{entry.foreignCurrency && entry.foreignAmount ? <small className="dpx-fx-small">{fmtMoney(entry.foreignAmount, entry.foreignCurrency)}</small> : null}</span>
   </Btn>;
 }
 
