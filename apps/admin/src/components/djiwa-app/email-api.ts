@@ -45,8 +45,11 @@ export type AutomationStats = { sent: number; delivered: number; opened: number;
 export type Automation = {
 	key: string; name: string; description: string; kind: "marketing" | "transactional"; trigger: string; enabled: boolean; delayHours: number; dailyLimit: number;
 	subject: string; html: string; customized: boolean; defaultSubject: string; defaultHtml: string; sampleVars: Record<string, string>; variables: string[];
-	lastRunAt: string | null; lastError: string | null; eligibleNow: number; stats: AutomationStats;
+	lastRunAt: string | null; lastError: string | null; eligibleNow: number; stats: AutomationStats; focus?: "clicks";
 };
+export type AutomationHealth = { quotaUsed: number; quotaLimit: number; sentToday: number; domain: { name: string; status: string; dkim: string; spf: boolean; dmarc: boolean } | null };
+export type EngagementSummary = { key: string; name: string; sent: number; delivered: number; opened: number; clicked: number };
+export type EngagementPerson = { id: number; automation_key: string; automationName: string; email: string; name: string; status: string; sent_at: string | null; opened_at: string | null; clicked_at: string | null };
 export type AutomationSend = { id: number; email: string; name: string; status: string; error: string | null; sent_at: string | null; delivered_at: string | null; opened_at: string | null; clicked_at: string | null; created_at: string };
 
 export function automationApi<T = Record<string, unknown>>(action: string, payload: Record<string, unknown> = {}) {

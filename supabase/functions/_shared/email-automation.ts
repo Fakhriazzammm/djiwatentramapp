@@ -79,7 +79,7 @@ export const AUTOMATIONS: AutomationDef[] = [
 	},
 	{
 		key: "review_invite", kind: "marketing",
-		trigger: "Pelanggan berizin pemasaran yang pernah memesan. Sekali seumur hidup per orang, dikirim bertahap sesuai batas harian. Tanpa imbalan apa pun (kebijakan Google melarang ulasan berinsentif).",
+		trigger: "Pelanggan berizin pemasaran yang pernah memesan, sejak pesanan terakhirnya lewat jeda yang diatur (standar 24 jam, setelah struk). Sekali seumur hidup per orang, dikirim bertahap sesuai batas harian. Tanpa imbalan apa pun (kebijakan Google melarang ulasan berinsentif).",
 		subject: "{{nama}}, ceritakan pengalamanmu di Djiwa Tentram?",
 		html: wrapEmail(
 			`<img src="${APP_URL}/order-greeting-cafe.jpg" width="502" alt="Ilustrasi suasana kedai Djiwa Tentram" style="display:block;width:100%;max-width:502px;height:auto;border:0;border-radius:12px;">
@@ -244,7 +244,12 @@ export function selectCandidates(key: AutomationKey, ctx: SelectCtx): Candidate[
 				return Number(c.total_orders ?? 0) > 0 && last && ctx.now - last >= delay && ctx.now - last <= 7 * DAY ? `post_order:${c.source_id}:${last}` : null;
 			}, () => ({}));
 		case "review_invite":
-			return customerCandidates(ctx, (c) => (Number(c.total_orders ?? 0) > 0 ? `review_invite:${c.source_id}` : null), () => ({ link_ulasan: GOOGLE_REVIEW_URL }));
+			return customerCandidates(ctx, (c) => {
+				if (Number(c.total_orders ?? 0) <= 0) return null;
+				// The receipt goes out first; the review invite follows `delay` hours after the last order (never right on top of it).
+				const last = time(c.last_order_at);
+				return !last || ctx.now - last >= delay ? `review_invite:${c.source_id}` : null;
+			}, () => ({ link_ulasan: GOOGLE_REVIEW_URL }));
 		case "lead_intro": {
 			const customerEmails = new Set(ctx.customers.map((c) => clean(c.email)));
 			const out: Candidate[] = [];

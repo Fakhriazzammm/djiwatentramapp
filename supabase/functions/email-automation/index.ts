@@ -303,10 +303,48 @@ async function list() {
 			subject: content.subject, html: content.html, customized: Boolean(row.subject || row.html), defaultSubject: def.subject, defaultHtml: def.html,
 			sampleVars: { link: APP_URL, unsubscribe_url: "#", ...def.sampleVars }, variables: def.variables,
 			lastRunAt: row.last_run_at, lastError: row.last_error, eligibleNow: eligible,
+			focus: def.key === "order_receipt" || def.key === "review_invite" ? "clicks" : undefined,
 			stats: { sent: sent.length, delivered: mine.filter((s) => s.delivered_at).length, opened: mine.filter((s) => s.opened_at).length, clicked: mine.filter((s) => s.clicked_at).length, failed: mine.filter((s) => s.status === "failed" || s.status === "bounced" || s.status === "complained").length, returned, tracksReturn: def.kind === "marketing" && def.key !== "lead_intro" },
 		});
 	}
-	return { automations: items };
+	return { automations: items, health: await health() };
+}
+
+/** Sending health for the admin banner: monthly quota and domain verification. Best effort, never blocks the list. */
+async function health() {
+	try {
+		const [status, domains] = await Promise.all([helipod("/status"), helipod("/domains")]);
+		const usage = (status.json?.data as { usage?: { month?: number; monthlyLimit?: number; today?: number } } | undefined)?.usage;
+		const domain = ((domains.json?.data as Array<{ domain?: string; status?: string; dkimStatus?: string; spfValid?: boolean; dmarcValid?: boolean }> | undefined) ?? [])[0];
+		return {
+			quotaUsed: Number(usage?.month ?? 0), quotaLimit: Number(usage?.monthlyLimit ?? 0), sentToday: Number(usage?.today ?? 0),
+			domain: domain ? { name: String(domain.domain ?? ""), status: String(domain.status ?? ""), dkim: String(domain.dkimStatus ?? ""), spf: Boolean(domain.spfValid), dmarc: Boolean(domain.dmarcValid) } : null,
+		};
+	} catch { return null; }
+}
+
+/** Who opened / clicked our automatic emails: per-automation totals plus the latest recipients. */
+async function engagement(payload: Json) {
+	const filter = ["opened", "clicked", "all"].includes(text(payload.filter)) ? text(payload.filter) : "opened";
+	const key = text(payload.key);
+	const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+	const { data: all, error } = await pos().from("email_automation_sends").select("automation_key,status,delivered_at,opened_at,clicked_at").gte("created_at", since).limit(10000);
+	if (error) throw error;
+	const rows = await loadRows();
+	const summary = AUTOMATIONS.map((def) => {
+		const mine = (all ?? []).filter((s) => s.automation_key === def.key);
+		const sent = mine.filter((s) => ["sent", "delivered", "bounced", "complained"].includes(s.status)).length;
+		return { key: def.key, name: rows.find((r) => r.key === def.key)?.name ?? def.key, sent, delivered: mine.filter((s) => s.delivered_at).length, opened: mine.filter((s) => s.opened_at).length, clicked: mine.filter((s) => s.clicked_at).length };
+	}).filter((row) => row.sent > 0);
+	let query = pos().from("email_automation_sends").select("id,automation_key,email,name,status,sent_at,opened_at,clicked_at").gte("created_at", since);
+	if (key) query = query.eq("automation_key", key);
+	if (filter === "opened") query = query.not("opened_at", "is", null);
+	else if (filter === "clicked") query = query.not("clicked_at", "is", null);
+	else query = query.in("status", ["sent", "delivered", "bounced", "complained"]);
+	const { data: people, error: peopleError } = await query.order("id", { ascending: false }).limit(200);
+	if (peopleError) throw peopleError;
+	const names = new Map(rows.map((r) => [r.key, r.name]));
+	return { summary, people: (people ?? []).map((p) => ({ ...p, automationName: names.get(p.automation_key) ?? p.automation_key })) };
 }
 
 function parseKey(payload: Json) {
@@ -390,7 +428,7 @@ Deno.serve(async (req) => {
 			return response({ success: true, ...(await processDue()) });
 		}
 		await verifyStaff(payload);
-		const handlers: Record<string, () => Promise<Json>> = { list, update: () => update(payload), "run-now": () => runNow(payload), recent: () => recent(payload), "send-test": () => sendTest(payload) };
+		const handlers: Record<string, () => Promise<Json>> = { list, update: () => update(payload), "run-now": () => runNow(payload), recent: () => recent(payload), "send-test": () => sendTest(payload), engagement: () => engagement(payload) };
 		const handler = handlers[action];
 		if (!handler) return fail("UNKNOWN_ACTION", `Action tidak dikenal: ${action}`);
 		return response({ success: true, ...(await handler()) });

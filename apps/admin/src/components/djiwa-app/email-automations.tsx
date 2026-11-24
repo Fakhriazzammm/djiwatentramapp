@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { agoLabel, monoLabel, num, Pill } from "@/components/djiwa-app/ui";
-import { automationApi, renderWith, type Automation, type AutomationSend } from "@/components/djiwa-app/email-api";
+import { automationApi, renderWith, type Automation, type AutomationHealth, type AutomationSend } from "@/components/djiwa-app/email-api";
 
 const inputCls = "h-[34px] w-full border border-border bg-card px-2.5 text-[13px] outline-none focus:border-foreground/40";
 const btn = "h-[34px] border border-border bg-card px-3 text-xs font-semibold hover:border-foreground/30 disabled:opacity-40";
@@ -14,11 +14,12 @@ const SEND_STATUS: Record<string, [string, "ok" | "warn" | "bad" | "info" | ""]>
 
 export function Automations({ onChanged }: { onChanged?: () => void }) {
 	const [items, setItems] = useState<Automation[] | null>(null);
+	const [health, setHealth] = useState<AutomationHealth | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [open, setOpen] = useState<string | null>(null);
 
 	const load = useCallback(async () => {
-		try { setItems((await automationApi<{ automations: Automation[] }>("list")).automations); setError(null); }
+		try { const r = await automationApi<{ automations: Automation[]; health?: AutomationHealth | null }>("list"); setItems(r.automations); setHealth(r.health ?? null); setError(null); }
 		catch (e) { setError(errorMessage(e)); }
 	}, []);
 	useEffect(() => { void load(); }, [load]);
@@ -30,12 +31,26 @@ export function Automations({ onChanged }: { onChanged?: () => void }) {
 	return (
 		<div className="grid gap-3">
 			<div className="border border-border bg-card px-3.5 py-2.5 text-[12.5px] text-[#444450]">
-				Email otomatis dikirim server setiap 5 menit sesuai aturan di bawah. Semuanya <strong>nonaktif</strong> sampai kamu menyalakannya. Email marketing hanya ke pelanggan berizin dan mematuhi batas 72 jam; email transaksional (reservasi) tidak memakai batas itu.
+				Email otomatis dikirim server setiap 5 menit sesuai aturan di bawah. Hanya yang <strong>aktif</strong> yang berjalan. Email marketing hanya ke pelanggan berizin dan mematuhi batas 72 jam; email transaksional (struk pesanan, reservasi) tidak memakai batas itu dan boleh ke pembeli yang belum berizin pemasaran.
 				<span className="ml-2 font-mono text-[11px] text-muted-foreground">{active} dari {items.length} aktif</span>
 			</div>
+			{health ? <HealthBar health={health} /> : null}
 			{items.map((item) => (
 				<AutomationCard key={item.key} item={item} expanded={open === item.key} onToggleOpen={() => setOpen(open === item.key ? null : item.key)} onUpdated={(next) => { setItems(next); onChanged?.(); }} reload={load} />
 			))}
+		</div>
+	);
+}
+
+function HealthBar({ health }: { health: AutomationHealth }) {
+	const ratio = health.quotaLimit ? health.quotaUsed / health.quotaLimit : 0;
+	const quotaTone = ratio >= 0.9 ? "bad" : ratio >= 0.7 ? "warn" : "ok";
+	const domainOk = health.domain?.status === "verified" && health.domain.dkim === "success" && health.domain.spf && health.domain.dmarc;
+	return (
+		<div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border border-border bg-card px-3.5 py-2 text-[12px]">
+			<span><span className={monoLabel}>Kuota bulan ini</span> <Pill tone={quotaTone}>{num(health.quotaUsed)} / {health.quotaLimit ? num(health.quotaLimit) : "∞"}</Pill>{ratio >= 0.7 ? <span className="ml-1 text-muted-foreground">{ratio >= 0.9 ? "hampir habis, email otomatis bisa berhenti" : "mulai menipis"}</span> : null}</span>
+			<span><span className={monoLabel}>Terkirim hari ini</span> <span className="font-semibold tabular-nums">{num(health.sentToday)}</span></span>
+			<span><span className={monoLabel}>Domain pengirim</span> {health.domain ? <Pill tone={domainOk ? "ok" : "warn"}>{health.domain.name} · {domainOk ? "terverifikasi" : "perlu dicek"}</Pill> : <Pill tone="warn">belum ada</Pill>}</span>
 		</div>
 	);
 }
@@ -86,7 +101,7 @@ function AutomationCard({ item, expanded, onToggleOpen, onUpdated, reload }: { i
 					["Sampai", pct(s.delivered, s.sent), `${num(s.delivered)} email`],
 					["Dibuka", pct(s.opened, s.sent), `${num(s.opened)} email`],
 					["Klik", pct(s.clicked, s.sent), `${num(s.clicked)} email`],
-					s.tracksReturn ? ["Pesan lagi ≤7h", pct(s.returned, s.sent), `${num(s.returned)} orang`] : ["Gagal / bounce", num(s.failed), "30 hari"],
+					item.focus === "clicks" ? ["Klik ulasan", pct(s.clicked, s.sent), `${num(s.clicked)} orang`] : s.tracksReturn ? ["Pesan lagi ≤7h", pct(s.returned, s.sent), `${num(s.returned)} orang`] : ["Gagal / bounce", num(s.failed), "30 hari"],
 				].map(([label, value, hint]) => (
 					<div key={label} className="grid content-start gap-0.5 bg-card px-3 py-2">
 						<span className={monoLabel}>{label}</span>

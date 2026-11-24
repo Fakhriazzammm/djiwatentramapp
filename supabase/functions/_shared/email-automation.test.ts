@@ -120,6 +120,16 @@ describe("order_receipt", () => {
 	});
 });
 
+describe("review_invite timing", () => {
+	test("waits `delay` hours after the last order so the receipt comes first", () => {
+		const customers = [
+			customer({ source_id: "fresh", total_orders: 1, last_order_at: new Date(NOW - 3 * 3_600_000).toISOString() }),
+			customer({ source_id: "ready", total_orders: 1, last_order_at: new Date(NOW - 30 * 3_600_000).toISOString() }),
+		];
+		expect(selectCandidates("review_invite", ctx({ customers, delayHours: 24 })).map((c) => c.customerId)).toEqual(["ready"]);
+	});
+});
+
 describe("review_invite", () => {
 	test("consented customers who ordered, once, never suppressed", () => {
 		const customers = [
