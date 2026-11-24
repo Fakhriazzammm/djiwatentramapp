@@ -64,3 +64,16 @@ html,body,#root{height:100%}
  .kdp .box b{font-size:11px}
  .kdp .tg{font-size:9.5px;padding:3px 7px}
 }
+.kds{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff}
+.kds>label:first-child{margin-top:0}
+@media(max-width:820px){
+ .panel:has(.kdp)>.ph{position:sticky;top:0;z-index:5;background:#fff;border-radius:12px 12px 0 0}
+ .kdp{padding:8px}
+ .kds{padding:9px 10px;margin-top:8px!important}
+ .kds .crow>.btn{flex:1 1 auto;justify-content:center}
+ .kds .crow>.tg{flex:1 1 100%;text-align:center}
+ .kdp .mr{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+ .kdz .btn{flex:1;justify-content:center}
+ .kd{background:var(--soft);border-radius:10px;padding:10px}
+ .kdp .box{margin-top:8px}
+}

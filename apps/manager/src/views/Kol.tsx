@@ -541,7 +541,7 @@ function CreatorDetail({ creator, data, send, onClose }: { creator: Creator; dat
           </div>
         )}
 
-        <div className="row2" style={{ marginTop: 14 }}>
+        <div className="row2 kds" style={{ marginTop: 12 }}>
           <div>
             <label style={{ marginTop: 0 }}>Status pipeline</label>
             <div className="crow" style={{ marginTop: 0 }}>
@@ -562,7 +562,7 @@ function CreatorDetail({ creator, data, send, onClose }: { creator: Creator; dat
           </div>
         </div>
 
-        <div style={{ marginTop: 14 }}>
+        <div className="kds" style={{ marginTop: 12 }}>
           <label style={{ marginTop: 0 }}>Izin booking visit</label>
           <div className="crow" style={{ marginTop: 0 }}>
             <span className={`tg ${creator.visit_booking_eligible ? "ok" : ""}`}>{creator.visit_booking_eligible ? "Diizinkan" : "Belum diizinkan"}</span>
@@ -573,7 +573,7 @@ function CreatorDetail({ creator, data, send, onClose }: { creator: Creator; dat
           {creator.public_reason && <div className="meta" style={{ marginTop: 6 }}>Alasan publik: {creator.public_reason}</div>}
         </div>
 
-        <div style={{ marginTop: 14 }}>
+        <div className="kds" style={{ marginTop: 12 }}>
           <label style={{ marginTop: 0 }}>Undangan visit</label>
           <div className="crow" style={{ marginTop: 0 }}>
             <button className="btn s p" disabled={busy === "invite"} onClick={() => void invite()}>{busy === "invite" ? "Membuat…" : "Buat undangan (7 hari)"}</button>
@@ -587,7 +587,7 @@ function CreatorDetail({ creator, data, send, onClose }: { creator: Creator; dat
           )}
         </div>
 
-        <div style={{ marginTop: 16 }}>
+        <div className="kds" style={{ marginTop: 12 }}>
           <label style={{ marginTop: 0 }}>Visit creator ini</label>
           {visits.length === 0 && <div className="meta">Belum ada pengajuan visit.</div>}
           {visits.map((v) => (
@@ -604,7 +604,7 @@ function CreatorDetail({ creator, data, send, onClose }: { creator: Creator; dat
           ))}
         </div>
 
-        <div className="crow" style={{ marginTop: 18, justifyContent: "flex-end" }}>
+        <div className="crow kdz" style={{ marginTop: 12, justifyContent: "flex-end" }}>
           {!confirm && <button className="btn s r" disabled={busy === "delete"} onClick={() => setConfirm(true)}>Hapus creator</button>}
           {confirm && (
             <>
