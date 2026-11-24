@@ -30,21 +30,26 @@ const ORDER_FOOTER = `Email ini dikirim otomatis sebagai struk pesananmu di Djiw
 const rupiah = (value: number) => `Rp${Math.round(value).toLocaleString("id-ID")}`;
 const esc = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const DIGITAL_PAYMENT = /(qris|mayar|wallet|djiwa|transfer)/i;
-const receiptBox = `<div style="margin:18px 0;padding:14px 16px;background:#eaf1fc;border-left:3px solid #1a5dc6;line-height:1.8;">
-<strong>Nomor pesanan:</strong> {{nomor_order}}<br><strong>Tanggal:</strong> {{tanggal}}<br><strong>Pembayaran:</strong> {{metode}}</div>`;
+const receiptBox = `<div style="margin:18px 0 24px;padding:18px 20px;background:#edf3fb;border-radius:14px;color:#203956;">
+<p style="margin:0 0 4px;font-size:12px;">Nomor pesanan</p>
+<p style="margin:0 0 12px;font-size:17px;font-weight:700;overflow-wrap:anywhere;">{{nomor_order}}</p>
+<p style="margin:0;font-size:14px;">{{tanggal}} &middot; {{metode}}</p></div>`;
 
 /** Item table + totals as an email-safe HTML block (passed to the template as the raw variable {{{rincian}}}). */
 export function receiptRowsHtml(items: Array<{ name: string; variant?: string | null; quantity: number; price: number }>, total: number, extras: Array<{ label: string; amount: number }> = []) {
 	const rows = items.map((item) => `<tr><td style="padding:6px 0;border-bottom:1px solid #eceef3;">${esc(item.name)}${item.variant ? `<br><span style="color:#6a6a76;font-size:12px;">${esc(item.variant)}</span>` : ""}</td><td style="padding:6px 8px;border-bottom:1px solid #eceef3;text-align:center;white-space:nowrap;">${item.quantity}x</td><td style="padding:6px 0;border-bottom:1px solid #eceef3;text-align:right;white-space:nowrap;">${rupiah(item.price * item.quantity)}</td></tr>`).join("");
 	const extra = extras.filter((e) => e.amount).map((e) => `<tr><td colspan="2" style="padding:4px 0;color:#6a6a76;">${esc(e.label)}</td><td style="padding:4px 0;text-align:right;white-space:nowrap;">${e.amount < 0 ? "-" : ""}${rupiah(Math.abs(e.amount))}</td></tr>`).join("");
-	return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:8px 0 4px;font-size:14px;">${rows}${extra}<tr><td colspan="2" style="padding:10px 0 0;font-weight:700;">Total</td><td style="padding:10px 0 0;text-align:right;font-weight:700;white-space:nowrap;">${rupiah(total)}</td></tr></table>`;
+	return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:8px 0 4px;font-size:14px;">${rows}${extra}<tr><td colspan="2" style="padding:14px 10px;background:#123765;color:#ffffff;font-weight:700;">Total dibayar</td><td style="padding:14px 10px;background:#123765;color:#ffffff;font-size:19px;text-align:right;font-weight:700;white-space:nowrap;">${rupiah(total)}</td></tr></table>`;
 }
 
 const welcome = builtinTemplate("builtin-welcome")!;
 const comeback = builtinTemplate("builtin-comeback")!;
 
 /** "Beri ulasan" call-to-action; empty string when the order was paid in cash. */
-export const reviewBlock = (url: string) => `<div style="margin:20px 0 6px;padding:16px;border-radius:12px;background:#fff7e0;text-align:center;"><p style="margin:0 0 6px;font-weight:700;">Bagaimana pengalamanmu?</p><p style="margin:0 0 12px;color:#6a6a76;font-size:14px;">Ulasanmu sangat membantu kami dan pelanggan lain.</p><a href="${url}" style="display:inline-block;background:#f5a623;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px;">Beri ulasan di Google</a></div>`;
+export const reviewBlock = (url: string) => `<div style="margin:22px 0 0;padding:16px 18px;background:#faf6ef;border-radius:12px;color:#473823;">
+<p style="margin:0 0 4px;font-weight:700;">Bagaimana pengalamanmu?</p>
+<p style="margin:0 0 8px;font-size:14px;">Ceritakan menu yang kamu coba atau pelayanan yang kamu rasakan.</p>
+<a href="${esc(url)}" style="color:#774016;text-decoration:underline;font-weight:700;">Beri ulasan di Google</a></div>`;
 
 export const AUTOMATIONS: AutomationDef[] = [
 	{
@@ -77,11 +82,13 @@ export const AUTOMATIONS: AutomationDef[] = [
 		trigger: "Pelanggan berizin pemasaran yang pernah memesan. Sekali seumur hidup per orang, dikirim bertahap sesuai batas harian. Tanpa imbalan apa pun (kebijakan Google melarang ulasan berinsentif).",
 		subject: "{{nama}}, ceritakan pengalamanmu di Djiwa Tentram?",
 		html: wrapEmail(
-			h1("Halo {{nama}}, bagaimana pengalamanmu?") +
-			p("Terima kasih sudah memilih Djiwa Tentram. Kami terus belajar dari cerita pelanggan, dan ulasanmu membantu kami menjaga rasa serta pelayanan.") +
-			p("Kalau ada waktu satu menit, tuliskan kesan jujurmu di Google. Satu atau dua kalimat saja sudah sangat berarti, apa pun penilaianmu.") +
+			`<img src="${APP_URL}/order-greeting-cafe.jpg" width="502" alt="Ilustrasi suasana kedai Djiwa Tentram" style="display:block;width:100%;max-width:502px;height:auto;border:0;border-radius:12px;">
+			<p style="margin:22px 0 6px;color:#725137;font-size:14px;">Halo {{nama}},</p>
+			<h1 style="margin:0 0 14px;font-family:Georgia,serif;font-size:30px;line-height:1.2;color:#382b24;">Bagaimana rasanya mampir ke Djiwa?</h1>` +
+			p("Kami ingin mendengar ceritamu. Mungkin ada menu yang berkesan, atau sesuatu yang bisa kami perbaiki saat kamu datang lagi.") +
+			p("Satu atau dua kalimat di Google sudah sangat membantu, apa pun penilaianmu.") +
 			button("Tulis ulasan di Google", "{{{link_ulasan}}}") +
-			p("Terima kasih sudah jadi bagian dari Djiwa Tentram. Sampai jumpa lagi, semoga harimu tentram.") ,
+			`<p style="margin:22px 0 0;color:#64554c;">Salam hangat,<br><strong>Tim Djiwa Tentram</strong></p>`,
 			"Satu menit untuk berbagi pengalamanmu di Djiwa Tentram.",
 		),
 		sampleVars: { nama: "Ayu", link_ulasan: GOOGLE_REVIEW_URL }, variables: ["nama", "link_ulasan", "link"],
@@ -104,7 +111,9 @@ export const AUTOMATIONS: AutomationDef[] = [
 		trigger: "Pesanan yang sudah dibayar dalam 24 jam terakhir dan punya email (email di pesanan, atau email akun member). Sekali per pesanan. Link ulasan Google hanya untuk pembayaran digital (QRIS, Djiwa Pay), bukan tunai di kasir.",
 		subject: "Struk pesananmu {{nomor_order}}",
 		html: wrapEmail(
-			h1("Terima kasih, {{nama}}!") + p("Pembayaranmu sudah kami terima. Ini struk pesananmu:") + receiptBox + "{{{rincian}}}" +
+			`<p style="margin:0 0 6px;color:#326049;font-size:13px;font-weight:700;">Pembayaran diterima</p>` +
+			h1("Terima kasih, {{nama}}!") + receiptBox +
+			`<h2 style="margin:0 0 8px;font-size:17px;color:#203956;">Rincian pesanan</h2>` + "{{{rincian}}}" +
 			"{{{ulasan_blok}}}" + button("Buka Djiwa App"),
 			"Struk pesananmu di Djiwa Tentram.", ORDER_FOOTER,
 		),
