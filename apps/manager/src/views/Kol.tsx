@@ -748,6 +748,7 @@ function CampaignDetail({ campaign, data, assignments, submissions, send, onClos
     endDate: campaign?.end_date?.slice(0, 10) ?? "",
     status: campaign?.status ?? "draft",
   });
+  const [sec, setSec] = useState<"creator" | "bukti" | "pengajuan" | "edit">("creator");
   const [assignId, setAssignId] = useState("");
   const [assignNote, setAssignNote] = useState("");
   const [busy, setBusy] = useState("");
@@ -785,25 +786,101 @@ function CampaignDetail({ campaign, data, assignments, submissions, send, onClos
   return (
     <Panel
       title={campaign ? campaign.title : "Kampanye baru"}
-      meta={campaign ? `slug ${campaign.slug}` : "dibuat sebagai draf"}
+      meta={campaign ? `${CAMPAIGN_STATUS[campaign.status]?.[0] ?? campaign.status} · ${campaign.slug}` : "dibuat sebagai draf"}
       action={<div style={{ display: "flex", gap: 6 }}>
         <button className="btn s" onClick={onClose}>← Kembali</button>
-        <button className="btn s p" disabled={busy === "save"} onClick={() => void save()}>{busy === "save" ? "Menyimpan…" : campaign ? "Simpan" : "Buat"}</button>
+        {(!campaign || sec === "edit") && <button className="btn s p" disabled={busy === "save"} onClick={() => void save()}>{busy === "save" ? "Menyimpan…" : campaign ? "Simpan" : "Buat"}</button>}
       </div>}
     >
-      <div className="pad kdp">
-        {campaign && (() => {
-          const live = assignments.filter((a) => a.status !== "cancelled");
-          const cnt = (st: string) => submissions.filter((x) => x.status === st).length;
-          return (
-            <div className="kd kcs" style={{ marginBottom: 12 }}>
-              <KV k="Creator" v={<b className="mono">{live.length}</b>} />
-              <KV k="Bukti masuk" v={<b className="mono">{submissions.length}</b>} />
-              <KV k="Perlu review" v={<b className="mono">{cnt("submitted")}</b>} />
-              <KV k="Disetujui" v={<b className="mono">{cnt("approved")}</b>} />
+      {campaign && (() => {
+        const live = assignments.filter((a) => a.status !== "cancelled");
+        const cnt = (st: string) => submissions.filter((x) => x.status === st).length;
+        return (
+          <>
+            <div className="kst">
+              <div><b>{live.length}</b><span>Creator</span></div>
+              <div><b>{submissions.length}</b><span>Bukti</span></div>
+              <div className={cnt("submitted") ? "hot" : ""}><b>{cnt("submitted")}</b><span>Review</span></div>
+              <div><b>{cnt("approved")}</b><span>Setuju</span></div>
             </div>
-          );
-        })()}
+            <Tabs items={[["creator", "Creator"], ["bukti", `Bukti ${submissions.length}`], ["pengajuan", "Pengajuan"], ["edit", "Edit"]]} value={sec} onChange={setSec} />
+          </>
+        );
+      })()}
+
+      {campaign && sec === "creator" && (
+        <div className="pad kdp">
+          {(campaign.application_mode ?? "invite") === "invite" && <>
+          <details className="kinv"><summary>+ Undang creator</summary>
+          <div className="crow" style={{ marginTop: 0 }}>
+            <select className="f" style={{ flex: 1, minWidth: 180 }} value={assignId} onChange={(e) => setAssignId(e.target.value)}>
+              <option value="">Pilih creator…</option>
+              {available.map((c) => <option key={c.source_id} value={c.source_id}>{creatorLabel(c)} · {atUsername(c.username)}</option>)}
+            </select>
+            <input className="f" style={{ flex: 1, minWidth: 160 }} placeholder="Catatan untuk creator (opsional)" value={assignNote} maxLength={1000} onChange={(e) => setAssignNote(e.target.value)} />
+            <button className="btn s p" disabled={!assignId || busy === "assign"} onClick={() => void assign()}>Undang</button>
+          </div></details>
+          </>}
+          <div className="kcl">
+            {assignments.length === 0 && <div className="meta">Belum ada creator yang bergabung.</div>}
+            {assignments.map((a) => {
+              const mine = submissions.filter((x) => x.campaign_assignment_id === a.id);
+              const cr = data.creators.find((c) => c.source_id === a.kol_id);
+              const waiting = mine.filter((x) => x.status === "submitted").length;
+              return (
+                <details key={a.id} className="kcr">
+                  <summary>
+                    <div className="kcn">
+                      <b>{a.kol_creators?.name ?? a.kol_id}</b>
+                      <span className="meta">{atUsername(a.kol_creators?.username)}{cr ? ` · ${compact(totalFollowers(cr))}` : ""} · {mine.length} bukti</span>
+                    </div>
+                    {waiting > 0 && <span className="tg md">{waiting} baru</span>}
+                    <St map={ASSIGNMENT_STATUS} k={a.status} />
+                  </summary>
+                  <div className="kcb">
+                    <div className="meta">Diundang {fmtDateTime(a.created_at)}{a.accepted_at ? ` · diterima ${fmtDateTime(a.accepted_at)}` : ""}{a.completed_at ? ` · selesai ${fmtDateTime(a.completed_at)}` : ""}</div>
+                    {a.admin_note && <div className="meta">Catatan: {a.admin_note}</div>}
+                    {mine.length === 0 && <div className="meta" style={{ marginTop: 6 }}>Belum mengirim bukti.</div>}
+                    {mine.map((x) => <SubmissionItem key={x.id} submission={x} send={send} />)}
+                  </div>
+                </details>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {campaign && sec === "bukti" && (
+        <div className="pad kdp">
+          {submissions.length === 0 && <div className="meta">Belum ada bukti yang dikirim creator.</div>}
+          {[...submissions].sort((a, b) => (a.status === "submitted" ? 0 : 1) - (b.status === "submitted" ? 0 : 1)).map((x) => (
+            <div key={x.id} className="kds" style={{ marginTop: 8 }}>
+              <b style={{ fontSize: 12 }}>{x.kol_campaign_assignments?.kol_creators?.name ?? "Creator"}</b>
+              <SubmissionItem submission={x} send={send} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {campaign && sec === "pengajuan" && (
+        <div className="pad kdp">
+          <CampaignApplications campaignId={campaign.id} inputClass="f" buttonClass="btn s"
+            load={async () => {
+              const response = await api<{ data: CampaignApplication[] }>("/api/manager/kol", {
+                method: "POST", body: { action: "campaign_applications", campaignId: campaign.id },
+              });
+              return response.data;
+            }}
+            review={async (decision) => {
+              const response = await send({ action: "campaign_application_review", ...decision },
+                decision.approve ? "Pengajuan diterima" : "Pengajuan ditolak");
+              if (!response.ok) throw new Error("Keputusan belum tersimpan.");
+            }} />
+        </div>
+      )}
+
+      {(!campaign || sec === "edit") && (
+        <div className="pad kdp">
         <div className="row2">
           <div><label style={{ marginTop: 0 }}>Judul</label><input className="f" value={form.title} maxLength={160} onChange={(e) => set("title", e.target.value)} /></div>
           <div><label style={{ marginTop: 0 }}>Slug</label><input className="f" value={form.slug} maxLength={120} placeholder={slugify(form.title) || "visit-review-menu"} onChange={(e) => set("slug", e.target.value)} /></div>
@@ -836,58 +913,6 @@ function CampaignDetail({ campaign, data, assignments, submissions, send, onClos
             return response.data;
           }}
           onDraft={(draft) => setForm((prev) => ({ ...prev, ...draft }))} />
-        {campaign && (
-          <CampaignApplications campaignId={campaign.id} inputClass="f" buttonClass="btn s"
-            load={async () => {
-              const response = await api<{ data: CampaignApplication[] }>("/api/manager/kol", {
-                method: "POST", body: { action: "campaign_applications", campaignId: campaign.id },
-              });
-              return response.data;
-            }}
-            review={async (decision) => {
-              const response = await send({ action: "campaign_application_review", ...decision },
-                decision.approve ? "Pengajuan diterima" : "Pengajuan ditolak");
-              if (!response.ok) throw new Error("Keputusan belum tersimpan.");
-            }} />
-        )}
-      </div>
-
-      {campaign && (
-        <div className="pad" style={{ borderTop: "1px solid var(--line)" }}>
-          {(campaign.application_mode ?? "invite") === "invite" && <>
-          <label style={{ marginTop: 0 }}>Undang creator</label>
-          <div className="crow" style={{ marginTop: 0 }}>
-            <select className="f" style={{ flex: 1, minWidth: 180 }} value={assignId} onChange={(e) => setAssignId(e.target.value)}>
-              <option value="">Pilih creator…</option>
-              {available.map((c) => <option key={c.source_id} value={c.source_id}>{creatorLabel(c)} · {atUsername(c.username)}</option>)}
-            </select>
-            <input className="f" style={{ flex: 1, minWidth: 160 }} placeholder="Catatan untuk creator (opsional)" value={assignNote} maxLength={1000} onChange={(e) => setAssignNote(e.target.value)} />
-            <button className="btn s p" disabled={!assignId || busy === "assign"} onClick={() => void assign()}>Undang</button>
-          </div>
-          </>}
-
-          <label>Creator di kampanye ini ({assignments.length})</label>
-          {assignments.length === 0 && <div className="meta">Belum ada creator yang bergabung.</div>}
-          {assignments.map((a) => {
-            const mine = submissions.filter((x) => x.campaign_assignment_id === a.id);
-            const cr = data.creators.find((c) => c.source_id === a.kol_id);
-            return (
-              <div key={a.id} className="kds" style={{ marginTop: 8 }}>
-                <div className="mr">
-                  <div>
-                    <b style={{ fontSize: 12 }}>{a.kol_creators?.name ?? a.kol_id}</b>
-                    <div className="meta">{atUsername(a.kol_creators?.username)}{cr ? ` · ${compact(totalFollowers(cr))} follower` : ""} · {fmtDateTime(a.created_at)}</div>
-                    {a.admin_note && <div className="meta">Catatan: {a.admin_note}</div>}
-                    {a.accepted_at && <div className="meta">Diterima {fmtDateTime(a.accepted_at)}{a.completed_at ? ` · selesai ${fmtDateTime(a.completed_at)}` : ""}</div>}
-                  </div>
-                  <St map={ASSIGNMENT_STATUS} k={a.status} />
-                </div>
-                <div className="meta" style={{ margin: "8px 0 2px" }}>Bukti ({mine.length})</div>
-                {mine.length === 0 && <div className="meta">Belum mengirim bukti.</div>}
-                {mine.map((x) => <SubmissionItem key={x.id} submission={x} send={send} />)}
-              </div>
-            );
-          })}
         </div>
       )}
     </Panel>

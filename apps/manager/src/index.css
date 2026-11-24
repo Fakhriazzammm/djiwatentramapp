@@ -79,3 +79,19 @@ html,body,#root{height:100%}
 }
 .rowlink{cursor:pointer}.rowlink:hover td,.rowlink:focus td{background:var(--soft)}.rowlink:active td{background:#eef0f4}
 @media(max-width:820px){.kcs{grid-template-columns:repeat(4,1fr)!important}}
+.kst{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}
+.kst>div{padding:10px 6px;text-align:center;border-right:1px solid var(--line)}.kst>div:last-child{border:0}
+.kst b{display:block;font:600 18px var(--mono);letter-spacing:-.02em}
+.kst span{font:500 9px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.kst .hot b{color:var(--red)}
+.kinv{border:1px dashed var(--line);border-radius:10px;padding:8px 10px;margin-bottom:10px}
+.kinv summary,.kcr summary{cursor:pointer;list-style:none}.kinv summary::-webkit-details-marker,.kcr summary::-webkit-details-marker{display:none}
+.kinv summary{font:500 11px var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.kinv[open] summary{margin-bottom:8px}
+.kcl{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.kcr+.kcr{border-top:1px solid var(--line)}
+.kcr summary{display:flex;align-items:center;gap:8px;padding:10px 12px}
+.kcr summary:active,.kcr[open] summary{background:var(--soft)}
+.kcn{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.kcn b{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kcr summary:after{content:'›';color:var(--muted);transition:transform .15s}.kcr[open] summary:after{transform:rotate(90deg)}
+.kcb{padding:4px 12px 12px;background:var(--soft)}
