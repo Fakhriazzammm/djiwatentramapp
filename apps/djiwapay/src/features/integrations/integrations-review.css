@@ -111,3 +111,10 @@
 .dpx-rv-tool[disabled]{opacity:.5}
 .dpx-rv-from{padding:0 4px;font-size:12.5px;line-height:1.45;color:var(--mute);overflow-wrap:anywhere}
 .dpx-rv-from b{display:block;font-weight:600;color:var(--ink)}
+
+.dpx-rv-two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.dpx-rv-sel{display:flex;align-items:center;gap:8px;min-width:0;padding:8px 10px;border-radius:16px;background:var(--group);text-align:left;color:var(--navy)}
+.dpx-rv-sel>span:not(.dpx-rv-selico){flex:1;min-width:0;display:grid}
+.dpx-rv-sel small{font-size:11px;color:var(--mute)}
+.dpx-rv-sel b{font:600 13.5px var(--font);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dpx-rv-selico{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#fff;flex:none}

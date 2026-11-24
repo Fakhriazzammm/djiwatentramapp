@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Btn, Header, Ic, Reveal, Seg, Sheet, Sky, SuccessMark, spring } from "../shell/dpx-ui";
-import type { FinCtx } from "../finance/fin-pages";
-import { CatIcon, MoneyInput, accName, catOf } from "../finance/fin-sheets";
+import { useBalances, type FinCtx } from "../finance/fin-pages";
+import { AccountSheet, CategorySheet, CatIcon, MoneyInput, accName, catOf } from "../finance/fin-sheets";
 import { rupiah } from "../../lib/djiwa-pay-format";
 import { monthLabel } from "../../lib/djiwa-pay-summary";
 import { CHANNEL_NAME, approveItem, approveReviewGroup, bulkReview, getReview, getReviewGroups, rejectItem, rejectReviewGroup, rereadItem, type ReviewGroup, type ReviewItem } from "../../lib/finance/integrations";
@@ -66,19 +66,21 @@ function Row({ item, ctx, selecting, selected, onToggle, onOpen, onQuick, busy }
 /* ---------- detail sheet ---------- */
 function DetailSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: FinCtx; onClose: () => void; onDone: (message: string) => Promise<void> }) {
   const p = item.parsed, state = ctx.fin.state;
-  const generic = isGeneric(item);
+  const generic = isGeneric(item), balances = useBalances(state, ctx.fin.entries, ctx.payBalance);
   const [kind, setKind] = useState<"in" | "out" | null>(generic ? p.suggest ?? null : kindOf(item));   // an unknown sender starts on the guess, if there is one, and still waits for "Setujui"
   const move = isMove(item);
   const [amount, setAmount] = useState(String(Math.round(move ? moveAmount(item) : p.amount ?? 0)));
   const [note, setNote] = useState(tidyTitle(p.details?.description || p.merchant || p.subject || ""));
   const [cat, setCat] = useState(generic && kind === "in" ? "bonus" : p.categoryId ?? (kind === "in" ? "bonus" : "lainnya"));   // a guessed spending category must not ride along with income
   const [account, setAccount] = useState(p.accountId ?? "tunai");
-  const [busy, setBusy] = useState(false), [proc, setProc] = useState<Proc | null>(null);
+  const [busy, setBusy] = useState(false), [proc, setProc] = useState<Proc | null>(null), [pickOf, setPickOf] = useState<"cat" | "acc" | null>(null);
   const [detail, setDetail] = useState(Boolean(p.details?.items?.length));
   const cats = state.categories.filter((c) => c.income === (kind === "in")), accounts = state.accounts.filter((a) => !a.archived);
   const accountOptions = accounts.some((a) => a.id === account) ? accounts : [...accounts, { id: account, name: accName(state, account) } as (typeof accounts)[number]];
   const act = async (fn: () => Promise<unknown>, done: string) => { setBusy(true); try { await withProc(setProc, "Memproses…", 1, async () => { await fn(); }, () => done); await onDone(done); } catch { ctx.notify("Gagal memproses. Datanya tetap aman. Coba lagi."); } finally { setBusy(false); } };
   const approve = () => act(async () => { await approveItem(item.id, { amount: Number(amount), kind: kind ?? undefined, categoryId: cat, accountId: account, note: note || undefined }); await ctx.fin.retrySync(); }, `${note || "Catatan"} ${rupiah(Number(amount))} tercatat`);
+  if (pickOf === "cat") return <CategorySheet categories={state.categories} income={kind === "in"} value={cat} onPick={setCat} onClose={() => setPickOf(null)} />;
+  if (pickOf === "acc") return <AccountSheet state={state} balances={balances} value={account} onPick={setAccount} onClose={() => setPickOf(null)} />;
   return <Sheet title="Tinjau catatan" onClose={onClose}>
     <div className="dpx-rv-hero"><CatIcon cat={catOf(state, cat)} size={56} /><div><b>{tidyTitle(p.details?.description || p.merchant || p.subject || "Email pembayaran")}</b><span>{sourceOf(item)}{p.at ? ` · ${new Date(p.at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}, ${timeOf(p.at)}` : ""}</span></div></div>
     {!((p.amount ?? 0) > 0) ? <div className="dpx-note" style={{ marginTop: 0 }}><Ic n="info" /><div><b>Nominal belum terbaca.</b> Email ini tidak memuat angka yang bisa dibaca otomatis. Coba &quot;Lengkapi dari isi email&quot; di bawah, atau isi nominal sendiri lalu setujui.</div></div> : null}
@@ -92,10 +94,10 @@ function DetailSheet({ item, ctx, onClose, onDone }: { item: ReviewItem; ctx: Fi
     : move ? null : <Seg id="rv-kind" label="Jenis" value={(kind ?? "") as "in" | "out"} onChange={(v) => { setKind(v); setCat(v === "in" ? "bonus" : "lainnya"); }} options={[["out", "Pengeluaran"], ["in", "Pemasukan"]] as const} />}
     <div style={{ marginTop: 10 }}><MoneyInput value={amount} onChange={setAmount} label="Nominal" /></div>
     <div className="dpx-input" style={{ marginTop: 8 }}><input aria-label="Keterangan" value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="Nama toko atau tujuan" /></div>
-    {move ? null : <div className="dpx-glabel">Kategori</div>}
-    {move ? null : <div className="dpx-rv-pick" role="group" aria-label="Kategori">{cats.map((c) => <Btn key={c.id} type="button" className={cat === c.id ? "is-on" : ""} aria-pressed={cat === c.id} onClick={() => setCat(c.id)}>{c.name}</Btn>)}</div>}
-    {move ? null : <div className="dpx-glabel">Dompet</div>}
-    {move ? null : <div className="dpx-rv-pick" role="group" aria-label="Dompet">{accountOptions.map((a) => <Btn key={a.id} type="button" className={account === a.id ? "is-on" : ""} aria-pressed={account === a.id} onClick={() => setAccount(a.id)}>{a.name}</Btn>)}</div>}
+    {move ? null : <div className="dpx-rv-two">
+      <Btn type="button" className="dpx-rv-sel" onClick={() => setPickOf("cat")} aria-label={`Kategori: ${catOf(state, cat).name}. Ketuk untuk mengganti`}><CatIcon cat={catOf(state, cat)} size={32} /><span><small>Kategori</small><b>{catOf(state, cat).name}</b></span><Ic n="chev" size="sm" /></Btn>
+      <Btn type="button" className="dpx-rv-sel" onClick={() => setPickOf("acc")} aria-label={`Dompet: ${accName(state, account)}. Ketuk untuk mengganti`}><span className="dpx-rv-selico"><Ic n="wallet" size="sm" /></span><span><small>Dompet</small><b>{accName(state, account)}</b></span><Ic n="chev" size="sm" /></Btn>
+    </div>}
     <Btn type="button" className="dpx-rv-disc" aria-expanded={detail} onClick={() => setDetail((v) => !v)}><span><b>Detail email</b><small>Rincian, pengirim, dan baca ulang</small></span><Ic n="chev" size="sm" /></Btn>
     {detail ? <div className="dpx-rv-detail">
       <div className="dpx-group dpx-white dpx-rv-details"><PaymentDetails details={p.details} /></div>

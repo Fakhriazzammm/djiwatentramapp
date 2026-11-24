@@ -125,7 +125,7 @@ export function ReceiptReview({ initial, preview, onRetry, entry, attach, ...pro
   const metadataValid = doc.merchant.trim() && doc.purchasedAt && Number.isFinite(Date.parse(doc.purchasedAt));
   const selectionValid = fin.state.accounts.some(a=>a.id===accountId && !a.archived) && fin.state.categories.some(c=>c.id===categoryId && c.income === (kind === "refund")) && (kind !== "topup" || (toAccountId !== accountId && fin.state.accounts.some(a=>a.id===toAccountId && !a.archived))) && (!foreign || Boolean(rate));
   const save = async () => {
-    if (savingRef.current || !totals.valid || !metadataValid || !selectionValid || !checked) return;
+    if (savingRef.current || !totals.valid || !metadataValid || !selectionValid || (needsCheck && !checked)) return;
     savingRef.current = true; setSaving(true); setError("");
     try {
       const account = fin.state.accounts.find(a=>a.id===accountId), category=fin.state.categories.find(c=>c.id===categoryId);
