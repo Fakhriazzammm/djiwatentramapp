@@ -65,12 +65,12 @@ export function pushEngine(deps: PushEngineDeps) {
     const [dev, pr, sent] = await Promise.all([
       db.query("select user_id, endpoint, platform from finance.push_subscriptions"),
       db.query("select user_id, marketing, topics from finance.push_prefs"),
-      db.query(`select d.user_id, count(*) filter (where d.sent_at > now() - interval '24 hours')::int day, count(*)::int week from finance.push_deliveries d where d.status = 'sent' and d.sent_at > now() - interval '7 days' and ($1::uuid is null or d.campaign_id <> $1::uuid) group by 1`, [c.id ?? null]),
+      db.query(`select d.user_id, count(*) filter (where d.sent_at > now() - interval '24 hours')::int as n_day, count(*)::int as n_week from finance.push_deliveries d where d.status = 'sent' and d.sent_at > now() - interval '7 days' and ($1::uuid is null or d.campaign_id <> $1::uuid) group by 1`, [c.id ?? null]),
     ]);
     const members = c.segment === "devices" ? null : await deps.members(c.segment as SegmentKey);
     const picked = pickDevices(dev.rows.map((r: any) => ({ userId: r.user_id, endpoint: r.endpoint, platform: r.platform === "android" ? "android" : "web" })), {
       prefs: new Map(pr.rows.map((r: any) => [r.user_id, { marketing: r.marketing, topics: r.topics }])), topic: (isTopic(c.topic) ? c.topic : "fitur") as Topic,
-      platform: (PLATFORMS as readonly string[]).includes(c.platform) ? (c.platform as PlatformFilter) : "all", members, sent: new Map(sent.rows.map((r: any) => [r.user_id, { day: r.day, week: r.week }])), channels: channels(),
+      platform: (PLATFORMS as readonly string[]).includes(c.platform) ? (c.platform as PlatformFilter) : "all", members, sent: new Map(sent.rows.map((r: any) => [r.user_id, { day: r.n_day, week: r.n_week }])), channels: channels(),
     });
     return picked;
   }
