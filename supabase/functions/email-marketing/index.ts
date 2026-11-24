@@ -397,7 +397,8 @@ Deno.serve(async (req) => {
 	const action = text(payload.action);
 	try {
 		if (action === "process-due") {
-			const cronSecret = Deno.env.get("CRON_SECRET") || "";
+			// CRON_SECRET in the functions container is empty (compose var unset); the secret lives in pos.email_settings like the other email secrets.
+			const cronSecret = Deno.env.get("CRON_SECRET") || await emailSetting(admin, "CRON_SECRET") || "";
 			if (!cronSecret || req.headers.get("x-cron-secret") !== cronSecret) return fail("UNAUTHORIZED", "Unauthorized", 401);
 			return response({ success: true, ...(await processDue()) });
 		}

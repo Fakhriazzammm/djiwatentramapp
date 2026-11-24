@@ -102,7 +102,7 @@ async function loadBookings(now: number) {
 }
 
 async function loadOrders(now: number) {
-	const since = new Date(now - 26 * 3_600_000).toISOString();
+	const since = now - 26 * 3_600_000; // pos.orders.created_at is epoch ms
 	const { data, error } = await pos().from("orders").select("source_id,order_number,total_amount,status,payment_method,customer_name,customer_email,customer_source_id,created_at,discount_amount,tax_amount,service_charge_amount,shipping_fee_amount")
 		.gte("created_at", since).in("status", ["paid", "completed"]).order("created_at", { ascending: false }).limit(500);
 	if (error) throw error;
@@ -384,7 +384,8 @@ Deno.serve(async (req) => {
 	const action = text(payload.action);
 	try {
 		if (action === "process-due") {
-			const cronSecret = Deno.env.get("CRON_SECRET") || "";
+			// CRON_SECRET in the functions container is empty (compose var unset); the secret lives in pos.email_settings like the other email secrets.
+			const cronSecret = Deno.env.get("CRON_SECRET") || await emailSetting(admin, "CRON_SECRET") || "";
 			if (!cronSecret || req.headers.get("x-cron-secret") !== cronSecret) return fail("UNAUTHORIZED", "Unauthorized", 401);
 			return response({ success: true, ...(await processDue()) });
 		}

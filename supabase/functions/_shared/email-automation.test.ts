@@ -93,7 +93,7 @@ describe("bookings (transactional)", () => {
 });
 
 describe("order_receipt", () => {
-	const order = (over: Record<string, unknown> = {}) => ({ source_id: "o1", order_number: "ORD-1", total_amount: 60000, status: "paid", payment_method: "qris_mayar", customer_name: "Ayu Lestari", customer_email: "ayu@x.id", customer_source_id: "c1", created_at: new Date(NOW - 10 * 60_000).toISOString(), ...over });
+	const order = (over: Record<string, unknown> = {}) => ({ source_id: "o1", order_number: "ORD-1", total_amount: 60000, status: "paid", payment_method: "qris_mayar", customer_name: "Ayu Lestari", customer_email: "ayu@x.id", customer_source_id: "c1", created_at: NOW - 10 * 60_000, ...over });
 	const items = [{ order_source_id: "o1", product_name: "Nasi Ayam", variant: null, quantity: 2, price: 30000 }];
 	test("paid recent order with email gets a receipt, with the review link for digital payments", () => {
 		const out = selectCandidates("order_receipt", ctx({ orders: [order()], orderItems: items }));
@@ -113,7 +113,7 @@ describe("order_receipt", () => {
 		expect(out[0].email).toBe("acct@x.id");
 		const none = (o: Record<string, unknown>, extra: Partial<SelectCtx> = {}) => selectCandidates("order_receipt", ctx({ orderItems: items, orders: [order(o)], ...extra }));
 		expect(none({ status: "pending" })).toHaveLength(0);
-		expect(none({ created_at: new Date(NOW - 2 * DAY).toISOString() })).toHaveLength(0);
+		expect(none({ created_at: NOW - 2 * DAY })).toHaveLength(0);
 		expect(none({}, { sent: new Set(["order_receipt:o1"]) })).toHaveLength(0);
 		expect(none({}, { suppressedHard: new Set(["ayu@x.id"]) })).toHaveLength(0);
 		expect(none({ customer_email: null, customer_source_id: null })).toHaveLength(0);

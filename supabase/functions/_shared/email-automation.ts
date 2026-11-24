@@ -154,7 +154,7 @@ export type Candidate = { refKey: string; customerId: string; email: string; nam
 export type LeadRow = { source_id: string | null; email: string | null; name: string | null; marketing_consent: boolean | null; created_at: string | null };
 export type BookingRow = { source_id: string | null; customer_name: string | null; customer_email: string | null; booking_code: string | null; booking_date: string | null; arrival_time: string | null; guest_count: number | null; booking_status: string | null };
 
-export type OrderRow = { source_id: string | null; order_number: string | null; total_amount: number | null; status: string | null; payment_method: string | null; customer_name: string | null; customer_email: string | null; customer_source_id: string | null; created_at: string | null; discount_amount?: number | null; tax_amount?: number | null; service_charge_amount?: number | null; shipping_fee_amount?: number | null; daily_receipt_no?: number | null };
+export type OrderRow = { source_id: string | null; order_number: string | null; total_amount: number | null; status: string | null; payment_method: string | null; customer_name: string | null; customer_email: string | null; customer_source_id: string | null; /** pos.orders.created_at is epoch milliseconds (double precision) */ created_at: number | string | null; discount_amount?: number | null; tax_amount?: number | null; service_charge_amount?: number | null; shipping_fee_amount?: number | null; daily_receipt_no?: number | null };
 export type OrderItemRow = { order_source_id: string | null; product_name: string | null; variant: string | null; quantity: number | null; price: number | null };
 
 export type SelectCtx = {
@@ -177,7 +177,7 @@ export type SelectCtx = {
 };
 
 const clean = (value: string | null | undefined) => String(value ?? "").trim().toLowerCase();
-const time = (value: string | null | undefined) => { const t = value ? new Date(value).getTime() : 0; return Number.isFinite(t) ? t : 0; };
+const time = (value: string | number | null | undefined) => { const t = value ? (typeof value === "number" ? value : /^\d{12,}$/.test(String(value)) ? Number(value) : new Date(value).getTime()) : 0; return Number.isFinite(t) ? t : 0; };
 
 /** Jakarta calendar date (YYYY-MM-DD) for `now` shifted by `days`. */
 export const jakartaDate = (now: number, days = 0) => new Date(now + 7 * HOUR + days * DAY).toISOString().slice(0, 10);
@@ -278,7 +278,7 @@ export function selectCandidates(key: AutomationKey, ctx: SelectCtx): Candidate[
 				out.push({
 					refKey, customerId: order.customer_source_id ?? order.source_id, email, name,
 					vars: {
-						nama: name, link: APP_URL, nomor_order: String(order.order_number ?? order.source_id), tanggal: dateId(order.created_at), metode: label,
+						nama: name, link: APP_URL, nomor_order: String(order.order_number ?? order.source_id), tanggal: dateId(new Date(created).toISOString()), metode: label,
 						rincian: receiptRowsHtml(items, Number(order.total_amount ?? 0), [
 							{ label: "Ongkos kirim", amount: Number(order.shipping_fee_amount ?? 0) },
 							{ label: "Diskon", amount: -Number(order.discount_amount ?? 0) },
