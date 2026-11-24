@@ -70,7 +70,30 @@ export const applyUpdate = () => {
 
 /* ---- Web Push ---- */
 export type PushState = { supported: boolean; permission: NotificationPermission | "unsupported"; subscribed: boolean; needsInstall: boolean };
+/* Android app (Capacitor): the WebView has no Web Push, so the native plugin registers a Firebase token instead. */
+type NativePush = { checkPermissions: () => Promise<{ receive: string }>; requestPermissions: () => Promise<{ receive: string }>; register: () => Promise<void>; unregister?: () => Promise<void>; createChannel?: (c: Record<string, unknown>) => Promise<void>; addListener: (ev: string, fn: (e: any) => void) => Promise<unknown> };
+const nativePlugin = (): NativePush | null => { try { const c = (window as any).Capacitor; return c?.isNativePlatform?.() ? (c.Plugins?.PushNotifications as NativePush) ?? null : null; } catch { return null; } };
+export const isNative = () => { try { return Boolean((window as any).Capacitor?.isNativePlatform?.()); } catch { return false; } };
+const TOKEN = "djiwa-fcm-token";
+const readTok = () => { try { return localStorage.getItem(TOKEN) || ""; } catch { return ""; } };
+const postJson = (path: string, body: unknown) => fetch(path, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+let nativeReady = false;
+/** Called once when the Android app starts: keeps the token fresh and routes taps on a notification. */
+export function initNativePush(onTap: (route: string) => void, onForeground: (n: { title?: string; body?: string; data?: Record<string, string> }) => void) {
+  const pl = nativePlugin(); if (!pl || nativeReady) return; nativeReady = true;
+  void pl.createChannel?.({ id: "promo", name: "Promo dan kabar fitur", description: "Tawaran dan fitur baru dari Djiwa Pay", importance: 3 }).catch?.(() => undefined);
+  void pl.createChannel?.({ id: "transaksi", name: "Transaksi", description: "Pemasukan, pengeluaran, dan email pembayaran", importance: 4 }).catch?.(() => undefined);
+  void pl.addListener("registration", (t: { value?: string }) => { if (!t?.value) return; try { localStorage.setItem(TOKEN, t.value); } catch { /* optional */ } void postJson("/api/finance/push/fcm", { token: t.value, appVersion: (window as any).__djiwaVersion ?? "" }).catch(() => undefined); });
+  void pl.addListener("pushNotificationActionPerformed", (a: { notification?: { data?: Record<string, string> } }) => {
+    const d = a?.notification?.data ?? {};
+    if (d.did) void postJson("/api/finance/push/opened", { did: d.did }).catch(() => undefined);
+    if (typeof d.route === "string" && d.route.startsWith("/")) onTap(d.route);
+  });
+  void pl.addListener("pushNotificationReceived", (n: any) => onForeground({ title: n?.title, body: n?.body, data: n?.data }));
+}
 export async function getPushState(): Promise<PushState> {
+  const pl = nativePlugin();
+  if (pl) { const p = await pl.checkPermissions().catch(() => ({ receive: "prompt" })); return { supported: true, permission: p.receive === "granted" ? "granted" : p.receive === "denied" ? "denied" : "default", subscribed: p.receive === "granted" && Boolean(readTok()), needsInstall: false }; }
   const supported = typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
   const needsInstall = isIos() && !isStandalone();
   if (!supported) return { supported: false, permission: "unsupported", subscribed: false, needsInstall };
@@ -80,6 +103,14 @@ export async function getPushState(): Promise<PushState> {
 }
 const keyBytes = (b64: string) => { const pad = "=".repeat((4 - (b64.length % 4)) % 4), raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(raw, (c) => c.charCodeAt(0)); };
 export async function enablePush(): Promise<{ ok: true } | { ok: false; reason: "denied" | "unsupported" | "server" | "need-install" }> {
+  const pl = nativePlugin();
+  if (pl) {
+    const perm = (await pl.checkPermissions().catch(() => ({ receive: "prompt" }))).receive === "granted" ? "granted" : (await pl.requestPermissions().catch(() => ({ receive: "denied" }))).receive;
+    if (perm !== "granted") return { ok: false, reason: "denied" };
+    try { await pl.register(); } catch { return { ok: false, reason: "server" }; }
+    for (let i = 0; i < 30 && !readTok(); i++) await new Promise((r) => setTimeout(r, 200));   // the token arrives through the "registration" event
+    return readTok() ? { ok: true } : { ok: false, reason: "server" };
+  }
   const st = await getPushState();
   if (!st.supported) return { ok: false, reason: "unsupported" };
   if (st.needsInstall) return { ok: false, reason: "need-install" };
@@ -93,9 +124,15 @@ export async function enablePush(): Promise<{ ok: true } | { ok: false; reason: 
   return res.ok ? { ok: true } : { ok: false, reason: "server" };
 }
 export async function disablePush(): Promise<void> {
+  if (nativePlugin()) { const t = readTok(); if (t) await postJson("/api/finance/push/fcm/remove", { token: t }).catch(() => undefined); try { localStorage.removeItem(TOKEN); } catch { /* optional */ } return; }
   const reg = await navigator.serviceWorker.getRegistration("/"), sub = await reg?.pushManager.getSubscription();
   if (!sub) return;
   await fetch("/api/finance/push/unsubscribe", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: sub.endpoint }) }).catch(() => undefined);
   await sub.unsubscribe().catch(() => undefined);
 }
 export async function sendTestPush(): Promise<boolean> { const r = await fetch("/api/finance/push/test", { method: "POST", credentials: "include" }).catch(() => null); return Boolean(r?.ok); }
+
+/* ---- what the person wants to hear about ---- */
+export type PushPrefs = { marketing: boolean; topics: string[]; topicList: Record<string, string> };
+export async function loadPushPrefs(): Promise<PushPrefs | null> { const r = await fetch("/api/finance/push/prefs", { credentials: "include" }).catch(() => null); const j = r?.ok ? await r.json().catch(() => null) : null; return j?.success ? { marketing: j.marketing, topics: j.topics, topicList: j.topicList } : null; }
+export async function savePushPrefs(p: { marketing?: boolean; topics?: string[] }): Promise<boolean> { const r = await postJson("/api/finance/push/prefs", p).catch(() => null); return Boolean(r?.ok); }

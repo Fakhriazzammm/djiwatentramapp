@@ -1,7 +1,7 @@
 {
-  "version": "0.2.569",
-  "commitHash": "47cd683",
-  "message": "fix(djiwapay): redesign scan-receipt entry in Catat sheet",
-  "buildDate": "2026-11-14",
-  "generatedAt": "2026-11-14T19:02:08.140Z"
+  "version": "0.2.576",
+  "commitHash": "6b32d57",
+  "message": "style(djiwapay): kantong dompet lebih ringkas di layar ponsel",
+  "buildDate": "2026-11-23",
+  "generatedAt": "2026-11-23T20:15:23.598Z"
 }

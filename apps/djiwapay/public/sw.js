@@ -41,12 +41,15 @@ self.addEventListener("push", (event) => {
     const open = wins.find((w) => w.visibilityState === "visible");
     if (open) { open.postMessage({ type: "djiwa-island", item: data }); return; }   // the app is on screen: show the in-app island, no second banner
     const amount = typeof data.amount === "number" ? ` ${data.sign === "+" ? "+" : data.sign === "−" ? "−" : ""}Rp ${data.amount.toLocaleString("id-ID")}` : "";
-    await self.registration.showNotification(`${data.title || "Djiwa Pay"}${amount}`, { body: data.message || "", icon: "/pwa-192.png", badge: "/favicon-32.png", tag: data.id || "djiwapay", data, lang: "id", vibrate: data.tone === "warn" ? [70, 50, 70] : [60, 40, 60] });
+    const promo = data.kind === "marketing";
+    await self.registration.showNotification(`${data.title || "Djiwa Pay"}${amount}`, { body: data.message || "", icon: "/pwa-192.png", badge: "/favicon-32.png", tag: data.id || "djiwapay", data, lang: "id", vibrate: data.tone === "warn" ? [70, 50, 70] : [60, 40, 60], ...(promo && typeof data.image === "string" && data.image.startsWith("https://") ? { image: data.image } : {}) });
   })());
 });
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const data = event.notification.data || {}, route = typeof data.route === "string" && data.route.startsWith("/") ? data.route : "/";
+  const data = event.notification.data || {};
+  if (typeof data.did === "string" && data.did) event.waitUntil(fetch("/api/finance/push/opened", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ did: data.did }), keepalive: true }).catch(() => undefined));   // marketing push: count the tap
+  const route = typeof data.route === "string" && data.route.startsWith("/") ? data.route : "/";
   event.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     const win = wins.find((w) => new URL(w.url).origin === self.location.origin);

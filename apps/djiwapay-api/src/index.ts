@@ -43,7 +43,7 @@ export function createApp(d: Deps) {
   const json = (c: any, body: unknown, status = 200) => c.body(JSON.stringify(body), status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
   app.get("/api/finance/health", (c) => json(c, { ok: true }));
   app.use("/api/finance/*", async (c, next) => {
-    if (c.req.path === "/api/finance/health" || c.req.path === "/api/finance/google/callback" || c.req.path.startsWith("/api/finance/assets/ref/") || c.req.path.startsWith("/api/finance/hook/") || c.req.path === "/api/finance/track") return next();
+    if (c.req.path === "/api/finance/health" || c.req.path === "/api/finance/google/callback" || c.req.path.startsWith("/api/finance/assets/ref/") || c.req.path.startsWith("/api/finance/hook/") || c.req.path === "/api/finance/track" || c.req.path === "/api/finance/push/opened") return next();
     const userId = await d.resolve(c.req.header("cookie") || "");
     if (!userId) return json(c, { success: false, error: "UNAUTHORIZED" }, 401);
     c.set("userId" as never, userId as never);

@@ -212,6 +212,8 @@ export function emailEngine(d: AdminDeps) {
     const payUsers = rows.filter((r) => matches(r, "all", sig));
     return { segments, customers: { total: rows.length, pay: payUsers.length, payConsented: payUsers.filter((r) => r.consent === true).length, consented: rows.filter((r) => r.consent === true).length, suppressed: sup.size }, quota: q, from: await fromAddress(), builtinTemplates: BUILTIN_TEMPLATES, customTemplates: tpl.rows };
   }
+  /** Ids of everyone in a segment, ignoring email consent: push has its own consent. Used by push marketing. */
+  async function members(segment: SegmentKey) { const [rows, sig] = await Promise.all([customers(), paySignals(d, true)]); return new Set(rows.filter((r) => matches(r, segment, sig)).map((r) => String(r.id))); }
   async function preview(b: Json) {
     if (!isSegment(b.segment)) throw new UserError("Segmen tidak dikenal");
     const { recipients, skipped } = await audience(b.segment, text(b.campaignId) || undefined);
@@ -357,7 +359,7 @@ export function emailEngine(d: AdminDeps) {
     for (const c of due) await startCampaign({ id: c.id }).catch(async (e) => { await d.authDb!.query("update pos.email_campaigns set status='paused', last_error=$2 where id=$1::uuid", [c.id, (e instanceof Error ? e.message : String(e)).slice(0, 300)]); });
     for (const c of (await d.authDb.query("select id from pos.email_campaigns where brand = $1 and status = 'sending' limit 3", [BRAND])).rows) void drive(c.id);
   }
-  return { overview, preview, saveTemplate, deleteTemplate, createCampaign, listCampaigns, getCampaign, deleteCampaign, sendTest, startCampaign, pause: (b: Json) => setStatus(b, "paused"), cancel: (b: Json) => setStatus(b, "canceled"), suppressions, addSuppression, removeSuppression, tick };
+  return { members, overview, preview, saveTemplate, deleteTemplate, createCampaign, listCampaigns, getCampaign, deleteCampaign, sendTest, startCampaign, pause: (b: Json) => setStatus(b, "paused"), cancel: (b: Json) => setStatus(b, "canceled"), suppressions, addSuppression, removeSuppression, tick };
 }
 
 export function registerEmailRoutes(app: Hono, d: AdminDeps, json: (c: any, body: unknown, status?: number) => Response) {

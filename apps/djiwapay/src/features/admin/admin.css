@@ -132,3 +132,10 @@ html.adm-root,html.adm-root body{background:#f4f4f6}
 .adm-jobs .bar{height:6px;border-radius:3px;background:rgba(0,0,0,.08);overflow:hidden}.adm-jobs .bar i{display:block;height:100%;border-radius:3px}
 .adm-errs{margin-top:14px;padding-top:12px;border-top:1px solid rgba(0,0,0,.07)}.adm-errs>b{display:block;margin-bottom:8px;font-size:13px}
 @media (max-width:640px){.adm-jobs li{grid-template-columns:1fr auto}.adm-jobs .bar{display:none}.adm-mini{grid-template-columns:1fr}}
+
+.adm-pushprev{margin-top:12px;padding:16px;background:linear-gradient(160deg,#3b3a52,#1c2a3a)}
+.adm-pushnoti{background:rgba(250,248,244,.97);color:#1b1a17;border-radius:14px;padding:10px 12px;display:grid;gap:3px;font-size:12.5px;line-height:1.4;max-width:340px}
+.adm-pushnoti b{font-size:13.5px;word-break:break-word}.adm-pushnoti span{word-break:break-word}
+.adm-pushtop{display:flex;gap:6px;align-items:center;font-size:11px;color:#6a655b}.adm-pushtop i{width:14px;height:14px;border-radius:4px;background:#c2410c;display:inline-block}
+.adm-pushnoti img{width:100%;max-height:120px;object-fit:cover;border-radius:10px;margin-top:4px}
+.adm-em-sw{display:flex;gap:8px;align-items:center;font-size:13px}

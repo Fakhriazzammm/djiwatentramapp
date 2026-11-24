@@ -1,6 +1,7 @@
 import type { Hono } from "hono";
 import type { Tx } from "./sync.js";
 import { registerEmailRoutes } from "./email-marketing.js";
+import { registerPushMarketingRoutes } from "./push-marketing.js";
 import { userDeep, usersCsv, usersGrowth, usersList } from "./admin-users.js";
 
 /** Read-only access to the shared customer/wallet database (the auth server's). */
@@ -166,7 +167,8 @@ export function registerAdminRoutes(app: Hono, d: AdminDeps, json: (c: any, body
   app.use("/api/finance/admin/*", async (c, next) => { if (c.req.path.endsWith("/admin/me")) return next(); const email = await isAdmin(c); if (!email) return json(c, { success: false, error: "FORBIDDEN" }, 403); c.set("adminEmail" as never, email as never); return next(); });
   const guard = (fn: (c: any) => Promise<unknown>) => async (c: any) => { try { return json(c, { success: true, ...(await fn(c) as object) }); } catch (e) { console.error("admin query failed", e instanceof Error ? e.message : e); return json(c, { success: false, error: "QUERY_FAILED" }, 500); } };
   const range = (c: any) => [c.req.query("from"), c.req.query("to")] as const;
-  registerEmailRoutes(app, d, json);
+  const emailEng = registerEmailRoutes(app, d, json);
+  registerPushMarketingRoutes(app, { admin: d, members: emailEng.members }, json);
   app.get("/api/finance/admin/me", async (c) => { const email = await isAdmin(c); return json(c, { success: true, admin: Boolean(email), email }); });
   app.get("/api/finance/admin/overview", guard((c) => overview(d, ...range(c))));
   app.get("/api/finance/admin/traffic", guard((c) => traffic(d, ...range(c))));

@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Btn, Ic, Sheet, spring } from "../shell/dpx-ui";
-import { GUIDE, applyUpdate, currentPlatform, disablePush, enablePush, getPushState, isIos, promptInstall, sendTestPush, usePwaState, type Platform, type PushState, type StepIcon } from "../../lib/pwa";
+import { GUIDE, applyUpdate, initNativePush, isNative, loadPushPrefs, savePushPrefs, type PushPrefs, currentPlatform, disablePush, enablePush, getPushState, isIos, promptInstall, sendTestPush, usePwaState, type Platform, type PushState, type StepIcon } from "../../lib/pwa";
 import { enqueueIsland, islandFromPush, islandNavigate } from "../../lib/island";
 import { initSound, playSound, setSoundEnabled, soundEnabled } from "../../lib/sound";
 
@@ -36,6 +36,17 @@ export function InstallGuide({ onClose, onInstall }: { onClose: () => void; onIn
   </Sheet>;
 }
 
+/** Which marketing notifications the person wants. Transaction notifications are separate and always on. */
+function TopicPrefs({ notify }: { notify: (t: string) => void }) {
+  const [p, setP] = useState<PushPrefs | null>(null);
+  useEffect(() => { void loadPushPrefs().then(setP); }, []);
+  if (!p) return null;
+  const save = async (next: { marketing?: boolean; topics?: string[] }) => { const merged = { ...p, ...next }; setP(merged); if (!(await savePushPrefs(next))) notify("Pilihan belum tersimpan. Coba lagi."); };
+  const toggle = (k: string) => void save({ topics: p.topics.includes(k) ? p.topics.filter((x) => x !== k) : [...p.topics, k] });
+  return <div className="dpx-pw-topics"><Btn type="button" className="dpx-opt" aria-pressed={p.marketing} onClick={() => void save({ marketing: !p.marketing })}><span className="dpx-main"><b>Kabar dan tawaran dari Djiwa Pay</b><span>{p.marketing ? "Aktif. Paling banyak 1 per hari, tidak mengganggu malam hari." : "Mati. Hanya notifikasi transaksi yang masuk."}</span></span><span className="dpx-radio" style={p.marketing ? { borderColor: "var(--blue)", background: "var(--blue)" } : undefined} /></Btn>
+    {p.marketing ? <div className="dpx-as-chips">{Object.entries(p.topicList).map(([k, l]) => <Btn key={k} type="button" className={`dpx-chip3 ${p.topics.includes(k) ? "dpx-on" : ""}`} aria-pressed={p.topics.includes(k)} onClick={() => toggle(k)}>{l}</Btn>)}</div> : null}</div>;
+}
+
 /** Everything about the installed app in one place: install, update, and notifications on this device. */
 export function PwaSheet({ onClose, notify }: { onClose: () => void; notify: (t: string) => void }) {
   const st = usePwaState(), [push, setPush] = useState<PushState | null>(null), [busy, setBusy] = useState(false), [guide, setGuide] = useState(false), [sound, setSound] = useState(soundEnabled());
@@ -56,6 +67,7 @@ export function PwaSheet({ onClose, notify }: { onClose: () => void; notify: (t:
         ? <div className="dpx-pw-btns"><Btn type="button" className="dpx-btn" disabled={busy} onClick={() => void run(async () => { notify((await sendTestPush()) ? "Notifikasi uji dikirim" : "Belum bisa mengirim notifikasi uji"); })}>Kirim notifikasi uji</Btn><Btn type="button" className="dpx-btn dpx-soft" disabled={busy} onClick={() => void run(async () => { await disablePush(); notify("Notifikasi dimatikan"); })}>Matikan</Btn></div>
         : <Btn type="button" className="dpx-btn" disabled={busy} onClick={() => void turnOn()}>Aktifkan notifikasi</Btn>) : null}
       {push?.needsInstall ? <Btn type="button" className="dpx-btn dpx-soft" onClick={() => setGuide(true)}>Cara memasang di iPhone</Btn> : null}
+      {push?.subscribed ? <TopicPrefs notify={notify} /> : null}
       <Btn type="button" className="dpx-opt" onClick={() => { const next = !sound; setSound(next); setSoundEnabled(next); if (next) playSound("in", { force: true }); }} aria-pressed={sound}><span className="dpx-main"><b>Suara notifikasi</b><span>{sound ? "Aktif: denting koin Djiwa di dalam aplikasi" : "Mati"}</span></span><span className="dpx-radio" style={sound ? { borderColor: "var(--blue)", background: "var(--blue)" } : undefined} /></Btn>
       {sound ? <div className="dpx-as-chips">{([["in", "Pemasukan"], ["out", "Pengeluaran"], ["move", "Pindah dana"], ["warn", "Pengingat"]] as const).map(([k, l]) => <Btn key={k} type="button" className="dpx-chip3" onClick={() => playSound(k, { force: true })}>▶ {l}</Btn>)}</div> : null}
       <p className="dpx-sub" style={{ margin: 0 }}>Saat aplikasi terbuka, notifikasi tampil sebagai banner island di atas layar. Saat tertutup, muncul sebagai notifikasi ponsel.</p></div>
@@ -90,7 +102,7 @@ export function PwaHost() {
   }, []);
   const [pushAsk, setPushAsk] = useState(false), [pushBusy, setPushBusy] = useState(false);
   useEffect(() => {   // installed app without notifications: re-subscribe quietly if already allowed, otherwise invite (iOS needs a tap)
-    if (!st.installed) return;
+    if (!st.installed && !isNative()) return;
     let t = 0, off = false;
     void getPushState().then(async (ps) => {
       if (off || !ps.supported || ps.needsInstall || ps.permission === "denied" || ps.subscribed) return;
@@ -100,6 +112,7 @@ export function PwaHost() {
     });
     return () => { off = true; window.clearTimeout(t); };
   }, [st.installed]);
+  useEffect(() => { initNativePush((route) => islandNavigate(route), (n) => { const item = islandFromPush({ title: n.title ?? "Djiwa Pay", message: n.body ?? "", route: n.data?.route, tone: "info" } as never); if (item) enqueueIsland(item); }); }, []);
   const pushOn = async () => { setPushBusy(true); const r = await enablePush(); setPushBusy(false); if (r.ok) { setPushAsk(false); void sendTestPush(); } else if (r.reason === "denied") { write(PUSH_SNOOZE, "-1"); setPushAsk(false); } };
   const pushLater = () => { write(PUSH_SNOOZE, String(Date.now() + 2 * 864e5)); setPushAsk(false); };
   const snooze = (days: number) => { write(SNOOZE, String(days < 0 ? -1 : Date.now() + days * 864e5)); setAsk(false); };
