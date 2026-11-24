@@ -77,3 +77,4 @@ html,body,#root{height:100%}
  .kd{background:var(--soft);border-radius:10px;padding:10px}
  .kdp .box{margin-top:8px}
 }
+.rowlink{cursor:pointer}.rowlink:hover td,.rowlink:focus td{background:var(--soft)}.rowlink:active td{background:#eef0f4}

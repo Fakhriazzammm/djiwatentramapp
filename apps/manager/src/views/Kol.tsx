@@ -438,10 +438,10 @@ function CreatorView({ data, send, initial, onReload }: {
         </div>
         <div className="sc">
           <table>
-            <thead><tr><th>Creator</th><th>Kategori / lokasi</th><th>Jangkauan</th><th>Status</th><th>Booking visit</th><th /></tr></thead>
+            <thead><tr><th>Creator</th><th>Kategori / lokasi</th><th>Jangkauan</th><th>Status</th><th>Booking visit</th></tr></thead>
             <tbody>
               {filtered.map((c) => (
-                <tr key={c.source_id}>
+                <tr key={c.source_id} className="rowlink" tabIndex={0} onClick={() => setOpenId(c.source_id)} onKeyDown={(e) => { if (e.key === "Enter") setOpenId(c.source_id); }}>
                   <td>
                     <b>{creatorLabel(c)}</b>
                     {c.linked && <span className="tg ok" style={{ marginLeft: 6 }}>login</span>}
@@ -451,9 +451,6 @@ function CreatorView({ data, send, initial, onReload }: {
                   <td className="mono">{compact(totalFollowers(c))}</td>
                   <td><St map={CREATOR_STATUS} k={c.status} /></td>
                   <td><span className={`tg ${c.visit_booking_eligible ? "ok" : ""}`}>{c.visit_booking_eligible ? "Diizinkan" : "Belum"}</span></td>
-                  <td style={{ whiteSpace: "nowrap" }}>
-                    <button className="btn s" onClick={() => setOpenId(c.source_id === openId ? null : c.source_id)}>Kelola</button>
-                  </td>
                 </tr>
               ))}
             </tbody>
