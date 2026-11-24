@@ -38,3 +38,17 @@ html,body,#root{height:100%}
 .gsvg{width:18px;height:18px}
 .loading{display:grid;place-items:center;height:100%;color:var(--muted);font:11px var(--mono);letter-spacing:.08em;text-transform:uppercase}
 @media(max-width:820px){.shell{height:100%}.auth{top:0}.toast{bottom:calc(84px + env(safe-area-inset-bottom))}}
+/* Mobile: padat & ringkas di semua halaman */
+@media(max-width:820px){
+ .body{padding:0 8px 84px;gap:8px}.work,.col{gap:8px}
+ header{height:48px}h1{font-size:16px}
+ .ph{padding:8px 10px}.pad{padding:10px}
+ .btn{min-height:30px;padding:3px 8px;font-size:10px}
+ .btn.s{min-height:28px}
+ input.f,select.f{min-height:34px;padding:5px 8px}
+ table{font-size:11.5px}th,td{padding:7px 8px}
+ .crow{gap:6px}.row2{gap:8px}
+ .kpis>div{padding:8px 10px}.kpis b{font-size:18px}
+ .tr{padding:8px 10px}.box{padding:8px 10px}
+ .bi svg{width:20px;height:20px}.bnav{padding-top:4px}
+}

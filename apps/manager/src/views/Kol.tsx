@@ -409,6 +409,12 @@ function CreatorView({ data, send, initial, onReload }: {
 
   const open = data.creators.find((c) => c.source_id === openId) ?? null;
 
+  useEffect(() => {
+    if (openId) document.querySelector(".body")?.scrollTo({ top: 0 });
+  }, [openId]);
+
+  if (open) return <CreatorDetail key={open.source_id} creator={open} data={data} send={send} onClose={() => setOpenId(null)} />;
+
   return (
     <>
       <Panel
@@ -446,7 +452,7 @@ function CreatorView({ data, send, initial, onReload }: {
                   <td><St map={CREATOR_STATUS} k={c.status} /></td>
                   <td><span className={`tg ${c.visit_booking_eligible ? "ok" : ""}`}>{c.visit_booking_eligible ? "Diizinkan" : "Belum"}</span></td>
                   <td style={{ whiteSpace: "nowrap" }}>
-                    <button className="btn s" onClick={() => setOpenId(c.source_id === openId ? null : c.source_id)}>{c.source_id === openId ? "Tutup" : "Kelola"}</button>
+                    <button className="btn s" onClick={() => setOpenId(c.source_id === openId ? null : c.source_id)}>Kelola</button>
                   </td>
                 </tr>
               ))}
@@ -455,8 +461,6 @@ function CreatorView({ data, send, initial, onReload }: {
           {filtered.length === 0 && <Empty>TIDAK ADA CREATOR YANG COCOK</Empty>}
         </div>
       </Panel>
-
-      {open && <CreatorDetail key={open.source_id} creator={open} data={data} send={send} onClose={() => setOpenId(null)} />}
     </>
   );
 }
@@ -508,10 +512,10 @@ function CreatorDetail({ creator, data, send, onClose }: { creator: Creator; dat
     <Panel
       title={creatorLabel(creator)}
       meta={`${atUsername(creator.username)} · ${creator.status}`}
-      action={<button className="btn s" onClick={onClose}>Tutup</button>}
+      action={<button className="btn s" onClick={onClose}>← Kembali</button>}
     >
       <div className="pad">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 12 }}>
           <KV k="Kategori" v={creator.category || "—"} />
           <KV k="Lokasi" v={creator.location || "—"} />
           <KV k="Jangkauan" v={<span className="mono">{compact(totalFollowers(creator))} follower</span>} />
