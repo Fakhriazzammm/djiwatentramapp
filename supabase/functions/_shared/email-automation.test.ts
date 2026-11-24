@@ -91,3 +91,31 @@ describe("bookings (transactional)", () => {
 		expect(selectCandidates("booking_reminder", ctx({ bookings: [booking({ source_id: "tom" })], sent: new Set(["booking_reminder:tom"]) }))).toHaveLength(0);
 	});
 });
+
+describe("order_receipt", () => {
+	const order = (over: Record<string, unknown> = {}) => ({ source_id: "o1", order_number: "ORD-1", total_amount: 60000, status: "paid", payment_method: "qris_mayar", customer_name: "Ayu Lestari", customer_email: "ayu@x.id", customer_source_id: "c1", created_at: new Date(NOW - 10 * 60_000).toISOString(), ...over });
+	const items = [{ order_source_id: "o1", product_name: "Nasi Ayam", variant: null, quantity: 2, price: 30000 }];
+	test("paid recent order with email gets a receipt, with the review link for digital payments", () => {
+		const out = selectCandidates("order_receipt", ctx({ orders: [order()], orderItems: items }));
+		expect(out).toHaveLength(1);
+		expect(out[0].email).toBe("ayu@x.id");
+		expect(out[0].vars.ulasan_blok).toContain("g.page/r/Ccd6bRmm1GH4EAE/review");
+		expect(out[0].vars.rincian).toContain("Nasi Ayam");
+	});
+	test("cash at the cashier gets the receipt without the review block", () => {
+		const out = selectCandidates("order_receipt", ctx({ orders: [order({ payment_method: "cash" })], orderItems: items }));
+		expect(out[0].vars.ulasan_blok).toBe("");
+		expect(out[0].vars.metode).toBe("Bayar di kasir");
+	});
+	test("falls back to the member account email, skips unpaid, old, duplicate and suppressed", () => {
+		const customers = [customer({ source_id: "c1", email: "acct@x.id" })];
+		const out = selectCandidates("order_receipt", ctx({ customers, orderItems: items, orders: [order({ customer_email: null })] }));
+		expect(out[0].email).toBe("acct@x.id");
+		const none = (o: Record<string, unknown>, extra: Partial<SelectCtx> = {}) => selectCandidates("order_receipt", ctx({ orderItems: items, orders: [order(o)], ...extra }));
+		expect(none({ status: "pending" })).toHaveLength(0);
+		expect(none({ created_at: new Date(NOW - 2 * DAY).toISOString() })).toHaveLength(0);
+		expect(none({}, { sent: new Set(["order_receipt:o1"]) })).toHaveLength(0);
+		expect(none({}, { suppressedHard: new Set(["ayu@x.id"]) })).toHaveLength(0);
+		expect(none({ customer_email: null, customer_source_id: null })).toHaveLength(0);
+	});
+});

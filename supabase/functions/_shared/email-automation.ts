@@ -5,7 +5,7 @@ import {
 	type CustomerRow,
 } from "./email-marketing.ts";
 
-export type AutomationKey = "welcome" | "winback" | "post_order" | "lead_intro" | "booking_confirm" | "booking_reminder" | "booking_thanks";
+export type AutomationKey = "welcome" | "winback" | "post_order" | "lead_intro" | "booking_confirm" | "booking_reminder" | "booking_thanks" | "order_receipt";
 export type AutomationKind = "marketing" | "transactional";
 
 export type AutomationDef = {
@@ -25,8 +25,26 @@ const HOUR = 3_600_000;
 const bookingBox = `<div style="margin:18px 0;padding:14px 16px;background:#eaf1fc;border-left:3px solid #1a5dc6;line-height:1.8;">
 <strong>Kode:</strong> {{kode}}<br><strong>Tanggal:</strong> {{tanggal}}<br><strong>Jam:</strong> {{jam}} WIB<br><strong>Tamu:</strong> {{tamu}} orang</div>`;
 
+export const GOOGLE_REVIEW_URL = "https://g.page/r/Ccd6bRmm1GH4EAE/review";
+const ORDER_FOOTER = `Email ini dikirim otomatis sebagai struk pesananmu di Djiwa Tentram.<br><a href="${APP_URL}" style="color:#6a6a76;">djiwatentram.web.id</a>`;
+const rupiah = (value: number) => `Rp${Math.round(value).toLocaleString("id-ID")}`;
+const esc = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const DIGITAL_PAYMENT = /(qris|mayar|wallet|djiwa|transfer)/i;
+const receiptBox = `<div style="margin:18px 0;padding:14px 16px;background:#eaf1fc;border-left:3px solid #1a5dc6;line-height:1.8;">
+<strong>Nomor pesanan:</strong> {{nomor_order}}<br><strong>Tanggal:</strong> {{tanggal}}<br><strong>Pembayaran:</strong> {{metode}}</div>`;
+
+/** Item table + totals as an email-safe HTML block (passed to the template as the raw variable {{{rincian}}}). */
+export function receiptRowsHtml(items: Array<{ name: string; variant?: string | null; quantity: number; price: number }>, total: number, extras: Array<{ label: string; amount: number }> = []) {
+	const rows = items.map((item) => `<tr><td style="padding:6px 0;border-bottom:1px solid #eceef3;">${esc(item.name)}${item.variant ? `<br><span style="color:#6a6a76;font-size:12px;">${esc(item.variant)}</span>` : ""}</td><td style="padding:6px 8px;border-bottom:1px solid #eceef3;text-align:center;white-space:nowrap;">${item.quantity}x</td><td style="padding:6px 0;border-bottom:1px solid #eceef3;text-align:right;white-space:nowrap;">${rupiah(item.price * item.quantity)}</td></tr>`).join("");
+	const extra = extras.filter((e) => e.amount).map((e) => `<tr><td colspan="2" style="padding:4px 0;color:#6a6a76;">${esc(e.label)}</td><td style="padding:4px 0;text-align:right;white-space:nowrap;">${e.amount < 0 ? "-" : ""}${rupiah(Math.abs(e.amount))}</td></tr>`).join("");
+	return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:8px 0 4px;font-size:14px;">${rows}${extra}<tr><td colspan="2" style="padding:10px 0 0;font-weight:700;">Total</td><td style="padding:10px 0 0;text-align:right;font-weight:700;white-space:nowrap;">${rupiah(total)}</td></tr></table>`;
+}
+
 const welcome = builtinTemplate("builtin-welcome")!;
 const comeback = builtinTemplate("builtin-comeback")!;
+
+/** "Beri ulasan" call-to-action; empty string when the order was paid in cash. */
+export const reviewBlock = (url: string) => `<div style="margin:20px 0 6px;padding:16px;border-radius:12px;background:#fff7e0;text-align:center;"><p style="margin:0 0 6px;font-weight:700;">Bagaimana pengalamanmu?</p><p style="margin:0 0 12px;color:#6a6a76;font-size:14px;">Ulasanmu sangat membantu kami dan pelanggan lain.</p><a href="${url}" style="display:inline-block;background:#f5a623;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px;">Beri ulasan di Google</a></div>`;
 
 export const AUTOMATIONS: AutomationDef[] = [
 	{
@@ -68,6 +86,23 @@ export const AUTOMATIONS: AutomationDef[] = [
 		sampleVars: { nama: "Ayu" }, variables: ["nama", "link"],
 	},
 	{
+		key: "order_receipt", kind: "transactional",
+		trigger: "Pesanan yang sudah dibayar dalam 24 jam terakhir dan punya email (email di pesanan, atau email akun member). Sekali per pesanan. Link ulasan Google hanya untuk pembayaran digital (QRIS, Djiwa Pay), bukan tunai di kasir.",
+		subject: "Struk pesananmu {{nomor_order}}",
+		html: wrapEmail(
+			h1("Terima kasih, {{nama}}!") + p("Pembayaranmu sudah kami terima. Ini struk pesananmu:") + receiptBox + "{{{rincian}}}" +
+			"{{{ulasan_blok}}}" + button("Buka Djiwa App"),
+			"Struk pesananmu di Djiwa Tentram.", ORDER_FOOTER,
+		),
+		sampleVars: {
+			nama: "Ayu", nomor_order: "ORD-APP-D-0008-241126", tanggal: "26 November 2026", metode: "QRIS",
+			rincian: receiptRowsHtml([{ name: "Nasi Ayam Kemangi", quantity: 1, price: 30000 }, { name: "Americano Long Black", variant: "Dingin", quantity: 1, price: 30000 }], 60000),
+			ulasan_blok: reviewBlock(GOOGLE_REVIEW_URL),
+			link_ulasan: GOOGLE_REVIEW_URL,
+		},
+		variables: ["nama", "nomor_order", "tanggal", "metode", "rincian", "ulasan_blok", "link_ulasan", "link"],
+	},
+	{
 		key: "booking_confirm", kind: "transactional",
 		trigger: "Reservasi berstatus terkonfirmasi dengan jadwal hari ini atau setelahnya. Tanpa jeda.",
 		subject: "Reservasi {{kode}} dikonfirmasi",
@@ -105,6 +140,9 @@ export type Candidate = { refKey: string; customerId: string; email: string; nam
 export type LeadRow = { source_id: string | null; email: string | null; name: string | null; marketing_consent: boolean | null; created_at: string | null };
 export type BookingRow = { source_id: string | null; customer_name: string | null; customer_email: string | null; booking_code: string | null; booking_date: string | null; arrival_time: string | null; guest_count: number | null; booking_status: string | null };
 
+export type OrderRow = { source_id: string | null; order_number: string | null; total_amount: number | null; status: string | null; payment_method: string | null; customer_name: string | null; customer_email: string | null; customer_source_id: string | null; created_at: string | null; discount_amount?: number | null; tax_amount?: number | null; service_charge_amount?: number | null; shipping_fee_amount?: number | null; daily_receipt_no?: number | null };
+export type OrderItemRow = { order_source_id: string | null; product_name: string | null; variant: string | null; quantity: number | null; price: number | null };
+
 export type SelectCtx = {
 	now: number;
 	/** every suppressed address (unsubscribed + bounce + complaint + manual) — blocks marketing */
@@ -118,6 +156,9 @@ export type SelectCtx = {
 	customers: CustomerRow[];
 	leads: LeadRow[];
 	bookings: BookingRow[];
+	/** paid orders from the last day (receipt candidates) with their line items */
+	orders?: OrderRow[];
+	orderItems?: OrderItemRow[];
 	delayHours: number;
 };
 
@@ -192,6 +233,46 @@ export function selectCandidates(key: AutomationKey, ctx: SelectCtx): Candidate[
 				if (ctx.sent.has(refKey) || !marketingAllowed(email, ctx, seen)) continue;
 				const name = firstName({ name: lead.name, nickname: null });
 				out.push({ refKey, customerId: lead.source_id, email, name, vars: { nama: name, link: APP_URL } });
+			}
+			return out;
+		}
+		case "order_receipt": {
+			const accountEmail = new Map(ctx.customers.map((c) => [c.source_id ?? "", clean(c.email)]));
+			const itemsByOrder = new Map<string, OrderItemRow[]>();
+			for (const item of ctx.orderItems ?? []) {
+				if (!item.order_source_id) continue;
+				const list = itemsByOrder.get(item.order_source_id) ?? [];
+				list.push(item);
+				itemsByOrder.set(item.order_source_id, list);
+			}
+			const out: Candidate[] = [];
+			for (const order of ctx.orders ?? []) {
+				if (!order.source_id || !["paid", "completed"].includes(clean(order.status))) continue;
+				const created = time(order.created_at);
+				if (!created || ctx.now - created < delay || ctx.now - created > DAY) continue;
+				const refKey = `order_receipt:${order.source_id}`;
+				const email = clean(order.customer_email) || accountEmail.get(order.customer_source_id ?? "") || "";
+				if (ctx.sent.has(refKey) || !validEmail(email) || ctx.suppressedHard.has(email)) continue;
+				const items = (itemsByOrder.get(order.source_id) ?? []).map((i) => ({ name: String(i.product_name ?? "Item"), variant: i.variant, quantity: Number(i.quantity ?? 1), price: Number(i.price ?? 0) }));
+				if (!items.length) continue;
+				const method = String(order.payment_method ?? "");
+				const digital = DIGITAL_PAYMENT.test(method);
+				const label = /wallet|djiwa/i.test(method) ? "Djiwa Pay" : /qris|mayar/i.test(method) ? "QRIS" : digital ? "Transfer" : "Bayar di kasir";
+				const name = firstName({ name: order.customer_name, nickname: null });
+				out.push({
+					refKey, customerId: order.customer_source_id ?? order.source_id, email, name,
+					vars: {
+						nama: name, link: APP_URL, nomor_order: String(order.order_number ?? order.source_id), tanggal: dateId(order.created_at), metode: label,
+						rincian: receiptRowsHtml(items, Number(order.total_amount ?? 0), [
+							{ label: "Ongkos kirim", amount: Number(order.shipping_fee_amount ?? 0) },
+							{ label: "Diskon", amount: -Number(order.discount_amount ?? 0) },
+							{ label: "Pajak", amount: Number(order.tax_amount ?? 0) },
+							{ label: "Biaya layanan", amount: Number(order.service_charge_amount ?? 0) },
+						]),
+						ulasan_blok: digital ? reviewBlock(GOOGLE_REVIEW_URL) : "",
+						link_ulasan: GOOGLE_REVIEW_URL,
+					},
+				});
 			}
 			return out;
 		}

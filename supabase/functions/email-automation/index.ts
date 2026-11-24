@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import { AUTOMATIONS, automationDef, jakartaDate, selectCandidates, type AutomationDef, type BookingRow, type Candidate, type LeadRow, type SelectCtx } from "../_shared/email-automation.ts";
+import { AUTOMATIONS, automationDef, jakartaDate, selectCandidates, type AutomationDef, type BookingRow, type Candidate, type LeadRow, type OrderItemRow, type OrderRow, type SelectCtx } from "../_shared/email-automation.ts";
 import { FREQUENCY_CAP_HOURS, FROM_DEFAULT, APP_URL, htmlToText, renderTemplate, unsubscribeUrl, validEmail, type CustomerRow } from "../_shared/email-marketing.ts";
 import { emailSetting } from "../_shared/email-settings.ts";
 
@@ -101,6 +101,22 @@ async function loadBookings(now: number) {
 	return (data ?? []) as BookingRow[];
 }
 
+async function loadOrders(now: number) {
+	const since = new Date(now - 26 * 3_600_000).toISOString();
+	const { data, error } = await pos().from("orders").select("source_id,order_number,total_amount,status,payment_method,customer_name,customer_email,customer_source_id,created_at,discount_amount,tax_amount,service_charge_amount,shipping_fee_amount")
+		.gte("created_at", since).in("status", ["paid", "completed"]).order("created_at", { ascending: false }).limit(500);
+	if (error) throw error;
+	const orders = (data ?? []) as OrderRow[];
+	const ids = orders.map((o) => o.source_id).filter((id): id is string => Boolean(id));
+	const items: OrderItemRow[] = [];
+	for (let i = 0; i < ids.length; i += 100) {
+		const { data: part, error: itemError } = await pos().from("order_items").select("order_source_id,product_name,variant,quantity,price").in("order_source_id", ids.slice(i, i + 100));
+		if (itemError) throw itemError;
+		items.push(...((part ?? []) as OrderItemRow[]));
+	}
+	return { orders, items };
+}
+
 async function loadSuppressed() {
 	const rows = await paged<{ email: string; reason: string }>((a, b) => pos().from("email_suppressions").select("email,reason").range(a, b));
 	const all = new Set<string>(), hard = new Set<string>();
@@ -137,14 +153,14 @@ async function loadRows() {
 }
 const effective = (def: AutomationDef, row: AutomationRow) => ({ subject: row.subject || def.subject, html: row.html || def.html });
 
-type World = { customers: CustomerRow[]; leads: LeadRow[]; bookings: BookingRow[]; suppressed: { all: Set<string>; hard: Set<string> }; recent: Set<string> };
+type World = { customers: CustomerRow[]; leads: LeadRow[]; bookings: BookingRow[]; orders: OrderRow[]; orderItems: OrderItemRow[]; suppressed: { all: Set<string>; hard: Set<string> }; recent: Set<string> };
 async function loadWorld(now: number): Promise<World> {
 	const marketingKeys = AUTOMATIONS.filter((a) => a.kind === "marketing").map((a) => a.key);
-	const [customers, leads, bookings, suppressed, recent] = await Promise.all([loadCustomers(), loadLeads(), loadBookings(now), loadSuppressed(), loadRecentEmails(marketingKeys)]);
-	return { customers, leads, bookings, suppressed, recent };
+	const [customers, leads, bookings, suppressed, recent, orderData] = await Promise.all([loadCustomers(), loadLeads(), loadBookings(now), loadSuppressed(), loadRecentEmails(marketingKeys), loadOrders(now)]);
+	return { customers, leads, bookings, orders: orderData.orders, orderItems: orderData.items, suppressed, recent };
 }
 async function candidatesFor(def: AutomationDef, row: AutomationRow, world: World, now: number) {
-	const ctx: SelectCtx = { now, suppressedAll: world.suppressed.all, suppressedHard: world.suppressed.hard, recentEmails: world.recent, sent: await loadSentRefs(def.key), customers: world.customers, leads: world.leads, bookings: world.bookings, delayHours: row.delay_hours };
+	const ctx: SelectCtx = { now, suppressedAll: world.suppressed.all, suppressedHard: world.suppressed.hard, recentEmails: world.recent, sent: await loadSentRefs(def.key), customers: world.customers, leads: world.leads, bookings: world.bookings, orders: world.orders, orderItems: world.orderItems, delayHours: row.delay_hours };
 	return selectCandidates(def.key, ctx);
 }
 
