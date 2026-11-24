@@ -78,3 +78,4 @@ html,body,#root{height:100%}
  .kdp .box{margin-top:8px}
 }
 .rowlink{cursor:pointer}.rowlink:hover td,.rowlink:focus td{background:var(--soft)}.rowlink:active td{background:#eef0f4}
+@media(max-width:820px){.kcs{grid-template-columns:repeat(4,1fr)!important}}

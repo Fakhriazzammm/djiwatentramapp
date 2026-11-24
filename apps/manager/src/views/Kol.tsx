@@ -665,6 +665,22 @@ function KampanyeView({ data, send, onReload }: { data: Snapshot; send: Send; on
 
   const editingCampaign = typeof editing === "number" ? data.campaigns.find((c) => c.id === editing) ?? null : null;
 
+  useEffect(() => {
+    if (editing !== null) document.querySelector(".body")?.scrollTo({ top: 0 });
+  }, [editing]);
+
+  if (editing !== null) return (
+    <CampaignDetail
+      key={editingCampaign?.id ?? "new"}
+      campaign={editingCampaign}
+      data={data}
+      assignments={editingCampaign ? assignmentsBy.get(editingCampaign.id) ?? [] : []}
+      submissions={editingCampaign ? submissionsBy.get(editingCampaign.id) ?? [] : []}
+      send={send}
+      onClose={() => setEditing(null)}
+    />
+  );
+
   return (
     <>
       <Panel
@@ -686,14 +702,14 @@ function KampanyeView({ data, send, onReload }: { data: Snapshot; send: Send; on
         </div>
         <div className="sc">
           <table>
-            <thead><tr><th>Kampanye</th><th>Status</th><th>Creator</th><th>Bukti</th><th>Tenggat</th><th /></tr></thead>
+            <thead><tr><th>Kampanye</th><th>Status</th><th>Creator</th><th>Bukti</th><th>Tenggat</th></tr></thead>
             <tbody>
               {rows.map((c) => {
                 const assignments = (assignmentsBy.get(c.id) ?? []).filter((a) => a.status !== "cancelled");
                 const submissions = submissionsBy.get(c.id) ?? [];
                 const pending = submissions.filter((s) => s.status === "submitted").length;
                 return (
-                  <tr key={c.id}>
+                  <tr key={c.id} className="rowlink" tabIndex={0} onClick={() => setEditing(c.id)} onKeyDown={(e) => { if (e.key === "Enter") setEditing(c.id); }}>
                     <td><b>{c.title}</b><div className="meta">{c.slug}{c.location ? ` · ${c.location}` : ""}</div></td>
                     <td>
                       <St map={CAMPAIGN_STATUS} k={c.status} />
@@ -702,7 +718,6 @@ function KampanyeView({ data, send, onReload }: { data: Snapshot; send: Send; on
                     <td className="mono">{assignments.length}</td>
                     <td className="mono">{submissions.length}</td>
                     <td>{c.end_date ? fmtDate(c.end_date) : "—"}</td>
-                    <td><button className="btn s" onClick={() => setEditing(c.id)}>Kelola</button></td>
                   </tr>
                 );
               })}
@@ -711,18 +726,6 @@ function KampanyeView({ data, send, onReload }: { data: Snapshot; send: Send; on
           {rows.length === 0 && <Empty>BELUM ADA KAMPANYE</Empty>}
         </div>
       </Panel>
-
-      {editing !== null && (
-        <CampaignDetail
-          key={editingCampaign?.id ?? "new"}
-          campaign={editingCampaign}
-          data={data}
-          assignments={editingCampaign ? assignmentsBy.get(editingCampaign.id) ?? [] : []}
-          submissions={editingCampaign ? submissionsBy.get(editingCampaign.id) ?? [] : []}
-          send={send}
-          onClose={() => setEditing(null)}
-        />
-      )}
     </>
   );
 }
@@ -782,11 +785,23 @@ function CampaignDetail({ campaign, data, assignments, submissions, send, onClos
       title={campaign ? campaign.title : "Kampanye baru"}
       meta={campaign ? `slug ${campaign.slug}` : "dibuat sebagai draf"}
       action={<div style={{ display: "flex", gap: 6 }}>
-        <button className="btn s" onClick={onClose}>Tutup</button>
+        <button className="btn s" onClick={onClose}>← Kembali</button>
         <button className="btn s p" disabled={busy === "save"} onClick={() => void save()}>{busy === "save" ? "Menyimpan…" : campaign ? "Simpan" : "Buat"}</button>
       </div>}
     >
-      <div className="pad">
+      <div className="pad kdp">
+        {campaign && (() => {
+          const live = assignments.filter((a) => a.status !== "cancelled");
+          const cnt = (st: string) => submissions.filter((x) => x.status === st).length;
+          return (
+            <div className="kd kcs" style={{ marginBottom: 12 }}>
+              <KV k="Creator" v={<b className="mono">{live.length}</b>} />
+              <KV k="Bukti masuk" v={<b className="mono">{submissions.length}</b>} />
+              <KV k="Perlu review" v={<b className="mono">{cnt("submitted")}</b>} />
+              <KV k="Disetujui" v={<b className="mono">{cnt("approved")}</b>} />
+            </div>
+          );
+        })()}
         <div className="row2">
           <div><label style={{ marginTop: 0 }}>Judul</label><input className="f" value={form.title} maxLength={160} onChange={(e) => set("title", e.target.value)} /></div>
           <div><label style={{ marginTop: 0 }}>Slug</label><input className="f" value={form.slug} maxLength={120} placeholder={slugify(form.title) || "visit-review-menu"} onChange={(e) => set("slug", e.target.value)} /></div>
@@ -849,21 +864,28 @@ function CampaignDetail({ campaign, data, assignments, submissions, send, onClos
           </div>
           </>}
 
-          <label>Creator di kampanye ini</label>
+          <label>Creator di kampanye ini ({assignments.length})</label>
           {assignments.length === 0 && <div className="meta">Belum ada creator yang bergabung.</div>}
-          {assignments.map((a) => (
-            <div key={a.id} className="mr" style={{ padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
-              <div>
-                <b style={{ fontSize: 12 }}>{a.kol_creators?.name ?? a.kol_id}</b>
-                <div className="meta">{atUsername(a.kol_creators?.username)} · {fmtDateTime(a.created_at)}{a.admin_note ? ` · ${a.admin_note}` : ""}</div>
+          {assignments.map((a) => {
+            const mine = submissions.filter((x) => x.campaign_assignment_id === a.id);
+            const cr = data.creators.find((c) => c.source_id === a.kol_id);
+            return (
+              <div key={a.id} className="kds" style={{ marginTop: 8 }}>
+                <div className="mr">
+                  <div>
+                    <b style={{ fontSize: 12 }}>{a.kol_creators?.name ?? a.kol_id}</b>
+                    <div className="meta">{atUsername(a.kol_creators?.username)}{cr ? ` · ${compact(totalFollowers(cr))} follower` : ""} · {fmtDateTime(a.created_at)}</div>
+                    {a.admin_note && <div className="meta">Catatan: {a.admin_note}</div>}
+                    {a.accepted_at && <div className="meta">Diterima {fmtDateTime(a.accepted_at)}{a.completed_at ? ` · selesai ${fmtDateTime(a.completed_at)}` : ""}</div>}
+                  </div>
+                  <St map={ASSIGNMENT_STATUS} k={a.status} />
+                </div>
+                <div className="meta" style={{ margin: "8px 0 2px" }}>Bukti ({mine.length})</div>
+                {mine.length === 0 && <div className="meta">Belum mengirim bukti.</div>}
+                {mine.map((x) => <SubmissionItem key={x.id} submission={x} send={send} />)}
               </div>
-              <St map={ASSIGNMENT_STATUS} k={a.status} />
-            </div>
-          ))}
-
-          <label style={{ marginTop: 16 }}>Bukti konten</label>
-          {submissions.length === 0 && <div className="meta">Belum ada bukti yang dikirim creator.</div>}
-          {submissions.map((s) => <SubmissionItem key={s.id} submission={s} send={send} />)}
+            );
+          })}
         </div>
       )}
     </Panel>
