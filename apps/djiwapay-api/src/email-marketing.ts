@@ -28,6 +28,7 @@ export const SEGMENTS = {
   wallet: "Punya saldo Djiwa Pay",
   invite_old: "Pelanggan lama yang belum mencoba Pay",
   android_testers: "Penguji Android (Gmail, setuju info)",
+  everyone: "Semua pelanggan ber-email (setuju info)",
 } as const;
 export type SegmentKey = keyof typeof SEGMENTS;
 export const isSegment = (v: unknown): v is SegmentKey => typeof v === "string" && v in SEGMENTS;
@@ -57,6 +58,7 @@ export function matches(r: Row, key: SegmentKey, sig: Signals, now = Date.now())
     case "no_google": return inPay && !sig.google.has(r.id);
     case "wallet": return inPay && Number(r.balance ?? 0) > 0;
     case "invite_old": return !inPay;
+    case "everyone": return true;
     case "android_testers": return /@(gmail|googlemail)\.com$/i.test(String(r.email ?? "").trim());
   }
 }
