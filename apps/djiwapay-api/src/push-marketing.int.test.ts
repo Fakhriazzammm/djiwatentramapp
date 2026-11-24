@@ -43,7 +43,8 @@ run("push marketing in Postgres", () => {
     expect(first).toBeTruthy(); expect(first!.id.startsWith("pm-")).toBe(true); expect(first!.route).toBe("/");
     await app.request("/api/finance/push/opened", { method: "POST", body: JSON.stringify({ did: first!.id.slice(3) }), headers: { "Content-Type": "application/json" } });
     expect((await get()).items.find((x) => x.id === first!.id)!.opened).toBe(true);
-    registerPushRoutes(app, { db: poolTx(p!) }, () => B, json);   // another person has none of it
+    const other = new Hono(); registerPushRoutes(other, { db: poolTx(p!) }, () => B, json);   // B turned marketing off, but still has no delivery of this one
+    expect(((await (await other.request("/api/finance/push/inbox")).json()) as { items: unknown[] }).items.filter((x: any) => x.title === "Hai Sahabat Djiwa")).toHaveLength(0);
   });
   test("the second campaign the same day skips the person who just got one", async () => {
     const e = eng(), made = await e.create({ name: `${tag} dua`, title: "Lagi", body: "Pesan kedua", topic: "promo", segment: "devices", platform: "web" }, "t");
