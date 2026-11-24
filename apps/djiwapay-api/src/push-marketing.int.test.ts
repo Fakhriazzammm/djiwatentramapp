@@ -2,7 +2,9 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { Pool } from "pg";
 import { poolTx } from "./db";
+import { Hono } from "hono";
 import { pushEngine } from "./push-marketing";
+import { registerPushRoutes } from "./push";
 const url = process.env.DATABASE_URL;
 const run = url ? describe : describe.skip;
 const p = url ? new Pool({ connectionString: url, max: 4, ssl: process.env.PGSSL === "off" ? undefined : { rejectUnauthorized: false } }) : null;
@@ -32,6 +34,16 @@ run("push marketing in Postgres", () => {
     const did = (await p!.query("select id from finance.push_deliveries where campaign_id=$1 and user_id=$2", [made.campaign.id, A])).rows[0].id;
     await p!.query("update finance.push_deliveries set opened_at = now() where id=$1", [did]);
     const g = await e.get(made.campaign.id); expect(g.opened).toBe(1); expect(g.stats.sent).toBeGreaterThanOrEqual(1);
+  });
+  test("the person sees the push on the notifications page, and opening it marks it read", async () => {
+    const app = new Hono(), json = (c: any, b: unknown, st = 200) => c.body(JSON.stringify(b), st, { "Content-Type": "application/json" });
+    registerPushRoutes(app, { db: poolTx(p!) }, () => A, json);
+    const get = async () => (await (await app.request("/api/finance/push/inbox")).json()) as { items: { id: string; title: string; opened: boolean; route: string }[] };
+    const first = (await get()).items.find((x) => x.title === "Hai Sahabat Djiwa");
+    expect(first).toBeTruthy(); expect(first!.id.startsWith("pm-")).toBe(true); expect(first!.route).toBe("/");
+    await app.request("/api/finance/push/opened", { method: "POST", body: JSON.stringify({ did: first!.id.slice(3) }), headers: { "Content-Type": "application/json" } });
+    expect((await get()).items.find((x) => x.id === first!.id)!.opened).toBe(true);
+    registerPushRoutes(app, { db: poolTx(p!) }, () => B, json);   // another person has none of it
   });
   test("the second campaign the same day skips the person who just got one", async () => {
     const e = eng(), made = await e.create({ name: `${tag} dua`, title: "Lagi", body: "Pesan kedua", topic: "promo", segment: "devices", platform: "web" }, "t");

@@ -1,7 +1,7 @@
 import * as webpush from "web-push";
 import type { Hono } from "hono";
 import { fcmAccount, sendFcm } from "./fcm.js";
-import { DEFAULT_TOPICS, TOPICS, isTopic } from "./push-marketing.js";
+import { DEFAULT_TOPICS, TOPICS, isTopic, renderPush } from "./push-marketing.js";
 
 /** Web Push for the installed app. The payload has the same shape the in-app island banner shows. */
 export type PushPayload = { id: string; tone: "in" | "out" | "move" | "mail" | "warn" | "info"; label: string; title: string; message: string; amount?: number; sign?: "+" | "−" | "⇄"; route?: string; at: string };
@@ -71,6 +71,12 @@ export function registerPushRoutes(app: Hono, d: { db: Db }, uid: (c: any) => st
     const raw = b?.topics, topics = Array.isArray(raw) ? [...new Set(raw.filter(isTopic))] : cur.topics;
     await d.db.query("insert into finance.push_prefs(user_id, marketing, topics) values($1,$2,$3) on conflict (user_id) do update set marketing = excluded.marketing, topics = excluded.topics, updated_at = now()", [uid(c), marketing, topics]);
     return json(c, { success: true, marketing, topics });
+  });
+  /** Marketing pushes this person was sent in the last 30 days, one per campaign, for the in-app notifications page. */
+  app.get("/api/finance/push/inbox", async (c) => {
+    const rows = (await d.db.query(`select c.id::text cid, c.title, c.body, c.route, c.image_url, min(d.id::text) did, max(d.sent_at) at, bool_or(d.opened_at is not null) opened, (array_agg(d.vars order by d.id))[1] vars
+      from finance.push_deliveries d join finance.push_campaigns c on c.id = d.campaign_id where d.user_id = $1 and d.status = 'sent' and d.sent_at > now() - interval '30 days' group by c.id order by max(d.sent_at) desc limit 20`, [uid(c)])).rows;
+    return json(c, { success: true, items: rows.map((r) => ({ id: `pm-${r.did}`, campaign: r.cid, title: renderPush(r.title, r.vars ?? {}), message: renderPush(r.body, r.vars ?? {}), route: r.route, image: r.image_url, at: r.at, opened: r.opened })) });
   });
   app.post("/api/finance/push/opened", async (c) => {   // public: the delivery id is the secret
     const b = await c.req.json().catch(() => null) as { did?: unknown } | null;

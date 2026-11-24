@@ -29,6 +29,7 @@ import { PAY_ACCOUNT_ID } from "../../lib/finance/categories";
 import { IslandHost } from "../shell/island";
 import { InAppBrowserHost } from "../shell/inapp-browser";
 import { PwaHost, PwaSheet } from "../pwa/pwa-ui";
+import { loadPushInbox, markPushOpened, type InboxItem } from "../../lib/push-inbox";
 import { buildIsland, loadSeen, registerIslandHandlers, saveSeen, startIsland } from "../../lib/island";
 import { ProfileEditPage, SecurityPage } from "../account/account-pages";
 import { FinBudget, FinHome, FinRecords, FinReport, FinSettings, FinSheetHost, FinWallet, ManualForm, Onboarding, type FinCtx, type FinSheet } from "../finance/fin-pages";
@@ -115,8 +116,10 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   const [favoriteCustomerNumbers, setFavoriteCustomerNumbers] = useState<string[]>(() => {
     try { const parsed = JSON.parse(window.localStorage.getItem(`djiwa-pay-favorite-numbers:${profile.source_id}`) || "[]"); return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string").slice(0, 5) : []; } catch { return []; }
   });
+  const [promoInbox, setPromoInbox] = useState<InboxItem[]>([]);
   const refreshWalletNotifications = async () => {
     setNotificationsLoading(true);
+    void loadPushInbox().then(setPromoInbox);
     try { setWalletNotifications(await readWalletNotifications()); } catch { /* wallet remains usable when notification service is unavailable */ }
     finally { setNotificationsLoading(false); }
   };
@@ -222,7 +225,7 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   const [accountSub, setAccountSub] = useState<null | "profile" | "security">(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("keamanan") === "1" ? "security" : null));
   const [localRead, setLocalRead] = useState<Set<string>>(() => loadRead(profile.source_id));
   const finNotes = useMemo(() => financeNotes(fin.state, fin.entries, inboundSummary.data, new Date(), disc.items.length), [fin.state, fin.entries, inboundSummary.data, disc.items.length]);
-  const allNotifications = useMemo<WalletNotification[]>(() => [...finNotes.map((n) => ({ id: n.id, title: n.title, message: n.message, notification_type: n.notification_type, created_at: n.created_at, unread: !localRead.has(n.id), action_payload: { route: n.route } })), ...walletNotifications].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)), [finNotes, localRead, walletNotifications]);
+  const allNotifications = useMemo<WalletNotification[]>(() => [...finNotes.map((n) => ({ id: n.id, title: n.title, message: n.message, notification_type: n.notification_type, created_at: n.created_at, unread: !localRead.has(n.id), action_payload: { route: n.route } })), ...promoInbox.map((n) => ({ id: n.id, title: n.title, message: n.message, notification_type: "promo", created_at: n.at, unread: !n.opened && !localRead.has(n.id), action_payload: { route: n.route } })), ...walletNotifications].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)), [finNotes, localRead, walletNotifications, promoInbox]);
   // On opening the app, money that moved and things that need a look appear one after another as an island banner.
   const islandStarted = useRef(false), islandSeen = useRef<Set<string>>(new Set());
   useEffect(() => {
@@ -612,7 +615,7 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   if (walletRoute?.page === "discoveries") return frameShell(<DiscoveryPage ctx={finCtx} onBack={() => goBack("/")} onOpenReview={() => goPayRoute("/tinjau")} />, "home");
   if (walletRoute?.page === "review") return frameShell(<ReviewPage ctx={finCtx} onBack={() => goBack("/")} onOpenIntegrations={() => goPayRoute("/integrasi")} />, "home");
   if (walletRoute?.page === "catat") { const editId = paySearchParams.get("edit") ?? undefined; const k = paySearchParams.get("kind"); return frameShell(<ManualForm key={editId ?? k ?? "new"} ctx={finCtx} editId={editId} initialKind={k === "in" || k === "tf" ? k : undefined} onDone={() => { if (window.history.length > 1) window.history.back(); else goPayRoute("/"); }} />, null); }
-  if (notificationsOpen) return frameShell(<NotificationsPage items={allNotifications} loading={notificationsLoading} busy={notificationsBusy} feed={<CeritaTab ctx={finCtx} />} onBack={() => { onNavigate("Kembali ke Saldo Djiwa Pay"); setNotificationsOpen(false); }} onRead={async (notification) => { const route = notification.action_payload?.route; if (route) { readLocal([notification.id]); setNotificationsOpen(false); payNav.go(route); return; } if (notification.unread) { await markWalletNotificationRead(notification.id); await refreshWalletNotifications(); } }} onReadAll={async () => { setNotificationsBusy(true); try { readLocal(finNotes.map((n) => n.id)); await markAllWalletNotificationsRead(); await refreshWalletNotifications(); } finally { setNotificationsBusy(false); } }} />, null);
+  if (notificationsOpen) return frameShell(<NotificationsPage items={allNotifications} loading={notificationsLoading} busy={notificationsBusy} feed={<CeritaTab ctx={finCtx} />} onBack={() => { onNavigate("Kembali ke Saldo Djiwa Pay"); setNotificationsOpen(false); }} onRead={async (notification) => { const route = notification.action_payload?.route; if (route) { if (notification.id.startsWith("pm-")) markPushOpened(notification.id); readLocal([notification.id]); setNotificationsOpen(false); payNav.go(route); return; } if (notification.unread) { await markWalletNotificationRead(notification.id); await refreshWalletNotifications(); } }} onReadAll={async () => { setNotificationsBusy(true); try { readLocal([...finNotes.map((n) => n.id), ...promoInbox.map((n) => n.id)]); await markAllWalletNotificationsRead(); await refreshWalletNotifications(); } finally { setNotificationsBusy(false); } }} />, null);
   if (walletRoute?.page === "services") return frameShell(<ServicesTab nav={payNav} focusSearch={paySearchParams.get("cari") === "1"} recentNumbers={recentCustomerNumbers} />, "wallet");
   if (walletRoute?.page === "calendar") return frameShell(<CalendarPage ctx={finCtx} onBack={() => goBack("/rencana")} />, "budget");
   if (walletRoute?.page === "health") return frameShell(<HealthPage ctx={finCtx} onBack={() => goBack("/")} />, "home");
