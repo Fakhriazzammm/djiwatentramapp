@@ -5,7 +5,7 @@ import {
 	type CustomerRow,
 } from "./email-marketing.ts";
 
-export type AutomationKey = "welcome" | "winback" | "post_order" | "lead_intro" | "booking_confirm" | "booking_reminder" | "booking_thanks" | "order_receipt";
+export type AutomationKey = "welcome" | "winback" | "post_order" | "lead_intro" | "booking_confirm" | "booking_reminder" | "booking_thanks" | "order_receipt" | "review_invite";
 export type AutomationKind = "marketing" | "transactional";
 
 export type AutomationDef = {
@@ -71,6 +71,20 @@ export const AUTOMATIONS: AutomationDef[] = [
 			"Terima kasih sudah memesan. Sampai jumpa lagi!",
 		),
 		sampleVars: { nama: "Ayu" }, variables: ["nama", "link"],
+	},
+	{
+		key: "review_invite", kind: "marketing",
+		trigger: "Pelanggan berizin pemasaran yang pernah memesan. Sekali seumur hidup per orang, dikirim bertahap sesuai batas harian. Tanpa imbalan apa pun (kebijakan Google melarang ulasan berinsentif).",
+		subject: "{{nama}}, ceritakan pengalamanmu di Djiwa Tentram?",
+		html: wrapEmail(
+			h1("Halo {{nama}}, bagaimana pengalamanmu?") +
+			p("Terima kasih sudah memilih Djiwa Tentram. Kami terus belajar dari cerita pelanggan, dan ulasanmu membantu kami menjaga rasa serta pelayanan.") +
+			p("Kalau ada waktu satu menit, tuliskan kesan jujurmu di Google. Satu atau dua kalimat saja sudah sangat berarti, apa pun penilaianmu.") +
+			button("Tulis ulasan di Google", "{{{link_ulasan}}}") +
+			p("Terima kasih sudah jadi bagian dari Djiwa Tentram. Sampai jumpa lagi, semoga harimu tentram.") ,
+			"Satu menit untuk berbagi pengalamanmu di Djiwa Tentram.",
+		),
+		sampleVars: { nama: "Ayu", link_ulasan: GOOGLE_REVIEW_URL }, variables: ["nama", "link_ulasan", "link"],
 	},
 	{
 		key: "lead_intro", kind: "marketing",
@@ -220,6 +234,8 @@ export function selectCandidates(key: AutomationKey, ctx: SelectCtx): Candidate[
 				const last = time(c.last_order_at);
 				return Number(c.total_orders ?? 0) > 0 && last && ctx.now - last >= delay && ctx.now - last <= 7 * DAY ? `post_order:${c.source_id}:${last}` : null;
 			}, () => ({}));
+		case "review_invite":
+			return customerCandidates(ctx, (c) => (Number(c.total_orders ?? 0) > 0 ? `review_invite:${c.source_id}` : null), () => ({ link_ulasan: GOOGLE_REVIEW_URL }));
 		case "lead_intro": {
 			const customerEmails = new Set(ctx.customers.map((c) => clean(c.email)));
 			const out: Candidate[] = [];

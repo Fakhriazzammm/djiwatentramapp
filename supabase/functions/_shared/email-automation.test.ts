@@ -119,3 +119,18 @@ describe("order_receipt", () => {
 		expect(none({ customer_email: null, customer_source_id: null })).toHaveLength(0);
 	});
 });
+
+describe("review_invite", () => {
+	test("consented customers who ordered, once, never suppressed", () => {
+		const customers = [
+			customer({ source_id: "a", total_orders: 3 }),
+			customer({ source_id: "never", total_orders: 0 }),
+			customer({ source_id: "noconsent", total_orders: 2, marketing_consent: false }),
+			customer({ source_id: "done", total_orders: 2 }),
+			customer({ source_id: "blocked", total_orders: 2 }),
+		];
+		const out = selectCandidates("review_invite", ctx({ customers, sent: new Set(["review_invite:done"]), suppressedAll: new Set(["blocked@x.id"]) }));
+		expect(out.map((c) => c.customerId)).toEqual(["a"]);
+		expect(out[0].vars.link_ulasan).toContain("g.page/r/Ccd6bRmm1GH4EAE/review");
+	});
+});
