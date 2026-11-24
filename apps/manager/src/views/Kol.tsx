@@ -514,8 +514,8 @@ function CreatorDetail({ creator, data, send, onClose }: { creator: Creator; dat
       meta={`${atUsername(creator.username)} · ${creator.status}`}
       action={<button className="btn s" onClick={onClose}>← Kembali</button>}
     >
-      <div className="pad">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 12 }}>
+      <div className="pad kdp">
+        <div className="kd" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 12 }}>
           <KV k="Kategori" v={creator.category || "—"} />
           <KV k="Lokasi" v={creator.location || "—"} />
           <KV k="Jangkauan" v={<span className="mono">{compact(totalFollowers(creator))} follower</span>} />
@@ -568,7 +568,7 @@ function CreatorDetail({ creator, data, send, onClose }: { creator: Creator; dat
             <span className={`tg ${creator.visit_booking_eligible ? "ok" : ""}`}>{creator.visit_booking_eligible ? "Diizinkan" : "Belum diizinkan"}</span>
             <button className="btn s p" disabled={busy === "elig" || creator.visit_booking_eligible} onClick={() => void setEligibility(true)}>Izinkan</button>
             <button className="btn s" disabled={busy === "elig" || !creator.visit_booking_eligible} onClick={() => void setEligibility(false)}>Cabut izin</button>
-            <input className="f" style={{ flex: 1, minWidth: 180 }} placeholder="Catatan kelayakan (opsional)" value={note} maxLength={1000} onChange={(e) => setNote(e.target.value)} />
+            <input className="f kdnote" style={{ flex: 1, minWidth: 180 }} placeholder="Catatan kelayakan (opsional)" value={note} maxLength={1000} onChange={(e) => setNote(e.target.value)} />
           </div>
           {creator.public_reason && <div className="meta" style={{ marginTop: 6 }}>Alasan publik: {creator.public_reason}</div>}
         </div>
