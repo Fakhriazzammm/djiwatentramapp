@@ -294,7 +294,7 @@ function ApplicationStatus({ campaign: c, status, picked, visit }: { campaign: C
   );
 }
 
-function CampaignProofs({ campaign: c, onChanged }: { campaign: Campaign; onChanged: () => Promise<void> }) {
+export function CampaignProofs({ campaign: c, onChanged }: { campaign: Campaign; onChanged: () => Promise<void> }) {
   const [proofs, setProofs] = useState<Proof[]>([]);
   const [url, setUrl] = useState("");
   const [type, setType] = useState("");
