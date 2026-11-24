@@ -188,7 +188,7 @@ export function renderReceiptSection(props: ReceiptSectionProps) {
 
 	return (
 		<div className="space-y-2 px-2 py-2 pb-[calc(11rem+env(safe-area-inset-bottom))]">
-			{mode === "paid" && isQrisPayment && !isCashierPayment && !isWalletPayment && (currentOrder?._id ?? currentOrder?.id ?? props.receipt.orderId) ? <GoogleReviewRedirect orderId={String(currentOrder?._id ?? currentOrder?.id ?? props.receipt.orderId)} createdAt={currentOrder.createdAt ?? currentOrder.created_at} /> : null}
+			{mode === "paid" && (isQrisPayment || isWalletPayment) && !isCashierPayment && (currentOrder?._id ?? currentOrder?.id ?? props.receipt.orderId) ? <GoogleReviewRedirect orderId={String(currentOrder?._id ?? currentOrder?.id ?? props.receipt.orderId)} createdAt={currentOrder.createdAt ?? currentOrder.created_at} /> : null}
 			{isDeliveryOrder && mode === "paid" && !isExpired ? <DeliveryLiveTracker order={currentOrder} courierLabel={courierLabel} /> : null}
 			{currentStepLabel && !(isDeliveryOrder && mode === "paid") ? (
 				<div className="mx-auto w-full max-w-sm px-3 py-3">

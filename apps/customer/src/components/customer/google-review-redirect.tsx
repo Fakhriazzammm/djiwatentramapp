@@ -23,8 +23,8 @@ export function openGoogleReview() {
 }
 
 /**
- * Setelah pembayaran QRIS Mayar lunas: hitung mundur 5 detik lalu arahkan ke ulasan Google (sekali per pesanan).
- * Hanya dipasang untuk QRIS Mayar; pembayaran tunai di kasir dan Djiwa Pay tidak memicunya.
+ * Setelah pembayaran digital (QRIS Mayar atau Djiwa Pay) lunas: hitung mundur 5 detik lalu arahkan ke ulasan Google (sekali per pesanan).
+ * Pembayaran tunai di kasir tidak memicunya.
  */
 export function GoogleReviewRedirect({ orderId, createdAt }: { orderId: string; createdAt?: number | string | null }) {
   const created = createdAt == null ? NaN : typeof createdAt === "number" ? createdAt : Date.parse(String(createdAt));
