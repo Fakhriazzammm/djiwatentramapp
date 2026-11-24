@@ -663,11 +663,13 @@ function KampanyeView({ data, send, onReload }: { data: Snapshot; send: Send; on
     });
   }, [data.campaigns, filter, query]);
 
-  const editingCampaign = typeof editing === "number" ? data.campaigns.find((c) => c.id === editing) ?? null : null;
+  const editingCampaign = editing !== null && editing !== "new" ? data.campaigns.find((c) => String(c.id) === String(editing)) ?? null : null;
 
   useEffect(() => {
     if (editing !== null) document.querySelector(".body")?.scrollTo({ top: 0 });
   }, [editing]);
+
+  if (editing !== null && editing !== "new" && !editingCampaign) { setEditing(null); return null; }
 
   if (editing !== null) return (
     <CampaignDetail
