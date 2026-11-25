@@ -175,14 +175,72 @@ const NT_EMPTY: Record<NtTab, { icon: IconName; title: string; text: string }> =
   news: { icon: "book", title: "Belum ada berita", text: "Kabar dan cerita baru akan muncul di sini." },
 };
 const ntGroups = (list: WalletNotification[]) => { const m = new Map<string, WalletNotification[]>(); for (const n of list) { const k = noteDay(n.created_at); m.set(k, [...(m.get(k) ?? []), n]); } return [...m.entries()]; };
+const NT_KIND: Record<string, string> = {
+  "fin-email": "Tercatat", "fin-find": "Temuan", "fin-bill": "Tagihan", "fin-budget": "Terlampaui", "fin-debt": "Sisa", "fin-goal": "Target", "fin-loan": "Cicilan", promo: "Berita",
+  topup_completed: "Pemasukan", manual_credit: "Pemasukan", wallet_transfer_received: "Pemasukan", order_debit: "Pengeluaran",
+  wallet_hold: "Ditahan", wallet_release: "Dikembalikan", wallet_transfer_sent: "Pindah dana", refund: "Refund", adjustment: "Penyesuaian",
+};
+const NT_AMOUNT = /([−+⇄-]?)\s*(Rp\s?[\d][\d.]*(?:,\d+)?)/;
+type NoteView = { label?: string; amount?: string; tone?: "in" | "out" | "tf"; detail: string };
+/** Amount and kind for the right column. Email activity is "Tercatat dari email · −Rp 1.200"; reminders carry their amount in the sentence. */
+const noteView = (n: WalletNotification): NoteView => {
+  const msg = n.message.trim();
+  const act = /^(.*?)\s*·\s*([−+⇄-])\s*(Rp\s?[\d][\d.]*(?:,\d+)?)\s*$/.exec(msg);
+  if (act) {
+    const sign = act[2];
+    return { label: sign === "⇄" ? "Pindah dana" : act[1].trim().replace(/^Tercatat dari email$/i, "Tercatat"), amount: `${sign}${act[3]}`, tone: sign === "⇄" ? "tf" : sign === "+" ? "in" : "out", detail: act[1].trim() };
+  }
+  const m = NT_AMOUNT.exec(msg);
+  if (!m) return { label: NT_KIND[n.notification_type], detail: msg };
+  const sign = m[1];
+  const base = n.notification_type === "fin-budget" && !/terlampaui/i.test(n.title) ? "Sisa" : NT_KIND[n.notification_type];
+  const label = sign === "⇄" ? "Pindah dana" : sign === "+" ? "Pemasukan" : sign === "−" || sign === "-" ? "Pengeluaran" : base ?? "Tercatat";
+  const credit = n.notification_type.includes("topup") || n.notification_type.includes("credit") || n.notification_type.includes("received") || n.notification_type === "refund";
+  const tone = sign === "⇄" ? "tf" : sign === "+" ? "in" : sign === "−" || sign === "-" ? "out" : credit ? "in" : undefined;
+  const detail = msg.replace(m[0], "").replace(/^(Lewat|Sisa|Tagihan)\s+/i, "").replace(/^[.,;:]\s*/, "").trim();
+  return { label, amount: `${sign}${m[2]}`, tone, detail };
+};
 
-/** Notifikasi, pengingat and berita in one iOS-style sheet; each tab carries its own mark-as-read. */
-export function NotificationsSheet({ items, loading, busy, onClose, onRead, onReadAll, onAddReminder, feed }: {
+function NtxRow({ n, hint, index, onOpen, onMarkRead }: { n: WalletNotification; hint: boolean; index: number; onOpen: (n: WalletNotification) => void; onMarkRead: (n: WalletNotification) => void }) {
+  const meta = noteView(n), reminder = REMINDER_TYPES.has(n.notification_type), time = formatTime(n.created_at);
+  const detail = meta.detail && meta.detail !== meta.label ? meta.detail : "";
+  const subtitle = meta.amount ? (reminder ? detail : time) : n.message;
+  const look = NOTE_LOOK[n.notification_type] ?? { icon: "bell" as IconName, tone: "blue" };
+  const moved = useRef(false);
+  return <motion.div className="dpx-ntx-swipe" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: Math.min(index, 6) * 0.03 }}>
+    <div className="dpx-ntx-behind dpx-ntx-behind-open" aria-hidden="true"><Ic n="chev" size="sm" /><span>Buka</span></div>
+    <div className="dpx-ntx-behind dpx-ntx-behind-read" aria-hidden="true"><span>Dibaca</span><Ic n="check" size="sm" /></div>
+    <motion.div className="dpx-ntx-rowdrag" drag="x" dragConstraints={{ left: -110, right: 110 }} dragElastic={0.14} dragMomentum={false} dragSnapToOrigin
+      animate={hint ? { x: [0, -18, 8, 0] } : { x: 0 }} transition={hint ? { duration: 0.9, ease: "easeInOut", delay: 0.18 } : { duration: 0.2 }}
+      onDragStart={() => { moved.current = true; }}
+      onDragEnd={(_, info) => {
+        if (info.offset.x < -56 || info.velocity.x < -550) onMarkRead(n);
+        else if (info.offset.x > 56 || info.velocity.x > 550) onOpen(n);
+        window.setTimeout(() => { moved.current = false; }, 80);
+      }}>
+      <Btn type="button" className={`dpx-ntx-row ${n.unread ? "is-unread" : ""}`} onClick={() => { if (!moved.current) onOpen(n); }} whileTap={{ scale: 0.995 }}>
+        <span className={`dpx-ntx-ic dpx-c-${look.tone}`}><Ic n={look.icon} /></span>
+        <span className="dpx-ntx-main"><b className="dpx-ntx-title">{cleanTitle(n.title)}</b>{subtitle ? <span className="dpx-ntx-msg">{subtitle}</span> : null}</span>
+        <span className="dpx-ntx-trail">
+          {meta.amount ? <><span className="dpx-ntx-kindrow">{meta.label ? <small className="dpx-ntx-kind">{meta.label}</small> : null}{n.unread ? <span className="dpx-ntx-dot" aria-label="Belum dibaca" /> : null}</span><b className={`dpx-ntx-amt ${meta.tone ?? ""}`}>{meta.amount}</b></>
+            : reminder && meta.label ? <span className="dpx-ntx-kindrow"><small className="dpx-ntx-kind">{meta.label}</small>{n.unread ? <span className="dpx-ntx-dot" aria-label="Belum dibaca" /> : null}</span>
+            : <span className="dpx-ntx-kindrow"><small className="dpx-ntx-time">{time}</small>{n.unread ? <span className="dpx-ntx-dot" aria-label="Belum dibaca" /> : null}</span>}
+        </span>
+      </Btn>
+    </motion.div>
+  </motion.div>;
+}
+
+/** Notifikasi, pengingat and berita in one iOS-style sheet; each tab carries its own mark-as-read and swipe actions. */
+export function NotificationsSheet({ items, loading, busy, onClose, onOpen, onMarkRead, onReadAll, onAddReminder, feed }: {
   items: WalletNotification[]; loading: boolean; busy: boolean; onClose: () => void;
-  onRead: (n: WalletNotification) => void; onReadAll: (items: WalletNotification[]) => void;
-  onAddReminder?: () => void; feed?: ReactNode;
+  onOpen: (n: WalletNotification) => void; onMarkRead: (n: WalletNotification) => void;
+  onReadAll: (items: WalletNotification[]) => void; onAddReminder?: () => void; feed?: ReactNode;
 }) {
   const [tab, setTab] = useState<NtTab>("notif");
+  const [hintTab, setHintTab] = useState<NtTab | null>("notif");
+  // Every open and every tab change nudges the first row, so the swipe gesture is visible without a tutorial.
+  useEffect(() => { setHintTab(tab); const t = window.setTimeout(() => setHintTab(null), 1150); return () => window.clearTimeout(t); }, [tab]);
   const { activity, reminders, news } = useMemo(() => {
     const activity: WalletNotification[] = [], reminders: WalletNotification[] = [], news: WalletNotification[] = [];
     for (const n of items) (REMINDER_TYPES.has(n.notification_type) ? reminders : n.notification_type === "promo" ? news : activity).push(n);
@@ -194,28 +252,22 @@ export function NotificationsSheet({ items, loading, busy, onClose, onRead, onRe
   const markAll = () => { if (!busy && unread) onReadAll(list); };
   const tabLabel = (icon: IconName, text: string, dot: boolean) => <span className="dpx-ntx-tab"><Ic n={icon} size="sm" /><span>{text}</span>{dot ? <i className="dpx-ntx-tabdot" aria-hidden="true" /> : null}</span>;
   const state = loading && items.length === 0 ? "Memuat…" : list.length === 0 ? (tab === "notif" ? "Tidak ada notifikasi" : tab === "reminder" ? "Tidak ada pengingat" : "Tidak ada berita baru") : unread ? (tab === "news" ? `${unread} berita baru` : `${unread} belum dibaca`) : tab === "news" ? "Semua berita sudah dibaca" : "Semua sudah dibaca";
-  const row = (n: WalletNotification, time = true) => {
-    const look = NOTE_LOOK[n.notification_type] ?? { icon: "bell" as IconName, tone: "blue" };
-    return <Btn key={n.id} type="button" className={`dpx-ntx-row ${n.unread ? "is-unread" : ""}`} onClick={() => onRead(n)} whileTap={{ scale: 0.99, backgroundColor: "rgba(45,36,29,.03)" }}>
-      <span className={`dpx-ntx-ic dpx-c-${look.tone}`}><Ic n={look.icon} /></span>
-      <span className="dpx-ntx-main"><span className="dpx-ntx-top2"><b>{cleanTitle(n.title)}</b>{time ? <small>{formatTime(n.created_at)}</small> : null}</span><span className="dpx-ntx-msg">{n.message}</span></span>
-      {n.unread ? <span className="dpx-ntx-dot" aria-label="Belum dibaca" /> : null}
-    </Btn>;
-  };
   const empty = (kind: NtTab) => { const e = NT_EMPTY[kind]; return <div className="dpx-ntx-empty"><span className="dpx-ntx-empty-ic"><Ic n={e.icon} size="lg" /></span><b>{e.title}</b><p>{e.text}</p></div>; };
+  const row = (n: WalletNotification, i: number) => <NtxRow key={n.id} n={n} index={i} hint={hintTab === tab && n.id === list[0]?.id} onOpen={onOpen} onMarkRead={onMarkRead} />;
   return <Sheet label="Notifikasi" onClose={onClose}>
     <div className="dpx-ntx">
       <div className="dpx-ntx-top">
         <div className="dpx-ntx-bar"><Btn type="button" className="dpx-ntx-x" aria-label="Tutup notifikasi" onClick={onClose}><span aria-hidden="true">×</span></Btn></div>
         <Seg id="ntx" label="Bagian notifikasi" value={tab} onChange={setTab} options={[["notif", tabLabel("bell", "Notifikasi", activity.some((n) => n.unread))], ["reminder", tabLabel("clock", "Pengingat", reminders.some((n) => n.unread))], ["news", tabLabel("book", "Berita", news.some((n) => n.unread))]] as const} />
         <div className="dpx-ntx-tools"><span className="dpx-ntx-state" aria-live="polite">{state}</span><Btn type="button" className="dpx-ntx-readall" disabled={busy || unread === 0} onClick={markAll}>{busy ? "Memproses…" : "Tandai dibaca"}</Btn></div>
+        {list.length ? <div className="dpx-ntx-gesture" aria-hidden="true"><span><i>←</i> Geser kiri · tandai dibaca</span><span>Geser kanan · buka <i>→</i></span></div> : null}
       </div>
       <div className="dpx-ntx-body">
         {loading && items.length === 0 ? <div className="dpx-ntx-skel"><SkeletonBlock h={74} /><SkeletonBlock h={190} /></div>
-          : tab === "notif" ? (activity.length === 0 ? empty("notif") : groups.map(([day, group]) => <section key={day} className="dpx-ntx-day"><div className="dpx-ntx-dayh">{day}</div><div className="dpx-ntx-card">{group.map((n) => row(n))}</div></section>))
-          : tab === "reminder" ? (reminders.length === 0 ? empty("reminder") : <div className="dpx-ntx-card">{reminders.map((n) => row(n, false))}</div>)
+          : tab === "notif" ? (activity.length === 0 ? empty("notif") : groups.map(([day, group]) => <section key={day} className="dpx-ntx-day"><div className="dpx-ntx-dayh">{day}</div><div className="dpx-ntx-card">{group.map((n, i) => row(n, i))}</div></section>))
+          : tab === "reminder" ? (reminders.length === 0 ? empty("reminder") : <div className="dpx-ntx-card">{reminders.map((n, i) => row(n, i))}</div>)
           : <>
-            {news.length ? <><div className="dpx-ntx-dayh">Dari Djiwa</div><div className="dpx-ntx-card">{news.map((n) => row(n))}</div></> : null}
+            {news.length ? <><div className="dpx-ntx-dayh">Dari Djiwa</div><div className="dpx-ntx-card">{news.map((n, i) => row(n, i))}</div></> : null}
             {feed ? <><div className="dpx-ntx-dayh">Cerita &amp; berita</div><div className="dpx-ntx-news">{feed}</div></> : news.length ? null : empty("news")}
           </>}
       </div>

@@ -586,13 +586,18 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   };
   const finCtx: FinCtx = { fin, notify, nav: payNav, profile, transactions, payBalance: balance, loading, visible, onToggleVisible: toggleVisible, unread: unreadCount, onOpenNotifications: openNotifications, open: setFsheet, onPayDetail: openTx, disc };
   const goManual = (kind: "out" | "in" | "tf", editId?: string) => goPayRoute(`/catat?${editId ? `edit=${encodeURIComponent(editId)}` : `kind=${kind}`}`);
-  // Opening one item: mark it read in the right place, then follow its route. Mark-all works the same way per tab.
+  // Swipe left marks one read; tap or swipe right opens it. Mark-all works the same way per tab.
   const walletNoticeIds = new Set(walletNotifications.map((n) => n.id));
-  const markNotificationRead = (notification: WalletNotification) => {
-    const route = notification.action_payload?.route;
+  const markNotificationReadOnly = (notification: WalletNotification) => {
     if (notification.notification_type === "promo" || notification.id.startsWith("pm-")) markPushOpened(notification.id);
     if (!walletNoticeIds.has(notification.id)) readLocal([notification.id]);
     if (walletNoticeIds.has(notification.id) && notification.unread) void markWalletNotificationRead(notification.id).then(() => refreshWalletNotifications()).catch(() => undefined);
+  };
+  const markNotificationRead = (notification: WalletNotification) => {
+    markNotificationReadOnly(notification);
+    const tx = notification.action_payload?.transferId;
+    if (tx) { setNotificationsOpen(false); openTx(String(tx)); return; }
+    const route = notification.action_payload?.route ?? (walletNoticeIds.has(notification.id) ? "/wallet/history" : undefined);
     if (route) { setNotificationsOpen(false); payNav.go(route); }
   };
   const markNotificationsRead = async (list: WalletNotification[]) => {
@@ -609,7 +614,7 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
     {shell === "card" ? <CardSheet key="card" onClose={() => setShell(null)} /> : null}
     {soon ? <ComingSoonSheet key="soon" message={soon} onClose={() => setSoon(null)} /> : null}
     {fsheet ? <FinSheetHost key={fsheet.k} ctx={finCtx} sheet={fsheet} close={() => setFsheet(null)} goManual={goManual} openPaySheet={() => setShell("pay")} /> : null}
-    {notificationsOpen ? <NotificationsSheet key="notifications" items={allNotifications} loading={notificationsLoading} busy={notificationsBusy} feed={<CeritaTab ctx={finCtx} />} onClose={() => setNotificationsOpen(false)} onRead={markNotificationRead} onReadAll={markNotificationsRead} onAddReminder={() => { setNotificationsOpen(false); setFsheet({ k: "bill" }); }} /> : null}
+    {notificationsOpen ? <NotificationsSheet key="notifications" items={allNotifications} loading={notificationsLoading} busy={notificationsBusy} feed={<CeritaTab ctx={finCtx} />} onClose={() => setNotificationsOpen(false)} onOpen={markNotificationRead} onMarkRead={markNotificationReadOnly} onReadAll={markNotificationsRead} onAddReminder={() => { setNotificationsOpen(false); setFsheet({ k: "bill" }); }} /> : null}
   </AnimatePresence>;
   const snackbar = <AnimatePresence>{snack ? <motion.div key={snack.id} className="dpx-snack" role="status" initial={{ opacity: 0, y: 30, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20 }} transition={spring}><span>{snack.text}</span>{snack.undo ? <Btn type="button" onClick={() => { snack.undo?.(); setSnack(null); }}>Urungkan</Btn> : null}</motion.div> : null}</AnimatePresence>;
   // Every framed page gets the bottom bar; `active` only picks which tab is highlighted (null = none). `bar={false}` is for setup flows.
