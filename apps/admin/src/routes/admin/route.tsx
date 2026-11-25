@@ -9,6 +9,7 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import {
 	Archive,
+	Building2,
 	Workflow,
 	BookOpen,
 	Bell,
@@ -151,6 +152,7 @@ const PAGE_TITLES: Record<string, string> = {
 	"/admin/kol-community": "Komunitas KOL",
 	"/admin/kol-visits": "Visit KOL",
 	"/admin/kol-inquiries": "Inquiry KOL",
+	"/admin/kol-brand": "Brand KOL",
 	"/admin/kol-rewards": "Reward & Anggaran KOL",
 	"/admin/kol-review": "Review Konten KOL",
 	"/admin/kol-announcements": "Pengumuman KOL",
@@ -209,6 +211,7 @@ const MORE_MENU_PATHS = [
 	"/admin/kol-community",
 	"/admin/kol-visits",
 	"/admin/kol-inquiries",
+	"/admin/kol-brand",
 	"/admin/kol-rewards",
 	"/admin/kol-review",
 	"/admin/kol-announcements",
@@ -327,6 +330,7 @@ const QUICK_MENU_SECTIONS = [
 			{ to: "/admin/discounts", icon: Percent, label: "Promosi", permission: "products:manage" },
 			{ to: "/admin/minigames", icon: Gamepad2, label: "Mini Games", permission: "products:manage" },
 			{ to: "/admin/jumat-berkah", icon: HeartHandshake, label: "Jumat Berkah", permission: "orders:view" },
+			{ to: "/admin/kol-brand", icon: Building2, label: "Brand KOL", permission: "analytics:view" },
 			{ to: "/admin/manager", icon: BookOpen, label: "Manager & Supervisor", permission: "users:manage" },
 		],
 	},
@@ -350,6 +354,7 @@ const QUICK_MENU_ITEMS = QUICK_MENU_SECTIONS.flatMap((s) => s.items);
 
 const COMMAND_ITEMS: AdminCommandItem[] = [
 	{ to: "/admin", label: "Dashboard", group: "Utama", permission: "analytics:view", keywords: ["beranda", "home"] },
+	{ to: "/admin/kol-brand", label: "Brand KOL", group: "Marketing", permission: "analytics:view", keywords: ["kampanye", "laporan", "top-up"] },
 	{ to: "/admin/orders", label: "Pesanan", group: "Utama", permission: "orders:view", keywords: ["order", "transaksi"] },
 	{ to: "/admin/ai-chat", label: "Djiwa Tentram AI", group: "Utama", keywords: ["ai", "yumi", "asisten"] },
 	...QUICK_MENU_SECTIONS.flatMap((section) =>
@@ -395,6 +400,7 @@ const KOL_MARKETING_PATHS = [
 	"/admin/kol-community",
 	"/admin/kol-visits",
 	"/admin/kol-inquiries",
+	"/admin/kol-brand",
 	"/admin/kol-rewards",
 	"/admin/kol-review",
 	"/admin/kol-announcements",
@@ -1160,6 +1166,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 							<DesktopNavLink icon={<MessageSquare />} isCollapsed={isCollapsed} label="Komunitas" to="/admin/kol-community" permission="analytics:view" />
 							<DesktopNavLink icon={<CalendarCheck />} isCollapsed={isCollapsed} label="Visit" to="/admin/kol-visits" permission="analytics:view" />
 							<DesktopNavLink icon={<Inbox />} isCollapsed={isCollapsed} label="Inquiry" to="/admin/kol-inquiries" permission="analytics:view" />
+							<DesktopNavLink icon={<Building2 />} isCollapsed={isCollapsed} label="Brand" to="/admin/kol-brand" permission="analytics:view" />
 							<DesktopNavLink icon={<Wallet />} isCollapsed={isCollapsed} label="Reward" to="/admin/kol-rewards" permission="analytics:view" />
 							<DesktopNavLink icon={<CalendarCheck />} isCollapsed={isCollapsed} label="Review Konten" to="/admin/kol-review" permission="analytics:view" />
 							<DesktopNavLink icon={<Megaphone />} isCollapsed={isCollapsed} label="Pengumuman" to="/admin/kol-announcements" permission="analytics:view" />
@@ -1177,6 +1184,7 @@ export function AdminLayout({ children }: { children?: ReactNode }) {
 									<DesktopSubNavLink icon={<MessageSquare />} label="Komunitas" to="/admin/kol-community" permission="analytics:view" />
 									<DesktopSubNavLink icon={<CalendarCheck />} label="Visit" to="/admin/kol-visits" permission="analytics:view" />
 									<DesktopSubNavLink icon={<Inbox />} label="Inquiry" to="/admin/kol-inquiries" permission="analytics:view" />
+									<DesktopSubNavLink icon={<Building2 />} label="Brand" to="/admin/kol-brand" permission="analytics:view" />
 									<DesktopSubNavLink icon={<Wallet />} label="Reward & Anggaran" to="/admin/kol-rewards" permission="analytics:view" />
 									<DesktopSubNavLink icon={<CalendarCheck />} label="Review Konten" to="/admin/kol-review" permission="analytics:view" />
 									<DesktopSubNavLink icon={<Megaphone />} label="Pengumuman" to="/admin/kol-announcements" permission="analytics:view" />

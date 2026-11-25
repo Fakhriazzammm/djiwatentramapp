@@ -1,0 +1,226 @@
+.brand-desk {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  color: #111114;
+}
+.ba-section-head,
+.ba-toolbar,
+.ba-filters,
+.ba-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ba-section-head,
+.ba-toolbar {
+  justify-content: space-between;
+}
+.ba-section-head,
+.ba-filters {
+  margin-bottom: 12px;
+}
+.ba-section-head h2,
+.ba-subheading {
+  font: 600 11px var(--font-mono, monospace);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.ba-section-head p {
+  margin-top: 4px;
+  color: #666672;
+  font-size: 12px;
+}
+.ba-campaign-head h2 {
+  font-size: 15px;
+  font-family: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.ba-filters label,
+.ba-field {
+  display: grid;
+  gap: 4px;
+  color: #666672;
+  font: 500 10px var(--font-mono, monospace);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.brand-desk .ba-filters :is(input, select),
+.brand-desk .ba-field :is(input, select) {
+  min-height: 40px;
+  max-width: 100%;
+  padding: 0 10px;
+  border: 1px solid #cfcfd6;
+  border-radius: 0;
+  color: #111114;
+  background: #fff;
+  font:
+    400 13px system-ui,
+    sans-serif;
+}
+.ba-filters input {
+  width: min(250px, 65vw);
+}
+.ba-table-scroll {
+  overflow: auto;
+  border: 1px solid #e4e4e8;
+  scrollbar-width: thin;
+}
+.ba-table {
+  border-collapse: collapse;
+  min-width: 520px;
+  width: 100%;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.ba-table :is(th, td) {
+  padding: 9px 10px;
+  text-align: left;
+  vertical-align: middle;
+}
+.ba-table thead {
+  color: #666672;
+  background: #fafafb;
+}
+.ba-table thead th {
+  font: 600 10px var(--font-mono, monospace);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ba-table tbody tr {
+  border-top: 1px solid #ececf0;
+}
+.ba-table tbody tr:hover {
+  background: #fafafb;
+}
+.ba-table th[scope="row"] {
+  font-weight: 600;
+}
+.ba-table small {
+  display: block;
+  max-width: 29ch;
+  margin-top: 3px;
+  color: #666672;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.ba-table a,
+.ba-text-action,
+.ba-refund summary {
+  color: #235bb0;
+}
+.ba-table a:hover,
+.ba-text-action:hover {
+  text-decoration: underline;
+}
+.ba-text-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+.ba-text-action svg {
+  flex: none;
+}
+.ba-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr));
+  gap: 6px;
+}
+.ba-metrics div {
+  min-width: 0;
+}
+.ba-metrics > div {
+  padding: 8px 10px;
+  border: 1px solid #ececf0;
+  background: #fafafb;
+}
+.ba-metrics dd {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.ba-subheading,
+.ba-refund {
+  margin: 14px 0 8px;
+}
+.ba-refund summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.ba-refund-form {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  max-width: 480px;
+}
+.ba-check {
+  display: flex;
+  gap: 7px;
+  align-items: flex-start;
+  font-size: 12px;
+}
+.ba-error {
+  margin-bottom: 8px;
+  color: #b42318;
+}
+.brand-desk .bd-dialog {
+  padding: 20px;
+  border-color: #e4e4e8;
+  border-radius: 0;
+  color: #111114;
+}
+.brand-desk .bd-dialog::backdrop {
+  background: #11111466;
+}
+.brand-desk .bd-dialog h2 {
+  font-size: 16px;
+}
+.brand-desk .bd-dialog p {
+  color: #666672;
+  font-size: 12px;
+}
+.brand-desk .bd-dialog :is(input, textarea) {
+  border-color: #cfcfd6;
+  border-radius: 0;
+  background: #fff;
+}
+.brand-desk .bd-dialog .bd-error {
+  color: #b42318;
+}
+.brand-desk .bd-actions button {
+  min-height: 40px;
+  border: 1px solid #cfcfd6;
+  border-radius: 0;
+  background: #fff;
+  color: #111114;
+  font: 600 11px var(--font-mono, monospace);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.brand-desk .bd-actions button[type="submit"] {
+  border-color: #111114;
+  background: #111114;
+  color: #fff;
+}
+.brand-desk .bd-actions button[data-danger] {
+  border-color: #b42318;
+  background: #b42318;
+}
+@media (max-width: 540px) {
+  .ba-filters {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(100px, auto);
+  }
+  .ba-filters :is(input, select) {
+    width: 100%;
+  }
+}

@@ -1,7 +1,7 @@
 // Ringkasan admin KOL: satu pandangan atas creator, kampanye, visit, inquiry, dan moderasi.
 // Semua angka berasal dari aksi `overview` + `creator_list` (bukan metrik karangan).
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, CalendarCheck, ClipboardCheck, Inbox, RefreshCw, ShieldAlert, Users } from "lucide-react";
+import { ArrowUpRight, Building2, CalendarCheck, ClipboardCheck, Inbox, RefreshCw, ShieldAlert, Users } from "lucide-react";
 import { Btn, Card, EmptyBlock, ErrorBox, Label, Loading, Page, PageHeader, Stat, Tag } from "./kol-ui";
 import { CREATOR_STATUSES, compact, creatorLabel, creatorStatus, fmtDay, fmtDateTime, totalFollowers, useKolData } from "./kol-core";
 
@@ -42,7 +42,10 @@ export function KolOverviewPage() {
       <PageHeader
         title="Ringkasan KOL"
         description="Semua data creator, kampanye, visit, inquiry, dan moderasi komunitas dari portal creator KOL."
-        actions={<Btn onClick={() => void reload()} disabled={loading}><RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />Muat ulang</Btn>}
+        actions={<>
+          <Link to="/admin/kol-brand" className="inline-flex min-h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold hover:bg-zinc-100"><Building2 className="h-3.5 w-3.5" />Brand</Link>
+          <Btn onClick={() => void reload()} disabled={loading}><RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />Muat ulang</Btn>
+        </>}
       />
       {error && <ErrorBox message={error} onRetry={() => void reload()} />}
       {loading && !ready ? <Loading rows={6} /> : (

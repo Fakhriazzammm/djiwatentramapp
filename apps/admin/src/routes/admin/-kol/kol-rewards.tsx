@@ -3,7 +3,6 @@ import { ExternalLink, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Btn, Card, EmptyBlock, ErrorBox, Field, KV, Label, Loading, NoAccess, Notice, Page, PageHeader, Panel, SectionLabel, StatusTag, inputCls } from "./kol-ui";
-import { KolBrandAdmin } from "./kol-brand";
 import { rupiah, dateTime, useRewardOverview, type CampaignDetail, type Deposit, type RewardCampaign, type Business } from "./kol-rewards-api";
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : "Permintaan belum berhasil.");
@@ -13,7 +12,6 @@ const DEPOSIT_STATUS: Record<string, [string, string]> = { pending: ["Menunggu b
 export function KolRewardsPage() {
   const { data, error, loading, reload, call, canManage } = useRewardOverview();
   const [selected, setSelected] = useState<number | null>(null);
-  const [mode, setMode] = useState<"views" | "brand">("views");
   const campaigns = data?.campaigns ?? [];
   useEffect(() => { if (selected === null && campaigns.length) setSelected((campaigns.find((c) => c.rewardsEnabled) ?? campaigns[0]).id); }, [campaigns, selected]);
   if (!canManage) return <NoAccess />;
@@ -22,12 +20,7 @@ export function KolRewardsPage() {
   return (
     <Page>
       <PageHeader title="Reward & Anggaran" description="Pantau anggaran kampanye dan reward yang masuk ke Djiwa Pay."
-        actions={mode === "views" ? <Btn onClick={() => void reload()}><RefreshCw className="h-3.5 w-3.5" />Muat ulang</Btn> : undefined} />
-      <nav className="flex flex-wrap gap-2" aria-label="Mode reward KOL">
-        <Btn onClick={() => setMode("views")} aria-pressed={mode === "views"}>Reward berbasis view</Btn>
-        <Btn onClick={() => setMode("brand")} aria-pressed={mode === "brand"}>Portal Brand</Btn>
-      </nav>
-      {mode === "brand" ? <KolBrandAdmin /> : <>
+        actions={<Btn onClick={() => void reload()}><RefreshCw className="h-3.5 w-3.5" />Muat ulang</Btn>} />
       {error && <ErrorBox message={error} onRetry={() => void reload()} />}
       {loading && !data ? <Loading /> : data && (
         <>
@@ -52,7 +45,6 @@ export function KolRewardsPage() {
           )}
         </>
       )}
-      </>}
     </Page>
   );
 }

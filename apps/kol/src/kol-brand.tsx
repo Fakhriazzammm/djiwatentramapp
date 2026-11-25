@@ -1,3 +1,22 @@
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  Building2,
+  Check,
+  ClipboardList,
+  FileText,
+  Plus,
+  RefreshCw,
+  Search,
+  Users,
+  Wallet,
+} from "lucide-react";
+import {
+  KolBrandDecision,
+  type BrandDecision,
+} from "../../../packages/djiwaapps-web-shared/src/components/kol-brand-decision";
+import "./kol-brand.css";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { errorText, kolApi, logoutKol } from "./kol-lib";
 import { rupiah } from "./kol-rewards";
@@ -127,28 +146,128 @@ type Details = {
   feePercent: number;
 };
 
-const dateLabel = (value: string) =>
-  new Date(value).toLocaleDateString("id-ID", { dateStyle: "medium", timeZone: "Asia/Jakarta" });
+const dateFormatter = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeZone: "Asia/Jakarta" });
+const dateLabel = (value?: string | null) =>
+  value && Number.isFinite(Date.parse(value)) ? dateFormatter.format(new Date(value)) : "—";
 const money = (value: Money) => rupiah(Number(value));
 const send = <T,>(path: string, payload: unknown, method = "POST") =>
   kolApi<T>(path, { method, body: JSON.stringify(payload) });
 
+const tabs = [
+  { value: "ringkasan", title: "Ringkasan", icon: FileText },
+  { value: "anggaran", title: "Anggaran", icon: Wallet },
+  { value: "pendaftar", title: "Pendaftar", icon: Users },
+  { value: "laporan", title: "Laporan", icon: ClipboardList },
+] as const;
+type CampaignTab = (typeof tabs)[number]["value"];
+type BrandRoute = { brand?: string; campaign?: string; tab: CampaignTab; draft?: "baru" | "edit" };
+const idFrom = (value: string | null) => (value && /^\d{1,18}$/.test(value) ? value : undefined);
+
+function readBrandRoute(): BrandRoute {
+  const query = new URLSearchParams(window.location.search);
+  const campaign = idFrom(query.get("campaign"));
+  const draft = query.get("draft");
+  return {
+    brand: idFrom(query.get("brand")),
+    campaign,
+    tab: tabs.find((tab) => tab.value === query.get("tab"))?.value || "ringkasan",
+    draft: draft === "baru" && !campaign ? "baru" : draft === "edit" && campaign ? "edit" : undefined,
+  };
+}
+
+function useBrandRoute() {
+  const [route, setRoute] = useState(readBrandRoute);
+  useEffect(() => {
+    const sync = () => setRoute(readBrandRoute());
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, []);
+  const open = (next: BrandRoute, replace = false) => {
+    const query = new URLSearchParams();
+    if (next.brand) query.set("brand", next.brand);
+    if (next.campaign) query.set("campaign", next.campaign);
+    if (next.campaign && next.tab !== "ringkasan") query.set("tab", next.tab);
+    if (next.draft) query.set("draft", next.draft);
+    const search = query.toString();
+    const url = search ? `/brand?${search}` : "/brand";
+    if (replace) window.history.replaceState({}, "", url);
+    else if (window.location.pathname + window.location.search !== url) window.history.pushState({}, "", url);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  };
+  return { route, open };
+}
+
+function Status({ state }: { state: string }) {
+  const tone = ["active", "approved", "published", "paid"].includes(state)
+    ? "good"
+    : ["pending", "submitted", "review", "creating", "needs_revision"].includes(state)
+      ? "wait"
+      : ["rejected", "expired", "void"].includes(state)
+        ? "bad"
+        : "neutral";
+  return (
+    <span className="bs-status" data-tone={tone}>
+      {BRAND_STATUS[state] ?? state}
+    </span>
+  );
+}
+
+function Button({
+  children,
+  onClick,
+  disabled,
+  kind = "secondary",
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  kind?: "secondary" | "primary" | "text";
+}) {
+  return (
+    <button type="button" className={`bs-button bs-${kind}`} onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  );
+}
+
+function Empty({ children, action }: { children: ReactNode; action?: ReactNode }) {
+  return (
+    <div className="bs-empty">
+      <ClipboardList size={22} aria-hidden />
+      <p>{children}</p>
+      {action}
+    </div>
+  );
+}
+
+function Notice({ children, danger }: { children: ReactNode; danger?: boolean }) {
+  return (
+    <p className={danger ? "bs-note bs-error" : "bs-note"} role={danger ? "alert" : "status"}>
+      {children}
+    </p>
+  );
+}
+
 function BrandShell({ children, signed }: { children: ReactNode; signed: boolean }) {
   return (
-    <div className="kx kx-wrap">
-      <main className="kx-view" style={{ paddingTop: "calc(24px + env(safe-area-inset-top))" }}>
-        <header className="kx-brand-toolbar">
-          <a className="kx-link" href="/masuk">
-            Portal KOL
+    <div className="brand-studio">
+      <header className="bs-shell-bar">
+        <div className="bs-shell-inner">
+          <a className="bs-wordmark" href="/brand">
+            <img src="/logo-djiwa.png" alt="" width={36} height={36} />
+            <span>Portal Brand</span>
           </a>
-          {signed && (
-            <button type="button" className="kx-link" onClick={() => void logoutKol()}>
-              Keluar
-            </button>
-          )}
-        </header>
-        {children}
-      </main>
+          <nav aria-label="Akun Brand" className="bs-shell-links">
+            <a href="/masuk">Ganti portal</a>
+            {signed && (
+              <button type="button" onClick={() => void logoutKol()}>
+                Keluar
+              </button>
+            )}
+          </nav>
+        </div>
+      </header>
+      <main className="bs-page">{children}</main>
     </div>
   );
 }
@@ -164,31 +283,35 @@ export function BrandEntry({
   loginError: string;
   onLogin: () => Promise<void>;
 }) {
+  const [signingIn, setSigningIn] = useState(false);
   return (
     <BrandShell signed={signed}>
       {signed ? (
         <BrandWorkspace />
       ) : (
-        <>
-          <h1 className="kx-h1">Portal Brand</h1>
-          <p className="kx-lead">
-            Buat kampanye, siapkan anggaran, dan bayar reward setelah laporan KOL disetujui.
-          </p>
-          {loginError && (
-            <p className="kx-note kx-note--err" role="alert">
-              {loginError}
-            </p>
-          )}
-          <button
-            type="button"
-            className="kx-btn"
-            style={{ marginTop: 16 }}
-            disabled={loading}
-            onClick={() => void onLogin()}
+        <section className="bs-entry bs-panel">
+          <div className="bs-entry-icon">
+            <Building2 size={27} aria-hidden />
+          </div>
+          <h1>Kelola kampanye KOL</h1>
+          <p>Atur brief, anggaran, dan review laporan dari akun Brand kamu.</p>
+          {loginError && <Notice danger>{loginError}</Notice>}
+          <Button
+            kind="primary"
+            disabled={loading || signingIn}
+            onClick={async () => {
+              setSigningIn(true);
+              try {
+                await onLogin();
+              } finally {
+                setSigningIn(false);
+              }
+            }}
           >
-            {loading ? "Memeriksa sesi…" : "Lanjutkan dengan Google"}
-          </button>
-        </>
+            {loading ? "Memeriksa sesi…" : signingIn ? "Membuka Google…" : "Lanjutkan dengan Google"}
+            <ArrowRight size={17} />
+          </Button>
+        </section>
       )}
     </BrandShell>
   );
@@ -196,10 +319,10 @@ export function BrandEntry({
 
 function BrandWorkspace() {
   const [brands, setBrands] = useState<Brand[] | null>(null);
-  const [brandId, setBrandId] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
   const [register, setRegister] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const navigation = useBrandRoute();
   const reload = useCallback(async () => {
     try {
       setBrands(await kolApi<Brand[]>("/brand/session"));
@@ -213,15 +336,17 @@ function BrandWorkspace() {
   }, [reload]);
 
   const active = brands?.filter((brand) => brand.status === "active") ?? [];
-  const selected = active.find((brand) => brand.id === brandId) ?? active[0];
+  const selected = active.find((brand) => String(brand.id) === navigation.route.brand) ?? active[0];
   const pending = brands?.some((brand) => brand.status === "pending");
-  const registerBrand = async (event: FormEvent<HTMLFormElement>) => {
+  const atCampaignList = !navigation.route.campaign && !navigation.route.draft;
+
+  async function apply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const fields = brandFormFields(event.currentTarget);
     setBusy(true);
     setError("");
-    const data = brandFormFields(event.currentTarget);
     try {
-      await send("/brand/register", data);
+      await send("/brand/register", fields);
       setRegister(false);
       await reload();
     } catch (reason) {
@@ -229,103 +354,134 @@ function BrandWorkspace() {
     } finally {
       setBusy(false);
     }
-  };
+  }
+
+  const brandOptions = selected && (
+    <label className="bs-field bs-switch">
+      <span>Brand aktif</span>
+      <select
+        aria-label="Brand aktif"
+        value={String(selected.id)}
+        onChange={(event) => navigation.open({ brand: event.target.value, tab: "ringkasan" })}
+      >
+        {active.map((brand) => (
+          <option key={brand.id} value={brand.id}>
+            {brand.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+
+  if (!brands)
+    return (
+      <section className="bs-panel">
+        {error ? (
+          <>
+            <Notice danger>{error}</Notice>
+            <Button onClick={() => void reload()}>Coba lagi</Button>
+          </>
+        ) : (
+          <Notice>Memuat akun Brand…</Notice>
+        )}
+      </section>
+    );
 
   return (
     <>
-      <h1 className="kx-h1">Portal Brand</h1>
-      {error && (
-        <p className="kx-note kx-note--err" role="alert">
-          {error}
-        </p>
+      {error && <Notice danger>{error}</Notice>}
+      {selected && (
+        <BrandCampaigns
+          key={selected.id}
+          brand={selected}
+          brandOptions={brandOptions}
+          navigation={navigation}
+        />
       )}
-      {!brands && !error && (
-        <p role="status" className="kx-sub">
-          Memuat akun Brand…
-        </p>
-      )}
-      {!brands && error && (
-        <button type="button" className="kx-btn kx-btn--ghost" onClick={() => void reload()}>
-          Coba lagi
-        </button>
-      )}
-      {brands && (
-        <>
-          {active.length > 1 && (
-            <label className="kx-label">
-              Pilih Brand
-              <select
-                className="kx-input"
-                value={selected?.id}
-                onChange={(event) => setBrandId(event.target.value)}
-              >
-                {active.map((brand) => (
-                  <option key={brand.id} value={brand.id}>
-                    {brand.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {brands
-            .filter((brand) => brand.status !== "active")
-            .map((brand) => (
-              <div key={brand.id} className="kx-card kx-brand-space">
-                <div className="kx-brand-toolbar">
-                  <b>{brand.name}</b>
-                  <span className="kx-pill kx-pill--warn">
-                    {brand.status === "pending" ? "Menunggu verifikasi" : "Pengajuan ditolak"}
+      {brands.filter((brand) => brand.status !== "active").length > 0 && (
+        <section className="bs-panel">
+          <div className="bs-section-head">
+            <h2>Pengajuan Brand</h2>
+            {pending && (
+              <Button kind="text" onClick={() => void reload()}>
+                <RefreshCw size={14} /> Cek status
+              </Button>
+            )}
+          </div>
+          <div className="bs-rows">
+            {brands
+              .filter((brand) => brand.status !== "active")
+              .map((brand) => (
+                <article className="bs-row" key={brand.id}>
+                  <div>
+                    <b>{brand.name}</b>
+                    {brand.review_note && <small>{brand.review_note}</small>}
+                  </div>
+                  <span className="bs-status" data-tone={brand.status === "pending" ? "wait" : "bad"}>
+                    {brand.status === "pending" ? "Menunggu verifikasi" : "Ditolak"}
                   </span>
-                </div>
-                {brand.review_note && <p className="kx-sub">{brand.review_note}</p>}
-                {brand.status === "pending" && (
-                  <button type="button" className="kx-link" onClick={() => void reload()}>
-                    Cek status
-                  </button>
-                )}
-              </div>
-            ))}
-          {!pending && (!selected || register) && (
-            <form className="kx-card kx-brand-space" onSubmit={registerBrand}>
-              <b>Daftar sebagai Brand</b>
-              <label className="kx-label">
-                Nama Brand
-                <input name="name" className="kx-input" required minLength={2} maxLength={120} />
-              </label>
-              <label className="kx-label">
-                Nomor WhatsApp
-                <input
-                  name="phone"
-                  className="kx-input"
-                  type="tel"
-                  required
-                  maxLength={30}
-                  autoComplete="tel"
-                />
-              </label>
-              <button className="kx-btn kx-brand-space" disabled={busy}>
-                {busy ? "Mengirim…" : "Ajukan verifikasi"}
-              </button>
-            </form>
-          )}
-          {selected && <BrandCampaigns key={selected.id} brand={selected} />}
-          {selected && !pending && !register && (
-            <button type="button" className="kx-link kx-brand-space" onClick={() => setRegister(true)}>
-              Daftarkan Brand lain
+                </article>
+              ))}
+          </div>
+        </section>
+      )}
+      {!pending && (!selected || register) && (
+        <form className="bs-panel bs-register" onSubmit={(event) => void apply(event)}>
+          <div className="bs-section-head">
+            <div>
+              <h2>Daftar sebagai Brand</h2>
+              <p>Pengajuan akan ditinjau sebelum Brand bisa mulai membuat kampanye.</p>
+            </div>
+          </div>
+          <div className="bs-field-grid">
+            <label className="bs-field">
+              Nama Brand
+              <input name="name" required minLength={2} maxLength={120} />
+            </label>
+            <label className="bs-field">
+              Nomor WhatsApp
+              <input name="phone" type="tel" required maxLength={30} autoComplete="tel" />
+            </label>
+          </div>
+          <div className="bs-actions">
+            {selected && <Button onClick={() => setRegister(false)}>Batal</Button>}
+            <button className="bs-button bs-primary" disabled={busy}>
+              {busy ? "Mengirim…" : "Ajukan verifikasi"}
             </button>
-          )}
-        </>
+          </div>
+        </form>
+      )}
+      {selected && atCampaignList && !pending && !register && (
+        <div className="bs-footer-actions">
+          <Button kind="text" onClick={() => setRegister(true)}>
+            <Plus size={16} /> Daftarkan Brand lain
+          </Button>
+        </div>
       )}
     </>
   );
 }
 
-function BrandCampaigns({ brand }: { brand: Brand }) {
+function BrandCampaigns({
+  brand,
+  brandOptions,
+  navigation,
+}: {
+  brand: Brand;
+  brandOptions: ReactNode;
+  navigation: ReturnType<typeof useBrandRoute>;
+}) {
+  const brandId = String(brand.id);
   const endpoint = `/brand/${brand.id}/campaigns`;
   const [campaigns, setCampaigns] = useState<Campaign[] | null>(null);
-  const [selected, setSelected] = useState("");
-  const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
+  const { route, open } = navigation;
+  const sameBrand = !route.brand || route.brand === brandId;
+  const selected = sameBrand ? route.campaign : undefined;
+  const go = (next: Omit<BrandRoute, "brand">, replace = false) => open({ brand: brandId, ...next }, replace);
+
   const load = useCallback(async () => {
     try {
       setCampaigns(await kolApi<Campaign[]>(endpoint));
@@ -336,261 +492,371 @@ function BrandCampaigns({ brand }: { brand: Brand }) {
   }, [endpoint]);
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, selected, route.draft]);
+
   if (selected)
+    return <BrandCampaign key={selected} endpoint={`${endpoint}/${selected}`} route={route} go={go} />;
+  if (sameBrand && route.draft === "baru")
     return (
-      <BrandCampaign
-        key={selected}
-        endpoint={`${endpoint}/${selected}`}
-        onBack={() => {
-          setSelected("");
-          void load();
-        }}
-      />
+      <>
+        <Button kind="text" onClick={() => go({ tab: "ringkasan" })}>
+          <ArrowLeft size={17} /> Semua kampanye
+        </Button>
+        <div className="bs-page-title">
+          <div>
+            <p>{brand.name}</p>
+            <h1>Buat kampanye</h1>
+          </div>
+        </div>
+        <CampaignForm
+          endpoint={endpoint}
+          onCancel={() => go({ tab: "ringkasan" })}
+          onSaved={(id) => go({ campaign: String(id), tab: "ringkasan" }, true)}
+        />
+      </>
     );
+
+  const visible =
+    campaigns?.filter(
+      (item) =>
+        (filter === "all" || item.status === filter) &&
+        item.title.toLowerCase().includes(search.trim().toLowerCase()),
+    ) ?? [];
+  const reviewCount = campaigns?.reduce((total, item) => total + Number(item.in_review), 0) ?? 0;
+  const totalAvailable = campaigns?.reduce((total, item) => total + Number(item.available), 0) ?? 0;
+  const newCampaign = () => go({ tab: "ringkasan", draft: "baru" });
+
   return (
     <>
-      <div className="kx-brand-toolbar kx-brand-space">
-        <h2 className="kx-h2">{brand.name} · Kampanye</h2>
-        <button type="button" className="kx-link" onClick={() => setCreating(!creating)}>
-          {creating ? "Batal" : "Buat kampanye"}
-        </button>
-      </div>
-      {creating && (
-        <CampaignForm
-          key="new"
-          endpoint={endpoint}
-          onSaved={(id) => {
-            setCreating(false);
-            setSelected(id);
-          }}
-        />
-      )}
+      <header className="bs-page-title">
+        <div>
+          <p>{brand.name}</p>
+          <h1>Kampanye</h1>
+        </div>
+        <div className="bs-heading-actions">
+          {brandOptions}
+          <Button kind="primary" onClick={newCampaign}>
+            <Plus size={18} /> Buat kampanye
+          </Button>
+        </div>
+      </header>
       {error && (
-        <p role="alert" className="kx-note kx-note--err">
-          {error}{" "}
-          <button type="button" className="kx-link" onClick={() => void load()}>
-            Coba lagi
-          </button>
-        </p>
+        <div className="bs-toolbar">
+          <Notice danger>{error}</Notice>
+          <Button onClick={() => void load()}>Coba lagi</Button>
+        </div>
       )}
-      {!campaigns && !error && (
-        <p className="kx-sub" role="status">
-          Memuat kampanye…
-        </p>
+      {!campaigns && !error && <Notice>Memuat kampanye…</Notice>}
+      {campaigns && (
+        <>
+          <dl className="bs-overview">
+            <div>
+              <Wallet size={18} aria-hidden />
+              <dt>Dana tersedia</dt>
+              <dd>{money(totalAvailable)}</dd>
+            </div>
+            <div>
+              <ClipboardList size={18} aria-hidden />
+              <dt>Laporan dalam review</dt>
+              <dd>{reviewCount}</dd>
+            </div>
+            <div>
+              <Check size={18} aria-hidden />
+              <dt>Kampanye terbit</dt>
+              <dd>{campaigns.filter((item) => item.status === "published").length}</dd>
+            </div>
+          </dl>
+          <section className="bs-panel">
+            <div className="bs-section-head">
+              <div>
+                <h2>Daftar kampanye</h2>
+                <p>{campaigns.length} kampanye</p>
+              </div>
+              <Button kind="text" onClick={() => void load()}>
+                <RefreshCw size={15} /> Muat ulang
+              </Button>
+            </div>
+            <div className="bs-filters">
+              <label className="bs-search">
+                <Search size={17} aria-hidden />
+                <input
+                  aria-label="Cari kampanye"
+                  type="search"
+                  placeholder="Cari kampanye"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </label>
+              <label className="bs-field">
+                <select
+                  aria-label="Status kampanye"
+                  value={filter}
+                  onChange={(event) => setFilter(event.target.value)}
+                >
+                  <option value="all">Semua status</option>
+                  <option value="draft">Draft</option>
+                  <option value="published">Terbit</option>
+                  <option value="closed">Ditutup</option>
+                </select>
+              </label>
+            </div>
+            {visible.length ? (
+              <div className="bs-campaign-list">
+                <div className="bs-campaign-columns" aria-hidden>
+                  <span>Kampanye</span>
+                  <span>Status</span>
+                  <span>Saldo tersedia</span>
+                  <span>Perlu review</span>
+                  <span />
+                </div>
+                {visible.map((item) => (
+                  <button
+                    className="bs-campaign-row"
+                    type="button"
+                    key={item.id}
+                    onClick={() => go({ campaign: String(item.id), tab: "ringkasan" })}
+                  >
+                    <span className="bs-campaign-name">
+                      <b>{item.title}</b>
+                      <small>
+                        {item.pending} pelamar menunggu · laporan sampai {dateLabel(item.end_date)}
+                      </small>
+                    </span>
+                    <Status state={item.status} />
+                    <span className="bs-campaign-money">{money(item.available)}</span>
+                    <span className="bs-campaign-review">
+                      {item.in_review}
+                      <small> dalam review</small>
+                    </span>
+                    <ArrowRight size={17} aria-hidden />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <Empty>
+                {campaigns.length ? "Tidak ada kampanye yang cocok." : "Belum ada kampanye untuk Brand ini."}
+              </Empty>
+            )}
+          </section>
+        </>
       )}
-      {campaigns?.length === 0 && !creating && (
-        <p className="kx-sub">Belum ada kampanye. Buat draft untuk menyiapkan brief dan reward.</p>
-      )}
-      {campaigns?.map((campaign) => (
-        <button
-          type="button"
-          key={campaign.id}
-          className="kx-card kx-brand-picker kx-brand-space"
-          onClick={() => setSelected(campaign.id)}
-        >
-          <div className="kx-brand-toolbar">
-            <b>{campaign.title}</b>
-            <span className="kx-pill">{BRAND_STATUS[campaign.status]}</span>
-          </div>
-          <p className="kx-sub">
-            {money(campaign.available)} tersedia · {campaign.pending} pelamar · {campaign.in_review} laporan
-            masuk
-          </p>
-        </button>
-      ))}
     </>
   );
 }
 
 const platforms = ["TikTok", "Instagram", "YouTube", "Threads", "X", "LinkedIn"];
-type TaskInput = Omit<BrandTask, "amount"> & { amount: string };
-const emptyTask = (): TaskInput => ({ label: "", platform: "TikTok", amount: "", requiresScreenshot: false });
+type TaskInput = Omit<BrandTask, "amount"> & { amount: string; key: string };
+const emptyTask = (): TaskInput => ({
+  label: "",
+  platform: "TikTok",
+  amount: "",
+  requiresScreenshot: false,
+  key: crypto.randomUUID(),
+});
 
 function CampaignForm({
   endpoint,
   initial,
   onSaved,
+  onCancel,
 }: {
   endpoint: string;
   initial?: Details["campaign"];
   onSaved: (id: string) => void;
+  onCancel: () => void;
 }) {
   const [tasks, setTasks] = useState<TaskInput[]>(
-    initial?.tasks.map((task) => ({ ...task, amount: String(task.amount) })) ?? [emptyTask()],
+    () =>
+      initial?.tasks.map((item) => ({ ...item, amount: String(item.amount), key: crypto.randomUUID() })) ?? [
+        emptyTask(),
+      ],
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const changeTask = (index: number, change: Partial<TaskInput>) =>
-    setTasks((list) => list.map((task, i) => (i === index ? { ...task, ...change } : task)));
-  const save = async (event: FormEvent<HTMLFormElement>) => {
+  const change = (key: string, patch: Partial<TaskInput>) =>
+    setTasks((items) => items.map((item) => (item.key === key ? { ...item, ...patch } : item)));
+
+  async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
     setBusy(true);
+    setError("");
     const fields = brandFormFields(event.currentTarget);
     try {
-      const result = await send<{ id: string }>(endpoint, { ...fields, tasks }, initial ? "PATCH" : "POST");
+      const result = await send<{ id: string }>(
+        endpoint,
+        { ...fields, tasks: tasks.map(({ key: _key, ...task }) => task) },
+        initial ? "PATCH" : "POST",
+      );
       onSaved(result.id);
     } catch (reason) {
       setError(brandError(reason));
     } finally {
       setBusy(false);
     }
-  };
+  }
+
   return (
-    <form className="kx-card kx-brand-space" onSubmit={save}>
-      <label className="kx-label">
-        Nama kampanye
-        <input
-          className="kx-input"
-          name="title"
-          required
-          maxLength={120}
-          minLength={2}
-          defaultValue={initial?.title}
-        />
-      </label>
-      <label className="kx-label">
-        Brief
-        <textarea
-          className="kx-input"
-          name="brief"
-          minLength={10}
-          maxLength={5000}
-          rows={4}
-          required
-          defaultValue={initial?.brief}
-        />
-      </label>
-      <label className="kx-label">
-        Syarat dan ketentuan
-        <textarea
-          className="kx-input"
-          name="terms"
-          maxLength={3000}
-          rows={3}
-          required
-          defaultValue={initial?.terms.join("\n")}
-        />
-      </label>
-      <div className="kx-row2">
-        <label className="kx-label">
-          Pendaftaran sampai
-          <input
-            className="kx-input"
-            name="applicationDeadline"
-            type="date"
+    <form className="bs-editor" onSubmit={(event) => void save(event)}>
+      <section className="bs-panel bs-form-section">
+        <div className="bs-section-head">
+          <div>
+            <h2>Detail kampanye</h2>
+            <p>Brief dan tenggat akan terlihat oleh KOL.</p>
+          </div>
+        </div>
+        <label className="bs-field">
+          Nama kampanye
+          <input name="title" minLength={2} maxLength={120} required defaultValue={initial?.title} />
+        </label>
+        <label className="bs-field">
+          Brief
+          <textarea
+            name="brief"
+            minLength={10}
+            maxLength={5000}
+            rows={5}
             required
-            defaultValue={initial?.application_deadline}
+            defaultValue={initial?.brief}
           />
         </label>
-        <label className="kx-label">
-          Laporan sampai
-          <input className="kx-input" name="deadline" type="date" required defaultValue={initial?.end_date} />
+        <label className="bs-field">
+          Syarat dan ketentuan
+          <textarea
+            name="terms"
+            maxLength={3000}
+            rows={3}
+            required
+            defaultValue={initial?.terms.join("\n")}
+          />
         </label>
-      </div>
-      <label className="kx-label">
-        Kuota KOL
-        <input
-          className="kx-input"
-          name="quota"
-          type="number"
-          required
-          min={1}
-          max={100}
-          defaultValue={initial?.quota ?? 1}
-        />
-      </label>
-      <h3 className="kx-section">Tugas dan reward</h3>
-      {tasks.map((task, index) => (
-        <fieldset className="kx-brand-task" key={index}>
-          <legend>Tugas {index + 1}</legend>
-          <label className="kx-label">
-            Jenis konten
+        <div className="bs-field-grid bs-dates">
+          <label className="bs-field">
+            Pendaftaran sampai
             <input
-              className="kx-input"
+              name="applicationDeadline"
+              type="date"
               required
-              maxLength={100}
-              placeholder="Contoh: Thread"
-              value={task.label}
-              onChange={(event) => changeTask(index, { label: event.target.value })}
+              defaultValue={initial?.application_deadline}
             />
           </label>
-          <div className="kx-row2">
-            <label className="kx-label">
-              Platform
-              <select
-                className="kx-input"
-                value={task.platform}
-                onChange={(event) => changeTask(index, { platform: event.target.value })}
-              >
-                {platforms.map((platform) => (
-                  <option key={platform}>{platform}</option>
-                ))}
-              </select>
-            </label>
-            <label className="kx-label">
-              Reward (Rp)
-              <input
-                className="kx-input"
-                type="number"
-                min={1000}
-                max={10000000}
-                step={1}
-                required
-                value={task.amount}
-                onChange={(event) => changeTask(index, { amount: event.target.value })}
-              />
-            </label>
-          </div>
-          <label className="kx-brand-check">
-            <input
-              type="checkbox"
-              checked={task.requiresScreenshot}
-              onChange={(event) => changeTask(index, { requiresScreenshot: event.target.checked })}
-            />{" "}
-            Wajibkan screenshot
+          <label className="bs-field">
+            Laporan sampai
+            <input name="deadline" type="date" required defaultValue={initial?.end_date} />
           </label>
-          {tasks.length > 1 && (
-            <button
-              type="button"
-              className="kx-link"
-              onClick={() => setTasks((list) => list.filter((_, i) => i !== index))}
-            >
-              Hapus tugas {index + 1}
-            </button>
-          )}
-        </fieldset>
-      ))}
-      {tasks.length < 10 && (
-        <button type="button" className="kx-link" onClick={() => setTasks((list) => [...list, emptyTask()])}>
-          Tambah tugas
-        </button>
-      )}
-      <p>
-        <b>{money(tasks.reduce((total, task) => total + (Number(task.amount) || 0), 0))}</b> per KOL
-      </p>
-      {error && (
-        <p className="kx-note kx-note--err" role="alert">
-          {error}
-        </p>
-      )}
-      <button className="kx-btn" disabled={busy}>
-        {busy ? "Menyimpan…" : "Simpan draft"}
-      </button>
+          <label className="bs-field">
+            Kuota KOL
+            <input name="quota" type="number" min={1} max={100} required defaultValue={initial?.quota ?? 1} />
+          </label>
+        </div>
+      </section>
+      <section className="bs-panel bs-form-section">
+        <div className="bs-section-head">
+          <div>
+            <h2>Tugas dan reward</h2>
+            <p>Tentukan nominal untuk setiap jenis konten.</p>
+          </div>
+        </div>
+        {tasks.map((item, index) => (
+          <fieldset className="bs-task" key={item.key}>
+            <legend>Tugas {index + 1}</legend>
+            <div className="bs-field-grid bs-task-fields">
+              <label className="bs-field">
+                Jenis konten
+                <input
+                  maxLength={100}
+                  placeholder="Contoh: Instagram Reel"
+                  value={item.label}
+                  onChange={(event) => change(item.key, { label: event.target.value })}
+                  required
+                />
+              </label>
+              <label className="bs-field">
+                Platform
+                <select
+                  value={item.platform}
+                  onChange={(event) => change(item.key, { platform: event.target.value })}
+                >
+                  {platforms.map((platform) => (
+                    <option key={platform}>{platform}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="bs-field">
+                Reward (Rp)
+                <input
+                  type="number"
+                  min={1000}
+                  max={10000000}
+                  step={1}
+                  required
+                  value={item.amount}
+                  onChange={(event) => change(item.key, { amount: event.target.value })}
+                />
+              </label>
+            </div>
+            <div className="bs-toolbar">
+              <label className="bs-check">
+                <input
+                  type="checkbox"
+                  checked={item.requiresScreenshot}
+                  onChange={(event) => change(item.key, { requiresScreenshot: event.target.checked })}
+                />{" "}
+                Wajibkan screenshot
+              </label>
+              {tasks.length > 1 && (
+                <Button
+                  kind="text"
+                  onClick={() => setTasks((list) => list.filter((task) => task.key !== item.key))}
+                >
+                  Hapus tugas {index + 1}
+                </Button>
+              )}
+            </div>
+          </fieldset>
+        ))}
+        {tasks.length < 10 && (
+          <Button onClick={() => setTasks((items) => [...items, emptyTask()])}>
+            <Plus size={16} /> Tambah tugas
+          </Button>
+        )}
+      </section>
+      {error && <Notice danger>{error}</Notice>}
+      <div className="bs-save-bar">
+        <div>
+          <span>Reward per KOL</span>
+          <b>{money(tasks.reduce((sum, item) => sum + (Number(item.amount) || 0), 0))}</b>
+        </div>
+        <div className="bs-actions">
+          <Button onClick={onCancel} disabled={busy}>
+            Batal
+          </Button>
+          <button className="bs-button bs-primary" disabled={busy}>
+            {busy ? "Menyimpan…" : "Simpan draft"}
+          </button>
+        </div>
+      </div>
     </form>
   );
 }
 
-function BrandCampaign({ endpoint, onBack }: { endpoint: string; onBack: () => void }) {
+type Act = (path: string, payload: unknown) => Promise<void>;
+type Decide = (decision: BrandDecision) => void;
+function BrandCampaign({
+  endpoint,
+  route,
+  go,
+}: {
+  endpoint: string;
+  route: BrandRoute;
+  go: (route: Omit<BrandRoute, "brand">, replace?: boolean) => void;
+}) {
   const [detail, setDetail] = useState<Details | null>(null);
-  const [tab, setTab] = useState("Ringkasan");
-  const [editing, setEditing] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [decision, decide] = useState<BrandDecision | null>(null);
   const load = useCallback(async () => {
     try {
       setDetail(await kolApi<Details>(endpoint));
+      setError("");
     } catch (reason) {
       setError(brandError(reason));
     }
@@ -599,172 +865,222 @@ function BrandCampaign({ endpoint, onBack }: { endpoint: string; onBack: () => v
     void load();
   }, [load]);
 
-  const act = async (path: string, payload: unknown) => {
-    setError("");
-    setBusy(true);
+  const act: Act = async (path, payload) => {
     try {
       await send(endpoint + path, payload);
-      await load();
     } catch (reason) {
-      setError(brandError(reason));
-    } finally {
-      setBusy(false);
+      throw new Error(brandError(reason));
     }
+    await load();
   };
+  const openTab = (tab: CampaignTab) => go({ campaign: route.campaign, tab });
+  const item = detail?.campaign;
+  const canPublish = item?.status === "draft" && Number(item.available) >= Number(item.reward_per_kol);
 
   return (
     <>
-      <div className="kx-brand-toolbar kx-brand-space">
-        <button type="button" className="kx-link" onClick={onBack}>
-          Semua kampanye
-        </button>
-        <button
-          type="button"
-          className="kx-link"
-          onClick={() => {
-            setError("");
-            void load();
-          }}
-        >
-          Muat ulang
-        </button>
+      <div className="bs-toolbar">
+        <Button kind="text" onClick={() => go({ tab: "ringkasan" })}>
+          <ArrowLeft size={17} /> Semua kampanye
+        </Button>
+        <Button kind="text" onClick={() => void load()}>
+          <RefreshCw size={15} /> Muat ulang
+        </Button>
       </div>
-      {error && (
-        <p role="alert" className="kx-note kx-note--err">
-          {error}
-        </p>
-      )}
-      {!detail && !error && (
-        <p role="status" className="kx-sub">
-          Memuat kampanye…
-        </p>
-      )}
-      {detail && (
+      {error && <Notice danger>{error}</Notice>}
+      {!item && !error && <Notice>Memuat kampanye…</Notice>}
+      {detail && item && (
         <>
-          <h2 className="kx-h2 kx-brand-space">{detail.campaign.title}</h2>
-          <p className="kx-sub">
-            {BRAND_STATUS[detail.campaign.status]} · {money(detail.campaign.reward_per_kol)} per KOL · kuota{" "}
-            {detail.campaign.quota}
-          </p>
-          <nav className="kx-hs" aria-label="Menu kampanye Brand">
-            {["Ringkasan", "Anggaran", "Pendaftar", "Laporan"].map((name) => (
-              <button
-                key={name}
-                type="button"
-                className="kx-chip"
-                aria-pressed={tab === name}
-                onClick={() => setTab(name)}
+          <header className="bs-page-title bs-detail-title">
+            <div>
+              <div className="bs-heading-meta">
+                <span>{item.brand}</span>
+                <Status state={item.status} />
+              </div>
+              <h1>{route.draft === "edit" ? "Edit kampanye" : item.title}</h1>
+            </div>
+            {route.draft !== "edit" && item.status === "draft" && (
+              <Button
+                kind="primary"
+                onClick={() => {
+                  if (!canPublish) {
+                    openTab("anggaran");
+                    return;
+                  }
+                  decide({
+                    title: "Terbitkan kampanye",
+                    detail: `${item.title} akan tampil di portal KOL dan menerima pendaftaran.`,
+                    confirm: "Terbitkan",
+                    submit: () => act("/status", { status: "published" }),
+                  });
+                }}
               >
-                {name}
-                {name === "Pendaftar" && Number(detail.campaign.pending) > 0
-                  ? ` · ${detail.campaign.pending}`
-                  : ""}
-                {name === "Laporan" && Number(detail.campaign.in_review) > 0
-                  ? ` · ${detail.campaign.in_review}`
-                  : ""}
-              </button>
-            ))}
-          </nav>
-          {tab === "Ringkasan" && (
+                {canPublish ? "Terbitkan kampanye" : "Isi anggaran"}
+                <ArrowRight size={17} />
+              </Button>
+            )}
+          </header>
+          {route.draft === "edit" && item.status === "draft" ? (
+            <CampaignForm
+              key={item.id}
+              endpoint={endpoint}
+              initial={item}
+              onCancel={() => openTab("ringkasan")}
+              onSaved={() => {
+                go({ campaign: route.campaign, tab: "ringkasan" }, true);
+                void load();
+              }}
+            />
+          ) : (
             <>
-              {editing ? (
-                <CampaignForm
-                  endpoint={endpoint}
-                  initial={detail.campaign}
-                  onSaved={() => {
-                    setEditing(false);
-                    void load();
-                  }}
-                />
-              ) : (
-                <div className="kx-card">
-                  <p className="kx-brand-brief">{detail.campaign.brief}</p>
-                  <p className="kx-sub">
-                    Pendaftaran sampai {dateLabel(detail.campaign.application_deadline)} · laporan sampai{" "}
-                    {dateLabel(detail.campaign.end_date)}
-                  </p>
-                  <ul className="kx-brand-list">
-                    {detail.campaign.tasks.map((task) => (
-                      <li key={task.platform + task.label}>
-                        {task.label} · {task.platform}
-                        <b>{money(task.amount)}</b>
-                      </li>
-                    ))}
-                  </ul>
-                  {detail.campaign.status === "draft" && (
-                    <div className="kx-brand-actions">
-                      <button type="button" className="kx-btn kx-btn--ghost" onClick={() => setEditing(true)}>
-                        Edit draft
-                      </button>
-                      <button
-                        type="button"
-                        className="kx-btn"
-                        disabled={
-                          busy || Number(detail.campaign.available) < Number(detail.campaign.reward_per_kol)
-                        }
-                        onClick={() => void act("/status", { status: "published" })}
-                      >
-                        Terbitkan
-                      </button>
-                    </div>
-                  )}
-                  {detail.campaign.status === "draft" &&
-                    Number(detail.campaign.available) < Number(detail.campaign.reward_per_kol) && (
-                      <button type="button" className="kx-link" onClick={() => setTab("Anggaran")}>
-                        Isi anggaran minimal {money(detail.campaign.reward_per_kol)}
-                      </button>
-                    )}
-                  {detail.campaign.status === "published" && (
-                    <a className="kx-link" href={`/campaigns/${detail.campaign.slug}`}>
-                      Lihat halaman KOL
-                    </a>
-                  )}
-                  {["published", "draft"].includes(detail.campaign.status) && (
+              <nav className="bs-tabs" aria-label="Menu kampanye Brand">
+                {tabs.map(({ value, title, icon: Icon }) => {
+                  const count =
+                    value === "pendaftar"
+                      ? Number(item.pending)
+                      : value === "laporan"
+                        ? Number(item.in_review)
+                        : 0;
+                  return (
                     <button
+                      key={value}
                       type="button"
-                      className="kx-link kx-brand-space"
-                      disabled={busy}
-                      onClick={() => {
-                        if (window.confirm("Tutup kampanye ini? Pendaftaran baru akan berhenti."))
-                          void act("/status", { status: "closed" });
-                      }}
+                      onClick={() => openTab(value)}
+                      aria-pressed={route.tab === value}
                     >
-                      Tutup kampanye
+                      <Icon size={16} aria-hidden />
+                      {title}
+                      {count > 0 && <span>{count}</span>}
                     </button>
-                  )}
-                  {detail.campaign.status === "closed" && (
-                    <p className="kx-sub">
-                      Laporan aktif tetap dapat diselesaikan sesuai tenggat. Sisa dana diproses Finance
-                      setelah semua kewajiban selesai.
-                    </p>
+                  );
+                })}
+              </nav>
+              {route.tab === "ringkasan" && (
+                <div className="bs-summary">
+                  <section className="bs-panel">
+                    <div className="bs-section-head">
+                      <h2>Brief kampanye</h2>
+                      {item.status === "draft" && (
+                        <Button
+                          kind="text"
+                          onClick={() => go({ campaign: route.campaign, tab: "ringkasan", draft: "edit" })}
+                        >
+                          Edit draft
+                        </Button>
+                      )}
+                    </div>
+                    <p className="bs-brief">{item.brief}</p>
+                    <h3>Ketentuan</h3>
+                    <ul className="bs-terms">
+                      {item.terms.map((term, index) => (
+                        <li key={index}>{term}</li>
+                      ))}
+                    </ul>
+                  </section>
+                  <section className="bs-panel">
+                    <div className="bs-section-head">
+                      <h2>Tenggat & kuota</h2>
+                    </div>
+                    <dl className="bs-kv">
+                      <div>
+                        <dt>Pendaftaran sampai</dt>
+                        <dd>{dateLabel(item.application_deadline)}</dd>
+                      </div>
+                      <div>
+                        <dt>Laporan sampai</dt>
+                        <dd>{dateLabel(item.end_date)}</dd>
+                      </div>
+                      <div>
+                        <dt>Kuota KOL</dt>
+                        <dd>{item.quota}</dd>
+                      </div>
+                      <div>
+                        <dt>Reward per KOL</dt>
+                        <dd>{money(item.reward_per_kol)}</dd>
+                      </div>
+                    </dl>
+                    {item.status === "published" && (
+                      <a className="bs-button bs-secondary" href={`/campaigns/${item.slug}`}>
+                        Halaman publik <ArrowUpRight size={15} />
+                      </a>
+                    )}
+                  </section>
+                  <section className="bs-panel bs-full">
+                    <div className="bs-section-head">
+                      <h2>Tugas dan reward</h2>
+                    </div>
+                    <div className="bs-rows">
+                      {item.tasks.map((task) => (
+                        <article className="bs-row" key={task.platform + task.label}>
+                          <div>
+                            <b>{task.label}</b>
+                            <small>
+                              {task.platform}
+                              {task.requiresScreenshot ? " · Wajib screenshot" : ""}
+                            </small>
+                          </div>
+                          <strong>{money(task.amount)}</strong>
+                        </article>
+                      ))}
+                    </div>
+                    {item.status === "draft" && !canPublish && (
+                      <Notice>
+                        Siapkan minimal {money(item.reward_per_kol)} untuk satu slot KOL sebelum terbit.
+                      </Notice>
+                    )}
+                    {item.status === "closed" && (
+                      <Notice>
+                        Laporan aktif tetap bisa diselesaikan sesuai tenggat. Finance memproses sisa dana
+                        setelah semua kewajiban selesai.
+                      </Notice>
+                    )}
+                  </section>
+                  {["published", "draft"].includes(item.status) && (
+                    <div className="bs-full bs-footer-actions">
+                      <Button
+                        kind="text"
+                        onClick={() =>
+                          decide({
+                            title: "Tutup kampanye",
+                            detail:
+                              "Pendaftaran baru akan berhenti. Laporan aktif tetap mengikuti tenggat kampanye.",
+                            confirm: "Tutup kampanye",
+                            danger: true,
+                            submit: () => act("/status", { status: "closed" }),
+                          })
+                        }
+                      >
+                        Tutup kampanye
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
+              {route.tab === "anggaran" && <Budget detail={detail} endpoint={endpoint} onChanged={load} />}
+              {route.tab === "pendaftar" && (
+                <ApplicantList
+                  applications={detail.applications}
+                  canAccept={item.status === "published" && !item.deadline_passed}
+                  act={act}
+                  decide={decide}
+                />
+              )}
+              {route.tab === "laporan" && (
+                <ReportList
+                  deliveries={detail.deliveries}
+                  expired={item.deadline_passed}
+                  act={act}
+                  decide={decide}
+                />
+              )}
             </>
-          )}
-          {tab === "Anggaran" && <Budget endpoint={endpoint} detail={detail} onChanged={load} />}
-          {tab === "Pendaftar" && (
-            <ApplicantList
-              applications={detail.applications}
-              busy={busy}
-              canAccept={detail.campaign.status === "published" && !detail.campaign.deadline_passed}
-              act={act}
-            />
-          )}
-          {tab === "Laporan" && (
-            <ReportList
-              deliveries={detail.deliveries}
-              busy={busy}
-              expired={detail.campaign.deadline_passed}
-              act={act}
-            />
           )}
         </>
       )}
+      {decision && <KolBrandDecision decision={decision} onClose={() => decide(null)} />}
     </>
   );
 }
-
 function Budget({
   endpoint,
   detail,
@@ -777,13 +1093,17 @@ function Budget({
   const [amount, setAmount] = useState("");
   const [key, setKey] = useState(() => crypto.randomUUID());
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const fee = Math.ceil(((Number(amount) || 0) * detail.feePercent) / 100);
-  const outstanding = detail.deposits.some((deposit) =>
-    ["creating", "pending", "review"].includes(deposit.state),
-  );
-  const act = async (path: string, payload: unknown) => {
+  const [error, setError] = useState("");
+  const fee = Math.ceil((Number(amount || 0) * detail.feePercent) / 100);
+  const outstanding = detail.deposits.find((item) => ["creating", "pending", "review"].includes(item.state));
+  const canTopUp = ["published", "draft"].includes(detail.campaign.status);
+  const change = (value: string) => {
+    setAmount(value);
+    setKey(crypto.randomUUID());
+  };
+
+  async function update(path: string, payload: unknown) {
     setBusy(true);
     setError("");
     setNotice("");
@@ -792,308 +1112,398 @@ function Budget({
       const state = result.state ?? result.status ?? "";
       setNotice(
         state === "review"
-          ? "Tagihan perlu diperiksa Finance."
+          ? "Tagihan sedang diperiksa Finance."
           : state === "pending"
             ? "Tagihan menunggu pembayaran."
-            : BRAND_STATUS[state] || state,
+            : (BRAND_STATUS[state] ?? state),
       );
-      if (path === "/topups") {
-        setKey(crypto.randomUUID());
-        setAmount("");
-      }
+      if (path === "/topups") change("");
       await onChanged();
     } catch (reason) {
       setError(brandError(reason));
     } finally {
       setBusy(false);
     }
-  };
+  }
+
   return (
-    <>
-      <div className="kx-card">
-        <div className="kx-row2 kx-brand-metrics">
+    <div className="bs-budget">
+      <section className="bs-balance bs-full">
+        <div className="bs-balance-main">
+          <div>
+            <p>Anggaran tersedia</p>
+            <strong>{money(detail.campaign.available)}</strong>
+          </div>
+          <img src="/assets/3d/payment-wallet.png" alt="" width={100} height={100} />
+        </div>
+        <dl>
           {(
             [
-              ["Tersedia", detail.campaign.available],
               ["Dicadangkan", detail.campaign.reserved],
               ["Dibayar", detail.campaign.paid],
               ["Dikembalikan", detail.campaign.refunded],
             ] as const
           ).map(([label, value]) => (
             <div key={label}>
-              <span>{label}</span>
-              <b>{money(value)}</b>
+              <dt>{label}</dt>
+              <dd>{money(value)}</dd>
             </div>
           ))}
-        </div>
-        {error && (
-          <p role="alert" className="kx-note kx-note--err">
-            {error}
-          </p>
-        )}
-        {notice && (
-          <p role="status" className="kx-note">
-            {notice}
-          </p>
-        )}
-        {["published", "draft"].includes(detail.campaign.status) &&
-          (detail.paymentsEnabled ? (
-            outstanding ? (
-              <p className="kx-sub">Selesaikan tagihan yang sedang berjalan sebelum membuat tagihan baru.</p>
-            ) : (
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void act("/topups", { nominal: Number(amount), key });
-                }}
-              >
-                <label className="kx-label">
-                  Nominal top-up (Rp)
-                  <input
-                    className="kx-input"
-                    type="number"
-                    min={1000}
-                    max={100000000}
-                    required
-                    value={amount}
-                    onChange={(event) => {
-                      setAmount(event.target.value);
-                      setKey(crypto.randomUUID());
-                    }}
-                  />
-                </label>
-                <p className="kx-sub">
-                  Biaya {money(fee)} · Total tagihan {money((Number(amount) || 0) + fee)}
-                </p>
-                <button className="kx-btn" disabled={busy}>
-                  {busy ? "Memproses…" : "Buat tagihan Mayar"}
-                </button>
-              </form>
-            )
-          ) : (
-            <p className="kx-sub">Top-up belum tersedia.</p>
-          ))}
-      </div>
-      <h3 className="kx-section">Tagihan</h3>
-      {detail.deposits.length === 0 && <p className="kx-sub">Belum ada tagihan.</p>}
-      {detail.deposits.map((deposit) => (
-        <article key={deposit.id} className="kx-card kx-brand-space">
-          <div className="kx-brand-toolbar">
-            <b>{money(deposit.nominal)}</b>
-            <span className="kx-pill">
-              {deposit.state === "pending" ? "Menunggu pembayaran" : BRAND_STATUS[deposit.state]}
-            </span>
+        </dl>
+      </section>
+      <section className="bs-panel">
+        <div className="bs-section-head">
+          <div>
+            <h2>{canTopUp ? "Isi anggaran" : "Status anggaran"}</h2>
+            {canTopUp && <p>Pembayaran diproses melalui Mayar.</p>}
           </div>
-          <p className="kx-sub">
-            {dateLabel(deposit.created_at)} · Tagihan {money(deposit.total)}
-          </p>
-          {deposit.state === "pending" && deposit.invoice_url && (
-            <a className="kx-link" href={deposit.invoice_url} target="_blank" rel="noreferrer">
-              Bayar di Mayar ↗
-            </a>
-          )}
-          {deposit.invoice_url && ["pending", "review", "expired"].includes(deposit.state) && (
-            <button
-              type="button"
-              className="kx-link"
-              disabled={busy}
-              onClick={() => void act(`/topups/${deposit.id}/check`, {})}
-            >
-              Cek pembayaran
+        </div>
+        {error && <Notice danger>{error}</Notice>}
+        {notice && <Notice>{notice}</Notice>}
+        {canTopUp && !detail.paymentsEnabled && <Notice>Top-up belum tersedia.</Notice>}
+        {outstanding && (
+          <div className="bs-outstanding">
+            <div className="bs-toolbar">
+              <b>Tagihan berjalan</b>
+              <Status state={outstanding.state} />
+            </div>
+            <p>
+              {money(outstanding.total)} · {dateLabel(outstanding.created_at)}
+            </p>
+            <div className="bs-actions">
+              {outstanding.state === "pending" && outstanding.invoice_url && (
+                <a
+                  className="bs-button bs-primary"
+                  href={outstanding.invoice_url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Bayar di Mayar <ArrowUpRight size={16} />
+                </a>
+              )}
+              {outstanding.invoice_url && (
+                <Button disabled={busy} onClick={() => void update(`/topups/${outstanding.id}/check`, {})}>
+                  Cek pembayaran
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+        {canTopUp && detail.paymentsEnabled && !outstanding && (
+          <form
+            className="bs-topup"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void update("/topups", { nominal: Number(amount), key });
+            }}
+          >
+            <label className="bs-field">
+              Nominal top-up (Rp)
+              <input
+                type="number"
+                inputMode="numeric"
+                value={amount}
+                min={1000}
+                max={100000000}
+                required
+                onChange={(event) => change(event.target.value)}
+              />
+            </label>
+            <div className="bs-chips" aria-label="Nominal cepat">
+              {[100000, 250000, 500000].map((value) => (
+                <button
+                  type="button"
+                  key={value}
+                  aria-pressed={Number(amount) === value}
+                  onClick={() => change(String(value))}
+                >
+                  {money(value)}
+                </button>
+              ))}
+            </div>
+            <dl className="bs-kv">
+              <div>
+                <dt>Biaya</dt>
+                <dd>{money(fee)}</dd>
+              </div>
+              <div>
+                <dt>Total tagihan</dt>
+                <dd>{money(Number(amount || 0) + fee)}</dd>
+              </div>
+            </dl>
+            <button className="bs-button bs-primary" disabled={busy}>
+              {busy ? "Memproses…" : "Buat tagihan Mayar"}
             </button>
-          )}
-        </article>
-      ))}
-      <h3 className="kx-section">Mutasi anggaran</h3>
-      {detail.ledger.length === 0 && <p className="kx-sub">Belum ada mutasi.</p>}
-      <ul className="kx-brand-list">
-        {detail.ledger.map((entry) => {
-          const label =
-            {
-              deposit: "Top-up",
-              reserve: "Dana dicadangkan",
-              payout: "Reward dibayar",
-              release: "Cadangan dilepas",
-              refund: "Pengembalian dana",
-            }[entry.kind] ?? entry.kind;
-          return (
-            <li key={entry.id}>
-              <span>
-                <b>{label}</b>
-                <small>
-                  {dateLabel(entry.created_at)}
-                  {entry.note ? ` · ${entry.note}` : ""}
-                </small>
-              </span>
-              <b>
-                {money(
-                  Math.max(
-                    ...[
-                      entry.available_delta,
-                      entry.reserved_delta,
-                      entry.paid_delta,
-                      entry.refunded_delta,
-                    ].map(Number),
-                  ),
-                )}
-              </b>
-            </li>
-          );
-        })}
-      </ul>
-    </>
+          </form>
+        )}
+        {!canTopUp && !outstanding && (
+          <Notice>Kampanye telah ditutup. Riwayat anggaran tetap dapat dilihat.</Notice>
+        )}
+      </section>
+      <section className="bs-panel">
+        <div className="bs-section-head">
+          <h2>Riwayat tagihan</h2>
+        </div>
+        {detail.deposits.length ? (
+          <div className="bs-rows">
+            {detail.deposits.map((item) => (
+              <article className="bs-row bs-bill" key={item.id}>
+                <div>
+                  <b>{money(item.total)}</b>
+                  <small>
+                    Top-up {money(item.nominal)} · {dateLabel(item.created_at)}
+                  </small>
+                </div>
+                <Status state={item.state} />
+                {item.id !== outstanding?.id &&
+                  item.invoice_url &&
+                  ["pending", "review", "expired"].includes(item.state) && (
+                    <Button
+                      kind="text"
+                      disabled={busy}
+                      onClick={() => void update(`/topups/${item.id}/check`, {})}
+                    >
+                      Cek pembayaran
+                    </Button>
+                  )}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <Empty>Belum ada tagihan.</Empty>
+        )}
+      </section>
+      <section className="bs-panel bs-full">
+        <div className="bs-section-head">
+          <h2>Mutasi anggaran</h2>
+        </div>
+        {detail.ledger.length ? (
+          <div className="bs-rows">
+            {detail.ledger.map((item) => {
+              const title =
+                {
+                  deposit: "Top-up",
+                  reserve: "Dana dicadangkan",
+                  payout: "Reward dibayar",
+                  release: "Cadangan dilepas",
+                  refund: "Pengembalian dana",
+                }[item.kind] ?? item.kind;
+              const value = Math.max(
+                ...[item.available_delta, item.reserved_delta, item.paid_delta, item.refunded_delta].map(
+                  Number,
+                ),
+              );
+              return (
+                <article className="bs-row" key={item.id}>
+                  <div>
+                    <b>{title}</b>
+                    <small>
+                      {dateLabel(item.created_at)}
+                      {item.note && ` · ${item.note}`}
+                    </small>
+                  </div>
+                  <strong>{money(value)}</strong>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <Empty>Belum ada mutasi anggaran.</Empty>
+        )}
+      </section>
+    </div>
   );
 }
 
-type Act = (path: string, payload: unknown) => Promise<void>;
 function ApplicantList({
   applications,
-  act,
-  busy,
   canAccept,
+  act,
+  decide,
 }: {
   applications: Application[];
-  act: Act;
-  busy: boolean;
   canAccept: boolean;
+  act: Act;
+  decide: Decide;
 }) {
-  return applications.length === 0 ? (
-    <p className="kx-sub">Belum ada pendaftar.</p>
-  ) : (
-    <>
-      {applications.map((application) => (
-        <article key={application.id} className="kx-card kx-brand-space">
-          <div className="kx-brand-toolbar">
-            <b>{application.name}</b>
-            <span className="kx-pill">{BRAND_STATUS[application.status]}</span>
-          </div>
-          <p className="kx-sub">
-            {application.username}
-            {application.review_note ? ` · ${application.review_note}` : ""}
-          </p>
-          {application.status === "pending" && (
-            <div className="kx-brand-actions">
-              {canAccept && (
-                <button
-                  type="button"
-                  className="kx-btn"
-                  disabled={busy}
-                  onClick={() => void act(`/applications/${application.id}`, { approve: true })}
-                >
-                  Terima & cadangkan reward
-                </button>
+  const [filter, setFilter] = useState("all");
+  const items = applications.filter((item) => filter === "all" || item.status === filter);
+  return (
+    <section className="bs-panel">
+      <div className="bs-section-head">
+        <div>
+          <h2>Pendaftar</h2>
+          <p>{applications.filter((item) => item.status === "pending").length} menunggu keputusan</p>
+        </div>
+        <label className="bs-field">
+          <select
+            aria-label="Status pendaftar"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+          >
+            <option value="all">Semua status</option>
+            <option value="pending">Menunggu</option>
+            <option value="approved">Diterima</option>
+            <option value="rejected">Ditolak</option>
+          </select>
+        </label>
+      </div>
+      {items.length ? (
+        <div className="bs-rows">
+          {items.map((item) => (
+            <article className="bs-row bs-person" key={item.id}>
+              <div className="bs-person-info">
+                <span className="bs-avatar" aria-hidden>
+                  {item.name.slice(0, 1).toUpperCase()}
+                </span>
+                <div>
+                  <b>{item.name}</b>
+                  <small>
+                    {item.username}
+                    {item.review_note && ` · ${item.review_note}`}
+                  </small>
+                </div>
+              </div>
+              <Status state={item.status} />
+              {item.status === "pending" && (
+                <div className="bs-actions">
+                  {canAccept && (
+                    <Button
+                      kind="primary"
+                      onClick={() =>
+                        decide({
+                          title: "Terima pendaftar",
+                          detail: `Anggaran reward akan dicadangkan untuk ${item.name}.`,
+                          confirm: "Terima & cadangkan",
+                          submit: () => act(`/applications/${item.id}`, { approve: true }),
+                        })
+                      }
+                    >
+                      Terima
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() =>
+                      decide({
+                        title: "Tolak pendaftar",
+                        detail: item.name,
+                        confirm: "Tolak",
+                        danger: true,
+                        note: "Alasan penolakan",
+                        submit: ({ note }) => act(`/applications/${item.id}`, { approve: false, note }),
+                      })
+                    }
+                  >
+                    Tolak
+                  </Button>
+                </div>
               )}
-              <button
-                type="button"
-                className="kx-btn kx-btn--ghost"
-                disabled={busy}
-                onClick={() => {
-                  const note = window.prompt("Alasan penolakan pendaftar");
-                  if (note?.trim()) void act(`/applications/${application.id}`, { approve: false, note });
-                }}
-              >
-                Tolak
-              </button>
-            </div>
-          )}
-        </article>
-      ))}
-    </>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <Empty>Belum ada pendaftar untuk status ini.</Empty>
+      )}
+    </section>
   );
 }
 
 function ReportList({
   deliveries,
-  act,
-  busy,
   expired,
+  act,
+  decide,
 }: {
   deliveries: Delivery[];
-  act: Act;
-  busy: boolean;
   expired: boolean;
+  act: Act;
+  decide: Decide;
 }) {
-  const [status, setStatus] = useState("submitted");
-  const list = deliveries.filter((delivery) => status === "all" || delivery.status === status);
-  const review = (delivery: Delivery, action: "approve" | "revision" | "reject") => {
-    const note =
-      action === "approve"
-        ? window.confirm(`Bayar ${money(delivery.amount)} ke saldo Djiwa Pay ${delivery.name}?`)
-          ? ""
-          : null
-        : window.prompt(action === "revision" ? "Apa yang perlu direvisi?" : "Alasan penolakan laporan");
-    if (note === null || (action !== "approve" && !note.trim())) return;
-    void act(`/reports/${delivery.id}`, { action, note, revision: delivery.proof_revision });
+  const [filter, setFilter] = useState("submitted");
+  const items = deliveries.filter((item) => filter === "all" || item.status === filter);
+  const review = (item: Delivery, action: "approve" | "revision" | "reject") => {
+    const title = { approve: "Setujui & bayar", revision: "Minta revisi", reject: "Tolak laporan" }[action];
+    decide({
+      title,
+      confirm: title,
+      danger: action === "reject",
+      detail:
+        action === "approve"
+          ? `${money(item.amount)} akan masuk ke saldo Djiwa Pay ${item.name}.`
+          : `${item.label} · ${item.name}`,
+      note:
+        action === "revision"
+          ? "Catatan yang perlu direvisi"
+          : action === "reject"
+            ? "Alasan penolakan"
+            : undefined,
+      submit: ({ note }) => act(`/reports/${item.id}`, { action, note, revision: item.proof_revision }),
+    });
   };
   return (
-    <>
-      <div className="kx-hs" aria-label="Filter laporan">
-        {["submitted", "all", "needs_revision", "paid"].map((item) => (
-          <button
-            className="kx-chip"
-            key={item}
-            type="button"
-            aria-pressed={status === item}
-            onClick={() => setStatus(item)}
-          >
+    <section className="bs-panel">
+      <div className="bs-section-head">
+        <div>
+          <h2>Laporan KOL</h2>
+          <p>{deliveries.filter((item) => item.status === "submitted").length} menunggu review</p>
+        </div>
+      </div>
+      <nav className="bs-chips" aria-label="Filter laporan">
+        {["submitted", "all", "needs_revision", "paid", "rejected"].map((item) => (
+          <button key={item} type="button" aria-pressed={filter === item} onClick={() => setFilter(item)}>
             {item === "all" ? "Semua" : BRAND_STATUS[item]}
           </button>
         ))}
-      </div>
-      {list.length === 0 && <p className="kx-sub">Belum ada laporan di status ini.</p>}
-      {list.map((delivery) => (
-        <article key={delivery.id} className="kx-card kx-brand-space">
-          <div className="kx-brand-toolbar">
-            <b>{delivery.label}</b>
-            <span className="kx-pill">{BRAND_STATUS[delivery.status]}</span>
-          </div>
-          <p className="kx-sub">
-            {delivery.name} · {delivery.platform} · {money(delivery.amount)}
-          </p>
-          {delivery.content_url && (
-            <a className="kx-link kx-brand-url" href={delivery.content_url} target="_blank" rel="noreferrer">
-              {delivery.content_url}
-            </a>
-          )}
-          {delivery.insight_screenshot_url && (
-            <a className="kx-link" href={delivery.insight_screenshot_url} target="_blank" rel="noreferrer">
-              Buka screenshot ↗
-            </a>
-          )}
-          {delivery.with_admin && <p className="kx-note">Sedang diperiksa Admin.</p>}
-          {delivery.note && <p className="kx-note">{delivery.note}</p>}
-          {delivery.status === "submitted" && !delivery.with_admin && (
-            <div className="kx-brand-actions">
-              <button
-                type="button"
-                className="kx-btn"
-                disabled={busy}
-                onClick={() => review(delivery, "approve")}
-              >
-                Setujui & bayar
-              </button>
-              {!expired && (
-                <button
-                  type="button"
-                  className="kx-btn kx-btn--ghost"
-                  disabled={busy}
-                  onClick={() => review(delivery, "revision")}
-                >
-                  Minta revisi
-                </button>
+      </nav>
+      {items.length ? (
+        <div className="bs-rows">
+          {items.map((item) => (
+            <article className="bs-report" key={item.id}>
+              <div className="bs-report-head">
+                <div>
+                  <b>{item.label}</b>
+                  <small>
+                    {item.name} · {item.platform}
+                  </small>
+                </div>
+                <div>
+                  <Status state={item.status} />
+                  <strong>{money(item.amount)}</strong>
+                </div>
+              </div>
+              {(item.content_url || item.insight_screenshot_url) && (
+                <div className="bs-proof-links">
+                  {item.content_url && (
+                    <a href={item.content_url} target="_blank" rel="noreferrer">
+                      Buka postingan <ArrowUpRight size={14} />
+                    </a>
+                  )}
+                  {item.insight_screenshot_url && (
+                    <a href={item.insight_screenshot_url} target="_blank" rel="noreferrer">
+                      Buka screenshot <ArrowUpRight size={14} />
+                    </a>
+                  )}
+                </div>
               )}
-              <button
-                type="button"
-                className="kx-btn kx-btn--ghost"
-                disabled={busy}
-                onClick={() => review(delivery, "reject")}
-              >
-                Tolak
-              </button>
-            </div>
-          )}
-        </article>
-      ))}
-    </>
+              {item.with_admin && <Notice>Sedang diperiksa Admin.</Notice>}
+              {item.note && <p className="bs-muted">{item.note}</p>}
+              {item.status === "submitted" && !item.with_admin && (
+                <div className="bs-actions">
+                  <Button kind="primary" onClick={() => review(item, "approve")}>
+                    Setujui & bayar
+                  </Button>
+                  {!expired && <Button onClick={() => review(item, "revision")}>Minta revisi</Button>}
+                  <Button kind="text" onClick={() => review(item, "reject")}>
+                    Tolak
+                  </Button>
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      ) : (
+        <Empty>Belum ada laporan untuk status ini.</Empty>
+      )}
+    </section>
   );
 }

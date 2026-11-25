@@ -1,0 +1,31 @@
+.kol-brand-manager {
+  --kb-ink: var(--ink);
+  --kb-line: var(--line);
+  --kb-field-line: var(--line);
+  --kb-muted: var(--muted);
+  --kb-soft: var(--soft);
+  --kb-link: var(--blue);
+  --kb-mono: var(--mono);
+  --kb-panel-radius: var(--r);
+  --kb-control-radius: var(--rs);
+  --kb-panel-shadow: var(--sh);
+  min-width: 0;
+}
+
+.kol-brand-manager .kb-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.kol-brand-manager .kb-section h2::before {
+  content: "";
+  flex: 0 0 3px;
+  height: 13px;
+  border-radius: 2px;
+  background: var(--red);
+}
+
+.kol-brand-manager .kb-section label {
+  margin: 0;
+}

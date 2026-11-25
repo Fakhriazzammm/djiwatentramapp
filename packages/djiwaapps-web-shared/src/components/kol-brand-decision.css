@@ -1,0 +1,78 @@
+.bd-dialog {
+  width: min(454px, calc(100% - 28px));
+  max-height: calc(100dvh - 36px);
+  margin: auto;
+  padding: 25px;
+  border: 1px solid #dfe5ed;
+  border-radius: 24px;
+  color: #12233b;
+  background: #fff;
+  box-shadow: 0 24px 75px #15264128;
+}
+.bd-dialog::backdrop {
+  background: #0d1f3a65;
+}
+.bd-dialog form {
+  display: grid;
+  gap: 12px;
+}
+.bd-dialog h2 {
+  margin: 0;
+  font-size: 1.28rem;
+  font-weight: 720;
+  letter-spacing: -0.025em;
+}
+.bd-dialog p {
+  margin: 0;
+  color: #526077;
+  line-height: 1.5;
+}
+.bd-dialog label {
+  display: grid;
+  gap: 5px;
+  color: #16263e;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.bd-dialog :is(input, textarea) {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 11px;
+  border: 1px solid #c9d2e0;
+  border-radius: 10px;
+  background: #f8fafd;
+  font: inherit;
+}
+.bd-dialog textarea {
+  resize: vertical;
+}
+.bd-dialog .bd-error {
+  color: #aa3025;
+}
+.bd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 5px;
+}
+.bd-actions button {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #152943;
+  font-weight: 650;
+  cursor: pointer;
+}
+.bd-actions button[type="submit"] {
+  background: #102849;
+  color: #fff;
+}
+.bd-actions button[data-danger] {
+  background: #a82622;
+}
+.bd-actions button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}

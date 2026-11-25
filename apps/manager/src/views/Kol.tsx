@@ -1,3 +1,4 @@
+import { KolBrandOperations, type BrandOperationsApi } from "../../../../packages/djiwaapps-web-shared/src/components/kol-brand-operations";
 import { CampaignApplications, CampaignEditorExtras, campaignEditorFields, visitCampaignTemplate, type CampaignApplication } from "../../../../packages/djiwaapps-web-shared/src/components/kol-campaign-editor";
 import type { CampaignDraft, CampaignFields } from "../../../../supabase/functions/_shared/kol-campaign";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -6,6 +7,7 @@ import { toast } from "sonner";
 import { api, ApiError } from "../lib/api";
 import { Empty, Kpis, Panel, Tabs } from "../ui";
 import { KolRewardsView } from "./KolRewards";
+import "./kol-brand-manager.css";
 import { KolAnnouncementsView } from "./KolAnnouncements";
 import { BookingExtras, SowPanel, type EmailRow, type SowVersion, type VisitSettings } from "./KolSow";
 
@@ -71,7 +73,7 @@ type Snapshot = {
   visits: Visit[]; inquiries: Inquiry[]; reports: Report[]; creators: Creator[]; invites: Invite[];
   sowVersions: SowVersion[]; settings: VisitSettings | null; emails: EmailRow[];
 };
-type Tab = "ringkasan" | "creator" | "kampanye" | "reward" | "pengumuman" | "visit" | "komunitas" | "inquiry";
+type Tab = "ringkasan" | "creator" | "kampanye" | "brand" | "reward" | "pengumuman" | "visit" | "komunitas" | "inquiry";
 type Send = (body: Record<string, unknown>, message?: string) => Promise<{ ok: boolean; data: unknown }>;
 
 /* ------------------------------------------------------------------ */
@@ -235,12 +237,16 @@ const TAB_ITEMS: [Tab, string][] = [
   ["ringkasan", "Ringkasan"],
   ["creator", "Creator"],
   ["kampanye", "Kampanye"],
+  ["brand", "Brand"],
   ["reward", "Reward"],
   ["pengumuman", "Pengumuman"],
   ["visit", "Visit"],
   ["komunitas", "Komunitas"],
   ["inquiry", "Inquiry"],
 ];
+
+const brandOperationsApi: BrandOperationsApi = async <T,>(path: string, method?: string, body?: unknown) =>
+  (await api<{ data: T }>(`/api/manager/kol-brand${path}`, { method, body })).data;
 
 export function KolView() {
   const [data, setData] = useState<Snapshot | null>(null);
@@ -292,6 +298,7 @@ export function KolView() {
       {data && tab === "ringkasan" && <RingkasanView data={data} onGo={go} />}
       {data && tab === "creator" && <CreatorView key={focus ?? "all"} data={data} send={send} initial={focus} onReload={load} />}
       {data && tab === "kampanye" && <KampanyeView data={data} send={send} onReload={load} />}
+      {tab === "brand" && <div className="kol-brand-manager"><KolBrandOperations call={brandOperationsApi} /></div>}
       {tab === "reward" && <KolRewardsView />}
       {tab === "pengumuman" && <KolAnnouncementsView />}
       {data && tab === "visit" && <VisitView data={data} send={send} />}

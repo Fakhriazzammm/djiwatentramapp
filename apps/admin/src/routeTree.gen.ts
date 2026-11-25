@@ -47,6 +47,7 @@ import { Route as AdminKolInquiriesRouteImport } from './routes/admin/kol-inquir
 import { Route as AdminKolCreatorsRouteImport } from './routes/admin/kol-creators'
 import { Route as AdminKolCommunityRouteImport } from './routes/admin/kol-community'
 import { Route as AdminKolCampaignsRouteImport } from './routes/admin/kol-campaigns'
+import { Route as AdminKolBrandRouteImport } from './routes/admin/kol-brand'
 import { Route as AdminKolAnnouncementsRouteImport } from './routes/admin/kol-announcements'
 import { Route as AdminKolRouteImport } from './routes/admin/kol'
 import { Route as AdminKitchenRouteImport } from './routes/admin/kitchen'
@@ -365,6 +366,13 @@ const AdminKolCampaignsRoute = AdminKolCampaignsRouteImport.update({
   getParentRoute: () => AdminRouteRoute,
 } as any).lazy(() =>
   import('./routes/admin/kol-campaigns.lazy').then((d) => d.Route),
+)
+const AdminKolBrandRoute = AdminKolBrandRouteImport.update({
+  id: '/kol-brand',
+  path: '/kol-brand',
+  getParentRoute: () => AdminRouteRoute,
+} as any).lazy(() =>
+  import('./routes/admin/kol-brand.lazy').then((d) => d.Route),
 )
 const AdminKolAnnouncementsRoute = AdminKolAnnouncementsRouteImport.update({
   id: '/kol-announcements',
@@ -1047,6 +1055,7 @@ export interface FileRoutesByFullPath {
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/kol': typeof AdminKolRoute
   '/admin/kol-announcements': typeof AdminKolAnnouncementsRoute
+  '/admin/kol-brand': typeof AdminKolBrandRoute
   '/admin/kol-campaigns': typeof AdminKolCampaignsRoute
   '/admin/kol-community': typeof AdminKolCommunityRoute
   '/admin/kol-creators': typeof AdminKolCreatorsRoute
@@ -1166,6 +1175,7 @@ export interface FileRoutesByTo {
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/kol': typeof AdminKolRoute
   '/admin/kol-announcements': typeof AdminKolAnnouncementsRoute
+  '/admin/kol-brand': typeof AdminKolBrandRoute
   '/admin/kol-campaigns': typeof AdminKolCampaignsRoute
   '/admin/kol-community': typeof AdminKolCommunityRoute
   '/admin/kol-creators': typeof AdminKolCreatorsRoute
@@ -1281,6 +1291,7 @@ export interface FileRoutesById {
   '/admin/kitchen': typeof AdminKitchenRoute
   '/admin/kol': typeof AdminKolRoute
   '/admin/kol-announcements': typeof AdminKolAnnouncementsRoute
+  '/admin/kol-brand': typeof AdminKolBrandRoute
   '/admin/kol-campaigns': typeof AdminKolCampaignsRoute
   '/admin/kol-community': typeof AdminKolCommunityRoute
   '/admin/kol-creators': typeof AdminKolCreatorsRoute
@@ -1407,6 +1418,7 @@ export interface FileRouteTypes {
     | '/admin/kitchen'
     | '/admin/kol'
     | '/admin/kol-announcements'
+    | '/admin/kol-brand'
     | '/admin/kol-campaigns'
     | '/admin/kol-community'
     | '/admin/kol-creators'
@@ -1526,6 +1538,7 @@ export interface FileRouteTypes {
     | '/admin/kitchen'
     | '/admin/kol'
     | '/admin/kol-announcements'
+    | '/admin/kol-brand'
     | '/admin/kol-campaigns'
     | '/admin/kol-community'
     | '/admin/kol-creators'
@@ -1640,6 +1653,7 @@ export interface FileRouteTypes {
     | '/admin/kitchen'
     | '/admin/kol'
     | '/admin/kol-announcements'
+    | '/admin/kol-brand'
     | '/admin/kol-campaigns'
     | '/admin/kol-community'
     | '/admin/kol-creators'
@@ -2011,6 +2025,13 @@ declare module '@tanstack/react-router' {
       path: '/kol-campaigns'
       fullPath: '/admin/kol-campaigns'
       preLoaderRoute: typeof AdminKolCampaignsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/kol-brand': {
+      id: '/admin/kol-brand'
+      path: '/kol-brand'
+      fullPath: '/admin/kol-brand'
+      preLoaderRoute: typeof AdminKolBrandRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/kol-announcements': {
@@ -2968,6 +2989,7 @@ interface AdminRouteRouteChildren {
   AdminKitchenRoute: typeof AdminKitchenRoute
   AdminKolRoute: typeof AdminKolRoute
   AdminKolAnnouncementsRoute: typeof AdminKolAnnouncementsRoute
+  AdminKolBrandRoute: typeof AdminKolBrandRoute
   AdminKolCampaignsRoute: typeof AdminKolCampaignsRoute
   AdminKolCommunityRoute: typeof AdminKolCommunityRoute
   AdminKolCreatorsRoute: typeof AdminKolCreatorsRoute
@@ -3014,6 +3036,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminKitchenRoute: AdminKitchenRoute,
   AdminKolRoute: AdminKolRoute,
   AdminKolAnnouncementsRoute: AdminKolAnnouncementsRoute,
+  AdminKolBrandRoute: AdminKolBrandRoute,
   AdminKolCampaignsRoute: AdminKolCampaignsRoute,
   AdminKolCommunityRoute: AdminKolCommunityRoute,
   AdminKolCreatorsRoute: AdminKolCreatorsRoute,

@@ -1,6 +1,25 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { KolBrandOperations } from "../../../../../../packages/djiwaapps-web-shared/src/components/kol-brand-operations";
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { ArrowLeft, ArrowRight, RefreshCw } from "lucide-react";
+import {
+  KolBrandDecision,
+  type BrandDecision,
+} from "../../../../../../packages/djiwaapps-web-shared/src/components/kol-brand-decision";
+import "./kol-brand.css";
 import { toast } from "sonner";
-import { Btn, Card, ErrorBox, Field, KV, Loading, inputCls } from "./kol-ui";
+import {
+  Btn,
+  Card,
+  Chips,
+  EmptyBlock,
+  ErrorBox,
+  Label,
+  Loading,
+  NoAccess,
+  Page,
+  PageHeader,
+  StatusTag,
+} from "./kol-ui";
 import { dateTime, rupiah, useRewardApi } from "./kol-rewards-api";
 
 type Money = string | number;
@@ -121,48 +140,653 @@ const errorMessage = (error: unknown) => {
   return messages[text] || text;
 };
 
+type Area = "analytics" | "brands" | "campaigns";
+type Act = (path: string, body: unknown) => Promise<void>;
+type Decide = (decision: BrandDecision) => void;
+
+const areaItems: { key: Area; label: string }[] = [
+  { key: "campaigns", label: "Kampanye" },
+  { key: "brands", label: "Pendaftaran Brand" },
+  { key: "analytics", label: "Analisis & pengaturan" },
+];
+const detailItems = ["Laporan", "Pendaftar", "Tagihan & refund", "Ledger & audit"].map((name) => ({
+  key: name,
+  label: name,
+}));
+
+function Status({ value }: { value: string }) {
+  const color = ["active", "published", "approved", "paid"].includes(value)
+    ? "#166534"
+    : ["pending", "submitted", "needs_revision", "review", "creating"].includes(value)
+      ? "#7a4b00"
+      : ["rejected", "expired", "void"].includes(value)
+        ? "#b42318"
+        : "#666672";
+  return <StatusTag color={color}>{label[value] ?? value}</StatusTag>;
+}
+
+function DeskTable({ title, headers, children }: { title: string; headers: string[]; children: ReactNode }) {
+  return (
+    <div className="ba-table-scroll" tabIndex={0} aria-label={title}>
+      <table className="ba-table" aria-label={title}>
+        <thead>
+          <tr>
+            {headers.map((name) => (
+              <th scope="col" key={name}>
+                {name}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>{children}</tbody>
+      </table>
+    </div>
+  );
+}
+
+function Empty({ children }: { children: string }) {
+  return <EmptyBlock title={children} />;
+}
+
+function Action({
+  children,
+  onClick,
+  disabled,
+  primary,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+}) {
+  return (
+    <Btn size="sm" variant={primary ? "primary" : "outline"} onClick={onClick} disabled={disabled}>
+      {children}
+    </Btn>
+  );
+}
+
 export function KolBrandAdmin() {
+  const { call, ready, canManage } = useRewardApi("kol-brand");
+  const [area, setArea] = useState<Area>("campaigns");
+  const [selected, setSelected] = useState("");
+  if (!canManage) return <NoAccess />;
+  return (
+    <Page>
+      <div className="brand-desk">
+        <PageHeader title="Brand" description="Kelola pendaftaran, kampanye, dan pembayaran reward." />
+        <nav aria-label="Menu Brand Admin">
+          <Chips options={areaItems} value={area} onChange={setArea} />
+        </nav>
+        {area === "analytics" ? (
+          <KolBrandOperations
+            call={call}
+            ready={ready}
+            onOpenOperations={(id) => {
+              setSelected(String(id));
+              setArea("campaigns");
+            }}
+          />
+        ) : (
+          <BrandWorkflow area={area} selected={selected} onSelect={setSelected} />
+        )}
+      </div>
+    </Page>
+  );
+}
+
+function BrandWorkflow({
+  area,
+  selected,
+  onSelect,
+}: {
+  area: Exclude<Area, "analytics">;
+  selected: string;
+  onSelect: (id: string) => void;
+}) {
   const { call, ready } = useRewardApi("kol-brand");
   const [overview, setOverview] = useState<{ businesses: Business[]; campaigns: Campaign[] } | null>(null);
-  const [selected, setSelected] = useState("");
   const [detail, setDetail] = useState<Detail | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [decision, decide] = useState<BrandDecision | null>(null);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState("Laporan");
   const load = useCallback(async () => {
+    const data = await call<{ businesses: Business[]; campaigns: Campaign[] }>("");
+    setOverview(data);
+  }, [call]);
+
+  useEffect(() => {
+    setSearch("");
+    setFilter("all");
+  }, [area]);
+
+  useEffect(() => {
     if (!ready) return;
+    void load().catch((reason) => setError(errorMessage(reason)));
+  }, [load, ready]);
+
+  useEffect(() => {
+    if (!ready || !selected || area !== "campaigns") return;
+    let active = true;
+    void call<Detail>(`/campaigns/${selected}`)
+      .then((data) => {
+        if (active) setDetail(data);
+      })
+      .catch((reason) => {
+        if (active) setError(errorMessage(reason));
+      });
+    return () => {
+      active = false;
+    };
+  }, [area, call, ready, selected]);
+
+  const current = String(detail?.campaign.id) === selected ? detail : null;
+  const refresh = async () => {
+    setError("");
     try {
-      setOverview(await call(""));
-      setError("");
+      await load();
+      if (selected && area === "campaigns") setDetail(await call<Detail>(`/campaigns/${selected}`));
     } catch (reason) {
       setError(errorMessage(reason));
     }
-  }, [call, ready]);
-  const loadDetail = useCallback(
-    async (id: string) => {
-      if (!id) return;
-      try {
-        setDetail(await call(`/campaigns/${id}`));
-      } catch (reason) {
-        setError(errorMessage(reason));
-      }
-    },
-    [call],
-  );
-  useEffect(() => {
-    void load();
-  }, [load]);
-  useEffect(() => {
-    if (selected) void loadDetail(selected);
-  }, [loadDetail, selected]);
+  };
+  const act: Act = async (path, body) => {
+    try {
+      await call(path, "POST", body);
+    } catch (reason) {
+      throw new Error(errorMessage(reason));
+    }
+    toast.success("Perubahan disimpan.");
+    await refresh();
+  };
+  const select = (id: string) => {
+    setError("");
+    onSelect(id);
+  };
+  if (!ready || (!overview && !error)) return <Loading />;
+  const query = search.trim().toLowerCase();
+  const businesses =
+    overview?.businesses.filter(
+      (item) =>
+        (filter === "all" || item.status === filter) &&
+        `${item.name} ${item.contact_email} ${item.contact_phone}`.toLowerCase().includes(query),
+    ) ?? [];
+  const campaigns =
+    overview?.campaigns.filter(
+      (item) =>
+        (filter === "all" || item.status === filter) &&
+        `${item.title} ${item.brand}`.toLowerCase().includes(query),
+    ) ?? [];
 
-  const act = async (path: string, body: unknown) => {
+  return (
+    <>
+      {error && <ErrorBox message={error} onRetry={() => void refresh()} />}
+      {area === "campaigns" && selected ? (
+        <>
+          <div className="ba-toolbar">
+            <button type="button" className="ba-text-action" onClick={() => select("")}>
+              <ArrowLeft size={16} /> Semua kampanye
+            </button>
+            <Action onClick={() => void refresh()}>
+              <RefreshCw size={15} /> Muat ulang
+            </Action>
+          </div>
+          {current ? (
+            <CampaignDesk
+              key={selected}
+              detail={current}
+              path={`/campaigns/${selected}`}
+              act={act}
+              decide={decide}
+            />
+          ) : (
+            !error && <Loading />
+          )}
+        </>
+      ) : (
+        <Card>
+          <div className="ba-section-head">
+            <div>
+              <h2>{area === "brands" ? "Pendaftaran Brand" : "Kampanye Brand"}</h2>
+              <p>
+                {area === "brands"
+                  ? `${overview?.businesses.filter((item) => item.status === "pending").length ?? 0} menunggu verifikasi`
+                  : "Buka kampanye untuk melihat laporan dan transaksi."}
+              </p>
+            </div>
+            <Action onClick={() => void refresh()}>
+              <RefreshCw size={15} /> Muat ulang
+            </Action>
+          </div>
+          <div className="ba-filters">
+            <label>
+              Cari{" "}
+              <input
+                type="search"
+                value={search}
+                placeholder={area === "brands" ? "Nama Brand atau kontak" : "Kampanye atau Brand"}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
+            <label>
+              Status{" "}
+              <select value={filter} onChange={(event) => setFilter(event.target.value)}>
+                {(area === "brands"
+                  ? ["all", "pending", "active", "rejected"]
+                  : ["all", "draft", "published", "closed"]
+                ).map((value) => (
+                  <option key={value} value={value}>
+                    {value === "all" ? "Semua status" : label[value]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {area === "brands" ? (
+            businesses.length ? (
+              <DeskTable title="Pendaftaran Brand" headers={["Brand", "Kontak", "Status", "Tindakan"]}>
+                {businesses.map((brand) => (
+                  <tr key={brand.id}>
+                    <th scope="row">
+                      {brand.name}
+                      {brand.review_note && <small>{brand.review_note}</small>}
+                    </th>
+                    <td>
+                      {brand.contact_email}
+                      <small>{brand.contact_phone}</small>
+                    </td>
+                    <td>
+                      <Status value={brand.status} />
+                    </td>
+                    <td>
+                      {brand.status === "pending" ? (
+                        <div className="ba-row-actions">
+                          <Action
+                            primary
+                            onClick={() =>
+                              decide({
+                                title: "Aktifkan Brand",
+                                detail: `${brand.name} akan bisa mengelola kampanye dan anggaran.`,
+                                confirm: "Aktifkan Brand",
+                                submit: () => act(`/businesses/${brand.id}/review`, { approve: true }),
+                              })
+                            }
+                          >
+                            Aktifkan
+                          </Action>
+                          <Action
+                            onClick={() =>
+                              decide({
+                                title: "Tolak pendaftaran",
+                                detail: brand.name,
+                                confirm: "Tolak pengajuan",
+                                danger: true,
+                                note: "Alasan penolakan",
+                                submit: ({ note }) =>
+                                  act(`/businesses/${brand.id}/review`, { approve: false, note }),
+                              })
+                            }
+                          >
+                            Tolak
+                          </Action>
+                        </div>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </DeskTable>
+            ) : (
+              <Empty>Belum ada pendaftaran untuk filter ini.</Empty>
+            )
+          ) : campaigns.length ? (
+            <DeskTable
+              title="Kampanye Brand"
+              headers={["Kampanye", "Brand", "Status", "Perlu review", "Dana tersedia", "Reward dibayar"]}
+            >
+              {campaigns.map((campaign) => (
+                <tr key={campaign.id}>
+                  <th scope="row">
+                    <button
+                      className="ba-text-action"
+                      type="button"
+                      onClick={() => select(String(campaign.id))}
+                    >
+                      {campaign.title}
+                      <ArrowRight size={14} />
+                    </button>
+                  </th>
+                  <td>{campaign.brand}</td>
+                  <td>
+                    <Status value={campaign.status} />
+                  </td>
+                  <td>{campaign.in_review}</td>
+                  <td>{rupiah(campaign.available)}</td>
+                  <td>{rupiah(campaign.paid)}</td>
+                </tr>
+              ))}
+            </DeskTable>
+          ) : (
+            <Empty>Belum ada kampanye untuk filter ini.</Empty>
+          )}
+        </Card>
+      )}
+      {decision && <KolBrandDecision decision={decision} onClose={() => decide(null)} />}
+    </>
+  );
+}
+
+function CampaignDesk({
+  detail,
+  path,
+  act,
+  decide,
+}: {
+  detail: Detail;
+  path: string;
+  act: Act;
+  decide: Decide;
+}) {
+  const [tab, setTab] = useState("Laporan");
+  const [reportStatus, setReportStatus] = useState("all");
+  const { campaign, integrity } = detail;
+  const review = (report: Delivery, action: "approve" | "revision" | "reject" | "expire") => {
+    const title = {
+      approve: "Setujui & bayar",
+      revision: "Minta revisi",
+      reject: "Tolak laporan",
+      expire: "Akhiri tugas",
+    }[action];
+    decide({
+      title,
+      confirm: title,
+      detail:
+        action === "approve"
+          ? `${rupiah(report.amount)} akan dikreditkan ke saldo Djiwa Pay ${report.name}.`
+          : `${report.label} · ${report.name}`,
+      note: action !== "approve" || report.with_admin ? "Catatan keputusan" : undefined,
+      danger: action === "reject" || action === "expire",
+      submit: ({ note }) =>
+        act(`${path}/reports/${report.id}`, { action, revision: report.proof_revision, note }),
+    });
+  };
+  const reports = detail.deliveries.filter(
+    (item) =>
+      reportStatus === "all" ||
+      (reportStatus === "escalated" ? item.with_admin : item.status === reportStatus),
+  );
+  return (
+    <>
+      <Card className="ba-campaign-head">
+        <div className="ba-section-head">
+          <div>
+            <p>{campaign.brand}</p>
+            <h2>{campaign.title}</h2>
+          </div>
+          <Status value={campaign.status} />
+        </div>
+        <dl className="ba-metrics">
+          {(
+            [
+              ["Dana masuk", campaign.funded],
+              ["Tersedia", campaign.available],
+              ["Dicadangkan", campaign.reserved],
+              ["Dibayar", campaign.paid],
+              ["Refund", campaign.refunded],
+            ] as const
+          ).map(([name, value]) => (
+            <div key={name}>
+              <dt>
+                <Label>{name}</Label>
+              </dt>
+              <dd>{rupiah(value)}</dd>
+            </div>
+          ))}
+        </dl>
+      </Card>
+      <nav aria-label="Detail kampanye">
+        <Chips options={detailItems} value={tab} onChange={setTab} />
+      </nav>
+      <Card>
+        {tab === "Laporan" && (
+          <>
+            <div className="ba-section-head">
+              <div>
+                <h2>Laporan KOL</h2>
+                <p>{detail.deliveries.length} tugas tercatat</p>
+              </div>
+              <label className="ba-field">
+                Status{" "}
+                <select value={reportStatus} onChange={(event) => setReportStatus(event.target.value)}>
+                  <option value="all">Semua</option>
+                  <option value="submitted">Dalam review</option>
+                  <option value="escalated">Eskalasi</option>
+                  <option value="needs_revision">Perlu revisi</option>
+                  <option value="paid">Dibayar</option>
+                </select>
+              </label>
+            </div>
+            {reports.length ? (
+              <DeskTable
+                title="Laporan KOL"
+                headers={["Tugas dan KOL", "Status", "Reward", "Bukti", "Tindakan"]}
+              >
+                {reports.map((report) => (
+                  <tr key={report.id}>
+                    <th scope="row">
+                      {report.label}
+                      <small>
+                        {report.name} · {report.platform}
+                      </small>
+                    </th>
+                    <td>
+                      <Status value={report.status} />
+                      {report.with_admin && <small>Eskalasi KOL · {report.dispute_note}</small>}
+                      {report.dispute_resolution && <small>{report.dispute_resolution}</small>}
+                      {report.note && <small>{report.note}</small>}
+                    </td>
+                    <td>
+                      {rupiah(report.amount)}
+                      {report.wallet_ledger_key && <small>{report.wallet_ledger_key}</small>}
+                    </td>
+                    <td>
+                      {report.content_url && (
+                        <a href={report.content_url} target="_blank" rel="noreferrer">
+                          Postingan ↗
+                        </a>
+                      )}
+                      {report.insight_screenshot_url && (
+                        <small>
+                          <a href={report.insight_screenshot_url} target="_blank" rel="noreferrer">
+                            Screenshot ↗
+                          </a>
+                        </small>
+                      )}
+                      {!report.content_url && !report.insight_screenshot_url && "—"}
+                    </td>
+                    <td>
+                      <div className="ba-row-actions">
+                        {(report.status === "submitted" ||
+                          (report.status === "needs_revision" && report.with_admin)) && (
+                          <>
+                            <Action primary onClick={() => review(report, "approve")}>
+                              Setujui & bayar
+                            </Action>
+                            {report.status === "submitted" && !campaign.deadline_passed && (
+                              <Action onClick={() => review(report, "revision")}>Minta revisi</Action>
+                            )}
+                            <Action onClick={() => review(report, "reject")}>Tolak</Action>
+                          </>
+                        )}
+                        {campaign.deadline_passed &&
+                          ["awaiting", "needs_revision"].includes(report.status) && (
+                            <Action onClick={() => review(report, "expire")}>Akhiri tugas</Action>
+                          )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </DeskTable>
+            ) : (
+              <Empty>Belum ada laporan untuk status ini.</Empty>
+            )}
+          </>
+        )}
+        {tab === "Pendaftar" && (
+          <>
+            <div className="ba-section-head">
+              <h2>Pendaftar</h2>
+            </div>
+            {detail.applications.length ? (
+              <DeskTable title="Pendaftar kampanye" headers={["KOL", "Status", "Catatan", "Tindakan"]}>
+                {detail.applications.map((item) => (
+                  <tr key={item.id}>
+                    <th scope="row">{item.name}</th>
+                    <td>
+                      <Status value={item.status} />
+                    </td>
+                    <td>{item.review_note || "—"}</td>
+                    <td>
+                      {item.status === "pending" && (
+                        <div className="ba-row-actions">
+                          {campaign.status === "published" && !campaign.deadline_passed && (
+                            <Action
+                              primary
+                              onClick={() =>
+                                decide({
+                                  title: "Terima pendaftar",
+                                  detail: `Anggaran reward akan dicadangkan untuk ${item.name}.`,
+                                  confirm: "Terima",
+                                  submit: () => act(`${path}/applications/${item.id}`, { approve: true }),
+                                })
+                              }
+                            >
+                              Terima
+                            </Action>
+                          )}
+                          <Action
+                            onClick={() =>
+                              decide({
+                                title: "Tolak pendaftar",
+                                detail: item.name,
+                                confirm: "Tolak",
+                                danger: true,
+                                note: "Alasan penolakan",
+                                submit: ({ note }) =>
+                                  act(`${path}/applications/${item.id}`, { approve: false, note }),
+                              })
+                            }
+                          >
+                            Tolak
+                          </Action>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </DeskTable>
+            ) : (
+              <Empty>Belum ada pendaftar.</Empty>
+            )}
+          </>
+        )}
+        {tab === "Tagihan & refund" && (
+          <BrandInvoices detail={detail} path={path} act={act} decide={decide} />
+        )}
+        {tab === "Ledger & audit" && (
+          <>
+            <div className="ba-section-head">
+              <div>
+                <h2>Ledger & audit</h2>
+                <p>
+                  Payout {rupiah(integrity.payoutTotal)} · kredit Djiwa Pay {rupiah(integrity.walletCredited)}
+                </p>
+              </div>
+              <StatusTag color={integrity.budgetBalanced && integrity.walletMatches ? "#166534" : "#b42318"}>
+                {integrity.budgetBalanced && integrity.walletMatches ? "Saldo cocok" : "Perlu rekonsiliasi"}
+              </StatusTag>
+            </div>
+            {detail.ledger.length ? (
+              <DeskTable
+                title="Mutasi anggaran"
+                headers={["Waktu", "Aktivitas", "Tersedia", "Cadangan", "Dibayar", "Refund"]}
+              >
+                {detail.ledger.map((item) => (
+                  <tr key={item.id}>
+                    <td>{dateTime(item.created_at)}</td>
+                    <th scope="row">
+                      {label[item.kind] ?? item.kind}
+                      {item.note && <small>{item.note}</small>}
+                    </th>
+                    <td>{rupiah(item.available_delta)}</td>
+                    <td>{rupiah(item.reserved_delta)}</td>
+                    <td>{rupiah(item.paid_delta)}</td>
+                    <td>{rupiah(item.refunded_delta)}</td>
+                  </tr>
+                ))}
+              </DeskTable>
+            ) : (
+              <Empty>Belum ada mutasi anggaran.</Empty>
+            )}
+            <h3 className="ba-subheading">Aktivitas tim</h3>
+            {detail.events.length ? (
+              <DeskTable title="Audit kampanye" headers={["Waktu", "Aktivitas", "Aktor", "Catatan"]}>
+                {detail.events.map((item) => (
+                  <tr key={item.id}>
+                    <td>{dateTime(item.created_at)}</td>
+                    <th scope="row">
+                      {item.action.replaceAll("_", " ")}
+                      <small>{item.entity_id}</small>
+                    </th>
+                    <td>{item.actor}</td>
+                    <td>
+                      {typeof item.detail.note === "string" ? item.detail.note : "—"}
+                      {typeof item.detail.reference === "string" && <small>{item.detail.reference}</small>}
+                    </td>
+                  </tr>
+                ))}
+              </DeskTable>
+            ) : (
+              <Empty>Belum ada aktivitas tim.</Empty>
+            )}
+          </>
+        )}
+      </Card>
+    </>
+  );
+}
+
+function BrandInvoices({
+  detail,
+  path,
+  act,
+  decide,
+}: {
+  detail: Detail;
+  path: string;
+  act: Act;
+  decide: Decide;
+}) {
+  const outstanding = detail.deposits.some((item) => ["creating", "pending", "review"].includes(item.state));
+  const paid = detail.deposits.filter(
+    (item) => item.state === "paid" && Number(item.refunded) < Number(item.nominal),
+  );
+  const canRefund =
+    detail.campaign.status === "closed" &&
+    !outstanding &&
+    Number(detail.campaign.reserved) === 0 &&
+    Number(detail.campaign.available) > 0 &&
+    paid.length > 0;
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const run = async (action: string, payload: unknown) => {
     setBusy(true);
     setError("");
     try {
-      await call(path, "POST", body);
-      toast.success("Perubahan dicatat.");
-      await Promise.all([load(), loadDetail(selected)]);
+      await act(action, payload);
       return true;
     } catch (reason) {
       setError(errorMessage(reason));
@@ -171,417 +795,130 @@ export function KolBrandAdmin() {
       setBusy(false);
     }
   };
-  const current = detail?.campaign.id === selected ? detail : null;
-  const campaignPath = `/campaigns/${selected}`;
-  const reviewReport = (report: Delivery, action: string) => {
-    const approving = action === "approve";
-    if (approving && !window.confirm(`Setujui laporan dan bayar ${rupiah(report.amount)}?`)) return;
-    const note = !approving || report.with_admin ? window.prompt("Catatan keputusan Admin") : "";
-    if (note === null || ((!approving || report.with_admin) && !note.trim())) return;
-    void act(`${campaignPath}/reports/${report.id}`, { action, revision: report.proof_revision, note });
-  };
-  return (
-    <>
-      <div className="flex justify-end">
-        <Btn onClick={() => void Promise.all([load(), loadDetail(selected)])}>Muat ulang data Brand</Btn>
-      </div>
-      {error && <ErrorBox message={error} onRetry={() => void Promise.all([load(), loadDetail(selected)])} />}
-      {!overview && !error && <Loading />}
-      {overview && (
-        <>
-          <section>
-            <h2 className="mb-2 font-semibold">Pendaftaran Brand</h2>
-            {overview.businesses.length === 0 && <p>Belum ada pengajuan.</p>}
-            <div className="space-y-2">
-              {overview.businesses.map((brand) => (
-                <Card key={brand.id}>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <strong>{brand.name}</strong>
-                      <p className="text-xs text-neutral-600">
-                        {brand.contact_email} · {brand.contact_phone} · {label[brand.status]}
-                      </p>
-                      {brand.review_note && <p className="text-xs">{brand.review_note}</p>}
-                    </div>
-                    {brand.status === "pending" && (
-                      <div className="flex flex-wrap gap-2">
-                        <Btn
-                          disabled={busy}
-                          onClick={() => void act(`/businesses/${brand.id}/review`, { approve: true })}
-                        >
-                          Aktifkan
-                        </Btn>
-                        <Btn
-                          disabled={busy}
-                          onClick={() => {
-                            const note = window.prompt("Alasan penolakan Brand");
-                            if (note?.trim())
-                              void act(`/businesses/${brand.id}/review`, { approve: false, note });
-                          }}
-                        >
-                          Tolak
-                        </Btn>
-                      </div>
-                    )}
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </section>
-          <section>
-            <h2 className="mb-2 font-semibold">Kampanye Brand</h2>
-            <Field label="Pilih kampanye">
-              <select
-                className={inputCls}
-                value={selected}
-                onChange={(event) => {
-                  setDetail(null);
-                  setError("");
-                  setSelected(event.target.value);
-                }}
-              >
-                <option value="">Pilih kampanye</option>
-                {overview.campaigns.map((campaign) => (
-                  <option key={campaign.id} value={campaign.id}>
-                    {campaign.title} · {campaign.brand} · {label[campaign.status]}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            {selected && !current && !error && <Loading />}
-            {current && (
-              <>
-                <div className="my-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
-                  {(
-                    [
-                      ["Dana masuk", current.campaign.funded],
-                      ["Tersedia", current.campaign.available],
-                      ["Dicadangkan", current.campaign.reserved],
-                      ["Dibayar", current.campaign.paid],
-                      ["Dikembalikan", current.campaign.refunded],
-                    ] as const
-                  ).map(([name, value]) => (
-                    <Card key={name}>
-                      <KV label={name}>{rupiah(value)}</KV>
-                    </Card>
-                  ))}
-                </div>
-                <p
-                  className={
-                    current.integrity.budgetBalanced && current.integrity.walletMatches
-                      ? "text-emerald-700"
-                      : "text-red-700"
-                  }
-                  role="status"
-                >
-                  {current.integrity.budgetBalanced
-                    ? "Ledger anggaran seimbang."
-                    : "Ledger anggaran berselisih."}{" "}
-                  Payout {rupiah(current.integrity.payoutTotal)} · kredit Djiwa Pay{" "}
-                  {rupiah(current.integrity.walletCredited)}
-                </p>
-                <nav className="my-3 flex flex-wrap gap-2" aria-label="Data kampanye Brand">
-                  {["Laporan", "Pendaftar", "Tagihan & refund", "Ledger & audit"].map((item) => (
-                    <Btn key={item} aria-pressed={tab === item} onClick={() => setTab(item)}>
-                      {item}
-                    </Btn>
-                  ))}
-                </nav>
-                {tab === "Laporan" &&
-                  (current.deliveries.length ? (
-                    current.deliveries.map((report) => (
-                      <Card key={report.id}>
-                        <div className="flex flex-wrap justify-between gap-2">
-                          <b>
-                            {report.label} · {report.name}
-                          </b>
-                          <span>
-                            {label[report.status]} · {rupiah(report.amount)}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-3 text-sm">
-                          <span>{report.platform}</span>
-                          {report.content_url && (
-                            <a
-                              className="break-all text-blue-700 underline"
-                              href={report.content_url}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              Buka postingan
-                            </a>
-                          )}
-                          {report.insight_screenshot_url && (
-                            <a
-                              className="text-blue-700 underline"
-                              href={report.insight_screenshot_url}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              Buka screenshot
-                            </a>
-                          )}
-                          {report.wallet_ledger_key && <span>{report.wallet_ledger_key}</span>}
-                        </div>
-                        {report.note && <p className="text-sm">{report.note}</p>}
-                        {report.with_admin && (
-                          <p className="text-sm text-amber-800">Eskalasi KOL · {report.dispute_note}</p>
-                        )}
-                        {report.dispute_resolution && (
-                          <p className="text-sm">Keputusan Admin · {report.dispute_resolution}</p>
-                        )}
-                        {(report.status === "submitted" ||
-                          (report.status === "needs_revision" && report.with_admin)) && (
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            <Btn disabled={busy} onClick={() => reviewReport(report, "approve")}>
-                              Setujui & bayar
-                            </Btn>
-                            {report.status === "submitted" && !current.campaign.deadline_passed && (
-                              <Btn disabled={busy} onClick={() => reviewReport(report, "revision")}>
-                                Minta revisi
-                              </Btn>
-                            )}
-                            <Btn disabled={busy} onClick={() => reviewReport(report, "reject")}>
-                              Tolak
-                            </Btn>
-                          </div>
-                        )}
-                        {current.campaign.deadline_passed &&
-                          ["awaiting", "needs_revision"].includes(report.status) && (
-                            <Btn disabled={busy} onClick={() => reviewReport(report, "expire")}>
-                              Akhiri tugas & lepas cadangan
-                            </Btn>
-                          )}
-                      </Card>
-                    ))
-                  ) : (
-                    <p>Belum ada laporan.</p>
-                  ))}
-                {tab === "Pendaftar" &&
-                  (current.applications.length ? (
-                    current.applications.map((application) => (
-                      <Card key={application.id}>
-                        <b>{application.name}</b> · {label[application.status]}
-                        {application.review_note && <p>{application.review_note}</p>}
-                        {application.status === "pending" && (
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {current.campaign.status === "published" && !current.campaign.deadline_passed && (
-                              <Btn
-                                disabled={busy}
-                                onClick={() =>
-                                  void act(`${campaignPath}/applications/${application.id}`, {
-                                    approve: true,
-                                  })
-                                }
-                              >
-                                Terima
-                              </Btn>
-                            )}
-                            <Btn
-                              disabled={busy}
-                              onClick={() => {
-                                const note = window.prompt("Alasan penolakan pendaftar");
-                                if (note?.trim())
-                                  void act(`${campaignPath}/applications/${application.id}`, {
-                                    approve: false,
-                                    note,
-                                  });
-                              }}
-                            >
-                              Tolak
-                            </Btn>
-                          </div>
-                        )}
-                      </Card>
-                    ))
-                  ) : (
-                    <p>Belum ada pendaftar.</p>
-                  ))}
-                {tab === "Tagihan & refund" && (
-                  <BrandInvoices
-                    key={selected}
-                    campaignPath={campaignPath}
-                    detail={current}
-                    act={act}
-                    busy={busy}
-                  />
-                )}
-                {tab === "Ledger & audit" && (
-                  <>
-                    <h3 className="my-2 font-semibold">Mutasi anggaran</h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[620px] text-left text-sm">
-                        <thead>
-                          <tr>
-                            <th>Waktu</th>
-                            <th>Aktivitas</th>
-                            <th>Tersedia</th>
-                            <th>Cadangan</th>
-                            <th>Dibayar</th>
-                            <th>Refund</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {current.ledger.map((entry) => (
-                            <tr key={entry.id} className="border-b">
-                              <td>{dateTime(entry.created_at)}</td>
-                              <td>{label[entry.kind] ?? entry.kind}</td>
-                              <td>{rupiah(entry.available_delta)}</td>
-                              <td>{rupiah(entry.reserved_delta)}</td>
-                              <td>{rupiah(entry.paid_delta)}</td>
-                              <td>{rupiah(entry.refunded_delta)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <h3 className="my-2 font-semibold">Audit</h3>
-                    {current.events.map((event) => (
-                      <Card key={event.id}>
-                        <b>{event.action}</b> · {event.entity_id}{" "}
-                        <span className="text-neutral-600">
-                          {event.actor} · {dateTime(event.created_at)}
-                        </span>
-                        {typeof event.detail.note === "string" && <p>{event.detail.note}</p>}
-                        {typeof event.detail.reference === "string" && (
-                          <p>Referensi {event.detail.reference}</p>
-                        )}
-                      </Card>
-                    ))}
-                  </>
-                )}
-              </>
-            )}
-          </section>
-        </>
-      )}
-    </>
-  );
-}
-
-function BrandInvoices({
-  detail,
-  act,
-  campaignPath,
-  busy,
-}: {
-  detail: Detail;
-  act: (path: string, input: unknown) => Promise<boolean>;
-  campaignPath: string;
-  busy: boolean;
-}) {
-  const outstanding = detail.deposits.some((deposit) =>
-    ["creating", "pending", "review"].includes(deposit.state),
-  );
-  const paid = detail.deposits.filter(
-    (deposit) => deposit.state === "paid" && Number(deposit.refunded) < Number(deposit.nominal),
-  );
-  const canRefund =
-    detail.campaign.status === "closed" &&
-    !outstanding &&
-    Number(detail.campaign.reserved) === 0 &&
-    Number(detail.campaign.available) > 0 &&
-    paid.length > 0;
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  async function refund(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-    const fields = new FormData(form);
+    const values = new FormData(form);
     if (
-      await act(`${campaignPath}/refunds`, {
-        ...Object.fromEntries(fields),
-        confirmed: fields.get("confirmed") === "on",
+      await run(`${path}/refunds`, {
+        ...Object.fromEntries(values),
+        confirmed: values.get("confirmed") === "on",
       })
     )
       form.reset();
-  };
+  }
   return (
     <>
-      {detail.deposits.length === 0 && <p>Belum ada tagihan.</p>}
-      {detail.deposits.map((deposit) => (
-        <Card key={deposit.id}>
-          <div className="flex flex-wrap justify-between gap-2">
-            <b>
-              {rupiah(deposit.nominal)} · tagihan {rupiah(deposit.total)}
-            </b>
-            <span>{label[deposit.state]}</span>
-          </div>
-          <p className="break-all text-xs text-neutral-600">
-            {dateTime(deposit.created_at)} · {deposit.id}
-            {deposit.invoice_id ? ` · Invoice ${deposit.invoice_id}` : ""}
-            {deposit.provider_transaction_id ? ` · Transaksi ${deposit.provider_transaction_id}` : ""}
-          </p>
-          {Number(deposit.refunded) > 0 && <p className="text-xs">Dikembalikan {rupiah(deposit.refunded)}</p>}
-          {deposit.issue && (
-            <p className="text-sm text-amber-800">{issues[deposit.issue] ?? deposit.issue}</p>
-          )}
-          {deposit.invoice_id && ["pending", "expired", "review"].includes(deposit.state) && (
-            <Btn disabled={busy} onClick={() => void act(`${campaignPath}/topups/${deposit.id}/check`, {})}>
-              Cek pembayaran
-            </Btn>
-          )}
-          {!deposit.invoice_id && ["creating", "review"].includes(deposit.state) && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Btn
-                disabled={busy}
-                onClick={() => {
-                  const invoiceId = window.prompt("ID invoice yang ditemukan di Mayar");
-                  if (!invoiceId?.trim()) return;
-                  const note = window.prompt("Catatan pengecekan");
-                  if (note?.trim())
-                    void act(`${campaignPath}/topups/${deposit.id}/recover`, { invoiceId, note });
-                }}
-              >
-                Hubungkan invoice
-              </Btn>
-              <Btn
-                disabled={busy}
-                onClick={() => {
-                  const note = window.prompt(
-                    "Catatan yang mengonfirmasi tidak ada invoice yang dapat dibayar di Mayar",
-                  );
-                  if (note?.trim())
-                    void act(`${campaignPath}/topups/${deposit.id}/recover`, { noInvoice: true, note });
-                }}
-              >
-                Tutup percobaan
-              </Btn>
-            </div>
-          )}
-        </Card>
-      ))}
+      <div className="ba-section-head">
+        <div>
+          <h2>Tagihan & refund</h2>
+          <p>Periksa pembayaran Mayar dan pengembalian yang diproses Finance.</p>
+        </div>
+      </div>
+      {error && (
+        <p className="ba-error" role="alert">
+          {error}
+        </p>
+      )}
+      {detail.deposits.length ? (
+        <DeskTable title="Tagihan kampanye" headers={["Tagihan", "Status", "Nominal", "Refund", "Tindakan"]}>
+          {detail.deposits.map((item) => (
+            <tr key={item.id}>
+              <th scope="row">
+                {dateTime(item.created_at)}
+                <small>{item.invoice_id || item.id}</small>
+                {item.provider_transaction_id && <small>Transaksi {item.provider_transaction_id}</small>}
+              </th>
+              <td>
+                <Status value={item.state} />
+                {item.issue && <small>{issues[item.issue] ?? item.issue}</small>}
+              </td>
+              <td>
+                {rupiah(item.total)}
+                <small>Top-up {rupiah(item.nominal)}</small>
+              </td>
+              <td>{rupiah(item.refunded)}</td>
+              <td>
+                <div className="ba-row-actions">
+                  {item.invoice_id && ["pending", "expired", "review"].includes(item.state) && (
+                    <Action disabled={busy} onClick={() => void run(`${path}/topups/${item.id}/check`, {})}>
+                      Cek pembayaran
+                    </Action>
+                  )}
+                  {!item.invoice_id && ["creating", "review"].includes(item.state) && (
+                    <>
+                      <Action
+                        onClick={() =>
+                          decide({
+                            title: "Hubungkan invoice Mayar",
+                            detail: `Tagihan ${rupiah(item.total)}`,
+                            confirm: "Hubungkan invoice",
+                            reference: "ID invoice",
+                            note: "Catatan pengecekan",
+                            submit: ({ reference, note }) =>
+                              act(`${path}/topups/${item.id}/recover`, { invoiceId: reference, note }),
+                          })
+                        }
+                      >
+                        Hubungkan invoice
+                      </Action>
+                      <Action
+                        onClick={() =>
+                          decide({
+                            title: "Tutup percobaan tagihan",
+                            detail: "Pastikan tidak ada invoice yang bisa dibayar di Mayar.",
+                            confirm: "Tutup percobaan",
+                            danger: true,
+                            note: "Catatan pengecekan",
+                            submit: ({ note }) =>
+                              act(`${path}/topups/${item.id}/recover`, { noInvoice: true, note }),
+                          })
+                        }
+                      >
+                        Tutup percobaan
+                      </Action>
+                    </>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </DeskTable>
+      ) : (
+        <Empty>Belum ada tagihan.</Empty>
+      )}
       {canRefund && (
-        <form className="my-3 grid gap-3 rounded-md border p-3" onSubmit={submit}>
-          <h3 className="font-semibold">Catat pengembalian yang sudah diproses Finance</h3>
-          <Field label="Tagihan asal">
-            <select className={inputCls} name="deposit" required>
-              <option value="">Pilih tagihan</option>
-              {paid.map((deposit) => (
-                <option value={deposit.id} key={deposit.id}>
-                  {rupiah(deposit.nominal)} · {deposit.invoice_id}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Nominal pengembalian (Rp)">
-            <input
-              className={inputCls}
-              name="amount"
-              type="number"
-              min={1}
-              max={Number(detail.campaign.available)}
-              required
-            />
-          </Field>
-          <Field label="Referensi pengembalian">
-            <input className={inputCls} name="reference" required maxLength={150} />
-          </Field>
-          <label className="flex items-center gap-2">
-            <input type="checkbox" name="confirmed" required /> Dana sudah dikembalikan ke sumber pembayaran.
-          </label>
-          <Btn type="submit" disabled={busy}>
-            Catat pengembalian
-          </Btn>
-        </form>
+        <details className="ba-refund">
+          <summary>Catat pengembalian dana</summary>
+          <form className="ba-refund-form" onSubmit={(event) => void refund(event)}>
+            <label className="ba-field">
+              Tagihan asal
+              <select name="deposit" required>
+                <option value="">Pilih tagihan</option>
+                {paid.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {rupiah(item.nominal)} · {item.invoice_id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="ba-field">
+              Nominal (Rp)
+              <input name="amount" type="number" min={1} max={Number(detail.campaign.available)} required />
+            </label>
+            <label className="ba-field">
+              Referensi pengembalian
+              <input name="reference" maxLength={150} required />
+            </label>
+            <label className="ba-check">
+              <input name="confirmed" type="checkbox" required /> Dana sudah dikembalikan ke sumber
+              pembayaran.
+            </label>
+            <Btn type="submit" variant="primary" size="sm" className="justify-self-start" disabled={busy}>
+              Catat refund
+            </Btn>
+          </form>
+        </details>
       )}
     </>
   );

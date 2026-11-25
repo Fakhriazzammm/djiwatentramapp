@@ -1,3 +1,4 @@
+import { registerKolBrandOperations } from "./kol-brand-operations.js";
 import type { Context, Hono } from "hono";
 import type { Pool, PoolClient } from "pg";
 import type { auth as defaultAuth } from "./auth.js";
@@ -129,6 +130,7 @@ async function campaignDetail(db: Queryable, id: number, business?: number) {
 
 export function registerKolBrandRoutes(app: Hono, auth: typeof defaultAuth, pool: Pool) {
   const { owner } = createGuards(auth, pool);
+  registerKolBrandOperations(app, auth, pool);
   const wrap = (fn: (c: Context) => Promise<Response>) => async (c: Context) => {
     try {
       return await fn(c);
