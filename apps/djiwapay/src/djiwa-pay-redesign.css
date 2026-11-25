@@ -1483,9 +1483,13 @@ html{overscroll-behavior-y:contain}
 .dpx-rxv-lang .lab{display:flex;align-items:center;gap:6px;padding:0 8px;font:600 11.5px var(--font);color:#b9b2a8;white-space:nowrap}
 
 /* Weekly review uses the illustrations from the Djiwa Pay email. */
-.dpx .dpx-weekly-entry{background:#f6eddf;align-items:center}
-.dpx-weekly-entry>img{border-radius:11px}
-.dpx-weekly-arrow{margin-left:auto;font-size:22px;color:#705e48}
+.dpx .dpx-sunday-review{display:grid;grid-template-columns:minmax(0,1fr) clamp(72px,23vw,112px);align-items:center;gap:8px;width:100%;margin:8px 0 10px;padding:14px 12px 14px 18px;text-align:left;color:#fff8e9;background:radial-gradient(ellipse at 94% 52%,#776338 0%,transparent 55%),linear-gradient(110deg,#27392d,#394733);border:1px solid #65704d;border-radius:22px;box-shadow:0 5px 12px #34281924}
+.dpx-sunday-copy{display:grid;gap:4px}
+.dpx-sunday-copy strong{font-size:21px;line-height:1.15;letter-spacing:-.025em}
+.dpx-sunday-copy>span{color:#f0efde;font-size:13px;line-height:1.4}
+.dpx-sunday-copy b{color:#ffda90;font-size:13px;margin-top:4px}
+.dpx-sunday-review img{width:100%;height:auto;object-fit:contain}
+.dpx .dpx-sunday-review:focus-visible{outline:3px solid #9a560f;outline-offset:2px}
 .dpx-weekly-report{background:#fcf8f0;border-radius:18px;overflow:hidden;color:#30261f;margin-bottom:12px;overflow-wrap:anywhere}
 .dpx-weekly-cover{position:relative}
 .dpx-weekly-photo{display:block;width:100%;height:auto;aspect-ratio:2.5;object-fit:cover;object-position:center 54%}

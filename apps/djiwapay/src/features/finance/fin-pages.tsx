@@ -8,6 +8,7 @@ import { quoteDeck } from "../../lib/quotes";
 import { wealthHistory } from "../../lib/finance/story";
 import { Avatar, payAsset, AnimatedNumber, Bar, MascotBuddy, Btn, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sky, Wiggle, iconOr, spring, type IconName } from "../shell/dpx-ui";
 import type { Nav } from "../shell/dpx-pages";
+import { SundayReviewCard } from "./sunday-review-card";
 import { ScopeSwitch } from "./scope-switch";
 import { DayStrip, MonthStrip, dayKey, monthKey, monthRange } from "./day-strip";
 import { TidyBanner } from "./tidy-banner";
@@ -167,6 +168,7 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
       <div className="dpx-st-hint dpx-onsky">Cerita {monthName} ada di bawah ↓</div>
     </div>
     <AutoChip count={inbound.data?.autoRecent ?? 0} onOpen={() => nav.go("/riwayat?baru=1")} />
+    <SundayReviewCard onOpen={() => ctx.open({ k: "weekly" })} />
     <ScopeSwitch fin={fin} id="home" />
     <CeritaBody ctx={ctx} entries={entries} cash={cashNow} gold={goldData} now={now} templates={templates} onAddTemplate={addTemplate} />
   </div></Sky></div>;

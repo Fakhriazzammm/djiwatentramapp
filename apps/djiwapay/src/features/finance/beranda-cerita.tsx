@@ -158,7 +158,6 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
       <div className="dpx-pay-acts">{([["topup", "Isi saldo", "/wallet/topup"], ["send", "Kirim", "/wallet/transfer"], ["scan-qr", "Scan", "/wallet/transfer?mode=scan"], ["bills", "Layanan", "/bayar"]] as const).map(([a, l, p]) => <Btn key={a} type="button" className="dpx-pay-act" onClick={() => nav.go(p)}><img src={payAsset(a)} width={34} height={34} alt="" /><span>{l}</span></Btn>)}</div>
     </section>
 
-    <Btn type="button" className="dpx-st-tip dpx-weekly-entry" onClick={() => ctx.open({ k: "weekly" })}><img src="/pwa-192.png" alt="" width="40" height="40" /><div><b>Jeda mingguan</b><span className="dpx-sub">Lihat laporan tujuh hari dan analisis AI.</span></div><span aria-hidden="true" className="dpx-weekly-arrow">›</span></Btn>
 
     {empty ? <Card><div className="dpx-st-welcome"><I3 name="customer-benefit-wallet" px={88} /><b>Mulai ceritamu</b><span className="dpx-sub">Catat transaksi pertama. Grafik, statistik, dan kalender belanja muncul di sini setelah ada datanya.</span><Btn type="button" className="dpx-btn" onClick={() => ctx.open({ k: "catat" })}>Catat sekarang</Btn></div></Card> : <>
       <Sec title="Catatan terbaru" action="Lihat semua" onAction={() => nav.go("/riwayat")} />
