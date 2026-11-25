@@ -193,7 +193,7 @@ export function NotificationsSheet({ items, loading, busy, onClose, onRead, onRe
   const groups = useMemo(() => tab === "reminder" ? [] : ntGroups(list), [tab, list]);
   const markAll = () => { if (!busy && unread) onReadAll(list); };
   const tabLabel = (icon: IconName, text: string, dot: boolean) => <span className="dpx-ntx-tab"><Ic n={icon} size="sm" /><span>{text}</span>{dot ? <i className="dpx-ntx-tabdot" aria-hidden="true" /> : null}</span>;
-  const state = list.length === 0 ? (tab === "notif" ? "Tidak ada notifikasi" : tab === "reminder" ? "Tidak ada pengingat" : "Tidak ada berita baru") : unread ? (tab === "news" ? `${unread} berita baru` : `${unread} belum dibaca`) : tab === "news" ? "Semua berita sudah dibaca" : "Semua sudah dibaca";
+  const state = loading && items.length === 0 ? "Memuat…" : list.length === 0 ? (tab === "notif" ? "Tidak ada notifikasi" : tab === "reminder" ? "Tidak ada pengingat" : "Tidak ada berita baru") : unread ? (tab === "news" ? `${unread} berita baru` : `${unread} belum dibaca`) : tab === "news" ? "Semua berita sudah dibaca" : "Semua sudah dibaca";
   const row = (n: WalletNotification, time = true) => {
     const look = NOTE_LOOK[n.notification_type] ?? { icon: "bell" as IconName, tone: "blue" };
     return <Btn key={n.id} type="button" className={`dpx-ntx-row ${n.unread ? "is-unread" : ""}`} onClick={() => onRead(n)} whileTap={{ scale: 0.99, backgroundColor: "rgba(45,36,29,.03)" }}>
@@ -208,7 +208,7 @@ export function NotificationsSheet({ items, loading, busy, onClose, onRead, onRe
       <div className="dpx-ntx-top">
         <div className="dpx-ntx-bar"><Btn type="button" className="dpx-ntx-x" aria-label="Tutup notifikasi" onClick={onClose}><span aria-hidden="true">×</span></Btn></div>
         <Seg id="ntx" label="Bagian notifikasi" value={tab} onChange={setTab} options={[["notif", tabLabel("bell", "Notifikasi", activity.some((n) => n.unread))], ["reminder", tabLabel("clock", "Pengingat", reminders.some((n) => n.unread))], ["news", tabLabel("book", "Berita", news.some((n) => n.unread))]] as const} />
-        <div className="dpx-ntx-tools"><span className="dpx-ntx-state">{state}</span><Btn type="button" className="dpx-ntx-readall" disabled={busy || unread === 0} onClick={markAll}>{busy ? "Memproses…" : "Tandai dibaca"}</Btn></div>
+        <div className="dpx-ntx-tools"><span className="dpx-ntx-state" aria-live="polite">{state}</span><Btn type="button" className="dpx-ntx-readall" disabled={busy || unread === 0} onClick={markAll}>{busy ? "Memproses…" : "Tandai dibaca"}</Btn></div>
       </div>
       <div className="dpx-ntx-body">
         {loading && items.length === 0 ? <div className="dpx-ntx-skel"><SkeletonBlock h={74} /><SkeletonBlock h={190} /></div>
