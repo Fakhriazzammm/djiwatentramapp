@@ -572,6 +572,17 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
     />
   );
   const unreadCount = allNotifications.filter((item) => item.unread).length;
+  // "Aktif sejak": earliest evidence of use, remembered once so it stays stable across devices' first opens.
+  const activeSince = useMemo(() => {
+    const key = `djiwa-pay-active-since:${profile.source_id}`;
+    try { const s = window.localStorage.getItem(key); if (s) { const n = Number(s); if (Number.isFinite(n) && n > 0) return n; } } catch { /* storage blocked */ }
+    let earliest = 0;
+    for (const t of transactions) { const d = +new Date(t.created_at); if (!Number.isNaN(d) && (!earliest || d < earliest)) earliest = d; }
+    for (const e of fin.entries) { const d = +new Date(e.createdAt || e.at); if (!Number.isNaN(d) && (!earliest || d < earliest)) earliest = d; }
+    const val = earliest || Date.now();
+    try { window.localStorage.setItem(key, String(val)); } catch { /* storage blocked */ }
+    return val;
+  }, [transactions, fin.entries, profile.source_id]);
   const hasWallet = Boolean(wallet);
   const balance = wallet?.wallet.available_balance ?? 0;
   const embedded = frame.hideBottomNav;
@@ -633,7 +644,7 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   if (walletRoute?.page === "summary") return frameShell(<FinReport ctx={finCtx} onBack={() => goBack("/")} />, "report");
   if (walletRoute?.page === "account" && accountSub === "profile") return frameShell(<ProfileEditPage onBack={() => setAccountSub(null)} notify={(t) => notify(t)} />, null);
   if (walletRoute?.page === "account" && accountSub === "security") return frameShell(<SecurityPage onBack={() => setAccountSub(null)} notify={(t) => notify(t)} />, null);
-  if (walletRoute?.page === "account") return frameShell(<><AccountPage onOpenApp={() => setPwaOpen(true)} onOpenProfile={() => setAccountSub("profile")} onOpenSecurity={() => setAccountSub("security")} profile={profile} unread={unreadCount} customerHome={customerHome} embedded={embedded} onBack={() => goBack("/")} nav={payNav} onOpenNotifications={openNotifications} />{pwaOpen ? <PwaSheet onClose={() => setPwaOpen(false)} notify={(t) => notify(t)} /> : null}</>, null);
+  if (walletRoute?.page === "account") return frameShell(<><AccountPage onOpenApp={() => setPwaOpen(true)} onOpenProfile={() => setAccountSub("profile")} onOpenSecurity={() => setAccountSub("security")} profile={profile} unread={unreadCount} customerHome={customerHome} embedded={embedded} activeSince={activeSince} onBack={() => goBack("/")} nav={payNav} onOpenNotifications={openNotifications} />{pwaOpen ? <PwaSheet onClose={() => setPwaOpen(false)} notify={(t) => notify(t)} /> : null}</>, null);
   if (walletRoute?.page === "settings") return frameShell(<FinSettings ctx={finCtx} onBack={() => goBack("/akun")} />, null);
   if (walletRoute?.page === "integrations") return frameShell(<IntegrationsPage ctx={finCtx} onBack={() => goBack("/pengaturan")} onReview={() => goPayRoute("/tinjau")} />, null);
   if (walletRoute?.page === "payees") return frameShell(<PayeesPage ctx={finCtx} onBack={() => goBack("/ringkasan")} />, "report");

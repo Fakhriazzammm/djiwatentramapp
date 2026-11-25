@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Avatar, payAsset, AnimatedNumber, Bar, Btn, Chev, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sheet, Sky, SuccessMark, Wiggle, ease, serviceIcon, serviceTone, spring, type IconName } from "./dpx-ui";
+import { Avatar, payAsset, AnimatedNumber, Bar, Btn, Chev, Header, I3, IconSwap, Ic, MascotBuddy, Reveal, Row, Seg, Sheet, Sky, SuccessMark, Wiggle, ease, serviceIcon, serviceTone, spring, type IconName } from "./dpx-ui";
 import { dayLabel, firstName, formatDateTime, formatTime, greeting, rupiah, signedRupiah, transactionTitle, transactionVisual } from "../../lib/djiwa-pay-format";
 import { heatLevel, monthLabel, summarizeMonth, summaryCategory } from "../../lib/djiwa-pay-summary";
 import { paymentMethodLabel, transactionMethodLine, type WalletNotification, type WalletTransaction } from "../../lib/wallet-adapter";
@@ -142,11 +142,13 @@ export function TxnSheet({ entry, onClose, onHelp }: { entry: WalletTransaction;
 /* ---------- Ringkasan ---------- */
 /* ---------- Dompet ---------- */
 /* ---------- Akun, notifikasi, bantuan ---------- */
-export function AccountPage({ profile, unread, customerHome, onBack, nav, onOpenNotifications, embedded, onOpenProfile, onOpenSecurity, onOpenApp }: { profile: CustomerProfile; unread: number; customerHome: string; onBack: () => void; nav: Nav; onOpenNotifications: () => void; embedded: boolean; onOpenProfile?: () => void; onOpenSecurity?: () => void; onOpenApp?: () => void }) {
+export function AccountPage({ profile, unread, customerHome, onBack, nav, onOpenNotifications, embedded, activeSince, onOpenProfile, onOpenSecurity, onOpenApp }: { profile: CustomerProfile; unread: number; customerHome: string; onBack: () => void; nav: Nav; onOpenNotifications: () => void; embedded: boolean; activeSince?: number; onOpenProfile?: () => void; onOpenSecurity?: () => void; onOpenApp?: () => void }) {
   const [leaving, setLeaving] = useState(false);
+  const since = activeSince ? new Date(activeSince) : null;
+  const days = activeSince ? Math.max(0, Math.floor((Date.now() - activeSince) / 864e5)) : 0;
   return <div className="dpx-page"><Sky><div className="dpx-pad">
     <Header title="Akun" onBack={onBack} />
-    <div className="dpx-center" style={{ marginTop: 4 }}><div className="dpx-av" style={{ width: 84, height: 84, fontSize: 32, margin: "0 auto 10px" }}><Avatar url={profile.photo_url} initial={firstName(profile.name, profile.email)[0]?.toUpperCase() ?? ""} /></div><b style={{ fontSize: 22 }}>{profile.name || profile.email || "Pengguna Djiwa Pay"}</b><div className="dpx-sub">{[profile.phone, profile.email].filter(Boolean).join(" · ") || "Akun Djiwa Tentram"}</div><div className="dpx-flex" style={{ justifyContent: "center", marginTop: 8 }}><span className={`dpx-tag ${profile.wallet_status === "blocked" ? "dpx-danger" : "dpx-ok"}`}>{profile.wallet_status === "blocked" ? "Diblokir" : "Aktif"}</span></div></div>
+    <div className="dpx-center" style={{ marginTop: 4 }}><div className="dpx-av" style={{ width: 84, height: 84, fontSize: 32, margin: "0 auto 10px" }}><Avatar url={profile.photo_url} initial={firstName(profile.name, profile.email)[0]?.toUpperCase() ?? ""} /></div><b style={{ fontSize: 22 }}>{profile.name || profile.email || "Pengguna Djiwa Pay"}</b><div className="dpx-sub">{[profile.phone, profile.email].filter(Boolean).join(" · ") || "Akun Djiwa Tentram"}</div><div className="dpx-flex" style={{ justifyContent: "center", marginTop: 8 }}><span className={`dpx-tag ${profile.wallet_status === "blocked" ? "dpx-danger" : "dpx-ok"}`}>{profile.wallet_status === "blocked" ? "Diblokir" : "Aktif"}</span></div>{since ? <div className="dpx-sub" style={{ marginTop: 6 }}>Aktif sejak {since.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })} · {days} hari menggunakan Djiwa Pay</div> : null}</div>
     <div className="dpx-glabel">Akun</div>
     <div className="dpx-group dpx-flush dpx-white"><Row icon="user" tone="blue" title="Data diri" sub="Nama, nomor WhatsApp, email, alamat" onClick={onOpenProfile} /><Row icon="shield" tone="emerald" title="Keamanan & PIN" sub="PIN pembayaran, kata sandi, cara masuk" onClick={onOpenSecurity} /><Row icon="phone" tone="amber" title="Aplikasi & notifikasi" sub="Pasang di layar utama, notifikasi push" onClick={onOpenApp} /><Row icon="link" tone="orange" title="Integrasi Google" sub="Gmail, Calendar, Drive, Sheets, email pembayaran" onClick={() => nav.go("/integrasi")} /></div>
     <div className="dpx-glabel">Preferensi</div>
@@ -203,10 +205,10 @@ const noteView = (n: WalletNotification): NoteView => {
 
 function NtxRow({ n, hint, index, onOpen, onMarkRead, onDismiss }: { n: WalletNotification; hint: boolean; index: number; onOpen: (n: WalletNotification) => void; onMarkRead: (n: WalletNotification) => void; onDismiss: (n: WalletNotification) => void }) {
   const meta = noteView(n), reminder = REMINDER_TYPES.has(n.notification_type), time = formatTime(n.created_at);
-  const detail = meta.detail && meta.detail !== meta.label ? meta.detail : "";
-  // Right column always keeps its description; with time first for activity ("19.46 · Tercatat"), label-only for reminders.
-  const labelLine = reminder ? (meta.label ?? "") : (meta.label ? `${time} · ${meta.label}` : time);
-  const subtitle = reminder ? (meta.amount ? detail : n.message) : (meta.amount ? "" : n.message);
+  // Right column: description first, then the time at the far right ("Tercatat · 19.46"); reminders are label-only.
+  const labelLine = reminder ? (meta.label ?? "") : (meta.label ? `${meta.label} · ${time}` : time);
+  // A description always sits under the title.
+  const subtitle = meta.amount ? (meta.detail || "") : n.message;
   const look = NOTE_LOOK[n.notification_type] ?? { icon: "bell" as IconName, tone: "blue" };
   const moved = useRef(false);
   return <motion.div className="dpx-ntx-swipe" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -140, transition: { duration: 0.22 } }} transition={{ ...spring, delay: Math.min(index, 6) * 0.03 }}>
@@ -270,6 +272,7 @@ export function NotificationsSheet({ items, loading, busy, onClose, onOpen, onMa
           : tab === "notif" ? (activity.length === 0 ? empty("notif") : groups.map(([day, group]) => <section key={day} className="dpx-ntx-day"><div className="dpx-ntx-dayh">{day}</div><div className="dpx-ntx-card"><AnimatePresence initial={false}>{group.map((n, i) => row(n, i))}</AnimatePresence></div></section>))
           : tab === "reminder" ? (reminders.length === 0 ? empty("reminder") : <div className="dpx-ntx-card"><AnimatePresence initial={false}>{reminders.map((n, i) => row(n, i))}</AnimatePresence></div>)
           : <>
+            <MascotBuddy px={60} messages={["Hai! Ini berita dan cerita keuanganmu."]} quotes={["Geser kanan untuk tandai dibaca, kiri untuk hapus.", "Baca cerita agar makin paham uangmu."]} />
             {news.length ? <><div className="dpx-ntx-dayh">Dari Djiwa</div><div className="dpx-ntx-card"><AnimatePresence initial={false}>{news.map((n, i) => row(n, i))}</AnimatePresence></div></> : null}
             {feed ? <><div className="dpx-ntx-dayh">Cerita &amp; berita</div><div className="dpx-ntx-news">{feed}</div></> : news.length ? null : empty("news")}
           </>}
