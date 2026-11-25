@@ -133,6 +133,6 @@ export function TidySheet({ ctx, onClose, acc }: { ctx: FinCtx; onClose: () => v
       </div>
       {groups.length > 15 && !more ? <Btn type="button" className="dpx-btn dpx-ghost" onClick={() => setMore(true)}>Tampilkan {groups.length - 15} lainnya</Btn> : null}
     </>}
-    <AnimatePresence>{pick ? <CategorySheet key="pick" categories={fin.raw.categories} income={pick.kind === "in"} onPick={(id) => apply(pick, id)} onClose={() => setPick(null)} /> : null}</AnimatePresence>
+    <AnimatePresence>{pick ? <CategorySheet key="pick" categories={fin.raw.categories} income={pick.kind === "in"} uncategorizedIsInvalid onPick={(id) => apply(pick, id)} onClose={() => setPick(null)} /> : null}</AnimatePresence>
   </Sheet>;
 }

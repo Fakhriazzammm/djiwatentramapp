@@ -35,7 +35,7 @@ export function MoneyInput({ value, onChange, placeholder = "0", label, big = fa
 const shortName = (name: string) => { const n = name.replace(/ & .*/, ""); return n === "Biaya usaha" ? "Usaha" : n.length > 10 ? n.split(" ")[0] : n; };
 
 /** Two levels: pick a category; if it has sub categories they open underneath (or keep the whole category). */
-export function CategorySheet({ categories, income, value, onPick, onClose, onAdd }: { categories: Category[]; income: boolean; value?: string; onPick: (id: string) => void; onClose: () => void; onAdd?: () => void }) {
+export function CategorySheet({ categories, income, value, onPick, onClose, onAdd, uncategorizedIsInvalid }: { categories: Category[]; income: boolean; value?: string; onPick: (id: string) => void; onClose: () => void; onAdd?: () => void; /** Sorting uncategorized records: picking "Lainnya" again would change nothing. */ uncategorizedIsInvalid?: boolean }) {
   const ids = new Set(categories.map((c) => c.id));
   const tail = (c: Category) => (c.id === "transfer" ? 2 : c.id === "lainnya" ? 1 : 0);   // "Lainnya" and "Transfer" stay last however the list grew
   const list = categories.filter((c) => c.income === income && !(c.parentId && ids.has(c.parentId))).sort((a, b) => tail(a) - tail(b));
@@ -64,8 +64,9 @@ export function CategorySheet({ categories, income, value, onPick, onClose, onAd
         <AnimatePresence initial={false}>{parent && row.some((cell) => cell.cat?.id === parent.id) ? <motion.div key={parent.id} ref={subRef} className="dpx-subcats" role="group" aria-label={`Sub kategori ${parent.name}`} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={spring} style={{ overflow: "hidden" }}>
           <div className="dpx-subcats-in">
             <div className="dpx-subcats-head"><span><small>Sub kategori</small><b>{parent.name}</b></span><Btn type="button" className="dpx-subcats-x" aria-label="Tutup sub kategori" onClick={() => setOpen(null)}><Ic n="close" size="sm" /></Btn></div>
+            {uncategorizedIsInvalid && parent.id === "lainnya" ? <p className="dpx-subcats-tip">Catatan ini belum berkategori. Pilih sub kategori agar tidak lagi bertanda tanya.</p> : null}
             <div className="dpx-subchips">
-              <Btn type="button" className={`dpx-chip ${value === parent.id ? "dpx-on" : ""}`} onClick={() => done(parent.id)}>Semua {shortName(parent.name).toLowerCase()}</Btn>
+              {uncategorizedIsInvalid && parent.id === "lainnya" ? null : <Btn type="button" className={`dpx-chip ${value === parent.id ? "dpx-on" : ""}`} onClick={() => done(parent.id)}>Semua {shortName(parent.name).toLowerCase()}</Btn>}
               {subs.map((c) => <Btn key={c.id} type="button" className={`dpx-chip ${value === c.id ? "dpx-on" : ""}`} onClick={() => done(c.id)}>{c.name}</Btn>)}
             </div>
           </div>

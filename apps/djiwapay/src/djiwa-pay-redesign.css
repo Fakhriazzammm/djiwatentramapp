@@ -186,6 +186,7 @@
 .dpx-subcats-head small{display:block;font:600 10.5px var(--font);letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
 .dpx-subcats-head b{display:block;font:700 15px/1.2 var(--font);color:var(--ink)}
 .dpx-subcats-x{flex:none;width:32px;height:32px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px rgba(45,36,29,.06);display:grid;place-items:center}
+.dpx-subcats-tip{margin:0 0 10px;font:500 12.5px/1.4 var(--font);color:var(--mute)}
 .dpx-subchips{display:flex;flex-wrap:wrap;gap:8px}
 .dpx-subchips .dpx-chip{background:#fff;box-shadow:0 0 0 1px rgba(45,36,29,.06)}
 .dpx-subchips .dpx-chip.dpx-on{background:var(--navy);color:#fff;box-shadow:none}
