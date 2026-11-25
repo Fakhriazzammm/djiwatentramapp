@@ -1,5 +1,5 @@
 import { CURRENCY_CODES, fmtMoney, infoOf, parseTrip, symbolOf } from "../../lib/finance/currency";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { payeeName } from "../../lib/finance/payees";
 import { Btn, I3, Ic, Seg, Sheet, bigAmountSize, iconOr, spring, type IconName } from "../shell/dpx-ui";
@@ -43,19 +43,35 @@ export function CategorySheet({ categories, income, value, onPick, onClose, onAd
   const current = categories.find((c) => c.id === value), [open, setOpen] = useState<string | null>(current?.parentId && ids.has(current.parentId) ? current.parentId : null);
   const parent = list.find((c) => c.id === open), subs = parent ? subsOf(parent.id) : [];
   const done = (id: string) => { onPick(id); onClose(); };
+  const subRef = useRef<HTMLDivElement | null>(null);
+  // Sub categories open directly under their own row, so keep that block in view inside the scrollable sheet.
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(() => subRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }), 90);
+    return () => window.clearTimeout(t);
+  }, [open]);
+  const cells: Array<{ key: string; cat?: Category }> = list.map((c) => ({ key: c.id, cat: c }));
+  if (onAdd) cells.push({ key: "__add" });
+  const rows = Array.from({ length: Math.ceil(cells.length / 4) }, (_, i) => cells.slice(i * 4, i * 4 + 4));
+  const tile = (c: Category) => { const has = subsOf(c.id).length > 0, on = value === c.id || current?.parentId === c.id;
+    return <Btn key={c.id} type="button" className={`dpx-q ${on ? "dpx-on" : ""}`} aria-expanded={has ? open === c.id : undefined} onClick={() => (has ? setOpen(open === c.id ? null : c.id) : done(c.id))}><span className={`dpx-qi dpx-c-${c.tone}`} style={{ display: "grid", placeItems: "center" }}><Ic n={iconOr(c.icon)} size="lg" /></span>{shortName(c.name)}</Btn>; };
   return <Sheet title="Kategori" onClose={onClose}>
-    <div className="dpx-cats">
-      {list.map((c) => { const has = subsOf(c.id).length > 0, on = value === c.id || current?.parentId === c.id;
-        return <Btn key={c.id} type="button" className={`dpx-q ${on ? "dpx-on" : ""}`} aria-expanded={has ? open === c.id : undefined} onClick={() => (has ? setOpen(open === c.id ? null : c.id) : done(c.id))}><span className={`dpx-qi dpx-c-${c.tone}`} style={{ display: "grid", placeItems: "center" }}><Ic n={iconOr(c.icon)} size="lg" /></span>{shortName(c.name)}{has ? <i className="dpx-cat-more" aria-hidden="true">{open === c.id ? "▴" : "▾"}</i> : null}</Btn>; })}
-      {onAdd ? <Btn type="button" className="dpx-q" onClick={onAdd}><span className="dpx-qi" style={{ background: "var(--group)", color: "var(--navy)", display: "grid", placeItems: "center" }}><Ic n="plus" size="lg" /></span>Baru</Btn> : null}
+    <div className="dpx-catrows">
+      {rows.map((row, i) => <Fragment key={i}>
+        <div className="dpx-cats">
+          {row.map((cell) => cell.cat ? tile(cell.cat) : <Btn key={cell.key} type="button" className="dpx-q" onClick={onAdd}><span className="dpx-qi" style={{ background: "var(--group)", color: "var(--navy)", display: "grid", placeItems: "center" }}><Ic n="plus" size="lg" /></span>Baru</Btn>)}
+        </div>
+        <AnimatePresence initial={false}>{parent && row.some((cell) => cell.cat?.id === parent.id) ? <motion.div key={parent.id} ref={subRef} className="dpx-subcats" role="group" aria-label={`Sub kategori ${parent.name}`} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={spring} style={{ overflow: "hidden" }}>
+          <div className="dpx-subcats-in">
+            <div className="dpx-subcats-head"><span><small>Sub kategori</small><b>{parent.name}</b></span><Btn type="button" className="dpx-subcats-x" aria-label="Tutup sub kategori" onClick={() => setOpen(null)}><Ic n="close" size="sm" /></Btn></div>
+            <div className="dpx-subchips">
+              <Btn type="button" className={`dpx-chip ${value === parent.id ? "dpx-on" : ""}`} onClick={() => done(parent.id)}>Semua {shortName(parent.name).toLowerCase()}</Btn>
+              {subs.map((c) => <Btn key={c.id} type="button" className={`dpx-chip ${value === c.id ? "dpx-on" : ""}`} onClick={() => done(c.id)}>{c.name}</Btn>)}
+            </div>
+          </div>
+        </motion.div> : null}</AnimatePresence>
+      </Fragment>)}
     </div>
-    <AnimatePresence initial={false}>{parent ? <motion.div key={parent.id} className="dpx-subcats" role="group" aria-label={`Sub kategori ${parent.name}`} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={spring} style={{ overflow: "hidden" }}>
-      <div className="dpx-glabel" style={{ marginTop: 12 }}>{parent.name}</div>
-      <div className="dpx-chips dpx-subchips" style={{ margin: 0, padding: 0, flexWrap: "wrap", gap: 8, overflow: "visible" }}>
-        <Btn type="button" className={`dpx-chip ${value === parent.id ? "dpx-on" : ""}`} onClick={() => done(parent.id)}>Semua {shortName(parent.name).toLowerCase()}</Btn>
-        {subs.map((c) => <Btn key={c.id} type="button" className={`dpx-chip ${value === c.id ? "dpx-on" : ""}`} onClick={() => done(c.id)}>{c.name}</Btn>)}
-      </div>
-    </motion.div> : null}</AnimatePresence>
   </Sheet>;
 }
 

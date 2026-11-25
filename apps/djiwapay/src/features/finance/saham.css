@@ -73,7 +73,7 @@
 .dpx .dpx-scope-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:99px;background:var(--chip,#f1eadb);color:var(--navy);font:700 10.5px var(--font);vertical-align:middle}
 .dpx .dpx-scope-hint{display:flex;align-items:center;gap:10px;width:100%;text-align:left;margin-top:12px;padding:12px 14px;border-radius:18px;background:#fff;box-shadow:0 0 0 1px var(--line);font-size:13px;color:var(--mute);line-height:1.4}
 .dpx .dpx-scope-hint b{color:var(--ink)}
-.dpx .dpx-q{position:relative}.dpx .dpx-cat-more{position:absolute;right:6px;top:6px;font-style:normal;font-size:9px;color:var(--mute)}
+.dpx .dpx-q{position:relative}
 .dpx .dpx-tidy-in{display:flex;align-items:center;gap:10px;margin:4px 0 10px;padding:10px 12px;border-radius:18px;background:#fff;box-shadow:0 0 0 1px var(--line)}
 .dpx .dpx-tidy-ic{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--chip,#f1eadb);color:var(--navy);flex:none}
 .dpx .dpx-tidy-t{flex:1;min-width:0;display:grid;gap:1px}.dpx .dpx-tidy-t b{font-size:13.5px}.dpx .dpx-tidy-t small{font-size:11.5px;color:var(--mute);line-height:1.3}

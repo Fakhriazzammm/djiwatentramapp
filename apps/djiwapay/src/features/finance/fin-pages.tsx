@@ -269,9 +269,9 @@ export function FinRecords({ ctx, selected, embed }: { ctx: FinCtx; selected?: R
     <MonthStrip months={monthList} today={today} counts={monthCounts} value={activeMon} allLabel="Semua" onPick={(k) => { if (k === "all") { setMon("all"); setDay("all"); } else { setMon(k); setDay(""); } }} />
     <DayStrip month={baseMon} today={today} counts={dayCounts} value={activeDay} onPick={(k) => { if (ytd) { if (k === "all") return; setMon(baseMon); } setDay(k); }} />
     </div>
-    <Seg id="rec" label="Jenis catatan" value={seg} onChange={setSeg} options={[["all", "Semua"], ["in", "Masuk"], ["out", "Keluar"], ["tf", "Transfer"]] as const} />
     <label className="dpx-search dpx-mt8"><Ic n="search" size="sm" /><input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari judul, kategori, dompet, nominal" aria-label="Cari catatan" enterKeyHint="search" autoComplete="off" />{q ? <Btn type="button" className="dpx-search-x" aria-label="Hapus pencarian" onClick={() => setQ("")}><Ic n="close" size="sm" /></Btn> : null}</label>
     {embed ? <FilterBar state={state} value={rf} onChange={setRf} onOpen={() => setRfOpen(true)} /> : null}
+    <div className="dpx-mt8"><Seg id="rec" label="Jenis catatan" value={seg} onChange={setSeg} options={[["all", "Semua"], ["in", "Masuk"], ["out", "Keluar"], ["tf", "Transfer"]] as const} /></div>
     {embed ? <FilterWait show={filterBusy} /> : null}
     {searching ? <p className="dpx-sub" role="status" style={{ margin: "8px 4px 0" }}>{eList.length ? `${eList.length}${eList.length >= 300 ? "+" : ""} catatan cocok${hasFilter(rf) ? " dengan filter" : ""}, dicari di semua tanggal` : "Tidak ada yang cocok di semua tanggal"}</p> : null}
     <motion.div key={`${acc}|${searching ? "q" : activeDay}|${seg}|${dRf.cat}|${dRf.sub}|${dRf.kind}`} aria-live="polite" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.32, ease: [0.32, 0.72, 0, 1] }}>

@@ -180,6 +180,15 @@
 /* finance (ported from prototypes/djiwapay-catat) */
 
 .dpx-cats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 6px}.dpx-cats .dpx-q .dpx-qi{width:56px;height:56px;border-radius:20px}.dpx-cats .dpx-q{font-size:12px}.dpx-cats .dpx-q.dpx-on .dpx-qi{outline:3px solid var(--navy);outline-offset:2px}
+.dpx-catrows{display:flex;flex-direction:column;gap:10px;padding-bottom:4px}
+.dpx-subcats-in{border-radius:20px;background:var(--group);padding:12px 14px 14px;box-shadow:inset 0 0 0 1px rgba(45,36,29,.05)}
+.dpx-subcats-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.dpx-subcats-head small{display:block;font:600 10.5px var(--font);letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+.dpx-subcats-head b{display:block;font:700 15px/1.2 var(--font);color:var(--ink)}
+.dpx-subcats-x{flex:none;width:32px;height:32px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px rgba(45,36,29,.06);display:grid;place-items:center}
+.dpx-subchips{display:flex;flex-wrap:wrap;gap:8px}
+.dpx-subchips .dpx-chip{background:#fff;box-shadow:0 0 0 1px rgba(45,36,29,.06)}
+.dpx-subchips .dpx-chip.dpx-on{background:var(--navy);color:#fff;box-shadow:none}
 .dpx-kpi{display:grid;grid-template-columns:1fr 1fr;gap:10px}.dpx-kpi .dpx-group{padding:14px 16px}.dpx-kpi small{display:block;color:var(--mute);font-size:12.5px}.dpx-kpi b{font:700 19px var(--font);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .dpx-up{color:var(--ok)}.dpx-dn{color:var(--danger)}
 .dpx-hero-day{position:relative;border-radius:34px;padding:20px;background:#fff;box-shadow:0 14px 40px rgba(45,36,29,.10);margin-top:18px;overflow:hidden}
