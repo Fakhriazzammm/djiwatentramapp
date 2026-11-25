@@ -178,7 +178,7 @@ const NT_EMPTY: Record<NtTab, { icon: IconName; title: string; text: string }> =
 };
 const ntGroups = (list: WalletNotification[]) => { const m = new Map<string, WalletNotification[]>(); for (const n of list) { const k = noteDay(n.created_at); m.set(k, [...(m.get(k) ?? []), n]); } return [...m.entries()]; };
 const NT_KIND: Record<string, string> = {
-  "fin-email": "Tercatat", "fin-find": "Temuan", "fin-bill": "Tagihan", "fin-budget": "Terlampaui", "fin-debt": "Sisa", "fin-goal": "Target", "fin-loan": "Cicilan", promo: "Berita",
+  "fin-find": "Temuan", "fin-bill": "Tagihan", "fin-budget": "Terlampaui", "fin-debt": "Sisa", "fin-goal": "Target", "fin-loan": "Cicilan", promo: "Berita",
   topup_completed: "Pemasukan", manual_credit: "Pemasukan", wallet_transfer_received: "Pemasukan", order_debit: "Pengeluaran",
   wallet_hold: "Ditahan", wallet_release: "Dikembalikan", wallet_transfer_sent: "Pindah dana", refund: "Refund", adjustment: "Penyesuaian",
 };
@@ -190,23 +190,21 @@ const noteView = (n: WalletNotification): NoteView => {
   const act = /^(.*?)\s*·\s*([−+⇄-])\s*(Rp\s?[\d][\d.]*(?:,\d+)?)\s*$/.exec(msg);
   if (act) {
     const sign = act[2];
-    return { label: sign === "⇄" ? "Pindah dana" : act[1].trim().replace(/^Tercatat dari email$/i, "Tercatat"), amount: `${sign}${act[3]}`, tone: sign === "⇄" ? "tf" : sign === "+" ? "in" : "out", detail: act[1].trim() };
+    return { label: sign === "⇄" ? "Pindah dana" : sign === "+" ? "Pemasukan" : "Pengeluaran", amount: `${sign}${act[3]}`, tone: sign === "⇄" ? "tf" : sign === "+" ? "in" : "out", detail: act[1].trim() };
   }
   const m = NT_AMOUNT.exec(msg);
-  if (!m) return { label: NT_KIND[n.notification_type], detail: msg };
+  if (!m) { const l = NT_KIND[n.notification_type]; return { label: l, tone: l === "Pemasukan" ? "in" : l === "Pengeluaran" ? "out" : l === "Pindah dana" ? "tf" : undefined, detail: msg }; }
   const sign = m[1];
   const base = n.notification_type === "fin-budget" && !/terlampaui/i.test(n.title) ? "Sisa" : NT_KIND[n.notification_type];
-  const label = sign === "⇄" ? "Pindah dana" : sign === "+" ? "Pemasukan" : sign === "−" || sign === "-" ? "Pengeluaran" : base ?? "Tercatat";
-  const credit = n.notification_type.includes("topup") || n.notification_type.includes("credit") || n.notification_type.includes("received") || n.notification_type === "refund";
-  const tone = sign === "⇄" ? "tf" : sign === "+" ? "in" : sign === "−" || sign === "-" ? "out" : credit ? "in" : undefined;
+  const label = sign === "⇄" ? "Pindah dana" : sign === "+" ? "Pemasukan" : sign === "−" || sign === "-" ? "Pengeluaran" : base;
+  const tone = sign === "⇄" ? "tf" : sign === "+" ? "in" : sign === "−" || sign === "-" ? "out" : label === "Pemasukan" ? "in" : label === "Pengeluaran" ? "out" : label === "Pindah dana" ? "tf" : undefined;
   const detail = msg.replace(m[0], "").replace(/^(Lewat|Sisa|Tagihan)\s+/i, "").replace(/[,\s]*sisa\s*[.,]?\s*$/i, "").replace(/^[.,;:]\s*/, "").trim();
   return { label, amount: `${sign}${m[2]}`, tone, detail };
 };
 
 function NtxRow({ n, hint, index, onOpen, onMarkRead, onDismiss }: { n: WalletNotification; hint: boolean; index: number; onOpen: (n: WalletNotification) => void; onMarkRead: (n: WalletNotification) => void; onDismiss: (n: WalletNotification) => void }) {
   const meta = noteView(n), reminder = REMINDER_TYPES.has(n.notification_type), time = formatTime(n.created_at);
-  // Right column: description first, then the time at the far right ("Tercatat · 19.46"); reminders are label-only.
-  const labelLine = reminder ? (meta.label ?? "") : (meta.label ? `${meta.label} · ${time}` : time);
+  const label = meta.label, tone = meta.tone;
   // A description always sits under the title.
   const subtitle = meta.amount ? (meta.detail || "") : n.message;
   const look = NOTE_LOOK[n.notification_type] ?? { icon: "bell" as IconName, tone: "blue" };
@@ -227,8 +225,12 @@ function NtxRow({ n, hint, index, onOpen, onMarkRead, onDismiss }: { n: WalletNo
           <span className={`dpx-ntx-ic dpx-c-${look.tone}`}><Ic n={look.icon} /></span>
           <span className="dpx-ntx-main"><b className="dpx-ntx-title">{cleanTitle(n.title)}</b>{subtitle ? <span className="dpx-ntx-msg">{subtitle}</span> : null}</span>
           <span className="dpx-ntx-trail">
-            <span className="dpx-ntx-kindrow"><small className="dpx-ntx-kind">{labelLine}</small>{n.unread ? <span className="dpx-ntx-dot" aria-label="Belum dibaca" /> : null}</span>
-            {meta.amount ? <b className={`dpx-ntx-amt ${meta.tone ?? ""}`}>{meta.amount}</b> : null}
+            <span className="dpx-ntx-kindrow">
+              {label ? <span className={`dpx-ntx-kind ${tone ? `dpx-ntx-k-${tone}` : ""}`}>{label}</span> : null}
+              {!reminder ? <small className="dpx-ntx-time">{time}</small> : null}
+              {n.unread ? <span className="dpx-ntx-dot" aria-label="Belum dibaca" /> : null}
+            </span>
+            {meta.amount ? <b className={`dpx-ntx-amt ${tone ?? ""}`}>{meta.amount}</b> : null}
           </span>
         </Btn>
       </motion.div>
