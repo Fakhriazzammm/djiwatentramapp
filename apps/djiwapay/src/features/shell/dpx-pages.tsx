@@ -157,24 +157,71 @@ export function AccountPage({ profile, unread, customerHome, onBack, nav, onOpen
   </div></Sky></div>;
 }
 
-const NOTE_LOOK: Record<string, { icon: IconName; tone: string }> = { "fin-email": { icon: "receipt", tone: "orange" }, "fin-bill": { icon: "cal", tone: "amber" }, "fin-budget": { icon: "warn", tone: "rose" }, "fin-debt": { icon: "users", tone: "violet" }, "fin-goal": { icon: "target", tone: "emerald" } };
+const NOTE_LOOK: Record<string, { icon: IconName; tone: string }> = {
+  "fin-email": { icon: "receipt", tone: "orange" }, "fin-bill": { icon: "cal", tone: "amber" }, "fin-budget": { icon: "warn", tone: "rose" },
+  "fin-debt": { icon: "users", tone: "violet" }, "fin-goal": { icon: "target", tone: "emerald" }, "fin-loan": { icon: "cal", tone: "amber" },
+  "fin-find": { icon: "spark", tone: "violet" }, promo: { icon: "book", tone: "violet" },
+  topup_completed: { icon: "plus", tone: "emerald" }, manual_credit: { icon: "plus", tone: "emerald" }, order_debit: { icon: "receipt", tone: "orange" },
+  wallet_hold: { icon: "clock", tone: "amber" }, wallet_release: { icon: "undo", tone: "emerald" }, wallet_transfer_sent: { icon: "send", tone: "blue" },
+  wallet_transfer_received: { icon: "down", tone: "emerald" }, refund: { icon: "undo", tone: "emerald" }, adjustment: { icon: "refresh", tone: "slate" },
+};
 const noteDay = (iso: string) => { const d = new Date(iso); if (Number.isNaN(d.getTime())) return "Lainnya"; const key = (x: Date) => x.toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" }); const today = new Date(); const yest = new Date(today.getTime() - 864e5); return key(d) === key(today) ? "Hari ini" : key(d) === key(yest) ? "Kemarin" : d.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: key(d).slice(0, 4) === key(today).slice(0, 4) ? undefined : "numeric", timeZone: "Asia/Jakarta" }); };
 const cleanTitle = (t: string) => t.replace(/\s*[·•]\s*PAN\b.*$/i, "").replace(/\s+/g, " ").trim();
-export function NotificationsPage({ items, loading, busy, onBack, onRead, onReadAll, feed }: { items: WalletNotification[]; loading: boolean; busy: boolean; onBack: () => void; onRead: (n: WalletNotification) => void; onReadAll: () => void; feed?: ReactNode }) {
-  const unread = items.filter((n) => n.unread).length;
-  const [tab, setTab] = useState<"semua" | "unread" | "cerita">("semua");
-  const only = tab === "unread";
-  const shown = only ? items.filter((n) => n.unread) : items;
-  const groups = useMemo(() => { const m = new Map<string, WalletNotification[]>(); for (const n of shown) { const k = noteDay(n.created_at); m.set(k, [...(m.get(k) ?? []), n]); } return [...m.entries()]; }, [shown]);
-  return <div className="dpx-page"><Sky><div className="dpx-pad dpx-nobar">
-    <Header title="Notifikasi" onBack={onBack} right={<Btn type="button" className="dpx-linkbtn" style={{ textAlign: "right", whiteSpace: "nowrap", opacity: unread && !busy ? 1 : 0.4 }} disabled={busy || unread === 0} onClick={onReadAll}>{busy ? "Memproses" : "Tandai dibaca"}</Btn>} />
-    <div className="dpx-nt-chips" role="tablist" aria-label="Filter notifikasi"><Btn type="button" role="tab" aria-selected={tab === "semua"} className={`dpx-nt-chip ${tab === "semua" ? "on" : ""}`} onClick={() => setTab("semua")}>Semua <em>{items.length}</em></Btn><Btn type="button" role="tab" aria-selected={tab === "unread"} className={`dpx-nt-chip ${tab === "unread" ? "on" : ""}`} onClick={() => setTab("unread")}>Belum dibaca <em>{unread}</em></Btn>{feed ? <Btn type="button" role="tab" aria-selected={tab === "cerita"} className={`dpx-nt-chip ${tab === "cerita" ? "on" : ""}`} onClick={() => setTab("cerita")}>Cerita &amp; berita</Btn> : null}</div>
-    {tab === "cerita" && feed ? feed : <>
-    {loading && items.length === 0 ? <SkeletonBlock h={160} /> : shown.length === 0 ? <div className="dpx-empty"><I3 name="notifications-alerts" px={112} /><b>{only ? "Semua sudah dibaca" : "Belum ada notifikasi"}</b><p>{only ? "Tidak ada notifikasi baru." : "Aktivitas saldo, transfer, email pembayaran, tagihan, dan anggaran akan muncul di sini."}</p></div>
-      : groups.map(([day, list]) => <section key={day} className="dpx-nt-day"><div className="dpx-glabel">{day}</div>
-        <div className="dpx-group dpx-flush dpx-white">{list.map((n, i) => <motion.div key={n.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: Math.min(i, 8) * 0.03 }}><Btn type="button" className={`dpx-row dpx-nt-row ${n.unread ? "unread" : ""}`} onClick={() => onRead(n)}><span className={`dpx-cat dpx-c-${NOTE_LOOK[n.notification_type]?.tone ?? "blue"}`}><Ic n={NOTE_LOOK[n.notification_type]?.icon ?? "bell"} /></span><span className="dpx-main"><b>{cleanTitle(n.title)}</b><span>{n.message}</span></span><span className="dpx-trail"><small>{formatTime(n.created_at)}</small>{n.unread ? <span className="dpx-unread" aria-label="Belum dibaca" /> : null}</span></Btn></motion.div>)}</div></section>)}
-    </>}
-  </div></Sky></div>;
+const REMINDER_TYPES = new Set(["fin-bill", "fin-budget", "fin-debt", "fin-goal", "fin-loan"]);
+type NtTab = "notif" | "reminder" | "news";
+const NT_EMPTY: Record<NtTab, { icon: IconName; title: string; text: string }> = {
+  notif: { icon: "bell", title: "Belum ada notifikasi", text: "Aktivitas saldo, transfer, dan catatan dari email akan muncul di sini." },
+  reminder: { icon: "clock", title: "Tidak ada pengingat", text: "Tagihan, anggaran, dan hutang yang mendekati jatuh tempo akan muncul di sini." },
+  news: { icon: "book", title: "Belum ada berita", text: "Kabar dan cerita baru akan muncul di sini." },
+};
+const ntGroups = (list: WalletNotification[]) => { const m = new Map<string, WalletNotification[]>(); for (const n of list) { const k = noteDay(n.created_at); m.set(k, [...(m.get(k) ?? []), n]); } return [...m.entries()]; };
+
+/** Notifikasi, pengingat and berita in one iOS-style sheet; each tab carries its own mark-as-read. */
+export function NotificationsSheet({ items, loading, busy, onClose, onRead, onReadAll, onAddReminder, feed }: {
+  items: WalletNotification[]; loading: boolean; busy: boolean; onClose: () => void;
+  onRead: (n: WalletNotification) => void; onReadAll: (items: WalletNotification[]) => void;
+  onAddReminder?: () => void; feed?: ReactNode;
+}) {
+  const [tab, setTab] = useState<NtTab>("notif");
+  const { activity, reminders, news } = useMemo(() => {
+    const activity: WalletNotification[] = [], reminders: WalletNotification[] = [], news: WalletNotification[] = [];
+    for (const n of items) (REMINDER_TYPES.has(n.notification_type) ? reminders : n.notification_type === "promo" ? news : activity).push(n);
+    return { activity, reminders, news };
+  }, [items]);
+  const list = tab === "notif" ? activity : tab === "reminder" ? reminders : news;
+  const unread = list.filter((n) => n.unread).length;
+  const groups = useMemo(() => tab === "reminder" ? [] : ntGroups(list), [tab, list]);
+  const markAll = () => { if (!busy && unread) onReadAll(list); };
+  const tabLabel = (icon: IconName, text: string, dot: boolean) => <span className="dpx-ntx-tab"><Ic n={icon} size="sm" /><span>{text}</span>{dot ? <i className="dpx-ntx-tabdot" aria-hidden="true" /> : null}</span>;
+  const state = list.length === 0 ? (tab === "notif" ? "Tidak ada notifikasi" : tab === "reminder" ? "Tidak ada pengingat" : "Tidak ada berita baru") : unread ? (tab === "news" ? `${unread} berita baru` : `${unread} belum dibaca`) : tab === "news" ? "Semua berita sudah dibaca" : "Semua sudah dibaca";
+  const row = (n: WalletNotification, time = true) => {
+    const look = NOTE_LOOK[n.notification_type] ?? { icon: "bell" as IconName, tone: "blue" };
+    return <Btn key={n.id} type="button" className={`dpx-ntx-row ${n.unread ? "is-unread" : ""}`} onClick={() => onRead(n)} whileTap={{ scale: 0.99, backgroundColor: "rgba(45,36,29,.03)" }}>
+      <span className={`dpx-ntx-ic dpx-c-${look.tone}`}><Ic n={look.icon} /></span>
+      <span className="dpx-ntx-main"><span className="dpx-ntx-top2"><b>{cleanTitle(n.title)}</b>{time ? <small>{formatTime(n.created_at)}</small> : null}</span><span className="dpx-ntx-msg">{n.message}</span></span>
+      {n.unread ? <span className="dpx-ntx-dot" aria-label="Belum dibaca" /> : null}
+    </Btn>;
+  };
+  const empty = (kind: NtTab) => { const e = NT_EMPTY[kind]; return <div className="dpx-ntx-empty"><span className="dpx-ntx-empty-ic"><Ic n={e.icon} size="lg" /></span><b>{e.title}</b><p>{e.text}</p></div>; };
+  return <Sheet label="Notifikasi" onClose={onClose}>
+    <div className="dpx-ntx">
+      <div className="dpx-ntx-top">
+        <div className="dpx-ntx-bar"><Btn type="button" className="dpx-ntx-x" aria-label="Tutup notifikasi" onClick={onClose}><span aria-hidden="true">×</span></Btn></div>
+        <Seg id="ntx" label="Bagian notifikasi" value={tab} onChange={setTab} options={[["notif", tabLabel("bell", "Notifikasi", activity.some((n) => n.unread))], ["reminder", tabLabel("clock", "Pengingat", reminders.some((n) => n.unread))], ["news", tabLabel("book", "Berita", news.some((n) => n.unread))]] as const} />
+        <div className="dpx-ntx-tools"><span className="dpx-ntx-state">{state}</span><Btn type="button" className="dpx-ntx-readall" disabled={busy || unread === 0} onClick={markAll}>{busy ? "Memproses…" : "Tandai dibaca"}</Btn></div>
+      </div>
+      <div className="dpx-ntx-body">
+        {loading && items.length === 0 ? <div className="dpx-ntx-skel"><SkeletonBlock h={74} /><SkeletonBlock h={190} /></div>
+          : tab === "notif" ? (activity.length === 0 ? empty("notif") : groups.map(([day, group]) => <section key={day} className="dpx-ntx-day"><div className="dpx-ntx-dayh">{day}</div><div className="dpx-ntx-card">{group.map((n) => row(n))}</div></section>))
+          : tab === "reminder" ? (reminders.length === 0 ? empty("reminder") : <div className="dpx-ntx-card">{reminders.map((n) => row(n, false))}</div>)
+          : <>
+            {news.length ? <><div className="dpx-ntx-dayh">Dari Djiwa</div><div className="dpx-ntx-card">{news.map((n) => row(n))}</div></> : null}
+            {feed ? <><div className="dpx-ntx-dayh">Cerita &amp; berita</div><div className="dpx-ntx-news">{feed}</div></> : news.length ? null : empty("news")}
+          </>}
+      </div>
+      {tab === "reminder" && onAddReminder ? <div className="dpx-ntx-ctawrap"><Btn type="button" className="dpx-ntx-cta" onClick={onAddReminder} whileTap={{ scale: 0.98 }}><Ic n="plus" size="sm" /> Tambah pengingat</Btn></div> : null}
+    </div>
+  </Sheet>;
 }
 
 export function HelpPage({ onBack, nav }: { onBack: () => void; nav: Nav }) {

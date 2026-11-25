@@ -8,14 +8,14 @@ import type { Asset } from "../../lib/finance/types";
 import type { IconName } from "../shell/dpx-ui";
 
 /** Full-screen layer above the tab bar (the asset flow and the asset detail). */
-export function FullPage({ title, onBack, right, dark = false, children }: { title: string; onBack: () => void; right?: ReactNode; dark?: boolean; children: ReactNode }) {
+export function FullPage({ title, onBack, right, dark = false, aboveSheet = false, children }: { title: string; onBack: () => void; right?: ReactNode; dark?: boolean; /** Open above an already-open bottom sheet (news inside Notifikasi). */ aboveSheet?: boolean; children: ReactNode }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onBack(); };
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow; document.body.style.overflow = "hidden";
     return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
   }, [onBack]);
-  const node = <div className={`dpx dpx-fp ${dark ? "dpx-fp-dark" : ""}`} role="dialog" aria-modal="true" aria-label={title}>
+  const node = <div className={`dpx dpx-fp ${dark ? "dpx-fp-dark" : ""} ${aboveSheet ? "dpx-fp-top" : ""}`} role="dialog" aria-modal="true" aria-label={title}>
     <motion.div className="dpx-fp-in" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }} transition={{ duration: 0.3, ease }}>
       <div className="dpx-fp-h"><Btn type="button" className="dpx-rb" onClick={onBack} aria-label="Kembali"><Ic n="back" size="sm" /></Btn><h2>{title}</h2><div className="dpx-fp-r">{right}</div></div>
       {children}

@@ -56,7 +56,7 @@ const NewsCard = ({ n }: { n: NewsItem }) => <a className="dpx-st-card dpx-st-st
 /** Full list of today's headlines by topic. Each opens the article on the publisher's site. */
 function NewsPage({ onBack }: { onBack: () => void }) {
   const [topic, setTopic] = useState<string>("semua"), { items, failed } = useNews(topic);
-  return <FullPage title="Berita keuangan" onBack={onBack}>
+  return <FullPage title="Berita keuangan" onBack={onBack} aboveSheet>
     <div className="dpx-st-npage">
       <DragRow className="dpx-st-tabs" role="tablist">{NEWS_TOPICS.map((t) => <Btn key={t.id} type="button" role="tab" aria-selected={topic === t.id} className={topic === t.id ? "on" : ""} onClick={() => setTopic(t.id)}>{t.label}</Btn>)}</DragRow>
       {items === null && !failed ? <p className="dpx-st-empty">Memuat berita…</p> : failed ? <p className="dpx-st-empty">Berita belum bisa dimuat. Periksa koneksi lalu coba lagi.</p> : !items?.length ? <p className="dpx-st-empty">Belum ada berita untuk topik ini hari ini.</p> :

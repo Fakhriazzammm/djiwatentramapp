@@ -12,7 +12,7 @@ import { checkoutCustomerNumberHint, parsePpobPath, parseWalletPath, postpaidSer
 import { djiwaPaySplashLabel, isDjiwaPayPageReady } from "../../lib/djiwa-pay-splash";
 import { DjiwaPayWalletAction } from "./djiwa-pay-wallet-actions";
 import { CeritaTab } from "../finance/beranda-cerita";
-import { AccountPage, AllServicesSheet, CardSheet, ComingSoonSheet, HelpPage, NotificationsPage, PaySheet, ServicesTab, TabBar, TxnSheet, type Nav } from "../shell/dpx-pages";
+import { AccountPage, AllServicesSheet, CardSheet, ComingSoonSheet, HelpPage, NotificationsSheet, PaySheet, ServicesTab, TabBar, TxnSheet, type Nav } from "../shell/dpx-pages";
 import { CalendarPage, ForecastPage, HealthPage, ToolsPage } from "../kelola/kelola-pages";
 import { AssetOverview } from "../kelola/asset-overview";
 import { IntegrationsPage, ReviewPage, useInbound } from "../integrations/integrations-pages";
@@ -574,7 +574,7 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   const balance = wallet?.wallet.available_balance ?? 0;
   const embedded = frame.hideBottomNav;
   const openTx = (id: string) => goPayRoute(`/wallet/history/${encodeURIComponent(id)}`);
-  const openNotifications = () => { onNavigate("Membuka Notifikasi"); setNotificationsOpen(true); };
+  const openNotifications = () => setNotificationsOpen(true);
   const payNav: Nav = {
     go: (path) => {
       if (previewOnly && (path.startsWith("/wallet/topup") || path.startsWith("/wallet/transfer") || path.startsWith("/wallet/receive"))) { setSoon("Aksi transaksi dinonaktifkan pada pratinjau lokal."); return; }
@@ -586,16 +586,34 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   };
   const finCtx: FinCtx = { fin, notify, nav: payNav, profile, transactions, payBalance: balance, loading, visible, onToggleVisible: toggleVisible, unread: unreadCount, onOpenNotifications: openNotifications, open: setFsheet, onPayDetail: openTx, disc };
   const goManual = (kind: "out" | "in" | "tf", editId?: string) => goPayRoute(`/catat?${editId ? `edit=${encodeURIComponent(editId)}` : `kind=${kind}`}`);
+  // Opening one item: mark it read in the right place, then follow its route. Mark-all works the same way per tab.
+  const walletNoticeIds = new Set(walletNotifications.map((n) => n.id));
+  const markNotificationRead = (notification: WalletNotification) => {
+    const route = notification.action_payload?.route;
+    if (notification.notification_type === "promo" || notification.id.startsWith("pm-")) markPushOpened(notification.id);
+    if (!walletNoticeIds.has(notification.id)) readLocal([notification.id]);
+    if (walletNoticeIds.has(notification.id) && notification.unread) void markWalletNotificationRead(notification.id).then(() => refreshWalletNotifications()).catch(() => undefined);
+    if (route) { setNotificationsOpen(false); payNav.go(route); }
+  };
+  const markNotificationsRead = async (list: WalletNotification[]) => {
+    setNotificationsBusy(true);
+    try {
+      readLocal(list.filter((n) => !walletNoticeIds.has(n.id)).map((n) => n.id));
+      for (const n of list) if (n.notification_type === "promo") markPushOpened(n.id);
+      if (list.some((n) => walletNoticeIds.has(n.id))) { await markAllWalletNotificationsRead(); await refreshWalletNotifications(); }
+    } finally { setNotificationsBusy(false); }
+  };
   const sheets = <AnimatePresence>
     {shell === "pay" ? <PaySheet key="pay" nav={payNav} onClose={() => setShell(null)} withdrawSupported={withdrawAction.supported} /> : null}
     {shell === "all" ? <AllServicesSheet key="all" nav={payNav} onClose={() => setShell(null)} /> : null}
     {shell === "card" ? <CardSheet key="card" onClose={() => setShell(null)} /> : null}
     {soon ? <ComingSoonSheet key="soon" message={soon} onClose={() => setSoon(null)} /> : null}
     {fsheet ? <FinSheetHost key={fsheet.k} ctx={finCtx} sheet={fsheet} close={() => setFsheet(null)} goManual={goManual} openPaySheet={() => setShell("pay")} /> : null}
+    {notificationsOpen ? <NotificationsSheet key="notifications" items={allNotifications} loading={notificationsLoading} busy={notificationsBusy} feed={<CeritaTab ctx={finCtx} />} onClose={() => setNotificationsOpen(false)} onRead={markNotificationRead} onReadAll={markNotificationsRead} onAddReminder={() => { setNotificationsOpen(false); setFsheet({ k: "bill" }); }} /> : null}
   </AnimatePresence>;
   const snackbar = <AnimatePresence>{snack ? <motion.div key={snack.id} className="dpx-snack" role="status" initial={{ opacity: 0, y: 30, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20 }} transition={spring}><span>{snack.text}</span>{snack.undo ? <Btn type="button" onClick={() => { snack.undo?.(); setSnack(null); }}>Urungkan</Btn> : null}</motion.div> : null}</AnimatePresence>;
   // Every framed page gets the bottom bar; `active` only picks which tab is highlighted (null = none). `bar={false}` is for setup flows.
-  const frameShell = (content: ReactNode, active: "home" | "report" | "budget" | "history" | "wallet" | null, bar = true) => <MotionConfig reducedMotion="user"><div className={`dpx ${embedded ? "dpx-embedded" : ""}`}><motion.div key={`${routePath}|${notificationsOpen ? "n" : ""}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.34, ease: [0.32, 0.72, 0, 1] }}>{content}</motion.div><GestureHost enabled={!embedded} onRefresh={refreshAll} go={(path) => { if (notificationsOpen) setNotificationsOpen(false); goPayRoute(path); }} />{embedded || !bar ? null : <TabBar active={active} go={(path) => { if (notificationsOpen) setNotificationsOpen(false); goPayRoute(path); }} openPay={() => setFsheet({ k: "catat" })} />}{sheets}{snackbar}</div></MotionConfig>;
+  const frameShell = (content: ReactNode, active: "home" | "report" | "budget" | "history" | "wallet" | null, bar = true) => <MotionConfig reducedMotion="user"><div className={`dpx ${embedded ? "dpx-embedded" : ""}`}><motion.div key={routePath} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.34, ease: [0.32, 0.72, 0, 1] }}>{content}</motion.div><GestureHost enabled={!embedded} onRefresh={refreshAll} go={(path) => { if (notificationsOpen) setNotificationsOpen(false); goPayRoute(path); }} />{embedded || !bar ? null : <TabBar active={active} go={(path) => { if (notificationsOpen) setNotificationsOpen(false); goPayRoute(path); }} openPay={() => setFsheet({ k: "catat" })} />}{sheets}{snackbar}</div></MotionConfig>;
   if (!wallet && error && walletRoute?.page !== "help") return frameShell(
     <Sky><div className="dpx-pad"><div className="dpx-empty" role="alert" style={{ paddingTop: 80 }}><I3 name="payment-wallet" px={112} /><b>Saldo belum dapat dimuat</b><p>{error}</p><Btn type="button" className="dpx-btn" style={{ maxWidth: 260 }} onClick={onRefresh} disabled={loading}>{loading ? "Mencoba lagi…" : "Coba lagi"}</Btn></div></div></Sky>, null);
   if (walletRoute?.page === "history") {
@@ -615,7 +633,6 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   if (walletRoute?.page === "discoveries") return frameShell(<DiscoveryPage ctx={finCtx} onBack={() => goBack("/")} onOpenReview={() => goPayRoute("/tinjau")} />, "home");
   if (walletRoute?.page === "review") return frameShell(<ReviewPage ctx={finCtx} onBack={() => goBack("/")} onOpenIntegrations={() => goPayRoute("/integrasi")} />, "home");
   if (walletRoute?.page === "catat") { const editId = paySearchParams.get("edit") ?? undefined; const k = paySearchParams.get("kind"); return frameShell(<ManualForm key={editId ?? k ?? "new"} ctx={finCtx} editId={editId} initialKind={k === "in" || k === "tf" ? k : undefined} onDone={() => { if (window.history.length > 1) window.history.back(); else goPayRoute("/"); }} />, null); }
-  if (notificationsOpen) return frameShell(<NotificationsPage items={allNotifications} loading={notificationsLoading} busy={notificationsBusy} feed={<CeritaTab ctx={finCtx} />} onBack={() => { onNavigate("Kembali ke Saldo Djiwa Pay"); setNotificationsOpen(false); }} onRead={async (notification) => { const route = notification.action_payload?.route; if (route) { if (notification.id.startsWith("pm-")) markPushOpened(notification.id); readLocal([notification.id]); setNotificationsOpen(false); payNav.go(route); return; } if (notification.unread) { await markWalletNotificationRead(notification.id); await refreshWalletNotifications(); } }} onReadAll={async () => { setNotificationsBusy(true); try { readLocal([...finNotes.map((n) => n.id), ...promoInbox.map((n) => n.id)]); await markAllWalletNotificationsRead(); await refreshWalletNotifications(); } finally { setNotificationsBusy(false); } }} />, null);
   if (walletRoute?.page === "services") return frameShell(<ServicesTab nav={payNav} focusSearch={paySearchParams.get("cari") === "1"} recentNumbers={recentCustomerNumbers} />, "wallet");
   if (walletRoute?.page === "calendar") return frameShell(<CalendarPage ctx={finCtx} onBack={() => goBack("/rencana")} />, "budget");
   if (walletRoute?.page === "health") return frameShell(<HealthPage ctx={finCtx} onBack={() => goBack("/")} />, "home");
