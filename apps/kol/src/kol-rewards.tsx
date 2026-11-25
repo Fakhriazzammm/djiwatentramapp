@@ -15,7 +15,9 @@ type RewardItem = {
   rules: Rules; reserved: number;
   payout: { id: number; amount: number; views: number; computed: number; released: number; rate: number; paidAt: string } | null;
 };
-type Earnings = { totalPaid: number; runningEstimate: number; maxRemaining: number; walletBalance: number; items: RewardItem[] };
+type Earnings = { totalPaid: number; runningEstimate: number; maxRemaining: number; walletBalance: number; items: RewardItem[];
+  fixed?: { id: number; campaign_title: string; campaign_slug: string; label: string; amount: number | string; status: string; paid_at: string | null; wallet_ledger_key: string | null }[];
+};
 
 export const rupiah = (n: number) => `Rp${Math.round(n).toLocaleString("id-ID")}`;
 const PAY_URL = "https://pay.djiwatentram.web.id";
@@ -86,7 +88,16 @@ export function RewardsTab() {
       </div>
       <a className="kx-btn kx-btn--ghost" style={{ marginTop: 10 }} href={PAY_URL} target="_blank" rel="noreferrer">Saldo Djiwa Pay {rupiah(data.walletBalance)} · buka</a>
       <h3 className="kx-section">Konten Anda</h3>
-      {data.items.length === 0 && <div className="kx-card" style={{ textAlign: "center" }}><b>Belum ada konten</b><p className="kx-sub" style={{ margin: "4px 0 0" }}>Daftar ke kampanye bereward, lalu kirim link kontenmu dari halaman kampanye.</p><a className="kx-link" href="/campaigns">Lihat kampanye</a></div>}
+      {data.fixed?.map((item) => (
+        <article className="kx-card kx-brand-space" key={item.id}>
+          <div className="kx-brand-toolbar"><b>{item.label}</b><b>{rupiah(Number(item.amount))}</b></div>
+          <p className="kx-sub">{item.campaign_title} · {({ awaiting: "Belum dikirim", submitted: "Dalam review", needs_revision: "Perlu revisi",
+            paid: "Dibayar", rejected: "Ditolak", expired: "Kedaluwarsa" } as Record<string, string>)[item.status]}</p>
+          {item.wallet_ledger_key && <p className="kx-sub">{dayLabel(item.paid_at)} · {item.wallet_ledger_key}</p>}
+          {!item.wallet_ledger_key && <a className="kx-link" href={`/campaigns/${item.campaign_slug}`}>Lihat laporan</a>}
+        </article>
+      ))}
+      {data.items.length === 0 && !data.fixed?.length && <div className="kx-card" style={{ textAlign: "center" }}><b>Belum ada konten</b><p className="kx-sub" style={{ margin: "4px 0 0" }}>Daftar ke kampanye bereward, lalu kirim link kontenmu dari halaman kampanye.</p><a className="kx-link" href="/campaigns">Lihat kampanye</a></div>}
       {data.items.map((item) => {
         const left = item.daysLeft ?? 0, total = item.rules.settleDays;
         const progress = item.state === "paid" ? 100 : item.dueAt ? Math.max(4, Math.min(100, ((total - Math.max(0, left)) / total) * 100)) : 4;

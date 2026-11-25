@@ -47,6 +47,7 @@ export function LoginScreen({ loading, error, onGoogle }: { loading?: boolean; e
         {loading
           ? <p className="kx-sub" style={{ textAlign: "center" }}>Memeriksa sesi Google…</p>
           : <button type="button" className="kx-btn kx-btn--ghost" disabled={busy} aria-busy={busy} onClick={start}><b style={{ color: "#4285f4", fontSize: 18 }}>G</b> {busy ? "Membuka Google…" : "Lanjutkan dengan Google"}</button>}
+        <a className="kx-link kx-brand-space" href="/brand">Masuk sebagai Brand</a>
         <p className="kx-sub" style={{ textAlign: "center", marginTop: 12 }}>Dengan melanjutkan, kamu menyetujui syarat kolaborasi Djiwa Tentram.</p>
       </div>
     </div>

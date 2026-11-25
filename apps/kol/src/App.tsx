@@ -1,5 +1,6 @@
 import { createAuthClient } from "better-auth/react";
 import { useEffect, useRef, useState } from "react";
+import { BrandEntry } from "./kol-brand";
 import { KolPortalView, portalTabFromPath } from "./kol-portal";
 import { PublicCampaigns } from "./kol-campaigns";
 import { KolPublicProfile } from "./kol-public-profile";
@@ -14,7 +15,7 @@ async function claimKolRole():Promise<KolClaim>{const response=await fetch(`${KO
 async function startGoogleSignIn(callbackPath = window.location.pathname + window.location.search + window.location.hash) {
   const origin = window.location.origin;
   const campaignLogin = callbackPath.startsWith("/campaigns/");
-  const errorUrl = new URL(campaignLogin ? callbackPath : "/", origin);
+  const errorUrl = new URL(campaignLogin || callbackPath === "/brand" ? callbackPath : "/", origin);
   errorUrl.searchParams.delete("apply");
   errorUrl.searchParams.set("login", "gagal");
   const { data, error } = await authClient.signIn.social({
@@ -83,8 +84,34 @@ function ReviewScreen({session}:{session:BetterSession}){return <div className="
 function App(){
   const [pathname,setPathname]=useState(()=>window.location.pathname);
   useEffect(()=>{const syncPath=()=>setPathname(window.location.pathname);const handleInternalLink=(event:MouseEvent)=>{if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;const target=event.target;if(!(target instanceof Element))return;const anchor=target.closest("a");if(!anchor||anchor.hasAttribute("download")||(anchor.target&&anchor.target!=="_self"))return;const url=new URL(anchor.href,window.location.href);if(url.origin!==window.location.origin||url.pathname==="/admin")return;if(url.pathname===window.location.pathname&&url.search===window.location.search)return;event.preventDefault();window.history.pushState({},"",`${url.pathname}${url.search}${url.hash}`);syncPath();window.dispatchEvent(new PopStateEvent("popstate"))};document.addEventListener("click",handleInternalLink);window.addEventListener("popstate",syncPath);return()=>{document.removeEventListener("click",handleInternalLink);window.removeEventListener("popstate",syncPath)}},[]);const [session,setSession]=useState<BetterSession|null>(null);const [authLoading,setAuthLoading]=useState(true);const [authError,setAuthError]=useState(()=>{const q=new URLSearchParams(window.location.search);return q.get("login")==="gagal"?loginErrorText(q.get("error")):""});
-  useEffect(()=>{const q=new URLSearchParams(window.location.search);if(q.get("login")==="gagal")window.history.replaceState({},"",window.location.pathname)},[]);const [claim,setClaim]=useState<KolClaim|null>(null);const authCheckedRef=useRef(false);
-  useEffect(()=>{const publicRoute=/^\/[^/]+\/profile\/?$/.test(pathname)||/^\/creator\/[^/]+\/?$/.test(pathname);if(publicRoute){setAuthLoading(false);return}if(authCheckedRef.current)return;authCheckedRef.current=true;setAuthLoading(true);const invitePath=pathname.startsWith("/invite/");getKolSession().then(async current=>{if(!current){setAuthLoading(false);return}if(invitePath){setSession(current);setAuthLoading(false);return}try{const result=await claimKolRole();setClaim(result);setSession(current)}catch(error){setAuthError(error instanceof Error?error.message:"Akun belum dapat disiapkan.")}finally{setAuthLoading(false)}}).catch(()=>{setAuthError("Sesi Google belum dapat diverifikasi.");setAuthLoading(false)})},[pathname]);
+  useEffect(()=>{const q=new URLSearchParams(window.location.search);if(q.get("login")==="gagal")window.history.replaceState({},"",window.location.pathname)},[]);const [claim,setClaim]=useState<KolClaim|null>(null);const authCheckedRef = useRef("");
+  const brandPath = /^\/brand\/?$/.test(pathname);
+  useEffect(() => {
+    const publicRoute = /^\/[^/]+\/profile\/?$/.test(pathname) || /^\/creator\/[^/]+\/?$/.test(pathname);
+    if (publicRoute) { setAuthLoading(false); return; }
+    const mode = brandPath ? "brand" : pathname.startsWith("/invite/") ? "invite" : "kol";
+    if (authCheckedRef.current === mode) return;
+    authCheckedRef.current = mode;
+    setAuthLoading(true);
+    getKolSession().then(async (current) => {
+      if (authCheckedRef.current !== mode) return;
+      if (!current || mode !== "kol") { setSession(current); setAuthLoading(false); return; }
+      try {
+        const result = await claimKolRole();
+        if (authCheckedRef.current === mode) { setClaim(result); setSession(current); }
+      } catch (error) {
+        if (authCheckedRef.current === mode) setAuthError(error instanceof Error ? error.message : "Akun belum dapat disiapkan.");
+      } finally {
+        if (authCheckedRef.current === mode) setAuthLoading(false);
+      }
+    }).catch(() => {
+      if (authCheckedRef.current === mode) { setAuthError("Sesi Google belum dapat diverifikasi."); setAuthLoading(false); }
+    });
+  }, [pathname, brandPath]);
+  if (brandPath) return <BrandEntry signed={Boolean(session)} loading={authLoading} loginError={authError} onLogin={async () => {
+    try { setAuthError(""); await startGoogleSignIn("/brand"); }
+    catch (error) { setAuthError(error instanceof Error ? error.message : "Gagal membuka Google Auth."); }
+  }} />;
   const canonicalProfileMatch=pathname.match(/^\/([^/]+)\/profile\/?$/);if(canonicalProfileMatch)return <KolPublicProfile slug={decodeURIComponent(canonicalProfileMatch[1]||"")}/>;
   const publicMatch=pathname.match(/^\/creator\/([^/]+)\/?$/);if(publicMatch){const slug=decodeURIComponent(publicMatch[1]||"");window.history.replaceState(null,"",`/${encodeURIComponent(slug)}/profile`);return <KolPublicProfile slug={slug}/>}
   const inviteMatch=pathname.match(/^\/invite\/([^/]+)\/?$/);if(inviteMatch)return <InviteLanding token={decodeURIComponent(inviteMatch[1]||"")} session={session} authLoading={authLoading}/>;

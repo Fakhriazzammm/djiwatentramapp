@@ -1,3 +1,4 @@
+import { rupiah } from "./kol-rewards";
 import { useEffect, useMemo, useState } from "react";
 import { errorText, kolApi } from "./kol-lib";
 import { CampaignProofs, type Campaign } from "./kol-campaigns";
@@ -5,14 +6,17 @@ import { KxSheet } from "./kol-sheet";
 
 type Proof = {
   id: number; campaign_assignment_id: number; deliverable_type: string; content_url: string; status: string;
+  reward_amount?: number | string | null; reward_status?: string | null; wallet_ledger_key?: string | null; paid_at?: string | null;
   review_note?: string | null; campaign_title?: string; created_at: string; reviewed_at?: string | null;
 };
 
+const proofStatus = (proof: Proof) => proof.reward_status ?? proof.status;
+
 const STATUS: Record<string, [string, string]> = {
-  submitted: ["Menunggu review", "kx-pill--warn"], needs_revision: ["Perlu revisi", "kx-pill--warn"],
-  approved: ["Disetujui", "kx-pill--ok"], rejected: ["Ditolak", ""],
+  submitted: ["Dalam review", "kx-pill--warn"], needs_revision: ["Perlu revisi", "kx-pill--warn"],
+  approved: ["Disetujui", "kx-pill--ok"], rejected: ["Ditolak", ""], paid: ["Dibayar", "kx-pill--ok"], expired: ["Kedaluwarsa", ""],
 };
-const TABS: Array<[string, string]> = [["all", "Semua"], ["submitted", "Review"], ["needs_revision", "Revisi"], ["approved", "Disetujui"], ["rejected", "Ditolak"]];
+const TABS: Array<[string, string]> = [["all", "Semua"], ["submitted", "Review"], ["needs_revision", "Revisi"], ["approved", "Disetujui"], ["paid", "Dibayar"], ["rejected", "Ditolak"]];
 const when = (v?: string | null) => (v ? new Date(v).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Jakarta" }) : "");
 
 /** Daftar semua konten yang pernah dikirim creator beserta status review tim. */
@@ -23,12 +27,13 @@ export function ContentTab({ campaigns, refresh }: { campaigns: Campaign[]; refr
   const [sheet, setSheet] = useState(false);
   const load = () => kolApi<Proof[]>("/portal/proofs").then(setProofs).catch((e) => setError(errorText(e, "Konten belum bisa dimuat.")));
   useEffect(() => { void load(); }, []);
+
   const counts = useMemo(() => {
     const m: Record<string, number> = { all: proofs?.length ?? 0 };
-    for (const p of proofs ?? []) m[p.status] = (m[p.status] ?? 0) + 1;
+    for (const p of proofs ?? []) m[proofStatus(p)] = (m[proofStatus(p)] ?? 0) + 1;
     return m;
   }, [proofs]);
-  const list = (proofs ?? []).filter((p) => tab === "all" || p.status === tab);
+  const list = (proofs ?? []).filter((p) => tab === "all" || proofStatus(p) === tab);
   const sendable = campaigns.filter((c) => c.assignment_id && ["accepted", "active"].includes(c.assignment_status || ""));
   if (error) return <p role="alert" className="kx-note kx-note--err">{error}</p>;
   if (!proofs) return <p className="kx-sub" role="status">Memuat konten…</p>;
@@ -44,7 +49,7 @@ export function ContentTab({ campaigns, refresh }: { campaigns: Campaign[]; refr
         </div>
       )}
       {list.map((p) => {
-        const [label, tone] = STATUS[p.status] || [p.status, ""];
+        const [label, tone] = STATUS[proofStatus(p)] || [proofStatus(p), ""];
         return (
           <article key={p.id} className="kx-card" style={{ marginTop: 10 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
@@ -52,6 +57,9 @@ export function ContentTab({ campaigns, refresh }: { campaigns: Campaign[]; refr
             </div>
             <p className="kx-sub" style={{ margin: "4px 0 0" }}>{p.campaign_title} · dikirim {when(p.created_at)}</p>
             <a className="kx-link" style={{ display: "block", marginTop: 8, overflowWrap: "anywhere" }} href={p.content_url} target="_blank" rel="noreferrer">{p.content_url}</a>
+            {p.reward_amount != null && <p className="kx-sub">Reward <b>{rupiah(Number(p.reward_amount))}</b>
+              {p.paid_at && <> · Djiwa Pay {when(p.paid_at)}</>}</p>}
+            {p.wallet_ledger_key && <p className="kx-sub">Referensi {p.wallet_ledger_key}</p>}
             {p.review_note && <p className="kx-note" style={{ marginTop: 8 }}>Catatan tim: {p.review_note}</p>}
             {p.status === "needs_revision" && <p className="kx-sub" style={{ margin: "8px 0 0" }}>Kirim revisi lewat tombol Kirim konten, pilih kampanyenya.</p>}
           </article>

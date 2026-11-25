@@ -1,3 +1,5 @@
+import { BrandReports, FixedRewardBox } from "./kol-brand-reports";
+import type { FixedReward } from "./kol-brand";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CONSENT_NO_SHOW, dotTime, errorText, kolApi, longDate, parseDay, type VisitRow } from "./kol-lib";
 import { VisitPicker } from "./kol-visit";
@@ -8,6 +10,7 @@ import { ShareCampaign } from "./kol-share";
 import { CalendarDays, Gift, MapPin, Users } from "lucide-react";
 
 export type Campaign = {
+  fixed_reward?: FixedReward | null;
   id: number; slug: string; title: string; description?: string | null; location?: string | null; benefit_description?: string | null; deliverable_summary?: string | null;
   application_deadline?: string | null; start_date?: string | null; end_date?: string | null; status: string; assignment_id?: number | null; assignment_status?: string | null; brand_name?: string | null; category?: string | null;
   revision: string; can_apply: boolean; application_mode: "invite" | "open" | "visit"; cover_url?: string | null;
@@ -60,6 +63,7 @@ export function CampaignsTab({ campaigns, refresh }: { campaigns: Campaign[]; re
               <div className={`kx-cov ${c.cover_url ? "" : "kx-cov--empty"}`}>
                 {c.cover_url && <img className="kx-campaign-cover" src={c.cover_url} alt="" loading="lazy" width="720" height="420" />}
                 <span className={`kx-pill kx-cov-status ${tone || ""}`} style={tone ? undefined : { background: "#ffffffe6", color: "var(--kx-muted)" }}>{label}</span>
+                {c.fixed_reward && <span className="kx-cov-reward"><b>{rupiah(c.fixed_reward.total)}</b><small> total</small></span>}
                 {c.reward && <span className="kx-cov-reward"><b>{rupiah(c.reward.ratePer1000)}</b><small> / 1.000 view</small></span>}
               </div>
               <b className="kx-h2 kx-card-title">{c.title}</b>
@@ -171,6 +175,7 @@ export function CampaignDetail({ campaign: c, calendar = [], refresh, login }: {
       <ShareCampaign campaign={c} />
       <p className="kx-lead kx-campaign-copy">{c.description}</p>
       {c.reward && <RewardBox reward={c.reward} />}
+      {c.fixed_reward && <FixedRewardBox reward={c.fixed_reward} />}
       <section>
         <h3 className="kx-section" style={{ marginTop: 4 }}>Ringkasan</h3>
         <div className="kx-group">
@@ -294,7 +299,14 @@ function ApplicationStatus({ campaign: c, status, picked, visit }: { campaign: C
   );
 }
 
-export function CampaignProofs({ campaign: c, onChanged }: { campaign: Campaign; onChanged: () => Promise<void> }) {
+type CampaignProofsProps = { campaign: Campaign; onChanged: () => Promise<void> };
+
+export function CampaignProofs({ campaign, onChanged }: CampaignProofsProps) {
+  if (campaign.fixed_reward) return campaign.assignment_id ? <BrandReports assignment={campaign.assignment_id} onChanged={onChanged} /> : null;
+  return <LegacyCampaignProofs campaign={campaign} onChanged={onChanged} />;
+}
+
+function LegacyCampaignProofs({ campaign: c, onChanged }: CampaignProofsProps) {
   const [proofs, setProofs] = useState<Proof[]>([]);
   const [url, setUrl] = useState("");
   const [type, setType] = useState("");

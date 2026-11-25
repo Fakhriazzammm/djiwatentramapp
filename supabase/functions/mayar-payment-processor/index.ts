@@ -1,3 +1,4 @@
+import { brandMayarConfig, checkBrandTopup } from "../_shared/kol-brand-payment.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const corsHeaders = {
@@ -444,8 +445,46 @@ async function reconcilePendingJumatBerkah() {
   return { scanned: pending.length, settled };
 }
 
+type BrandTopup = { deposit_id: string; invoice_id: string; total: number | string };
+const brandPaymentProvider = Deno.env.get("KOL_BRAND_PAYMENTS_ENABLED") === "true"
+  ? brandMayarConfig(Deno.env.get("KOL_BRAND_MAYAR_ENV"), Deno.env.get("KOL_BRAND_MAYAR_API_KEY")) : null;
+
+async function brandBudgetRpc<T>(name: string, params: Record<string, unknown>): Promise<T> {
+  const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: { apikey: SERVICE_ROLE_KEY, Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json", "Content-Profile": "pos" },
+    body: JSON.stringify(params),
+  });
+  if (!response.ok) throw new Error(`${name} failed (${response.status})`);
+  return await response.json() as T;
+}
+
+async function reconcileBrandBudget(target: BrandTopup) {
+  if (!brandPaymentProvider) throw new Error("Brand Mayar is unavailable");
+  const result = await checkBrandTopup(brandPaymentProvider, target.invoice_id, Number(target.total));
+  return await brandBudgetRpc("kol_brand_payment_result", {
+    p_deposit: target.deposit_id, p_invoice: target.invoice_id, p_total: Number(target.total), p_result: result.status,
+    p_transaction: result.status === "paid" ? result.transactionId : null,
+    p_issue: result.status === "review" ? result.reason : null,
+  });
+}
+
+async function reconcileBrandBudgets() {
+  if (!brandPaymentProvider) return { scanned: 0, failed: 0 };
+  const targets = await brandBudgetRpc<BrandTopup[]>("kol_brand_topups_due", { p_limit: 5 });
+  const results = await Promise.allSettled(targets.map(reconcileBrandBudget));
+  const failed = results.filter((result) => result.status === "rejected").length;
+  if (failed) console.error("KOL Brand Mayar reconciliation retries pending", { failed });
+  return { scanned: targets.length, failed };
+}
+
 async function processEvent(payload: Record<string, unknown>) {
   const data = (payload.data || {}) as Record<string, unknown>;
+  const invoiceHint = typeof data.productId === "string" ? data.productId : "";
+  if (brandPaymentProvider && invoiceHint) {
+    const [target] = await brandBudgetRpc<BrandTopup[]>("kol_brand_topup_target", { p_invoice: invoiceHint });
+    if (target) return { kolBrandBudget: await reconcileBrandBudget(target) };
+  }
   const transactionId = String(data.transactionId || "");
   if (!transactionId || !MAYAR_API_KEY) throw new Error("Missing transaction verification identity");
   const transaction = await fetchVerifiedTransaction(transactionId);
@@ -522,7 +561,11 @@ Deno.serve(async (req) => {
       console.error("jumat berkah reconciliation failed", { error: String((error as Error).message).slice(0, 160) });
       return { scanned: 0, settled: [], error: "jumat_berkah_reconcile_failed" };
     });
-    return json({ ok: true, claimed: events.length, results, walletReconciliation, jumatBerkahReconciliation });
+    const brandReconciliation = await reconcileBrandBudgets().catch(() => {
+      console.error("KOL Brand budget reconciliation unavailable");
+      return { error: "brand_reconcile_failed" };
+    });
+    return json({ ok: true, claimed: events.length, results, walletReconciliation, jumatBerkahReconciliation, brandReconciliation });
   } catch (error) {
     console.error("mayar-payment-processor failed", error);
     return json({ error: "Processor failed" }, 500);

@@ -1,3 +1,4 @@
+import { handleBrandError, submitBrandReport } from "./kol-brand.js";
 import { CAMPAIGN_PROOF_PLATFORMS, campaignProofMatchesPlatform } from "../../../supabase/functions/_shared/kol-campaign.ts";
 import { registerKolRewardPortalRoutes } from "./kol-rewards.js";
 import { registerKolAnnouncementPortalRoutes } from "./kol-announcements.js";
@@ -592,8 +593,9 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     c.status = 'published' and c.application_mode <> 'invite'
       and coalesce(c.application_deadline >= (now() at time zone 'Asia/Jakarta')::date, true)
       and coalesce(c.end_date >= (now() at time zone 'Asia/Jakarta')::date, true)
-      and (not c.rewards_enabled or coalesce((pos.kol_reward_public(c.id) ->> 'slotsLeft')::int, 0) > 0) as can_apply,
-    pos.kol_reward_public(c.id) as reward`;
+      and (not c.rewards_enabled or coalesce((pos.kol_reward_public(c.id) ->> 'slotsLeft')::int, 0) > 0)
+      and coalesce((pos.kol_brand_public(c.id) ->> 'slotsLeft')::int > 0, true) as can_apply,
+    pos.kol_reward_public(c.id) as reward, pos.kol_brand_public(c.id) as fixed_reward`;
 
   app.get("/api/kol/public-campaigns", async (c) => {
     const result = await pool.query(`select ${campaignFields} from pos.kol_campaigns c
@@ -669,8 +671,57 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
   app.get("/api/kol/portal/proofs", async (c) => {
     const current = await context(c, auth, pool);
     if (current.error) return current.error;
-    const result = await pool.query(`select p.*, c.title as campaign_title from pos.kol_content_submissions p join pos.kol_campaign_assignments a on a.id=p.campaign_assignment_id join pos.kol_campaigns c on c.id=a.campaign_id where a.kol_id=$1 order by p.created_at desc`, [current.kol.source_id]);
+    const result = await pool.query(`select p.*, c.title as campaign_title, d.amount as reward_amount, d.status as reward_status,
+      po.wallet_ledger_key, po.created_at as paid_at
+      from pos.kol_content_submissions p join pos.kol_campaign_assignments a on a.id=p.campaign_assignment_id
+      join pos.kol_campaigns c on c.id=a.campaign_id
+      left join pos.kol_brand_deliveries d on d.id=p.brand_delivery_id
+      left join pos.kol_reward_payouts po on po.submission_id=p.id and d.id is not null
+      where a.kol_id=$1 order by p.created_at desc`, [current.kol.source_id]);
     return json(c, { success: true, data: result.rows });
+  });
+
+  app.get("/api/kol/portal/brand-deliveries/:assignment", async (c) => {
+    const current = await context(c, auth, pool);
+    if (current.error) return current.error;
+    const assignment = Number(c.req.param("assignment"));
+    if (!Number.isSafeInteger(assignment) || assignment <= 0) return json(c, { success: false, error: "INVALID_ID" }, 400);
+    const { rows } = await pool.query(`select d.id,d.label,d.platform,d.amount,d.status,d.note,d.requires_screenshot,d.dispute_note,d.dispute_resolution,
+      s.content_url,s.insight_screenshot_url,po.wallet_ledger_key,po.created_at as paid_at,
+      (c.end_date >= (now() at time zone 'Asia/Jakarta')::date and c.status in ('published','closed')) as can_submit
+      from pos.kol_brand_deliveries d join pos.kol_campaign_assignments a on a.id=d.assignment_id
+      join pos.kol_campaigns c on c.id=a.campaign_id
+      left join pos.kol_content_submissions s on s.brand_delivery_id=d.id
+      left join pos.kol_reward_payouts po on po.submission_id=s.id
+      where d.assignment_id=$1 and a.kol_id=$2 order by d.task_number`, [assignment, current.kol.source_id]);
+    return json(c, { success: true, data: rows });
+  });
+
+  app.post("/api/kol/portal/brand-deliveries/:id", async (c) => {
+    const current = await context(c, auth, pool);
+    if (current.error) return current.error;
+    const delivery = Number(c.req.param("id"));
+    if (!Number.isSafeInteger(delivery) || delivery <= 0) return json(c, { success: false, error: "INVALID_ID" }, 400);
+    const body = await c.req.json().catch(() => ({}));
+    try {
+      const data = await submitBrandReport(pool, delivery, { source_id: current.kol.source_id, userId: current.userId }, body || {});
+      return json(c, { success: true, data }, 201);
+    } catch (error) { return handleBrandError(error); }
+  });
+
+  app.post("/api/kol/portal/brand-deliveries/:id/dispute", async (c) => {
+    const current = await context(c, auth, pool);
+    if (current.error) return current.error;
+    const delivery = Number(c.req.param("id"));
+    const data = await c.req.json().catch(() => null);
+    const note = typeof data?.note === "string" ? data.note.trim() : "";
+    if (!Number.isSafeInteger(delivery) || delivery <= 0 || !note || note.length > 1000) {
+      return json(c, { success: false, error: "INVALID_DISPUTE" }, 400);
+    }
+    try {
+      await pool.query("select pos.kol_brand_report_dispute($1,$2,$3,$4)", [delivery, current.kol.source_id, current.userId, note]);
+      return json(c, { success: true, data: { status: "with_admin" } }, 201);
+    } catch (error) { return handleBrandError(error); }
   });
 
   app.post("/api/kol/portal/proofs", async (c) => {
@@ -690,6 +741,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
         left join pos.kol_campaign_applications ap on ap.campaign_id = a.campaign_id and ap.kol_id = a.kol_id
         left join pos.kol_visit_bookings b on b.id = ap.booking_id
        where a.id=$5 and a.kol_id=$6 and a.status in ('accepted','active')
+         and not exists (select 1 from pos.kol_brand_campaigns bc where bc.campaign_id=a.campaign_id)
          and (not coalesce(ap.requires_visit, false) or b.status = 'completed')
          and (coalesce(cardinality(ap.proof_platforms), 0) = 0 or ($7::boolean and $1 = any(ap.proof_platforms)))
       on conflict (campaign_assignment_id, required_platform)
@@ -711,7 +763,7 @@ export function registerKolPortalRoutes(app: AppLike, auth: AuthApi, pool: DbPoo
     const body = await c.req.json().catch(() => ({}));
     const contentUrl = typeof body.contentUrl === "string" ? body.contentUrl.trim() : "";
     if (!validUrl(contentUrl)) return json(c, { success: false, error: "INVALID_CONTENT_PROOF" }, 400);
-    const result = await pool.query(`update pos.kol_content_submissions p set content_url=$1, insight_screenshot_url=coalesce($2,insight_screenshot_url), status='submitted', reviewed_at=null, review_note=null, updated_at=now() from pos.kol_campaign_assignments a where p.id=$3 and p.campaign_assignment_id=a.id and a.kol_id=$4 and p.status='needs_revision' and (p.required_platform is null or p.required_platform = any($5::text[])) returning p.*`, [contentUrl, typeof body.screenshotUrl === "string" && validUrl(body.screenshotUrl) ? body.screenshotUrl.trim() : null, Number(c.req.param("id")), current.kol.source_id, CAMPAIGN_PROOF_PLATFORMS.filter((platform) => campaignProofMatchesPlatform(contentUrl, platform))]);
+    const result = await pool.query(`update pos.kol_content_submissions p set content_url=$1, insight_screenshot_url=coalesce($2,insight_screenshot_url), status='submitted', reviewed_at=null, review_note=null, updated_at=now() from pos.kol_campaign_assignments a where p.id=$3 and p.campaign_assignment_id=a.id and a.kol_id=$4 and p.status='needs_revision' and p.brand_delivery_id is null and (p.required_platform is null or p.required_platform = any($5::text[])) returning p.*`, [contentUrl, typeof body.screenshotUrl === "string" && validUrl(body.screenshotUrl) ? body.screenshotUrl.trim() : null, Number(c.req.param("id")), current.kol.source_id, CAMPAIGN_PROOF_PLATFORMS.filter((platform) => campaignProofMatchesPlatform(contentUrl, platform))]);
     if (!result.rows[0]) return json(c, { success: false, error: "CAMPAIGN_PROOF_REVISION_UNAVAILABLE" }, 404);
     return json(c, { success: true, data: result.rows[0] });
   });

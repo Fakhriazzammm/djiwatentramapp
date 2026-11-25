@@ -20,6 +20,7 @@ export async function kolApi<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const ERROR_TEXT: Record<string, string> = {
+  BRAND_NO_FUNDED_SLOT: "Belum ada slot kampanye dengan anggaran tersedia.",
   CAMPAIGN_FULL: "Kuota kampanye ini sudah penuh karena anggaran Bisnis habis.",
   REWARD_BUDGET_INSUFFICIENT: "Anggaran reward kampanye ini belum cukup. Tim akan mengabari.",
   CONTENT_VIDEO_ALREADY_USED: "Video ini sudah dipakai di kampanye lain.",

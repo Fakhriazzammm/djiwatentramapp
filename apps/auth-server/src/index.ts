@@ -10,6 +10,8 @@ import { investorAuth, registerInvestorPortalRoutes } from "./investor-portal.js
 import { managerOrigins, registerManagerPortalRoutes } from "./manager-portal.js";
 import { registerManagerModules } from "./manager-modules.js";
 import { registerManagerKol } from "./manager-kol.js";
+import { startBrandTopupReconciliation } from "./kol-brand-funding.js";
+import { registerKolBrandRoutes } from "./kol-brand.js";
 import { registerKolRewardRoutes } from "./kol-rewards.js";
 import { registerKolAnnouncementRoutes } from "./kol-announcements.js";
 import { startManagerAi } from "./manager-ai.js";
@@ -213,6 +215,8 @@ app.post("/api/kol/claim", async (c) => {
 });
 
 registerKolPortalRoutes(app, auth, pool);
+registerKolBrandRoutes(app, auth, pool);
+startBrandTopupReconciliation(pool);
 
 // ── Better Auth KARYAWAN (staff) ──────────────────────────────────
 const RECRUITMENT_BRIDGE_SECRET = process.env.REKRUTMEN_AUTH_BRIDGE_SECRET || "";

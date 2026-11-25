@@ -49,18 +49,18 @@ export const REWARD_ERRORS: Record<string, string> = {
   RESERVE_STILL_HELD: "Masih ada cadangan KOL yang belum dibayar.", CUSTOMER_NOT_FOUND: "Akun Djiwa Pay dengan email itu tidak ditemukan.", DATE_FROM_VIDEO_ID: "Tanggal tayang sudah terbaca dari ID video.",
 };
 
-export function useRewardApi() {
+export function useRewardApi(module: "kol-rewards" | "kol-brand" = "kol-rewards") {
   const { token, isAdmin, role } = useYumiAuth();
   const canManage = Boolean(isAdmin || isAdminLevelRole(role?.name));
   const call = useCallback(async <T,>(path: string, method = "GET", body?: unknown): Promise<T> => {
     if (!token) throw new Error("Sesi admin tidak tersedia atau telah berakhir. Masuk ulang.");
-    const response = await fetch(`${API}/api/admin-manager/kol-rewards${path}`, {
+    const response = await fetch(`${API}/api/admin-manager/${module}${path}`, {
       method, headers: { Authorization: `Bearer ${token}`, ...(body ? { "Content-Type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined,
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || data.success === false) throw new Error(REWARD_ERRORS[String(data.error)] || String(data.error || `Permintaan gagal (${response.status})`));
     return (data.data !== undefined ? data.data : data) as T;
-  }, [token]);
+  }, [module, token]);
   return { call, canManage, ready: Boolean(token) };
 }
 

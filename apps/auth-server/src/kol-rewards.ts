@@ -112,6 +112,7 @@ async function campaignSummaries(pool: Pool) {
       from pos.kol_campaigns c
       left join pos.kol_businesses b on b.id = c.business_id
       cross join lateral pos.kol_budget_totals(c.id) t
+      where not exists (select 1 from pos.kol_brand_campaigns bc where bc.campaign_id = c.id)
      order by c.created_at desc limit 200`);
   return r.rows.map((x: any) => ({
     id: Number(x.id), slug: x.slug, title: x.title, status: x.status, rewardsEnabled: x.rewards_enabled, businessId: x.business_id ? Number(x.business_id) : null,
@@ -169,7 +170,8 @@ export function registerKolRewardRoutes(app: Hono, auth: Auth, pool: Pool) {
     const businesses = await pool.query(`select b.id, b.name, b.status, b.owner_customer_id, cu.name as owner_name, cu.email as owner_email,
         coalesce(w.available_balance, 0)::bigint as owner_balance
         from pos.kol_businesses b left join pos.customers cu on cu.source_id = b.owner_customer_id
-        left join pos.customer_wallets w on w.customer_id = b.owner_customer_id order by b.id`);
+        left join pos.customer_wallets w on w.customer_id = b.owner_customer_id
+        where not exists (select 1 from pos.kol_brand_memberships m where m.business_id = b.id) order by b.id`);
     return json({ success: true, data: { ...(await overview(pool)), businesses: businesses.rows, feePercent: BUDGET_FEE_PERCENT } });
   });
 
@@ -197,7 +199,7 @@ export function registerKolRewardRoutes(app: Hono, auth: Auth, pool: Pool) {
     try {
       const r = await pool.query(
         `update pos.kol_campaigns set rewards_enabled = $2, reward_per_1000 = $3, reward_min_views = $4, reward_max_per_kol = $5, reward_max_per_content = $6,
-                reward_settle_days = $7, reward_platforms = $8::text[], business_id = coalesce(business_id, (select min(id) from pos.kol_businesses where status = 'active')),
+                reward_settle_days = $7, reward_platforms = $8::text[], business_id = coalesce(business_id, (select min(id) from pos.kol_businesses b where b.status = 'active' and not exists (select 1 from pos.kol_brand_memberships m where m.business_id = b.id))),
                 updated_at = now() where id = $1 returning id`,
         [cid, v.enabled, v.rate, v.minViews, v.perKol, v.perContent, v.days, v.platforms]);
       if (!r.rows[0]) return json({ success: false, error: "CAMPAIGN_NOT_FOUND" }, 404);
@@ -365,12 +367,19 @@ export function registerKolRewardPortalRoutes(app: Hono<any>, context: (c: any) 
     const current = await context(c);
     if (current.error) return current.error;
     const items = (await reviewRows(pool, "and k.source_id = $1", [current.kol.source_id])).map(({ kolId, kolName, kolUsername, ...rest }: any) => rest);
-    const paid = items.filter((i: any) => i.payout).reduce((n: number, i: any) => n + i.payout.amount, 0);
+    const fixed = (await pool.query(`select d.id,c.title as campaign_title,c.slug as campaign_slug,d.label,d.amount,d.status,po.created_at as paid_at,po.wallet_ledger_key
+      from pos.kol_brand_deliveries d join pos.kol_campaign_assignments a on a.id = d.assignment_id
+      join pos.kol_campaigns c on c.id = a.campaign_id
+      left join pos.kol_content_submissions s on s.brand_delivery_id = d.id
+      left join pos.kol_reward_payouts po on po.submission_id = s.id
+      where a.kol_id = $1 order by d.updated_at desc`, [current.kol.source_id])).rows;
+    const paid = items.filter((i: any) => i.payout).reduce((n: number, i: any) => n + i.payout.amount, 0)
+      + fixed.filter((i) => i.status === "paid").reduce((n, i) => n + Number(i.amount), 0);
     const running = items.filter((i: any) => !i.payout).reduce((n: number, i: any) => n + (i.estimate ?? 0), 0);
     const maxLeft = (await pool.query(
       `select coalesce(sum(l.reserved_delta), 0)::bigint as held from pos.kol_budget_ledger l
         join pos.kol_campaign_applications ap on ap.id::text = l.ref_id and l.ref_type = 'application' where ap.kol_id = $1`, [current.kol.source_id])).rows[0];
     const wallet = (await pool.query(`select available_balance from pos.customer_wallets where customer_id = $1`, [current.userId])).rows[0];
-    return json({ success: true, data: { totalPaid: paid, runningEstimate: running, maxRemaining: Number(maxLeft?.held ?? 0), walletBalance: wallet ? Number(wallet.available_balance) : 0, items } });
+    return json({ success: true, data: { totalPaid: paid, runningEstimate: running, maxRemaining: Number(maxLeft?.held ?? 0), walletBalance: wallet ? Number(wallet.available_balance) : 0, items, fixed } });
   });
 }

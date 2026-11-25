@@ -231,6 +231,7 @@ export function ProfileTab({ session, profile, username, refresh }: { session: S
       <button type="button" className="kx-btn" style={{ marginTop: 14 }} disabled={busy} onClick={save}>{busy ? "Menyimpan…" : "Simpan profil"}</button>
       <div className="kx-group" style={{ marginTop: 14 }}>
         <a className="kx-grow" href={`/${username}/profile`} style={{ textDecoration: "none", color: "inherit" }}><span className="kx-ico"><Sparkles size={18} /></span><span className="kx-main"><b>Lihat profil publik</b><small>Seperti yang dilihat brand</small></span><span className="kx-chev">›</span></a>
+        <a className="kx-grow" href="/brand"><span className="kx-main"><b>Portal Brand</b></span></a>
         <button type="button" className="kx-grow" onClick={() => void logoutKol()}><span className="kx-main"><b style={{ color: "var(--kx-bad)" }}>Keluar</b></span></button>
       </div>
     </div>
