@@ -1141,7 +1141,7 @@ html,body,#root{overflow-x:clip;max-width:100vw}
 .dpx .dpx-ntx-rowdrag{position:relative;z-index:1;touch-action:pan-y}
 .dpx .dpx-ntx-row{display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;padding:13px 14px;background:#f7f5f1}
 .dpx .dpx-ntx-ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none}
-.dpx .dpx-ntx-ic .dpx-ic{width:19px;height:19px}
+.dpx .dpx-ntx-ic .dpx-ic{width:19px;height:19px;pointer-events:none;-webkit-user-drag:none}
 .dpx .dpx-ntx-main{flex:1;min-width:0;display:block}
 .dpx .dpx-ntx-title{display:block;font:600 14.5px/1.35 var(--font);color:var(--ink);letter-spacing:-.01em}
 .dpx .dpx-ntx-row.is-unread .dpx-ntx-title{font-weight:700}

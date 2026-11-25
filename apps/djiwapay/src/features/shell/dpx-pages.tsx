@@ -197,7 +197,7 @@ const noteView = (n: WalletNotification): NoteView => {
   const label = sign === "⇄" ? "Pindah dana" : sign === "+" ? "Pemasukan" : sign === "−" || sign === "-" ? "Pengeluaran" : base ?? "Tercatat";
   const credit = n.notification_type.includes("topup") || n.notification_type.includes("credit") || n.notification_type.includes("received") || n.notification_type === "refund";
   const tone = sign === "⇄" ? "tf" : sign === "+" ? "in" : sign === "−" || sign === "-" ? "out" : credit ? "in" : undefined;
-  const detail = msg.replace(m[0], "").replace(/^(Lewat|Sisa|Tagihan)\s+/i, "").replace(/^[.,;:]\s*/, "").trim();
+  const detail = msg.replace(m[0], "").replace(/^(Lewat|Sisa|Tagihan)\s+/i, "").replace(/[,\s]*sisa\s*[.,]?\s*$/i, "").replace(/^[.,;:]\s*/, "").trim();
   return { label, amount: `${sign}${m[2]}`, tone, detail };
 };
 
@@ -207,7 +207,7 @@ function NtxRow({ n, hint, index, onOpen, onMarkRead }: { n: WalletNotification;
   const subtitle = meta.amount ? (reminder ? detail : time) : n.message;
   const look = NOTE_LOOK[n.notification_type] ?? { icon: "bell" as IconName, tone: "blue" };
   const moved = useRef(false);
-  return <motion.div className="dpx-ntx-swipe" data-hint={hint ? "1" : undefined} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: Math.min(index, 6) * 0.03 }}>
+  return <motion.div className="dpx-ntx-swipe" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: Math.min(index, 6) * 0.03 }}>
     <div className="dpx-ntx-behind dpx-ntx-behind-open" aria-hidden="true"><Ic n="chev" size="sm" /><span>Buka</span></div>
     <div className="dpx-ntx-behind dpx-ntx-behind-read" aria-hidden="true"><span>Dibaca</span><Ic n="check" size="sm" /></div>
     <motion.div className="dpx-ntx-rowdrag" drag="x" dragConstraints={{ left: -110, right: 110 }} dragElastic={0.14} dragMomentum={false} dragSnapToOrigin
