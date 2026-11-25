@@ -207,26 +207,28 @@ function NtxRow({ n, hint, index, onOpen, onMarkRead }: { n: WalletNotification;
   const subtitle = meta.amount ? (reminder ? detail : time) : n.message;
   const look = NOTE_LOOK[n.notification_type] ?? { icon: "bell" as IconName, tone: "blue" };
   const moved = useRef(false);
-  return <motion.div className="dpx-ntx-swipe" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: Math.min(index, 6) * 0.03 }}>
+  return <motion.div className="dpx-ntx-swipe" data-hint={hint ? "1" : undefined} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: Math.min(index, 6) * 0.03 }}>
     <div className="dpx-ntx-behind dpx-ntx-behind-open" aria-hidden="true"><Ic n="chev" size="sm" /><span>Buka</span></div>
     <div className="dpx-ntx-behind dpx-ntx-behind-read" aria-hidden="true"><span>Dibaca</span><Ic n="check" size="sm" /></div>
     <motion.div className="dpx-ntx-rowdrag" drag="x" dragConstraints={{ left: -110, right: 110 }} dragElastic={0.14} dragMomentum={false} dragSnapToOrigin
-      animate={hint ? { x: [0, -18, 8, 0] } : { x: 0 }} transition={hint ? { duration: 0.9, ease: "easeInOut", delay: 0.18 } : { duration: 0.2 }}
       onDragStart={() => { moved.current = true; }}
       onDragEnd={(_, info) => {
         if (info.offset.x < -56 || info.velocity.x < -550) onMarkRead(n);
         else if (info.offset.x > 56 || info.velocity.x > 550) onOpen(n);
         window.setTimeout(() => { moved.current = false; }, 80);
       }}>
-      <Btn type="button" className={`dpx-ntx-row ${n.unread ? "is-unread" : ""}`} onClick={() => { if (!moved.current) onOpen(n); }} whileTap={{ scale: 0.995 }}>
-        <span className={`dpx-ntx-ic dpx-c-${look.tone}`}><Ic n={look.icon} /></span>
-        <span className="dpx-ntx-main"><b className="dpx-ntx-title">{cleanTitle(n.title)}</b>{subtitle ? <span className="dpx-ntx-msg">{subtitle}</span> : null}</span>
-        <span className="dpx-ntx-trail">
-          {meta.amount ? <><span className="dpx-ntx-kindrow">{meta.label ? <small className="dpx-ntx-kind">{meta.label}</small> : null}{n.unread ? <span className="dpx-ntx-dot" aria-label="Belum dibaca" /> : null}</span><b className={`dpx-ntx-amt ${meta.tone ?? ""}`}>{meta.amount}</b></>
-            : reminder && meta.label ? <span className="dpx-ntx-kindrow"><small className="dpx-ntx-kind">{meta.label}</small>{n.unread ? <span className="dpx-ntx-dot" aria-label="Belum dibaca" /> : null}</span>
-            : <span className="dpx-ntx-kindrow"><small className="dpx-ntx-time">{time}</small>{n.unread ? <span className="dpx-ntx-dot" aria-label="Belum dibaca" /> : null}</span>}
-        </span>
-      </Btn>
+      {/* The hint lives on its own layer so it never fights the drag transform. */}
+      <motion.div className="dpx-ntx-rowhint" animate={hint ? { x: [0, -18, 8, 0] } : { x: 0 }} transition={hint ? { duration: 0.9, ease: "easeInOut", delay: 0.18 } : { duration: 0.2 }}>
+        <Btn type="button" className={`dpx-ntx-row ${n.unread ? "is-unread" : ""}`} onClick={() => { if (!moved.current) onOpen(n); }} whileTap={{ scale: 0.995 }}>
+          <span className={`dpx-ntx-ic dpx-c-${look.tone}`}><Ic n={look.icon} /></span>
+          <span className="dpx-ntx-main"><b className="dpx-ntx-title">{cleanTitle(n.title)}</b>{subtitle ? <span className="dpx-ntx-msg">{subtitle}</span> : null}</span>
+          <span className="dpx-ntx-trail">
+            {meta.amount ? <><span className="dpx-ntx-kindrow">{meta.label ? <small className="dpx-ntx-kind">{meta.label}</small> : null}{n.unread ? <span className="dpx-ntx-dot" aria-label="Belum dibaca" /> : null}</span><b className={`dpx-ntx-amt ${meta.tone ?? ""}`}>{meta.amount}</b></>
+              : reminder && meta.label ? <span className="dpx-ntx-kindrow"><small className="dpx-ntx-kind">{meta.label}</small>{n.unread ? <span className="dpx-ntx-dot" aria-label="Belum dibaca" /> : null}</span>
+              : <span className="dpx-ntx-kindrow"><small className="dpx-ntx-time">{time}</small>{n.unread ? <span className="dpx-ntx-dot" aria-label="Belum dibaca" /> : null}</span>}
+          </span>
+        </Btn>
+      </motion.div>
     </motion.div>
   </motion.div>;
 }
