@@ -218,7 +218,7 @@ function NtxRow({ n, hint, index, onOpen, onMarkRead }: { n: WalletNotification;
         window.setTimeout(() => { moved.current = false; }, 80);
       }}>
       {/* The hint lives on its own layer so it never fights the drag transform. */}
-      <motion.div className="dpx-ntx-rowhint" animate={hint ? { x: [0, -18, 8, 0] } : { x: 0 }} transition={hint ? { duration: 0.9, ease: "easeInOut", delay: 0.18 } : { duration: 0.2 }}>
+      <motion.div className="dpx-ntx-rowhint" animate={hint ? { x: [0, -52, 34, 0] } : { x: 0 }} transition={hint ? { duration: 0.95, ease: "easeInOut", delay: 0.18 } : { duration: 0.2 }}>
         <Btn type="button" className={`dpx-ntx-row ${n.unread ? "is-unread" : ""}`} onClick={() => { if (!moved.current) onOpen(n); }} whileTap={{ scale: 0.995 }}>
           <span className={`dpx-ntx-ic dpx-c-${look.tone}`}><Ic n={look.icon} /></span>
           <span className="dpx-ntx-main"><b className="dpx-ntx-title">{cleanTitle(n.title)}</b>{subtitle ? <span className="dpx-ntx-msg">{subtitle}</span> : null}</span>
