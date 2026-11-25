@@ -1,11 +1,12 @@
 import { createAuthClient } from "better-auth/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { BrandEntry } from "./kol-brand";
 import { KolPortalView, portalTabFromPath } from "./kol-portal";
 import { PublicCampaigns } from "./kol-campaigns";
 import { KolPublicProfile } from "./kol-public-profile";
-import { LoginScreen, RegisterFlow } from "./kol-onboarding";
-import { AUTH_BASE, KOL_API, loginErrorText, logoutKol } from "./kol-lib";
+import { RegisterFlow } from "./kol-onboarding";
+import { AUTH_BASE, KOL_API, getAccountRoles, kolApi, loginErrorText, logoutKol, type AccountRoles } from "./kol-lib";
+import { RolePicker, type AccountRole } from "./kol-role";
 
 const authClient=createAuthClient({baseURL:AUTH_BASE,fetchOptions:{credentials:"include"}});
 type BetterSession={user:{id:string;name?:string|null;email?:string|null;image?:string|null}};
@@ -15,7 +16,7 @@ async function claimKolRole():Promise<KolClaim>{const response=await fetch(`${KO
 async function startGoogleSignIn(callbackPath = window.location.pathname + window.location.search + window.location.hash) {
   const origin = window.location.origin;
   const campaignLogin = callbackPath.startsWith("/campaigns/");
-  const errorUrl = new URL(campaignLogin || callbackPath === "/brand" ? callbackPath : "/", origin);
+  const errorUrl = new URL(campaignLogin || callbackPath === "/brand" || callbackPath.startsWith("/masuk") ? callbackPath : "/", origin);
   errorUrl.searchParams.delete("apply");
   errorUrl.searchParams.set("login", "gagal");
   const { data, error } = await authClient.signIn.social({
@@ -81,63 +82,123 @@ function InviteCard({children}:{children:React.ReactNode}){return <main classNam
 
 function ReviewScreen({session}:{session:BetterSession}){return <div className="kx kx-wrap"><div className="kx-view" style={{paddingTop:"calc(56px + env(safe-area-inset-top))",textAlign:"center"}}><h1 className="kx-h1">Akunmu sedang ditinjau</h1><p className="kx-lead">Email {session.user.email} cocok dengan lebih dari satu data creator. Admin Djiwa Tentram akan menghubungkan akunmu secara manual.</p><button type="button" className="kx-btn kx-btn--ghost" style={{marginTop:24}} onClick={()=>void logoutKol()}>Keluar</button></div></div>}
 
-function App(){
-  const [pathname,setPathname]=useState(()=>window.location.pathname);
-  useEffect(()=>{const syncPath=()=>setPathname(window.location.pathname);const handleInternalLink=(event:MouseEvent)=>{if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;const target=event.target;if(!(target instanceof Element))return;const anchor=target.closest("a");if(!anchor||anchor.hasAttribute("download")||(anchor.target&&anchor.target!=="_self"))return;const url=new URL(anchor.href,window.location.href);if(url.origin!==window.location.origin||url.pathname==="/admin")return;if(url.pathname===window.location.pathname&&url.search===window.location.search)return;event.preventDefault();window.history.pushState({},"",`${url.pathname}${url.search}${url.hash}`);syncPath();window.dispatchEvent(new PopStateEvent("popstate"))};document.addEventListener("click",handleInternalLink);window.addEventListener("popstate",syncPath);return()=>{document.removeEventListener("click",handleInternalLink);window.removeEventListener("popstate",syncPath)}},[]);const [session,setSession]=useState<BetterSession|null>(null);const [authLoading,setAuthLoading]=useState(true);const [authError,setAuthError]=useState(()=>{const q=new URLSearchParams(window.location.search);return q.get("login")==="gagal"?loginErrorText(q.get("error")):""});
-  useEffect(()=>{const q=new URLSearchParams(window.location.search);if(q.get("login")==="gagal")window.history.replaceState({},"",window.location.pathname)},[]);const [claim,setClaim]=useState<KolClaim|null>(null);const authCheckedRef = useRef("");
-  const brandPath = /^\/brand\/?$/.test(pathname);
+function App() {
+  const [location, setLocation] = useState(() => window.location.pathname + window.location.search);
+  const [session, setSession] = useState<BetterSession | null>(null);
+  const [roles, setRoles] = useState<AccountRoles | null>(null);
+  const [claim, setClaim] = useState<KolClaim | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState(() => {
+    const query = new URLSearchParams(window.location.search);
+    return query.get("login") === "gagal" ? loginErrorText(query.get("error")) : "";
+  });
+  const [role, setRole] = useState<AccountRole | null>(null);
+  const [pathname = "/", query = ""] = location.split("?");
+  const params = new URLSearchParams(query);
+  const profile = pathname.match(/^\/([^/]+)\/profile\/?$/) ?? pathname.match(/^\/creator\/([^/]+)\/?$/);
+  const invite = pathname.match(/^\/invite\/([^/]+)\/?$/);
+  const campaign = pathname.match(/^\/campaigns(?:\/([a-z0-9-]{1,120}))?\/?$/i);
+  const campaignSlug = campaign?.[1]?.toLowerCase();
+  const choosing = /^\/masuk\/?$/.test(pathname);
+  const brand = /^\/brand\/?$/.test(pathname);
+  const nextCampaign = params.get("campaign");
+  const requestedCampaign = nextCampaign && /^[a-z0-9-]{1,120}$/.test(nextCampaign) ? nextCampaign : null;
+  const applying = params.get("apply") === "1" && Boolean(campaignSlug);
+
+  function navigate(to: string, replace = false) {
+    if (replace) window.history.replaceState({}, "", to);
+    else window.history.pushState({}, "", to);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }
+
   useEffect(() => {
-    const publicRoute = /^\/[^/]+\/profile\/?$/.test(pathname) || /^\/creator\/[^/]+\/?$/.test(pathname);
-    if (publicRoute) { setAuthLoading(false); return; }
-    const mode = brandPath ? "brand" : pathname.startsWith("/invite/") ? "invite" : "kol";
-    if (authCheckedRef.current === mode) return;
-    authCheckedRef.current = mode;
+    const sync = () => setLocation(window.location.pathname + window.location.search);
+    const link = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const anchor = event.target instanceof Element ? event.target.closest("a") : null;
+      if (!anchor || anchor.hasAttribute("download") || (anchor.target && anchor.target !== "_self")) return;
+      const url = new URL(anchor.href, window.location.href);
+      if (url.origin !== window.location.origin || url.pathname === "/admin" || url.pathname + url.search === window.location.pathname + window.location.search) return;
+      event.preventDefault();
+      navigate(url.pathname + url.search + url.hash);
+    };
+    document.addEventListener("click", link);
+    window.addEventListener("popstate", sync);
+    return () => {
+      document.removeEventListener("click", link);
+      window.removeEventListener("popstate", sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (profile) return;
+    let current = true;
     setAuthLoading(true);
-    getKolSession().then(async (current) => {
-      if (authCheckedRef.current !== mode) return;
-      if (!current || mode !== "kol") { setSession(current); setAuthLoading(false); return; }
-      try {
-        const result = await claimKolRole();
-        if (authCheckedRef.current === mode) { setClaim(result); setSession(current); }
-      } catch (error) {
-        if (authCheckedRef.current === mode) setAuthError(error instanceof Error ? error.message : "Akun belum dapat disiapkan.");
-      } finally {
-        if (authCheckedRef.current === mode) setAuthLoading(false);
+    getKolSession().then(async (value) => {
+      if (!current) return;
+      setSession(value);
+      if (value) {
+        const account = await getAccountRoles();
+        if (current) setRoles(account);
       }
     }).catch(() => {
-      if (authCheckedRef.current === mode) { setAuthError("Sesi Google belum dapat diverifikasi."); setAuthLoading(false); }
+      if (current) setAuthError("Sesi atau peran akun belum dapat dimuat. Coba muat ulang.");
+    }).finally(() => {
+      if (current) setAuthLoading(false);
     });
-  }, [pathname, brandPath]);
-  if (brandPath) return <BrandEntry signed={Boolean(session)} loading={authLoading} loginError={authError} onLogin={async () => {
-    try { setAuthError(""); await startGoogleSignIn("/brand"); }
+    return () => { current = false; };
+  }, [Boolean(profile)]);
+
+  const login = async (campaignToResume?: string) => {
+    setAuthError("");
+    try { await startGoogleSignIn(campaignToResume ? `/masuk?campaign=${encodeURIComponent(campaignToResume)}` : "/masuk"); }
     catch (error) { setAuthError(error instanceof Error ? error.message : "Gagal membuka Google Auth."); }
-  }} />;
-  const canonicalProfileMatch=pathname.match(/^\/([^/]+)\/profile\/?$/);if(canonicalProfileMatch)return <KolPublicProfile slug={decodeURIComponent(canonicalProfileMatch[1]||"")}/>;
-  const publicMatch=pathname.match(/^\/creator\/([^/]+)\/?$/);if(publicMatch){const slug=decodeURIComponent(publicMatch[1]||"");window.history.replaceState(null,"",`/${encodeURIComponent(slug)}/profile`);return <KolPublicProfile slug={slug}/>}
-  const inviteMatch=pathname.match(/^\/invite\/([^/]+)\/?$/);if(inviteMatch)return <InviteLanding token={decodeURIComponent(inviteMatch[1]||"")} session={session} authLoading={authLoading}/>;
-  const campaignMatch = pathname.match(/^\/campaigns(?:\/([a-z0-9-]{1,120}))?\/?$/i);
-  const campaignSlug = campaignMatch?.[1]?.toLowerCase();
-  const applyPath = campaignSlug ? `/campaigns/${campaignSlug}?apply=1` : "/campaigns";
-  const startingApplication = new URLSearchParams(window.location.search).get("apply") === "1";
-  if (campaignMatch && (!session || (!claim?.linked && !startingApplication))) {
+  };
+
+  const choose = async (selected: AccountRole) => {
+    setAuthError("");
+    try {
+      if (selected === "brand") {
+        await kolApi("/roles", { method: "POST", body: JSON.stringify({ role: "brand" }) });
+        setRole("brand");
+        navigate("/brand", false);
+        return;
+      }
+      const result = await claimKolRole();
+      setRole("creator");
+      setClaim(result);
+      navigate(requestedCampaign ? `/campaigns/${requestedCampaign}?apply=1` : "/", false);
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "Peran akun belum bisa dipilih.");
+    }
+  };
+
+  if (profile) return <KolPublicProfile slug={decodeURIComponent(profile[1] || "")} />;
+  if (invite) return <InviteLanding token={decodeURIComponent(invite[1] || "")} session={session} authLoading={authLoading} />;
+  if (brand) return <BrandEntry signed={Boolean(session)} loading={authLoading} loginError={authError} onLogin={() => login()} />;
+  if (campaign && (!session || (!roles?.creator && !claim?.linked && !applying))) {
     return <PublicCampaigns key={pathname} slug={campaignSlug} loginError={authError} onApply={async () => {
-      if (session) window.location.assign(applyPath);
-      else await startGoogleSignIn(applyPath);
+      if (!session) await login(campaignSlug);
+      else if (campaignSlug) navigate(`/masuk?campaign=${encodeURIComponent(campaignSlug)}`);
     }} />;
   }
-  if(authLoading)return <LoginScreen loading onGoogle={()=>undefined}/>;
-  if(!session)return <LoginScreen error={authError} onGoogle={async()=>{try{setAuthError("");await startGoogleSignIn()}catch(error){setAuthError(error instanceof Error?error.message:"Gagal membuka Google Auth.")}}}/>;
-  if(claim?.ambiguous)return <ReviewScreen session={session}/>;
-  if (!claim?.linked) return <RegisterFlow session={session} campaignSlug={startingApplication ? campaignSlug : undefined}
-    onRegistered={async () => {
-      const result = await claimKolRole();
-      setClaim(result);
-      const destination = startingApplication && campaignSlug ? `/campaigns/${campaignSlug}` : "/";
-      window.history.replaceState({}, "", destination);
-      setPathname(destination);
+  if (authLoading) return <RolePicker loading />;
+  if (!session) return <RolePicker error={authError} onGoogle={() => login()} />;
+  if (choosing || (role !== "creator" && !roles?.creator && !claim?.linked)) {
+    return <RolePicker signed error={authError} hasCreator={Boolean(roles?.creator)} hasBrand={Boolean(roles?.brands.length)} onChoose={choose} />;
+  }
+  if (claim?.ambiguous) return <ReviewScreen session={session} />;
+  if (!roles?.creator && !claim?.linked) {
+    return <RegisterFlow session={session} campaignSlug={applying ? campaignSlug : undefined} onRegistered={async () => {
+      setClaim(await claimKolRole());
+      navigate(applying && campaignSlug ? `/campaigns/${campaignSlug}` : "/", true);
     }} />;
-  if(/^\/portal\/profile-settings\/?$/.test(pathname)){window.history.replaceState({},"","/profil");return <KolPortalView session={session} claim={claim} initialTab="profile"/>}
-  const portalTab=portalTabFromPath(pathname);const inviteToken=new URLSearchParams(window.location.search).get("invite");
-  return <KolPortalView session={session} claim={claim} initialTab={portalTab} campaignSlug={campaignSlug} inviteContext={portalTab==="calendar"&&inviteToken?{active:true,token:inviteToken}:undefined}/>;
+  }
+  const linked = claim ?? (roles?.creator ? { userType: "kol", linked: true, ambiguous: false, profile: roles.creator } : null);
+  const tab = /^\/portal\/profile-settings\/?$/.test(pathname) ? "profile" : portalTabFromPath(pathname);
+  const inviteToken = params.get("invite");
+  return <KolPortalView session={session} claim={linked} initialTab={tab} campaignSlug={campaignSlug}
+    inviteContext={tab === "calendar" && inviteToken ? { active: true, token: inviteToken } : undefined} />;
 }
+
 export default App;

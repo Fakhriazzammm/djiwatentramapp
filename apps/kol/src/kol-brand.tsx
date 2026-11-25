@@ -138,7 +138,7 @@ function BrandShell({ children, signed }: { children: ReactNode; signed: boolean
     <div className="kx kx-wrap">
       <main className="kx-view" style={{ paddingTop: "calc(24px + env(safe-area-inset-top))" }}>
         <header className="kx-brand-toolbar">
-          <a className="kx-link" href="/">
+          <a className="kx-link" href="/masuk">
             Portal KOL
           </a>
           {signed && (

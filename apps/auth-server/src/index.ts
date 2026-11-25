@@ -12,6 +12,7 @@ import { registerManagerModules } from "./manager-modules.js";
 import { registerManagerKol } from "./manager-kol.js";
 import { startBrandTopupReconciliation } from "./kol-brand-funding.js";
 import { registerKolBrandRoutes } from "./kol-brand.js";
+import { registerKolAccountRoutes } from "./kol-account.js";
 import { registerKolRewardRoutes } from "./kol-rewards.js";
 import { registerKolAnnouncementRoutes } from "./kol-announcements.js";
 import { startManagerAi } from "./manager-ai.js";
@@ -163,6 +164,8 @@ app.use(
   }),
 );
 
+registerKolAccountRoutes(app, auth, pool);
+
 app.post("/api/kol/claim", async (c) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   const email = session?.user?.email?.trim().toLowerCase();
@@ -171,7 +174,7 @@ app.post("/api/kol/claim", async (c) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    await client.query(`UPDATE public."user" SET user_type = 'kol' WHERE id = $1`, [session.user.id]);
+    await client.query(`UPDATE public."user" SET user_type = 'kol' WHERE id = $1 AND user_type = 'customer'`, [session.user.id]);
     const owned = await client.query(
       `SELECT c.source_id, c.name, c.username, c.status
          FROM pos.kol_creators c

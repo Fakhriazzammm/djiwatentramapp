@@ -186,6 +186,7 @@ export function registerKolBrandRoutes(app: Hono, auth: typeof defaultAuth, pool
 
       const created = await brandTransaction(pool, async (db) => {
         await db.query('select id from public."user" where id = $1 for update', [user.id]);
+        await db.query(`update public."user" set user_type = 'brand' where id = $1 and user_type = 'customer'`, [user.id]);
         const existing = (
           await db.query(
             `select b.id,b.name,m.status from pos.kol_brand_memberships m join pos.kol_businesses b on b.id = m.business_id

@@ -19,6 +19,14 @@ export async function kolApi<T>(path: string, init?: RequestInit): Promise<T> {
   return (body.data ?? body) as T;
 }
 
+export type AccountRoles = {
+  userType: string;
+  creator: { source_id: string; name: string; username: string; status: string } | null;
+  brands: { id: string; name: string; status: string }[];
+};
+/** Snapshot peran akun (creator/brand) untuk layar pemilihan akun. Tidak mengubah data. */
+export const getAccountRoles = () => kolApi<AccountRoles>("/roles");
+
 export const ERROR_TEXT: Record<string, string> = {
   BRAND_NO_FUNDED_SLOT: "Belum ada slot kampanye dengan anggaran tersedia.",
   CAMPAIGN_FULL: "Kuota kampanye ini sudah penuh karena anggaran Bisnis habis.",
