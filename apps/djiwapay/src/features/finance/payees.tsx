@@ -196,7 +196,7 @@ export function PayeeCard({ ctx, y, m }: { ctx: FinCtx; y: number; m: number }) 
     <p className="say"><b>{top.length} penerima</b> menyerap <b>{Math.round(a.topShare)}%</b> dari pengeluaranmu.</p>
     <div className="rows">{top.map((p, i) => <motion.button key={p.key} type="button" className="r" onClick={() => ctx.nav.go(`/penerima?k=${encodeURIComponent(p.key)}`)} initial={reduce ? false : { opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ ...spring, delay: 0.15 + i * 0.05 }} whileTap={{ scale: 0.98 }}>
       <span className="av" style={{ background: colorOf(i) }}>{p.name.replace(/[^A-Za-z]/g, "").slice(0, 1).toUpperCase() || "?"}</span>
-      <span className="tx"><b>{p.name}</b><span className="ln"><small>{p.count} transaksi · {KIND_NAME[p.kind].toLowerCase()} · {Math.round(p.share)}%</small><strong>{rupiah(p.total)}</strong></span></span></motion.button>)}</div>
+      <span className="tx"><span className="tx-main"><b>{p.name}</b><small>{p.count} transaksi · {KIND_NAME[p.kind].toLowerCase()}</small></span><span className="tx-num"><strong>{rupiah(p.total)}</strong><small>{Math.round(p.share)}%</small></span></span></motion.button>)}</div>
     <Btn type="button" className="all" onClick={() => ctx.nav.go("/penerima")} whileTap={{ scale: 0.98 }}>Lihat semua penerima <Ic n="chev" size="sm" /></Btn>
   </motion.section>;
 }
