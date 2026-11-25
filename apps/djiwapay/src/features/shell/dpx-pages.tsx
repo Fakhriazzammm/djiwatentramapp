@@ -201,31 +201,32 @@ const noteView = (n: WalletNotification): NoteView => {
   return { label, amount: `${sign}${m[2]}`, tone, detail };
 };
 
-function NtxRow({ n, hint, index, onOpen, onMarkRead }: { n: WalletNotification; hint: boolean; index: number; onOpen: (n: WalletNotification) => void; onMarkRead: (n: WalletNotification) => void }) {
+function NtxRow({ n, hint, index, onOpen, onMarkRead, onDismiss }: { n: WalletNotification; hint: boolean; index: number; onOpen: (n: WalletNotification) => void; onMarkRead: (n: WalletNotification) => void; onDismiss: (n: WalletNotification) => void }) {
   const meta = noteView(n), reminder = REMINDER_TYPES.has(n.notification_type), time = formatTime(n.created_at);
   const detail = meta.detail && meta.detail !== meta.label ? meta.detail : "";
-  const subtitle = meta.amount ? (reminder ? detail : time) : n.message;
+  // Right column always keeps its description; with time first for activity ("19.46 · Tercatat"), label-only for reminders.
+  const labelLine = reminder ? (meta.label ?? "") : (meta.label ? `${time} · ${meta.label}` : time);
+  const subtitle = reminder ? (meta.amount ? detail : n.message) : (meta.amount ? "" : n.message);
   const look = NOTE_LOOK[n.notification_type] ?? { icon: "bell" as IconName, tone: "blue" };
   const moved = useRef(false);
-  return <motion.div className="dpx-ntx-swipe" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: Math.min(index, 6) * 0.03 }}>
-    <div className="dpx-ntx-behind dpx-ntx-behind-open" aria-hidden="true"><Ic n="chev" size="sm" /><span>Buka</span></div>
-    <div className="dpx-ntx-behind dpx-ntx-behind-read" aria-hidden="true"><span>Dibaca</span><Ic n="check" size="sm" /></div>
+  return <motion.div className="dpx-ntx-swipe" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -140, transition: { duration: 0.22 } }} transition={{ ...spring, delay: Math.min(index, 6) * 0.03 }}>
+    <div className="dpx-ntx-behind dpx-ntx-behind-read" aria-hidden="true"><Ic n="check" size="sm" /><span>Dibaca</span></div>
+    <div className="dpx-ntx-behind dpx-ntx-behind-del" aria-hidden="true"><span>Hapus</span><Ic n="trash" size="sm" /></div>
     <motion.div className="dpx-ntx-rowdrag" drag="x" dragConstraints={{ left: -110, right: 110 }} dragElastic={0.14} dragMomentum={false} dragSnapToOrigin
       onDragStart={() => { moved.current = true; }}
       onDragEnd={(_, info) => {
-        if (info.offset.x < -56 || info.velocity.x < -550) onMarkRead(n);
-        else if (info.offset.x > 56 || info.velocity.x > 550) onOpen(n);
+        if (info.offset.x < -56 || info.velocity.x < -550) onDismiss(n);
+        else if (info.offset.x > 56 || info.velocity.x > 550) onMarkRead(n);
         window.setTimeout(() => { moved.current = false; }, 80);
       }}>
       {/* The hint lives on its own layer so it never fights the drag transform. */}
-      <motion.div className="dpx-ntx-rowhint" animate={hint ? { x: [0, -52, 34, 0] } : { x: 0 }} transition={hint ? { duration: 0.95, ease: "easeInOut", delay: 0.18 } : { duration: 0.2 }}>
+      <motion.div className="dpx-ntx-rowhint" animate={hint ? { x: [0, 34, -52, 0] } : { x: 0 }} transition={hint ? { duration: 0.95, ease: "easeInOut", delay: 0.18 } : { duration: 0.2 }}>
         <Btn type="button" className={`dpx-ntx-row ${n.unread ? "is-unread" : ""}`} onClick={() => { if (!moved.current) onOpen(n); }} whileTap={{ scale: 0.995 }}>
           <span className={`dpx-ntx-ic dpx-c-${look.tone}`}><Ic n={look.icon} /></span>
           <span className="dpx-ntx-main"><b className="dpx-ntx-title">{cleanTitle(n.title)}</b>{subtitle ? <span className="dpx-ntx-msg">{subtitle}</span> : null}</span>
           <span className="dpx-ntx-trail">
-            {meta.amount ? <><span className="dpx-ntx-kindrow">{meta.label ? <small className="dpx-ntx-kind">{meta.label}</small> : null}{n.unread ? <span className="dpx-ntx-dot" aria-label="Belum dibaca" /> : null}</span><b className={`dpx-ntx-amt ${meta.tone ?? ""}`}>{meta.amount}</b></>
-              : reminder && meta.label ? <span className="dpx-ntx-kindrow"><small className="dpx-ntx-kind">{meta.label}</small>{n.unread ? <span className="dpx-ntx-dot" aria-label="Belum dibaca" /> : null}</span>
-              : <span className="dpx-ntx-kindrow"><small className="dpx-ntx-time">{time}</small>{n.unread ? <span className="dpx-ntx-dot" aria-label="Belum dibaca" /> : null}</span>}
+            <span className="dpx-ntx-kindrow"><small className="dpx-ntx-kind">{labelLine}</small>{n.unread ? <span className="dpx-ntx-dot" aria-label="Belum dibaca" /> : null}</span>
+            {meta.amount ? <b className={`dpx-ntx-amt ${meta.tone ?? ""}`}>{meta.amount}</b> : null}
           </span>
         </Btn>
       </motion.div>
@@ -234,9 +235,9 @@ function NtxRow({ n, hint, index, onOpen, onMarkRead }: { n: WalletNotification;
 }
 
 /** Notifikasi, pengingat and berita in one iOS-style sheet; each tab carries its own mark-as-read and swipe actions. */
-export function NotificationsSheet({ items, loading, busy, onClose, onOpen, onMarkRead, onReadAll, onAddReminder, feed }: {
+export function NotificationsSheet({ items, loading, busy, onClose, onOpen, onMarkRead, onDismiss, onReadAll, onAddReminder, feed }: {
   items: WalletNotification[]; loading: boolean; busy: boolean; onClose: () => void;
-  onOpen: (n: WalletNotification) => void; onMarkRead: (n: WalletNotification) => void;
+  onOpen: (n: WalletNotification) => void; onMarkRead: (n: WalletNotification) => void; onDismiss: (n: WalletNotification) => void;
   onReadAll: (items: WalletNotification[]) => void; onAddReminder?: () => void; feed?: ReactNode;
 }) {
   const [tab, setTab] = useState<NtTab>("notif");
@@ -255,21 +256,21 @@ export function NotificationsSheet({ items, loading, busy, onClose, onOpen, onMa
   const tabLabel = (icon: IconName, text: string, dot: boolean) => <span className="dpx-ntx-tab"><Ic n={icon} size="sm" /><span>{text}</span>{dot ? <i className="dpx-ntx-tabdot" aria-hidden="true" /> : null}</span>;
   const state = loading && items.length === 0 ? "Memuat…" : list.length === 0 ? (tab === "notif" ? "Tidak ada notifikasi" : tab === "reminder" ? "Tidak ada pengingat" : "Tidak ada berita baru") : unread ? (tab === "news" ? `${unread} berita baru` : `${unread} belum dibaca`) : tab === "news" ? "Semua berita sudah dibaca" : "Semua sudah dibaca";
   const empty = (kind: NtTab) => { const e = NT_EMPTY[kind]; return <div className="dpx-ntx-empty"><span className="dpx-ntx-empty-ic"><Ic n={e.icon} size="lg" /></span><b>{e.title}</b><p>{e.text}</p></div>; };
-  const row = (n: WalletNotification, i: number) => <NtxRow key={n.id} n={n} index={i} hint={hintTab === tab && n.id === list[0]?.id} onOpen={onOpen} onMarkRead={onMarkRead} />;
+  const row = (n: WalletNotification, i: number) => <NtxRow key={n.id} n={n} index={i} hint={hintTab === tab && n.id === list[0]?.id} onOpen={onOpen} onMarkRead={onMarkRead} onDismiss={onDismiss} />;
   return <Sheet label="Notifikasi" onClose={onClose}>
     <div className="dpx-ntx">
       <div className="dpx-ntx-top">
         <div className="dpx-ntx-bar"><Btn type="button" className="dpx-ntx-x" aria-label="Tutup notifikasi" onClick={onClose}><span aria-hidden="true">×</span></Btn></div>
         <Seg id="ntx" label="Bagian notifikasi" value={tab} onChange={setTab} options={[["notif", tabLabel("bell", "Notifikasi", activity.some((n) => n.unread))], ["reminder", tabLabel("clock", "Pengingat", reminders.some((n) => n.unread))], ["news", tabLabel("book", "Berita", news.some((n) => n.unread))]] as const} />
         <div className="dpx-ntx-tools"><span className="dpx-ntx-state" aria-live="polite">{state}</span><Btn type="button" className="dpx-ntx-readall" disabled={busy || unread === 0} onClick={markAll}>{busy ? "Memproses…" : "Tandai dibaca"}</Btn></div>
-        {list.length ? <div className="dpx-ntx-gesture" aria-hidden="true"><span><i>←</i> Geser kiri · tandai dibaca</span><span>Geser kanan · buka <i>→</i></span></div> : null}
+        {list.length ? <div className="dpx-ntx-gesture" aria-hidden="true"><span><i>←</i> Geser kiri · hapus</span><span>Geser kanan · tandai dibaca <i>→</i></span></div> : null}
       </div>
       <div className="dpx-ntx-body">
         {loading && items.length === 0 ? <div className="dpx-ntx-skel"><SkeletonBlock h={74} /><SkeletonBlock h={190} /></div>
-          : tab === "notif" ? (activity.length === 0 ? empty("notif") : groups.map(([day, group]) => <section key={day} className="dpx-ntx-day"><div className="dpx-ntx-dayh">{day}</div><div className="dpx-ntx-card">{group.map((n, i) => row(n, i))}</div></section>))
-          : tab === "reminder" ? (reminders.length === 0 ? empty("reminder") : <div className="dpx-ntx-card">{reminders.map((n, i) => row(n, i))}</div>)
+          : tab === "notif" ? (activity.length === 0 ? empty("notif") : groups.map(([day, group]) => <section key={day} className="dpx-ntx-day"><div className="dpx-ntx-dayh">{day}</div><div className="dpx-ntx-card"><AnimatePresence initial={false}>{group.map((n, i) => row(n, i))}</AnimatePresence></div></section>))
+          : tab === "reminder" ? (reminders.length === 0 ? empty("reminder") : <div className="dpx-ntx-card"><AnimatePresence initial={false}>{reminders.map((n, i) => row(n, i))}</AnimatePresence></div>)
           : <>
-            {news.length ? <><div className="dpx-ntx-dayh">Dari Djiwa</div><div className="dpx-ntx-card">{news.map((n, i) => row(n, i))}</div></> : null}
+            {news.length ? <><div className="dpx-ntx-dayh">Dari Djiwa</div><div className="dpx-ntx-card"><AnimatePresence initial={false}>{news.map((n, i) => row(n, i))}</AnimatePresence></div></> : null}
             {feed ? <><div className="dpx-ntx-dayh">Cerita &amp; berita</div><div className="dpx-ntx-news">{feed}</div></> : news.length ? null : empty("news")}
           </>}
       </div>

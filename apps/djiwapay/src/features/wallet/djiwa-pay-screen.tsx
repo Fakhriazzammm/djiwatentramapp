@@ -224,8 +224,9 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
   const [pwaOpen, setPwaOpen] = useState(false);
   const [accountSub, setAccountSub] = useState<null | "profile" | "security">(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("keamanan") === "1" ? "security" : null));
   const [localRead, setLocalRead] = useState<Set<string>>(() => loadRead(profile.source_id));
+  const [dismissed, setDismissed] = useState<Set<string>>(() => { try { return new Set(JSON.parse(window.localStorage.getItem(`djiwa-fin-notif-dismissed:${profile.source_id}`) || "[]") as string[]); } catch { return new Set(); } });
   const finNotes = useMemo(() => financeNotes(fin.state, fin.entries, inboundSummary.data, new Date(), disc.items.length), [fin.state, fin.entries, inboundSummary.data, disc.items.length]);
-  const allNotifications = useMemo<WalletNotification[]>(() => [...finNotes.map((n) => ({ id: n.id, title: n.title, message: n.message, notification_type: n.notification_type, created_at: n.created_at, unread: !localRead.has(n.id), action_payload: { route: n.route } })), ...promoInbox.map((n) => ({ id: n.id, title: n.title, message: n.message, notification_type: "promo", created_at: n.at, unread: !n.opened && !localRead.has(n.id), action_payload: { route: n.route } })), ...walletNotifications].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)), [finNotes, localRead, walletNotifications, promoInbox]);
+  const allNotifications = useMemo<WalletNotification[]>(() => [...finNotes.map((n) => ({ id: n.id, title: n.title, message: n.message, notification_type: n.notification_type, created_at: n.created_at, unread: !localRead.has(n.id), action_payload: { route: n.route } })), ...promoInbox.map((n) => ({ id: n.id, title: n.title, message: n.message, notification_type: "promo", created_at: n.at, unread: !n.opened && !localRead.has(n.id), action_payload: { route: n.route } })), ...walletNotifications].filter((n) => !dismissed.has(n.id)).sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)), [finNotes, localRead, walletNotifications, promoInbox, dismissed]);
   // On opening the app, money that moved and things that need a look appear one after another as an island banner.
   const islandStarted = useRef(false), islandSeen = useRef<Set<string>>(new Set());
   useEffect(() => {
@@ -236,6 +237,7 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
     startIsland(items);
   }, [previewOnly, notificationsLoading, inboundSummary.data]);   // eslint-disable-line react-hooks/exhaustive-deps
   const readLocal = (ids: string[]) => setLocalRead((cur) => { const next = new Set([...cur, ...ids]); saveRead(profile.source_id, next); return next; });
+  const dismissNotification = (id: string) => setDismissed((cur) => { const next = new Set([...cur, id]); try { window.localStorage.setItem(`djiwa-fin-notif-dismissed:${profile.source_id}`, JSON.stringify([...next].slice(-400))); } catch { /* storage blocked: dismissed is per visit */ } return next; });
   const [fsheet, setFsheet] = useState<FinSheet | null>(null);
   const [snack, setSnack] = useState<{ id: number; text: string; undo?: () => void } | null>(null);
   const notify: Notify = (text, undo) => { const id = Date.now(); setSnack({ id, text, undo }); window.setTimeout(() => setSnack((cur) => (cur && cur.id === id ? null : cur)), undo ? 5500 : 2600); };
@@ -614,7 +616,7 @@ function DjiwaPayScreenInner({ profile, wallet, loading, error, busy, onRefresh,
     {shell === "card" ? <CardSheet key="card" onClose={() => setShell(null)} /> : null}
     {soon ? <ComingSoonSheet key="soon" message={soon} onClose={() => setSoon(null)} /> : null}
     {fsheet ? <FinSheetHost key={fsheet.k} ctx={finCtx} sheet={fsheet} close={() => setFsheet(null)} goManual={goManual} openPaySheet={() => setShell("pay")} /> : null}
-    {notificationsOpen ? <NotificationsSheet key="notifications" items={allNotifications} loading={notificationsLoading} busy={notificationsBusy} feed={<CeritaTab ctx={finCtx} />} onClose={() => setNotificationsOpen(false)} onOpen={markNotificationRead} onMarkRead={markNotificationReadOnly} onReadAll={markNotificationsRead} onAddReminder={() => { setNotificationsOpen(false); setFsheet({ k: "bill" }); }} /> : null}
+    {notificationsOpen ? <NotificationsSheet key="notifications" items={allNotifications} loading={notificationsLoading} busy={notificationsBusy} feed={<CeritaTab ctx={finCtx} />} onClose={() => setNotificationsOpen(false)} onOpen={markNotificationRead} onMarkRead={markNotificationReadOnly} onDismiss={(n) => dismissNotification(n.id)} onReadAll={markNotificationsRead} onAddReminder={() => { setNotificationsOpen(false); setFsheet({ k: "bill" }); }} /> : null}
   </AnimatePresence>;
   const snackbar = <AnimatePresence>{snack ? <motion.div key={snack.id} className="dpx-snack" role="status" initial={{ opacity: 0, y: 30, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20 }} transition={spring}><span>{snack.text}</span>{snack.undo ? <Btn type="button" onClick={() => { snack.undo?.(); setSnack(null); }}>Urungkan</Btn> : null}</motion.div> : null}</AnimatePresence>;
   // Every framed page gets the bottom bar; `active` only picks which tab is highlighted (null = none). `bar={false}` is for setup flows.
