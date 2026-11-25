@@ -158,6 +158,8 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
       <div className="dpx-pay-acts">{([["topup", "Isi saldo", "/wallet/topup"], ["send", "Kirim", "/wallet/transfer"], ["scan-qr", "Scan", "/wallet/transfer?mode=scan"], ["bills", "Layanan", "/bayar"]] as const).map(([a, l, p]) => <Btn key={a} type="button" className="dpx-pay-act" onClick={() => nav.go(p)}><img src={payAsset(a)} width={34} height={34} alt="" /><span>{l}</span></Btn>)}</div>
     </section>
 
+    <Btn type="button" className="dpx-st-tip dpx-weekly-entry" onClick={() => ctx.open({ k: "weekly" })}><img src="/pwa-192.png" alt="" width="40" height="40" /><div><b>Jeda mingguan</b><span className="dpx-sub">Lihat laporan tujuh hari dan analisis AI.</span></div><span aria-hidden="true" className="dpx-weekly-arrow">›</span></Btn>
+
     {empty ? <Card><div className="dpx-st-welcome"><I3 name="customer-benefit-wallet" px={88} /><b>Mulai ceritamu</b><span className="dpx-sub">Catat transaksi pertama. Grafik, statistik, dan kalender belanja muncul di sini setelah ada datanya.</span><Btn type="button" className="dpx-btn" onClick={() => ctx.open({ k: "catat" })}>Catat sekarang</Btn></div></Card> : <>
       <Sec title="Catatan terbaru" action="Lihat semua" onAction={() => nav.go("/riwayat")} />
       <div className="dpx-group dpx-flush">{entries.slice(0, 4).map((e, i) => <EntryRow key={e.id} entry={e} state={state} i={i} onOpen={(id) => ctx.open({ k: "entry", id })} />)}</div>
@@ -170,7 +172,6 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
 
       <Sec title="Cerita & berita" action="Semua berita" onAction={() => setNewsOpen(true)} />
       <CeritaFeed stories={stories} onOpenAll={() => setNewsOpen(true)} />
-      {empty ? null : <Btn type="button" className="dpx-st-tip dpx-st-calm" onClick={() => ctx.open({ k: "weekly" })}><span className="dpx-cat dpx-c-emerald"><Ic n="pie" /></span><div><b>Jeda mingguan</b><span className="dpx-sub">Lima menit melihat minggu ini. Tidak ada yang perlu dikejar.</span></div></Btn>}
 
       <Card title="Arus uang bulan ini" right={<Btn type="button" className="dpx-st-link" onClick={() => nav.go("/ringkasan")}>Laporan</Btn>}>
         <FlowCard graph={flowGraph} state={state} visible={visible} />

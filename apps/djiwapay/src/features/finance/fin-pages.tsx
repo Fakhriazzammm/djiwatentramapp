@@ -500,7 +500,7 @@ export function FinSheetHost({ ctx, sheet, close, goManual, openPaySheet }: { ct
     case "pocket": return <PocketSheet key={`pocket-${sheet.id ?? ""}`} fin={fin} pocket={pocketsOf(state).find((p) => p.id === sheet.id)} others={pocketsOf(state)} notify={notify} onClose={close} />;
     case "pockets": return <PocketRuleSheet key="pockets" fin={fin} current={pocketsOf(state)} notify={notify} onClose={close} />;
     case "payoff": return <PayoffSheet key="payoff" debts={state.debts.filter((d) => !d.settled && d.direction === "i_owe").map((d) => ({ person: d.person, amount: debtRemaining(d) }))} onClose={close} />;
-    case "weekly": return <WeeklySheet key="weekly" entries={entries} categoryName={(id) => catOf(state, id).name} onClose={close} />;
+    case "weekly": return <WeeklySheet key="weekly" visible={ctx.visible} entries={entries} categoryName={(id) => catOf(state, id).name} onClose={close} />;
     case "split": return <SplitSheet key="split" notify={notify} onClose={close} />;
     case "streak": return <StreakSheet key="streak" entries={entries} onClose={close} onCatat={() => ctx.open({ k: "catat" })} />;
     case "wallet-adjust": return <WalletAdjustSheet key={`wa-${sheet.id}`} ctx={ctx} id={sheet.id} onClose={close} />;

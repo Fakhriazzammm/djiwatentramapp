@@ -12,6 +12,7 @@ import { poolTx } from "./db.js";
 import { registerAssetRoutes } from "./assets.js";
 import { registerStockRoutes } from "./stocks/service.js";
 import { registerRateRoutes } from "./rates/service.js";
+import { weeklyAnalysisRoutes } from "./weekly-analysis.js";
 import { makeCategorizer, registerCategorizeRoutes } from "./categorize.js";
 import { registerNewsRoutes } from "./news.js";
 import { registerPushRoutes } from "./push.js";
@@ -50,6 +51,7 @@ export function createApp(d: Deps) {
     return next();
   });
   const uid = (c: any) => c.get("userId") as string;
+  app.route("/api/finance/weekly-analysis", weeklyAnalysisRoutes(d.aiKey));
   registerTrackRoute(app, { db: d.db, userOf: d.resolve });
   registerAdminRoutes(app, { db: d.db, authDb: d.authDb ?? null, emailOf: d.resolveEmail ?? (async () => null) }, json);
   registerAssetRoutes(app, { db: d.db, dir: d.dir, aiKey: d.aiKey }, uid, json);

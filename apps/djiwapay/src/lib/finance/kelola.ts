@@ -151,11 +151,31 @@ export function payoffPlan(debts: { person: string; amount: number }[], monthly:
 
 /* ---------- weekly review ---------- */
 export function weeklyReview(entries: Entry[], now = new Date()) {
-  const day = startOfDay(now).getTime(), wk = 7 * 86_400_000;
-  const within = (e: Entry, from: number, to: number) => { const t = new Date(e.at).getTime(); return e.kind === "out" && t >= from && t < to; };
-  const cur = entries.filter((e) => within(e, day - 6 * 86_400_000, day + 86_400_000)), prev = entries.filter((e) => within(e, day - 6 * 86_400_000 - wk, day - 6 * 86_400_000));
-  const sum = (l: Entry[]) => l.reduce((s, e) => s + e.amount, 0), c = sum(cur), p = sum(prev);
-  const byCat = new Map<string, number>(); for (const e of cur) byCat.set(e.categoryId, (byCat.get(e.categoryId) ?? 0) + e.amount);
-  const top = [...byCat.entries()].sort((a, b) => b[1] - a[1])[0];
-  return { spent: c, previous: p, delta: p > 0 ? Math.round(((c - p) / p) * 100) : null, topCategory: top ? { id: top[0], amount: top[1] } : null, count: cur.length };
+  const midnight = (offset: number) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset).getTime();
+  const days = Array.from({ length: 7 }, (_, i) => ({ at: midnight(i - 6), spent: 0, count: 0 }));
+  const byDay = new Map(days.map(day => [day.at, day]));
+  const byCategory = new Map<string, number>();
+  const previousStart = midnight(-13), end = midnight(1);
+  let income = 0, spent = 0, previous = 0, count = 0;
+  for (const entry of entries) {
+    const at = new Date(entry.at);
+    if (!(+at >= previousStart && +at < end) || entry.kind === "tf") continue;
+    if (+at < days[0].at) {
+      if (entry.kind === "out") previous += entry.amount;
+      continue;
+    }
+    if (entry.kind === "in") {
+      income += entry.amount;
+      continue;
+    }
+    const day = byDay.get(+startOfDay(at))!;
+    day.spent += entry.amount;
+    day.count++;
+    spent += entry.amount;
+    count++;
+    byCategory.set(entry.categoryId, (byCategory.get(entry.categoryId) ?? 0) + entry.amount);
+  }
+  const categories = Array.from(byCategory, ([id, amount]) => ({ id, amount })).sort((a, b) => b.amount - a.amount);
+  return { days, categories, income, spent, previous, count, topCategory: categories[0] ?? null,
+    delta: previous > 0 ? Math.round((spent - previous) / previous * 100) : null };
 }

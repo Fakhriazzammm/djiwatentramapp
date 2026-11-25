@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Btn, Ic, Seg, Sheet, type IconName } from "../shell/dpx-ui";
 import { MoneyInput, type Notify } from "../finance/fin-sheets";
 import { uid } from "../../lib/finance/calc";
@@ -86,11 +86,138 @@ export function PayoffSheet({ debts, onClose }: { debts: { person: string; amoun
   </Sheet>;
 }
 
-export function WeeklySheet({ entries, categoryName, onClose }: { entries: Entry[]; categoryName: (id: string) => string; onClose: () => void }) {
-  const w = weeklyReview(entries);
-  return <Sheet title="Review mingguan" onClose={onClose}>
-    <div className="dpx-kpi"><div className="dpx-group"><small>7 hari ini</small><b>{rupiah(w.spent)}</b></div><div className="dpx-group"><small>7 hari sebelumnya</small><b>{rupiah(w.previous)}</b></div></div>
-    <div className={`dpx-note ${w.delta !== null && w.delta > 0 ? "dpx-danger" : "dpx-info"}`} style={{ marginTop: 10 }}><Ic n={w.delta !== null && w.delta > 0 ? "warn" : "spark"} /><div><b>{w.delta === null ? "Belum ada pembanding minggu lalu." : w.delta > 0 ? `Belanja naik ${w.delta}% dari minggu lalu.` : w.delta < 0 ? `Belanja turun ${Math.abs(w.delta)}% dari minggu lalu. Bagus.` : "Belanja sama dengan minggu lalu."}</b>{w.topCategory ? <div>Terbesar: {categoryName(w.topCategory.id)} ({rupiah(w.topCategory.amount)}) dari {w.count} transaksi.</div> : null}</div></div>
-    <Btn type="button" className="dpx-btn" onClick={onClose}>Mengerti</Btn>
+const weeklyArt = "/assets/email/android-tester";
+const dayLabel = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" });
+
+function WeeklyMascot({ scene }: { scene: "budget" | "receipt" }) {
+  return <picture className="dpx-weekly-mascot">
+    <source media="(prefers-reduced-motion: reduce)" srcSet="/assets/djiwapay-studio/mascot.webp" />
+    <img src={`${weeklyArt}/${scene}.gif`} width="54" height="54" alt="" />
+  </picture>;
+}
+
+function WeeklyAnalysis({ payload }: { payload: string }) {
+  const [result, setResult] = useState<{ insight: string; action: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const request = useRef<AbortController | null>(null);
+  useEffect(() => () => request.current?.abort(), []);
+  async function analyze() {
+    if (request.current) return;
+    const controller = new AbortController();
+    request.current = controller;
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/finance/weekly-analysis", {
+        method: "POST", credentials: "include", signal: controller.signal,
+        headers: { "Content-Type": "application/json" }, body: payload,
+      });
+      if (!response.ok) {
+        setError(response.status === 429 ? "Tunggu sebentar sebelum mencoba lagi." : "Analisis belum tersedia. Coba lagi nanti.");
+        return;
+      }
+      const data = await response.json();
+      if (typeof data.insight !== "string" || typeof data.action !== "string") throw new Error();
+      setResult(data);
+    } catch {
+      if (!controller.signal.aborted) setError("Analisis belum tersedia. Periksa koneksi lalu coba lagi.");
+    } finally {
+      request.current = null;
+      if (!controller.signal.aborted) setBusy(false);
+    }
+  }
+  return <section className="dpx-weekly-block" aria-busy={busy}>
+    <h3>Analisis AI</h3>
+    <div aria-live="polite">{result ? <>
+      <p>{result.insight}</p><p><b>Untuk minggu depan</b><br />{result.action}</p>
+    </> : <>
+      <p>Lihat pola belanja dan satu langkah untuk minggu depan. AI menggunakan ringkasan angka dan kategori pada laporan ini.</p>
+      {error && <p>{error}</p>}
+      <Btn type="button" className="dpx-weekly-more" disabled={busy} onClick={analyze}>{busy ? "Menganalisis…" : error ? "Coba lagi" : "Analisis minggu ini"}</Btn>
+    </>}</div>
+  </section>;
+}
+
+export function WeeklySheet({ entries, categoryName, visible, onClose }: { entries: Entry[]; categoryName: (id: string) => string; visible: boolean; onClose: () => void }) {
+  const today = new Date();
+  const start = new Date(today);
+  start.setDate(start.getDate() - 6);
+  const w = weeklyReview(entries, today);
+  const amount = (value: number) => visible ? rupiah(value) : "•••••";
+  const comparison = w.delta === null ? "Belum ada pengeluaran pada tujuh hari sebelumnya untuk dibandingkan."
+    : w.delta === 0 ? "Total belanjamu setara dengan minggu lalu."
+    : `Belanjamu ${w.delta > 0 ? "naik" : "turun"}${visible ? ` ${Math.abs(w.delta)}%` : ""} dari minggu lalu.`;
+
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [allCategories, setAllCategories] = useState(false);
+  const peak = w.days.reduce((highest, day) => day.spent > highest.spent ? day : highest, w.days[0]);
+  const active = selectedDay === null ? (peak.spent ? peak : w.days[6]) : w.days[selectedDay];
+  const net = w.income - w.spent;
+
+  const payload = JSON.stringify({
+    income: w.income, previous: w.previous,
+    days: w.days.map(day => {
+      const date = new Date(day.at);
+      const localDate = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
+      return { date: localDate, count: day.count, spent: day.spent };
+    }),
+    categories: w.categories.slice(0, 3).map(c => ({ name: categoryName(c.id).slice(0, 100), amount: c.amount })),
+  });
+
+  return <Sheet title="Jeda mingguan" onClose={onClose}>
+    <article className="dpx-weekly-report">
+      <header className="dpx-weekly-cover">
+        <img src={`${weeklyArt}/hero.jpg`} alt="" className="dpx-weekly-photo" />
+        <div className="dpx-weekly-brand"><img src="/pwa-192.png" width="27" height="27" alt="" />Djiwa Pay</div>
+      </header>
+      <section className="dpx-weekly-total">
+        <small>{dayLabel.format(start)} – {dayLabel.format(today)}</small>
+        <h3>Pengeluaran tujuh hari ini</h3>
+        <strong>{amount(w.spent)}</strong>
+        <p>{w.count ? `Dari ${w.count} transaksi pengeluaran yang tercatat.` : "Belum ada pengeluaran yang tercatat minggu ini."}</p>
+      </section>
+      {visible && (w.spent > 0 || w.income > 0 || w.previous > 0) ? <WeeklyAnalysis key={payload} payload={payload} /> : <section className="dpx-weekly-block">
+        <h3>Analisis AI</h3><p>{visible ? "Analisis tersedia setelah ada catatan pemasukan atau pengeluaran untuk dibandingkan." : "Tampilkan nominal untuk menganalisis laporan ini."}</p>
+      </section>}
+      <section className="dpx-weekly-block">
+        <h3>Arus kas minggu ini</h3>
+        <dl className="dpx-weekly-cash">
+          <div><dt>Pemasukan</dt><dd>{amount(w.income)}</dd></div>
+          <div><dt>Pengeluaran</dt><dd>{amount(w.spent)}</dd></div>
+          <div><dt>Selisih</dt><dd>{visible && net < 0 ? "−" : ""}{amount(net)}</dd></div>
+        </dl>
+      </section>
+      <section className="dpx-weekly-block">
+        <h3>Belanja per hari</h3>
+        {visible ? <div className="dpx-weekly-bars" role="group" aria-label="Pilih hari untuk melihat pengeluaran">
+          {w.days.map((day, i) => <button type="button" key={day.at} aria-pressed={active === day}
+            aria-label={`${dayLabel.format(day.at)}, ${rupiah(day.spent)}, ${day.count} transaksi`}
+            onClick={() => setSelectedDay(i)}>
+            <span className="dpx-weekly-track"><i style={{ height: peak.spent ? `${day.spent / peak.spent * 100}%` : "0%" }} /></span>
+            {new Date(day.at).toLocaleDateString("id-ID", { weekday: "short" })}
+          </button>)}
+        </div> : null}
+        <p aria-live="polite">{visible ? <><b>{dayLabel.format(active.at)}</b> · {amount(active.spent)} dari {active.count} transaksi.</> : "Grafik disembunyikan saat nominal disamarkan."}</p>
+        {visible && peak.spent > 0 && active.spent === peak.spent && <small>Pengeluaran harian tertinggi minggu ini.</small>}
+      </section>
+      <section className="dpx-weekly-detail"><WeeklyMascot scene="budget" /><div>
+        <h3>Dibanding minggu lalu</h3><p>{comparison}</p>
+        <small>Pengeluaran sebelumnya · {amount(w.previous)}</small>
+      </div></section>
+      {w.topCategory && <section className="dpx-weekly-detail"><WeeklyMascot scene="receipt" /><div>
+        <h3>Paling banyak untuk apa?</h3>
+        <ol className="dpx-weekly-ranks">
+          {(allCategories ? w.categories : w.categories.slice(0, 3)).map(c => <li key={c.id}>
+            <span>{categoryName(c.id)}</span><b>{amount(c.amount)}</b>
+          </li>)}
+        </ol>
+        {w.categories.length > 3 && <button type="button" className="dpx-weekly-more" aria-expanded={allCategories} onClick={() => setAllCategories(!allCategories)}>
+          {allCategories ? "Ringkas kategori" : `Lihat semua ${w.categories.length} kategori`}
+        </button>}
+      </div></section>}
+      <footer>Djiwa Pay by Djiwa Tentram &amp; Zantara Technology</footer>
+    </article>
+    <Btn type="button" className="dpx-btn" onClick={onClose}>Selesai</Btn>
   </Sheet>;
 }

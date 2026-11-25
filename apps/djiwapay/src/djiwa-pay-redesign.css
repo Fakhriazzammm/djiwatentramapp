@@ -1481,3 +1481,37 @@ html{overscroll-behavior-y:contain}
 .dpx-trip .tx{flex:1;min-width:0}.dpx-trip .tx b{display:block;font:500 14.5px var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dpx-trip .tx small{display:block;margin-top:2px;font-size:12px;color:var(--mute)}
 .dpx-trip .am{text-align:right}.dpx-trip .am b{display:block;font:600 14px var(--font);font-variant-numeric:tabular-nums}.dpx-trip .am small{display:block;margin-top:2px;font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
 .dpx-rxv-lang .lab{display:flex;align-items:center;gap:6px;padding:0 8px;font:600 11.5px var(--font);color:#b9b2a8;white-space:nowrap}
+
+/* Weekly review uses the illustrations from the Djiwa Pay email. */
+.dpx .dpx-weekly-entry{background:#f6eddf;align-items:center}
+.dpx-weekly-entry>img{border-radius:11px}
+.dpx-weekly-arrow{margin-left:auto;font-size:22px;color:#705e48}
+.dpx-weekly-report{background:#fcf8f0;border-radius:18px;overflow:hidden;color:#30261f;margin-bottom:12px;overflow-wrap:anywhere}
+.dpx-weekly-cover{position:relative}
+.dpx-weekly-photo{display:block;width:100%;height:auto;aspect-ratio:2.5;object-fit:cover;object-position:center 54%}
+.dpx-weekly-brand{position:absolute;left:12px;top:12px;display:flex;gap:7px;align-items:center;background:#fffbf3;padding:4px 10px 4px 4px;border-radius:10px;font-weight:750}
+.dpx-weekly-brand img{border-radius:7px}
+.dpx-weekly-total{padding:16px}
+.dpx-weekly-report h3,.dpx-weekly-report p{margin:0}
+.dpx-weekly-report h3{font-size:16px;line-height:1.35}
+.dpx-weekly-total h3{margin:6px 0 2px}
+.dpx-weekly-total strong{font-size:clamp(24px,7vw,36px);line-height:1.2;font-variant-numeric:tabular-nums}
+.dpx-weekly-report p{margin-top:4px;font-size:14px;line-height:1.5}
+.dpx-weekly-report small,.dpx-weekly-report footer{color:#665844;font-size:12px}
+.dpx-weekly-detail{margin:0 16px;padding:14px 0;border-top:1px solid #dfd4c4;display:grid;grid-template-columns:54px minmax(0,1fr);align-items:start;gap:12px}
+.dpx-weekly-mascot img{display:block;border-radius:12px}
+.dpx-weekly-report footer{padding:10px 16px 14px}
+.dpx-weekly-block{margin:0 16px;padding:14px 0;border-top:1px solid #dfd4c4}
+.dpx-weekly-cash{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(105px,100%),1fr));gap:8px;margin:10px 0 0}
+.dpx-weekly-cash div{background:#f1eadc;border-radius:10px;padding:8px}
+.dpx-weekly-cash dt{font-size:12px;color:#665844}
+.dpx-weekly-cash dd{margin:2px 0 0;font-weight:700;font-variant-numeric:tabular-nums}
+.dpx-weekly-bars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin:12px 0 6px}
+.dpx-weekly-bars button{display:grid;justify-items:center;gap:5px;padding:4px 0;color:#665844;font-size:12px;border-radius:8px}
+.dpx-weekly-bars button[aria-pressed=true]{background:#efe1cc;color:#4c2c19;font-weight:700}
+.dpx-weekly-track{height:58px;width:46%;background:#e8dfd2;border-radius:5px;display:flex;align-items:flex-end;overflow:hidden}
+.dpx-weekly-track i{display:block;background:#99512e;width:100%;border-radius:5px}
+.dpx-weekly-ranks{list-style:none;margin:6px 0 0;padding:0}
+.dpx-weekly-ranks li{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 8px;padding:5px 0;font-size:14px}
+.dpx-weekly-ranks li span{min-width:0}
+.dpx-weekly-more{color:#783e21;font-weight:700;padding:8px 0}
