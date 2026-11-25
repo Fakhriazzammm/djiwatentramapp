@@ -23,6 +23,11 @@
   transform-origin: 50% 12%;
 }
 
+@keyframes djiwa-new-glint {
+  0%, 55% { transform: translateX(0) skewX(-18deg); }
+  90%, 100% { transform: translateX(360%) skewX(-18deg); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-djiwa-notification-bell { animation: none; }
 }

@@ -9,6 +9,7 @@ import { currency } from "@/components/customer/types";
 import { getCustomerContactMessage, getMissingCustomerFields } from "@/lib/customer-profile-completeness";
 import { getCustomerPayPath } from "@/lib/customer-pay-navigation";
 import { HelpSheet } from "@/components/saldo/help-sheet";
+import { NewTag } from "@/components/customer/new-badge";
 import { useHybridSiteSettings } from "@/hooks/use-hybrid-pos-data";
 import { PpobFlow } from "@/components/saldo/ppob-flow";
 import { ScanFlow } from "@/components/saldo/scan-flow";
@@ -152,7 +153,7 @@ function SaldoPage() {
 		<div className="app-page min-h-app bg-[#f6f7fb]">
 			<div className="mx-auto min-h-app max-w-md bg-gradient-to-b from-[#c6dafc] via-[#e4ecff] to-[#f6f7fb] bg-[length:100%_330px] bg-no-repeat px-4 pb-32 pt-6">
 				<motion.header {...fade(0)} className="flex items-start justify-between">
-					<div><p className="text-xs font-semibold text-[#6b7080]">DJIWA TENTRAM</p><h1 className="mt-0.5 text-[32px] font-bold leading-tight tracking-tight text-[#14161c]">Saldo</h1></div>
+					<div><p className="text-xs font-semibold text-[#6b7080]">DJIWA TENTRAM</p><h1 className="mt-0.5 text-[32px] font-bold leading-tight tracking-tight text-[#14161c]">Saldo<NewTag id="wallet-saldo" /></h1></div>
 					<div className="flex gap-2">
 						<motion.button {...press} type="button" onClick={() => void refresh()} aria-label="Muat ulang saldo" className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[0_4px_14px_rgba(15,35,71,.08)]"><RefreshCw className={`h-[18px] w-[18px] ${refreshing ? "animate-spin" : ""}`} /></motion.button>
 						<motion.button {...press} type="button" onClick={() => navigate({ to: "/$username/notifikasi", params: { username } })} aria-label="Notifikasi" className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[0_4px_14px_rgba(15,35,71,.08)]"><Bell className="h-[18px] w-[18px]" /></motion.button>

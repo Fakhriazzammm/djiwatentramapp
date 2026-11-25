@@ -10,6 +10,7 @@ import {
 import { invokeEdgeFunction } from "@/lib/api-helper";
 import { authClient } from "@/lib/auth-client";
 import { CUSTOMER_API_BASE } from "@/lib/customer-auth-config";
+import { setBadgeProfile, syncSeen } from "@/lib/new-feature";
 import { toast } from "sonner";
 
 // ── Types ──────────────────────────────────────────────────────
@@ -245,6 +246,13 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [betterSession?.user?.id, betterSession?.user?.email, customer?.email, customer?.sourceId]);
+
+  // Tanda "Baru" untuk fitur baru: milik siapa catatan "dilihat" ini, lalu sinkronkan dengan server.
+  useEffect(() => {
+    if (!customer?.sourceId) return;
+    setBadgeProfile(customer.sourceId, customer.email);
+    void syncSeen();
+  }, [customer?.sourceId, customer?.email]);
 
   const session: CustomerSession | null =
     betterSession?.user && customer

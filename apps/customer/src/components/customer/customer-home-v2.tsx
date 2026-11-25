@@ -12,6 +12,7 @@ import { isFridayInJakarta, useHomeCatalog, useQuickAdd } from "@/components/cus
 import { pickTopSellers } from "@/lib/home-feed";
 import { greetingForPeriod, type DayPeriod } from "@/lib/day-period";
 import { cn } from "@/lib/utils";
+import { NewTag } from "@/components/customer/new-badge";
 
 const EASE = [0.32, 0.72, 0, 1] as const;
 const SPRING = { type: "spring", stiffness: 420, damping: 28, mass: 0.7 } as const;
@@ -223,7 +224,7 @@ export function HomeWalletCard({ customer, onOpen, onAction }: { customer: Custo
     >
       <div className="min-w-0">
         <div className="flex items-center gap-1 text-[13px] font-extrabold text-primary">
-          <button type="button" onClick={onOpen} className="focus-visible:outline-none focus-visible:underline">Djiwa Pay</button>
+          <button type="button" onClick={onOpen} className="focus-visible:outline-none focus-visible:underline">Djiwa Pay<NewTag id="wallet-saldo" /></button>
           <button type="button" onClick={toggle} aria-label={hidden ? "Tampilkan saldo" : "Sembunyikan saldo"} aria-pressed={hidden} className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground active:bg-primary/10">
             <AnimatePresence mode="wait" initial={false}>
               <motion.span key={hidden ? "off" : "on"} initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.4, opacity: 0 }} transition={{ duration: 0.15 }}>
