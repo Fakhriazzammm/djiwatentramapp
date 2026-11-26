@@ -9,7 +9,7 @@ import { openArticle } from "../../lib/inapp";
 import { NEWS_TOPICS, timeAgo, useNews, type NewsItem } from "../../lib/finance/news";
 import { DiscoveryChip } from "./discoveries";
 import { NewTag } from "../shell/new-badge";
-import { IntegrationNudge, ReviewChip, useInbound } from "../integrations/integrations-pages";
+import { IntegrationNudge, ImportReadyChip, useInbound } from "../integrations/integrations-pages";
 import { short } from "../kelola/kelola-ui";
 import { budgetStatuses, buildInsights, goalProjection, goalSaved, inMonth, safeToSpend, totals } from "../../lib/finance/calc";
 import { FlowCard } from "./sankey";
@@ -143,7 +143,7 @@ export function CeritaBody({ ctx, entries, cash, gold, now, templates, onAddTemp
 
   return <div className="dpx-st-body">
     <DiscoveryChip ctx={ctx} />
-    <ReviewChip count={inbound.data?.review ?? 0} importReady={inbound.data?.importReady ?? 0} onOpen={() => nav.go("/tinjau")} onOpenImport={() => nav.go("/integrasi?impor=1")} />
+    <ImportReadyChip count={inbound.data?.importReady ?? 0} onOpen={() => nav.go("/integrasi?impor=1")} />
     <IntegrationNudge onOpenIntegrations={() => nav.go("/integrasi")} />
     <section className="dpx-st-card dpx-st-menu-card" aria-label="Menu">
       <div className="dpx-st-menu">{MENU.map((m) => <Btn key={m.label} type="button" className="dpx-st-mt" onClick={() => (m.all ? setAllOpen(true) : m.news ? setNewsOpen(true) : nav.go(m.path!))}>

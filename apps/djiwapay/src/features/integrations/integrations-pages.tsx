@@ -70,20 +70,22 @@ function Switch({ on, warn, label, onToggle }: { on: boolean; warn?: boolean; la
   return <span className={`dpx-switch ${on ? "is-on" : ""} ${warn ? "is-warn" : ""}`} role="switch" aria-checked={on} aria-label={label} tabIndex={0} onClick={(e) => { e.stopPropagation(); onToggle(); }} onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); e.stopPropagation(); onToggle(); } }}><i /></span>;
 }
 
-export function ReviewChip({ count, importReady, onOpen, onOpenImport }: { count: number; importReady?: number; onOpen: () => void; onOpenImport?: () => void }) {
-  if (count <= 0 && !(importReady && importReady > 0)) return null;
-  return <>
-    {importReady && importReady > 0 ? <Reveal i={1}><Btn type="button" className="dpx-reviewchip" onClick={onOpenImport} aria-label={`Impor email lama siap ditinjau, ${importReady} transaksi`}>
+export function ImportReadyChip({ count, onOpen }: { count: number; onOpen: () => void }) {
+  if (count <= 0) return null;
+  return <Reveal i={1}><Btn type="button" className="dpx-reviewchip" onClick={onOpen} aria-label={`Impor email lama siap ditinjau, ${count} transaksi`}>
       <span className="dpx-rc-dot" aria-hidden="true"><Ic n="dl" size="sm" /></span>
-      <span className="dpx-rc-t"><b>Impor email lama siap</b><span>{importReady} transaksi menunggu pratinjau kamu</span></span>
+      <span className="dpx-rc-t"><b>Impor email lama siap</b><span>{count} transaksi menunggu pratinjau kamu</span></span>
       <Ic n="chev" size="sm" />
-    </Btn></Reveal> : null}
-    {count > 0 ? <Reveal i={1}><Btn type="button" className="dpx-reviewchip" onClick={onOpen} aria-label={`${count} catatan dari email perlu ditinjau`}>
+    </Btn></Reveal>;
+}
+
+export function ReviewChip({ count, onOpen }: { count: number; onOpen: () => void }) {
+  if (count <= 0) return null;
+  return <Reveal i={1}><Btn type="button" className="dpx-reviewchip" onClick={onOpen} aria-label={`${count} catatan dari email perlu ditinjau`}>
       <span className="dpx-rc-dot" aria-hidden="true">{count > 9 ? "9+" : count}</span>
       <span className="dpx-rc-t"><b>{count} perlu ditinjau</b><span>Dari email pembayaran, ketuk untuk memeriksa</span></span>
       <Ic n="chev" size="sm" />
-    </Btn></Reveal> : null}
-  </>;
+    </Btn></Reveal>;
 }
 
 /** Google connection state for the whole app (no tokens, only what the UI shows). */

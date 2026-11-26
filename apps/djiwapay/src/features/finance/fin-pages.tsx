@@ -167,6 +167,7 @@ export function FinHome({ ctx }: { ctx: FinCtx }) {
       ]} /></div>
       <div className="dpx-st-hint dpx-onsky">Cerita {monthName} ada di bawah ↓</div>
     </div>
+    <ReviewChip count={inbound.data?.review ?? 0} onOpen={() => nav.go("/tinjau")} />
     <AutoChip count={inbound.data?.autoRecent ?? 0} onOpen={() => nav.go("/riwayat?baru=1")} />
     <SundayReviewCard onOpen={() => ctx.open({ k: "weekly" })} />
     <ScopeSwitch fin={fin} id="home" />
