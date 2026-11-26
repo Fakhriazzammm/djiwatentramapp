@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Avatar, payAsset, AnimatedNumber, Bar, Btn, Chev, Header, I3, IconSwap, Ic, MascotBuddy, Reveal, Row, Seg, Sheet, Sky, SuccessMark, Wiggle, ease, serviceIcon, serviceTone, spring, type IconName } from "./dpx-ui";
+import { Avatar, payAsset, AnimatedNumber, Bar, Btn, Chev, Header, I3, IconSwap, Ic, Reveal, Row, Seg, Sheet, Sky, SuccessMark, Wiggle, ease, serviceIcon, serviceTone, spring, type IconName } from "./dpx-ui";
 import { dayLabel, firstName, formatDateTime, formatTime, greeting, rupiah, signedRupiah, transactionTitle, transactionVisual } from "../../lib/djiwa-pay-format";
 import { heatLevel, monthLabel, summarizeMonth, summaryCategory } from "../../lib/djiwa-pay-summary";
 import { paymentMethodLabel, transactionMethodLine, type WalletNotification, type WalletTransaction } from "../../lib/wallet-adapter";
@@ -274,7 +274,6 @@ export function NotificationsSheet({ items, loading, busy, onClose, onOpen, onMa
           : tab === "notif" ? (activity.length === 0 ? empty("notif") : groups.map(([day, group]) => <section key={day} className="dpx-ntx-day"><div className="dpx-ntx-dayh">{day}</div><div className="dpx-ntx-card"><AnimatePresence initial={false}>{group.map((n, i) => row(n, i))}</AnimatePresence></div></section>))
           : tab === "reminder" ? (reminders.length === 0 ? empty("reminder") : <div className="dpx-ntx-card"><AnimatePresence initial={false}>{reminders.map((n, i) => row(n, i))}</AnimatePresence></div>)
           : <>
-            <MascotBuddy px={60} messages={["Hai! Ini berita dan cerita keuanganmu."]} quotes={["Geser kanan untuk tandai dibaca, kiri untuk hapus.", "Baca cerita agar makin paham uangmu."]} />
             {news.length ? <><div className="dpx-ntx-dayh">Dari Djiwa</div><div className="dpx-ntx-card"><AnimatePresence initial={false}>{news.map((n, i) => row(n, i))}</AnimatePresence></div></> : null}
             {feed ? <><div className="dpx-ntx-dayh">Cerita &amp; berita</div><div className="dpx-ntx-news">{feed}</div></> : news.length ? null : empty("news")}
           </>}
