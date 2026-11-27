@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { requestAdminConfirm } from "./confirm";
-import { generateSchedule, addDays, mondayOf, validateConsecutive, WEEKDAY_NAMES, type GeneratorShift, type GeneratorStaff } from "../../lib/karyawan/schedule-generator";
+import { generateSchedule, generateScheduleByRole, addDays, mondayOf, validateConsecutive, WEEKDAY_NAMES, type GeneratorShift, type GeneratorStaff } from "../../lib/karyawan/schedule-generator";
 import { wibParts } from "../../lib/karyawan/analytics";
 import { Btn, Chips, Drawer, KpiStrip, Note, Page, PageHead, Panel, ProgressList, Segmented, SectionTitle, StatusTag } from "./kit";
 import { useSchedules, type ScheduleRecord, type ScheduleRowInput } from "./data";
@@ -232,10 +232,23 @@ function Generator({ users, templates, defaultStart, onDone, bulkReplace }: GenP
 	const [weekend, setWeekend] = useState(true);
 	const [defaultOff, setDefaultOff] = useState<"1" | "2">("2");
 	const [busy, setBusy] = useState(false);
+	const [mode, setMode] = useState<"person" | "role">("person");
+	const [roleCfg, setRoleCfg] = useState<Record<string, { on?: boolean; daysOff?: 1 | 2; min?: Record<string, number> }>>({});
+	const roleKey = (u: StaffUser) => u.roleName || "Tanpa jabatan";
+	const roleNames = useMemo(() => [...new Set(users.map((u) => u.roleName || "Tanpa jabatan"))].sort((a, b) => a.localeCompare(b)), [users]);
+	const roleRule = (r: string) => ({ on: roleCfg[r]?.on ?? true, daysOff: roleCfg[r]?.daysOff ?? (Number(defaultOff) as 1 | 2), min: roleCfg[r]?.min ?? {} });
+	const roleShifts = (r: string): GeneratorShift[] => {
+		const m = roleRule(r).min;
+		const all = templates.map((t) => ({ name: t.name, start: t.openTime ?? null, end: t.closeTime ?? null, minStaff: m[t.name] ?? 1 }));
+		const used = all.filter((x) => x.minStaff > 0);
+		return used.length ? used : all;
+	};
 
-	const staff: GeneratorStaff[] = users.filter((u) => chosen[u._id] ?? true).map((u) => ({ id: u._id, name: u.name, roleName: u.roleName, daysOff: daysOff[u._id] ?? (Number(defaultOff) as 1 | 2) }));
+	const staff: GeneratorStaff[] = mode === "role"
+		? users.filter((u) => roleRule(roleKey(u)).on).map((u) => ({ id: u._id, name: u.name, roleName: roleKey(u), daysOff: roleRule(roleKey(u)).daysOff })).sort((a, b) => (a.roleName ?? "").localeCompare(b.roleName ?? ""))
+		: users.filter((u) => chosen[u._id] ?? true).map((u) => ({ id: u._id, name: u.name, roleName: u.roleName, daysOff: daysOff[u._id] ?? (Number(defaultOff) as 1 | 2) }));
 	const shifts: GeneratorShift[] = templates.map((t) => ({ name: t.name, start: t.openTime ?? null, end: t.closeTime ?? null, minStaff: minStaff[t.name] ?? 1 }));
-	const result = useMemo(() => (rangeOk && staff.length && shifts.length ? generateSchedule({ startDate: start, endDate, staff, shifts, rotateWeekly: rotate, preferWeekend: weekend }) : null), [rangeOk, staff.length, shifts.length, start, endDate, rotate, weekend, JSON.stringify(staff), JSON.stringify(shifts)]); // eslint-disable-line react-hooks/exhaustive-deps
+	const result = useMemo(() => (rangeOk && staff.length && shifts.length ? (mode === "role" ? generateScheduleByRole({ startDate: start, endDate, rotateWeekly: rotate, preferWeekend: weekend }, staff, roleShifts) : generateSchedule({ startDate: start, endDate, staff, shifts, rotateWeekly: rotate, preferWeekend: weekend })) : null), [mode, JSON.stringify(roleCfg), rangeOk, staff.length, shifts.length, start, endDate, rotate, weekend, JSON.stringify(staff), JSON.stringify(shifts)]); // eslint-disable-line react-hooks/exhaustive-deps
 	const firstWeek = result ? Array.from({ length: 7 }, (_, i) => addDays(mondayOf(start), i)) : [];
 	const totalRows = result?.rows.length ?? 0;
 	const allValid = result ? staff.every((p) => validateConsecutive(result.rows, p.id).ok) : true;
@@ -282,16 +295,40 @@ function Generator({ users, templates, defaultStart, onDone, bulkReplace }: GenP
 						</div>
 						<p className="text-[12px] text-[#666672]">{rangeOk ? `${rangeLabel} · ${fmtDate(start)} – ${fmtDate(endDate)}${first < today ? " (mulai hari ini)" : ""} · ${totalRows} jadwal` : span > 6 ? "Maksimal 6 bulan sekali generate." : "Rentang bulan tidak valid."}</p>
 					</div>
-					<div><span className="mb-1 block font-mono text-[10px] uppercase text-[#666672]">Jatah libur default</span><Segmented id="kk-off" label="Libur default" value={defaultOff} onChange={(v) => { setDefaultOff(v); setDaysOff({}); }} options={[{ value: "1", label: "1 hari" }, { value: "2", label: "2 hari" }]} /></div>
+					<Chips value={mode === "role" ? "r" : "p"} onChange={(v) => setMode(v === "r" ? "role" : "person")} options={[{ value: "p", label: "Per karyawan" }, { value: "r", label: "Per jabatan" }]} />
+					<div><span className="mb-1 block font-mono text-[10px] uppercase text-[#666672]">Jatah libur default</span><Segmented id="kk-off" label="Libur default" value={defaultOff} onChange={(v) => { setDefaultOff(v); setDaysOff({}); setRoleCfg((c) => Object.fromEntries(Object.entries(c).map(([k, x]) => [k, { ...x, daysOff: undefined }]))); }} options={[{ value: "1", label: "1 hari" }, { value: "2", label: "2 hari" }]} /></div>
 					<Chips value={weekend ? "w" : "n"} onChange={(v) => setWeekend(v === "w")} options={[{ value: "w", label: "Utamakan libur akhir pekan" }, { value: "n", label: "Bebas hari" }]} />
 					<Chips value={rotate ? "r" : "f"} onChange={(v) => setRotate(v === "r")} options={[{ value: "f", label: "Shift tetap" }, { value: "r", label: "Shift bergilir tiap minggu" }]} />
-					<div>
+					{mode === "role" ? (
+						<div>
+							<div className="mb-2 font-mono text-[10px] uppercase tracking-[0.08em] text-[#666672]">Jabatan ({roleNames.filter((r) => roleRule(r).on).length})</div>
+							<ul className="border border-[#e4e4e8]">
+								{roleNames.map((r) => {
+									const rr = roleRule(r);
+									const n = users.filter((u) => roleKey(u) === r).length;
+									const setMin = (name: string, v: number) => setRoleCfg({ ...roleCfg, [r]: { ...roleCfg[r], min: { ...roleCfg[r]?.min, [name]: Math.max(0, v) } } });
+									return (
+										<li key={r} className="space-y-2 border-b border-[#efeff2] px-3 py-2.5 text-[13px] last:border-0">
+											<div className="flex items-center gap-3">
+												<input type="checkbox" aria-label={`Ikutkan jabatan ${r}`} className="h-4 w-4 accent-[#111114]" checked={rr.on} onChange={(e) => setRoleCfg({ ...roleCfg, [r]: { ...roleCfg[r], on: e.target.checked } })} />
+												<span className="min-w-0 flex-1 truncate">{r} <span className="font-mono text-[10px] text-[#666672]">{n} orang</span></span>
+												<Segmented id={`kk-role-off-${r}`} label={`Libur ${r}`} value={String(rr.daysOff) as "1" | "2"} onChange={(v) => setRoleCfg({ ...roleCfg, [r]: { ...roleCfg[r], daysOff: Number(v) as 1 | 2 } })} options={[{ value: "1", label: "1" }, { value: "2", label: "2" }]} size="sm" />
+											</div>
+											{rr.on ? <div className="flex flex-wrap gap-x-4 gap-y-1 pl-7">{templates.map((t) => <span key={t.name} className="flex items-center gap-1.5 text-[12px]">{t.name}<Btn small onClick={() => setMin(t.name, (rr.min[t.name] ?? 1) - 1)}>−</Btn><b className="w-4 text-center tabular-nums">{rr.min[t.name] ?? 1}</b><Btn small onClick={() => setMin(t.name, (rr.min[t.name] ?? 1) + 1)}>+</Btn></span>)}</div> : null}
+										</li>
+									);
+								})}
+							</ul>
+							<p className="mt-1 text-[11px] text-[#666672]">Libur dan shift diseimbangkan di dalam tiap jabatan. Isi 0 pada shift yang tidak dipakai jabatan itu.</p>
+						</div>
+					) : null}
+					<div className={mode === "role" ? "hidden" : undefined}>
 						<div className="mb-2 font-mono text-[10px] uppercase tracking-[0.08em] text-[#666672]">Minimal orang per shift per hari</div>
 						{templates.length === 0 ? <p className="text-[12px] text-[#b42318]">Belum ada shift di pengaturan kehadiran. Tambahkan shift dulu.</p> : templates.map((t) => (
 							<div key={t.name} className="flex items-center justify-between border-t border-[#efeff2] py-2 text-[13px]"><span>{t.name} <span className="font-mono text-[10px] text-[#666672]">{t.openTime}–{t.closeTime}</span></span><span className="flex items-center gap-2"><Btn small onClick={() => setMinStaff({ ...minStaff, [t.name]: Math.max(0, (minStaff[t.name] ?? 1) - 1) })}>−</Btn><b className="w-5 text-center tabular-nums">{minStaff[t.name] ?? 1}</b><Btn small onClick={() => setMinStaff({ ...minStaff, [t.name]: (minStaff[t.name] ?? 1) + 1 })}>+</Btn></span></div>
 						))}
 					</div>
-					<div>
+					<div className={mode === "role" ? "hidden" : undefined}>
 						<div className="mb-2 font-mono text-[10px] uppercase tracking-[0.08em] text-[#666672]">Karyawan ({staff.length})</div>
 						<ul className="max-h-[220px] overflow-y-auto border border-[#e4e4e8]">
 							{users.map((u) => (
@@ -315,10 +352,10 @@ function Generator({ users, templates, defaultStart, onDone, bulkReplace }: GenP
 									<tbody>
 										{staff.map((p) => (
 											<tr key={p.id} className="border-t border-[#efeff2]">
-												<td className="px-3 py-1.5 font-medium">{p.name.split(" ")[0]}</td>
+												<td className="px-3 py-1.5 font-medium">{p.name.split(" ")[0]}{mode === "role" && p.roleName ? <div className="font-mono text-[9px] font-normal text-[#666672]">{p.roleName}</div> : null}</td>
 												{firstWeek.map((d, i) => {
 													const row = result.rows.find((r) => r.userId === p.id && r.date === d);
-													return <td key={d} className="p-1"><motion.div initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.02 }} className={`px-1 py-1.5 text-center font-mono text-[9px] uppercase ${row ? shiftTone(row.shiftName, row.status) : ""}`}>{row?.status === "off" ? "Libur" : row?.shiftName}</motion.div></td>;
+													return <td key={d} className="p-1"><motion.div initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.02 }} className={`px-1 py-1.5 text-center font-mono text-[9px] uppercase ${row ? shiftTone(row.shiftName, row.status) : "text-[#b4b4bc]"}`}>{row ? (row.status === "off" ? "Libur" : row.shiftName) : "—"}</motion.div></td>;
 												})}
 											</tr>
 										))}

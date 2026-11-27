@@ -238,3 +238,28 @@ export function validateConsecutive(rows: GeneratedRow[], userId: string): { ok:
 	const ok = transitions <= 2;
 	return { ok, offDays, message: ok ? undefined : "Hari libur terpisah, tidak berjejer." };
 }
+
+/**
+ * Generator per jabatan: tiap jabatan dijadwalkan sendiri-sendiri, jadi libur dan
+ * shift diseimbangkan di dalam jabatan itu (mis. barista tidak libur serentak).
+ * `shiftsFor` memberi daftar shift beserta minimal orang untuk jabatan tertentu.
+ */
+export function generateScheduleByRole(
+	base: Omit<GeneratorOptions, "staff" | "shifts">,
+	staff: GeneratorStaff[],
+	shiftsFor: (roleName: string) => GeneratorShift[],
+): GeneratorResult {
+	const roles = [...new Set(staff.map((s) => s.roleName || "Tanpa jabatan"))];
+	const merged: GeneratorResult = { rows: [], offStart: {}, warnings: [], workingPerWeekday: Array<number>(7).fill(0) };
+	for (const role of roles) {
+		const members = staff.filter((s) => (s.roleName || "Tanpa jabatan") === role);
+		const shifts = shiftsFor(role);
+		if (members.length === 0 || shifts.length === 0) continue;
+		const part = generateSchedule({ ...base, staff: members, shifts });
+		merged.rows.push(...part.rows);
+		Object.assign(merged.offStart, part.offStart);
+		merged.warnings.push(...part.warnings.map((w) => ({ ...w, shiftName: `${role} · ${w.shiftName}` })));
+		part.workingPerWeekday.forEach((n, i) => { merged.workingPerWeekday[i] += n; });
+	}
+	return merged;
+}
