@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { requestAdminConfirm } from "@/lib/admin-dialogs";
 import { generateSchedule, generateScheduleByRole, addDays, mondayOf, validateConsecutive, WEEKDAY_NAMES, type GeneratorShift, type GeneratorStaff } from "@/lib/schedule-generator";
@@ -277,7 +277,12 @@ function Generator({ users, templates, defaultStart, onDone, bulkReplace }: GenP
 		: users.filter((u) => chosen[u._id] ?? true).map((u) => ({ id: u._id, name: u.name, roleName: u.roleName, daysOff: daysOff[u._id] ?? (Number(defaultOff) as 1 | 2) }));
 	const shifts: GeneratorShift[] = templates.map((t) => ({ name: t.name, start: t.openTime ?? null, end: t.closeTime ?? null, minStaff: minStaff[t.name] ?? 1 }));
 	const result = useMemo(() => (rangeOk && staff.length && shifts.length ? (mode === "role" ? generateScheduleByRole({ startDate: start, endDate, rotateWeekly: rotate, preferWeekend: weekend }, staff, roleShifts) : generateSchedule({ startDate: start, endDate, staff, shifts, rotateWeekly: rotate, preferWeekend: weekend })) : null), [mode, JSON.stringify(roleCfg), rangeOk, staff.length, shifts.length, start, endDate, rotate, weekend, JSON.stringify(staff), JSON.stringify(shifts)]); // eslint-disable-line react-hooks/exhaustive-deps
-	const firstWeek = result ? Array.from({ length: 7 }, (_, i) => addDays(mondayOf(start), i)) : [];
+	const [previewWeek, setPreviewWeek] = useState(mondayOf(defaultStart));
+	useEffect(() => { setPreviewWeek(mondayOf(defaultStart)); }, [defaultStart]);
+	const weekLo = mondayOf(start);
+	const weekHi = mondayOf(endDate);
+	const shownWeek = previewWeek < weekLo ? weekLo : previewWeek > weekHi ? weekHi : previewWeek;
+	const firstWeek = result ? Array.from({ length: 7 }, (_, i) => addDays(shownWeek, i)) : [];
 	const totalRows = result?.rows.length ?? 0;
 	const allValid = result ? staff.every((p) => validateConsecutive(result.rows, p.id).ok) : true;
 	const uncovered = result?.warnings.length ?? 0;
@@ -371,7 +376,10 @@ function Generator({ users, templates, defaultStart, onDone, bulkReplace }: GenP
 				</div>
 
 				<div className="min-w-0 space-y-3">
-					<div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#666672]">Pratinjau minggu pertama</div>
+					<div className="flex items-center justify-between gap-2">
+						<div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#666672]">Pratinjau · {fmtDate(shownWeek)} – {fmtDate(addDays(shownWeek, 6))}</div>
+						<span className="flex gap-1"><Btn small disabled={shownWeek <= weekLo} onClick={() => setPreviewWeek(addDays(shownWeek, -7))} title="Minggu sebelumnya">‹</Btn><Btn small disabled={shownWeek >= weekHi} onClick={() => setPreviewWeek(addDays(shownWeek, 7))} title="Minggu berikutnya">›</Btn></span>
+					</div>
 					{result ? (
 						<>
 							<div className="overflow-x-auto border border-[#e4e4e8]">
